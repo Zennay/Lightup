@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-ALBjtt85Jta66QPk1Q9uFmQaRA+Hy5T7MGG3wKCXzVY='; script-src 'sha256-F/6IU6LWqmRWLMIlSWGnn7UAtau4pcpUr8zv+oK1MDI='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-EEyIgH2ZHUyxzPR7Uv5EgTJx/zPz0/UfDK1PU9yNhjU='; script-src 'sha256-FaPQUQI+aJTxNQLm++veOggmhLr3FaO+A5N1zVj18W8='">
 <title>LightUp · PRIVATE HUMAN reconciliatie</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0b111c;color:#eaf1ff;font-size:15px}
 *{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1180px;margin:auto;padding:28px 20px}
 header{padding-top:50px}.mark{letter-spacing:.16em;font-weight:900;color:#86bbff}.mark span{font-size:.7em;color:#b1c3d9;background:#25334b;padding:7px 12px;border-radius:30px;margin-left:10px}
@@ -50,6 +50,13 @@ button.secondary:hover{background:#405a76}
 .bulk-preview p{margin:5px 0 9px}
 #bulk-status{color:#cce3fc;overflow-wrap:anywhere}
 #bulk-status.error{color:#ffbac1}
+
+.private-portfolio{background:#19293b;border:1px solid #52769e;margin-top:20px}
+.private-portfolio progress{width:100%;height:16px;accent-color:#80b5ef}
+.portfolio-groups,.portfolio-table{overflow-x:auto;max-height:480px;overflow-y:auto}
+.portfolio-table button{font-size:.83rem;padding:8px;margin:0}
+.portfolio-table td{min-width:105px;max-width:340px}
+#portfolio-status.error{color:#ffbac1}
 </style></head>
 <body>
 <header><div class="mark">LIGHTUP <span>PRIVATE / OFFLINE</span></div>
@@ -78,6 +85,25 @@ button.secondary:hover{background:#405a76}
 <label class="consent"><input id="conflicts" type="checkbox"> Alleen dossiers met verschillen</label>
 <label class="consent"><input id="unresolved-only" type="checkbox"> Alleen nog onbesliste HUMAN-conflicten</label>
 <button type="button" id="next-unresolved">Spring naar eerste onbesliste dossier</button></div>
+<div class="panel private-portfolio" aria-labelledby="portfolio-title">
+<h3 id="portfolio-title">PRIVATE HUMAN-triageportfolio (oorspronkelijke, ongeverifieerde brongroepen)</h3>
+<p>Bekijk de voortgang van alle ingelezen oorspronkelijke dossiers, met prioriteit voor bron-gemarkeerde HOLD-statussen en nog onbesliste menselijke velden. Dit zijn uitsluitend labels uit de geselecteerde originele gegevens: geen actuele bron-/grant-/consent-verificatie en geen definitieve securityverdicts.</p>
+<p id="portfolio-numbers" aria-live="polite">Geen oorspronkelijke PRIVATE bron geopend.</p>
+<label for="portfolio-progress">Voortgang in het menselijk beslissen (geen vrijgave)</label>
+<progress id="portfolio-progress" value="0" max="1">0</progress>
+<div id="portfolio-groups" class="portfolio-groups"></div>
+<div class="grid"><label for="portfolio-search">Zoek PRIVATE dossier of oorspronkelijke actie
+<input type="search" id="portfolio-search" autocomplete="off" placeholder="Zoek lokaal"></label>
+<label for="portfolio-group">Zelfverklaarde broncategorie
+<select id="portfolio-group"><option value="all">Alle oorspronkelijke labels</option><option value="source-hold">Bron-HOLD</option><option value="risk-pending">Bron: risicobesluit pending</option><option value="window-review">Bron: vervallen/toekomstige vensters</option><option value="other">Overige bronlabels</option></select></label>
+<label for="portfolio-stage">Menselijke besluitstatus
+<select id="portfolio-stage"><option value="all">Alle menselijke statussen</option><option value="unresolved">Nog geen keuze</option><option value="partial">Gedeeltelijk besloten</option><option value="resolved">Alle verschillen gekozen</option><option value="identical">Oorspronkelijk HUMAN gelijk</option></select></label></div>
+<div class="toolbar"><button id="portfolio-jump" type="button" disabled>Open eerste passende HUMAN-case</button>
+<button id="portfolio-export" type="button" class="secondary" disabled>Exporteer alleen bronvrije portfoliotellingen</button></div>
+<p id="portfolio-visible" class="muted"></p>
+<div id="portfolio-table" class="portfolio-table" aria-label="PRIVATE HUMAN-dossieroverzicht"></div>
+<p id="portfolio-status" role="status" aria-live="polite">Geen menselijke portfoliokeuze uitgevoerd.</p>
+</div>
 <div class="panel bulk-triage" aria-labelledby="bulk-title">
 <h3 id="bulk-title">Brongebonden bulkafhandeling — alleen onbesliste HUMAN-velden</h3>
 <p>Maak eerst een actuele voorvertoning. Bulk wijzigt geen reeds beoordeelde velden, originele Casebook-bronnen, grants of toestemming. Bevestiging is per actie verplicht; ongedaan maken en opnieuw toepassen werken alleen zolang dit tabblad en de oorspronkelijke bronnen open zijn.</p>
@@ -561,6 +587,7 @@ function tally(){
   " met HUMAN-verschil · "+unresolved+" onbesliste velden. De bron blijft ongeverifieerd.";
  $("publish").disabled=busy||unresolved!==0;
  $("aggregate").disabled=busy||unresolved!==0;
+ window.LightUpCasebookPortfolio?.render();
 }
 function show(){
  $("cases").replaceChildren();
@@ -689,6 +716,7 @@ function setBusy(v){
  $("clear-session").disabled=v;
  for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=v;
  window.LightUpCasebookBulk?.setBusy(v);
+ window.LightUpCasebookPortfolio?.setBusy(v);
 }
 $("open").addEventListener("click",async()=>{
  if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
@@ -778,6 +806,16 @@ $("aggregate").addEventListener("click",()=>{
  try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
 });
 window.LightUpBulkBridge=Object.freeze({
+ focus:index=>{
+  if(!work||busy||!Number.isInteger(index)||index<0||index>=work.cases.length)
+   deny("HOLD: ongeldig privébroncase voor lokale navigatie.");
+  $("search").value="";$("conflicts").checked=false;
+  $("unresolved-only").checked=false;
+  show();
+  const card=$("cases").querySelector('[data-case-index="'+index+'"]');
+  card?.scrollIntoView({behavior:"smooth",block:"start"});
+  card?.focus({preventScroll:true});
+ },
  read:()=>{
   if(!work||busy)return null;
   const visible=Array.from($("cases").querySelectorAll("[data-case-index]"))
@@ -872,6 +910,7 @@ $("clear-session").addEventListener("click",()=>{
  if(work){zero(work.a);zero(work.b);}
  work=null;
  window.LightUpCasebookBulk?.reset();
+ window.LightUpCasebookPortfolio?.render();
  window.LightUpCasebookNotes?.reset(0);
  window.LightUpCasebookReceiptClear?.();
  $("cases").replaceChildren();$("shown").textContent="";
@@ -1777,4 +1816,182 @@ for(const id of ["bulk-field","bulk-value"])$(id).addEventListener("change",show
 for(const id of ["bulk-custom","bulk-scope"])$(id).addEventListener("change",invalidate);
 window.LightUpCasebookBulk=Object.freeze({reset,recordManual,setBusy});
 showOptions();
+})();
+/* LightUp PRIVATE source-declared Casebook operator portfolio; browser-only, no grant. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id),bridge=window.LightUpBulkBridge,
+ enc=new TextEncoder();
+const buckets=[
+ ["source-hold","Bronlabel HOLD (niet geverifieerd)"],
+ ["risk-pending","Risicobesluit wacht volgens bron"],
+ ["window-review","Verlopen/toekomstig grantvenster volgens bron"],
+ ["other","Overige oorspronkelijke bronlabels"]
+];
+const stages=[
+ ["unresolved","Onbeslist"],["partial","Gedeeltelijk besloten"],
+ ["resolved","Alle HUMAN-verschillen besloten"],["identical","Geen HUMAN-verschil"]
+];
+const six={
+ source_authenticated:false,client_consent_verified:false,
+ operator_consent_verified:false,authorization_granted:false,
+ execution_allowed:false,release_approved:false
+};
+let frozen=false;
+const element=(tag,body)=>{const e=document.createElement(tag);e.textContent=body;return e;};
+const deny=msg=>{throw Error(msg);};
+function attentionClass(s){
+ return s.startsWith("HOLD_")?"source-hold":
+  s==="RISK_DECISION_PENDING_SOURCE_REVIEW"?"risk-pending":
+  ["EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW"].includes(s)?"window-review":"other";
+}
+function stage(c){
+ let diff=0,done=0;
+ for(let j=0;j<3;j++){
+  if(c.a[j]===c.b[j])continue;
+  diff++;
+  const x=c.choices[j];
+  if(["A","B","reset"].includes(x)||
+    typeof x==="string"&&x.startsWith("custom:")&&x.length>7)done++;
+ }
+ return {diff,done,status:diff===0?"identical":
+  done===0?"unresolved":done===diff?"resolved":"partial"};
+}
+function stats(data){
+ const groups=Object.fromEntries(buckets.map(([id])=>[id,{
+  cases:0,differences:0,pending:0,decided:0,complete:0
+ }]));
+ const cases=data.cases.map((c,i)=>{
+  const s=stage(c),bucket=attentionClass(c.attention);
+  const g=groups[bucket];g.cases++;g.differences+=s.diff;
+  g.decided+=s.done;g.pending+=s.diff-s.done;
+  g.complete+=Number(s.status==="resolved"||s.status==="identical");
+  return {i,...c,...s,bucket};
+ });
+ const total={cases:cases.length,differences:0,pending:0,decided:0,
+  complete:0,source_hold:0};
+ for(const g of Object.values(groups)){
+  total.differences+=g.differences;total.pending+=g.pending;
+  total.decided+=g.decided;total.complete+=g.complete;
+ }
+ total.source_hold=groups["source-hold"].cases;
+ return {cases,groups,total};
+}
+function showMessage(s,error=false){
+ $("portfolio-status").textContent=(error?"HOLD: ":"")+s;
+ $("portfolio-status").classList.toggle("error",error);
+}
+function addCell(row,text){
+ const td=element("td",text);row.append(td);
+}
+function render(){
+ const pane=$("portfolio-table"),root=$("portfolio-groups");
+ const current=bridge.read();
+ if(!current){
+  if(frozen)return;
+  pane.replaceChildren();root.replaceChildren();
+  $("portfolio-progress").value=0;$("portfolio-progress").max=1;
+  $("portfolio-numbers").textContent="Geen oorspronkelijke PRIVATE bron geopend.";
+  $("portfolio-export").disabled=true;
+  $("portfolio-jump").disabled=true;
+  return;
+ }
+ const derived=stats(current);
+ const t=derived.total;
+ $("portfolio-numbers").textContent=t.cases+" PRIVATE cases · "+
+  t.differences+" oorspronkelijke HUMAN-conflictvelden · "+
+  t.decided+" menselijk beslist · "+t.pending+" onbeslist · "+
+  t.source_hold+" volgens ongeverifieerde HOLD-bronlabels.";
+ $("portfolio-progress").max=Math.max(1,t.differences);
+ $("portfolio-progress").value=t.decided;
+ root.replaceChildren();
+ const gtable=element("table",""),head=element("tr","");
+ ["Originele broncategorie","Privé-dossiers","Onbeslist","Menselijk besloten"].forEach(x=>head.append(element("th",x)));
+ const thead=element("thead","");thead.append(head);gtable.append(thead);
+ const tbody=element("tbody","");
+ for(const [id,label] of buckets){
+  const g=derived.groups[id],row=element("tr","");
+  [label,String(g.cases),String(g.pending),String(g.decided)].forEach(v=>addCell(row,v));
+  tbody.append(row);
+ }
+ gtable.append(tbody);root.append(gtable);
+ const q=$("portfolio-search").value.trim().toLocaleLowerCase("nl-NL");
+ const category=$("portfolio-group").value,review=$("portfolio-stage").value;
+ let rows=derived.cases.filter(c=>
+  (category==="all"||c.bucket===category)&&
+  (review==="all"||c.status===review)&&
+  (!q||[c.id,c.action,c.attention].some(x=>x.toLocaleLowerCase("nl-NL").includes(q))));
+ rows=rows.sort((a,b)=>{
+  const pa=buckets.findIndex(x=>x[0]===a.bucket),pb=buckets.findIndex(x=>x[0]===b.bucket);
+  return pa-pb||(b.diff-b.done)-(a.diff-a.done)||(a.id<b.id?-1:1);
+ });
+ pane.replaceChildren();
+ $("portfolio-visible").textContent=rows.length+" van "+derived.cases.length+" PRIVATE dossiers zichtbaar.";
+ if(!rows.length){
+  pane.append(element("p","Geen PRIVATE dossiers voldoen aan deze lokale bron- en HUMAN-filters."));
+  $("portfolio-jump").disabled=true;
+ }else{
+  const table=element("table",""),header=element("tr","");
+  ["Origineel dossier","Bronlabel","HUMAN-velden","Status","Open dossier"].forEach(x=>header.append(element("th",x)));
+  const h=element("thead","");h.append(header);table.append(h);
+  const body=element("tbody","");
+  for(const c of rows){
+   const tr=element("tr","");
+   [c.id,c.attention,c.done+"/"+c.diff,c.status].forEach(v=>addCell(tr,v));
+   const cell=element("td","");
+   const button=element("button","Open in HUMAN-workruimte");
+   button.type="button";button.className="secondary";
+   button.disabled=frozen;button.addEventListener("click",()=>bridge.focus(c.i));
+   cell.append(button);tr.append(cell);body.append(tr);
+  }
+  table.append(body);pane.append(table);
+  $("portfolio-jump").disabled=frozen;
+ }
+ $("portfolio-export").disabled=frozen;
+}
+function setBusy(state){
+ frozen=state;
+ $("portfolio-jump").disabled=state;
+ $("portfolio-export").disabled=state;
+ for(const b of $("portfolio-table").querySelectorAll("button"))b.disabled=state;
+ if(!state)render();
+}
+$("portfolio-jump").addEventListener("click",()=>{
+ try{
+  const data=bridge.read();if(!data)deny("Geen actuele originele PRIVATE Cases.");
+  const s=stats(data);
+  const group=$("portfolio-group").value,status=$("portfolio-stage").value;
+  const q=$("portfolio-search").value.trim().toLocaleLowerCase("nl-NL");
+  const list=s.cases.filter(c=>
+   (group==="all"||c.bucket===group)&&
+   (status==="all"||c.status===status)&&
+   (!q||[c.id,c.action,c.attention].some(v=>v.toLocaleLowerCase("nl-NL").includes(q))));
+  if(!list.length)deny("Geen lokaal zichtbaar dossier in deze categorie.");
+  list.sort((a,b)=>(b.diff-b.done)-(a.diff-a.done));
+  bridge.focus(list[0].i);
+  showMessage("Naar gekozen PRIVATE HUMAN-broncase genavigeerd; geen bevoegdheid toegekend.");
+ }catch(e){showMessage(e.message,true);}
+});
+$("portfolio-export").addEventListener("click",()=>{
+ try{
+  const data=bridge.read();if(!data)deny("Originele PRIVATE bron niet geopend.");
+  if(!window.confirm("Exporteer uitsluitend HUMAN-voortgangsaantallen per zelfverklaarde brongroep (geen dossier-ID/bronhash/actietekst)? Kleine cohorten kunnen alsnog gevoelig zijn."))return;
+  const {groups,total}=stats(data);
+  const out={schema:"lightup.casebook.private_human_portfolio_aggregate.v1",
+   status:"REVIEW_ONLY",authority:"NONE",source_labels_unverified:true,
+   ...total,groups:Object.entries(groups).map(([category,n])=>({category,...n})),...six};
+  const encoded=enc.encode(JSON.stringify(out)+"\n");
+  const url=URL.createObjectURL(new Blob([encoded],{type:"application/octet-stream"}));
+  const a=document.createElement("a");a.href=url;
+  a.download="lightup-PRIVATE-human-portfolio-aggregate.json";
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2500);
+  showMessage("Bronvrij HUMAN-triageportfolio lokaal aangeboden; geen bronvalidatie of toestemming.");
+ }catch(e){showMessage(e.message,true);}
+});
+for(const id of ["portfolio-search","portfolio-group","portfolio-stage"]){
+ $(id).addEventListener(id==="portfolio-search"?"input":"change",render);
+}
+window.LightUpCasebookPortfolio=Object.freeze({render,setBusy});
+render();
 })();</script></body></html>

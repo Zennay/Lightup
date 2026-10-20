@@ -29,6 +29,25 @@
 <label class="consent"><input id="conflicts" type="checkbox"> Alleen dossiers met verschillen</label>
 <label class="consent"><input id="unresolved-only" type="checkbox"> Alleen nog onbesliste HUMAN-conflicten</label>
 <button type="button" id="next-unresolved">Spring naar eerste onbesliste dossier</button></div>
+<div class="panel private-portfolio" aria-labelledby="portfolio-title">
+<h3 id="portfolio-title">PRIVATE HUMAN-triageportfolio (oorspronkelijke, ongeverifieerde brongroepen)</h3>
+<p>Bekijk de voortgang van alle ingelezen oorspronkelijke dossiers, met prioriteit voor bron-gemarkeerde HOLD-statussen en nog onbesliste menselijke velden. Dit zijn uitsluitend labels uit de geselecteerde originele gegevens: geen actuele bron-/grant-/consent-verificatie en geen definitieve securityverdicts.</p>
+<p id="portfolio-numbers" aria-live="polite">Geen oorspronkelijke PRIVATE bron geopend.</p>
+<label for="portfolio-progress">Voortgang in het menselijk beslissen (geen vrijgave)</label>
+<progress id="portfolio-progress" value="0" max="1">0</progress>
+<div id="portfolio-groups" class="portfolio-groups"></div>
+<div class="grid"><label for="portfolio-search">Zoek PRIVATE dossier of oorspronkelijke actie
+<input type="search" id="portfolio-search" autocomplete="off" placeholder="Zoek lokaal"></label>
+<label for="portfolio-group">Zelfverklaarde broncategorie
+<select id="portfolio-group"><option value="all">Alle oorspronkelijke labels</option><option value="source-hold">Bron-HOLD</option><option value="risk-pending">Bron: risicobesluit pending</option><option value="window-review">Bron: vervallen/toekomstige vensters</option><option value="other">Overige bronlabels</option></select></label>
+<label for="portfolio-stage">Menselijke besluitstatus
+<select id="portfolio-stage"><option value="all">Alle menselijke statussen</option><option value="unresolved">Nog geen keuze</option><option value="partial">Gedeeltelijk besloten</option><option value="resolved">Alle verschillen gekozen</option><option value="identical">Oorspronkelijk HUMAN gelijk</option></select></label></div>
+<div class="toolbar"><button id="portfolio-jump" type="button" disabled>Open eerste passende HUMAN-case</button>
+<button id="portfolio-export" type="button" class="secondary" disabled>Exporteer alleen bronvrije portfoliotellingen</button></div>
+<p id="portfolio-visible" class="muted"></p>
+<div id="portfolio-table" class="portfolio-table" aria-label="PRIVATE HUMAN-dossieroverzicht"></div>
+<p id="portfolio-status" role="status" aria-live="polite">Geen menselijke portfoliokeuze uitgevoerd.</p>
+</div>
 <div class="panel bulk-triage" aria-labelledby="bulk-title">
 <h3 id="bulk-title">Brongebonden bulkafhandeling — alleen onbesliste HUMAN-velden</h3>
 <p>Maak eerst een actuele voorvertoning. Bulk wijzigt geen reeds beoordeelde velden, originele Casebook-bronnen, grants of toestemming. Bevestiging is per actie verplicht; ongedaan maken en opnieuw toepassen werken alleen zolang dit tabblad en de oorspronkelijke bronnen open zijn.</p>

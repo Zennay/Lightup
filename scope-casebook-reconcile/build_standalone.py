@@ -22,7 +22,8 @@ def build() -> None:
     revision = (ROOT / "revision.js").read_text(encoding="utf-8")
     timeline = (ROOT / "timeline.js").read_text(encoding="utf-8")
     bulk = (ROOT / "bulk.js").read_text(encoding="utf-8")
-    js = adapter + "\n" + app + "\n" + notes + "\n" + draft + "\n" + receipt + "\n" + revision + "\n" + timeline + "\n" + bulk
+    portfolio = (ROOT / "portfolio.js").read_text(encoding="utf-8")
+    js = adapter + "\n" + app + "\n" + notes + "\n" + draft + "\n" + receipt + "\n" + revision + "\n" + timeline + "\n" + bulk + "\n" + portfolio
     digest = lambda t: base64.b64encode(hashlib.sha256(t.encode("utf-8")).digest()).decode("ascii")
     policy = ("default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; "
               "form-action 'none'; connect-src 'none'; img-src 'none'; "

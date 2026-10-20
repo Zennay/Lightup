@@ -17,6 +17,12 @@ After every HUMAN field is resolved, an optional **source-free, count-only HUMAN
 
 Private original case IDs, action text and HUMAN choices remain entirely in browser memory, never in exported aggregate logs or servers. New ciphertext has a fresh random salt and nonce, PBKDF2-SHA256 310,000 iterations and AES-256-GCM. No account, localStorage, remote network, grant, API, scan or active-target support is present. Incorrect input does not replace the previous workset. A compromised browser can reveal locally displayed PRIVATE information; choose a trusted computer and exchange the new secret separately.
 
+## PRIVATE HUMAN readiness and risk-attention triage portfolio
+
+A second fully integrated part of the original Casebook workroom is a **source-labelled, read-only HUMAN progress portfolio** across all current cases, not another source or scanning interface. It groups original `HOLD_` attentions, risk-decision-pending labels, expired/future grant-window review labels and remaining original source attentions. These are *unverified original source labels*, not grant, consent, deadline, active vulnerability or risk approvals. It displays case, resolved/pending HUMAN-field counts and an accessible progress bar; filters privately by source-label group, human-decision state and original case ID/action; and links directly into the actual case editor. The portfolio is updated as individual HUMAN choices, bulk actions, encrypted draft restoration and undo/redo change state.
+
+An optional expressly acknowledged aggregate JSON exports **only grouped counts**, with no client, case ID, source SHA, original action text, private note or grant bytes. Small cohorts can still leak sensitive information and are explicitly warned about. All six authority flags remain literal false and `status=REVIEW_ONLY`. The original Casebook/source owner, real scope and grant logic remain unchanged.
+
 ## Bulk HUMAN reviewer workflow and reversible choices
 
 To make an original Casebook of up to 200 current cases usable, the **same source-bound local offline operator desk** now has a bulk triage section for conflicting HUMAN stage, route or blocker fields. The operator can choose original A, original B, source-safe HUMAN reset, or another original **field-specific canonical HUMAN enumeration**; select **only currently visible and unreviewed fields** (the safe default) or all unreviewed original cases; and see a PRIVATE preview of the **exact affected field count and a bounded sample of original case IDs**. The actual application only changes in-memory HUMAN selections **after explicit confirmation**, with a new full current-source/selection comparison immediately before application. Already explicitly decided HUMAN fields, identical source-HUMAN values, original immutable Casebook JSON, original incoming HUMAN CSV bytes and all security, grants or consent are strictly untouched. 
@@ -76,6 +82,7 @@ Build without running QA/regression suites (the builder includes the source-pinn
 python3 scope-casebook-reconcile/build_standalone.py
 node --check scope-casebook-reconcile/app.js
 node --check scope-casebook-reconcile/bulk.js
+node --check scope-casebook-reconcile/portfolio.js
 node --check scope-casebook-reconcile/draft.js
 ```
 

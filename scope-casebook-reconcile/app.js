@@ -176,6 +176,7 @@ function tally(){
   " met HUMAN-verschil · "+unresolved+" onbesliste velden. De bron blijft ongeverifieerd.";
  $("publish").disabled=busy||unresolved!==0;
  $("aggregate").disabled=busy||unresolved!==0;
+ window.LightUpCasebookPortfolio?.render();
 }
 function show(){
  $("cases").replaceChildren();
@@ -304,6 +305,7 @@ function setBusy(v){
  $("clear-session").disabled=v;
  for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=v;
  window.LightUpCasebookBulk?.setBusy(v);
+ window.LightUpCasebookPortfolio?.setBusy(v);
 }
 $("open").addEventListener("click",async()=>{
  if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
@@ -393,6 +395,16 @@ $("aggregate").addEventListener("click",()=>{
  try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
 });
 window.LightUpBulkBridge=Object.freeze({
+ focus:index=>{
+  if(!work||busy||!Number.isInteger(index)||index<0||index>=work.cases.length)
+   deny("HOLD: ongeldig privébroncase voor lokale navigatie.");
+  $("search").value="";$("conflicts").checked=false;
+  $("unresolved-only").checked=false;
+  show();
+  const card=$("cases").querySelector('[data-case-index="'+index+'"]');
+  card?.scrollIntoView({behavior:"smooth",block:"start"});
+  card?.focus({preventScroll:true});
+ },
  read:()=>{
   if(!work||busy)return null;
   const visible=Array.from($("cases").querySelectorAll("[data-case-index]"))
@@ -487,6 +499,7 @@ $("clear-session").addEventListener("click",()=>{
  if(work){zero(work.a);zero(work.b);}
  work=null;
  window.LightUpCasebookBulk?.reset();
+ window.LightUpCasebookPortfolio?.render();
  window.LightUpCasebookNotes?.reset(0);
  window.LightUpCasebookReceiptClear?.();
  $("cases").replaceChildren();$("shown").textContent="";
