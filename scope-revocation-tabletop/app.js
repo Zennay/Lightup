@@ -220,6 +220,51 @@
       });
       actions.append(save,load,erase);tr.append(label,cell,actions);root.append(tr);
     });
+    updateSlotSelectors();
+  }
+  function updateSlotSelectors() {
+    const filled=slots.flatMap((x,i)=>x===null?[]:[i]);
+    const first=$("compare-a"),second=$("compare-b");
+    const rememberedA=first.value,rememberedB=second.value;
+    first.replaceChildren();second.replaceChildren();
+    for (const index of filled) {
+      first.append(new Option("Scenario "+(index+1),String(index)));
+      second.append(new Option("Scenario "+(index+1),String(index)));
+    }
+    first.disabled=filled.length===0;
+    second.disabled=filled.length===0;
+    if(filled.includes(Number(rememberedA)) && rememberedA!=="")first.value=rememberedA;
+    if(filled.includes(Number(rememberedB)) && rememberedB!=="")second.value=rememberedB;
+    else if(filled.length>1)second.value=String(filled[1]);
+    renderSlotComparison();
+  }
+  function renderSlotComparison() {
+    const container=$("slot-compare-details");
+    container.replaceChildren();
+    const ai=Number($("compare-a").value),bi=Number($("compare-b").value);
+    if($("compare-a").value==="" || $("compare-b").value==="" || !slots[ai] || !slots[bi]) {
+      write("slot-compare-summary","Bewaar minimaal twee fictieve scenario’s om ze te vergelijken.");
+      return;
+    }
+    const a=slotSummary(slots[ai]),b=slotSummary(slots[bi]);
+    const aEvents=slots[ai].events,bEvents=slots[bi].events;
+    const n=Math.min(aEvents.length,bEvents.length);
+    let changed=n;
+    for(let i=0;i<n;i++){if(aEvents[i]!==bEvents[i]){changed=i;break;}}
+    const equal=aEvents.length===bEvents.length && changed===n;
+    write("slot-compare-summary",ai===bi ? "Hetzelfde fictieve scenario geselecteerd." :
+      equal ? "Beide opgeslagen scenario’s bevatten dezelfde oefengebeurtenissen." :
+      "Eerste afwijkende of ontbrekende oefengebeurtenis: stap "+(changed+1)+".");
+    const lines=[
+      "Stappen: "+a.steps+" versus "+b.steps,
+      "Fictieve ontbrekende voorwaarden: "+a.holds+" versus "+b.holds,
+      "Oefenuitvoerpogingen: "+a.attempts+" versus "+b.attempts,
+      "Oefennoodstop: "+(a.stop?"aan":"uit")+" versus "+(b.stop?"aan":"uit"),
+      "Fictieve clientverklaring: "+(a.client?"aanwezig":"ontbreekt")+" versus "+(b.client?"aanwezig":"ontbreekt"),
+      "Fictieve operatorverklaring: "+(a.operator?"aanwezig":"ontbreekt")+" versus "+(b.operator?"aanwezig":"ontbreekt"),
+      "Scope/revisie: "+a.scope+" versus "+b.scope+"; risico/revisie: "+a.risk+" versus "+b.risk
+    ];
+    lines.forEach(t=>container.append(el("li","",t)));
   }
   function boardBrief() {
     const lines=["# LightUp — fictieve scenario-workshop","",
@@ -336,15 +381,25 @@
   $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario inclusief slotverzameling lokaal aangeboden.");});
   $("save-board").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.json",JSON.stringify(data(),null,2),"application/json");feedback("PRIVATE fictieve workshop inclusief editor en slots lokaal aangeboden.");});
   $("save-board-brief").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.md",boardBrief(),"text/markdown");feedback("Fictieve groepsbrief voor PRIVATE HUMAN review aangeboden.");});
+  $("compare-a").addEventListener("change",renderSlotComparison);
+  $("compare-b").addEventListener("change",renderSlotComparison);
   $("save-md").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.md",md(),"text/markdown");feedback("PRIVATE, niet-autoriseren­de beslisbrief lokaal aangeboden.");});
   $("import-btn").addEventListener("click",()=>$("import-file").click());
   $("import-file").addEventListener("change",async event=>{
     const file=event.target.files?.[0];event.target.value="";if (!file)return;
     if (file.size>32768){feedback("HOLD: scenario groter dan 32 KiB.");return;}
+    const oldSession=JSON.stringify(data());
     try {
       const text=await file.text();
       const next=validateImport(text);
-      if (events.length && !window.confirm("Bestaand fictief scenario vervangen door dit bestand?")) return;
+      // A local file read may finish after a HUMAN has edited the current scenario.
+      // Never silently overwrite those newer choices, including all saved slots.
+      if (JSON.stringify(data())!==oldSession) {
+        feedback("HOLD: lokale werkruimte gewijzigd tijdens inlezen; bestand niet toegepast.");
+        return;
+      }
+      if ((events.length || baseline!==null || slots.some(x=>x!==null)) &&
+          !window.confirm("Editor, nulmeting en alle acht opgeslagen oefenscenario's vervangen?")) return;
       events=next.events;baseline=next.baseline;slots=next.slots;
       feedback("Fictief scenario en acht-slotsverzameling atomair hersteld.");render();
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
