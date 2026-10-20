@@ -45,6 +45,12 @@ input[type=search]{flex:2;min-width:250px}label{display:block;margin:7px 0}label
 .grid input,.grid select,.grid textarea{width:100%}
 .task-title{font-weight:700}.muted{color:#b9cadf}.badge{display:inline-block;border:1px solid #637990;border-radius:12px;padding:3px 8px;margin-right:6px}
 #notify{min-height:28px;color:#f5cb7d}#stats{font-size:1.05rem}a{color:#98cdfc}
+dialog{width:min(95vw,470px);max-height:90vh;border:1px solid #829dbe;border-radius:14px;
+padding:22px;background:#17263a;color:#f2f7ff;box-shadow:0 22px 80px #040913}
+dialog::backdrop{background:#02060ce8}dialog form{display:grid;gap:12px}
+dialog input[type=password]{display:block;width:100%;min-height:44px;margin-top:5px}
+dialog label span{font-weight:600}dialog button{min-height:44px}
+dialog [role=alert]{color:#ffd393;min-height:1rem;margin:0}
 """
 def require(ok: bool, reason: str) -> None:
     if not ok:
