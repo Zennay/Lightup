@@ -110,7 +110,12 @@ trusted machine:
 The original slot paths and ordinal ordering must match exactly, so unrelated
 packages cannot be compared as if they were revisions. It produces a fresh
 owner-only 0700 package with PRIVATE-historical-comparison.json, a printable
-OPEN-PRIVATE.html and a separate PRIVATE-HUMAN-comparison-template.csv. The
+OPEN-PRIVATE.html and a separate PRIVATE-HUMAN-comparison-template.csv.
+It also produces a **separate**, owner-private PRIVATE-detail.html drilldown with
+source-relative changed file names and before/after byte sizes (up to 500 rows
+shown in HTML), plus the complete bounded set in PRIVATE-file-changes.json.
+These sensitive detailed artifacts are never placed in the source-minimal
+summary, never shared automatically, and never demonstrate verified fixes. The
 comparison displays only counts of added, removed, changed and unchanged kit
 files, not source filenames, file contents or target identifiers in its HTML.
 Its source ledger SHA-256s are **unsigned** and remain PRIVATE. No original
