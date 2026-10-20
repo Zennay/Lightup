@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from hashlib import sha256
 import html
+import json
 import os
 from pathlib import Path
 import shutil
@@ -20,9 +21,56 @@ from notes import (
 )
 
 SCHEMA = "lightup.private_assessment_selected_human_discussion.v1"
+PLAN_SCHEMA = "lightup.private_assessment_selected_plan.v1"
 
 
-def prepare_selected(completed_packet: str, slots: list[int], private_parent: str) -> int:
+def load_plan(path: str, sources: list[dict]) -> tuple[list[int], str]:
+    """Re-admit one original-only PRIVATE browser plan, all-or-nothing."""
+    raw = private_input(path, 64 * 1024)
+    try:
+        def unique_pairs(pairs):
+            out = {}
+            for key, value in pairs:
+                if key in out:
+                    raise ValueError("repeated JSON key")
+                out[key] = value
+            return out
+
+        plan = json.loads(raw.decode("utf-8", errors="strict"),
+                          object_pairs_hook=unique_pairs,
+                          parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+    except (UnicodeError, ValueError, TypeError):
+        raise Hold("HOLD: selected PRIVATE plan JSON is noncanonical") from None
+    if (type(plan) is not dict or set(plan) != {
+            "schema", "claimed_status", "source_count", "selected",
+            "recipient_authenticated", "approved_to_share", "release_allowed",
+            "dispatch_allowed"
+        } or plan["schema"] != PLAN_SCHEMA or plan["claimed_status"] != "HOLD"
+            or type(plan["source_count"]) is not int
+            or plan["source_count"] != len(sources)
+            or any(plan[flag] is not False for flag in (
+                "recipient_authenticated", "approved_to_share",
+                "release_allowed", "dispatch_allowed"))):
+        raise Hold("HOLD: selected PRIVATE plan has an invalid source roster or authority flags")
+    selected = plan["selected"]
+    if type(selected) is not list or not 1 <= len(selected) <= len(sources):
+        raise Hold("HOLD: selected PRIVATE plan requires bounded original source references")
+    slots = []
+    for entry in selected:
+        if (type(entry) is not dict
+                or set(entry) != {"ordinal", "source_sha256_unsigned"}
+                or type(entry["ordinal"]) is not int
+                or not 1 <= entry["ordinal"] <= len(sources)
+                or type(entry["source_sha256_unsigned"]) is not str
+                or entry["source_sha256_unsigned"] != sources[entry["ordinal"]-1]["source_sha256_unsigned"]
+                or (slots and entry["ordinal"] <= slots[-1])):
+            raise Hold("HOLD: selected PRIVATE plan source identity/order differs from original")
+        slots.append(entry["ordinal"])
+    return slots, sha256(raw).hexdigest()
+
+
+def prepare_selected(completed_packet: str, slots: list[int], private_parent: str,
+                     plan_path: str | None = None) -> int:
     original = private_directory(completed_packet)
     parent = private_directory(private_parent)
     bindings, sources, rows = load_workroom(original)
@@ -41,6 +89,12 @@ def prepare_selected(completed_packet: str, slots: list[int], private_parent: st
     totals = {stage: sum(d["human_stage"] == stage for d in decisions) for stage in ALLOWED}
     if bindings.get("human_stages") != totals:
         raise Hold("HOLD: original completed HUMAN stage counts disagree")
+
+    plan_digest = None
+    if plan_path is not None:
+        if slots:
+            raise Hold("HOLD: use either explicit positions or one PRIVATE plan, never both")
+        slots, plan_digest = load_plan(plan_path, sources)
 
     if (not slots or len(slots) > len(rows) or len(set(slots)) != len(slots)
             or any(type(slot) is not int or not 1 <= slot <= len(rows) for slot in slots)):
@@ -94,6 +148,7 @@ def prepare_selected(completed_packet: str, slots: list[int], private_parent: st
             "source_manifest_sha256_unsigned": sha256(raw_manifest).hexdigest(),
             "complete_original_human_csv_sha256_unsigned": sha256(raw_csv).hexdigest(),
             "selected_original_positions": slots,
+            "selected_plan_sha256_unsigned": plan_digest,
             "sources": packet_sources,
             **{flag: False for flag in FALSE_FLAGS},
         }
@@ -150,12 +205,14 @@ No scan, network, model, authentication, grant or release.</footer></html>""")
 def main() -> int:
     cli = argparse.ArgumentParser(description="Selected-only masked PRIVATE internal HUMAN discussion; never a release")
     cli.add_argument("--completed-packet", required=True, help="unchanged completed owner-private HUMAN notes packet")
-    cli.add_argument("--position", required=True, action="append", type=int,
-                     help="one original ordinal per argument; only INTERNAL_REVIEW_ONLY")
+    selection = cli.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--position", action="append", type=int,
+                           help="original ordinal; only INTERNAL_REVIEW_ONLY")
+    selection.add_argument("--plan", help="existing owner-private 0600 original reference plan JSON")
     cli.add_argument("--private-parent", required=True, help="existing owner-only 0700 directory")
     args = cli.parse_args()
     try:
-        return prepare_selected(args.completed_packet, args.position, args.private_parent)
+        return prepare_selected(args.completed_packet, args.position or [], args.private_parent, args.plan)
     except (Hold, OSError, ValueError, KeyError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: selected PRIVATE discussion refused",
               file=sys.stderr)
