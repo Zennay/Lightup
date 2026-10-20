@@ -31,7 +31,8 @@ BUNDLE = "PRIVATE-human-handoff.luhb"
 REKEYED_BUNDLE = "PRIVATE-human-handoff-rekeyed.luhb"
 RECONCILE_OUTPUTS = ("PRIVATE-reconcile-decisions.csv", "PRIVATE-reconcile-comparison.html",
                      "PRIVATE-reconciled-human.csv", "PRIVATE-reconciled-report.html",
-                     "PRIVATE-reconciled-counts.csv", "PRIVATE-reconciled-human.luhb")
+                     "PRIVATE-reconciled-counts.csv", "PRIVATE-reconciled-human.luhb",
+                     "PRIVATE-reconcile-interactive-decisions.csv")
 
 
 def source_bytes(name: str) -> bytes:
