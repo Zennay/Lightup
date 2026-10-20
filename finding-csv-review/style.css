@@ -52,3 +52,5 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 
 .bulk { margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:8px; } .bulk label { grid-column:1/-1; } .bulk select { grid-column:1/-1; } .bulk button { font-size:.78rem; min-height:38px; padding:8px; }
 @media(max-width:520px) { .bulk { grid-template-columns:1fr; } }
+
+.brief-actions { border-top:1px solid var(--line); margin-top:18px; padding-top:16px; } .brief-actions .brief-toggle { display:flex; align-items:center; gap:9px; font-size:.8rem; margin-bottom:12px; } .brief-actions .brief-toggle input { width:auto; margin:0; } .brief-actions .minor { font-size:.75rem; color:var(--muted); }
