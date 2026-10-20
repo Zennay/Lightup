@@ -6,6 +6,26 @@ This new-only module makes already-produced private assessment workroom packages
 
 The module does not parse findings as verified, change any original producer, run tests/scans, contact targets, touch scope/grants, grant consent, send anything, or delete old packages.
 
+## Start without assembling commands: one foreground PRIVATE operator console
+
+The independent [console.py](console.py) is a complete guided HUMAN-only
+operator interface for the exact same original native functions. Start it
+locally from a trusted checkout:
+
+    python3 assessment-workspace-ledger/console.py
+
+Seven screens provide original kit capture, exact-byte reopen, original-bound
+HUMAN CSV finalization, historical change review with private file-level
+drilldown, unchanged-source HUMAN continuity, a separate source-free
+single-file browser editor export and an in-memory status-only local action
+summary. Every user-selected action runs **once, synchronously**, with no
+subprocess/shell, service, queue, background job, network, model, scan,
+consent grant, scheduled activity or source deletion. A HOLD (3) keeps the
+foreground console accessible so the operator can choose a different safe
+function. Nothing is automatically retried; the console itself terminates
+with HOLD even if a local software-only action returned REVIEW_ONLY. Sensitive
+private file paths are only entered locally and never sent to GitHub/Notion.
+
 ## Complete offline flow
 
 Requires Python 3 standard library. Operate on a trusted machine with explicit owner-private folders **outside the checkout**. Existing private kit directories and every nested file/directory must be owner-only. Symlinks, hardlinks, unexpected filesystem entries and unstable file contents are refused.
