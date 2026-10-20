@@ -2,7 +2,7 @@
 (() => {
   const model = JSON.parse(document.getElementById("seed").textContent);
   const STAGES = ["open_human", "ask_source_owner", "in_discussion_human", "answered_human_only"];
-  const KDF = 600000, LIMIT = 262144, AAD = "LIGHTUP_PRIVATE_SOURCE_FREE_HUMAN_SCHEDULE_V1";
+  const KDF = 600000, LIMIT = 4194304, AAD = "LIGHTUP_PRIVATE_SOURCE_FREE_HUMAN_SCHEDULE_V1";
   const textEncoder = new TextEncoder(), textDecoder = new TextDecoder("utf-8", {fatal:true});
   const el = id => document.getElementById(id);
   const sourceKeys = new Map(model.sources.map(x => [x.packet, x.source_sha256]));
