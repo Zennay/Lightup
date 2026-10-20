@@ -64,33 +64,33 @@ The new exclusive owner-only `PRIVATE-lightup-sensitivity-focus-*` contains a sc
 
 The same original completed masked-note packet can now be revisited across **2–8 genuine, separately finalized owner-private HUMAN sensitivity review directories**. Historical inputs are explicit, in HUMAN-declared order; there is no scan, filesystem discovery, implicit publication, timestamp authentication or inferred security improvement.
 
-\`\`\`sh
+```sh
 python3 private-assessment-notes/notes.py sensitivity-history \
   --completed-packet /private/owner/PRIVATE-lightup-human-handoff-ORIGINAL \
   --review /private/owner/PRIVATE-lightup-sensitivity-review-ROUND1 \
   --review /private/owner/PRIVATE-lightup-sensitivity-review-ROUND2 \
   --private-parent /private/owner
-\`\`\`
+```
 
 The new 0700/0600 history workroom contains:
-- \`OPEN-PRIVATE.html\`, a self-contained local navigation page.
-- \`PRIVATE-HUMAN-timeline.html\`, an offline interactive, CSP hash-pinned browser timeline. Switch HUMAN rounds, filter per status or original ordinal, show only changed original positions and inspect the local categorical history for a source. **No original note bytes, source hashes, filenames or HUMAN free-text notes are included in this browser artifact.**
-- \`PRIVATE-HUMAN-history.html\`, a scriptless, printable, source-number-only historical overview.
-- \`PRIVATE-HUMAN-transitions.csv\`, the complete per-source/per-adjacent-round literal change table; it describes reported HUMAN changes only, not verified improvement. A free note change is represented by a Boolean, not its content.
-- \`PRIVATE-HUMAN-round-counts.csv\`, owner-private count-only aggregate overview per round. Small cohorts can still be sensitive; do not treat these counts as anonymously publishable.
-- \`PRIVATE-HUMAN-history-bindings.json\`, a private unsigned manifest of original exact manifest/HUMAN CSV bytes, all original round receipts, all full CSV digests and literal-false authority flags.
-- \`PRIVATE-HUMAN-last-round.csv\`, an explicitly PRIVATE copy of the last full HUMAN decisions. **This file can contain HUMAN note text. Do not share it.**
-- \`PRIVATE-HUMAN-sensitivity-template.csv\`, \`PRIVATE-triage-bindings.json\`, and a new independent blank \`PRIVATE-HUMAN-sensitivity-editor.html\` for the **next HUMAN review**. Every source starts at \`PENDING\`/\`UNKNOWN\` rather than silently keeping a prior purported clearance. To continue with prior choices, a human must select \`PRIVATE-HUMAN-last-round.csv\` in the local editor and explicitly confirm full source-bound restoration.
+- `OPEN-PRIVATE.html`, a self-contained local navigation page.
+- `PRIVATE-HUMAN-timeline.html`, an offline interactive, CSP hash-pinned browser timeline. Switch HUMAN rounds, filter per status or original ordinal, show only changed original positions and inspect the local categorical history for a source. **No original note bytes, source hashes, filenames or HUMAN free-text notes are included in this browser artifact.**
+- `PRIVATE-HUMAN-history.html`, a scriptless, printable, source-number-only historical overview.
+- `PRIVATE-HUMAN-transitions.csv`, the complete per-source/per-adjacent-round literal change table; it describes reported HUMAN changes only, not verified improvement. A free note change is represented by a Boolean, not its content.
+- `PRIVATE-HUMAN-round-counts.csv`, owner-private count-only aggregate overview per round. Small cohorts can still be sensitive; do not treat these counts as anonymously publishable.
+- `PRIVATE-HUMAN-history-bindings.json`, a private unsigned manifest of original exact manifest/HUMAN CSV bytes, all original round receipts, all full CSV digests and literal-false authority flags.
+- `PRIVATE-HUMAN-last-round.csv`, an explicitly PRIVATE copy of the last full HUMAN decisions. **This file can contain HUMAN note text. Do not share it.**
+- `PRIVATE-HUMAN-sensitivity-template.csv`, `PRIVATE-triage-bindings.json`, and a new independent blank `PRIVATE-HUMAN-sensitivity-editor.html` for the **next HUMAN review**. Every source starts at `PENDING`/`UNKNOWN` rather than silently keeping a prior purported clearance. To continue with prior choices, a human must select `PRIVATE-HUMAN-last-round.csv` in the local editor and explicitly confirm full source-bound restoration.
 
-To finalize the next HUMAN round, download the editor's complete CSV into a new 0600 private file and call the **unchanged existing native** \`sensitivity-finalize\`. The history kit acts as \`--triage-kit\` because it contains the complete original-bound immutable template and source receipt; the unchanged original completed masked-note packet must still be supplied.
+To finalize the next HUMAN round, download the editor's complete CSV into a new 0600 private file and call the **unchanged existing native** `sensitivity-finalize`. The history kit acts as `--triage-kit` because it contains the complete original-bound immutable template and source receipt; the unchanged original completed masked-note packet must still be supplied.
 
-\`\`\`sh
+```sh
 chmod 600 /private/owner/PRIVATE-HUMAN-sensitivity-next.csv
 python3 private-assessment-notes/notes.py sensitivity-finalize \
   --completed-packet /private/owner/PRIVATE-lightup-human-handoff-ORIGINAL \
   --triage-kit /private/owner/PRIVATE-lightup-sensitivity-history-ACTUAL \
   --completed-csv /private/owner/PRIVATE-HUMAN-sensitivity-next.csv \
   --private-parent /private/owner
-\`\`\`
+```
 
-The history builder re-admits **every** original completed review against the original source SHA/byte identity, full original HUMAN CSV, category/status count receipts and literal-false authority flags. Reused byte-identical round CSVs refuse as false new rounds, and a single altered/different source refuses the entire history. The next round is an independently finalized new PRIVATE HUMAN packet, not a revision of earlier results. All history artifacts stay local owner-private. A reduction in \`WITHHOLD\` or \`REVIEW_REQUIRED\` is only a local human reclassification, **never** evidence of sanitization, consent, remediation or security PASS.
+The history builder re-admits **every** original completed review against the original source SHA/byte identity, full original HUMAN CSV, category/status count receipts and literal-false authority flags. Reused byte-identical round CSVs refuse as false new rounds, and a single altered/different source refuses the entire history. The next round is an independently finalized new PRIVATE HUMAN packet, not a revision of earlier results. All history artifacts stay local owner-private. A reduction in `WITHHOLD` or `REVIEW_REQUIRED` is only a local human reclassification, **never** evidence of sanitization, consent, remediation or security PASS.
