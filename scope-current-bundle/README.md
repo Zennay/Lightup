@@ -29,7 +29,9 @@ Open the downloaded ZIP **locally**. No web hosting, external API, account, or t
 
 ## Original-source revision brief — HUMAN follow-up product
 
-The second offline product `change_brief.py` accepts two actual original `SOURCE-MANIFEST.json` files (an earlier separately exported package and the newer package). It rejects ambiguous duplicate JSON keys, malformed or oversized records, unexpected authorization flags, unsafe paths, and duplicate file entries. The result is an **owner-only scriptless HTML decision brief** with added / changed / unchanged / absent *original package files*, original unsigned byte fingerprints and original companion source HEAD drift. It also emits a separately **anonymous aggregate-counts JSON** without file names, hashes, or targets.
+The second offline product `change_brief.py` accepts two actual original `SOURCE-MANIFEST.json` files (an earlier separately exported package and the newer package). It rejects ambiguous duplicate JSON keys, malformed or oversized records, unexpected authorization flags, unsafe paths, and duplicate file entries. The result is an **owner-only scriptless HTML decision brief** (`index.html`) with added / changed / unchanged / absent *original package files*, original unsigned byte fingerprints and original companion source HEAD drift. It also emits a separately **anonymous aggregate-counts JSON** without file names, hashes, or targets.
+
+**New PRIVATE interactive HUMAN desk:** `workroom.html` is an actual standalone offline browser application containing a source-bound row for each original file, filters for source status/HUMAN stage, local team and notes editors, full-batch RFC4180 CSV import of existing original HUMAN review and explicit confidential CSV download. A **CSP SHA-256 fingerprint pins the exact embedded offline script and stylesheet**, no network/storage/cookies. It rejects an imported worksheet if even one original filename, SHA, source revision, row order, change category, stage or HUMAN value is ambiguous or invalid. Failed import leaves the entire in-memory desk untouched. The passive `index.html` and separate anonymous source counts remain independent.
 
 ```sh
 python3 scope-current-bundle/change_brief.py \
@@ -38,7 +40,7 @@ python3 scope-current-bundle/change_brief.py \
   NEW-PRIVATE-REVIEW-DIRECTORY
 ```
 
-The destination directory must **not exist**; the tool creates a private 0700 folder and exclusive 0600 outputs. It does not scan, approve, reconcile actual client data, claim a removed source is fixed, or reinterpret source hashes as authentic provenance. Human owners explicitly review changes and must still obtain real fresh permissions independently.
+The destination directory must **not exist**; the tool creates a private 0700 folder and exclusive 0600 outputs. Open `workroom.html` locally to edit and explicitly download the same source-bound worksheet that the original CLI exports, or use the private CSV directly with your local editor. It does not scan, approve, reconcile actual client data, claim a removed source is fixed, or reinterpret source hashes as authentic provenance. Human owners explicitly review changes and must still obtain real fresh permissions independently.
 
 ## Edit and return the actual HUMAN review
 
