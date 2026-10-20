@@ -1603,3 +1603,44 @@ security/privacy/browser review, #177/#182/#829, separately authenticated
 current client+operator consent with at-use revocation and explicit HUMAN GO
 remain prerequisites for any `main` merge or live deployment. No QA suites
 were added or run.
+
+## NEW: original HUMAN Lab continuity dashboard (console 67)
+
+[Native source-bound continuation history](lab_review_team_continuation_history.py)
+combines **one original saved HUMAN batch plus 1–7 later PRIVATE original
+continuations** in operator-supplied order. Each previous 0700/0600 source,
+original Lab packet, original FINAL HUMAN review, assigned team receipt,
+complete candidate/diff and entire unsigned previous lineage must pass the
+existing native source re-openers; no source history may be skipped, repeated
+or nested into a new output.
+
+```bash
+python3 assessment-integrated-suite/lab_review_team_continuation_history.py \
+  --packet ORIGINAL_PRIVATE_LAB_LAUNCHPAD_0700 \
+  --final-room ORIGINAL_FINAL_HUMAN_0700 \
+  --handoff-room ORIGINAL_TEAM_HANDOFF_0700 \
+  --root-batch ORIGINAL_MULTI_TEAM_BATCH_0700 \
+  --continuation-room FIRST_SAVED_CONTINUATION_0700 \
+  --continuation-room NEXT_SAVED_CONTINUATION_0700 \
+  --private-parent OWNER_PRIVATE_0700_PARENT \
+  --folder NEW-PRIVATE-HUMAN-CONTINUITY-HISTORY \
+  --human-confirm 'BUILD ORIGINAL PRIVATE HUMAN CONTINUATION HISTORY'
+```
+
+The separately created 0700 PRIVATE result includes 0600 scriptless
+`OPEN-PRIVATE.html` grouped by original HUMAN stage and team, original
+ordinal-by-ordinal stage and private-question-*changed* Booleans, and
+adopted/withheld/conflict/not-returned team disposition transitions. Three
+additional 0600 files provide original source-minimal JSON, stage-change CSV
+and team-transition CSV for deliberate HUMAN local handoff. Earlier
+unanswered teams are explicitly preserved with the correct original assigned
+workload. **No question text, original lab URLs, source paths, source hashes,
+credentials or client source contents are in these summary artifacts.**
+
+The operator-provided order is not verified chronology; stage changes are
+not verified fixes. No original review is overwritten; this historical
+companion cannot authorize, contact, scan, finalize, release or infer current
+consent. The original M3/M7 DRAFT/HOLD, named permanent VPS + hosted exact-head
+CI, source-owner and independent security/privacy/browser reviews,
+#177/#182/#829, separately authenticated current client/operator consent
+with at-use revocation and explicit HUMAN GO remain mandatory.
