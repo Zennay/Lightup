@@ -251,6 +251,63 @@ def publish(output_dir: str, filename: str, content: str | bytes) -> None:
             os.close(dirfd)
 
 
+
+def publish_many(output_dir: str, artifacts: list[tuple[str, str | bytes]]) -> None:
+    """Publish a complete PRIVATE HUMAN handoff or leave no new final names.
+
+    All complete files are staged and fsynced before any name becomes visible.
+    A failed exclusive link rolls back earlier links inside the *same* pinned
+    0700 directory descriptor. A power failure may still interrupt publication;
+    this is not a multi-file filesystem transaction or a release gate.
+    """
+    require(type(artifacts) in (list, tuple) and 1 <= len(artifacts) <= 3)
+    allowed = (TEMPLATE, REPORT, SUMMARY, VAULT, BUNDLE,
+               REKEYED_BUNDLE) + RECONCILE_OUTPUTS
+    names = [name for name, _ in artifacts]
+    require(len(set(names)) == len(names) and all(name in allowed for name in names))
+    require(all(type(data) in (str, bytes) for _, data in artifacts))
+    dirfd = -1
+    staged: list[str] = []
+    created: list[str] = []
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        dirfd = os.open(output_dir, flags)
+        info = os.fstat(dirfd)
+        require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
+                and info.st_mode & 0o077 == 0)
+        for _, content in artifacts:
+            stage = ".lightup-human-batch-" + os.urandom(16).hex()
+            fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                         getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=dirfd)
+            staged.append(stage)
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(content if type(content) is bytes else content.encode("utf-8"))
+                stream.flush()
+                os.fsync(stream.fileno())
+        for (name, _), stage in zip(artifacts, staged):
+            os.link(stage, name, src_dir_fd=dirfd, dst_dir_fd=dirfd,
+                    follow_symlinks=False)
+            created.append(name)
+        os.fsync(dirfd)
+    except (OSError, ValueError, TypeError, Hold):
+        for name in reversed(created):
+            if dirfd >= 0:
+                try:
+                    os.unlink(name, dir_fd=dirfd)
+                except OSError:
+                    pass
+        raise Hold("HOLD: complete PRIVATE HUMAN handoff was not published") from None
+    finally:
+        if dirfd >= 0:
+            for stage in staged:
+                try:
+                    os.unlink(stage, dir_fd=dirfd)
+                except OSError:
+                    pass
+            os.close(dirfd)
+
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="PRIVATE source-free HUMAN follow-up, never authority")
     commands = parser.add_subparsers(dest="action", required=True)
