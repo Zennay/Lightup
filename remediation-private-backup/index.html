@@ -57,7 +57,8 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 <button id="subset-export" type="button">Encrypt selected files locally</button>
 <output id="subset-status" role="status" aria-live="polite">Choose source filenames, then encrypt.</output></section>
 <section class="wide"><h2>PRIVATE file changes · A versus B</h2>
-<p>A and B are independently password-authenticated. Local byte differences do not prove real chronology, verified remediation, or a resolved security finding.</p>
+<p>A and B are independently password-authenticated. Local byte differences do not prove real chronology, verified remediation, or a resolved security finding. The operator must deliberately choose which archive is B; it is not necessarily newer, safer or approved.</p>
+<button type="button" id="compare-select-b">Prepare encrypted recovery of B's added/changed files</button>
 <output id="compare-status" role="status" aria-live="polite">Unlock both archives to compare.</output>
 <div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source basename</th><th>Archive A bytes</th><th>Archive B bytes</th></tr></thead><tbody id="compare-rows"></tbody></table></div>
 <button type="button" id="clear-all" class="subtle">Clear all decrypted material</button></section>
