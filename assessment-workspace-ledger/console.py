@@ -34,6 +34,7 @@ import portfolio_owner_inbox_review
 import portfolio_inbox_studio
 import portfolio_owner_attention
 import portfolio_inbox_history
+import portfolio_inbox_timeline
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -82,6 +83,7 @@ MENU = (
     ("38", "Export source-bound one-owner PRIVATE HUMAN discussion brief"),
     ("39", "Compare 2–8 original source-exact PRIVATE HUMAN inbox discussions"),
     ("40", "Export one original proposed HUMAN owner's PRIVATE discussion history"),
+    ("41", "Build source-free offline original HUMAN inbox timeline browser"),
     ("0", "Exit"),
 )
 
@@ -230,6 +232,10 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "41":
+        return portfolio_inbox_timeline.build(argparse.Namespace(
+            output=prompt("Absolute NEW source-free HUMAN timeline .html in 0700 PRIVATE folder")
         ))
     if action in ("39", "40"):
         print("Choose 2–8 original inbox HUMAN discussions and their matching CSVs.")

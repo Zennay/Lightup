@@ -1401,3 +1401,54 @@ enters an owner-scoped brief. All original native source re-admission and
 owner-private 0700/0600 custody remain unchanged, with no new grant, target,
 scan, task assignment, notification or release. Source-only ZIP **v34**
 retains legacy unsigned v16–v33 inventory inspection.
+
+## v35 — offline PRIVATE HUMAN timeline explorer + native round handoff
+
+The original multi-round inbox-history producer now places a **ready-to-open
+PRIVATE-HUMAN-history-explorer.html** inside each new 0700/0600 operator-private
+history output room. Open it locally in a compatible browser, explicitly
+select that room's already-created native
+`PRIVATE-HUMAN-inbox-history.json`, and inspect the original HUMAN-only
+discussion timeline without reassembling a CLI invocation.
+
+New [source-free standalone offline browser](portfolio-inbox-timeline.html)
+and original source [portfolio_inbox_timeline.js](portfolio_inbox_timeline.js)
+offer:
+- Exact historical original case/transition/kit cards and HUMAN proposal
+  progression for **2–8 manually ordered rounds**, never claimed timestamps.
+- Round selector, original proposed-owner filter, stage selection, local search
+  and separate filters for stage changes, changed-private-note flags, stable
+  proposals or any HUMAN-only changes.
+- Anonymous **visible-counts JSON** for filtered proposed HUMAN stages, with
+  **no source ordinals, HUMAN owner labels or SHA fingerprints**.
+- PRIVATE CSV export only after an **explicit individual original proposed
+  HUMAN owner** has been selected and a separate HUMAN confirmation accepted.
+  Exports only that owner's currently visible source slots. No private
+  HUMAN note content is ever copied into the derived history or CSV.
+- Owner-scoped original history remains owner-scoped on import: the browser
+  cannot broaden the original source selection.
+- No JS network APIs, cookies, localStorage, server, background processing,
+  browser downloads of original source bytes, grants, scans or authenticated
+  receiving. Native original-bound input rejection remains authoritative;
+  the browser schema/digest preview is **unsigned**, not security attestation.
+
+The existing new software-only [portable viewer](portfolio-inbox-timeline.html)
+ships inside fixed offline software package **v35**, with original older
+v16–v34 inventory read compatibility. Operators can also generate a fresh
+source-free CSP/SHA-pinned copy into an existing owner-private 0700 folder:
+
+    python3 assessment-workspace-ledger/portfolio_inbox_timeline.py \
+      --output /private/software/NEW-HUMAN-history.html
+
+Foreground console **41** performs the same software-only operation.
+The original history producer (console 39 or single-original-owner console
+40) automatically creates a separate private HTML copy for each history.
+Only the operator can manually select original history source bytes later.
+
+**Posture unchanged:** Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD. No actual
+security finding, verified fix, target, grant, task assignment, consent,
+reviewer identity, live scan, release or communication is inferred.
+Original exact-head hosted and permanent named VPS CI, original source-holder
+and independent security/privacy/browser review, #177/#182/#829, authenticated
+separate current client/operator consent with action-time revocation, and
+explicit HUMAN GO continue to gate main merge/deployment.

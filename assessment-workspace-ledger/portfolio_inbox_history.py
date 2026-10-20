@@ -258,7 +258,11 @@ def run(args):
     }
     changed = [r for r in rows if r["stage_changed_rounds"] or
                r["private_note_changed_rounds"]]
+    # Package source-free CSP-pinned browser software alongside this original
+    # owner-private report; never embed any original HUMAN source in the HTML.
+    from portfolio_inbox_timeline import render as render_timeline
     exports = {
+        "PRIVATE-HUMAN-history-explorer.html": render_timeline(),
         "OPEN-PRIVATE.html": minimal_html(rows, rounds, counts),
         "PRIVATE-HUMAN-inbox-history.html": private_html(rows, rounds),
         "PRIVATE-HUMAN-inbox-history.csv": as_csv(rows),
