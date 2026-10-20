@@ -97,7 +97,7 @@ def run(args: argparse.Namespace) -> int:
         # ORIGINAL comparator and canonical bridge. Its own terminal status is
         # deliberately last, never the first stdout line. Source IDs/evidence
         # in earlier output are never forwarded to the operator.
-        if result.returncode not in (2, 3) or not lines:
+        if result.returncode not in (2, 3) or len(lines) < (3 if args.command == "cohorts" else 1):
             raise ValueError("source admission refused")
         receipts = [line for line in lines if line.startswith(prefix)]
         if len(receipts) != 1 or (args.command == "cohorts" and lines[-3] != receipts[0]) \
