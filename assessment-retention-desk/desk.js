@@ -59,22 +59,50 @@
     });
     return e;
   }
+  function localDay(day) {
+    const y = day.getFullYear();
+    return String(y).padStart(4,"0") + "-" + String(day.getMonth()+1).padStart(2,"0") +
+      "-" + String(day.getDate()).padStart(2,"0");
+  }
+  function humanReviewWindow() {
+    const today = new Date();
+    const soon = new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    soon.setDate(soon.getDate()+7);
+    return {today:localDay(today), soon:localDay(soon)};
+  }
   function updateCounts() {
     $("source-count").textContent = entries.length + " / " + MAX_FILES + " bronnen";
     const sums = Object.fromEntries(Object.keys(STATES).map(key => [key, 0]));
     for (const e of entries) sums[e.status] += 1;
+    const {today,soon} = humanReviewWindow();
+    const overdue = entries.filter(e => e.review_date && e.review_date < today).length;
+    const dueSoon = entries.filter(e => e.review_date && e.review_date >= today && e.review_date <= soon).length;
+    const noDate = entries.filter(e => !e.review_date).length;
     const target = $("stats");
     target.replaceChildren();
     for (const [key, label] of Object.entries(STATES)) {
       const card = text("div", sums[key] + " · " + label, "stat");
       target.append(card);
     }
+    target.append(text("div", overdue + " · voorlopige HUMAN reviews verstreken", "stat attention"));
+    target.append(text("div", dueSoon + " · voorlopige HUMAN reviews komende 7 dagen", "stat"));
+    target.append(text("div", noDate + " · zonder voorlopige reviewdatum", "stat"));
   }
   function visibleEntries() {
     const q = $("query").value.trim().toLowerCase();
     const filter = $("status-filter").value;
-    return entries.filter(e => (!filter || e.status === filter) &&
-      (!q || e.alias.toLowerCase().includes(q) || e.sha256.includes(q)));
+    const dueFilter = $("due-filter").value;
+    const {today, soon} = humanReviewWindow();
+    const items = entries.filter(e => (!filter || e.status === filter) &&
+      (!q || e.alias.toLowerCase().includes(q) || e.sha256.includes(q)) &&
+      (!dueFilter || (dueFilter === "overdue" && e.review_date && e.review_date < today) ||
+        (dueFilter === "soon" && e.review_date && e.review_date >= today && e.review_date <= soon) ||
+        (dueFilter === "no_date" && !e.review_date) ||
+        (dueFilter === "no_action" && !e.action.trim())));
+    if ($("sort-order").value === "due") items.sort((a,b)=>
+      (a.review_date || "9999-99-99").localeCompare(b.review_date || "9999-99-99"));
+    if ($("sort-order").value === "stage") items.sort((a,b)=>a.status.localeCompare(b.status));
+    return items;
   }
   function render() {
     const body = $("rows");
@@ -104,7 +132,8 @@
       date.value = item.review_date;
       date.addEventListener("change", () => {
         if (!validDate(date.value)) { date.value = item.review_date; status("Geen geldige reviewdatum.", true); return; }
-        item.review_date = date.value; invalidateUndo();
+        item.review_date = date.value; invalidateUndo(); updateCounts();
+        if ($("due-filter").value || $("sort-order").value === "due") render();
       });
       due.append(date);
       const action = document.createElement("td");
@@ -151,7 +180,7 @@
       }
       // Atomic: no selected source is installed before every new source has been admitted.
       entries = entries.concat(staged); invalidateUndo(); resetDrift();
-      $("query").value = ""; $("status-filter").value = "";
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
       render(); status(staged.length + " echte lokale bestandsidentiteiten gecontroleerd en toegevoegd. Geen bytes geüpload.");
     } catch (e) {
       status("HOLD: " + e.message + " Er is niets uit deze selectie toegevoegd.", true);
@@ -178,7 +207,7 @@
     }
     entries = entries.map(e=>({...e,...record(rows.get(e.sha256))}));
     invalidateUndo(); resetDrift();
-    $("query").value = ""; $("status-filter").value = "";
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
     render(); status("Gehele brongebonden PRIVATE HUMAN-planning overgenomen zonder autorisatieclaim.");
   }
   // Same-origin, offline-only bridge, not a consent or authorization API.
@@ -249,7 +278,7 @@
         status("Overname geannuleerd. De huidige werkruimte blijft intact."); return;
       }
       entries = entries.map(e => ({...e, ...record(rows.get(e.sha256))})); invalidateUndo();
-      $("query").value = ""; $("status-filter").value = "";
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
       render(); status("Volledige exact-brongebonden PRIVATE HUMAN-planning heropend. Bronbestanden ongewijzigd.");
     } catch (e) {
       status("HOLD: " + e.message + " Huidige planning ongewijzigd.", true);
@@ -368,6 +397,8 @@
   $("export-counts").addEventListener("click", exportCounts);
   $("query").addEventListener("input", render);
   $("status-filter").addEventListener("change", render);
+  $("due-filter").addEventListener("change", render);
+  $("sort-order").addEventListener("change", render);
   $("print").addEventListener("click", () => {
     if (!entries.length) return status("Geen overzicht om te printen.", true);
     if (window.confirm("Dit is een PRIVATE, ongetekend overzicht. Afdrukken kan lokale printsporen maken. Alleen op een vertrouwde printer doorgaan?")) window.print();
@@ -375,7 +406,7 @@
   $("clear").addEventListener("click", () => {
     if (entries.length && !window.confirm("Alle niet-opgeslagen HUMAN-keuzes uit dit tabblad wissen? Eerder gedownloade privébestanden worden niet gewist.")) return;
     entries = []; invalidateUndo(); resetDrift(); $("sources").value = ""; $("receipt").value = ""; $("compare").value = "";
-    $("query").value = ""; $("status-filter").value = "";
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
     render(); status("Lokale werkruimte leeggemaakt (geen garantie op veilig geheugenwissen).");
   });
   window.addEventListener("beforeunload", event => {
