@@ -70,25 +70,30 @@ function make(tag, text, cls) {
   if(cls)el.className=cls;
   return el;
 }
+function visibleRecord(record) {
+  const filter=focus.value;
+  const dispute=conflict(record);
+  const declaredWithhold=record.reviewers.some(x=>x.stage==='WITHHOLD');
+  const declaredReview=record.reviewers.some(x=>x.stage==='REVIEW_REQUIRED');
+  const relevant=filter==='ALL' ||
+    (filter==='DISAGREEMENT' && dispute) ||
+    (filter==='NOTE_DISAGREEMENT' && record.noteDisagreement) ||
+    (filter==='WITHHOLD' && declaredWithhold) ||
+    (filter==='REVIEW_REQUIRED' && declaredReview) ||
+    (filter==='AGREED' && !dispute);
+  return relevant && (!find.value.trim() ||
+    String(record.ordinal).includes(find.value.trim()));
+}
 function sync() {
   let shown=0, disputes=0, noteDisputes=0, withhold=0;
   for(const record of originals) {
     const value=proposal.get(record.ordinal);
     const dispute=conflict(record);
     const declaredWithhold=record.reviewers.some(x=>x.stage==='WITHHOLD');
-    const declaredReview=record.reviewers.some(x=>x.stage==='REVIEW_REQUIRED');
-    const filter=focus.value;
     if(dispute)disputes++;
     if(record.noteDisagreement)noteDisputes++;
     if(declaredWithhold)withhold++;
-    const relevant=filter==='ALL' ||
-      (filter==='DISAGREEMENT' && dispute) ||
-      (filter==='NOTE_DISAGREEMENT' && record.noteDisagreement) ||
-      (filter==='WITHHOLD' && declaredWithhold) ||
-      (filter==='REVIEW_REQUIRED' && declaredReview) ||
-      (filter==='AGREED' && !dispute);
-    const visible=relevant && (!find.value.trim() ||
-      String(record.ordinal).includes(find.value.trim()));
+    const visible=visibleRecord(record);
     value.card.hidden=!visible;
     if(visible)shown++;
   }
@@ -187,6 +192,39 @@ function unsafe(value) {
   return value.length>300 || /^[\s]*[=+@-]/.test(value) ||
     /[\x00-\x1f\x7f]/.test(value);
 }
+document.getElementById('exportFocus').addEventListener('click',()=>{
+  const selected=originals.filter(visibleRecord);
+  if(!selected.length){
+    message.textContent='No HUMAN positions match the current local filters; nothing was exported.';
+    return;
+  }
+  // Deliberate source-minimal PRIVATE export, never a substitute for the
+  // COMPLETE original-bound next HUMAN decisions CSV or native finalizer.
+  const lines=[
+    'original_ordinal,human_stage_disagreement,human_topic_disagreement,private_note_disagreement,at_least_one_human_withhold,at_least_one_human_review_required'
+  ];
+  for(const record of selected){
+    const values=[
+      record.ordinal,
+      new Set(record.reviewers.map(x=>x.stage)).size>1,
+      new Set(record.reviewers.map(x=>x.topics.join('|'))).size>1,
+      record.noteDisagreement,
+      record.reviewers.some(x=>x.stage==='WITHHOLD'),
+      record.reviewers.some(x=>x.stage==='REVIEW_REQUIRED')
+    ];
+    lines.push(values.map(x=>csvCell(typeof x==='boolean' ?
+      (x?'TRUE':'FALSE'):x)).join(','));
+  }
+  const data=lines.join('\r\n')+'\r\n';
+  const url=URL.createObjectURL(new Blob([data],
+                   {type:'text/csv;charset=utf-8'}));
+  const a=make('a');a.href=url;
+  a.download='PRIVATE-HUMAN-selected-discussion.csv';
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),15000);
+  message.textContent='Downloaded '+selected.length+
+    ' selected PRIVATE HUMAN ordinal-only discussion rows. No source SHA, raw notes or private free-text contents. Keep locally private and do not use as a finalized HUMAN review.';
+});
 document.getElementById('export').addEventListener('click',()=>{
   try {
     const lines=['source_ordinal,source_sha256_unsigned,review_status,privacy_topics,human_followup'];
@@ -326,6 +364,7 @@ does NOT carry forward any private HUMAN free-text note.</p></header>
 <p id="count" role="status" aria-live="polite"></p><div id="sources"></div>
 <p><label for="reopen">Resume complete earlier PRIVATE HUMAN draft (exact original sources only)</label>
 <input id="reopen" type="file" accept=".csv,text/csv" aria-describedby="message"></p>
+<p><button type="button" id="exportFocus">Save PRIVATE selected HUMAN discussion rows (not a final review)</button></p>
 <button type="button" id="export">Save COMPLETE PRIVATE original-bound HUMAN decisions CSV</button>
 <p id="message" role="status" aria-live="polite">
 All next HUMAN choices are independent and pending. This browser does not finalize.</p>
