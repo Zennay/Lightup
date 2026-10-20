@@ -30,6 +30,9 @@
 <label for="shelf-review-reopen">PRIVATE HUMAN-opvolgplan heropenen (max. 96 KiB, alleen met alle oorspronkelijke bestanden opnieuw gekozen)</label>
 <input id="shelf-review-reopen" type="file" accept=".json,application/json" aria-describedby="shelf-restore-note">
 <p id="shelf-restore-note">Een lokaal reviewplan bevat bestandsnamen, originele SHA-256 en mogelijk vertrouwelijke notities. Herstel wordt volledig geweigerd bij bron-, volgorde-, formaat- of SHA-afwijking. Het plan geeft geen toestemming en wijzigt nooit bronbestanden.</p>
+<label for="shelf-selective-reopen">Alleen ongewijzigde originele bronnen: eerder PRIVATE HUMAN-plan selectief hervatten (apart van volledig strikt heropenen)</label>
+<input id="shelf-selective-reopen" type="file" accept=".json,application/json" aria-describedby="shelf-selective-status">
+<p id="shelf-selective-status" aria-live="polite">Geen voortzetting geïmporteerd. De originele bestanden moeten eerst expliciet opnieuw geselecteerd zijn. Alleen exact gelijke oorspronkelijke namen, inhoudshashes, groottes en structurele typen mogen na afzonderlijke bevestiging HUMAN-keuzes overnemen. Bij verschil: geen automatisch besluit.</p>
 </div>
 <p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
 <div class="shelf-filter">

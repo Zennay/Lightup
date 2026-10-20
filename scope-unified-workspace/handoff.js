@@ -415,6 +415,69 @@
     });
     report("REVIEW_ONLY — expliciet PRIVATE bronverschil lokaal gedownload; alle oorspronkelijke HUMAN-keuzes ongewijzigd.");
   });
+  const selectiveInput = el("shelf-selective-reopen");
+  const selectiveStatus = el("shelf-selective-status");
+  selectiveInput.addEventListener("change", async () => {
+    const priorFile = selectiveInput.files && selectiveInput.files[0];
+    selectiveInput.value = "";
+    if (!priorFile || busy) return;
+    if (!items.length) return void (selectiveStatus.textContent = "HOLD — selecteer eerst de huidige oorspronkelijke bronbestanden.");
+    busy = true;
+    selectiveInput.disabled = true;
+    input.disabled = true;
+    const epoch = generation, humanAtStart = humanRevision;
+    try {
+      const priorRows = await LightUpPrivateSourceInspector.readHumanInventory(priorFile);
+      if (epoch !== generation || humanAtStart !== humanRevision) throw Error("local source/review edits in progress");
+      const priorByName = new Map(priorRows.map(row => [row.original_name.normalize("NFC").toLowerCase(), row]));
+      const currentNames = new Set(items.map(item => item.file.name.normalize("NFC").toLowerCase()));
+      const matches = [];
+      let changed = 0, newer = 0;
+      for (const item of items) {
+        const previous = priorByName.get(item.file.name.normalize("NFC").toLowerCase());
+        if (!previous) { newer++; continue; }
+        if (previous.original_name === item.file.name &&
+            previous.byte_length === item.file.size &&
+            previous.unsigned_sha256 === item.hash &&
+            previous.structural_kind_unverified === item.inspection.kind) {
+          matches.push({item, previous});
+        } else changed++;
+      }
+      const absent = priorRows.filter(row => !currentNames.has(row.original_name.normalize("NFC").toLowerCase())).length;
+      if (!matches.length) {
+        selectiveStatus.textContent = "HOLD — geen exact gelijke bronnen. " + changed +
+          " gewijzigd, " + newer + " nieuw geselecteerd, " + absent +
+          " niet opnieuw geselecteerd. Geen HUMAN status overgenomen.";
+        return;
+      }
+      selectiveStatus.textContent = "VOORSTEL / NIET TOEGEPAST — " + matches.length +
+        " exact ongewijzigd, " + changed + " gewijzigde bron, " + newer +
+        " nieuw geselecteerd, " + absent + " niet opnieuw geselecteerd. Niet gekozen is geen intrekking of fix.";
+      if (!confirm("Neem voor precies " + matches.length + " exact ongewijzigde oorspronkelijke bronnen eerdere PRIVATE HUMAN-keuzes over? " +
+          changed + " gewijzigde, " + newer + " nieuwe en " + absent +
+          " afwezige bronnen krijgen GEEN overgenomen besluiten. Alle overige bestaande lokale HUMAN statussen blijven intact. Nooit echte toestemming.")) return;
+      if (epoch !== generation || humanAtStart !== humanRevision) throw Error("source or HUMAN state changed before import");
+      recordReviewEdit();
+      for (const {item, previous} of matches) {
+        item.route = previous.human_route;
+        item.stage = previous.human_stage;
+        item.team = previous.human_team;
+        item.note = previous.private_human_note;
+      }
+      humanRevision++;
+      render();
+      selectiveStatus.textContent = "REVIEW_ONLY — " + matches.length +
+        " bronexacte PRIVATE HUMAN-keuzes overgenomen; gewijzigde/nieuwe/afwezige bronnen niet gemuteerd. Geen bronbevoegdheid of revocation.";
+      report("REVIEW_ONLY — selectieve HUMAN broncontinuïteit op " + matches.length +
+        " exact gelijke bronbestanden; via undo herstelbaar.");
+    } catch (_) {
+      selectiveStatus.textContent = "HOLD — ongeldig PRIVATE plan, bron-/HUMAN-state gewijzigd of ambiguë bron; niets toegepast.";
+    } finally {
+      busy = false;
+      selectiveInput.disabled = false;
+      input.disabled = false;
+    }
+  });
   const restoreInput = el("shelf-review-reopen");
   restoreInput.addEventListener("change", async () => {
     const backup = restoreInput.files && restoreInput.files[0];
