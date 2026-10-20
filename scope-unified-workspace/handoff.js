@@ -632,6 +632,37 @@
   });
 
 
+  el("shelf-recipient-inventory").addEventListener("click", () => {
+    const selectedTeam = el("shelf-recipient-team").value;
+    if (!Object.hasOwn(teams, selectedTeam) || selectedTeam === "unassigned") {
+      return report("HOLD — kies een concreet HUMAN ontvangend team. Een niet-toegewezen werkset mag niet als teampakket worden verstuurd.");
+    }
+    const scoped = items.filter(e => e.team === selectedTeam);
+    if (!scoped.length) return report("HOLD — het gekozen team heeft geen expliciet geselecteerde PRIVATE dossiers.");
+    if (!confirm("PRIVATE bronexact JSON-teampakket met uitsluitend " + scoped.length +
+      " aan " + teams[selectedTeam] + " toegewezen dossiers exporteren? Het bevat oorspronkelijke namen, SHA-256 en menselijke PRIVATE notities. Controleer de ontvanger afzonderlijk; deze app verifieert GEEN identiteit, bronhouder, consent of toestemming.")) return;
+    exportJSON("lightup-scope-PRIVATE-sourcebound-human-" + selectedTeam + ".json", {
+      format: "lightup.scope_handoff_PRIVATE_inventory.v1",
+      status: "REVIEW_ONLY",
+      authority: {
+        client_consent: false, operator_consent: false, grant: false,
+        scan: false, deploy: false, release: false
+      },
+      entries: scoped.map(e => ({
+        original_name: e.file.name,
+        byte_length: e.file.size,
+        unsigned_sha256: e.hash,
+        structural_kind_unverified: e.inspection.kind,
+        human_route: e.route,
+        human_stage: e.stage,
+        human_team: e.team,
+        private_human_note: e.note
+      })),
+      warning: "PRIVATE HUMAN review subset only; no source bytes or original authenticity. Separate recipient verification mandatory. Use selective source-exact import; no grant, scan, revocation or release."
+    });
+    report("REVIEW_ONLY — bronexact PRIVATE HUMAN-teampakket voor uitsluitend " + teams[selectedTeam] +
+      " gedownload. Ontvanger kan na onafhankelijke bronselectie via selectieve import terugkoppelen.");
+  });
   el("shelf-minimum-handoff").addEventListener("click", () => {
     const team = el("shelf-recipient-team").value;
     if (!Object.hasOwn(teams, team)) return report("HOLD — kies expliciet precies één HUMAN team.");

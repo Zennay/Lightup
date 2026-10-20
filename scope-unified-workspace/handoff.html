@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-5OpNHz/yRsYsiAxBHxE5gLibINvQeNgv10CmlhmCnQY='; script-src 'sha256-sxwuOLX3o81y9trWOi1nNJDGqJmuBmNNPhw03vAeCt0=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-5OpNHz/yRsYsiAxBHxE5gLibINvQeNgv10CmlhmCnQY='; script-src 'sha256-cO//bd6K6/9Nckxv+azfKteSjboLw7NQXmirVF5aTUY=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -125,6 +125,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <label for="shelf-recipient-team">Welke HUMAN teamgroep krijgt uitsluitend de eigen dossiers?
 <select id="shelf-recipient-team"><option value="none">Kies bewust één team</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="client_ops">Client operations</option><option value="platform">Platform</option><option value="unassigned">Nog niet toegewezen — intern HOLD</option></select></label>
 <button id="shelf-minimum-handoff" type="button" class="action muted">PRIVATE minimum noodzakelijke teamoverdracht (.md)</button>
+<button id="shelf-recipient-inventory" type="button" class="action muted">PRIVATE bronexact HUMAN-teampakket (.json) voor latere selectieve retour</button>
 </div>
 <p class="shelf-status">De selectie is uitsluitend een lokale HUMAN-routering, geen geauthenticeerde ontvanger. Deze export bevat alleen dossiers die aan het gekozen team zijn toegewezen, ongeacht de tabel-filters. Controleer het bestand en kanaal bewust; geen bronbytes, toestemming of release.</p>
 <button type="button" id="shelf-workplan" class="action muted">PRIVATE HUMAN team- en escalatiebrief (.md) <span aria-hidden="true">↗</span></button>
@@ -1060,6 +1061,37 @@ const LightUpPrivateDrift = (() => {
   });
 
 
+  el("shelf-recipient-inventory").addEventListener("click", () => {
+    const selectedTeam = el("shelf-recipient-team").value;
+    if (!Object.hasOwn(teams, selectedTeam) || selectedTeam === "unassigned") {
+      return report("HOLD — kies een concreet HUMAN ontvangend team. Een niet-toegewezen werkset mag niet als teampakket worden verstuurd.");
+    }
+    const scoped = items.filter(e => e.team === selectedTeam);
+    if (!scoped.length) return report("HOLD — het gekozen team heeft geen expliciet geselecteerde PRIVATE dossiers.");
+    if (!confirm("PRIVATE bronexact JSON-teampakket met uitsluitend " + scoped.length +
+      " aan " + teams[selectedTeam] + " toegewezen dossiers exporteren? Het bevat oorspronkelijke namen, SHA-256 en menselijke PRIVATE notities. Controleer de ontvanger afzonderlijk; deze app verifieert GEEN identiteit, bronhouder, consent of toestemming.")) return;
+    exportJSON("lightup-scope-PRIVATE-sourcebound-human-" + selectedTeam + ".json", {
+      format: "lightup.scope_handoff_PRIVATE_inventory.v1",
+      status: "REVIEW_ONLY",
+      authority: {
+        client_consent: false, operator_consent: false, grant: false,
+        scan: false, deploy: false, release: false
+      },
+      entries: scoped.map(e => ({
+        original_name: e.file.name,
+        byte_length: e.file.size,
+        unsigned_sha256: e.hash,
+        structural_kind_unverified: e.inspection.kind,
+        human_route: e.route,
+        human_stage: e.stage,
+        human_team: e.team,
+        private_human_note: e.note
+      })),
+      warning: "PRIVATE HUMAN review subset only; no source bytes or original authenticity. Separate recipient verification mandatory. Use selective source-exact import; no grant, scan, revocation or release."
+    });
+    report("REVIEW_ONLY — bronexact PRIVATE HUMAN-teampakket voor uitsluitend " + teams[selectedTeam] +
+      " gedownload. Ontvanger kan na onafhankelijke bronselectie via selectieve import terugkoppelen.");
+  });
   el("shelf-minimum-handoff").addEventListener("click", () => {
     const team = el("shelf-recipient-team").value;
     if (!Object.hasOwn(teams, team)) return report("HOLD — kies expliciet precies één HUMAN team.");
