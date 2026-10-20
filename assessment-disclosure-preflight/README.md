@@ -1,5 +1,17 @@
 # LightUp PRIVATE lab disclosure preflight
 
+**CURRENT SOURCE DELIVERY — DRAFT/HOLD:** The up-to-date portable PRIVATE
+two-reviewer workroom is [reconcile-standalone.html](./reconcile-standalone.html)
+(commit `dee2994`). It supports original HUMAN selection, encrypted
+native-compatible continuation, and read-only receipt + complete counts
+reopening. [The Python native receiver](./reconcile.py) also accepts the
+browser-exported bundle with `reopen --received-bundle ... --received-counts ...`.
+The tracked `LightUp-PRIVATE-Assessment-Offline-Kit.zip` was built
+**before** those commits and does **not** contain these latest sources.
+Do not use that old ZIP as evidence of the current product or call it a release.
+Existing gates remain mandatory; nothing here authorizes real assessment.
+
+
 **INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** Independent add-only operator companion, not a scanner, grant, source authenticator, security verdict or release.
 
 ## Actual product
