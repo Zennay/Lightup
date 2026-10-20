@@ -18,6 +18,7 @@ import zipfile
 
 import install
 import portable_cockpit
+import encrypted_cockpit
 import workflow
 
 review = workflow.review
@@ -32,7 +33,7 @@ WARNING = (
 def require(condition: bool, explanation: str) -> None:
     review.require(condition, explanation)
 
-def build(archives: list[Path], dest: Path) -> None:
+def build(archives: list[Path], dest: Path, encrypted: bool = False) -> None:
     require(1 <= len(archives) <= 12 and len(set(archives)) == len(archives),
             "Select 1 to 12 distinct original source-free archive files")
     require(dest.is_absolute() and dest.parent == dest.parent.resolve(strict=True)
@@ -48,8 +49,10 @@ def build(archives: list[Path], dest: Path) -> None:
                 and archive.parent != dest,
                 "Archive cannot be inside recipient folder or an alias")
         install.owner_dir(archive.parent)
-        raw = install.read_owner_file(archive)
-        require(0 < len(raw) <= portable_cockpit.MAX_ZIP,
+        raw = (encrypted_cockpit.private_envelope(archive) if encrypted
+               else install.read_owner_file(archive))
+        require(0 < len(raw) <= (encrypted_cockpit.MAX_ENVELOPE if encrypted
+                                else portable_cockpit.MAX_ZIP),
                 "Private source-free archive exceeds original transport limit")
         signature = hashlib.sha256(raw).digest()
         require(signature not in seen,
@@ -62,13 +65,17 @@ def build(archives: list[Path], dest: Path) -> None:
         received = []
         for ordinal, archive in enumerate(archives, 1):
             target = stage / f"received-{ordinal:02d}"
-            portable_cockpit.unpack(archive, target)
+            if encrypted:
+                encrypted_cockpit.decrypt(archive, target)
+            else:
+                portable_cockpit.unpack(archive, target)
             received.append(target)
         # Use the existing complete native original recipient product.
         # Its own privately staged publication occurs only inside our stage.
         workflow.recipient_start(received, stage / "human-review")
         for archive, old in zip(archives, original_bytes):
-            require(install.read_owner_file(archive) == old,
+            require((encrypted_cockpit.private_envelope(archive) if encrypted
+                     else install.read_owner_file(archive)) == old,
                     "Original transferred source-free package changed during intake")
         portal = workflow.page(
             "PRIVATE source-free HUMAN archive intake",
@@ -96,6 +103,7 @@ def build(archives: list[Path], dest: Path) -> None:
             "remediation_verified": False,
             "authenticated_sender": False,
             "selected_archives": len(received),
+            "encrypted_transport_used": encrypted,
             "original_cohort_identity": "UNKNOWN_NOT_MATCHED",
             "archive_order": "OPERATOR_SELECTED_NOT_AUTHENTICATED_TIME",
             "warning": WARNING,
@@ -115,15 +123,19 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Receive 1-12 original native private source-free Cockpit ZIPs into HUMAN reviewer"
     )
-    parser.add_argument("--archive", required=True, action="append", type=Path,
-                        help="Canonical .luhz 0600 source-free archive (repeat 1-12)")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--archive", action="append", type=Path,
+                        help="UNENCRYPTED .luhz 0600 source-free archive; repeat 1-12")
+    source.add_argument("--encrypted-archive", action="append", type=Path,
+                        help="PASSPHRASE encrypted .luhx archive; repeat 1-12; interactive prompt")
     parser.add_argument("--output-dir", required=True, type=Path,
                         help="NEW absolute original owner-private 0700 recipient folder")
     args = parser.parse_args()
     try:
-        build(args.archive, args.output_dir)
+        build(args.encrypted_archive or args.archive, args.output_dir,
+              encrypted=args.encrypted_archive is not None)
         return 2
-    except (review.Hold, OSError, ValueError, TypeError, KeyError,
+    except (review.Hold, install.Hold, OSError, ValueError, TypeError, KeyError,
             RuntimeError, EOFError, zipfile.BadZipFile) as exc:
         print("HOLD: PRIVATE source-free HUMAN intake refused: " + str(exc),
               file=sys.stderr)
