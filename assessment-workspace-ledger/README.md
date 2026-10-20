@@ -243,6 +243,19 @@ is merely a HUMAN opinion and never a completed remediation, approval,
 authentication or scan authorization. Exit 2 = no differences / REVIEW_ONLY,
 exit 3 = changed proposal / HOLD. The same action is console menu 8.
 
+## Human dossier context changes are first-class HOLD
+
+Source kit equality is not merely equal file bytes. The original HUMAN
+label describes which dossier a human operator is reviewing. During
+`ledger.py capture --previous`, a changed original kit label forces HOLD
+and appears explicitly in the private local summary even if all source
+files and their SHA-256 values are identical. `continuity.py` also drops
+ALL previously carried HUMAN stage, owner and question fields on such a
+label change. `compare.py` records a separate label_changed indicator,
+marks HUMAN attention required, and includes the flag in the private
+historical follow-up CSV. Original kit path, ordinal and exact source bytes
+must still match for any unchanged-source continuation.
+
 ## Historical comparison when source kits are no longer present
 
 The self-contained companion command compares two previously stored original
