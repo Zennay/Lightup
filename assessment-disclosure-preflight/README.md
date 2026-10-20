@@ -366,3 +366,83 @@ in the previously generated scriptless PRIVATE HTML before selecting.
 Cancellation, invalid selections, unsafe/incomplete reason or missing
 terminal -> HOLD, without a partially published decision CSV. This is still
 unverified HUMAN work, not a consent or approval authority.
+
+
+## Fifth product: ready-to-open offline two-reviewer HUMAN browser studio
+
+Open the committed [**one-file PRIVATE reconciliation application**](reconcile-standalone.html)
+locally from a trusted workstation (or open [reconcile-studio.html](reconcile-studio.html)
+alongside its exact `reconcile-studio.css` and `reconcile-studio.js` source files).
+This is **actual self-contained software already committed** to the same
+existing DRAFT/HOLD PR, not an illustration or a future plan.
+
+The browser guides a complete HUMAN-only workflow:
+
+1. Load the existing exact unsigned `PRIVATE-receipt.json` and TWO completed
+   independently supplied native HUMAN CSVs, up to 12 source-free ordinals.
+   A strict bounded browser parser refuses nested duplicate JSON keys,
+   invalid authority flags, missing/reordered/duplicate source ordinals,
+   unsupported source kinds, malformed spreadsheet CSV, changed receipt
+   SHA-256, wrong reviewer CSV columns/stages/notes and risky formula prefixes.
+   The browser hashes the actual original bytes of **all three inputs** using
+   local WebCrypto; even identical reviewer files do not prove independent
+   reviewers.
+2. Compare A/B stages, PRIVATE questions and proposed next actions
+   side by side in an accessible responsive interface. Filter literally
+   different vs equal HUMAN text, unresolved vs explicitly selected rows, or
+   search local note text; filters **never** omit any original ordinal from
+   later native handoff.
+3. Start with **HOLD on every row**, even identical or same-stage HUMAN
+   statements. Explicitly choose A or B per ordinal and provide a bounded
+   safe HUMAN justification. Unsafe or missing reasons disable export.
+   No automatic agreement, security verdict, actual reviewer identity,
+   approval, grant or release is inferred.
+4. Export the original native-compatible seven-column
+   `PRIVATE-reconcile-browser-decisions.csv`, containing only exact unsigned
+   receipt/reviewer **byte SHA-256s**, all original source ordinals and
+   declared kinds, HUMAN selections and HUMAN reasons. All original
+   reviewer question/action text stays out of this decision CSV unless
+   the operator deliberately enters it into the reason.
+5. **Resume an earlier decision draft** after loading all three exact
+   original files. The browser atomically admits every original hash,
+   ordinal, kind, schema column, selection and reason and requires a
+   second HUMAN confirmation before replacing the current decisions.
+   Mismatched/reordered/changed drafts HOLD without changing current work.
+
+Use the unchanged **native** original finalizer to render or seal the result:
+
+~~~sh
+mkdir -m 700 ./private-browser-finalized
+python3 assessment-disclosure-preflight/reconcile.py finalize \
+  --receipt ./private-disclosure-desk/PRIVATE-receipt.json \
+  --a-csv ./reviewer-A/PRIVATE-human-reviewed.csv \
+  --b-csv ./reviewer-B/PRIVATE-human-reviewed.csv \
+  --decisions ./private-restricted/PRIVATE-reconcile-browser-decisions.csv \
+  --encrypt-result \
+  --private-output-dir ./private-browser-finalized
+~~~
+
+The browser only accepts **plaintext source-free native HUMAN CSV**. To
+avoid creating a plaintext browser file from encrypted .luhd/.luhb, use
+the existing native `reconcile.py prepare/decide/finalize` directly.
+The standalone browser's downloaded decision CSV is confidential and
+may initially be in a normal-permission Downloads folder; a HUMAN
+operator must move it to a trusted owner-PRIVATE destination before
+native use. The offline interface neither modifies nor deletes the
+originals or prior browser downloads. No content is sent to a server,
+stored in localStorage, or persisted automatically; the app clears
+the DOM and file inputs when leaving the page, without promising OS
+or browser memory erasure. It works only where `file://` pages have
+a secure WebCrypto context; never disable browser security to force it.
+
+**Standalone software custody:** [reconcile_package.py](reconcile_package.py)
+rebuilds the exact self-contained HTML with SHA-256-pinned inline CSP
+from the THREE original committed source files, rejects unexpected
+markup/inventory, reads bounded local regular files without following
+symlinks and publishes only a new file. The **already committed**
+[reconcile-standalone.html](reconcile-standalone.html) has no external
+imports, fetches, scans, models, credentials, original customer source
+or private HUMAN reviews embedded. All standalone code remains
+DRAFT/HOLD: it is not merged on main, deployed, independently
+security/privacy/browser approved, authenticated, a substitute for
+source-owner original `lightup.lab_inspect`, or a security clearance.
