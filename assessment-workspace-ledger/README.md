@@ -1087,3 +1087,39 @@ HUMAN label; independently verify permission and recipient before any sharing.
 Console option **32** performs this foreground operation. The source-only
 offline software bundle v25 includes the owner handoff and maintains v16–v24
 fixed software inventory inspection. No tests or QA suites have been added.
+
+## Source-bound PRIVATE HUMAN owner reply round trip · v26
+
+The existing option 32 PRIVATE owner packet now includes an owner-specific
+`HUMAN-owner-reply-template.csv`, separately from the original PRIVATE owner
+JSON. Every original case/transition/kit source row is bound to the SHA-256 of
+the **entire** original owner packet. The HUMAN recipient can edit only
+`human_reply_stage` (needs_discussion/proposed_followup/hold) and
+`private_reply_note` (<=240 safe characters) in owner-private 0600 storage.
+
+After explicit offline HUMAN editing, the original native
+[portfolio_owner_reply.py](portfolio_owner_reply.py) produces a completely new
+PRIVATE HOLD-only response:
+
+    python3 assessment-workspace-ledger/portfolio_owner_reply.py \
+      --owner-packet /private/owner/PRIVATE-HUMAN-owner.json \
+      --review /private/owner/HUMAN-owner-reply-template.csv \
+      --private-parent /private/owner-only
+
+The original owner JSON is strictly re-admitted with canonical JSON bytes,
+all false authority fields, original source SHA identities, exact bounded
+source-row ordinals and owner-only metadata. Complete CSV rows must cover
+every original source slot in original order and match the exact owner packet
+byte SHA, even when no note was written. Unknown headers, source drift,
+duplicated/missing rows, unsupported reply status, formula values and changed
+original bytes HOLD without partial output. Outputs use exclusive 0700
+PRIVATE directories and 0600 source-minimal summary HTML, detailed PRIVATE
+HTML, original-bound response JSON and unaltered source CSV; originals are
+never overwritten or deleted.
+
+Console option **33** performs the same deliberate foreground operation.
+No real recipient was authenticated by a HUMAN label or unsigned SHA;
+independently verify permissions before sharing. No automatic delivery,
+scheduling, network activity, active assessment, consent, scope grant,
+verified remediation or security PASS. Fixed source-only software v26 includes
+the original owner reply flow and retains v16–v25 software inventory reads.

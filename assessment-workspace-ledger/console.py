@@ -28,6 +28,7 @@ import portfolio_focus
 import portfolio_focus_review
 import portfolio_focus_history
 import portfolio_focus_owner_handoff
+import portfolio_owner_reply
 import portfolio_focus_studio
 import browser_intake
 import package
@@ -67,6 +68,7 @@ MENU = (
     ("30", "Create a source-free offline HUMAN focus browser editor"),
     ("31", "Compare 2–8 original PRIVATE HUMAN meeting review return versions"),
     ("32", "Create minimum-necessary PRIVATE HUMAN owner packets from finalized meeting"),
+    ("33", "Receive one local original owner human reply into PRIVATE HOLD packet"),
     ("0", "Exit"),
 )
 
@@ -215,6 +217,12 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "33":
+        return portfolio_owner_reply.run(argparse.Namespace(
+            owner_packet=prompt("Original 0600 PRIVATE-HUMAN-owner.json"),
+            review=prompt("Original source-bound edited HUMAN-owner-reply-template.csv"),
+            private_parent=private_parent()
         ))
     if action == "32":
         owners = []

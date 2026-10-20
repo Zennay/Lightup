@@ -81,6 +81,25 @@ def as_csv(rows):
     return file.getvalue()
 
 
+REPLY_HEADERS = (
+    "local_case", "historical_transition", "original_kit",
+    "original_owner_packet_sha256", "human_reply_stage", "private_reply_note",
+)
+REPLY_STAGES = ("needs_discussion", "proposed_followup", "hold")
+
+
+def owner_reply_template(rows, packet_sha):
+    """PRIVATE review invitation, never authority or authenticated identity."""
+    result = io.StringIO(newline="")
+    writer = csv.writer(result, lineterminator="\n")
+    writer.writerow(REPLY_HEADERS)
+    for row in rows:
+        writer.writerow((row["local_case"], row["historical_transition"],
+                         row["original_kit"], packet_sha,
+                         "needs_discussion", ""))
+    return result.getvalue()
+
+
 def one_html(owner, rows):
     stages = Counter(r["human_review_stage"] for r in rows)
     body = [
@@ -188,6 +207,9 @@ def run(args):
             "OPEN-PRIVATE.html": one_html(owner, rows),
             "PRIVATE-HUMAN-owner.csv": as_csv(rows),
             "PRIVATE-HUMAN-owner.json": canonical(result),
+            "HUMAN-owner-reply-template.csv": owner_reply_template(
+                rows, digest(canonical(result))
+            ),
         }
         if any(len(value if isinstance(value, bytes) else value.encode("utf-8")) > MAX_MANIFEST
                for value in contents.values()):
