@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import stat
 import sys
+import tempfile
 
 from preflight import Hold, KINDS, require
 
@@ -150,27 +151,41 @@ outside this file. Original #177/#182/#829 and mandatory hosted/named VPS CI rem
 
 
 def publish(output_dir: str, filename: str, text: str) -> None:
+    """Publish only complete PRIVATE output; never replace an old handoff."""
     directory = Path(output_dir)
+    stage = None
+    published = None
     try:
         info = os.lstat(directory)
         require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
                 and info.st_mode & 0o077 == 0)
-        path = directory / filename
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
-        fd = os.open(path, flags, 0o600)
+        fd, tempname = tempfile.mkstemp(prefix=".lightup-human-private-", dir=directory)
+        stage = Path(tempname)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(text.encode("utf-8"))
+            stream.flush()
+            os.fsync(stream.fileno())
+        target = directory / filename
+        os.link(stage, target)
+        published = target
+        dirfd = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
         try:
-            with os.fdopen(fd, "wb") as stream:
-                stream.write(text.encode("utf-8"))
-                stream.flush()
-                os.fsync(stream.fileno())
-        except BaseException:
+            os.fsync(dirfd)
+        finally:
+            os.close(dirfd)
+    except (OSError, ValueError):
+        if published is not None:
             try:
-                path.unlink()
+                published.unlink()
             except OSError:
                 pass
-            raise
-    except OSError:
         raise Hold("HOLD: exclusive PRIVATE output rejected") from None
+    finally:
+        if stage is not None:
+            try:
+                stage.unlink()
+            except OSError:
+                pass
 
 
 def main(argv: list[str] | None = None) -> int:
