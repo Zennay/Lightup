@@ -165,6 +165,7 @@
     renderAgenda();
     renderWorkload();
     renderChanges();
+    renderCapacity();
   }
   function eventIntervals(from=plan){
     return items.filter(r=>from.has(r.ordinal)).map(r=>{
@@ -776,8 +777,12 @@
       if(changed && !confirm("Replace current unsaved PRIVATE HUMAN reminder dates with the authenticated encrypted plan? This does not prove original-source authenticity."))return;
       hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
       publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
+      const previousSeries=seriesId;
       plan=admitted.schedule;seriesId=admitted.series;
-      changed=false;exportedPlan=true;page=0;agendaPage=0;render();
+      changed=false;exportedPlan=true;page=0;agendaPage=0;
+      if(previousSeries!==seriesId)resetCapacity();
+      else {capacityProposal=null;$("capacityApply").disabled=true;}
+      render();
       inform("Encrypted PRIVATE calendar plan opened and exact original worksheet / timezone readmitted. No assessment authority.");
     }finally{clearPasswords();}
   }
@@ -818,7 +823,11 @@
     const imported=admitPlanText(raw);
     if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
-    plan=imported.schedule;seriesId=imported.series;exportedPlan=!imported.legacy;page=0;agendaPage=0;changed=false;render();
+    const previousSeries=seriesId;
+    plan=imported.schedule;seriesId=imported.series;exportedPlan=!imported.legacy;page=0;agendaPage=0;changed=false;
+    if(previousSeries!==seriesId)resetCapacity();
+    else {capacityProposal=null;$("capacityApply").disabled=true;}
+    render();
     inform(`Restored ${plan.size} HUMAN reminders. ${imported.legacy?"Legacy plan: save the new v2 plan before repeatable calendar export.":"Stable private calendar identities restored."}`);
   }
   function planExport(){
