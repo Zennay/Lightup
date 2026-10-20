@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jLf1ZUo1dJvvsuLiaMzkdQ7Fqu5Wa4Y7e1M2pO7PP7M='; script-src 'sha256-L2WE21l6y/qisDazgHc/wCMPADOhnGBZ5i7ZJSky8d4=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jLf1ZUo1dJvvsuLiaMzkdQ7Fqu5Wa4Y7e1M2pO7PP7M='; script-src 'sha256-XKu/btIJiGX4nDcNnK486ifuTsRP6/6zWZS3MYoKcmU=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -179,6 +179,7 @@ PRIVATE notitieteksten bewust opnemen in TEAM-overdracht (standaard UIT; geldt v
 <input id="shelf-all-private-notes" type="checkbox">
 PRIVATE HUMAN notitieteksten bewust opnemen in de ALLE-TEAMS Markdown-brief én originele brongebonden JSON-inventaris (standaard UIT; alleen vertrouwelijk delen)</label>
 <p class="shelf-status">De twee ALLE-TEAMS exports bevatten altijd PRIVATE originele namen en SHA-256. Notities blijven standaard afgeschermd. Kies voor één team liever de gerichte HUMAN teamoverdracht hierboven.</p>
+<p id="shelf-disclosure-preview" class="shelf-status" aria-live="polite">Nog geen oorspronkelijke lokale bronbestanden geselecteerd. Beide ALLE-TEAMS exports bevatten originele namen en SHA-256; PRIVÉ notities staan standaard UIT.</p>
 <button type="button" id="shelf-workplan" class="action muted">PRIVATE HUMAN team- en escalatiebrief (.md) <span aria-hidden="true">↗</span></button>
 <button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>
@@ -690,8 +691,25 @@ const LightUpPrivateDrift = (() => {
     (teamFilter.value === "all" || item.team === teamFilter.value) &&
     (!searchFilter.value.trim() || item.file.name.normalize("NFC").toLowerCase().includes(
       searchFilter.value.trim().normalize("NFC").toLowerCase()));
+  // Disclosure preview is made only from counts and fixed local labels;
+  // no original filename, hash or PRIVATE note is copied into the preview.
+  const renderDisclosurePreview = () => {
+    const groups = Object.entries(teams).filter(([key]) => items.some(i => i.team===key))
+      .map(([,label]) => label);
+    const noteCount = items.filter(i => i.note.length>0).length;
+    const optedIn = el("shelf-all-private-notes").checked;
+    el("shelf-disclosure-preview").textContent = items.length
+      ? "PRIVATE EXPORT INZAGE · " + items.length + " originele bestandsnamen + SHA-256 uit " +
+        groups.length + " HUMAN teams (" + groups.join(", ") + "). " +
+        "Bronbytes worden nooit ingesloten. HUMAN privé-notitieteksten: " +
+        (optedIn ? "BEWUST AAN ("+noteCount+" ingevuld; in beide ALLE-TEAMS exports)" :
+          "UIT ("+noteCount+" ingevulde notities niet verspreid)") +
+        ". Geen geauthenticeerde ontvanger, consent of grant."
+      : "Nog geen oorspronkelijke lokale bronbestanden geselecteerd. ALLE-TEAMS exports bevatten altijd originele namen en SHA-256, maar PRIVATE notities staan standaard UIT.";
+  };
   function render() {
     rows.replaceChildren();
+    renderDisclosurePreview();
     el("shelf-return-receipt").disabled = lastReturnReceipt === null;
     el("shelf-review-undo").disabled = reviewUndo.length === 0;
     el("shelf-review-redo").disabled = reviewRedo.length === 0;
@@ -860,6 +878,7 @@ const LightUpPrivateDrift = (() => {
     report("REVIEW_ONLY — " + selected.length + " gefilterde HUMAN dossiers bewust gerouteerd; geen bron, grant of toestemming gewijzigd.");
   });
   searchFilter.addEventListener("input", render);
+  el("shelf-all-private-notes").addEventListener("change", renderDisclosurePreview);
   input.addEventListener("change", async () => {
     const chosen = Array.from(input.files || []);
     input.value = "";
@@ -1688,11 +1707,40 @@ const LightUpPrivateDrift = (() => {
     });
     report("REVIEW_ONLY — privé broninventaris van alle teams gedownload, notitieteksten " + (includePrivateNotes ? "bewust opgenomen." : "veilig afgeschermd."));
   });
+  // A completed comparison can leave a visual table even though its pending
+  // proposal has already been applied. Clear those DOM nodes explicitly too.
+  const scrubPrivateDOM = () => {
+    pendingSelective = null;
+    selectiveRows.replaceChildren();
+    selectiveApply.disabled = true;
+    selectiveStatus.textContent = "REVIEW_ONLY — vorige PRIVATE vergelijking gewist. Selecteer oorspronkelijke bestanden opnieuw.";
+    peerPreview = null;
+    peerRows.replaceChildren();
+    peerApply.disabled = true;
+    peerSummaryExport.disabled = true;
+    peerStatus.textContent = "REVIEW_ONLY — vorige PRIVATE reviewpakketten gewist.";
+    lastPeerReceipt = null;
+    el("shelf-peer-receipt").disabled = true;
+    el("shelf-peer-receipt-note").textContent = "Geen actuele PRIVATE HUMAN retourbon.";
+    lastReturnReceipt = null;
+    el("shelf-return-receipt").disabled = true;
+    el("shelf-return-receipt-note").textContent = "Geen actuele PRIVATE HUMAN retourbon.";
+    driftRows.replaceChildren();
+    driftExport.disabled = true;
+  };
   resetPrivateDisclosure(); // browser form restoration is not a privacy opt-in
   render();
   renderReturnJournal();
   window.addEventListener("pageshow", event => {
-    if (event.persisted) resetPrivateDisclosure();
+    if (event.persisted) {
+      resetPrivateDisclosure();
+      scrubPrivateDOM();
+      // The original private files are no longer in the in-tab workset.
+      // Also clear all stale DOM rows upon back/forward cache restoration.
+      render();
+      renderReturnJournal();
+      report("REVIEW_ONLY — tab heropend: vorige PRIVATE bronwerkset en HUMAN-overzichten zijn gewist. Kies originele bronnen opnieuw.");
+    }
   });
   window.addEventListener("pagehide", () => {
     returnJournal.length = 0;
@@ -1702,6 +1750,9 @@ const LightUpPrivateDrift = (() => {
     clearReviewHistory();
     invalidateDrift();
     items.splice(0);
+    scrubPrivateDOM();
+    renderReturnJournal();
+    render(); // never preserve source filenames, hashes or HUMAN notes in bfcache DOM
   });
 })();
 </script>
