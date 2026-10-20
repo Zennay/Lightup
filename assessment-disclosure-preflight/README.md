@@ -477,3 +477,47 @@ force symlink traversal, bypass a refusal or imply that local UID/mode checks
 authenticate the sender, actual customer consent, original evidence, a fix
 or security release. The original browser downloads remain the user's
 responsibility. No automatic chmod, deletion or data disclosure is performed.
+
+
+## Complete portable software-only OFFLINE assessment workroom kit
+
+The source-controlled [software_bundle.py](software_bundle.py) packages
+the complete **existing** offline disclosure + HUMAN editor, native
+encrypted source-free review CLI, two-reviewer reconciliation terminal
+and browser, and BOTH actually prebuilt single-file local HTML interfaces
+into one deterministic, fixed-name **unsigned software-only**
+`LightUp-PRIVATE-Assessment-Offline-Kit.zip`.
+
+This is intentionally an operator software kit, not a source packet,
+customer assessment result, verified evidence, approval record, secret
+store, scan workflow, credential grant or signed release. The 18
+explicitly allowlisted source files and one deterministic
+`MANIFEST.json` are the **only** ZIP members; every actual included
+software byte is recorded with its size and SHA-256. Fixed ZIP member
+names/permissions and timestamps make a repeatable source-only build.
+The original held `lightup.lab_inspect` from source-owner #1610 is NOT
+vendored or replaced; the original preflight command still refuses to
+run without the separately installed legitimate original inspector.
+Nothing in this bundle can bypass authenticated current client/operator
+consent, action-time revocation, independent owner/security/privacy/
+browser/crypto review or HUMAN GO.
+
+To rebuild from exact downloaded source code in a trusted
+offline Python environment:
+
+~~~sh
+python3 assessment-disclosure-preflight/software_bundle.py
+~~~
+
+It publishes a new owner-only ZIP exclusively next to the source; it
+cannot overwrite another existing file, follow symlink source assets
+or add arbitrary original PRIVATE customer materials.
+Extract it only into a trusted owner-controlled local directory and
+open the existing `standalone.html` or
+`reconcile-standalone.html` with no web server.
+The original multi-file HTML/CSS/JS and static builders are included
+for transparent locally controlled rebuilding. Verify the unsigned
+source inventory against an independently trusted source/commit:
+SHA-256 equality is not a digital signature, authorship proof, CI gate,
+consent or a release approval. Do not extract or send it on behalf of
+a client without the original separate authorization.
