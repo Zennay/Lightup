@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   const $ = id => document.getElementById(id);
-  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus"];
+  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus"];
   const e = Object.fromEntries(ids.map(id => [id,$(id)]));
   const encoder = new TextEncoder();
   let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0;
@@ -35,6 +35,7 @@
     message("pageInfo","No pages");
     e.prevPage.disabled=e.nextPage.disabled=true;
     e.review.disabled = !source || rules.length===0;
+    e.stageSuggestions.disabled = !source;
     lock();
   }
   function clear() {
@@ -42,6 +43,7 @@
     e.file.value=e.rule.value="";
     message("filename","None");message("filesize","—");message("originalHash","—");
     message("openStatus","Session cleared from application state. Previously downloaded files remain on disk.");
+    message("suggestStatus","Suggestions have not been requested.");
     showRules();invalidate();
   }
   function showRules() {
@@ -78,6 +80,7 @@
       message("originalHash",sha.slice(0,12)+"…");
       message("openStatus","PRIVATE original loaded into memory; original bytes are not modified.");
       e.file.value=""; invalidate();
+      message("suggestStatus","Choose detection categories and request suggestions.");
     }catch(err){
       if(current!==ticket)return;
       message("openStatus","HOLD: invalid UTF-8, binary data, unreadable file or unavailable cryptography.");
@@ -96,6 +99,58 @@
     rules.push(raw);showRules();invalidate();
     message("openStatus","Exact literal mask added. Rule content is never rendered in the list.");
   };
+
+  // Optional HUMAN-triggered in-memory suggestions, never an automatic privacy verdict.
+  const suggestionFamilies = Object.freeze({
+    credentials: [
+      /\bBearer\s+[A-Za-z0-9._~+\/-]{8,}/g,
+      /\b(?:password|passwd|api[_-]?key|secret|access[_-]?token|token)\s*[:=]\s*(?:"[^"\r\n]{3,}"|'[^'\r\n]{3,}'|[^\s,;}]{3,})/gi,
+      /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16})\b/g,
+      /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g
+    ],
+    email: [/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi],
+    network: [/\bhttps?:\/\/[^\s"'<>]+/gi, /\b(?:\d{1,3}\.){3}\d{1,3}\b/g]
+  });
+  e.stageSuggestions.addEventListener("click",()=>{
+    if(!source){
+      message("suggestStatus","HOLD: open a PRIVATE source first.");return;
+    }
+    const groups=[
+      e.suggestCredentials.checked && "credentials",
+      e.suggestEmail.checked && "email",
+      e.suggestNetwork.checked && "network"
+    ].filter(Boolean);
+    if(!groups.length){
+      message("suggestStatus","Select at least one category.");return;
+    }
+    const proposed=new Set();
+    let hold=false;
+    for(const category of groups){
+      for(const regexp of suggestionFamilies[category]){
+        regexp.lastIndex=0;
+        let match;
+        while((match=regexp.exec(source.text))!==null){
+          const literal=match[0], n=chars(literal);
+          if(n<3 || n>128 || literal.length>512 || literal.includes("[REDACTED]") ||
+             /[\x00-\x1f]/.test(literal)){hold=true;break;}
+          if(!rules.includes(literal)) proposed.add(literal);
+          if(proposed.size>30-rules.length){hold=true;break;}
+        }
+        if(hold)break;
+      }
+      if(hold)break;
+    }
+    if(hold){
+      message("suggestStatus","HOLD: candidates are oversized, invalid or over the 30-mask limit. No partial rules added. Narrow the categories or mask manually.");
+      return;
+    }
+    if(!proposed.size){
+      message("suggestStatus","No new candidate literals found in selected categories. This does NOT establish safe sharing.");return;
+    }
+    const count=proposed.size;
+    rules.push(...proposed);showRules();invalidate();
+    message("suggestStatus",count+" suggested literal masks added by HUMAN request, without displaying their values. Check the full redacted output.");
+  });
   const quote = text => text.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&");
   function hints(text){
     const expressions=[
