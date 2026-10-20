@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 from pathlib import Path
 import sys
 
@@ -62,11 +63,67 @@ def require(ok: bool, reason: str) -> None:
 def esc(text: object) -> str:
     return html.escape(str(text), quote=True)
 
-def grouped(original: dict, rows: list[dict], key: str) -> tuple[list[dict], dict]:
+def source_bound_differences(matrix_file: Path, original: dict, key: str) -> tuple[list[bool], bytes]:
+    """Native read of an existing PRIVATE multi-reply comparison, never an authority source."""
+    raw = reply.schedule_vault.private_vault(matrix_file)
+    require(100 <= len(raw) <= 3_000_000,
+            "PRIVATE earlier HUMAN comparison outside bounded size")
+    try:
+        doc = json.loads(raw.decode("utf-8"), object_pairs_hook=reply.install.pairs,
+                         parse_constant=lambda x: (_ for _ in ()).throw(
+                             ValueError("Nonfinite PRIVATE HUMAN matrix field")))
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise reply.single_review.review.Hold(
+            "Noncanonical PRIVATE original-bound HUMAN comparison") from exc
+    require(type(doc) is dict and raw == reply.schedule.canonical(doc)
+            and set(doc) == {
+                "kind", "version", "disposition", "authority_granted",
+                "consent_verified", "source_authenticated", "remediation_verified",
+                "independent_reviewer_count_verified",
+                "original_selected_redacted_sha256", "selected_human_rows",
+                "warning"
+            } and doc["kind"] == "lightup.private_human_selected_reply_matrix.v1"
+            and type(doc["version"]) is int and doc["version"] == 1
+            and doc["disposition"] == "PRIVATE_HUMAN_ONLY_DRAFT_HOLD"
+            and all(doc[k] is False for k in (
+                "authority_granted", "consent_verified", "source_authenticated",
+                "remediation_verified", "independent_reviewer_count_verified"))
+            and doc["original_selected_redacted_sha256"] == key,
+            "Wrong prior HUMAN comparison/original selection or raised authority")
+    entries = doc["selected_human_rows"]
+    require(type(entries) is list and len(entries) == len(original["items"]),
+            "Incomplete or reordered source-redacted HUMAN original task matrix")
+    differences: list[bool] = []
+    for ordinal, (record, expected) in enumerate(zip(entries, original["items"]), 1):
+        require(type(record) is dict and set(record) == {
+            "ordinal", "redacted_human_reason", "unverified_reply_file_slots"
+        } and type(record["ordinal"]) is int and record["ordinal"] == ordinal
+                and record["redacted_human_reason"] == expected["reason"],
+                "Private HUMAN comparison ordinal/reason changed")
+        slots = record["unverified_reply_file_slots"]
+        require(type(slots) is list and 2 <= len(slots) <= 8,
+                "Incomplete previous HUMAN response file slots")
+        for index, slot in enumerate(slots, 1):
+            require(type(slot) is dict and set(slot) == {
+                "slot", "human_status", "human_answer", "human_question"
+            } and type(slot["slot"]) is int and slot["slot"] == index
+                    and type(slot["human_status"]) is str
+                    and slot["human_status"] in reply.STAGES
+                    and reply.schedule_vault.local_text(slot["human_answer"], 240, 960, True)
+                    and reply.schedule_vault.local_text(slot["human_question"], 240, 960, True),
+                    "Unsafe/misordered PRIVATE earlier HUMAN response data")
+        differences.append(any(len({slot[field] for slot in slots}) > 1 for field in (
+            "human_status", "human_answer", "human_question")))
+    return differences, raw
+
+def grouped(original: dict, rows: list[dict], key: str,
+            previous_differences: list[bool] | None = None) -> tuple[list[dict], dict]:
     require(type(rows) is list and len(rows) == len(original["items"]),
             "Cannot create incomplete PRIVATE HUMAN follow-up from original source")
     selected: list[dict] = []
     counts = {label: 0 for label, _ in STEPS.values()}
+    require(previous_differences is None or len(previous_differences) == len(rows),
+            "Incomplete original-bound prior HUMAN response difference membership")
     for ordinal, (base, human) in enumerate(zip(original["items"], rows), 1):
         kind, heading = STEPS[human["status"]]
         counts[kind] += 1
@@ -80,6 +137,8 @@ def grouped(original: dict, rows: list[dict], key: str) -> tuple[list[dict], dic
             "new_human_question": human["question"],
             "human_self_declared_answer": human["answer"],
             "human_self_declared_stage": human["status"],
+            "earlier_human_reply_files_differed":
+                previous_differences[ordinal - 1] if previous_differences is not None else None,
         })
     selected.sort(key=lambda row: (row["human_followup_category"], row["ordinal"]))
     return selected, counts
@@ -132,6 +191,13 @@ def html_page(rows: list[dict], counts: dict) -> bytes:
             esc(row["new_human_question"] or "Not recorded"), '</dd>',
             '<dt>Self-declared HUMAN answer (never a verified fix)</dt><dd>',
             esc(row["human_self_declared_answer"] or "Not recorded"), '</dd>',
+            '<dt>Earlier local HUMAN encrypted reply comparison</dt><dd>',
+            ('LITERAL DIFFERENCES IN EARLIER HUMAN FILES — follow up manually'
+             if row["earlier_human_reply_files_differed"] is True else
+             'Prior HUMAN file text literally matches (NOT consensus)'
+             if row["earlier_human_reply_files_differed"] is False else
+             'No earlier private HUMAN comparison supplied'),
+            '</dd>',
             '</dl><small>Local original order only; no authenticated person, ',
             'chronology, case, consent or technical remediation.</small></article>'
         ])
@@ -142,19 +208,27 @@ def html_page(rows: list[dict], counts: dict) -> bytes:
     require(len(raw) <= 2_000_000, "PRIVATE HUMAN follow-up HTML exceeds bounded size")
     return raw
 
-def publish(handoff: Path, saved_reply: Path, output: Path) -> None:
+def publish(handoff: Path, saved_reply: Path, output: Path,
+            comparison: Path | None = None) -> None:
     require(handoff.is_absolute() and saved_reply.is_absolute()
             and handoff != saved_reply and
             output.is_absolute() and output.parent == output.parent.resolve(strict=True)
             and not output.exists() and not output.is_symlink(),
             "Choose original separate encrypted HUMAN inputs and fresh PRIVATE destination")
-    for path in (handoff, saved_reply):
+    if comparison is not None:
+        require(comparison.is_absolute() and
+                comparison not in (handoff, saved_reply, output),
+                "Previous PRIVATE HUMAN comparison must be a distinct absolute file")
+    for path in (handoff, saved_reply, *([comparison] if comparison else [])):
         require(path != output and path.parent != output
                 and output not in path.parents and path not in output.parents,
                 "Source-free HUMAN input/output folders cannot overlap")
     source, key, exact_source = reply.source(handoff)
     rows, exact_reply = reply.admitted_reply(saved_reply, source, key)
-    items, counters = grouped(source, rows, key)
+    differences, prior_exact = (
+        source_bound_differences(comparison, source, key) if comparison else (None, None)
+    )
+    items, counters = grouped(source, rows, key, differences)
     report = html_page(items, counters)
     private_json = reply.schedule.canonical({
         "kind": KIND, "version": 1,
@@ -164,6 +238,7 @@ def publish(handoff: Path, saved_reply: Path, output: Path) -> None:
         "source_redacted_original_sha256": key,
         "source_redacted_selected_human_groups": len(items),
         "human_followup_items": items,
+        "earlier_private_comparison_supplied": differences is not None,
         "warning": WARNING,
     })
     require(len(private_json) <= 2_000_000,
@@ -175,12 +250,17 @@ def publish(handoff: Path, saved_reply: Path, output: Path) -> None:
         "source_authenticated": False, "remediation_verified": False,
         "groups_not_unique_cases": len(items),
         "private_human_stage_groups": counters,
+        "earlier_human_file_difference_groups":
+            sum(differences) if differences is not None else None,
         "warning": WARNING,
     })
     require(reply.encrypted_cockpit.private_envelope(handoff) == exact_source
-            and reply.schedule_vault.private_vault(saved_reply) == exact_reply,
-            "Original source-free HUMAN handoff or reply changed before private report")
-    reply.exclusive_output(output, [handoff, saved_reply], {
+            and reply.schedule_vault.private_vault(saved_reply) == exact_reply
+            and (comparison is None or
+                 reply.schedule_vault.private_vault(comparison) == prior_exact),
+            "Original source-free HUMAN handoff, reply or matrix changed before private report")
+    reply.exclusive_output(output, [handoff, saved_reply,
+                                    *([comparison] if comparison else [])], {
         "index.html": report,
         "private-human-followup.json": private_json,
         "private-aggregate.json": public_misnomer_avoided,
@@ -201,11 +281,14 @@ def main() -> int:
                         help="Exact original PRIVATE selected encrypted .luhq")
     parser.add_argument("--reply", type=Path, required=True,
                         help="Existing source-bound encrypted .luhr HUMAN reply")
+    parser.add_argument("--comparison", type=Path,
+                        help="Optional EXACT original-bound PRIVATE comparison JSON from "
+                             "reconcile.py (never authenticates independent humans)")
     parser.add_argument("--output-dir", type=Path, required=True,
                         help="Fresh absolute owner-private HUMAN follow-up output")
     args = parser.parse_args()
     try:
-        publish(args.handoff, args.reply, args.output_dir)
+        publish(args.handoff, args.reply, args.output_dir, args.comparison)
         return 2
     except (reply.single_review.review.Hold, OSError, ValueError,
             KeyError, TypeError, ImportError, UnicodeError,
