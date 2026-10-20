@@ -51,7 +51,7 @@
 <div class="toolbar"><label>Filter HUMAN groups <input type="search" id="workloadQuery" maxlength="120" placeholder="Private group name"></label>
 <button type="button" id="clearGroup" class="ghost">Clear group focus</button><span id="focusedGroup" class="subtle">All groups</span></div>
 <p id="workloadSummary" class="subtle"></p><div class="tablebox">
-<table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
+<table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th><th>Private calendar handoff</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
 <div class="row"><button type="button" id="workloadPrev" class="ghost">Previous</button><button type="button" id="workloadNext" class="ghost">Next</button></div>
 </section>
 <section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">5 · Save / resume or export calendar</h2>
@@ -72,7 +72,7 @@
 <p id="changesSummary" role="status" aria-live="polite">Load a previous PRIVATE plan to see what changed.</p>
 <div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Change</th><th>Previously planned</th><th>Current HUMAN plan</th></tr></thead><tbody id="changesRows"></tbody></table></div>
 <div class="row"><button id="changePrev" type="button" class="ghost">Previous</button><button id="changeNext" type="button" class="ghost">Next</button></div>
-<div class="row"><button type="button" id="exportUpdated">Download added/changed event updates (.ics)</button><button type="button" id="exportCancelled" class="ghost">Download separate cancelled events (.ics)</button></div>
+<div class="row"><button type="button" id="exportUpdated">Download added/changed event updates (.ics)</button><button type="button" id="exportCancelled" class="ghost">Download separate cancelled events (.ics)</button><button type="button" id="exportChangesCsv" class="ghost">Download PRIVATE change register (.csv)</button></div>
 <p class="subtle">Calendar updates and cancellations are <strong>separate explicit PRIVATE downloads</strong>. Import them into the same authorized local/private calendar as the original; some providers may ignore updates or cancellations. No sync confirmation or automatic calendar deletion exists. Baseline is never overwritten by current changes. Repeated multi-revision sync is NOT guaranteed.</p>
 </div>
 <div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
