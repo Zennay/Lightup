@@ -42,8 +42,11 @@ JS = r"""
     const link = document.createElement("a");
     link.href = url;
     link.download = "PRIVATE-HUMAN-decisions-completed.csv";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    // Keep the object URL live until the browser has accepted the local save.
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
     message.textContent = "PRIVATE CSV prepared locally. No data was sent anywhere. " +
       "Supply this file to the explicit native finalize command. No release permission.";
   });
