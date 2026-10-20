@@ -35,6 +35,8 @@ def compare(before, after):
         row = {
             "ordinal": old["ordinal"],
             "label": new["label"],
+            "previous_label": old["label"],
+            "label_changed": old["label"] != new["label"],
             "baseline_kit_sha256": old["digest"],
             "new_kit_sha256": new["digest"],
             "added_file_count": len(current.keys() - previous.keys()),
@@ -45,7 +47,7 @@ def compare(before, after):
             "authority": FLAGS.copy(),
         }
         row["human_attention"] = bool(
-            row["added_file_count"] or row["removed_file_count"] or row["changed_file_count"]
+            row["added_file_count"] or row["removed_file_count"] or row["changed_file_count"] or row["label_changed"]
         )
         changed |= row["human_attention"]
         results.append(row)
@@ -112,13 +114,14 @@ def render(results, old_sha, new_sha):
         "<p>Previous source-ledger SHA-256: <code>" + old_sha + "</code><br>"
         "Later source-ledger SHA-256: <code>" + new_sha + "</code></p>",
         "<table><thead><tr><th>Ordinal</th><th>Human label</th>"
-        "<th>Added</th><th>Removed</th><th>Changed</th><th>Unchanged</th>"
+        "<th>Label changed</th><th>Added</th><th>Removed</th><th>Changed</th><th>Unchanged</th>"
         "<th>Human follow-up</th></tr></thead><tbody>",
     ]
     for record in results:
         rows.append(
             "<tr><td>" + str(record["ordinal"]) + "</td><td>" +
             html.escape(record["label"]) + "</td><td>" +
+            ("YES — HUMAN context review" if record["label_changed"] else "No") + "</td><td>" +
             str(record["added_file_count"]) + "</td><td>" +
             str(record["removed_file_count"]) + "</td><td>" +
             str(record["changed_file_count"]) + "</td><td>" +
@@ -127,7 +130,7 @@ def render(results, old_sha, new_sha):
              "Source-declared inventory unchanged; not externally verified") + "</td></tr>"
         )
     rows.append("</tbody></table><p>Removed source files do not mean a vulnerability is fixed. "
-                "Zero differences is never PASS, consent, security review, provenance attestation "
+                "Zero file differences or unchanged hashes NEVER excuse a changed human kit label; none is PASS, consent, security review, provenance attestation "
                 "or evidence of remediation. Treat all counts and hashes as PRIVATE.</p>"
                 "<p><a href='PRIVATE-detail.html'>Open PRIVATE per-file historical change details</a> "
                 "(source-relative names and fingerprints remain PRIVATE).</p>")
@@ -155,11 +158,11 @@ def run(args):
     }
     csv_output = io.StringIO(newline="")
     writer = csv.writer(csv_output, lineterminator="\n")
-    writer.writerow(["ordinal", "added", "removed", "changed", "unchanged",
+    writer.writerow(["ordinal", "label_changed", "added", "removed", "changed", "unchanged",
                      "human_stage", "proposed_owner", "next_question"])
     for row in result:
         writer.writerow([
-            row["ordinal"], row["added_file_count"], row["removed_file_count"],
+            row["ordinal"], int(row["label_changed"]), row["added_file_count"], row["removed_file_count"],
             row["changed_file_count"], row["unchanged_file_count"], "needs_review", "", ""
         ])
     output = new_private(args.private_parent)
