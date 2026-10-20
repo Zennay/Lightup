@@ -245,6 +245,7 @@ def build(dest: Path) -> None:
                      "remediation-integrated-workspace/encrypted_cockpit.py",
                      "remediation-integrated-workspace/journal_vault.py",
                      "remediation-integrated-workspace/journal_encrypt.js",
+                     "remediation-integrated-workspace/journal_open.js",
                      "remediation-integrated-workspace/JOURNAL_VAULT.md",
                      "remediation-integrated-workspace/README.md"):
             data = (ROOT / name).read_bytes()
@@ -332,6 +333,7 @@ def verify(folder: Path) -> None:
                      "remediation-integrated-workspace/encrypted_cockpit.py",
                      "remediation-integrated-workspace/journal_vault.py",
                      "remediation-integrated-workspace/journal_encrypt.js",
+                     "remediation-integrated-workspace/journal_open.js",
                      "remediation-integrated-workspace/JOURNAL_VAULT.md",
                                              "remediation-integrated-workspace/README.md"),
                 "Unexpected package name")

@@ -126,6 +126,9 @@ def hash_csp(b: bytes) -> str:
 def report(entries: list[dict], source_key: str) -> bytes:
     js = (Path(__file__).with_name("single_review.js")).read_bytes()
     cipher_js = (Path(__file__).with_name("journal_encrypt.js")).read_bytes()
+    open_js = (Path(__file__).with_name("journal_open.js")).read_bytes()
+    require(b"</script" not in open_js.lower() and len(open_js) <= 16000,
+            "Local source-bound encrypted review opener unsafe")
     require(b"</script" not in cipher_js.lower() and len(cipher_js) <= 16000,
             "Local source-bound encrypted browser component unsafe")
     require(b"</script" not in js.lower() and len(js) <= 16000,
@@ -138,6 +141,7 @@ def report(entries: list[dict], source_key: str) -> bytes:
                            separators=(",", ":")).replace("<", chr(92) + "u003c")
     policy = ("default-src 'none'; script-src " + hash_csp(js) +
               " " + hash_csp(cipher_js) +
+              " " + hash_csp(open_js) +
               "; style-src " + hash_csp(css) +
               "; img-src 'none'; connect-src 'none'; form-action 'none'; "
               "object-src 'none'; base-uri 'none'")
@@ -178,6 +182,10 @@ minlength="14" maxlength="256" autocomplete="new-password"></label>
 <label>Confirm new passphrase <input id="journal-confirm" type="password"
 minlength="14" maxlength="256" autocomplete="new-password"></label>
 <button type="button" id="encrypt-journal">Download encrypted PRIVATE journal (.luhj)</button>
+<h3>Open an existing encrypted PRIVATE HUMAN journal in memory</h3>
+<label>Local source-bound .luhj file <input id="vault-file" type="file" accept=".luhj,application/json"></label>
+<label>Passphrase for existing journal <input id="vault-password" type="password" autocomplete="off"></label>
+<button type="button" id="open-vault">Open existing encrypted journal (no plaintext file)</button>
 </section>
 <button type="button" id="save">Download unencrypted PRIVATE JSON (less safe)</button>
 <button type="button" id="clear">Clear current in-memory HUMAN edits</button>
@@ -188,6 +196,7 @@ private folder. Answered HUMAN does NOT mean fixed, retested or approved.</small
 <script type="application/json" id="seed">""" + json_body +
             """</script><script>""" + js.decode("utf-8") +
             """</script><script>""" + cipher_js.decode("utf-8") +
+            """</script><script>""" + open_js.decode("utf-8") +
             """</script></main></html>\n""").encode("utf-8")
 
 def publish(cockpit: Path, dest: Path, journal: Path | None,

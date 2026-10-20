@@ -137,6 +137,35 @@
     changed();
     status.textContent = 'In-memory HUMAN edits reset. Download a new PRIVATE journal to preserve this choice.';
   });
+  // Only the locally CSP-hash-pinned vault reader dispatches this in-page
+  // event after authenticating the encrypted bytes and the source-bound
+  // original HUMAN reason inventory. There is no browser storage or network.
+  root.addEventListener('lightup-private-sourcebound-restore', event => {
+    const restored = event.detail;
+    if (!Array.isArray(restored) || restored.length !== entries.length) {
+      status.textContent = 'HOLD: encrypted HUMAN source inventory not admissible.';
+      return;
+    }
+    for (let i = 0; i < restored.length; i++) {
+      const next = restored[i];
+      const old = entries[i];
+      if (next.slot !== old.slot || next.reason !== old.reason ||
+          next.count !== old.count || !choices.includes(next.stage) ||
+          !nativeAdmissible({...next})) {
+        status.textContent = 'HOLD: source-bound encrypted HUMAN reasons changed.';
+        return;
+      }
+    }
+    for (let i = 0; i < restored.length; i++) {
+      entries[i].stage = restored[i].stage;
+      entries[i].note = restored[i].note;
+      controls[i].select.value = entries[i].stage;
+      controls[i].area.value = entries[i].note;
+    }
+    changed();
+    status.textContent = 'Encrypted private HUMAN journal opened only in browser memory. ' +
+      'Save a new encrypted .luhj before closing. No authenticated consent or fixes.';
+  });
   window.addEventListener('beforeunload', event => {
     if (!dirty) return;
     event.preventDefault();
