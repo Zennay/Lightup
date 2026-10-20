@@ -756,6 +756,7 @@
          filter === "selected" && d.choice >= 0) &&
         (!term || d.item.file.name.normalize("NFC").toLowerCase().includes(term));
       d.row.hidden = !matches;
+      d.row.classList.toggle("shelf-peer-row-hidden",!matches);
       if (matches) visible++;
     }
     peerFilterCount.textContent = visible + "/" + plan.decisions.length +
@@ -1413,6 +1414,11 @@
     peerRows.replaceChildren();
     peerApply.disabled = true;
     peerSummaryExport.disabled = true;
+    peerAgenda.disabled = true;
+    peerSearch.value = "";
+    peerFilter.value = "all";
+    peerFilterCount.textContent = "PRIVATE reviewvoorstellen uit de browser gewist.";
+    peerPreviewText.textContent = "Geen actuele bronexacte reviewkeuze.";
     peerStatus.textContent = "REVIEW_ONLY — vorige PRIVATE reviewpakketten gewist.";
     lastPeerReceipt = null;
     el("shelf-peer-receipt").disabled = true;
