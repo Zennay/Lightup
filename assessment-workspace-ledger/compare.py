@@ -128,7 +128,9 @@ def render(results, old_sha, new_sha):
         )
     rows.append("</tbody></table><p>Removed source files do not mean a vulnerability is fixed. "
                 "Zero differences is never PASS, consent, security review, provenance attestation "
-                "or evidence of remediation. Treat all counts and hashes as PRIVATE.</p>")
+                "or evidence of remediation. Treat all counts and hashes as PRIVATE.</p>"
+                "<p><a href='PRIVATE-detail.html'>Open PRIVATE per-file historical change details</a> "
+                "(source-relative names and fingerprints remain PRIVATE).</p>")
     return html_page("LightUp PRIVATE historical kit ledger comparison", "".join(rows))
 
 
