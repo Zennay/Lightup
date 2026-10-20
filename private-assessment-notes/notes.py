@@ -388,11 +388,23 @@ def main() -> int:
     finished.add_argument("--original-kit", required=True, help="unchanged PRIVATE workroom")
     finished.add_argument("--decisions", required=True, help="locally completed PRIVATE HUMAN CSV")
     finished.add_argument("--private-parent", required=True, help="owner-only mode 0700 directory")
+    selected = commands.add_parser(
+        "select", help="explicit selected-only PRIVATE internal HUMAN discussion, never release")
+    selected.add_argument("--completed-packet", required=True,
+                          help="unchanged completed original HUMAN packet")
+    selected.add_argument("--position", action="append", required=True, type=int,
+                          help="original source position, individually marked INTERNAL_REVIEW_ONLY")
+    selected.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
     args = p.parse_args()
     try:
         if args.action == "prepare":
             return prepare(args.source, args.private_parent)
-        return finalize(args.original_kit, args.decisions, args.private_parent)
+        if args.action == "finalize":
+            return finalize(args.original_kit, args.decisions, args.private_parent)
+        # Import only for an explicitly chosen offline local PRIVATE operation.
+        # No renderer, target, provider, scan or network work is implicit.
+        from selective_handoff import prepare_selected
+        return prepare_selected(args.completed_packet, args.position, args.private_parent)
     except (Hold, OSError, ValueError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: PRIVATE notes workflow refused",
               file=sys.stderr)
