@@ -1489,7 +1489,9 @@ python3 assessment-integrated-suite/lab_review_team_batch_history.py \
 
 The new exclusive 0700 folder contains an owner-0600
 `OPEN-PRIVATE.html` scriptless HUMAN timeline of stage distributions,
-**human team adopted/withheld/no-response transitions** and stage/question
+**human team adopted/withheld/no-response transitions** (including each
+originally assigned team with no reply in every saved round, not just
+teams that responded in one of the rounds) and stage/question
 changes per original ordinal, plus the source-minimized
 `PRIVATE-HUMAN-BATCH-HISTORY.json` and
 `PRIVATE-HUMAN-BATCH-CHANGES.csv` (ordinal/team/stage + Boolean only,
