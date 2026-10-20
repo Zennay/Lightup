@@ -63,7 +63,8 @@ def front_page(files: list[tuple[str, str]]) -> bytes:
         elif name in ("benchmark-lineage.html", "benchmark-candidates.html",
                       "lab-longitudinal-trends.html"):
             key = "03  Examine already-produced benchmark declarations"
-        elif name in ("multi-reviewer-consensus.html", "human-followup-calendar.html"):
+        elif name in ("multi-reviewer-consensus.html", "human-followup-calendar.html",
+                      "human-workspace-ledger.html"):
             key = "04  Coordinate multiple humans locally"
         else:
             key = "01  PRIVATE source & human review"

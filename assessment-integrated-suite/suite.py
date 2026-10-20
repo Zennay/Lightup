@@ -28,6 +28,7 @@ APPS = {
     "multi-reviewer-consensus.html": ROOT / "assessment-reviewer-consensus/reviewer-studio.html",
     "lab-longitudinal-trends.html": ROOT / "assessment-trends/standalone.html",
     "human-benchmark-triage.html": ROOT / "assessment-review/standalone.html",
+    "human-workspace-ledger.html": ROOT / "assessment-workspace-ledger/standalone.html",
 }
 
 class Hold(Exception):
@@ -96,6 +97,7 @@ def write_html(destination: Path, detail: bool, count: int) -> None:
         ("Reconcile separate HUMAN reviewer plans", "workrooms/multi-reviewer-consensus.html"),
         ("Explore 3-12 original benchmark trajectories", "workrooms/lab-longitudinal-trends.html"),
         ("Triage original canonical benchmark findings with HUMAN review", "workrooms/human-benchmark-triage.html"),
+        ("Review exact original PRIVATE workspace ledger with HUMAN decisions", "workrooms/human-workspace-ledger.html"),
     ]
     if detail:
         links = [
