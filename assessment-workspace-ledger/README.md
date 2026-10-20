@@ -1040,3 +1040,16 @@ Existing interactive console action **31** runs the identical foreground
 history from explicit original files. Software-only bundle v24 adds the native
 module and maintains read support for fixed v16–v23 software inventories.
 No separate QA/regression/testsuites were authored or executed.
+
+### Resume a full subsequent HUMAN discussion without retyping
+
+The original multi-review history also writes
+`HUMAN-next-review-draft.csv`. This is an **unapproved HUMAN draft** copied
+from the last explicitly selected original 0600 HUMAN return, in all original
+case/transition/kit row positions, with every row bound to the exact original
+meeting's unsigned SHA-256. Move it to trusted owner-only private custody and
+open it through the existing source-bound Focus Studio restore picker, edit
+the HUMAN notes/statuses, then finalize using the original native
+`portfolio_focus_review.py`. No assignment, security verification, grant,
+consent, actual schedule or work completion is inferred by the carry-forward.
+The original review history preserves every earlier version without overwrites.

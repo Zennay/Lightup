@@ -22,7 +22,7 @@ from ledger import (
     read_owner_file, reject, safe_human, write_private,
 )
 from portfolio_delta import read_portfolio
-from portfolio_focus import local_path
+from portfolio_focus import local_path, REVIEW_HEADERS
 from portfolio_focus_review import (
     SCHEMA as RETURN_SCHEMA, STAGES, read_focus,
 )
@@ -135,6 +135,20 @@ def private_csv(changes):
     return out.getvalue()
 
 
+def next_review_template(last_rows, meeting_sha):
+    """Manual next HUMAN draft, never an approved or scheduled action."""
+    out = io.StringIO(newline="")
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(REVIEW_HEADERS)
+    for row in last_rows:
+        writer.writerow([
+            row["local_case"], row["historical_transition"],
+            row["original_kit"], meeting_sha,
+            row["human_meeting_stage"], row["human_decision_note"],
+        ])
+    return out.getvalue()
+
+
 def overview(revisions, changes):
     rows = [
         "<p><strong>PRIVATE, source-minimal ORIGINAL human review history.</strong> "
@@ -238,6 +252,7 @@ def run(args):
         "OPEN-PRIVATE.html": overview(revisions, changes),
         "PRIVATE-HUMAN-history.html": detail(revisions, changes, doc["meeting_title"]),
         "PRIVATE-HUMAN-history.csv": private_csv(changes),
+        "HUMAN-next-review-draft.csv": next_review_template(returns[-1][1], meeting_sha),
         "PRIVATE-HUMAN-history.json": canonical(result),
     }
     if any(len(data if isinstance(data, bytes) else data.encode("utf-8")) > MAX_MANIFEST
@@ -250,6 +265,7 @@ def run(args):
     except BaseException:
         shutil.rmtree(folder)
         raise
+    print("PRIVATE HOLD: unapproved source-bound next-round HUMAN CSV draft prepared")
     print("PRIVATE HOLD: historical HUMAN proposal changes only, NEVER verified remediation")
     print(str(Path(folder) / "OPEN-PRIVATE.html"))
     return 3
