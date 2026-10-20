@@ -205,10 +205,22 @@ def inspect(packets: list[str], final_room: str, handoff_room: str, batch_room: 
             or any(declared_team_counts[x] != changed_by_team[x] for x in adopted)):
         raise privacy.Hold("HOLD: original HUMAN batch counts do not match candidate")
     withheld_diff = _parse_diff(saved["PRIVATE-HUMAN-WITHHELD-DIFF.csv"])
+    original_by_slot = {int(x["proposal_slot"]): x for x in original_final}
+    withheld_counts = {name: 0 for name in withheld}
+    for item in withheld_diff:
+        original = original_by_slot.get(item["proposal_slot"])
+        if (original is None
+                or item["team"] not in withheld
+                or original["human_team"] != item["team"]
+                or original["human_stage"] != item["previous_stage"]
+                or item["current_stage"] not in route_queue.STAGES):
+            raise privacy.Hold("HOLD: withheld HUMAN stage or source ordinal mismatch")
+        withheld_counts[item["team"]] += 1
     if (type(receipt["withheld_proposed_changes"]) is not int
             or len(withheld_diff) != receipt["withheld_proposed_changes"]
             or len({x["proposal_slot"] for x in withheld_diff}) != len(withheld_diff)
-            or any(x["team"] not in withheld for x in withheld_diff)):
+            or any(withheld_counts[x["team"]] != x["proposed_changed"]
+                   for x in withheld_receipt)):
         raise privacy.Hold("HOLD: original withheld team declarations differ")
 
     return {
