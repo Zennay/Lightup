@@ -165,6 +165,29 @@ def prepare(args: argparse.Namespace) -> int:
         if not finished:
             shutil.rmtree(kit)
 
+def private_human_workpack(args: argparse.Namespace) -> int:
+    """Create one local workpack only from original saved PATH-only context."""
+    if args.human_confirm != "BUILD PRIVATE WORKPACK":
+        raise Hold("HOLD: exact explicit HUMAN workpack confirmation required")
+    from dataclasses import replace
+    import console
+    import human_workpack
+    import private_session
+    # Nothing here opens client source, invokes a scanner or grants authority.
+    # The identical native strict saved-session reader controls all input.
+    current = console.Session()
+    admitted = private_session.restore(current, args.private_session)
+    isolated = replace(current, **admitted)
+    isolated.saved_session = args.private_session
+    page = human_workpack.build(
+        isolated, args.human_csv or "", args.private_parent,
+        args.folder, args.review_date)
+    print("PRIVATE REVIEW_ONLY: source-PATH-bound HUMAN Workpack prepared.")
+    print("OPEN LOCALLY: " + str(page))
+    print("No source authenticity, consent, permission or execution is implied.")
+    return 2
+
+
 def main() -> int:
     cli = argparse.ArgumentParser(description="PRIVATE local lab review composition; no scan")
     commands = cli.add_subparsers(dest="command", required=True)
@@ -172,6 +195,20 @@ def main() -> int:
     run.add_argument("--source", required=True, action="append", help="1-12 already-produced PRIVATE JSON sources")
     run.add_argument("--private-parent", required=True, help="existing owner-only 0700 folder outside checkout")
     run.add_argument("--brief", action="store_true", help="original detailed briefing of first source")
+    workpack = commands.add_parser(
+        "human-workpack", help="PRIVATE offline HUMAN workpack from original saved session")
+    workpack.add_argument("--private-session", required=True,
+                          help="original owner-only 0600 PRIVATE-SESSION.json")
+    workpack.add_argument("--private-parent", required=True,
+                          help="existing owner-only 0700 output parent outside checkout")
+    workpack.add_argument("--folder", required=True,
+                          help="unused output folder with strict native name")
+    workpack.add_argument("--review-date", required=True,
+                          help="operator-declared YYYY-MM-DD, not a scheduled task")
+    workpack.add_argument("--human-csv", default="",
+                          help="optional exact-session original 0600 HUMAN CSV; empty seeds UNASSESSED")
+    workpack.add_argument("--human-confirm", required=True,
+                          help="must equal exactly BUILD PRIVATE WORKPACK")
     commands.add_parser("catalog", help="read-only inventory of installed original source modules")
     args = cli.parse_args()
     if args.command == "catalog":
@@ -181,8 +218,10 @@ def main() -> int:
         print("REVIEW_ONLY: no authority to execute, scan or release")
         return 0
     try:
+        if args.command == "human-workpack":
+            return private_human_workpack(args)
         return prepare(args)
-    except (Hold, OSError, ValueError) as exc:
+    except (Hold, OSError, ValueError, TypeError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: local private preparation refused",
               file=sys.stderr)
         return 3

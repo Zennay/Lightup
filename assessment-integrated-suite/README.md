@@ -156,6 +156,39 @@ confidential HUMAN question text**, original source bytes, saved machine paths
 and snapshot path digest. Unmodified original input CSVs remain untouched.
 This is HUMAN planning continuity only, not a security or privacy approval.
 
+## NEW: direct original native CLI for a full HUMAN workpack
+
+The existing source-owned `assessment-integrated-suite/suite.py` now also
+supports **`human-workpack`** as a foreground native subcommand, rather
+than requiring an interactive console menu for local operators. It requires
+the original strict owner-only 0600 saved `PRIVATE-SESSION.json`, an
+existing owner-only 0700 output parent outside the checkout, a unique
+unused workpack folder, an explicit operator-declared review date and
+**exact** `--human-confirm 'BUILD PRIVATE WORKPACK'`. The prior
+`--human-csv` is optional and, when supplied, remains subject to the
+full original strict source-PATH-bound CSV admission; without it all
+workflow rows begin unassessed and unassigned. No current console session
+is mutated. Existing `suite.py prepare` and `suite.py catalog` remain
+unchanged in execution behavior.
+
+~~~sh
+python3 assessment-integrated-suite/suite.py human-workpack \
+  --private-session /existing-owner-only/PRIVATE-SESSION.json \
+  --private-parent /existing-owner-only/output-parent \
+  --folder private-initial-human-workpack \
+  --review-date 2026-10-20 \
+  --human-confirm 'BUILD PRIVATE WORKPACK'
+~~~
+
+This is an **illustrative command**, not an actual created workpack or a
+request to use any real client source. The native command returns status
+`2` only when the PRIVATE local REVIEW_ONLY output has been prepared,
+`3` for HOLD; neither code means PASS. No offline workpack is sent or
+scheduled, no network/model/target operation is executed and current
+authenticated client/operator consent and explicit HUMAN GO remain absent.
+If a strict saved session or private folder is unavailable, the command
+fails closed. Do not run it as an unattended scheduler.
+
 ## NEW: live offline HUMAN attention and team-capacity dashboard
 
 The original locally generated interactive HUMAN Queue Studio now includes
