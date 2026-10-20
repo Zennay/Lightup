@@ -146,6 +146,8 @@ def decode(text: object, maximum: int) -> bytes:
 
 
 def new_keys(directory: Path) -> None:
+    if not sys.stdin.isatty():
+        raise Hold("encrypted signing-key creation requires a private interactive terminal")
     owner_dir(directory.parent)
     if not directory.is_absolute() or directory.exists() or directory.is_symlink():
         raise Hold("key directory must be a fresh absolute location")
