@@ -6,7 +6,7 @@ import human_workpack
 
 
 def prepare(session, path_prompt, ask) -> None:
-    source = path_prompt("Original exact-session owner-only 0600 HUMAN queue CSV")
+    source = path_prompt("OPTIONAL original 0600 HUMAN queue CSV (blank = NEW all-UNASSESSED)")
     parent = path_prompt("EXISTING owner-only 0700 PRIVATE output parent",
                          session.parent)
     review_date = ask("Operator-declared review date YYYY-MM-DD")
@@ -14,7 +14,8 @@ def prepare(session, path_prompt, ask) -> None:
                "private-human-assessment-workpack")
     print("One PRIVATE local index will compose original queue editor,")
     print("source-free priorities and assigned-team-only HUMAN worklists.")
-    print("Only manual original STRICT 0600 HUMAN CSV + exact PATH digest admitted.")
+    print("Blank CSV seeds an all-UNASSESSED HUMAN queue from current paths.")
+    print("Existing original CSV still requires exact native PATH binding.")
     print("No original lab data, client login, scan, model, grant, review")
     print("approval, recipient dispatch or real calendar action is performed.")
     print("The original current console Session remains UNCHANGED.")

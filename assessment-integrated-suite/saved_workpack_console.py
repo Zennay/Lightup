@@ -11,14 +11,15 @@ import private_session
 def prepare(session, path_prompt, ask) -> None:
     checkpoint = path_prompt("EXISTING original owner-only 0600 PRIVATE-SESSION.json",
                              session.saved_session)
-    csv_file = path_prompt("Original matching owner-only 0600 HUMAN queue CSV")
+    csv_file = path_prompt("OPTIONAL matching 0600 HUMAN CSV (blank = NEW unassessed)")
     parent = path_prompt("EXISTING owner-only 0700 PRIVATE output parent", session.parent)
     review_date = ask("Declared HUMAN review date YYYY-MM-DD")
     name = ask("UNUSED saved-context HUMAN workpack folder",
                "private-resumed-assessment-workpack")
     print("The original strict 0600 saved PATH-only session is restored ONLY")
     print("into a separate in-memory copy; current console paths stay unchanged.")
-    print("The earlier HUMAN CSV must match that exact restored session digest.")
+    print("Blank CSV seeds UNASSESSED choices from the restored session.")
+    print("Provided original CSV must still match the exact saved PATH digest.")
     print("This rebuilds original browser Studio, declared-date priorities,")
     print("and private assigned-team-only task decks; no client source is read.")
     if ask("Confirm exactly RESUME PRIVATE WORKPACK", "") != "RESUME PRIVATE WORKPACK":

@@ -243,10 +243,13 @@ Human-declared HOLD/NEEDS INPUT remains the highest triage category.
 The **original native console option 48** combines previously separated
 source-bound PRIVATE HUMAN products into **one actually usable offline local
 workpack**, instead of requiring separate manual console sessions.
-From an already existing original strict owner-only 0600 HUMAN queue CSV
-with the exact current session-PATH digest, a deliberate HUMAN confirmation
-and an operator-declared review date, the software creates one **new**
-0700 folder outside the checkout with a 0600 scriptless
+For a NEW HUMAN workpack leave the original CSV prompt **blank**:
+the native current session seeds every original workflow as `UNASSESSED`,
+with no team, due date, question, grant or security approval. No separate
+console option 42 is needed. Alternatively, supply an existing original
+0600 HUMAN CSV, which still requires the strict original schema, row order
+and exact current session-PATH digest. Both deliberately confirmed routes
+produce one **new** 0700 folder outside the checkout with a 0600 scriptless
 `OPEN-PRIVATE.html` index linking only to its own child views:
 
 * `queue/OPEN-PRIVATE.html`: original interactive HUMAN Studio for all
@@ -283,9 +286,11 @@ PRIVATE. Nothing is sent, scheduled, approved or released.
 
 Menu **49** is the continuation of the integrated full HUMAN workpack,
 rather than an independent new storage format. The operator deliberately
-provides a trusted original 0600 `PRIVATE-SESSION.json`, the matching
-original owner-only 0600 HUMAN queue CSV, an existing owner-only output
-parent, review date and unused workpack name. The original strict session
+provides a trusted original 0600 `PRIVATE-SESSION.json`, an existing
+owner-only output parent, review date and unused workpack name. The
+original HUMAN queue CSV is **optional**: blank seeds an all-`UNASSESSED`
+workpack from the restored native PATH context. Supplied original 0600
+CSV files still require the exact restored-session digest and native gates. The original strict session
 reader returns PATH-only fields; those are installed in an **isolated
 in-memory copy only**, and its `saved_session` property is then pointed
 to that original checkpoint, matching the original native post-save

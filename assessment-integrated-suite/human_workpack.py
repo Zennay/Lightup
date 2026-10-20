@@ -103,13 +103,18 @@ def build(session, source_csv: str, parent_name: str, name: str,
     # re-admitted BEFORE the new directory is created. No path or client
     # source bytes are disclosed in the source-free summary.
     base, _ = route_queue.rows_for(session)
-    if not source_csv:
-        raise privacy.Hold("HOLD: original exact-session HUMAN CSV required")
-    rows = route_queue.admit_human_edits(base, source_csv)
-    # Capture the fully read original HUMAN draft once more under its
-    # existing owner-only file boundary. Refuse if the competing original
-    # version disagrees with the already-admitted view.
-    source_bytes = route_queue.read_owner_csv(source_csv)
+    # Two fully explicit HUMAN-only modes: read an original admitted
+    # queue, or seed a first all-UNASSESSED queue from native session paths.
+    # Never invent HUMAN decisions or reuse an unrelated original CSV.
+    seeded_from_session = not bool(source_csv)
+    if seeded_from_session:
+        rows = base
+        source_bytes = route_queue.csv_bytes(base)
+    else:
+        rows = route_queue.admit_human_edits(base, source_csv)
+        # A competing writer may edit the original in the intake gap.
+        # A second owner-private read must yield identical HUMAN decisions.
+        source_bytes = route_queue.read_owner_csv(source_csv)
     teams = [(team, sum(row["review_team"] == team and
                         row["human_stage"] != "UNASSESSED" for row in rows))
              for team in TEAM_FOLDERS]
@@ -122,6 +127,7 @@ def build(session, source_csv: str, parent_name: str, name: str,
         "declared_review_date": review_date,
         "original_client_source_included": False,
         "pinned_private_human_csv_included": True,
+        "created_from_unassessed_session": seeded_from_session,
         "original_session_paths_included": False,
         "external_recipient_authenticated": False,
         "review_verified": False,
