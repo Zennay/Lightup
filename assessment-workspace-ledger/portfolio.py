@@ -65,6 +65,14 @@ def collect(args):
             action_context=context, actions=actions, plan=plan
         ))
         private_parent_for_originals(args.private_parent, source["sources"])
+        # The original native helper checks only the FIRST source ledger's
+        # first kit. This multi-case adapter must forbid outputs beneath ANY
+        # original source kit, from ANY admitted case and ledger snapshot.
+        for original in source["sources"]:
+            for kit in original["doc"]["kits"]:
+                root = kit["path"]
+                if os.path.commonpath((root, args.private_parent)) == root:
+                    reject("PRIVATE HOLD: output overlaps an ORIGINAL source kit")
         context_sha = digest(source["source_context"])
         if context_sha in context_ids:
             reject("PRIVATE HOLD: duplicate ORIGINAL case context; use history for revisions")
@@ -142,7 +150,9 @@ def summary_html(cases, stats, entries, owner=None):
         "context/actions/plan bytes were locally re-admitted; archived ORIGINAL "
         "customer kit files were NOT reopened. Cases remain separate, unsigned, "
         "and unverified. No real action, recipient, permission or deadline exists.</p>",
-        "<p>" + str(len(cases)) + " distinct ORIGINAL historical case contexts · " +
+        "<p>" + str(len(stats)) + " " +
+        ("selected local HUMAN case slots" if owner is not None else
+         "distinct ORIGINAL historical case contexts") + " · " +
         str(sum(row["original_human_rows"] for row in stats)) +
         " original HUMAN rows · " + str(len(entries)) +
         " HUMAN suggestions (not actual work).</p>",
@@ -150,7 +160,7 @@ def summary_html(cases, stats, entries, owner=None):
         "<th>HUMAN proposals</th><th>PRIVATE HUMAN statuses</th></tr></thead><tbody>",
     ]
     if owner is not None:
-        body.append(
+        body.insert(2,
             "<p><strong>EXACT proposed HUMAN owner selection:</strong> " +
             html.escape(owner, quote=True) +
             ". This label does NOT authenticate the person, recipient or "
@@ -186,7 +196,7 @@ def detailed_html(entries, owner=None):
         "<th>Proposed owner</th><th>Next HUMAN step</th></tr></thead><tbody>",
     ]
     if owner is not None:
-        body.append(
+        body.insert(1,
             "<p>Only explicit exact-label proposals for <strong>" +
             html.escape(owner, quote=True) +
             "</strong> were selected. This does not verify recipient identity.</p>"
