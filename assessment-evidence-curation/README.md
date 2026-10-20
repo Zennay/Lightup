@@ -96,7 +96,7 @@ Use the menu instead of assembling long paths or shell commands:
 
     python3 assessment-evidence-curation/console.py
 
-It offers **all six complete offline workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
+It offers **all eight complete offline workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
 
 ## Step 5 — PRIVATE recipient HUMAN question/reply exchange (without assessment execution)
 
@@ -136,7 +136,51 @@ Run:
 
     python3 assessment-evidence-curation/console.py
 
-It now offers **six** HUMAN-only offline workflows: prepare source-minimized browser studio, produce the selected-only original PRIVATE dossier, compare two HUMAN selections, view 2–12 HUMAN versions, prepare a recipient reply template, and privately re-admit that response. Every operation requires a separate **REVIEW ONLY** confirmation including its disclosure profile, explicit local existing source/receipt/CSV paths and one NEW private output directory. It runs no subprocess/assessment, never contacts a target, never mutates original source or existing outputs and cannot authenticate a recipient.
+It now offers **eight** HUMAN-only offline workflows: prepare source-minimized browser studio, produce the selected-only original PRIVATE dossier, compare two HUMAN selections, view 2–12 HUMAN versions, prepare a recipient reply template, and privately re-admit that response. Every operation requires a separate **REVIEW ONLY** confirmation including its disclosure profile, explicit local existing source/receipt/CSV paths and one NEW private output directory. It runs no subprocess/assessment, never contacts a target, never mutates original source or existing outputs and cannot authenticate a recipient.
+
+## Step 6 — PRIVATE source-bound browser editing and encrypted recipient continuity
+
+The existing `response.py prepare` operation now also creates `PRIVATE-recipient-browser-studio.html`. It is a complete local-browser HUMAN reply editor with question/ordinal search, original HUMAN priority + recipient-stage filters, accessible form fields, a counted queue, strict editable stage semantics, an exact original-selected-ordinal CSV resume/export, and explicit discard of unsaved browser state. All source context is in an inert template block under CSP source-hash-pinned JavaScript/CSS; **no network, original target or evidence export**. It contains the sender's HUMAN question text, which may identify clients and must be treated as PRIVATE.
+
+To keep longer HUMAN answers out of an unencrypted spreadsheet while still working offline, a recipient can enter a separate 12–120-character passphrase and confirmation to export a local `.luer` AES-256-GCM **encrypted** workroom. It uses PBKDF2-SHA256 310,000 iterations, new independent 16-byte random salt / 12-byte nonce, purpose-bound AAD bound to an unsigned SHA-256 of the exact original question rows, and literal-false authority flags. Opening a `.luer` checks canonical authenticated ciphertext, exact original HUMAN row digest, decrypts locally and sends the full HUMAN reply through the **same atomic ordinal/priority/question and recipient stage/answer admission** as canonical CSV resume, with a separate HUMAN confirmation. Existing in-memory replies survive incorrect source/password/format. No silent plaintext fallback: a browser secure context with WebCrypto is mandatory. Actual respondent identity, source producer, consent, remote calendars, browser GC and physical-memory secure erasure are not established.
+
+The original CLI `response.py return` still requires the **separate original lab JSON, its original manifest, original seven-column HUMAN worksheet, original selected CSV + prepared receipt and private recipient binding** before accepting any exported reply. Its binding can read older canonical preparation receipts; newer packages also include a digest of the generated standalone browser studio. Browser encryption proves neither real tenant nor approved assessment.
+
+## Step 7 — PRIVATE sender HUMAN response triage and next-question workflow
+
+New `response_triage.py` takes the completed reply from Step 5/6 and performs **full original source + original manifest + HUMAN worksheet + original selection receipt + exact selected CSV + original response binding + exact recipient response** admission. It creates a PRIVATE triage package:
+
+    python3 assessment-evidence-curation/response_triage.py prepare \
+      --source ./PRIVATE-original-lab.json \
+      --manifest ./PRIVATE-original-briefing/manifest.json \
+      --worksheet ./PRIVATE-human-followup.csv \
+      --selection-receipt ./NEW-PRIVATE-PREPARATION/selection-receipt.json \
+      --selection ./PRIVATE-human-selection.csv \
+      --response-binding ./PRIVATE-RECIPIENT/PRIVATE-recipient-response-binding.json \
+      --response ./PRIVATE-recipient-human-response.csv \
+      --output-dir ./NEW-PRIVATE-SENDER-TRIAGE
+
+The new PRIVATE package contains a source-bound eight-column `PRIVATE-sender-triage-template.csv`, an unsigned `PRIVATE-sender-triage-binding.json`, scriptless instructions, and a complete `PRIVATE-sender-triage-browser.html` offline editor. The browser displays the original HUMAN selected question, existing recipient HUMAN reply and follow-up (all unverified), with local search, routing filter, owner-group/next-question fields, source-ordinal paging, human-confirmed CSV export and strict full source-row-bound CSV resume. Only original ordinal, HUMAN priority, recipient self-reported stage, SHA-256 of exact reply/recipient-next-question text plus sender HUMAN route/owner/next-question enter the sender CSV. Incoming replies and human questions may still identify a client; browser content is PRIVATE.
+
+Four non-authorizing sender HUMAN routes are available: `needs_human_review`, `request_clarification`, `route_to_owner`, and `documented_for_followup`. Empty means unreviewed; HUMAN route-to-owner requires a group plus next question, request clarification requires a next question. No choice creates an approved finding, verified fix, grant, revocation, real assigned owner or original risk result.
+
+The sender returns the completed HUMAN triage CSV by explicit local CLI:
+
+    python3 assessment-evidence-curation/response_triage.py return \
+      --source ./PRIVATE-original-lab.json \
+      --manifest ./PRIVATE-original-briefing/manifest.json \
+      --worksheet ./PRIVATE-human-followup.csv \
+      --selection-receipt ./NEW-PRIVATE-PREPARATION/selection-receipt.json \
+      --selection ./PRIVATE-human-selection.csv \
+      --response-binding ./PRIVATE-RECIPIENT/PRIVATE-recipient-response-binding.json \
+      --response ./PRIVATE-recipient-human-response.csv \
+      --triage-binding ./NEW-PRIVATE-SENDER-TRIAGE/PRIVATE-sender-triage-binding.json \
+      --triage ./PRIVATE-sender-HUMAN-triage.csv \
+      --output-dir ./NEW-PRIVATE-SENDER-RETURN
+
+The CLI fully reopens original producer-declared data, all original matching HUMAN selected rows and recipient answers, and exact per-response SHA before admitting any sender change. It writes a NEW 0700 private directory, 0600 files: scriptless `PRIVATE-sender-HUMAN-triage.html`, matching original/selection/response/triage unsigned byte receipt, and source-ID-free private numeric sender-route counts. Wrong original, missing source/response row or mismatched human text HASH or unsupported stages/roles HOLD atomically, leaving all previous files intact. **No actual respondent identity, tenant provenance, security finding validation, consent or remediation authority is created.**
+
+The same `console.py` now offers **eight** offline human-only workflows, including preparing and returning PRIVATE sender HUMAN triage. It does not run scanners, workers, subprocesses or network calls.
 
 ## Safety / release fence
 
