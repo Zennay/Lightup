@@ -39,3 +39,21 @@
 .attempt-history p{margin:5px 0 10px}.attempt-history .needs{margin-bottom:0}
 .attempt-history .needs li{color:#f1d8c1}
 @media print{.timeline-filter{display:none}.attempt-history{background:white;color:black;border:1px solid #999}.attempt-history h3,.attempt-history .needs li{color:black}}
+
+/* Guided offline operator learning cards; completion never grants scope authority. */
+.drill-deck{background:linear-gradient(135deg,#173347,#17302f);border:1px solid #486e70;border-radius:18px;padding:23px;margin:0 0 22px}
+.drill-deck h2{font-size:1.45rem;margin:0 0 8px}.drill-deck h3{font-size:1.1rem;margin:0 0 8px}
+.drill-deck .muted{color:#c3d4db;margin:6px 0 13px}
+.drill-controls,.drill-content{display:grid;grid-template-columns:minmax(220px,1fr) auto auto;gap:12px;align-items:end}
+.drill-controls label{font-size:.83rem;font-weight:740}.drill-controls select{display:block;width:100%;background:#0e202e;border:1px solid #64949b;color:var(--text);font:inherit;padding:10px;margin-top:5px;min-height:44px;border-radius:9px}
+.drill-content{grid-template-columns:1.4fr 1fr;align-items:start;margin-top:16px}
+.drill-question{font-weight:800;color:#e4f9f7}
+.drill-choices{display:flex;flex-direction:column;gap:8px}
+.drill-choice{width:100%;border-radius:9px;border:1px solid #567f88;background:#1a4050;color:#e9fbfa;text-align:left;font:inherit;font-size:.87rem;padding:11px;cursor:pointer}
+.drill-choice:hover{background:#205664}.drill-choice:disabled{opacity:.5;cursor:not-allowed}
+.drill-choice:focus-visible{outline:3px solid var(--aqua);outline-offset:3px}
+.drill-result{background:#0f2633;border:1px solid #446775;border-radius:11px;padding:17px;min-height:100%}
+.drill-result p{margin:5px 0}.drill-result p:not(.eyebrow){line-height:1.55}
+@media(max-width:900px){.drill-controls{grid-template-columns:1fr 1fr}.drill-controls label{grid-column:1/-1}.drill-content{grid-template-columns:1fr}}
+@media(max-width:550px){.drill-deck{padding:16px}.drill-controls{grid-template-columns:1fr}}
+@media print{.drill-deck{background:white;color:black;border:1px solid #aaa}.drill-deck .muted,.drill-question,.drill-result,.drill-result p{color:black}.drill-controls,.drill-choices{display:none}.drill-result{background:white;color:black;border:1px solid #bbb}}
