@@ -566,3 +566,40 @@ privacy/security/browser review, exact-head hosted + permanently registered
 VPS CI, #177/#182/#829, separately authenticated client and operator consent
 with action-time revocation and explicit HUMAN GO remain mandatory release
 gates. Posture stays Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD.
+
+## One-command PRIVATE HUMAN casebook and exact-source ledger (20 Oct)
+
+New `remediation_casebook.py` composes the original local lab→human remediation
+producer and unchanged original `assessment-workspace-ledger/ledger.py`. This
+is one complete foreground user workflow, NOT an assessment, external
+handoff, authorization, fix verification, scan, or privacy/security approval.
+
+**Console options 21/22:** Choose an already completed original canonical lab
+comparison JSON (21), or two separately completed original baseline/candidate
+lab cohorts (22), plus the separately authenticated original five-column client
+findings CSV. Optionally supply previously completed original source-bound HUMAN
+links; otherwise start with an empty manual original review. The console creates
+one new 0700 owner-only original private assessment workroom (with unchanged
+original Mapping Studio), delegates source validation and exclusive private
+publication to the original producer, then separately captures exactly those
+workspace file bytes in the original 0700 private HUMAN ledger with CSV and
+offline review studio. A new owner-only scriptless `START-HERE.html` links both
+unchanged originals without exposing original source names, findings or paths.
+It never sends a packet, authenticates recipients, or assumes external consent.
+
+CLI, from a trusted checkout, with preexisting owner-only 0700 output parent:
+
+~~~sh
+python3 assessment-integrated-suite/remediation_casebook.py --comparison /private/completed-canonical.json --findings-csv /private/original-client-findings.csv --private-parent /private/owner-output --prefix first-case
+python3 assessment-integrated-suite/remediation_casebook.py --baseline /private/completed-baseline.json --candidate /private/completed-candidate.json --findings-csv /private/original-client-findings.csv --private-parent /private/owner-output --prefix cohort-case
+~~~
+
+The original private HUMAN result remains REVIEW_ONLY (2) or adverse-source
+HOLD (3); no PASS, authenticated source ownership or verified fix. If a later
+stage refuses, completed source-native private receipts are intentionally
+left for local owner inspection, not silently deleted. The software-only ZIP
+includes a description but no original client sources or native runtime.
+Original hosted + permanently registered named-VPS CI, owner, independent
+security/privacy/browser review, #177/#182/#829, genuine separate current
+authenticated client/operator consent with revocation-at-use and explicit
+HUMAN GO are still required before any main merge/deploy or real target action.
