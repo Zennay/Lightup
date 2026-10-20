@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7Mxnki+vOI9b6oK/Wefui4XTtQtbprZIJQckgMsnv/o=' 'sha256-uZHXEgr04EBtGHKeYUMA85Chz1yH78U/PeXpJR95j+Y='; style-src 'sha256-ryTjUguWPmGlNuOqPk3nfGQe4WDUkIML0aubgBYycaI='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-uZHXEgr04EBtGHKeYUMA85Chz1yH78U/PeXpJR95j+Y='; style-src 'sha256-ryTjUguWPmGlNuOqPk3nfGQe4WDUkIML0aubgBYycaI='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE HUMAN disclosure studio</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light}
@@ -98,7 +98,7 @@ thead{background:#edf1f5}th{text-align:left}tbody tr:nth-child(even){background:
        additionalData:header,tagLength:128},key,packed.subarray(HEADER)));
     try {
       requireValid(clear.length > 0 && clear.length <= MAX_CSV);
-      return new TextDecoder("utf-8",{fatal:true}).decode(clear);
+      return new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(clear);
     } finally { clear.fill(0); }
   }
   const BUNDLE_MAGIC = new Uint8Array([76,85,72,66,80,48,48,49]); // LUHBP001
@@ -163,7 +163,7 @@ thead{background:#edf1f5}th{text-align:left}tbody tr:nth-child(even){background:
                    notesLen > 0 && notesLen <= MAX_CSV &&
                    plain.byteLength === CONTENT_HEADER + receiptLen + notesLen);
       const receipt = plain.slice(CONTENT_HEADER, CONTENT_HEADER + receiptLen).buffer;
-      const csv = new TextDecoder("utf-8", {fatal:true}).decode(
+      const csv = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(
         plain.subarray(CONTENT_HEADER + receiptLen));
       return {receipt, csv};
     } finally { plain.fill(0); }
