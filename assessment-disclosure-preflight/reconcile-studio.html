@@ -41,6 +41,12 @@
 <label>View <select id="view"><option value="all">All ordinals</option><option value="different">Different HUMAN text</option><option value="same">Same HUMAN text (unverified)</option><option value="undecided">HOLD only</option><option value="selected">Explicit HUMAN selection</option></select></label>
 <label>Search local HUMAN text/ordinal/kind<input id="query" type="search" autocomplete="off" placeholder="PRIVATE local filter"></label>
 </div>
+<div class="historybar" role="group" aria-label="PRIVATE HUMAN decision history">
+<button id="undo" type="button" class="secondary" disabled>Undo last HUMAN edit</button>
+<button id="redo" type="button" class="secondary" disabled>Redo HUMAN edit</button>
+<button id="holdFiltered" type="button" class="secondary" disabled>Set selected matching rows to HOLD</button>
+</div>
+<p id="historyStatus" class="hint" role="status" aria-live="polite">No HUMAN decision history loaded. Undo/redo remains local and is never proof of authorization.</p>
 <p id="visible" role="status" aria-live="polite"></p>
 <p class="hint">Filters only affect visibility. Every original ordinal is exported, including hidden rows. Changing the underlying original files requires a new load. Choosing A or B requires an explicit HUMAN reason. A selection is not approval.</p>
 <div class="resume"><h3>Resume a previous PRIVATE HUMAN choice draft</h3>
