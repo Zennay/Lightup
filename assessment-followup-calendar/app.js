@@ -542,16 +542,15 @@
       inform("Encrypted PRIVATE source-bound plan downloaded. Password cleared from input fields.");
     }finally{plain.fill(0);clearPasswords();}
   }
-  async function restoreEncryptedFile(file){
-    hold(active && crypto.subtle);
-    const password=$("handoffPassword").value;
-    hold(password.length>=16 && password.length<=256);
-    let plaintext=null;
+  async function decryptPrivatePlan(file,password){
+    hold(active && crypto.subtle && password.length>=16 && password.length<=256);
+    let raw=null,cipher=null,plaintext=null;
     try{
-      const encrypted=await bytes(file);
-      hold(encrypted.length>ENC_MAGIC.length+16+12+16);
-      hold(ENC_MAGIC.every((v,i)=>encrypted[i]===v));
-      const salt=encrypted.slice(6,22),iv=encrypted.slice(22,34),cipher=encrypted.slice(34);
+      raw=await bytes(file);
+      hold(raw.length>ENC_MAGIC.length+16+12+16);
+      hold(ENC_MAGIC.every((v,i)=>raw[i]===v));
+      const salt=raw.slice(6,22),iv=raw.slice(22,34);
+      cipher=raw.slice(34);
       const key=await handoffKey(password,salt);
       try{
         plaintext=new Uint8Array(await crypto.subtle.decrypt(
@@ -559,15 +558,42 @@
       }catch(_){hold(false);}
       const admitted=admitPlanText(decoder.decode(plaintext));
       hold(!admitted.legacy);
+      return admitted;
+    }finally{
+      if(plaintext)plaintext.fill(0);
+      if(cipher)cipher.fill(0);
+      if(raw)raw.fill(0);
+    }
+  }
+  async function restoreEncryptedFile(file){
+    hold(active && crypto.subtle);
+    const originHash=hash,originSeries=seriesId,oldPlan=plan;
+    const password=$("handoffPassword").value;
+    try{
+      const admitted=await decryptPrivatePlan(file,password);
+      hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
       if(changed && !confirm("Replace current unsaved PRIVATE HUMAN reminder dates with the authenticated encrypted plan? This does not prove original-source authenticity."))return;
+      hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
       publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
       plan=admitted.schedule;seriesId=admitted.series;
       changed=false;exportedPlan=true;page=0;agendaPage=0;render();
       inform("Encrypted PRIVATE calendar plan opened and exact original worksheet / timezone readmitted. No assessment authority.");
-    }finally{
-      if(plaintext)plaintext.fill(0);
-      clearPasswords();
-    }
+    }finally{clearPasswords();}
+  }
+  async function readEncryptedBaseline(file){
+    hold(active && crypto.subtle);
+    const originHash=hash,originSeries=seriesId,oldPlan=plan;
+    const password=$("baselinePassword").value;
+    try{
+      const admitted=await decryptPrivatePlan(file,password);
+      hold(active && hash===originHash && seriesId===originSeries &&
+        plan===oldPlan && admitted.series===originSeries);
+      if(!confirm("Compare against this separate encrypted PRIVATE historical HUMAN plan? Its decrypted proposed dates remain solely in browser memory. Current HUMAN plan remains unchanged; no calendar is contacted."))return;
+      hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
+      publicationBaseline=admitted.schedule;changesPage=0;
+      $("baselineStatus").textContent="Encrypted historical PRIVATE plan admitted for local comparison; source SHA, series and timezone matched. Not independently authenticated producer.";
+      renderChanges();inform("Encrypted prior HUMAN schedule opened for PRIVATE comparison, no current appointments changed.");
+    }finally{$("baselinePassword").value="";}
   }
   async function onOriginal(file){
     const buffer=await bytes(file);
@@ -581,7 +607,7 @@
     $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
-    $("restore").value="";clearPasswords();$("tz").textContent=zone;
+    $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
     $("agendaHorizon").value="7";$("agendaQuery").value="";$("workloadQuery").value="";
     render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
@@ -651,6 +677,11 @@
   function hook(id,event,fn){$(id).addEventListener(event,fn);}
   hook("worksheet","change",async e=>{try{if(e.target.files[0])await onOriginal(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
+  hook("encryptedBaseline","change",async e=>{
+    try{if(e.target.files[0])await readEncryptedBaseline(e.target.files[0]);}
+    catch(_){$("baselinePassword").value="";inform("Encrypted historical PRIVATE plan denied (HOLD); existing planning and comparison remain unchanged.",true);}
+    finally{e.target.value="";}
+  });
   hook("baselinePlan","change",async e=>{
     try{if(e.target.files[0])await readPublishedBaseline(e.target.files[0]);}
     catch(_){inform("Previous PRIVATE schedule did not match exact worksheet, timezone or series (HOLD).",true);}
@@ -686,7 +717,7 @@
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
     $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("out").hidden=true;$("reset").disabled=true;
-    clearPasswords();$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
+    clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
