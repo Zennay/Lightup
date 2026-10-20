@@ -11,7 +11,7 @@
                        "operator_consent_verified", "authorization_granted", "dispatch_allowed", "release_allowed"];
   const MAX = 256 * 1024;
   const byId = id => document.getElementById(id);
-  let records = [], receiptDigest = "", dirty = false, revision = 0;
+  let records = [], receiptDigest = "", receiptRaw = null, dirty = false, revision = 0;
 
   function notice(message, isError = false) {
     const box = byId("notice");
@@ -218,28 +218,46 @@
   async function load() {
     try {
       ensure(window.isSecureContext && crypto && crypto.subtle);
-      const raw = await bounded(byId("receipt").files[0]);
-      const digest = hex(await crypto.subtle.digest("SHA-256", raw));
-      const decoded = new TextDecoder("utf-8", {fatal: true}).decode(raw);
-      const sourceRows = validateReceipt(parseUnambiguousJson(decoded));
+      const receiptFile = byId("receipt").files[0];
       const csvFile = byId("csv").files[0];
       const vaultFile = byId("vault").files[0];
-      ensure(Boolean(csvFile) !== Boolean(vaultFile));
-      let csvText;
-      if (vaultFile) {
+      const bundleFile = byId("bundle").files[0];
+      ensure(bundleFile
+        ? !receiptFile && !csvFile && !vaultFile
+        : Boolean(receiptFile) && (Boolean(csvFile) !== Boolean(vaultFile)));
+      let raw, csvText;
+      if (bundleFile) {
         const pw = byId("openPassword");
         try {
-          ensure(globalThis.LightUpHumanVault && vaultFile.size <= LightUpHumanVault.maxVaultBytes);
-          csvText = await LightUpHumanVault.open(await vaultFile.arrayBuffer(), pw.value, digest);
+          ensure(globalThis.LightUpHumanVault &&
+                 bundleFile.size <= LightUpHumanVault.maxBundleBytes);
+          const unpacked = await LightUpHumanVault.openBundle(
+            await bundleFile.arrayBuffer(), pw.value);
+          raw = unpacked.receipt;
+          csvText = unpacked.csv;
         } finally { pw.value = ""; }
       } else {
+        raw = await bounded(receiptFile);
+      }
+      const digest = hex(await crypto.subtle.digest("SHA-256", raw));
+      const decoded = new TextDecoder("utf-8", {fatal:true}).decode(raw);
+      const sourceRows = validateReceipt(parseUnambiguousJson(decoded));
+      if (!bundleFile && vaultFile) {
+        const pw = byId("openPassword");
+        try {
+          ensure(LightUpHumanVault && vaultFile.size <= LightUpHumanVault.maxVaultBytes);
+          csvText = await LightUpHumanVault.open(
+            await vaultFile.arrayBuffer(), pw.value, digest);
+        } finally { pw.value = ""; }
+      } else if (!bundleFile) {
         const csvBytes = await bounded(csvFile);
-        csvText = new TextDecoder("utf-8", {fatal: true}).decode(csvBytes);
+        csvText = new TextDecoder("utf-8", {fatal:true}).decode(csvBytes);
       }
       const rows = validateRows(parseCsv(csvText.replace(/^\uFEFF/u, "")), sourceRows, digest);
       if (dirty && !confirm("Discard unsaved HUMAN edits in memory?")) return;
       records = rows;
       receiptDigest = digest;
+      receiptRaw = raw.slice(0);
       dirty = false;
       revision++;
       byId("compareSection").hidden = true;
@@ -247,6 +265,7 @@
       byId("editor").hidden = false;
       byId("export").disabled = false;
       byId("exportEncrypted").disabled = false;
+      byId("exportBundle").disabled = false;
       byId("compare").disabled = false;
       byId("exportCounts").disabled = false;
       byId("exportPrint").disabled = false;
@@ -309,6 +328,26 @@
     } catch (_) {
       notice("HOLD: encrypted HUMAN export refused. Check notes and matching passphrase; previous edits retained.", true);
     } finally { pass.value = ""; repeated.value = ""; }
+  }
+  async function exportBundle() {
+    const pass = byId("newPassword"), repeat = byId("confirmPassword");
+    try {
+      ensure(globalThis.LightUpHumanVault && receiptRaw instanceof ArrayBuffer);
+      const csv = serializedCsv();
+      const capturedRevision = revision;
+      ensure(pass.value === repeat.value && pass.value.length >= 14 &&
+        pass.value.length <= 256 && !/[\u0000-\u001f\u007f]/u.test(pass.value));
+      ensure(confirm("Create one fully encrypted PRIVATE assessment-HUMAN packet? Both the unsigned receipt and HUMAN notes will be encrypted. The password is unrecoverable and does not authenticate clients, original evidence or permission."));
+      const packet = await LightUpHumanVault.sealBundle(receiptRaw, csv, pass.value);
+      download(packet, "PRIVATE-human-handoff.luhb", "application/octet-stream");
+      if (revision === capturedRevision) dirty = false;
+      refresh();
+      notice(revision === capturedRevision ?
+        "REVIEW_ONLY: one completely encrypted PRIVATE HUMAN packet saved; no external transfer or grant." :
+        "REVIEW_ONLY: earlier HUMAN snapshot encrypted; newer edits remain unsaved.");
+    } catch (_) {
+      notice("HOLD: encrypted complete HUMAN handoff refused; existing edits retained.", true);
+    } finally { pass.value = ""; repeat.value = ""; }
   }
   function exportCounts() {
     try {
@@ -429,11 +468,30 @@
       notice("HOLD: older vault, passphrase or exact receipt mismatch. Current edits and comparison retained.", true);
     } finally { password.value = ""; }
   }
-  byId("csv").addEventListener("change", () => { if (byId("csv").files.length) byId("vault").value = ""; });
-  byId("vault").addEventListener("change", () => { if (byId("vault").files.length) byId("csv").value = ""; });
+  byId("bundle").addEventListener("change", () => {
+    if (byId("bundle").files.length) {
+      for (const name of ["receipt","csv","vault"]) byId(name).value = "";
+    }
+  });
+  byId("receipt").addEventListener("change", () => {
+    if (byId("receipt").files.length) byId("bundle").value = "";
+  });
+  byId("csv").addEventListener("change", () => {
+    if (byId("csv").files.length) {
+      byId("vault").value = "";
+      byId("bundle").value = "";
+    }
+  });
+  byId("vault").addEventListener("change", () => {
+    if (byId("vault").files.length) {
+      byId("csv").value = "";
+      byId("bundle").value = "";
+    }
+  });
   byId("load").addEventListener("click", load);
   byId("export").addEventListener("click", exportCsv);
   byId("exportEncrypted").addEventListener("click", exportEncrypted);
+  byId("exportBundle").addEventListener("click", exportBundle);
   byId("compare").addEventListener("click", comparePrevious);
   byId("exportCounts").addEventListener("click", exportCounts);
   byId("exportPrint").addEventListener("click", exportPrintableReport);
