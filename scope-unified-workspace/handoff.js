@@ -954,6 +954,114 @@
       busy = false; peerInput.disabled = false; input.disabled = false;
     }
   });
+  peerDraftSave.addEventListener("click", () => {
+    const plan = peerPreview;
+    if (!plan || busy || plan.epoch !== generation || plan.revision !== humanRevision) {
+      if (plan) discardPeerPreview();
+      return report("HOLD — geen actuele bronexacte HUMAN conceptkeuzes om te bewaren.");
+    }
+    const chosen = plan.decisions.filter(d => d.choice >= 0);
+    if (!chosen.length) return report("HOLD — geen handmatig gekozen HUMAN voorstel, concept leeg.");
+    if (!confirm("Bewaar PRIVATE HUMAN conceptkeuzes voor "+chosen.length+
+      " bewust geselecteerde bron(nen) op "+plan.decisions.length+
+      " oorspronkelijke bronbestanden? Het PRIVATE JSON bevat alle oorspronkelijke namen, SHA-256 "+
+      "en per origineel reviewer-pakket de bytegebonden SHA-256. Geen notitieteksten, originele bronbytes, consent, grant of uitvoerrecht. "+
+      "Later alleen heropenen met exact DEZELFDE bron- en pakketvolgorde.")) return;
+    exportJSON("lightup-scope-PRIVATE-HUMAN-peer-decision-draft.json",{
+      format:"lightup.scope_PRIVATE_human_proposal_draft.v1",
+      status:"REVIEW_ONLY",
+      authority:{client_consent:false,operator_consent:false,grant:false,
+        scan:false,deploy:false,release:false},
+      packets:plan.packetBytes.map(p => ({
+        local_packet_number:p.local_packet_number,
+        original_packet_byte_length:p.original_packet_byte_length,
+        unsigned_original_packet_sha256:p.unsigned_original_packet_sha256
+      })),
+      sources:plan.decisions.map(d => ({
+        original_name:d.item.file.name,
+        byte_length:d.item.file.size,
+        unsigned_sha256:d.item.hash,
+        structural_kind_unverified:d.item.inspection.kind,
+        packet_choice:d.choice < 0 ? -1 : d.choice+1
+      })),
+      warning:"Unsigned private HUMAN draft only. Reopen with exact same original files and peer packet bytes. No stored source content, notes, recipient authentication, consent, grant, scan or release."
+    });
+    peerDraftStatus.textContent = "REVIEW_ONLY — PRIVATE concept voor "+chosen.length+
+      " HANDMATIGE pakketkeuzes lokaal opgeslagen. Originele bron- en HUMAN reviews niet aangepast.";
+    report("REVIEW_ONLY — bron- en pakketgebonden PRIVATE HUMAN conceptkeuzes lokaal bewaard, geen overname toegepast.");
+  });
+  peerDraftOpen.addEventListener("change", async () => {
+    const file = peerDraftOpen.files && peerDraftOpen.files[0];
+    peerDraftOpen.value = "";
+    const plan = peerPreview;
+    if (!file || !plan || busy) return;
+    if (plan.epoch !== generation || plan.revision !== humanRevision) {
+      discardPeerPreview();
+      return report("HOLD — stale HUMAN review, concept niet geopend.");
+    }
+    busy = true; input.disabled = true; peerInput.disabled = true; peerDraftOpen.disabled = true;
+    try {
+      const draft = await LightUpPrivateSourceInspector.readHumanProposalDraft(file);
+      if (peerPreview !== plan || plan.epoch !== generation ||
+          plan.revision !== humanRevision ||
+          draft.packets.length !== plan.packetBytes.length ||
+          draft.sources.length !== plan.decisions.length) {
+        throw Error("changed original set");
+      }
+      const samePackets = draft.packets.every((p,i) => {
+        const src=plan.packetBytes[i];
+        return p.local_packet_number === src.local_packet_number &&
+          p.original_packet_byte_length === src.original_packet_byte_length &&
+          p.unsigned_original_packet_sha256 === src.unsigned_original_packet_sha256;
+      });
+      const sameSources = draft.sources.every((proposal,i) => {
+        const d=plan.decisions[i],item=d.item;
+        const idx=proposal.packet_choice-1;
+        return items.includes(item) && proposal.original_name === item.file.name &&
+          proposal.byte_length === item.file.size &&
+          proposal.unsigned_sha256 === item.hash &&
+          proposal.structural_kind_unverified === item.inspection.kind &&
+          (proposal.packet_choice === -1 ||
+            idx >= 0 && idx < d.allowed.length && !!d.allowed[idx] &&
+            sourceEqual(d.allowed[idx],item));
+      });
+      if (!samePackets || !sameSources) throw Error("source or reviewer packet drift");
+      const selected=draft.sources.filter(row=>row.packet_choice!==-1).length;
+      if (!confirm("Herstel ALLEEN "+selected+" brongebonden HUMAN conceptkeuze(n) "+
+          "in de huidige vergelijking? Oorspronkelijke bronbestanden en "+
+          draft.packets.length+" reviewer-pakketten zijn exact bytegebonden. "+
+          "De huidige lokale team/route/fase/notities veranderen NIET. "+
+          "Bestaande conceptselecties worden vervangen; toepassen vereist later alsnog "+
+          "een apart expliciet menselijk akkoord.")) {
+        peerDraftStatus.textContent = "Heropenen door gebruiker geannuleerd. Bestaande conceptselecties behouden.";
+        return;
+      }
+      if (peerPreview!==plan || plan.epoch!==generation || plan.revision!==humanRevision ||
+          !draft.sources.every((row,i)=>row.packet_choice===-1 ||
+             sourceEqual(plan.decisions[i].allowed[row.packet_choice-1],plan.decisions[i].item))) {
+        throw Error("stale confirmation");
+      }
+      // Apply atomically only to pending select elements, not original HUMAN data.
+      for (let i=0;i<draft.sources.length;i++) {
+        const d=plan.decisions[i], choice=draft.sources[i].packet_choice;
+        d.choice=choice===-1 ? -1 : choice-1;
+        if (d.select) d.select.value=String(d.choice);
+      }
+      peerApply.disabled = !peerPending();
+      refreshPeerDesk();
+      peerDraftStatus.textContent = "REVIEW_ONLY — "+selected+
+        " oorspronkelijke HUMAN conceptkeuze(n) hersteld; alle huidige lokale bron/HUMAN waarden intact.";
+      report("REVIEW_ONLY — exact bron- en pakketgebonden concept heropend; GEEN voorstel toegepast of geautoriseerd.");
+    } catch (_) {
+      peerDraftStatus.textContent =
+        "HOLD — ongeldig of inconsistent PRIVATE concept: bronvolgorde, bronnen of exacte reviewpakketbytes wijken af. Niets gewijzigd.";
+      report("HOLD — HUMAN concept kan niet bron- én pakketexact heropend worden; alle bestaande keuzes blijven intact.");
+    } finally {
+      busy = false; input.disabled = false; peerInput.disabled = false;
+      peerDraftOpen.disabled = !peerPreview;
+    }
+  });
+
   peerAgenda.addEventListener("click", () => {
     const plan = peerPreview;
     if (!plan || busy) return report("HOLD — er is geen actuele bronexacte HUMAN bespreeklijst.");
