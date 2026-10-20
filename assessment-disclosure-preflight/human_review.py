@@ -15,7 +15,6 @@ import os
 from pathlib import Path
 import stat
 import sys
-import tempfile
 
 from preflight import Hold, KINDS, require
 
@@ -182,41 +181,47 @@ def human_counts(answers: list[dict], minimum: int) -> str:
 
 
 def publish(output_dir: str, filename: str, content: str | bytes) -> None:
-    """Publish only complete PRIVATE output; never replace an old handoff."""
-    directory = Path(output_dir)
+    """Exclusive PRIVATE publish entirely inside one previously opened safe dirfd.
+
+    Refuses a directory symlink, wrong owner/mode, existing final name or
+    incomplete publication. Stage and final are on the same directory inode.
+    """
+    dirfd = -1
     stage = None
-    published = None
+    created = False
     try:
-        info = os.lstat(directory)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        dirfd = os.open(output_dir, flags)
+        info = os.fstat(dirfd)
         require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
                 and info.st_mode & 0o077 == 0)
-        fd, tempname = tempfile.mkstemp(prefix=".lightup-human-private-", dir=directory)
-        stage = Path(tempname)
+        require(filename in (TEMPLATE, REPORT, SUMMARY, VAULT))
+        stage = ".lightup-human-private-" + os.urandom(16).hex()
+        fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                     getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=dirfd)
         with os.fdopen(fd, "wb") as stream:
             stream.write(content if type(content) is bytes else content.encode("utf-8"))
             stream.flush()
             os.fsync(stream.fileno())
-        target = directory / filename
-        os.link(stage, target)
-        published = target
-        dirfd = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(dirfd)
-        finally:
-            os.close(dirfd)
-    except (OSError, ValueError):
-        if published is not None:
+        os.link(stage, filename, src_dir_fd=dirfd, dst_dir_fd=dirfd,
+                follow_symlinks=False)
+        created = True
+        os.fsync(dirfd)
+    except (OSError, ValueError, TypeError):
+        if created and dirfd >= 0:
             try:
-                published.unlink()
+                os.unlink(filename, dir_fd=dirfd)
             except OSError:
                 pass
         raise Hold("HOLD: exclusive PRIVATE output rejected") from None
     finally:
-        if stage is not None:
+        if stage is not None and dirfd >= 0:
             try:
-                stage.unlink()
+                os.unlink(stage, dir_fd=dirfd)
             except OSError:
                 pass
+        if dirfd >= 0:
+            os.close(dirfd)
 
 
 def main(argv: list[str] | None = None) -> int:
