@@ -691,3 +691,55 @@ independent privacy/security/browser reviews, #177/#182/#829, current
 separately authenticated client/operator consent with action-time revocation,
 and explicit HUMAN GO are unchanged. Project remains Incubate M3/M7 PLAN/LAB
 ONLY DRAFT/HOLD. No QA/regression/test suites written or executed.
+
+## Resumable PRIVATE operator workspace (20 October)
+
+**New operator actions 37–39** solve the previous limitation: 36 separate
+source-native workflows had to be re-entered after the terminal closed.
+The native implementation is [private_session.py](private_session.py),
+[session_console.py](session_console.py) and
+[session_history.py](session_history.py). These features NEVER run a source
+producer automatically and never collect the actual original PRIVATE lab
+source, findings, answers, credentials, passwords or HUMAN notes.
+
+- **37 Save PRIVATE:** Choose an **existing** 0700 owner-only directory
+  outside the checkout, an unused unique folder name and explicitly type
+  `SAVE PRIVATE`. A new 0700 workroom contains `PRIVATE-SESSION.json` (0600)
+  with a strict allowlist of all current operator **path references only**,
+  literal-false authority flags and `REVIEW_ONLY` status. Also creates a
+  scriptless, network-denying `OPEN-PRIVATE.html` with local `file:` bookmarks
+  to **existing** source-owner-produced PRIVATE HTML workrooms. Unavailable
+  or non-private original pages are not linked. No copied PRIVATE evidence.
+- **38 Restore PRIVATE:** Select that original owner-only 0600 JSON from
+  its 0700 folder and explicitly type `RESTORE PRIVATE`. All expected path
+  fields and literal-false authority flags are re-admitted atomically, with
+  refusal for altered schemas, duplicate JSON members, wrong owner/mode,
+  hardlinks, changed bytes and unsafe/bounded paths. Only **entered local
+  path references** are restored; no original inputs are opened, validated,
+  executed, shared or trusted. Any subsequent original operation still
+  re-admits source and requires its own separate explicit HUMAN action.
+- **39 Compare saved workspaces:** Choose 2–8 distinct original PRIVATE
+  operator session JSONs in **operator-declared order**, a different unused
+  private output folder and type `REVIEW ONLY`. Creates a new 0600 scriptless
+  `OPEN-PRIVATE.html` showing which path fields were added, cleared or changed
+  and links to source-owned PRIVATE launcher pages where still available.
+  It omits actual paths, source bytes and private content. Its ordering is
+  not verified time, and the same path does not prove unchanged source bytes.
+
+**Confidentiality:** The 0600 PRIVATE-SESSION.json still contains path names,
+which can reveal clients, engagements or devices even though there are no
+source contents. Keep both JSON and launcher strictly on a trusted local
+approved device, do not sync/upload/email them. These files are intentionally
+plaintext; operator-supplied filesystem privacy is a prerequisite, not an
+assertion of cryptographic security or genuine identity authentication.
+Browser link traversal is a local manual action, never a target instruction.
+
+Source code is portable and has no runtime dependency beyond Python 3 on
+an approved PRIVATE host. The portable HTML-only ZIP does not contain
+resumable operator sessions, since those are intentionally generated locally
+for explicitly entered PRIVATE paths. Previous session snapshots are never
+overwritten and nothing in these features confers original owner/client/
+operator consent or HUMAN GO. Original CI/security/privacy/browser and
+#177/#182/#829 HOLD gates remain mandatory, as do revocation-at-use and
+original separate authenticated client/operator authorization. No testsuites,
+scans, grants, retests, recipient transmission or unattended tasks created.
