@@ -66,10 +66,11 @@ def read_owner_file(path, limit):
     if not p.is_absolute():
         reject("PRIVATE HOLD: absolute path required")
     with open_dir(str(p.parent)) as parent:
-        fd = os.open(p.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=parent.fd)
+        fd = os.open(p.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, dir_fd=parent.fd)
         try:
             info = os.fstat(fd)
-            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o077 or info.st_size > limit:
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or
+                    info.st_mode & 0o077 or info.st_nlink != 1 or info.st_size > limit):
                 reject("PRIVATE HOLD: source file must be owner-only regular and bounded")
             chunks = []
             total = 0
