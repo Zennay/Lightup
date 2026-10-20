@@ -16,7 +16,7 @@
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
-  let seriesId = "", exportedPlan = false;
+  let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -105,6 +105,7 @@
     const severity=$("severity").value,stage=$("stage").value,status=$("status").value;
     const q=$("query").value.trim().toLocaleLowerCase();
     return items.filter(r=>{
+      if(selectedGroup!==null && r.group!==selectedGroup)return false;
       if(severity && r.severity!==severity)return false;
       if(stage && r.stage !== (stage==="(blank)"?"":stage))return false;
       const p=plan.get(r.ordinal);
@@ -158,6 +159,7 @@
       body.append(tr);
     });
     renderAgenda();
+    renderWorkload();
   }
   function eventIntervals(from=plan){
     return items.filter(r=>from.has(r.ordinal)).map(r=>{
@@ -266,6 +268,48 @@
       body.append(tr);
     }
   }
+  function renderWorkload(){
+    if(!active)return;
+    const colliding=collisionIds(),now=Date.now(),groups=new Map();
+    for(const r of items){
+      const name=r.group||"",slot=plan.get(r.ordinal),g=groups.get(name)||{
+        name,rows:0,unscheduled:0,past:0,blocked:0,collisions:0,next:Infinity
+      };
+      g.rows++;
+      if(!slot)g.unscheduled++;
+      if(r.stage==="blocked")g.blocked++;
+      if(colliding.has(r.ordinal))g.collisions++;
+      if(slot){
+        const at=eventDate(slot.day,slot.time).getTime();
+        if(at<now)g.past++;else g.next=Math.min(g.next,at);
+      }
+      groups.set(name,g);
+    }
+    const q=$("workloadQuery").value.trim().toLocaleLowerCase();
+    const visible=Array.from(groups.values()).filter(g=>!q||g.name.toLocaleLowerCase().includes(q))
+      .sort((a,b)=>b.unscheduled-a.unscheduled || b.collisions-a.collisions || b.rows-a.rows || a.name.localeCompare(b.name));
+    const pages=Math.max(1,Math.ceil(visible.length/40));
+    workloadPage=Math.max(0,Math.min(workloadPage,pages-1));
+    $("workloadPrev").disabled=workloadPage===0;$("workloadNext").disabled=workloadPage>=pages-1;
+    $("workloadSummary").textContent=visible.length+" HUMAN groups in this view · "+items.length+" original HUMAN rows · page "+(workloadPage+1)+" of "+pages+".";
+    $("focusedGroup").textContent=selectedGroup===null?"All HUMAN groups":"Filtering planner by HUMAN group: "+(selectedGroup||"(unassigned)");
+    const tbody=$("workloadRows");tbody.replaceChildren();
+    for(const g of visible.slice(workloadPage*40,workloadPage*40+40)){
+      const tr=dom("tr"),cell=dom("td"),button=dom("button","Focus group","ghost");
+      button.type="button";
+      button.addEventListener("click",()=>{
+        selectedGroup=g.name;page=0;
+        $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
+        render();$("desk").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      cell.append(button);
+      tr.append(dom("td",g.name||"(unassigned)"),dom("td",String(g.rows)),
+        dom("td",String(g.unscheduled)),dom("td",String(g.past)),
+        dom("td",String(g.blocked)),dom("td",String(g.collisions)),
+        dom("td",Number.isFinite(g.next)?new Date(g.next).toLocaleString():"—"),cell);
+      tbody.append(tr);
+    }
+  }
   function restore(parsed){
     const v2=JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD_V2);
     hold(v2 || JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD));
@@ -291,12 +335,12 @@
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
-    items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;
-    $("desk").hidden=false;$("agenda").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
+    $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";$("tz").textContent=zone;
-    $("agendaHorizon").value="7";$("agendaQuery").value="";
+    $("agendaHorizon").value="7";$("agendaQuery").value="";$("workloadQuery").value="";
     render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
   async function onRestore(file){
@@ -375,14 +419,18 @@
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
-    items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;
-    $("desk").hidden=true;$("agenda").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
+    $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     $("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
   hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
+  hook("workloadQuery","input",()=>{workloadPage=0;renderWorkload();});
+  hook("workloadPrev","click",()=>{workloadPage--;renderWorkload();});
+  hook("workloadNext","click",()=>{workloadPage++;renderWorkload();});
+  hook("clearGroup","click",()=>{selectedGroup=null;page=0;render();$("desk").scrollIntoView({behavior:"smooth",block:"start"});});
   hook("agendaPrev","click",()=>{agendaPage--;renderAgenda();});
   hook("agendaNext","click",()=>{agendaPage++;renderAgenda();});
   hook("conflictFocus","click",()=>{$("agendaHorizon").value="conflicts";agendaPage=0;renderAgenda();$("agenda").scrollIntoView({behavior:"smooth",block:"start"});});
