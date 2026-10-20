@@ -145,10 +145,9 @@ def build(packets: list[str], final_room: str, handoff_room: str, prior_batch: s
     reopen.inspect(packets, final_room, handoff_room, prior_batch)
     if prior_chain:
         import lab_review_team_continue_reopen as continued_reopen
-        for idx, previous in enumerate(prior_chain):
-            continued_reopen.inspect(
-                packets, final_room, handoff_room, prior_batch, str(previous),
-                prior_continuations=tuple(str(x) for x in prior_chain[:idx]))
+        continued_reopen.inspect(
+            packets, final_room, handoff_room, prior_batch, str(prior_chain[-1]),
+            prior_continuations=tuple(str(x) for x in prior_chain[:-1]))
     previous_source = prior_chain[-1] if prior_chain else prior_room
     previous_filename = ("PRIVATE-HUMAN-CONTINUED-CANDIDATE.csv" if prior_chain
                          else "PRIVATE-HUMAN-CANDIDATE.csv")
