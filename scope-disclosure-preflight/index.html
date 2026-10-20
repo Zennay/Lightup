@@ -51,6 +51,16 @@
 <div class="actions"><button id="exportText" disabled type="button">Export redacted .txt</button><button id="exportReceipt" disabled type="button" class="secondary">Export PRIVATE counts receipt</button></div>
 <div id="exportStatus" class="status" aria-live="polite">Exports are locked until explicit confirmation.</div>
 </section>
+<section class="card" aria-labelledby="feedback-title">
+<h2 id="feedback-title"><span>04</span> Review PRIVATE recipient feedback</h2>
+<p>Import a separate response only after preparing the exact current redacted text. The response must match its SHA-256 and byte length. Notes are <strong>unverified HUMAN assertions</strong>; no client approval, identity, grant or consent is inferred or applied.</p>
+<label for="humanReplyFile">PRIVATE HUMAN follow-up JSON (maximum 4 KiB)</label><input type="file" id="humanReplyFile" accept=".json,application/json">
+<div class="actions"><button id="importHuman" type="button" disabled>Read source-bound HUMAN feedback</button></div>
+<div id="humanReturnStatus" class="status" role="status" aria-live="polite">Prepare the exact redacted preview before importing feedback.</div>
+<p id="humanReturnOutcome"></p>
+<label for="humanReturnNote">Received PRIVATE HUMAN note — read-only</label>
+<textarea id="humanReturnNote" readonly spellcheck="false" rows="4"></textarea>
+</section>
 </main>
 <footer><a href="./verify.html">Open recipient byte-comparison screen</a> · Offline human preparation only · no network, persistence, grants, scans, targets, or automatic execution. Keep originals private and unchanged.</footer>
 </body></html>
