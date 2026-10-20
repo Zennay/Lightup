@@ -24,8 +24,14 @@ def require(ok: bool, msg: str) -> None:
     reply.require(ok, msg)
 
 def canonical(obj: dict) -> bytes:
+    """Emit native browser-ordered compact JSON accepted by strict_json.
+
+    The recipient's native decoder intentionally rejects alternate key
+    serialization, including sort_keys=True. Preserve insertion order for
+    BOTH the encrypted HUMAN plaintext and its final .luhr envelope.
+    """
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"),
-                      sort_keys=True, allow_nan=False).encode("utf-8")
+                      allow_nan=False).encode("utf-8")
 
 def rotate(original: Path, previous: Path, destination: Path) -> None:
     require(original.is_absolute() and previous.is_absolute()
