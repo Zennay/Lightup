@@ -1400,7 +1400,7 @@ only assigned selected team decisions replaced),
 change Boolean, no question content), and
 `PRIVATE-HUMAN-MULTITEAM-RECEIPT.json` (private unsigned original source
 fingerprint and all authority flags false). Unreturned teams remain unchanged:
-**absence is not consent or approval**. The native original HUMAN Studio
+**absence is not consent or approval. The PRIVATE HTML explicitly lists each originally assigned team without a response and its unchanged HUMAN task count; the unsigned PRIVATE receipt separately records these omitted team slots**. The native original HUMAN Studio
 option 58 must be used for fresh manual finalization. No automatic task send,
 scan, auth, lab action, grant, source approval or deploy occurs.
 
