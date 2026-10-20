@@ -73,6 +73,19 @@
       card.appendChild(element("p", "Original HUMAN requested next action: " + (item.next_action || "None declared")));
       card.appendChild(element("small", "Original HUMAN state: " + item.stage +
         " · Due: " + (item.due || "unplanned") + ". No authenticated original case identity."));
+      if (Array.isArray(seed.comparison_slots) && Array.isArray(seed.comparison_slots[i])) {
+        const existing = seed.comparison_slots[i];
+        card.appendChild(element("h3", "Earlier self-declared PRIVATE HUMAN reply files (not verified reviewers)"));
+        for (const claimed of existing) {
+          const summary = document.createElement("details");
+          const head = element("summary", "Local reply file " + claimed.file_slot + ": " + claimed.status);
+          summary.appendChild(head);
+          summary.appendChild(element("p", "Self-declared HUMAN answer: " + (claimed.answer || "None recorded")));
+          summary.appendChild(element("p", "Self-declared clarification: " + (claimed.question || "None recorded")));
+          card.appendChild(summary);
+        }
+        card.appendChild(element("small", "Only HUMAN statements from previously admitted private encrypted files. Matching words do not establish independent reviewers or findings. Coordinator choices start independently blank."));
+      }
       const select = document.createElement("select");
       select.setAttribute("aria-label", "HUMAN reply status " + (i + 1));
       for (const [value, title] of stages) {
@@ -205,6 +218,7 @@
         responses: rows.map(r => Object.assign({}, r))
       });
       delete response.original_items; // Never echo original selected private actions/notes in returned .luhr.
+      delete response.comparison_slots; // Private earlier HUMAN answer files are display-only, never echoed.
       const clear = encoder.encode(JSON.stringify(response));
       if (clear.length > 262144) throw new Error("PRIVATE HUMAN reply payload exceeds bound");
       const cipher = new Uint8Array(await crypto.subtle.encrypt({
