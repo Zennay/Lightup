@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Yl+O2qnZETk+ZKB3TCva1V/y3+0moffr/HXBu/XZmgM=' 'sha256-aYBURXKz2oJOxoQROTSrHKr+QbE3UV+5fhBOgIya8no='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Yl+O2qnZETk+ZKB3TCva1V/y3+0moffr/HXBu/XZmgM=' 'sha256-tX2MLoH4puHkD/jEEhEThDD2mLOhOq4V9bGrIFnSjvI='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp — Scope Intake Matrix (draft only)</title>
 <style>
 :root{color-scheme:dark;--bg:#0c1322;--panel:#151f32;--panel2:#1b2940;--line:#35455d;--ink:#eef4ff;--dim:#aebed0;--accent:#75e0c2;--warning:#ffcd7c;--danger:#ff8e99}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1000px 460px at 65% -20%,#214b5a,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}header{padding:24px clamp(18px,5vw,72px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:13px;letter-spacing:.15em;color:var(--accent);font-weight:800}.brand strong{display:block;font-size:29px;letter-spacing:-.035em;color:var(--ink)}.fence{border:1px solid #936d38;background:#392c1c;color:#ffe1ad;border-radius:40px;padding:8px 15px;font-weight:750;font-size:12px}main{max-width:1460px;margin:auto;padding:28px clamp(18px,5vw,72px) 80px}.intro{max-width:900px;color:var(--dim);margin:0 0 24px}h2{font-size:18px;margin:0 0 17px}h3{font-size:15px;margin:0 0 12px}.section{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px;margin-bottom:21px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.wide{grid-column:span 2}label{display:block;font-weight:650;font-size:13px;color:#dce6f1}input,select,textarea{background:var(--panel2);border:1px solid #4b5c74;border-radius:8px;color:var(--ink);font:inherit;padding:9px 10px;min-width:0;width:100%;margin-top:6px}textarea{min-height:73px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}button{font:inherit;cursor:pointer;border-radius:9px;padding:10px 14px;border:1px solid #647792;background:#25364e;color:var(--ink);font-weight:700}button.primary{background:var(--accent);border-color:var(--accent);color:#091e24}button.danger{color:#ffc5cd;border-color:#9b5363}button:hover{filter:brightness(1.16)}button:focus-visible{outline:3px solid var(--warning)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:12px;border-radius:10px;background:#22314a;border:1px solid var(--line)}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--dim)}.muted{color:var(--dim)}.warning{color:var(--warning)}.danger-text{color:var(--danger)}.table-wrap{overflow-x:auto}table{border-collapse:separate;border-spacing:0;width:100%;min-width:960px}th{text-align:left;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);padding:10px 7px}td{vertical-align:top;border-bottom:1px solid #2c3e56;padding:7px}td input,td select{font-size:13px;margin:0;padding:8px}th:nth-child(1){width:25%}th:nth-child(2){width:12%}th:nth-child(3){width:19%}th:nth-child(4){width:11%}th:nth-child(5){width:14%}th:nth-child(6){width:13%}.row-tools{display:flex;gap:4px}.row-tools button{font-size:12px;padding:7px}.privacy{padding:13px;border-left:3px solid var(--warning);background:#3c3025;margin-top:16px}.notice{padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);margin:12px 0;white-space:pre-wrap}.notice[hidden],section[hidden],div[hidden]{display:none!important}.compare-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.compare-items pre{overflow-wrap:anywhere;white-space:pre-wrap;background:#0e192a;border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}.small{font-size:12px}.right{margin-left:auto}.filter{max-width:290px}.footer{margin-top:20px;font-size:12px;color:var(--dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.compare-items{grid-template-columns:1fr}.section{padding:16px}}@media print{body{background:white;color:black}header,.actions,.privacy,.footer,#compare-section,#file-import,#file-compare,.row-tools,.filter{display:none!important}main{padding:0}.section{break-inside:avoid;border:1px solid #ccc;background:white}input,select,textarea{border:0;background:white;color:black;padding:3px}th,td,.muted,.stat span{color:black}.stat{background:white;color:black}.table-wrap{overflow:visible}table{min-width:unset}}
@@ -1283,6 +1283,7 @@
   let source = null;
   let human = new Map();
   let privateNotes = new Map();
+  let requestHuman = new Map();
   let digestHex = null;
   let rawPrivateSource = null;
 
@@ -1511,6 +1512,7 @@
     rawPrivateSource = null;
     human.clear();
     privateNotes.clear();
+    requestHuman.clear();
     $("casebook-selected").hidden = true;
     $("casebook-selected").textContent = "";
     renderCases();
@@ -1531,6 +1533,7 @@
     $("casebook-risk-review-count").textContent = source ?
       source.declared_counts.risk_provenance_hold + source.declared_counts.pending_risk_review : 0;
     $("casebook-case-attention-count").textContent = source?.declared_counts.case_attention_hold ?? 0;
+    renderRequestInbox();
     const query = $("casebook-filter").value.trim().toLowerCase();
     const category = $("casebook-category").value;
     const tbody = $("casebook-cases"); tbody.replaceChildren();
@@ -1569,6 +1572,70 @@
       tr.append(tools);
       tbody.append(tr);
     }
+  }
+
+  function sourceRequests() {
+    if (!source) return [];
+    return source.requests.map(req => {
+      const linked = source.grants.filter(g => g.approved_request_id === req.request_id);
+      let attention;
+      if (req.status === "approved" && !req.decision_recorded) {
+        attention = "HOLD_APPROVED_BUT_DECISION_ABSENT";
+      } else if (linked.some(g => g.request_link_observation.startsWith("HOLD_"))) {
+        attention = "HOLD_ORIGINAL_GRANT_LINK";
+      } else if (req.status === "approved" && !linked.length) {
+        attention = "HUMAN_APPROVED_REQUEST_NO_GRANT_RECORD";
+      } else if (req.status === "approved") {
+        attention = "ORIGINAL_LINKS_RECORDED_UNVERIFIED";
+      } else if (req.status === "under_review" || req.status === "submitted") {
+        attention = "ORIGINAL_REQUEST_NOT_REVIEWED_TO_APPROVAL";
+      } else {
+        attention = "ORIGINAL_REQUEST_REJECTED_UNVERIFIED";
+      }
+      return {req, linked, attention};
+    });
+  }
+
+  function renderRequestInbox() {
+    const tbody = $("casebook-requests"); tbody.replaceChildren();
+    const query = $("request-filter").value.trim().toLowerCase();
+    const category = $("request-category").value;
+    const lines = sourceRequests();
+    let shown = 0;
+    for (const line of lines) {
+      const {req,linked,attention} = line;
+      if (query && !(req.request_id + " " + req.status + " " + attention).toLowerCase().includes(query)) continue;
+      if (category === "unbound" && !(req.status === "approved" && !linked.length)) continue;
+      if (category === "hold" && !attention.startsWith("HOLD_")) continue;
+      if (category === "pending" && !["under_review","submitted","rejected"].includes(req.status)) continue;
+      const tr = document.createElement("tr");
+      for (const value of [
+        req.request_id,
+        req.status + (req.decision_recorded ? " / decision recorded (UNVERIFIED)" : " / no stored decision"),
+        req.requested_mode + " / " + req.requested_risk,
+        String(linked.length) + " stored links (NOT AUTHORITY)",
+        attention
+      ]) {
+        const td = document.createElement("td");td.textContent=value;tr.append(td);
+      }
+      const td = document.createElement("td");
+      const sel = document.createElement("select");
+      sel.setAttribute("aria-label","Local HUMAN stage for original request " + req.request_id);
+      for (const [value,label] of Object.entries(VALID_HUMAN)) {
+        const opt = document.createElement("option"); opt.value=value; opt.textContent=label; sel.append(opt);
+      }
+      sel.value = requestHuman.get(req.request_id) || "unreviewed";
+      sel.addEventListener("change",event => {
+        requestHuman.set(req.request_id,event.target.value);
+        show("Original request HUMAN stage updated only in browser memory — no approval or source mutation.");
+      });
+      td.append(sel);tr.append(td);tbody.append(tr);shown++;
+    }
+    $("casebook-request-status").textContent = source ?
+      shown + " original request rows shown. " + lines.filter(x =>
+        x.req.status === "approved" && !x.linked.length).length +
+      " approved-looking original request(s) have no stored grant binding in this source; this is NOT permission or proof of absent grants." :
+      "No original request source is loaded. This is NOT an authorization.";
   }
 
   function inspectCase(id) {
@@ -1660,6 +1727,8 @@
   const HANDOFF_KEYS = ["schema", "posture", "cipher", "kdf", "iterations", "salt_b64",
     "nonce_b64", "ciphertext_b64"];
   const CONTENT_KEYS = ["schema", "posture", "source_raw", "source_sha256", "human_stages",
+    "request_stages", ...FALSE_AUTHORITY];
+  const LEGACY_CONTENT_KEYS = ["schema", "posture", "source_raw", "source_sha256", "human_stages",
     ...FALSE_AUTHORITY];
 
   function mustHavePrivateCrypto() {
@@ -1743,6 +1812,9 @@
         source_raw: rawPrivateSource,
         source_sha256: await digestOfRaw(rawPrivateSource),
         human_stages: humanStages,
+        request_stages: source.requests.map(req => ({
+          request_id: req.request_id, stage: requestHuman.get(req.request_id) || "unreviewed"
+        })),
         ...Object.fromEntries(FALSE_AUTHORITY.map(x => [x,false]))
       };
       const plain = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
@@ -1817,7 +1889,7 @@
         throw Error("Decrypted original Casebook handoff is not canonical UTF-8.");
       }
       const payload = parseDuplicateSafeJson(payloadText);
-      if (!sameKeys(payload,CONTENT_KEYS) ||
+      if (!(sameKeys(payload,CONTENT_KEYS) || sameKeys(payload,LEGACY_CONTENT_KEYS)) ||
           payloadText !== JSON.stringify(payload,null,2) + "\n" ||
           payload.schema !== HANDOFF_SCHEMA || payload.posture !== "REVIEW_ONLY" ||
           FALSE_AUTHORITY.some(k => payload[k] !== false) ||
@@ -1851,7 +1923,25 @@
         restored.set(record.engagement_id,record.stage);
         if (record.note?.trim()) restoredNotes.set(record.engagement_id,record.note);
       }
-      return {parsed:original,fingerprint:payload.source_sha256,raw:payload.source_raw,stages:restored,notes:restoredNotes};
+      const restoredRequests = new Map();
+      if (payload.request_stages !== undefined) {
+        if (!Array.isArray(payload.request_stages) ||
+            payload.request_stages.length !== original.requests.length) {
+          throw Error("HOLD: original request HUMAN follow-up is incomplete.");
+        }
+        for (let i = 0; i < payload.request_stages.length; i++) {
+          const record = payload.request_stages[i];
+          if (!sameKeys(record, ["request_id","stage"]) ||
+              record.request_id !== original.requests[i].request_id ||
+              !Object.hasOwn(VALID_HUMAN,record.stage) ||
+              restoredRequests.has(record.request_id)) {
+            throw Error("HOLD: original request HUMAN stage identity/order mismatch.");
+          }
+          restoredRequests.set(record.request_id,record.stage);
+        }
+      }
+      return {parsed:original,fingerprint:payload.source_sha256,raw:payload.source_raw,
+        stages:restored,notes:restoredNotes,requestStages:restoredRequests};
     } finally {
       salt.fill(0); iv.fill(0); ciphertext.fill(0); opened?.fill(0); encryptedBytes.fill(0);
     }
@@ -1862,12 +1952,18 @@
     if (!confirm("Export only source-free aggregate counts and local HUMAN stage totals? Small-cohort totals remain sensitive. No original client/record IDs, assets or timestamp included. This is never authorization.")) return;
     const stages = Object.fromEntries(Object.keys(VALID_HUMAN).map(k => [k, 0]));
     for (const c of source.case_overview) stages[human.get(c.engagement_id) || "unreviewed"]++;
+    const requestStages = Object.fromEntries(Object.keys(VALID_HUMAN).map(k => [k, 0]));
+    for (const r of source.requests) requestStages[requestHuman.get(r.request_id) || "unreviewed"]++;
+    const unlinkedApproved = sourceRequests().filter(v =>
+      v.req.status === "approved" && !v.linked.length).length;
     const data = {
       schema: "lightup.scope_intake.casebook_human_counts.v1",
       posture: "REVIEW_ONLY",
       authority: Object.fromEntries(FALSE_AUTHORITY.map(x => [x, false])),
       original_source_counts: {...source.declared_counts},
       local_human_stages: stages,
+      local_original_request_stages: requestStages,
+      approved_requests_without_stored_link_count: unlinkedApproved,
       original_source_authenticated_by_this_browser: false,
       consent_or_permission_granted_by_this_browser: false
     };
@@ -1880,6 +1976,8 @@
     $("clear-casebook").addEventListener("click", () => clearOriginal(true));
     $("casebook-filter").addEventListener("input", renderCases);
     $("casebook-category").addEventListener("change", renderCases);
+    $("request-filter").addEventListener("input", renderRequestInbox);
+    $("request-category").addEventListener("change", renderRequestInbox);
     $("casebook-aggregate").addEventListener("click", exportAggregate);
     $("save-casebook-secure").addEventListener("click", saveEncryptedHandoff);
     $("open-casebook-secure").addEventListener("click", () => $("casebook-secure-file").click());
@@ -1894,8 +1992,11 @@
         rawPrivateSource = result.raw;
         human = result.stages;
         privateNotes = result.notes;
+        requestHuman = result.requestStages;
         $("casebook-filter").value = "";
         $("casebook-category").value = "all";
+        $("request-filter").value = "";
+        $("request-category").value = "all";
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
         renderCases();
@@ -1919,6 +2020,7 @@
         rawPrivateSource = result.raw;
         human.clear();
         privateNotes.clear();
+        requestHuman.clear();
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
         $("casebook-filter").value = "";
@@ -2004,6 +2106,11 @@
 <p class="small warning">Original CASE ID and request/grant lineage remain PRIVATE in this tab only. A prior recorded approval/grant is NOT authentic current consent or permission. No source ID is automatically tied to any untrusted draft asset.</p>
 <div class="table-wrap"><table><thead><tr><th>Original source engagement</th><th>Recorded state</th><th>Recorded grants / risks</th><th>Original source attention</th><th>HUMAN next action</th><th>Local source detail</th></tr></thead><tbody id="casebook-cases"></tbody></table></div>
 <div id="casebook-selected" class="notice" hidden></div>
+<h3>Original approved-request and unbound-request HUMAN inbox (#177 companion)</h3>
+<p class="small muted">Purely local retrospective request/source records. A prior approved request, linked grant, or local HUMAN stage never proves action-time consent, tenant identity, approved scope or execution authority.</p>
+<div class="actions"><label class="filter">Source request filter <input id="request-filter" placeholder="Original request ID or source state" autocomplete="off"></label><label class="filter">Source request attention<select id="request-category"><option value="all">All source requests</option><option value="unbound">Approved without recorded grant binding</option><option value="hold">Recorded link HOLD</option><option value="pending">Pending/not approved</option></select></label></div>
+<div class="table-wrap"><table><thead><tr><th>Original request (PRIVATE)</th><th>Stored decision</th><th>Proposed mode/risk</th><th>Stored grant links</th><th>Source attention (UNVERIFIED)</th><th>Local HUMAN follow-up</th></tr></thead><tbody id="casebook-requests"></tbody></table></div>
+<div class="notice" id="casebook-request-status" role="status">No stored original request data loaded. No authorization can be inferred.</div>
 </section>
 <section class="section" aria-labelledby="result-heading">
 <h2 id="result-heading">05 / Local completeness & handoff</h2>
