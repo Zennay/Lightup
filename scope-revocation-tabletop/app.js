@@ -26,6 +26,7 @@
   const MAX = 64;
   const $ = id => document.getElementById(id);
   let events = [];
+  let baseline = null;
 
   function fresh() {
     return {client:false,operator:false,scope:0,risk:0,window:true,stop:false,attempts:0,lastAttempt:null};
@@ -139,6 +140,36 @@
     ];
     missing.forEach(m=>messages.unshift("Fictief: "+m+"."));
     messages.forEach(t=>needs.append(el("li","",t)));
+    const delta=$("compare-deltas");
+    delta.replaceChildren();
+    $("clear-baseline").disabled=baseline===null;
+    if (baseline === null) {
+      write("baseline-hint","Geen nulmeting vastgelegd.");
+      write("compare-summary","Leg links een fictieve nulmeting vast om veranderingen te vergelijken.");
+    } else {
+      const base=play(baseline).state;
+      const baseMissing=blockers(base);
+      write("baseline-hint","Nulmeting met "+baseline.length+" vaste fictieve stappen vastgelegd; alleen in geheugen.");
+      const countChange=events.length-baseline.length;
+      const first=Math.min(events.length,baseline.length);
+      let divergence=first;
+      for (let i=0;i<first;i++) {if(events[i]!==baseline[i]){divergence=i;break;}}
+      const same=events.length===baseline.length && divergence===first;
+      write("compare-summary",same
+        ? "Huidig scenario is gebeurtenis-voor-gebeurtenis identiek aan de nulmeting."
+        : "Scenario is gewijzigd. Dit is alleen een vergelijking van eigen fictieve invoer, geen claim over echte autorisatie.");
+      const details=[
+        "Verschil aantal gebeurtenissen: "+(countChange>0?"+":"")+countChange,
+        same ? "Geen gewijzigde gebeurtenissen." : "Eerste andere of afwezige gebeurtenis: stap "+(divergence+1),
+        "Oefen-HOLD-punten: nulmeting "+baseMissing.length+" → huidig "+missing.length,
+        "Noodstop: "+(base.stop?"actief":"niet actief")+" → "+(s.stop?"actief":"niet actief"),
+        "Fictieve clientverklaring: "+(base.client?"aanwezig":"ontbreekt")+" → "+(s.client?"aanwezig":"ontbreekt"),
+        "Fictieve operatorverklaring: "+(base.operator?"aanwezig":"ontbreekt")+" → "+(s.operator?"aanwezig":"ontbreekt"),
+        "Scope-/risicoversies: "+(base.scope+1)+"/"+(base.risk+1)+" → "+(s.scope+1)+"/"+(s.risk+1),
+        "Fictieve uitvoerpogingen: "+base.attempts+" → "+s.attempts
+      ];
+      details.forEach(t=>delta.append(el("li","",t)));
+    }
     return {s,steps,missing};
   }
   function feedback(t) { write("feedback",t); }
@@ -147,7 +178,8 @@
     events.push(e); feedback("");render();
   }
   function data() {
-    return {schema:"lightup.fictional.scope-tabletop.v1",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
+    return {schema:"lightup.fictional.scope-tabletop.v2",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
+      baseline_events:baseline===null?null:baseline.slice(),
       authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,
         dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
   }
@@ -172,6 +204,15 @@
       const info=x.event==="DISPATCH_ATTEMPT" ? (x.missing.length?"OEFEN-HOLD":"Alleen fictieve precondities aanwezig, nooit uitvoeren") : TYPES[x.event][1];
       lines.push("| "+(i+1)+" | "+TYPES[x.event][0]+" | "+info+" |");
     });
+    if (baseline!==null) {
+      const before=play(baseline).state;
+      lines.push("","## Wat-als vergelijking (uitsluitend fictief)",
+        "Nulmetingstappen: "+baseline.length+"; actuele stappen: "+events.length,
+        "Oefen-HOLD-aandachtspunten: "+blockers(before).length+" → "+missing.length,
+        "Noodstop: "+(before.stop?"actief":"inactief")+" → "+(s.stop?"actief":"inactief"),
+        "Clientverklaring: "+(before.client?"aanwezig":"ontbreekt")+" → "+(s.client?"aanwezig":"ontbreekt"),
+        "Operatorverklaring: "+(before.operator?"aanwezig":"ontbreekt")+" → "+(s.operator?"aanwezig":"ontbreekt"));
+    }
     lines.push("","## Samenvatting (uitsluitend fictief)",
       "Clientverklaring: "+(s.client?"ingevoerd":"niet geldig"),
       "Operatorverklaring: "+(s.operator?"ingevoerd":"niet geldig"),
@@ -189,16 +230,25 @@
     return lines.join("\n")+"\n";
   }
   function validateImport(text) {
-    if (text.length > 32768 || !text.length) throw new Error("Bestand buiten de toegestane limiet (32 KiB).");
+    if (text.length > 32768 || !text.length) throw new Error("Bestand buiten de 32 KiB limiet.");
     const parsed=JSON.parse(text);
-    if (!parsed || typeof parsed!=="object" || Array.isArray(parsed)) throw new Error("Geen object.");
-    if (!Array.isArray(parsed.events) || parsed.events.length>MAX || parsed.events.some(e=>typeof e!=="string" || !Object.hasOwn(TYPES,e))) throw new Error("Ongeldige fictieve gebeurtenislijst.");
-    if (parsed.schema!=="lightup.fictional.scope-tabletop.v1" || parsed.title!=="Fictief scope-/intrekkingsoefenscenario") throw new Error("Onbekende of niet-fictieve inhoud.");
-    const normalized={schema:parsed.schema,title:parsed.title,events:parsed.events,
-      authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
-    // Byte-canonical own-file-only import: rejects duplicate JSON keys, unknown fields, altered authority flags and malformed formatting.
+    if (!parsed || typeof parsed!=="object" || Array.isArray(parsed)) throw new Error("Geen scenario-object.");
+    const validSeq=x=>Array.isArray(x) && x.length<=MAX &&
+      x.every(e=>typeof e==="string" && Object.hasOwn(TYPES,e));
+    if (!validSeq(parsed.events)) throw new Error("Ongeldige fictieve gebeurtenissen.");
+    if (parsed.title!=="Fictief scope-/intrekkingsoefenscenario") throw new Error("Onbekende titel.");
+    if (parsed.schema!=="lightup.fictional.scope-tabletop.v1" && parsed.schema!=="lightup.fictional.scope-tabletop.v2")
+      throw new Error("Onbekend scenarioformaat.");
+    const v2=parsed.schema==="lightup.fictional.scope-tabletop.v2";
+    if(v2 && parsed.baseline_events!==null && !validSeq(parsed.baseline_events))
+      throw new Error("Ongeldige fictieve nulmeting.");
+    const normalized={schema:parsed.schema,title:parsed.title,events:parsed.events};
+    if(v2) normalized.baseline_events=parsed.baseline_events;
+    normalized.authority={authenticated_client:false,authenticated_operator:false,consent_verified:false,
+      dispatch_allowed:false,release_allowed:false,deploy_allowed:false};
+    // Exact own-export bytes only. Duplicate keys, unknown fields and authority changes fail closed.
     if (JSON.stringify(normalized,null,2)!==text) throw new Error("Niet-canoniek of gewijzigd exportbestand.");
-    return parsed.events.slice();
+    return {events:parsed.events.slice(),baseline:v2 && parsed.baseline_events!==null ? parsed.baseline_events.slice() : null};
   }
   $("load-preset").addEventListener("click",()=>{
     const key=$("preset").value;
@@ -207,6 +257,8 @@
     events=presets[key].slice(); feedback("Fictief voorbeeld geladen.");render();
   });
   $("add-event").addEventListener("click",()=>add($("event-type").value));
+  $("set-baseline").addEventListener("click",()=>{baseline=events.slice();feedback("Fictieve nulmeting in geheugen vastgelegd.");render();});
+  $("clear-baseline").addEventListener("click",()=>{baseline=null;feedback("Nulmeting uit geheugen gewist.");render();});
   $("undo").addEventListener("click",()=>{events.pop();feedback("Laatste gebeurtenis verwijderd.");render();});
   $("clear").addEventListener("click",()=>{if (events.length && !window.confirm("Alle fictieve stappen wissen?")) return;events=[];feedback("Scenario gewist.");render();});
   $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario lokaal aangeboden voor opslag.");});
@@ -219,7 +271,8 @@
       const text=await file.text();
       const next=validateImport(text);
       if (events.length && !window.confirm("Bestaand fictief scenario vervangen door dit bestand?")) return;
-      events=next;feedback("Oorspronkelijke fictieve JSON-indeling exact hersteld.");render();
+      events=next.events;baseline=next.baseline;
+      feedback("Fictieve JSON en optionele nulmeting exact hersteld.");render();
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("print").addEventListener("click",()=>window.print());
