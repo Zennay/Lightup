@@ -34,7 +34,7 @@ DISPOSITION = "REVIEW_ONLY_DRAFT_HOLD"
 WARNING = ("PRIVATE offline software-only, unsigned and non-authorizing. No "
            "authenticated producer, consent, finding, fix, security review, "
            "scan, grant or HUMAN GO. INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD.")
-COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py")
+COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py", "vault.py")
 FILES = frozenset("remediation-human-replies/" + n for n in COMPANION)
 PORTABLE = "LightUp-PRIVATE-HUMAN-Reply-Software-DRAFT-HOLD.zip"
 ORIGINAL_ZIP = "original-scheduler-software-only.zip"
@@ -113,6 +113,20 @@ people or dates.</p>
 cautionary anonymous count receipt are produced only after every original
 and encrypted HUMAN reply packet is admitted completely.</p>
 </section>
+<section><h2>6 · Rotate recipient response encryption with no plaintext intermediate</h2>
+<p>The offline original-bound native <code>vault.py</code> independently
+reads the genuine original selected encrypted HUMAN handoff and already
+encrypted recipient reply, then prompts for a new, separately confirmed
+passphrase. It writes a fresh owner-only <code>.luhr</code> encrypted result
+atomically, with new salt and nonce, no readable HUMAN intermediary and
+without replacing the old reply.</p>
+<pre>python3 remediation-human-replies/vault.py \
+  --handoff "$HOME/lightup-private/selected-human.luhq" \
+  --reply "$HOME/lightup-private/reply-one.luhr" \
+  --output-file "$HOME/lightup-private/reply-one-rotated.luhr"</pre>
+<p>Passphrase rotation protects this newly written local file only;
+it cannot erase other copies or authenticate the sender, original source,
+client consent or actual security findings.</p></section>
 <section><h2>Security and release fence</h2>
 <p>Original exact-head hosted and permanently named VPS CI, source-owner,
 independent privacy/security/browser/crypto reviews, #177/#182/#829,
