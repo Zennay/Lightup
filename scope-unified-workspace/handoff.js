@@ -1105,6 +1105,7 @@
       })),
       warning: "PRIVATE HUMAN review subset only; no source bytes or original authenticity. Separate recipient verification mandatory. Use selective source-exact import; no grant, scan, revocation or release."
     });
+    if (includeNotes) el("shelf-team-private-notes").checked = false; // one download, one deliberate disclosure
     report("REVIEW_ONLY — bronexact PRIVATE HUMAN-teampakket voor uitsluitend " + teams[selectedTeam] +
       " gedownload. Ontvanger kan na onafhankelijke bronselectie via selectieve import terugkoppelen.");
   });
@@ -1151,6 +1152,7 @@
       "Deze PRIVATE brief kan identificeerbare bronmetadata bevatten: vertrouw uitsluitend apart geauthenticeerde ontvangers via een beschermd kanaal.", "");
     download(new Blob([lines.join("\n")], {type:"text/markdown;charset=utf-8"}),
       "lightup-scope-PRIVATE-HUMAN-team-" + team + ".md");
+    if (includeNotes) el("shelf-team-private-notes").checked = false;
     report("REVIEW_ONLY — precies " + chosen.length + " uitsluitend voor " + teams[team] +
       " geselecteerde HUMAN dossiers lokaal in PRIVATE brief; andere teams uitgesloten.");
   });
@@ -1201,6 +1203,10 @@
       "Originele security/privacy/browserreview, exact-head hosted en named-VPS CI, aparte actuele client/operator-consent met revocation-at-use en expliciete HUMAN GO blijven vereist.",
       "Dit document is vertrouwelijk en ongetekend; verspreid uitsluitend via een passend apart geauthenticeerd privé-kanaal.", "");
     download(new Blob([lines.join("\n")], {type:"text/markdown;charset=utf-8"}), "lightup-scope-PRIVATE-HUMAN-team-brief.md");
+    if (includePrivateNotes) {
+      el("shelf-all-private-notes").checked = false;
+      renderDisclosurePreview();
+    }
     report("REVIEW_ONLY — PRIVATE HUMAN brief van alle teams lokaal gedownload, notitieteksten " + (includePrivateNotes ? "bewust opgenomen" : "afgeschermd") + "; bronbestanden niet gewijzigd.");
   });
   sourceCopy.addEventListener("click", () => {
@@ -1218,6 +1224,10 @@
         private_human_note: includePrivateNotes ? e.note : "" })),
       warning: "PRIVATE unsigned V2 HUMAN inventory; notes omitted unless explicitly enabled. Original files and producer identity are not included or authenticated."
     });
+    if (includePrivateNotes) {
+      el("shelf-all-private-notes").checked = false;
+      renderDisclosurePreview();
+    }
     report("REVIEW_ONLY — privé broninventaris van alle teams gedownload, notitieteksten " + (includePrivateNotes ? "bewust opgenomen." : "veilig afgeschermd."));
   });
   // A completed comparison can leave a visual table even though its pending
