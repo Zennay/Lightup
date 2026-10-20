@@ -301,6 +301,16 @@ document.getElementById("open-encrypted").addEventListener("change",event=>{
  void openEncrypted(file);
 });
 
+function disposeLocalWorkroom(){
+ if(!window.confirm("Discard all UNSAVED local HUMAN selection choices and passphrases? Existing downloaded PRIVATE files and this HTML's source-ordinal metadata remain outside this action."))return;
+ for(let i=0;i<states.length;i++)states[i]={yes:false,priority:"routine",question:""};
+ clearPasswords();
+ const resume=document.getElementById("restore-file"),encrypted=document.getElementById("open-encrypted");
+ resume.value="";encrypted.value="";search.value="";severity.value="all";onlySelected.checked=false;
+ currentPage=0;render();
+ showError("Local unsaved HUMAN selections discarded. Previously exported downloads and browser memory disposal are NOT cryptographically guaranteed.");
+}
+document.getElementById("dispose-local").addEventListener("click",disposeLocalWorkroom);
 for(const x of [search,severity,onlySelected])x.addEventListener(x===search?"input":"change",()=>{currentPage=0;render();});
 document.getElementById("prev").addEventListener("click",()=>{currentPage--;render();});
 document.getElementById("next").addEventListener("click",()=>{currentPage++;render();});
@@ -355,6 +365,7 @@ def source_free_studio(source: dict) -> bytes:
         "<div class='toolbar'><label>PRIVATE passphrase (12+ chars) <input id='private-pass' type='password' autocomplete='off'></label>"
         "<label>Confirm passphrase to save <input id='private-pass-confirm' type='password' autocomplete='off'></label>"
         "<button id='save-encrypted' type='button'>Save encrypted PRIVATE draft</button>"
+        "<button id='dispose-local' class='secondary' type='button'>Discard unsaved local choices</button>"
         "<label>Open encrypted PRIVATE draft <input id='open-encrypted' type='file' accept='.luec,application/octet-stream'></label></div>"
         "<p id='error' class='warning' role='alert' hidden></p></section>"
         "<main id='entries'></main><nav class='panel page'>"
