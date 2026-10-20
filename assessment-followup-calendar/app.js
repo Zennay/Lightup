@@ -186,6 +186,7 @@
       const previous=plan.get(event.ordinal);
       let target=event;
       if(occupied.some(o=>target.start<o.end && o.start<target.end)){
+        if(proposal.size>=32){occupied.push(target);continue;}
         let selected=null;
         const base=eventDate(previous.day,"12:00");
         if(previous.day<startToday)base.setTime(eventDate(startToday,"12:00").getTime());
@@ -217,10 +218,10 @@
     if(!proposal.size){inform("No schedule changes required.");return;}
     const preview=Array.from(proposal).slice(0,5).map(([ordinal,slot])=>
       "#"+ordinal+" → "+slot.day+" "+slot.time).join("\\n");
-    if(!confirm("Propose "+proposal.size+" changes to overlapping PRIVATE HUMAN reminder dates? First existing appointment retains its slot. Proposed times are weekdays 09:00–18:00, non-overlapping within THIS LOCAL WORKROOM only. No external calendar has been checked or changed.\\n\\n"+preview))return;
+    if(!confirm("Propose "+proposal.size+" changes (maximum 32 per confirmation) to overlapping PRIVATE HUMAN reminder dates? First existing appointment retains its slot. Proposed times are weekdays 09:00–18:00, non-overlapping within THIS LOCAL WORKROOM only. No external calendar has been checked or changed.\\n\\n"+preview))return;
     for(const [ordinal,slot] of proposal)plan.set(ordinal,slot);
     changed=true;exportedPlan=false;agendaPage=0;render();
-    inform("Rescheduled "+proposal.size+" HUMAN-only reminder proposals; save the updated PRIVATE plan before calendar export.");
+    inform("Rescheduled "+proposal.size+" HUMAN-only reminder proposals. Remaining overlaps are shown; review and repeat if needed. Save the PRIVATE plan before calendar export.");
   }
   function renderAgenda(){
     if(!active)return;
