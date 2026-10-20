@@ -37,8 +37,10 @@ Native checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
 options 21/22. The same console now has 31 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
-(options 23-31); these source-specific native workrooms are generated
-locally only after admission of actual ORIGINAL customer source records.
+(options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
+suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
+and drift (35-36). These source-specific native workrooms are generated
+locally only after admission of actual ORIGINAL PRIVATE local records.
 This ZIP is browser software only; it intentionally does NOT embed any
 native Python programs, generated source-specific studio, or client sources.
 A missing required original input means HOLD; never fabricate findings.
