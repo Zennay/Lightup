@@ -39,6 +39,20 @@ python3 assessment-retention-desk/vault_history.py \
 
 All outputs are new, source-bound 0600 scriptless PRIVATE HUMAN history inside a pre-existing private 0700 directory. No decrypted receipt, source body, entire SHA, password, grant or verified finding is published. A crypto envelope authenticates only its own bytes, never their real source/client.
 
+## Native encrypted source-drift briefing (including changed original bytes)
+
+The companion `vault_drift.py` compares two original browser `.lurt` HUMAN vaults against **two separately reselected sets of original actual bytes**. It re-hashes the earlier and current source files independently before reporting added/absent/unchanged SHA identities and HUMAN-only differences. A missing source is **never** interpreted as deleted, fixed or authorized. As with encrypted history, no plaintext receipt is saved and the operator enters each vault password interactively.
+
+```sh
+python3 assessment-retention-desk/vault_drift.py \
+  --output /private/operator/private-encrypted-source-drift.html \
+  --old-source-file /private/original-previous.json \
+  --new-source-file /private/original-current.json \
+  /private/operator/review-before.lurt \
+  /private/operator/review-after.lurt
+```
+
+Native AES-GCM support is an **optional, separate dependency** declared in `assessment-retention-desk/requirements-native.txt`; no changes to the original LightUp production dependency graph or CI. The portable browser workroom has no Python dependency. Install a trusted packaged version of `cryptography` deliberately in a private/offline environment before using native vault history/drift.
 ## Opt-in private tentative review calendar
 
 The browser can export an all-day `.ics` calendar grouped by operator-entered HUMAN review date and count. It contains **no aliases, original SHA, source path, notes, targets, evidence or HUMAN actions**. Every event is PRIVATE, TENTATIVE and nonblocking; calendar applications may still sync imported calendars to the cloud. Review-date/count combinations can identify small groups; export requires separate explicit privacy confirmation. No calendar API, automatic import, recipient dispatch or authorization is performed.
