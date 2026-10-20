@@ -626,3 +626,37 @@ The preview is **not** a new security verdict, disclosure, client
 consent, reviewer authentication or release; it makes the output the
 human is deciding to encrypt understandable before the irreversible
 local download.
+
+
+## Seventh product: reversible HUMAN selections and scoped HOLD
+
+The offline [two-reviewer studio](reconcile-standalone.html) now provides
+a real **memory-only HUMAN decision history**, not just a one-way export.
+
+- Every explicit reviewer A/B/HOLD change creates a reversible checkpoint.
+  HUMAN reason typing is grouped into short editing bursts to keep the
+  40-step in-memory history practical. A restored original source-bound
+  decision CSV also forms an undo step. Undo and redo never take actions
+  against assessment targets, users, clients, networks or remote systems.
+- Filter to matching original ordinals by reviewer-text differences,
+  stage, status, or local search. **Set selected matching rows to HOLD**
+  shows exactly which original ordinals would be affected and requires
+  affirmative HUMAN confirmation. It changes only currently matching
+  **explicitly selected** rows, clearing their decision reasons. It does
+  not silently touch nonmatching or already-held originals.
+- Undo, redo, restored choices and bulk HOLD each invalidate the previous
+  saved seven-column A/B decision export. A NEW exact reviewer-bound
+  decision CSV export is compulsory before the encrypted selected HUMAN
+  continuation or source/note-free counts download is reenabled. A stored
+  old decision file cannot be silently treated as current authorization.
+- Everything stays in page memory until deliberate user download; no
+  autosave, remote logging, clipboard capture, localStorage, IndexedDB
+  or new original source tracking is introduced. Opening a different
+  receipt or clearing the session drops reversible history; browser/OS
+  memory secure erasure is not claimed. The unverified original receipt,
+  external source-owner inspection and all real release gates remain
+  unchanged.
+
+This is a HUMAN correction/triage convenience, **not** a source
+authenticator, consent registry, automatic selection, reviewer identity,
+verified finding, scan, grant, security verdict or approved disclosure.
