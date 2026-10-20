@@ -12,6 +12,7 @@ from datetime import date
 from hashlib import sha256
 import html
 import io
+import json
 import os
 from pathlib import Path
 import re
@@ -20,7 +21,7 @@ import sys
 import tempfile
 
 from notes import (ALLOWED, FALSE_FLAGS, Hold, file_new, private_directory,
-                   private_input, read_json, save_json)
+                   private_input, save_json)
 from revision_changes import admit_completed
 from agenda_board import render as render_agenda_board
 
@@ -43,12 +44,36 @@ th,td{border:1px solid #9db5c7;padding:9px;word-break:break-word;text-align:left
 @media print{body{max-width:none;margin:0}article{break-inside:avoid}}"""
 
 
+def read_original_json(path: Path, max_bytes: int) -> tuple[bytes, dict]:
+    """Strictly parse the ONE already-owner-private original-byte snapshot."""
+    raw = private_input(str(path), max_bytes)
+    try:
+        def no_duplicate(pairs):
+            output = {}
+            for key, value in pairs:
+                if key in output:
+                    raise ValueError("duplicate original JSON object key")
+                output[key] = value
+            return output
+
+        doc = json.loads(
+            raw.decode("utf-8", errors="strict"),
+            object_pairs_hook=no_duplicate,
+            parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
+        )
+        if type(doc) is not dict:
+            raise ValueError("original object required")
+    except (UnicodeError, ValueError, TypeError):
+        raise Hold("HOLD: original PRIVATE HUMAN JSON is malformed or ambiguous") from None
+    return raw, doc
+
+
 def canonical_history(history_kit: str, latest_packet: str) -> tuple[dict, str, list[dict], str, str]:
     # An unsigned history is a local derivative, never a trusted source of
     # authorization. Independently re-admit its latest ORIGINAL packet.
     history_dir = private_directory(history_kit)
-    raw = private_input(str(history_dir / "PRIVATE-HUMAN-history.json"), 256 * 1024)
-    doc = read_json(history_dir / "PRIVATE-HUMAN-history.json", 256 * 1024)
+    raw, doc = read_original_json(
+        history_dir / "PRIVATE-HUMAN-history.json", 256 * 1024)
     latest, latest_manifest, latest_csv, sources, _, decisions = admit_completed(latest_packet)
     doc_hash = sha256(raw).hexdigest()
     manifest_hash = sha256(latest_manifest).hexdigest()
@@ -228,7 +253,7 @@ def finalize(agenda_kit: str, history_kit: str, latest_packet: str,
     kit = private_directory(agenda_kit)
     _, digest, positions, manifest_hash, last_csv_hash = canonical_history(
         history_kit, latest_packet)
-    bindings = read_json(kit / "PRIVATE-agenda-bindings.json", 64 * 1024)
+    _, bindings = read_original_json(kit / "PRIVATE-agenda-bindings.json", 64 * 1024)
     if (type(bindings) is not dict
             or set(bindings) != {"schema", "claimed_status", "history_sha256_unsigned",
                                  "last_original_manifest_sha256_unsigned",
