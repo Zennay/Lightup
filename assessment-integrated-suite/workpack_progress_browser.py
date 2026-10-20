@@ -158,7 +158,7 @@ def render(snapshots: list[tuple[str, list[dict]]],
                            esc(team) + "</option>" for team in human_workpack.TEAM_FOLDERS)
     options_team = '<option value="">All teams / unassigned</option>' + options_team
     script_hash = base64.b64encode(hashlib.sha256(JS.encode("utf-8")).digest()).decode("ascii")
-    page = '''<!doctype html><html lang="en"><head><meta charset="utf-8">
+    page = ('''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-''' + script_hash + """'; connect-src 'none'; form-action 'none'; base-uri 'none'; img-src 'none'; object-src 'none'">
 <title>LightUp · PRIVATE HUMAN Progress Cockpit</title>""" + CSS + """</head><body>
@@ -211,5 +211,5 @@ grant, scheduling, client contact, automated risk decision or release.
 Current separately verified client/operator consent including revocation
 at action time, source-owner approval, independent security/privacy/browser
 review, existing exact-head CI and explicit HUMAN GO are still required.</p>
-</footer><script>""" + JS + """</script></body></html>"""
+</footer><script>""" + JS + """</script></body></html>""")
     return page.encode("utf-8")
