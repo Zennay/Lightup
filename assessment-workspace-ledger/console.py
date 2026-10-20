@@ -27,6 +27,7 @@ import portfolio_dayboard
 import portfolio_focus
 import portfolio_focus_review
 import portfolio_focus_history
+import portfolio_focus_owner_handoff
 import portfolio_focus_studio
 import browser_intake
 import package
@@ -65,6 +66,7 @@ MENU = (
     ("29", "Import source-bound HUMAN meeting decisions as PRIVATE HOLD-only return"),
     ("30", "Create a source-free offline HUMAN focus browser editor"),
     ("31", "Compare 2–8 original PRIVATE HUMAN meeting review return versions"),
+    ("32", "Create minimum-necessary PRIVATE HUMAN owner packets from finalized meeting"),
     ("0", "Exit"),
 )
 
@@ -213,6 +215,21 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "32":
+        owners = []
+        print("Choose 1–8 EXACT original proposed HUMAN owner labels.")
+        while len(owners) < 8:
+            item = prompt("Original proposed HUMAN owner label " + str(len(owners) + 1),
+                          required=not owners)
+            if not item:
+                break
+            owners.append(item)
+        return portfolio_focus_owner_handoff.run(argparse.Namespace(
+            portfolio=prompt("ORIGINAL PRIVATE-HUMAN-portfolio.json"),
+            meeting=prompt("Original PRIVATE-HUMAN-meeting.json"),
+            review_return=prompt("Original PRIVATE-HUMAN-review-return.json"),
+            owner=owners, private_parent=private_parent()
         ))
     if action == "31":
         print("Choose 2–8 original source-bound HUMAN meeting return JSONs, in historical order.")

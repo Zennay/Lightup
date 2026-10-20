@@ -1053,3 +1053,37 @@ the HUMAN notes/statuses, then finalize using the original native
 `portfolio_focus_review.py`. No assignment, security verification, grant,
 consent, actual schedule or work completion is inferred by the carry-forward.
 The original review history preserves every earlier version without overwrites.
+
+## Minimum-necessary PRIVATE HUMAN review owner workrooms · v25
+
+A reviewer can now prepare 1–8 **separate, locally staged, proposed HUMAN
+owner workrooms** directly from one original PRIVATE-HUMAN-portfolio.json, the
+identical source-bound PRIVATE-HUMAN-meeting.json and a finalized original
+PRIVATE-HUMAN-review-return.json. Unlike the overall history, the new
+[portfolio_focus_owner_handoff.py](portfolio_focus_owner_handoff.py) filters
+each output to **only the original source rows that explicitly name that
+proposed owner**, including only that subset's original HUMAN priority, date,
+next-step text and last HUMAN review state/note.
+
+    python3 assessment-workspace-ledger/portfolio_focus_owner_handoff.py \
+      --portfolio /private/source/PRIVATE-HUMAN-portfolio.json \
+      --meeting /private/focus/PRIVATE-HUMAN-meeting.json \
+      --review-return /private/return/PRIVATE-HUMAN-review-return.json \
+      --owner 'Original proposed HUMAN owner A' \
+      --owner 'Original proposed HUMAN owner B' \
+      --private-parent /private/owner-only
+
+Original strict native source admission is reused; all input bytes are
+re-admitted before writing. Empty/duplicate/foreign proposed owner labels,
+partial source rows, mismatch with already owner-filtered input or changed
+original bytes fail closed. Outputs are one new 0700 parent with opaque
+`OWNER-01` etc. 0700 subfolders, each holding independent original-selected
+HTML, CSV and canonical JSON (all 0600), and a source-minimal parent overview
+without other owner labels or private text. No public server, broker, sending,
+access to original client assets, background scheduling, identity assumption
+or grant is performed. Every exported proposed name is an unauthenticated
+HUMAN label; independently verify permission and recipient before any sharing.
+
+Console option **32** performs this foreground operation. The source-only
+offline software bundle v25 includes the owner handoff and maintains v16–v24
+fixed software inventory inspection. No tests or QA suites have been added.
