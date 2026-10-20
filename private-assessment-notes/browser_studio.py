@@ -26,6 +26,9 @@ JS = r"""
     let visible = 0;
     for (const node of nodes) {
       totals[status(node)]++;
+      const pick = node.querySelector("input[data-private-select]");
+      if (status(node) !== "INTERNAL_REVIEW_ONLY") pick.checked = false;
+      pick.disabled = status(node) !== "INTERNAL_REVIEW_ONLY";
       const match = (stageFilter.value === "ALL" || stageFilter.value === status(node))
         && (!query || node.dataset.ordinal.includes(query) || note(node).toLocaleLowerCase().includes(query));
       node.hidden = !match;
@@ -116,6 +119,42 @@ JS = r"""
         (error instanceof Error ? error.message : "Invalid local file.");
     }
   });
+  // PRIVATE source-reference-only plan. Never serialize raw/masked text, HUMAN
+  // free notes, browser paths, recipient identifiers or authorization claims.
+  document.getElementById("save-plan").addEventListener("click", () => {
+    refresh();
+    const chosen=nodes.filter(node=>node.querySelector("input[data-private-select]").checked);
+    if (!chosen.length || chosen.some(node=>status(node)!=="INTERNAL_REVIEW_ONLY")) {
+      message.textContent="HOLD: individually choose at least one INTERNAL_REVIEW_ONLY original note.";
+      return;
+    }
+    if (!window.confirm("Save a PRIVATE source-reference-only plan for "+chosen.length+
+        " original HUMAN discussion entries? No note text is included and no recipient " +
+        "is authenticated. Native source-bound admission and separate finalize remain required.")) return;
+    const selected=chosen.map(node=>({
+      ordinal:Number(node.dataset.ordinal),
+      source_sha256_unsigned:node.dataset.sha256
+    }));
+    const payload={
+      schema:"lightup.private_assessment_selected_plan.v1",
+      claimed_status:"HOLD",
+      source_count:nodes.length,
+      selected,
+      recipient_authenticated:false,
+      approved_to_share:false,
+      release_allowed:false,
+      dispatch_allowed:false
+    };
+    const blob=new Blob([JSON.stringify(payload,null,2)+"\n"],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;link.download="PRIVATE-HUMAN-selected-plan.json";
+    document.body.appendChild(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),15000);
+    message.textContent="Local PRIVATE source reference plan saved for "+selected.length+
+      " original positions. chmod 600 before native notes.py select --plan. " +
+      "This is not a receipt, authorization, recipient validation or delivery.";
+  });
   document.getElementById("save").addEventListener("click", () => {
     const rows=["source_ordinal,source_sha256_unsigned,human_stage,human_note"];
     for (const node of nodes) {
@@ -181,6 +220,10 @@ def render(sources: list[dict], decisions: list[dict] | None = None) -> bytes:
             f'<textarea id="note-{ordinal}" maxlength="500" rows="3" '
             'placeholder="Next HUMAN question; no secrets or personal details">'
             + html.escape(prior_note) + '</textarea>'
+            '<label class="checkrow"><input type="checkbox" data-private-select '
+            'aria-label="Select source ' + str(ordinal) + ' for PRIVATE internal discussion plan">'
+            'Plan internal-only discussion for this source (only after individual INTERNAL_REVIEW_ONLY)'
+            '</label>'
             '<details><summary>Inspect PRIVATE pattern-masked source #' + str(ordinal) +
             ' (may still contain secrets)</summary><pre>' +
             html.escape(item["redacted_text"]) + '</pre></details></article>'
@@ -210,6 +253,8 @@ article[hidden]{display:none}
 .toolbar button:disabled{opacity:.5;cursor:not-allowed}
 details{margin-top:18px;border-top:1px solid #c8d9e8;padding-top:8px}
 summary{cursor:pointer;font-weight:650}
+input[type="checkbox"]{width:auto;min-width:22px;min-height:22px;accent-color:#125376}
+.checkrow{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid #aebfcd;border-radius:8px}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#172535;color:#f1f5fb;border-radius:8px;padding:16px}
 #count{font-weight:650}
 @media print{button{display:none}body{background:white;padding:0}article{break-inside:avoid}}
@@ -253,6 +298,10 @@ are changed. This only restores HUMAN suggestions, never release permission.</p>
 For safety, INTERNAL_REVIEW_ONLY must be chosen individually.</p>
 </section><main>""" + "".join(cards) + """</main>
 <footer><button id="save" type="button">Save PRIVATE HUMAN decisions CSV</button>
+<button id="save-plan" type="button">Save selected PRIVATE discussion plan</button>
+<p>Mark eligible original sources individually above. Save the complete HUMAN decisions
+CSV first, complete native finalize, then use the separate PRIVATE plan with
+native <code>notes.py select --plan</code>. Planning does not confer authority.</p>
 <p role="status" id="message" aria-live="polite"></p>
 <p class="warning">Even a completed HUMAN CSV never grants sharing authority.
 All outputs remain owner-private. Original client/operator consent,
