@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-k89YvwGwFFEGNA3REs4CXqWjzNsVkfkQpk48fHNzFYM='; style-src 'sha256-wFeG+fR+mCO4xcnUHT2Aq4lFwQou814p4tUTApBpEE0='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZmVNplqq7Zr958re9KnZpKXWat4HaX850aEdot+gyrg='; style-src 'sha256-QwznhkI41YE8gSdDL5Y7BS8uhtS6iiYizrFuS/uaBIU='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
   <meta name="referrer" content="no-referrer">
   <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
   <style>:root{color-scheme:dark;--bg:#0b1220;--surface:#121e30;--surface2:#19283a;--border:#31445c;--text:#f3f7fc;--muted:#adbed1;--aqua:#5ee5cf;--warn:#ffd07d;--red:#ff9b9b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -47,6 +47,24 @@
 .attempt-history p{margin:5px 0 10px}.attempt-history .needs{margin-bottom:0}
 .attempt-history .needs li{color:#f1d8c1}
 @media print{.timeline-filter{display:none}.attempt-history{background:white;color:black;border:1px solid #999}.attempt-history h3,.attempt-history .needs li{color:black}}
+
+/* Guided offline operator learning cards; completion never grants scope authority. */
+.drill-deck{background:linear-gradient(135deg,#173347,#17302f);border:1px solid #486e70;border-radius:18px;padding:23px;margin:0 0 22px}
+.drill-deck h2{font-size:1.45rem;margin:0 0 8px}.drill-deck h3{font-size:1.1rem;margin:0 0 8px}
+.drill-deck .muted{color:#c3d4db;margin:6px 0 13px}
+.drill-controls,.drill-content{display:grid;grid-template-columns:minmax(220px,1fr) auto auto;gap:12px;align-items:end}
+.drill-controls label{font-size:.83rem;font-weight:740}.drill-controls select{display:block;width:100%;background:#0e202e;border:1px solid #64949b;color:var(--text);font:inherit;padding:10px;margin-top:5px;min-height:44px;border-radius:9px}
+.drill-content{grid-template-columns:1.4fr 1fr;align-items:start;margin-top:16px}
+.drill-question{font-weight:800;color:#e4f9f7}
+.drill-choices{display:flex;flex-direction:column;gap:8px}
+.drill-choice{width:100%;border-radius:9px;border:1px solid #567f88;background:#1a4050;color:#e9fbfa;text-align:left;font:inherit;font-size:.87rem;padding:11px;cursor:pointer}
+.drill-choice:hover{background:#205664}.drill-choice:disabled{opacity:.5;cursor:not-allowed}
+.drill-choice:focus-visible{outline:3px solid var(--aqua);outline-offset:3px}
+.drill-result{background:#0f2633;border:1px solid #446775;border-radius:11px;padding:17px;min-height:100%}
+.drill-result p{margin:5px 0}.drill-result p:not(.eyebrow){line-height:1.55}
+@media(max-width:900px){.drill-controls{grid-template-columns:1fr 1fr}.drill-controls label{grid-column:1/-1}.drill-content{grid-template-columns:1fr}}
+@media(max-width:550px){.drill-deck{padding:16px}.drill-controls{grid-template-columns:1fr}}
+@media print{.drill-deck{background:white;color:black;border:1px solid #aaa}.drill-deck .muted,.drill-question,.drill-result,.drill-result p{color:black}.drill-controls,.drill-choices{display:none}.drill-result{background:white;color:black;border:1px solid #bbb}}
 </style>
   <script>"use strict";
 /**
@@ -73,12 +91,61 @@
     scope: ["CLIENT_CONSENT","OPERATOR_CONSENT","SCOPE_CHANGED","DISPATCH_ATTEMPT","CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"],
     stop: ["CLIENT_CONSENT","OPERATOR_CONSENT","EMERGENCY_STOP","DISPATCH_ATTEMPT","NEW_WINDOW","CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"]
   });
+  // Fixed fictional educational cases; neither these nor selections are security findings,
+  // policy evaluations, authenticated identities or authorizations.
+  const DRILLS = Object.freeze([
+    {title:"Twee onafhankelijke partijen",events:["CLIENT_CONSENT","DISPATCH_ATTEMPT"],
+      summary:"Een oefenclient is aangemeld; er ontbreekt een fictieve operatorverklaring.",
+      question:"Wat is buiten de oefening de verantwoordelijke vervolgstap?",
+      choices:["Echte afzonderlijk geauthenticeerde operatorverklaring en actuele scope laten bevestigen",
+        "Alleen een eerdere clientverklaring als uitvoermachtiging gebruiken",
+        "De simulatoruitkomst als toestemming registreren"],correct:0,
+      explain:"De ene partij kan de andere niet vervangen. Werkelijke actuele identiteit, specifieke assets/risico en onafhankelijke operatorreview horen bij de oorspronkelijke LightUp-autorisatiecode."},
+    {title:"Client trekt toestemming in",events:["CLIENT_CONSENT","OPERATOR_CONSENT","CLIENT_REVOKED","DISPATCH_ATTEMPT"],
+      summary:"Na twee fictieve verklaringen trekt de oefenclient de verklaring in.",
+      question:"Welke keuze is passend bij de uitvoergrens?",
+      choices:["De oudere verklaring blijven vertrouwen tot de volgende dag",
+        "Aan de feitelijke I/O-grens opnieuw intrekking controleren en uitvoering tegenhouden",
+        "De intrekking als metadata markeren maar alsnog doorgaan"],correct:1,
+      explain:"Een ingetrokken verklaring heeft geen restbevoegdheid. De echte uitvoeringspoort moet op het gebruiksmoment duurzaam en fail-closed hercontroleren; deze oefening controleert niets echt."},
+    {title:"Scope verandert na goedkeuring",events:["CLIENT_CONSENT","OPERATOR_CONSENT","SCOPE_CHANGED","DISPATCH_ATTEMPT"],
+      summary:"Een fictieve nieuwe asset-/capability-scope wordt voorgesteld nadat beide verklaringen waren ingevoerd.",
+      question:"Wat is de aangewezen menselijke vervolgstap?",
+      choices:["Oude verklaringen zonder herbeoordeling meenemen",
+        "Alleen een lagere fictieve risicoscore invullen",
+        "Nieuwe exacte scope door echte client én operator afzonderlijk laten beoordelen"],correct:2,
+      explain:"Een scopewijziging is geen behoud van eerder verleende rechten. Vraag toestemming op de exacte vernieuwde scope en risico's; de demo genereert geen grants."},
+    {title:"Geldigheidsvenster is voorbij",events:["CLIENT_CONSENT","OPERATOR_CONSENT","WINDOW_EXPIRED","DISPATCH_ATTEMPT"],
+      summary:"De fictieve tijdslimiet is verlopen voordat een oefenuitvoerpoging plaatsvindt.",
+      question:"Welke aanpak blijft binnen de veiligheidsgrens?",
+      choices:["Een nieuwe geldige periode én actuele onafhankelijke toestemming verifiëren voordat echte uitvoering überhaupt overwogen wordt",
+        "De lokale klok terugzetten en doorgaan",
+        "Het oude venster stilzwijgend verlengen"],correct:0,
+      explain:"Verlopen toestemming mag niet stilzwijgend worden verlengd. Een nieuwe periode vereist originele bron- en identiteitscontroles plus afzonderlijke actuele instemming."},
+    {title:"Noodstop is geactiveerd",events:["CLIENT_CONSENT","OPERATOR_CONSENT","EMERGENCY_STOP","DISPATCH_ATTEMPT"],
+      summary:"Er is een oefennoodstop gemeld, ook al waren daarvoor twee fictieve verklaringen ingevoerd.",
+      question:"Welke actie is toegestaan?",
+      choices:["Een andere operator aanwijzen en dezelfde uitvoering opnieuw starten",
+        "Uitvoering tegenhouden en alleen via het oorspronkelijke geautoriseerde incident-/herstelproces vervolg bepalen",
+        "Alleen de clientverklaring vernieuwen om de stop op te heffen"],correct:1,
+      explain:"Een noodstop heeft voorrang. Deze trainingsapp kan hem niet opheffen en heeft geen koppeling met een echte stop, bronstatus of run."},
+    {title:"Simulatie toont geen oefenblokkade",events:["CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"],
+      summary:"Beide fictieve verklaringen zijn handmatig ingevoerd; het speelgoedmodel toont geen ontbrekende fictieve voorwaarden.",
+      question:"Wat mag je hieruit concluderen over echte targets?",
+      choices:["Er is een echte vrijgegeven scan mogelijk",
+        "Een lokale groenachtige tekst bewijst actuele toestemming",
+        "Niets over echte toestemming: originele brongebonden authenticatie, revocatie, CI, onafhankelijke reviews en HUMAN GO blijven verplicht"],correct:2,
+      explain:"Oefenprecondities zijn niet gelijk aan werkelijk bronbewijs of veiligheidsgoedkeuring. Geen enkele simulatoruitkomst verleent scan-, deploy- of grantbevoegdheid."}
+  ]);
   const MAX = 64;
   const $ = id => document.getElementById(id);
   let events = [];
   let baseline = null;
   // Eight fixed slots; no names, external identifiers or automatic persistence.
   let slots = Array(8).fill(null);
+  let activeDrill = null;
+  let selectedDrill = 0;
+  let drillAnswers = Array(DRILLS.length).fill(null);
 
   function fresh() {
     return {client:false,operator:false,scope:0,risk:0,window:true,stop:false,attempts:0,lastAttempt:null};
@@ -239,6 +306,7 @@
       details.forEach(t=>delta.append(el("li","",t)));
     }
     renderBank();
+    refreshDrillStatus();
     return {s,steps,missing};
   }
   function slotEntry(seq,base) {
@@ -348,6 +416,98 @@
     lines.push("","## Menselijke vervolgvragen","Welke originele actuele, apart geauthenticeerde client- en operatorconsent zijn aantoonbaar?","Welke exacte goedgekeurde assets/capabilities en risico's zijn gebonden?","Hoe wordt revocation bij daadwerkelijk I/O-gebruik onafhankelijk gecontroleerd?","Is originele hosted plus permanente named-VPS CI op juiste SHA en HUMAN GO aanwezig?","",
       "**AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false**");
     return lines.join("\n")+"\n";
+  }
+  function progressText() {
+    const attempted=drillAnswers.filter(x=>x!==null).length;
+    return attempted+" van "+DRILLS.length+" fictieve oefenkaarten besproken; didactisch, geen CI- of securitybewijs.";
+  }
+  function scenarioMatchesDrill() {
+    const card=DRILLS[selectedDrill];
+    return activeDrill===selectedDrill && events.length===card.events.length &&
+      card.events.every((e,i)=>e===events[i]);
+  }
+  function refreshDrillStatus() {
+    write("drill-progress",progressText());
+    const current=scenarioMatchesDrill();
+    $("drill-choices").querySelectorAll("button").forEach(b=>{b.disabled=!current;});
+    if (activeDrill===null) return;
+    if (!current) {
+      write("drill-feedback","De huidige fictieve tijdlijn wijkt af van de geladen oefenkaart. Laad de kaart opnieuw voordat je een didactisch antwoord bespreekt.");
+    }
+  }
+  function selectDrill(index) {
+    selectedDrill=index;
+    const card=DRILLS[index];
+    write("drill-heading",card.title);
+    write("drill-description",card.summary);
+    write("drill-question",card.question);
+    write("drill-feedback","Laad deze fictieve oefenkaart in de tijdlijn. Geen van de antwoorden kan echte autorisatie geven.");
+    const holder=$("drill-choices");
+    holder.replaceChildren();
+    card.choices.forEach((label,i)=>{
+      const b=el("button","drill-choice",String.fromCharCode(65+i)+". "+label);
+      b.type="button";
+      b.addEventListener("click",()=>{
+        if(!scenarioMatchesDrill()) {
+          write("drill-feedback","Deze kaart is niet langer exact geladen. Herstart hem zonder andere scenario's aan te passen.");return;
+        }
+        drillAnswers[selectedDrill]=i;
+        write("drill-feedback",(i===card.correct?"Didactisch passende keuze. ":"Didactisch aandachtspunt. ")+card.explain+
+          " Alleen HUMAN oefenfeedback; nooit echte toestemming.");
+        refreshDrillStatus();
+      });
+      holder.append(b);
+    });
+    refreshDrillStatus();
+  }
+  function facilitatorPack() {
+    const lines=["# LightUp — PRIVATE trainingspakket scope-autorisatie",
+      "",
+      "**ZES VASTE FICTIEVE OEFENKAARTEN. DIT IS GEEN ORIGINEEL SCAN-/CONSENT-/CI-/VRIJGAVEBEWIJS.**",
+      "",
+      "Gescheiden echte huidige geauthenticeerde client- en operatortoestemming, brongebonden assets/capability/risico, action-time revocation, privacy/securityreview, originele hosted en permanente VPS CI en HUMAN GO zijn altijd verplicht.",
+      "",
+      "## Didactische voortgang van deze lokale browsersessie",
+      progressText(),
+      ""];
+    DRILLS.forEach((d,i)=>{
+      lines.push("## Kaart "+(i+1)+": "+d.title,
+        "",d.summary,
+        "Fictieve tijdlijn: "+d.events.map(e=>TYPES[e][0]).join(" → "),
+        "",
+        "**Vraag:** "+d.question);
+      d.choices.forEach((c,n)=>lines.push(String.fromCharCode(65+n)+". "+c));
+      lines.push("","**Didactisch passende bespreekkeuze:** "+String.fromCharCode(65+d.correct),
+        "**Toelichting:** "+d.explain,
+        "**Lokaal oefenantwoord:** "+(drillAnswers[i]===null?"Nog niet besproken":String.fromCharCode(65+drillAnswers[i])),
+        "");
+    });
+    lines.push("## Geen uitvoermachtiging","Deze oefening kan geen identiteit, oorspronkelijke bron, actuele scope, werkelijk verleende toestemming, intrekking of doelwitrechten verifiëren.",
+      "AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false · DEPLOY_ALLOWED=false",
+      "");
+    return lines.join("\n");
+  }
+  function initDrills() {
+    DRILLS.forEach((x,i)=>$("drill-select").append(new Option((i+1)+". "+x.title,String(i))));
+    $("drill-select").addEventListener("change",()=>selectDrill(Number($("drill-select").value)));
+    $("drill-start").addEventListener("click",()=>{
+      const card=DRILLS[selectedDrill];
+      if((events.length || baseline!==null) &&
+         !window.confirm("Huidige oefentijdlijn en nulmeting vervangen? Opgeslagen scenario-slots blijven bestaan."))return;
+      events=card.events.slice();baseline=null;activeDrill=selectedDrill;
+      feedback("Fictieve oefenkaart "+(selectedDrill+1)+" geladen. Geen externe uitvoer.");
+      render();selectDrill(selectedDrill);
+    });
+    $("drill-clear").addEventListener("click",()=>{
+      if(!window.confirm("Alleen didactische antwoordvoortgang uit dit browsergeheugen wissen?"))return;
+      drillAnswers=Array(DRILLS.length).fill(null);
+      selectDrill(selectedDrill);
+    });
+    $("drill-print-pack").addEventListener("click",()=>{
+      bytesDownload("lightup-fictional-facilitator-pack.md",facilitatorPack(),"text/markdown");
+      feedback("PRIVATE fictief lespakket met didactische toelichting lokaal aangeboden.");
+    });
+    selectDrill(0);
   }
   function feedback(t) { write("feedback",t); }
   function add(e) {
@@ -474,6 +634,7 @@
   });
   $("timeline-filter").addEventListener("change",render);
   $("print").addEventListener("click",()=>window.print());
+  initDrills();
   render();
 })();
 </script>
@@ -486,6 +647,17 @@
     </header>
     <section class="alert" aria-labelledby="guard-title">
       <div><strong id="guard-title">Dit is een oefensimulatie, geen autorisatiesysteem.</strong><p>Alle deelnemers, gebeurtenissen en beslissingen zijn fictief. De echte LightUp-grants, client-/operatoridentiteit, risico- en revocatiestatus worden niet gelezen, gecontroleerd of aangepast. <b>Geen enkele uitkomst mag worden gebruikt om een scan, tool, release of deployment te starten.</b></p></div>
+    </section>
+    <section class="drill-deck" aria-labelledby="drill-title">
+      <div class="section-top"><div><p class="kicker">OPERATOR ACADEMY / GEEN ECHTE AUTORISATIE</p><h2 id="drill-title">Oefen met echte beslismomenten — fictieve gegevens</h2></div><span class="pill">6 BEGELEIDE OEFENKAARTEN</span></div>
+      <p class="muted">Kies een situatie, bekijk de fictieve voorgeschiedenis en bepaal welke menselijke stap nu passend is. Oefenkaartantwoorden zijn geen toestemming, testbewijs of toegang tot een systeem.</p>
+      <div class="drill-controls"><label for="drill-select">Oefenkaart <select id="drill-select"></select></label>
+        <button id="drill-start" class="button primary" type="button">Oefening laden in tijdlijn</button>
+        <button id="drill-clear" class="button minor" type="button">Oefenfeedback wissen</button><button id="drill-print-pack" class="button minor" type="button">Lespakket (.md)</button></div>
+      <div class="drill-content"><div><h3 id="drill-heading">Selecteer een oefening</h3><p id="drill-description" class="muted"></p><p id="drill-question" class="drill-question"></p>
+          <div id="drill-choices" class="drill-choices" role="group" aria-label="Oefenantwoorden"></div>
+        </div><div class="drill-result"><p class="eyebrow">UITSLUITEND DIDACTISCHE FEEDBACK</p><p id="drill-feedback" aria-live="polite">Start een fictieve oefenkaart en kies een antwoord om de gevolgen te bespreken.</p>
+          <p id="drill-progress" class="muted">Geen oefenantwoord gekozen.</p></div></div>
     </section>
     <main class="grid">
       <section class="card builder" aria-labelledby="builder-title">
