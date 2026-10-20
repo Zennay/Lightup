@@ -35,7 +35,7 @@ Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
 Native checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 49 actions, including original
+options 21/22. The same console now has 50 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
@@ -63,6 +63,10 @@ UNASSESSED (no HUMAN decision, owner, approval or authorization).
 Provided existing original CSV files still require exact strict
 source-PATH/session binding. An original strict saved session can
 recreate this full workpack without modifying live console paths (49).
+Native option 50 and suite.py workpack-progress can produce a separate
+owner-private offline HUMAN stage/team/declared-date progression from 2-8
+original exact-session workpack snapshots without copying question text.
+This remains NATIVE-ONLY and is not bundled in browser-only software.
 The browser can preview proposed imported HUMAN field changes without
 revealing question text and bulk-assign staged visible tasks to a HUMAN
 team without contacting recipients or granting any assessment authority.

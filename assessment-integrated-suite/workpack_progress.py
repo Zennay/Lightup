@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+"""Offline owner-private HUMAN workpack progression, never an assessment result.
+
+Read 2–8 explicit original workpack snapshots in HUMAN-declared order.
+All inputs must match ONE original saved PATH-only session, and output is
+source-minimal HUMAN metadata, never original private question text.
+"""
+from __future__ import annotations
+
+import csv
+import html
+import io
+import json
+import os
+from pathlib import Path
+import shutil
+
+import human_priorities
+import human_workpack
+import private_session as privacy
+import route_queue
+
+SCHEMA = "lightup.private.assessment-workpack-progress.v1"
+MAX_PACKS = 8
+
+
+def _read_workpack(folder: str, base: list[dict]) -> tuple[str, list[dict]]:
+    path = Path(folder)
+    if not path.is_absolute() or path.is_symlink() or not privacy.private(path, True):
+        raise privacy.Hold("HOLD: original HUMAN workpack must be an owner-only directory, not a link")
+    receipt_path = path / "PRIVATE-WORKPACK-RECEIPT.json"
+    if not privacy.private(receipt_path, False):
+        raise privacy.Hold("HOLD: original workpack receipt must be owner-private")
+    # This is an unsigned LOCAL declaration, not authenticated provenance.
+    try:
+        receipt = json.loads(receipt_path.read_bytes())
+    except (ValueError, OSError):
+        raise privacy.Hold("HOLD: original HUMAN workpack receipt unreadable") from None
+    if (type(receipt) is not dict
+            or receipt.get("schema") != human_workpack.SCHEMA
+            or receipt.get("status") != "REVIEW_ONLY"
+            or receipt.get("authority") != privacy.AUTHORITY
+            or receipt.get("original_client_source_included") is not False
+            or receipt.get("original_session_paths_included") is not False
+            or receipt.get("automated_actions") is not False
+            or type(receipt.get("workflows")) is not int
+            or receipt["workflows"] != len(base)):
+        raise privacy.Hold("HOLD: original HUMAN workpack receipt not canonical")
+    date = receipt.get("declared_review_date")
+    if type(date) is not str:
+        raise privacy.Hold("HOLD: missing operator-declared workpack date")
+    human_priorities.as_of(date)
+    source = path / "PINNED-HUMAN-QUEUE.csv"
+    if source.is_symlink():
+        raise privacy.Hold("HOLD: pinned original HUMAN workpack CSV cannot be linked")
+    raw = route_queue.read_owner_csv(str(source))
+    rows = route_queue.admit_human_edits_bytes(base, raw)
+    if (receipt.get("human_staged") != sum(x["human_stage"] != "UNASSESSED" for x in rows)
+            or type(receipt.get("created_from_unassessed_session")) is not bool):
+        raise privacy.Hold("HOLD: original HUMAN workpack receipt disagrees with pinned rows")
+    return date, rows
+
+
+def _counts(rows: list[dict]) -> dict:
+    return {
+        "unassessed": sum(x["human_stage"] == "UNASSESSED" for x in rows),
+        "attention": sum(x["human_stage"] in ("HOLD", "NEEDS_INPUT") for x in rows),
+        "human_review": sum(x["human_stage"] == "HUMAN_REVIEW" for x in rows),
+        "human_followup": sum(x["human_stage"] == "HUMAN_FOLLOWUP" for x in rows),
+        "teams": {
+            team: sum(x["review_team"] == team and x["human_stage"] != "UNASSESSED"
+                      for x in rows)
+            for team in human_workpack.TEAM_FOLDERS
+        }
+    }
+
+
+def _changes(snapshots: list[tuple[str, list[dict]]]) -> list[dict]:
+    changes = []
+    for index in range(1, len(snapshots)):
+        before, after = snapshots[index - 1][1], snapshots[index][1]
+        for previous, current in zip(before, after):
+            fields = [
+                label for key, label in (
+                    ("human_stage", "stage"), ("review_team", "team"),
+                    ("followup_date", "review_date"),
+                    ("human_question", "private_question_changed"))
+                if previous[key] != current[key]
+            ]
+            if fields:
+                changes.append({
+                    "from_snapshot": index, "to_snapshot": index + 1,
+                    "workflow_key": current["workflow_key"],
+                    "workflow_title": current["title"],
+                    "fields": fields,
+                    "previous_stage": previous["human_stage"],
+                    "current_stage": current["human_stage"],
+                    "previous_team": previous["review_team"],
+                    "current_team": current["review_team"],
+                    "previous_review_date": previous["followup_date"],
+                    "current_review_date": current["followup_date"],
+                    "private_question_text_included": False,
+                })
+    return changes
+
+
+def _html(snapshots: list[tuple[str, list[dict]]], metrics: list[dict],
+          changes: list[dict]) -> bytes:
+    esc = lambda value: html.escape(str(value), quote=True)
+    snap_rows = []
+    for number, ((date, _), counts) in enumerate(zip(snapshots, metrics), 1):
+        team_counts = " · ".join(
+            esc(team) + ": " + str(count)
+            for team, count in counts["teams"].items() if count
+        ) or "No HUMAN team assigned"
+        snap_rows.append(
+            "<tr><th scope='row'>" + str(number) + "</th><td>" + esc(date) +
+            "</td><td>" + str(counts["unassessed"]) + "</td><td>" +
+            str(counts["attention"]) + "</td><td>" +
+            str(counts["human_review"]) + "</td><td>" +
+            str(counts["human_followup"]) + "</td><td>" + team_counts +
+            "</td></tr>"
+        )
+    timeline = []
+    for change in changes:
+        timeline.append(
+            "<li><strong>" + esc(change["workflow_title"]) + "</strong> · #" +
+            str(change["from_snapshot"]) + " → #" + str(change["to_snapshot"]) +
+            "<br>Changed: " + esc(", ".join(change["fields"])) +
+            "<br>HUMAN stage: " + esc(change["previous_stage"]) + " → " +
+            esc(change["current_stage"]) +
+            "<br>Team: " + esc(change["previous_team"] or "none") + " → " +
+            esc(change["current_team"] or "none") +
+            "<br>Proposed follow-up: " + esc(change["previous_review_date"] or "none") +
+            " → " + esc(change["current_review_date"] or "none") + "</li>"
+        )
+    document = """<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp PRIVATE HUMAN Workpack Progress</title>
+<style>:root{color-scheme:dark;background:#101c2f;color:#e8f3fc;font:16px/1.5 system-ui}
+body{max-width:1140px;margin:auto;padding:22px}header,section,footer{padding:24px;margin:16px 0;border:1px solid #426482;border-radius:16px;background:#1c3349}
+h1{font-size:clamp(1.7rem,3vw,2.7rem)}.warn{font-weight:bold;color:#ffe0a7}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:11px;border-bottom:1px solid #4e6982}
+.scroller{overflow-x:auto}li{padding:12px 0;border-bottom:1px solid #426482}
+li strong{color:#b8f1da}</style>
+<header><p class="warn">PRIVATE HUMAN / ORIGINAL-SESSION BOUND / REVIEW_ONLY</p>
+<h1>Assessment Workpack Progress</h1><p>""" + str(len(snapshots)) + """ distinct original local HUMAN workpacks in operator-declared order;
+""" + str(len(changes)) + """ changed workflow transitions. Dates are manually declared,
+not verified chronology, actual deadlines or appointments.</p></header>
+<section><h2>HUMAN review snapshots</h2><div class="scroller"><table>
+<thead><tr><th>Snapshot</th><th>Declared date</th><th>UNASSESSED</th><th>HOLD / NEEDS INPUT</th>
+<th>HUMAN REVIEW</th><th>HUMAN FOLLOWUP</th><th>Declared team workload</th></tr></thead>
+<tbody>""" + "".join(snap_rows) + """</tbody></table></div></section>
+<section><h2>Manually recorded differences</h2><ol>""" + (
+        "".join(timeline) or "<li>No changes in HUMAN metadata.</li>"
+    ) + """</ol></section><footer><p class="warn">DRAFT/HOLD · NO AUTHORIZATION OR SCAN</p>
+<p>Strictly local declared coordination metadata. No original filenames, original
+source bytes, source paths, free HUMAN question text, credentials, real
+recipient identity, authenticated consent, verified source, genuine findings,
+real scheduling or release. An unchanged PATH fingerprint does not prove
+unchanged original data. Inputs are original local owner-private HUMAN snapshots,
+not proof of completed security assessments. Separate client and operator
+consent, action-time revocation, source-owner and independent reviews,
+existing CI and explicit HUMAN GO remain required.</p></footer></html>"""
+    return document.encode("utf-8")
+
+
+def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
+    if (not 2 <= len(workpacks) <= MAX_PACKS
+            or type(workpacks) is not list
+            or any(type(x) is not str for x in workpacks)):
+        raise privacy.Hold("HOLD: choose two to eight original HUMAN workpacks")
+    if not privacy.NAME.fullmatch(name):
+        raise privacy.Hold("HOLD: unused PRIVATE progress folder name required")
+    parent = Path(parent_name).resolve(strict=True)
+    if (parent == privacy.ROOT or privacy.ROOT in parent.parents
+            or not privacy.private(parent, True)):
+        raise privacy.Hold("HOLD: owner-only 0700 progress parent outside checkout required")
+    destination = parent / name
+    original_paths = [Path(x) for x in workpacks]
+    if (len({str(x.resolve(strict=True)) for x in original_paths}) != len(workpacks)
+            or any(x.resolve(strict=True) == destination or
+                   destination in x.resolve(strict=True).parents for x in original_paths)
+            or os.path.lexists(destination)):
+        raise privacy.Hold("HOLD: repeated or overwritten original HUMAN workpack refused")
+    base, _ = route_queue.rows_for(session)
+    snapshots = [_read_workpack(folder, base) for folder in workpacks]
+    metrics = [_counts(rows) for _, rows in snapshots]
+    changes = _changes(snapshots)
+    page = _html(snapshots, metrics, changes)
+    metadata = {
+        "schema": SCHEMA, "status": "REVIEW_ONLY", "authority": privacy.AUTHORITY,
+        "human_order_declared_not_authenticated": True,
+        "owner_private_original_paths_included": False,
+        "original_source_data_included": False,
+        "private_question_text_included": False,
+        "automated_actions": False, "verified_source": False,
+        "snapshots": [
+            {"position": i, "declared_review_date": date, **metric}
+            for i, ((date, _), metric) in enumerate(zip(snapshots, metrics), 1)
+        ],
+        "transitions": [
+            {key: value for key, value in change.items() if key != "workflow_title"}
+            for change in changes
+        ],
+    }
+    data = (json.dumps(metadata, sort_keys=True, ensure_ascii=True,
+                       separators=(",", ":")) + "\n").encode("ascii")
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\r\n")
+    writer.writerow(("from_snapshot", "to_snapshot", "workflow_key", "fields",
+                     "previous_stage", "current_stage", "previous_team",
+                     "current_team", "previous_review_date", "current_review_date"))
+    for entry in changes:
+        writer.writerow([
+            entry["from_snapshot"], entry["to_snapshot"], entry["workflow_key"],
+            "+".join(entry["fields"]), entry["previous_stage"],
+            entry["current_stage"], entry["previous_team"], entry["current_team"],
+            entry["previous_review_date"], entry["current_review_date"]
+        ])
+    destination.mkdir(mode=0o700)
+    try:
+        if not privacy.private(destination, True):
+            raise privacy.Hold("HOLD: new progress folder not owner-private")
+        privacy.private_write(destination, "OPEN-PRIVATE.html", page)
+        privacy.private_write(destination, "PRIVATE-HUMAN-PROGRESS.json", data)
+        privacy.private_write(
+            destination, "PRIVATE-HUMAN-TRANSITIONS.csv", stream.getvalue().encode("utf-8"))
+        fd = os.open(destination, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except (OSError, ValueError):
+        shutil.rmtree(destination)
+        raise privacy.Hold("HOLD: PRIVATE HUMAN progress room not published") from None
+    return destination / "OPEN-PRIVATE.html"

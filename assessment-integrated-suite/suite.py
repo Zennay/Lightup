@@ -188,6 +188,26 @@ def private_human_workpack(args: argparse.Namespace) -> int:
     return 2
 
 
+def private_workpack_progress(args: argparse.Namespace) -> int:
+    """Compare original HUMAN workpacks in declared order, offline only."""
+    if args.human_confirm != "BUILD PRIVATE PROGRESS":
+        raise Hold("HOLD: exact explicit HUMAN progression confirmation required")
+    from dataclasses import replace
+    import console
+    import private_session
+    import workpack_progress
+    current = console.Session()
+    admitted = private_session.restore(current, args.private_session)
+    isolated = replace(current, **admitted)
+    isolated.saved_session = args.private_session
+    page = workpack_progress.build(
+        isolated, args.workpack, args.private_parent, args.folder)
+    print("PRIVATE REVIEW_ONLY: original HUMAN workpack progress prepared.")
+    print("OPEN LOCALLY: " + str(page))
+    print("No real chronology, evidence, consent or execution implied.")
+    return 2
+
+
 def main() -> int:
     cli = argparse.ArgumentParser(description="PRIVATE local lab review composition; no scan")
     commands = cli.add_subparsers(dest="command", required=True)
@@ -209,6 +229,17 @@ def main() -> int:
                           help="optional exact-session original 0600 HUMAN CSV; empty seeds UNASSESSED")
     workpack.add_argument("--human-confirm", required=True,
                           help="must equal exactly BUILD PRIVATE WORKPACK")
+    progress = commands.add_parser(
+        "workpack-progress", help="PRIVATE HUMAN progression across 2–8 original workpacks")
+    progress.add_argument("--private-session", required=True,
+                          help="owner-only original saved 0600 PATH-only session")
+    progress.add_argument("--workpack", action="append", required=True,
+                          help="repeat 2–8 owner-private original HUMAN workpack folders")
+    progress.add_argument("--private-parent", required=True,
+                          help="existing owner-only 0700 output parent outside checkout")
+    progress.add_argument("--folder", required=True, help="unused PRIVATE progress room name")
+    progress.add_argument("--human-confirm", required=True,
+                          help="must equal exactly BUILD PRIVATE PROGRESS")
     commands.add_parser("catalog", help="read-only inventory of installed original source modules")
     args = cli.parse_args()
     if args.command == "catalog":
@@ -220,6 +251,8 @@ def main() -> int:
     try:
         if args.command == "human-workpack":
             return private_human_workpack(args)
+        if args.command == "workpack-progress":
+            return private_workpack_progress(args)
         return prepare(args)
     except (Hold, OSError, ValueError, TypeError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: local private preparation refused",

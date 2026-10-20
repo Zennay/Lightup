@@ -359,6 +359,45 @@ may have a different PATH-only digest; that is **HOLD**, not an invitation
 to override the original saved-session admission. This route grants no
 security authority, authenticated client/operator consent or execution.
 
+## NEW: exact-session offline workpack progress desk (option 50 + native CLI)
+
+This independent native workflow compares **2–8 already-created owner-only
+0700 HUMAN workpack folders** in an explicitly operator-declared order. It
+requires the original strict saved 0600 PATH-only session, then re-admits
+each exact owner-private pinned 0600 HUMAN CSV against **one unchanged
+original session fingerprint**. Each original unsigned workpack receipt
+must be canonical, consistent with the actual pinned HUMAN stage counts,
+and explicitly all-false authority; duplicate or symlinked workpack
+directories, altered session keys, malformed CSV, public custody or
+ambiguous original inputs produce HOLD with no published report.
+
+The new **console option 50** loads the checkpoint only into an isolated
+in-memory session, leaving the live console entirely unchanged. Or run:
+
+~~~sh
+python3 assessment-integrated-suite/suite.py workpack-progress \
+  --private-session /private/saved/PRIVATE-SESSION.json \
+  --workpack /private/workpack-one \
+  --workpack /private/workpack-two \
+  --private-parent /private/owner-only \
+  --folder private-human-progress \
+  --human-confirm 'BUILD PRIVATE PROGRESS'
+~~~
+
+A newly created owner-only 0700 result contains 0600
+`OPEN-PRIVATE.html`, `PRIVATE-HUMAN-PROGRESS.json` and
+`PRIVATE-HUMAN-TRANSITIONS.csv`. The offline browser gives complete
+UNASSESSED/HOLD/NEEDS_INPUT, HUMAN_REVIEW and HUMAN_FOLLOWUP counts and
+team workload per declared snapshot, then highlights changed original
+workflow stage/team/declared follow-up and whether a PRIVATE question
+changed **without copying its text**. Even original local filenames,
+directory paths and SHA digests stay out of this output. Dates are
+**human declarations**, not genuine chronology, due dates, client
+appointments, investigation results, authenticated evidence or consent.
+The existing original owner/private read guards and 0700/0600 write guards
+are reused; no tests/QA or actual scans, grants, scheduling, dispatch or
+deployment are part of this workflow.
+
 ## Portable 15-original-studio software kit v14
 
 [Portable source-only LightUp Assessment Offline Toolkit v14](LightUp-Assessment-Offline-Toolkit-v14.zip)
