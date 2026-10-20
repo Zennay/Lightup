@@ -512,6 +512,25 @@ python3 assessment-disclosure-preflight/software_bundle.py
 It publishes a new owner-only ZIP exclusively next to the source; it
 cannot overwrite another existing file, follow symlink source assets
 or add arbitrary original PRIVATE customer materials.
+To inspect an existing original deterministic software ZIP without extracting
+or executing its files:
+
+~~~sh
+python3 assessment-disclosure-preflight/software_bundle.py \
+  --inspect ./assessment-disclosure-preflight/LightUp-PRIVATE-Assessment-Offline-Kit.zip
+~~~
+
+The offline inspector rejects unknown, duplicated, symlink-like,
+noncanonical, reordered, oversized or changed members, compares all 18
+source asset SHA-256 values with the strict embedded unsigned manifest,
+checks literal-false authority flags and finally compares the COMPLETE
+ZIP bytes with a reproducible rebuilt original software kit. It opens no
+targets, creates no files and never extracts source into the filesystem.
+An invalid/corrupt ZIP yields a clear HOLD instead of a Python traceback.
+A successful match is only locally deterministic software-byte custody;
+it does **not** prove that this ZIP, manifest or source came from the
+right sender, that reviewers or clients are authenticated, that any
+security evidence is real, or that any CI/release gate was approved.
 Extract it only into a trusted owner-controlled local directory and
 open the existing `standalone.html` or
 `reconcile-standalone.html` with no web server.
