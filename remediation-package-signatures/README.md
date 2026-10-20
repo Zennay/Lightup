@@ -365,6 +365,31 @@ when key state changes. The original source-owner, security/privacy reviews,
 mandatory exact-head CI, explicit separate current consent, action-time
 revocation and HUMAN GO remain outside these tools.
 
+## Complete twelve-action foreground custody console
+
+The single operator_desk.py integrates the entire offline HUMAN journey:
+
+1. Create new private local trust registry.
+2. Register trusted public Ed25519 key after independent fingerprint review.
+3. List registered and revoked keys with permanent local signer minimum.
+4. Atomically receive 1–12 original signed source-only software archives.
+5. Reopen private software inbox with currently registered keys and ORIGINAL source pins.
+6. Permanently revoke local trust in a signer.
+7. Permanently require two distinct currently trusted signers.
+8. Review exact source file and signing-key byte differences across 2–12 original inboxes.
+9. Review LOCAL revoked key impact across existing original signed software.
+10. Generate a NEW encrypted Ed25519 private/public keypair in fresh private folder.
+11. Sign an original software-only archive with interactive hidden private-key passphrase.
+12. Package signed original source-only software ZIP into one private portable file,
+    optionally requiring a second distinct independently verified signing key.
+
+No original source owner code, grant, scanner, model, active execution path or
+production entrypoint is modified. Signing passphrases are never accepted as
+CLI flags and no private PEM is automatically registered or included in ZIP.
+New files are exclusive owner-private outputs, not overwrites. Operator source
+files are not included in the original locked installed suite without separate
+original owner review. Success exits 2 REVIEW_ONLY, never a release PASS.
+
 ## Limits and operational risks
 
 - Password/key loss cannot be recovered; do not store the private PEM in Git.
