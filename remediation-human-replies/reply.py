@@ -112,7 +112,9 @@ def admit_reply(obj: dict, packet: dict, digest: str) -> list[dict]:
                 and row.get("reason") == baseline["reason"]
                 and type(row.get("status")) is str and row["status"] in STAGES
                 and schedule_vault.local_text(row.get("answer"), 240, 960, True)
-                and schedule_vault.local_text(row.get("question"), 240, 960, True),
+                and schedule_vault.local_text(row.get("question"), 240, 960, True)
+                and (row["status"] != "answered_human_only" or row["answer"].strip())
+                and (row["status"] != "need_clarification_human" or row["question"].strip()),
                 "Invalid or reordered HUMAN reply, control chars or oversized answers")
     return rows
 
