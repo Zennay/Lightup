@@ -48,7 +48,11 @@ def local_path(value):
 
 def select(args, admitted):
     document = admitted[1]
+    # A previously owner-scoped original cannot silently become an
+    # "all owners" report if the caller omits --owner.
     owner = args.owner
+    if owner is None and document["owner_filter_is_unauthenticated_human_label"]:
+        owner = document["proposed_owner_filter"]
     if owner is not None:
         if type(owner) is not str or not owner or owner != owner.strip():
             reject("PRIVATE HOLD: select exact nonempty locally PROPOSED HUMAN owner")
@@ -121,7 +125,7 @@ def anonymous_dashboard(entries, when, owner):
     return html_page("LightUp PRIVATE historical HUMAN planning dayboard", "".join(body))
 
 
-def private_worklist(entries, when, owner):
+def private_worklist(entries, when, owner, capacity):
     body = [
         "<p><strong>OWNER-PRIVATE HUMAN proposal details.</strong> All dates and "
         "priorities below were HISTORIC HUMAN suggestions; no actual task, "
@@ -138,6 +142,19 @@ def private_worklist(entries, when, owner):
         "<th>HUMAN stage</th><th>Locally proposed owner</th>"
         "<th>PRIVATE HUMAN next-step text</th></tr></thead><tbody>",
     ]
+    # Proposed owner-level workload comparison is entirely PRIVATE. It is
+    # intentionally absent from the anonymous high-level HTML summary.
+    body.insert(3,
+        "<p><strong>Proposed HUMAN workload by locally selected owner:</strong> " +
+        " · ".join(
+            html.escape(row["proposed_human_owner"], quote=True) +
+            ": " + str(row["historical_human_proposals"]) +
+            " proposals / " + str(row["past_proposed_day"]) +
+            " with suggested day earlier than reference"
+            for row in capacity
+        ) +
+        ". None of these counts implies a real assigned task or workload.</p>"
+    )
     for r in entries:
         def e(key):
             return html.escape(str(r[key]), quote=True)
@@ -152,6 +169,41 @@ def private_worklist(entries, when, owner):
     body.append("</tbody></table><p>HUMAN proposals only. "
                 "<a href='OPEN-PRIVATE.html'>Private overview</a>.</p>")
     return html_page("LightUp PRIVATE original HUMAN dayboard details", "".join(body))
+
+
+def per_owner_capacity(entries):
+    """PRIVATE suggested workload, not authenticated assignments or actual work."""
+    grouped = defaultdict(list)
+    for row in entries:
+        grouped[row["proposed_owner"]].append(row)
+    result = []
+    for owner, original in sorted(grouped.items()):
+        counts = Counter(row["date_bucket"] for row in original)
+        priorities = Counter(row["human_priority"] for row in original)
+        result.append({
+            "proposed_human_owner": owner,
+            "historical_human_proposals": len(original),
+            "past_proposed_day": counts["past_proposed_day"],
+            "selected_reference_day": counts["selected_reference_day"],
+            "later_proposed_day": counts["later_proposed_day"],
+            "no_proposed_day": counts["no_proposed_day"],
+            "human_urgent": priorities["human_urgent"],
+            "near_term": priorities["near_term"],
+            "routine": priorities["routine"],
+            "unset": priorities["unset"],
+        })
+    return result
+
+
+def capacity_csv(capacity):
+    columns = ("proposed_human_owner", "historical_human_proposals",
+               *BUCKETS, "human_urgent", "near_term", "routine", "unset")
+    file = io.StringIO(newline="")
+    writer = csv.writer(file, lineterminator="\\n")
+    writer.writerow(columns)
+    for row in capacity:
+        writer.writerow([row[column] for column in columns])
+    return file.getvalue()
 
 
 def as_csv(entries):
@@ -175,6 +227,7 @@ def run(args):
     reread = read_portfolio(args.portfolio)
     if (digest(reread[0]) != source_sha or reread[1] != original[1]):
         reject("PRIVATE HOLD: original HUMAN source changed during dayboard")
+    capacity = per_owner_capacity(entries)
     cases = sorted({
         (r["local_case"], r["historical_transition"], r["original_kit"])
         for r in entries
@@ -200,19 +253,23 @@ def run(args):
         "manually_selected_reference_day": args.reference_day,
         "proposed_human_owner_filter": owner,
         "bucket_counts": dict(sorted(Counter(r["date_bucket"] for r in entries).items())),
+        "proposed_human_owner_capacity": capacity,
         "historical_proposal_rows": entries,
         "distinct_original_human_item_slots": len(cases),
     }
     encoded = canonical(output)
     csv_text = as_csv(entries)
-    if len(encoded) > MAX_MANIFEST or len(csv_text.encode("utf-8")) > MAX_MANIFEST:
+    capacity_text = capacity_csv(capacity)
+    if (len(encoded) > MAX_MANIFEST or len(csv_text.encode("utf-8")) > MAX_MANIFEST
+        or len(capacity_text.encode("utf-8")) > MAX_MANIFEST):
         reject("PRIVATE HOLD: report cannot fit original native 1 MiB source limit")
     folder = new_private(args.private_parent)
     try:
         write_private(folder, "OPEN-PRIVATE.html",
                       anonymous_dashboard(entries, args.reference_day, owner))
         write_private(folder, "PRIVATE-HUMAN-dayboard.html",
-                      private_worklist(entries, args.reference_day, owner))
+                      private_worklist(entries, args.reference_day, owner, capacity))
+        write_private(folder, "PRIVATE-HUMAN-owner-capacity.csv", capacity_text)
         write_private(folder, "PRIVATE-HUMAN-dayboard.json", encoded)
         write_private(folder, "PRIVATE-HUMAN-dayboard.csv", csv_text)
     except BaseException:
