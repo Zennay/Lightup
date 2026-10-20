@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp | PRIVATE Assessment Retention Desk</title>
+<link rel="stylesheet" href="desk.css">
+<script src="desk.js" defer></script>
+</head>
+<body>
+<main>
+<header>
+<p class="eyebrow">LIGHTUP · OFFLINE ASSESSMENT OPERATIONS</p>
+<h1>PRIVATE bewaartermijnen & overdrachtsregister</h1>
+<p>Orden reeds geproduceerde assessmentbestanden, koppel menselijke vervolgkeuzes aan <strong>werkelijk geselecteerde bestandsbytes</strong> en neem die keuzes later opnieuw door. Geen uploads, netwerk, scanning of bestandsverwijdering.</p>
+<div class="warning" role="note"><strong>INCUBATE · M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><br>Alle keuzes zijn ongetekende menselijke voorstellen; geen toestemming, risicogoedkeuring, bewijs van herstel, eigenaarstoestemming of toestemming tot verwijdering. Gebruik alleen op een vertrouwd apparaat voor data waarvoor je bevoegd bent.</div>
+</header>
+<section class="panel">
+<h2>1. Privébronbestanden toevoegen</h2>
+<p>Maximaal 12 bestanden, maximaal 8 MiB per stuk en 64 MiB totaal. De browser berekent lokaal SHA-256; bestandsinhoud wordt <strong>niet</strong> in een export geplaatst. Bestandsnamen worden niet in de ontvangst opgeslagen.</p>
+<label for="sources" class="filelabel">Selecteer bestaande privébestanden</label><input id="sources" type="file" multiple>
+<div class="actions"><button id="clear" class="secondary" type="button">Werkruimte leegmaken</button><span id="source-count" class="muted">0 / 12 bronnen</span></div>
+</section>
+<section class="panel">
+<h2>2. Menselijke opvolging en beslissingen</h2>
+<p>De naam is een <strong>zelfgekozen lokaal alias</strong>, geen bewijs van herkomst. "Voorgesteld verwijderen" voert nooit een verwijdering uit. Elke rij blijft expliciet onbeoordeeld totdat een mens haar invult.</p>
+<div class="filters"><label>Zoeken <input type="search" id="query" placeholder="Alias of SHA-prefix"></label><label>Status <select id="status-filter"><option value="">Alle voorstellen</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden</option><option value="quarantine">Afzonderen</option><option value="propose_delete">Verwijdering voorstellen</option></select></label></div>
+<div id="stats" class="stats" aria-live="polite"></div>
+<div class="scroll"><table><thead><tr><th>Bronidentiteit</th><th>Privé-alias</th><th>Menselijke status</th><th>Reviewdatum</th><th>HUMAN actie / toelichting</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="6">Selecteer eerst bestanden.</td></tr></tbody></table></div>
+</section>
+<section class="panel">
+<h2>3. Brongebonden plan hervatten / exporteren</h2>
+<p>Een bestaand plan wordt uitsluitend in zijn geheel geaccepteerd wanneer de <em>actueel geselecteerde</em> bestandsbytes exact dezelfde SHA-256 en grootte hebben. Geen gedeeltelijke overname, geen automatische carry van gewijzigde bronnen. Het plan is <strong>PRIVATE en ongetekend</strong>: hashes alleen bewijzen bytegelijkheid.</p>
+<div class="actions">
+<label for="receipt" class="filelabel">Bestaand privéplan openen</label><input id="receipt" type="file" accept=".json,application/json">
+<button id="export-plan" type="button">Privéplan exporteren (.json)</button>
+<button id="export-counts" class="secondary" type="button">Alleen statusaantallen (.csv)</button>
+<button id="print" class="secondary" type="button">Privé-overzicht afdrukken</button>
+</div>
+<p class="muted">Planexport bevat SHA-256, bestandsgrootte en jouw HUMAN-alias/status/actie. Dit is gevoelige privé-informatie; behandel de export als vertrouwelijk. Gegevens blijven alleen in browsergeheugen, niet in localStorage.</p>
+</section>
+<div id="message" role="status" aria-live="polite" tabindex="-1">Klaar voor lokale bestandsselectie.</div>
+<footer>Geen source-owner of veiligheidsgrenzen gewijzigd · geen actieve assessment · geen automatische retentie- of wisbeslissing.</footer>
+</main>
+</body>
+</html>
