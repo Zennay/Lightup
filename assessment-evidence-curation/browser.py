@@ -131,6 +131,69 @@ function exportCsv(){
  const a=document.createElement("a");a.href=url;a.download="PRIVATE-human-selection.csv";a.click();
  setTimeout(()=>URL.revokeObjectURL(url),2000);showError("");
 }
+
+function strictQuotedRow(line){
+ // Studio imports only its own canonical all-quoted one-line-per-record format.
+ let i=0, fields=[];
+ while(i<line.length){
+  if(line[i]!=='"')throw Error("Only canonical PRIVATE Studio CSV is accepted for resume.");
+  i++;let value="",closed=false;
+  while(i<line.length){
+   if(line[i]==='"'){
+    if(line[i+1]==='"'){value+='"';i+=2;continue;}
+    i++;closed=true;break;
+   }
+   value+=line[i++];
+  }
+  if(!closed)throw Error("Unterminated PRIVATE CSV quoted field.");
+  fields.push(value);
+  if(i===line.length)break;
+  if(line[i]!==',')throw Error("Invalid PRIVATE CSV field boundary.");
+  i++;if(i===line.length)throw Error("Trailing PRIVATE CSV separator.");
+ }
+ if(fields.length!==6)throw Error("PRIVATE selection has an unexpected column count.");
+ return fields;
+}
+async function resumeSelection(file){
+ if(!file || file.size===0)return;
+ if(file.size>1024*1024){showError("HOLD: PRIVATE selection exceeds 1 MiB.");return;}
+ try{
+  const decoded=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  const raw=decoded.startsWith("\ufeff")?decoded.slice(1):decoded;
+  if(!raw.endsWith("\r\n") || /(^|[^\r])\n/u.test(raw) ||
+     /\r(?!\n)/u.test(raw))throw Error("Expected canonical CRLF PRIVATE CSV.");
+  const lines=raw.slice(0,-2).split("\r\n");
+  if(lines.length!==rows.length+1)throw Error("Original ordinal membership changed.");
+  const header=strictQuotedRow(lines[0]).join(",");
+  if(header!=="original_ordinal,source_reported_severity,evidence_reference_count,select_for_private_dossier,human_priority,human_question"){
+   throw Error("Original CSV header mismatch.");
+  }
+  const incoming=[];let chosen=0;
+  for(let i=0;i<rows.length;i++){
+   const c=strictQuotedRow(lines[i+1]),r=rows[i];
+   if(c[0]!==String(r.ordinal)||c[1]!==r.severity||c[2]!==String(r.evidence_count))
+    throw Error("Original ordinal, severity or evidence count differs at #"+(i+1)+".");
+   if(c[3]!==""&&c[3]!=="no"&&c[3]!=="yes")throw Error("Unsupported HUMAN selection.");
+   const yes=c[3]==="yes";
+   if(!yes&&(c[4]!==""||c[5]!==""))throw Error("Unselected HUMAN fields must be blank.");
+   if(yes&&(!["routine","soon","urgent"].includes(c[4])||!c[5].trim()||
+    c[5].length>500||formula.test(c[5])||prohibited.test(c[5])))
+    throw Error("Unsafe or incomplete HUMAN question at #"+(i+1)+".");
+   if(yes&&++chosen>maxSelected)throw Error("At most 64 HUMAN selections.");
+   incoming.push({yes,priority:yes?c[4]:"routine",question:yes?c[5]:""});
+  }
+  if(!window.confirm("Restore "+chosen+" PRIVATE HUMAN selections? Replaces current unsaved local choices. Original source identity is NOT verified by this browser."))return;
+  for(let i=0;i<incoming.length;i++)states[i]=incoming[i];
+  currentPage=0;search.value="";severity.value="all";onlySelected.checked=false;
+  showError("");render();
+ }catch(error){showError("HOLD: "+String(error.message||"Invalid PRIVATE selection")+". Current choices kept.");}
+}
+document.getElementById("restore-file").addEventListener("change",event=>{
+ const file=event.target.files&&event.target.files[0];
+ event.target.value="";
+ void resumeSelection(file);
+});
+
 for(const x of [search,severity,onlySelected])x.addEventListener(x===search?"input":"change",()=>{currentPage=0;render();});
 document.getElementById("prev").addEventListener("click",()=>{currentPage--;render();});
 document.getElementById("next").addEventListener("click",()=>{currentPage++;render();});
@@ -180,7 +243,8 @@ def source_free_studio(source: dict) -> bytes:
         "<p id='summary' aria-live='polite'></p><div class='toolbar'>"
         "<button id='pick' type='button'>Select filtered</button>"
         "<button id='clear' class='secondary' type='button'>Clear filtered</button>"
-        "<button id='export' type='button'>Export PRIVATE CSV</button></div>"
+        "<button id='export' type='button'>Export PRIVATE CSV</button>"
+        "<label>Resume prior PRIVATE Studio CSV <input id='restore-file' type='file' accept='.csv,text/csv'></label></div>"
         "<p id='error' class='warning' role='alert' hidden></p></section>"
         "<main id='entries'></main><nav class='panel page'>"
         "<button id='prev' class='secondary' type='button'>Previous</button>"
