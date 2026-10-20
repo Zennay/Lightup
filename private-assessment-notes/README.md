@@ -711,3 +711,14 @@ original HUMAN reviewers are different, that original sources were authentic,
 or that anyone can send, disclose or assess anything. All original review,
 CI, security/privacy, current independently authenticated client/operator
 consent, action-time revocation and HUMAN GO gates remain unchanged.
+
+
+## Complete PRIVATE HUMAN selected discussion action workflow
+
+The original selected-review browser export now has a source-bound native receipt,
+read-only reopening, a local offline next-action Studio with ordinal-only concern
+reasons and safe complete-draft resume, strict HUMAN action finalization and
+read-only original-bound action reopener. No automatic consensus, authentic
+reviewer identities, disclosure rights or release claims.
+
+[Full step-by-step offline PRIVATE HUMAN action workroom instructions](PRIVATE-DISCUSSION-ACTIONS.md).

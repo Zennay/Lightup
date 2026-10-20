@@ -80,15 +80,47 @@ def read_actions(raw: bytes, selected) -> list[dict]:
 
 def studio(selected) -> bytes:
     ordinals = [n for n, _ in selected]
+    # Original selected-only flags, NOT original notes, targets, identities or
+    # source SHA values. Retain full selected roster in every exported CSV.
+    signals = {str(n): list(flags) for n, flags in selected}
     javascript = """'use strict';
+const attention = """ + json.dumps(signals, separators=(",", ":")) + """;
 const ordinals = """ + json.dumps(ordinals, separators=(",", ":")) + """;
 const stages=['PENDING','DISCUSS','REQUEST_OWNER_CONTEXT','WITHHOLD'];
 const list=document.getElementById('list');
+const attentionLabels=[
+ 'HUMAN stage disagreement','HUMAN category disagreement',
+ 'PRIVATE note-text disagreement (withheld)','At least one HUMAN WITHHOLD',
+ 'At least one HUMAN REVIEW_REQUIRED'
+];
+const filters={ALL:()=>true,DIFFERENCES:v=>v.slice(0,3).some(Boolean),
+ WITHHOLD:v=>v[3],REVIEW_REQUIRED:v=>v[4],AGREED:v=>!v.some(Boolean)};
+const cards=new Map();
+const filter=document.getElementById('focus');
+function updateVisibility(){
+ let visible=0;
+ for(const ordinal of ordinals){
+   const show=filters[filter.value](attention[String(ordinal)]);
+   cards.get(ordinal).hidden=!show;
+   if(show)visible++;
+ }
+ document.getElementById('summary').textContent=visible+' of '+ordinals.length+
+  ' selected originals shown. Filters never remove selected originals from the complete HUMAN CSV.';
+}
+filter.addEventListener('change',updateVisibility);
+
 const current=new Map();
 for(const ordinal of ordinals){
  const box=document.createElement('section');
  const title=document.createElement('h2');
  title.textContent='Selected original #'+ordinal; box.append(title);
+ const flags=attention[String(ordinal)];
+ const badges=document.createElement('p');
+ const reasons=attentionLabels.filter((_,i)=>flags[i]);
+ badges.textContent=reasons.length ? reasons.join(' · ') :
+   'Literally matching HUMAN labels/notes — NOT a privacy pass.';
+ box.append(badges);
+ cards.set(ordinal,box);
  const label=document.createElement('label');
  label.textContent='Next HUMAN action ';
  const select=document.createElement('select');
@@ -107,7 +139,43 @@ for(const ordinal of ordinals){
  questionLabel.append(question);box.append(questionLabel);
  current.set(ordinal,{select,question});list.append(box);
 }
+updateVisibility();
 const bad=s=>s.length>180 || /^[\\s]*[=+@-]/.test(s) || /[\\x00-\\x1f\\x7f]/.test(s);
+
+const resume=document.getElementById('resume');
+resume.addEventListener('change',async()=>{
+ const file=resume.files&&resume.files[0];
+ resume.value='';
+ if(!file)return;
+ try{
+  if(file.size===0||file.size>65536)throw Error('HOLD: oversized PRIVATE draft');
+  const bytes=await file.arrayBuffer();
+  const value=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  const lines=value.split('\\r\\n');
+  if(lines.shift()!=='original_ordinal,human_next_step,private_human_question' ||
+     lines.pop()!=='' || lines.length!==ordinals.length)throw Error('HOLD: draft membership');
+  const updated=[];
+  const cell=s=>'"'+String(s).replaceAll('"','""')+'"';
+  for(let i=0;i<lines.length;i++){
+   const match=/^"([0-9]+)","(PENDING|DISCUSS|REQUEST_OWNER_CONTEXT|WITHHOLD)","((?:[^"]|"")*)"$/.exec(lines[i]);
+   if(!match||match[1]!==String(ordinals[i]))throw Error('HOLD: source or HUMAN stage mismatch');
+   const question=match[3].replaceAll('""','"');
+   if(bad(question)||question.length>180 ||
+      [match[1],match[2],question].map(cell).join(',')!==lines[i])
+     throw Error('HOLD: invalid or noncanonical PRIVATE question');
+   updated.push({stage:match[2],question});
+  }
+  if(!window.confirm('Restore ALL original-bound PRIVATE HUMAN draft actions? Current unsaved choices will be replaced. No authorization is granted.'))return;
+  updated.forEach((next,i)=>{
+    const record=current.get(ordinals[i]);
+    record.select.value=next.stage;record.question.value=next.question;
+  });
+  document.getElementById('message').textContent='Restored COMPLETE local selected-original HUMAN draft. Native finalization remains required; HOLD.';
+ }catch(_){
+  document.getElementById('message').textContent='HOLD: invalid or changed local original-bound HUMAN draft. Current choices were NOT changed.';
+ }
+});
+
 document.getElementById('export').addEventListener('click',()=>{
  const lines=['original_ordinal,human_next_step,private_human_question'];
  for(const ordinal of ordinals){
@@ -150,7 +218,18 @@ release, risk verdict, recipient authentication, scan or grant is implied.
 Questions can remain confidential: export owner-private only.</aside>
 <p>Every selected original must be retained. New choices start PENDING, not
 from a reviewer verdict. Nothing is saved automatically or sent externally.</p>
-<main id="list"></main><button id="export" type="button">Export COMPLETE PRIVATE HUMAN next-step CSV</button>
+<label>Show attention subset <select id="focus">
+<option value="ALL">All selected originals</option>
+<option value="DIFFERENCES">Human disagreements</option>
+<option value="WITHHOLD">Declared WITHHOLD</option>
+<option value="REVIEW_REQUIRED">Declared REVIEW_REQUIRED</option>
+<option value="AGREED">No literal disagreement</option>
+</select></label>
+<p id="summary" role="status" aria-live="polite"></p>
+<main id="list"></main>
+<label>Restore previous complete local PRIVATE HUMAN action CSV
+<input id="resume" type="file" accept=".csv,text/csv"></label>
+<button id="export" type="button">Export COMPLETE PRIVATE HUMAN next-step CSV</button>
 <p id="message" role="status" aria-live="polite">Native exact-original finalization is separately required.</p>
 <script>""" + javascript + """</script></html>""").encode("utf-8")
 
@@ -203,6 +282,36 @@ def plan(original: str, reviews: list[str], received_room: str, parent_name: str
             shutil.rmtree(workroom)
 
 
+def action_page(rows: list[dict]) -> bytes:
+    """Scriptless source-minimal HUMAN meeting view: no actual question contents."""
+    pieces = []
+    for row in rows:
+        pieces.append("<li>Original #" + row["original_ordinal"] +
+                      " — next HUMAN step: <b>" +
+                      html.escape(row["human_next_step"]) +
+                      "</b>. PRIVATE question: " +
+                      ("present; text withheld" if row["private_human_question"]
+                       else "none") + "</li>")
+    page = ("""<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';connect-src 'none';base-uri 'none';form-action 'none'">
+<title>PRIVATE HUMAN next-step meeting</title>
+<style>body{max-width:850px;margin:2rem auto;padding:1rem;font:16px/1.6 system-ui}
+aside{border-left:5px solid #a94325;background:#fff0e8;padding:14px}li{padding:8px}</style>
+<h1>PRIVATE · manually selected HUMAN next actions</h1>
+<aside><b>HOLD / HUMAN ONLY.</b> These are local human proposals,
+not an authenticated reviewer, owner obligation, privacy clearance, fixed
+finding, client approval, consent, grant, recipient or release authority.</aside>
+<p>Selected original positions: """ + str(len(rows)) + """.
+No original note content, masked note, HUMAN question text, source filename,
+original SHA or target is exposed in this printable agenda. The separately
+stored private CSV may contain HUMAN question text.</p><ol>""" +
+            "".join(pieces) + """</ol><p>Original full source-bound HUMAN
+review and all existing release gates remain separate and mandatory.
+No background dispatch, messaging, network, model or assessment.</p></html>""")
+    return page.encode("utf-8")
+
+
 def close(original: str, reviews: list[str], received_room: str,
           draft_room: str, completed_csv: str, parent_name: str) -> int:
     sources, manifest, decisions, packets, selected_raw, selected = admit_room(
@@ -233,32 +342,7 @@ def close(original: str, reviews: list[str], received_room: str,
             "not_authorized_or_verified": True,
         })
         file_new(out / "PRIVATE-HUMAN-actions.csv", selected_actions)
-        pieces = []
-        for row in rows:
-            pieces.append("<li>Original #" + row["original_ordinal"] +
-                          " — next HUMAN step: <b>" +
-                          html.escape(row["human_next_step"]) +
-                          "</b>. PRIVATE question: " +
-                          ("present; text withheld" if row["private_human_question"]
-                           else "none") + "</li>")
-        page = ("""<!doctype html><html lang="en"><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';connect-src 'none';base-uri 'none';form-action 'none'">
-<title>PRIVATE HUMAN next-step meeting</title>
-<style>body{max-width:850px;margin:2rem auto;padding:1rem;font:16px/1.6 system-ui}
-aside{border-left:5px solid #a94325;background:#fff0e8;padding:14px}li{padding:8px}</style>
-<h1>PRIVATE · manually selected HUMAN next actions</h1>
-<aside><b>HOLD / HUMAN ONLY.</b> These are local human proposals,
-not an authenticated reviewer, owner obligation, privacy clearance, fixed
-finding, client approval, consent, grant, recipient or release authority.</aside>
-<p>Selected original positions: """ + str(len(rows)) + """.
-No original note content, masked note, HUMAN question text, source filename,
-original SHA or target is exposed in this printable agenda. The separately
-stored private CSV may contain HUMAN question text.</p><ol>""" +
-                "".join(pieces) + """</ol><p>Original full source-bound HUMAN
-review and all existing release gates remain separate and mandatory.
-No background dispatch, messaging, network, model or assessment.</p></html>""")
-        file_new(out / "PRIVATE-HUMAN-actions.html", page.encode("utf-8"))
+        file_new(out / "PRIVATE-HUMAN-actions.html", action_page(rows))
         finished = True
         print("HOLD: PRIVATE HUMAN selected next-step record written; NO permission")
         print("OPEN LOCALLY: " + str(out / "PRIVATE-HUMAN-actions.html"))
@@ -266,3 +350,33 @@ No background dispatch, messaging, network, model or assessment.</p></html>""")
     finally:
         if not finished:
             shutil.rmtree(out)
+
+
+
+def reopen_actions(original: str, reviews: list[str], received_room: str,
+                   final_room: str) -> int:
+    """Read-only re-admission of final PRIVATE HUMAN action packet."""
+    sources, manifest, decisions, packets, selected_raw, selected = admit_room(
+        original, reviews, received_room)
+    final = private_directory(final_room)
+    actions_raw = private_input(str(final / "PRIVATE-HUMAN-actions.csv"), 65536)
+    rows = read_actions(actions_raw, selected)
+    counts = {step: sum(row["human_next_step"] == step for row in rows)
+              for step in STEPS}
+    expected = {
+        **receipt(sources, manifest, decisions, packets, selected_raw, selected),
+        "completed_human_actions_sha256_unsigned": sha256(actions_raw).hexdigest(),
+        "human_next_step_counts": counts,
+        "not_authorized_or_verified": True,
+    }
+    exact_receipt = (json.dumps(expected, indent=2, sort_keys=True,
+                                ensure_ascii=False) + "\n").encode("utf-8")
+    if (private_input(str(final / "PRIVATE-HUMAN-action-receipt.json"), 65536)
+            != exact_receipt):
+        raise Hold("HOLD: completed original HUMAN action receipt changed")
+    if (private_input(str(final / "PRIVATE-HUMAN-actions.html"), 65536)
+            != action_page(rows)):
+        raise Hold("HOLD: completed private HUMAN action agenda changed")
+    print("HOLD: original-bound PRIVATE HUMAN action packet reopened; NO privacy clearance")
+    print("OPEN LOCALLY: " + str(final / "PRIVATE-HUMAN-actions.html"))
+    return 3

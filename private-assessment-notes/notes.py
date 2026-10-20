@@ -487,6 +487,13 @@ def main() -> int:
     actions_end.add_argument("--draft-room", required=True)
     actions_end.add_argument("--completed-csv", required=True)
     actions_end.add_argument("--private-parent", required=True)
+    action_reopen = commands.add_parser(
+        "sensitivity-discussion-actions-reopen",
+        help="read-only exact-source PRIVATE HUMAN action packet reopening; HOLD")
+    action_reopen.add_argument("--completed-packet", required=True)
+    action_reopen.add_argument("--review", action="append", required=True)
+    action_reopen.add_argument("--room", required=True)
+    action_reopen.add_argument("--final-room", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -580,6 +587,10 @@ def main() -> int:
                             args.private_parent)
             return close(args.completed_packet, args.review, args.room,
                          args.draft_room, args.completed_csv, args.private_parent)
+        if args.action == "sensitivity-discussion-actions-reopen":
+            from privacy_triage_discussion_actions import reopen_actions
+            return reopen_actions(args.completed_packet, args.review,
+                                  args.room, args.final_room)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(
