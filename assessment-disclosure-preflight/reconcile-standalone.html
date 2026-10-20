@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-utVymeQ4Yb+7x/TJt+jBICZJRGrmYoYPF9GenpTXlWo='; style-src 'sha256-FmP/C0L+jWopWqGPS8AWb3fCIphcX2FcfuDuSPCmZjI='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-TFBySHsRfIY83XDNwzq1lBAsaDb9LwWOKwuSM10+yvM='; style-src 'sha256-e7GWUIamnMfoPKCgxgnWzkxFbTdWikcuAmjBdIsso+E='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN reconciliation desk</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#192735;background:#f3f5f9;color-scheme:light}
@@ -32,6 +32,15 @@ button:hover{background:#074d72}.secondary{background:#566579}.secondary:hover{b
 footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 @media(max-width:720px){.comparison,.controls{grid-template-columns:1fr}.sticky{flex-direction:column;align-items:stretch}}
 @media print{body{background:white}.warning,.case,section{break-inside:avoid}.sticky,button,input,select,textarea{display:none!important}header{background:white;color:#000;padding:0}.comparison{grid-template-columns:1fr 1fr}}
+
+/* Confidential native-compatible finalization stays visually separate from review. */
+.finalize{margin-top:1.2rem;padding:1.2rem;border:1px solid #8aa9ba;border-radius:.6rem;background:#f0f6fa}
+.finalize h3{font-size:1.15rem;margin:0 0 .6rem}
+.finalize code{overflow-wrap:anywhere}
+#sealStatus{margin-top:.9rem;border-left:3px solid #58778b;padding:.6rem .8rem;background:#fff}
+.finalize .grid{margin-top:1rem}
+.resume{border-top:1px solid #cad6df;margin-top:1rem;padding-top:1rem}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 </style>
 
 
@@ -78,6 +87,20 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 <div id="entries" class="entries" aria-label="PRIVATE reviewer comparisons"></div>
 <div class="sticky"><span id="saveState" role="status" aria-live="polite">No decisions saved.</span>
 <button id="save" type="button" disabled>Export PRIVATE decision CSV</button></div>
+<div class="finalize" aria-labelledby="finalizeTitle">
+<h3 id="finalizeTitle">3 · Seal selected HUMAN continuation without plaintext</h3>
+<p>First export the exact reviewer-bound decision CSV above: it records your explicit A/B/HOLD choices and private reasons. Keep that PRIVATE audit file safely alongside the separately stored originals. This optional second step creates only a new encrypted <code>.luhb</code> containing the identical unsigned PRIVATE receipt bytes and the original-format HUMAN CSV selected row by row. A HOLD row always becomes <code>unreviewed</code> with empty notes; even matching reviewers are never silently selected. No new plaintext final report or intermediate reviewer file is downloaded.</p>
+<div class="grid">
+<label>New local-only encrypted result passphrase (14–256 characters)<input id="sealPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
+<label>Repeat passphrase<input id="sealConfirm" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
+</div>
+<div class="actions">
+<button id="seal" type="button" disabled>Seal PRIVATE selected HUMAN result (.luhb)</button>
+<button id="counts" type="button" class="secondary" disabled>Export suppressed counts only</button>
+</div>
+<p id="sealStatus" role="status" aria-live="polite">No HUMAN result sealed. Neither encryption nor SHA-256 authenticates the reviewers, verifies source evidence, authorizes a disclosure or confers release.</p>
+<p class="hint">The encrypted file uses the original LightUp AES-256-GCM/PBKDF2 implementation and can be opened locally with the existing HUMAN studio or native <code>human_review.py render --bundle</code>. It contains the unsigned receipt and selected HUMAN stage/question/next-action text, not the A/B justification; retain the separately exported exact decision CSV. The source-free counts download suppresses small cohorts/groups and is not automatically anonymous. Browser download files may initially have default filesystem permissions. No automatic recipient dispatch, scan, grant, deployment or network access.</p>
+</div>
 <p class="hint">The output pins SHA-256 of the exact original receipt and both complete native HUMAN CSV byte streams. On the same trusted machine, run <code>reconcile.py finalize --decisions ...</code> with the unchanged source files. It rejects any changed source, reordered ordinal, invalid stage, CSV or decision. A SHA-256 digest proves byte equality only, never origin or authority. Local browser downloads may receive normal filesystem permissions: move the PRIVATE file into a trusted owner-only directory before finalization.</p>
 </section>
 </main>
@@ -245,6 +268,7 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
   const MAX = 256 * 1024;
   const byId = name => document.getElementById(name);
   let source = null, decisions = [], dirty = false, epoch = 0;
+  let decisionRevision = 0, exportedRevision = -1;
   const urls = new Set();
 
   function admitted(condition) {
@@ -455,9 +479,12 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
         different: ["stage", "question", "next_action"].some(field => a[i][field] !== b[i][field]),
       }));
       // All inputs admitted BEFORE replacing a previous HUMAN workroom.
-      source = {digest, rows};
+      if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
+      source = {digest, rows, receipt: receiptRaw.slice(0)};
       decisions = rows.map(() => ({choice: "HOLD", reason: ""}));
       dirty = false;
+      decisionRevision++;
+      exportedRevision = -1;
       byId("desk").hidden = false;
       byId("save").disabled = false;
       byId("view").value = "all";
@@ -540,11 +567,15 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
         choice.choice = select.value;
         if (choice.choice === "HOLD") { choice.reason = ""; input.value = ""; }
         dirty = true;
+        decisionRevision++;
+        exportedRevision = -1;
         updateCounts();
       });
       input.addEventListener("input", () => {
         choice.reason = input.value;
         dirty = true;
+        decisionRevision++;
+        exportedRevision = -1;
         updateCounts();
       });
     });
@@ -563,6 +594,10 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
     byId("saveState").textContent = invalid ? invalid + " selections missing safe reason · HOLD" :
       dirty ? "Unsaved PRIVATE HUMAN choices · no release" : "All decisions HOLD by default";
     byId("save").disabled = Boolean(invalid);
+    const ready = !invalid && exportedRevision === decisionRevision &&
+                  Boolean(source.receipt) && globalThis.LightUpHumanVault;
+    byId("seal").disabled = !ready;
+    byId("counts").disabled = !ready;
   }
   async function restoreDecisions() {
     const sequence = epoch;
@@ -591,6 +626,8 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
       admitted(sequence === epoch && source === current);
       decisions = next;
       dirty = true;
+      decisionRevision++;
+      exportedRevision = -1;
       refresh();
       notice("REVIEW_ONLY: exact-source-bound HUMAN decision draft restored. Every choice still requires original native finalize, separate authorization and HUMAN review.");
     } catch (_) {
@@ -623,19 +660,112 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
       a.click();
       setTimeout(() => { URL.revokeObjectURL(url); urls.delete(url); }, 10000);
       dirty = false;
+      exportedRevision = decisionRevision;
       updateCounts();
       notice("REVIEW_ONLY: local PRIVATE decision file exported. Use unchanged native finalizer with the exact receipt and reviewer CSV bytes. No authorization.");
     } catch (_) {
       notice("HOLD: incomplete or unsafe HUMAN selection or cancelled download. No new export.", true);
     }
   }
+  function nativeSelectedRows() {
+    admitted(source && decisions.length === source.rows.length);
+    admitted(decisions.every(row => ["HOLD", "A", "B"].includes(row.choice) &&
+      humanSafe(row.reason) && (row.choice === "HOLD" || row.reason.trim())));
+    return source.rows.map((item, index) => {
+      const selected = decisions[index].choice === "A" ? item.a :
+                       decisions[index].choice === "B" ? item.b : null;
+      return { ordinal: item.original.ordinal, kind: item.original.kind,
+               stage: selected ? selected.stage : "unreviewed",
+               question: selected ? selected.question : "",
+               next_action: selected ? selected.next_action : "" };
+    });
+  }
+  function nativeSelectedCsv(rows) {
+    const lines = [FIELDS.map(quoted).join(",")];
+    rows.forEach((row, index) => {
+      admitted(row.ordinal === index + 1 && KINDS.includes(row.kind) &&
+               STAGES.includes(row.stage) &&
+               humanSafe(row.question) && humanSafe(row.next_action));
+      lines.push([source.digest[0], row.ordinal, row.kind, row.stage,
+                  row.question, row.next_action].map(quoted).join(","));
+    });
+    return lines.join("\n") + "\n";
+  }
+  function localDownload(data, filename, contentType) {
+    const url = URL.createObjectURL(new Blob([data], {type: contentType}));
+    urls.add(url);
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = filename;
+    anchor.click();
+    setTimeout(() => { URL.revokeObjectURL(url); urls.delete(url); }, 10000);
+  }
+  async function sealResult() {
+    const pass = byId("sealPassword"), repeat = byId("sealConfirm");
+    const capturedEpoch = epoch, capturedRevision = decisionRevision, captured = source;
+    try {
+      admitted(captured && globalThis.LightUpHumanVault &&
+               window.isSecureContext && crypto?.subtle);
+      admitted(exportedRevision === capturedRevision);
+      admitted(pass.value === repeat.value && pass.value.length >= 14 &&
+               pass.value.length <= 256 && !/[\u0000-\u001f\u007f]/u.test(pass.value));
+      const nativeCsv = nativeSelectedCsv(nativeSelectedRows());
+      admitted(confirm("Create ONE password-encrypted LOCAL PRIVATE source-free HUMAN result? Retain your separately saved exact A/B decision CSV with HUMAN reasons. Neither file is a release or approval."));
+      const result = await LightUpHumanVault.sealBundle(
+        captured.receipt.slice(0), nativeCsv, pass.value);
+      admitted(capturedEpoch === epoch && captured === source &&
+               capturedRevision === decisionRevision &&
+               exportedRevision === capturedRevision);
+      localDownload(result, "PRIVATE-browser-reconciled-human.luhb",
+                    "application/octet-stream");
+      byId("sealStatus").textContent =
+        "REVIEW_ONLY: encrypted native-compatible HUMAN receipt+choices saved locally. Preserve separately exported A/B reasoning. No approved disclosure.";
+      notice("REVIEW_ONLY: new encrypted local HUMAN result. No consent, source proof, grant or release.");
+    } catch (_) {
+      byId("sealStatus").textContent =
+        "HOLD: encryption, changed HUMAN choices, incomplete password, browser context or consent prompt refused. Existing decisions retained.";
+    } finally {
+      pass.value = ""; repeat.value = "";
+    }
+  }
+  function countsCsv(rows) {
+    const minimum = 5;
+    const values = STAGES.map(stage => rows.filter(row => row.stage === stage).length);
+    const showSource = rows.length >= minimum;
+    const showGroups = showSource && values.every(count => count === 0 || count >= minimum);
+    const entries = [
+      ["field","value"], ["status","REVIEW_ONLY"],
+      ["original_source_authenticated","FALSE"], ["current_consent_verified","FALSE"],
+      ["release_allowed","FALSE"], ["not_anonymity_guarantee","TRUE"],
+      ["HUMAN_receipt_identity","UNSIGNED_BYTES_ONLY"],
+      ["source_count", showSource ? String(rows.length) : "SUPPRESSED_SMALL_COHORT"],
+      ["human_stages","DECLARED_NON_AUTHORITATIVE"]
+    ];
+    if (showGroups) {
+      STAGES.forEach((stage, i) => entries.push(["HUMAN_" + stage, String(values[i])]));
+    } else entries.push(["HUMAN_stage_breakdown", "SUPPRESSED_SMALL_GROUP"]);
+    return entries.map(row => row.map(quoted).join(",")).join("\n") + "\n";
+  }
+  function exportCounts() {
+    try {
+      admitted(source && exportedRevision === decisionRevision);
+      const summary = countsCsv(nativeSelectedRows());
+      admitted(confirm("Save PRIVATE counts only with small-cohort suppression? It is NOT guaranteed anonymous or approved for sharing."));
+      localDownload(summary, "PRIVATE-browser-reconciled-counts.csv", "text/csv;charset=utf-8");
+      notice("REVIEW_ONLY: source/note-free local suppressed HUMAN counts exported. This is not anonymization or authorization.");
+    } catch (_) {
+      notice("HOLD: counts were not generated or operator cancelled; no disclosure approval.", true);
+    }
+  }
   function clear() {
     if (source && dirty && !confirm("Discard unexported PRIVATE HUMAN decisions?")) return;
     epoch++;
+    if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
     source = null; decisions = []; dirty = false;
+    decisionRevision++;
+    exportedRevision = -1;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm"]) byId(id).value = "";
     for (const url of urls) URL.revokeObjectURL(url);
     urls.clear();
     notice("PRIVATE session cleared from this page. Previously downloaded files remain on your device; browser memory erasure is not guaranteed.");
@@ -643,6 +773,8 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
   byId("open").addEventListener("click", open);
   byId("clear").addEventListener("click", clear);
   byId("save").addEventListener("click", exportDecisions);
+  byId("seal").addEventListener("click", sealResult);
+  byId("counts").addEventListener("click", exportCounts);
   byId("restore").addEventListener("click", restoreDecisions);
   byId("view").addEventListener("change", refresh);
   byId("query").addEventListener("input", refresh);
@@ -650,10 +782,14 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
     if (dirty) { event.preventDefault(); event.returnValue = ""; }
   });
   addEventListener("pagehide", () => {
-    epoch++; source = null; decisions = []; dirty = false;
+    epoch++;
+    if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
+    source = null; decisions = []; dirty = false;
+    decisionRevision++;
+    exportedRevision = -1;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm"]) byId(id).value = "";
     urls.forEach(url => URL.revokeObjectURL(url)); urls.clear();
   });
 })();</script>
