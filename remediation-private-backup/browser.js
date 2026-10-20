@@ -139,6 +139,7 @@
     // Every explicit clear or changed file invalidates pending async decrypts.
     generations[index]++;
     release(index);
+    clearHumanNote(); // HUMAN text must never carry over to a different A/B source.
     expireDownloads(); // Explicit clear cancels any still-live private Blob URLs.
     const label = index === 0 ? "a" : "b";
     if (resetInput) el(label + "-file").value = "";
@@ -154,6 +155,7 @@
     const source = input.files && input.files[0];
     const secret = pass.value;
     const ticket = ++generations[index];
+    clearHumanNote(); // Any pending separate HUMAN note is source-identity-specific.
     pass.value = "";
     el(label + "-open").disabled = true;
     status(label + "-status", "Authenticating selected encrypted bytes locally…");
