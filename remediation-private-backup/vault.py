@@ -80,7 +80,7 @@ def read_file(path, limit):
         if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
                 or before.st_uid != os.getuid() or before.st_mode & 0o077
                 or before.st_size > limit):
-            raise Hold("only owner-private 0600, single-link, regular bounded files accepted")
+            raise Hold("only current-owner private non-shared, single-link regular files accepted")
         with os.fdopen(fd, "rb", closefd=False) as handle:
             data = handle.read(limit + 1)
         after = os.fstat(fd)
@@ -224,6 +224,15 @@ def restore(args):
     destination = Path(args.destination)
     target_free(destination)
     _, files = unseal(args.vault)
+    if args.only:
+        wanted = set(args.only)
+        if (len(wanted) != len(args.only) or len(wanted) > MAX_FILES
+                or any(not name_safe(name) for name in wanted)):
+            raise Hold("invalid or duplicate selection names")
+        available = {name for name, _, _ in files}
+        if not wanted.issubset(available):
+            raise Hold("requested restore selection not present in authenticated backup")
+        files = [row for row in files if row[0] in wanted]
     temporary = Path(tempfile.mkdtemp(prefix=".lightup-private-hold-", dir=destination.parent))
     try:
         os.chmod(temporary, 0o700)
@@ -286,6 +295,8 @@ def main():
     p = sub.add_parser("restore", help="Restore into a NEW private directory")
     p.add_argument("vault")
     p.add_argument("destination")
+    p.add_argument("--only", action="append", metavar="ORIGINAL_NAME",
+                   help="Restore just this exact original filename; repeatable (default: all)")
     p = sub.add_parser("rotate", help="Re-encrypt to a NEW private archive without plaintext output")
     p.add_argument("vault")
     p.add_argument("--output", required=True)
