@@ -85,6 +85,40 @@ python3 assessment-integrated-suite/lab_plans.py review-finalize \
 
 The final output is a new 0700 PRIVATE workroom with its own 0600 scriptless HUMAN brief, decisions CSV and counts-only JSON. The source reader admits the exact original Lab Launchpad packets again, rejecting changed original source identities, malformed decision rows, stage/team violations and unsafe CSV formula prefixes. Every emitted authority/consent/verification flag remains false. This workflow does **not** promote HUMAN decisions to PASS, verify a finding, open sockets, run `lightup lab-assess`, or contact a client.
 
+## Resume an existing HUMAN Lab Review without losing your work
+
+The native original-source workroom is not a server-side session and browser
+data is never saved automatically. If you have an original complete PRIVATE
+HUMAN CSV and the original Lab Launchpad packets, use console **58** or:
+
+```sh
+python3 assessment-integrated-suite/lab_plans.py review-resume \
+  --packet /private/original-lab-plan-a \
+  --packet /private/original-lab-plan-b \
+  --packet /private/original-lab-plan-c \
+  --prior-room /private/original-lab-human-studio \
+  --prior-csv /private/HUMAN/PRIVATE-LAB-HUMAN-DECISIONS.csv \
+  --private-parent /private \
+  --folder continued-human-lab-draft \
+  --human-confirm 'RESUME PRIVATE LAB HUMAN REVIEW'
+```
+
+The original full packet list and order **must match exactly**, and the
+original `PRIVATE-LAB-HUMAN-RECEIPT.json` must still bind to the same
+re-admitted original source fingerprint and literal-false authority flags.
+The earlier CSV must pass every native source binding, stage, team and
+private question admission before any new output is allocated. The new
+0700/0600 workroom contains a browser Studio with every previous HUMAN
+stage/team/question preselected, a full editable native CSV template and
+new unsigned source receipt. The original review room, original packets,
+previous CSV and live console remain unchanged. Search/filter and live
+counts never remove hidden rows from the complete CSV export.
+
+No automatic pass, target work, calendar action, grant, authentic reviewer
+identity, client source, original security finding, or consent is inferred.
+As with initial review, downloaded files must be explicitly moved to safe
+0600 custody and re-admitted before finalization.
+
 ## Confidentiality and source limits
 
 All original endpoint URLs, Studio catalogs, source fingerprints, local paths, HUMAN questions, browser reports and CSVs are PRIVATE. Place them only under trusted owner-owned directories outside the checkout with directory mode **0700** and file mode **0600**. The software bundle ships **no** original client material, private source files, stored operator session or real assessment evidence.
