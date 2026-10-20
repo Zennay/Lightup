@@ -418,6 +418,14 @@ def main() -> int:
     agenda_end.add_argument("--latest-packet", required=True, help="actual final original HUMAN packet")
     agenda_end.add_argument("--completed-csv", required=True, help="complete PRIVATE original HUMAN proposal CSV")
     agenda_end.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
+    team = commands.add_parser(
+        "agenda-team", help="minimum-necessary PRIVATE HUMAN discussion for one proposed team")
+    team.add_argument("--review-kit", required=True, help="original completed PRIVATE HUMAN agenda review")
+    team.add_argument("--history-kit", required=True, help="original completed PRIVATE history")
+    team.add_argument("--latest-packet", required=True, help="original latest completed HUMAN packet")
+    team.add_argument("--team", required=True,
+                      choices=("SECURITY", "PRIVACY", "CLIENT_OPERATIONS", "PLATFORM"))
+    team.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
     args = p.parse_args()
     try:
         if args.action == "prepare":
@@ -437,6 +445,10 @@ def main() -> int:
                 return prepare_agenda(args.history_kit, args.latest_packet, args.private_parent)
             return finalize_agenda(args.agenda_kit, args.history_kit, args.latest_packet,
                                    args.completed_csv, args.private_parent)
+        if args.action == "agenda-team":
+            from agenda_team import team_packet
+            return team_packet(args.review_kit, args.history_kit, args.latest_packet,
+                               args.team, args.private_parent)
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
