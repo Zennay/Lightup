@@ -84,9 +84,36 @@ directory / 0600 files, atomic no-overwrite publication, and local inspection.
       --output-dir /ABSOLUTE/PRIVATE/PATH/fresh-received-suite
 
 This invokes signature verification **before** original receiver ZIP parsing
-and publication, then invokes original installed source-lock inspection.
+and publication, captures the exact cryptographically verified bytes in a
+fresh private 0600 temporary file for native admission (no re-open race against
+the original user-supplied ZIP), removes this temporary snapshot, and invokes
+original installed source-lock inspection.
 The two verifiers are independent; neither authenticates contemporary customer
 identity or consent. No private key crosses to the recipient. No network.
+
+## Optional two-key co-signing: stronger offline custody, not authorization
+
+For deployments where two separately held, independently trusted Ed25519 keys
+are available, a second human signer can sign the **same exact ZIP** separately
+with the regular sign command and their own encrypted private key, producing a
+second receipt. The recipient can require **both** signatures to verify on the
+same bytes and on two **distinct independently trusted fingerprints** BEFORE
+running the original source-lock receiver:
+
+    python3 remediation-package-signatures/verified_receive.py \
+      --archive /ABSOLUTE/PRIVATE/PATH/software-only.zip \
+      --receipt /ABSOLUTE/PRIVATE/PATH/first.lusig.json \
+      --trusted-public-key /ABSOLUTE/PRIVATE/PATH/first-public.pem \
+      --trusted-fingerprint FIRST-TRUSTED-64-HEX \
+      --second-receipt /ABSOLUTE/PRIVATE/PATH/second.lusig.json \
+      --second-trusted-public-key /ABSOLUTE/PRIVATE/PATH/second-public.pem \
+      --second-trusted-fingerprint SECOND-TRUSTED-64-HEX \
+      --output-dir /ABSOLUTE/PRIVATE/PATH/fresh-cosigned-suite
+
+All three second-key flags are required together; a second signature made by
+the SAME key is refused. A second signer does **not** grant independent
+security approval, customer authorization or HUMAN GO. It only provides two
+cryptographic possession proofs over matching bytes.
 
 ## Limits and operational risks
 
