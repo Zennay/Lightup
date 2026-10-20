@@ -284,6 +284,51 @@ def selected_rows(files, requested):
     return [row for row in files if row[0] in wanted]
 
 
+def wizard(args):
+    """Interactive nonrecursive private source selection; never silently collect data."""
+    if not sys.stdin.isatty():
+        raise Hold("interactive PRIVATE source selection requires local TTY")
+    directory = Path(args.directory)
+    if directory.is_symlink() or not directory.is_dir():
+        raise Hold("select an existing ordinary PRIVATE source directory")
+    info = directory.stat(follow_symlinks=False)
+    if (info.st_uid != os.getuid() or info.st_mode & 0o077
+            or not stat.S_ISDIR(info.st_mode)):
+        raise Hold("source directory must belong to current user and have 0700 mode")
+    candidates = []
+    with os.scandir(directory) as entries:
+        for item in entries:
+            if not name_safe(item.name) or item.name.lower().endswith(".lupb"):
+                continue
+            entry = item.stat(follow_symlinks=False)
+            if (not stat.S_ISREG(entry.st_mode) or entry.st_nlink != 1
+                    or entry.st_uid != os.getuid() or entry.st_mode & 0o077
+                    or entry.st_size > MAX_SINGLE):
+                continue
+            candidates.append((item.name, entry.st_size))
+            if len(candidates) > 128:
+                raise Hold("over 128 eligible entries; use explicit create FILE arguments")
+    candidates.sort(key=lambda pair: pair[0])
+    if not candidates:
+        raise Hold("no eligible owner-private files for this workroom")
+    print("PRIVATE HUMAN source selection; local only, no disclosure authority")
+    print("Only immediate 0600 files are shown. Select explicit rows, max 32.")
+    for index, (name, size) in enumerate(candidates, 1):
+        print(f" {index:3d}. {size:8d} bytes · {name}")
+    raw = input("File numbers (comma-separated, e.g. 1,3,5; empty=HOLD): ").strip()
+    if not raw or len(raw) > 256:
+        raise Hold("no valid operator selection")
+    fields = raw.split(",")
+    if not 1 <= len(fields) <= MAX_FILES or any(not part.strip().isdigit() for part in fields):
+        raise Hold("selection requires 1-32 integer row numbers")
+    numbers = [int(part.strip()) for part in fields]
+    if len(set(numbers)) != len(numbers) or any(n < 1 or n > len(candidates) for n in numbers):
+        raise Hold("duplicate or out-of-range file selection")
+    selected = [str(directory / candidates[n - 1][0]) for n in numbers]
+    print(f"Selected {len(selected)} PRIVATE files; originals stay untouched.")
+    create(argparse.Namespace(output=args.output, files=selected))
+
+
 def encrypted_subset(args):
     """Re-encrypt selected source bytes, never publish unencrypted scratch files."""
     target = Path(args.output)
@@ -353,10 +398,13 @@ def main():
     p.add_argument("vault")
     p.add_argument("--only", required=True, action="append", metavar="ORIGINAL_NAME")
     p.add_argument("--output", required=True)
+    p = sub.add_parser("wizard", help="Interactive opt-in source selection from ONE PRIVATE folder")
+    p.add_argument("directory")
+    p.add_argument("--output", required=True)
     args = parser.parse_args()
     try:
         {"create": create, "inventory": inventory, "restore": restore,
-         "rotate": rotate, "compare": compare, "subset": encrypted_subset}[args.command](args)
+         "rotate": rotate, "compare": compare, "subset": encrypted_subset, "wizard": wizard}[args.command](args)
     except (Hold, OSError) as err:
         print(f"HOLD: {err}", file=sys.stderr)
         return 3
