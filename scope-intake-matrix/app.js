@@ -628,6 +628,7 @@
     if (!confirm("Export only aggregate numbers? Small groups may still be sensitive. No authorization claims.")) return;
     const counts = Object.fromEntries(Object.keys(STATUS).map(k => [k, state.rows.filter(r => r.status === k).length]));
     const categories = Object.fromEntries(Object.keys(CAPABILITIES).map(k => [k, state.rows.filter(r => r.capability === k).length]));
+    const coverage = computeCoverage();
     const receipt = {
       schema: "lightup.scope_intake.anonymous_counts.v1",
       posture: "PREPARATION_ONLY",
@@ -635,7 +636,15 @@
       proposed_count: state.rows.length,
       excluded_count: state.rows.filter(r => r.excluded).length,
       ownership_claimed_unverified_count: state.rows.filter(r => r.ownership === "claimed").length,
-      human_status_counts: counts, proposed_capability_counts: categories
+      human_status_counts: counts, proposed_capability_counts: categories,
+      human_boundary_attention_counts: {
+        total_numeric_overlap_pairs: coverage.pairs.length,
+        included_excluded_exception_pairs: coverage.pairs.filter(p => p.cross).length,
+        overlapping_inclusion_pairs: coverage.pairs.filter(p => p.includes).length,
+        repeated_exclusion_pairs: coverage.pairs.filter(p => !p.cross && !p.includes).length,
+        static_special_address_family_rows: coverage.classifications.filter(c =>
+          c.description !== "Other IPv4 literal; ownership/routability UNVERIFIED").length
+      }
     };
     download("lightup-scope-intake-COUNTS.json", JSON.stringify(receipt, null, 2) + "\n");
     announce("Counts-only receipt prepared. No target, client, identity or scope evidence included; still not an authorization.");
@@ -914,6 +923,14 @@
       if (pair.cross || pair.includes) {
         items.push("IPv4 boundary HUMAN review: " + pair.a + " overlaps " + pair.b +
           " — " + pair.relation + "; never infer consent.");
+      }
+    }
+    for (const item of computeCoverage().classifications) {
+      if (item.description.includes("special-use") ||
+          item.description.includes("Reserved") ||
+          item.description.includes("Benchmark")) {
+        items.push("Special-address HUMAN review: " + item.asset + " — " +
+          item.description + "; never infer routability or lab authorization.");
       }
     }
     items.push("Before any real work: original owner/security/privacy approvals, #177/#182/#829, exact-head hosted and named VPS CI, authentic consent plus action-time revocation and explicit HUMAN GO remain mandatory.");
