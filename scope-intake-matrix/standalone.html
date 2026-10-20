@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-vCLl1fd5tNdgTZs+0h+YzbUXeBUuof9sUi6gRQ74xEE='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cXqnOtjzVLPprm4kySt86qFK5acz6PXLu2CUN74+xlE='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp — Scope Intake Matrix (draft only)</title>
 <style>
 :root{color-scheme:dark;--bg:#0c1322;--panel:#151f32;--panel2:#1b2940;--line:#35455d;--ink:#eef4ff;--dim:#aebed0;--accent:#75e0c2;--warning:#ffcd7c;--danger:#ff8e99}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1000px 460px at 65% -20%,#214b5a,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}header{padding:24px clamp(18px,5vw,72px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:13px;letter-spacing:.15em;color:var(--accent);font-weight:800}.brand strong{display:block;font-size:29px;letter-spacing:-.035em;color:var(--ink)}.fence{border:1px solid #936d38;background:#392c1c;color:#ffe1ad;border-radius:40px;padding:8px 15px;font-weight:750;font-size:12px}main{max-width:1460px;margin:auto;padding:28px clamp(18px,5vw,72px) 80px}.intro{max-width:900px;color:var(--dim);margin:0 0 24px}h2{font-size:18px;margin:0 0 17px}h3{font-size:15px;margin:0 0 12px}.section{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px;margin-bottom:21px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.wide{grid-column:span 2}label{display:block;font-weight:650;font-size:13px;color:#dce6f1}input,select,textarea{background:var(--panel2);border:1px solid #4b5c74;border-radius:8px;color:var(--ink);font:inherit;padding:9px 10px;min-width:0;width:100%;margin-top:6px}textarea{min-height:73px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}button{font:inherit;cursor:pointer;border-radius:9px;padding:10px 14px;border:1px solid #647792;background:#25364e;color:var(--ink);font-weight:700}button.primary{background:var(--accent);border-color:var(--accent);color:#091e24}button.danger{color:#ffc5cd;border-color:#9b5363}button:hover{filter:brightness(1.16)}button:focus-visible{outline:3px solid var(--warning)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:12px;border-radius:10px;background:#22314a;border:1px solid var(--line)}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--dim)}.muted{color:var(--dim)}.warning{color:var(--warning)}.danger-text{color:var(--danger)}.table-wrap{overflow-x:auto}table{border-collapse:separate;border-spacing:0;width:100%;min-width:960px}th{text-align:left;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);padding:10px 7px}td{vertical-align:top;border-bottom:1px solid #2c3e56;padding:7px}td input,td select{font-size:13px;margin:0;padding:8px}th:nth-child(1){width:25%}th:nth-child(2){width:12%}th:nth-child(3){width:19%}th:nth-child(4){width:11%}th:nth-child(5){width:14%}th:nth-child(6){width:13%}.row-tools{display:flex;gap:4px}.row-tools button{font-size:12px;padding:7px}.privacy{padding:13px;border-left:3px solid var(--warning);background:#3c3025;margin-top:16px}.notice{padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);margin:12px 0;white-space:pre-wrap}.notice[hidden],section[hidden],div[hidden]{display:none!important}.compare-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.compare-items pre{overflow-wrap:anywhere;white-space:pre-wrap;background:#0e192a;border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}.small{font-size:12px}.right{margin-left:auto}.filter{max-width:290px}.footer{margin-top:20px;font-size:12px;color:var(--dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.compare-items{grid-template-columns:1fr}.section{padding:16px}}@media print{body{background:white;color:black}header,.actions,.privacy,.footer,#compare-section,#file-import,#file-compare,.row-tools,.filter{display:none!important}main{padding:0}.section{break-inside:avoid;border:1px solid #ccc;background:white}input,select,textarea{border:0;background:white;color:black;padding:3px}th,td,.muted,.stat span{color:black}.stat{background:white;color:black}.table-wrap{overflow:visible}table{min-width:unset}}
@@ -415,6 +415,7 @@
     $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
     $("blocked-count").textContent = state.rows.filter(row => row.status === "blocked").length;
     const issues = validate(state);
+    renderCoverage();
     renderAgenda();
     announce(issues.length ? "DRAFT INCOMPLETE (" + issues.length + "): " +
       issues.slice(0, 5).join(" ") + (issues.length > 5 ? " …" : "") :
@@ -646,6 +647,134 @@
     download("lightup-scope-intake-COUNTS.json", JSON.stringify(receipt, null, 2) + "\n");
     announce("Counts-only receipt prepared. No target, client, identity or scope evidence included; still not an authorization.");
   }
+
+  // Strictly literal local arithmetic: never DNS-resolve, infer owner, issue policy or fetch.
+  function parseIpv4Literal(asset) {
+    if (!validAsset(asset)) return null;
+    const match = /^(\d{1,3}(?:\.\d{1,3}){3})(?:\/(\d{1,2}))?$/.exec(asset);
+    if (!match) return null;
+    const prefix = match[2] === undefined ? 32 : Number(match[2]);
+    const octets = match[1].split(".").map(Number);
+    const ip = octets.reduce((a, b) => a * 256 + b, 0);
+    const span = 2 ** (32 - prefix);
+    return {start: Math.floor(ip / span) * span, end: Math.floor(ip / span) * span + span - 1,
+      prefix, asset};
+  }
+
+  function groupOfIpv4(range) {
+    if (!range) return null;
+    const groups = [
+      ["Loopback / lab-facing address family", "127.0.0.0", 8],
+      ["RFC1918 private address family", "10.0.0.0", 8],
+      ["RFC1918 private address family", "172.16.0.0", 12],
+      ["RFC1918 private address family", "192.168.0.0", 16],
+      ["Link-local / special-use address family", "169.254.0.0", 16],
+      ["Documentation / special-use address family", "192.0.2.0", 24],
+      ["Documentation / special-use address family", "198.51.100.0", 24],
+      ["Documentation / special-use address family", "203.0.113.0", 24],
+      ["CGNAT / special-use address family", "100.64.0.0", 10],
+      ["Benchmark / special-use address family", "198.18.0.0", 15],
+      ["Unspecified / special-use address family", "0.0.0.0", 8],
+      ["Multicast / special-use address family", "224.0.0.0", 4],
+      ["Reserved / special-use address family", "240.0.0.0", 4]
+    ];
+    for (const [description, ip, mask] of groups) {
+      const octets = ip.split(".").map(Number);
+      const start = octets.reduce((a, b) => a * 256 + b, 0);
+      const span = 2 ** (32 - mask);
+      if (range.start >= start && range.end < start + span) return description;
+    }
+    return "Other IPv4 literal; ownership/routability UNVERIFIED";
+  }
+
+  function computeCoverage(rows = state.rows) {
+    const numeric = rows.map(row => ({row, range: parseIpv4Literal(row.asset)}))
+      .filter(item => item.range);
+    const pairs = [];
+    for (let i = 0; i < numeric.length; i++) {
+      for (let j = i + 1; j < numeric.length; j++) {
+        const a = numeric[i], b = numeric[j];
+        if (a.range.start > b.range.end || b.range.start > a.range.end) continue;
+        const cross = a.row.excluded !== b.row.excluded;
+        const relation = cross ? "Inclusion with explicit exception" :
+          a.row.excluded ? "Overlapping exclusions" : "Overlapping proposed inclusions";
+        const advice = cross
+          ? "HUMAN HOLD: explicit exception must not be flattened into broad grant or forgotten."
+          : a.row.excluded
+            ? "HUMAN follow-up: repeated exclusions are declarations, not verified restrictions."
+            : "HUMAN HOLD: overlapping proposed capabilities/ownership must not be silently widened.";
+        pairs.push({
+          a: a.row.asset, b: b.row.asset, relation, advice, cross,
+          includes: !a.row.excluded && !b.row.excluded
+        });
+      }
+    }
+    const classifications = numeric.map(item => ({
+      asset: item.row.asset,
+      excluded: item.row.excluded,
+      description: groupOfIpv4(item.range),
+      start: item.range.start,
+      end: item.range.end
+    }));
+    return {pairs, classifications};
+  }
+
+  function renderCoverage() {
+    const coverage = computeCoverage();
+    const cross = coverage.pairs.filter(pair => pair.cross).length;
+    const included = coverage.pairs.filter(pair => pair.includes).length;
+    const nonordinary = coverage.classifications.filter(item =>
+      item.description !== "Other IPv4 literal; ownership/routability UNVERIFIED").length;
+    $("overlap-count").textContent = coverage.pairs.length;
+    $("cross-boundary-count").textContent = cross;
+    $("overlap-include-count").textContent = included;
+    $("special-address-count").textContent = nonordinary;
+    $("overlap-notice").textContent = coverage.pairs.length ?
+      coverage.pairs.length + " pairs overlap numerically; " + cross +
+      " inclusion/exclusion exception(s). HUMAN REVIEW ONLY: not a scope verdict." :
+      "No overlapping IPv4 literals detected in currently valid rows. DNS literals were NOT resolved; no authority has been established.";
+    const tbody = $("overlap-rows"); tbody.replaceChildren();
+    for (const pair of coverage.pairs) {
+      const tr = document.createElement("tr");
+      for (const value of [pair.a, pair.b, pair.relation, pair.advice]) {
+        const td = document.createElement("td"); td.textContent = value; tr.append(td);
+      }
+      tbody.append(tr);
+    }
+    const labels = coverage.classifications.map(item =>
+      (item.excluded ? "EXCLUDED " : "PROPOSED ") + item.asset + " — " + item.description);
+    $("address-classification").textContent = labels.join("\n") ||
+      "No canonical numeric IPv4 literals. DNS proposals are never automatically resolved.";
+  }
+
+  function exportCoverageBrief() {
+    const errors = validate(state);
+    if (errors.length) { announce("Complete the draft before private coverage briefing: " + errors[0], true); return; }
+    const {pairs, classifications} = computeCoverage();
+    if (!confirm("Download an UNENCRYPTED PRIVATE human-only IPv4 scope exception brief? It contains literal proposed targets; share only through a separately approved channel. It is NOT authority.")) return;
+    const bullets = (title, array) => "<h2>" + escapeHtml(title) + "</h2><ul>" +
+      (array.length ? array.map(x => "<li>" + escapeHtml(x) + "</li>").join("") :
+        "<li>No literal items identified. No authorization implied.</li>") + "</ul>";
+    const pairLines = pairs.map(p => p.a + " / " + p.b + " — " + p.relation + ": " + p.advice);
+    const classificationLines = classifications.map(c =>
+      c.asset + ": " + c.description + (c.excluded ? " (human excluded)" : " (human included)"));
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<title>LightUp PRIVATE proposed IPv4 boundary review</title>' +
+      '<style>body{font:15px/1.55 system-ui,sans-serif;max-width:940px;margin:40px auto;padding:0 20px;color:#192a34}li{margin:9px 0}aside{padding:14px;border-left:4px solid #9e4444;background:#fff3f3}footer{margin-top:35px;color:#566}</style>' +
+      '</head><body><h1>PRIVATE proposed IPv4 boundary review</h1>' +
+      '<aside>PREPARATION ONLY. Human-declared scope, arithmetic overlap and static address-family labels DO NOT prove reachable targets, approved boundaries, consent, revocation or security assurance.</aside>' +
+      '<p>Self-declared PRIVATE client label: ' + escapeHtml(state.client) + '</p>' +
+      bullets("Literal IPv4/CIDR overlapping proposals", pairLines) +
+      bullets("Static address family notes", classificationLines) +
+      '<footer>LightUp INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD. Original authenticated and at-use-revoked scope/consent validation, owner approval, CI and HUMAN GO must occur separately before any action.</footer>' +
+      '</body></html>';
+    if (textBytes(html) > MAX_ENCRYPTED) { announce("PRIVATE boundary brief exceeds 100 KiB.", true); return; }
+    download("lightup-proposed-boundaries-PRIVATE.html", html, "text/html");
+    announce("PRIVATE IPv4/CIDR human exception brief exported; no permission asserted.");
+  }
+
   function humanAgenda() {
     const items = [];
     items.push("Confirm the authentic current client and independently authenticated operator outside this offline draft.");
@@ -670,6 +799,12 @@
       if (row.status === "blocked") items.push(name + ": BLOCKED — clear only through external independent human review.");
       if (row.status === "needs-client-review") items.push(name + ": explicitly pending client review.");
       if (row.question) items.push(name + ": PRIVATE human question — " + row.question);
+    }
+    for (const pair of computeCoverage().pairs) {
+      if (pair.cross || pair.includes) {
+        items.push("IPv4 boundary HUMAN review: " + pair.a + " overlaps " + pair.b +
+          " — " + pair.relation + "; never infer consent.");
+      }
     }
     items.push("Before any real work: original owner/security/privacy approvals, #177/#182/#829, exact-head hosted and named VPS CI, authentic consent plus action-time revocation and explicit HUMAN GO remain mandatory.");
     return items;
@@ -894,6 +1029,7 @@
     $("export").addEventListener("click", exportDraft);
     $("receipt").addEventListener("click", exportCounts);
     $("export-agenda").addEventListener("click", exportAgenda);
+    $("export-overlap").addEventListener("click", exportCoverageBrief);
     $("print").addEventListener("click", () => {
       const problems = validate(state);
       if (problems.length) { announce("Complete draft before printing: " + problems[0], true); return; }
@@ -977,8 +1113,17 @@
 </details>
 <div class="actions"><button id="add-bottom" type="button">+ Add row</button></div>
 </section>
+<section class="section" id="overlap-section" aria-labelledby="overlap-heading">
+<div class="actions"><h2 id="overlap-heading">03 / Local IPv4 scope boundaries &amp; exceptions</h2><button type="button" id="export-overlap" class="right">Export PRIVATE boundary brief</button></div>
+<p class="muted">Deterministic comparisons of human-declared IPv4 addresses and narrow CIDRs only. No DNS lookup, reachability check or authority inference. A host inside an included subnet is not automatically approved, and exclusions must be resolved by the original source-owned policy.</p>
+<div class="stats"><div class="stat"><strong id="overlap-count">0</strong><span>Overlapping literal pairs</span></div><div class="stat"><strong id="cross-boundary-count">0</strong><span>Inclusion/exclusion pairs for HUMAN review</span></div><div class="stat"><strong id="overlap-include-count">0</strong><span>Overlapping proposed inclusions</span></div><div class="stat"><strong id="special-address-count">0</strong><span>Numeric nonordinary ranges to review</span></div></div>
+<div id="overlap-notice" class="notice" role="status">Add literal IPv4/CIDR proposals to see boundary review.</div>
+<div class="table-wrap"><table id="overlap-table"><thead><tr><th>Proposed literal A</th><th>Proposed literal B</th><th>Relationship</th><th>Human follow-up</th></tr></thead><tbody id="overlap-rows"></tbody></table></div>
+<h3>Literal address classifications — not network discovery</h3>
+<div id="address-classification" class="notice"></div>
+</section>
 <section class="section" aria-labelledby="result-heading">
-<h2 id="result-heading">03 / Local completeness & handoff</h2>
+<h2 id="result-heading">04 / Local completeness & handoff</h2>
 <div class="stats"><div class="stat"><strong id="total-count">0</strong><span>Proposed rows</span></div><div class="stat"><strong id="excluded-count">0</strong><span>Explicit exclusions</span></div><div class="stat"><strong id="review-count">0</strong><span>Explicit client-review requests</span></div><div class="stat"><strong id="blocked-count">0</strong><span>Blocked proposals</span></div></div>
 <div id="notice" role="status" class="notice">Add and review draft details. Nothing is saved automatically.</div>
 <div class="actions">
@@ -1006,12 +1151,12 @@
 <div class="privacy"><b>Privacy / release boundary:</b> Encrypted workrooms use local AES-256-GCM and PBKDF2 but do not authenticate the actual client, operator, consent or grant. Strong passwords and separate authenticated delivery are necessary. Legacy JSON, printed pages and agenda HTML remain UNENCRYPTED. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
 </section>
 <section class="section" id="agenda-section" aria-labelledby="agenda-heading">
-<div class="actions"><h2 id="agenda-heading">04 / PRIVATE human follow-up agenda</h2><button id="export-agenda" type="button" class="right">Export standalone PRIVATE agenda</button></div>
+<div class="actions"><h2 id="agenda-heading">05 / PRIVATE human follow-up agenda</h2><button id="export-agenda" type="button" class="right">Export standalone PRIVATE agenda</button></div>
 <p class="muted">Human review questions inferred only from this self-declared proposal. These are reminders, not validation, permission, or compliance evidence. Original authenticated operators and clients must still make their own decisions.</p>
 <p id="agenda-count" class="small warning" role="status"></p>
 <ol id="agenda-items"></ol>
 </section>
-<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">05 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed HUMAN fields</h3><pre id="changed"></pre></div></div><h3 class="warning">Potential requested scope widening — HUMAN HOLD</h3><pre class="notice" id="expansions"></pre><h3>Potential reduction — NOT proven revocation</h3><pre class="notice" id="restrictions"></pre><div class="actions"><button id="export-change-brief" type="button">Export PRIVATE scriptless change brief</button><button id="close-compare" type="button">Close comparison</button></div></section>
+<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">06 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed HUMAN fields</h3><pre id="changed"></pre></div></div><h3 class="warning">Potential requested scope widening — HUMAN HOLD</h3><pre class="notice" id="expansions"></pre><h3>Potential reduction — NOT proven revocation</h3><pre class="notice" id="restrictions"></pre><div class="actions"><button id="export-change-brief" type="button">Export PRIVATE scriptless change brief</button><button id="close-compare" type="button">Close comparison</button></div></section>
 <p class="footer">LightUp • independent offline preparation companion • INCUBATE M3/M7 PLAN/LAB ONLY • no scans, network, grants, bypasses, approvals, deployment or main release.</p>
 </main>
 </body>
