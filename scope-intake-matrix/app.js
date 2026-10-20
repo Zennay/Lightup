@@ -505,10 +505,8 @@
     }
   }
 
-  async function encryptWorkroom() {
+  async function encryptPrivatePayload(payload, fileName) {
     try {
-      const problems = validate(state);
-      if (problems.length) throw Error("Complete the PRIVATE draft first: " + problems[0]);
       requireCrypto();
       const pwd = passphraseInput(true);
       if (pwd === null) { announce("Encryption canceled; existing draft unchanged."); return; }
@@ -517,7 +515,7 @@
       const nonce = globalThis.crypto.getRandomValues(new Uint8Array(12));
       const aad = new TextEncoder().encode(PURPOSE);
       const key = await derivePrivateKey(pwd, salt);
-      const plain = new TextEncoder().encode(JSON.stringify(snapshot(), null, 2) + "\n");
+      const plain = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
       try {
         if (plain.length > MAX_BYTES) throw Error("Draft exceeds original 64 KiB source limit.");
         const bytes = new Uint8Array(await globalThis.crypto.subtle.encrypt(
@@ -531,14 +529,44 @@
           };
           const raw = JSON.stringify(envelope, null, 2) + "\n";
           if (textBytes(raw) > MAX_ENCRYPTED) throw Error("Encrypted envelope exceeds size cap.");
-          download("lightup-scope-PRIVATE-encrypted.luie", raw);
-          announce("AES-256-GCM PRIVATE workroom downloaded. Preserve the password; this file is not an authorization.");
+          download(fileName, raw);
+          announce("New-password AES-256-GCM PRIVATE workroom downloaded. Retain the password securely; no identity, consent or grant authenticated.");
         } finally { bytes.fill(0); }
       } finally {
         plain.fill(0); salt.fill(0); nonce.fill(0); aad.fill(0);
       }
     } catch (error) {
-      announce("ENCRYPTED SAVE FAILED: " + error.message + " Existing draft was retained.", true);
+      announce("PRIVATE ENCRYPTION FAILED: " + error.message + " Existing workroom was retained.", true);
+    }
+  }
+
+
+  async function encryptWorkroom() {
+    const issues = validate(state);
+    if (issues.length) {
+      announce("Complete the PRIVATE draft before encryption: " + issues[0], true);
+      return;
+    }
+    await encryptPrivatePayload(snapshot(), "lightup-scope-PRIVATE-encrypted.luie");
+  }
+
+  async function rekeyPrivateFile(file) {
+    try {
+      const source = await decryptWorkroom(file);
+      if (!confirm("Re-encrypt this authenticated encrypted FILE with a fresh password/salt/nonce WITHOUT altering the current local draft? The sender/recipient is still not authenticated, and permission remains HOLD.")) {
+        announce("PRIVATE re-encryption canceled; current draft remains unchanged."); return;
+      }
+      const prepared = {
+        schema: SCHEMA, posture: "PREPARATION_ONLY", authority: {...FENCE},
+        project: source.project, client: source.client, contact: source.contact,
+        start: source.start, end: source.end, risk: source.risk,
+        purpose: source.purpose, evidence: source.evidence,
+        rows: source.rows.map(row => ({...row}))
+      };
+      await encryptPrivatePayload(prepared, "lightup-scope-PRIVATE-rekeyed.luie");
+    } catch (error) {
+      announce("PRIVATE RE-ENCRYPTION REFUSED: " + error.message +
+        " Existing in-memory draft remains intact.", true);
     }
   }
 
@@ -866,6 +894,7 @@
     $("choose-compare").addEventListener("click", () => $("file-compare").click());
     $("choose-import-encrypted").addEventListener("click", () => $("file-import-encrypted").click());
     $("choose-compare-encrypted").addEventListener("click", () => $("file-compare-encrypted").click());
+    $("choose-rekey").addEventListener("click", () => $("file-rekey").click());
     $("file-import").addEventListener("change", async event => {
       const file = event.target.files[0]; event.target.value = ""; if (file) await importDraft(file);
     });
@@ -878,6 +907,9 @@
     });
     $("file-compare-encrypted").addEventListener("change", async event => {
       const file = event.target.files[0]; event.target.value = ""; if (file) await compareDraft(file, true);
+    });
+    $("file-rekey").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = ""; if (file) await rekeyPrivateFile(file);
     });
     $("export-change-brief").addEventListener("click", exportChangeBrief);
     $("close-compare").addEventListener("click", () => $("compare-section").hidden = true);
