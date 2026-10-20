@@ -402,6 +402,11 @@ def main() -> int:
     changes.add_argument("--earlier", required=True, help="original completed HUMAN packet")
     changes.add_argument("--later", required=True, help="direct completed HUMAN revision packet")
     changes.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
+    history = commands.add_parser(
+        "history", help="source-bound PRIVATE HUMAN review history for 2-16 direct revisions")
+    history.add_argument("--packet", action="append", required=True,
+                         help="completed original HUMAN packet, earliest to latest")
+    history.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
     args = p.parse_args()
     try:
         if args.action == "prepare":
@@ -412,6 +417,9 @@ def main() -> int:
         if args.action == "changes":
             from revision_changes import compare
             return compare(args.earlier, args.later, args.private_parent)
+        if args.action == "history":
+            from revision_history import build_history
+            return build_history(args.packet, args.private_parent)
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
