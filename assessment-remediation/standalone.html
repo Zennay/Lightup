@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; img-src 'none'; object-src 'none'; script-src 'sha256-cuMW2WdvaNE03FJSrJ26NMhjwO6epfjB/ptSz/HPUHI='; style-src 'sha256-vbe3i+CHUPDM10TWrOf2ZuecHwUHD73THMMKPuwvOk0='">
+<title>LightUp · private assessment-to-finding mapping</title>
+<style>:root{color-scheme:light;--ink:#1b2b45;--muted:#566579;--line:#d6dfeb;--paper:#f2f5fa;--action:#214c88;--warning:#85450f}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font:15px/1.6 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--paper)}
+.hero{background:linear-gradient(125deg,#102a52,#244b78);color:white;padding:3rem max(1.5rem,calc((100vw - 1100px)/2))}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.045em;line-height:1.12;margin:.4rem 0 1rem}
+.hero .lede{max-width:800px;font-size:1.05rem;color:#e1eafa}
+.eyebrow{text-transform:uppercase;font-size:.78rem;font-weight:800;letter-spacing:.14em;color:#a7c7f5}
+.warning{margin-top:1.6rem;background:#fff7ea;color:#563213;border-left:4px solid #e6a14c;padding:1rem 1.2rem;border-radius:.25rem;max-width:950px}
+main{max-width:1130px;margin:0 auto;padding:1.5rem 1.5rem 3rem}
+.panel{background:white;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px #10243e09;padding:1.5rem 1.75rem;margin:1.15rem 0}
+.panel p{color:var(--muted);margin:.3rem 0 1.15rem}
+.section-title{display:flex;align-items:flex-start;gap:1rem;margin-bottom:.75rem}
+.step{display:inline-flex;justify-content:center;align-items:center;flex:none;background:#eaf1fc;color:#214c88;border-radius:11px;font-size:.82rem;font-weight:900;width:2.5rem;height:2.5rem}
+h2{font-size:1.3rem;letter-spacing:-.02em;margin:0}h3{font-size:1rem}
+.file-grid,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}
+.grid.two{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+label{font-size:.89rem;font-weight:700;display:block;margin:.8rem 0}
+label .sub{display:block;font-weight:400}.sub{font-size:.84rem;color:var(--muted)}
+input,select,textarea{display:block;width:100%;font:inherit;border:1px solid #b6c4d9;background:#fbfcff;color:var(--ink);border-radius:7px;padding:.7rem .8rem;margin:.35rem 0}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #d8a24b;outline-offset:2px}
+input[type=file]{padding:.6rem;cursor:pointer;max-width:100%}
+button{background:var(--action);color:white;font:inherit;font-weight:700;padding:.7rem 1rem;border:0;border-radius:7px;cursor:pointer;margin:.4rem .25rem .4rem 0}
+button:hover{filter:brightness(1.13)}button.minor{font-size:.8rem;background:#e8eff8;color:#244b78;padding:.4rem .65rem}
+button.danger{background:#fff1ef;color:#8f2c23}
+#link-count{font-size:.9rem}.table-wrap{max-width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:630px;font-size:.89rem}
+th,td{text-align:left;padding:.8rem .6rem;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+th{color:#465b77;background:#f4f7fc}
+.message{border:1px solid #b6c7df;border-radius:9px;background:#e8f2ff;padding:1rem 1.2rem;margin:1rem 0}
+.message.error{background:#fff0eb;color:#8d2f20;border-color:#e7b1a5}
+code{background:#f0f3f8;border:1px solid #e4eaf3;border-radius:4px;padding:.15rem .3rem;overflow-wrap:anywhere}
+.inspector-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:1rem;margin-top:1.1rem}
+.source-preview{border:1px solid var(--line);border-radius:9px;padding:1rem;margin-top:1rem;background:#f8faff;overflow-wrap:anywhere}
+.source-preview h3{margin:.1rem 0 .4rem;font-size:1rem}.source-preview ul{padding-left:1.2rem;max-height:260px;overflow:auto}
+.source-preview li{margin:.35rem 0}.metric-mini{display:grid;grid-template-columns:1fr auto;gap:.25rem .75rem;font-size:.8rem}
+.metric-mini dt{color:var(--muted)}.metric-mini dd{margin:0;text-align:right}
+footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line)}
+@media(max-width:600px){main{padding:1rem}.panel{padding:1.1rem}.hero{padding:2rem 1.2rem}.section-title{gap:.55rem}}
+@media print{.hero{background:white;color:black;padding:1rem}.hero .lede{color:black}.panel{box-shadow:none}.warning{color:black}button,input,select,textarea,.table-wrap{break-inside:avoid}}</style>
+</head>
+<body>
+<header class="hero">
+  <p class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME / PRIVATE OFFLINE</p>
+  <h1>Connect lab scenarios to findings</h1>
+  <p class="lede">Human-only traceability between existing original offline lab comparator output and a separately exported original client findings CSV. A manual link is an unverified reviewer claim, not evidence that the two sources represent the same client or engagement.</p>
+  <div class="warning"><strong>PLAN/LAB ONLY · DRAFT/HOLD</strong> · No targets, model, scanning, grants, real retests, verified fixes, consent, release or execution. Local files remain in memory unless you explicitly save a private draft. Source hashes bind bytes, not issuer identity.</div>
+</header>
+<main>
+  <section class="panel" aria-labelledby="sources-title">
+    <div class="section-title"><span class="step">01</span><div><h2 id="sources-title">Open original, already completed sources</h2><p>Select a canonical original cohort comparison JSON and original five-column findings CSV. Both are required. The Python bridge independently performs final deep source validation.</p></div></div>
+    <div class="file-grid">
+      <label>Original comparator report <span class="sub">1–64 original lab cases · max 256 KiB</span><input type="file" id="comparison" accept=".json,application/json"></label>
+      <label>Original findings export <span class="sub">1–350 client findings · max 1 MiB</span><input type="file" id="findings" accept=".csv,text/csv"></label>
+    </div>
+    <button type="button" id="load">Read private files locally</button>
+    <p class="sub" id="source-summary" aria-live="polite">Nothing loaded. No target or external API is used.</p>
+  </section>
+
+  <section id="studio" hidden>
+    <div class="panel">
+      <div class="section-title"><span class="step">02</span><div><h2>Declare human-only traceability</h2><p>Explicitly select a scenario and a finding. Never infer that metrics represent verified vulnerability fixes, access rights or real retest outcomes.</p></div></div>
+      <form id="form">
+        <div class="grid two">
+          <label>Original scenario ID<select id="scenario" required></select></label>
+          <label>Original finding ID / title<select id="finding" required></select></label>
+          <label>Local review stage<select id="stage" required></select></label>
+          <label>Human reviewer / team (optional)<input id="reviewer" maxlength="100" autocomplete="off" placeholder="Unverified local coordination"></label>
+        </div>
+        <label>Next human step <input id="action" maxlength="300" autocomplete="off" placeholder="e.g. confirm original source owner with operator"></label>
+        <label>Private human note <textarea id="note" rows="3" maxlength="500" placeholder="No credentials, targets or personal data. Never treat as proof."></textarea></label>
+        <button type="submit">Save manual scenario–finding link</button>
+      </form>
+      <div class="inspector-grid" aria-label="Original source preview">
+        <div class="source-preview" aria-live="polite">
+          <h3>Selected original lab source · metric summary</h3>
+          <p class="sub">Original source statements only; no finding or permission is inferred.</p>
+          <div id="scenario-inspect"></div>
+        </div>
+        <div class="source-preview" aria-live="polite">
+          <h3>Selected original finding · remediation text</h3>
+          <p class="sub">Source reported status is historical. Not evidence of a verified fix.</p>
+          <div id="finding-inspect"></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-title"><span class="step">03</span><div><h2>Review local linked findings</h2><p id="link-count" aria-live="polite">No links</p></div></div>
+      <label>Filter local source details<input type="search" id="filter" placeholder="Search original IDs, finding titles, human stage" autocomplete="off"></label>
+      <div class="table-wrap"><table><thead><tr><th>Original lab scenario</th><th>Original finding</th><th>Human stage</th><th>Local actions</th></tr></thead><tbody id="links-body"></tbody></table></div>
+      <div class="source-preview">
+        <h3>Human review gaps across original source files</h3>
+        <p class="sub">Unlinked original scenarios and findings remain visible; missing mapping never means fixed or safe.</p>
+        <div id="gaps" aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-title"><span class="step">04</span><div><h2>Export an exact-source-bound private draft</h2><p>This is only a local human mapping JSON. The Python CLI checks original comparison metrics, input hashes and finding source schema before creating the final protected operator dossier. The source bytes and raw findings are not bundled into this draft.</p></div></div>
+      <div class="grid two">
+        <div><button type="button" id="export">Save private links JSON</button><p class="sub">Use <code>bridge.py --links PRIVATE.json</code>. Empty links are allowed and never mean a clean assessment.</p></div>
+        <label>Restore an existing private draft <input type="file" id="restore" accept=".json,application/json"><span class="sub">Requires the same exact two source file byte hashes. Rejected restores never partially modify the accepted review.</span></label>
+      </div>
+    </div>
+  </section>
+  <div id="messages" class="message" role="status" aria-live="polite">Load original local sources to start. This workspace is not a security authority.</div>
+</main>
+<footer>LightUp · Human-only offline lab-to-remediation preparation · All four authority flags remain false · Explicit HUMAN GO and independently authenticated consent remain outside this workspace.</footer>
+<script>/* LightUp offline human-only assessment/remediation mapping Studio.
+   No network, persisted browser data, execution or authorization. */
+"use strict";
+(() => {
+  const FLAGS = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
+  const COLUMNS = ["finding_id", "title", "severity", "retest_status", "remediation"];
+  const STAGES = ["needs_review", "investigating", "documented"];
+  const LIMITS = { comparison: 262144, findings: 1048576, links: 262144 };
+  const METRICS = [
+    "valid_findings", "invalid_findings", "missed_findings", "coverage_assessed",
+    "coverage_unknown", "scope_violations", "policy_violations",
+    "human_interventions", "tool_calls", "evidence_quality", "reproducibility",
+    "remediation_quality", "retest_correctness", "runtime_seconds", "compute_cost_usd"
+  ];
+  const COUNTERS = new Set(METRICS.slice(0, 9));
+  const SCORES = new Set(METRICS.slice(9, 13));
+  const HIGHER = new Set(["valid_findings", "coverage_assessed", ...SCORES]);
+  const LOWER = new Set(["invalid_findings", "missed_findings",
+    "scope_violations", "policy_violations"]);
+  const $ = id => document.getElementById(id);
+  const app = { source: null, links: [], filtered: [] };
+  const bytes = new TextDecoder("utf-8", { fatal: true });
+  const encoder = new TextEncoder();
+
+  function refuse(message) { throw new Error(message); }
+  function exactKeys(obj, keys) {
+    return obj && typeof obj === "object" && !Array.isArray(obj) &&
+      Object.keys(obj).length === keys.length && keys.every(key => Object.hasOwn(obj, key));
+  }
+  function hasNoAuthority(doc) {
+    return FLAGS.every(flag => doc && doc[flag] === false);
+  }
+  function safeText(value, max = 500) {
+    return typeof value === "string" && value.length <= max &&
+      !/[\u0000-\u0008\u000b-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(value);
+  }
+  function announce(message, isBad = false) {
+    $("messages").textContent = message;
+    $("messages").className = isBad ? "message error" : "message";
+  }
+  function short(str, max = 74) { return str.length > max ? str.slice(0, max - 1) + "…" : str; }
+  function showNode(parent, tag, content, className = "") {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    node.textContent = content;
+    parent.appendChild(node);
+    return node;
+  }
+  async function sourceFile(input, bound) {
+    const file = input.files && input.files[0];
+    if (!file || file.size < 1 || file.size > bound) refuse("An original source file is missing or exceeds its private size limit.");
+    const raw = new Uint8Array(await file.arrayBuffer());
+    if (raw.byteLength !== file.size) refuse("Original source file changed during local read.");
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", raw));
+    const hash = Array.from(digest).map(b => b.toString(16).padStart(2, "0")).join("");
+    return { text: bytes.decode(raw), hash };
+  }
+
+  // Source-owner-compatible strict local JSON reader: browser JSON.parse
+  // alone discards duplicate object keys, including escaped key aliases.
+  // The final Python bridge remains the authoritative original source reader.
+  function strictJSON(raw) {
+    let offset = 0, nodes = 0;
+    function space() { while (offset < raw.length && /\s/u.test(raw[offset])) offset++; }
+    function scanString() {
+      if (raw[offset] !== '"') refuse("Invalid JSON string boundary.");
+      const start = offset++;
+      let escapeNext = false;
+      while (offset < raw.length) {
+        const char = raw[offset++];
+        if (char === '"' && !escapeNext) return JSON.parse(raw.slice(start, offset));
+        if (char === "\\" && !escapeNext) escapeNext = true;
+        else escapeNext = false;
+      }
+      refuse("Unterminated original JSON string.");
+    }
+    function value(depth) {
+      if (depth > 28 || ++nodes > 90000) refuse("Original JSON exceeds nesting/entry bound.");
+      space();
+      if (raw[offset] === '"') return scanString();
+      if (raw[offset] === "{") {
+        offset++; space();
+        const result = Object.create(null), keys = new Set();
+        if (raw[offset] === "}") { offset++; return result; }
+        for (;;) {
+          space(); const key = scanString();
+          if (keys.has(key)) refuse("Duplicate original JSON key.");
+          keys.add(key);
+          space();
+          if (raw[offset++] !== ":") refuse("Malformed JSON object.");
+          result[key] = value(depth + 1);
+          space();
+          if (raw[offset] === "}") { offset++; return result; }
+          if (raw[offset++] !== ",") refuse("Malformed JSON object member.");
+        }
+      }
+      if (raw[offset] === "[") {
+        offset++; space();
+        const result = [];
+        if (raw[offset] === "]") { offset++; return result; }
+        for (;;) {
+          result.push(value(depth + 1));
+          if (result.length > 90000) refuse("JSON array exceeds safety bound.");
+          space();
+          if (raw[offset] === "]") { offset++; return result; }
+          if (raw[offset++] !== ",") refuse("Malformed JSON array.");
+        }
+      }
+      for (const [literal, parsed] of [["true", true], ["false", false], ["null", null]]) {
+        if (raw.startsWith(literal, offset)) { offset += literal.length; return parsed; }
+      }
+      const match = raw.slice(offset).match(/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/u);
+      if (!match) refuse("Malformed original JSON value.");
+      offset += match[0].length;
+      const number = Number(match[0]);
+      if (!Number.isFinite(number)) refuse("Nonfinite original JSON numeric value.");
+      return number;
+    }
+    const result = value(0);
+    space();
+    if (offset !== raw.length) refuse("Unexpected trailing JSON data.");
+    return result;
+  }
+
+  function parseCsv(text) {
+    text = text.replace(/^\uFEFF/u, "");
+    // RFC 4180 quoted fields, including quoted commas, doubled quotes and line breaks.
+    const records = [], row = []; let token = "", quote = false, endedQuote = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (quote) {
+        if (char === '"' && text[i + 1] === '"') { token += '"'; i++; }
+        else if (char === '"') { quote = false; endedQuote = true; }
+        else { token += char; }
+        continue;
+      }
+      if (char === '"' && token.length === 0 && !endedQuote) { quote = true; continue; }
+      if (char === '"') refuse("Malformed original CSV quoting.");
+      if (endedQuote && char !== "," && char !== "\r" && char !== "\n") refuse("Unexpected data after quoted original CSV cell.");
+      if (char === ",") { row.push(token); token = ""; endedQuote = false; continue; }
+      if (char === "\r" || char === "\n") {
+        if (char === "\r" && text[i + 1] === "\n") i++;
+        row.push(token); records.push([...row]); row.length = 0;
+        token = ""; endedQuote = false;
+        continue;
+      }
+      if (endedQuote) refuse("Malformed original CSV quote boundary.");
+      token += char;
+    }
+    if (quote) refuse("Unclosed quoted original finding.");
+    if (token || row.length || endedQuote) { row.push(token); records.push([...row]); }
+    if (!records.length || records[0].join("\u0000") !== COLUMNS.join("\u0000"))
+      refuse("Requires original five-column LightUp findings CSV.");
+    const entries = records.slice(1), findings = new Map();
+    if (entries.length < 1 || entries.length > 350) refuse("Original findings count outside allowed bounds.");
+    for (const row of entries) {
+      if (row.length !== 5 || !row[0] || row[0].trim() !== row[0] ||
+          !/^[\x20-\x7e]{1,256}$/.test(row[0]) ||
+          !["critical", "high", "medium", "low", "info"].includes(row[2]) ||
+          !["not_tested", "fix_pending", "fixed", "regression"].includes(row[3]) ||
+          !row[1].trim() || !row[4].trim() ||
+          row[1].length > 2048 || row[4].length > 8192 ||
+          findings.has(row[0])) refuse("Invalid, ambiguous or repeated original finding row.");
+      findings.set(row[0], { finding_id: row[0], title: row[1], severity: row[2],
+        retest_status: row[3], remediation: row[4] });
+    }
+    return findings;
+  }
+
+  function parseComparison(text) {
+    const doc = strictJSON(text);
+    if (!exactKeys(doc, ["status", "regressed_scenarios", "comparisons", ...FLAGS]) ||
+        !hasNoAuthority(doc) || !Array.isArray(doc.comparisons) ||
+        doc.comparisons.length < 1 || doc.comparisons.length > 64 ||
+        !["HOLD", "REVIEW_ONLY"].includes(doc.status) ||
+        !Array.isArray(doc.regressed_scenarios)) refuse("Original comparator report is incomplete or claims authority.");
+    const scenarios = new Map();
+    const adverse = [];
+    for (const row of doc.comparisons) {
+      if (!exactKeys(row, ["scenario_id", "status", "regressions", "changes"]) ||
+          !/^[\x20-\x7e]{1,256}$/.test(row.scenario_id || "") ||
+          row.scenario_id.trim() !== row.scenario_id ||
+          scenarios.has(row.scenario_id) || !Array.isArray(row.regressions) ||
+          !Array.isArray(row.changes) || row.changes.length !== 15 ||
+          !["HOLD", "REVIEW_ONLY"].includes(row.status)) refuse("Invalid or repeated scenario in original comparison.");
+      const seenMetrics = new Set(), observed = [];
+      for (const item of row.changes) {
+        if (!exactKeys(item, ["name", "baseline", "candidate", "delta", "regression"]) ||
+            !METRICS.includes(item.name) || seenMetrics.has(item.name))
+          refuse("Invalid or duplicate original metric.");
+        seenMetrics.add(item.name);
+        const before = item.baseline, after = item.candidate;
+        for (const value of [before, after]) {
+          if (typeof value !== "number" || !Number.isFinite(value) || value < 0 ||
+              (COUNTERS.has(item.name) && (!Number.isInteger(value) || value > 1e9)) ||
+              (SCORES.has(item.name) && value > 1) ||
+              (!COUNTERS.has(item.name) && !SCORES.has(item.name) && value > 1e12))
+            refuse("Invalid original benchmark metric value.");
+        }
+        if (typeof item.delta !== "number" || !Number.isFinite(item.delta) ||
+            Math.abs((after - before) - item.delta) >
+              Math.max(1e-9, 1e-12 * Math.abs(item.delta)))
+          refuse("Inconsistent original benchmark delta.");
+        const adverseMetric = (HIGHER.has(item.name) && after < before) ||
+          (LOWER.has(item.name) && after > before);
+        if (item.regression !== adverseMetric)
+          refuse("Contradictory original benchmark regression flag.");
+        if (adverseMetric) observed.push(item.name);
+      }
+      if (seenMetrics.size !== METRICS.length ||
+          JSON.stringify(row.regressions) !== JSON.stringify(observed) ||
+          row.status !== (observed.length ? "HOLD" : "REVIEW_ONLY"))
+        refuse("Incomplete or contradictory original lab scenario status.");
+      if (observed.length) adverse.push(row.scenario_id);
+      scenarios.set(row.scenario_id, row);
+    }
+    if (doc.status !== (adverse.length ? "HOLD" : "REVIEW_ONLY") ||
+        JSON.stringify(adverse) !== JSON.stringify(doc.regressed_scenarios))
+      refuse("Original comparator status is contradictory.");
+    // Standalone UI is never the canonical parser: the Python export CLI independently
+    // verifies all original numeric deltas, regressions, metrics and source byte hashes.
+    return { scenarios, status: doc.status };
+  }
+
+  function prepareSelector(select, options, valueFn, labelFn) {
+    select.replaceChildren();
+    for (const item of options) {
+      const option = document.createElement("option");
+      option.value = valueFn(item);
+      option.textContent = labelFn(item);
+      select.appendChild(option);
+    }
+  }
+
+  async function importOriginals() {
+    announce("Reading original files locally. No server or target is contacted.");
+    try {
+      const [comparison, csv] = await Promise.all([
+        sourceFile($("comparison"), LIMITS.comparison),
+        sourceFile($("findings"), LIMITS.findings)
+      ]);
+      const report = parseComparison(comparison.text);
+      const findings = parseCsv(csv.text);
+      const newSource = { comparisonSha: comparison.hash, findingsSha: csv.hash,
+        scenarios: report.scenarios, findings, status: report.status };
+      app.source = newSource;
+      app.links = [];
+      prepareSelector($("scenario"), [...report.scenarios.keys()], value => value, value => short(value, 110));
+      prepareSelector($("finding"), [...findings.values()], value => value.finding_id,
+        value => short(value.severity.toUpperCase() + " · " + value.title + " · " + value.finding_id, 110));
+      prepareSelector($("stage"), STAGES, value => value, value => value.replaceAll("_", " "));
+      $("studio").hidden = false;
+      $("source-summary").textContent = report.scenarios.size + " original lab cases, " +
+        findings.size + " original findings · source " + report.status +
+        " · unsigned SHA " + comparison.hash.slice(0, 16) + " / " + csv.hash.slice(0, 16);
+      render();
+      announce("Original sources loaded locally. Links are human statements, never automatic evidence of the same engagement.");
+    } catch (error) {
+      announce("HOLD · could not accept the original sources: " + error.message, true);
+    }
+  }
+
+  function currentLink() {
+    if (!app.source) refuse("Select valid original files first.");
+    const link = {
+      scenario_id: $("scenario").value,
+      finding_id: $("finding").value,
+      stage: $("stage").value,
+      reviewer: $("reviewer").value.trim(),
+      next_action: $("action").value.trim(),
+      note: $("note").value.trim()
+    };
+    if (!app.source.scenarios.has(link.scenario_id) ||
+        !app.source.findings.has(link.finding_id) ||
+        !STAGES.includes(link.stage) ||
+        !safeText(link.reviewer, 100) || !safeText(link.next_action, 300) ||
+        !safeText(link.note, 500)) refuse("Invalid human mapping fields.");
+    return link;
+  }
+
+  function addOrUpdate() {
+    try {
+      const link = currentLink();
+      const existing = app.links.findIndex(a =>
+        a.scenario_id === link.scenario_id && a.finding_id === link.finding_id);
+      if (existing < 0 && app.links.length >= 512) refuse("Maximum of 512 manual links.");
+      if (existing < 0) app.links.push(link); else app.links[existing] = link;
+      render();
+      announce(existing < 0 ? "Manual link added. Source records unchanged." :
+        "Manual follow-up updated. Original security status unchanged.");
+    } catch (error) {
+      announce("HOLD · " + error.message, true);
+    }
+  }
+
+  function selectLink(link) {
+    $("scenario").value = link.scenario_id;
+    $("finding").value = link.finding_id;
+    $("stage").value = link.stage;
+    $("reviewer").value = link.reviewer;
+    $("action").value = link.next_action;
+    $("note").value = link.note;
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function removeLink(link) {
+    app.links = app.links.filter(a =>
+      a.scenario_id !== link.scenario_id || a.finding_id !== link.finding_id);
+    render();
+    announce("Manual link removed; original records remain unchanged.");
+  }
+
+  function renderSourcePreviews() {
+    if (!app.source) return;
+    const scenario = app.source.scenarios.get($("scenario").value);
+    const finding = app.source.findings.get($("finding").value);
+    const scenarioPanel = $("scenario-inspect");
+    const findingPanel = $("finding-inspect");
+    scenarioPanel.replaceChildren();
+    findingPanel.replaceChildren();
+    if (scenario) {
+      showNode(scenarioPanel, "p",
+        "Original scenario: " + scenario.scenario_id +
+        " · " + scenario.status +
+        " · " + scenario.regressions.length + " adverse metric(s).");
+      const measures = document.createElement("dl");
+      measures.className = "metric-mini";
+      for (const change of scenario.changes) {
+        if (!change || typeof change.name !== "string") continue;
+        showNode(measures, "dt", change.name +
+          (change.regression === true ? " · SOURCE ADVERSE" : ""));
+        showNode(measures, "dd", "baseline " + String(change.baseline) +
+          " → candidate " + String(change.candidate));
+      }
+      scenarioPanel.appendChild(measures);
+    }
+    if (finding) {
+      showNode(findingPanel, "p", "Original ID: " + finding.finding_id +
+        " · " + finding.severity +
+        " · source-reported retest " + finding.retest_status);
+      showNode(findingPanel, "p", finding.title);
+      showNode(findingPanel, "h4", "Original remediation text (unverified)");
+      showNode(findingPanel, "p", finding.remediation);
+    }
+  }
+
+  function renderGaps() {
+    const root = $("gaps");
+    root.replaceChildren();
+    if (!app.source) return;
+    const linkedScenarios = new Set(app.links.map(link => link.scenario_id));
+    const linkedFindings = new Set(app.links.map(link => link.finding_id));
+    const missingScenarios = [...app.source.scenarios.values()]
+      .filter(row => !linkedScenarios.has(row.scenario_id))
+      .sort((a, b) => Number(b.status === "HOLD") - Number(a.status === "HOLD") ||
+        a.scenario_id.localeCompare(b.scenario_id));
+    const severities = ["critical", "high", "medium", "low", "info"];
+    const missingFindings = [...app.source.findings.values()]
+      .filter(row => !linkedFindings.has(row.finding_id))
+      .sort((a, b) => severities.indexOf(a.severity) -
+        severities.indexOf(b.severity) || a.finding_id.localeCompare(b.finding_id));
+    for (const [title, entries, formatter] of [
+      ["Original lab scenarios awaiting human mapping", missingScenarios,
+       item => item.status + " · " + item.scenario_id],
+      ["Original findings awaiting human mapping", missingFindings,
+       item => item.severity.toUpperCase() + " · " + item.title + " (" + item.finding_id + ")"]
+    ]) {
+      showNode(root, "h4", title + " (" + entries.length + ")");
+      const list = document.createElement("ul");
+      for (const item of entries.slice(0, 100)) {
+        showNode(list, "li", formatter(item));
+      }
+      root.appendChild(list);
+      if (entries.length > 100)
+        showNode(root, "p", String(entries.length - 100) + " additional original records.");
+    }
+  }
+
+  function render() {
+    if (!app.source) return;
+    const body = $("links-body");
+    body.replaceChildren();
+    const filter = $("filter").value.toLowerCase();
+    const links = [...app.links].sort((a, b) =>
+      a.scenario_id.localeCompare(b.scenario_id) || a.finding_id.localeCompare(b.finding_id));
+    const visible = links.filter(link => {
+      const f = app.source.findings.get(link.finding_id);
+      return (link.scenario_id + " " + link.finding_id + " " + f.title + " " +
+        link.reviewer + " " + link.stage).toLowerCase().includes(filter);
+    });
+    for (const link of visible) {
+      const tr = document.createElement("tr");
+      const finding = app.source.findings.get(link.finding_id);
+      showNode(tr, "td", short(link.scenario_id, 60));
+      showNode(tr, "td", short(finding.severity.toUpperCase() + " · " + finding.title, 75));
+      showNode(tr, "td", link.stage.replaceAll("_", " "));
+      const action = document.createElement("td");
+      const edit = showNode(action, "button", "Edit", "minor");
+      edit.type = "button";
+      edit.addEventListener("click", () => selectLink(link));
+      const remove = showNode(action, "button", "Remove", "minor danger");
+      remove.type = "button";
+      remove.addEventListener("click", () => removeLink(link));
+      tr.appendChild(action);
+      body.appendChild(tr);
+    }
+    renderSourcePreviews();
+    renderGaps();
+    $("link-count").textContent = app.links.length + " manual link(s) · " +
+      visible.length + " visible · " +
+      new Set(app.links.map(link => link.scenario_id)).size + " scenario(s) linked · " +
+      (app.source.scenarios.size - new Set(app.links.map(link => link.scenario_id)).size) +
+      " scenario(s) unlinked (not proof of no findings)";
+  }
+
+  function handoff() {
+    if (!app.source) refuse("No original source accepted.");
+    if (!app.links.every(link => app.source.scenarios.has(link.scenario_id) &&
+      app.source.findings.has(link.finding_id))) refuse("Unbound manual link.");
+    return {
+      schema: "lightup.assessment_remediation_links.v1",
+      comparison_sha256: app.source.comparisonSha,
+      findings_sha256: app.source.findingsSha,
+      links: [...app.links],
+      authorized: false, consent_verified: false, dispatch_allowed: false,
+      release_allowed: false
+    };
+  }
+
+  function downloadMapping() {
+    try {
+      const content = JSON.stringify(handoff(), null, 2) + "\n";
+      if (encoder.encode(content).length > LIMITS.links)
+        refuse("Manual mapping exceeds private CLI import limit.");
+      const url = URL.createObjectURL(new Blob([content], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "lightup-private-manual-links.json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      announce("Private, unsigned source-bound mapping saved locally; pass to bridge.py --links for strict original validation.");
+    } catch (error) {
+      announce("HOLD · " + error.message, true);
+    }
+  }
+
+  async function restoreMapping() {
+    try {
+      if (!app.source) refuse("Load the two original sources first.");
+      const file = $("restore").files[0];
+      if (!file || file.size < 1 || file.size > LIMITS.links)
+        refuse("Private mapping missing or oversized.");
+      const document = strictJSON(bytes.decode(new Uint8Array(await file.arrayBuffer())));
+      if (!exactKeys(document, ["schema", "comparison_sha256", "findings_sha256",
+        "links", ...FLAGS]) ||
+          document.schema !== "lightup.assessment_remediation_links.v1" ||
+          document.comparison_sha256 !== app.source.comparisonSha ||
+          document.findings_sha256 !== app.source.findingsSha ||
+          !hasNoAuthority(document) ||
+          !Array.isArray(document.links) || document.links.length > 512)
+        refuse("Private draft is not bound to these exact original source bytes.");
+      const checked = [], keys = new Set();
+      for (const row of document.links) {
+        if (!exactKeys(row, ["scenario_id", "finding_id", "stage", "reviewer",
+          "next_action", "note"]) ||
+            !app.source.scenarios.has(row.scenario_id) ||
+            !app.source.findings.has(row.finding_id) ||
+            !STAGES.includes(row.stage) ||
+            !safeText(row.reviewer, 100) || !safeText(row.next_action, 300) ||
+            !safeText(row.note, 500))
+          refuse("Private mapping contains an invalid source reference or human note.");
+        const pair = JSON.stringify([row.scenario_id, row.finding_id]);
+        if (keys.has(pair)) refuse("Duplicate manual link.");
+        keys.add(pair); checked.push({ ...row });
+      }
+      app.links = checked; render();
+      announce("Private unsigned follow-up draft restored against exact original bytes; human authorship still unverified.");
+    } catch (error) {
+      announce("HOLD · mapping not restored: " + error.message, true);
+    }
+  }
+
+  $("load").addEventListener("click", importOriginals);
+  $("form").addEventListener("submit", event => { event.preventDefault(); addOrUpdate(); });
+  $("scenario").addEventListener("change", renderSourcePreviews);
+  $("finding").addEventListener("change", renderSourcePreviews);
+  $("filter").addEventListener("input", render);
+  $("export").addEventListener("click", downloadMapping);
+  $("restore").addEventListener("change", restoreMapping);
+})();</script>
+</body>
+</html>
