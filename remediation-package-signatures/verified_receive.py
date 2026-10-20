@@ -46,24 +46,40 @@ def receive(
     import receiver  # original source-owner's native ZIP admission and publication
     import install  # original source-owner's source-lock / receipt inspector
 
-    # Native receiver must read precisely the signed bytes, not re-open the
-    # original user-controlled archive after verification (TOCTOU boundary).
+    # Native receiver consumes the exact cryptographically captured bytes,
+    # NOT a second open of the user-controlled source ZIP (TOCTOU boundary).
+    # Important: native receiver publishes its destination *before* its
+    # independent inspect. Receive into a private stage, inspect THERE, and
+    # publish the final destination ONLY after both gates succeeded.
     install.owner_dir(fresh_output_dir.parent)
-    fd, captured_path = tempfile.mkstemp(
-        prefix=".lightup-signed-capture-", suffix=".zip",
-        dir=str(fresh_output_dir.parent),
-    )
-    captured = Path(captured_path)
-    try:
-        os.fchmod(fd, 0o600)
-        with os.fdopen(fd, "wb") as out:
-            out.write(verified_archive_bytes)
-            out.flush()
-            os.fsync(out.fileno())
-        receiver.receive(captured, fresh_output_dir)
-        install.verify(fresh_output_dir)
-    finally:
-        captured.unlink(missing_ok=True)
+    if (
+        fresh_output_dir == install.ROOT
+        or install.ROOT in fresh_output_dir.parents
+        or fresh_output_dir in install.ROOT.parents
+    ):
+        raise Hold("recipient must not overlap original source-owner checkout")
+    with tempfile.TemporaryDirectory(
+        prefix=".lightup-signed-admission-", dir=str(fresh_output_dir.parent)
+    ) as temporary:
+        parent = Path(temporary)
+        captured = parent / "captured-software.zip"
+        fd = os.open(
+            captured, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
+        )
+        try:
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "wb", closefd=False) as out:
+                out.write(verified_archive_bytes)
+                out.flush()
+                os.fsync(out.fileno())
+        finally:
+            os.close(fd)
+        unpublished = parent / "source-pinned-private-suite"
+        receiver.receive(captured, unpublished)
+        install.verify(unpublished)
+        # Native Linux NO_REPLACE atomically publishes only complete source-
+        # admitted software; failures leave no partially received final suite.
+        install.exclusive_publish(unpublished, fresh_output_dir)
     print("SIGNED-CUSTODY + SOURCE-LOCK REVIEW_ONLY: PRIVATE local suite received.")
     print("This is NOT release approval, identity proof, consent, or permission to run scans.")
 
