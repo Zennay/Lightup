@@ -16,6 +16,12 @@ After every HUMAN field is resolved, an optional **source-free, count-only HUMAN
 
 Private original case IDs, action text and HUMAN choices remain entirely in browser memory, never in exported aggregate logs or servers. New ciphertext has a fresh random salt and nonce, PBKDF2-SHA256 310,000 iterations and AES-256-GCM. No account, localStorage, remote network, grant, API, scan or active-target support is present. Incorrect input does not replace the previous workset. A compromised browser can reveal locally displayed PRIVATE information; choose a trusted computer and exchange the new secret separately.
 
+## Encrypted HUMAN draft continuity (optional)
+
+For long workrooms, **Save PRIVATE HUMAN draft** produces a separate `.lurd` AES-256-GCM / PBKDF2-SHA256 310000 file under a fresh operator-chosen password. It contains **only encrypted** original file name/size/SHA-256 references, the two distinct original current HUMAN CSV SHA-256 references and current per-field A/B/reset/unresolved selections — **no original Casebook source JSON or current source HUMAN CSV bodies**. It is still PRIVATE because it can reveal operator decisions after decryption.
+
+After reopening the exact same two original `.lupt` files in the same A/B order, **Restore PRIVATE HUMAN draft** verifies complete canonical encrypted schema, crypto authenticity, literal six false source authority flags, all current original file digest/size/name references, both original current HUMAN CSV digests, current case count and every allowed choice. A different source, changed HUMAN revision, swapped A/B input or invalid decision means full HOLD without overwriting current selections. Human confirmation precedes atomic replacement in browser memory. The draft does not convey current client consent or any authority and does not authenticate the claimed original producer.
+
 ## Admission, bounded execution and source relationship
 
 - Exact canonical original envelope, encrypted payload and base64; v1 schema, GCM authentication, strict source file manifest size and SHA-256, consecutive original filenames and final single HUMAN CSV; fixed 26 MiB encrypted, 20 MiB plaintext and 12 MiB source bounds.
@@ -23,11 +29,12 @@ Private original case IDs, action text and HUMAN choices remain entirely in brow
 - Unmodified original `scope-casebook-transfer/human-board.js` source is imported at **build time** with an exact hardcoded SHA-256 pin; its original ordering, HUMAN CSV admission and serializer are reused. Build fails closed if this pinned original changes. This does **not** itself authenticate an original source producer.
 - User-visible standalone HTML has all CSS/JS inline with CSP SHA-256 hashes, no external assets and `connect-src 'none'`. No QA suites or fixtures are added.
 
-Build without running QA/regression suites:
+Build without running QA/regression suites (the builder includes the source-pinned original adapter plus both new production JavaScript files):
 
 ```sh
 python3 scope-casebook-reconcile/build_standalone.py
 node --check scope-casebook-reconcile/app.js
+node --check scope-casebook-reconcile/draft.js
 ```
 
 ## Release fence

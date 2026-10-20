@@ -28,7 +28,18 @@
 <label class="consent"><input id="conflicts" type="checkbox"> Alleen dossiers met verschillen</label></div>
 <p id="shown"></p><div id="cases" class="cases"></div>
 </section>
-<section aria-labelledby="export-title"><h2 id="export-title">3 · Nieuwe versleutelde PRIVATE overdracht</h2>
+<section aria-labelledby="draft-title"><h2 id="draft-title">3 · Versleuteld HUMAN-concept bewaren en hervatten</h2>
+<p>Bewaar tussentijds alleen de HUMAN-keuzestanden, beschermd met een nieuw wachtwoord. Het besloten concept bevat versleutelde SHA-256-bronverwijzingen en geen oorspronkelijke Casebook-JSON, maar wel PRIVATE menselijke keuzedata. Herstellen kan uitsluitend na het opnieuw openen van exact dezelfde twee bron+HUMAN-overdrachten in exact dezelfde A/B-volgorde.</p>
+<div class="grid"><div class="panel"><h3>Bewaar concept</h3>
+<label for="draft-new-pass">Apart conceptwachtwoord (min. 12 tekens)</label><input id="draft-new-pass" type="password" autocomplete="new-password">
+<button id="draft-save" type="button">Bewaar versleuteld HUMAN-concept (.lurd)</button></div>
+<div class="panel"><h3>Herstel concept</h3><label for="draft-file">Eerder PRIVATE conceptbestand</label>
+<input id="draft-file" type="file" accept=".lurd" autocomplete="off">
+<label for="draft-open-pass">Conceptwachtwoord</label><input id="draft-open-pass" type="password" autocomplete="off">
+<button id="draft-open" type="button">Herstel HUMAN-keuzes op exact dezelfde bron</button></div></div>
+<p id="draft-status" role="status" aria-live="polite">Nog geen concept opgeslagen of hersteld.</p>
+</section>
+<section aria-labelledby="export-title"><h2 id="export-title">4 · Nieuwe versleutelde PRIVATE overdracht</h2>
 <p>Bij identieke HUMAN-keuzes wordt die keuze behouden. Elk afwijkend veld vereist <strong>A, B of bewust opnieuw onbehandeld</strong>; er is geen verborgen meerderheidsstem of automatische bronbeslissing. De originele bronbytes blijven exact gelijk. Heropen het resultaat via de oorspronkelijke Casebook-validator voordat iemand enige werkelijke handeling overweegt.</p>
 <label for="new-password">Nieuw zelfstandig overdrachtswachtwoord (minimaal 12 tekens)</label>
 <input id="new-password" type="password" autocomplete="new-password">

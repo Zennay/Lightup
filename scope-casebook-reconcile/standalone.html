@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-bRyYd6sd6exnl3XSatJk0vZDsqEd5OOLpMURTbS6Inw='; script-src 'sha256-75L38j/BsR4BWR0dVs1FQgjIEQBY23ltuYETn/PXJu8='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-bRyYd6sd6exnl3XSatJk0vZDsqEd5OOLpMURTbS6Inw='; script-src 'sha256-NODF8kUsoDxtYqyQfQCAz2g1PZkFENGUYaRg6oJW65k='">
 <title>LightUp · PRIVATE HUMAN reconciliatie</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0b111c;color:#eaf1ff;font-size:15px}
 *{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1180px;margin:auto;padding:28px 20px}
 header{padding-top:50px}.mark{letter-spacing:.16em;font-weight:900;color:#86bbff}.mark span{font-size:.7em;color:#b1c3d9;background:#25334b;padding:7px 12px;border-radius:30px;margin-left:10px}
@@ -51,7 +51,18 @@ td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{pa
 <label class="consent"><input id="conflicts" type="checkbox"> Alleen dossiers met verschillen</label></div>
 <p id="shown"></p><div id="cases" class="cases"></div>
 </section>
-<section aria-labelledby="export-title"><h2 id="export-title">3 · Nieuwe versleutelde PRIVATE overdracht</h2>
+<section aria-labelledby="draft-title"><h2 id="draft-title">3 · Versleuteld HUMAN-concept bewaren en hervatten</h2>
+<p>Bewaar tussentijds alleen de HUMAN-keuzestanden, beschermd met een nieuw wachtwoord. Het besloten concept bevat versleutelde SHA-256-bronverwijzingen en geen oorspronkelijke Casebook-JSON, maar wel PRIVATE menselijke keuzedata. Herstellen kan uitsluitend na het opnieuw openen van exact dezelfde twee bron+HUMAN-overdrachten in exact dezelfde A/B-volgorde.</p>
+<div class="grid"><div class="panel"><h3>Bewaar concept</h3>
+<label for="draft-new-pass">Apart conceptwachtwoord (min. 12 tekens)</label><input id="draft-new-pass" type="password" autocomplete="new-password">
+<button id="draft-save" type="button">Bewaar versleuteld HUMAN-concept (.lurd)</button></div>
+<div class="panel"><h3>Herstel concept</h3><label for="draft-file">Eerder PRIVATE conceptbestand</label>
+<input id="draft-file" type="file" accept=".lurd" autocomplete="off">
+<label for="draft-open-pass">Conceptwachtwoord</label><input id="draft-open-pass" type="password" autocomplete="off">
+<button id="draft-open" type="button">Herstel HUMAN-keuzes op exact dezelfde bron</button></div></div>
+<p id="draft-status" role="status" aria-live="polite">Nog geen concept opgeslagen of hersteld.</p>
+</section>
+<section aria-labelledby="export-title"><h2 id="export-title">4 · Nieuwe versleutelde PRIVATE overdracht</h2>
 <p>Bij identieke HUMAN-keuzes wordt die keuze behouden. Elk afwijkend veld vereist <strong>A, B of bewust opnieuw onbehandeld</strong>; er is geen verborgen meerderheidsstem of automatische bronbeslissing. De originele bronbytes blijven exact gelijk. Heropen het resultaat via de oorspronkelijke Casebook-validator voordat iemand enige werkelijke handeling overweegt.</p>
 <label for="new-password">Nieuw zelfstandig overdrachtswachtwoord (minimaal 12 tekens)</label>
 <input id="new-password" type="password" autocomplete="new-password">
@@ -601,6 +612,161 @@ function anonymousReport(){
 $("aggregate").addEventListener("click",()=>{
  try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
 });
+window.LightUpCasebookDraftAPI=Object.freeze({
+ snapshot:()=>work?{
+  sources:work.a.records.slice(0,-1).map(r=>({name:r.name,size:r.size,sha256:r.sha256})),
+  human:[work.a.records.at(-1).sha256,work.b.records.at(-1).sha256],
+  choices:work.choices.map(r=>[...r])}:null,
+ restore:body=>{
+  if(!work)deny("HOLD: oorspronkelijke PRIVATE bronnen ontbreken.");
+  const actual=window.LightUpCasebookDraftAPI.snapshot();
+  if(JSON.stringify(body.sources)!==JSON.stringify(actual.sources)||
+    JSON.stringify(body.human)!==JSON.stringify(actual.human))
+   deny("HOLD: checkpoint hoort bij andere originele bron of andere A/B HUMAN-revisie.");
+  if(!Array.isArray(body.choices)||body.choices.length!==work.cases.length)
+   deny("HOLD: checkpoint heeft een afwijkend aantal HUMAN-cases.");
+  const candidate=body.choices.map((r,i)=>{
+   if(!Array.isArray(r)||r.length!==3)deny("HOLD: incomplete HUMAN-beslissingen.");
+   return r.map((v,j)=>{
+    const same=work.a.rows[i][j+3]===work.b.rows[i][j+3];
+    if(same&&v!=="same")deny("HOLD: bronidentiek HUMAN-veld mag niet worden herzien.");
+    if(!same&&!["","A","B","reset"].includes(v))
+     deny("HOLD: niet-canonieke HUMAN-conflictbeslissing.");
+    return v;
+   });
+  });
+  if(!window.confirm("Verander uitsluitend de huidige HUMAN-keuzevelden volgens dit versleutelde exact-brongebonden checkpoint? Oorspronkelijke bronbytes blijven intact."))
+   return false;
+  work.choices=candidate;show();return true;
+ }
+});
 window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}});
 $("publish").disabled=true;$("aggregate").disabled=true;
+})();
+/* Offline, source-bound encrypted HUMAN decision checkpoint. No original bytes in checkpoint. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id),api=window.LightUpCasebookDraftAPI;
+const enc=new TextEncoder(),dec=new TextDecoder("utf-8",{fatal:true});
+const SCHEMA="lightup.casebook.private_human_reconciliation_draft.v1";
+const ITER=310000,MAX_FILE=256*1024,MAX_BODY=128*1024;
+const fail=msg=>{throw Error(msg);};
+const exact=(o,k)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&
+ JSON.stringify(Object.keys(o))===JSON.stringify(k);
+function from64(s,max){
+ if(typeof s!=="string"||s.length>Math.ceil(max/3)*4+8||
+  !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s))
+   fail("Onveilige HUMAN checkpoint-base64.");
+ let raw;try{raw=atob(s);}catch{fail("Ongeldige checkpoint-base64.");}
+ if(raw.length>max)fail("Checkpoint te groot.");
+ const arr=Uint8Array.from(raw,c=>c.charCodeAt(0));
+ if(to64(arr)!==s)fail("Niet-canonieke checkpoint-base64.");
+ return arr;
+}
+function to64(bytes){
+ let str="";for(let i=0;i<bytes.length;i+=8192)
+  str+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ return btoa(str);
+}
+function parse(text){
+ let obj;try{obj=JSON.parse(text);}catch{fail("Checkpoint-JSON ongeldig.");}
+ if(JSON.stringify(obj)!==text)fail("Niet-canonieke checkpoint-inhoud.");
+ return obj;
+}
+function passwordOk(password){
+ if([...password].length<12||enc.encode(password).length>1024)
+  fail("Checkpoint-wachtwoord moet minimaal 12 tekens en maximaal 1024 UTF-8 bytes bevatten.");
+}
+async function keyFor(password,salt,usage){
+ const key=await crypto.subtle.importKey("raw",enc.encode(password),"PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ITER,hash:"SHA-256"},
+  key,{name:"AES-GCM",length:256},false,[usage]);
+}
+function status(msg,error=false){
+ $("draft-status").textContent=(error?"HOLD: ":"")+msg;
+ $("draft-status").classList.toggle("error",error);
+}
+function download(name,bytes){
+ const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+ const link=document.createElement("a");link.href=url;link.download=name;
+ document.body.append(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function authBody(snapshot){
+ if(!snapshot)fail("Open eerst beide oorspronkelijke PRIVATE Casebook-bronnen.");
+ if(!snapshot.sources||!snapshot.human||!snapshot.choices)
+  fail("Originele bron en HUMAN binding ontbreken.");
+ return {schema:SCHEMA,version:1,sources:snapshot.sources,human:snapshot.human,
+  choices:snapshot.choices,source_authenticated:false,client_consent_verified:false,
+  operator_consent_verified:false,authorization_granted:false,
+  execution_allowed:false,release_approved:false};
+}
+let busy=false;
+function setBusy(b){
+ busy=b;for(const id of ["draft-save","draft-open"])$(id).disabled=b;
+}
+$("draft-save").addEventListener("click",async()=>{
+ if(!crypto?.subtle||!isSecureContext){status("WebCrypto secure context ontbreekt.",true);return;}
+ if(busy)return;setBusy(true);
+ try{
+  if(!$("ack").checked)fail("HUMAN-only bevestiging ontbreekt.");
+  const snapshot=api.snapshot(),pass=$("draft-new-pass").value;passwordOk(pass);
+  if(!window.confirm("Maak een NIEUW versleuteld PRIVATE HUMAN-beslisconcept? Originele bronnen worden NIET bijgevoegd."))return;
+  const body=enc.encode(JSON.stringify(authBody(snapshot)));
+  if(body.length>MAX_BODY)fail("Checkpoint-overzicht te groot.");
+  const salt=crypto.getRandomValues(new Uint8Array(16)),
+   iv=crypto.getRandomValues(new Uint8Array(12));
+  const cipher=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+   await keyFor(pass,salt,"encrypt"),body));
+  body.fill(0);
+  const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",
+   iterations:ITER,cipher:"AES-256-GCM",salt_b64:to64(salt),
+   iv_b64:to64(iv),ciphertext_b64:to64(cipher)};
+  const bytes=enc.encode(JSON.stringify(envelope));
+  if(bytes.length>MAX_FILE)fail("Versleuteld checkpoint groter dan limiet.");
+  download("lightup-casebook-PRIVATE-human-draft.lurd",bytes);
+  status("Alleen bronhash-gebonden HUMAN-keuzes versleuteld opgeslagen. Voor herstel moeten beide oorspronkelijke PRIVATE overdrachten opnieuw worden geopend.");
+ }catch(e){status(e instanceof Error?e.message:"Checkpoint geweigerd.",true);}
+ finally{$("draft-new-pass").value="";setBusy(false);}
+});
+$("draft-open").addEventListener("click",async()=>{
+ if(!crypto?.subtle||!isSecureContext){status("WebCrypto secure context ontbreekt.",true);return;}
+ if(busy)return;setBusy(true);
+ try{
+  if(!$("ack").checked)fail("HUMAN-only bevestiging ontbreekt.");
+  const file=$("draft-file").files[0],password=$("draft-open-pass").value;
+  if(!file||typeof file.name!=="string"||file.name.length>160||
+    !/\.lurd$/i.test(file.name)||file.size<80||file.size>MAX_FILE)
+   fail("Kies een geldige beperkte PRIVATE HUMAN-checkpoint .lurd.");
+  if(!password)fail("Wachtwoord ontbreekt.");
+  if(!api.snapshot())fail("Open eerst de twee oorspronkelijke PRIVATE bronsets.");
+  const env=parse(await file.text());
+  if(!exact(env,["schema","version","kdf","iterations","cipher","salt_b64",
+   "iv_b64","ciphertext_b64"])||env.schema!==SCHEMA||env.version!==1||
+   env.kdf!=="PBKDF2-SHA256"||env.iterations!==ITER||env.cipher!=="AES-256-GCM")
+   fail("Checkpoint-envelope niet oorspronkelijk canoniek.");
+  const salt=from64(env.salt_b64,16),iv=from64(env.iv_b64,12),
+   cipher=from64(env.ciphertext_b64,MAX_FILE);
+  if(salt.length!==16||iv.length!==12||cipher.length<16)
+   fail("Ongeldige cryptografische parameters.");
+  let bytes;
+  try{bytes=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},
+    await keyFor(password,salt,"decrypt"),cipher));}
+  catch{fail("Wachtwoord of checkpoint-ciphertext onjuist.");}
+  if(bytes.length>MAX_BODY)fail("Checkpoint-plaintext te groot.");
+  const body=parse(dec.decode(bytes));bytes.fill(0);
+  if(!exact(body,["schema","version","sources","human","choices",
+    "source_authenticated","client_consent_verified","operator_consent_verified",
+    "authorization_granted","execution_allowed","release_approved"])||
+    body.schema!==SCHEMA||body.version!==1||
+    ["source_authenticated","client_consent_verified","operator_consent_verified",
+     "authorization_granted","execution_allowed","release_approved"].some(k=>body[k]!==false))
+   fail("Onjuiste checkpoint-bron of autoriteitsflags.");
+  // api.restore performs a second, exact *currently open* original-source,
+  // both original HUMAN CSV fingerprints and every HUMAN option check.
+  if(!api.restore(body)){status("HUMAN-restore geannuleerd; bestaande keuzes behouden.");return;}
+  status("Oorspronkelijk bron+beide HUMAN-CSV-bound beslisconcept in huidig browsergeheugen hersteld. Geen grant/toestemming.");
+ }catch(e){status(e instanceof Error?e.message:"Checkpoint geweigerd.",true);}
+ finally{$("draft-open-pass").value="";$("draft-file").value="";setBusy(false);}
+});
 })();</script></body></html>

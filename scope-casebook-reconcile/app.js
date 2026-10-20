@@ -319,6 +319,34 @@ function anonymousReport(){
 $("aggregate").addEventListener("click",()=>{
  try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
 });
+window.LightUpCasebookDraftAPI=Object.freeze({
+ snapshot:()=>work?{
+  sources:work.a.records.slice(0,-1).map(r=>({name:r.name,size:r.size,sha256:r.sha256})),
+  human:[work.a.records.at(-1).sha256,work.b.records.at(-1).sha256],
+  choices:work.choices.map(r=>[...r])}:null,
+ restore:body=>{
+  if(!work)deny("HOLD: oorspronkelijke PRIVATE bronnen ontbreken.");
+  const actual=window.LightUpCasebookDraftAPI.snapshot();
+  if(JSON.stringify(body.sources)!==JSON.stringify(actual.sources)||
+    JSON.stringify(body.human)!==JSON.stringify(actual.human))
+   deny("HOLD: checkpoint hoort bij andere originele bron of andere A/B HUMAN-revisie.");
+  if(!Array.isArray(body.choices)||body.choices.length!==work.cases.length)
+   deny("HOLD: checkpoint heeft een afwijkend aantal HUMAN-cases.");
+  const candidate=body.choices.map((r,i)=>{
+   if(!Array.isArray(r)||r.length!==3)deny("HOLD: incomplete HUMAN-beslissingen.");
+   return r.map((v,j)=>{
+    const same=work.a.rows[i][j+3]===work.b.rows[i][j+3];
+    if(same&&v!=="same")deny("HOLD: bronidentiek HUMAN-veld mag niet worden herzien.");
+    if(!same&&!["","A","B","reset"].includes(v))
+     deny("HOLD: niet-canonieke HUMAN-conflictbeslissing.");
+    return v;
+   });
+  });
+  if(!window.confirm("Verander uitsluitend de huidige HUMAN-keuzevelden volgens dit versleutelde exact-brongebonden checkpoint? Oorspronkelijke bronbytes blijven intact."))
+   return false;
+  work.choices=candidate;show();return true;
+ }
+});
 window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}});
 $("publish").disabled=true;$("aggregate").disabled=true;
 })();
