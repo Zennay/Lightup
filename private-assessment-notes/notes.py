@@ -397,14 +397,21 @@ def main() -> int:
                            help="original source position, individually marked INTERNAL_REVIEW_ONLY")
     selection.add_argument("--plan", help="owner-private 0600 original source-reference-only selection plan")
     selected.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
+    changes = commands.add_parser(
+        "changes", help="source-bound comparison of two completed direct HUMAN revisions, private only")
+    changes.add_argument("--earlier", required=True, help="original completed HUMAN packet")
+    changes.add_argument("--later", required=True, help="direct completed HUMAN revision packet")
+    changes.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
     args = p.parse_args()
     try:
         if args.action == "prepare":
             return prepare(args.source, args.private_parent)
         if args.action == "finalize":
             return finalize(args.original_kit, args.decisions, args.private_parent)
-        # Import only for an explicitly chosen offline local PRIVATE operation.
-        # No renderer, target, provider, scan or network work is implicit.
+        # Offline local PRIVATE operations only, never a scan/target dispatch.
+        if args.action == "changes":
+            from revision_changes import compare
+            return compare(args.earlier, args.later, args.private_parent)
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
