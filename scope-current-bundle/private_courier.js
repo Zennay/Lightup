@@ -14,6 +14,7 @@
   const openInput = document.getElementById("vaultInput");
   const pwBox = document.getElementById("entryA");
   const confirmBox = document.getElementById("entryB");
+  const digestExpected = document.getElementById("expectedDigest");
   const message = document.getElementById("message");
   const lockBtn = document.getElementById("seal");
   const unlockBtn = document.getElementById("open");
@@ -24,6 +25,10 @@
     /^[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/.test(name) &&
     !name.includes("..") && /\.(?:html|csv|json|zip)$/i.test(name);
   function say(value) { message.textContent = value; }
+  async function sha256(bytes) {
+    const raw = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    return Array.from(raw, x => x.toString(16).padStart(2, "0")).join("");
+  }
   function exclusive(f) {
     return async () => {
       if (busy) return;
@@ -92,10 +97,12 @@
     }, key, plain));
     const out = new Uint8Array(HEADER + encrypted.length);
     out.set(header); out.set(encrypted, HEADER);
+    plain.fill(0); sourceBytes.fill(0);
+    const fingerprint = await sha256(out);
     // No customer source, grants, consent or reviewer role is authenticated here.
     if (!confirm("Save an encrypted PRIVATE handoff? Share the passphrase through a different authenticated channel. Encryption alone is NOT client/operator authorization.")) return;
     save("LightUp-PRIVATE-HUMAN-handoff.luhr", out, "application/octet-stream");
-    say("Encrypted PRIVATE courier file prepared. Confirm the download was saved safely; no recipient/source authority was established.");
+    say("Encrypted PRIVATE courier file prepared. Envelope SHA-256: " + fingerprint + "\nShare this digest separately through an independently authenticated channel, if desired. This is not sender verification or authorization.");
     pwBox.value = ""; confirmBox.value = "";
     sealInput.value = "";
   }
@@ -105,6 +112,11 @@
     if (!file.name.toLowerCase().endsWith(".luhr")) throw Error("not a courier envelope");
     const pass = acceptPass(pwBox.value);
     const blob = new Uint8Array(await file.arrayBuffer());
+    const actualDigest = await sha256(blob);
+    const expected = digestExpected.value.trim().toLowerCase();
+    if (expected && (!/^[0-9a-f]{64}$/.test(expected) || expected !== actualDigest)) {
+      throw Error("unauthenticated envelope fingerprint mismatch");
+    }
     if (blob.length < HEADER + 16) throw Error("short envelope");
     if (!MAGIC.every((v, i) => v === blob[i])) throw Error("wrong envelope version");
     const header = blob.subarray(0, HEADER);
@@ -126,9 +138,9 @@
     if (!validName(originalName)) throw Error("unsafe decrypted filename");
     const data = plain.subarray(2 + nameLen);
     if (data.length > MAX_BYTES) throw Error("oversized decrypted file");
-    if (!confirm("Decrypt this locally authenticated AES-GCM payload? The content and sender are NOT independently trusted. Save privately; do not open HTML from unknown people.")) return;
+    if (!confirm("Decrypt this locally authenticated AES-GCM payload? The content and sender are NOT independently trusted. Save privately; do not open HTML from unknown people.")) { plain.fill(0); return; }
     save(originalName, data, "application/octet-stream");
-    say("PRIVATE original file downloaded without automatic execution. The sender, reviewer, source, consent and grant are not authenticated.");
+    say("PRIVATE original file downloaded without automatic execution. Envelope SHA-256: " + actualDigest + "\nAn independently supplied matching digest is only a byte-comparison, not an authenticated sender or scope grant.");
     pwBox.value = ""; confirmBox.value = ""; openInput.value = "";
     plain.fill(0);
   }
