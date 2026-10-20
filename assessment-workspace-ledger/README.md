@@ -1236,3 +1236,38 @@ HUMAN discussion, NEVER verified security, recipient, consent, grant,
 scan, real assigned task or remediation. Console foreground option **36**.
 Software-only v29 includes the original new native module and maintains
 fixed source-only software inventory reads v16–v28. No QA suite involved.
+
+## Source-free, offline PRIVATE multi-owner HUMAN Inbox Studio · v30
+
+The ready-to-open [portfolio-inbox-studio.html](portfolio-inbox-studio.html)
+is the private operator's locally rendered multi-owner discussion interface.
+The shipped software contains no original private source, HUMAN owner, case
+or customer data. The operator explicitly selects one original local
+`PRIVATE-HUMAN-owner-inbox.json`. The browser hashes the selected exact bytes
+using local Web Crypto, previews strict original source slots/owner groups,
+shows owner and reply HUMAN statuses, and offers owner/status/text filtering
+without dropping ANY original rows from the next source-bound export.
+
+Operators edit only the *new* HUMAN discussion stage and bounded private
+discussion note. Export creates the complete original-inbox-SHA-bound
+`HUMAN-inbox-review-template.csv` for the original native
+`portfolio_owner_inbox_review.py` finalizer (console 36). The same app can
+restore a saved entire CSV draft, only when all original slot identities,
+unchanged inbox source SHA and HUMAN text values match in source order.
+All-or-nothing restore requires an explicit human confirmation. No local
+browser persistence, online API, scanning, model, recipient identification,
+permission or dispatch. Browser download folders may not be confidential;
+move downloaded CSV into 0700/0600 PRIVATE custody before native admission.
+
+The source-only CSP-pinned renderer
+`portfolio_inbox_studio.py` builds a NEW private standalone file without
+embedding any selected source:
+
+    python3 assessment-workspace-ledger/portfolio_inbox_studio.py \
+      --output /private/operator-only/new-private-human-inbox.html
+
+Console foreground option **37** invokes the same local source-only builder.
+Fixed source-only offline ZIP v30 ships the HTML, JS, builder and native
+inbox review. Previous software inventories v16–v29 remain readable. No
+QA/regression/test suites were added or invoked. No security finding or
+client consent is asserted by this strictly HUMAN-only editor.
