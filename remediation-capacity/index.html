@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp | Remediation Capacity Studio — offline draft</title>
+<link rel="stylesheet" href="./style.css">
+<script src="./planner.js" defer></script>
+<script src="./draft.js" defer></script>
+<script src="./casework-original-v1.js" defer></script>
+<script src="./casework-review.js" defer></script>
+<script src="./app.js" defer></script>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap">
+    <p class="eyebrow">LIGHTUP / DEFENSIVE PLANNING / OFFLINE</p>
+    <h1>Remediation Capacity Studio</h1>
+    <p>Turn an <em>already authorised</em> LightUp findings export into a practical, capacity-bounded repair proposal. No target access. No consent or grant issued.</p>
+    <div class="notice" role="status"><strong>DRAFT / HOLD</strong> · All outcomes are unverified planning assumptions. Reported “fixed” is not a verified retest. No authority to execute, scan or deploy.</div>
+  </div>
+</header>
+<main class="wrap">
+<section class="panel" aria-labelledby="upload-title">
+  <p class="eyebrow">01 / SOURCE</p>
+  <h2 id="upload-title">Load original findings report</h2>
+  <p>Import the original five-column <code>finding_id,title,severity,retest_status,remediation</code> CSV (≤1 MiB; ≤350 records). No customer name, finding title, finding ID or remediation text is displayed or exported.</p>
+  <div class="upload"><label for="source">Authorised findings CSV</label><input id="source" type="file" accept=".csv,text/csv">
+    <button type="button" id="forget" class="secondary">Forget source &amp; plan</button></div>
+  <p id="source-status" class="subtle" aria-live="polite">No report loaded. All files stay in this browser tab.</p>
+</section>
+<section class="panel" aria-labelledby="capacity-title">
+  <p class="eyebrow">02 / TEAM ASSUMPTIONS</p>
+  <h2 id="capacity-title">Available remediation capacity</h2>
+  <form id="settings" autocomplete="off">
+    <div class="grid">
+      <label>Sprint start date<input type="date" name="start" required></label>
+      <label>Sprint weeks<input type="number" name="weeks" min="1" max="12" value="4" required></label>
+      <label>Engineers<input type="number" name="engineers" min="1" max="30" value="3" required></label>
+      <label>Working days per week<input type="number" name="workDays" min="1" max="5" value="5" required></label>
+      <label>Available hours per person/day<input type="number" name="hoursPerDay" min="1" max="10" value="6" required></label>
+      <label>Capacity reserved for interruptions (%)<input type="number" name="reserve" min="0" max="80" value="25" required></label>
+    </div>
+    <fieldset>
+      <legend>Estimated repair effort per finding (hours, adjustable)</legend>
+      <div class="grid effort">
+        <label>Critical<input type="number" name="critical" min="1" max="200" value="20" required></label>
+        <label>High<input type="number" name="high" min="1" max="200" value="12" required></label>
+        <label>Medium<input type="number" name="medium" min="1" max="200" value="6" required></label>
+        <label>Low<input type="number" name="low" min="1" max="200" value="3" required></label>
+        <label>Info<input type="number" name="info" min="1" max="200" value="1" required></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Weekly availability · holidays, leave and incident load</legend>
+      <p class="subtle">100% uses the team's ordinary available capacity; 0% means no work can be scheduled in that week. Values change only this local estimate, never an authorised assessment window.</p>
+      <div class="grid" id="week-availability" aria-live="polite"></div>
+    </fieldset>
+    <button type="submit" id="generate" disabled>Prepare capacity plan</button>
+  </form>
+  <p class="subtle">Priority: source-reported regressions first, then critical → high → medium → low → info. Estimates are placeholders, not SLAs or retest authorisations. Sprint weeks are seven-day planning buckets; available capacity is per working week.</p>
+</section>
+<section class="panel" aria-labelledby="resume-title">
+  <p class="eyebrow">03 / PRIVATE SESSION HANDOFF</p>
+  <h2 id="resume-title">Save or reopen this planning draft</h2>
+  <p>Save only the bounded staffing and effort assumptions, the selected additional-team scenario and a SHA-256 fingerprint of the original report. <strong>No original finding IDs, titles, customer data, remediation text or consent are saved.</strong></p>
+  <p>To resume, <strong>first reload exactly the same authorised findings CSV</strong> in section 01, then choose the previously saved private draft. A source fingerprint is an unsigned consistency check, never authentication or approval.</p>
+  <div class="actions">
+    <button id="save-working-draft" type="button" class="secondary" disabled>Save private working draft</button>
+    <label class="file-label" for="reopen-working-draft">Reopen private draft</label>
+    <input id="reopen-working-draft" type="file" accept=".json,application/json">
+  </div>
+  <p id="draft-status" class="subtle" aria-live="polite">No saved draft restored. Browsers store nothing for you.</p>
+</section>
+<section class="panel" aria-labelledby="casework-review-title">
+  <p class="eyebrow">04 / ORIGINAL CASEWORK HANDOFF</p>
+  <h2 id="casework-review-title">Review existing Casework planning blockers</h2>
+  <p>Import an original <code>lightup.remediation_casework_draft</code> v1 file created by the separate authorised-export-based Casework product. The original source CSV above must be reloaded first. We use the pinned original Casework v1 parser, require an identical source revision and show only grouped human planning stages, blockers and missing owner labels.</p>
+  <div class="upload">
+    <label for="casework-packet">Original private Casework JSON</label>
+    <input id="casework-packet" type="file" accept=".json,application/json">
+    <button id="clear-casework" type="button" class="secondary">Forget Casework summary</button>
+  </div>
+  <label class="ack"><input id="casework-ack" type="checkbox"> I independently confirmed the selected exported Casework draft and original findings CSV came from the same intended <strong>client and engagement</strong>. This is not identity or scope authentication.</label>
+  <button id="review-casework" type="button">Review read-only casework summary</button>
+  <p id="casework-feedback" class="subtle" aria-live="polite">No Casework record reviewed.</p>
+  <div id="casework-summary" hidden>
+    <div id="casework-status-cards" class="stats"></div>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Severity</th><th scope="col">Source cases</th><th scope="col">Blocked</th><th scope="col">Unlabelled owners</th><th scope="col">Undated</th><th scope="col">Human retest coordination</th><th scope="col">Self-reported complete (unverified)</th></tr></thead><tbody id="casework-risk-table"></tbody></table></div>
+    <h3>Estimated scheduled hours affected by local blockers</h3>
+    <p class="subtle">Only anonymous, source-matched plan positions are used while reading. A blocked planning stage means these scheduled hours need human clarification, not necessarily that staff are unavailable or a fix is proven.</p>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Plan week</th><th scope="col">Estimated allocated</th><th scope="col">Affected by locally blocked case notes</th><th scope="col">Critical/high affected</th><th scope="col">Source regression locally marked complete</th></tr></thead><tbody id="casework-week-pressure"></tbody></table></div>
+    <h3>Source-linked human coordination questions</h3>
+    <p class="subtle">Only aggregate, source-derived counts are displayed. Suggested conversations are not actions, grants, assignments or a verified retest.</p>
+    <div id="casework-triage" class="triage-grid"></div>
+    <p class="subtle">Casework “completed” is a self-reported human work stage, <strong>never proof of a fix or authorised retest</strong>. Casework imports never change the current capacity plan or grant execution rights.</p>
+    <button id="export-casework-summary" type="button" class="secondary">Export aggregate Casework discussion</button>
+    <button id="export-casework-triage" type="button" class="secondary">Export aggregate discussion register CSV</button>
+    <button id="export-casework-pressure" type="button" class="secondary">Export weekly blocker pressure CSV</button>
+    <button id="export-combined-brief" type="button">Export combined remediation coordination brief</button>
+  </div>
+</section>
+<section id="results" hidden aria-labelledby="results-title">
+  <div class="panel">
+    <p class="eyebrow">05 / HUMAN PLANNING PREVIEW</p>
+    <h2 id="results-title">Capacity allocation</h2>
+    <div class="stats" id="stats" aria-live="polite"></div>
+    <p class="subtle">A fully allocated estimate only means it fits in this draft plan. It does not mean work has started, a vulnerability was fixed, or an authorised retest has happened.</p>
+  </div>
+  <div class="panel" aria-labelledby="risk-title">
+    <h2 id="risk-title">Priority-band backlog and estimated scheduling horizon</h2>
+    <p>Track outstanding planned hours by original source severity. “Scheduled” only means a local estimate fits; it never represents completed remediation or a confirmed retest.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th scope="col">Severity</th><th scope="col">Records</th><th scope="col">Source regressions</th><th scope="col">Estimated effort</th><th scope="col">Tentatively allocated</th><th scope="col">Unallocated</th><th scope="col">Latest full-allocation week</th></tr></thead>
+        <tbody id="priority-bands"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Weekly workload</h2>
+    <div id="weekly" class="weeks"></div>
+  </div>
+  <div class="panel" aria-labelledby="history-title">
+    <p class="eyebrow">06 / HISTORICAL LOAD CHANGE</p>
+    <h2 id="history-title">Compare repair workload between two original reports</h2>
+    <p>Import one <em>earlier</em> authenticated LightUp findings CSV. Compare it with the current CSV above, using exactly the current hour assumptions. A record missing from the newer source is <strong>not proven fixed</strong>. The CSVs do not authenticate client or assessment identity.</p>
+    <div class="upload">
+      <label for="previous">Earlier original findings CSV</label>
+      <input id="previous" type="file" accept=".csv,text/csv">
+    </div>
+    <label class="ack"><input type="checkbox" id="same-engagement"> I independently checked that both exported reports refer to the <strong>same authenticated client and assessment engagement</strong>. This statement is a human assertion only; the application cannot verify it.</label>
+    <div class="actions">
+      <button type="button" id="review-history" class="secondary">Compare workloads</button>
+      <button type="button" id="clear-history" class="secondary">Forget historical comparison</button>
+    </div>
+    <p id="history-feedback" class="subtle" aria-live="polite">No earlier report compared.</p>
+    <div id="history-data" hidden>
+      <div class="stats" id="history-stats"></div>
+      <p class="subtle">A smaller estimated workload, or a source status of “fixed”, is not verified remediation. Added, changed and missing records require human reconciliation before any decisions.</p>
+      <button type="button" id="export-history" class="secondary">Export aggregate workload change</button>
+    </div>
+  </div>
+  <div class="panel">
+    <p class="eyebrow">07 / CAPACITY WHAT-IF</p>
+    <h2>What if the team had more capacity?</h2>
+    <p>Compare the baseline with an alternative number of engineers. This does not hire, assign or book anyone; assumptions remain unchanged except staffing.</p>
+    <div class="scenario-controls">
+      <label for="extra-engineers">Additional engineers (0–10)</label>
+      <input id="extra-engineers" type="number" min="0" max="10" value="1">
+      <button type="button" id="compare">Compare staffing</button>
+    </div>
+    <div id="comparison" aria-live="polite"></div>
+  </div>
+  <div class="panel" aria-labelledby="milestone-title">
+    <p class="eyebrow">08 / RISK MILESTONES</p>
+    <h2 id="milestone-title">Can urgent risks fit into the target sprint?</h2>
+    <p>Try a hypothetical milestone for critical findings, or critical and high findings together. Calculate the remaining estimated hours at the selected week and smallest modelled staffing level (up to 30 engineers) needed to fit the proposal. This is not an agreed SLA or permission to retest.</p>
+    <div class="grid">
+      <label>Priority milestone<select id="milestone-band"><option value="critical_high">Critical and high</option><option value="critical">Critical only</option></select></label>
+      <label>Target week<input id="milestone-week" type="number" min="1" max="12" value="2"></label>
+      <div class="milestone-action"><button type="button" id="milestone-calculate" class="secondary">Estimate feasibility</button></div>
+    </div>
+    <div id="milestone-result" aria-live="polite"></div>
+    <button id="milestone-export" type="button" class="secondary" hidden>Export aggregate milestone draft</button>
+  </div>
+  <div class="panel" aria-labelledby="contingency-title">
+    <p class="eyebrow">09 / CAPACITY INTERRUPTION PLANNING</p>
+    <h2 id="contingency-title">What if the team temporarily loses capacity?</h2>
+    <p>Compare your current estimated recovery plan to one disrupted week and an ongoing hypothetical reduction. Neither scenario changes real staff allocation, scope permission, working calendars or any previously authorised assessment.</p>
+    <div class="grid">
+      <label>Impacted week<input id="outage-week" type="number" min="1" max="12" value="1"></label>
+      <label>Remaining capacity that week (%)<input id="outage-availability" type="number" min="0" max="100" value="0"></label>
+      <label>Ongoing team capacity reduction (%)<input id="ongoing-reduction" type="number" min="0" max="100" value="25"></label>
+    </div>
+    <div class="actions">
+      <button id="run-contingency" class="secondary" type="button">Compare interruption scenarios</button>
+      <button id="export-contingency" class="secondary" type="button" hidden>Export aggregate interruption brief</button>
+    </div>
+    <div id="contingency-results" aria-live="polite"></div>
+  </div>
+  <div class="panel">
+    <h2>Proposed work queue</h2>
+    <p class="subtle">Anonymous source positions only. A task can be split between weeks. No raw case IDs, addresses, descriptions, or assignment records appear here.</p>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Week</th><th scope="col">Source position</th><th scope="col">Severity</th><th scope="col">Original source retest</th><th scope="col">Hours</th><th scope="col">Allocation</th></tr></thead><tbody id="allocations"></tbody></table></div>
+  </div>
+  <div class="panel">
+    <h2>Private aggregate handoff</h2>
+    <p>Downloads contain only counts, hour estimates and planning weeks. They contain no original findings, client identity or source filename. Share only after an independent human privacy review.</p>
+    <div class="actions"><button id="export-json" type="button" class="secondary">Export aggregate JSON</button>
+      <button id="export-csv" type="button" class="secondary">Export aggregate CSV</button>
+      <button id="export-md" type="button" class="secondary">Export discussion Markdown</button>
+      <button type="button" id="print">Print review</button></div>
+  </div>
+</section>
+<p id="feedback" class="feedback" role="alert" aria-live="assertive"></p>
+</main>
+<footer class="wrap"><small>Local planning is not customer authentication, consent, revocation, a scan, a verified repair or release approval. INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</small></footer>
+</body>
+</html>
