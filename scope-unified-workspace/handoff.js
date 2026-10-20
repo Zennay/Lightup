@@ -702,6 +702,7 @@
     peerApply.disabled = true;
     peerSummaryExport.disabled = true;
     el("shelf-peer-agenda").disabled = true;
+    el("shelf-peer-team-agenda").disabled = true;
     el("shelf-peer-draft-save").disabled = true;
     el("shelf-peer-draft-open").disabled = true;
     el("shelf-peer-draft-status").textContent = "PRIVATE conceptkeuze vervallen door oorspronkelijke bron-/HUMAN-wijziging.";
@@ -729,6 +730,8 @@
   const peerFilter = el("shelf-peer-filter");
   const peerSearch = el("shelf-peer-search");
   const peerAgenda = el("shelf-peer-agenda");
+  const peerTeamAgenda = el("shelf-peer-team-agenda");
+  const peerAgendaTeam = el("shelf-peer-agenda-team");
   const peerDraftSave = el("shelf-peer-draft-save");
   const peerDraftOpen = el("shelf-peer-draft-open");
   const peerDraftStatus = el("shelf-peer-draft-status");
@@ -794,13 +797,20 @@
     }
     peerPreviewText.replaceChildren(container);
   };
+  const updateTeamAgenda = () => {
+    peerTeamAgenda.disabled = !peerPreview ||
+      !["security","privacy","client_ops","platform"].includes(peerAgendaTeam.value) ||
+      !peerPreview.decisions.some(d=>d.item.team===peerAgendaTeam.value);
+  };
   peerFilter.addEventListener("change", refreshPeerDesk);
   peerSearch.addEventListener("input", refreshPeerDesk);
+  peerAgendaTeam.addEventListener("change",updateTeamAgenda);
   peerInput.addEventListener("change", async () => {
     const files = Array.from(peerInput.files || []);
     peerInput.value = "";
     peerPreview = null; peerRows.replaceChildren();
     peerApply.disabled = true; peerSummaryExport.disabled = true; peerAgenda.disabled = true;
+    peerTeamAgenda.disabled = true;
     peerDraftSave.disabled = true; peerDraftOpen.disabled = true;
     peerDraftStatus.textContent = "Selecteer opnieuw dezelfde originele bron- en reviewerbestanden voor HUMAN conceptkeuzes.";
     peerPreviewText.textContent = "Geen actuele HUMAN-keuze.";
@@ -881,6 +891,7 @@
           }
         }
         const entry = {item,allowed,choice:-1,mismatch,state,
+          presentPacketSlots:originals.flatMap((row,index)=>row?[index+1]:[]),
           proposalCount:proposals.length,
           conflicting:state==="TEGENSTRIJDIGE HUMAN-KEUZES",
           noteUncertain:state==="PRIVATE NOTITIEDEKKING ONBEKEND"};
@@ -932,6 +943,7 @@
       peerPreview = {decisions,epoch,revision,counts,packetBytes};
       peerSummaryExport.disabled = false;
       peerAgenda.disabled = false;
+      updateTeamAgenda();
       peerDraftOpen.disabled = false;
       peerDraftStatus.textContent = "Pakketten bronexact geladen. HUMAN conceptkeuzes kunnen nu worden bewaard of opnieuw gebonden.";
       refreshPeerDesk();
@@ -944,7 +956,8 @@
     } catch (_) {
       peerPreview = null; peerRows.replaceChildren();
       peerSummaryExport.disabled = true; peerApply.disabled = true; peerAgenda.disabled = true;
-      peerDraftSave.disabled = true; peerDraftOpen.disabled = true;
+      peerTeamAgenda.disabled = true;
+    peerDraftSave.disabled = true; peerDraftOpen.disabled = true;
       peerDraftStatus.textContent = "Ongeldige PRIVATE reviewer-pakketten; geen concept heropend.";
       peerFilterCount.textContent = "Geen geldige reviewpakketten.";
       peerPreviewText.textContent = "Geen menselijke keuze mogelijk.";
@@ -1569,6 +1582,7 @@
     peerApply.disabled = true;
     peerSummaryExport.disabled = true;
     peerAgenda.disabled = true;
+    peerTeamAgenda.disabled = true;
     peerDraftSave.disabled = true; peerDraftOpen.disabled = true;
     peerDraftStatus.textContent = "PRIVATE conceptkeuzes gewist bij verlaten van de lokale werkruimte.";
     peerSearch.value = "";
