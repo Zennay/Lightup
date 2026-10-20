@@ -27,6 +27,8 @@
   const items = [];
   let busy = false;
   let generation = 0;
+  // Changes to HUMAN choices must also invalidate an in-flight PRIVATE restore.
+  let humanRevision = 0;
   const el = (id) => document.getElementById(id);
   const input = el("shelf-files");
   const rows = el("shelf-rows");
@@ -157,6 +159,7 @@
       select.addEventListener("change", () => {
         if (!Object.hasOwn(routes, select.value)) return;
         item.route = select.value;
+        humanRevision++;
         render();
       });
       routeCell.append(select);
@@ -177,6 +180,7 @@
         picker.addEventListener("change", () => {
           if (!Object.hasOwn(options, picker.value)) return;
           update(picker.value);
+          humanRevision++;
           render();
         });
         caption.append(picker);
@@ -193,6 +197,7 @@
       note.setAttribute("aria-label", "PRIVATE opvolgnotitie voor " + item.file.name);
       note.addEventListener("input", () => {
         item.note = note.value;
+        humanRevision++;
       });
       privateLabel.append(note);
       triage.append(privateLabel);
@@ -239,6 +244,7 @@
       (stage === "unchanged" ? "ongewijzigde fase" : stages[stage]);
     if (!confirm("Wijzig uitsluitend " + selected.length + " zichtbare PRIVATE HUMAN dossiers naar " + detail +
       "? De originele bronbestanden blijven ongewijzigd. Dit is geen toestemming, oplossing of geverifieerde revocatie.")) return;
+    humanRevision++;
     for (const item of selected) {
       if (team !== "unchanged") item.team = team;
       if (stage !== "unchanged") item.stage = stage;
@@ -363,9 +369,10 @@
     restoreInput.disabled = true;
     input.disabled = true;
     const epoch = generation;
+    const humanAtStart = humanRevision;
     try {
       const rows = await LightUpPrivateSourceInspector.readHumanInventory(backup);
-      if (epoch !== generation || rows.length !== items.length) {
+      if (epoch !== generation || humanAtStart !== humanRevision || rows.length !== items.length) {
         throw Error("different source set or concurrent clear");
       }
       for (let i = 0; i < rows.length; i++) {
@@ -382,7 +389,8 @@
         report("REVIEW_ONLY — herstel geannuleerd; bestaande HUMAN werkset ongewijzigd.");
         return;
       }
-      if (epoch !== generation) throw Error("source set changed before replacement");
+      if (epoch !== generation || humanAtStart !== humanRevision) throw Error("source or HUMAN edits changed before replacement");
+      humanRevision++;
       for (let i = 0; i < rows.length; i++) {
         items[i].route = rows[i].human_route;
         items[i].stage = rows[i].human_stage;

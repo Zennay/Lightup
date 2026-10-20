@@ -240,13 +240,13 @@
     },
     {
       "path": "scope-unified-workspace/handoff.html",
-      "sha256": "c094540d1c695274833d1bfcfca62e6b6382d0323a470586cd3d8ffdc6385bbb",
-      "size": 64625
+      "sha256": "6ecac790cd9641f8504dbaac896695a495d25de920f0c6bad23edfd5ab6998b0",
+      "size": 64971
     },
     {
       "path": "scope-unified-workspace/handoff.js",
-      "sha256": "8273122ab128b4cf59cbb39865c6818ec4a56848ca9581ae064d48eb10878710",
-      "size": 27348
+      "sha256": "81c9003e4a9b88ebf93016d50722ded22c3826827b213d2fe6d76ef26d47c5fd",
+      "size": 27694
     },
     {
       "path": "scope-unified-workspace/handoff.template.html",
