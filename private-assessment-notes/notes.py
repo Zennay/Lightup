@@ -432,6 +432,11 @@ def main() -> int:
     extra.add_argument("--rules-json", required=True,
                        help="owner-only 0600 secret-containing HUMAN literal masking rules")
     extra.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
+    original_mask = commands.add_parser(
+        "mask-template", help="prepare original-source-bound HUMAN extra masking request template")
+    original_mask.add_argument("--completed-packet", required=True,
+                               help="completed original owner-private HUMAN packet")
+    original_mask.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
     args = p.parse_args()
     try:
         if args.action == "prepare":
@@ -458,6 +463,9 @@ def main() -> int:
         if args.action == "mask-copy":
             from manual_mask import prepare as prepare_extra_mask
             return prepare_extra_mask(args.completed_packet, args.rules_json, args.private_parent)
+        if args.action == "mask-template":
+            from manual_mask import template as prepare_mask_template
+            return prepare_mask_template(args.completed_packet, args.private_parent)
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
