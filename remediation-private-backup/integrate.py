@@ -170,12 +170,100 @@ def create(dest: Path):
     print("Original native source-owner workroom untouched. No permission, source proof or release.")
     return 2
 
-def main():
-    parser = argparse.ArgumentParser(description="Compose a NEW offline ORIGINAL remediation and PRIVATE recovery suite; DRAFT/HOLD")
-    parser.add_argument("--output-dir", type=Path, required=True)
-    args = parser.parse_args()
+def read_private_asset(path: Path, max_bytes: int = MAX_ASSET):
+    """No symlink/hardlink/foreign-readable input during PRIVATE local reopening."""
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     try:
-        return create(args.output_dir)
+        st = os.fstat(fd)
+        insist(stat.S_ISREG(st.st_mode) and st.st_nlink == 1
+               and st.st_uid == os.getuid() and not st.st_mode & 0o077
+               and st.st_size <= max_bytes, "installed asset is not an owner-private single-link file")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            data = stream.read(max_bytes + 1)
+        insist(len(data) == st.st_size, "installed asset size changed")
+        return data
+    finally:
+        os.close(fd)
+
+
+def parse_inventory(raw: bytes):
+    def unique(pairs):
+        obj = {}
+        for key, value in pairs:
+            insist(key not in obj, "duplicate PRIVATE inventory keys")
+            obj[key] = value
+        return obj
+    try:
+        obj = json.loads(raw.decode("ascii", "strict"), object_pairs_hook=unique,
+                         parse_constant=lambda _: (_ for _ in ()).throw(Hold("invalid number")))
+    except (ValueError, UnicodeError, TypeError) as error:
+        raise Hold("PRIVATE installed source inventory could not be decoded") from error
+    insist(type(obj) is dict and canonical(obj) == raw
+           and set(obj) == {"kind", "authority", "warning", "files"}
+           and obj["kind"] == "lightup.private_human_recovery_companion_v1"
+           and obj["authority"] == FLAGS and obj["warning"] == WARNING,
+           "PRIVATE inventory is noncanonical or claims unsupported authority")
+    files = obj["files"]
+    expected = {"private-recovery/" + name for name in COMPANION_FILES}
+    expected.add("START-HERE.html")
+    optional = {"original-suite/source-lock.json", "original-suite/manifest.json"}
+    insist(type(files) is dict and expected.issubset(files)
+           and set(files).issubset(expected | optional), "unexpected or missing inventory entries")
+    for key, digest in files.items():
+        insist(type(digest) is dict and set(digest) == {"bytes", "sha256"}
+               and type(digest["bytes"]) is int and 0 <= digest["bytes"] <= MAX_ASSET
+               and type(digest["sha256"]) is str and len(digest["sha256"]) == 64
+               and all(ch in "0123456789abcdef" for ch in digest["sha256"]),
+               "malformed PRIVATE source digest entry")
+    return files
+
+
+def inspect(workspace: Path):
+    private_directory(workspace)
+    insist(set(p.name for p in workspace.iterdir()) ==
+           {"original-suite", "private-recovery", "START-HERE.html", "HOLD-SOURCE-INVENTORY.json"},
+           "unexpected top-level installed software member")
+    recovery = workspace / "private-recovery"
+    private_directory(recovery)
+    insist(set(p.name for p in recovery.iterdir()) == set(COMPANION_FILES),
+           "installed private recovery software member drift")
+    record = parse_inventory(read_private_asset(workspace / "HOLD-SOURCE-INVENTORY.json"))
+    for relative, declared in record.items():
+        path = workspace.joinpath(*relative.split("/"))
+        raw = read_private_asset(path)
+        insist(len(raw) == declared["bytes"] and sha(raw) == declared["sha256"],
+               "installed source byte identity does not match PRIVATE inventory")
+    insist(read_private_asset(workspace / "START-HERE.html") == portal(),
+           "scriptless local launcher differs from original fixed template")
+    local_html_integrity(read_private_asset(recovery / "standalone.html"),
+                         read_private_asset(recovery / "browser.js"))
+    # Reuse original native source-lock verification unchanged: never promote an
+    # unsigned companion inventory over original source-owner admission.
+    original = subprocess.run(
+        [sys.executable, str(NATIVE_INSTALLER), "inspect", "--workspace",
+         str(workspace / "original-suite")],
+        cwd=str(ROOT), shell=False, timeout=180, stdin=subprocess.DEVNULL,
+        capture_output=True, text=True)
+    insist(original.returncode == 2,
+           "original source-owner native inspection HOLD; no independent override")
+    print("REVIEW_ONLY: installed original native suite and encrypted recovery software agree")
+    print("Local unsigned file digests do not prove sender, source consent, remediation or release.")
+    return 2
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Build/reopen original+PRIVATE recovery software with unchanged original source lock; DRAFT/HOLD")
+    parser.add_argument("command", nargs="?", choices=["build", "inspect"], default="build")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--workspace", type=Path)
+    args = parser.parse_args()
+    if args.command == "inspect" and (args.workspace is None or args.output_dir is not None):
+        parser.error("inspect requires --workspace only")
+    if args.command == "build" and (args.output_dir is None or args.workspace is not None):
+        parser.error("build requires --output-dir only")
+    try:
+        return inspect(args.workspace) if args.command == "inspect" else create(args.output_dir)
     except (Hold, OSError, ValueError, subprocess.TimeoutExpired) as err:
         print("HOLD:", str(err), file=sys.stderr)
         return 3
