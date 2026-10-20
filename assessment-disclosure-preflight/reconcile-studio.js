@@ -27,8 +27,8 @@
   function hex(input) {
     return Array.from(new Uint8Array(input), n => n.toString(16).padStart(2, "0")).join("");
   }
-  async function readFile(file) {
-    admitted(file && file.size > 0 && file.size <= MAX);
+  async function readFile(file, maximum = MAX) {
+    admitted(file && file.size > 0 && file.size <= maximum);
     const bytes = await file.arrayBuffer();
     admitted(bytes.byteLength === file.size);
     return bytes;
@@ -164,24 +164,67 @@
               question: row[4], next_action: row[5]};
     });
   }
+  function sameBytes(left, right) {
+    const a = new Uint8Array(left), b = new Uint8Array(right);
+    if (a.byteLength !== b.byteLength) return false;
+    let difference = 0;
+    for (let i = 0; i < a.byteLength; ++i) difference |= a[i] ^ b[i];
+    return difference === 0;
+  }
+  async function readReviewer(file, format, passwordId, originalReceipt, receiptDigest) {
+    admitted(["csv", "vault", "bundle"].includes(format));
+    if (format === "csv") {
+      const raw = await readFile(file);
+      return {csv: utf8(raw), digest: hex(await crypto.subtle.digest("SHA-256", raw))};
+    }
+    admitted(globalThis.LightUpHumanVault);
+    const limit = format === "vault" ? LightUpHumanVault.maxVaultBytes :
+                                             LightUpHumanVault.maxBundleBytes;
+    const raw = await readFile(file, limit);
+    const field = byId(passwordId);
+    const password = field.value;
+    try {
+      admitted(password.length >= 14 && password.length <= 256);
+      let csv;
+      if (format === "vault") {
+        csv = await LightUpHumanVault.open(raw, password, receiptDigest);
+      } else {
+        const packageData = await LightUpHumanVault.openBundle(raw, password);
+        admitted(sameBytes(packageData.receipt, originalReceipt));
+        csv = packageData.csv;
+      }
+      admitted(typeof csv === "string");
+      // Existing native finalizer pins the ORIGINAL HUMAN plaintext CSV bytes,
+      // never ciphertext. The original decryptor now preserves an optional
+      // leading UTF-8 BOM, so this re-encoding retains exact source bytes.
+      const originalCsv = new TextEncoder().encode(csv);
+      admitted(originalCsv.byteLength > 0 && originalCsv.byteLength <= MAX);
+      return {csv, digest: hex(await crypto.subtle.digest("SHA-256", originalCsv))};
+    } finally { field.value = ""; }
+  }
   async function open() {
-    const sequence = ++epoch;
-    const files = ["receipt", "reviewA", "reviewB"].map(id => byId(id).files[0]);
     if (source && dirty && !confirm("Discard unsaved PRIVATE HUMAN decisions?")) return;
+    const sequence = ++epoch;
     try {
       admitted(window.isSecureContext && globalThis.crypto && crypto.subtle);
-      admitted(files.every(file => file && file.size <= MAX && file.size > 0));
-      const buffers = await Promise.all(files.map(readFile));
-      const digest = await Promise.all(buffers.map(b => crypto.subtle.digest("SHA-256", b).then(hex)));
+      const receiptRaw = await readFile(byId("receipt").files[0]);
+      const receiptDigest = hex(await crypto.subtle.digest("SHA-256", receiptRaw));
+      const originals = receiptRows(utf8(receiptRaw));
+      const sourceA = await readReviewer(byId("reviewA").files[0],
+                                        byId("formatA").value, "passwordA",
+                                        receiptRaw, receiptDigest);
+      const sourceB = await readReviewer(byId("reviewB").files[0],
+                                        byId("formatB").value, "passwordB",
+                                        receiptRaw, receiptDigest);
       admitted(sequence === epoch);
-      const originals = receiptRows(utf8(buffers[0]));
-      const a = humanRows(utf8(buffers[1]), originals, digest[0]);
-      const b = humanRows(utf8(buffers[2]), originals, digest[0]);
+      const a = humanRows(sourceA.csv, originals, receiptDigest);
+      const b = humanRows(sourceB.csv, originals, receiptDigest);
+      const digest = [receiptDigest, sourceA.digest, sourceB.digest];
       const rows = originals.map((original, i) => ({
         original, a: a[i], b: b[i],
         different: ["stage", "question", "next_action"].some(field => a[i][field] !== b[i][field]),
       }));
-      // Commit atomically AFTER every original admission and async digest.
+      // All inputs admitted BEFORE replacing a previous HUMAN workroom.
       source = {digest, rows};
       decisions = rows.map(() => ({choice: "HOLD", reason: ""}));
       dirty = false;
@@ -190,11 +233,14 @@
       byId("view").value = "all";
       byId("query").value = "";
       refresh();
-      notice("REVIEW_ONLY: exact original receipt + both HUMAN CSV streams admitted. Both remain unsigned. " +
-             (digest[1] === digest[2] ? "REVIEWER FILES ARE BYTE-IDENTICAL: no independent authorship is proven." :
-              "Different reviewer files do not prove independent authorship."));
+      notice("REVIEW_ONLY: exact receipt and TWO native HUMAN CSV plaintext streams admitted locally; no authority. " +
+             (digest[1] === digest[2] ? "REVIEWER PLAINTEXT IS BYTE-IDENTICAL; no separate authorship is proven." :
+              "Different HUMAN text/digests do not prove independent authorship."));
     } catch (_) {
-      if (sequence === epoch) notice("HOLD: secure browser, original source, receipt digest, HUMAN rows or CSV rejected. Prior session retained.", true);
+      if (sequence === epoch) notice("HOLD: encrypted/CSV HUMAN input, password, original receipt bytes or source schema not admitted. Previous HUMAN choices retained.", true);
+    } finally {
+      byId("passwordA").value = "";
+      byId("passwordB").value = "";
     }
   }
   function node(tag, text, parent, className) {
@@ -359,7 +405,7 @@
     source = null; decisions = []; dirty = false;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB", "resume"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB"]) byId(id).value = "";
     for (const url of urls) URL.revokeObjectURL(url);
     urls.clear();
     notice("PRIVATE session cleared from this page. Previously downloaded files remain on your device; browser memory erasure is not guaranteed.");
@@ -377,7 +423,7 @@
     epoch++; source = null; decisions = []; dirty = false;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB", "resume"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB"]) byId(id).value = "";
     urls.forEach(url => URL.revokeObjectURL(url)); urls.clear();
   });
 })();
