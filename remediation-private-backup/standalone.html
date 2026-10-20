@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-yyvPvBpR2dWDQG+i568fngbRlp11e7aZRXE0VluZTyQ='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6PFQj+gqFeXyXH4tV/bEzZNfd5wR88h1dCg1gL0lSQY='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
 <title>LightUp · PRIVATE offline backup recovery · DRAFT/HOLD</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#0a1420;color:#edf5fc}
@@ -184,7 +184,11 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
       status(label + "-status", "PRIVATE DRAFT/HOLD: " + item.files.length +
         " authenticated local files; original selected archive untouched.");
     } catch (error) {
-      status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive"));
+      // A rejected new archive must not leave the previous decrypted archive visible
+      // under the same A/B label: fail closed, no accidental recovery of stale bytes.
+      slots[index] = null;
+      status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive") +
+        " · old decrypted state was cleared.");
     } finally {
       el(label + "-open").disabled = false;
       render();
