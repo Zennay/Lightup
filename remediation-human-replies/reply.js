@@ -6,6 +6,7 @@
   const summary = document.getElementById("summary");
   const query = document.getElementById("filter");
   const stageFilter = document.getElementById("stage-filter");
+  const comparisonFilter = document.getElementById("comparison-filter");
   const bulkStage = document.getElementById("bulk-stage");
   const bulkCount = document.getElementById("bulk-count");
   const message = document.getElementById("message");
@@ -43,19 +44,47 @@
     return true;
   }
   function updateSummary() {
+    const compare = Array.isArray(seed.comparison_slots)
+      ? rows.map((_, i) => compareHumanFileStatements(i)).filter(Boolean) : [];
+    const differences = compare.filter(x => x.different).length;
+    const followups = compare.filter(x => x.followup).length;
     summary.textContent = String(rows.length) + " original selected private HUMAN tasks · " +
       stages.map(pair => pair[1] + ": " + rows.filter(r => r.status === pair[0]).length).join(" · ") +
+      (compare.length ? " · Literal HUMAN file differences: " + differences +
+        " · Potential HUMAN follow-up: " + followups +
+        " · Prior reply files are not proven distinct reviewers. " : "") +
       " · NOT verified fixes or source identity.";
+  }
+  function compareHumanFileStatements(index) {
+    if (!Array.isArray(seed.comparison_slots)) return null;
+    const statements = seed.comparison_slots[index];
+    if (!Array.isArray(statements) || statements.length < 2) return null;
+    const distinct = name => new Set(statements.map(x => x[name])).size;
+    const different = distinct("status") > 1 || distinct("answer") > 1 ||
+      distinct("question") > 1;
+    const followup = statements.some(x => x.status === "need_clarification_human" ||
+      x.status !== "answered_human_only" || x.question.trim().length > 0);
+    return {different, followup};
   }
   function matchingIndexes() {
     const filter = query.value.toLocaleLowerCase().trim();
     const selected = [];
     seed.original_items.forEach((item, i) => {
       const row = rows[i];
+      const originalStatements = Array.isArray(seed.comparison_slots)
+        ? (seed.comparison_slots[i] || []).flatMap(x => [x.status, x.answer, x.question])
+        : [];
       const match = [item.reason, item.next_action, item.stage, row.status,
-                     row.answer, row.question].join(" ").toLocaleLowerCase();
+                     row.answer, row.question, ...originalStatements].join(" ").toLocaleLowerCase();
+      const source = compareHumanFileStatements(i);
+      const type = comparisonFilter ? comparisonFilter.value : "";
+      const matchComparison = !type || (source && (
+        type === "different" ? source.different :
+        type === "followup" ? source.followup :
+        type === "identical" ? !source.different : false));
       if ((!filter || match.includes(filter)) &&
-          (!stageFilter.value || row.status === stageFilter.value)) selected.push(i);
+          (!stageFilter.value || row.status === stageFilter.value) &&
+          matchComparison) selected.push(i);
     });
     return selected;
   }
@@ -75,6 +104,10 @@
         " · Due: " + (item.due || "unplanned") + ". No authenticated original case identity."));
       if (Array.isArray(seed.comparison_slots) && Array.isArray(seed.comparison_slots[i])) {
         const existing = seed.comparison_slots[i];
+        const facts = compareHumanFileStatements(i);
+        card.appendChild(element("strong", facts && facts.different
+          ? "LITERAL DIFFERENCES IN HUMAN FILES · Human clarification required"
+          : "Literal repeated HUMAN text (NOT authenticated agreement)"));
         card.appendChild(element("h3", "Earlier self-declared PRIVATE HUMAN reply files (not verified reviewers)"));
         for (const claimed of existing) {
           const summary = document.createElement("details");
@@ -137,6 +170,7 @@
   }
   query.addEventListener("input", render);
   stageFilter.addEventListener("change", render);
+  if (comparisonFilter) comparisonFilter.addEventListener("change", render);
   document.getElementById("bulk-apply").addEventListener("click", () => {
     const indexes = matchingIndexes();
     if (!indexes.length) { notice("HOLD: no HUMAN tasks match the current filters."); return; }
