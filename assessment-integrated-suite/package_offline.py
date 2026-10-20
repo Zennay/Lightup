@@ -39,8 +39,12 @@ options 21/22. The same console now has 31 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
-and drift (35-36). These source-specific native workrooms are generated
-locally only after admission of actual ORIGINAL PRIVATE local records.
+and drift (35-36). Source-specific workrooms still require native original
+admission. An operator can now explicitly save and restore owner-only 0600
+PATH-ONLY console sessions, view local PRIVATE workspace bookmarks and
+compare 2-8 saved session path histories (37-39). The session JSON may
+reveal confidential client folder names and must NEVER be put in this ZIP.
+All such PRIVATE outputs are created locally outside the checkout.
 This ZIP is browser software only; it intentionally does NOT embed any
 native Python programs, generated source-specific studio, or client sources.
 A missing required original input means HOLD; never fabricate findings.
