@@ -76,7 +76,7 @@ def publish_client_findings_review(
     output_name: str,
     engagement_id: str | None = None,
 ) -> Path:
-    """Create a NEW 0700 directory with matched 0600 CSV, HTML and HOLD notice.
+    """Create a NEW 0700 directory with matched 0600 CSV, HTML, JSON counts and HOLD notice.
 
     Returns the published path, never overwrites existing files/directories,
     performs no uploads, grants, scans, or other target interactions.
@@ -92,7 +92,7 @@ def publish_client_findings_review(
     stage_fd = -1
     created = False
     published = False
-    names = ("findings.csv", "review.html", "REVIEW_ONLY.txt")
+    names = ("findings.csv", "review.html", "summary.json", "REVIEW_ONLY.txt")
     try:
         # The parent descriptor is held open; publication cannot follow a link
         # substituted for a caller-provided child path.
@@ -103,7 +103,8 @@ def publish_client_findings_review(
         os.fchmod(stage_fd, 0o700)
         _file(stage_fd, names[0], packet.csv_text.encode("utf-8", "strict"))
         _file(stage_fd, names[1], packet.html_text.encode("utf-8", "strict"))
-        _file(stage_fd, names[2], _HOLD_NOTICE.encode("utf-8"))
+        _file(stage_fd, names[2], packet.summary_json.encode("utf-8", "strict"))
+        _file(stage_fd, names[3], _HOLD_NOTICE.encode("utf-8"))
         os.fsync(stage_fd)
         _publish_noreplace(parent_fd, staging, output_name)
         published = True
