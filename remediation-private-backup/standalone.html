@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KEH+AZq4xs2tXdasNCmRXX9IVYgxAURxKGYZU+7zS5o='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-n6GJn+04F0AJw/RJ2s6vbJsmfhPvjUURuFTeZIZxfrk='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
 <title>LightUp · PRIVATE offline backup recovery · DRAFT/HOLD</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#0a1420;color:#edf5fc}
@@ -61,7 +61,7 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 <button type="button" id="compare-select-b">Prepare encrypted recovery of B's added/changed files</button>
 <output id="compare-status" role="status" aria-live="polite">Unlock both archives to compare.</output>
 <div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source basename</th><th>Archive A bytes</th><th>Archive B bytes</th></tr></thead><tbody id="compare-rows"></tbody></table></div>
-<button type="button" id="clear-all" class="subtle">Clear all decrypted material</button></section>
+<button type="button" id="clear-all" class="subtle">Clear all selected PRIVATE sources and passwords</button></section>
 </main>
 <footer><p>Only a local operation of unreviewed PRIVATE bytes. Plaintext downloads must be stored in an appropriately protected folder, and are never automatically uploaded. This browser application is a separate user-interface companion to <code>vault.py</code>; cryptographic authenticity is limited to knowledge of the password used for the file. Existing LightUp security and HUMAN GO gates are unchanged.</p></footer>
 <script>/* LightUp PRIVATE HUMAN backup recovery — local-only WebCrypto, no transport or storage. */
@@ -509,7 +509,12 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
     catch (error) { status("compare-status", "HOLD: " + (error?.message || "Unable to select B changes")); }
   });
   el("subset-export").addEventListener("click", encryptSubset);
-  el("clear-all").addEventListener("click", () => { clear(0); clear(1); });
+  el("clear-all").addEventListener("click", () => {
+    clear(0); clear(1); clearCapture(true); expireDownloads();
+    el("subset-pass").value = "";
+    el("subset-confirm").value = "";
+    status("subset-status", "All selected PRIVATE data and passwords cleared from the workroom UI.");
+  });
   window.addEventListener("pagehide", () => {
     generations[0]++; generations[1]++;
     release(0); release(1);
