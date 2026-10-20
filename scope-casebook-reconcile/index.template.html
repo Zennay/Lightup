@@ -68,6 +68,19 @@
 </div>
 <p id="shown"></p><div id="cases" class="cases"></div>
 </section>
+<div class="panel original-output-preview" aria-labelledby="preview-title">
+<h3 id="preview-title">Voorvertoning van de EXACTE beoogde HUMAN-CSV-uitvoer (alleen lokaal)</h3>
+<p>Bekijk voor elk oorspronkelijk dossier welke HUMAN-waarden in een eventueel nieuw versleuteld pakket zouden komen. De bron A/B, de expliciet gekozen uitkomst en de keuzebasis staan naast elkaar. Bij onbesliste HUMAN-conflicten blijft de voorvertoning HOLD. Na volledige afhandeling berekent de app lokaal de SHA-256 van precies de door de oorspronkelijke bronhouder geserialiseerde HUMAN-CSV, zonder die CSV onversleuteld te downloaden.</p>
+<button id="preview-build" type="button">Bereken actuele HUMAN-resultaatvoorvertoning</button>
+<p id="preview-export-state" aria-live="polite">Geen actueel prospectief CSV-resultaat.</p>
+<p id="preview-sha" class="muted">Nog geen brongebonden SHA-256 voor deze keuze.</p>
+<div class="grid"><label for="preview-search">Zoek PRIVATE dossier of oorspronkelijke actie in voorvertoning
+<input id="preview-search" type="search" autocomplete="off" placeholder="Zoek lokaal"></label>
+<label class="consent"><input id="preview-different" type="checkbox" checked> Alleen broncases met HUMAN-verschillen</label></div>
+<p id="preview-visible" class="muted"></p>
+<div id="preview-result" class="preview-results" aria-label="PRIVATE HUMAN-uitvoer voorvertoning"></div>
+<p id="preview-status" role="status" aria-live="polite">Nog geen brongebonden HUMAN-resultaat berekend.</p>
+</div>
 <section aria-labelledby="draft-title"><h2 id="draft-title">3 · Versleuteld HUMAN-concept bewaren en hervatten</h2>
 <p>Bewaar tussentijds uitsluitend de HUMAN-keuzestanden en optionele privé-redenen/notities, beschermd met een nieuw wachtwoord. Het besloten concept bevat versleutelde SHA-256-bronverwijzingen en geen oorspronkelijke Casebook-JSON, maar wel PRIVATE menselijke keuzedata. Herstellen kan uitsluitend na het opnieuw openen van exact dezelfde twee bron+HUMAN-overdrachten in exact dezelfde A/B-volgorde.</p>
 <div class="grid"><div class="panel"><h3>Bewaar concept</h3>

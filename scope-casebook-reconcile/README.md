@@ -17,6 +17,10 @@ After every HUMAN field is resolved, an optional **source-free, count-only HUMAN
 
 Private original case IDs, action text and HUMAN choices remain entirely in browser memory, never in exported aggregate logs or servers. New ciphertext has a fresh random salt and nonce, PBKDF2-SHA256 310,000 iterations and AES-256-GCM. No account, localStorage, remote network, grant, API, scan or active-target support is present. Incorrect input does not replace the previous workset. A compromised browser can reveal locally displayed PRIVATE information; choose a trusted computer and exchange the new secret separately.
 
+## Exact prospective HUMAN-CSV source-serializer preview
+
+The current Casebook comparison has a dedicated **optional local HUMAN result preview** showing, for each source case, the ORIGINAL A/B HUMAN values, resolved human-only value, choice method, source-declared attention and unchanged original source action. It displays HOLD for unresolved decisions, with a strictly local filter and collapsible rows. Only if every HUMAN conflict is explicitly decided does it run the unchanged pinned original `LightUpCasebookHandoff.serialize` on the exact prospective six-column current HUMAN CSV rows; the resulting UTF-8 bytes are bounded to the original 128 KiB limit, hashed with SHA-256 **locally** and zeroed where JavaScript allows, without exporting an unencrypted CSV. The preview and SHA are invalidated whenever the case workroom rerenders or any human decision changes, preventing stale prospective claims. The resulting digest is a *self-calculated byte comparison reference*, not original producer authentication, current consent or a grant. Existing explicit encrypted .lupt publication remains unchanged and independent; this does **not** create a new release gate.
+
 ## PRIVATE HUMAN readiness and risk-attention triage portfolio
 
 A second fully integrated part of the original Casebook workroom is a **source-labelled, read-only HUMAN progress portfolio** across all current cases, not another source or scanning interface. It groups original `HOLD_` attentions, risk-decision-pending labels, expired/future grant-window review labels and remaining original source attentions. These are *unverified original source labels*, not grant, consent, deadline, active vulnerability or risk approvals. It displays case, resolved/pending HUMAN-field counts and an accessible progress bar; filters privately by source-label group, human-decision state and original case ID/action; and links directly into the actual case editor. The portfolio is updated as individual HUMAN choices, bulk actions, encrypted draft restoration and undo/redo change state.
@@ -83,6 +87,7 @@ python3 scope-casebook-reconcile/build_standalone.py
 node --check scope-casebook-reconcile/app.js
 node --check scope-casebook-reconcile/bulk.js
 node --check scope-casebook-reconcile/portfolio.js
+node --check scope-casebook-reconcile/preview.js
 node --check scope-casebook-reconcile/draft.js
 ```
 

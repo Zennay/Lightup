@@ -177,6 +177,7 @@ function tally(){
  $("publish").disabled=busy||unresolved!==0;
  $("aggregate").disabled=busy||unresolved!==0;
  window.LightUpCasebookPortfolio?.render();
+ window.LightUpCasebookOutputPreview?.invalidate();
 }
 function show(){
  $("cases").replaceChildren();

@@ -54,3 +54,12 @@ button.secondary:hover{background:#405a76}
 .portfolio-table button{font-size:.83rem;padding:8px;margin:0}
 .portfolio-table td{min-width:105px;max-width:340px}
 #portfolio-status.error{color:#ffbac1}
+
+.original-output-preview{border:1px solid #6986a9;margin-top:18px;background:#1a2b40}
+#preview-sha{overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,monospace}
+.preview-results{max-height:620px;overflow-y:auto;display:grid;gap:8px}
+.preview-results details{background:#111e2d;border:1px solid #4c617e;border-radius:9px;padding:12px}
+.preview-results details summary{cursor:pointer;color:#e4f0ff;font-weight:650;overflow-wrap:anywhere}
+.preview-results details table{margin-top:12px}
+.preview-results tr.pending{background:#49321e}
+#preview-status.error{color:#ffbac1}
