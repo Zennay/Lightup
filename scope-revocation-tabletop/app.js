@@ -678,13 +678,19 @@
     const key=$("preset").value;
     if (!Object.hasOwn(presets,key)) return;
     if (events.length && !window.confirm("Bestaand oefenscenario vervangen?")) return;
-    events=presets[key].slice(); feedback("Fictief voorbeeld geladen.");render();
+    mutateWorkspace(()=>{events=presets[key].slice();},"Fictief voorbeeld geladen.");
   });
   $("add-event").addEventListener("click",()=>add($("event-type").value));
-  $("set-baseline").addEventListener("click",()=>{baseline=events.slice();feedback("Fictieve nulmeting in geheugen vastgelegd.");render();});
-  $("clear-baseline").addEventListener("click",()=>{baseline=null;feedback("Nulmeting uit geheugen gewist.");render();});
-  $("undo").addEventListener("click",()=>{events.pop();feedback("Laatste gebeurtenis verwijderd.");render();});
-  $("clear").addEventListener("click",()=>{if (events.length && !window.confirm("Alle fictieve stappen wissen?")) return;events=[];feedback("Scenario gewist.");render();});
+  $("set-baseline").addEventListener("click",()=>mutateWorkspace(()=>{baseline=events.slice();},
+    "Fictieve nulmeting in lokaal geheugen vastgelegd."));
+  $("clear-baseline").addEventListener("click",()=>mutateWorkspace(()=>{baseline=null;},
+    "Nulmeting gewist; herstelbaar via ongedaan maken."));
+  $("undo").addEventListener("click",()=>historyStep(true));
+  $("redo").addEventListener("click",()=>historyStep(false));
+  $("clear").addEventListener("click",()=>{
+    if(events.length && !window.confirm("Alle fictieve stappen uit editor wissen? De andere lokale slots blijven bestaan."))return;
+    mutateWorkspace(()=>{events=[];},"Fictieve editor leeg; herstelbaar via ongedaan maken.");
+  });
   $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario inclusief slotverzameling lokaal aangeboden.");});
   $("save-board").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.json",JSON.stringify(data(),null,2),"application/json");feedback("PRIVATE fictieve workshop inclusief editor en slots lokaal aangeboden.");});
   $("save-board-brief").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.md",boardBrief(),"text/markdown");feedback("Fictieve groepsbrief voor PRIVATE HUMAN review aangeboden.");});
@@ -707,9 +713,11 @@
       }
       if ((events.length || baseline!==null || slots.some(x=>x!==null) || drillAnswers.some(x=>x!==null)) &&
           !window.confirm("Editor, nulmeting, acht slots én fictieve lesantwoorden vervangen?")) return;
-      events=next.events;baseline=next.baseline;slots=next.slots;
-      drillAnswers=next.drillAnswers;activeDrill=null;
-      feedback("Fictief scenario, lesantwoorden en slotverzameling atomair hersteld.");selectDrill(selectedDrill);render();
+      mutateWorkspace(()=>{
+        events=next.events;baseline=next.baseline;slots=next.slots;
+        drillAnswers=next.drillAnswers;activeDrill=null;
+      },"Fictief scenario, lesantwoorden en slotverzameling atomair ingelezen; vorige workspace herstelbaar.");
+      selectDrill(selectedDrill);
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("timeline-filter").addEventListener("change",render);
@@ -723,10 +731,9 @@
     const selected=replayPosition();
     if(!window.confirm("Fictief traject t/m stap "+selected+" als alternatieve vertakking in leeg slot "+
       (first+1)+" bewaren? Bestaande editor blijft intact."))return;
-    slots[first]=slotEntry(events.slice(0,selected),events.slice());
-    feedback("Vertakking van stap "+selected+" in lokaal scenario-slot "+(first+1)+
-      " opgeslagen. Oorspronkelijke volledige afloop is de bijbehorende nulmeting.");
-    render();
+    mutateWorkspace(()=>{slots[first]=slotEntry(events.slice(0,selected),events.slice());},
+      "Fictieve vertakking bij stap "+selected+" in leeg slot "+(first+1)+
+      " opgeslagen; origineel scenario blijft als nulmeting en herstel via undo mogelijk.");
   });
   $("replay-brief").addEventListener("click",()=>{
     bytesDownload("lightup-fictional-step-review.md",replayBrief(),"text/markdown");
