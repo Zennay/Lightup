@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   const $ = id => document.getElementById(id);
-  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus","humanReplyFile","importHuman","humanReturnStatus","humanReturnOutcome","humanReturnNote"];
+  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","maskPrivateBlocks","pemStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus","humanReplyFile","importHuman","humanReturnStatus","humanReturnOutcome","humanReturnNote"];
   const e = Object.fromEntries(ids.map(id => [id,$(id)]));
   const encoder = new TextEncoder();
   let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0;
@@ -34,8 +34,9 @@
     e.warnings.className="warnings";
     message("pageInfo","No pages");
     e.prevPage.disabled=e.nextPage.disabled=true;
-    e.review.disabled = !source || rules.length===0;
+    e.review.disabled = !source || (rules.length===0 && !e.maskPrivateBlocks.checked);
     e.stageSuggestions.disabled = !source;
+    e.maskPrivateBlocks.disabled = !source;
     e.importHuman.disabled = true;
     e.humanReplyFile.value="";
     e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
@@ -43,7 +44,7 @@
     lock();
   }
   function clear() {
-    ++ticket; source=null; rules=[];
+    ++ticket; source=null; rules=[];e.maskPrivateBlocks.checked=false;
     e.file.value=e.rule.value="";
     message("filename","None");message("filesize","—");message("originalHash","—");
     message("openStatus","Session cleared from application state. Previously downloaded files remain on disk.");
@@ -64,7 +65,7 @@
   }
   e.file.addEventListener("change",async()=>{
     const file=e.file.files?.[0], current=++ticket;
-    source=null;rules=[];showRules();invalidate();
+    source=null;rules=[];e.maskPrivateBlocks.checked=false;showRules();invalidate();
     message("filename","None");message("filesize","—");message("originalHash","—");
     if (!file) return;
     if (!/^[^/\x00-\x1f]{1,120}\.(txt|csv|json|md|log)$/i.test(file.name) ||
@@ -96,13 +97,46 @@
     const raw=e.rule.value;e.rule.value="";
     if(chars(raw)<3 || chars(raw)>128 || /[\x00-\x1f]/.test(raw) ||
         raw.includes("[REDACTED]") || !raw.trim() || rules.includes(raw) ||
-        rules.length>=30 || !source.text.includes(raw)){
+        rules.length>=30-(e.maskPrivateBlocks.checked?1:0) || !source.text.includes(raw)){
       message("openStatus","HOLD: literal must be unique, present, single-line, 3–128 characters; at most 30 rules.");
       return;
     }
     rules.push(raw);showRules();invalidate();
     message("openStatus","Exact literal mask added. Rule content is never rendered in the list.");
   };
+
+
+  // Special-case whole multiline blocks, never partial short-value replacement.
+  // The parser requires matching literal PEM BEGIN and END labels and refuses nested blocks.
+  const privateKeyStart = /-----BEGIN ((?:[A-Z0-9]+ )?PRIVATE KEY|PGP PRIVATE KEY BLOCK)-----/g;
+  const privateKeyWhole = /-----BEGIN ((?:[A-Z0-9]+ )?PRIVATE KEY|PGP PRIVATE KEY BLOCK)-----[\s\S]{1,262144}?-----END \1-----/g;
+  function privateBlocksRedacted(text) {
+    const starts = text.match(privateKeyStart) || [];
+    if (starts.length===0) throw Error("No recognized private-key block present");
+    if (starts.length>16) throw Error("Too many private-key blocks");
+    let replaced=0, ambiguous=false;
+    privateKeyWhole.lastIndex=0;
+    const redacted=text.replace(privateKeyWhole, original=>{
+      if (original.slice(12).includes("-----BEGIN ")) ambiguous=true;
+      replaced++;
+      return "[REDACTED PRIVATE KEY BLOCK]";
+    });
+    if(ambiguous || replaced!==starts.length) throw Error("Incomplete or nested private-key block");
+    return {text:redacted,count:replaced};
+  }
+  e.maskPrivateBlocks.addEventListener("change",()=>{
+    if(!source){e.maskPrivateBlocks.checked=false;invalidate();return;}
+    if(e.maskPrivateBlocks.checked && rules.length>=30){
+      e.maskPrivateBlocks.checked=false;
+      message("pemStatus","HOLD: 30 literal masks already exist. Remove one before enabling one whole-block mask category.");
+      invalidate();return;
+    }
+    const enabled=e.maskPrivateBlocks.checked;
+    invalidate();
+    message("pemStatus",enabled?
+      "Whole-block masking explicitly enabled. Prepare a fresh preview: unmatched or nested blocks HOLD.":
+      "Whole-block masking disabled. Existing private-key markers must still be removed or export remains HOLD.");
+  });
 
   // Optional HUMAN-triggered in-memory suggestions, never an automatic privacy verdict.
   const suggestionFamilies = Object.freeze({
@@ -139,7 +173,7 @@
           if(n<3 || n>128 || literal.length>512 || literal.includes("[REDACTED]") ||
              /[\x00-\x1f]/.test(literal)){hold=true;break;}
           if(!rules.includes(literal)) proposed.add(literal);
-          if(proposed.size>30-rules.length){hold=true;break;}
+          if(proposed.size>30-(e.maskPrivateBlocks.checked?1:0)-rules.length){hold=true;break;}
         }
         if(hold)break;
       }
@@ -188,15 +222,23 @@
   e.prevPage.onclick=()=>showPage(page-1);
   e.nextPage.onclick=()=>showPage(page+1);
   e.review.onclick=async()=>{
-    if(!source || !rules.length)return;
+    if(!source || (!rules.length && !e.maskPrivateBlocks.checked))return;
     const current=++ticket;
     invalidate();e.review.disabled=true;
     try{
-      const ordered=[...rules].sort((a,b)=>b.length-a.length);
-      const rx=new RegExp(ordered.map(quote).join("|"),"g");
-      let count=0;
-      const text=source.text.replace(rx,()=>{count++;return "[REDACTED]";});
-      if(count===0)throw Error("No replacements");
+      // Full PEM/PGP block masking happens first, preventing short literals from
+      // breaking the key-block structural integrity check.
+      let text=source.text, count=0;
+      if(e.maskPrivateBlocks.checked){
+        const whole=privateBlocksRedacted(text);
+        text=whole.text;count+=whole.count;
+      }
+      if(rules.length){
+        const ordered=[...rules].sort((a,b)=>b.length-a.length);
+        const rx=new RegExp(ordered.map(quote).join("|"),"g");
+        text=text.replace(rx,()=>{count++;return "[REDACTED]";});
+      }
+      if(count===0)throw Error("No masking was applied");
       const bytes=encoder.encode(text);
       if(bytes.length>8*1024*1024)throw Error("Output too large");
       const sha=await hash(bytes);
@@ -218,7 +260,7 @@
       if(current!==ticket)return;
       e.warnings.className="warnings warn";
       message("warnings","HOLD: failed to prepare a bounded full-file redacted preview.");
-    }finally{if(current===ticket)e.review.disabled=!source || !rules.length;}
+    }finally{if(current===ticket)e.review.disabled=!source || (!rules.length && !e.maskPrivateBlocks.checked);}
   };
   ["readAll","accept","confirm"].forEach(id=>{
     e[id].addEventListener("change",gate);
@@ -248,7 +290,7 @@
         schema:"lightup-private-disclosure-human-v1",
         purpose:"Local human disclosure preparation, not verified clearance or authenticated origin",
         output_sha256:prepared.sha,output_bytes:prepared.bytes,replacements:prepared.count,
-        mask_rules:rules.length,residual_hints:Object.fromEntries(prepared.remaining),
+        mask_rules:rules.length+(e.maskPrivateBlocks.checked?1:0),residual_hints:Object.fromEntries(prepared.remaining),
         authorization:false,client_consent:false,operator_consent:false,
         revocation_at_use_verified:false,scanning_permitted:false,release_approved:false
       };
