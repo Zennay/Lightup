@@ -81,7 +81,11 @@
     const {state:s,steps} = play(events);
     const holder = $("timeline");
     holder.replaceChildren();
+    const filter=$("timeline-filter").value;
     steps.forEach((step,i)=>{
+      if(filter==="attempts" && step.event!=="DISPATCH_ATTEMPT")return;
+      if(filter==="holds" && (step.event!=="DISPATCH_ATTEMPT" || !step.missing.length))return;
+      if(filter==="revisions" && !["SCOPE_CHANGED","RISK_CHANGED","CLIENT_REVOKED","OPERATOR_REVOKED","WINDOW_EXPIRED","NEW_WINDOW","EMERGENCY_STOP"].includes(step.event))return;
       const item=el("li");
       item.append(el("span","number",String(i+1)));
       const inner=el("span");
@@ -120,6 +124,18 @@
     write("stop-state",s.stop ? "ACTIEF – niet heropenbaar" : "Niet geactiveerd");
     write("attempt-state",s.attempts ? s.attempts+" gesimuleerd; laatste "+(s.lastAttempt.missing.length ? "HOLD":"oefenprecondities aanwezig") : "Geen");
     const missing=blockers(s);
+    const history=steps.flatMap((step,index)=>step.event==="DISPATCH_ATTEMPT"?
+      [{number:index+1,missing:step.missing}]:[]);
+    const blocked=history.filter(x=>x.missing.length).length;
+    write("attempt-history-summary",history.length+" gesimuleerd · "+blocked+" oefen-HOLD · "+(history.length-blocked)+
+      " uitsluitend fictief zonder oefenblokkade. GEEN daadwerkelijke uitvoering.");
+    const historicList=$("attempt-history-details");
+    historicList.replaceChildren();
+    history.forEach(entry=>{
+      historicList.append(el("li","", "Stap "+entry.number+": "+(entry.missing.length
+        ? "OEFEN-HOLD — "+entry.missing.join("; ")
+        : "Geen fictieve blokkade op dit moment; NOOIT echte toestemming.")));
+    });
     if (!events.length) {
       write("status-title","Wacht op scenario");
       write("status-reason","Voeg gebeurtenissen toe of laad een fictief voorbeeld. Geen echte autorisatiecontrole.");
@@ -181,7 +197,8 @@
   function slotSummary(slot) {
     const state=play(slot.events).state;
     const holds=blockers(state).length;
-    return {steps:slot.events.length,holds,attempts:state.attempts,
+    const attemptHolds=play(slot.events).steps.filter(x=>x.event==="DISPATCH_ATTEMPT" && x.missing.length).length;
+    return {steps:slot.events.length,holds,attempts:state.attempts,attemptHolds,
       stop:state.stop,client:state.client,operator:state.operator,
       scope:state.scope+1,risk:state.risk+1};
   }
@@ -192,7 +209,7 @@
       const tr=el("tr");
       const label=el("td","slot-name","Scenario "+(i+1));
       const cell=el("td","slot-state",slot
-        ? slot.events.length+" stappen · "+slotSummary(slot).holds+" fictieve HOLD-redenen · "+slotSummary(slot).attempts+" pogingen"
+        ? slot.events.length+" stappen · "+slotSummary(slot).holds+" huidige oefenblokkades · "+slotSummary(slot).attemptHolds+" historische oefen-HOLDs"
         : "Leeg");
       const actions=el("td","bank-buttons");
       const save=el("button","small-button bank-button",slot ? "Bijwerken":"Bewaren");
@@ -259,6 +276,7 @@
       "Stappen: "+a.steps+" versus "+b.steps,
       "Fictieve ontbrekende voorwaarden: "+a.holds+" versus "+b.holds,
       "Oefenuitvoerpogingen: "+a.attempts+" versus "+b.attempts,
+      "Historische oefen-HOLDs: "+a.attemptHolds+" versus "+b.attemptHolds,
       "Oefennoodstop: "+(a.stop?"aan":"uit")+" versus "+(b.stop?"aan":"uit"),
       "Fictieve clientverklaring: "+(a.client?"aanwezig":"ontbreekt")+" versus "+(b.client?"aanwezig":"ontbreekt"),
       "Fictieve operatorverklaring: "+(a.operator?"aanwezig":"ontbreekt")+" versus "+(b.operator?"aanwezig":"ontbreekt"),
@@ -269,13 +287,13 @@
   function boardBrief() {
     const lines=["# LightUp — fictieve scenario-workshop","",
       "**Alle scenario's zijn uitsluitend zelf ingevoerde oefengegevens. Geen echte autorisatie, consent, scan, grant of release.**","",
-      "| Slot | Stappen | Fictieve HOLD-redenen | Oefenpogingen | Noodstop |",
-      "| ---: | ---: | ---: | ---: | --- |"];
+      "| Slot | Stappen | Fictieve huidige HOLD-redenen | Oefenpogingen | Historische oefen-HOLDs | Noodstop |",
+      "| ---: | ---: | ---: | ---: | ---: | --- |"];
     slots.forEach((slot,i)=>{
-      if(!slot){lines.push("| "+(i+1)+" | — | — | — | Leeg |");return;}
+      if(!slot){lines.push("| "+(i+1)+" | — | — | — | — | Leeg |");return;}
       const r=slotSummary(slot);
       lines.push("| "+(i+1)+" | "+r.steps+" | "+r.holds+" | "+r.attempts+
-        " | "+(r.stop?"Actief":"Niet actief")+" |");
+        " | "+r.attemptHolds+" | "+(r.stop?"Actief":"Niet actief")+" |");
     });
     lines.push("","## Menselijke vervolgvragen","Welke originele actuele, apart geauthenticeerde client- en operatorconsent zijn aantoonbaar?","Welke exacte goedgekeurde assets/capabilities en risico's zijn gebonden?","Hoe wordt revocation bij daadwerkelijk I/O-gebruik onafhankelijk gecontroleerd?","Is originele hosted plus permanente named-VPS CI op juiste SHA en HUMAN GO aanwezig?","",
       "**AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false**");
@@ -404,6 +422,7 @@
       feedback("Fictief scenario en acht-slotsverzameling atomair hersteld.");render();
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
+  $("timeline-filter").addEventListener("change",render);
   $("print").addEventListener("click",()=>window.print());
   render();
 })();
