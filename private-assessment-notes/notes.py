@@ -521,6 +521,15 @@ def main() -> int:
     history_receive.add_argument("--history-room", required=True)
     history_receive.add_argument("--selected-csv", required=True)
     history_receive.add_argument("--private-parent", required=True)
+    history_receive_reopen = commands.add_parser(
+        "sensitivity-discussion-actions-history-receive-reopen",
+        help="read-only original-bound selected HUMAN history receipt reopening; HOLD")
+    history_receive_reopen.add_argument("--completed-packet", required=True)
+    history_receive_reopen.add_argument("--review", action="append", required=True)
+    history_receive_reopen.add_argument("--room", required=True)
+    history_receive_reopen.add_argument("--final-room", action="append", required=True)
+    history_receive_reopen.add_argument("--history-room", required=True)
+    history_receive_reopen.add_argument("--selected-room", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -633,6 +642,11 @@ def main() -> int:
             return receive(args.completed_packet, args.review, args.room,
                            args.final_room, args.history_room,
                            args.selected_csv, args.private_parent)
+        if args.action == "sensitivity-discussion-actions-history-receive-reopen":
+            from privacy_triage_history_selection import reopen_selected
+            return reopen_selected(args.completed_packet, args.review,
+                                   args.room, args.final_room,
+                                   args.history_room, args.selected_room)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(

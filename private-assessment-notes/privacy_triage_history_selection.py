@@ -11,6 +11,7 @@ import csv
 from hashlib import sha256
 import html
 import io
+import json
 import os
 from pathlib import Path
 import shutil
@@ -116,6 +117,28 @@ complete original source-bound HUMAN review. No auto-delivery, assessment,
 client contact, model, network, grant or release.</footer></html>""").encode("utf-8")
 
 
+def receipt_for(sources, manifest, decisions, packets, selected_raw,
+                selected, action_rounds, round_shas,
+                previous_history_receipt, raw, chosen) -> dict:
+    return {
+        "schema": SCHEMA, "claimed_status": "HOLD",
+        "human_only": True, "original_count": len(sources),
+        "original_selected_count": len(selected),
+        "manually_ordered_rounds": len(action_rounds),
+        "selected_human_rows": len(chosen),
+        "original_manifest_sha256_unsigned": manifest,
+        "original_human_csv_sha256_unsigned": decisions,
+        "original_reviewer_csv_sha256_unsigned": [
+            row["csv_sha256_unsigned"] for row in packets],
+        "original_received_selected_sha256_unsigned": sha256(selected_raw).hexdigest(),
+        "original_history_receipt_sha256_unsigned": sha256(previous_history_receipt).hexdigest(),
+        "original_action_csv_sha256_unsigned": round_shas,
+        "exact_browser_selection_sha256_unsigned": sha256(raw).hexdigest(),
+        "not_authorized_or_authenticated": True,
+        **{flag: False for flag in FALSE_FLAGS},
+    }
+
+
 def receive(original: str, reviews: list[str], room_name: str,
             final_rooms: list[str], history_name: str,
             selected_csv: str, parent_name: str) -> int:
@@ -136,23 +159,10 @@ def receive(original: str, reviews: list[str], room_name: str,
     os.chmod(output, 0o700)
     completed = False
     try:
-        save_json(output / "PRIVATE-HUMAN-history-selected-receipt.json", {
-            "schema": SCHEMA, "claimed_status": "HOLD",
-            "human_only": True, "original_count": len(sources),
-            "original_selected_count": len(selected),
-            "manually_ordered_rounds": len(action_rounds),
-            "selected_human_rows": len(chosen),
-            "original_manifest_sha256_unsigned": manifest,
-            "original_human_csv_sha256_unsigned": decisions,
-            "original_reviewer_csv_sha256_unsigned": [
-                row["csv_sha256_unsigned"] for row in packets],
-            "original_received_selected_sha256_unsigned": sha256(selected_raw).hexdigest(),
-            "original_history_receipt_sha256_unsigned": sha256(previous_history_receipt).hexdigest(),
-            "original_action_csv_sha256_unsigned": round_shas,
-            "exact_browser_selection_sha256_unsigned": sha256(raw).hexdigest(),
-            "not_authorized_or_authenticated": True,
-            **{flag: False for flag in FALSE_FLAGS},
-        })
+        save_json(output / "PRIVATE-HUMAN-history-selected-receipt.json",
+                  receipt_for(sources, manifest, decisions, packets,
+                              selected_raw, selected, action_rounds, round_shas,
+                              previous_history_receipt, raw, chosen))
         file_new(output / "PRIVATE-HUMAN-history-selected.csv", raw)
         file_new(output / "PRIVATE-HUMAN-history-selected.html",
                  page(chosen, len(records), len(action_rounds)))
@@ -163,3 +173,37 @@ def receive(original: str, reviews: list[str], room_name: str,
     finally:
         if not completed:
             shutil.rmtree(output)
+
+
+
+def reopen_selected(original: str, reviews: list[str], room_name: str,
+                    final_rooms: list[str], history_name: str,
+                    selected_room: str) -> int:
+    """Read-only byte-exact source/reviewer/round/reception reopener."""
+    reopen_history(original, reviews, room_name, final_rooms, history_name)
+    (sources, manifest, decisions, packets, selected_raw, selected,
+     action_rounds, records, round_shas, pairs, export) = source_state(
+        original, reviews, room_name, final_rooms)
+    folder = private_directory(selected_room)
+    raw = private_input(
+        str(folder / "PRIVATE-HUMAN-history-selected.csv"), 65536)
+    chosen = admit_csv(raw, records)
+    prior = private_input(
+        str(private_directory(history_name) /
+            "PRIVATE-HUMAN-action-history-receipt.json"), 65536)
+    expected_receipt = receipt_for(
+        sources, manifest, decisions, packets, selected_raw, selected,
+        action_rounds, round_shas, prior, raw, chosen)
+    canonical = (
+        json.dumps(expected_receipt, indent=2, sort_keys=True,
+                   ensure_ascii=False) + "\n").encode("utf-8")
+    if (private_input(
+            str(folder / "PRIVATE-HUMAN-history-selected-receipt.json"), 65536)
+            != canonical):
+        raise Hold("HOLD: original-bound PRIVATE selected HUMAN history receipt changed")
+    if (private_input(str(folder / "PRIVATE-HUMAN-history-selected.html"), 65536)
+            != page(chosen, len(records), len(action_rounds))):
+        raise Hold("HOLD: original-bound PRIVATE selected HUMAN history page changed")
+    print("HOLD: original-bound selected HUMAN history reopened read-only")
+    print("OPEN LOCALLY: " + str(folder / "PRIVATE-HUMAN-history-selected.html"))
+    return 3

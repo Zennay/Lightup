@@ -190,6 +190,33 @@ original-source/custody receipt and scriptless source-minimal printable
 human discussion. No original free HUMAN question text is copied into HTML.
 This is not permission to share; even successful local work returns HOLD (3).
 
+### Read-only reopen of a received selected HUMAN history
+
+The local selected-original HUMAN history receiver has a separate exact
+read-only native reopener. Supply the **same original completed source and
+2–8 human reviews**, the same originally received discussion, all original
+completed action rounds in the same declared order, the unchanged original
+history room, and the resulting local selected-only PRIVATE room:
+
+```sh
+python3 private-assessment-notes/notes.py sensitivity-discussion-actions-history-receive-reopen \
+  --completed-packet /private/work/ORIGINAL-completed-packet \
+  --review /private/work/FIRST-completed-review \
+  --review /private/work/SECOND-completed-review \
+  --room /private/work/PRIVATE-lightup-human-discussion-ROOM \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-1 \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-2 \
+  --history-room /private/work/PRIVATE-lightup-human-action-history-ROOM \
+  --selected-room /private/work/PRIVATE-lightup-human-history-selection-ROOM
+```
+
+The native tool independently re-admits all **original** selected history
+rows, their exact private local CSV, canonical unsigned custody receipt
+and printable discussion page. Altered, missing, reordered or stale
+private files HOLD. It performs no writes and exits HOLD (3), including
+when exact source-bound artifacts are intact. It is not an authenticated
+identity, approval, verifiable remediation, or right to disclose.
+
 ### Prepare the next independent HUMAN round directly from the history room
 
 Each new history room contains a **fresh blank** source-bound
