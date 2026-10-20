@@ -101,10 +101,109 @@ def compose(assets: dict[str, bytes]) -> bytes:
     return result
 
 
+
+def inspect_unsigned_software(path: str) -> dict:
+    """Read-only software ZIP custody: exact bounded members, no extraction.
+
+    Integrity against the embedded unsigned manifest is NOT producer identity,
+    a trusted signature, independent approval, evidence provenance or consent.
+    """
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
+                 getattr(os, "O_NONBLOCK", 0))
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 1024 * 1024:
+            raise ValueError("software archive file not admitted")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            original = stream.read(1024 * 1024 + 1)
+        final = os.fstat(fd)
+        if not 0 < len(original) <= 1024 * 1024 or info.st_size != len(original):
+            raise ValueError("software ZIP outside bounded size")
+        if (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
+            info.st_ctime_ns) != (final.st_dev, final.st_ino, final.st_size,
+                                  final.st_mtime_ns, final.st_ctime_ns):
+            raise ValueError("software ZIP changed while reading")
+    finally:
+        os.close(fd)
+
+    expected_names = sorted([PREFIX + n for n in SOFTWARE_FILES] +
+                            [PREFIX + "MANIFEST.json"])
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("ambiguous duplicate manifest key")
+            result[key] = value
+        return result
+    with zipfile.ZipFile(io.BytesIO(original), "r") as archive:
+        infos = archive.infolist()
+        if [item.filename for item in infos] != expected_names:
+            raise ValueError("unknown/duplicate/out-of-order software package entry")
+        for item in infos:
+            if (item.date_time != TIMESTAMP or
+                item.create_system != 3 or
+                item.external_attr != (0o100644 << 16) or
+                item.compress_type != zipfile.ZIP_DEFLATED or
+                not 0 < item.file_size <= MAX_ASSET or
+                not 0 <= item.compress_size <= 1024 * 1024 or
+                item.is_dir()):
+                raise ValueError("unsafe or noncanonical software ZIP metadata")
+        manifest_raw = archive.read(PREFIX + "MANIFEST.json")
+        manifest = json.loads(manifest_raw.decode("utf-8", "strict"),
+                              object_pairs_hook=unique)
+        if not isinstance(manifest, dict) or set(manifest) != {
+            "schema", "status", "software_only", "source_authenticated",
+            "client_consent_verified", "operator_consent_verified",
+            "authorization_granted", "release_allowed", "signed",
+            "original_lab_inspector_included", "files"
+        }:
+            raise ValueError("software manifest schema mismatch")
+        if not (manifest["schema"] == "lightup.private_assessment_offline_software.v1"
+                and manifest["status"] == "REVIEW_ONLY"
+                and manifest["software_only"] is True
+                and all(manifest[flag] is False for flag in (
+                    "source_authenticated", "client_consent_verified",
+                    "operator_consent_verified", "authorization_granted",
+                    "release_allowed", "signed", "original_lab_inspector_included"))):
+            raise ValueError("authority or manifest claims refused")
+        rows = manifest["files"]
+        if type(rows) is not list or len(rows) != len(SOFTWARE_FILES):
+            raise ValueError("software manifest member mismatch")
+        assets = {}
+        for index, name in enumerate(sorted(SOFTWARE_FILES)):
+            row = rows[index]
+            full_name = PREFIX + name
+            if (type(row) is not dict or set(row) != {"path", "size", "sha256"} or
+                row["path"] != full_name or type(row["size"]) is not int or
+                not 0 < row["size"] <= MAX_ASSET or
+                type(row["sha256"]) is not str or len(row["sha256"]) != 64):
+                raise ValueError("software file inventory mismatch")
+            content = archive.read(full_name)
+            if (len(content) != row["size"] or
+                hashlib.sha256(content).hexdigest() != row["sha256"]):
+                raise ValueError("software file content mismatch")
+            assets[name] = content
+        if compose(assets) != original:
+            raise ValueError("software ZIP differs from canonical deterministic package")
+    return {"software_files": len(SOFTWARE_FILES),
+            "sha256": hashlib.sha256(original).hexdigest(),
+            "signed": False, "release_allowed": False}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build deterministic unsigned PRIVATE offline software kit")
     parser.add_argument("--output", default=ARCHIVE_NAME)
+    parser.add_argument("--inspect", metavar="EXISTING_ZIP",
+                        help="read-only inspect exact original unsigned software ZIP; no extraction")
     args = parser.parse_args()
+    if args.inspect is not None:
+        if args.output != ARCHIVE_NAME:
+            parser.error("--output cannot be used with --inspect")
+        result = inspect_unsigned_software(args.inspect)
+        print("REVIEW_ONLY: local unsigned software content matched deterministic manifest; "
+              "NOT original identity, security approval, CI or release")
+        print("Software entries:", result["software_files"], "ZIP SHA-256:", result["sha256"])
+        return 0
     if args.output != ARCHIVE_NAME:
         parser.error("only the fixed software kit filename is admitted")
     root = Path(__file__).resolve().parent
