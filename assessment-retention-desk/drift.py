@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from html import escape
 
-from history import Hold, STAGES, publish_private, read_receipt
+from history import Hold, STAGES, CLASSIFICATIONS, HOLD_FLAGS, HUMAN_FIELDS, publish_private, read_receipt
 
 
 def _name(row):
@@ -19,7 +19,10 @@ def _source(row):
 def _human(row):
     stage = escape(STAGES[row["status"]])
     review = escape(row["review_date"]) or "geen menselijke datum"
-    return stage + " · review: " + review
+    return (stage + " · review: " + review
+            + "<br>HUMAN houder: " + escape(row["custodian"] or "NIET TOEGEWEZEN")
+            + "<br>HUMAN gevoeligheid: " + escape(CLASSIFICATIONS[row["classification"]])
+            + "<br>HUMAN bewaarbeperking: " + escape(HOLD_FLAGS[row["hold_flag"]]))
 
 
 def build(old, new):
@@ -31,7 +34,7 @@ def build(old, new):
     added, absent, kept = sorted(after - before), sorted(before - after), sorted(before & after)
     changes = []
     for key in kept:
-        fields = [field for field in ("alias", "status", "review_date", "action")
+        fields = [field for field in HUMAN_FIELDS
                   if old[key][field] != new[key][field]]
         if fields:
             changes.append((key, fields))
