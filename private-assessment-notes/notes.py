@@ -442,6 +442,16 @@ def main() -> int:
     sensitivity_end.add_argument("--triage-kit", required=True)
     sensitivity_end.add_argument("--completed-csv", required=True)
     sensitivity_end.add_argument("--private-parent", required=True)
+    sensitivity_focus = commands.add_parser(
+        "sensitivity-focus", help="minimum-necessary PRIVATE HUMAN concern agenda; always HOLD")
+    sensitivity_focus.add_argument("--completed-packet", required=True)
+    sensitivity_focus.add_argument("--triage-review", required=True)
+    sensitivity_focus.add_argument("--topic", required=True,
+                                   choices=("CREDENTIALS", "PERSONAL_DATA",
+                                            "CLIENT_DATA", "OTHER", "UNKNOWN"))
+    sensitivity_focus.add_argument("--status", required=True,
+                                   choices=("PENDING", "REVIEW_REQUIRED", "WITHHOLD"))
+    sensitivity_focus.add_argument("--private-parent", required=True)
     original_mask = commands.add_parser(
         "mask-template", help="prepare original-source-bound HUMAN extra masking request template")
     original_mask.add_argument("--completed-packet", required=True,
@@ -483,6 +493,11 @@ def main() -> int:
             from privacy_triage import finalize as finalize_sensitivity
             return finalize_sensitivity(args.completed_packet, args.triage_kit,
                                         args.completed_csv, args.private_parent)
+        if args.action == "sensitivity-focus":
+            from privacy_triage_focus import focus as sensitivity_focus_workroom
+            return sensitivity_focus_workroom(
+                args.completed_packet, args.triage_review, args.topic,
+                args.status, args.private_parent)
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
