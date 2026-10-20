@@ -218,12 +218,14 @@ function show(){
     extra.value=customChoice(saved,j)?saved.slice(7):"";
     extra.hidden=select.value!=="custom";
     extra.addEventListener("change",()=>{
+      work.finalReceipt=null;
       work.choices[i][j]="custom:"+extra.value;tally();
       if(unresolvedOnly&&resolved(work.choices[i][j],j))show();
     });
     select.addEventListener("change",()=>{
       extra.hidden=select.value!=="custom";
       extra.value="";
+      work.finalReceipt=null;
       work.choices[i][j]=select.value==="custom"?"custom:":select.value;
       tally();if(unresolvedOnly&&resolved(work.choices[i][j],j))show();
     });
@@ -277,10 +279,12 @@ async function publish(){
   cipher:"AES-256-GCM",salt_b64:b64(salt),iv_b64:b64(iv),ciphertext_b64:b64(ciphertext)};
  const bytes=enc.encode(JSON.stringify(envelope));
  if(bytes.length>MAX_VAULT)deny("Nieuwe versleutelde bundel te groot.");
+ const offeredSha256=await sha(bytes);
  const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
  const link=document.createElement("a");link.href=url;
  link.download="lightup-casebook-private-reconciled.lupt";
  document.body.append(link);link.click();link.remove();
+ work.finalReceipt={bundle_sha256:offeredSha256,human_csv_sha256:newHuman.sha256};
  setTimeout(()=>URL.revokeObjectURL(url),2000);
  status("Nieuwe AES-256-GCM PRIVATE overdracht aangeboden: dezelfde originele bronbytes, expliciet gekozen HUMAN-velden; geen bronverificatie, grant of consent.");
 }
@@ -301,7 +305,7 @@ $("open").addEventListener("click",async()=>{
    deny("Bestaande werkruimte behouden.");
   const old=work;
   work={a,b,cases:a.cases,choices:a.rows.map((r,i)=>[0,1,2].map(j=>
-   r[j+3]===b.rows[i][j+3]?"same":""))};
+   r[j+3]===b.rows[i][j+3]?"same":"")),finalReceipt:null};
   a=null;b=null;
   window.LightUpCasebookNotes?.reset(work.cases.length);
   zero(old?.a);zero(old?.b);
@@ -406,7 +410,26 @@ window.LightUpCasebookDraftAPI=Object.freeze({
   if(!window.confirm("Herstel alleen HUMAN-keuzes en optionele PRIVATE notities op exact dezelfde oorspronkelijke bronnen? Originele Casebook bytes blijven onveranderd."))
    return false;
   window.LightUpCasebookNotes.restore(bound);
+  work.finalReceipt=null;
   work.choices=candidate;show();return true;
+ }
+});
+window.LightUpCasebookReceiptAPI=Object.freeze({
+ snapshot:()=>{
+  if(!work||!work.finalReceipt)return null;
+  let pending=false;
+  work.a.rows.forEach((r,i)=>r.slice(3).forEach((v,j)=>{
+   if(v!==work.b.rows[i][j+3]&&!resolved(work.choices[i][j],j))pending=true;
+  }));
+  if(pending)return null;
+  const draft=window.LightUpCasebookDraftAPI.snapshot();
+  return {sources:draft.sources,human:draft.human,
+   result:{...work.finalReceipt},
+   cases:work.cases.map((c,i)=>({
+    id:c.id,source_action:c.action,source_attention:c.attention,
+    original_a:work.a.rows[i].slice(3),original_b:work.b.rows[i].slice(3),
+    decision:[...work.choices[i]],note:window.LightUpCasebookNotes.read()[i]
+   }))};
  }
 });
 window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}});

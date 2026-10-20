@@ -50,5 +50,22 @@
 <p class="muted">Dit aggregaat bevat geen originele IDs of hashes, maar kleine aantallen kunnen nog gevoelig zijn. Beoordeel distributie menselijk.</p>
 <p class="muted">Alle input en keuzes leven alleen in dit browsertabblad. Geen opslag, netwerkverkeer, grant, scan, CI-wijziging of bronmutatie. Sluiten wist de lokale werkruimte waar de browser dit toestaat.</p>
 </section>
+<section aria-labelledby="receipt-title"><h2 id="receipt-title">5 · PRIVATE brongebonden HUMAN-reviewmemo</h2>
+<p>Na de versleutelde Casebook-overdracht kun je een <strong>afzonderlijk privé-versleuteld memo</strong> voor menselijke bespreking maken. Het bevat de oorspronkelijke privé-dossierverwijzingen, de twee HUMAN-interpretaties, gekozen menselijke beslissingen en privé-motiveringen. Het vermeldt de ongetekende SHA-256-bytehash van het daadwerkelijk aangeboden versleutelde .lupt-bestand. Geen toestemming, handtekening, producentbewijs of verified security verdict.</p>
+<div class="grid"><div class="panel"><h3>Maak nieuw versleuteld reviewmemo</h3>
+<label for="receipt-save-pass">Apart memo-wachtwoord (minimaal 12 tekens)</label>
+<input id="receipt-save-pass" type="password" autocomplete="new-password">
+<button id="receipt-save" type="button">Download PRIVATE versleuteld HUMAN-memo (.lurm)</button></div>
+<div class="panel"><h3>Lees bestaand PRIVATE reviewmemo</h3>
+<label for="receipt-file">Ontvangen .lurm-bestand</label><input id="receipt-file" type="file" accept=".lurm" autocomplete="off">
+<label for="receipt-open-pass">Memo-wachtwoord</label><input id="receipt-open-pass" type="password" autocomplete="off">
+<button id="receipt-open" type="button">Open memo lokaal, alleen lezen</button></div></div>
+<div class="panel"><h3>Verifieer lokale resultaatbytehash (geen autorisatie)</h3>
+<label for="receipt-check-file">Ontvangen oorspronkelijke versleutelde .lupt-resultaat</label>
+<input id="receipt-check-file" type="file" accept=".lupt" autocomplete="off">
+<button id="receipt-verify" type="button">Vergelijk exact versleutelde resultaatbytes met memo</button></div>
+<p id="receipt-status" role="status" aria-live="polite">Nog geen PRIVATE memo aangemaakt of ingelezen.</p>
+<div id="receipt-view" class="receipt-view" aria-label="PRIVATE brongebonden memo-inhoud"></div>
+</section>
 </main><footer>LightUp · oorspronkelijke bronlabels en SHA-256 zijn géén onafhankelijke producentauthenticatie. Alleen menselijk brongebonden opvolgwerk.</footer>
 <script>__SCRIPT__</script></body></html>

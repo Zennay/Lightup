@@ -30,3 +30,7 @@ td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{pa
   font:inherit;color:#f0f7ff;background:#0d1828;border:1px solid #657796;border-radius:9px;padding:11px}
 .human-notes textarea:focus-visible{outline:3px solid #6cb8ff;outline-offset:2px}
 .human-notes small{display:block;margin-top:8px}.human-notes small.error{color:#ffacb1}
+
+.receipt-view{overflow:auto;max-height:590px;margin-top:16px;border-top:1px solid #384960}
+.receipt-view td{white-space:pre-line;max-width:300px}
+.receipt-view p{overflow-wrap:anywhere}
