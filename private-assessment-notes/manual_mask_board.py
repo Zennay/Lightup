@@ -57,6 +57,73 @@ JS = r"""
   for(const card of cards) {
     card.querySelector("button[data-add]").addEventListener("click",()=>add(card));
   }
+  document.getElementById("resume").addEventListener("change",async event=>{
+    const file=event.target.files && event.target.files[0];
+    event.target.value="";
+    if(!file)return;
+    try{
+      if(file.size<40 || file.size>65536)
+        throw Error("Original PRIVATE masking draft exceeds local import bound.");
+      const data=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      if(data.includes("\uFEFF"))throw Error("Unexpected byte-order marker.");
+      const doc=JSON.parse(data);
+      if(!doc || typeof doc!=="object" || Array.isArray(doc) ||
+        data!==JSON.stringify(doc,null,2)+"\n" ||
+        Object.keys(doc).join("|")!==
+          "schema|claimed_status|completed_manifest_sha256_unsigned|completed_human_csv_sha256_unsigned|rules|source_authenticated|client_consent_verified|operator_consent_verified|approved_to_share|release_allowed|dispatch_allowed" ||
+        doc.schema!=="lightup.private_human_extra_mask_rules.v1" ||
+        doc.claimed_status!=="HOLD" ||
+        doc.completed_manifest_sha256_unsigned!==document.body.dataset.originalManifest ||
+        doc.completed_human_csv_sha256_unsigned!==document.body.dataset.originalDecisions ||
+        doc.source_authenticated!==false || doc.client_consent_verified!==false ||
+        doc.operator_consent_verified!==false || doc.approved_to_share!==false ||
+        doc.release_allowed!==false || doc.dispatch_allowed!==false ||
+        !Array.isArray(doc.rules) || doc.rules.length<1 || doc.rules.length>24)
+        throw Error("Original PRIVATE masking rule file or SHA binding differs.");
+      const staged=[];
+      const unique=new Set();
+      for(const item of doc.rules){
+        if(!item || Array.isArray(item) || typeof item!=="object" ||
+          Object.keys(item).join("|")!==
+             "original_source_ordinal|original_source_sha256_unsigned|literal_to_mask" ||
+          !Number.isInteger(item.original_source_ordinal) ||
+          item.original_source_ordinal<1 || item.original_source_ordinal>cards.length ||
+          item.original_source_sha256_unsigned!==
+            cards[item.original_source_ordinal-1].dataset.originalSha ||
+          typeof item.literal_to_mask!=="string" ||
+          item.literal_to_mask.length<3 || item.literal_to_mask.length>256 ||
+          item.literal_to_mask!==item.literal_to_mask.trim() ||
+          /[\x00-\x1F\x7F]/.test(item.literal_to_mask) ||
+          item.literal_to_mask.includes("[REDACTED") ||
+          item.literal_to_mask.includes("[MANUALLY_REDACTED]")){
+          throw Error("Malformed original source PRIVATE literal.");
+        }
+        const key=item.original_source_ordinal+"::"+item.literal_to_mask;
+        if(unique.has(key))throw Error("Repeated original source masking literal.");
+        unique.add(key);
+        staged.push(item);
+      }
+      if(!window.confirm("Restore all "+staged.length+" ORIGINAL source-bound PRIVATE "+
+          "masking phrases into this local browser? This replaces current unsaved "+
+          "rules but does not edit any original source or authorize release.")){
+        feedback.textContent="PRIVATE draft restoration cancelled; existing rules unchanged.";
+        return;
+      }
+      cards.forEach(card=>card.querySelector("div[data-rules]").replaceChildren());
+      for(const item of staged){
+        const card=cards[item.original_source_ordinal-1];
+        add(card);
+        const inputs=card.querySelectorAll("input[data-rule]");
+        inputs[inputs.length-1].value=item.literal_to_mask;
+      }
+      refresh();
+      feedback.textContent="Source-bound PRIVATE masking phrases restored locally. "+
+        "Native exact-source re-admission remains required before creating a new packet.";
+    }catch(error){
+      feedback.textContent="HOLD: no manual PRIVATE rules restored; current choices unchanged. "+
+        (error instanceof Error?error.message:"Invalid local PRIVATE draft.");
+    }
+  });
   document.getElementById("clear").addEventListener("click",()=>{
     if(!window.confirm("Clear every unsaved PRIVATE HUMAN literal from this local browser page? "+
       "No original source or completed packet will change."))return;
@@ -174,7 +241,12 @@ you explicitly export it or close/clear the page. The downloaded JSON
 **CONTAINS THE ACTUAL SENSITIVE PHRASE**; protect it with mode 0600.
 Native source-bound admission and final external consent/review remain separate.</p></header>
 <p id="count" role="status" aria-live="polite"></p>
-<main>""" + "".join(cards) + """</main><footer>
+<div><label>Reopen original locally exported PRIVATE masking rules (.json)
+<input id="resume" type="file" accept=".json,application/json"></label>
+<p>Import is local-only, bounded to 64 KiB and requires exact original
+manifest, HUMAN CSV digest, ordinals and secret literal values before one
+explicit HUMAN confirmation. No upload, network or automatic source edits.</p>
+</div><main>""" + "".join(cards) + """</main><footer>
 <button id="save" type="button">Save SENSITIVE PRIVATE source-bound masking JSON</button>
 <button id="clear" type="button">Clear unsaved literals</button>
 <p id="feedback" role="status" aria-live="polite"></p>
