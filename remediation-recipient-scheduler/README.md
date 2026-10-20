@@ -143,3 +143,21 @@ Open the new private `index.html`; the resulting tree contains executable **soft
 
 The source-free HUMAN browser now requires an accessible, **masked** offline `type=password` modal for new encrypted `.lurp` saves, exact-source resume, and change-aware source-bound carry. The previous visible browser `prompt` text entry was replaced. Password entry is kept only in the current browser dialog's in-memory state, not persisted to cookies, localStorage, URL or telemetry. Downloading an encrypted checkpoint no longer silently marks the HUMAN plan safely persisted: the operator must separately confirm that the private download is stored in a protected local location. A declined confirmation preserves the unsaved-change warning. Neither this acknowledgment nor a password proves actual sender, recipient, client authority or consent.
 
+
+## NEW: complete native password-encrypted Cockpit + HUMAN journal -> integrated planner
+
+For **already authorized original** `.luhp` transfers produced by unchanged original `remediation-integrated-workspace/review_package.py create`, the new [`complete_handoff.py`](complete_handoff.py) removes the manual two-file handoff steps. It accepts 1–12 actual complete native encrypted PRIVATE source-free Cockpit+exact HUMAN journal packets, one interactive original password per packet. It uses the **unchanged native** `review_package.incoming`, `review_package.open_sealed`, `review_package.unpack_inner`, `portable_cockpit.unpack_bytes`, `journal_vault.original` and `single_review.admit_journal` before adding any scheduling state.
+
+```bash
+python3 remediation-recipient-scheduler/complete_handoff.py \
+  --review-package "$HOME/lightup-private/original-complete-01.luhp" \
+  --review-package "$HOME/lightup-private/original-complete-02.luhp" \
+  --output-dir "$HOME/lightup-private/received-complete-human-schedule-01"
+```
+
+On a trusted authorized offline machine, open the new PRIVATE `index.html` to access the integrated HUMAN planner **plus** the unchanged native source-free HUMAN recipient reviewer and each original one-Cockpit HUMAN journal. Original reason count, exact source-bound HUMAN stage and private human notes are carried into the corresponding planner task only after full native admission. The output is published as one fresh owner-private 0700 directory with regular 0600 files. Modified encrypted packets, wrong passphrases, duplicate exact source-free packets, incorrect original journal lineage or untrusted original ZIP members fail closed without a published partial recipient workroom.
+
+**Important confidentiality:** original complete encrypted handoff stays encrypted as input, and its internal plaintext ZIP/journal exists only in memory during parsing, but the resulting deliberately opened reviewer and planner HTML are **plaintext PRIVATE** files containing sensitive HUMAN notes. This software is not an authenticated sender, client, consent, source evidence or grant; the receiving person must already have real separate authorization. Original notes are not automatically sent anywhere. Do not copy the entire decrypted output tree to another party.
+
+This native complete handoff entry point is included in the additive software-only `bundle.py` inventory and strict `bundle_receive.py` closed member checks. All original security/privacy/crypto/browser review, hosted/named VPS CI, explicit HUMAN GO and independently verified current client+operator consent requirements remain DRAFT/HOLD.
+
