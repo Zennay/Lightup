@@ -72,7 +72,17 @@
 <input id="shelf-peer-draft-open" type="file" accept=".json,application/json" disabled aria-describedby="shelf-peer-draft-status">
 <p id="shelf-peer-draft-status" class="shelf-status" role="status" aria-live="polite">Geen concept heropend. Geen automatische HUMAN keuze, autorisatie of import.</p>
 </div>
-<button type="button" id="shelf-peer-agenda" class="action muted" disabled>Download PRIVATE HUMAN bespreekagenda (.md) — géén autorisatie</button>
+<button type="button" id="shelf-peer-agenda" class="action muted" disabled>Download volledige PRIVATE HUMAN bespreekagenda (.md) — intern</button>
+<div class="shelf-peer-team-agenda" role="group" aria-label="Minimum noodzakelijke PRIVATE HUMAN teamagenda">
+<label for="shelf-peer-agenda-team">Kies bewust het ontvangende HUMAN team voor uitsluitend de EIGEN oorspronkelijke bronnen
+<select id="shelf-peer-agenda-team">
+<option value="">Kies één HUMAN team</option>
+<option value="security">Security</option><option value="privacy">Privacy</option>
+<option value="client_ops">Client operations</option><option value="platform">Platform</option>
+</select></label>
+<button type="button" id="shelf-peer-team-agenda" class="action muted" disabled>Download alleen PRIVATE HUMAN dossiers voor dit team (.md)</button>
+<p class="shelf-status">De ontvangende persoon is NIET geauthenticeerd. Teamtoewijzingen zijn lokaal en handmatig; controleer de ontvanger onafhankelijk. De export toont geen dossiers of pakket-hashes die uitsluitend bij andere teams horen.</p>
+</div>
 <button type="button" id="shelf-peer-apply" class="action muted" disabled>Pas alleen apart gekozen bronexacte HUMAN voorstellen toe</button>
 <button type="button" id="shelf-peer-summary-export" class="action muted" disabled>Download bronvrije PRIVÉ consensus- en conflictaantallen (.json)</button>
 <button type="button" id="shelf-peer-receipt" class="action muted" disabled>Download brongebonden PRIVÉ HUMAN-returnbon (.json)</button>
