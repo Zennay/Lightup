@@ -1,0 +1,13 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<title>LightUp · Recipient Equality Review</title><link rel="stylesheet" href="./desk.css"><script defer src="./verify.js"></script></head>
+<body><header><div class="brand">LightUp <span>PRIVATE · LOCAL ONLY</span></div><h1>Recipient byte comparison</h1><p>Compare the delivered redacted text with its separate PRIVATE counts receipt. A matching hash establishes only <strong>byte equality</strong> to a self-declared receipt, not a trusted sender, safe content, or consent.</p></header>
+<main><section class="banner"><strong>DRAFT / HOLD · HUMAN ONLY</strong><p>The sender and the receipt may both be malicious or wrong. Obtain source identity and actual client/operator permission from separately authenticated channels. NEVER use a matching result to authorize scanning or release.</p></section>
+<section class="card"><h2><span>01</span> Choose privately received files</h2>
+<label for="receivedFile">Received redacted UTF-8 .txt (maximum 8 MiB)</label><input id="receivedFile" type="file" accept=".txt,text/plain">
+<label for="receiptFile">Companion PRIVATE counts receipt .json (maximum 8 KiB)</label><input id="receiptFile" type="file" accept=".json,application/json">
+<div class="actions"><button id="compare" type="button">Compare local bytes</button><button id="reset" type="button" class="secondary">Clear local selection</button><a href="./index.html">Return to disclosure desk</a></div>
+<div id="result" class="status" role="status" aria-live="polite">No comparison made.</div></section>
+<section class="card"><h2><span>02</span> Human recipient decision</h2><p>The comparison is never an approval, consent receipt, original provenance, privacy guarantee or security finding.</p>
+<div class="grid three"><div class="metric"><b id="status">HOLD</b><small>Non-authorizing state</small></div><div class="metric"><b id="bytes">—</b><small>Received redacted bytes</small></div><div class="metric"><b id="hash">—</b><small>SHA-256 prefix</small></div></div>
+<p id="details">Separate authentic client/operator consent and actual human review remain mandatory.</p></section></main><footer>Offline local-only verification · no network, accounts, source inspection, grants, targets or deployment.</footer></body></html>
