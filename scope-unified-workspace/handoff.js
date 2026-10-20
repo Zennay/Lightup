@@ -717,8 +717,11 @@
         if (fingerprints.has(fingerprint)) throw Error("duplicate peer document");
         fingerprints.add(fingerprint);
         packetBytes.push({local_packet_number:packetBytes.length+1,
-          original_packet_byte_length:f.size, unsigned_original_packet_sha256:fingerprint});
-        inventories.push(await LightUpPrivateSourceInspector.readHumanInventory(f));
+          original_packet_byte_length:bytes.byteLength, unsigned_original_packet_sha256:fingerprint});
+        // The existing strict decoder must see exactly the hashed bytes, not
+        // a second read of a potentially replaced user-selected disk file.
+        const immutableLocalCopy = new Blob([bytes], {type:"application/json"});
+        inventories.push(await LightUpPrivateSourceInspector.readHumanInventory(immutableLocalCopy));
         if (epoch !== generation || revision !== humanRevision) throw Error("stale source");
       }
       const lookups = inventories.map(entries => new Map(entries.map(row =>
