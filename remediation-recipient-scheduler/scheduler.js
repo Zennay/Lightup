@@ -429,6 +429,51 @@
     dl(data,"lightup-private-human-followup-agenda.html","text/html");
     status("PRIVATE scriptless agenda created locally; no network or recipient delivery occurred.");
   }
+  // Human-selected, source-redacted confidential follow-up. This is NOT an
+  // evidence transfer, a signed originating workspace or a recipient grant.
+  async function exportSelectiveHandoff() {
+    if(!crypto?.subtle)fatal("Offline browser cryptography unavailable");
+    const chosen=visibleIndices().map(i=>rows[i]);
+    if(!chosen.length)fatal("No HUMAN follow-up tasks in current filters");
+    validate(rows);
+    if(!confirm(`Create a separate recipient-only PRIVATE handoff for the ${chosen.length} visible HUMAN follow-up group(s)? It will intentionally OMIT all original source packet hashes, slots, counts, case IDs and evidence. Local HUMAN reason/action/date may still be identifying; external recipient permission is NOT established.`))return;
+    const includeOwners=confirm("Include self-declared PRIVATE HUMAN owner labels? Cancel to remove ALL owners (recommended by default).");
+    const includeNotes=confirm("Include PRIVATE HUMAN notes? Cancel to remove ALL notes (recommended by default).");
+    const handoff={
+      kind:"lightup.selected_private_human_followup.v1",
+      version:1, disposition:"SELECTED_HUMAN_DRAFT_HOLD",
+      authority_granted:false,consent_verified:false,
+      source_authenticated:false,remediation_verified:false,
+      warning:"PRIVATE selected source-redacted HUMAN follow-up, not sender/client identity, consent, signed source, finding verification, remediation, retest, scan, grant or release.",
+      includes_owner_labels:includeOwners,includes_private_notes:includeNotes,
+      items:chosen.map(x=>({
+        reason:x.reason,stage:x.stage,due:x.due,
+        next_action:x.next_action,owner:includeOwners?x.owner:"",
+        human_note:includeNotes?x.human_note:""
+      }))
+    };
+    const clear=utf8(handoff);
+    if(clear.length>262144)fatal("Selected PRIVATE HUMAN handoff exceeds bounded size");
+    const phrase=await askPrivatePassword(true);
+    if(phrase===null)return;
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+    const encrypted=new Uint8Array(await crypto.subtle.encrypt(
+      {name:"AES-GCM",iv,additionalData:textEncoder.encode("LIGHTUP_PRIVATE_HUMAN_SELECTED_HANDOFF_V1")},
+      await keyFor(phrase,salt,["encrypt"]),clear));
+    const packageFile={
+      kind:"lightup.selected_private_human_followup_encrypted.v1",
+      version:1, disposition:"SELECTED_HUMAN_DRAFT_HOLD",
+      authority_granted:false,consent_verified:false,
+      source_authenticated:false,remediation_verified:false,
+      kdf:"PBKDF2-HMAC-SHA256",iterations:KDF,algorithm:"AES-256-GCM",
+      salt_b64:b64(salt),nonce_b64:b64(iv),ciphertext_b64:b64(encrypted),
+      warning:handoff.warning
+    };
+    const bytes=utf8(packageFile);
+    if(bytes.length>360000)fatal("Selected HUMAN encrypted handoff exceeds bounded size");
+    dl(bytes,"lightup-selected-private-human-followup.luhq","application/json");
+    status("Selected PRIVATE HUMAN handoff download requested. This is NOT authenticated sender, consent or verified evidence; protect the password in a separate channel. Existing full scheduler remains unchanged.");
+  }
   function exportCalendar() {
     const due=validate(rows).filter(x=>x.due);
     if(!due.length)fatal("No tentative HUMAN deadlines entered");
@@ -472,6 +517,7 @@
   el("carry").addEventListener("click",()=>el("carryfile").click());
   el("carryfile").addEventListener("change",e=>{carryEncrypted(e.target.files[0]).catch(err=>status("HOLD: "+err.message));e.target.value="";});
   el("agenda").addEventListener("click",()=>{try{exportPrivateAgenda();}catch(e){status("HOLD: "+e.message);}});
+  el("selective").addEventListener("click",()=>exportSelectiveHandoff().catch(e=>status("HOLD: "+e.message)));
   el("calendar").addEventListener("click",()=>{try{exportCalendar();}catch(e){status("HOLD: "+e.message);}});
   el("counts").addEventListener("click",exportCounts);
   window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
