@@ -97,8 +97,10 @@
     const cleanNote=e("humanNote").value.length<=800 &&
       !/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(e("humanNote").value);
     const stage=e("humanOutcome").value;
+    const suspiciousNote=sourceHints(e("humanNote").value).some(([name])=>["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].includes(name));
+    if(suspiciousNote)e("humanStatus").textContent="HOLD: PRIVATE follow-up note appears to contain a credential, token or private-key marker. Remove it before export.";
     const ok=!!matched && viewedPages.size===total && e("humanAck").checked &&
-      HUMAN_OUTCOMES.includes(stage) && cleanNote &&
+      HUMAN_OUTCOMES.includes(stage) && cleanNote && !suspiciousNote &&
       (!matched.highRisk || stage==="needs_more_masking");
     e("exportHuman").disabled=!ok;
   }
