@@ -323,3 +323,38 @@ security fixes or user/operator permission. Original native validators,
 exact-head hosted/named VPS CI, independent privacy/security/crypto/browser
 reviews, existing #177/#182/#829, authenticated separate action-time
 revocable consent and explicit HUMAN GO remain mandatory.
+
+### Native offline source-free packet fingerprint and counterpart comparison
+
+The same software-only distribution now includes packet_fingerprint.py, a
+fully native and private **original source-free packet byte desk**. Its
+commands are also in the offline private_desk menu and generated browser
+operatorstudio. This gives a practical source-owner/recipient counterpart
+for the browser's optional PRIVATE unsigned receipt, without another
+service, browser login, dependency, source modification, scanner or tests:
+
+    python3 remediation-integrated-workspace/private_desk.py fingerprint-create --packet /absolute/private/original-packet.luhx --output-file /absolute/private/NEW-unsigned-fingerprints.json
+    python3 remediation-integrated-workspace/private_desk.py fingerprint-compare --packet /absolute/private/received-packet.luhx --receipt /absolute/private/separately-authorized-unsigned-fingerprints.json
+
+Repeat --packet for up to 8 original packets **in the same explicit HUMAN
+order**. The original packet filenames and content bytes are not included
+in the receipt. Bytes are read as fixed-size chunks with O_NOFOLLOW and
+exact owner-only PRIVATE 0700 directory / 0600 regular-file guards; per-file
+metadata and size stability are rechecked before printing. Receipt creation
+uses the existing native atomic no-overwrite 0600 publisher. Both native
+and browser receipts carry the same exact bounded, literal false-authority,
+slot / byte-size / lowercase SHA-256 schema. Native comparison accepts only
+the complete expected schema with no duplicate-key JSON, unexpected flags
+or mismatched slot membership, and returns HOLD if any actual received
+packet bytes differ. No client identifiers, true sender authentication,
+factual source evidence or original contents are ever put into the receipt.
+
+**Security/handling:** these are UNSIGNED/UNKEYED byte fingerprints; an
+attacker replacing both packets and receipts can forge a matching receipt.
+Reusing a digest does not prove a second reviewer, real time, original client,
+permission, independent provenance or a verified security fix. Keep even
+source-free digests private; share only after actual external disclosure
+approval. The native SHA comparator does not decrypt/read ZIP members, and
+never substitutes for the unchanged original native source admission,
+cryptography, owner/security/privacy/browser review, consent/revocation and
+explicit HUMAN GO. REVIEW_ONLY is not a release signal.

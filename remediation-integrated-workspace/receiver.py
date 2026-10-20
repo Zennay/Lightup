@@ -16,6 +16,7 @@ TOOLS = frozenset((
     "remediation-integrated-workspace/operator_console.py",
     "remediation-integrated-workspace/operator_ui.js",
                      "remediation-integrated-workspace/fingerprint_ui.js",
+                     "remediation-integrated-workspace/packet_fingerprint.py",
     "remediation-integrated-workspace/operator_ui.css",
     "remediation-integrated-workspace/receiver.py",
     "remediation-integrated-workspace/workflow.py",

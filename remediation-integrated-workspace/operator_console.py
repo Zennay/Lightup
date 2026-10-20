@@ -32,6 +32,8 @@ CATEGORIES = {
     "decrypt-cockpit": "Private transfer",
     "pack-review": "Private transfer",
     "receive-review": "Private transfer",
+    "fingerprint-create": "Byte comparison",
+    "fingerprint-compare": "Byte comparison",
     "install": "Software only",
     "receive-software": "Software only",
     "inspect-software": "Software only",

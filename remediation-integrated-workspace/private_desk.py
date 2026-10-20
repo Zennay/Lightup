@@ -100,6 +100,14 @@ OPERATIONS = {
         ("--archive", "Existing source-free HUMAN review package .luhp", False, True),
         ("--output-dir", "NEW source-bound PRIVATE reviewer directory", False, True),
     ), "No original-source, sender, consent or verified-fix authentication."),
+    "fingerprint-create": ("packet_fingerprint.py", ("create",), (
+        ("--packet", "Original locally selected source-free .luhx/.luhz/.luhp packet(s)", True, True),
+        ("--output-file", "NEW private unsigned SHA-256 JSON receipt", False, True),
+    ), "Native 0600 source-free byte receipt; hash only, no contents or signature."),
+    "fingerprint-compare": ("packet_fingerprint.py", ("compare",), (
+        ("--packet", "Actually received PRIVATE packet(s), SAME ordinal order", True, True),
+        ("--receipt", "Separately authorized original unsigned PRIVATE JSON hashreceipt", False, True),
+    ), "Fail closed if exact original ordered byte fingerprints differ."),
     "install": ("install.py", ("build",), (
         ("--output-dir", "NEW owner-private software-only suite", False, True),
     ), "Copies original pinned software only; NEVER client data."),
