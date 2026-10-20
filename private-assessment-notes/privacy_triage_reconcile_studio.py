@@ -172,6 +172,54 @@ document.getElementById('export').addEventListener('click',()=>{
     message.textContent='HOLD: unsupported PRIVATE note or category. No data exported.';
   }
 });
+const reopen = document.getElementById('reopen');
+reopen.addEventListener('change',async()=>{
+  const file=reopen.files && reopen.files[0];
+  if(!file)return;
+  try{
+    if(file.size<80 || file.size>65536)throw Error('oversized/incomplete');
+    const content=new TextDecoder('utf-8',{fatal:true})
+      .decode(await file.arrayBuffer());
+    const lines=content.split('\r\n');
+    const canonicalHeader='source_ordinal,source_sha256_unsigned,review_status,privacy_topics,human_followup';
+    if(lines[0]!==canonicalHeader || lines.length!==originals.length+2 ||
+       lines.at(-1)!=='')throw Error('incomplete roster');
+    const format=/^"((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)"$/;
+    const incoming=[];
+    for(let n=0;n<originals.length;n++){
+      const match=format.exec(lines[n+1]);
+      if(!match)throw Error('noncanonical CSV row');
+      const values=match.slice(1).map(value=>value.replaceAll('""','"'));
+      if(values.map(csvCell).join(',')!==lines[n+1])throw Error('CSV changed');
+      const [ordinal,sha,stage,topicText,note]=values;
+      const original=originals[n];
+      const selected=topicText.split('|');
+      if(ordinal!==String(original.ordinal)||sha!==original.sha ||
+         !STAGES.includes(stage)||selected.length===0 ||
+         selected.some(item=>!TOPICS.includes(item)) ||
+         selected.join('|')!==TOPICS.filter(item=>selected.includes(item)).join('|') ||
+         (selected.includes('UNKNOWN')&&selected.length!==1) ||
+         unsafe(note))throw Error('source HUMAN draft drift');
+      incoming.push({stage,selected,note});
+    }
+    if(!window.confirm('Restore all '+incoming.length+
+      ' HUMAN draft choices from this exact ORIGINAL-bound PRIVATE CSV? No privacy clearance or permissions will be granted.')){
+      message.textContent='Cancelled; your current HUMAN choices remain unchanged.';
+      return;
+    }
+    // Apply ALL only after every original source and every HUMAN row was admitted.
+    for(let n=0;n<originals.length;n++){
+      const target=proposal.get(originals[n].ordinal);
+      const next=incoming[n];
+      target.stage.value=next.stage;
+      for(const [item,box] of target.checks)box.checked=next.selected.includes(item);
+      target.note.value=next.note;
+    }
+    message.textContent='Exact-original PRIVATE HUMAN draft restored. Re-review labels and call native finalize separately.';
+  }catch(_){
+    message.textContent='HOLD: unsupported, incomplete or changed-original PRIVATE draft. All current HUMAN choices remain untouched.';
+  }finally{reopen.value='';}
+});
 find.addEventListener('input',sync);
 onlyConflict.addEventListener('change',sync);
 window.addEventListener('pagehide',()=>{
@@ -230,6 +278,8 @@ does NOT carry forward any private HUMAN free-text note.</p></header>
 <label for="conflicts"><input type="checkbox" id="conflicts">
 Display declared HUMAN status/category disagreement only</label>
 <p id="count" role="status" aria-live="polite"></p><div id="sources"></div>
+<p><label for="reopen">Resume complete earlier PRIVATE HUMAN draft (exact original sources only)</label>
+<input id="reopen" type="file" accept=".csv,text/csv" aria-describedby="message"></p>
 <button type="button" id="export">Save COMPLETE PRIVATE original-bound HUMAN decisions CSV</button>
 <p id="message" role="status" aria-live="polite">
 All next HUMAN choices are independent and pending. This browser does not finalize.</p>
