@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hD9b8pVnDhJ/VnsGzdWbAAZ81PtFq4Xzijpuho0DD/I='; style-src 'sha256-62G3YHIRRrUpsu5jgm/9PmZdy/g15mkAvCfx6IUi71U='; img-src 'none'; connect-src 'none'; font-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-NnFAWLhp+HCU8yPobnm8IfbeEwkeXW1i2e41Cc+N3cw='; style-src 'sha256-zuFEs9JIqZFwm+SiIAr2kSiSUV9u/6dCVv9tngXrWUE='; img-src 'none'; connect-src 'none'; font-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
   <title>LightUp · PRIVATE HUMAN Follow-up Studio</title>
   <style>:root{color-scheme:dark;--bg:#070e19;--surface:#101b2a;--surface2:#132438;--line:#26374c;--muted:#a9bfd4;--white:#f3f8ff;--cyan:#79e5ef;--teal:#1fbdab;--red:#ff9b9d;--blue:#99b9fa;--focus:#99e6ff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{background:radial-gradient(ellipse 60% 35% at 80% 2%,#153b4a 0%,transparent 85%),var(--bg);color:var(--white);margin:0;min-height:100vh}
@@ -65,6 +65,19 @@ footer{padding:25px 0 10px;border-top:1px solid var(--line);color:var(--muted);f
 .actionsRow{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:18px 0 6px}
 .actionsRow button{flex:0 1 auto}
 @media(max-width:700px){.actionsRow button{flex:1 1 160px}}
+
+
+/* Optional encrypted, PRIVATE HUMAN-only offline handoff controls. */
+.vaultPanel{border:1px solid #3b5e73;background:#091e2c;border-radius:10px;padding:15px 18px;margin-top:18px}
+.vaultPanel summary{color:#b3f3ed;font-weight:750;cursor:pointer;line-height:1.6}
+.vaultPanel[open] summary{margin-bottom:12px}
+.vaultPanel .small{max-width:960px;line-height:1.6}
+.vaultForm{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
+.vaultForm label{flex:1 1 220px;min-width:0}
+.vaultForm input{width:100%}.vaultForm button{flex:0 1 auto;max-width:100%}
+.vaultExport{grid-column:1/-1;margin-top:0}
+.vaultPanel input[type=password]{letter-spacing:.08em}
+@media(max-width:700px){.vaultForm button{width:100%}}
 </style>
   
 </head>
@@ -90,6 +103,15 @@ footer{padding:25px 0 10px;border-top:1px solid var(--line);color:var(--muted);f
     <p>Choose the existing seven-column <code>human-followup.csv</code> generated from an independently obtained original lab report. Only ordinals, declared severities, source evidence-reference counts and HUMAN fields enter this editor. No original report is required here.</p>
     <div class="fileRow"><input id="fileInput" type="file" accept=".csv,text/csv" aria-label="PRIVATE original human-followup CSV"><button id="load" type="button" class="primary">Open PRIVATE worksheet</button></div>
     <p class="small muted">Maximum 1 MiB / 2,048 rows · strict UTF-8 and CSV · no browser storage, no uploads. Existing in-memory edits are not replaced without confirmation.</p>
+    <details class="vaultPanel">
+      <summary>Open optional encrypted PRIVATE HUMAN worksheet (.luhw)</summary>
+      <p class="small">This is a separate locally encrypted file containing the HUMAN CSV only—not original lab evidence or consent. WebCrypto must be available; an incorrect password, altered envelope or changed data fails closed.</p>
+      <div class="vaultForm">
+        <label>PRIVATE encrypted file<input id="encryptedInput" type="file" accept=".luhw,application/json"></label>
+        <label>Decryption passphrase<input id="decryptPass" type="password" minlength="12" maxlength="256" autocomplete="off" placeholder="Never stored or transmitted"></label>
+        <button id="loadEncrypted" type="button">Open ENCRYPTED PRIVATE CSV</button>
+      </div>
+    </details>
     <div id="message" class="message" role="status" aria-live="polite">Select a PRIVATE file to begin.</div>
   </section>
 
@@ -159,6 +181,15 @@ footer{padding:25px 0 10px;border-top:1px solid var(--line);color:var(--muted);f
     <section class="panel finish">
       <div><div class="eyebrow">06 / PRIVATE FILE HANDOFF</div><h2>Save an immutable-source worksheet</h2><p>Download the updated PRIVATE seven-column CSV, preserving all original ordinal/severity/evidence-count cells. To produce a source-verified-by-digest PRIVATE report, run the existing local <code>human_return.py</code> with the actual unchanged original lab JSON and its original manifest. This editor cannot authenticate either.</p></div>
       <div class="actions"><button id="saveCsv" type="button" class="primary">Download PRIVATE human CSV</button><button id="saveCounts" type="button">Download counts-only JSON</button><button id="forget" type="button" class="danger">Forget local workroom</button></div>
+      <details class="vaultPanel vaultExport">
+        <summary>Optional ENCRYPTED PRIVATE worksheet for offline handoff</summary>
+        <p class="small">Encrypt only your current original-format HUMAN CSV locally with a fresh PBKDF2/AES-GCM password. The passphrase and HUMAN notes are not uploaded or stored by this app. Cryptographic protection is not producer authenticity, identity, source consent or release approval. This feature has not received independent cryptographic review.</p>
+        <div class="vaultForm">
+          <label>Private passphrase (12–256 characters)<input id="encryptPass" type="password" minlength="12" maxlength="256" autocomplete="new-password"></label>
+          <label>Repeat the passphrase<input id="encryptPassConfirm" type="password" minlength="12" maxlength="256" autocomplete="new-password"></label>
+          <button id="saveEncrypted" type="button" class="primary">Download ENCRYPTED PRIVATE CSV (.luhw)</button>
+        </div>
+      </details>
       <div class="small muted">The CSV includes private HUMAN notes. The anonymous-count JSON omits notes and targets but can still be sensitive. No data is saved to a server, localStorage or browser cache by this app. Browser process memory and downloaded files are separate responsibilities.</div>
     </section>
   </div>
@@ -542,6 +573,110 @@ footer{padding:25px 0 10px;border-top:1px solid var(--line);color:var(--muted);f
     lastBulk=null;dirty=true;page=0;render();
     message("Selected HUMAN proposals applied locally only. No original source, grant or evidence changed.");
   }
+  /* Optional PRIVATE local encrypted HUMAN-only CSV. No source/auth/consent claims. */
+  const VAULT_SCHEMA="lightup.private_human_ordinal_csv_v1";
+  const VAULT_CONTEXT=new TextEncoder().encode("LIGHTUP PRIVATE HUMAN ORDINAL CSV v1 / REVIEW ONLY");
+  const VAULT_FIELDS=["schema","status","kdf","iterations","cipher","salt_b64",
+    "nonce_b64","encrypted_csv_b64","source_authenticated","human_identity_authenticated",
+    "consent_verified","authorization_granted","dispatch_allowed","release_allowed"];
+  function cryptoReady() {
+    need(!!(globalThis.crypto&&crypto.subtle&&crypto.getRandomValues));
+  }
+  function toB64(bytes) {
+    let str="";
+    for(let i=0;i<bytes.length;i+=8192)
+      str+=String.fromCharCode(...bytes.subarray(i,i+8192));
+    return btoa(str);
+  }
+  function fromB64(text,max) {
+    need(typeof text==="string" && text.length<=Math.ceil(max/3)*4+4 &&
+      /^[A-Za-z0-9+/]*={0,2}$/.test(text) && text.length%4===0);
+    let raw;
+    try{raw=atob(text);}catch(_){need(false);}
+    need(raw.length<=max);
+    const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+    need(toB64(bytes)===text);
+    return bytes;
+  }
+  async function deriveKey(password,salt) {
+    cryptoReady();
+    need(typeof password==="string" && password.length>=12&&password.length<=256);
+    const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),
+      "PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+      base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+  async function saveEncrypted() {
+    if (!rows.length) {message("Open a PRIVATE human worksheet first.",true);return;}
+    const pass=$("encryptPass").value,repeated=$("encryptPassConfirm").value;
+    try {
+      cryptoReady();
+      need(pass===repeated && pass.length>=12 && pass.length<=256);
+      const originalBytes=new TextEncoder().encode(csvOut());
+      need(originalBytes.byteLength<=MAX_BYTES);
+      if (!confirm("Encrypt the current PRIVATE HUMAN worksheet locally? Password loss means permanent loss of access. This encryption does NOT authenticate original findings or grant authority.")) return;
+      const salt=crypto.getRandomValues(new Uint8Array(16));
+      const nonce=crypto.getRandomValues(new Uint8Array(12));
+      const key=await deriveKey(pass,salt);
+      const encrypted=new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:VAULT_CONTEXT,tagLength:128},
+        key,originalBytes));
+      const packet={schema:VAULT_SCHEMA,status:"REVIEW_ONLY",kdf:"PBKDF2-HMAC-SHA256",
+        iterations:310000,cipher:"AES-256-GCM",salt_b64:toB64(salt),
+        nonce_b64:toB64(nonce),encrypted_csv_b64:toB64(encrypted),
+        source_authenticated:false,human_identity_authenticated:false,
+        consent_verified:false,authorization_granted:false,
+        dispatch_allowed:false,release_allowed:false};
+      download("lightup-private-human-worksheet.luhw",JSON.stringify(packet,null,2)+"\n",
+        "application/json");
+      dirty=false;render();
+      message("Encrypted HUMAN-only CSV downloaded. PRIVATE passphrase is not recoverable. Original lab source is NOT included.");
+    } catch(_){message("Encrypted export unavailable or refused (HOLD). No output published.",true);}
+    finally {$("encryptPass").value="";$("encryptPassConfirm").value="";}
+  }
+  async function loadEncrypted() {
+    const input=$("encryptedInput"),file=input.files[0],pass=$("decryptPass").value;
+    try{
+      cryptoReady();
+      need(file&&file.size>0&&file.size<=2*1024*1024);
+      need(pass.length>=12&&pass.length<=256);
+      const outer=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      const envelope=JSON.parse(outer);
+      need(envelope&&typeof envelope==="object"&&!Array.isArray(envelope) &&
+        Object.keys(envelope).sort().join(",")===VAULT_FIELDS.slice().sort().join(","));
+      // Strict canonical serializer also rejects duplicate top-level keys and
+      // all unrecognized/alternate JSON representations before cryptography.
+      need(outer===JSON.stringify(envelope,null,2)+"\n");
+      need(envelope.schema===VAULT_SCHEMA&&envelope.status==="REVIEW_ONLY"&&
+        envelope.kdf==="PBKDF2-HMAC-SHA256"&&envelope.iterations===310000&&
+        envelope.cipher==="AES-256-GCM");
+      need(["source_authenticated","human_identity_authenticated","consent_verified",
+        "authorization_granted","dispatch_allowed","release_allowed"]
+        .every(flag=>envelope[flag]===false));
+      const salt=fromB64(envelope.salt_b64,16),
+            nonce=fromB64(envelope.nonce_b64,12),
+            encrypted=fromB64(envelope.encrypted_csv_b64,MAX_BYTES+16);
+      need(salt.length===16&&nonce.length===12&&encrypted.length>=16);
+      const key=await deriveKey(pass,salt);
+      const raw=await crypto.subtle.decrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:VAULT_CONTEXT,tagLength:128},
+        key,encrypted);
+      need(raw.byteLength>0&&raw.byteLength<=MAX_BYTES);
+      const plaintext=new TextDecoder("utf-8",{fatal:true}).decode(raw);
+      const admitted=admit(parseCSV(plaintext));
+      if (dirty && !confirm("Replace unsaved PRIVATE HUMAN edits with decrypted worksheet?"))return;
+      discardReply("Incoming proposal cleared for newly opened encrypted original HUMAN worksheet.");
+      rows=admitted;originalName=file.name;sourceSize=file.size;dirty=false;lastBulk=null;page=0;
+      $("severityFilter").value="all";$("stageFilter").value="all";
+      $("query").value="";$("groupFilter").value="all";
+      $("workroom").hidden=false;
+      $("sourceName").textContent=file.name;
+      $("sourceStatus").textContent=rows.length+
+        " ordinal HUMAN entries decrypted in browser memory. Original targets/evidence not included. Producer and consent not authenticated.";
+      render();message("PRIVATE encrypted HUMAN worksheet admitted in memory. No source, client or operator authority proved.");
+    }catch(_){message("Encrypted file refused (HOLD): wrong password, unsupported envelope, invalid original format or crypto unavailable. Existing local data retained.",true);}
+    finally{$("decryptPass").value="";input.value="";}
+  }
   $("load").addEventListener("click",async()=>{
     try{await importFile($("fileInput").files[0]);}
     catch(_){message("PRIVATE worksheet rejected (HOLD); existing in-memory work retained.",true);}
@@ -577,6 +712,8 @@ footer{padding:25px 0 10px;border-top:1px solid var(--line);color:var(--muted);f
   });
   $("acceptReply").addEventListener("click",applyReply);
   $("discardReply").addEventListener("click",()=>discardReply());
+  $("saveEncrypted").addEventListener("click",saveEncrypted);
+  $("loadEncrypted").addEventListener("click",loadEncrypted);
   addEventListener("beforeunload",e=>{if (dirty){e.preventDefault();e.returnValue="";}});
   message("Load an existing PRIVATE original ordinal worksheet. Nothing is uploaded or stored by this application.");
 })();</script></body>
