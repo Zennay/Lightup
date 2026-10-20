@@ -21,9 +21,21 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 </style></head>
 <body><header><small>LIGHTUP / EVIDENCE-REMEDIATION / HUMAN-ONLY</small><h1>PRIVATE encrypted recovery desk</h1>
 <p class="warning">DRAFT/HOLD · INCUBATE M3/M7 · PLAN/LAB ONLY. This tool does NOT verify original evidence, remediation, permissions, source identity, or client/operator consent.</p>
-<p>Open two local <code>.lupb</code> archives in memory. Review exact file inventory and byte digests, compare locally, then explicitly download only needed original files or re-encrypt a minimum-necessary selected subset. No uploads, endpoints, browser storage or background transfers.</p>
+<p>Create a fresh local encrypted archive or open two existing <code>.lupb</code> archives in memory. Review exact file inventory and byte digests, compare locally, then explicitly download only needed original files or re-encrypt a minimum-necessary selected subset. No uploads, endpoints, browser storage or background transfers.</p>
 </header>
 <main>
+<section class="wide" aria-labelledby="capture-h"><h2 id="capture-h">Create a new encrypted PRIVATE workroom archive</h2>
+<p>Select 1–32 individual ordinary files yourself (not folders). Your browser reads only the selected files, locally. Original bytes never leave this browser automatically. The final encrypted archive downloads to your browser's download directory, which may not have private permissions. Move it to trusted owner-private storage.</p>
+<label for="capture-files">Choose original PRIVATE files (up to 2 MiB each, 16 MiB combined)</label>
+<input id="capture-files" type="file" multiple>
+<label for="capture-pass">New encryption password (12+ characters)</label>
+<input id="capture-pass" type="password" autocomplete="new-password">
+<label for="capture-confirm">Confirm encryption password</label>
+<input id="capture-confirm" type="password" autocomplete="new-password">
+<button type="button" id="capture-create">Create encrypted PRIVATE .lupb</button>
+<button type="button" id="capture-clear" class="subtle">Clear selected originals</button>
+<output id="capture-status" role="status" aria-live="polite">Choose files explicitly. No automatic directory scanning, network or browser storage.</output>
+</section>
 <section aria-labelledby="a-h"><h2 id="a-h">Archive A</h2><label for="a-file">Private encrypted archive</label><input id="a-file" type="file" accept=".lupb,application/json">
 <label for="a-pass">Local password (12+ characters)</label><input id="a-pass" type="password" autocomplete="off">
 <button type="button" id="a-open">Decrypt A locally</button><button type="button" id="a-clear" class="subtle">Clear A</button>
