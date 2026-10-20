@@ -1,0 +1,48 @@
+# LightUp — current PRIVATE scope offline distribution (DRAFT/HOLD)
+
+## What this delivers
+
+This is an **add-only**, isolated distribution companion for the existing [integrated scope workspace, PR #1680](https://github.com/Zennay/Lightup/pull/1680). The original owner source and the eight independent original workrooms are not edited. This branch is pinned to **source HEAD `0f76f2f90a89f5b64bc8033aa2e2ee6ec2fc49cc`** and deliberately does not claim ownership of that PR.
+
+The source owner built an offline ZIP at an earlier HEAD `2cfd29d`. The subsequent real large-source acceptance and cursor parser improvements `28f30e8` + `0f76f2f` were not yet included in that original published ZIP. This isolated builder recreates the offline distribution from the **current** pinned source in a disposable workspace and publishes the finished archive and standalone UI **only into `scope-current-bundle/`**.
+
+## Build the actual portable product
+
+From a clean checkout of this branch with Python 3.11+:
+
+```sh
+python3 scope-current-bundle/build.py
+```
+
+This is a **product build**, not a QA suite, scanner, tool authorization, remote request or deployment. It uses only Python's standard library and invokes the existing original package builder against a temporary copy. It does not edit the eight original source owners or tracked original generated files.
+
+After successful build:
+
+- `LightUp-Scope-Offline-DRAFT-HOLD.zip` — **complete portable package**, 8 originally pinned apps + interactive HUMAN source workroom.
+- `index.html` — offline launcher.
+- `handoff.html` — source-fingerprint-aware PRIVATE HUMAN assignment, exact continuity reopen and source-drift comparison.
+- `verify.html` — local archive byte-hash reader.
+- `SOURCE-MANIFEST.json` — byte inventory from original packager.
+- `DIST-MANIFEST.json` — extra reproducible source pin and distribution SHA-256 inventory.
+
+Open the downloaded ZIP **locally**. No web hosting, external API, account, or target is required. Original encrypted companion packets remain opaque; the workroom does not decrypt them. For actual privately identifying materials, use locally authorized private storage and trusted recipients.
+
+## Fail-closed build and immutability
+
+`build.py` checks the **exact four original source byte digests** of the original packager, HUMAN handoff and JSON inspector, copies eight original app directories without symlinks, reruns original **60-file pinned source verification**, validates the original DRAFT/HOLD manifest and its six literal false authority flags, and checks every output destination for collisions before writing. Output uses no-follow exclusive create, 0600 file mode, and fsync. If existing distributed files differ, the build **refuses replacement**; publish a newly named revision after legitimate source review instead.
+
+SHA-256 here is **only byte matching**, never authenticated operator/client identity, signed producer authenticity, fresh consent, tenant permission or scanner authorization. The generated distribution is a local review tool with PRIVATE source-sensitive content.
+
+## Source-only proof / known delivery boundary (20 October 2026)
+
+The original source builder **already ran successfully in a separate permitted zSSH checkout** against exact pinned `0f76f2f`, with **60 original source files** intact and generated a **483,223-byte ZIP**, SHA-256:
+
+`60f9086490ecb00d725ae00da173ee6eb843de9d346d4c39b5f4a51a359703de`
+
+Original generated `index.html` SHA-256: `99c4f5f8fa7b96d246471faa2bcb30480d08f7a755906b54decbfb436c55623b`.
+
+**Those generated assets are not yet committed in this separate distribution directory:** the connected VPS checkout refused creating the new destination directory. The authoritative result delivered by this PR so far is the reproducible production packager. Do not tell operators the new ZIP is already downloadable from this branch until the actual outputs have been published and inspected. No workaround for the VPS filesystem denial was attempted.
+
+## Original release fence remains intact
+
+**INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** No merge to main, active scan, target interaction, grant, production deploy or verified consent. Mandatory original exact-head hosted CI, permanently registered named VPS CI, original source owners, separate security/privacy/browser review, #177/#182/#829, actually authenticated current client/operator consent with action-time revocation and explicit HUMAN GO remain fully required. This independent distribution should stay a **draft stacked on PR #1680** until all relevant gates are met. No QA/regression/test suites were written or run.
