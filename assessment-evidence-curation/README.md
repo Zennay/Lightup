@@ -96,7 +96,47 @@ Use the menu instead of assembling long paths or shell commands:
 
     python3 assessment-evidence-curation/console.py
 
-It offers **all four complete offline workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections or inspect 2–12 HUMAN versions. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
+It offers **all six complete offline workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
+
+## Step 5 — PRIVATE recipient HUMAN question/reply exchange (without assessment execution)
+
+The original selected-only HANDOFF can now be returned with human replies. This **does not** mean a respondent is authenticated or the finding is verified. The original full lab source, original unsigned briefing manifest, original exact seven-column HUMAN worksheet, original selection receipt and complete selected HUMAN CSV are **all re-admitted** before preparing the recipient template or accepting a reply.
+
+Prepare a PRIVATE original-ordinal / HUMAN question template:
+
+    python3 assessment-evidence-curation/response.py prepare \
+      --source ./PRIVATE-original-lab.json \
+      --manifest ./PRIVATE-original-briefing/manifest.json \
+      --worksheet ./PRIVATE-human-followup.csv \
+      --selection-receipt ./NEW-PRIVATE-PREPARATION/selection-receipt.json \
+      --selection ./PRIVATE-human-selection.csv \
+      --output-dir ./NEW-PRIVATE-RECIPIENT-TEMPLATE
+
+Creates an exclusive 0700 PRIVATE output folder with 0600 files: PRIVATE-recipient-response-template.csv (exact selected source ordinals, reported severity/evidence-reference counts, HUMAN priority/question, **blank recipient HUMAN stage/reply/followup question**), PRIVATE-recipient-response-binding.json (source/worksheet/selection/template unsigned byte hashes, mandatory literal false authority), and PRIVATE-recipient-response-instructions.html (scriptless explicit privacy warnings). No original target, finding ID, evidence body, producer, run or original HUMAN owner/action is included in this limited recipient handoff; HUMAN question text can still identify the source, so use a separately approved PRIVATE exchange channel.
+
+A human can privately fill ONLY the three recipient columns in that CSV. Allowed self-reported stage: empty, responded_claimed, needs_more_information or blocked_human. Freeform recipient reply/followup question is limited to 500 safe characters each, without dangerous formula/control prefixes; an empty stage must have both reply fields empty. No stage carries any fix, authenticity, consent or authorization semantics.
+
+Conservatively reopen this human reply against the unchanged original PRIVATE source and the exact original selected HUMAN questions:
+
+    python3 assessment-evidence-curation/response.py return \
+      --source ./PRIVATE-original-lab.json \
+      --manifest ./PRIVATE-original-briefing/manifest.json \
+      --worksheet ./PRIVATE-human-followup.csv \
+      --selection-receipt ./NEW-PRIVATE-PREPARATION/selection-receipt.json \
+      --selection ./PRIVATE-human-selection.csv \
+      --response-binding ./NEW-PRIVATE-RECIPIENT-TEMPLATE/PRIVATE-recipient-response-binding.json \
+      --response ./PRIVATE-filled-recipient-reply.csv \
+      --output-dir ./NEW-PRIVATE-RECIPIENT-RETURN
+
+The whole original selection and recipient reply must be exactly aligned to original ordinal, severity, original evidence-reference count, selected HUMAN priority and exact original question, in the same row order. Any changed source, recipient substitution, invalid stage or modified original question causes one atomic HOLD, preserving all existing files. Generates PRIVATE-recipient-HUMAN-replies.html (scriptless HUMAN reply vs original HUMAN question, without original source evidence), PRIVATE-recipient-HUMAN-reply-receipt.json (unsigned binding and exact selected source ordinal list), and recipient-HUMAN-reply-counts-PRIVATE.json (source-ID-free human stage totals). No email, calendar API, real messaging, authentication or target action.
+
+## One unified foreground PRIVATE console
+
+Run:
+
+    python3 assessment-evidence-curation/console.py
+
+It now offers **six** HUMAN-only offline workflows: prepare source-minimized browser studio, produce the selected-only original PRIVATE dossier, compare two HUMAN selections, view 2–12 HUMAN versions, prepare a recipient reply template, and privately re-admit that response. Every operation requires a separate **REVIEW ONLY** confirmation including its disclosure profile, explicit local existing source/receipt/CSV paths and one NEW private output directory. It runs no subprocess/assessment, never contacts a target, never mutates original source or existing outputs and cannot authenticate a recipient.
 
 ## Safety / release fence
 
