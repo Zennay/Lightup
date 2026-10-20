@@ -24,6 +24,7 @@ from human_followup import FIELDS, STAGES, human_text, worksheet
 from review_history import admit_human
 from recipient_browser import render_recipient
 from owner_decision import original_owner_desk
+from privacy_counts import suppressed_counts
 
 FORMAT = "lightup.source_minimized_human_exchange.v1"
 RECEIPT_LIMIT = 256_000
@@ -286,10 +287,14 @@ def reconcile(argv: list[str]):
         "format": "lightup.human_recipient_return_counts.v1",
         "posture": "INCUBATE_M3_M7_DRAFT_HOLD",
         "authority": {k: False for k in sorted(AUTHORITY)},
-        "receipts_imported": len(responses),
-        "teams_awaiting": len(groups_by_slot) - len(responses),
-        "rows_proposed": len(pending_source_rows),
-        "note": "Source-minimized counts, small cohorts may identify teams; not approval/consent."
+        "human_team_counts": suppressed_counts(
+            {"reply_teams_imported": len(responses),
+             "reply_teams_awaiting": len(groups_by_slot) - len(responses)},
+            len(groups_by_slot)),
+        "human_proposal_counts": suppressed_counts(
+            {"original_rows_with_returned_proposals": len(pending_source_rows)},
+            len(original_rows)),
+        "note": "Source-minimized but not anonymous; low-frequency review counts suppressed. Not authenticated recipients, approval or consent."
     }
     out = Path(argv[4])
     if not out.parent.is_dir() or out.parent.is_symlink():
