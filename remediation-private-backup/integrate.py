@@ -39,6 +39,24 @@ def insist(value, message):
 def sha(data: bytes):
     return hashlib.sha256(data).hexdigest()
 
+def local_html_integrity(html: bytes, js: bytes):
+    """The shipped one-file browser must include *exact* source bytes and matching CSP."""
+    import base64
+    try:
+        decoded = html.decode("utf-8", "strict")
+        script = js.decode("utf-8", "strict")
+    except UnicodeError as error:
+        raise Hold("invalid shipped browser encoding") from error
+    digest = base64.b64encode(hashlib.sha256(js).digest()).decode("ascii")
+    expected_script = "<script>" + script + "</script>"
+    insist(decoded.count(expected_script) == 1,
+           "portable PRIVATE browser does not match exact independently shipped JS")
+    insist(decoded.count("script-src 'sha256-" + digest + "'") == 1,
+           "portable PRIVATE browser CSP source digest does not match")
+    insist('connect-src \'none\'' in decoded and
+           '<script src="./browser.js"' not in decoded,
+           "portable PRIVATE browser requires scriptless external dependency policy")
+
 def canonical(value):
     return (json.dumps(value, sort_keys=True, ensure_ascii=True,
                        separators=(",", ":"), allow_nan=False) + "\n").encode("ascii")
@@ -124,9 +142,11 @@ def create(dest: Path):
                "original pinned native source-only installation HOLD; no fallback or bypass")
         recovery = stage / "private-recovery"
         recovery.mkdir(mode=0o700)
+        sources = {name: read_asset(name) for name in COMPANION_FILES}
+        local_html_integrity(sources["standalone.html"], sources["browser.js"])
         inventory = {}
         for name in COMPANION_FILES:
-            source = read_asset(name)
+            source = sources[name]
             private_file(recovery / name, source)
             inventory["private-recovery/" + name] = {"bytes": len(source), "sha256": sha(source)}
         for relative in ("source-lock.json", "manifest.json"):
