@@ -34,7 +34,7 @@ DISPOSITION = "REVIEW_ONLY_DRAFT_HOLD"
 WARNING = ("PRIVATE offline software-only, unsigned and non-authorizing. No "
            "authenticated producer, consent, finding, fix, security review, "
            "scan, grant or HUMAN GO. INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD.")
-COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py", "vault.py", "coordination.py", "worklist.py")
+COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py", "vault.py", "coordination.py", "worklist.py", "agenda.py")
 FILES = frozenset("remediation-human-replies/" + n for n in COMPANION)
 PORTABLE = "LightUp-PRIVATE-HUMAN-Reply-Software-DRAFT-HOLD.zip"
 ORIGINAL_ZIP = "original-scheduler-software-only.zip"
@@ -156,7 +156,24 @@ priority without claiming independent reviewers or validated fixes.</p>
 or scanner. Human-only replies do not close findings. External disclosure,
 independent authentic scope/consent and any actual remediation remain separate.</p>
 </section>
-<section><h2>8 · Rotate recipient response encryption with no plaintext intermediate</h2>
+<section><h2>8 · PRIVATE HUMAN original due-date agenda + manual calendar</h2>
+<p>The native <code>agenda.py</code> consumes the same exact encrypted
+selected HUMAN handoff and independently encrypted current HUMAN reply,
+and publishes a PRIVATE local date-ordered HUMAN agenda. Only exact
+originally declared HUMAN dates are used. Undated tasks are listed
+separately, never given invented deadlines. Exporting the optional local
+tentative <code>.ics</code> calendar does NOT import/send any reminders
+or permit source finding changes. Calendar events are privacy-minimised:
+no original HUMAN owner labels, reasons, questions or answers.</p>
+<pre>python3 remediation-human-replies/agenda.py \
+  --handoff "$HOME/lightup-private/selected-human.luhq" \
+  --reply "$HOME/lightup-private/reply-one.luhr" \
+  --output-dir "$HOME/lightup-private/private-human-agenda-01"</pre>
+<p>The calendar file remains PRIVATE. Importing it manually into any
+external service requires separately authenticated disclosure permission.
+Original self-declared answered/declined HUMAN stages are omitted from
+the .ics only; they are NOT classed as verified remediation.</p></section>
+<section><h2>9 · Rotate recipient response encryption with no plaintext intermediate</h2>
 <p>The offline original-bound native <code>vault.py</code> independently
 reads the genuine original selected encrypted HUMAN handoff and already
 encrypted recipient reply, then prompts for a new, separately confirmed
