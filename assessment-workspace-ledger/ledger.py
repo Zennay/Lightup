@@ -374,7 +374,8 @@ def capture(args):
                 "removed": len(before.keys() - after.keys()),
                 "changed": sum(before[key] != after[key] for key in before.keys() & after.keys()),
             }
-            changed |= any(delta.values())
+            # A human dossier-label change is source-context drift, even when kit bytes match.
+            changed |= any(delta.values()) or old["label"] != label
         kits.append({"ordinal": number, "path": path, "label": label, "files": files, "bytes": amount,
                      "digest": digest(canonical(files)), "delta": delta})
     doc = {"schema": "lightup.private.workspace-ledger.v1", "authority": FLAGS,
@@ -387,6 +388,8 @@ def capture(args):
         change = k["delta"]
         delta_text = ("First snapshot" if change is None else
                       "Added {added}; removed {removed}; changed {changed} (HUMAN review)" .format(**change))
+        if previous and previous["kits"][k["ordinal"] - 1]["label"] != k["label"]:
+            delta_text += "; HUMAN DOSSIER LABEL CHANGED — HOLD / fresh human review"
         rows.append("<tr><td>" + str(k["ordinal"]) + "</td><td>" + html.escape(k["label"]) +
                     "</td><td>" + str(len(k["files"])) + "</td><td>" + str(k["bytes"]) +
                     "</td><td>" + html.escape(delta_text) + "</td></tr>")
