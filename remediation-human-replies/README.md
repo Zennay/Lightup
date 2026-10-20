@@ -76,6 +76,32 @@ Saving from this private offline browser uses the unchanged password-encrypted *
 
 The new index.html and handling instructions are owner-only PRIVATE plaintext in a fresh 0700/0600 workroom. A bounded anonymous count receipt makes no reviewer identity, verified finding or source provenance claims. Free-form private response text may be sensitive and only a real separately authorized operator can choose its disclosure or eventual action. No automatic adjudication, approval, closure, cryptographic identity, consent, verified fix or secure deletion. No original source-owner or other worker source files changed.
 
+## Encrypted PRIVATE coordinator continuation with real stored decisions
+
+The standalone coordination.py now optionally supports --continuation ABSOLUTE_PRIOR_COORDINATOR.luhr for the SAME exact original encrypted .luhq and the 2–8 original prior responder .luhr inputs. An actual encrypted earlier coordinator decision is separately decrypted and admitted with its own interactive TTY password, exact original selected source digest and complete task order/reason. It cannot be identical ciphertext to one of the earlier respondent files. No response stage, answer or question is inferred from prior respondents.
+
+When --continuation is omitted, all new coordinator answers/questions begin BLANK and HUMAN stage received. When supplied, only explicitly selected already authored coordinator fields are loaded back into a **fresh PRIVATE editable local browser**; earlier third-party HUMAN responses remain read-only comparison context. Saving always creates another separately password encrypted source-bound native .luhr, never overwrites any prior file or original source. The original handoff, all prior files and the optional continuation are rechecked byte-for-byte before publishing the new 0700/0600 workroom.
+
+    python3 remediation-human-replies/coordination.py \
+      --handoff "$HOME/lightup-private/selected-private-human.luhq" \
+      --reply "$HOME/lightup-private/selected-reply-A.luhr" \
+      --reply "$HOME/lightup-private/selected-reply-B.luhr" \
+      --continuation "$HOME/lightup-private/my-prior-encrypted-coordinator.luhr" \
+      --output-dir "$HOME/lightup-private/private-coordinator-resumed-01"
+
+An old coordinator .luhr proves only decryptable self-declared source-redacted text, never human reviewer identity, independence, client consent, verified repairs, grant or HUMAN GO. The comparison HTML contains decrypted PRIVATE previous answers and must remain confidential.
+
+## Original-bound PRIVATE HUMAN next-action register
+
+The new worklist.py uses the same unchanged original encrypted source-free HUMAN handoff admission and independently opens one encrypted native HUMAN-only .luhr. It groups every selected original reason ordinal into clarification required, awaiting HUMAN response, in HUMAN discussion, declined HUMAN request, or HUMAN answered but NOT technically verified. This is a purely HUMAN local routing register, not a real original finding or case ledger.
+
+    python3 remediation-human-replies/worklist.py \
+      --handoff "$HOME/lightup-private/selected-private-human.luhq" \
+      --reply "$HOME/lightup-private/my-encrypted-coordinator.luhr" \
+      --output-dir "$HOME/lightup-private/human-followup-register-01"
+
+Produces a new source-bound PRIVATE 0700 folder with offline scriptless index.html, structured private-human-followup.json (selected reason ordinal, original self-declared request text, new HUMAN clarification question, HUMAN self-declared stage/answer), separate private-aggregate.json (category-only self-declared counts) and human custody README; all 0600. Original encrypted inputs remain unchanged. No machine networking, client notification, auto-fix, grant, retest, evidence or real closure. Even the aggregate may reveal small cohorts and stays PRIVATE. No original source IDs are reconstructed from a source-redacted selection.
+
 ## Offline encrypted HUMAN reply password rotation without plaintext disk intermediary
 
 The independent native vault.py consumes the exact original selected private .luhq and existing encrypted selected .luhr, invoking the same unchanged original .luhq source-admission and new strict original-bound reply decoder. Both existing passwords must be provided in the private terminal; a third, NEW unique 14–256-character NFC non-control password is independently confirmed via the unchanged original native password policy. Source and encrypted reply files are re-read to reject changes before publishing.
@@ -108,7 +134,7 @@ A recipient with separately trusted matching source code and the four separately
       --parent-manifest "$HOME/lightup-private/software-human-replies-01/original-scheduler-manifest.json" \
       --output-dir "$HOME/lightup-private/software-received-01"
 
-The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all seven additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
+The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all eight additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
 
 The optional distribution.py inspect --workspace ABSOLUTE_PATH operation is for a *complete locally built* distribution directory, not the smaller received runnable subset. All operations exit 2=REVIEW_ONLY or 3=HOLD, never grant security authority. Syntax/manifest checks are not client authorization, independent security/crypto review, actual owner acceptance or real release.
 
