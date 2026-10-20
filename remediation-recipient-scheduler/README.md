@@ -89,3 +89,37 @@ python3 remediation-recipient-scheduler/schedule_vault.py \
 The local CLI prompts for the `.lurp` password through an interactive private terminal. It checks its 0600 owner-only ciphertext file and closed envelope, PBKDF2-HMAC-SHA256 600,000 iteration and AES-256-GCM opening, exact browser JSON encoding, literal false authority, every original source-free sha256, human row/slot/count and bounded local follow-up values. A new 0700/0600 private folder contains a **scriptless printable HTML HUMAN agenda** (without the sensitive original HUMAN notes by default) and a source-ID-free anonymous human-counts JSON. Explicitly add `--include-notes` only when separately authorized to include confidential HUMAN notes in the local HTML; add `--calendar` for an optional, anonymous and tentative all-day `.ics` **file**. These are local outputs, not actual calendar events or messages sent to someone else. Nothing is restored into original source-owner or original recipient workspaces. Non-authorizing, no online operation or source changes.
 
 The browser's explicit source-matching carry must be used for plans whose original packets change or are reordered; importing a previous `.lurp` into a different source without exact matching is **not** native-authorized. A locally rendered HUMAN plan may include personally identifying HUMAN owner labels and notes: it stays PRIVATE, requires independent recipient/disclosure consent, and is not evidence that anything was fixed. The original exact-head release gates remain unsatisfied.
+
+## Complete additive software-only distribution
+
+The new `bundle.py` builds a separate **PRIVATE offline software-only** LightUp distribution without rewriting the original integrated source owner. It first calls the original `remediation-integrated-workspace/install.py` to generate and re-inspect the exact pinned original native suite. The original full manifest and unmodified original `software-only.zip` remain in `original-native-suite/`. A separate `software/` tree collects all original pinned runnable files alongside **only our own scheduler companion**, with a new readable scriptless `index.html` start page. A standalone deterministic `remediation-scheduler-software-only.zip` contains the runnable merged software, without any original client packets, scans, passwords or HUMAN state. `bundle-manifest.json` records exact original manifest and software member hashes for local consistency; unkeyed SHA-256 is **not** trusted authentication.
+
+Create an **already-authorized**, existing owner-only 0700 destination parent, then:
+
+```bash
+python3 remediation-recipient-scheduler/bundle.py build \
+  --output-dir "$HOME/lightup-private/sourceonly-scheduler-bundle-01"
+python3 remediation-recipient-scheduler/bundle.py inspect \
+  --workspace "$HOME/lightup-private/sourceonly-scheduler-bundle-01"
+```
+
+The finished `index.html` explains the original evidence workroom and **actual native recipient archive intake**; the zip contains only software. Unpacking `remediation-scheduler-software-only.zip` requires an independently trusted transport and a PRIVATE destination. After extraction, execute `python3 remediation-recipient-scheduler/archive_schedule.py` **from the extracted software tree** against original, independently permitted source-free handoffs; no fabricated findings are included.
+
+The source-only bundle generator is committed but **not claimed as successfully built on the named VPS**: the connected zSSH user was refused permission to create the chosen private build-parent folder. This denial was respected without alternate-path bypass. Original exact-head CI and independent owner/security/privacy/browser/crypto reviews still remain separate HOLD gates.
+
+## Focused private HUMAN work queues from an encrypted checkpoint
+
+The native `schedule_vault.py` can now produce **owner-scoped or date-scoped** scriptless agendas from an existing browser-encrypted `.lurp` plan, after re-admitting the complete unchanged original source-free packet inventory. Filtering occurs **only after full original source admission**. No source member is silently altered or dropped from the underlying checkpoint, and no original source-free join or verified finding is invented.
+
+To publish one human owner's pending work, without including private notes:
+
+```bash
+python3 remediation-recipient-scheduler/schedule_vault.py \
+  --vault "$HOME/lightup-private/old-human-schedule.lurp" \
+  --cockpit "$HOME/lightup-private/received-01" \
+  --owner "Review coordinator" --pending \
+  --output-dir "$HOME/lightup-private/owner-agenda-01"
+```
+
+Other supported filters: `--unassigned`, `--overdue`, `--due-next-days 7`, or `--stage ask_source_owner`. A due-next-day range is limited to 0–90 days and excludes already answered HUMAN-only tasks; overdue applies only to self-reported still-open tasks. Conflicting date/owner filter pairs HOLD; an empty matching work queue does not generate a misleading empty report. Use `--calendar` only if the selected tasks have tentative dates; optional `--include-notes` adds sensitive HUMAN text and needs actual independent recipient approval. Output remains owner-only PRIVATE; filtering is not authenticated disclosure permission.
+
