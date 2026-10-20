@@ -177,7 +177,6 @@ function tally(){
  $("publish").disabled=busy||unresolved!==0;
  $("aggregate").disabled=busy||unresolved!==0;
  window.LightUpCasebookPortfolio?.render();
- window.LightUpCasebookOutputPreview?.invalidate();
 }
 function show(){
  $("cases").replaceChildren();
@@ -223,6 +222,7 @@ function show(){
     extra.hidden=select.value!=="custom";
     extra.addEventListener("change",()=>{
       const before=work.choices[i][j];
+      window.LightUpCasebookOutputPreview?.invalidate();
       work.finalReceipt=null;
       work.choices[i][j]="custom:"+extra.value;
       window.LightUpCasebookBulk?.recordManual(i,j,before,work.choices[i][j]);
@@ -233,6 +233,7 @@ function show(){
       extra.hidden=select.value!=="custom";
       extra.value="";
       const before=work.choices[i][j];
+      window.LightUpCasebookOutputPreview?.invalidate();
       work.finalReceipt=null;
       work.choices[i][j]=select.value==="custom"?"custom:":select.value;
       window.LightUpCasebookBulk?.recordManual(i,j,before,work.choices[i][j]);
@@ -330,6 +331,7 @@ $("open").addEventListener("click",async()=>{
   if(work&&!window.confirm("Vorige lokale nog niet-gepubliceerde HUMAN-beslissingen vervangen?"))
    deny("Bestaande werkruimte behouden.");
   const old=work;
+  window.LightUpCasebookOutputPreview?.invalidate();
   work={a,b,cases:a.cases,choices:a.rows.map((r,i)=>[0,1,2].map(j=>
    r[j+3]===b.rows[i][j+3]?"same":"")),finalReceipt:null};
   a=null;b=null;
@@ -442,6 +444,7 @@ window.LightUpBulkBridge=Object.freeze({
     (!same&&!["","custom:","A","B","reset"].includes(to)&&!customChoice(to,j)))
     deny("HOLD: verlopen of niet-canonieke HUMAN-keuzewijziging; bron opnieuw bekijken.");
   }
+  window.LightUpCasebookOutputPreview?.invalidate();
   for(const {i,j,to} of changes)work.choices[i][j]=to;
   work.finalReceipt=null;
   show();
@@ -481,6 +484,7 @@ window.LightUpCasebookDraftAPI=Object.freeze({
    return false;
   window.LightUpCasebookNotes.restore(bound);
   work.finalReceipt=null;
+  window.LightUpCasebookOutputPreview?.invalidate();
   work.choices=candidate;
   window.LightUpCasebookBulk?.reset();
   show();return true;
@@ -510,6 +514,7 @@ $("clear-session").addEventListener("click",()=>{
  if(!window.confirm("Wis alle lokale PRIVATE Casebook-werksetbytes, HUMAN-keuzes, notities, ingelezen reviewmemo en formulierselecties uit dit browsertabblad? Opgeslagen originele bestanden op schijf blijven onaangeroerd."))return;
  if(work){zero(work.a);zero(work.b);}
  work=null;
+ window.LightUpCasebookOutputPreview?.invalidate();
  window.LightUpCasebookBulk?.reset();
  window.LightUpCasebookPortfolio?.render();
  window.LightUpCasebookNotes?.reset(0);
