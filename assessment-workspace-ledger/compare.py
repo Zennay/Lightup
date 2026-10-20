@@ -52,6 +52,57 @@ def compare(before, after):
     return results, changed
 
 
+def detailed_changes(before, after):
+    """PRIVATE source-relative file identity deltas only; never a verified fix."""
+    changes = []
+    for old_kit, new_kit in zip(before["kits"], after["kits"]):
+        first = {entry["path"]: entry for entry in old_kit["files"]}
+        second = {entry["path"]: entry for entry in new_kit["files"]}
+        for path in sorted(first.keys() | second.keys()):
+            older, newer = first.get(path), second.get(path)
+            if older is not None and newer is not None and older == newer:
+                continue
+            kind = "added" if older is None else "removed" if newer is None else "changed"
+            changes.append({
+                "kit_ordinal": old_kit["ordinal"],
+                "relative_path": path,
+                "kind": kind,
+                "before_size": None if older is None else older["size"],
+                "after_size": None if newer is None else newer["size"],
+                "before_sha256": None if older is None else older["sha256"],
+                "after_sha256": None if newer is None else newer["sha256"],
+            })
+    return changes
+
+
+def render_private_detail(changes, before_sha, after_sha):
+    shown = changes[:500]
+    body = [
+        "<p>PRIVATE source-relative paths and UNSIGNED hashes are sensitive. "
+        "This compares historical recorded byte inventories only, no original files "
+        "were reopened or verified. Removed source entries do NOT mean a finding was fixed.</p>",
+        "<p>Old ledger: <code>" + before_sha + "</code> · New ledger: <code>" +
+        after_sha + "</code></p>",
+        "<p>" + str(len(changes)) + " recorded file changes; showing " +
+        str(len(shown)) + " privately. All bounded entries are in PRIVATE-file-changes.json.</p>",
+        "<table><thead><tr><th>Kit</th><th>Change</th><th>Original source-relative file</th>"
+        "<th>Old bytes</th><th>New bytes</th></tr></thead><tbody>",
+    ]
+    for change in shown:
+        body.append(
+            "<tr><td>" + str(change["kit_ordinal"]) + "</td><td>" +
+            html.escape(change["kind"]) + "</td><td><code>" +
+            html.escape(change["relative_path"]) + "</code></td><td>" +
+            (str(change["before_size"]) if change["before_size"] is not None else "—") +
+            "</td><td>" +
+            (str(change["after_size"]) if change["after_size"] is not None else "—") +
+            "</td></tr>"
+        )
+    body.append("</tbody></table><p>HUMAN investigation only. No source owner identity, "
+                "client consent, security review, remediation proof, authorization, or PASS.</p>")
+    return html_page("LightUp PRIVATE original-file difference drilldown", "".join(body))
+
+
 def render(results, old_sha, new_sha):
     rows = [
         "<p>Two originally stored PRIVATE unsigned ledger snapshots. "
@@ -89,6 +140,7 @@ def run(args):
     before = manifest_from_source(old_raw)
     after = manifest_from_source(new_raw)
     result, changed = compare(before, after)
+    changes = detailed_changes(before, after)
     digest_before, digest_after = digest(old_raw), digest(new_raw)
     artifact = {
         "schema": "lightup.private.workspace-ledger-comparison.v1",
@@ -112,6 +164,8 @@ def run(args):
     try:
         write_private(output, "PRIVATE-historical-comparison.json", canonical(artifact))
         write_private(output, "PRIVATE-HUMAN-comparison-template.csv", csv_output.getvalue())
+        write_private(output, "PRIVATE-file-changes.json", canonical({"schema": "lightup.private.workspace-ledger-file-changes.v1", "authority": FLAGS, "sources_reopened": False, "before_ledger_sha256": digest_before, "after_ledger_sha256": digest_after, "changes": changes}))
+        write_private(output, "PRIVATE-detail.html", render_private_detail(changes, digest_before, digest_after))
         write_private(output, "OPEN-PRIVATE.html", render(result, digest_before, digest_after))
     except BaseException:
         shutil.rmtree(output)
