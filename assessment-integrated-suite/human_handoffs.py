@@ -38,7 +38,7 @@ def private_page(location: str, parent: str) -> str:
     for path, expect_dir in ((base, True), (page.parent, True), (page, False)):
         info = path.lstat()
         if (info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) & 0o077
-                or info.st_nlink != (info.st_nlink if expect_dir else 1)
+                or (not expect_dir and info.st_nlink != 1)
                 or (not stat.S_ISDIR(info.st_mode) if expect_dir else not stat.S_ISREG(info.st_mode))):
             raise ValueError("private output permissions")
     return str(page)

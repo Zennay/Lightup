@@ -464,3 +464,57 @@ native HUMAN workflows and browser suite remain held pending original
 source-owner signoff, independent privacy/security/browser review, original
 exact-head CI and permanent named VPS CI, #177/#182/#829, actual separate
 current client and operator authorization with at-use revocation and HUMAN GO.
+
+## Original PRIVATE source continuity and notes integration · 20 Oct 2026
+
+Integrated without changing original owner PR heads: Workspace Ledger
+[#1694](https://github.com/Zennay/Lightup/pull/1694) frozen at
+`65bbd88ee85bc50c9d8330893d5f4d9fa66193c8`, and credential-masked
+Assessment Notes [#1691](https://github.com/Zennay/Lightup/pull/1691) frozen
+at `2d0ad48a87474d49957e8ccd5622260133ba9d2f`. The latter contains
+original #672 Basic/Proxy-Authorization redaction source. None is released.
+
+The already existing foreground `console.py` now offers **15 local-only
+workflows**, including five new integrated original-source actions:
+
+1. Capture up to 12 already-produced PRIVATE kit directories in an immutable
+   owner-private original byte ledger, with optional prior-snapshot delta.
+   Missing or changed files require fresh HUMAN review; never a finding fix.
+2. Reopen an original `ledger.json`, which rechecks every referenced source
+   byte before carrying forward HUMAN discussion. No new snapshot is made.
+3. Finalize a source-bound original ledger with locally completed HUMAN CSV;
+   original native admission writes a separate PRIVATE HOLD-only packet.
+4. Prepare 1–12 owner-private UTF-8 notes using the original credential masker;
+   original parser creates a PRIVATE HUMAN editor, source-bound identity,
+   and pattern-masked copies only, never a claim that all secrets are absent.
+5. Finalize locally completed original-bound HUMAN note decisions into a new
+   PRIVATE packet. Even INTERNAL_REVIEW_ONLY does not authorize disclosure.
+
+Use interactive `python3 assessment-integrated-suite/console.py` options
+11–15; or original-wrapped CLI commands, all foreground, without shell:
+
+~~~sh
+python3 assessment-integrated-suite/human_handoffs.py ledger-capture --kit /private/kit-a --kit /private/kit-b --private-parent /private/output
+python3 assessment-integrated-suite/human_handoffs.py ledger-reopen --ledger /private/output/PRIVATE-lightup-ledger-ID/ledger.json
+python3 assessment-integrated-suite/human_handoffs.py ledger-finalize --ledger /private/output/PRIVATE-lightup-ledger-ID/ledger.json --plan /private/HUMAN-review.csv --private-parent /private/output
+python3 assessment-integrated-suite/human_handoffs.py notes-prepare --source /private/note.txt --private-parent /private/output
+python3 assessment-integrated-suite/human_handoffs.py notes-finalize --original-kit /private/output/PRIVATE-lightup-notes-ID --decisions /private/PRIVATE-HUMAN-decisions-completed.csv --private-parent /private/output
+~~~
+
+Wrapper checks exact expected result contracts and owner-only entry files,
+limits input and subprocess output and never prints private native stderr.
+Original per-source validation remains the source of truth. Success exit 2
+means PRIVATE REVIEW_ONLY; 3 means HUMAN HOLD or a refusal, not PASS.
+
+The software-only offline toolkit additionally includes original Workspace
+Ledger `standalone.html` as its 13th studio. The credential-masked notes
+editor is generated only after native source admission (no fabricated data).
+Neither copied software nor a SHA/hash is a verified author or release proof.
+No input sources, customer notes, scans, targets, grants, model calls, service,
+network transfer, external publication, deletion or background jobs are added.
+
+**Hard release boundary remains:** Incubate M3/M7 PLAN/LAB ONLY, DRAFT/HOLD;
+no main merge or production deploy without exact-head original GitHub-hosted
+and registered named VPS CI, source-owner, independent privacy/security/browser
+approval, #177/#182/#829, current separate authenticated client/operator
+consent with action-time revocation, and explicit HUMAN GO.
