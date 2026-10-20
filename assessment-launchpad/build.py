@@ -124,7 +124,8 @@ def _safe_write(dir_fd: int, name: str, data: bytes) -> None:
         raise
 
 
-def _html(endpoints: tuple[str, ...], digest: str, studio: dict | None = None) -> bytes:
+def _html(endpoints: tuple[str, ...], digest: str, studio: dict | None = None,
+          source_segments: tuple[tuple[int, str], ...] | None = None) -> bytes:
     rows = "".join(
         "<tr><th scope='row'>Endpoint %s</th><td><code>%s</code></td></tr>"
         % (i, escape(url, quote=True))
@@ -141,6 +142,27 @@ def _html(endpoints: tuple[str, ...], digest: str, studio: dict | None = None) -
                        "</code> — self-declared and never scored ground truth.</p>"
                        "<p>Original catalog SHA-256 (unsigned): <code>" +
                        studio["catalog_sha256"] + "</code>.</p></aside>")
+    source_html = ""
+    if source_segments is not None:
+        start_slot = 1
+        items = []
+        for index, (size, source_hash) in enumerate(source_segments, 1):
+            end_slot = start_slot + size - 1
+            items.append(
+                "<tr><th scope='row'>Source #" + str(index) +
+                "</th><td>Combined slots " + str(start_slot) + "–" + str(end_slot) +
+                "</td><td><code>" + escape(source_hash, quote=True) + "</code></td></tr>"
+            )
+            start_slot = end_slot + 1
+        source_html = (
+            "<section><h2>Original private proposal sources (unsigned)</h2>"
+            "<p>Each numbered source corresponds only to the human-selected input "
+            "order. These local hashes do not verify producer, lab, client or "
+            "permission; proposed endpoint identity remains a human review.</p>"
+            "<table><thead><tr><th>Input</th><th>Original slot mapping</th>"
+            "<th>Original manifest SHA-256</th></tr></thead><tbody>" +
+            "".join(items) + "</tbody></table></section>"
+        )
     preview_command = (
         "lightup lab-assess --targets-file ./targets.txt" +
         (" --catalog-file ./studio-catalog.json --scenario-id " +
@@ -172,6 +194,7 @@ do not send it to recipients without independent human confidentiality review.</
 </header><section><h2>Proposed endpoints</h2><table>
 <thead><tr><th>Local slot</th><th>Private lab URL</th></tr></thead>
 <tbody>__ROWS__</tbody></table></section>
+__SOURCE_SECTION__
 <section><h2>Optional operator preview — never run by this packet</h2>
 <pre>__COMMAND__</pre>
 __STUDIO_BLOCK__
@@ -187,6 +210,7 @@ does not mean remediated. Never share this packet as a client security report.</
 </section></body></html>""".replace("__COUNT__", str(len(endpoints)))
         .replace("__ROWS__", rows).replace("__DIGEST__", digest)
         .replace("__STUDIO_BLOCK__", studio_html)
+        .replace("__SOURCE_SECTION__", source_html)
         .replace("__COMMAND__", escape(preview_command, quote=True)))
     start = document.index("<style>") + len("<style>")
     end = document.index("</style>", start)
@@ -198,7 +222,15 @@ does not mean remediated. Never share this packet as a client security report.</
 
 def build(endpoints: tuple[str, ...], output_dir: str,
           studio: dict | None = None, studio_raw: bytes | None = None,
-          human_handoff_note: str | None = None) -> Path:
+          human_handoff_note: str | None = None,
+          source_segments: tuple[tuple[int, str], ...] | None = None) -> Path:
+    if source_segments is not None:
+        if (not 2 <= len(source_segments) <= 12 or
+                any(type(size) is not int or size < 1 or type(digest) is not str
+                    or len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest)
+                    for size, digest in source_segments)
+                or sum(size for size, _ in source_segments) != len(endpoints)):
+            raise Hold("invalid original source segment references")
     target = Path(output_dir)
     if target.name in ("", ".", "..") or not target.parent.is_dir():
         raise Hold("invalid output parent")
@@ -228,7 +260,7 @@ def build(endpoints: tuple[str, ...], output_dir: str,
         }
         artifacts = (
             ("targets.txt", manifest),
-            ("private-launchpad.html", _html(endpoints, digest, studio)),
+            ("private-launchpad.html", _html(endpoints, digest, studio, source_segments)),
             ("START-HERE.txt", (
                 "LIGHTUP / OFFLINE HUMAN LAB LAUNCHPAD / DRAFT-HOLD\n\n"
                 "Open private-launchpad.html locally. Keep entire directory owner-private.\n"
