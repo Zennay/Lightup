@@ -1003,3 +1003,40 @@ consent or an authorized decision. The native original source-bound importer
 still independently performs all strict admission and creates HOLD-only
 PRIVATE returns. The published v23 browser + software ZIP has been refreshed
 with these source-only improvements; no PRIVATE input is bundled.
+
+## Multi-version original HUMAN focus review history · source-only v24
+
+[portfolio_focus_history.py](portfolio_focus_history.py) now completes the
+offline assessment-human follow-up lifecycle. After at least two distinct
+PRIVATE HUMAN return packets have been produced by the original strict native
+`portfolio_focus_review.py`, choose their original JSONs in **explicit HUMAN
+review order**, together with the identical original owner-only portfolio and
+meeting source:
+
+    python3 assessment-workspace-ledger/portfolio_focus_history.py \
+      --portfolio /private/source/PRIVATE-HUMAN-portfolio.json \
+      --meeting /private/meeting/PRIVATE-HUMAN-meeting.json \
+      --return /private/review1/PRIVATE-HUMAN-review-return.json \
+      --return /private/review2/PRIVATE-HUMAN-review-return.json \
+      --private-parent /private/owner-only
+
+The 2–8 revision PRIVATE history strictly re-admits every previous source
+file, requiring original canonical portfolio + full original meeting contents,
+each return's exact portfolio/meeting SHA-256, exact review source row
+population/order, false authority flags, original kit identities and bounded
+private HUMAN notes. Duplicate return bytes, changed source selection or a
+different meeting reject the **entire history** before any new output.
+
+New owner-only 0700/0600 artifacts: original source-minimal HTML version
+timeline without names, hashes or text; detailed scriptless PRIVATE HUMAN
+history HTML; private exact source slot CSV; and canonical source-bound JSON
+of HUMAN proposal differences. Previous-to-next HUMAN stage changes and
+free-note changes are both exposed as HUMAN proposals, with **no claim that
+a security vulnerability was fixed or worsened**. No original client security
+data is reopened, no scan or target activity, no notification, real deadline,
+appointment, authenticated recipient, consent, grant or production release.
+
+Existing interactive console action **31** runs the identical foreground
+history from explicit original files. Software-only bundle v24 adds the native
+module and maintains read support for fixed v16–v23 software inventories.
+No separate QA/regression/testsuites were authored or executed.
