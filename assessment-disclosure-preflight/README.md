@@ -27,6 +27,53 @@ python3 assessment-disclosure-preflight/preflight.py \
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
 
+## Standalone-to-native PRIVATE handoff receiving
+
+The original [single-file offline HUMAN desk](./reconcile-standalone.html) now
+contains a **read-only saved handoff receiver**. After loading the exact
+unsigned PRIVATE receipt and both originally submitted HUMAN reviewer files,
+manually restoring or editing all source-bound A/B/HOLD choices and exporting
+the complete current 7-column PRIVATE decision CSV, select an already saved
+complete plaintext native HUMAN CSV or an encrypted `.luhb`, **plus its own
+separate suppressed counts file**. Reopening compares every selected stage,
+question and action to the unchanged current selections and requires the
+complete source-free original counts table, including literal false-authority
+fields, to match. An encrypted `.luhb` must include the exact original PRIVATE
+receipt bytes. A mismatch refuses and keeps the current local HUMAN workroom.
+
+The native `reconcile.py reopen` now also accepts the **actual browser-exported
+files**, which use all-quoted original-format CSV and arbitrary local downloaded
+basenames. It does not require renaming or regenerating a native output just
+to perform the original full source-bound recipient check. Browser counts may
+differ in CSV quoting from native output: native reopening compares the complete
+parsed, fixed field/value table and all original HUMAN rows; the unchanged
+default native files still use byte-for-byte equality.
+
+~~~sh
+# Only on the owner-controlled offline workstation, after storing the exported
+# files and the ORIGINAL source/reviewer/decision inputs with 0600 permissions.
+# The --private-output-dir remains an existing owner-only 0700 directory.
+python3 assessment-disclosure-preflight/reconcile.py reopen \
+  --receipt ./owner/PRIVATE-receipt.json \
+  --a-csv ./owner/original-reviewer-A.csv \
+  --b-csv ./owner/original-reviewer-B.csv \
+  --decisions ./owner/PRIVATE-reconcile-browser-decisions.csv \
+  --encrypt-result \
+  --received-bundle ./owner/PRIVATE-browser-reconciled-human.luhb \
+  --received-counts ./owner/PRIVATE-browser-reconciled-counts.csv \
+  --private-output-dir ./owner/unused-private-receiving-desk
+~~~
+
+This step reads original files but does not create new outputs, run a scanner,
+interpret finding validity, authenticate the sender, grant consent, approve a
+recipient or release anything. Exit 2 remains **REVIEW_ONLY**, exit 3 **HOLD**.
+It is not a browser crypto security audit or an independent proof of original
+client authority. The old existing software ZIP is **stale** relative to the
+latest source and standalone browser HTML; install from the current held PR
+source only in a trusted PRIVATE lab, or build a *fresh* software-only ZIP with
+the original builder after authorized infrastructure capacity returns. Do not
+describe the tracked old ZIP as the current product release.
+
 ## Read-only complete HUMAN handoff reopening
 
 `reconcile.py reopen` is a **new independent receiving operation** for an
