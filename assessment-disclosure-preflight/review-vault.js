@@ -66,7 +66,7 @@
        additionalData:header,tagLength:128},key,packed.subarray(HEADER)));
     try {
       requireValid(clear.length > 0 && clear.length <= MAX_CSV);
-      return new TextDecoder("utf-8",{fatal:true}).decode(clear);
+      return new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(clear);
     } finally { clear.fill(0); }
   }
   const BUNDLE_MAGIC = new Uint8Array([76,85,72,66,80,48,48,49]); // LUHBP001
@@ -131,7 +131,7 @@
                    notesLen > 0 && notesLen <= MAX_CSV &&
                    plain.byteLength === CONTENT_HEADER + receiptLen + notesLen);
       const receipt = plain.slice(CONTENT_HEADER, CONTENT_HEADER + receiptLen).buffer;
-      const csv = new TextDecoder("utf-8", {fatal:true}).decode(
+      const csv = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(
         plain.subarray(CONTENT_HEADER + receiptLen));
       return {receipt, csv};
     } finally { plain.fill(0); }
