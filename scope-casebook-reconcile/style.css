@@ -21,3 +21,5 @@ button:hover{background:#b3d5ff}button:disabled{cursor:not-allowed;opacity:.46}
 table{border-collapse:collapse;width:100%;font-size:.9rem}td,th{text-align:left;padding:12px;border-bottom:1px solid #3a4b64;overflow-wrap:anywhere;vertical-align:middle}thead th{color:#90b3e3}tbody th{color:#fff}
 td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{padding-top:0;padding-bottom:55px}
 @media(max-width:750px){.grid{grid-template-columns:1fr}section{padding:18px}.case{overflow-x:auto}table{min-width:610px}.mark span{display:inline-block;margin:9px 0}}
+
+[hidden]{display:none!important}

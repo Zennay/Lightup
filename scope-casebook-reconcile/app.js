@@ -13,6 +13,15 @@ const sha=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA
   n=>n.toString(16).padStart(2,"0")).join("");
 const originalNames=name=>/^casebook-(?:0[1-9]|1[0-2])\.json$/.test(name);
 const defaultHuman=["unreviewed","unassigned","none"];
+const humanOptions=[
+ ["unreviewed","investigating","awaiting-owner","documented"],
+ ["unassigned","original-scope-owner","client-clarification", "independent-security-review","operator-followup"],
+ ["none","missing-source","missing-owner","needs-independent-consent", "requires-revocation-review","unresolved-tenant-lineage"]
+];
+const customChoice=(v,j)=>typeof v==="string"&&v.startsWith("custom:")&&
+ humanOptions[j].includes(v.slice(7));
+const resolved=(v,j)=>["A","B","reset"].includes(v)||customChoice(v,j);
+
 const flags=["source_authenticated","client_consent_verified","operator_consent_verified",
  "authorization_granted","execution_allowed","release_approved"];
 function b64(bytes) {
@@ -159,7 +168,7 @@ function tally(){
  let unresolved=0,changed=0;
  work.a.rows.forEach((r,i)=>{
   if(r.slice(3).some((v,j)=>v!==work.b.rows[i][j+3]))changed++;
-  r.slice(3).forEach((v,j)=>{if(v!==work.b.rows[i][j+3]&&!work.choices[i][j])unresolved++;});
+  r.slice(3).forEach((v,j)=>{if(v!==work.b.rows[i][j+3]&&!resolved(work.choices[i][j],j))unresolved++;});
  });
  $("summary").textContent=work.cases.length+" brondossiers · "+changed+
   " met HUMAN-verschil · "+unresolved+" onbesliste velden. De bron blijft ongeverifieerd.";
@@ -192,12 +201,28 @@ function show(){
    else{
     const select=document.createElement("select");select.setAttribute("aria-label",label+" voor "+c.id);
     [["","HOLD — beslis"],["A","Kies A: "+ra[j+3]],["B","Kies B: "+rb[j+3]],
-     ["reset","Heropen HUMAN: "+defaultHuman[j]]].forEach(([v,s])=>{
+     ["reset","Heropen HUMAN: "+defaultHuman[j]],
+     ["custom","Andere toegestane HUMAN-waarde…"]].forEach(([v,s])=>{
       const option=node("option",s);option.value=v;select.append(option);
      });
-    select.value=work.choices[i][j];
-    select.addEventListener("change",()=>{work.choices[i][j]=select.value;tally();});
-    td.append(select);
+    const saved=work.choices[i][j];
+    select.value=saved.startsWith("custom:")?"custom":saved;
+    const extra=document.createElement("select");
+    extra.setAttribute("aria-label","Nieuwe canonieke HUMAN-waarde "+label+" voor "+c.id);
+    const prompt=node("option","Kies nieuwe HUMAN-waarde");prompt.value="";extra.append(prompt);
+    humanOptions[j].forEach(v=>{const o=node("option",v);o.value=v;extra.append(o);});
+    extra.value=customChoice(saved,j)?saved.slice(7):"";
+    extra.hidden=select.value!=="custom";
+    extra.addEventListener("change",()=>{
+      work.choices[i][j]="custom:"+extra.value;tally();
+    });
+    select.addEventListener("change",()=>{
+      extra.hidden=select.value!=="custom";
+      extra.value="";
+      work.choices[i][j]=select.value==="custom"?"custom:":select.value;
+      tally();
+    });
+    td.append(select,extra);
    }
    row.append(td);body.append(row);
   });
@@ -216,6 +241,7 @@ async function publish(){
    else if(choice==="A")row.push(ra[j+3]);
    else if(choice==="B")row.push(rb[j+3]);
    else if(choice==="reset")row.push(defaultHuman[j]);
+   else if(customChoice(choice,j))row.push(choice.slice(7));
    else deny("HOLD: nog onbesliste HUMAN-keuzes.");
   }
   return row;
@@ -288,7 +314,7 @@ $("conflicts").addEventListener("change",show);
 function anonymousReport(){
  if(!work||$("publish").disabled)deny("HOLD: los eerst alle HUMAN-verschillen op.");
  const c={cases:work.cases.length,conflicting_cases:0,changed_fields:0,
-   selected_a:0,selected_b:0,reopened:0,identical:0};
+   selected_a:0,selected_b:0,reopened:0,custom_human:0,identical:0};
  work.a.rows.forEach((row,i)=>{
   let different=false;
   for(let j=0;j<3;j++){
@@ -298,6 +324,7 @@ function anonymousReport(){
    if(selected==="A")c.selected_a++;
    else if(selected==="B")c.selected_b++;
    else if(selected==="reset")c.reopened++;
+   else if(customChoice(selected,j))c.custom_human++;
    else deny("HOLD: onbesliste HUMAN-keuze in rapport.");
   }
   if(different)c.conflicting_cases++;
@@ -337,7 +364,7 @@ window.LightUpCasebookDraftAPI=Object.freeze({
    return r.map((v,j)=>{
     const same=work.a.rows[i][j+3]===work.b.rows[i][j+3];
     if(same&&v!=="same")deny("HOLD: bronidentiek HUMAN-veld mag niet worden herzien.");
-    if(!same&&!["","A","B","reset"].includes(v))
+    if(!same&&!["","custom:","A","B","reset"].includes(v)&&!customChoice(v,j))
      deny("HOLD: niet-canonieke HUMAN-conflictbeslissing.");
     return v;
    });
