@@ -111,6 +111,58 @@ button.addEventListener('click', () => {
     notice.textContent = 'HOLD: fix invalid PRIVATE note/categories; no file was exported.';
   }
 });
+const draftFile = document.getElementById('resume');
+draftFile.addEventListener('change', async () => {
+  const selected = draftFile.files && draftFile.files[0];
+  if (!selected) return;
+  try {
+    if (selected.size < 80 || selected.size > 65536) throw new Error('size');
+    // Fatal UTF-8 avoids silent changed original source identities.
+    const content = new TextDecoder('utf-8', {fatal:true})
+      .decode(await selected.arrayBuffer());
+    const lines = content.split('\\r\\n');
+    if (lines.at(-1) !== '' || lines.length !== sources.length + 2) throw new Error('roster');
+    const header = 'source_ordinal,source_sha256_unsigned,review_status,privacy_topics,human_followup';
+    if (lines[0] !== header) throw new Error('header');
+    const rowPattern = /^"((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)"$/;
+    const decoded = [];
+    for (let i = 0; i < sources.length; i++) {
+      const match = rowPattern.exec(lines[i + 1]);
+      if (!match) throw new Error('format');
+      const [ordinal,digest,status,topicText,note] = match.slice(1)
+        .map(x => x.replaceAll('""', '"'));
+      const original = sources[i];
+      const category = topicText.split('|');
+      if (ordinal !== String(original.ordinal) || digest !== original.digest ||
+          !states.includes(status) || category.length === 0 ||
+          category.some(x => !topics.includes(x)) ||
+          topics.filter(x => category.includes(x)).join('|') !== topicText ||
+          (category.includes('UNKNOWN') && category.length !== 1) ||
+          note.length > 300 || banned(note) || /[\\r\\n]/.test(note))
+        throw new Error('source');
+      decoded.push({status,category,note});
+    }
+    if (!window.confirm('Restore all ' + sources.length +
+      ' HUMAN draft choices only? This is not a clearance or authorization.')) {
+      notice.textContent = 'Cancelled: existing HUMAN choices left unchanged.';
+      return;
+    }
+    // Apply only after complete exact-source and complete-row admission.
+    sources.forEach((source,i) => {
+      const target = stage.get(source.ordinal);
+      target.status.value = decoded[i].status;
+      target.note.value = decoded[i].note;
+      for (const [name, box] of target.checks)
+        box.checked = decoded[i].category.includes(name);
+    });
+    sync();
+    notice.textContent = 'Complete original-bound LOCAL HUMAN draft restored; native finalize still required.';
+  } catch (_) {
+    notice.textContent = 'HOLD: incomplete, changed-source or unsupported PRIVATE draft. Current choices untouched.';
+  } finally {
+    draftFile.value = '';
+  }
+});
 window.addEventListener('pagehide', () => {
   for (const item of stage.values()) {
     item.note.value = '';
@@ -151,7 +203,9 @@ native <code>sensitivity-finalize</code> with unchanged original completed HUMAN
 packet and unchanged triage kit. Native re-admission is still required.</p></header>
 <main><p id="count"></p><table><thead><tr><th>Original</th><th>HUMAN status</th>
 <th>Possible sensitive categories</th><th>PRIVATE follow-up (max 300)</th></tr></thead>
-<tbody id="rows"></tbody></table><p><button type="button" id="save">Save full PRIVATE HUMAN draft CSV</button></p>
+<tbody id="rows"></tbody></table><p><label for="resume">Resume exact-source previous PRIVATE HUMAN browser CSV</label>
+<input id="resume" type="file" accept=".csv,text/csv" aria-describedby="notice"></p>
+<p><button type="button" id="save">Save full PRIVATE HUMAN draft CSV</button></p>
 <p id="notice" role="status" aria-live="polite"></p></main><footer>
 Incubate M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No scan, release, privacy PASS or grant.</footer>
 <script>""" + javascript + """</script></html>"""
