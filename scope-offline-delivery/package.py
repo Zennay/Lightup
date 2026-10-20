@@ -23,6 +23,9 @@ PRIVACY_FILES = {
   "privacy/disclosure-preflight.html": ("disclosure-preflight.html", "d23b51b73b39c994edbb681e20b7e501bd037be366488870470bfe68ef34bb24"),
   "privacy/disclosure-recipient-verify.html": ("disclosure-recipient-verify.html", "a3b48236e0b297f1a903f2d02ba8fdedf4ea63b03109089a96f116cab1011483"),
 }
+ORIGINAL_ZIP_SHA = "60f9086490ecb00d725ae00da173ee6eb843de9d346d4c39b5f4a51a359703de"
+ORIGINAL_SOURCE_SHA = "dc1aa82f9d335e07e142466b1e144b31f97239af4339b5b56279ee1a28235f63"
+ORIGINAL_DIST_SHA = "c8cb4d972d4822939bc542c6b292f72e5e246d772ed32587d3a9ed4fed1f629d"
 STATUS = "INCUBATE_M3_M7_DRAFT_HOLD"
 AUTHORITY = dict.fromkeys(("client_consent", "operator_consent", "grant",
                            "scan", "deploy", "release"), False)
@@ -98,6 +101,9 @@ def no_authority(obj: dict) -> bool:
     return type(a) is dict and set(a) == set(AUTHORITY) and all(a[k] is False for k in AUTHORITY)
 
 def original_admission(workspace: bytes, source: bytes, dist: bytes) -> None:
+    if (digest(workspace) != ORIGINAL_ZIP_SHA or digest(source) != ORIGINAL_SOURCE_SHA
+            or digest(dist) != ORIGINAL_DIST_SHA):
+        raise ValueError("Exact original source-derived artifact pin changed")
     a, b = strict_json(source), strict_json(dist)
     if a.get("format") != "lightup.scope_offline_bundle.v1" or a.get("posture") != STATUS:
         raise ValueError("Original workspace format/posture drift")

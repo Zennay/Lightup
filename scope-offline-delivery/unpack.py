@@ -6,6 +6,7 @@ No grant, network, active assessment, auth, scanner, background service or deplo
 from __future__ import annotations
 
 import argparse
+import ctypes
 import io
 import json
 import os
@@ -16,6 +17,21 @@ import sys
 import tempfile
 import zipfile
 from package import inspect, FILES, PRIVACY_FILES
+
+def publish_directory_no_replace(staged: Path, destination: Path) -> None:
+    # Linux RENAME_NOREPLACE is atomic even if another actor creates the path
+    # after our preflight. Refuse platforms without the primitive.
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise ValueError("Atomic NO_REPLACE folder publication is unavailable")
+    renameat2.argtypes = [ctypes.c_int, ctypes.c_char_p,
+                          ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    renameat2.restype = ctypes.c_int
+    if renameat2(-100, os.fsencode(staged), -100,
+                 os.fsencode(destination), 1) != 0:
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code), str(destination))
 
 MAX_ORIGINAL_MEMBERS = 256
 MAX_UNPACK_BYTES = 16_000_000
@@ -93,7 +109,7 @@ def publish(archive: Path, destination: Path) -> dict:
                 if destination.exists() or destination.is_symlink():
                     raise ValueError("Destination appeared concurrently; no overwrite")
                 # Parent is operator-owned, private and non-symlinked.
-                os.rename(stage, destination)
+                publish_directory_no_replace(stage, destination)
             finally:
                 if stage.exists():
                     shutil.rmtree(stage)
