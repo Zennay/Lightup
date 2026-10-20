@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import html
 import io
+import os
 import sys
 
 from human_review import (
@@ -206,9 +207,43 @@ into HUMAN free-text by a reviewer. Keep the entire document owner-PRIVATE.</p>
 """
 
 
+
+def reopen_published(args: argparse.Namespace, original_bytes: bytes, digest: str,
+                     originals: list[dict], a_sha: str, a: list[dict],
+                     b_sha: str, b: list[dict]) -> None:
+    """Re-admit complete native HUMAN handoff against unchanged private sources.
+
+    Reopening is read-only: it does not promote a HUMAN decision to approval.
+    Plaintext final files must match native byte-for-byte reconstruction;
+    ciphertext must decrypt to the same native receipt and HUMAN CSV.
+    """
+    decisions = read_decisions(args.decisions, digest, originals, a_sha, b_sha)
+    expected_csv, final_rows = resulting_csv(digest, originals, a, b, decisions)
+    expected_counts = human_counts(final_rows, args.minimum_cohort)
+    expected = [(COUNTS, expected_counts)]
+    if args.encrypt_result:
+        try:
+            from vault_native import VaultHold, decrypt_bundle
+            received_receipt, received_human_csv = decrypt_bundle(
+                os.path.join(args.private_output_dir, SEALED_RESULT))
+        except (ImportError, VaultHold):
+            raise Hold("HOLD: encrypted PRIVATE HUMAN handoff cannot be reopened") from None
+        require(hmac.compare_digest(original_bytes, received_receipt) and
+                hmac.compare_digest(expected_csv.encode("utf-8"), received_human_csv))
+    else:
+        expected.extend((
+            (RECONCILED, expected_csv),
+            (OUTCOME, comparison_html(originals, a, b, decisions)),
+        ))
+    for name, content in expected:
+        received = source_bytes(os.path.join(args.private_output_dir, name))
+        require(hmac.compare_digest(received, content.encode("utf-8")))
+
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="PRIVATE HUMAN two-reviewer desk; never release authority")
-    parser.add_argument("action", choices=("prepare", "decide", "finalize"))
+    parser.add_argument("action", choices=("prepare", "decide", "finalize", "reopen"))
     parser.add_argument("--receipt", required=True, help="exact original unsigned PRIVATE receipt")
     parser.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
     for role in ("a", "b"):
@@ -218,15 +253,19 @@ def main(argv: list[str] | None = None) -> int:
         group.add_argument("--" + role + "-bundle", help="encrypted receipt + HUMAN bundle .luhb")
     parser.add_argument("--decisions", help="human-edited exact receipt + reviewer-bound decision CSV")
     parser.add_argument("--encrypt-result", action="store_true",
-                        help="finalize only: save encrypted original receipt + chosen HUMAN CSV; no plaintext report")
+                        help="finalize or reopen: encrypted original receipt + chosen HUMAN CSV, without plaintext output")
     parser.add_argument("--minimum-cohort", type=int, default=5,
                         help="privacy floor 5-12 for separate source-free aggregate HUMAN counts")
     args = parser.parse_args(argv)
     try:
         require((args.action in ("prepare", "decide") and args.decisions is None) or
-                (args.action == "finalize" and args.decisions is not None))
-        require(not args.encrypt_result or args.action == "finalize")
+                (args.action in ("finalize", "reopen") and args.decisions is not None))
+        require(not args.encrypt_result or args.action in ("finalize", "reopen"))
         original_bytes, digest, originals, a_sha, a, b_sha, b = load_context(args)
+        if args.action == "reopen":
+            reopen_published(args, original_bytes, digest, originals, a_sha, a, b_sha, b)
+            print("REVIEW_ONLY: complete original PRIVATE HUMAN handoff re-admitted; NOT approval")
+            return 2
         if args.action == "decide":
             publish(args.private_output_dir, INTERACTIVE_DECISIONS,
                     interactive_decisions(digest, originals, a_sha, a, b_sha, b))
