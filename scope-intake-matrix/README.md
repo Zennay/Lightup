@@ -4,7 +4,7 @@ A complete, private, networkless operator workroom for proposing assessment boun
 
 ## Open
 
-Save both files into the same local folder and open index.html in a modern desktop browser. The page loads no external resources and does not call endpoints, create grants, scan, evaluate findings, open a provider, or store records in localStorage/cookies/IndexedDB. The HTML uses a strict no-network CSP and a local script. If a browser blocks sibling-file scripts under file:// CSP, a future generated one-file standalone can be used instead. No server is needed. Do not enter secrets, API keys, customer login details or active-target credentials.
+Save both files into the same local folder and open index.html in a modern desktop browser. The page loads no external resources and does not call endpoints, create grants, scan, evaluate findings, open a provider, or store records in localStorage/cookies/IndexedDB. The HTML uses a strict no-network CSP and a local script. Prefer standalone.html, a self-contained, one-file offline app with SHA-256 CSP-pinned production JavaScript. Rebuild after source changes with python3 scope-intake-matrix/build_standalone.py. No server is needed. Do not enter secrets, API keys, customer login details or active-target credentials.
 
 ## Product flow
 
@@ -13,8 +13,9 @@ Save both files into the same local folder and open index.html in a modern deskt
 3. Inspect live completeness warnings. Export a PRIVATE plain JSON proposal only once schema, uniqueness, date, string and exclusion-capability checks pass. Export requires a separate local privacy acknowledgement. All five authority booleans are literally false.
 4. Later open the exact app-generated private JSON locally. The imported file must be <=64 KiB, strictly canonical JSON, exact schema and key order with no duplicate keys, all required fields and bounded nested records. Malformed or altered imports fail atomically without replacing the in-memory draft.
 5. Compare the current draft against a separately opened older valid app-generated draft: explicit added, removed and field-changed literal proposals. These are not approved scope changes or proved revocations.
-6. Optionally export a separate aggregate-only counts file (with a human acknowledgement for possible small-cohort disclosure) or print a PRIVATE human brief. The aggregate omits client/asset labels and free text.
-7. Clear the page's in-memory draft explicitly. Reloading also discards unsaved data. The page never automatically saves or sends it.
+6. A built-in HUMAN follow-up agenda derives a private task list from requested capabilities, ownership proof gaps, exclusions, blockers, questions and risk. An additional SCRIPTLESS PRIVATE HTML download is source-escaped, CSP-protected and capped at 64 KiB; human approval remains external.
+7. Optionally export a separate aggregate-only counts file (with a human acknowledgement for possible small-cohort disclosure) or print a PRIVATE human brief. The aggregate omits client/asset labels and free text.
+8. Clear the page's in-memory draft explicitly. Reloading also discards unsaved data. The page never automatically saves or sends it.
 
 ## Trust boundary
 
