@@ -28,7 +28,7 @@ def require(condition: bool, message: str) -> None:
     reply.require(condition, message)
 
 def compile_workroom(handoff: Path, received: list[Path],
-                     destination: Path) -> None:
+                     destination: Path, continuation: Path | None = None) -> None:
     require(handoff.is_absolute() and
             2 <= len(received) <= 8 and len(set(received)) == len(received)
             and all(x.is_absolute() for x in received) and
@@ -39,7 +39,12 @@ def compile_workroom(handoff: Path, received: list[Path],
             and handoff != destination and handoff.parent != destination
             and all(x != destination and x.parent != destination for x in received),
             "Coordinated HUMAN workroom needs separate new absolute PRIVATE directory")
-    for path in [handoff, *received]:
+    if continuation is not None:
+        require(continuation.is_absolute() and
+                continuation not in [handoff, *received] and
+                continuation != destination and continuation.parent != destination,
+                "Continuing HUMAN decision must use a distinct original encrypted .luhr")
+    for path in [handoff, *received, *([continuation] if continuation else [])]:
         require(destination not in path.parents and path not in destination.parents,
                 "Original encrypted HUMAN input/output locations must not overlap")
 
@@ -67,15 +72,26 @@ def compile_workroom(handoff: Path, received: list[Path],
                 "question": item["question"],
             })
 
-    # Deliberately start each coordinator decision at the *original*
-    # self-declared HUMAN received stage with NO answer/question. Imported
-    # replies may not silently become the coordinator's own statements.
-    page = reply.editable_page(original, source_key, comparisons=joined)
+    # New coordination starts with ZERO inherited respondent statements.
+    # Resuming can load only an explicitly selected, independently decrypted,
+    # exact-original-bound previously saved coordinator .luhr from the user.
+    previous = None
+    saved_continuation = None
+    if continuation is not None:
+        previous, exact = reply.admitted_reply(continuation, original, source_key)
+        # Do not allow a previous responder file to masquerade as a separately
+        # authored previous coordinator state.
+        require(hashlib.sha256(exact).digest() not in seen,
+                "Previous coordinator .luhr may not be one of the earlier reply files")
+        saved_continuation = (continuation, exact)
+    page = reply.editable_page(original, source_key, previous=previous,
+                               comparisons=joined)
     require(len(page) <= 2_800_000,
             "Selected original private HUMAN response comparison exceeds browser bound")
+    all_previous = [*saved_sources, *([saved_continuation] if saved_continuation else [])]
     require(reply.encrypted_cockpit.private_envelope(handoff) == source_bytes
             and all(reply.schedule_vault.private_vault(p) == original_bytes
-                    for p, original_bytes in saved_sources),
+                    for p, original_bytes in all_previous),
             "Original PRIVATE HUMAN sources changed during coordinated workroom preparation")
 
     receipt = reply.schedule.canonical({
@@ -90,9 +106,11 @@ def compile_workroom(handoff: Path, received: list[Path],
         "original_selected_human_tasks": len(original["items"]),
         "submitted_encrypted_reply_file_slots": len(received),
         "coordinator_statements_autofilled": False,
+        "prior_coordinator_encrypted_state_explicitly_reopened": continuation is not None,
         "warning": WARNING,
     })
-    reply.exclusive_output(destination, [handoff, *received], {
+    reply.exclusive_output(destination,
+                           [handoff, *received, *([continuation] if continuation else [])], {
         "index.html": page,
         "anonymous-counts.json": receipt,
         "README.txt": (
@@ -100,9 +118,11 @@ def compile_workroom(handoff: Path, received: list[Path],
             "self-declared HUMAN answer and request text and is PRIVATE. "
             "Original source hashes/case identifiers absent from the redacted "
             "handoff remain unknown, not authenticated. Earlier replies are "
-            "DISPLAY ONLY. The coordinator must separately type their new "
-            "HUMAN stage/answer/question and deliberately save a NEW encrypted "
-            ".luhr in the browser. This .luhr intentionally excludes prior "
+            "DISPLAY ONLY. New coordination starts with blank HUMAN response; "
+            "when --continuation was explicitly selected the previously saved "
+            "encrypted own HUMAN answer is decrypted and loaded for editing. "
+            "Always deliberately save a NEW encrypted .luhr in the browser. "
+            "This .luhr intentionally excludes prior "
             "respondents' answers/owner notes/identifying metadata, and can "
             "be admitted by original native reply.py open/resume and "
             "reconcile.py without any schema change.\n"
@@ -110,7 +130,8 @@ def compile_workroom(handoff: Path, received: list[Path],
     })
     print("REVIEW_ONLY: PRIVATE HUMAN coordinator:", destination / "index.html")
     print("Original admitted reply file slots:", len(received))
-    print("Coordinated HUMAN statements start blank, not automatically agreed/fixed.")
+    print("Earlier reviewer statements never automatically become the coordinator decision.")
+    print("Explicit prior own encrypted response resumed:", continuation is not None)
     print("No verified reviewer identity, independent consent, scan or grant.")
 
 def main() -> int:
@@ -119,11 +140,15 @@ def main() -> int:
                      help="Same originally selected encrypted source-redacted HUMAN .luhq")
     cmd.add_argument("--reply", type=Path, action="append", required=True,
                      help="Different prior encrypted HUMAN .luhr; select 2–8")
+    cmd.add_argument("--continuation", type=Path,
+                     help="Optional DIFFERENT previously encrypted HUMAN coordinator .luhr "
+                          "to resume; native full original-bound admission and password")
     cmd.add_argument("--output-dir", type=Path, required=True,
                      help="Fresh owner-private absolute HUMAN coordination folder")
     args = cmd.parse_args()
     try:
-        compile_workroom(args.handoff, args.reply, args.output_dir)
+        compile_workroom(args.handoff, args.reply, args.output_dir,
+                         continuation=args.continuation)
         return 2
     except (reply.single_review.review.Hold, OSError, ValueError,
             TypeError, KeyError, ImportError, RuntimeError,
