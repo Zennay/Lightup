@@ -222,3 +222,40 @@ checkbox selections. Even a matching plan requires a separate HUMAN
 confirmation. It restores only the selected UI checkboxes, not original
 evidence, external approval, real recipient identity, authorization or
 revocation status. This is entirely in-memory/offline; no upload or storage.
+
+## Source-exact PRIVATE HUMAN revision change report
+
+After completing one original HUMAN packet, reopening it through the existing
+native `revision.py` command, editing its local HUMAN CSV, and independently
+**finalizing** that direct child revision, the native CLI can now produce an
+operator-readable review of HUMAN changes between exactly those two packets:
+
+~~~sh
+python3 private-assessment-notes/notes.py changes \
+  --earlier /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<parent-id> \
+  --later /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<direct-revision-id> \
+  --private-parent /private/operator-lightup-work
+~~~
+
+The CLI reopens **both** completed 0700/0600 original HUMAN packets, re-admits
+the original redacted source bytes, manifest, every HUMAN CSV row and exact
+original source identities. The newer packet must be an actual **direct
+native revision**, with the previous exact original manifest and HUMAN CSV
+unsigned SHA lineage and precisely one additional revision level. An unrelated
+packet, modified original data, fabricated authority flag or missing/extra
+source will HOLD **before** a report is created.
+
+A fresh owner-only PRIVATE report directory contains an accessible scriptless
+`OPEN-PRIVATE.html`, source-minimal `PRIVATE-HUMAN-changes.csv` and a
+PRIVATE unsigned SHA-bound `PRIVATE-HUMAN-changes.json`. It shows exactly
+which original *positions* had a HUMAN stage change and/or HUMAN note changed,
+with the earlier/later stage names. Neither original unmasked content, masked
+text, nor free-text HUMAN notes appear in any of these change outputs.
+Unchanged original rows are counted, not disseminated. HUMAN note changes are
+shown only as boolean `private_note_changed` values, never the note itself.
+
+An unsigned local lineage digest does **not** verify the real human reviewer,
+privacy clearance, client consent, remediation, absence of findings, or security
+risk. This is only a PRIVATE HUMAN recommendation history. The command
+deliberately exits HOLD (3), including after writing a valid private
+history; it performs no scan, network, grant, communication or deployment.
