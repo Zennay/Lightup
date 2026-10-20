@@ -79,10 +79,20 @@ def read_owner_csv(name: str) -> bytes:
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     try:
         a = os.fstat(fd)
+        # The original lstat and the opened descriptor must identify the
+        # SAME original 0600 one-link regular file; mode/owner cannot change
+        # to a public or swapped file in the admission gap.
+        if (not stat.S_ISREG(a.st_mode) or a.st_uid != os.geteuid()
+                or stat.S_IMODE(a.st_mode) & 0o077 or a.st_nlink != 1
+                or not 0 < a.st_size <= MAX_CSV
+                or (before.st_dev, before.st_ino) != (a.st_dev, a.st_ino)):
+            raise privacy.Hold("opened HUMAN CSV is not the original owner-private file")
         raw = os.read(fd, MAX_CSV + 1)
         b = os.fstat(fd)
-        if (a.st_dev, a.st_ino, a.st_size, a.st_mtime_ns) != (
-                b.st_dev, b.st_ino, b.st_size, b.st_mtime_ns) or len(raw) != a.st_size:
+        if ((a.st_dev, a.st_ino, a.st_size, a.st_mtime_ns, a.st_mode, a.st_uid,
+             a.st_nlink) !=
+            (b.st_dev, b.st_ino, b.st_size, b.st_mtime_ns, b.st_mode, b.st_uid,
+             b.st_nlink) or len(raw) != a.st_size):
             raise privacy.Hold("HUMAN CSV changed during PRIVATE read")
     finally:
         os.close(fd)

@@ -45,7 +45,11 @@ def categorize(item: dict, today: date) -> str:
     stage = item["human_stage"]
     if stage in ("HOLD", "NEEDS_INPUT"):
         return "HOLD"
-    if stage != "UNASSESSED" and item["local_state"] != "LOCAL_PAGE_PRESENT_REVIEW_ONLY":
+    if (item["local_state"] == "HOLD_PAGE_UNAVAILABLE"
+            or (stage != "UNASSESSED" and
+                item["local_state"] != "LOCAL_PAGE_PRESENT_REVIEW_ONLY")):
+        # A previously referenced but now unavailable original workroom
+        # deserves attention EVEN when no HUMAN status was assigned yet.
         return "MISSING_ORIGINAL"
     due = date.fromisoformat(item["followup_date"]) if item["followup_date"] else None
     if due is not None and due < today:

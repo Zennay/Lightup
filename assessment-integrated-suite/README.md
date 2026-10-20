@@ -221,6 +221,23 @@ No calendar appointment, reviewer identity, source integrity, scope
 approval, security verdict, notification, scan, grant, target, retest,
 deletion or external distribution is created.
 
+## Native PRIVATE HUMAN source integrity and missing-original handling
+
+The original strict local CSV reader now rechecks the **opened descriptor**
+against the original owner-only 0600 `lstat`: device/inode, owner UID,
+regular-file mode, single link, size and after-read metadata must still
+match before accepting HUMAN rows. If the original CSV was swapped,
+re-permissioned or otherwise modified in the original open/read window,
+the complete native import fails closed and no HUMAN workpack is published.
+This does not prove external client source identity, but prevents silently
+admitting a different or newly exposed local HUMAN CSV.
+
+The native HUMAN priorities now surface a previously referenced original
+PRIVATE workroom whose page is unavailable as missing **even before**
+any manual HUMAN status was assigned. An entirely never-prepared workroom
+is still distinguished from a previously referenced missing workroom.
+Human-declared HOLD/NEEDS INPUT remains the highest triage category.
+
 ## NEW: integrated PRIVATE HUMAN Assessment Workpack (option 48)
 
 The **original native console option 48** combines previously separated
