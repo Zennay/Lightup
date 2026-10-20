@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+hjJ2PN1xs67gZIn1XvRb85wnVCGTCPnfVvqsbtX9Rs=' 'sha256-7RXN0GbOa9eA7uqe91ugbLe5JTORA8ZSNQG0mewKHnU='; style-src 'sha256-AGLR2P3Rpp1kodN3I0OATal4UlrSMVp80NHK8liFp7s='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+zcrLE6TdMjsa9B1oY/DkkK38iFqyKw8K1jONPwD9bc=' 'sha256-7RXN0GbOa9eA7uqe91ugbLe5JTORA8ZSNQG0mewKHnU='; style-src 'sha256-AGLR2P3Rpp1kodN3I0OATal4UlrSMVp80NHK8liFp7s='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | PRIVATE Assessment Retention Desk</title>
 <style>:root { color-scheme:dark; font: 16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0a1220; color:#f1f6fc; }
 * { box-sizing:border-box }
@@ -133,6 +133,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
 <label for="compare" class="filelabel secondary">Vergelijk ander privéplan (geen overname)</label><input id="compare" type="file" accept=".json,application/json">
 <button id="export-plan" class="secondary" type="button">Onversleuteld PRIVATE JSON exporteren (expliciet)</button>
 <button id="export-counts" class="secondary" type="button">Alleen statusaantallen (.csv)</button>
+<button id="export-calendar" class="secondary" type="button">PRIVATE voorgestelde reviewdatums (.ics)</button>
 <button id="print" class="secondary" type="button">Privé-overzicht afdrukken</button>
 </div>
 <div id="source-drift" class="drift" aria-live="polite">Bronvergelijking is optioneel: selecteer eerst huidige originele bronnen, daarna een eerder privéplan. Ontbrekende bron = onbekend, nooit opgelost/verwijderd.</div>
@@ -498,6 +499,42 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
   function resetDrift() {
     $("source-drift").textContent = "Geen actuele bronvergelijking. Verschillen geven nooit een herstel-, intrekkings- of wisclaim.";
   }
+  function exportHumanCalendar() {
+    if (processing || !entries.length) return status("Selecteer eerst originele PRIVÉ-bronnen.", true);
+    const dayCounts = new Map();
+    for (const item of entries) {
+      if (!item.review_date) continue;
+      if (!validDate(item.review_date)) return status("HOLD: ongeldige menselijke reviewdatum.", true);
+      dayCounts.set(item.review_date, (dayCounts.get(item.review_date) || 0) + 1);
+    }
+    if (!dayCounts.size) return status("Voeg eerst minstens één voorlopige HUMAN-reviewdatum toe.", true);
+    if (!globalThis.crypto?.getRandomValues) return status("Beveiligde willekeur is hier niet beschikbaar; geen kalender gegenereerd.", true);
+    if (!window.confirm("Maak een PRIVÉ agenda met uitsluitend voorgestelde datums en aantallen? Kalenders kunnen automatisch naar cloudaccounts synchroniseren; bij kleine groepen kunnen datums indirect gevoelig zijn. Dit is GEEN echt retention-/consentbesluit. Doorgaan?"))
+      return status("PRIVATE agenda-export geannuleerd; geen externe kalender bijgewerkt.");
+    const stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");
+    const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp PRIVATE HUMAN Review//NL",
+      "CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+    for (const [day,count] of [...dayCounts].sort(([a],[b])=>a.localeCompare(b))) {
+      const d = new Date(day + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate()+1);
+      const following = d.toISOString().slice(0,10).replaceAll("-","");
+      const entropy = new Uint8Array(16);
+      crypto.getRandomValues(entropy);
+      lines.push("BEGIN:VEVENT",
+        "UID:"+bytesToHex(entropy)+"@lightup.local.invalid",
+        "DTSTAMP:"+stamp,
+        "DTSTART;VALUE=DATE:"+day.replaceAll("-",""),
+        "DTEND;VALUE=DATE:"+following,
+        "SUMMARY:LightUp PRIVATE "+count+" HUMAN reviewvoorstel"+(count===1?"":"len"),
+        "DESCRIPTION:PRIVATE tentative HUMAN work only. No approval or deletion.",
+        "CLASS:PRIVATE","STATUS:TENTATIVE","TRANSP:TRANSPARENT",
+        "END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download("lightup-private-human-provisional-reviews.ics","text/calendar;charset=utf-8",
+      lines.join("\r\n")+"\r\n");
+    status("PRIVATE voorlopige HUMAN-reviewdatums geëxporteerd. Geen automatische agenda-upload, grant, verwijdering of statuswijziging.");
+  }
   function exportCounts() {
     if (!entries.length || processing) return status("Geen aantallen zonder geselecteerde privébronnen.", true);
     const rows = ["status,count"];
@@ -563,6 +600,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
   $("compare").addEventListener("change", compareReceipt);
   $("export-plan").addEventListener("click", exportReceipt);
   $("export-counts").addEventListener("click", exportCounts);
+  $("export-calendar").addEventListener("click", exportHumanCalendar);
   $("query").addEventListener("input", render);
   $("status-filter").addEventListener("change", render);
   $("due-filter").addEventListener("change", render);
