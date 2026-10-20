@@ -14,6 +14,7 @@ import ledger
 import compare
 import continuity
 import human_revisions
+import package
 from browser_studio import render_studio
 
 TITLE = "LightUp PRIVATE Assessment Workspace · Foreground HUMAN Console"
@@ -26,6 +27,8 @@ MENU = (
     ("6", "Export complete source-free single-file offline HUMAN studio"),
     ("7", "Show PRIVATE session-only action results"),
     ("8", "Review historical HUMAN stage/owner/question changes on unchanged kit bytes"),
+    ("9", "Build a NEW source-only offline software ZIP"),
+    ("10", "Inspect unsigned software ZIP file inventory locally"),
     ("0", "Exit"),
 )
 
@@ -92,6 +95,14 @@ def handle_action(action):
             human=prompt("Native old HUMAN-only.json from finalize"),
             current=prompt("Original current ledger.json from capture --previous"),
             private_parent=private_parent()
+        ))
+    if action == "9":
+        return package.build(argparse.Namespace(
+            output=prompt("Absolute new source-only software ZIP path in owner-private folder")
+        ))
+    if action == "10":
+        return package.inspect(argparse.Namespace(
+            archive=prompt("Absolute existing LightUp source-only software ZIP")
         ))
     if action == "8":
         return human_revisions.run(argparse.Namespace(
