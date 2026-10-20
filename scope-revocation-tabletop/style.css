@@ -57,3 +57,14 @@
 @media(max-width:900px){.drill-controls{grid-template-columns:1fr 1fr}.drill-controls label{grid-column:1/-1}.drill-content{grid-template-columns:1fr}}
 @media(max-width:550px){.drill-deck{padding:16px}.drill-controls{grid-template-columns:1fr}}
 @media print{.drill-deck{background:white;color:black;border:1px solid #aaa}.drill-deck .muted,.drill-question,.drill-result,.drill-result p{color:black}.drill-controls,.drill-choices{display:none}.drill-result{background:white;color:black;border:1px solid #bbb}}
+
+/* Literal exercise-only portfolio matrix. The positive style does not mean release approval. */
+.coverage-board{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.coverage-board h4{font-size:1rem;margin:0 0 7px}.coverage-board p{margin:9px 0 12px}
+.coverage-table{border-collapse:collapse;width:100%;min-width:520px;text-align:left;font-size:.75rem}
+.coverage-table th,.coverage-table td{padding:9px 8px;border-bottom:1px solid #344e63;white-space:nowrap}
+.coverage-table thead th{font-size:.7rem;letter-spacing:.035em;background:#1c3546}
+.matrix-tag{display:inline-block;padding:5px 7px;border-radius:7px;font-weight:740}
+.matrix-illustrative{border:1px solid #598388;color:#d8f0f1;background:#27474f}
+.matrix-attention{border:1px solid #a1784b;color:#ffddac;background:#4b3929}
+@media print{.coverage-table th,.coverage-table td{background:white;color:black;border:1px solid #aaa}.matrix-tag{border:1px solid #777;background:white;color:black}}
