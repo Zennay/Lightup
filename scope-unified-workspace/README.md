@@ -14,6 +14,12 @@ This branch composes eight **existing independently owned** scope-authorization 
 
 The start page makes **zero network requests**, uses **zero JavaScript**, contains its own exact-CSP-hash-pinned CSS, and does not write cookies, IndexedDB or localStorage. Each included standalone retains its original implementation, local privacy notices and operating limits. Imported source data and human notes can be confidential; encrypted files and passwords require independent recipient authentication.
 
+## HUMAN teamopvolging en privé overdrachtsbrief
+
+De offline PRIVATE handoff-werkruimte heeft nu zowel een **HUMAN reviewfasefilter** als een **teamfilter**. Teams (Security, Privacy, Client operations, Platform of nog niet toegewezen) krijgen een lokale aantallenindicatie naast de oorspronkelijke brongebonden bestandsrijen. Escalaties blijven zichtbaar als menselijk opvolgwerk, nooit als geverifieerd risico, echte intrekking, voltooiing of toestemming. Zoeken, filteren en teamwijzigingen verlaten het tabblad niet.
+
+Via **PRIVATE HUMAN team- en escalatiebrief (.md)** kan een gebruiker, na een aparte waarschuwing en bevestiging, een lokaal Markdown-overdrachtsdocument maken. Het groepeert *alle* bewust geselecteerde bestanden per team en binnen het team per HUMAN reviewfase, met originele bestandsnamen, bytes, ongetekende SHA-256, structurele bronhints, handmatig gekozen route en PRIVATE notities. Filters in de interface beperken de export niet stilzwijgend. De originele inhoud wordt niet in het document opgenomen of gewijzigd. Menselijke notities en bestandsnamen kunnen vertrouwelijk zijn: deel alleen via een apart geauthenticeerd passend privé-kanaal. De brief is ongetekend en bevat expliciete letterlijke authority=false aanduidingen en een verplichte echt-bron/consent/revocation/HUMAN GO-waarschuwing; een briefing is **geen** Security PASS, toestemming of testbewijs.
+
 ## Source ownership and pinned input commits
 
 | Original draft PR | Compartment (copied, byte-for-byte from pinned HEAD) | Exact pinned commit |

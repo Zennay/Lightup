@@ -35,6 +35,8 @@
   const sourceCopy = el("private-copy");
   const anonymousCopy = el("counts-copy");
   const stageFilter = el("shelf-stage-filter");
+  const teamFilter = el("shelf-team-filter");
+  const workload = el("shelf-workload");
   const searchFilter = el("shelf-search");
   const driftFile = el("shelf-drift-file");
   const driftStatus = el("shelf-drift-status");
@@ -93,8 +95,12 @@
   function render() {
     rows.replaceChildren();
     summary.textContent = viewSummary();
+    const teamCounts = Object.fromEntries(Object.keys(teams).map(k => [k, 0]));
+    for (const item of items) teamCounts[item.team] += 1;
+    workload.textContent = items.length ? "HUMAN teamlast · " + Object.entries(teamCounts).filter(([,n]) => n).map(([k,n]) => teams[k] + ": " + n).join(" · ") + " · Geen geverifieerde autoriteit" : "Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.";
     for (const item of items) {
       if (stageFilter.value !== "all" && item.stage !== stageFilter.value) continue;
+      if (teamFilter.value !== "all" && item.team !== teamFilter.value) continue;
       if (searchFilter.value.trim() && !item.file.name.normalize("NFC").toLowerCase().includes(searchFilter.value.trim().normalize("NFC").toLowerCase())) continue;
       const tr = document.createElement("tr");
       cell(tr, item.file.name, "file-name");
@@ -134,7 +140,7 @@
         picker.addEventListener("change", () => {
           if (!Object.hasOwn(options, picker.value)) return;
           update(picker.value);
-          summary.textContent = viewSummary();
+          render();
         });
         caption.append(picker);
         triage.append(caption);
@@ -183,6 +189,7 @@
     if (items.length) summary.textContent += " · " + rows.childElementCount + " zichtbaar na lokale filters";
   }
   stageFilter.addEventListener("change", render);
+  teamFilter.addEventListener("change", render);
   searchFilter.addEventListener("input", render);
   input.addEventListener("change", async () => {
     const chosen = Array.from(input.files || []);
@@ -357,6 +364,54 @@
       warning: "Only tentative human routing counts; not original source, authentication, permission or safety evidence."
     });
     report("REVIEW_ONLY — alleen aantallen gedownload, zonder namen, digests of inhoud.");
+  });
+
+  el("shelf-workplan").addEventListener("click", () => {
+    if (!items.length) return report("HOLD — selecteer eerst PRIVATE bronbestanden voor een HUMAN teambrief.");
+    if (!confirm("PRIVATE HUMAN teambrief exporteren met originele bestandsnamen, hashes en mogelijk vertrouwelijke notities? Ontvanger en kanaal moeten afzonderlijk worden geauthenticeerd; dit verleent geen toestemming.")) return;
+    const ordered = ["escalated", "unreviewed", "preparing", "documented"];
+    const lines = [
+      "# LightUp — PRIVATE HUMAN teamoverdracht",
+      "",
+      "REVIEW_ONLY · INCUBATE M3/M7 · DRAFT/HOLD · GEEN SCAN OF TOESTEMMING",
+      "",
+      "Deze ongetekende, lokaal gemaakte brief bevat uitsluitend door een mens gekozen vervolgstappen.",
+      "Bestandsnaam, structurele bronhint en SHA-256 bewijzen geen bronhouder, echte toestemming, intrekking, oplossing of vrijgave.",
+      "AUTHENTICATED=false · CLIENT_CONSENT=false · OPERATOR_CONSENT=false · GRANT=false · SCAN=false · DEPLOY=false · RELEASE=false",
+      "",
+      "## Overzicht",
+      "PRIVATE bronnen: " + items.length,
+      "Escalatie nodig: " + items.filter(e => e.stage === "escalated").length,
+      "Nog niet beoordeeld: " + items.filter(e => e.stage === "unreviewed").length,
+      "Team nog niet toegewezen: " + items.filter(e => e.team === "unassigned").length,
+      "Bronbestanden zelf zijn niet ingebed en zijn niet gewijzigd.",
+      ""
+    ];
+    for (const [team, label] of Object.entries(teams)) {
+      const assigned = items.filter(e => e.team === team);
+      if (!assigned.length) continue;
+      lines.push("## " + label + " — " + assigned.length + " HUMAN bronverwijzingen", "");
+      for (const stage of ordered) {
+        const group = assigned.filter(e => e.stage === stage);
+        if (!group.length) continue;
+        lines.push("### " + stages[stage] + " (" + group.length + ")", "");
+        for (const e of group) {
+          lines.push("- PRIVATE oorspronkelijk bestand: " + JSON.stringify(e.file.name),
+            "  - Bytes: " + e.file.size + "; ongetekende SHA-256: " + e.hash,
+            "  - Structurele hint (NIET geauthenticeerd): " + JSON.stringify(e.inspection.label),
+            "  - Voorgestelde HUMAN route: " + JSON.stringify(routes[e.route][0]),
+            "  - Menselijke PRIVATE notitie: " + JSON.stringify(e.note || "(geen)"),
+            "  - Vereiste vervolgstap: bronhouder, originele toestemming, actuele revocatie en context afzonderlijk laten controleren.",
+            "");
+        }
+      }
+    }
+    lines.push("## Onveranderde harde grens", "",
+      "Geen enkele status, bronhash, reviewtekst of oefenresultaat mag als echte request/grant worden gebruikt.",
+      "Originele security/privacy/browserreview, exact-head hosted en named-VPS CI, aparte actuele client/operator-consent met revocation-at-use en expliciete HUMAN GO blijven vereist.",
+      "Dit document is vertrouwelijk en ongetekend; verspreid uitsluitend via een passend apart geauthenticeerd privé-kanaal.", "");
+    download(new Blob([lines.join("\n")], {type:"text/markdown;charset=utf-8"}), "lightup-scope-PRIVATE-HUMAN-team-brief.md");
+    report("REVIEW_ONLY — PRIVATE HUMAN teambrief lokaal gedownload; bronbestanden ongewijzigd, nooit vrijgave.");
   });
   sourceCopy.addEventListener("click", () => {
     if (!items.length) return report("HOLD — geen PRIVATE bronbestanden geselecteerd.");

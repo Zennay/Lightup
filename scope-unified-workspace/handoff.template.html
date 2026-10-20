@@ -35,10 +35,13 @@
 <div class="shelf-filter">
 <label for="shelf-stage-filter">Filter HUMAN reviewfase
 <select id="shelf-stage-filter"><option value="all">Alle reviewfases</option><option value="unreviewed">Nog niet beoordeeld</option><option value="preparing">Menselijk onderzoek</option><option value="escalated">Escalatie nodig</option><option value="documented">Gedocumenteerd (NIET opgelost)</option></select></label>
+<label for="shelf-team-filter">Filter toegewezen HUMAN-team
+<select id="shelf-team-filter"><option value="all">Alle teams</option><option value="unassigned">Niet toegewezen</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="client_ops">Client operations</option><option value="platform">Platform</option></select></label>
 <label for="shelf-search">Zoek uitsluitend lokaal in PRIVATE bestandsnamen
 <input type="search" id="shelf-search" placeholder="Zoek bronbestand…" autocomplete="off" spellcheck="false" maxlength="120"></label>
 </div>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
+<p id="shelf-workload" class="shelf-summary" aria-live="polite">Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
 <thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">HUMAN opvolging (uitsluitend lokaal)</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
 <tbody id="shelf-rows"></tbody></table></div>
@@ -53,6 +56,7 @@
 </section>
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
+<button type="button" id="shelf-workplan" class="action muted">PRIVATE HUMAN team- en escalatiebrief (.md) <span aria-hidden="true">↗</span></button>
 <button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>
 </div>
