@@ -145,10 +145,65 @@
     $("revisionAddedList").replaceChildren();
   }
   function refreshRevisionArchive() {
-    $("revisionHistoryDownload").disabled = state.revisionHistory.length === 0;
-    $("revisionHistoryDownload").textContent = state.revisionHistory.length
+    const hasHistory = state.revisionHistory.length > 0;
+    $("revisionHistoryDownload").disabled = !hasHistory;
+    $("revisionHistoryToggle").disabled = !hasHistory;
+    $("revisionHistoryDownload").textContent = hasHistory
       ? "Download PRIVATE prior HUMAN archive (" + state.revisionHistory.length + " revision(s))"
       : "No prior HUMAN archive";
+    if (!hasHistory) $("revisionArchiveDesk").hidden = true;
+    if (!$("revisionArchiveDesk").hidden) renderRevisionHistory();
+  }
+  function renderRevisionHistory() {
+    const container = $("revisionHistoryList");
+    container.replaceChildren();
+    const query = $("revisionHistorySearch").value.trim().toLocaleLowerCase();
+    let visible = 0;
+    let total = 0;
+    for (let index = state.revisionHistory.length - 1; index >= 0; index--) {
+      const revision = state.revisionHistory[index];
+      total += revision.affected.length;
+      const matching = revision.affected.filter(item =>
+        !query || [item.id, item.source_title, item.human.owner]
+          .some(value => value.toLocaleLowerCase().includes(query)));
+      if (!matching.length && query) continue;
+      visible += matching.length;
+      const block = document.createElement("details");
+      block.className = "revision-history-moment";
+      const title = document.createElement("summary");
+      title.textContent = "PRIVATE human-selected source transition " + (index + 1) +
+        " · " + revision.counts.changed + " changed · " +
+        revision.counts.absent + " absent (NOT FIXED)";
+      block.append(title);
+      const hashes = document.createElement("p");
+      hashes.className = "mono";
+      hashes.textContent = "Prior unsigned CSV SHA-256 " + revision.from_sha256 +
+        " → selected unsigned CSV SHA-256 " + revision.to_sha256 +
+        " · HUMAN choice " + revision.changed_policy +
+        " (not chronological or client-authenticated)";
+      block.append(hashes);
+      for (const item of matching) {
+        const row = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = (item.type === "absent" ? "ABSENT, not fixed" : "CHANGED, not verified") +
+          " · " + item.id + " · " + item.source_title.slice(0, 150);
+        row.append(summary);
+        const description = document.createElement("p");
+        description.textContent = "PRIOR source-declared severity " + item.source_severity +
+          " / retest " + item.source_retest +
+          " · HUMAN stage " + stageText(item.human.stage);
+        const followup = document.createElement("p");
+        followup.textContent = "PRIOR PRIVATE HUMAN owner: " + (item.human.owner || "—") +
+          " · tentative due: " + (item.human.due || "—");
+        const note = document.createElement("p");
+        note.textContent = "PRIOR PRIVATE HUMAN note: " + (item.human.note || "—");
+        row.append(description, followup, note);
+        block.append(row);
+      }
+      container.append(block);
+    }
+    $("revisionHistoryCounts").textContent = visible + " visible / " + total +
+      " prior changed/absent source records. These are PRIVATE HUMAN-only notes, never retest or closure evidence.";
   }
   async function previewRevision(file) {
     if (state.pending) {
@@ -311,6 +366,7 @@
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
     state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.sourceText = ""; state.revisionHistory = [];
     clearRevisionCandidate(); refreshRevisionArchive();
+    $("revisionArchiveDesk").hidden = true; $("revisionHistorySearch").value = "";
     $("sourceFile").value = ""; $("journalFile").value = ""; $("workroomFile").value = ""; $("vaultPass").value = "";
     $("summary").textContent = "No source CSV loaded.";
     $("sourceId").textContent = "";
@@ -825,6 +881,12 @@
       clearRevisionCandidate(); status("Source candidate discarded; original workspace remains unchanged.", false);
     });
     $("revisionHistoryDownload").addEventListener("click", exportRevisionArchive);
+    $("revisionHistoryToggle").addEventListener("click", () => {
+      const desk = $("revisionArchiveDesk");
+      desk.hidden = !desk.hidden;
+      if (!desk.hidden) renderRevisionHistory();
+    });
+    $("revisionHistorySearch").addEventListener("input", renderRevisionHistory);
     $("clearAll").addEventListener("click", () => {
       if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
       wipe(); status("All loaded application state released from the interface.", false);
