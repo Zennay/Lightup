@@ -211,8 +211,10 @@ def run(args):
         "original_history_sha256":digest(history_raw),
         "original_human_owner_replies_in_explicit_order":combined,
     }
+    from portfolio_owner_inbox_viewer import render as render_inbox_viewer
     exports={
         "OPEN-PRIVATE.html":anonymous_html(groups),
+        "PRIVATE-HUMAN-owner-inbox-viewer.html":render_inbox_viewer(),
         "PRIVATE-HUMAN-owner-inbox.html":detailed_html(groups),
         "PRIVATE-HUMAN-owner-inbox.csv":as_csv(groups),
         "PRIVATE-HUMAN-owner-inbox.json":canonical(result),

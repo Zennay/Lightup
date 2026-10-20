@@ -1686,3 +1686,38 @@ Source-only v41 preserves original v16–v40 software inventory reads. Notion
 posture Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD and all original source-owner,
 CI, independent security/privacy/browser-review, action-time client/operator
 consent and explicit HUMAN GO release gates remain unchanged.
+
+## v42 — source-free interactive HUMAN reply operator inbox
+
+Every new native v41 operator-only multi-owner response room now also contains
+a ready-to-open source-free `PRIVATE-HUMAN-owner-inbox-viewer.html`.
+Use it offline to explicitly load its matching native
+`PRIVATE-HUMAN-owner-inbox.json` from 0600 PRIVATE custody. The portable
+[operator viewer](portfolio-owner-inbox-viewer.html) is also included in the
+source-only ZIP, without embedded owner, client, source or HUMAN note bytes.
+
+The CSP/SHA-pinned browser provides original owner-group filters, proposed
+HUMAN reply-stage filters, unchanged/changed HUMAN proposal filters, local
+PRIVATE text/source search, a readable original-source case/transition/kit
+discussion view and anonymous VISIBLE HUMAN-counts export. Filters never
+alter the native source. Anonymous exports omit all private notes, proposed
+owner names, case identities and SHA references. Local PRIVATE note text is
+visible only in the operator's original local browser session; it is not
+automatically exported, persisted or sent. Duplicate-key JSON input is
+rejected before any local preview. Original native validators remain
+authoritative; a browser preview is not identity, consent, authorization,
+security evidence, verified remediation, or permission to share.
+
+The source-free viewer can also be rebuilt into an existing operator-private
+0700 folder without touching historical original source inputs:
+
+    python3 assessment-workspace-ledger/portfolio_owner_inbox_viewer.py \
+      --output /private/software/NEW-HUMAN-reply-inbox.html
+
+Foreground console **48** exposes the source-only builder; original native
+console **47** automatically includes the complete offline viewer.
+Source-only fixed software **v42** includes the whole HUMAN-only return loop
+and preserves read-only inventory compatibility with original v16–v41 bundles.
+Release status remains Notion Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD; no
+active scans, grants, client data processing, external communication,
+authenticated operator/client consent, HUMAN GO or production deployment.
