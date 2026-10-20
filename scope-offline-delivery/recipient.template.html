@@ -67,6 +67,17 @@
 <p>The sender note lists only original file names/sizes/hashes and new/original ZIP checksums. It is UNSIGNED and must not be used as proof attached to the same untrusted file. Independently verify the recipient and use a separate authenticated channel.</p>
 <p>Verify the intended reviewer, approval and transfer channel independently. A matching original digest proves byte equality, not consent; encrypt any confidential transfer separately with the original HUMAN courier.</p>
 </section>
+<section id="return-ack-panel" hidden>
+<h2>Review the HUMAN recipient's returned PRIVATE receipt</h2>
+<p>Only available after you locally produced a valid source-only role ZIP and manually saved its original HUMAN sender note. Compare a separately received return receipt to those exact local bytes. Nothing is transmitted or authorized.</p>
+<label for="return-ack-file">Choose the recipient's separate PRIVATE review receipt (.json; up to 12 KiB)</label>
+<input id="return-ack-file" type="file" accept=".json,application/json">
+<label><input id="return-ack-separate-channel" type="checkbox"> I obtained this return receipt through a separate channel. I understand this does NOT authenticate a person or approve a scan.</label>
+<button id="compare-return-ack" type="button" disabled>Compare exact returned source/role/note bytes</button>
+<p id="return-ack-status" role="status" aria-live="polite" data-state="idle"></p>
+<button id="save-return-review" type="button" hidden>Save UNSIGNED HUMAN return summary (source-only JSON)</button>
+<p>Always independently authenticate client and operator identities, consent and recipient/channel; unsigned receipts are never real grant, revocation, release, or proof of security.</p>
+</section>
 <section>
 <h2>After a BYTE MATCH</h2>
 <p>Independently verify the sender, intended recipient and lawful scope. Open the original <a href="START-HERE.html">PRIVATE workflow home</a> for manual redaction, encrypted HUMAN courier and explicit receiver review. A matching SHA proves equal bytes only: <strong>not identity, consent, approval, content safety or remediation.</strong></p>

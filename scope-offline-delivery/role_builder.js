@@ -34,6 +34,7 @@
   const clear = () => {
     revision++; currentSource = null; built = null;
     buildButton.disabled = true; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren(); panel.hidden = true;
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
     status.textContent = ""; digestOutput.textContent = "";
   };
   document.addEventListener("lightup:selection-reset", clear);
@@ -49,6 +50,7 @@
   });
   profile.addEventListener("change", () => {
     revision++; built = null; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren(); digestOutput.textContent = "";
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
     status.textContent = "Selection changed. Build a fresh PRIVATE role file.";
   });
   const note = role => [
@@ -171,6 +173,7 @@
   buildButton.addEventListener("click", async () => {
     const current = ++revision;
     built = null; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren();
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
     buildButton.disabled = true; digestOutput.textContent = "";
     try {
       if (!currentSource || !crypto?.subtle) throw Error("No verified local original kit");
@@ -220,7 +223,8 @@
       }
       if (current !== revision) return;
       const originalRows = rows.filter(row => Object.hasOwn(pin,row.path));
-      built = {bytes:archive,role,digest,sourceSha256:outerSha,originalRows};
+      built = {bytes:archive,role,digest,sourceSha256:outerSha,originalRows,
+        allRows:rows.map(row => ({path:row.path,bytes:row.bytes,sha256:row.sha256}))};
       for (const row of originalRows) {
         const li = document.createElement("li");
         li.textContent = row.path + " · " + row.bytes.toLocaleString() + " bytes · SHA-256 " + row.sha256;
@@ -241,7 +245,7 @@
   });
   // A HUMAN checksum handoff note for a separately authenticated channel.
   // Never embed this unsigned note as self-authentication inside the ZIP.
-  saveHandoff.addEventListener("click", () => {
+  saveHandoff.addEventListener("click", async () => {
     if (!built || !currentSource) return;
     if (!window.confirm("Save an UNSIGNED HUMAN handoff note? Sender/recipient identity and consent are NOT verified.")) return;
     const lines = [
@@ -264,7 +268,16 @@
       "attached to the same untrusted archive. Encrypt private material with",
       "the separately sourced original HUMAN courier before transferring.",
       "Manual review and original LightUp authorization/release gates remain.", "");
-    save(encode(lines.join("\n")), "LightUp-PRIVATE-" + built.role + "-HUMAN-HANDOFF.txt");
+    const pending = built, current = revision;
+    const noteBytes = encode(lines.join("\n"));
+    const noteSha256 = await sha(noteBytes);
+    if (current !== revision || pending !== built || !currentSource) return;
+    document.dispatchEvent(new CustomEvent("lightup:sender-note-ready", {detail: {
+      profile: pending.role, sha256: pending.digest, size: pending.bytes.length,
+      sourceOuterSha256: pending.sourceSha256, noteSha256,
+      files: pending.allRows.map(row => ({...row}))
+    }}));
+    save(noteBytes, "LightUp-PRIVATE-" + pending.role + "-HUMAN-HANDOFF.txt");
   });
 
   saveButton.addEventListener("click", () => {

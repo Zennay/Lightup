@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Zw+dgTVRZMUZARF4Ot6jtjeCWEL2EdHIxJVTRhPLz0I='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-DTcxTF4wcLa74AZZ+4pyhGJKHUBEysUW+8/DtL7j9BY='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE recipient byte comparison</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:2.5rem 1rem;background:#0b1422;color:#ebf1fa;font:1rem/1.65 system-ui,sans-serif}main{max-width:750px;margin:auto}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15}h2{font-size:1.15rem}.tag{font-size:.76rem;letter-spacing:.12em;color:#9ec6ff;font-weight:750}section{padding:1.4rem;margin:1.25rem 0;border:1px solid #52647f;border-radius:14px;background:#16243a}label{display:block;font-weight:650;margin:1rem 0 .3rem}input{width:100%;border-radius:7px;border:1px solid #a5bad4;padding:.75rem;background:#0b1422;color:#fff;font:inherit}input:focus,button:focus{outline:3px solid #95d6fa;outline-offset:2px}button{margin-top:.85rem;cursor:pointer;border:0;border-radius:8px;padding:.8rem 1.25rem;font:inherit;font-weight:750;background:#93dbfd;color:#082235}button:disabled{opacity:.6;cursor:wait}p{overflow-wrap:anywhere}strong{color:#ffdb9a}#status{font-weight:750;padding:.8rem;border-left:4px solid #9ec6ff}#status[data-state="hold"]{border-color:#f2a0a8;color:#ffc4c9}#status[data-state="match"]{border-color:#97edbc;color:#b2ffce}a{color:#92d9ff}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.89rem;overflow-wrap:anywhere}footer{font-size:.82rem;color:#b6c6db;margin:2.5rem 0}
 .download-choices{display:flex;flex-wrap:wrap;gap:.6rem}.download-choices button{margin:.35rem 0}details{border:1px solid #64748b;border-radius:8px;padding:.75rem}summary{cursor:pointer}ol{max-height:14rem;overflow:auto;padding-left:1.6rem}li{margin:.35rem 0}section[hidden]{display:none}
@@ -68,6 +68,17 @@
 <button id="save-role-handoff" type="button" hidden>Save PRIVATE HUMAN sender digest and checklist</button>
 <p>The sender note lists only original file names/sizes/hashes and new/original ZIP checksums. It is UNSIGNED and must not be used as proof attached to the same untrusted file. Independently verify the recipient and use a separate authenticated channel.</p>
 <p>Verify the intended reviewer, approval and transfer channel independently. A matching original digest proves byte equality, not consent; encrypt any confidential transfer separately with the original HUMAN courier.</p>
+</section>
+<section id="return-ack-panel" hidden>
+<h2>Review the HUMAN recipient's returned PRIVATE receipt</h2>
+<p>Only available after you locally produced a valid source-only role ZIP and manually saved its original HUMAN sender note. Compare a separately received return receipt to those exact local bytes. Nothing is transmitted or authorized.</p>
+<label for="return-ack-file">Choose the recipient's separate PRIVATE review receipt (.json; up to 12 KiB)</label>
+<input id="return-ack-file" type="file" accept=".json,application/json">
+<label><input id="return-ack-separate-channel" type="checkbox"> I obtained this return receipt through a separate channel. I understand this does NOT authenticate a person or approve a scan.</label>
+<button id="compare-return-ack" type="button" disabled>Compare exact returned source/role/note bytes</button>
+<p id="return-ack-status" role="status" aria-live="polite" data-state="idle"></p>
+<button id="save-return-review" type="button" hidden>Save UNSIGNED HUMAN return summary (source-only JSON)</button>
+<p>Always independently authenticate client and operator identities, consent and recipient/channel; unsigned receipts are never real grant, revocation, release, or proof of security.</p>
 </section>
 <section>
 <h2>After a BYTE MATCH</h2>
@@ -494,7 +505,7 @@ button.addEventListener("click", async () => {
         "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
         "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html",
         "PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css",
-        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/role_pack.py",
+        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/role_pack.py",
         "tools/recipient.template.html", "tools/package.py", "tools/unpack.py",
         "START-HERE.html", "README.txt", "manifest.json"
       ];
@@ -567,6 +578,7 @@ button.addEventListener("click", async () => {
   const clear = () => {
     revision++; currentSource = null; built = null;
     buildButton.disabled = true; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren(); panel.hidden = true;
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
     status.textContent = ""; digestOutput.textContent = "";
   };
   document.addEventListener("lightup:selection-reset", clear);
@@ -582,6 +594,7 @@ button.addEventListener("click", async () => {
   });
   profile.addEventListener("change", () => {
     revision++; built = null; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren(); digestOutput.textContent = "";
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
     status.textContent = "Selection changed. Build a fresh PRIVATE role file.";
   });
   const note = role => [
@@ -704,6 +717,7 @@ button.addEventListener("click", async () => {
   buildButton.addEventListener("click", async () => {
     const current = ++revision;
     built = null; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren();
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
     buildButton.disabled = true; digestOutput.textContent = "";
     try {
       if (!currentSource || !crypto?.subtle) throw Error("No verified local original kit");
@@ -753,7 +767,8 @@ button.addEventListener("click", async () => {
       }
       if (current !== revision) return;
       const originalRows = rows.filter(row => Object.hasOwn(pin,row.path));
-      built = {bytes:archive,role,digest,sourceSha256:outerSha,originalRows};
+      built = {bytes:archive,role,digest,sourceSha256:outerSha,originalRows,
+        allRows:rows.map(row => ({path:row.path,bytes:row.bytes,sha256:row.sha256}))};
       for (const row of originalRows) {
         const li = document.createElement("li");
         li.textContent = row.path + " · " + row.bytes.toLocaleString() + " bytes · SHA-256 " + row.sha256;
@@ -774,7 +789,7 @@ button.addEventListener("click", async () => {
   });
   // A HUMAN checksum handoff note for a separately authenticated channel.
   // Never embed this unsigned note as self-authentication inside the ZIP.
-  saveHandoff.addEventListener("click", () => {
+  saveHandoff.addEventListener("click", async () => {
     if (!built || !currentSource) return;
     if (!window.confirm("Save an UNSIGNED HUMAN handoff note? Sender/recipient identity and consent are NOT verified.")) return;
     const lines = [
@@ -797,7 +812,16 @@ button.addEventListener("click", async () => {
       "attached to the same untrusted archive. Encrypt private material with",
       "the separately sourced original HUMAN courier before transferring.",
       "Manual review and original LightUp authorization/release gates remain.", "");
-    save(encode(lines.join("\n")), "LightUp-PRIVATE-" + built.role + "-HUMAN-HANDOFF.txt");
+    const pending = built, current = revision;
+    const noteBytes = encode(lines.join("\n"));
+    const noteSha256 = await sha(noteBytes);
+    if (current !== revision || pending !== built || !currentSource) return;
+    document.dispatchEvent(new CustomEvent("lightup:sender-note-ready", {detail: {
+      profile: pending.role, sha256: pending.digest, size: pending.bytes.length,
+      sourceOuterSha256: pending.sourceSha256, noteSha256,
+      files: pending.allRows.map(row => ({...row}))
+    }}));
+    save(noteBytes, "LightUp-PRIVATE-" + pending.role + "-HUMAN-HANDOFF.txt");
   });
 
   saveButton.addEventListener("click", () => {
@@ -942,6 +966,113 @@ button.addEventListener("click", async () => {
     };
     save(new TextEncoder().encode(JSON.stringify(out,null,2)+"\n"),
       "LightUp-PRIVATE-role-receipt-REVIEW-ONLY.json");
+  });
+})();
+
+"use strict";
+// Offline PRIVATE return-receipt comparison for the original HUMAN sender.
+// Canonical byte equality only, never identity, permission or release.
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("return-ack-panel"), input = el("return-ack-file");
+  const separate = el("return-ack-separate-channel"), button = el("compare-return-ack");
+  const status = el("return-ack-status"), saveButton = el("save-return-review");
+  let prepared = null, accepted = null, generation = 0;
+  function clear() {
+    generation++; prepared = null; accepted = null; input.value = "";
+    separate.checked = false; panel.hidden = true;
+    button.disabled = true; saveButton.hidden = true;
+    status.textContent = ""; status.dataset.state = "idle";
+  }
+  function invalidate() {
+    generation++; accepted = null; saveButton.hidden = true;
+    status.dataset.state = "idle";
+    status.textContent = "No returned HUMAN recipient acknowledgement compared.";
+    button.disabled = !prepared;
+  }
+  document.addEventListener("lightup:selection-reset", clear);
+  document.addEventListener("lightup:sender-note-revoked", clear);
+  document.addEventListener("lightup:sender-note-ready", event => {
+    clear();
+    const d = event.detail;
+    if (!d || !["privacy-recipient","privacy-editor","scope-reviewer"].includes(d.profile) ||
+        !Number.isSafeInteger(d.size) || d.size < 1 ||
+        !Array.isArray(d.files) || d.files.length < 4 || d.files.length > 7 ||
+        ![d.sha256,d.sourceOuterSha256,d.noteSha256].every(v =>
+          typeof v === "string" && /^[0-9a-f]{64}$/.test(v))) return;
+    prepared = {profile:d.profile,size:d.size,sha256:d.sha256,
+      sourceOuterSha256:d.sourceOuterSha256,noteSha256:d.noteSha256,
+      files:d.files.map(row=>({path:row.path,bytes:row.bytes,sha256:row.sha256}))};
+    panel.hidden = false; invalidate();
+  });
+  input.addEventListener("change",invalidate);
+  separate.addEventListener("change",invalidate);
+
+  function expectedAcknowledgment(item) {
+    // Exact canonical output of the original browser's recipient handoff desk.
+    return new TextEncoder().encode(JSON.stringify({
+      format:"lightup.scope_private_human_recipient_review.v1",
+      posture:"INCUBATE_M3_M7_DRAFT_HOLD",decision:"REVIEW_ONLY",
+      authenticated_sender:false,authenticated_recipient:false,
+      client_consent:false,operator_consent:false,grant:false,release:false,
+      role:item.profile,received_zip_sha256:item.sha256,
+      received_zip_bytes:item.size,original_source_sha256:item.sourceOuterSha256,
+      human_sender_note_sha256:item.noteSha256,
+      files:item.files.map(row=>({...row})),
+      note:"UNSIGNED local offline equality only. HUMAN must independently authenticate recipient, sender, consent and transfer."
+    },null,2)+"\n");
+  }
+  const sha = async bytes => Array.from(new Uint8Array(
+    await crypto.subtle.digest("SHA-256",bytes)), b=>b.toString(16).padStart(2,"0")).join("");
+  button.addEventListener("click",async () => {
+    const current = ++generation;
+    accepted = null; saveButton.hidden = true; button.disabled = true;
+    status.dataset.state = "idle";
+    const hold = () => {
+      if (current !== generation) return;
+      accepted = null; saveButton.hidden = true; button.disabled = false;
+      status.dataset.state = "hold";
+      status.textContent = "HOLD — returned unsigned review does not match the original locally built role ZIP and HUMAN sender note.";
+    };
+    try {
+      const f = input.files && input.files[0];
+      if (!prepared || !separate.checked || !f || input.files.length !== 1 ||
+          !/\.json$/i.test(f.name) || !Number.isSafeInteger(f.size) ||
+          f.size < 200 || f.size > 12000 || !crypto?.subtle) {hold();return;}
+      status.textContent = "Comparing exact original role and HUMAN note fingerprints locally...";
+      const received = new Uint8Array(await f.arrayBuffer());
+      if (current !== generation) return;
+      const reference = expectedAcknowledgment(prepared);
+      if (received.byteLength !== f.size || received.byteLength !== reference.byteLength ||
+          reference.some((byte,i) => byte !== received[i])) {hold();return;}
+      const receiptSha256 = await sha(received);
+      if (current !== generation) return;
+      accepted = {generation:current,receiptSha256,prepared};
+      status.dataset.state = "match";
+      status.textContent = "RETURN RECEIPT BYTE MATCH / REVIEW ONLY — exact original ZIP, HUMAN note and source fingerprints agree. No sender/recipient identity, consent or authorization has been established.";
+      saveButton.hidden = false;
+    } catch (_) {hold();}
+    finally {if (current === generation) button.disabled = false;}
+  });
+  saveButton.addEventListener("click", () => {
+    if (!accepted || accepted.generation !== generation || !prepared || !separate.checked) return;
+    if (!window.confirm("Save an UNSIGNED source-only HUMAN return summary? This does not authorize actions.")) return;
+    const out = {
+      format:"lightup.scope_private_human_return_summary.v1",
+      status:"REVIEW_ONLY",posture:"INCUBATE_M3_M7_DRAFT_HOLD",
+      verified_identity:false,client_consent:false,operator_consent:false,
+      grant:false,release:false,
+      profile:prepared.profile,original_zip_sha256:prepared.sha256,
+      original_source_sha256:prepared.sourceOuterSha256,
+      original_human_note_sha256:prepared.noteSha256,
+      received_human_ack_sha256:accepted.receiptSha256,
+      note:"UNSIGNED byte-equality only. All HUMAN consent and release gates remain."
+    };
+    const blob = new Blob([JSON.stringify(out,null,2)+"\n"], {type:"application/octet-stream"});
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href=url; a.download="LightUp-PRIVATE-HUMAN-return-REVIEW-ONLY.json";
+    a.rel="noopener"; document.body.append(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
   });
 })();
 </script>
