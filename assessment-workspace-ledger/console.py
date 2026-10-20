@@ -19,6 +19,7 @@ import history_human
 import history_team
 import history_actions
 import history_owner_brief
+import history_progress
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -47,6 +48,7 @@ MENU = (
     ("20", "Finalize owner-private source-exact HUMAN action planning CSV"),
     ("21", "Finalize explicit browser-downloaded PRIVATE HUMAN action CSV"),
     ("22", "Build source-exact PRIVATE single-HUMAN-owner minimum-necessary briefing"),
+    ("23", "Compare 2-8 ORIGINAL HUMAN action versions + PRIVATE changes and worklist"),
     ("0", "Exit"),
 )
 
@@ -178,6 +180,23 @@ def handle_action(action):
             plan=prompt("Original 0600 HUMAN-action-plan.csv"),
             owner=prompt("EXACT proposed HUMAN owner for minimum-necessary PRIVATE handoff"),
             private_parent=private_parent()
+        ))
+    if action == "23":
+        print("Select 2-8 distinct ORIGINAL native completed action JSON and matching")
+        print("HUMAN-action-plan.csv files in deliberate HUMAN comparison order.")
+        actions, plans = [], []
+        while len(actions) < 8:
+            selected = prompt("Original PRIVATE-HUMAN-actions.json " +
+                              str(len(actions) + 1), required=len(actions) < 2)
+            if not selected:
+                break
+            original_plan = prompt("Matching original HUMAN-action-plan.csv " +
+                                   str(len(actions) + 1))
+            actions.append(selected)
+            plans.append(original_plan)
+        return history_progress.run(argparse.Namespace(
+            action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
+            actions=actions, plan=plans, private_parent=private_parent()
         ))
     if action == "5":
         return continuity.run(argparse.Namespace(
