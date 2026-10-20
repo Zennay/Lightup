@@ -25,13 +25,15 @@ NAMES = (
     "console.py", "human_revisions.py", "browser_intake.py", "history.py", "history_human.py", "history_studio.py",
     "history_team.py", "history_team_browser.py", "history_actions.py",
     "history_actions_browser.py", "history_owner_brief.py",
-    "history_progress.py", "portfolio.py", "portfolio_delta.py", "package.py", "standalone.html",
+    "history_progress.py", "portfolio.py", "portfolio_delta.py", "portfolio_owner_packets.py", "package.py", "standalone.html",
 )
-SCHEMA = "lightup.private.workspace-ledger-software.v18"
+SCHEMA = "lightup.private.workspace-ledger-software.v19"
+RECENT_SCHEMA = "lightup.private.workspace-ledger-software.v18"
+RECENT_NAMES = tuple(name for name in NAMES if name != "portfolio_owner_packets.py")
 PREVIOUS_SCHEMA = "lightup.private.workspace-ledger-software.v17"
-PREVIOUS_NAMES = tuple(name for name in NAMES if name != "portfolio_delta.py")
+PREVIOUS_NAMES = tuple(name for name in NAMES if name not in ("portfolio_owner_packets.py", "portfolio_delta.py"))
 LEGACY_SCHEMA = "lightup.private.workspace-ledger-software.v16"
-LEGACY_NAMES = tuple(name for name in NAMES if name not in ("portfolio.py", "portfolio_delta.py"))
+LEGACY_NAMES = tuple(name for name in NAMES if name not in ("portfolio_owner_packets.py", "portfolio.py", "portfolio_delta.py"))
 FLAGS = {
     "authorization": False, "consent": False,
     "verified_finding": False, "release_approval": False,
@@ -147,7 +149,7 @@ def inspect(args):
     with zipfile.ZipFile(io.BytesIO(raw), "r") as src:
         entries = src.infolist()
         stored = [entry.filename for entry in entries]
-        profiles = ((NAMES, SCHEMA), (PREVIOUS_NAMES, PREVIOUS_SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA))
+        profiles = ((NAMES, SCHEMA), (RECENT_NAMES, RECENT_SCHEMA), (PREVIOUS_NAMES, PREVIOUS_SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA))
         selected = next((
             (names, schema) for names, schema in profiles
             if stored == [PREFIX + name for name in names] + [PREFIX + "manifest.json"]
@@ -196,7 +198,7 @@ def inspect(args):
     print("PRIVATE REVIEW_ONLY: software archive internal file hashes and schema match")
     if selected_schema != SCHEMA:
         print("HISTORICAL " + selected_schema.rsplit(".", 1)[-1] +
-              " software-only ZIP: current v18 portfolio delta may be absent.")
+              " software-only ZIP: newer portfolio modules may be absent.")
     print("UNSIGNED SHA256: " + sha256(raw))
     print("This is NOT software publisher authentication, approval, verified security, or consent.")
     return 2
