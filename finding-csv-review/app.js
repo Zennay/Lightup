@@ -13,6 +13,7 @@
   const MAX_JOURNAL_BYTES = 512 * 1024;
   const DECODER = new TextDecoder("utf-8", {fatal: true});
   const SCHEMA = "lightup.offline_human_csv_review.v1";
+  const WORKROOM_SCHEMA = "lightup.offline_csv_human_workroom_payload.v1";
   const AGGREGATE = "lightup.anonymous_human_csv_counts.v1";
   const NO_AUTHORITY = Object.freeze({
     verified_findings: false, verified_remediation: false,
@@ -21,7 +22,7 @@
   });
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
-  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null};
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, sourceText: ""};
 
   function fail(message) { throw new Error(message); }
   function exactObject(obj, keys) {
@@ -130,15 +131,15 @@
     $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveWorkroom", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
   }
   function stageText(s) { return s.replaceAll("_", " "); }
   function wipe() {
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
-    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null;
-    $("sourceFile").value = ""; $("journalFile").value = "";
+    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.sourceText = "";
+    $("sourceFile").value = ""; $("journalFile").value = ""; $("workroomFile").value = ""; $("vaultPass").value = "";
     $("summary").textContent = "No source CSV loaded.";
     $("sourceId").textContent = "";
     $("list").replaceChildren();
@@ -252,6 +253,7 @@
       // No mutation until the complete source has been admitted.
       state.rows = stagedRows;
       state.digest = sha;
+      state.sourceText = value;
       state.journal = stagedRows.map(r => blankEntry(r.id));
       state.filename = file.name;
       state.selected = -1;
@@ -292,16 +294,16 @@
     state.dirty = false;
     status("PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", false);
   }
-  function admitJournalDocument(parsed) {
+  function admitJournalDocument(parsed, rows = state.rows, csvSha = state.digest) {
     if (!exactObject(parsed, ["schema", "classification", "authority", "csv_sha256", "count", "entries"]) ||
         parsed.schema !== SCHEMA || parsed.classification !== "PRIVATE_HUMAN_ONLY" ||
         !exactObject(parsed.authority, Object.keys(NO_AUTHORITY)) ||
         Object.keys(NO_AUTHORITY).some(k => parsed.authority[k] !== false) ||
-        parsed.csv_sha256 !== state.digest || parsed.count !== state.rows.length ||
-        !Array.isArray(parsed.entries) || parsed.entries.length !== state.rows.length) {
+        parsed.csv_sha256 !== csvSha || parsed.count !== rows.length ||
+        !Array.isArray(parsed.entries) || parsed.entries.length !== rows.length) {
       fail("PRIVATE HUMAN draft is not bound to this exact original CSV");
     }
-    return parsed.entries.map((e, i) => admitEntry(e, state.rows[i].id));
+    return parsed.entries.map((e, i) => admitEntry(e, rows[i].id));
   }
   async function loadJournal(file) {
     if (state.pending && !confirm("Discard unapplied HUMAN form edits before reopening a saved draft?")) return;
@@ -361,6 +363,74 @@
       pass = "";
       $("vaultPass").value = "";
       $("loadVault").disabled = !state.rows.length;
+    }
+  }
+  async function saveWorkroom() {
+    if (state.pending) { status("Apply or discard unfinished HUMAN fields before encryption.", true); return; }
+    if (!state.sourceText) { status("No original locally admitted CSV is present.", true); return; }
+    if (!confirm("Encrypt the COMPLETE original source CSV and PRIVATE HUMAN journal into one local file? " +
+        "It contains confidential original findings. Use a strong, separate remembered password; " +
+        "possession does not prove source, client, consent or disclosure permission.")) return;
+    const pass = $("vaultPass").value;
+    $("saveWorkroom").disabled = true;
+    try {
+      const doc = {
+        schema: WORKROOM_SCHEMA, classification: "PRIVATE_SOURCE_AND_HUMAN_ONLY",
+        authority: NO_AUTHORITY, csv_utf8: state.sourceText,
+        csv_sha256: state.digest, journal: journalDocument()
+      };
+      const sealed = await LightUpEncryptedJournal.sealWorkroom(doc, pass);
+      download(sealed, "lightup-private-entire-workroom.luew", "application/json");
+      state.dirty = false;
+      status("Encrypted complete source+HUMAN workroom offered for local PRIVATE save; no external transfer.", false);
+    } catch (error) {
+      status("Complete PRIVATE workroom encryption HOLD: " + error.message, true);
+    } finally {
+      $("vaultPass").value = "";
+      $("saveWorkroom").disabled = !state.rows.length;
+    }
+  }
+  async function loadWorkroom(file) {
+    if ((state.dirty || state.pending) && !confirm("Discard local unsaved HUMAN state before encrypted full-workroom restore?")) return;
+    let pass = $("vaultPass").value;
+    $("loadWorkroom").disabled = true;
+    try {
+      if (!pass) fail("Enter the complete workroom passphrase first");
+      const {value} = await readFile(file, 5 * 1024 * 1024);
+      const doc = await LightUpEncryptedJournal.unsealWorkroom(value, pass);
+      if (!exactObject(doc, ["schema", "classification", "authority", "csv_utf8", "csv_sha256", "journal"]) ||
+          doc.schema !== WORKROOM_SCHEMA || doc.classification !== "PRIVATE_SOURCE_AND_HUMAN_ONLY" ||
+          !exactObject(doc.authority, Object.keys(NO_AUTHORITY)) ||
+          Object.keys(NO_AUTHORITY).some(k => doc.authority[k] !== false) ||
+          typeof doc.csv_utf8 !== "string" ||
+          enc.encode(doc.csv_utf8).length > MAX_FILE ||
+          typeof doc.csv_sha256 !== "string" || !/^[0-9a-f]{64}$/.test(doc.csv_sha256)) {
+        fail("Invalid complete source+HUMAN workspace");
+      }
+      const admittedRows = admitCsv(doc.csv_utf8);
+      const candidateSha = await digest(enc.encode(doc.csv_utf8));
+      if (candidateSha !== doc.csv_sha256) fail("Original CSV byte digest mismatch");
+      const admittedJournal = admitJournalDocument(doc.journal, admittedRows, candidateSha);
+      if (!confirm("The encrypted packet's contained original CSV and HUMAN journal were admitted. " +
+          "Replace this browser's current workspace? This does not establish authenticated tenant lineage.")) return;
+      state.rows = admittedRows; state.digest = candidateSha; state.sourceText = doc.csv_utf8;
+      state.journal = admittedJournal; state.filename = "[PRIVATE ENCRYPTED WORKROOM]";
+      state.selected = -1; state.dirty = false; state.pending = false; state.bulkUndo = null;
+      $("bulkUndo").disabled = true;
+      $("sourceFile").value = "";
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      $("sourceId").textContent = "Recovered exact source CSV SHA-256: " + candidateSha + " (unsigned)";
+      $("summary").textContent = admittedRows.length + " original CSV finding(s) and source-matched PRIVATE HUMAN notes reopened in browser memory.";
+      ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter"].forEach(id => { $(id).value = ""; });
+      $("orderBy").value = "severity";
+      setEnabled(true); renderList();
+      status("Encrypted complete workroom opened locally. No client authenticity, grant, consent or verified remediation established.", false);
+    } catch (error) {
+      status("Encrypted workroom HOLD; previous state preserved: " + error.message, true);
+    } finally {
+      pass = "";
+      $("vaultPass").value = "";
+      $("loadWorkroom").disabled = false;
     }
   }
   function htmlEscape(v) {
@@ -549,6 +619,12 @@
     $("saveCounts").addEventListener("click", saveCounts);
     $("saveCalendar").addEventListener("click", saveCalendar);
     $("saveVault").addEventListener("click", saveVault);
+    $("saveWorkroom").addEventListener("click", saveWorkroom);
+    $("loadWorkroom").addEventListener("click", () => $("workroomFile").click());
+    $("workroomFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadWorkroom(e.target.files[0]);
+      e.target.value = "";
+    });
     $("loadVault").addEventListener("click", () => $("vaultFile").click());
     $("vaultFile").addEventListener("change", e => {
       if (e.target.files[0]) loadVault(e.target.files[0]);
