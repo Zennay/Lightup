@@ -70,3 +70,17 @@ This publishes `owner-review-001/original/` (FULL ORIGINAL PRIVATE, not shareabl
 The private result contains `source-free-report/` with original source-free counts and `human-studio/` with the original browser-editable HUMAN reason follow-ups and exportable local HUMAN journal. No customer identity, original evidence or case-level join is added. Open the generated `index.html` locally. A single received Cockpit can still be opened with native `read_cockpit.py` directly; the integrated recipient comparison does **not** manufacture a second cohort.
 
 Neither workflow creates approval, grant, scan, exploitation, native Apply, verified mitigation, authenticated sender or real client consent. All pre-existing release gates remain unchanged.
+
+## Single-file source-free HUMAN Cockpit handoff (UNENCRYPTED)
+
+The separate `portable_cockpit.py` composes the original unchanged source-free `read_cockpit.inspect` with a strictly original-member-only, reproducibly ordered ZIP transport. **No original evidence, person/client ID, case notes, attached material or grant is copied. The human aggregate counts can nonetheless be sensitive. This `.luhz` is NOT encrypted, source-signed or authenticated. Never send it without actual independent recipient/disclosure permission.** The CLI never sends or uploads any bytes itself.
+
+On a trusted original owner-private device, after `workflow.py owner-start`, create a fresh 0600 file in an existing 0700 private parent:
+
+    python3 remediation-integrated-workspace/portable_cockpit.py pack --cockpit "$HOME/lightup-private/owner-review-001/source-free-recipient" --output-file "$HOME/lightup-private/approved-human-handoff-001.luhz"
+
+On another separately approved recipient device, copy the archive into an owner-only private directory with 0600 file permissions; with the same trusted pinned LightUp software installed, receive it atomically in a **new** PRIVATE folder:
+
+    python3 remediation-integrated-workspace/portable_cockpit.py unpack --archive "$HOME/lightup-private/approved-human-handoff-001.luhz" --output-dir "$HOME/lightup-private/received-01"
+
+Before publishing, the recipient refuses duplicate, unexpected, unsafe or oversized archive paths; reads only original Cockpit HTML/JSON and its manifest; reconstructs every native page through the unchanged original renderer; and verifies the archive bytes remain unchanged. It preserves original source-free bytes exactly and never authorizes actions. Both commands return 2=REVIEW_ONLY or 3=HOLD. Archives are unsigned and can be replaced by an attacker controlling the distribution: source identity and real consent remain external gates. For actual confidentiality over untrusted transport, use an independently authorized secure channel; these files are not encrypted by LightUp.

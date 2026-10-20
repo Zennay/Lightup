@@ -14,6 +14,7 @@ TOOLS = frozenset((
     "remediation-integrated-workspace/install.py",
     "remediation-integrated-workspace/receiver.py",
     "remediation-integrated-workspace/workflow.py",
+    "remediation-integrated-workspace/portable_cockpit.py",
     "remediation-integrated-workspace/README.md",
 ))
 

@@ -192,6 +192,7 @@ def build(dest: Path) -> None:
         for name in ("remediation-integrated-workspace/install.py",
                      "remediation-integrated-workspace/receiver.py",
                      "remediation-integrated-workspace/workflow.py",
+                     "remediation-integrated-workspace/portable_cockpit.py",
                      "remediation-integrated-workspace/README.md"):
             data = (ROOT / name).read_bytes()
             require(len(data) <= MAX_SOURCE, "Installer asset oversized")
@@ -269,6 +270,7 @@ def verify(folder: Path) -> None:
                                              "remediation-integrated-workspace/install.py",
                                              "remediation-integrated-workspace/receiver.py",
                                              "remediation-integrated-workspace/workflow.py",
+                                             "remediation-integrated-workspace/portable_cockpit.py",
                                              "remediation-integrated-workspace/README.md"),
                 "Unexpected package name")
         require(type(descriptor) is dict and set(descriptor) == {"sha256", "bytes"}
