@@ -4,7 +4,9 @@
 
 ## Use
 
-Download this directory, keep all three app files together, then open **index.html** in a trusted modern browser that provides WebCrypto. It does not require a server, network, model, account, scanner or installation.
+**Fastest:** open or distribute the already generated **PRIVATE-disclosure-standalone.html**; the recipient can independently open **PRIVATE-verify-standalone.html**. Both files embed the complete CSS and JS with exact SHA-256 CSP pins, require no adjacent assets, and use no external resources. Alternatively keep index.html, desk.css, desk.js, verify.html and verify.js together in one directory.
+
+For repeatable packaging, run the Python standard-library **package.py** with no flags to verify both committed standalone assets byte-for-byte against the original source. The optional --output-dir PATH writes exclusive private 0600 portable copies into an existing directory without overwriting existing files. This does not run QA suites. It does not require a server, network, model, account, scanner or installation.
 
 1. Choose a HUMAN-owned PRIVATE UTF-8 TXT, CSV, JSON, MD or LOG (2 MiB maximum). Invalid UTF-8, NUL/control characters, invalid filename shapes, empty or oversized input HOLD.
 2. Add 1–30 exact case-sensitive sensitive values to mask, 3–128 characters each. Each must occur in the original text. Values are not echoed in the rule list.
