@@ -27,6 +27,19 @@ After successful build:
 
 Open the downloaded ZIP **locally**. No web hosting, external API, account, or target is required. Original encrypted companion packets remain opaque; the workroom does not decrypt them. For actual privately identifying materials, use locally authorized private storage and trusted recipients.
 
+## Original-source revision brief — HUMAN follow-up product
+
+The second offline product `change_brief.py` accepts two actual original `SOURCE-MANIFEST.json` files (an earlier separately exported package and the newer package). It rejects ambiguous duplicate JSON keys, malformed or oversized records, unexpected authorization flags, unsafe paths, and duplicate file entries. The result is an **owner-only scriptless HTML decision brief** with added / changed / unchanged / absent *original package files*, original unsigned byte fingerprints and original companion source HEAD drift. It also emits a separately **anonymous aggregate-counts JSON** without file names, hashes, or targets.
+
+```sh
+python3 scope-current-bundle/change_brief.py \
+  PREVIOUS/SOURCE-MANIFEST.json \
+  CURRENT/SOURCE-MANIFEST.json \
+  NEW-PRIVATE-REVIEW-DIRECTORY
+```
+
+The destination directory must **not exist**; the tool creates a private 0700 folder and exclusive 0600 outputs. It does not scan, approve, reconcile actual client data, claim a removed source is fixed, or reinterpret source hashes as authentic provenance. Human owners explicitly review changes and must still obtain real fresh permissions independently.
+
 ## Fail-closed build and immutability
 
 `build.py` checks the **exact four original source byte digests** of the original packager, HUMAN handoff and JSON inspector, copies eight original app directories without symlinks, reruns original **60-file pinned source verification**, validates the original DRAFT/HOLD manifest and its six literal false authority flags, and checks every output destination for collisions before writing. Output uses no-follow exclusive create, 0600 file mode, and fsync. If existing distributed files differ, the build **refuses replacement**; publish a newly named revision after legitimate source review instead.
