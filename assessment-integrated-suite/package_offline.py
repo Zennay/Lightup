@@ -35,7 +35,7 @@ Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
 Native checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 47 actions, including original
+options 21/22. The same console now has 49 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
@@ -53,6 +53,15 @@ PRIVATE HUMAN task deck (44) and a redacted 2-8 revision history (45).
 An original saved 0600 session may resume the native offline HUMAN
 browser workroom without replacing current paths (46), and a source-free
 priority/declared-date/team workload board can be created locally (47).
+The complete native PRIVATE workpack (48) now composes the original
+source-bound interactive HUMAN queue, declared-date priorities, and
+assigned-team-only task decks in one new 0700 local folder, using ONE
+pinned owner-only 0600 HUMAN CSV snapshot for consistent child views.
+An original strict saved session and matching original HUMAN CSV can
+recreate this full workpack without modifying live console paths (49).
+The browser can preview proposed imported HUMAN field changes without
+revealing question text and bulk-assign staged visible tasks to a HUMAN
+team without contacting recipients or granting any assessment authority.
 The original queue editor supports a CSP SHA256-pinned source-bound
 interactive PRIVATE browser UI, HUMAN bulk HOLD/NEEDS INPUT, undo/redo and
 explicit custody acknowledgement after a requested browser CSV download.
