@@ -68,5 +68,16 @@
 <p id="receipt-status" role="status" aria-live="polite">Nog geen PRIVATE memo aangemaakt of ingelezen.</p>
 <div id="receipt-view" class="receipt-view" aria-label="PRIVATE brongebonden memo-inhoud"></div>
 </section>
+<section aria-labelledby="revision-title"><h2 id="revision-title">6 · Twee PRIVATE reviewmemo-revisies vergelijken</h2>
+<p>Open eerst een PRIVATE memo A hierboven. Kies dan een tweede, afzonderlijk versleuteld memo B en vergelijk uitsluitend als de originele Casebook-bronhashes, oorspronkelijke HUMAN A/B-CSV hashes, dossiervolgorde en oorspronkelijke bronvelden **exact gelijk** zijn. Dit vergelijkt menselijke notities en keuzes, niet wijzigingen in de werkelijkheid of verleende toestemmingen.</p>
+<div class="panel"><label for="revision-file">Tweede PRIVATE memo B (.lurm)</label>
+<input id="revision-file" type="file" accept=".lurm" autocomplete="off">
+<label for="revision-password">Wachtwoord van memo B</label>
+<input id="revision-password" type="password" autocomplete="off">
+<button id="revision-compare" type="button">Vergelijk bronidentieke HUMAN-memo-revisies</button>
+<button id="revision-export" type="button" disabled>Download bronvrije revisietelling (JSON)</button></div>
+<p id="revision-status" role="status" aria-live="polite">Geen twee PRIVATE memos vergeleken.</p>
+<div id="revision-view" class="receipt-view"></div>
+</section>
 </main><footer>LightUp · oorspronkelijke bronlabels en SHA-256 zijn géén onafhankelijke producentauthenticatie. Alleen menselijk brongebonden opvolgwerk.</footer>
 <script>__SCRIPT__</script></body></html>

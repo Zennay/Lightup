@@ -26,6 +26,7 @@ const enums=[stages,routes,blockers];
 let opened=null,working=false;
 window.LightUpCasebookReceiptClear=()=>{
  opened=null;$("receipt-view").replaceChildren();
+ window.LightUpCasebookRevisionClear?.();
  status("PRIVATE lokaal ontvangen memo uit weergave verwijderd.");
 };
 function status(message,error=false){
@@ -151,6 +152,29 @@ function render(body){
  }
  table.append(tbody);panel.append(table);
 }
+async function decodeMemo(file,pw){
+  if(!file||typeof file.name!=="string"||file.name.length>160||
+    !/\.lurm$/i.test(file.name)||file.size<80||file.size>MAX_FILE||!pw)
+    fail("Selecteer een geldig beperkt PRIVATE memo en wachtwoord.");
+  const env=parse(await file.text());
+  if(!exact(env,["schema","version","kdf","iterations","cipher","salt_b64","iv_b64","ciphertext_b64"])||
+    env.schema!==SCHEMA||env.version!==1||env.kdf!=="PBKDF2-SHA256"||
+    env.iterations!==ITER||env.cipher!=="AES-256-GCM")
+    fail("Memo-envelope onbekend.");
+  const salt=from64(env.salt_b64,16),iv=from64(env.iv_b64,12),
+    cipher=from64(env.ciphertext_b64,MAX_FILE);
+  if(salt.length!==16||iv.length!==12||cipher.length<16)fail("Memo cryptografische parameters ongeldig.");
+  let clear;
+  try{clear=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},
+    await keyFor(pw,salt,"decrypt"),cipher));}
+  catch{fail("Wachtwoord of memo-body onjuist.");}
+  if(clear.length>MAX_BODY)fail("PRIVATE memo te groot.");
+  const candidate=admit(parse(dec.decode(clear)));clear.fill(0);
+  return candidate;
+ }
+window.LightUpCasebookReceiptLibrary=Object.freeze({
+ decodeMemo,current:()=>opened
+});
 $("receipt-save").addEventListener("click",async()=>{
  if(!window.isSecureContext||!crypto?.subtle){status("WebCrypto secure context vereist.",true);return;}
  if(working)return;setWorking(true);
@@ -180,26 +204,9 @@ $("receipt-open").addEventListener("click",async()=>{
  if(working)return;setWorking(true);
  try{
   if(!$("ack").checked)fail("PRIVATE HUMAN-only erkenning vereist.");
-  const file=$("receipt-file").files[0],pw=$("receipt-open-pass").value;
-  if(!file||typeof file.name!=="string"||file.name.length>160||
-    !/\.lurm$/i.test(file.name)||file.size<80||file.size>MAX_FILE||!pw)
-    fail("Selecteer een geldig beperkt PRIVATE memo en wachtwoord.");
-  const env=parse(await file.text());
-  if(!exact(env,["schema","version","kdf","iterations","cipher","salt_b64","iv_b64","ciphertext_b64"])||
-    env.schema!==SCHEMA||env.version!==1||env.kdf!=="PBKDF2-SHA256"||
-    env.iterations!==ITER||env.cipher!=="AES-256-GCM")
-    fail("Memo-envelope onbekend.");
-  const salt=from64(env.salt_b64,16),iv=from64(env.iv_b64,12),
-    cipher=from64(env.ciphertext_b64,MAX_FILE);
-  if(salt.length!==16||iv.length!==12||cipher.length<16)fail("Memo cryptografische parameters ongeldig.");
-  let clear;
-  try{clear=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},
-    await keyFor(pw,salt,"decrypt"),cipher));}
-  catch{fail("Wachtwoord of memo-body onjuist.");}
-  if(clear.length>MAX_BODY)fail("PRIVATE memo te groot.");
-  const candidate=admit(parse(dec.decode(clear)));clear.fill(0);
+  const candidate=await decodeMemo($("receipt-file").files[0],$("receipt-open-pass").value);
   if(opened&&!window.confirm("Vorige gelezen PRIVATE memo vervangen?"))return;
-  opened=candidate;render(opened);
+  opened=candidate;window.LightUpCasebookRevisionClear?.();render(opened);
   status("PRIVATE HUMAN-memo lokaal heropend, intern consistent maar zonder echte oorspronkelijke producent-, consent- of grant-verificatie.");
  }catch(e){status(e instanceof Error?e.message:"Ongeldig memo.",true);}
  finally{$("receipt-open-pass").value="";$("receipt-file").value="";setWorking(false);}

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-c/nCpZd/HTN0lTDb3brYXHhPzUN1lr9xOQZCQE4jtrQ='; script-src 'sha256-xwtyF/wG3So+PkrLtGDh0IMeFOYGOQzpAKLIupC7xZQ='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-c/nCpZd/HTN0lTDb3brYXHhPzUN1lr9xOQZCQE4jtrQ='; script-src 'sha256-eYxklY4YYxR8R9ak+20X8oVOV53gBELc+Ffp3L9g3rg='">
 <title>LightUp · PRIVATE HUMAN reconciliatie</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0b111c;color:#eaf1ff;font-size:15px}
 *{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1180px;margin:auto;padding:28px 20px}
 header{padding-top:50px}.mark{letter-spacing:.16em;font-weight:900;color:#86bbff}.mark span{font-size:.7em;color:#b1c3d9;background:#25334b;padding:7px 12px;border-radius:30px;margin-left:10px}
@@ -106,6 +106,17 @@ button.secondary:hover{background:#405a76}
 <button id="receipt-verify" type="button">Vergelijk exact versleutelde resultaatbytes met memo</button></div>
 <p id="receipt-status" role="status" aria-live="polite">Nog geen PRIVATE memo aangemaakt of ingelezen.</p>
 <div id="receipt-view" class="receipt-view" aria-label="PRIVATE brongebonden memo-inhoud"></div>
+</section>
+<section aria-labelledby="revision-title"><h2 id="revision-title">6 · Twee PRIVATE reviewmemo-revisies vergelijken</h2>
+<p>Open eerst een PRIVATE memo A hierboven. Kies dan een tweede, afzonderlijk versleuteld memo B en vergelijk uitsluitend als de originele Casebook-bronhashes, oorspronkelijke HUMAN A/B-CSV hashes, dossiervolgorde en oorspronkelijke bronvelden **exact gelijk** zijn. Dit vergelijkt menselijke notities en keuzes, niet wijzigingen in de werkelijkheid of verleende toestemmingen.</p>
+<div class="panel"><label for="revision-file">Tweede PRIVATE memo B (.lurm)</label>
+<input id="revision-file" type="file" accept=".lurm" autocomplete="off">
+<label for="revision-password">Wachtwoord van memo B</label>
+<input id="revision-password" type="password" autocomplete="off">
+<button id="revision-compare" type="button">Vergelijk bronidentieke HUMAN-memo-revisies</button>
+<button id="revision-export" type="button" disabled>Download bronvrije revisietelling (JSON)</button></div>
+<p id="revision-status" role="status" aria-live="polite">Geen twee PRIVATE memos vergeleken.</p>
+<div id="revision-view" class="receipt-view"></div>
 </section>
 </main><footer>LightUp · oorspronkelijke bronlabels en SHA-256 zijn géén onafhankelijke producentauthenticatie. Alleen menselijk brongebonden opvolgwerk.</footer>
 <script>/* Offline original Casebook v1 -> bound current HUMAN desk. No grants, no network. */
@@ -1037,6 +1048,7 @@ const enums=[stages,routes,blockers];
 let opened=null,working=false;
 window.LightUpCasebookReceiptClear=()=>{
  opened=null;$("receipt-view").replaceChildren();
+ window.LightUpCasebookRevisionClear?.();
  status("PRIVATE lokaal ontvangen memo uit weergave verwijderd.");
 };
 function status(message,error=false){
@@ -1162,6 +1174,29 @@ function render(body){
  }
  table.append(tbody);panel.append(table);
 }
+async function decodeMemo(file,pw){
+  if(!file||typeof file.name!=="string"||file.name.length>160||
+    !/\.lurm$/i.test(file.name)||file.size<80||file.size>MAX_FILE||!pw)
+    fail("Selecteer een geldig beperkt PRIVATE memo en wachtwoord.");
+  const env=parse(await file.text());
+  if(!exact(env,["schema","version","kdf","iterations","cipher","salt_b64","iv_b64","ciphertext_b64"])||
+    env.schema!==SCHEMA||env.version!==1||env.kdf!=="PBKDF2-SHA256"||
+    env.iterations!==ITER||env.cipher!=="AES-256-GCM")
+    fail("Memo-envelope onbekend.");
+  const salt=from64(env.salt_b64,16),iv=from64(env.iv_b64,12),
+    cipher=from64(env.ciphertext_b64,MAX_FILE);
+  if(salt.length!==16||iv.length!==12||cipher.length<16)fail("Memo cryptografische parameters ongeldig.");
+  let clear;
+  try{clear=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},
+    await keyFor(pw,salt,"decrypt"),cipher));}
+  catch{fail("Wachtwoord of memo-body onjuist.");}
+  if(clear.length>MAX_BODY)fail("PRIVATE memo te groot.");
+  const candidate=admit(parse(dec.decode(clear)));clear.fill(0);
+  return candidate;
+ }
+window.LightUpCasebookReceiptLibrary=Object.freeze({
+ decodeMemo,current:()=>opened
+});
 $("receipt-save").addEventListener("click",async()=>{
  if(!window.isSecureContext||!crypto?.subtle){status("WebCrypto secure context vereist.",true);return;}
  if(working)return;setWorking(true);
@@ -1191,26 +1226,9 @@ $("receipt-open").addEventListener("click",async()=>{
  if(working)return;setWorking(true);
  try{
   if(!$("ack").checked)fail("PRIVATE HUMAN-only erkenning vereist.");
-  const file=$("receipt-file").files[0],pw=$("receipt-open-pass").value;
-  if(!file||typeof file.name!=="string"||file.name.length>160||
-    !/\.lurm$/i.test(file.name)||file.size<80||file.size>MAX_FILE||!pw)
-    fail("Selecteer een geldig beperkt PRIVATE memo en wachtwoord.");
-  const env=parse(await file.text());
-  if(!exact(env,["schema","version","kdf","iterations","cipher","salt_b64","iv_b64","ciphertext_b64"])||
-    env.schema!==SCHEMA||env.version!==1||env.kdf!=="PBKDF2-SHA256"||
-    env.iterations!==ITER||env.cipher!=="AES-256-GCM")
-    fail("Memo-envelope onbekend.");
-  const salt=from64(env.salt_b64,16),iv=from64(env.iv_b64,12),
-    cipher=from64(env.ciphertext_b64,MAX_FILE);
-  if(salt.length!==16||iv.length!==12||cipher.length<16)fail("Memo cryptografische parameters ongeldig.");
-  let clear;
-  try{clear=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},
-    await keyFor(pw,salt,"decrypt"),cipher));}
-  catch{fail("Wachtwoord of memo-body onjuist.");}
-  if(clear.length>MAX_BODY)fail("PRIVATE memo te groot.");
-  const candidate=admit(parse(dec.decode(clear)));clear.fill(0);
+  const candidate=await decodeMemo($("receipt-file").files[0],$("receipt-open-pass").value);
   if(opened&&!window.confirm("Vorige gelezen PRIVATE memo vervangen?"))return;
-  opened=candidate;render(opened);
+  opened=candidate;window.LightUpCasebookRevisionClear?.();render(opened);
   status("PRIVATE HUMAN-memo lokaal heropend, intern consistent maar zonder echte oorspronkelijke producent-, consent- of grant-verificatie.");
  }catch(e){status(e instanceof Error?e.message:"Ongeldig memo.",true);}
  finally{$("receipt-open-pass").value="";$("receipt-file").value="";setWorking(false);}
@@ -1230,4 +1248,133 @@ $("receipt-verify").addEventListener("click",async()=>{
  }catch(e){status(e instanceof Error?e.message:"Bytevergelijking geweigerd.",true);}
  finally{$("receipt-check-file").value="";setWorking(false);}
 });
+})();
+/* Independent private HUMAN review memo revision reader; never authorizes activity. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const library=window.LightUpCasebookReceiptLibrary;
+const enc=new TextEncoder();
+const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const deny=s=>{throw Error(s);};
+let summary=null,busy=false;
+const status=(s,error=false)=>{
+ $("revision-status").textContent=(error?"HOLD: ":"")+s;
+ $("revision-status").classList.toggle("error",error);
+};
+const make=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
+function setBusy(v){
+ busy=v;$("revision-compare").disabled=v;$("revision-export").disabled=v||!summary;
+}
+function admission(a,b){
+ if(!a||!b)deny("Open eerst memo A en kies een tweede memo B.");
+ if(!eq(a.sources,b.sources)||!eq(a.human,b.human))
+  deny("Verschillende originele Casebook-bronnen of A/B HUMAN-input: geen historische conclusie.");
+ if(a.cases.length!==b.cases.length)deny("Ongelijk aantal broncases; afgebroken vergelijking.");
+ for(let i=0;i<a.cases.length;i++){
+  const prev=a.cases[i],next=b.cases[i];
+  if(!eq([prev.id,prev.source_action,prev.source_attention,prev.original_a,prev.original_b],
+         [next.id,next.source_action,next.source_attention,next.original_a,next.original_b]))
+   deny("Casebook-bron of oorspronkelijke HUMAN-ingang gewijzigd op bronrij "+(i+1)+".");
+ }
+}
+function compare(a,b){
+ admission(a,b);
+ const changes=[],counts={cases:a.cases.length,changed_cases:0,
+  changed_choice_fields:0,changed_human_notes:0,changed_human_reasons:0,
+  unchanged_cases:0,source_bound:true,
+  human_csv_bytes_differ:a.result.human_csv_sha256!==b.result.human_csv_sha256};
+ for(let i=0;i<a.cases.length;i++){
+  const x=a.cases[i],y=b.cases[i];
+  const decisions=[0,1,2].filter(j=>x.decision[j]!==y.decision[j]);
+  const noteChanged=x.note.note!==y.note.note;
+  const reasonChanged=x.note.reason!==y.note.reason;
+  const changed=decisions.length>0||noteChanged||reasonChanged;
+  if(changed){
+   counts.changed_cases++;
+   counts.changed_choice_fields+=decisions.length;
+   counts.changed_human_notes+=Number(noteChanged);
+   counts.changed_human_reasons+=Number(reasonChanged);
+   changes.push({id:x.id,decision_fields:decisions,
+      before:x.decision,after:y.decision,
+      previous_reason:x.note.reason,next_reason:y.note.reason,
+      note_changed:noteChanged});
+  }else counts.unchanged_cases++;
+ }
+ return {counts,changes};
+}
+function render(comparison,a,b){
+ const box=$("revision-view");box.replaceChildren();
+ box.append(make("h3","PRIVATE menselijk revisieverschil — uitsluitend zelfverklaarde bronbytes"));
+ const c=comparison.counts;
+ box.append(make("p",c.changed_cases+" dossiers gewijzigd · "+
+ c.changed_choice_fields+" keuzes gewijzigd · "+c.changed_human_reasons+
+ " redenwijzigingen · "+c.changed_human_notes+" notities gewijzigd (inhoud verborgen)."));
+ box.append(make("p","Oorspronkelijke inputs identiek aan bronreferenties in beide versleutelde memo's. "+
+ (c.human_csv_bytes_differ?"Uitvoer-HUMAN CSV bytes verschillen.":"Uitvoer-HUMAN CSV bytes zijn gelijk.")+
+ " Geen datum-, volgorde-, toestemming- of producentauthenticatie."));
+ box.append(make("p","Memo A ongetekende .lupt SHA-256: "+a.result.bundle_sha256+
+ " · memo B ongetekende .lupt SHA-256: "+b.result.bundle_sha256));
+ if(!comparison.changes.length){box.append(make("p","Geen verschillen in bewaarde HUMAN-beslissingen, reden of notitietekst."));return;}
+ const table=make("table",""),head=make("tr","");
+ ["PRIVATE broncase","HUMAN-keuzeverandering","HUMAN-redencategorie",
+  "Privénotitie veranderd?"].forEach(s=>head.append(make("th",s)));
+ const thead=make("thead","");thead.append(head);table.append(thead);
+ const tbody=make("tbody","");
+ const names=["fase","route","blokkade"];
+ for(const row of comparison.changes){
+  const tr=make("tr","");
+  const d=row.decision_fields.length ? row.decision_fields.map(i=>
+    names[i]+": "+row.before[i]+" → "+row.after[i]).join(" · "):"Geen HUMAN-keuzewijziging";
+  const vals=[row.id,d,row.previous_reason+" → "+row.next_reason,
+    row.note_changed?"JA (inhoud niet gekopieerd)":"NEE"];
+  vals.forEach(v=>tr.append(make("td",v)));tbody.append(tr);
+ }
+ table.append(tbody);box.append(table);
+}
+$("revision-compare").addEventListener("click",async()=>{
+ if(!crypto?.subtle||!window.isSecureContext){status("Veilige WebCrypto-context ontbreekt.",true);return;}
+ if(busy)return;setBusy(true);
+ try{
+  if(!$("ack").checked)deny("Bevestig PRIVATE, niet-autoriserende bronreview.");
+  const old=library.current();
+  if(!old)deny("Open eerst memo A in het bovenstaande PRIVATE memo-leesdeel.");
+  const candidate=await library.decodeMemo(
+    $("revision-file").files[0],$("revision-password").value);
+  const next=compare(old,candidate);
+  render(next,old,candidate);
+  summary=next.counts;
+  status("Brongebonden HUMAN-memo-verschillen lokaal berekend; geen originele producer-/clientauthenticatie.");
+ }catch(e){status(e instanceof Error?e.message:"Niet-compatibele memo's",true);}
+ finally{$("revision-password").value="";$("revision-file").value="";setBusy(false);}
+});
+$("revision-export").addEventListener("click",()=>{
+ try{
+  if(!summary)deny("Vergelijk eerst twee volledig geaccepteerde PRIVATE memos.");
+  if(!window.confirm("Exporteer slechts menselijke revisie-aantallen zonder Casebook IDs, bron-SHAs of notities? Kleine cohorten kunnen gevoelig blijven."))return;
+  const body={schema:"lightup.casebook.human_review_revision_aggregate.v1",
+    status:"REVIEW_ONLY",authority:"NONE",
+    cases:summary.cases,changed_cases:summary.changed_cases,
+    changed_choice_fields:summary.changed_choice_fields,
+    changed_human_notes:summary.changed_human_notes,
+    changed_human_reasons:summary.changed_human_reasons,
+    unchanged_cases:summary.unchanged_cases,
+    human_csv_bytes_differ:summary.human_csv_bytes_differ,
+    source_authenticated:false,client_consent_verified:false,
+    operator_consent_verified:false,authorization_granted:false,
+    execution_allowed:false,release_approved:false};
+  const url=URL.createObjectURL(new Blob([enc.encode(JSON.stringify(body)+"\n")],
+    {type:"application/octet-stream"}));
+  const a=document.createElement("a");a.href=url;
+  a.download="lightup-HUMAN-revision-aggregate.json";
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  status("Bronvrije HUMAN-revisietelling lokaal aangeboden; geen bron of toestemming geverifieerd.");
+ }catch(e){status(e instanceof Error?e.message:"Revisietelling geweigerd.",true);}
+});
+window.LightUpCasebookRevisionClear=()=>{
+ summary=null;$("revision-view").replaceChildren();
+ $("revision-export").disabled=true;
+ status("PRIVATE revisievergelijking gewist.");
+};
 })();</script></body></html>
