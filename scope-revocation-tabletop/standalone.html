@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-g/zFGqI58VgKhVEuwoqRFi2NV0rrGCMPMhlvkmBZVTk='; style-src 'sha256-QwznhkI41YE8gSdDL5Y7BS8uhtS6iiYizrFuS/uaBIU='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mX3RLJAR9F7r/5EaWJxurOIAyfk3Yw44cklWWjtPahw='; style-src 'sha256-rVs6NbAe6xw0SWMUTSeQlw0f/kpD3tKc3UXiY88SU7I='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
   <meta name="referrer" content="no-referrer">
   <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
   <style>:root{color-scheme:dark;--bg:#0b1220;--surface:#121e30;--surface2:#19283a;--border:#31445c;--text:#f3f7fc;--muted:#adbed1;--aqua:#5ee5cf;--warn:#ffd07d;--red:#ff9b9b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -65,6 +65,17 @@
 @media(max-width:900px){.drill-controls{grid-template-columns:1fr 1fr}.drill-controls label{grid-column:1/-1}.drill-content{grid-template-columns:1fr}}
 @media(max-width:550px){.drill-deck{padding:16px}.drill-controls{grid-template-columns:1fr}}
 @media print{.drill-deck{background:white;color:black;border:1px solid #aaa}.drill-deck .muted,.drill-question,.drill-result,.drill-result p{color:black}.drill-controls,.drill-choices{display:none}.drill-result{background:white;color:black;border:1px solid #bbb}}
+
+/* Literal exercise-only portfolio matrix. The positive style does not mean release approval. */
+.coverage-board{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.coverage-board h4{font-size:1rem;margin:0 0 7px}.coverage-board p{margin:9px 0 12px}
+.coverage-table{border-collapse:collapse;width:100%;min-width:520px;text-align:left;font-size:.75rem}
+.coverage-table th,.coverage-table td{padding:9px 8px;border-bottom:1px solid #344e63;white-space:nowrap}
+.coverage-table thead th{font-size:.7rem;letter-spacing:.035em;background:#1c3546}
+.matrix-tag{display:inline-block;padding:5px 7px;border-radius:7px;font-weight:740}
+.matrix-illustrative{border:1px solid #598388;color:#d8f0f1;background:#27474f}
+.matrix-attention{border:1px solid #a1784b;color:#ffddac;background:#4b3929}
+@media print{.coverage-table th,.coverage-table td{background:white;color:black;border:1px solid #aaa}.matrix-tag{border:1px solid #777;background:white;color:black}}
 </style>
   <script>"use strict";
 /**
@@ -356,6 +367,41 @@
       actions.append(save,load,erase);tr.append(label,cell,actions);root.append(tr);
     });
     updateSlotSelectors();
+    renderCoverage();
+  }
+  function renderCoverage() {
+    const root=$("coverage-rows");
+    root.replaceChildren();
+    let filled=0,existingHolds=0,blockedAttempts=0;
+    slots.forEach((slot,i)=>{
+      const tr=el("tr");
+      tr.append(el("th","",String(i+1)));
+      if(slot===null) {
+        for(let k=0;k<5;k++) tr.append(el("td","", "—"));
+      } else {
+        filled++;
+        const state=play(slot.events).state;
+        const count=blockers(state).length;
+        const earlier=slotSummary(slot).attemptHolds;
+        existingHolds+=count;blockedAttempts+=earlier;
+        const cells=[
+          [state.client,"Fictief ja","Ontbreekt"],
+          [state.operator,"Fictief ja","Ontbreekt"],
+          [state.window,"Open (fictief)","Verlopen"],
+          [!state.stop,"Niet actief","Actief"],
+          [earlier===0,"Geen geregistreerd",earlier+" oefen-HOLD"]
+        ];
+        cells.forEach(([ok,yes,no])=>{
+          const td=el("td");
+          td.append(el("span","matrix-tag "+(ok?"matrix-illustrative":"matrix-attention"),ok?yes:no));
+          tr.append(td);
+        });
+      }
+      root.append(tr);
+    });
+    write("coverage-summary",filled+" van 8 fictieve scenario's opgeslagen; "+
+      existingHolds+" huidige oefenblokkades en "+blockedAttempts+
+      " historische fictieve geblokkeerde pogingen in totaal. Dit is nooit toestemming of scanbewijs.");
   }
   function updateSlotSelectors() {
     const filled=slots.flatMap((x,i)=>x===null?[]:[i]);
@@ -698,6 +744,14 @@
           </div>
           <div class="bank-scroll"><table class="bank-table"><caption class="sr-only">Acht uitsluitend fictieve scenario-slots</caption>
             <thead><tr><th>Scenario</th><th>Fictieve toestand</th><th>Acties</th></tr></thead><tbody id="bank-rows"></tbody></table></div>
+          <section class="coverage-board" aria-labelledby="coverage-title">
+            <div class="section-top"><h4 id="coverage-title">Matrix van fictieve voorwaarden</h4><span class="pill">GEEN ECHTE MACHTIGING</span></div>
+            <p class="muted">Per opgeslagen scenario toont deze matrix uitsluitend de lokaal ingevoerde oefenstatus. Een groene oefencel is nooit geauthenticeerd bronbewijs.</p>
+            <div class="bank-scroll"><table class="coverage-table"><caption class="sr-only">Fictieve huidige voorwaarden en eerdere HOLD-pogingen per scenario</caption>
+              <thead><tr><th>Slot</th><th>Client</th><th>Operator</th><th>Venster</th><th>Noodstop</th><th>Eerdere HOLD</th></tr></thead>
+              <tbody id="coverage-rows"></tbody></table></div>
+            <p class="muted" id="coverage-summary">Alle scenario-slots zijn leeg.</p>
+          </section>
         </section>
         <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
         <label for="timeline-filter">Tijdlijn filteren</label><select id="timeline-filter" class="timeline-filter">
