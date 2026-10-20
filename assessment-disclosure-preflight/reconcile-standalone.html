@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-bkZmyFA5P/aLXOgjASXgEHlzg7UkCFR7b5lWKbnG8tc='; style-src 'sha256-Kqp35AP3Gb+KbftL02rkaa85hCAUL1c0yDApkLjHoaY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-wbDVyK0BPVM/gVLovk4WMBFJs/3kKLr6cdGvK+4MLVo='; style-src 'sha256-Kqp35AP3Gb+KbftL02rkaa85hCAUL1c0yDApkLjHoaY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN reconciliation desk</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#192735;background:#f3f5f9;color-scheme:light}
@@ -128,10 +128,12 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 </div>
 <div class="actions">
 <button id="seal" type="button" disabled>Seal PRIVATE selected HUMAN result (.luhb)</button>
+<button id="exportPlain" type="button" class="secondary" disabled>Export complete UNENCRYPTED PRIVATE HUMAN CSV</button>
 <button id="counts" type="button" class="secondary" disabled>Export suppressed counts only</button>
 <button id="cover" type="button" class="secondary" disabled>Export PRIVATE no-notes HUMAN handoff cover (.html)</button>
 </div>
 <p id="sealStatus" role="status" aria-live="polite">No HUMAN result sealed. Neither encryption nor SHA-256 authenticates the reviewers, verifies source evidence, authorizes a disclosure or confers release.</p>
+<p class="hint"><strong>Privacy warning:</strong> The optional unencrypted complete HUMAN CSV includes every selected PRIVATE stage, reviewer question and next action and may be copied into ordinary browser download storage without 0600 permissions. Export only when deliberately needed for an owner-controlled offline workflow. An earlier locally exported A/B/HOLD decision CSV remains mandatory. The new original-format complete CSV can be re-admitted using native <code>reconcile.py reopen --received-csv ... --received-counts ...</code>. It is never consent or release.</p>
 <p class="hint">The encrypted file uses the original LightUp AES-256-GCM/PBKDF2 implementation and can be opened locally with the existing HUMAN studio or native <code>human_review.py render --bundle</code>. It contains the unsigned receipt and selected HUMAN stage/question/next-action text, not the A/B justification; retain the separately exported exact decision CSV. The source-free counts download suppresses small cohorts/groups and is not automatically anonymous. Browser download files may initially have default filesystem permissions. No automatic recipient dispatch, scan, grant, deployment or network access.</p>
 </div>
 <div class="resume" aria-labelledby="receiveTitle">
@@ -772,6 +774,7 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
     const ready = !invalid && exportedRevision === decisionRevision &&
                   Boolean(source.receipt) && globalThis.LightUpHumanVault;
     byId("seal").disabled = !ready;
+    byId("exportPlain").disabled = !ready || typeof exportedDecisionHash !== "string";
     byId("counts").disabled = !ready;
     byId("cover").disabled = !ready;
     byId("exportReceiving").disabled = !(ready && receivingRecord &&
@@ -909,6 +912,29 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
         "HOLD: encryption, changed HUMAN choices, incomplete password, browser context or consent prompt refused. Existing decisions retained.";
     } finally {
       pass.value = ""; repeat.value = "";
+    }
+  }
+  function exportPlain() {
+    const savedSource = source, currentEpoch = epoch, currentRevision = decisionRevision;
+    try {
+      admitted(savedSource && exportedRevision === currentRevision &&
+               typeof exportedDecisionHash === "string" &&
+               /^[a-f0-9]{64}$/u.test(exportedDecisionHash) &&
+               decisions.length === savedSource.rows.length);
+      const originalFormatCsv = nativeSelectedCsv(nativeSelectedRows());
+      admitted(savedSource === source && currentEpoch === epoch &&
+               currentRevision === decisionRevision && exportedRevision === currentRevision);
+      admitted(confirm("Export an UNENCRYPTED complete PRIVATE HUMAN CSV containing selected ORIGINAL questions and next actions? Other browser downloads can expose this file. Store in a trusted owner-only 0600 location and retain the separate A/B/HOLD decision CSV. This never authorizes disclosure."));
+      admitted(savedSource === source && currentEpoch === epoch &&
+               currentRevision === decisionRevision && exportedRevision === currentRevision);
+      localDownload(originalFormatCsv, "PRIVATE-browser-reconciled-human.csv",
+                    "text/csv;charset=utf-8");
+      byId("sealStatus").textContent =
+        "REVIEW_ONLY: complete ORIGINAL-format UNENCRYPTED HUMAN CSV downloaded. Keep PRIVATE with 0600 custody and independent authorization checks.";
+      notice("REVIEW_ONLY: complete PRIVATE HUMAN CSV offered locally, not approved, released or automatically shared.");
+    } catch (_) {
+      byId("sealStatus").textContent =
+        "HOLD: plaintext export rejected due to stale original HUMAN decision, unsafe data or declined explicit privacy confirmation.";
     }
   }
   function countsCsv(rows) {
@@ -1153,6 +1179,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
   byId("clear").addEventListener("click", clear);
   byId("save").addEventListener("click", exportDecisions);
   byId("seal").addEventListener("click", sealResult);
+  byId("exportPlain").addEventListener("click", exportPlain);
   byId("counts").addEventListener("click", exportCounts);
   byId("cover").addEventListener("click", exportCover);
   byId("restore").addEventListener("click", restoreDecisions);
