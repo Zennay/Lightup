@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-yqTxIPMWQMPgx+n8UFn0N59Jp6TVD80sL6ySLIwD20M='; style-src 'sha256-Uz0QsralgXsz1y3tz3ehKAvOYuFLcb86bZt8IUM1qKk='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-MEhNjFwG3Jlq7q0L8m4xlgPfb1Who2eq0XvM3vQTwVI='; style-src 'sha256-Kqp35AP3Gb+KbftL02rkaa85hCAUL1c0yDApkLjHoaY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN reconciliation desk</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#192735;background:#f3f5f9;color-scheme:light}
@@ -59,6 +59,12 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 .historybar button{flex:1 1 220px}
 #historyStatus{padding:.65rem .8rem;background:#ecf2f7;border-left:3px solid #59849b;border-radius:.25rem;margin:.5rem 0}
 @media(max-width:720px){.historybar{flex-direction:column}.historybar button{width:100%}}
+
+/* Read-only private handoff receiver stays visually distinct from editing. */
+#receiveTitle{color:#254960}
+#receiveStatus{display:block;margin:.8rem 0;padding:.7rem;border-left:3px solid #6388a1;background:#f2f6fa}
+#receiveSaved{background:#21597b}
+#receiveSaved:hover{background:#16425e}
 </style>
 
 
@@ -127,6 +133,18 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 </div>
 <p id="sealStatus" role="status" aria-live="polite">No HUMAN result sealed. Neither encryption nor SHA-256 authenticates the reviewers, verifies source evidence, authorizes a disclosure or confers release.</p>
 <p class="hint">The encrypted file uses the original LightUp AES-256-GCM/PBKDF2 implementation and can be opened locally with the existing HUMAN studio or native <code>human_review.py render --bundle</code>. It contains the unsigned receipt and selected HUMAN stage/question/next-action text, not the A/B justification; retain the separately exported exact decision CSV. The source-free counts download suppresses small cohorts/groups and is not automatically anonymous. Browser download files may initially have default filesystem permissions. No automatic recipient dispatch, scan, grant, deployment or network access.</p>
+</div>
+<div class="resume" aria-labelledby="receiveTitle">
+<h3 id="receiveTitle">4 · Receive an already saved PRIVATE HUMAN handoff</h3>
+<p>After exporting the current complete A/B/HOLD decision CSV, reopen your previously produced final HUMAN file <strong>and its separate suppressed-counts CSV</strong>. Select a native PRIVATE-reconciled-human.csv or the original password-encrypted receipt+HUMAN .luhb. This local read-only receiving desk compares every original ordinal, selected stage, private question/action and complete count handoff against the current original source files and HUMAN decisions. The encrypted receipt must match the original bytes exactly. Nothing is uploaded, endorsed or rewritten.</p>
+<div class="grid">
+<label>Saved result type<select id="receiveFormat"><option value="bundle">Encrypted native .luhb</option><option value="csv">Native complete HUMAN CSV</option></select></label>
+<label>Previously saved final PRIVATE HUMAN result<input id="receiveResult" type="file" accept=".csv,.luhb"></label>
+<label>Previously saved suppressed PRIVATE counts<input id="receiveCounts" type="file" accept=".csv,text/csv"></label>
+<label>Previous result password (.luhb only)<input id="receivePassword" type="password" autocomplete="off" minlength="14" maxlength="256"></label>
+</div>
+<div class="actions"><button id="receiveSaved" type="button">Reopen complete PRIVATE handoff</button></div>
+<p id="receiveStatus" class="hint" role="status" aria-live="polite">No saved result re-admitted. Exact native Python reopen remains the final local custody check.</p>
 </div>
 <p class="hint">The output pins SHA-256 of the exact original receipt and both complete native HUMAN CSV byte streams. On the same trusted machine, run <code>reconcile.py finalize --decisions ...</code> with the unchanged source files. It rejects any changed source, reordered ordinal, invalid stage, CSV or decision. A SHA-256 digest proves byte equality only, never origin or authority. Local browser downloads may receive normal filesystem permissions: move the PRIVATE file into a trusted owner-only directory before finalization.</p>
 </section>
@@ -465,7 +483,7 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
                                              LightUpHumanVault.maxBundleBytes;
     const raw = await readFile(file, limit);
     const field = byId(passwordId);
-    const password=[REDACTED]
+    const password = field.value;
     try {
       admitted(password.length >= 14 && password.length <= 256);
       let csv;
@@ -907,6 +925,61 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
       notice("HOLD: counts were not generated or operator cancelled; no disclosure approval.", true);
     }
   }
+  function countPairs(raw) {
+    // Original native counts and browser counts differ in CSV quoting only.
+    // This deliberately accepts only the tiny fixed literal field/value schema,
+    // never arbitrary CSV, formulae, free text, new rows or disclosure claims.
+    admitted(typeof raw === "string" && raw.length > 0 && raw.length <= 4096);
+    const lines = raw.replace(/\r\n/gu, "\n").replace(/\r/gu, "\n").replace(/\n$/u, "").split("\n");
+    admitted(lines.length >= 10 && lines.length <= 20);
+    return lines.map(line => {
+      const match = /^("?)([A-Za-z0-9_]+)\1,("?)([A-Za-z0-9_]+)\3$/u.exec(line);
+      admitted(match);
+      return [match[2], match[4]];
+    });
+  }
+  async function receiveSaved() {
+    const current = source, capturedEpoch = epoch, revision = decisionRevision;
+    const password = byId("receivePassword");
+    try {
+      admitted(current && exportedRevision === revision && globalThis.LightUpHumanVault &&
+               crypto?.subtle && window.isSecureContext);
+      const format = byId("receiveFormat").value;
+      admitted(format === "bundle" || format === "csv");
+      const result = await readFile(byId("receiveResult").files[0],
+        format === "bundle" ? LightUpHumanVault.maxBundleBytes : MAX);
+      const counts = await readFile(byId("receiveCounts").files[0], 4096);
+      let csv;
+      if (format === "bundle") {
+        admitted(password.value.length >= 14 && password.value.length <= 256);
+        const original = await LightUpHumanVault.openBundle(result, password.value);
+        admitted(sameBytes(original.receipt, current.receipt));
+        csv = original.csv;
+      } else csv = utf8(result);
+      const received = humanRows(csv, current.rows.map(row => row.original), current.digest[0]);
+      const expected = nativeSelectedRows();
+      admitted(received.length === expected.length && received.every((row, i) =>
+        ["ordinal", "kind", "stage", "question", "next_action"].every(key =>
+          row[key] === expected[i][key])));
+      const expectedCounts = countPairs(countsCsv(expected));
+      const receivedCounts = countPairs(utf8(counts));
+      admitted(receivedCounts.length === expectedCounts.length &&
+        receivedCounts.every((pair, i) =>
+          pair[0] === expectedCounts[i][0] && pair[1] === expectedCounts[i][1]));
+      admitted(source === current && capturedEpoch === epoch &&
+               decisionRevision === revision && exportedRevision === revision);
+      byId("receiveStatus").textContent =
+        "REVIEW_ONLY: original PRIVATE receipt, every HUMAN selected row and complete suppressed-count handoff match the current unsigned originals. This does NOT verify source identity, reviewer independence, recipient rights, consent or release.";
+      notice("REVIEW_ONLY: saved complete PRIVATE HUMAN handoff re-admitted locally. No approval or active assessment.");
+    } catch (_) {
+      byId("receiveStatus").textContent =
+        "HOLD: saved result, counts, exact source, password or current HUMAN decisions did not match. Existing private session retained.";
+    } finally {
+      password.value = "";
+      byId("receiveResult").value = "";
+      byId("receiveCounts").value = "";
+    }
+  }
   function escapeMarkup(value) {
     return String(value).replace(/[&<>"']/gu, c =>
       ({"&":"&amp;", "<":"&lt;", ">":"&gt;",
@@ -977,7 +1050,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
     exportedRevision = -1;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm", "receiveResult", "receiveCounts", "receivePassword"]) byId(id).value = "";
     for (const url of urls) URL.revokeObjectURL(url);
     urls.clear();
     notice("PRIVATE session cleared from this page. Previously downloaded files remain on your device; browser memory erasure is not guaranteed.");
@@ -989,6 +1062,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
   byId("counts").addEventListener("click", exportCounts);
   byId("cover").addEventListener("click", exportCover);
   byId("restore").addEventListener("click", restoreDecisions);
+  byId("receiveSaved").addEventListener("click", receiveSaved);
   byId("undo").addEventListener("click", () => navigateHistory("undo"));
   byId("redo").addEventListener("click", () => navigateHistory("redo"));
   byId("holdFiltered").addEventListener("click", holdVisibleSelections);
@@ -1006,7 +1080,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
     exportedRevision = -1;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm", "receiveResult", "receiveCounts", "receivePassword"]) byId(id).value = "";
     urls.forEach(url => URL.revokeObjectURL(url)); urls.clear();
   });
 })();</script>
