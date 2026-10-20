@@ -104,3 +104,26 @@ not approval. Exit 3 = HOLD and removes only the failed new kit.
 ## Original lab HUMAN review and follow-up scheduling available together
 
 Two more independently held original product snapshots are physically integrated: PR #1639 original full offline lab review desk, and PR #1675 original PRIVATE source-bound follow-up calendar. Both self-contained browser apps are now linked and copied by `suite.py prepare` into the same owner-only PRIVATE kit; the apps are unchanged, no finding/target is auto-loaded or persisted, and no actual scheduled external task or customer instruction is created by the launcher. The offline calendar displays HUMAN-only proposals, not true consent, verified finding status or an authorization. Their original PR branches were never changed; release remains DRAFT/HOLD.
+
+## Optional PRIVATE original-source A/B drift package (fourth native flow)
+
+Compare two separately already-produced original lab JSON artifacts with the
+**unchanged original** strict `assessment-briefing/compare.py` without invoking
+any scanner, execution, evidence collection, browser fetch or model:
+
+~~~sh
+python3 assessment-integrated-suite/drift.py \
+  --before /private/original-lab-a.json \
+  --after /private/original-lab-b.json \
+  --private-parent /path/to/PRIVATE-only-parent
+~~~
+
+The original native comparator requires two genuinely distinct source-byte
+hashes/run IDs, the same declared scenario and matching source target set. If
+those source prerequisites fail, the whole attempted new 0700 kit is removed
+under ordinary failure conditions and the CLI returns HOLD (3). If admitted it
+returns REVIEW_ONLY (2), produces the original scriptless PRIVATE exact-declared
+A/B comparison, HUMAN follow-up CSV and unsigned source manifests with a local
+CSP-restricted PRIVATE index. A removed finding is a declaration, **not** proof
+that it was repaired, retested, or even correctly observed. Never distribute
+source findings outside independently approved PRIVATE scope.
