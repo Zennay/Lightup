@@ -2,7 +2,7 @@
 
 **CURRENT SOURCE DELIVERY — DRAFT/HOLD:** The up-to-date portable PRIVATE
 two-reviewer workroom is [reconcile-standalone.html](./reconcile-standalone.html)
-(rebuilt source-only at commit `89c7f16`). It supports original
+(rebuilt source-only at commit `e43cbec`). It supports original
 HUMAN selection, encrypted native-compatible continuation, read-only receipt
 and complete counts reopening, plus explicit privacy-minimal PRIVATE local
 receiving records with unsigned byte identities. [The Python native receiver](./reconcile.py)
@@ -41,6 +41,39 @@ python3 assessment-disclosure-preflight/preflight.py \
 ~~~
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
+
+## Browser-generated COMPLETE PRIVATE HUMAN result: encrypted or plaintext
+
+The source-only [current one-file offline workroom](./reconcile-standalone.html)
+now offers **two original-format result exports**, both guarded by the separate
+already exported, exact-byte-digested seven-column A/B/HOLD decision CSV:
+
+- **Seal PRIVATE selected HUMAN result (.luhb)**: the original receipt and
+  complete selected original-format HUMAN rows remain password-encrypted in
+  the original native-compatible PBKDF2/AES-256-GCM format.
+- **Export complete UNENCRYPTED PRIVATE HUMAN CSV**: an explicit separate
+  opt-in with an additional confidentiality confirmation, containing every
+  original ordinal and its selected stage, question and next action in the
+  original six-column native format. HOLD ordinals become literal
+  `unreviewed` with empty private notes. All hidden/filter-inactive ordinals
+  remain present. This is a deliberate PRIVATE plaintext download; move it
+  directly to owner-only 0600 storage and avoid onward sharing.
+
+In either path, the separate complete source-bound A/B/HOLD decision CSV
+remains necessary for the HUMAN reason trail, and the independent suppressed
+counts export is still required before native receiving. The exact original
+PRIVATE receipt, both original reviewer submissions and all source-bound
+decisions must re-admit through original `reconcile.py reopen`, with
+`--received-csv --received-counts` for plaintext or
+`--encrypt-result --received-bundle --received-counts` for ciphertext.
+
+The receiving record export additionally binds the SHA-256 of the **actual
+browser-generated current decision CSV**, along with original source/reviewer
+and saved result/count bytes. This is unsigned **byte equality only**: neither
+a browser download nor its SHA guarantees file persistence, producer identity,
+consent, finding correctness, recipient approval, authorization or live release.
+All actual CI/source-owner/privacy/security/browser review and action-time
+consent/HUMAN GO gates stay mandatory.
 
 ## Manual PRIVATE local receiving record — no authority
 
