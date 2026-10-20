@@ -51,3 +51,7 @@ De sectie **Vergelijk twee fictieve beslismomenten** toont voor elk gekozen tijd
 ## Historische fictieve HOLD-navigatie
 
 De historische pogingen zijn nu interactieve momenten: **Bekijk HOLD** of **Bekijk poging** springt naar de originele stap, stelt de nieuwe tweemomentenvergelijking exact in op de stap ervóór en de poging zelf, en toont het destijds geldende oefen-HOLD-resultaat. **Volgende historische oefen-HOLD bekijken** loopt alleen over daadwerkelijk destijds geblokkeerde fictieve pogingen en keert na het einde terug naar de eerste. Het overzicht blijft zichtbaar nadat later oefenverklaringen zijn toegevoegd. Geen uitvoering, grant of netwerkactie wordt gestart; de app gebruikt uitsluitend huidige lokale fictieve gebeurteniscodes.
+
+## Didactische agenda over acht fictieve scenario's
+
+De **begeleide bespreekagenda** toont direct in de offline browser welke eigen bewaarde scenario's historische oefen-HOLDs, noodstop, scope- of risicodrift, ontbrekende verklaringen of verlopen vensters illustreren. De volgorde is uitsluitend voor een menselijke lesbespreking; zonder HOLD wordt de fictieve status nooit als echte gereedheid gepresenteerd. Per agenda-item opent de begeleider het bestaande slot in de editor en wordt de tijdlijn op historische oefen-HOLDs gefilterd. De optionele PRIVATE Markdown agenda bevat alleen slotnummers, oefenaantallen en vooraf vastgelegde didactische tekst, zonder originele brondata, vrije aantekeningen of echte persoonsgegevens.

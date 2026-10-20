@@ -394,6 +394,7 @@
       details.forEach(t=>delta.append(el("li","",t)));
     }
     renderBank();
+    renderLessonQueue();
     renderReplay();
     renderMomentComparison();
     refreshDrillStatus();
@@ -409,6 +410,68 @@
     return {steps:slot.events.length,holds,attempts:state.attempts,attemptHolds,
       stop:state.stop,client:state.client,operator:state.operator,
       scope:state.scope+1,risk:state.risk+1};
+  }
+  function lessonQueue(){
+    return slots.flatMap((slot,index)=>{
+      if(!slot)return [];
+      const report=slotSummary(slot),tips=[];
+      if(report.stop)tips.push("Noodstop: bespreek dat een latere verklaring de fictieve STOP niet opheft.");
+      if(report.attemptHolds)tips.push("Historische HOLD: open een destijds geblokkeerde poging en vergelijk de momenten direct ervoor en erna.");
+      if(report.scope>1 || report.risk>1)tips.push("Scope/risico: licht toe waarom oude fictieve verklaringen na een revisie vervallen.");
+      if(!report.client || !report.operator)tips.push("Twee partijen: bespreek apart ontbrekende of ingetrokken client- en operatorverklaringen.");
+      if(!play(slot.events).state.window)tips.push("Geldigheidsvenster: verlengen of klok terugzetten levert nooit nieuwe oorspronkelijke toestemming.");
+      if(!report.attempts)tips.push("Uitvoerpogingen: simuleer een fictieve poging om de toenmalige HOLD-redenen zichtbaar te maken.");
+      if(!tips.length)tips.push("Schijnbaar compleet: bespreek waarom dit speelgoedmodel nooit echte autorisatie, CI of HUMAN GO aantoont.");
+      const priority=report.stop?0:report.attemptHolds?1:report.holds?2:3;
+      return [{index,priority,steps:report.steps,holdCount:report.attemptHolds,tips}];
+    }).sort((a,b)=>a.priority-b.priority || a.index-b.index);
+  }
+  function renderLessonQueue(){
+    const queue=lessonQueue(),list=$("lesson-queue-list");
+    list.replaceChildren();
+    write("lesson-queue-summary",queue.length?
+      queue.length+" fictieve scenario's in didactische volgorde. "+
+      queue.filter(x=>x.holdCount>0).length+" met eerdere oefen-HOLDs. Geen echte risico-inschatting.":
+      "Geen opgeslagen scenario's. Bewaar eerst één of meer fictieve voorbeelden.");
+    $("lesson-brief").disabled=!queue.length;
+    queue.forEach(entry=>{
+      const item=el("li");
+      item.append(el("strong","", "Scenario "+(entry.index+1)+" · "+entry.steps+" fictieve stappen"));
+      const notes=el("ul","needs");
+      entry.tips.forEach(t=>notes.append(el("li","",t)));
+      item.append(notes);
+      const open=el("button","small-button","Open fictief scenario "+(entry.index+1));
+      open.type="button";
+      open.addEventListener("click",()=>{
+        const saved=slots[entry.index];
+        if(!saved)return;
+        if((events.length || baseline!==null) &&
+          !window.confirm("Editor vervangen door fictief scenario "+(entry.index+1)+"? Huidig werk is herstelbaar via undo."))return;
+        mutateWorkspace(()=>{
+          events=saved.events.slice();
+          baseline=saved.baseline_events===null?null:saved.baseline_events.slice();
+        },"Fictief scenario "+(entry.index+1)+" geopend voor HUMAN oefenbespreking.");
+        $("timeline-filter").value="holds";
+        render();
+        $("timeline-filter").focus();
+      });
+      item.append(open);
+      list.append(item);
+    });
+  }
+  function lessonBrief(){
+    const queue=lessonQueue(),lines=[
+      "# LightUp — PRIVATE fictieve begeleidersagenda","",
+      "**Uitsluitend offline menselijk onderwijs op zelfgemaakte scenario's. Geen echt bronbewijs, target, scope of autorisatie.**",""];
+    queue.forEach(entry=>{
+      lines.push("## Scenario "+(entry.index+1)+" · "+entry.steps+" stappen",
+        "Historische oefen-HOLDs: "+entry.holdCount,
+        ...entry.tips.map(t=>"- "+t),"");
+    });
+    lines.push("## Altijd nog onafhankelijk vereist",
+      "Actuele authentieke client- en operatorconsent, exacte oorspronkelijke assets/capabilities/risico/venster, revocation onmiddellijk vóór daadwerkelijk I/O, originele CI, onafhankelijke reviews en expliciete HUMAN GO.",
+      "AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false · DEPLOY_ALLOWED=false","");
+    return lines.join("\n");
   }
   function renderBank() {
     const root=$("bank-rows");
@@ -784,6 +847,10 @@
   });
   $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario inclusief slotverzameling lokaal aangeboden.");});
   $("save-board").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.json",JSON.stringify(data(),null,2),"application/json");feedback("PRIVATE fictieve workshop inclusief editor en slots lokaal aangeboden.");});
+  $("lesson-brief").addEventListener("click",()=>{
+    bytesDownload("lightup-fictional-facilitator-agenda.md",lessonBrief(),"text/markdown");
+    feedback("PRIVATE fictieve begeleidersagenda aangeboden. Geen echte autorisatie, bronbewijs of release.");
+  });
   $("save-board-brief").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.md",boardBrief(),"text/markdown");feedback("Fictieve groepsbrief voor PRIVATE HUMAN review aangeboden.");});
   $("compare-a").addEventListener("change",renderSlotComparison);
   $("compare-b").addEventListener("change",renderSlotComparison);
