@@ -14,7 +14,7 @@ import io
 import sys
 
 from human_review import (
-    FIELDS, Hold, admitted_answers, publish, receipt_content, require, safe_note,
+    FIELDS, Hold, admitted_answers, human_counts, publish, receipt_content, require, safe_note,
     source_bytes,
 )
 
@@ -27,6 +27,7 @@ DECISIONS = "PRIVATE-reconcile-decisions.csv"
 COMPARISON = "PRIVATE-reconcile-comparison.html"
 RECONCILED = "PRIVATE-reconciled-human.csv"
 OUTCOME = "PRIVATE-reconciled-report.html"
+COUNTS = "PRIVATE-reconciled-counts.csv"
 
 
 def load_review(args: argparse.Namespace, role: str, raw_receipt: bytes,
@@ -181,6 +182,8 @@ def main(argv: list[str] | None = None) -> int:
         group.add_argument("--" + role + "-vault", help="encrypted HUMAN vault .luhd")
         group.add_argument("--" + role + "-bundle", help="encrypted receipt + HUMAN bundle .luhb")
     parser.add_argument("--decisions", help="human-edited exact receipt + reviewer-bound decision CSV")
+    parser.add_argument("--minimum-cohort", type=int, default=5,
+                        help="privacy floor 5-12 for separate source-free aggregate HUMAN counts")
     args = parser.parse_args(argv)
     try:
         require((args.action == "prepare" and args.decisions is None) or
@@ -195,7 +198,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             decisions = read_decisions(args.decisions, digest, originals, a_sha, b_sha)
             first_name = RECONCILED
-            first_content, _ = resulting_csv(digest, originals, a, b, decisions)
+            first_content, final_rows = resulting_csv(digest, originals, a, b, decisions)
+            counts_content = human_counts(final_rows, args.minimum_cohort)
             second_name = OUTCOME
             second_content = comparison_html(originals, a, b, decisions)
         # Each artifact is independently exclusive+private. If the second
@@ -203,6 +207,8 @@ def main(argv: list[str] | None = None) -> int:
         # never overwrite it or claim that the paired handoff finished.
         publish(args.private_output_dir, first_name, first_content)
         publish(args.private_output_dir, second_name, second_content)
+        if args.action == "finalize":
+            publish(args.private_output_dir, COUNTS, counts_content)
     except (Hold, OSError, TypeError, ValueError, MemoryError):
         print("HOLD: PRIVATE HUMAN reconciliation not completed; no authority", file=sys.stderr)
         return 3
