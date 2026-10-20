@@ -93,9 +93,17 @@ def run(args: argparse.Namespace) -> int:
         lines = result.stdout.decode("utf-8", "strict").splitlines()
         prefix = ("PRIVATE_ASSESSMENT_REMEDIATION_" if args.command == "bridge"
                   else "ORIGINAL_COMPLETE_COHORT_TO_REMEDIATION_")
-        if result.returncode not in (2, 3) or not lines or not lines[0].startswith(prefix):
+        # A complete-cohort original producer first prints receipts from its
+        # ORIGINAL comparator and canonical bridge. Its own terminal status is
+        # deliberately last, never the first stdout line. Source IDs/evidence
+        # in earlier output are never forwarded to the operator.
+        if result.returncode not in (2, 3) or not lines:
             raise ValueError("source admission refused")
-        original_posture = lines[0][len(prefix):]
+        receipts = [line for line in lines if line.startswith(prefix)]
+        if len(receipts) != 1 or (args.command == "cohorts" and lines[-3] != receipts[0]) \
+                or (args.command == "bridge" and lines[0] != receipts[0]):
+            raise ValueError("original source receipt missing, duplicate or unexpected")
+        original_posture = receipts[0][len(prefix):]
         if original_posture not in ("REVIEW_ONLY", "HOLD"):
             raise ValueError("unexpected original source declaration")
         if result.returncode != (2 if original_posture == "REVIEW_ONLY" else 3):
