@@ -38,6 +38,10 @@ The workroom can reconcile **two copies of its own already-existing v2 plans**, 
 
 Both exports are **non-authorizing PRIVATE offline human artifacts**. A SHA digest or calendar series ID is not source authentication, a signature, actual client/operator consent, actual operator identity, grant or proof of verification. Do not import into public or automatically shared calendars. Group calendars and one-step changes do not create persistent sync, cloud appointments or external authorization.
 
+## Offline weekly HUMAN coordinator briefing
+
+Select any date and download an optional **self-contained, scriptless, PRIVATE weekly briefing HTML**. It uses the displayed local timezone to collect Monday–Sunday proposed appointments from the loaded original HUMAN worksheet and current local plan. The printable document shows the original anonymous ordinal, HUMAN group, source-reported severity, self-reported HUMAN stage, planned duration/date and summary counts of outstanding, blocked and earlier proposed reminders. By default HUMAN action and blocker text is **omitted**; an explicit checkbox and disclosure confirmation are needed to include them. Human-entered text is HTML-escaped and the resulting file has `default-src 'none'`, `script-src 'none'`, `img-src 'none'` and `connect-src 'none'`, no external styles or scripts, and a bounded total size. A focused HUMAN group can be selected rather than exporting all groups. This does not constitute verified finding status, client/operator authenticity, approval, scope or calendar sync. Use only a privately approved printer/device.
+
 ## Building the standalone artifact
 
 ```sh
