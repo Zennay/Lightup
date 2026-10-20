@@ -1271,3 +1271,36 @@ Fixed source-only offline ZIP v30 ships the HTML, JS, builder and native
 inbox review. Previous software inventories v16–v29 remain readable. No
 QA/regression/test suites were added or invoked. No security finding or
 client consent is asserted by this strictly HUMAN-only editor.
+
+## ORIGINAL source-bound single proposed HUMAN owner follow-up · v31
+
+Once the original 0600 HUMAN inbox discussion has been finalized, the new
+[portfolio_owner_attention.py](portfolio_owner_attention.py) produces a
+**minimum-necessary PRIVATE discussion handoff** for exactly one explicitly
+selected *proposed* HUMAN owner label. It re-admits the original canonical
+PRIVATE inbox, original complete unsigned discussion CSV and native finalized
+PRIVATE-HUMAN-inbox-review.json, including exact source SHA-256, original
+case/transition/kit row ordering, complete original HUMAN decisions,
+bounded private notes and every false authority flag. If any original source
+changes or a proposed owner is absent, nothing is written.
+
+    python3 assessment-workspace-ledger/portfolio_owner_attention.py \
+      --inbox /private/inbox/PRIVATE-HUMAN-owner-inbox.json \
+      --discussion /private/discussion/PRIVATE-HUMAN-inbox-review.json \
+      --original-review-csv /private/discussion/HUMAN-inbox-review-template.csv \
+      --owner 'Exactly original proposed HUMAN owner label' \
+      --private-parent /private/operator-only
+
+Exports a new 0700 folder containing only that owner's original source slot
+references, previous HUMAN stages, latest proposed HUMAN discussion statuses
+and latest PRIVATE HUMAN notes (0600 private HTML, CSV and canonical JSON),
+plus a source-minimal count-only PRIVATE HTML with no owner names or notes.
+Other proposed owners' rows and free text are intentionally excluded. It
+**does not contact or authenticate** this owner and offers no automatic
+recipient delivery or sharing permission, assessment scan, authorized task,
+scope grant, verified finding or remediation. Independent authenticated
+recipient review is necessary before any manual transfer.
+
+Console foreground action **38** exposes the same bounded offline export.
+The source-only v31 software bundle includes the original code, still
+supporting fixed software inventory inspection v16–v30, without QA suites.
