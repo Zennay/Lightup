@@ -51,7 +51,7 @@ JS = r"""
 """
 
 
-def render(sources: list[dict]) -> bytes:
+def render(sources: list[dict], decisions: list[dict] | None = None) -> bytes:
     integrity = base64.b64encode(hashlib.sha256(JS.encode("utf-8")).digest()).decode("ascii")
     cards = []
     for item in sources:
@@ -59,20 +59,31 @@ def render(sources: list[dict]) -> bytes:
         sha = item["source_sha256_unsigned"]
         assert type(ordinal) is int and 1 <= ordinal <= 12
         assert type(sha) is str and len(sha) == 64 and all(x in "0123456789abcdef" for x in sha)
+        prior = decisions[ordinal - 1] if decisions else {}
+        prior_stage = prior.get("human_stage", "NEEDS_HUMAN_REVIEW")
+        prior_note = prior.get("human_note", "")
+        assert prior_stage in {"NEEDS_HUMAN_REVIEW", "SOURCE_OWNER_REQUIRED",
+                               "WITHHOLD", "INTERNAL_REVIEW_ONLY"}
+        assert type(prior_note) is str and len(prior_note) <= 500
+        options = (
+            ("NEEDS_HUMAN_REVIEW", "Needs further HUMAN review"),
+            ("SOURCE_OWNER_REQUIRED", "Ask original source owner"),
+            ("WITHHOLD", "Withhold from all recipients"),
+            ("INTERNAL_REVIEW_ONLY", "Internal PRIVATE review only"),
+        )
+        select_options = "".join(
+            '<option value="' + value + '"' + (' selected' if value == prior_stage else '') +
+            '>' + label + '</option>' for value, label in options
+        )
         cards.append(
             f'<article data-ordinal="{ordinal}" data-sha256="{sha}">'
             f'<h2>PRIVATE original note #{ordinal}</h2>'
             f'<label for="stage-{ordinal}">HUMAN disposition (not authorization)</label>'
-            f'<select id="stage-{ordinal}">'
-            '<option value="NEEDS_HUMAN_REVIEW">Needs further HUMAN review</option>'
-            '<option value="SOURCE_OWNER_REQUIRED">Ask original source owner</option>'
-            '<option value="WITHHOLD">Withhold from all recipients</option>'
-            '<option value="INTERNAL_REVIEW_ONLY">Internal PRIVATE review only</option>'
-            '</select>'
+            f'<select id="stage-{ordinal}">' + select_options + '</select>'
             f'<label for="note-{ordinal}">PRIVATE optional HUMAN note (max 500 characters)</label>'
             f'<textarea id="note-{ordinal}" maxlength="500" rows="3" '
-            'placeholder="Next HUMAN question; no secrets or personal details"></textarea>'
-            '</article>'
+            'placeholder="Next HUMAN question; no secrets or personal details">'
+            + html.escape(prior_note) + '</textarea></article>'
         )
     page = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

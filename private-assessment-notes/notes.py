@@ -299,9 +299,7 @@ def load_decisions(raw: bytes, bindings: list[dict]) -> list[dict]:
     return out
 
 
-def finalize(kit_string: str, choices: str, parent_string: str) -> int:
-    kit = private_directory(kit_string)
-    parent = private_directory(parent_string)
+def load_workroom(kit: Path) -> tuple[dict, list[dict], list[dict]]:
     bindings = read_json(kit / "PRIVATE-source-bindings.json", 128 * 1024)
     if (bindings.get("schema") != SCHEMA or bindings.get("claimed_status") != "HOLD"
             or bindings.get("reviewed") is not False
@@ -333,6 +331,13 @@ def finalize(kit_string: str, choices: str, parent_string: str) -> int:
         if sha256(raw).hexdigest() != source["output_sha256_unsigned"]:
             raise Hold("HOLD: original redacted note content changed")
         rows.append({"ordinal": slot, "redacted_text": clean_text(raw), **source})
+    return bindings, sources, rows
+
+
+def finalize(kit_string: str, choices: str, parent_string: str) -> int:
+    kit = private_directory(kit_string)
+    parent = private_directory(parent_string)
+    bindings, sources, rows = load_workroom(kit)
     decisions = load_decisions(private_input(choices, 64 * 1024), sources)
     for row, decision in zip(rows, decisions):
         row.update(decision)
@@ -357,8 +362,10 @@ def finalize(kit_string: str, choices: str, parent_string: str) -> int:
         new_bindings["human_stages"] = {
             state: sum(x["human_stage"] == state for x in decisions) for state in ALLOWED
         }
+        decision_bytes = csv_document(rows)
+        new_bindings["human_decisions_sha256_unsigned"] = sha256(decision_bytes).hexdigest()
         save_json(destination / "PRIVATE-source-bindings.json", new_bindings)
-        file_new(destination / "PRIVATE-HUMAN-decisions.csv", csv_document(rows))
+        file_new(destination / "PRIVATE-HUMAN-decisions.csv", decision_bytes)
         file_new(destination / "PRIVATE-HUMAN-summary.html", summary(rows, decisions))
         file_new(destination / "OPEN-PRIVATE.html", landing(len(rows), True))
         completed = True

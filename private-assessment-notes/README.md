@@ -58,3 +58,28 @@ This lane is exclusively `private-assessment-notes/` plus the **exact original**
 (`=`, `+`, `-`, or `@`, even after whitespace) are rejected in
 both the browser export and native finalize. Do not open untrusted CSV with
 spreadsheet macros or auto-link execution enabled.
+
+## NEW: retain PRIVATE human decisions across offline revisions
+
+A complete HUMAN decision packet can be reopened **without any original unmasked
+source data** and without modifying the earlier packet. The source-bound stage
+history and the exact locally masked content are preserved in a new exclusive
+private directory. The original full HUMAN CSV receives its own unsigned SHA-256
+digest on first `finalize`; reopening demands the original content digest and
+HUMAN stage counters match before anything is prepared.
+
+~~~sh
+python3 private-assessment-notes/revision.py \
+  --prior-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<actual-id> \
+  --private-parent /private/operator-lightup-work
+~~~
+
+The reopened package contains a fully offline browser Studio prefilled with the
+prior human decisions, its own source-byte bound PRIVATE manifest, and the
+unchanged redacted-only note bytes. A human can revise stages and notes in the
+local browser, export another PRIVATE CSV and deliberately `finalize` another
+separate packet. `revision_level` is capped at 32. Original packet and masked
+bytes are never overwritten, and old HUMAN recommendations are not silently
+carried into authorization or release. Manifest hashes are unsigned local
+integrity identifiers only; they are not trusted producer signatures. The
+reopen step always reports REVIEW_ONLY and finalization always remains HOLD.
