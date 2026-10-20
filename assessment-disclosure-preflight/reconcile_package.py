@@ -2,7 +2,7 @@
 
 No original lab evidence, private reviews, targets, passwords, sessions, models,
 network access, consent or release behavior. Static assets only. Optional
-offline builder reads the three original source assets beside this file.
+offline builder reads the four original source assets beside this file.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ import tempfile
 LIMITS = {
     "reconcile-studio.html": 128 * 1024,
     "reconcile-studio.css": 80 * 1024,
+    "review-vault.js": 256 * 1024,
     "reconcile-studio.js": 512 * 1024,
 }
 ORIGINAL_CSP = (
@@ -25,6 +26,7 @@ ORIGINAL_CSP = (
     "frame-src 'none'; base-uri 'none'; form-action 'none'"
 )
 CSS_MARKER = '<link rel="stylesheet" href="./reconcile-studio.css">'
+VAULT_MARKER = '<script src="./review-vault.js" defer></script>'
 JS_MARKER = '<script src="./reconcile-studio.js" defer></script>'
 
 
@@ -52,28 +54,30 @@ def sha_pin(content: str) -> str:
 def compose(assets: dict[str, str]) -> str:
     if set(assets) != set(LIMITS):
         raise ValueError("original static inventory required")
-    page, css, js = (assets[name] for name in LIMITS)
+    page, css, vault, js = (assets[name] for name in LIMITS)
     if any(danger in value.lower() for danger, value in (
-        ("</style", css), ("</script", js)
+        ("</style", css), ("</script", vault), ("</script", js)
     )):
         raise ValueError("unsafe inline HTML delimiter in source asset")
     old_csp = 'content="' + ORIGINAL_CSP + '"'
     if any(page.count(marker) != 1 for marker in
-           (old_csp, CSS_MARKER, JS_MARKER, "</body>")):
+           (old_csp, CSS_MARKER, VAULT_MARKER, JS_MARKER, "</body>")):
         raise ValueError("source HTML differs from pinned static contract")
     policy = (
         "default-src 'none'; "
-        f"script-src '{sha_pin(chr(10) + js)}'; "
+        f"script-src '{sha_pin(chr(10) + vault)}' '{sha_pin(chr(10) + js)}'; "
         f"style-src '{sha_pin(chr(10) + css)}'; "
         "connect-src 'none'; img-src 'none'; object-src 'none'; "
         "frame-src 'none'; base-uri 'none'; form-action 'none'"
     )
     result = page.replace(old_csp, 'content="' + policy + '"')
     result = result.replace(CSS_MARKER, "<style>\n" + css + "</style>")
+    result = result.replace(VAULT_MARKER, "")
     result = result.replace(JS_MARKER, "")
     # The local script is deliberately moved to the bottom: inline scripts
     # have no defer semantics, so it must run only after the DOM is parsed.
-    result = result.replace("</body>", "<script>\n" + js + "</script>\n</body>")
+    result = result.replace("</body>", "<script>\n" + vault + "</script>\n"
+                            "<script>\n" + js + "</script>\n</body>")
     if len(result.encode("utf-8")) > 1024 * 1024:
         raise ValueError("source-only portable HTML too large")
     return result
