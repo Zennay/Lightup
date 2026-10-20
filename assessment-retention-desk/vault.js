@@ -77,11 +77,12 @@
   }
   async function exportVault() {
     let payload;
+    let acquired = false;
     try {
       // Verify source and HUMAN records before setting busy.
       const original = bridge.snapshot();
       const pass = takePassword();
-      enter();
+      enter(); acquired = true;
       const plain = new TextEncoder().encode(JSON.stringify(original));
       if (!plain.length || plain.length > MAX_ORIGINAL_BYTES) throw Error("HUMAN-plan te groot.");
       const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -99,17 +100,18 @@
     } catch(e) {
       bridge.notify("HOLD: PRIVATE versleuteling geweigerd: " + e.message, true);
     } finally {
-      leave();
+      if (acquired) leave(); else $("vault-password").value = "";
     }
   }
   async function importVault(event) {
+    let acquired = false;
     try {
       const file = event.target.files?.[0];
       if (!file) return;
       if (file.size < 1 || file.size > MAX_ENVELOPE_BYTES)
         throw Error("Versleuteld bestand is leeg of groter dan 256 KiB.");
       const pass = takePassword();
-      enter();
+      enter(); acquired = true;
       const json = await file.text();
       let receipt;
       try { receipt = JSON.parse(json); } catch { throw Error("Ongeldig versleuteld JSON."); }
@@ -140,7 +142,7 @@
       bridge.notify("HOLD: versleutelde HUMAN-heropening geweigerd: " + e.message +
         " Bestaande PRIVATE keuzes blijven intact.",true);
     } finally {
-      leave();
+      if (acquired) leave(); else { $("vault-password").value = ""; $("vault-import").value = ""; }
     }
   }
   $("export-vault").addEventListener("click",exportVault);
