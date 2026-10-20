@@ -119,6 +119,27 @@ def public_cohort(rows: list[dict], minimum: int) -> dict:
     }
 
 
+def human_attention(row: dict) -> list[str]:
+    """Conservative source-declaration gaps: prompts for humans, not a verdict."""
+    if row["kind"] == KINDS[0]:
+        return ["preview_only_no_assessment_has_run"]
+    if row["kind"] == KINDS[1]:
+        return ["benchmark_metrics_are_unverified_source_claims"]
+    count = row["findings"]
+    if count == 0:
+        return ["no_findings_declared_not_proof_of_safety"]
+    flags = []
+    if row["with_ref"] < count:
+        flags.append("some_findings_lack_evidence_references")
+    if row["with_summary"] < count:
+        flags.append("some_findings_lack_evidence_summaries")
+    if row["with_id"] < count:
+        flags.append("some_findings_lack_unique_record_identity")
+    if row["review_present"]:
+        flags.append("model_review_is_a_claim_not_verification")
+    return flags or ["no_count_level_gap_identified_not_a_security_verdict"]
+
+
 def private_receipt(rows: list[dict]) -> dict:
     """Receipt is private and intentionally not source-byte bound or signed."""
     return {
@@ -134,7 +155,8 @@ def private_receipt(rows: list[dict]) -> dict:
         "release_allowed": False,
         "source_count": len(rows),
         "inspected_declarations_only": [
-            {"ordinal": index + 1, **row} for index, row in enumerate(rows)
+            {"ordinal": index + 1, **row, "human_attention": human_attention(row)}
+            for index, row in enumerate(rows)
         ],
     }
 
@@ -156,6 +178,7 @@ def private_html(rows: list[dict]) -> str:
         if "metrics" in row:
             details.append("Declared benchmark metrics: " + ", ".join(
                 key + " " + str(value) for key, value in row["metrics"].items()))
+        details.append("HUMAN attention (source claim only): " + ", ".join(human_attention(row)))
         safe = "; ".join(details)
         body.append("<tr><th scope='row'>" + str(index) + "</th><td>" +
                     html.escape(row["kind"]) + "</td><td>" + html.escape(safe) + "</td></tr>")
