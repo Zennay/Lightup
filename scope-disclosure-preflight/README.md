@@ -16,6 +16,10 @@ Download this directory, keep all three app files together, then open **index.ht
 
 The resulting text may be used as OPTIONAL HUMAN-reviewed source for the existing separately owned PRIVATE encrypted scope courier. This tool does not read its encrypted format, execute it or certify that the redacted material is safe to disclose.
 
+## Recipient continuity
+
+Open **verify.html** with the received redacted .txt and its separate PRIVATE counts receipt .json. It reads both locally in-memory and enforces exact bounded companion JSON serialization, schema, non-authority flags, redacted SHA-256 and byte length. A matching result is **MATCH / REVIEW ONLY**, not an approval or authenticity check. A mismatched, malformed, duplicate-key, oversized or invalid UTF-8 receipt causes HOLD. It cannot detect a malicious sender who changed both files; confirm sender identity and current permission through a separately authenticated channel.
+
 ## Security and limitations
 
 - CSP default-src none, connect-src none, no external assets; sibling local CSS/JS only. No fetch, WebSockets, cookies, localStorage, persistence, model, scanner, grants, targets, server actions or automatic writes.
