@@ -2,7 +2,7 @@
 
 **INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** Complete independent offline review interface for the **existing tenant-authorized** five-column LightUp finding CSV export. This is an isolated new-only companion, not an export endpoint, assessment runner, evidence acquisition flow, security verdict or authorization system.
 
-Open **[index.html](./index.html)** on a **trusted private machine**, alongside adjacent app.js and style.css, with a current browser. No installation, server, third-party asset, cookie, localStorage, fetch/XHR, telemetry, worker, permission or network call. Content-Security-Policy denies connections, frames and objects. Controls are keyboard accessible and usable on smaller screens.
+Open **[standalone.html](./standalone.html)** as a single complete portable local application on a **trusted private machine**, or open [index.html](./index.html) alongside adjacent app.js and style.css. Both versions provide the same HUMAN workflow with no private source data built in. The standalone has no companion-file links or external dependencies; [build.py](./build.py) deterministically assembles it from the original three source assets using SHA-256 hash-only script/style CSP. It refuses an existing output path and publishes a new local file with restrictive permissions. Rebuild after changing source files, never edit the generated portable app by hand. No installation, server, third-party asset, cookie, localStorage, fetch/XHR, telemetry, worker, permission or network call. Content-Security-Policy denies connections, frames and objects. Controls are keyboard accessible and usable on smaller screens.
 
 ## Actual product flow
 
@@ -25,4 +25,4 @@ The validator is **defensive offline display admission**, not a complete spreads
 
 ## Local source-only inspection (not QA)
 
-Run node --check finding-csv-review/app.js for production JavaScript syntax; view index.html locally in an allowed browser. This companion does not ship sample finding data; its actual data workflow requires a separately authorized, already-exported source. No client data is bundled.
+Run node --check finding-csv-review/app.js for production JavaScript syntax. To build an independent one-file copy from trusted source, choose a **new** output path and run python3 finding-csv-review/build.py --output /trusted/private/standalone.html (exit 2 REVIEW_ONLY, 3 HOLD); view the resulting single local HTML. Builds are unsigned, not release attestations. A checked-in portable standalone.html is also provided. This companion does not ship sample finding data; its actual data workflow requires a separately authorized, already-exported source. No client data is bundled.
