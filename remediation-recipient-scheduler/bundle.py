@@ -202,10 +202,16 @@ def inspect(folder: Path) -> None:
             continue
         observed.add(p.relative_to(software).as_posix())
     require(observed == expected, "Unexpected, missing or replaced software files")
+    native = install.parse(install.read_owner_file(
+        folder / "original-native-suite/manifest.json"))["files"]
+    native_names = {("original-home.html" if x == "index.html" else x)
+                    for x in native if x not in ("manifest.json", "software-only.zip")}
+    companion_names = {"remediation-recipient-scheduler/" + n for n in SCHEDULER_FILES}
+    require(set(catalog) == native_names | companion_names | {"index.html"},
+            "Merged source must contain ONLY original pinned assets and this companion")
     for name, metadata in catalog.items():
-        require(type(name) is str and
-                (install.safe_name(name) or name in ("index.html","original-home.html",
-                  "source-lock.json") or name.startswith("remediation-recipient-scheduler/"))
+        require(type(name) is str and name in
+                native_names | companion_names | {"index.html"}
                 and type(metadata) is dict and set(metadata) == {"sha256", "bytes"}
                 and type(metadata["bytes"]) is int and 0 <= metadata["bytes"] <= MAX_MEMBER,
                 "Unexpected merged asset descriptor")
