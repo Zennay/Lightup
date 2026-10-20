@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Twenty-two console actions provide original kit capture, exact-byte reopen, original-bound
+Twenty-three console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -605,3 +605,58 @@ native owner-brief CLI; it never bundles generated private workrooms.
 Any actual disclosure still needs independent verified recipient identity,
 client consent and applicable privacy/security authorization. No QA
 or test suites created or run and no live scan or deploy.
+
+ 
+## NEW v16 — exact-original HUMAN follow-up progress and PRIVATE worklist
+
+Native [history_progress.py](history_progress.py) is a complete offline
+HUMAN-only review desk for **2–8 originally finalized PRIVATE action
+snapshots**. Unlike comparing loose CSV files, it reopens every original
+native `PRIVATE-HUMAN-actions.json`, that packet's exact
+`HUMAN-action-plan.csv` and the SAME separately selected ORIGINAL
+`PRIVATE-action-context.json`. Existing `history_owner_brief.admitted_original`
+in turn readmits ALL ORIGINAL 2–12 archived ledger snapshots, the native
+source-bound reviewer packets and finalized team human choices. Any changed
+original or packet, duplicate revision, changed original chain/row identity,
+unknown source record, or nonnative HUMAN CSV makes the full review HOLD.
+Original actual customer kit bytes remain unopened: this is a HUMAN proposal
+history, not active security evidence or source-authenticated chronology.
+
+**Choose revisions in deliberate HUMAN order, paired JSON and CSV:**
+
+    python3 assessment-workspace-ledger/history_progress.py --action-context /private/original-action-room/PRIVATE-action-context.json --actions /private/version-A/PRIVATE-HUMAN-actions.json --plan /private/version-A/HUMAN-action-plan.csv --actions /private/version-B/PRIVATE-HUMAN-actions.json --plan /private/version-B/HUMAN-action-plan.csv --private-parent /private/private-ledgers
+
+Repeat each `--actions` and matching `--plan` pair for up to 8
+different original source-bound snapshots; **all must belong to precisely
+the same original HUMAN source context**, and all snapshots must be in
+the operator's requested comparison order. No timestamps or signed
+chronology are fabricated. Native console option **23** guides the process.
+
+The tool produces a NEW 0700/0600 owner-private workroom with five finished
+outputs:
+
+- `OPEN-PRIVATE.html`: source-minimal summary of changed HUMAN proposal
+  counts, status totals and changed fields for each operator-ordered step,
+  without human names, next-step PRIVATE text or SHA paths.
+- `PRIVATE-HUMAN-changes.html`: fully HTML-escaped per-field details
+  of changed HUMAN action state, priority, proposed owner, suggested day
+  and next human step, with previous and new values.
+- `PRIVATE-HUMAN-worklist.html`: the latest *human-selected* original
+  proposed work, sorted by suggested day (undated last), HUMAN priority,
+  owner and original kit; source-relative customer paths omitted.
+- `PRIVATE-HUMAN-changes.csv`: limited-necessary original kit identifiers,
+  change flags, old/new status, proposed owner/day and HUMAN priority,
+  without source/customer file content or free-text HUMAN questions.
+- `PRIVATE-HUMAN-progress.json`: complete owner-private original-bound
+  source ledger/packet SHA inventory, HUMAN-change history and latest worklist.
+
+This never opens current customer kit bytes, does not contact assets or
+network resources and NEVER proves a remediation, vulnerability, authentic
+reviewer, calendar deadline, approved work, grant, consent or owner
+authorization. Status and days are *historical HUMAN proposals* and all
+outputs remain PRIVATE HOLD (3). The private output is never a public
+portfolio report or live operations task queue. Use the native
+`ledger.py reopen` separately before a genuine new source-byte decision.
+No QA, regression or testing suite is added. The fixed v16 source-only
+software ZIP adds the original history_progress.py implementation, but
+no customer/PRIVATE source content or generated workroom.
