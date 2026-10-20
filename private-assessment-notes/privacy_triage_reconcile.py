@@ -211,6 +211,7 @@ approval.</b> A HUMAN review packet is not proof of actual source identity,
 independent review, privacy consent, remediation or safe disclosure.</aside>
 <p>Declared reviewer slots: """ + str(reviewers) +
             """ · original positions: """ + str(sources) + """.</p><ul>
+<li><a href="PRIVATE-HUMAN-reconciliation-studio.html">Interactive offline reviewer comparison and explicit next HUMAN review editor</a></li>
 <li><a href="PRIVATE-HUMAN-reconciliation.html">Printable complete HUMAN reviewer matrix</a></li>
 <li><a href="PRIVATE-HUMAN-reconciliation.csv">Owner-private complete reviewer matrix CSV</a></li>
 <li><a href="PRIVATE-HUMAN-discussion.html">Minimum-necessary HUMAN disagreement agenda</a></li>
@@ -261,6 +262,9 @@ def build(original: str, reviews: list[str], parent_string: str) -> int:
         save_json(kit / "PRIVATE-HUMAN-reconciliation-bindings.json", receipt)
         file_new(kit / "PRIVATE-HUMAN-reconciliation.html",
                  private_page(records, summaries, len(packets)))
+        from privacy_triage_reconcile_studio import render as reviewer_studio
+        file_new(kit / "PRIVATE-HUMAN-reconciliation-studio.html",
+                 reviewer_studio(sources, packets))
         file_new(kit / "PRIVATE-HUMAN-reconciliation.csv", matrix_csv(records))
         file_new(kit / "PRIVATE-HUMAN-discussion.html", agenda_page(summaries))
         # Same immutable original source-binding schema as the native existing
