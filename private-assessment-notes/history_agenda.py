@@ -78,6 +78,14 @@ def canonical_history(history_kit: str, latest_packet: str) -> tuple[dict, str, 
     doc_hash = sha256(raw).hexdigest()
     manifest_hash = sha256(latest_manifest).hexdigest()
     decisions_hash = sha256(latest_csv).hexdigest()
+    if set(doc) != {
+            "schema", "claimed_status", "source_authenticated",
+            "recipient_authenticated", "actual_findings_verified",
+            "original_source_count", "revision_packet_count",
+            "first_revision_level", "last_revision_level", "human_event_count",
+            "human_discussion_needed_count", "last_review_stage_counts",
+            "packets", "events", "current_source_positions", *FALSE_FLAGS}:
+        raise Hold("HOLD: PRIVATE HUMAN history has an unknown or missing original field")
     for flag in HOLD_FLAGS:
         if doc.get(flag) is not False:
             raise Hold("HOLD: PRIVATE HUMAN history contains non-false authority flags")
@@ -95,6 +103,23 @@ def canonical_history(history_kit: str, latest_packet: str) -> tuple[dict, str, 
             or sum(stages.values()) != len(sources)
             or doc.get("last_revision_level") != latest.get("revision_level", 0)):
         raise Hold("HOLD: PRIVATE original history roster or authority is invalid")
+    # Every original packet entry has a finite sequential unsigned identity.
+    # This validates structure, not independent producer authentication.
+    first_level = doc.get("first_revision_level")
+    if (type(first_level) is not int or not 0 <= first_level <= 32
+            or first_level + len(packets) - 1 != doc["last_revision_level"]
+            or doc["last_revision_level"] > 32):
+        raise Hold("HOLD: PRIVATE HUMAN revision level sequence is invalid")
+    for offset, item in enumerate(packets):
+        if (type(item) is not dict
+                or set(item) != {"revision_level", "manifest_sha256_unsigned",
+                                "human_decisions_sha256_unsigned"}
+                or type(item["revision_level"]) is not int
+                or item["revision_level"] != first_level + offset
+                or any(type(item[key]) is not str or not DIGEST.fullmatch(item[key])
+                       for key in ("manifest_sha256_unsigned",
+                                   "human_decisions_sha256_unsigned"))):
+            raise Hold("HOLD: PRIVATE HUMAN packet chain contains invalid identities")
     last = packets[-1]
     if (type(last) is not dict
             or set(last) != {"revision_level", "manifest_sha256_unsigned",
@@ -110,6 +135,21 @@ def canonical_history(history_kit: str, latest_packet: str) -> tuple[dict, str, 
             or len(doc["events"]) != doc["human_event_count"]
             or len(doc["events"]) > 16 * 12):
         raise Hold("HOLD: original private history event roster is invalid")
+    for event in doc["events"]:
+        if (type(event) is not dict or set(event) != {
+                "revision_level", "original_source_ordinal",
+                "previous_human_stage", "current_human_stage",
+                "stage_changed", "private_note_changed"}
+                or type(event["revision_level"]) is not int
+                or not first_level < event["revision_level"] <= doc["last_revision_level"]
+                or type(event["original_source_ordinal"]) is not int
+                or not 1 <= event["original_source_ordinal"] <= len(sources)
+                or event["previous_human_stage"] not in ALLOWED
+                or event["current_human_stage"] not in ALLOWED
+                or type(event["stage_changed"]) is not bool
+                or type(event["private_note_changed"]) is not bool
+                or not (event["stage_changed"] or event["private_note_changed"])):
+            raise Hold("HOLD: PRIVATE original HUMAN event data is structurally invalid")
     counts = {stage: sum(d["human_stage"] == stage for d in decisions) for stage in ALLOWED}
     if stages != counts:
         raise Hold("HOLD: latest original HUMAN stages differ from history")
