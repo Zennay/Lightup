@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6PFQj+gqFeXyXH4tV/bEzZNfd5wR88h1dCg1gL0lSQY='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OQjGF8KwqhXIBGcbCLyIjogYl/zGxc/f1xWDsD8iGJw='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
 <title>LightUp · PRIVATE offline backup recovery · DRAFT/HOLD</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#0a1420;color:#edf5fc}
@@ -61,7 +61,13 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
   const FLAGS = Object.freeze({ consent_verified: false, authorized: false,
     remediation_verified: false, release_approved: false });
   const slots = [null, null];
+  const generations = [0, 0];
   const el = id => document.getElementById(id);
+  function release(index) {
+    const prior = slots[index];
+    slots[index] = null;
+    if (prior?.files) for (const file of prior.files) file.bytes.fill(0);
+  }
   const encoder = new TextEncoder();
   const decoder = new TextDecoder("utf-8", { fatal: true });
   const expectedKeys = (value, keys) =>
@@ -161,11 +167,14 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
     return { filename: source.name, files, byName: new Map(files.map(file => [file.name, file])) };
   }
   function status(id, message) { el(id).textContent = message; }
-  function clear(index) {
-    slots[index] = null;
+  function clear(index, resetInput = true) {
+    // Every explicit clear or changed file invalidates pending async decrypts.
+    generations[index]++;
+    release(index);
     const label = index === 0 ? "a" : "b";
-    el(label + "-file").value = "";
+    if (resetInput) el(label + "-file").value = "";
     el(label + "-pass").value = "";
+    el(label + "-open").disabled = false;
     status(label + "-status", "No decrypted source retained.");
     render();
   }
@@ -175,22 +184,28 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
     // Failure never leaves old state or a partially authenticated replacement.
     const source = input.files && input.files[0];
     const secret = pass.value;
+    const ticket = ++generations[index];
     pass.value = "";
     el(label + "-open").disabled = true;
     status(label + "-status", "Authenticating selected encrypted bytes locally…");
     try {
       const item = await admit(source, secret);
+      if (generations[index] !== ticket || input.files?.[0] !== source) {
+        for (const file of item.files) file.bytes.fill(0);
+        return; // User selected another file or cleared while PBKDF2 was running.
+      }
+      release(index);
       slots[index] = item;
       status(label + "-status", "PRIVATE DRAFT/HOLD: " + item.files.length +
         " authenticated local files; original selected archive untouched.");
     } catch (error) {
-      // A rejected new archive must not leave the previous decrypted archive visible
-      // under the same A/B label: fail closed, no accidental recovery of stale bytes.
-      slots[index] = null;
-      status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive") +
-        " · old decrypted state was cleared.");
+      if (generations[index] === ticket) {
+        release(index);
+        status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive") +
+          " · previous decrypted state cleared.");
+      }
     } finally {
-      el(label + "-open").disabled = false;
+      if (generations[index] === ticket) el(label + "-open").disabled = false;
       render();
     }
   }
@@ -215,7 +230,9 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
     return btoa(chunks.join(""));
   }
   async function encryptSubset() {
-    const active = slots[Number(el("source-select").value)];
+    const activeIndex = Number(el("source-select").value);
+    const active = slots[activeIndex];
+    const originalGeneration = generations[activeIndex];
     const pass = el("subset-pass"), verify = el("subset-confirm");
     const secret = pass.value, confirmed = verify.value;
     pass.value = ""; verify.value = "";
@@ -249,6 +266,8 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
         ciphertext: asBase64(cipher), authority: FLAGS };
       const output = encoder.encode(asJsonAscii(envelope) + "\n");
       demand(output.length <= MAX_ARCHIVE, "Encrypted backup exceeds 38 MiB browser budget");
+      demand(generations[activeIndex] === originalGeneration && slots[activeIndex] === active,
+        "Original PRIVATE source was cleared or changed during encryption; no export");
       const blob = new Blob([output], { type: "application/octet-stream" });
       const url = URL.createObjectURL(blob), anchor = document.createElement("a");
       anchor.href = url; anchor.download = "LightUp-PRIVATE-HUMAN-selected-DRAFT-HOLD.lupb";
@@ -339,6 +358,8 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
       ". Source byte differences are NOT remediation proof or chronology.");
   }
   function render() { renderInventory(); renderComparison(); }
+  el("a-file").addEventListener("change", () => clear(0, false));
+  el("b-file").addEventListener("change", () => clear(1, false));
   el("a-open").addEventListener("click", () => open(0));
   el("b-open").addEventListener("click", () => open(1));
   el("a-clear").addEventListener("click", () => clear(0));
@@ -346,7 +367,10 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
   el("source-select").addEventListener("change", renderInventory);
   el("subset-export").addEventListener("click", encryptSubset);
   el("clear-all").addEventListener("click", () => { clear(0); clear(1); });
-  window.addEventListener("pagehide", () => { slots[0] = null; slots[1] = null; });
+  window.addEventListener("pagehide", () => {
+    generations[0]++; generations[1]++;
+    release(0); release(1);
+  });
   render();
 })();
 </script></body></html>
