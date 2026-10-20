@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kmqAcMTIRRi/9LZerTbMpPVJR1xIS1sDERjWT4GkvWI='; script-src 'sha256-jZ6FeoB8OiloUAIDCwa9PScLeNbSe153zX6NGNfk3RA='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jLf1ZUo1dJvvsuLiaMzkdQ7Fqu5Wa4Y7e1M2pO7PP7M='; script-src 'sha256-jZ6FeoB8OiloUAIDCwa9PScLeNbSe153zX6NGNfk3RA='">
 <meta name="color-scheme" content="dark">
 <title>LightUp — Controleer je offline ZIP</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
@@ -53,6 +53,13 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-journal-list li{color:#dcebe7;font-size:12px;border-bottom:1px solid #405466;padding:7px}
 .shelf-journal-list button{margin:8px 0 2px;display:block;cursor:pointer;font:inherit;font-size:12px;color:#d5efe7;background:#233e4d;border:1px solid #7596a6;border-radius:7px;padding:8px;min-height:44px}
 .shelf-journal-list button:focus-visible{outline:3px solid #ade9dc;outline-offset:2px}
+
+/* Multi-reviewer PRIVATE local proposal list: long private labels stay in one source row. */
+.shelf-peer-list{padding-left:17px;margin:0;display:grid;gap:7px;min-width:280px;max-width:470px}
+.shelf-peer-list li{padding-left:4px;color:#c3d9df;line-height:1.5;overflow-wrap:anywhere}
+.shelf-peer-list li+li{border-top:1px solid #345064;padding-top:7px}
+.shelf-board input[type=file]{max-width:100%;color:#cee3e1;border:1px dashed #567389;border-radius:7px;padding:12px}
+.shelf-board button:focus-visible,.shelf-board select:focus-visible{outline:3px solid #a3e9d4;outline-offset:3px}
 </style>
 </head>
 <body>
