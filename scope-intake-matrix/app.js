@@ -39,6 +39,8 @@
   const $ = id => document.getElementById(id);
   let rowNumber = 0;
   let state = blankDocument();
+  let pendingTriage = null;
+  let humanUndo = [];
 
   function blankDocument() {
     return {
@@ -190,7 +192,98 @@
     button.addEventListener("click", action);
     return button;
   }
+  function visibleRows() {
+    const query = $("filter").value.toLowerCase();
+    const filter = $("status-filter").value;
+    return state.rows.filter(row =>
+      (filter === "all" || row.status === filter) &&
+      (!query || (row.asset + " " + row.question).toLowerCase().includes(query)));
+  }
+
+  function clearTriagePreview(keepUndo = true) {
+    pendingTriage = null;
+    $("triage-preview-box").hidden = true;
+    $("triage-preview-box").textContent = "";
+    $("triage-apply").disabled = true;
+    if (!keepUndo) humanUndo.length = 0;
+    $("triage-undo").disabled = humanUndo.length === 0;
+  }
+
+  function updateTriageValues() {
+    const field = $("triage-field").value;
+    const values = field === "status" ? STATUS : OWNERSHIP;
+    const select = $("triage-value");
+    select.replaceChildren();
+    for (const [key, name] of Object.entries(values)) {
+      const option = document.createElement("option");
+      option.value = key; option.textContent = name;
+      select.append(option);
+    }
+    clearTriagePreview();
+  }
+
+  function previewTriage() {
+    clearTriagePreview();
+    const field = $("triage-field").value;
+    const option = $("triage-value").value;
+    if (!Object.hasOwn(field === "status" ? STATUS : OWNERSHIP, option)) {
+      announce("HOLD: invalid HUMAN bulk value.", true); return;
+    }
+    const rows = visibleRows();
+    if (!rows.length) { announce("No visible proposed rows to update.", true); return; }
+    const patches = rows.filter(row => row[field] !== option).map(row => ({
+      id: row.id, asset: row.asset, field, before: row[field], after: option
+    }));
+    if (!patches.length) { announce("Visible HUMAN values already match; nothing to change."); return; }
+    pendingTriage = patches;
+    const summary = patches.map(item => item.asset + ": " + item.before + " → " + item.after);
+    $("triage-preview-box").textContent =
+      "HUMAN ONLY · " + patches.length + " literal changes, NO ownership/grant/consent approval:\n" +
+      summary.join("\n");
+    $("triage-preview-box").hidden = false;
+    $("triage-apply").disabled = false;
+    announce("Preview created. Changes are not applied until you explicitly confirm.");
+  }
+
+  function applyTriage() {
+    const patches = pendingTriage;
+    if (!patches?.length) return;
+    const byId = new Map(state.rows.map(row => [row.id, row]));
+    if (patches.some(patch => !byId.has(patch.id) ||
+        byId.get(patch.id).asset !== patch.asset ||
+        byId.get(patch.id)[patch.field] !== patch.before)) {
+      clearTriagePreview();
+      announce("HOLD: proposal changed after HUMAN preview; review changes again.", true);
+      return;
+    }
+    if (!confirm("Apply " + patches.length + " HUMAN-only review labels? This never validates ownership or authorizes work.")) return;
+    for (const patch of patches) byId.get(patch.id)[patch.field] = patch.after;
+    humanUndo.push(patches);
+    if (humanUndo.length > 20) humanUndo.shift();
+    renderRows(); refresh(true);
+    announce(patches.length + " HUMAN draft labels changed. This is NOT consent, approval, grant or authorization.");
+  }
+
+  function undoTriage() {
+    if (!humanUndo.length) return;
+    const patches = humanUndo[humanUndo.length - 1];
+    const byId = new Map(state.rows.map(row => [row.id, row]));
+    if (patches.some(patch => !byId.has(patch.id) ||
+        byId.get(patch.id).asset !== patch.asset ||
+        byId.get(patch.id)[patch.field] !== patch.after)) {
+      humanUndo.length = 0;
+      clearTriagePreview();
+      announce("HOLD: previous HUMAN labels have changed; undo canceled.", true);
+      return;
+    }
+    for (const patch of patches) byId.get(patch.id)[patch.field] = patch.before;
+    humanUndo.pop();
+    renderRows(); refresh(true);
+    announce("Last HUMAN label change reverted. This has no consent/revocation meaning.");
+  }
+
   function renderRows() {
+    clearTriagePreview();
     const tbody = $("rows"); tbody.replaceChildren();
     const filter = $("filter").value.toLowerCase();
     const statusFilter = $("status-filter").value;
@@ -302,7 +395,8 @@
     $("notice").textContent = message;
     $("notice").classList.toggle("danger-text", isError);
   }
-  function refresh() {
+  function refresh(preserveBulkUndo = false) {
+    clearTriagePreview(preserveBulkUndo);
     // Any actual proposal mutation makes the previously rendered comparison stale.
     $("compare-section").hidden = true;
     $("total-count").textContent = state.rows.length;
@@ -603,7 +697,7 @@
       rowNumber = Math.max(0, ...state.rows.map(row => Number(row.id.slice(1))));
       $("filter").value = ""; $("status-filter").value = "all";
       $("compare-section").hidden = true;
-      syncForm(); renderRows(); refresh();
+      syncForm(); updateTriageValues(); renderRows(); refresh();
       announce("PRIVATE draft opened locally after full strict admission. Still DRAFT/HOLD.");
     } catch (error) { announce("OPEN REJECTED: " + error.message + " Existing draft was retained.", true); }
   }
@@ -645,6 +739,11 @@
     $("add").addEventListener("click", addRow);
     $("add-bottom").addEventListener("click", addRow);
     $("bulk-add").addEventListener("click", bulkAdd);
+    $("triage-field").addEventListener("change", updateTriageValues);
+    $("triage-value").addEventListener("change", () => clearTriagePreview());
+    $("triage-preview").addEventListener("click", previewTriage);
+    $("triage-apply").addEventListener("click", applyTriage);
+    $("triage-undo").addEventListener("click", undoTriage);
     $("filter").addEventListener("input", renderRows);
     $("status-filter").addEventListener("change", renderRows);
     $("export-encrypted").addEventListener("click", encryptWorkroom);
