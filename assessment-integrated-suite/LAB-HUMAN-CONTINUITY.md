@@ -35,7 +35,16 @@ python3 assessment-integrated-suite/lab_review_history.py \
 
 ### TEAM-only workrooms — option 60
 
-One original finalized 0700 HUMAN result is the ONLY source for stage/team/question decisions. Each source packet is independently re-opened through the original Lab Launchpad before using a HUMAN row. The resulting owner-only 0700 room has `OPEN-PRIVATE.html` (owner directory and counts), `PRIVATE-HUMAN-TEAM-MANIFEST.json` (unsigned original source fingerprint and pinned original full FINAL CSV hash, **PRIVATE**), and a `TEAM-<team>.html` plus `TEAM-<team>-DRAFT.csv` for each assigned team. A page/CSV contains **only** that team's assigned packet slots, HUMAN stage and confidential HUMAN question. The owner-only `TEAM-unassigned-operator-only` group is never automatically assigned or sent. No original lab addresses are in any team page.
+One original finalized 0700 HUMAN result is the ONLY source for stage/team/question decisions. Each source packet is independently re-opened through the original Lab Launchpad before using a HUMAN row. The resulting owner-only 0700 room has `OPEN-PRIVATE.html` (owner directory and counts), `PRIVATE-HUMAN-TEAM-MANIFEST.json` (unsigned original source fingerprint and pinned original full FINAL CSV hash, **PRIVATE**), and a read-only `TEAM-<team>.html`, an **offline editable**
+`TEAM-<team>-EDITOR.html` and a matching source-bound
+`TEAM-<team>-DRAFT.csv` for each assigned team. Each editor
+shows only that team's originally assigned rows, lets a human alter only
+HUMAN stage or bounded PRIVATE question, filters displayed stages,
+and downloads the **complete** original team-only CSV (even when filtered).
+Inline CSS/JavaScript is SHA-256-CSP pinned with no network, storage,
+recipient or delivery side effect; native option 61 independently
+re-admits any returned CSV. The owner-only HTML index links to each
+read-only worklist and its corresponding PRIVATE editor. A page/CSV contains **only** that team's assigned packet slots, HUMAN stage and confidential HUMAN question. The owner-only `TEAM-unassigned-operator-only` group is never automatically assigned or sent. No original lab addresses are in any team page.
 
 ```sh
 python3 assessment-integrated-suite/lab_review_team_handoff.py \

@@ -120,8 +120,13 @@ def build(packets: list[str], final_room: str, parent: str,
         manifests.append({"label":"Unassigned HUMAN follow-up",
                           "filename":"TEAM-unassigned-operator-only.html",
                           "human_tasks":len(unassigned)})
-    nav = [(item["label"] + " (" + str(item["human_tasks"]) + ")",
-            item["filename"]) for item in manifests]
+    nav = []
+    for item in manifests:
+        nav.append((item["label"] + " (" + str(item["human_tasks"]) + ") · read-only",
+                    item["filename"]))
+        if item["label"] in SLUGS:
+            nav.append((item["label"] + " · edit HUMAN response locally",
+                        "TEAM-" + SLUGS[item["label"]] + "-EDITOR.html"))
     overview = {
         "schema":SCHEMA,"status":"REVIEW_ONLY","authority":privacy.AUTHORITY,
         "verified_source":False,"verified_consent":False,
