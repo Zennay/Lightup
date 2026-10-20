@@ -57,9 +57,17 @@ def _signers(members: dict[str, bytes], record: dict) -> list[dict]:
         if not isinstance(candidate, Ed25519PublicKey):
             raise Hold("original stored signer not Ed25519")
         fp = _fingerprint(candidate)
-        if stored[index] != {"label": stored[index].get("label"), "fingerprint": fp}:
-            raise Hold("original original-source signer identity changed")
-        result.append({"fingerprint": fp, "label": stored[index]["label"], "receipt_name": receipt_name, "key_name": public_name})
+        saved = stored[index]
+        if (
+            type(saved) is not dict or set(saved) != {"label", "fingerprint"}
+            or type(saved["label"]) is not str
+            or saved["fingerprint"] != fp
+        ):
+            raise Hold("original original-source signer fingerprint or schema changed")
+        result.append({
+            "fingerprint": fp, "original_local_label": saved["label"],
+            "receipt_name": receipt_name, "key_name": public_name,
+        })
     if len(set(x["fingerprint"] for x in result)) != len(result):
         raise Hold("the original ZIP contains a repeated signing key")
     return result
@@ -121,12 +129,18 @@ def _review_inbox(registry: Path, folder: Path, selected_position: int, install:
         for signer in signers:
             fp = signer["fingerprint"]
             trusted_record = _record(registry, fp)
-            if trusted_record["label"] != signer["label"]:
-                raise Hold("human label in current registry differs from original custody record")
+            # Original and present HUMAN labels may differ between separate
+            # private operators. Only cryptographic key bytes/fingerprint can
+            # identify the same custody key; a label is never authentication.
             # The existence of a local revocation record is the LOCAL HOLD.
             revoked = registry / "revocations" / (fp + ".json")
             local_status = "LOCAL_REVOKED_HOLD" if revoked.exists() or revoked.is_symlink() else "CURRENTLY_REGISTERED_NOT_REAL_WORLD_AUTHENTICATION"
-            annotated.append({"fingerprint": fp, "label": signer["label"], "local_trust_state": local_status})
+            annotated.append({
+                "fingerprint": fp,
+                "original_local_label": signer["original_local_label"],
+                "current_local_label": trusted_record["label"],
+                "local_trust_state": local_status,
+            })
         rows.append({
             "selected_inbox": selected_position,
             "original_inbox_ordinal": entry_index,
@@ -168,7 +182,9 @@ def _html(records: list[dict], floor: int) -> bytes:
     for rec in records:
         identities = "<br>".join(
             "<strong>"+html.escape(s["local_trust_state"])+"</strong>"
-            +"<br>"+html.escape(s["label"])+" · <code>"+s["fingerprint"]+"</code>"
+            +"<br>Original: "+html.escape(s["original_local_label"])
+            +"<br>Current: "+html.escape(s["current_local_label"])
+            +" · <code>"+s["fingerprint"]+"</code>"
             for s in rec["signers"]
         )
         followup = ("LOCAL KEY REVOKED: withhold re-use and request fresh independent key and original source review"
