@@ -20,3 +20,13 @@ select:focus{outline:3px solid #3a82db;outline-offset:2px}
 #humanReturnOutcome{font-weight:700;color:#315582;overflow-wrap:anywhere}
 #humanReturnNote,#humanNote{min-height:105px}
 #humanReturnStatus,#humanStatus{margin-top:12px}
+
+/* Scoped local key-block removal and human review find controls. */
+.pem-control{margin:20px 0;padding:18px;border:1px solid #c6d5e7;background:#f4f7fc;border-radius:12px}
+.pem-control h3{margin:0 0 8px;font-size:1.05rem}
+.pem-control .status{margin-top:12px;background:#fff}
+.reader-search{padding:14px;margin:12px 0;border:1px solid #d4dfea;border-radius:10px;background:#f8fafd}
+.reader-search label{margin-top:0}
+.reader-search .actions{align-items:center;margin-bottom:0}
+#reviewFindStatus{font-size:.88rem;color:#475a79}
+@media(max-width:700px){.pem-control{padding:14px}.reader-search .actions button{width:auto;flex:1}}
