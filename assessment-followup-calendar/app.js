@@ -17,6 +17,7 @@
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
+  let publicationBaseline = null, changesPage = 0;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -160,6 +161,7 @@
     });
     renderAgenda();
     renderWorkload();
+    renderChanges();
   }
   function eventIntervals(from=plan){
     return items.filter(r=>from.has(r.ordinal)).map(r=>{
@@ -311,6 +313,102 @@
       tbody.append(tr);
     }
   }
+  function slotEquals(a,b){
+    return !!a && !!b && a.day===b.day && a.time===b.time &&
+      a.duration===b.duration && a.reminder===b.reminder;
+  }
+  function publishedChanges(){
+    if(!publicationBaseline)return [];
+    const delta=[];
+    for(const r of items){
+      const before=publicationBaseline.get(r.ordinal),now=plan.get(r.ordinal);
+      if(slotEquals(before,now)||(!before&&!now))continue;
+      const kind=!before?"Added":!now?"Cancelled":"Rescheduled / reminder changed";
+      delta.push({ordinal:r.ordinal,kind,before,now,row:r});
+    }
+    return delta;
+  }
+  function slotLabel(slot){
+    return slot?slot.day+" "+slot.time+" · "+slot.duration+" min · reminder "+slot.reminder+" min":"(none)";
+  }
+  function renderChanges(){
+    const has=publicationBaseline!==null;
+    $("clearBaseline").disabled=!has;
+    const all=publishedChanges();
+    const added=all.filter(v=>v.kind==="Added").length;
+    const cancelled=all.filter(v=>v.kind==="Cancelled").length;
+    const updated=all.length-added-cancelled;
+    $("changesSummary").textContent=has?
+      added+" new · "+updated+" rescheduled/reminder changed · "+cancelled+
+      " removed from current HUMAN plan. All comparisons are PRIVATE schedule declarations only.":
+      "Load a previously published PRIVATE plan to see source-bound differences.";
+    const pages=Math.max(1,Math.ceil(all.length/60));changesPage=Math.max(0,Math.min(changesPage,pages-1));
+    $("changePrev").disabled=!has||changesPage===0;
+    $("changeNext").disabled=!has||changesPage>=pages-1;
+    $("exportUpdated").disabled=!has||added+updated===0;
+    $("exportCancelled").disabled=!has||cancelled===0;
+    const tbody=$("changesRows");tbody.replaceChildren();
+    for(const row of all.slice(changesPage*60,changesPage*60+60)){
+      const tr=dom("tr");
+      tr.append(dom("td","#"+row.ordinal),dom("td",row.kind),
+        dom("td",slotLabel(row.before)),dom("td",slotLabel(row.now)));
+      tbody.append(tr);
+    }
+  }
+  async function readPublishedBaseline(file){
+    hold(active);
+    const originHash=hash,originSeries=seriesId;
+    const raw=decoder.decode(await bytes(file));
+    const imported=admitPlanText(raw);
+    hold(!imported.legacy && hash===originHash &&
+      seriesId===originSeries && imported.series===originSeries);
+    if(!confirm("Load this historical PRIVATE HUMAN plan as a comparison baseline? This does not change current appointments, source fields or any calendar. The baseline is UNSIGNED, and calendar sync is not guaranteed."))return;
+    hold(active && hash===originHash && seriesId===originSeries);
+    publicationBaseline=imported.schedule;
+    changesPage=0;
+    $("baselineStatus").textContent="Original worksheet, timezone and calendar series matched. Comparison is HUMAN-only, unsigned.";
+    renderChanges();
+    inform("Previous PRIVATE HUMAN schedule loaded for local comparison, no changes published.");
+  }
+  function calendarDiffExport(cancelled){
+    hold(active && publicationBaseline && exportedPlan);
+    const delta=publishedChanges().filter(c=>cancelled?!c.now:!!c.now);
+    hold(delta.length>0);
+    const kind=cancelled?"cancellations":"new/changed HUMAN reminders";
+    if(!confirm("Export "+delta.length+" PRIVATE "+kind+"? Calendar import is a manual action, providers may not recognize changes, and no existing external event is deleted by LightUp. "+(cancelled?"Cancellations will use historical HUMAN times.":"Opt-in HUMAN descriptions may include sensitive content.")))return;
+    const now=icsTime(new Date());
+    const lines=["BEGIN:VCALENDAR","VERSION:2.0",
+      "PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN",
+      "CALSCALE:GREGORIAN","METHOD:"+(cancelled?"CANCEL":"PUBLISH"),
+      "X-WR-CALNAME:LightUp PRIVATE HUMAN Changes"];
+    const include=$("includeAction").checked;
+    for(const row of delta){
+      const slot=cancelled?row.before:row.now;
+      const start=eventDate(slot.day,slot.time),end=new Date(start.getTime()+Number(slot.duration)*60000);
+      const uid=seriesId+"-"+row.ordinal+"@lightup-private.invalid";
+      lines.push("BEGIN:VEVENT","UID:"+uid,"SEQUENCE:1","DTSTAMP:"+now,
+        "DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
+        "STATUS:"+(cancelled?"CANCELLED":"TENTATIVE"),
+        "TRANSP:TRANSPARENT",
+        "SUMMARY:"+icsText("PRIVATE HUMAN follow-up #"+row.ordinal),
+        "DESCRIPTION:"+icsText(cancelled?
+          "REVIEW_ONLY: human-only withdrawal of a prior proposed reminder, not a security finding or authorization change.":
+          "REVIEW_ONLY: self-reported "+row.row.severity+
+          "; HUMAN stage "+(row.row.stage||"unset")+
+          "; not a verified security or consent result."+
+          (include?" HUMAN action: "+row.row.action:"")),
+        "X-LIGHTUP-REVIEW-ONLY:TRUE");
+      if(!cancelled&&Number(slot.reminder)>0)lines.push(
+        "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:PRIVATE HUMAN follow-up reminder",
+        "TRIGGER:-PT"+slot.reminder+"M","END:VALARM");
+      lines.push("END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download(lines.map(fold).join("\r\n")+"\r\n",
+      cancelled?"lightup-private-human-cancellations.ics":"lightup-private-human-calendar-updates.ics",
+      "text/calendar;charset=utf-8");
+    inform("PRIVATE "+kind+" exported. No external agenda was contacted. Preserve old baseline and new plan for manual review.");
+  }
   function restore(parsed){
     const v2=JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD_V2);
     hold(v2 || JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD));
@@ -401,6 +499,7 @@
       const admitted=admitPlanText(decoder.decode(plaintext));
       hold(!admitted.legacy);
       if(changed && !confirm("Replace current unsaved PRIVATE HUMAN reminder dates with the authenticated encrypted plan? This does not prove original-source authenticity."))return;
+      publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
       plan=admitted.schedule;seriesId=admitted.series;
       changed=false;exportedPlan=true;page=0;agendaPage=0;render();
       inform("Encrypted PRIVATE calendar plan opened and exact original worksheet / timezone readmitted. No assessment authority.");
@@ -416,6 +515,7 @@
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
+    publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
@@ -429,6 +529,7 @@
     const raw=decoder.decode(await bytes(file));
     const imported=admitPlanText(raw);
     if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
+    publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     plan=imported.schedule;seriesId=imported.series;exportedPlan=!imported.legacy;page=0;agendaPage=0;changed=false;render();
     inform(`Restored ${plan.size} HUMAN reminders. ${imported.legacy?"Legacy plan: save the new v2 plan before repeatable calendar export.":"Stable private calendar identities restored."}`);
   }
@@ -489,6 +590,24 @@
   function hook(id,event,fn){$(id).addEventListener(event,fn);}
   hook("worksheet","change",async e=>{try{if(e.target.files[0])await onOriginal(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
+  hook("baselinePlan","change",async e=>{
+    try{if(e.target.files[0])await readPublishedBaseline(e.target.files[0]);}
+    catch(_){inform("Previous PRIVATE schedule did not match exact worksheet, timezone or series (HOLD).",true);}
+    finally{e.target.value="";}
+  });
+  hook("clearBaseline","click",()=>{
+    publicationBaseline=null;changesPage=0;
+    $("baselineStatus").textContent="No previous publication loaded.";
+    renderChanges();inform("Previous PRIVATE comparison plan discarded from application memory.");
+  });
+  hook("changePrev","click",()=>{changesPage--;renderChanges();});
+  hook("changeNext","click",()=>{changesPage++;renderChanges();});
+  hook("exportUpdated","click",()=>{
+    try{calendarDiffExport(false);}catch(_){inform("PRIVATE event updates held: save the current v2 plan and select a matching previous publication first.",true);}
+  });
+  hook("exportCancelled","click",()=>{
+    try{calendarDiffExport(true);}catch(_){inform("PRIVATE cancellations held: save the current v2 plan and select a matching previous publication first.",true);}
+  });
   hook("encryptPlan","click",async()=>{
     try{await saveEncrypted();}catch(_){clearPasswords();inform("Encrypted PRIVATE plan export refused (HOLD).",true);}
   });
@@ -499,6 +618,7 @@
   });
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
+    publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
     $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
