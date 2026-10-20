@@ -22,7 +22,7 @@ from history_owner_brief import admitted_original
 from history_team import private_parent_for_originals
 from ledger import (
     FLAGS, Hold, canonical, digest, html_page, new_private,
-    private_parent, reject, write_private,
+    private_parent, reject, safe_human, write_private,
 )
 
 MIN_CASES = 2
@@ -136,7 +136,7 @@ def csv_report(entries):
     return out.getvalue()
 
 
-def summary_html(cases, stats, entries):
+def summary_html(cases, stats, entries, owner=None):
     body = [
         "<p><strong>HUMAN-only multi-case PRIVATE desk.</strong> All original "
         "context/actions/plan bytes were locally re-admitted; archived ORIGINAL "
@@ -149,6 +149,14 @@ def summary_html(cases, stats, entries):
         "<table><thead><tr><th>Local case</th><th>HUMAN rows</th>"
         "<th>HUMAN proposals</th><th>PRIVATE HUMAN statuses</th></tr></thead><tbody>",
     ]
+    if owner is not None:
+        body.append(
+            "<p><strong>EXACT proposed HUMAN owner selection:</strong> " +
+            html.escape(owner, quote=True) +
+            ". This label does NOT authenticate the person, recipient or "
+            "disclosure permission. Unselected owners and proposals are not "
+            "included in this workroom.</p>"
+        )
     for row in stats:
         statuses = "; ".join(html.escape(key) + ": " + str(value)
                              for key, value in row["human_status_counts"].items())
@@ -167,7 +175,7 @@ def summary_html(cases, stats, entries):
     return html_page("LightUp PRIVATE cross-case HUMAN portfolio", "".join(body))
 
 
-def detailed_html(entries):
+def detailed_html(entries, owner=None):
     body = [
         "<p><strong>SENSITIVE PRIVATE HUMAN PROPOSALS.</strong> The local case "
         "numbers prevent coalescing independent source contexts. Proposed days "
@@ -177,6 +185,12 @@ def detailed_html(entries):
         "<th>Human state</th><th>Human priority</th><th>Proposed day</th>"
         "<th>Proposed owner</th><th>Next HUMAN step</th></tr></thead><tbody>",
     ]
+    if owner is not None:
+        body.append(
+            "<p>Only explicit exact-label proposals for <strong>" +
+            html.escape(owner, quote=True) +
+            "</strong> were selected. This does not verify recipient identity.</p>"
+        )
     for item in entries:
         def e(key):
             return html.escape(str(item[key]), quote=True)
@@ -199,6 +213,27 @@ def detailed_html(entries):
 def run(args):
     cases = collect(args)
     stats, entries = active_items(cases)
+    owner = args.owner
+    if owner is not None:
+        owner = safe_human(owner, 80)
+        if not owner or owner != owner.strip():
+            reject("PRIVATE HOLD: choose an exact nonempty proposed HUMAN owner label")
+        entries = [item for item in entries if item["proposed_owner"] == owner]
+        if not entries:
+            reject("PRIVATE HOLD: no explicit HUMAN proposals for that exact owner")
+        # A recipient-limited view must not reveal counts or statuses
+        # belonging to other proposed owners, even on the summary page.
+        selected = {case["ordinal"]: [] for case in cases}
+        for item in entries:
+            selected[item["case_ordinal"]].append(item)
+        stats = [{
+            "case_ordinal": n,
+            "original_human_rows": len(rows),
+            "human_proposals": len(rows),
+            "human_status_counts": dict(sorted(Counter(
+                row["human_status"] for row in rows
+            ).items())),
+        } for n, rows in selected.items() if rows]
     # Re-admit every ORIGINAL chain after combining to prevent stale or
     # substituted source inputs from entering the private output.
     refreshed = collect(args)
@@ -214,6 +249,8 @@ def run(args):
         "recipient_authenticated": False,
         "consent_assumed": False,
         "actions_dispatched": False,
+        "owner_filter_is_unauthenticated_human_label": owner is not None,
+        "proposed_owner_filter": owner,
         "cases": [{
             "case_ordinal": case["ordinal"],
             "context_sha256": case["context_sha256"],
@@ -225,8 +262,8 @@ def run(args):
     }
     folder = new_private(args.private_parent)
     try:
-        write_private(folder, "OPEN-PRIVATE.html", summary_html(cases, stats, entries))
-        write_private(folder, "PRIVATE-HUMAN-portfolio.html", detailed_html(entries))
+        write_private(folder, "OPEN-PRIVATE.html", summary_html(cases, stats, entries, owner))
+        write_private(folder, "PRIVATE-HUMAN-portfolio.html", detailed_html(entries, owner))
         write_private(folder, "PRIVATE-HUMAN-portfolio.csv", csv_report(entries))
         write_private(folder, "PRIVATE-HUMAN-portfolio.json", canonical(record))
     except BaseException:
@@ -247,6 +284,7 @@ def main():
                    help="Matching original 0600 PRIVATE-HUMAN-actions.json")
     p.add_argument("--plan", action="append", required=True,
                    help="Matching original 0600 HUMAN-action-plan.csv")
+    p.add_argument("--owner", help="Optional exact proposed HUMAN owner; never authenticated")
     p.add_argument("--private-parent", required=True,
                    help="Existing 0700 output directory outside source checkout and original kits")
     args = p.parse_args()
