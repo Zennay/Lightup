@@ -70,7 +70,7 @@ def focus(original: str, review: str, topic: str, status: str,
     complete = False
     try:
         csv_sink = io.StringIO(newline="")
-        writer = csv.DictWriter(csv_sink, fieldnames=CSV_FIELDS, lineterminator="\\r\\n")
+        writer = csv.DictWriter(csv_sink, fieldnames=CSV_FIELDS, lineterminator="\r\n")
         writer.writeheader()
         for row in selected:
             writer.writerow({column: row[column] for column in CSV_FIELDS})
