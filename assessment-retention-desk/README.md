@@ -79,6 +79,11 @@ identifiers). This may still be sensitive for small cohorts. New metadata is
 PRIVATE even when encrypted; avoid placing personal information in aliases,
 owner fields or free-text descriptions unless there is a need and permission.
 
+## Scriptless PRIVATE HUMAN custody review dossier
+
+The browser provides an additional **explicit, privacy-confirmed HTML review dossier**. It orders the current exact-SHA/size-bound assessment assets by operator-declared HUMAN hold uncertainty, includes a **short SHA-prefix** for local source disambiguation, shows HUMAN owner, sensitivity, tentative date and follow-up action, and flags incomplete delete proposals as **HOLD**. The HTML is built from inert DOM `textContent`, has its own no-network/no-script CSP, and contains **no original source bytes, filenames, complete SHA-256 or verified grant/consent**.
+
+**It is still PRIVATE and unencrypted** because HUMAN owner/notes, even without original source bytes, may contain sensitive personal and security information. The operator must separately confirm this export and keep it only in a trusted private location. Never attach it to a public issue or infer that a claimed clearance is an actual legal determination. No automatic deletion or external delivery is ever triggered.
 ## Native encrypted HUMAN history with original-byte revalidation
 
 The existing browser `.lurt` AES-256-GCM HUMAN vaults can now be compared without exporting decrypted JSON to disk. `vault_history.py` opens each vault in memory via an independently entered non-echoed password, validates the original unchanged browser HUMAN receipt, and **re-hashes every separately selected genuine source file**. Missing/changed/duplicate original bytes HOLD before publishing any report. The operator-declared vault order never proves a real chronology or authenticated source provenance.
