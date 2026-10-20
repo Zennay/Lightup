@@ -23,6 +23,7 @@ import history_progress
 import portfolio
 import portfolio_delta
 import portfolio_owner_packets
+import portfolio_dayboard
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -55,6 +56,7 @@ MENU = (
     ("24", "Combine 2-8 DIFFERENT source-bound HUMAN cases in one private portfolio desk"),
     ("25", "Compare two PRIVATE cross-case HUMAN proposal portfolios as a local delta"),
     ("26", "Create owner-scoped PRIVATE HUMAN handoff workrooms from a previous portfolio"),
+    ("27", "Open a PRIVATE date/priority HUMAN planning dayboard from an original portfolio"),
     ("0", "Exit"),
 )
 
@@ -203,6 +205,13 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "27":
+        return portfolio_dayboard.run(argparse.Namespace(
+            portfolio=prompt("ORIGINAL PRIVATE-HUMAN-portfolio.json"),
+            reference_day=prompt("Manually SELECTED yyyy-mm-dd historical HUMAN reference day"),
+            owner=prompt("EXACT original proposed HUMAN owner (blank for all)", False) or None,
+            private_parent=private_parent()
         ))
     if action == "26":
         print("Choose 1–8 EXACT proposed HUMAN owner labels for SEPARATE local workrooms.")
