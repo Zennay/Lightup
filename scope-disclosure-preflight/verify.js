@@ -23,7 +23,7 @@
       ["URL",/\bhttps?:\/\/[^\s"'<>]+/gi],
       ["Bearer",/\bBearer\s+[a-z0-9._~+/-]{8,}/gi],
       ["credential-like",/\b(?:password|passwd|api[_-]?key|secret|token)\s*[:=]\s*[^\s,;}]{3,}/gi],
-      ["private key",/-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+      ["private key",/-----BEGIN (?:[A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?)-----/g],
       ["JWT-like",/\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g],
       ["GitHub token",/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g],
       ["AWS access key",/\bAKIA[A-Z0-9]{16}\b/g],
