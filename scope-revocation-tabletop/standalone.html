@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JpUnJV44XeuVDL0bXjUyS5pgSjvoPoIgGNBe4TE2rPI='; style-src 'sha256-GzxoAhQSlGQsSotM/FsHHKmgzPY/IWC1JlblUu2aGlg='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JC10BQP1w6bc+ES23JruMt9B58nPS+zKnzgUSeQ5Hq8='; style-src 'sha256-GzxoAhQSlGQsSotM/FsHHKmgzPY/IWC1JlblUu2aGlg='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
   <meta name="referrer" content="no-referrer">
   <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
   <style>:root{color-scheme:dark;--bg:#0b1220;--surface:#121e30;--surface2:#19283a;--border:#31445c;--text:#f3f7fc;--muted:#adbed1;--aqua:#5ee5cf;--warn:#ffd07d;--red:#ff9b9b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -254,6 +254,25 @@
         ". Vertakking bewaart het geselecteerde voortraject en houdt het oorspronkelijke volledige scenario als nulmeting."
       : "Alle acht scenario-slots zijn gevuld. Wis eerst bewust een eigen slot om veilig te kunnen vertakken.");
   }
+  function focusHistoricalAttempt(step){
+    if(!Number.isSafeInteger(step) || step<1 || step>events.length ||
+        events[step-1]!=="DISPATCH_ATTEMPT")return;
+    momentFrom=step-1;
+    momentTo=step;
+    replayCursor=step;
+    render();
+    $("replay-step").focus();
+    $("moment-title").scrollIntoView({block:"nearest"});
+    feedback("Historische fictieve poging bij stap "+step+" geopend. "+
+      "Vergelijk de oorspronkelijke situatie vóór en direct na de poging; nooit echte toestemming.");
+  }
+  function focusNextHistoricalHold(){
+    const history=play(events).steps.flatMap((step,index)=>
+      step.event==="DISPATCH_ATTEMPT" && step.missing.length?[index+1]:[]);
+    if(!history.length){feedback("Geen historische fictieve HOLD-pogingen.");return;}
+    const current=replayPosition();
+    focusHistoricalAttempt(history.find(step=>step>current)||history[0]);
+  }
   function momentComparison() {
     const start=Math.min(events.length,Math.max(0,momentFrom));
     const finish=Math.min(events.length,Math.max(0,momentTo===null?events.length:momentTo));
@@ -406,10 +425,18 @@
     const historicList=$("attempt-history-details");
     historicList.replaceChildren();
     history.forEach(entry=>{
-      historicList.append(el("li","", "Stap "+entry.number+": "+(entry.missing.length
+      const item=el("li");
+      item.append(document.createTextNode("Stap "+entry.number+": "+(entry.missing.length
         ? "OEFEN-HOLD — "+entry.missing.join("; ")
-        : "Geen fictieve blokkade op dit moment; NOOIT echte toestemming.")));
+        : "Geen fictieve blokkade op dit moment; NOOIT echte toestemming.")+" "));
+      const jump=el("button","small-button",entry.missing.length?"Bekijk HOLD":"Bekijk poging");
+      jump.type="button";
+      jump.setAttribute("aria-label","Bekijk fictieve uitvoerpoging bij stap "+entry.number);
+      jump.addEventListener("click",()=>focusHistoricalAttempt(entry.number));
+      item.append(jump);
+      historicList.append(item);
     });
+    $("next-hold").disabled=blocked===0;
     if (!events.length) {
       write("status-title","Wacht op scenario");
       write("status-reason","Voeg gebeurtenissen toe of laad een fictief voorbeeld. Geen echte autorisatiecontrole.");
@@ -881,6 +908,7 @@
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("timeline-filter").addEventListener("change",render);
+  $("next-hold").addEventListener("click",focusNextHistoricalHold);
   $("moment-from").addEventListener("change",event=>{
     momentFrom=Number(event.target.value);renderMomentComparison();
   });
@@ -1015,6 +1043,8 @@
           <h3 id="attempt-history-title">Historische uitvoerpogingen — alleen oefening</h3>
           <p id="attempt-history-summary" class="muted">Geen fictieve uitvoerpogingen.</p>
           <ul id="attempt-history-details" class="needs"></ul>
+          <button id="next-hold" class="button minor" type="button" disabled>Volgende historische oefen-HOLD bekijken</button>
+          <p class="muted">Een gekozen HOLD opent de oorspronkelijke fictieve toestand bij die gebeurtenis en vergelijkt de stap ervoor en erna; latere wijzigingen veranderen het verleden niet.</p>
         </section>
         <h3 class="subheading">Human review: benodigde verificatie</h3>
         <ul class="needs" id="needs"><li>Actueel onafhankelijk geauthenticeerd bewijs van beide echte partijen.</li><li>Exacte actuele assets, capability, risico en geldigheidsvenster.</li><li>Actuele brongebonden intrekkingscontrole vlak vóór uitvoering.</li><li>Onafhankelijke privacy/security-goedkeuring en expliciete HUMAN GO.</li></ul>
