@@ -59,8 +59,10 @@ Native option 69 strictly re-admits the original source and choices; no
 automatic FINALIZE or dispatch occurs.</p></main>
 <footer><strong>INCUBATE M3/M7 DRAFT/HOLD · NO NETWORK OR ASSESSMENT</strong>
 <p>No original client targets, private question text, findings, credentials,
-or recipient identities are embedded in this page. SHA values inside the
-PRIVATE source-bound CSV are unsigned continuity markers, never trust.
+or recipient identities are embedded. This owner-0600 HTML contains exact
+unsigned original source/candidate SHA bindings in its in-memory data-only
+choice rows to export the complete native source-bound CSV. Keep this entire
+HTML and exported CSV strictly private; SHA never authenticates an actor.
 Original source-owner, hosted/named CI, security/privacy/browser reviews,
 current separate authenticated client/operator consent, at-use revocation
 and explicit HUMAN GO remain mandatory.</p></footer>
