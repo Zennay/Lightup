@@ -75,6 +75,13 @@ strong{color:#ffe1af}div{overflow-x:auto}</style></head><body>
              "Edit the PRIVATE draft CSV deliberately. KEEP_PREVIOUS is the default.") +
             """ Every source row is a HUMAN proposal, never permission, authenticity
 or a proven security issue. Missing decisions are not silently applied.</p></header>
+<section><h2>Original private HUMAN editing</h2>""" +
+            ("""<p><a href="EDIT-PRIVATE.html">Open the LOCAL offline HUMAN choice editor</a>.
+It exports all original source-bound rows as a completed PRIVATE CSV for
+separate native admission. This workroom is owner-only 0600.</p>""" if not published else
+             """<p>The complete chosen source-bound CSV and resulting new PRIVATE
+candidate remain separate files for manual original HUMAN Studio review.</p>""") +
+            """</section>
 <section><h2>Original HUMAN ordinal choices</h2><div><table>
 <thead><tr><th>Ordinal</th><th>Assigned team</th><th>Earlier stage</th>
 <th>Returned stage</th><th>PRIVATE question changed?</th>
