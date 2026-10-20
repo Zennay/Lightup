@@ -686,9 +686,6 @@
   const humanRouteEqual = (a,b) =>
     a.human_route === b.human_route &&
     a.human_stage === b.human_stage && a.human_team === b.human_team;
-  const humanEqual = (a,b) => humanRouteEqual(a,b) &&
-    a.private_note_included === b.private_note_included &&
-    (!a.private_note_included || a.private_human_note === b.private_human_note);
   const peerLabel = row => row
     ? teams[row.human_team] + " / " + stages[row.human_stage] +
       " / " + routes[row.human_route][0] +
