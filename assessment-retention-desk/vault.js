@@ -73,6 +73,7 @@
   function leave() {
     $("vault-password").value = "";
     $("vault-import").value = "";
+    $("vault-compare").value = "";
     bridge.setBusy(false);
   }
   async function exportVault() {
@@ -103,40 +104,43 @@
       if (acquired) leave(); else $("vault-password").value = "";
     }
   }
+  async function decryptEnvelope(file, pass) {
+    if (file.size < 1 || file.size > MAX_ENVELOPE_BYTES)
+      throw Error("Versleuteld bestand is leeg of groter dan 256 KiB.");
+    const json = await file.text();
+    let receipt;
+    try { receipt = JSON.parse(json); } catch { throw Error("Ongeldig versleuteld JSON."); }
+    if (JSON.stringify(receipt) !== json.trim() ||
+        !fields(receipt,["kind","version","algorithm","iterations","salt","nonce","ciphertext","authority"]) ||
+        receipt.kind !== KIND || receipt.version !== 1 ||
+        receipt.algorithm !== "PBKDF2-SHA256/AES-256-GCM" ||
+        receipt.iterations !== ITERATIONS ||
+        !fields(receipt.authority,Object.keys(AUTHORITY)) ||
+        Object.keys(AUTHORITY).some(k=>receipt.authority[k] !== false))
+      throw Error("Niet-canoniek PRIVATE vaultcontract of ongeoorloofde bevoegdheidsclaim.");
+    const salt = unhex(receipt.salt,16);
+    const nonce = unhex(receipt.nonce,12);
+    const ciphertext = unbase64(receipt.ciphertext);
+    let decrypted;
+    try {
+      const key = await derive(pass,salt);
+      decrypted = await crypto.subtle.decrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:PURPOSE,tagLength:128},key,ciphertext);
+    } catch {
+      throw Error("Verkeerd wachtwoord of gewijzigde cryptografische inhoud.");
+    }
+    return new TextDecoder("utf-8",{fatal:true}).decode(decrypted);
+  }
   async function importVault(event) {
     let acquired = false;
     try {
       const file = event.target.files?.[0];
       if (!file) return;
-      if (file.size < 1 || file.size > MAX_ENVELOPE_BYTES)
-        throw Error("Versleuteld bestand is leeg of groter dan 256 KiB.");
       const pass = takePassword();
       enter(); acquired = true;
-      const json = await file.text();
-      let receipt;
-      try { receipt = JSON.parse(json); } catch { throw Error("Ongeldig versleuteld JSON."); }
-      if (JSON.stringify(receipt) !== json.trim() ||
-          !fields(receipt,["kind","version","algorithm","iterations","salt","nonce","ciphertext","authority"]) ||
-          receipt.kind !== KIND || receipt.version !== 1 ||
-          receipt.algorithm !== "PBKDF2-SHA256/AES-256-GCM" ||
-          receipt.iterations !== ITERATIONS ||
-          !fields(receipt.authority,Object.keys(AUTHORITY)) ||
-          Object.keys(AUTHORITY).some(k=>receipt.authority[k] !== false))
-        throw Error("Niet-canoniek PRIVATE vaultcontract of ongeoorloofde bevoegdheidsclaim.");
-      const salt = unhex(receipt.salt,16);
-      const nonce = unhex(receipt.nonce,12);
-      const ciphertext = unbase64(receipt.ciphertext);
-      let decrypted;
-      try {
-        const key = await derive(pass,salt);
-        decrypted = await crypto.subtle.decrypt(
-          {name:"AES-GCM",iv:nonce,additionalData:PURPOSE,tagLength:128},key,ciphertext);
-      } catch {
-        throw Error("Verkeerd wachtwoord of gewijzigde cryptografische inhoud.");
-      }
-      const original = new TextDecoder("utf-8",{fatal:true}).decode(decrypted);
-      // Original source set is re-hashed by the existing browser ingress flow; this
-      // exact-membership admission and explicit HUMAN confirmation reuses that guard.
+      const original = await decryptEnvelope(file, pass);
+      // Exact original source SHA/size admission and separate HUMAN confirmation
+      // remain exclusively in the original offline workroom bridge.
       bridge.restore(original,"versleutelde PRIVATE HUMAN-ontvangst");
     } catch(e) {
       bridge.notify("HOLD: versleutelde HUMAN-heropening geweigerd: " + e.message +
@@ -147,4 +151,23 @@
   }
   $("export-vault").addEventListener("click",exportVault);
   $("vault-import").addEventListener("change",importVault);
+  async function compareVault(event) {
+    let acquired = false;
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      // Current genuine original source files must already be selected.
+      bridge.snapshot();
+      const pass = takePassword();
+      enter(); acquired = true;
+      const original = await decryptEnvelope(file, pass);
+      bridge.compare(original);  // validates exact entire current original source set, no change.
+    } catch(e) {
+      bridge.notify("HOLD: versleutelde PRIVATE vergelijking geweigerd: " + e.message +
+        " Geen HUMAN-velden gewijzigd.",true);
+    } finally {
+      if (acquired) leave(); else { $("vault-password").value = ""; $("vault-compare").value = ""; }
+    }
+  }
+  $("vault-compare").addEventListener("change",compareVault);
 })();
