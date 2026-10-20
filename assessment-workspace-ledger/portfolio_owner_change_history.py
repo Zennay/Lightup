@@ -164,6 +164,61 @@ def anonym(rows,round_count):
         ".</p>")
 
 
+
+def latest_changes(rows, rounds):
+    result=[]
+    for r in rows:
+        values=r["human_operator_stage_by_round"]
+        if len(values)!=rounds:
+            reject("PRIVATE HOLD: incomplete original HUMAN historical status progression")
+        previous,current=values[-2:]
+        note_changed=rounds in r["private_human_note_changed_in_rounds"]
+        if previous!=current or note_changed:
+            result.append({
+                "local_case":r["local_case"],
+                "historical_transition":r["historical_transition"],
+                "original_kit":r["original_kit"],
+                "previous_human_operator_stage":previous,
+                "latest_human_operator_stage":current,
+                "private_human_note_changed":note_changed,
+            })
+    return result
+
+
+def latest_html(owner, rows, total, round_no):
+    parts=[
+        "<p><strong>PRIVATE original HUMAN-only latest-change briefing, DRAFT/HOLD."
+        "</strong> Original proposed owner: "+html.escape(owner,quote=True)+
+        " (NOT recipient authentication). Comparing manually supplied versions "+
+        str(round_no-1)+" → "+str(round_no)+". Original owner source slots: "+
+        str(total)+"; latest-changed proposal slots: "+str(len(rows))+
+        ". No changes does NOT prove remediation, an actual task, authorization "
+        "or consent. No HUMAN note text is present.</p>",
+        "<table><thead><tr><th>Original source slot</th><th>Previous HUMAN "
+        "proposal</th><th>Latest HUMAN proposal</th><th>PRIVATE note changed? "
+        "(not note content)</th></tr></thead><tbody>",
+    ]
+    for r in rows:
+        def esc(k):return html.escape(str(r[k]),quote=True)
+        parts.append("<tr><td>"+esc("local_case")+" / "+esc("historical_transition")+
+                     " / "+esc("original_kit")+"</td><td>"+
+                     esc("previous_human_operator_stage")+"</td><td>"+
+                     esc("latest_human_operator_stage")+"</td><td>"+
+                     ("yes" if r["private_human_note_changed"] else "no")+"</td></tr>")
+    return html_page("LightUp PRIVATE HUMAN latest-round changes",
+                     "".join(parts)+"</tbody></table>")
+
+
+def latest_csv(rows):
+    output=io.StringIO(newline="")
+    keys=("local_case","historical_transition","original_kit",
+          "previous_human_operator_stage","latest_human_operator_stage",
+          "private_human_note_changed")
+    writer=csv.writer(output,lineterminator="\n")
+    writer.writerow(keys)
+    for row in rows:writer.writerow([row[k] for k in keys])
+    return output.getvalue()
+
 def run(args):
     original,stored=admit(args)
     rows,metrics=review(stored)
@@ -180,6 +235,7 @@ def run(args):
         operator=[]
         for ordinal,(owner,selected) in enumerate(groups.items(),1):
             directory=new_private(root)
+            latest=latest_changes(selected,len(stored))
             data={
                 "schema":SCHEMA,"authority":FLAGS,"historical_only":True,
                 "sources_reopened":False,"recipient_authenticated":False,
@@ -201,6 +257,21 @@ def run(args):
                 "PRIVATE-HUMAN-operator-version-history.html":owner_html(owner,selected,len(stored)),
                 "PRIVATE-HUMAN-operator-version-history.csv":csv_source(selected),
                 "PRIVATE-HUMAN-operator-version-history.json":canonical(data),
+                "PRIVATE-HUMAN-latest-round-changes.html":latest_html(
+                    owner,latest,len(selected),len(stored)),
+                "PRIVATE-HUMAN-latest-round-changes.csv":latest_csv(latest),
+                "PRIVATE-HUMAN-latest-round-changes.json":canonical({
+                    "schema":SCHEMA,"authority":FLAGS,"historical_only":True,
+                    "sources_reopened":False,"recipient_authenticated":False,
+                    "consent_assumed":False,"actions_dispatched":False,
+                    "appointments_booked":False,"verified_remediation":False,
+                    "original_owner_inbox_sha256":digest(original[0]),
+                    "original_history_sha256":digest(original[1]),
+                    "original_proposed_human_owner_label":owner,
+                    "previous_original_human_round":len(stored)-1,
+                    "latest_original_human_round":len(stored),
+                    "latest_human_proposal_changes":latest,
+                }),
             }
             if any(len(x if isinstance(x,bytes) else x.encode("utf-8"))>MAX_MANIFEST
                    for x in outputs.values()):
@@ -210,6 +281,7 @@ def run(args):
                 "ordinal":ordinal,"owner_private_room":Path(directory).name,
                 "original_proposed_human_owner_label":owner,
                 "original_human_slots":len(selected),
+                "latest_changed_human_slots":len(latest),
                 "changed_human_slots":sum(bool(r["human_stage_changed_in_rounds"] or
                     r["private_human_note_changed_in_rounds"]) for r in selected),
             })
@@ -233,6 +305,7 @@ def run(args):
             "consent or security PASS.</p><p>Explicit operator HUMAN versions: "+
             str(len(stored))+"; proposed owner groups: "+str(len(groups))+
             "; HUMAN changed slots: "+str(metrics["changed_rows"])+
+            "; latest-round changed slots: "+str(sum(x["latest_changed_human_slots"] for x in operator))+
             ".</p><table><tbody>"+
             "".join("<tr><td>Owner packet "+str(x["ordinal"])+"</td><td>"+
                     str(x["original_human_slots"])+" HUMAN slots</td><td><a href=\""+

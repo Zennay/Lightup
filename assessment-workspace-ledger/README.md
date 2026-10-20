@@ -1980,3 +1980,34 @@ deployment. Original CI, source-owner, independent browser/security/privacy
 review, separately authenticated present client/operator consent with
 action-time revocation, and explicit HUMAN GO remain required before
 real authorized release.
+
+## v49 — latest two HUMAN operator versions: minimal owner-private changes
+
+The original source-bound 2–8 HUMAN operator version comparison (console
+54) now creates THREE additional private 0600 deliverables per original
+proposed HUMAN owner, alongside the full version history:
+`PRIVATE-HUMAN-latest-round-changes.html`,
+`PRIVATE-HUMAN-latest-round-changes.csv`, and
+`PRIVATE-HUMAN-latest-round-changes.json`. They contain only original
+case/transition/kit slots whose operator-proposed HUMAN stage or PRIVATE
+note contents changed between the last two explicitly ordered original
+rounds. Only the fact that a PRIVATE note changed is retained — not the
+private note text. A zero-row brief is valid HUMAN history and **does not**
+mean work was completed or a security finding resolved.
+
+The original full 2–8 source receipts, complete original HUMAN CSV,
+source-owner identities, all source byte hashes and mandatory false-authority
+flags are re-admitted by the unchanged native source pipeline before the
+PRIVATE deliverables are written into NEW 0700/0600 rooms. The source-minimal
+operator index gains only an anonymous latest-change count and never
+includes owner labels or human note text. No other original source files,
+claims, releases or consent states are modified.
+
+The full original longitudinal report, per-owner source-free browser,
+native last-round human-only brief and historical software inventory
+v16–v48 ship together in the deterministic source-only ZIP v49.
+Original source-owner, independent security/privacy/browser review,
+exact-head hosted + permanent named VPS CI, separately authenticated
+current client/operator consent with action-time revocation, and explicit
+HUMAN GO remain gating; Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD. No scans,
+real tasks, grant, verified finding, communication or deployment.
