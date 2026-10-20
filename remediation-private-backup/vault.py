@@ -23,7 +23,7 @@ AAD = b"LightUp PRIVATE HUMAN archive v1 - DRAFT HOLD no authority"
 MAX_FILES = 32
 MAX_SINGLE = 2 * 1024 * 1024
 MAX_TOTAL = 16 * 1024 * 1024
-MAX_VAULT = 26 * 1024 * 1024
+MAX_VAULT = 38 * 1024 * 1024
 ROUNDS = 600_000
 FLAGS = {"consent_verified": False, "authorized": False,
          "remediation_verified": False, "release_approved": False}
@@ -70,20 +70,26 @@ def name_safe(name):
             and all(32 <= ord(c) < 127 or ord(c) > 159 for c in name))
 
 def read_file(path, limit):
-    if path.is_symlink() or not path.is_file():
-        raise Hold("only ordinary files; no symlinks")
-    before = path.stat(follow_symlinks=False)
-    if not stat.S_ISREG(before.st_mode) or before.st_size > limit:
-        raise Hold("nonregular or oversized file")
-    with path.open("rb") as handle:
-        data = handle.read(limit + 1)
-    after = path.stat(follow_symlinks=False)
-    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
-            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns):
-        raise Hold("file changed during read")
-    if len(data) != before.st_size or len(data) > limit:
-        raise Hold("file grew during read")
-    return data
+    # Open the final component without following symlinks; validate the OPEN fd,
+    # rather than relying on a check of a possibly swapped pathname.
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
+                 getattr(os, "O_NONBLOCK", 0))
+    try:
+        before = os.fstat(fd)
+        if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+                or before.st_size > limit):
+            raise Hold("nonregular, linked, or oversized file")
+        with os.fdopen(fd, "rb", closefd=False) as handle:
+            data = handle.read(limit + 1)
+        after = os.fstat(fd)
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+                after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns):
+            raise Hold("file changed during read")
+        if len(data) != before.st_size or len(data) > limit:
+            raise Hold("file grew during read")
+        return data
+    finally:
+        os.close(fd)
 
 def check_rows(rows):
     if not isinstance(rows, list) or not 1 <= len(rows) <= MAX_FILES:
@@ -161,6 +167,10 @@ def target_free(path):
         raise Hold("destination already exists, no overwrite")
     if not path.parent.is_dir() or path.parent.is_symlink():
         raise Hold("output parent must be an existing real directory")
+    parent_stat = path.parent.stat(follow_symlinks=False)
+    if (not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != os.getuid()
+            or parent_stat.st_mode & 0o077):
+        raise Hold("output parent must be owned by this account and mode 0700")
 
 def private_write(path, content):
     target_free(path)
