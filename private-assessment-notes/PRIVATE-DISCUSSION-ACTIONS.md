@@ -147,6 +147,13 @@ original source binding; it writes a separate 0700/0600 PRIVATE action record
 and still returns HOLD (3). The chronology itself is not mutated, and it does
 not become an authorization or a verified fix. Read-only history reopening
 also validates the complete blank next-round editor/template/binding bytes.
+The receipt explicitly distinguishes **new** history rooms with a blank
+source-bound continuation from older read-only history rooms created before
+this workflow existed. The reopener admits both exact historical original
+receipt formats against their proper native files, without altering either.
+An older history room is not silently promoted into a new continuation room:
+prepare a fresh native `sensitivity-discussion-actions-prepare` workroom if
+you need a new blank HUMAN next round from that earlier history.
 
 ### Read-only original HUMAN chronology reopening
 

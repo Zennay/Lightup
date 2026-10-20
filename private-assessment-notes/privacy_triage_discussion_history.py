@@ -155,6 +155,7 @@ def history_receipt(sources, manifest, decisions, packets, selected_raw,
         "identical_human_action_round_pairs": copies,
         "independent_reviewer_identities_not_verified": True,
         "human_stages_are_not_remediation_evidence": True,
+        "blank_next_human_round_original_bound": True,
         **{flag: False for flag in FALSE_FLAGS},
     }
 
@@ -217,11 +218,38 @@ def reopen_history(original: str, reviews: list[str], received_room: str,
     next_original_receipt = (
         json.dumps(action_binding, indent=2, sort_keys=True,
                    ensure_ascii=False) + "\n").encode("utf-8")
+    actual_receipt = private_input(
+        str(room / "PRIVATE-HUMAN-action-history-receipt.json"), 65536)
+    legacy_binding = dict(binding)
+    legacy_binding.pop("blank_next_human_round_original_bound")
+    legacy_receipt = (
+        json.dumps(legacy_binding, indent=2, sort_keys=True,
+                   ensure_ascii=False) + "\n").encode("utf-8")
+    if actual_receipt == original_receipt:
+        # New original-bound HISTORY bundles MUST retain all three extra
+        # source-bound blank HUMAN continuation artifacts.
+        next_artifacts = (
+            ("PRIVATE-HUMAN-action-source.json", next_original_receipt),
+            ("PRIVATE-HUMAN-action-template.csv", action_csv(blank_rows(selected))),
+            ("PRIVATE-HUMAN-action-editor.html", action_editor(selected)),
+        )
+    elif actual_receipt == legacy_receipt:
+        # Historical pre-continuation rooms legitimately predate the blank
+        # editor; they are still strictly re-admitted against full originals.
+        # Never misrepresent a legacy packet as a new continuation room.
+        for extra in (
+            "PRIVATE-HUMAN-action-source.json",
+            "PRIVATE-HUMAN-action-template.csv",
+            "PRIVATE-HUMAN-action-editor.html",
+        ):
+            if (room / extra).exists() or (room / extra).is_symlink():
+                raise Hold("HOLD: legacy HUMAN history mixed with changed new-round files")
+        next_artifacts = ()
+    else:
+        raise Hold("HOLD: source-bound private history receipt changed")
     required = (
-        ("PRIVATE-HUMAN-action-history-receipt.json", original_receipt),
-        ("PRIVATE-HUMAN-action-source.json", next_original_receipt),
-        ("PRIVATE-HUMAN-action-template.csv", action_csv(blank_rows(selected))),
-        ("PRIVATE-HUMAN-action-editor.html", action_editor(selected)),
+        ("PRIVATE-HUMAN-action-history-receipt.json", actual_receipt),
+        *next_artifacts,
         ("PRIVATE-HUMAN-action-history.csv", csv_history(export)),
         ("PRIVATE-HUMAN-action-history.html",
          overview(summaries, len(selected), copies)),
