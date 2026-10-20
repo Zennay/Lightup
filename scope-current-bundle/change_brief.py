@@ -16,6 +16,7 @@ import re
 import sys
 
 from review_studio import compile_private_workroom
+from privacy_counts import suppressed_counts
 
 MAX_INPUT = 1_000_000
 MAX_ENTRIES = 256
@@ -119,11 +120,18 @@ def main(argv):
                          "unreviewed", "", ""))
     write_private(output / "human-review-template.csv", template.getvalue().encode("utf-8"))
     # Intentionally path-free anonymous count export (no source names or hashes).
-    counts = {kind: sum(1 for row in rows if row[1] == kind) for kind in ("unchanged", "changed", "added", "absent")}
-    counts["original_heads_changed"] = old_heads != new_heads
-    counts["authority"] = {key: False for key in sorted(AUTHORITY)}
-    counts["posture"] = "INCUBATE_M3_M7_DRAFT_HOLD"
-    write_private(output / "anonymous-counts.json", (json.dumps(counts, indent=2, sort_keys=True) + "\n").encode())
+    counts = {
+        "format": "lightup.private_source_change_counts.v1",
+        "posture": "INCUBATE_M3_M7_DRAFT_HOLD",
+        "authority": {key: False for key in sorted(AUTHORITY)},
+        "original_heads_changed": old_heads != new_heads,
+        "source_change_counts": suppressed_counts(
+            {kind: sum(1 for row in rows if row[1] == kind)
+             for kind in ("unchanged", "changed", "added", "absent")},
+            len(rows)
+        ),
+    }
+    write_private(output / "source-minimized-counts.json", (json.dumps(counts, indent=2, sort_keys=True) + "\n").encode())
     print("PRIVATE review:", output / "index.html")
     print("HUMAN attention (not authority):", counts)
 
