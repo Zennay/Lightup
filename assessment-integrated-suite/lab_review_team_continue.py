@@ -114,7 +114,8 @@ hashes appear on this offline overview. Unsigned file hashes are not identity.</
 
 def build(packets: list[str], final_room: str, handoff_room: str, prior_batch: str,
           replies: list[tuple[str, str]], parent: str, folder: str,
-          *, withhold_teams: tuple[str, ...] = ()) -> Path:
+          *, withhold_teams: tuple[str, ...] = (),
+          prior_continuations: tuple[str, ...] = ()) -> Path:
     if (type(replies) is not list or not 1 <= len(replies) <= batch.MAX_TEAMS
             or len({team for team, _ in replies}) != len(replies)
             or any(team not in handoff.SLUGS or not path for team, path in replies)):
@@ -124,22 +125,39 @@ def build(packets: list[str], final_room: str, handoff_room: str, prior_batch: s
             or len(withhold_teams) != len(set(withhold_teams))
             or any(team not in names for team in withhold_teams)):
         raise privacy.Hold("HOLD: withhold only a distinct returned HUMAN team")
+    if (type(prior_continuations) is not tuple or len(prior_continuations) > 6
+            or len(set(prior_continuations)) != len(prior_continuations)):
+        raise privacy.Hold("HOLD: at most six distinct original HUMAN continuation rooms")
     chosen_withhold = set(withhold_teams)
     dest = lab_plans._new_path(parent, folder)
     prior_room = lab_plans._packet(prior_batch)
     final_source = lab_plans._packet(final_room)
     original_handoff = lab_plans._packet(handoff_room)
-    sources = [prior_room, final_source, original_handoff] + [
+    prior_chain = [lab_plans._packet(x) for x in prior_continuations]
+    if prior_room in prior_chain or len(set(prior_chain)) != len(prior_chain):
+        raise privacy.Hold("HOLD: same original HUMAN batch cannot appear twice")
+    sources = [prior_room, final_source, original_handoff, *prior_chain] + [
         lab_plans._packet(x) for x in packets
     ]
     if any(x == dest or x in dest.parents for x in sources):
         raise privacy.Hold("HOLD: new HUMAN continuation may not nest inside source")
     # Strict original and prior room admission FIRST, before creating output.
     reopen.inspect(packets, final_room, handoff_room, prior_batch)
+    if prior_chain:
+        import lab_review_team_continue_reopen as continued_reopen
+        for idx, previous in enumerate(prior_chain):
+            continued_reopen.inspect(
+                packets, final_room, handoff_room, prior_batch, str(previous),
+                prior_continuations=tuple(str(x) for x in prior_chain[:idx]))
+    previous_source = prior_chain[-1] if prior_chain else prior_room
+    previous_filename = ("PRIVATE-HUMAN-CONTINUED-CANDIDATE.csv" if prior_chain
+                         else "PRIVATE-HUMAN-CANDIDATE.csv")
+    previous_receipt_name = ("PRIVATE-HUMAN-CONTINUATION-RECEIPT.json" if prior_chain
+                             else "PRIVATE-HUMAN-MULTITEAM-RECEIPT.json")
     original, fingerprint = lab_plan_review._source_rows(packets)
     final = lab_review_history._admit_final(final_room, original, fingerprint)
     previous = lab_plan_review._rows_admit(
-        original, str(prior_room / "PRIVATE-HUMAN-CANDIDATE.csv"))
+        original, str(previous_source / previous_filename))
     available = batch._selected_manifest(original_handoff, final, fingerprint)
     updated = [dict(row) for row in previous]
     positions = {row["proposal_slot"]: position for position, row in enumerate(previous)}
@@ -199,10 +217,10 @@ def build(packets: list[str], final_room: str, handoff_room: str, prior_batch: s
 
     missing = [name for name in available if name not in names]
     # The prior and original PRIVATE batch bytes are intentionally unchanged.
-    original_receipt_raw = reopen._read(
-        prior_room, "PRIVATE-HUMAN-MULTITEAM-RECEIPT.json"
-    )
-    old_candidate_raw = reopen._read(prior_room, "PRIVATE-HUMAN-CANDIDATE.csv")
+    original_receipt_raw = reopen._read(previous_source, previous_receipt_name)
+    old_candidate_raw = reopen._read(previous_source, previous_filename)
+    if old_candidate_raw != lab_plan_review._csv(previous):
+        raise privacy.Hold("HOLD: original prior HUMAN candidate bytes changed")
     receipt = {
         "schema": SCHEMA, "status": "REVIEW_ONLY", "authority": privacy.AUTHORITY,
         **AUTH_FALSE,
@@ -252,6 +270,8 @@ def main(argv: list[str] | None = None) -> int:
     cli.add_argument("--final-room", required=True)
     cli.add_argument("--handoff-room", required=True)
     cli.add_argument("--prior-batch", required=True)
+    cli.add_argument("--prior-continuation", action="append", default=[],
+                     help="Prior original HUMAN continuation rooms, oldest first")
     cli.add_argument("--team-return", action="append", required=True,
                      metavar="TEAM=PRIVATE_CSV")
     cli.add_argument("--withhold-team", action="append", default=[],
@@ -271,7 +291,8 @@ def main(argv: list[str] | None = None) -> int:
             returns.append((team, filename))
         page = build(params.packet, params.final_room, params.handoff_room,
                      params.prior_batch, returns, params.private_parent, params.folder,
-                     withhold_teams=tuple(params.withhold_team))
+                     withhold_teams=tuple(params.withhold_team),
+                     prior_continuations=tuple(params.prior_continuation))
         print("PRIVATE REVIEW_ONLY: original HUMAN decisions continued, not finalized")
         print("OPEN LOCALLY: " + str(page))
         return 2
