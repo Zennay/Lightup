@@ -1,0 +1,33 @@
+# LightUp · PRIVATE HUMAN scope delivery kit
+
+**Posture: INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** This is an offline source-byte distribution. It **cannot** issue permission, authenticate a person, scan a target, approve a client or operator, prove a finding, revoke a grant, or release software.
+
+## Delivered, standalone operator product
+
+[Download the complete prebuilt private offline delivery ZIP](LightUp-PRIVATE-HUMAN-Transfer-DRAFT-HOLD.zip). Extract *all* files to a private directory, open `START-HERE.html` locally, and follow the two-stage flow:
+
+1. **Current original scope workspace** — the complete byte-pinned eight-companion workspace ZIP built from unchanged original integrated #1680 source, with its independent `SOURCE-MANIFEST.json` and `DIST-MANIFEST.json`. Extract the inner ZIP separately and open the original `index.html` locally.
+2. **PRIVATE HUMAN courier** — the independently owned #1682 standalone browser application, embedded byte-for-byte. Choose the original ZIP or selected HUMAN-only files, encrypt locally, and send only to a recipient authenticated separately. Passwords must be exchanged via a separate trusted channel.
+3. **Recipient byte review** — `manifest.json` binds all exact package file bytes, sizes and original source-parent SHA. Independently supplied receipt checks are advisable. A matching SHA proves equality of bytes, **never** original operator identity, client consent, HUMAN GO or security review.
+
+The package retains both source products unchanged and packages only separately owned original bytes. The new `scope-offline-delivery/` folder is an additive companion; existing owners' directories, domain authorization, scanner, live handlers, CI and tests were not edited.
+
+## Build / inspect without tests or network
+
+Python 3.11+ stdlib; run from the cloned source workspace on a **clean, independently owned checkout**:
+
+```sh
+python3 scope-offline-delivery/package.py build
+python3 scope-offline-delivery/package.py inspect scope-offline-delivery/LightUp-PRIVATE-HUMAN-Transfer-DRAFT-HOLD.zip
+```
+
+The build invokes existing #1682 `scope-current-bundle/build.py` to rebuild the **current** original workspace in temporary directories; the existing #1680 tracked stale ZIP is not taken as the source of truth. Original pinning preserves its original SHA. Both native original binary manifests and the full workspace's embedded source record must match byte-for-byte. The outer archive uses canonical fixed member names, fixed metadata and stored original bytes, with an unsigned manifest. Invalid JSON fields, changed size/digests, ambiguous member names, unsafe/missing files, altered source flags, source drift or an already-existing different output lead to **HOLD** and no overwrite. Output is mode 0600 and built without credentials.
+
+A receiver should use `inspect` with the independently obtained copy of this script, not assume that an untrusted copy of the script in an untrusted ZIP proves provenance. For a lost or misdirected ZIP, local file-byte equality does not revoke any exported copy, credential or grant.
+
+## Ownership and stop conditions
+
+- Existing original #1680 [offline workspace](https://github.com/Zennay/Lightup/pull/1680), pinned source `0f76f2f90a89f5b64bc8033aa2e2ee6ec2fc49cc`.
+- Existing original #1682 [PRIVATE HUMAN courier](https://github.com/Zennay/Lightup/pull/1682), pinned source `c6ae2c19ad432b924137185313b7331d1dbf148a`.
+- This is **non-authorizing** distribution only. No real clients, targets, service access or background actions. No CI, QA, tests or deployments are invoked.
+- Original exact-head hosted Python and permanently registered named VPS CI, original source-owner and independent security/privacy/browser reviews, #177/#182/#829, **real separate current client/operator authenticated consent with action-time revocation**, and explicit HUMAN GO remain mandatory. No merge to main or deployment under the present HOLD.

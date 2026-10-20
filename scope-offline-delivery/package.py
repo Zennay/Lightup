@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""Source-pinned PRIVATE HUMAN LightUp scope delivery; never authorizes execution."""
+from __future__ import annotations
+import argparse
+import hashlib
+import io
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import zipfile
+
+ROOT = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent
+SRC = ROOT / "scope-current-bundle"
+OUTPUT = "LightUp-PRIVATE-HUMAN-Transfer-DRAFT-HOLD.zip"
+PARENT_SHA = "0f76f2f90a89f5b64bc8033aa2e2ee6ec2fc49cc"
+COURIER_SHA = "55cbef56f7ca0df32ad5fe65ea6868efc4c7ac2f1abf01ecb1e4d97b7e327edf"
+STATUS = "INCUBATE_M3_M7_DRAFT_HOLD"
+AUTHORITY = dict.fromkeys(("client_consent", "operator_consent", "grant",
+                           "scan", "deploy", "release"), False)
+FILES = {
+    "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip": "LightUp-Scope-Offline-DRAFT-HOLD.zip",
+    "workspace/SOURCE-MANIFEST.json": "SOURCE-MANIFEST.json",
+    "workspace/DIST-MANIFEST.json": "DIST-MANIFEST.json",
+    "courier/PRIVATE-encrypted-courier.html": "PRIVATE-encrypted-courier.html",
+}
+README = """LightUp PRIVATE HUMAN scope delivery — INCUBATE M3/M7 DRAFT/HOLD
+1. Extract this complete outer ZIP to a local private folder.
+2. Verify the entire ZIP: python3 package.py inspect ORIGINAL.zip
+3. Open START-HERE.html locally; never host it publicly.
+4. Extract the original inner workspace ZIP; open its index.html.
+5. Open the separate encrypted courier to encrypt the original ZIP or HUMAN notes.
+6. Check recipient identity and exchange passwords through another trusted channel.
+All hashes are unsigned. NO active target, authorization, grant, revoke, deployment,
+verified remediation, fresh consent, independent review or HUMAN GO is implied.
+"""
+HOME = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';base-uri 'none';form-action 'none';connect-src 'none';object-src 'none'">
+<title>LightUp · Private scope delivery</title><style>
+body{font:1rem/1.6 system-ui,sans-serif;max-width:760px;margin:3rem auto;padding:0 1.4rem;background:#111c2b;color:#f5f7fc}
+a{color:#9addff}section{padding:1.2rem;margin:1rem 0;border:1px solid #64748b;border-radius:12px}strong{color:#ffdb94}
+</style></head><body><h1>LightUp · PRIVATE HUMAN scope delivery</h1>
+<p><strong>INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</strong></p>
+<p>Extract this entire ZIP locally. All companion applications work offline and cannot authorize work or verify consent.</p>
+<section><h2>1 · Original scope workspace</h2><p><a href="workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip" download>Save current complete original scope workspace ZIP</a></p><p>Extract that ZIP separately, then open its original index.html.</p></section>
+<section><h2>2 · Encrypted human courier</h2><p><a href="courier/PRIVATE-encrypted-courier.html">Open offline PRIVATE encryption courier</a></p><p>Choose original workspace ZIP or reviewer notes. Recipient and current permissions must be verified independently. Exchange the password separately.</p></section>
+<section><h2>3 · Source byte records</h2><p><a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
+<p>No scans, network requests, browser storage, client approval, grants, automatic execution or deployment. Original source-owner + security/privacy review, exact-head hosted and named-VPS CI, real separately authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory for any release.</p>
+</body></html>"""
+
+def digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+def read(path: Path, maximum=1_500_000) -> bytes:
+    if not path.is_file() or path.is_symlink() or path.stat().st_size > maximum:
+        raise ValueError("Missing, symlinked or oversized source: " + path.name)
+    return path.read_bytes()
+
+def strict_json(data: bytes) -> dict:
+    def unique(pairs):
+        result = {}
+        for k, v in pairs:
+            if k in result:
+                raise ValueError("Duplicate JSON field")
+            result[k] = v
+        return result
+    obj = json.loads(data.decode("utf8", "strict"), object_pairs_hook=unique,
+                     parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Nonfinite JSON")))
+    if type(obj) is not dict:
+        raise ValueError("Expected JSON object")
+    return obj
+
+def original_admission(workspace: bytes, source: bytes, dist: bytes) -> None:
+    a, b = strict_json(source), strict_json(dist)
+    if a.get("format") != "lightup.scope_offline_bundle.v1" or a.get("posture") != STATUS:
+        raise ValueError("Original workspace format/posture drift")
+    if b.get("format") != "lightup.scope_offline_distribution.v1" or b.get("posture") != STATUS:
+        raise ValueError("Original distribution format/posture drift")
+    if a.get("authority") != AUTHORITY or b.get("authority") != AUTHORITY:
+        raise ValueError("Original scope source asserts authority")
+    if b.get("authenticated_release") is not False or b.get("source_parent_sha") != PARENT_SHA:
+        raise ValueError("Original source/release pin mismatch")
+    rows = b.get("files")
+    if type(rows) is not list or len(rows) != 5 or any(type(x) is not dict for x in rows):
+        raise ValueError("Original file inventory malformed")
+    by_name = {row.get("name"): row for row in rows}
+    if len(by_name) != 5:
+        raise ValueError("Original file names ambiguous")
+    for name, data in [("LightUp-Scope-Offline-DRAFT-HOLD.zip", workspace),
+                       ("SOURCE-MANIFEST.json", source)]:
+        item = by_name.get(name, {})
+        if item.get("bytes") != len(data) or item.get("sha256") != digest(data):
+            raise ValueError("Original source bytes do not match original distribution")
+    with zipfile.ZipFile(io.BytesIO(workspace)) as z:
+        names = z.namelist()
+        if len(names) < 60 or len(names) != len(set(names)):
+            raise ValueError("Original workspace member inventory invalid")
+        if z.read("scope-unified-workspace/SOURCE-MANIFEST.json") != source:
+            raise ValueError("Original workspace embedded source receipt changed")
+
+def receipt(blobs: dict[str, bytes]) -> bytes:
+    item = {"format": "lightup.scope_private_delivery.v1", "posture": STATUS,
+            "original_source_sha": PARENT_SHA, "authenticated_release": False,
+            "authority": AUTHORITY, "files": [
+                {"path": n, "bytes": len(v), "sha256": digest(v)}
+                for n, v in sorted(blobs.items())],
+            "note": "Unsigned bytes / REVIEW_ONLY; no source owner authentication, consent, grant or release."}
+    return (json.dumps(item, indent=2, sort_keys=True) + "\n").encode()
+
+def inspect(path: Path) -> dict:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_500_000:
+        raise ValueError("Unsafe or oversized transfer")
+    expected = set(FILES) | {"START-HERE.html", "README.txt", "manifest.json"}
+    with zipfile.ZipFile(path) as z:
+        infos = z.infolist()
+        if len(infos) != len(expected) or {x.filename for x in infos} != expected:
+            raise ValueError("Unexpected, duplicated or missing transfer members")
+        if any(x.file_size > 1_500_000 or x.compress_type != zipfile.ZIP_STORED or
+               x.is_dir() or x.flag_bits & 1 for x in infos):
+            raise ValueError("Unexpected compressed or encrypted transfer member")
+        m = strict_json(z.read("manifest.json"))
+        data = {n: z.read(n) for n in sorted(expected - {"manifest.json"})}
+    if (set(m) != {"format", "posture", "original_source_sha",
+                   "authenticated_release", "authority", "files", "note"} or
+        m["format"] != "lightup.scope_private_delivery.v1" or m["posture"] != STATUS or
+        m["original_source_sha"] != PARENT_SHA or m["authenticated_release"] is not False or
+        m["authority"] != AUTHORITY or m["files"] != [
+            {"path": n, "bytes": len(v), "sha256": digest(v)} for n, v in sorted(data.items())]):
+        raise ValueError("Original delivery file receipt / HOLD flags mismatch")
+    if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode():
+        raise ValueError("Built-in operator instructions changed")
+    if digest(data["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
+        raise ValueError("Original courier bytes changed")
+    original_admission(data["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip"],
+                       data["workspace/SOURCE-MANIFEST.json"],
+                       data["workspace/DIST-MANIFEST.json"])
+    return {"status": "REVIEW_ONLY", "bytes": path.stat().st_size,
+            "outer_sha256": digest(path.read_bytes()),
+            "workspace_sha256": digest(data["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip"]),
+            "courier_sha256": COURIER_SHA}
+
+def build() -> Path:
+    # Existing original production packager, invoked as a build (not a QA suite).
+    subprocess.run([sys.executable, str(SRC / "build.py")], cwd=ROOT, check=True, timeout=120)
+    blobs = {dst: read(SRC / src) for dst, src in FILES.items()}
+    original_admission(blobs["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip"],
+                       blobs["workspace/SOURCE-MANIFEST.json"],
+                       blobs["workspace/DIST-MANIFEST.json"])
+    if digest(blobs["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
+        raise ValueError("Original encrypted courier drift")
+    blobs.update({"START-HERE.html": HOME.encode(), "README.txt": README.encode()})
+    blobs["manifest.json"] = receipt(blobs)
+    fd, temp = tempfile.mkstemp(prefix=".scope-private-", suffix=".zip", dir=HERE)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            with zipfile.ZipFile(f, "w", allowZip64=False) as z:
+                for n, v in sorted(blobs.items()):
+                    info = zipfile.ZipInfo(n, (2026, 10, 20, 0, 0, 0))
+                    info.create_system = 3
+                    info.external_attr = 0o100600 << 16
+                    info.compress_type = zipfile.ZIP_STORED
+                    z.writestr(info, v)
+            f.flush()
+            os.fsync(f.fileno())
+        path = HERE / OUTPUT
+        if path.exists():
+            if read(path, 2_500_000) != read(Path(temp), 2_500_000):
+                raise ValueError("Existing published package differs; no overwrite")
+        else:
+            os.link(temp, path)
+        inspect(path)
+        return path
+    finally:
+        Path(temp).unlink(missing_ok=True)
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Offline private scope delivery; HOLD only")
+    parser.add_argument("action", choices=("build", "inspect"))
+    parser.add_argument("archive", nargs="?", type=Path)
+    args = parser.parse_args()
+    try:
+        if args.action == "build" and args.archive is None:
+            path = build()
+            print(json.dumps({"built": str(path), **inspect(path)}, sort_keys=True))
+        elif args.action == "inspect" and args.archive:
+            print(json.dumps(inspect(args.archive), sort_keys=True))
+        else:
+            raise ValueError("build takes no archive; inspect requires an archive")
+        return 0
+    except (ValueError, OSError, UnicodeError, zipfile.BadZipFile,
+            KeyError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        print("HOLD: " + str(error), file=sys.stderr)
+        return 2
+
+if __name__ == "__main__":
+    raise SystemExit(main())
