@@ -12,6 +12,7 @@ from human_revision import create as create_human_revision
 from paged_review import make_paged_package
 from human_matrix import create as create_human_matrix
 from private_paged_zip import create as create_private_paged_zip
+from private_paged_restore import restore as restore_private_paged_zip
 
 MENU = (
     ("Create PRIVATE full source briefing + editable HUMAN worksheet",
@@ -34,6 +35,9 @@ MENU = (
     ("Package existing PRIVATE paged library as bounded UNENCRYPTED offline ZIP",
      ("EXISTING PRIVATE paged report directory", "NEW PRIVATE ZIP output directory"),
      create_private_paged_zip),
+    ("Restore received PRIVATE UNENCRYPTED paged ZIP to NEW protected folder",
+     ("Existing PRIVATE paged ZIP file", "NEW PRIVATE restored output directory"),
+     restore_private_paged_zip),
     ("Produce PRIVATE severity × HUMAN attention matrix and ordinal queue",
      ("Original PRIVATE lab result JSON", "Original briefing manifest.json",
       "Filled original HUMAN CSV", "NEW PRIVATE output directory"),
