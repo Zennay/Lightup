@@ -93,7 +93,7 @@ python3 private-assessment-notes/notes.py sensitivity-finalize \
   --private-parent /private/owner
 ```
 
-The history builder re-admits **every** original completed review against the original source SHA/byte identity, full original HUMAN CSV, category/status count receipts and literal-false authority flags. Reused byte-identical round CSVs refuse as false new rounds, and a single altered/different source refuses the entire history. The next round is an independently finalized new PRIVATE HUMAN packet, not a revision of earlier results. All history artifacts stay local owner-private. A reduction in `WITHHOLD` or `REVIEW_REQUIRED` is only a local human reclassification, **never** evidence of sanitization, consent, remediation or security PASS.
+The history builder re-admits **every** original completed review against the original source SHA/byte identity, full original HUMAN CSV, category/status count receipts and literal-false authority flags. Separate original review directories with identical HUMAN decision CSVs are permitted, with exact-copy slot pairs recorded as **not proof of independently authenticated reviewers or progress**. Repeating the same directory path or changing a single original source still refuses the entire history. The next round is an independently finalized new PRIVATE HUMAN packet, not a revision of earlier results. All history artifacts stay local owner-private. A reduction in `WITHHOLD` or `REVIEW_REQUIRED` is only a local human reclassification, **never** evidence of sanitization, consent, remediation or security PASS.
 
 
 ## Source-bound HUMAN attention-only handoff from two reviews
@@ -144,3 +144,47 @@ The resulting new 0700 directory and 0600 files contain:
 **Complete native handoff:** open `OPEN-PRIVATE.html`, read the Studio, manually choose the next original-bound HUMAN proposals, download `PRIVATE-HUMAN-sensitivity-completed.csv`, move the browser download into a secure private location and `chmod 600`. Then explicitly call the **already existing original** `sensitivity-finalize` with `--triage-kit` set to the new reconciliation workroom, `--completed-packet` pointing to the **same unchanged original**, and `--completed-csv` pointing to the private browser download. The original native strict CSV and source-byte checks continue to apply, with no changed authority or consent boundary. This finalizer still exits **HOLD (3)**, even when it writes a new complete HUMAN review.
 
 The browser/editor does not upload, send, schedule, grant, scan, model, execute, inspect active targets, prove privacy safety or authorize any external recipient. Reviewers' free notes are examined internally for equality only to highlight disagreements, but the original text is not copied into exported reconciliation displays. The original review packets stay untouched. Existing exact-head hosted/permanent named VPS CI, source-owner and independent privacy/security/browser approvals, #177/#182/#829, current separately authenticated client/operator consent including at-action revocation and explicit HUMAN GO remain mandatory before any later main merge, release or customer action.
+
+
+## One-command PRIVATE HUMAN review workbench — original rounds OR peer submissions
+
+The native **`notes.py sensitivity-workbench`** route now creates ONE owner-private offline workroom with an explicit mode. It composes the existing original source-bound reviewers/readers, printable HTML summaries, source-limited counts/CSV and complete next independent HUMAN draft, instead of requiring separate manually gathered history/reconciliation artifacts. `timeline` means **manually ordered human versions**; `reviewers` means **manually supplied HUMAN submission slots**. Neither mode authenticates actual authors, chronology, risk clearance or customer consent.
+
+For longitudinal human revision history:
+
+~~~sh
+python3 private-assessment-notes/notes.py sensitivity-workbench \
+  --mode timeline \
+  --completed-packet /private/owner/PRIVATE-lightup-human-handoff-ORIGINAL \
+  --review /private/owner/PRIVATE-lightup-sensitivity-review-EARLIER \
+  --review /private/owner/PRIVATE-lightup-sensitivity-review-LATER \
+  --private-parent /private/owner
+~~~
+
+For multiple independent *declared* HUMAN submissions:
+
+~~~sh
+python3 private-assessment-notes/notes.py sensitivity-workbench \
+  --mode reviewers \
+  --completed-packet /private/owner/PRIVATE-lightup-human-handoff-ORIGINAL \
+  --review /private/owner/PRIVATE-lightup-sensitivity-review-REVIEWER1 \
+  --review /private/owner/PRIVATE-lightup-sensitivity-review-REVIEWER2 \
+  --private-parent /private/owner
+~~~
+
+Both modes require **2–8 distinct ordinary owner-private review directories**, each re-admitted by the original full private source/HUMAN-decision/round/receipt validators before creating anything. Byte-identical HUMAN CSV content in separate originals remains eligible but every pair is shown in the receipt as unverified same-content HUMAN submissions, never evidence of independent identity or privacy improvement. A duplicate directory path or source drift causes HOLD.
+
+One new 0700/0600 `PRIVATE-lightup-sensitivity-workbench-*` contains the scriptless `OPEN-PRIVATE.html` and a set of links:
+- `PRIVATE-HUMAN-board.html`: existing offline, CSP-pinned interactive *timeline* or *reviewer comparison/next draft Studio* depending on explicit mode.
+- `PRIVATE-HUMAN-overview.html`: existing scriptless, printable HUMAN overview. A reduction in local concern counts is not verified remediation.
+- `PRIVATE-HUMAN-detail.csv`: either full original-position adjacent-round transition records or bounded reviewer-slot categorical matrix (no prior HUMAN free text).
+- `PRIVATE-HUMAN-compact.csv`: PRIVATE counts per human round or minimum-necessary original-position dispute signals. Neither automatically qualifies as safe-to-publish anonymous data.
+- `PRIVATE-HUMAN-workbench-bindings.json`: all original source/HUMAN-byte receipts, each actual completed original review receipt/CSV digest, declared slots, same-content pairs and literally false authority fields.
+- Blank **`PRIVATE-HUMAN-sensitivity-template.csv`**, **`PRIVATE-HUMAN-sensitivity-editor.html`**, and **`PRIVATE-triage-bindings.json`**: full canonical source-bound next HUMAN review at PENDING/UNKNOWN. In *timeline* mode the separate `PRIVATE-HUMAN-last-round.csv` contains the exact most recent complete original HUMAN note choices, including PRIVATE note text. Keep it PRIVATE.
+- No scans, model calls, network, auto consensus, client data upload, external recipients, grants, retention deletion or release actions are triggered.
+
+**Next native step**: open the local workbench index, review the source and HUMAN declarations, consciously export the full source-bound next HUMAN decision CSV, move the downloaded CSV to an owner-only 0600 location, and run the **unchanged** `notes.py sensitivity-finalize --completed-packet ORIGINAL --triage-kit THE_NEW_WORKBENCH --completed-csv OWNER_PRIVATE_FILE --private-parent OWNER_PRIVATE_0700`. All original source admissions, actual consent and downstream independent release reviews remain unchanged. Even an accepted new local review continues to return **HOLD (3)**.
+
+### Persisted CSV byte-binding correction
+
+The native `sensitivity-finalize` now binds its unsigned HUMAN CSV receipt to the **exact canonical UTF-8 CSV bytes actually written in the owner-private final packet**, rather than the differently quoted browser/manual input. This ensures the existing native `history`, `reconcile`, `attention` and `workbench` admission can verify exact stored bytes consistently. The source owner's identity is not authenticated by this digest. **Older completed packages with a mismatched stored CSV/receipt digest remain HOLD**: never rewrite them in place or relabel a failed receipt as valid. A HUMAN operator must repeat the existing original native finalization using the unchanged original completed source, unchanged original triage kit and the original complete source-bound HUMAN decisions CSV to create a distinct fresh PRIVATE packet. There is no automatic migration, forged proof or relaxed hash check.
