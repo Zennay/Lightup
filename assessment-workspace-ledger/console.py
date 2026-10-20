@@ -18,6 +18,7 @@ import history
 import history_human
 import history_team
 import history_actions
+import history_owner_brief
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -45,6 +46,7 @@ MENU = (
     ("19", "Prepare source-exact PRIVATE HUMAN action planning after finalized team choices"),
     ("20", "Finalize owner-private source-exact HUMAN action planning CSV"),
     ("21", "Finalize explicit browser-downloaded PRIVATE HUMAN action CSV"),
+    ("22", "Build source-exact PRIVATE single-HUMAN-owner minimum-necessary briefing"),
     ("0", "Exit"),
 )
 
@@ -167,6 +169,14 @@ def handle_action(action):
             action_context=original,
             plan=selected if action == "20" else None,
             browser_csv=selected if action == "21" else None,
+            private_parent=private_parent()
+        ))
+    if action == "22":
+        return history_owner_brief.run(argparse.Namespace(
+            action_context=prompt("Original PRIVATE-action-context.json"),
+            actions=prompt("Original PRIVATE-HUMAN-actions.json"),
+            plan=prompt("Original 0600 HUMAN-action-plan.csv"),
+            owner=prompt("EXACT proposed HUMAN owner for minimum-necessary PRIVATE handoff"),
             private_parent=private_parent()
         ))
     if action == "5":
