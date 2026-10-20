@@ -178,6 +178,7 @@
       byId("export").disabled = false;
       byId("exportEncrypted").disabled = false;
       byId("compare").disabled = false;
+      byId("exportCounts").disabled = false;
       refresh();
       notice("REVIEW_ONLY: exact receipt bytes and matching HUMAN CSV admitted locally. No authority.");
     } catch (_) {
@@ -235,6 +236,37 @@
       notice("HOLD: encrypted HUMAN export refused. Check notes and matching passphrase; previous edits retained.", true);
     } finally { pass.value = ""; repeated.value = ""; }
   }
+  function exportCounts() {
+    try {
+      serializedCsv(); // Require exact current admitted ordinal, stage and note shape.
+      const floor = 5;
+      const counters = Object.fromEntries(STAGES.map(stage => [
+        stage, records.filter(row => row.stage === stage).length
+      ]));
+      const showTotal = records.length >= floor;
+      const showKinds = showTotal && STAGES.every(stage =>
+        counters[stage] === 0 || counters[stage] >= floor);
+      ensure(confirm("Save a PRIVATE small-cohort-suppressed HUMAN counts-only CSV? Even summary counts can disclose sensitive context. No authorization or public anonymity is asserted."));
+      const values = [
+        ["field", "value"],["status", "REVIEW_ONLY"],
+        ["original_source_authenticated", "FALSE"],
+        ["current_consent_verified", "FALSE"],
+        ["release_allowed", "FALSE"],
+        ["not_anonymity_guarantee", "TRUE"],
+        ["HUMAN_receipt_identity", "UNSIGNED_BYTES_ONLY"],
+        ["source_count", showTotal ? records.length : "SUPPRESSED_SMALL_COHORT"],
+        ["human_stages", "DECLARED_NON_AUTHORITATIVE"]
+      ];
+      if (showKinds) {
+        for (const stage of STAGES) values.push(["HUMAN_" + stage,counters[stage]]);
+      } else values.push(["HUMAN_stage_breakdown","SUPPRESSED_SMALL_GROUP"]);
+      download(values.map(row => row.map(csvField).join(",")).join("\n") + "\n",
+               "PRIVATE-human-summary.csv","text/csv;charset=utf-8");
+      notice("REVIEW_ONLY: locally saved source-free small-cohort-suppressed PRIVATE HUMAN counts.");
+    } catch (_) {
+      notice("HOLD: PRIVATE HUMAN summary not admitted, no export.", true);
+    }
+  }
   async function comparePrevious() {
     const password = byId("comparePassword");
     try {
@@ -276,6 +308,7 @@
   byId("export").addEventListener("click", exportCsv);
   byId("exportEncrypted").addEventListener("click", exportEncrypted);
   byId("compare").addEventListener("click", comparePrevious);
+  byId("exportCounts").addEventListener("click", exportCounts);
   byId("stageFilter").addEventListener("change", refresh);
   byId("query").addEventListener("input", refresh);
   window.addEventListener("beforeunload", event => {
