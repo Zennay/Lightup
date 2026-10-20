@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jLf1ZUo1dJvvsuLiaMzkdQ7Fqu5Wa4Y7e1M2pO7PP7M='; script-src 'sha256-tP7hk73R7f363ikSX0Qp3/+wHHTZlBqRNUSr3j3fHcc=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jLf1ZUo1dJvvsuLiaMzkdQ7Fqu5Wa4Y7e1M2pO7PP7M='; script-src 'sha256-cQbTrFEF3+jAuu8390e/iX3SAk87wXma+yckm6rWveY=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -1167,9 +1167,6 @@ const LightUpPrivateDrift = (() => {
   const humanRouteEqual = (a,b) =>
     a.human_route === b.human_route &&
     a.human_stage === b.human_stage && a.human_team === b.human_team;
-  const humanEqual = (a,b) => humanRouteEqual(a,b) &&
-    a.private_note_included === b.private_note_included &&
-    (!a.private_note_included || a.private_human_note === b.private_human_note);
   const peerLabel = row => row
     ? teams[row.human_team] + " / " + stages[row.human_stage] +
       " / " + routes[row.human_route][0] +
@@ -1235,8 +1232,12 @@ const LightUpPrivateDrift = (() => {
         else {
           const sameRoutes = proposals.every(row => humanRouteEqual(proposals[0],row));
           const redacted = proposals.some(row => !row.private_note_included);
-          const sameReview = proposals.every(row => humanEqual(proposals[0],row));
-          if (!sameRoutes || (!redacted && !sameReview)) {
+          // Redaction means UNKNOWN, but known distinct disclosed notes remain
+          // a definite conflict even with other packets that redact notes.
+          const disclosedNotes = proposals.filter(row => row.private_note_included)
+            .map(row => row.private_human_note);
+          const conflictingDisclosedNotes = new Set(disclosedNotes).size > 1;
+          if (!sameRoutes || conflictingDisclosedNotes) {
             state = "TEGENSTRIJDIGE HUMAN-KEUZES"; counts.divergent_human_choices++;
           } else if (redacted) {
             state = "PRIVATE NOTITIEDEKKING ONBEKEND"; counts.uncertain_private_notes++;
@@ -1342,8 +1343,9 @@ const LightUpPrivateDrift = (() => {
     }
     const conflicts = chosen.filter(d=>d.conflicting).length;
     const uncertain = chosen.filter(d=>d.noteUncertain).length;
-    const replacing = chosen.filter(({item})=>item.stage!=="unreviewed" ||
-      item.team!=="unassigned" || item.note.length>0).length;
+    const replacing = chosen.filter(({item})=>item.route!=="none" ||
+      item.stage!=="unreviewed" || item.team!=="unassigned" ||
+      item.note.length>0).length;
     if (!confirm("Neem " + chosen.length + " individueel GEKOZEN PRIVATE HUMAN voorstellen over, inclusief " +
       conflicts + " reviewerconflicten, " + uncertain + " onzekere notitiedekkingen en " +
       replacing + " bestaande lokale HUMAN reviews? Alle overige bronnen blijven onaangeroerd. " +
