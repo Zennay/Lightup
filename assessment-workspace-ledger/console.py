@@ -29,6 +29,7 @@ import portfolio_focus_review
 import portfolio_focus_history
 import portfolio_focus_owner_handoff
 import portfolio_owner_reply
+import portfolio_owner_inbox
 import portfolio_focus_studio
 import browser_intake
 import package
@@ -69,6 +70,7 @@ MENU = (
     ("31", "Compare 2–8 original PRIVATE HUMAN meeting review return versions"),
     ("32", "Create minimum-necessary PRIVATE HUMAN owner packets from finalized meeting"),
     ("33", "Receive one local original owner human reply into PRIVATE HOLD packet"),
+    ("34", "Reconcile 1–8 source-bound owner HUMAN replies in PRIVATE inbox"),
     ("0", "Exit"),
 )
 
@@ -217,6 +219,26 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "34":
+        originals, returns, csvs = [], [], []
+        print("Choose 1–8 original exact owner-packet/reply/CSV triples.")
+        while len(originals) < 8:
+            path = prompt("PRIVATE-HUMAN-owner.json " + str(len(originals) + 1),
+                          required=not originals)
+            if not path:
+                break
+            response = prompt("Corresponding original PRIVATE-HUMAN-owner-reply.json")
+            csv_file = prompt("Matching original 0600 HUMAN owner reply CSV")
+            originals.append(path)
+            returns.append(response)
+            csvs.append(csv_file)
+        return portfolio_owner_inbox.run(argparse.Namespace(
+            portfolio=prompt("Original PRIVATE-HUMAN-portfolio.json"),
+            meeting=prompt("Original PRIVATE-HUMAN-meeting.json"),
+            review_return=prompt("Original PRIVATE-HUMAN-review-return.json"),
+            owner_packet=originals, owner_reply=returns, reply_csv=csvs,
+            private_parent=private_parent()
         ))
     if action == "33":
         return portfolio_owner_reply.run(argparse.Namespace(

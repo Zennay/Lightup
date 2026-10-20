@@ -1123,3 +1123,41 @@ independently verify permissions before sharing. No automatic delivery,
 scheduling, network activity, active assessment, consent, scope grant,
 verified remediation or security PASS. Fixed source-only software v26 includes
 the original owner reply flow and retains v16–v25 software inventory reads.
+
+## Complete offline original HUMAN reply inbox · v27
+
+[portfolio_owner_inbox.py](portfolio_owner_inbox.py) completes the
+owner-private HUMAN follow-up workflow without any online server, authenticated
+user assumption, automatic task assignment or target action. The operator
+explicitly selects 1–8 complete triples: ORIGINAL owner JSON from the original
+PRIVATE workroom, original native PRIVATE-HUMAN-owner-reply.json and its exact
+0600 HUMAN CSV, all from the **same** original 0600 portfolio/meeting/review:
+
+    python3 assessment-workspace-ledger/portfolio_owner_inbox.py \
+      --portfolio /private/source/PRIVATE-HUMAN-portfolio.json \
+      --meeting /private/meeting/PRIVATE-HUMAN-meeting.json \
+      --review-return /private/return/PRIVATE-HUMAN-review-return.json \
+      --owner-packet /private/owner1/PRIVATE-HUMAN-owner.json \
+      --owner-reply /private/reply1/PRIVATE-HUMAN-owner-reply.json \
+      --reply-csv /private/reply1/PRIVATE-HUMAN-original-reply.csv \
+      --private-parent /private/operator-only
+
+Repeat **all three** owner-packet/reply/CSV arguments in lockstep, up to eight.
+Native original PRIVATE source chain admission first reconstructs every
+selected owner packet from the exact original portfolio, meeting and finalized
+HUMAN review, rejecting foreign/deleted/modified original rows and
+owner-scope widening. Each reply must be canonical, completely source-bound to
+the identical original OWNER packet SHA and unchanged CSV SHA, with every
+original ordinal matching in the same order, strict human statuses and
+bounded private notes. Duplicate HUMAN owners or overlapping original case
+slots are refused; any source-byte drift fails the entire inbox before output.
+No partial acceptance, no automatic owner identity or grant assertion.
+
+Output: one new exclusive 0700/0600 private HUMAN inbox with counts-only
+`OPEN-PRIVATE.html`, scriptless detailed original-owner response HTML,
+original-source-reconciled CSV and exact source-bound JSON. All prior PRIVATE
+source, owner-packet and human reply files remain untouched. The original
+assessment kits are not contacted, and response differences are NEVER proof
+of verified remediation. Console option **34** runs this offline foreground
+flow; portable software v27 includes the original native source and maintains
+fixed software inventory inspection for versions v16 through v26.
