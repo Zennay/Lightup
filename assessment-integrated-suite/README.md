@@ -403,6 +403,18 @@ The existing original owner/private read guards and 0700/0600 write guards
 are reused; no tests/QA or actual scans, grants, scheduling, dispatch or
 deployment are part of this workflow.
 
+## Portable 15-original-studio software kit v15
+
+[Offline LightUp Assessment Toolkit v15](LightUp-Assessment-Offline-Toolkit-v15.zip)
+is a separate newly built SOFTWARE-ONLY companion with the same 15
+original offline browser studios plus an updated offline navigation
+guide reflecting the native owner-private workpack progression workflow.
+No original source/private HUMAN CSV, saved session, generated workpack,
+native Python program, private note, authentic consent or assessment
+authorization is included. The native option 50 and CLI require a trusted
+local checkout with original owner-private input artifacts. This ZIP
+cannot be deployed as an assessment service or treated as a signed release.
+
 ## Portable 15-original-studio software kit v14
 
 [Portable source-only LightUp Assessment Offline Toolkit v14](LightUp-Assessment-Offline-Toolkit-v14.zip)
