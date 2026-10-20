@@ -269,6 +269,49 @@
     for(const row of candidates){if(clear)plan.delete(row.ordinal);else plan.set(row.ordinal,{...slot});}
     changed=true;render();inform(candidates.length+" HUMAN reminder dates changed in local memory only.");
   }
+  function suggestDates(){
+    hold(active);
+    const first=$("suggestDate").value,perDay=Number($("suggestDaily").value);
+    hold(Number.isSafeInteger(perDay) && perDay>=4 && perDay<=16);
+    const firstDate=eventDate(first,"12:00");
+    hold(first>=nowToday());
+    const unscheduled=filtered().filter(r=>!plan.has(r.ordinal) && r.stage!=="blocked");
+    if(!unscheduled.length){inform("No eligible unblocked, unscheduled rows in the current filter.");return;}
+    const ranks={critical:0,high:1,medium:2,low:3,info:4};
+    unscheduled.sort((a,b)=>ranks[a.severity]-ranks[b.severity] || a.ordinal-b.ordinal);
+    const perDate=new Map(),usedTimes=new Map();
+    for(const p of plan.values()){
+      perDate.set(p.day,(perDate.get(p.day)||0)+1);
+      if(!usedTimes.has(p.day))usedTimes.set(p.day,new Set());
+      usedTimes.get(p.day).add(p.time);
+    }
+    const proposal=new Map();
+    const date=new Date(firstDate.getTime());let index=0;
+    for(let n=0;n<850 && index<unscheduled.length;n++){
+      const weekday=date.getDay();
+      const key=[date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-");
+      if(weekday!==0 && weekday!==6){
+        let count=perDate.get(key)||0;
+        const reserved=usedTimes.get(key)||new Set();
+        for(let slot=0;slot<16 && count<perDay && index<unscheduled.length;slot++){
+          const hour=9+Math.floor(slot*40/60),minute=(slot*40)%60;
+          const time=String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
+          if(reserved.has(time))continue;
+          const suggestion=admitSlot(key,time,"30","15");
+          proposal.set(unscheduled[index].ordinal,suggestion);
+          reserved.add(time);count++;index++;
+        }
+      }
+      date.setDate(date.getDate()+1);
+    }
+    hold(index===unscheduled.length);
+    if(!confirm("Propose "+proposal.size+" PRIVATE HUMAN-only weekday reminders? This sorts solely by UNVERIFIED source-reported severity, skips HUMAN blocked rows, respects existing plans, and never changes the original worksheet. No verified urgency or permission is implied."))return;
+    for(const [ordinal,slot] of proposal)plan.set(ordinal,slot);
+    changed=true;page=0;render();
+    inform("Proposed "+proposal.size+" LOCAL HUMAN follow-ups. Review each date before exporting; no calendar was updated.");
+  }
+  hook("suggest","click",()=>{try{suggestDates();}catch(err){inform(err.message,true);}});
+  $("suggestDate").value=nowToday();
   hook("bulkApply","click",()=>bulk(false));hook("bulkClear","click",()=>bulk(true));
   hook("savePlan","click",()=>{try{hold(active);planExport();}catch(err){inform(err.message,true);}});
   hook("calendar","click",()=>{try{calendarExport();}catch(err){inform(err.message,true);}});
