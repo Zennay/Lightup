@@ -754,8 +754,12 @@
         else {
           const sameRoutes = proposals.every(row => humanRouteEqual(proposals[0],row));
           const redacted = proposals.some(row => !row.private_note_included);
-          const sameReview = proposals.every(row => humanEqual(proposals[0],row));
-          if (!sameRoutes || (!redacted && !sameReview)) {
+          // Redaction means UNKNOWN, but known distinct disclosed notes remain
+          // a definite conflict even with other packets that redact notes.
+          const disclosedNotes = proposals.filter(row => row.private_note_included)
+            .map(row => row.private_human_note);
+          const conflictingDisclosedNotes = new Set(disclosedNotes).size > 1;
+          if (!sameRoutes || conflictingDisclosedNotes) {
             state = "TEGENSTRIJDIGE HUMAN-KEUZES"; counts.divergent_human_choices++;
           } else if (redacted) {
             state = "PRIVATE NOTITIEDEKKING ONBEKEND"; counts.uncertain_private_notes++;
@@ -861,8 +865,9 @@
     }
     const conflicts = chosen.filter(d=>d.conflicting).length;
     const uncertain = chosen.filter(d=>d.noteUncertain).length;
-    const replacing = chosen.filter(({item})=>item.stage!=="unreviewed" ||
-      item.team!=="unassigned" || item.note.length>0).length;
+    const replacing = chosen.filter(({item})=>item.route!=="none" ||
+      item.stage!=="unreviewed" || item.team!=="unassigned" ||
+      item.note.length>0).length;
     if (!confirm("Neem " + chosen.length + " individueel GEKOZEN PRIVATE HUMAN voorstellen over, inclusief " +
       conflicts + " reviewerconflicten, " + uncertain + " onzekere notitiedekkingen en " +
       replacing + " bestaande lokale HUMAN reviews? Alle overige bronnen blijven onaangeroerd. " +
