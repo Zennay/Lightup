@@ -73,7 +73,7 @@ a{color:#9addff}section{padding:1.2rem;margin:1rem 0;border:1px solid #64748b;bo
 <p>After separately receiving and decrypting redacted HUMAN text, compare the literal bytes to its original receipt. Human review is still required even if fingerprints match.</p></section>
 <section><h2>5 · Bounded private unpack</h2><p>In a terminal with Python 3.11+, run <code>python3 tools/unpack.py /path/to/outer.zip /private-parent/new-workroom</code>. The parent folder must already be mode 0700, owned by you, and the destination must not exist. This command checks original bytes and opens source entries locally without scans or grants.</p></section>
 <section><h2>6 · Browser-only recipient byte verification</h2>
-<p><a href="PRIVATE-receive.html">Open local recipient SHA-256 comparator</a> to select a received file and paste a separately authenticated outer file digest. A BYTE MATCH is REVIEW ONLY, never proof of sender or consent.</p></section>
+<p><a href="PRIVATE-receive.html">Open local recipient SHA-256 comparator</a> to compare one received local ZIP with a separately authenticated original SHA-256. Following BYTE MATCH, explicitly inspect the bounded original ZIP entries and optionally save separately SHA-pinned original workspace, HUMAN courier, and private disclosure/recipient pages. None are executed automatically. A BYTE MATCH is REVIEW ONLY, never proof of sender or consent.</p></section>
 <section><h2>7 · Source byte records</h2><p><a href="workspace/verify.html">Open original offline ZIP-byte verifier</a> · <a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
 <p>No scans, network requests, browser storage, client approval, grants, automatic execution or deployment. Original source-owner + security/privacy review, exact-head hosted and named-VPS CI, real separately authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory for any release.</p>
 </body></html>"""
@@ -106,7 +106,7 @@ def no_authority(obj: dict) -> bool:
 
 def render_receiver() -> bytes:
     template = read(HERE / "recipient.template.html", 10000).decode("utf-8")
-    js = read(HERE / "recipient.js", 10000).decode("utf-8")
+    js = read(HERE / "recipient.js", 10000).decode("utf-8") + "\n" + read(HERE / "recipient_zip.js", 16000).decode("utf-8")
     css = read(HERE / "recipient.css", 10000).decode("utf-8")
     for token in ("__SCRIPT_HASH__", "__STYLE_HASH__", "__SCRIPT__", "__STYLE__"):
         if template.count(token) != 1:
@@ -174,7 +174,7 @@ def verify_out_of_band(actual: str, expected: str | None) -> bool:
 def inspect(path: Path, expected_sha256: str | None = None) -> dict:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_500_000:
         raise ValueError("Unsafe or oversized transfer")
-    expected = set(FILES) | set(PRIVACY_FILES) | {"PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css", "tools/recipient.template.html","tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
+    expected = set(FILES) | set(PRIVACY_FILES) | {"PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css", "tools/recipient_zip.js", "tools/recipient.template.html","tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
     with zipfile.ZipFile(path) as z:
         infos = z.infolist()
         if len(infos) != len(expected) or {x.filename for x in infos} != expected:
@@ -194,6 +194,7 @@ def inspect(path: Path, expected_sha256: str | None = None) -> dict:
     if (data["PRIVATE-receive.html"] != render_receiver() or
         data["tools/recipient.js"] != read(HERE / "recipient.js") or
         data["tools/recipient.css"] != read(HERE / "recipient.css") or
+        data["tools/recipient_zip.js"] != read(HERE / "recipient_zip.js") or
         data["tools/recipient.template.html"] != read(HERE / "recipient.template.html")):
         raise ValueError("Standalone recipient browser is not byte-identical to pinned source build")
     if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode() or data["tools/package.py"] != read(Path(__file__)) or data["tools/unpack.py"] != read(HERE / "unpack.py"):
@@ -243,6 +244,7 @@ def build() -> Path:
     blobs.update({"PRIVATE-receive.html": receiver_html,
                   "tools/recipient.js": read(HERE / "recipient.js"),
                   "tools/recipient.css": read(HERE / "recipient.css"),
+                  "tools/recipient_zip.js": read(HERE / "recipient_zip.js"),
                   "tools/recipient.template.html": read(HERE / "recipient.template.html"),
                   "START-HERE.html": HOME.encode(), "README.txt": README.encode(),
                   "tools/package.py": read(Path(__file__)),

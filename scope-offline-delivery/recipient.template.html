@@ -24,6 +24,14 @@
 <p id="status" role="status" aria-live="polite" data-state="idle">No comparison performed. Do not treat this as permission.</p>
 <p id="details" class="mono" aria-live="polite"></p>
 </section>
+<section id="archive-panel" hidden>
+<h2>Inspect a matched original offline ZIP locally</h2>
+<p>Only after BYTE MATCH above, inspect its bounded stored ZIP members. The original source components must match four independent pinned LightUp SHA-256 values before you can save individual components. Nothing is executed, installed, unzipped to disk, or uploaded automatically.</p>
+<button id="examine-archive" type="button" disabled>Inspect known original ZIP sources</button>
+<p id="archive-summary" role="status" aria-live="polite"></p>
+<details><summary>Original ZIP member inventory (paths and sizes only)</summary><ol id="archive-inventory" class="mono"></ol></details>
+<div id="safe-downloads" class="download-choices"></div>
+</section>
 <section>
 <h2>After a BYTE MATCH</h2>
 <p>Independently verify the sender, intended recipient and lawful scope. Open the original <a href="START-HERE.html">PRIVATE workflow home</a> for manual redaction, encrypted HUMAN courier and explicit receiver review. A matching SHA proves equal bytes only: <strong>not identity, consent, approval, content safety or remediation.</strong></p>

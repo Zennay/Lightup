@@ -10,6 +10,7 @@ let revision = 0;
 
 function reset() {
   revision += 1;
+  document.dispatchEvent(new Event("lightup:selection-reset"));
   status.textContent = "No comparison performed. Do not treat this as permission.";
   status.dataset.state = "idle";
   details.textContent = "";
@@ -60,6 +61,7 @@ button.addEventListener("click", async () => {
       fail("The computed file bytes do not match your separately supplied digest.");
       return;
     }
+    document.dispatchEvent(new CustomEvent("lightup:byte-match", {detail: {bytes, name: file.name, sha256: actual}}));
     status.dataset.state = "match";
     status.textContent = "BYTE MATCH / REVIEW ONLY — still no sender identity, client consent, grant, confidentiality approval or release.";
     button.disabled = false;
