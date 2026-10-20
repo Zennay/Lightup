@@ -170,14 +170,47 @@ def compare(source: Path, files: list[Path], output: Path) -> None:
         copies.append((file, exact_bytes))
         selected.append(rows)
     page, counts = render(original, selected)
+    # Separate machine-readable PRIVATE comparison. No original owner labels,
+    # due dates, source evidence, original next-actions, client/target IDs or
+    # assertion of independent reviewers in this new export.
+    private_rows = []
+    for idx, record in enumerate(original["items"]):
+        private_rows.append({
+            "ordinal": idx + 1,
+            "redacted_human_reason": record["reason"],
+            "unverified_reply_file_slots": [
+                {"slot": position + 1, "human_status": row[idx]["status"],
+                 "human_answer": row[idx]["answer"],
+                 "human_question": row[idx]["question"]}
+                for position, row in enumerate(selected)
+            ],
+        })
+    machine = reply.schedule.canonical({
+        "kind": "lightup.private_human_selected_reply_matrix.v1",
+        "version": 1,
+        "disposition": "PRIVATE_HUMAN_ONLY_DRAFT_HOLD",
+        "authority_granted": False,
+        "consent_verified": False,
+        "source_authenticated": False,
+        "remediation_verified": False,
+        "independent_reviewer_count_verified": False,
+        "original_selected_redacted_sha256": source_digest,
+        "selected_human_rows": private_rows,
+        "warning": WARNING,
+    })
+    require(len(machine) <= 3_000_000,
+            "PRIVATE machine-readable HUMAN comparison exceeds bound")
     require(reply.encrypted_cockpit.private_envelope(source) == held_source
             and all(reply.schedule_vault.private_vault(path) == old
                     for path, old in copies),
             "PRIVATE original selected handoff or HUMAN replies changed before publication")
     reply.exclusive_output(output, [source, *files], {
         "index.html": page,
+        "private-comparison.json": machine,
         "anonymous-counts.json": reply.schedule.canonical(counts),
-        "README.txt": (WARNING + "\nThe report is local plaintext PRIVATE. "
+        "README.txt": (WARNING + "\nThe report and full PRIVATE machine-readable "
+                       "matrix are local plaintext PRIVATE and must NOT be " 
+                       "treated as anonymous exports. "
                        "No reviewer identity, chronology, actual signed consent, "
                        "original case, agreement, independent approval or "
                        "remediation verification is provided.\n").encode("utf-8"),
