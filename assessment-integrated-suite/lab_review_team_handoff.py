@@ -7,6 +7,8 @@ a recipient. These are *manually proposed* HUMAN team drafts only.
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 from base64 import b64encode
 from hashlib import sha256
 import html
@@ -84,6 +86,16 @@ approved PRIVATE channel.</p></footer></body></html>""")
     return page.encode("utf-8")
 
 
+def _team_csv(rows: list[dict]) -> bytes:
+    """Original source-bound HUMAN rows, only the selected team subset."""
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\r\n")
+    writer.writerow(lab_plan_review.COLUMNS)
+    for row in rows:
+        writer.writerow([row[key] for key in lab_plan_review.COLUMNS])
+    return stream.getvalue().encode("utf-8")
+
+
 def build(packets: list[str], final_room: str, parent: str,
           folder: str) -> Path:
     dest = lab_plans._new_path(parent, folder)
@@ -115,6 +127,9 @@ def build(packets: list[str], final_room: str, parent: str,
         "recipients_authenticated":False,"automated_dispatch":False,
         "assessment_authorized":False,"original_lab_urls_included":False,
         "private_question_text_included":False,
+        "original_source_fingerprint_sha256_unsigned":fingerprint,
+        "original_final_human_csv_sha256_unsigned":sha256(
+            lab_plan_review._csv(rows)).hexdigest(),
         "team_workrooms":manifests,
         "unassessed":sum(x["human_stage"]=="UNASSESSED" for x in rows),
         "unassigned_human":len(unassigned),
@@ -131,7 +146,9 @@ def build(packets: list[str], final_room: str, parent: str,
             docs.append(("TEAM-"+SLUGS[team]+".html",
                 _page("HUMAN Lab · "+team,"Only HUMAN tasks assigned to "+team+
                       " from original source-bound finalized review.",entries)))
+            docs.append(("TEAM-"+SLUGS[team]+"-DRAFT.csv",_team_csv(entries)))
     if unassigned:
+        docs.append(("TEAM-unassigned-operator-only-DRAFT.csv",_team_csv(unassigned)))
         docs.append(("TEAM-unassigned-operator-only.html",
                      _page("HUMAN Lab · unassigned operator-only",
                            "Assign a HUMAN team deliberately in a new original review round.",
