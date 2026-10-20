@@ -19,6 +19,7 @@ import shutil
 import sys
 
 import lab_plans
+import lab_conflict_choice_editor
 import lab_plan_review
 import lab_review_history
 import lab_review_team_batch as batch
@@ -208,6 +209,7 @@ def build(packets: list[str], final_room: str, handoff_room: str,
     if not completed:
         files = [
             ("OPEN-PRIVATE.html", _page(public_rows, published=False)),
+            ("EDIT-PRIVATE.html", lab_conflict_choice_editor.render(public_rows)),
             ("PRIVATE-HUMAN-CHOICES.csv", _csv(public_rows)),
         ]
         files.append(("PRIVATE-HUMAN-DECISIONS-RECEIPT.json",
@@ -248,7 +250,8 @@ def build(packets: list[str], final_room: str, handoff_room: str,
                 "automatic_finalization", "external_contact",
                 "private_question_text_included_in_overview"))):
         raise privacy.Hold("HOLD: original HUMAN choice room receipt invalid")
-    expected_files = ("OPEN-PRIVATE.html", "PRIVATE-HUMAN-CHOICES.csv")
+    expected_files = ("OPEN-PRIVATE.html", "EDIT-PRIVATE.html",
+                      "PRIVATE-HUMAN-CHOICES.csv")
     inventory = stored["private_artifact_sha256_unsigned"]
     if (type(inventory) is not dict or set(inventory) != set(expected_files)
             or any(type(inventory[name]) is not str or
