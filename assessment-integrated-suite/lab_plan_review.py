@@ -88,6 +88,36 @@ def _html_editor(rows: list[dict]) -> bytes:
 (() => {
   const rows = [...document.querySelectorAll('[data-review-row]')];
   const status = document.querySelector('#message');
+  const slotSearch = document.querySelector('#packet-search');
+  const stageFilter = document.querySelector('#stage-filter');
+  const summary = document.querySelector('#review-summary');
+  function refresh() {
+    const counts = {UNASSESSED:0,HOLD:0,NEEDS_INPUT:0,HUMAN_REVIEW:0,HUMAN_FOLLOWUP:0};
+    let visible = 0;
+    for (const tr of rows) {
+      const stage = tr.querySelector('select').value;
+      counts[stage] += 1;
+      const matchesSlot = !slotSearch.value.trim() ||
+        tr.dataset.slot.includes(slotSearch.value.trim());
+      const matchesStage = !stageFilter.value || stage === stageFilter.value;
+      tr.hidden = !(matchesSlot && matchesStage);
+      if (!tr.hidden) visible += 1;
+    }
+    summary.textContent = visible + '/' + rows.length +
+      ' HUMAN proposals visible · Unassessed ' + counts.UNASSESSED +
+      ' · HOLD ' + counts.HOLD + ' · Needs input ' + counts.NEEDS_INPUT +
+      ' · Review ' + counts.HUMAN_REVIEW +
+      ' · Follow-up ' + counts.HUMAN_FOLLOWUP +
+      '. All rows remain in the complete native CSV export.';
+  }
+  slotSearch.addEventListener('input', refresh);
+  stageFilter.addEventListener('change', refresh);
+  for (const tr of rows) {
+    for (const select of tr.querySelectorAll('select')) {
+      select.addEventListener('change', refresh);
+    }
+  }
+  refresh();
   const header = ['source_snapshot_sha256','proposal_slot','human_stage',
                   'human_team','human_question'];
   function quote(s) { return '"' + String(s).replaceAll('"','""') + '"'; }
@@ -140,6 +170,12 @@ def _html_editor(rows: list[dict]) -> bytes:
         "finding claims or assessment approvals.</p></header>"
         "<main><h2>Draft HUMAN decisions</h2><p>Every row starts UNASSESSED. "
         "No automatic decision; select a HUMAN stage and optional HUMAN team/question.</p>"
+        "<label>Filter packet number <input id='packet-search' type='search' inputmode='numeric' "
+        "autocomplete='off' placeholder='Packet slot'></label> "
+        "<label>Filter HUMAN stage <select id='stage-filter'><option value=''>All stages</option>" +
+        "".join("<option value='" + esc(stage) + "'>" + esc(stage) + "</option>"
+                for stage in route_queue.STAGES) +
+        "</select></label><p id='review-summary' role='status' aria-live='polite'></p>"
         "<div class='wrap'><table><thead><tr><th>Original packet</th>"
         "<th>HUMAN stage</th><th>Proposed team</th><th>PRIVATE question</th></tr></thead><tbody>" +
         "".join(items) + "</tbody></table></div>"
