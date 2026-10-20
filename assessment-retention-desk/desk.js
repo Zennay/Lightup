@@ -111,9 +111,13 @@
     const q = $("query").value.trim().toLowerCase();
     const filter = $("status-filter").value;
     const dueFilter = $("due-filter").value;
+    const holdFilter = $("hold-filter").value;
     const {today, soon} = humanReviewWindow();
     const items = entries.filter(e => (!filter || e.status === filter) &&
-      (!q || e.alias.toLowerCase().includes(q) || e.sha256.includes(q)) &&
+      (!q || e.alias.toLowerCase().includes(q) || e.custodian.toLowerCase().includes(q) || e.sha256.includes(q)) &&
+      (!holdFilter || (holdFilter==="unassigned" && !e.custodian.trim()) ||
+        (holdFilter==="decision_hold" && e.status==="propose_delete" && !removalProposalReady(e)) ||
+        e.hold_flag===holdFilter) &&
       (!dueFilter || (dueFilter === "overdue" && e.review_date && e.review_date < today) ||
         (dueFilter === "soon" && e.review_date && e.review_date >= today && e.review_date <= soon) ||
         (dueFilter === "no_date" && !e.review_date) ||
@@ -214,7 +218,7 @@
       }
       // Atomic: no selected source is installed before every new source has been admitted.
       entries = entries.concat(staged); invalidateUndo(); resetDrift();
-      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
       render(); status(staged.length + " echte lokale bestandsidentiteiten gecontroleerd en toegevoegd. Geen bytes geüpload.");
     } catch (e) {
       status("HOLD: " + e.message + " Er is niets uit deze selectie toegevoegd.", true);
@@ -251,7 +255,7 @@
     }
     entries = entries.map(e=>({...e,...record(rows.get(e.sha256))}));
     invalidateUndo(); resetDrift();
-    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
     render(); status("Gehele brongebonden PRIVATE HUMAN-planning overgenomen zonder autorisatieclaim.");
   }
   function compareVaultPlan(raw) {
@@ -352,7 +356,7 @@
         status("Overname geannuleerd. De huidige werkruimte blijft intact."); return;
       }
       entries = entries.map(e => ({...e, ...record(rows.get(e.sha256))})); invalidateUndo();
-      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
       render(); status("Volledige exact-brongebonden PRIVATE HUMAN-planning heropend. Bronbestanden ongewijzigd.");
     } catch (e) {
       status("HOLD: " + e.message + " Huidige planning ongewijzigd.", true);
@@ -387,8 +391,7 @@
         "… (geen claim dat de bron verwijderd, hersteld of ingetrokken is)"));
       const humanChanged = same.filter(e => {
         const before = plan.get(e.sha256);
-        return e.alias !== before.alias || e.status !== before.status ||
-          e.review_date !== before.review_date || e.action !== before.action;
+        return HUMAN_FIELDS.some(key=>e[key]!==before[key]);
       });
       target.append(text("p", "Gewijzigde menselijke voorstellen bij ongewijzigde bytes: " +
         humanChanged.length + ". Er wordt niets samengevoegd of geautoriseerd."));
@@ -446,6 +449,10 @@
     for (const key of Object.keys(STATES)) {
       rows.push(key + "," + entries.filter(e => e.status === key).length);
     }
+    rows.push("human_custodian_unassigned,"+entries.filter(e=>!e.custodian.trim()).length);
+    rows.push("human_claim_active_hold,"+entries.filter(e=>e.hold_flag==="human_claim_active").length);
+    rows.push("human_unknown_hold,"+entries.filter(e=>e.hold_flag==="unknown").length);
+    rows.push("human_proposal_blocked,"+entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length);
     download("lightup-private-human-retention-counts.csv", "text/csv;charset=utf-8",
       "\ufeff" + rows.join("\r\n") + "\r\n");
     status("Alleen conservatieve HUMAN-aantallen geëxporteerd; bij kleine groepen nog steeds PRIVATE.");
@@ -511,6 +518,7 @@
   $("status-filter").addEventListener("change", render);
   $("due-filter").addEventListener("change", render);
   $("sort-order").addEventListener("change", render);
+  $("hold-filter").addEventListener("change", render);
   $("print").addEventListener("click", () => {
     if (!entries.length) return status("Geen overzicht om te printen.", true);
     if (window.confirm("Dit is een PRIVATE, ongetekend overzicht. Afdrukken kan lokale printsporen maken. Alleen op een vertrouwde printer doorgaan?")) window.print();
@@ -518,7 +526,7 @@
   $("clear").addEventListener("click", () => {
     if (entries.length && !window.confirm("Alle niet-opgeslagen HUMAN-keuzes uit dit tabblad wissen? Eerder gedownloade privébestanden worden niet gewist.")) return;
     entries = []; invalidateUndo(); resetDrift(); $("sources").value = ""; $("receipt").value = ""; $("compare").value = "";
-    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
     render(); status("Lokale werkruimte leeggemaakt (geen garantie op veilig geheugenwissen).");
   });
   window.addEventListener("beforeunload", event => {
