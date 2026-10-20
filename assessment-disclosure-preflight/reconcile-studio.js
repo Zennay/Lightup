@@ -627,6 +627,61 @@
       notice("HOLD: counts were not generated or operator cancelled; no disclosure approval.", true);
     }
   }
+  function countPairs(raw) {
+    // Original native counts and browser counts differ in CSV quoting only.
+    // This deliberately accepts only the tiny fixed literal field/value schema,
+    // never arbitrary CSV, formulae, free text, new rows or disclosure claims.
+    admitted(typeof raw === "string" && raw.length > 0 && raw.length <= 4096);
+    const lines = raw.replace(/\r\n/gu, "\n").replace(/\r/gu, "\n").replace(/\n$/u, "").split("\n");
+    admitted(lines.length >= 10 && lines.length <= 20);
+    return lines.map(line => {
+      const match = /^("?)([A-Za-z0-9_]+)\1,("?)([A-Za-z0-9_]+)\3$/u.exec(line);
+      admitted(match);
+      return [match[2], match[4]];
+    });
+  }
+  async function receiveSaved() {
+    const current = source, capturedEpoch = epoch, revision = decisionRevision;
+    const password = byId("receivePassword");
+    try {
+      admitted(current && exportedRevision === revision && globalThis.LightUpHumanVault &&
+               crypto?.subtle && window.isSecureContext);
+      const format = byId("receiveFormat").value;
+      admitted(format === "bundle" || format === "csv");
+      const result = await readFile(byId("receiveResult").files[0],
+        format === "bundle" ? LightUpHumanVault.maxBundleBytes : MAX);
+      const counts = await readFile(byId("receiveCounts").files[0], 4096);
+      let csv;
+      if (format === "bundle") {
+        admitted(password.value.length >= 14 && password.value.length <= 256);
+        const original = await LightUpHumanVault.openBundle(result, password.value);
+        admitted(sameBytes(original.receipt, current.receipt));
+        csv = original.csv;
+      } else csv = utf8(result);
+      const received = humanRows(csv, current.rows.map(row => row.original), current.digest[0]);
+      const expected = nativeSelectedRows();
+      admitted(received.length === expected.length && received.every((row, i) =>
+        ["ordinal", "kind", "stage", "question", "next_action"].every(key =>
+          row[key] === expected[i][key])));
+      const expectedCounts = countPairs(countsCsv(expected));
+      const receivedCounts = countPairs(utf8(counts));
+      admitted(receivedCounts.length === expectedCounts.length &&
+        receivedCounts.every((pair, i) =>
+          pair[0] === expectedCounts[i][0] && pair[1] === expectedCounts[i][1]));
+      admitted(source === current && capturedEpoch === epoch &&
+               decisionRevision === revision && exportedRevision === revision);
+      byId("receiveStatus").textContent =
+        "REVIEW_ONLY: original PRIVATE receipt, every HUMAN selected row and complete suppressed-count handoff match the current unsigned originals. This does NOT verify source identity, reviewer independence, recipient rights, consent or release.";
+      notice("REVIEW_ONLY: saved complete PRIVATE HUMAN handoff re-admitted locally. No approval or active assessment.");
+    } catch (_) {
+      byId("receiveStatus").textContent =
+        "HOLD: saved result, counts, exact source, password or current HUMAN decisions did not match. Existing private session retained.";
+    } finally {
+      password.value = "";
+      byId("receiveResult").value = "";
+      byId("receiveCounts").value = "";
+    }
+  }
   function escapeMarkup(value) {
     return String(value).replace(/[&<>"']/gu, c =>
       ({"&":"&amp;", "<":"&lt;", ">":"&gt;",
@@ -697,7 +752,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
     exportedRevision = -1;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm", "receiveResult", "receiveCounts", "receivePassword"]) byId(id).value = "";
     for (const url of urls) URL.revokeObjectURL(url);
     urls.clear();
     notice("PRIVATE session cleared from this page. Previously downloaded files remain on your device; browser memory erasure is not guaranteed.");
@@ -709,6 +764,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
   byId("counts").addEventListener("click", exportCounts);
   byId("cover").addEventListener("click", exportCover);
   byId("restore").addEventListener("click", restoreDecisions);
+  byId("receiveSaved").addEventListener("click", receiveSaved);
   byId("undo").addEventListener("click", () => navigateHistory("undo"));
   byId("redo").addEventListener("click", () => navigateHistory("redo"));
   byId("holdFiltered").addEventListener("click", holdVisibleSelections);
@@ -726,7 +782,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
     exportedRevision = -1;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume", "passwordA", "passwordB", "sealPassword", "sealConfirm", "receiveResult", "receiveCounts", "receivePassword"]) byId(id).value = "";
     urls.forEach(url => URL.revokeObjectURL(url)); urls.clear();
   });
 })();
