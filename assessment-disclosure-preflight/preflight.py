@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import stat
 import sys
+import tempfile
 
 KINDS = ("isolated_lab_input_preview", "offline_lab_benchmark_source", "isolated_lab_assessment")
 SEVERITIES = ("critical", "high", "medium", "low", "info")
@@ -243,18 +244,27 @@ def output_directory(path: str) -> Path:
 
 
 def publish(directory: Path, files: dict[str, str]) -> None:
-    """Exclusive, owner-only private outputs; rollback this attempt on failure."""
+    """Prepare complete owner-only files before publishing any final filename.
+
+    An ordinary failure rolls back new final names. A sudden crash may leave
+    private staging files, but never a partially-written final artifact.
+    """
+    staged: list[Path] = []
     created: list[Path] = []
     try:
         for name in FILES:
-            dest = directory / name
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
-            fd = os.open(dest, flags, 0o600)
-            created.append(dest)
+            fd, tmp = tempfile.mkstemp(prefix=".lightup-disclosure-private-", dir=directory)
+            stage = Path(tmp)
+            staged.append(stage)
             with os.fdopen(fd, "wb") as stream:
                 stream.write(files[name].encode("utf-8"))
                 stream.flush()
                 os.fsync(stream.fileno())
+        # Hard links fail if a destination or symlink already exists: no overwrite.
+        for name, stage in zip(FILES, staged):
+            target = directory / name
+            os.link(stage, target)
+            created.append(target)
         dirfd = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
         try:
             os.fsync(dirfd)
@@ -267,6 +277,12 @@ def publish(directory: Path, files: dict[str, str]) -> None:
             except OSError:
                 pass
         raise Hold("HOLD: private outputs were not published") from None
+    finally:
+        for stage in staged:
+            try:
+                stage.unlink()
+            except OSError:
+                pass
 
 
 def main(argv: list[str] | None = None) -> int:
