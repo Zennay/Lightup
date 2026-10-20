@@ -50,6 +50,8 @@ def portal(mode: str, originals: int, rounds: int, duplicate_pairs: int) -> byte
         ("PRIVATE-HUMAN-compact.csv",
          "PRIVATE aggregate round/category counts" if is_timeline else
          "PRIVATE follow-up source numbers only"),
+        ("PRIVATE-HUMAN-attention.html",
+         "Owner-private, selected-original-only HUMAN discussion agenda"),
         ("PRIVATE-HUMAN-workbench-bindings.json",
          "Private unsigned source and original review custody receipt"),
         ("PRIVATE-HUMAN-sensitivity-editor.html",
@@ -129,6 +131,58 @@ def compact_review_csv(summaries: list[dict]) -> bytes:
     return out.getvalue().encode("utf-8")
 
 
+def timeline_attention(packets: list[dict], transitions: list[dict]) -> bytes:
+    """A printable PRIVATE latest-HUMAN attention agenda across declared rounds.
+
+    Only original ordinals, literal labels, and change Booleans are emitted;
+    never source content, previous/next free notes, URLs, original SHAs,
+    guessed authors, automated classifications or inferred risk reduction.
+    """
+    source_count = len(packets[0]["rows"])
+    lines = []
+    for original in range(1, source_count + 1):
+        changes = [row for row in transitions
+                   if int(row["original_ordinal"]) == original]
+        reasons = []
+        if any(row["from_status"] != row["to_status"] for row in changes):
+            reasons.append("Declared HUMAN stage changed across rounds")
+        if any(row["from_topics"] != row["to_topics"] for row in changes):
+            reasons.append("Declared possible categories changed across rounds")
+        if any(row["human_note_changed"] for row in changes):
+            reasons.append("PRIVATE HUMAN follow-up note changed; text withheld")
+        latest = packets[-1]["rows"][original - 1]
+        if latest["review_status"] == "WITHHOLD":
+            reasons.append("Latest HUMAN status: WITHHOLD")
+        elif latest["review_status"] == "REVIEW_REQUIRED":
+            reasons.append("Latest HUMAN status: REVIEW_REQUIRED")
+        if reasons:
+            lines.append(
+                "<li><b>Original #" + str(original) + "</b>: " +
+                html.escape("; ".join(reasons)) + "</li>"
+            )
+    return ("""<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';connect-src 'none';base-uri 'none';form-action 'none'">
+<title>LightUp PRIVATE HUMAN next-round discussion</title>
+<style>body{max-width:850px;margin:2rem auto;padding:1rem;font:16px/1.55 system-ui}
+aside{border-left:5px solid #b34c2e;background:#fff1e8;padding:14px}
+li{padding:7px 2px}</style>
+<h1>PRIVATE HUMAN continuity discussion</h1>
+<aside><b>HOLD · OWNER-PRIVATE · NO AUTHENTICATED HUMAN OR CLIENT APPROVAL.</b>
+Only manually supplied, source-bound HUMAN round declarations. This private
+source-position agenda is not a privacy safety, remediation or recipient
+clearance verdict. Changes are not security fixes; unchanged labels do not
+prove that confidential data has been removed.</aside>
+<p>Manually ordered original HUMAN rounds: """ + str(len(packets)) +
+            """ · original positions with literal change or latest HUMAN attention:
+""" + str(len(lines)) + """ of """ + str(source_count) + """.</p><ol>""" +
+            "".join(lines) + """</ol>
+<p>No other original slots or free HUMAN note text are distributed in this
+minimal local view. Source-bound original complete decisions remain in their
+own 0600 private files. No network, scheduling, assignment, grant or sharing.</p>
+</html>""").encode("utf-8")
+
+
 def build(original: str, mode: str, review_paths: list[str], parent_name: str) -> int:
     if mode not in MODES:
         raise Hold("HOLD: explicitly choose timeline or reviewers mode")
@@ -187,6 +241,8 @@ def build(original: str, mode: str, review_paths: list[str], parent_name: str) -
                      changes_csv(transitions))
             file_new(dest / "PRIVATE-HUMAN-compact.csv",
                      counts_csv(packets, transitions))
+            file_new(dest / "PRIVATE-HUMAN-attention.html",
+                     timeline_attention(packets, transitions))
             # This is the only extra generated output containing PRIVATE
             # free-human-note text. File and directory remain owner-only.
             file_new(dest / "PRIVATE-HUMAN-last-round.csv",
@@ -201,6 +257,8 @@ def build(original: str, mode: str, review_paths: list[str], parent_name: str) -
                      matrix_csv(all_rows))
             file_new(dest / "PRIVATE-HUMAN-compact.csv",
                      compact_review_csv(summaries))
+            file_new(dest / "PRIVATE-HUMAN-attention.html",
+                     agenda_page(summaries))
         # The ORIGINAL sensitivity-finalize verifies these against original
         # completed notes and the exact, still-blank canonical source roster.
         source_binding = {
