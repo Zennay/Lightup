@@ -217,7 +217,9 @@ def main() -> int:
         print("PRIVATE REVIEW_ONLY: original Lab Launchpad plan admitted. No scan.")
         print("OPEN LOCALLY: " + str(page))
         return 2
-    except (OSError, ValueError, TypeError, OverflowError) as exc:
+    except Exception as exc:
+        # Original Launchpad defines Hold(Exception), not ValueError. Fail
+        # closed without emitting original private paths or a traceback.
         print(str(exc) if isinstance(exc, privacy.Hold) else
               "HOLD: original PRIVATE lab planning admission failed",
               file=sys.stderr)
