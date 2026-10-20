@@ -659,7 +659,7 @@
     try {
       const blob = await LightUpEncryptedJournal.seal(journalDocument(), pass);
       download(blob, "lightup-private-human-review.luej", "application/json");
-      state.dirty = state.revisionHistory.length > 0;
+      state.dirty = state.revisionHistory.length > 0 || Boolean(state.pendingWorkroomReceipt);
       status(state.dirty ? "Encrypted HUMAN-only journal offered; PRIOR SOURCE HUMAN HISTORY is NOT included. Save a complete encrypted workroom." :
         "Encrypted PRIVATE HUMAN journal offered for local save; confirm actual file storage.", state.dirty);
     } catch (error) {
