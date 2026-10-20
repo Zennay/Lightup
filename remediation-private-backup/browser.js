@@ -398,6 +398,35 @@
     status("compare-status", Object.entries(totals).map(([key, value]) => key + ": " + value).join(" · ") +
       ". Source byte differences are NOT remediation proof or chronology.");
   }
+  function chooseChangedFromB() {
+    demand(Boolean(slots[0] && slots[1]), "Unlock both PRIVATE archives first");
+    // Archive ordering is a human choice, never a verified timestamp.
+    const a = slots[0].byName;
+    const second = slots[1];
+    const names = new Set(second.files.filter(file => {
+      const prior = a.get(file.name);
+      return !prior || prior.size !== file.size || prior.sha256 !== file.sha256;
+    }).map(file => file.name));
+    if (!names.size) {
+      status("subset-status", "No B-only or byte-changed files to select; no changes implied.");
+      return;
+    }
+    demand(confirm("Choose exactly " + names.size + " file(s) added or byte-changed in " +
+      "operator-selected Archive B for a NEW encrypted PRIVATE recovery? " +
+      "B is NOT verified newer and this does not authorize a disclosure or remediation."),
+      "Operator declined file selection");
+    el("source-select").value = "1";
+    renderInventory();
+    const checkboxes = [...el("file-rows").querySelectorAll('input[type="checkbox"]')];
+    for (const checkbox of checkboxes) {
+      const file = second.files[Number(checkbox.value)];
+      checkbox.checked = !!file && names.has(file.name);
+    }
+    status("subset-status", names.size + " original B file(s) selected for private encrypted " +
+      "minimum-necessary recovery. Choose a NEW password and manually confirm export. " +
+      "No chronology, fix, source identity, grant or approval implied.");
+    el("subset-pass").focus();
+  }
   function render() { renderInventory(); renderComparison(); }
   el("a-file").addEventListener("change", () => clear(0, false));
   el("b-file").addEventListener("change", () => clear(1, false));
@@ -409,6 +438,10 @@
   el("capture-files").addEventListener("change", () => clearCapture(false));
   el("capture-create").addEventListener("click", createCapture);
   el("capture-clear").addEventListener("click", () => clearCapture(true));
+  el("compare-select-b").addEventListener("click", () => {
+    try { chooseChangedFromB(); }
+    catch (error) { status("compare-status", "HOLD: " + (error?.message || "Unable to select B changes")); }
+  });
   el("subset-export").addEventListener("click", encryptSubset);
   el("clear-all").addEventListener("click", () => { clear(0); clear(1); });
   window.addEventListener("pagehide", () => {
