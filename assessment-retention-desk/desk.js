@@ -113,7 +113,7 @@
       const btn = document.createElement("button");
       btn.textContent = "Verwijder rij"; btn.className = "danger"; btn.type = "button";
       btn.addEventListener("click", () => {
-        entries = entries.filter(e => e.sha256 !== item.sha256); invalidateUndo();
+        entries = entries.filter(e => e.sha256 !== item.sha256); invalidateUndo(); resetDrift();
         status("Alleen de bronrij is uit het browsergeheugen verwijderd; geen bronbestand gewist.");
         render();
       });
@@ -150,7 +150,7 @@
           status:"needs_review", review_date:"", action:""});
       }
       // Atomic: no selected source is installed before every new source has been admitted.
-      entries = entries.concat(staged); invalidateUndo();
+      entries = entries.concat(staged); invalidateUndo(); resetDrift();
       $("query").value = ""; $("status-filter").value = "";
       render(); status(staged.length + " echte lokale bestandsidentiteiten gecontroleerd en toegevoegd. Geen bytes geüpload.");
     } catch (e) {
@@ -176,7 +176,7 @@
     download("lightup-private-assessment-retention.json", "application/json", JSON.stringify(obj));
     status("PRIVATE ongetekend menselijk plan geëxporteerd. Geen broninhoud, bestandsnaam of scanpermissie inbegrepen.");
   }
-  function validateReceipt(raw) {
+  function validateReceipt(raw, requireExactMembership = true) {
     let obj;
     try { obj = JSON.parse(raw); } catch { throw new Error("Geen geldig JSON-plan."); }
     // JSON.stringify roundtrip rejects duplicate-key JSON, alternative/ambiguous encodings and noncanonical input.
@@ -199,8 +199,8 @@
       }
       proposed.set(row.sha256, row);
     }
-    if (proposed.size !== entries.length ||
-        entries.some(e => !proposed.has(e.sha256) || proposed.get(e.sha256).bytes !== e.bytes)) {
+    if (requireExactMembership && (proposed.size !== entries.length ||
+        entries.some(e => !proposed.has(e.sha256) || proposed.get(e.sha256).bytes !== e.bytes))) {
       throw new Error("Bronset wijkt af: selecteer opnieuw de exacte originele bestanden. Geen gedeeltelijke carry.");
     }
     return proposed;
@@ -226,6 +226,50 @@
     } finally {
       event.target.value = ""; processing = false;
     }
+  }
+  async function compareReceipt(event) {
+    if (processing) return;
+    processing = true;
+    const target = $("source-drift");
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!entries.length) throw new Error("Selecteer eerst huidige originele bronbestanden.");
+      if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Plan moet 1–128 KiB zijn.");
+      const plan = validateReceipt(await file.text(), false);
+      const current = new Map(entries.map(e => [e.sha256, e]));
+      const added = entries.filter(e => !plan.has(e.sha256));
+      const missing = Array.from(plan.values()).filter(e => !current.has(e.sha256));
+      const same = entries.filter(e => plan.has(e.sha256) && plan.get(e.sha256).bytes === e.bytes);
+      const inconsistent = entries.filter(e => plan.has(e.sha256) && plan.get(e.sha256).bytes !== e.bytes);
+      if (inconsistent.length) throw new Error("Zelfde SHA met tegenstrijdige originele bestandsgrootte.");
+      target.replaceChildren();
+      target.append(text("strong", "PRIVATE bronvergelijking · geen automatische overname"));
+      target.append(text("p", "Nieuwe originele bytes in huidige selectie: " + added.length +
+        " · ontbreken ten opzichte van privéplan: " + missing.length +
+        " · exact aanwezige SHA/size: " + same.length));
+      const examples = document.createElement("ul");
+      for (const e of added) examples.append(text("li", "NIEUW in huidige selectie: " + e.sha256.slice(0,16) + "…"));
+      for (const e of missing) examples.append(text("li", "NIET in huidige selectie: " + e.sha256.slice(0,16) +
+        "… (geen claim dat de bron verwijderd, hersteld of ingetrokken is)"));
+      const humanChanged = same.filter(e => {
+        const before = plan.get(e.sha256);
+        return e.alias !== before.alias || e.status !== before.status ||
+          e.review_date !== before.review_date || e.action !== before.action;
+      });
+      target.append(text("p", "Gewijzigde menselijke voorstellen bij ongewijzigde bytes: " +
+        humanChanged.length + ". Er wordt niets samengevoegd of geautoriseerd."));
+      target.append(examples);
+      status("PRIVATE bronverschillen lokaal bekeken; huidige bronset en HUMAN-planning ongewijzigd.");
+    } catch (e) {
+      target.replaceChildren();
+      status("HOLD: bronvergelijking geweigerd: " + e.message + " Niets overgenomen.", true);
+    } finally {
+      event.target.value = ""; processing = false;
+    }
+  }
+  function resetDrift() {
+    $("source-drift").textContent = "Geen actuele bronvergelijking. Verschillen geven nooit een herstel-, intrekkings- of wisclaim.";
   }
   function exportCounts() {
     if (!entries.length || processing) return status("Geen aantallen zonder geselecteerde privébronnen.", true);
@@ -289,6 +333,7 @@
   $("bulk-undo").addEventListener("click", undoBulk);
   $("sources").addEventListener("change", ingest);
   $("receipt").addEventListener("change", importReceipt);
+  $("compare").addEventListener("change", compareReceipt);
   $("export-plan").addEventListener("click", exportReceipt);
   $("export-counts").addEventListener("click", exportCounts);
   $("query").addEventListener("input", render);
@@ -299,7 +344,7 @@
   });
   $("clear").addEventListener("click", () => {
     if (entries.length && !window.confirm("Alle niet-opgeslagen HUMAN-keuzes uit dit tabblad wissen? Eerder gedownloade privébestanden worden niet gewist.")) return;
-    entries = []; invalidateUndo(); $("sources").value = ""; $("receipt").value = "";
+    entries = []; invalidateUndo(); resetDrift(); $("sources").value = ""; $("receipt").value = ""; $("compare").value = "";
     $("query").value = ""; $("status-filter").value = "";
     render(); status("Lokale werkruimte leeggemaakt (geen garantie op veilig geheugenwissen).");
   });
