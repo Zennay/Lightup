@@ -16,12 +16,16 @@ SCRIPT = r"""
   const status = document.getElementById('status');
   const rows = document.getElementById('rows');
   const exportButton = document.getElementById('export');
+  const carryInput = document.getElementById('carry');
   let current = [];
+  let currentDigest = null;
   const STAGES = ['needs_review', 'owner_followup', 'hold', 'reference_only'];
   const hex = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
   const escCsv = value => '"' + String(value).replace(/"/g, '""') + '"';
   function refuse(msg) {
     current = [];
+    currentDigest = null;
+    carryInput.disabled = true;
     rows.replaceChildren();
     exportButton.disabled = true;
     status.textContent = 'HOLD — ' + msg + '. Existing edits discarded; no export.';
@@ -57,9 +61,15 @@ SCRIPT = r"""
     refuse('Choose an original PRIVATE ledger.json');
     const file = input.files && input.files[0];
     if (!file || file.size < 8 || file.size > 1048576 || file.name !== 'ledger.json') return;
-    let data;
-    try { data = JSON.parse(await file.text()); }
-    catch (_) { refuse('Malformed JSON'); return; }
+    let data, hexDigest = null;
+    try {
+      const buffer = await file.arrayBuffer();
+      data = JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(buffer));
+      if (globalThis.crypto && crypto.subtle) {
+        const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', buffer));
+        hexDigest = Array.from(bytes, b => b.toString(16).padStart(2,'0')).join('');
+      }
+    } catch (_) { refuse('Malformed or unreadable JSON'); return; }
     if (!isPrivateDraft(data)) { refuse('Invalid or authority-claiming ledger'); return; }
     const fragment = document.createDocumentFragment();
     const entries = [];
@@ -87,10 +97,71 @@ SCRIPT = r"""
       entries.push({ordinal:kit.ordinal, digest:kit.digest, stage, owner, question});
     }
     current = entries;
+    currentDigest = hexDigest;
+    carryInput.disabled = !hexDigest;
     rows.replaceChildren(fragment);
     status.textContent = 'PRIVATE HUMAN draft loaded. No client identity, original verification or consent established.';
     exportButton.disabled = false;
   });
+  carryInput.addEventListener('change', async () => {
+    if (!current.length || !currentDigest) {
+      status.textContent = 'HOLD — first load exact original ledger.json using a secure offline browser.';
+      return;
+    }
+    const file = carryInput.files && carryInput.files[0];
+    if (!file || file.name !== 'HUMAN-carry.json' || file.size < 8 || file.size > 1048576) {
+      status.textContent = 'HOLD — choose native source-bound HUMAN-carry.json (<= 1 MiB).';
+      return;
+    }
+    let packet;
+    try {
+      packet = JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(await file.arrayBuffer()));
+    } catch (_) {
+      status.textContent = 'HOLD — malformed HUMAN-carry.json; current edits kept.';
+      return;
+    }
+    const authority = packet && packet.authority;
+    const expectedKeys = ['authorization','consent','release_approval',
+      'source_authentication','verified_finding','verified_remediation'];
+    const allowedAuthority = authority && typeof authority === 'object' &&
+      !Array.isArray(authority) &&
+      Object.keys(authority).sort().join(',') === expectedKeys.sort().join(',') &&
+      Object.values(authority).every(v => v === false);
+    const validRows = packet && Array.isArray(packet.rows) &&
+      packet.rows.length === current.length &&
+      packet.rows.every((row,i) => {
+        if (!row || typeof row !== 'object' || Array.isArray(row) ||
+            Object.keys(row).sort().join(',') !==
+            ['ordinal','kit_digest','stage','owner','question','carried'].sort().join(','))
+          return false;
+        const oldSource = current[i];
+        if (row.ordinal !== oldSource.ordinal || row.kit_digest !== oldSource.digest ||
+            !STAGES.includes(row.stage) || typeof row.owner !== 'string' ||
+            typeof row.question !== 'string' || typeof row.carried !== 'boolean' ||
+            row.owner.length > 80 || row.question.length > 500 ||
+            /[\x00-\x1f]/.test(row.owner+row.question) ||
+            /^[\s]*[=+\-@]/.test(row.owner) || /^[\s]*[=+\-@]/.test(row.question))
+          return false;
+        return row.carried || (row.stage === 'needs_review' &&
+                                row.owner === '' && row.question === '');
+      });
+    if (!allowedAuthority || packet.schema !== 'lightup.private.workspace-ledger-carry.v1' ||
+        packet.current_ledger_sha256 !== currentDigest ||
+        !hex(packet.previous_ledger_sha256) || !hex(packet.previous_human_sha256) ||
+        packet.requires_human_reconfirmation !== true || !validRows) {
+      status.textContent = 'HOLD — carried HUMAN data does not match source bytes/ordinals. Existing edits kept.';
+      return;
+    }
+    for (const [i,row] of packet.rows.entries()) {
+      const target = current[i];
+      target.stage.value = row.stage;
+      target.owner.value = row.owner;
+      target.question.value = row.question;
+    }
+    status.textContent = 'PRIVATE HUMAN proposals restored against EXACT ledger bytes; ' +
+      'reconfirm every stage and export a NEW decision CSV. No permission or approval inherited.';
+  });
+
   exportButton.addEventListener('click', () => {
     if (!current.length) return refuse('No ledger loaded');
     const lines = ['ordinal,kit_digest,stage,owner,question'];
@@ -143,6 +214,8 @@ def render_studio():
             "the source producer, identify a tenant, certify findings, prove fixes, grant access, "
             "verify consent, release or execute an assessment. All artifacts are PRIVATE.</p>"
             "<label>Choose your native ledger.json <input type='file' id='source' accept='.json,application/json'></label>"
+            "<label>Optionally restore previously proposed HUMAN stages from a source-bound "
+            "HUMAN-carry.json <input type='file' id='carry' accept='.json,application/json' disabled></label>"
             "<p id='status' role='status' aria-live='polite'>Choose only an original locally generated "
             "PRIVATE ledger.json. Nothing is uploaded or persisted by this browser.</p></section>"
             "<section id='rows' aria-label='Kit HUMAN stages'></section>"
