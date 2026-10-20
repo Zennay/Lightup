@@ -476,3 +476,17 @@ portable offline ZIP allowlist. The shipped ZIP includes no original HUMAN
 packet, source ledger, actual client material, browser-generated private
 review HTML or real human workroom. Do not treat a software byte digest as
 publisher authentication, a security gate, verified consent or HUMAN GO.
+
+
+## Native exact-literal authorization integrity across historical inputs
+
+The original ledger, finalized native HUMAN continuity packet and offline
+software package inspector now share a strict authority-value reader: each
+expected no-permission claim must be the **actual JSON boolean false** and
+all original fixed authority field names must match exactly. JSON numeric
+`0` is never an alias for `false`. An integer-equivalent or missing flag
+is HOLD before any original private source or HUMAN interpretation proceeds.
+The new multi-reviewer native packet/context reader separately enforces the
+same exact JSON literal requirement. This is an offline record-integrity
+admission fix, never evidence of actual authorization, independent review,
+correctness of an original source producer or a security release.
