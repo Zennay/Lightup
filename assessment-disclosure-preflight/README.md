@@ -660,3 +660,36 @@ a real **memory-only HUMAN decision history**, not just a one-way export.
 This is a HUMAN correction/triage convenience, **not** a source
 authenticator, consent registry, automatic selection, reviewer identity,
 verified finding, scan, grant, security verdict or approved disclosure.
+
+
+## Eighth product: PRIVATE no-notes HUMAN handoff cover
+
+After **exactly exporting the current reviewer-byte-bound A/B decision CSV**,
+the local two-reviewer browser offers an independent, scriptless
+`PRIVATE-browser-HUMAN-handoff-cover.html` export. The HUMAN must explicitly
+approve the local download. The cover includes only the original unsigned
+source-free receipt hash, the SHA-256 of both exact original completed HUMAN
+CSV streams (decrypted bytes, never ciphertext), every original local ordinal
+and declared kind, explicit A/B/HOLD choice and selected non-authorizing
+HUMAN stage. It records how many ordinals remain HOLD with no inherited
+notes.
+
+**It deliberately does NOT include the original reviewer questions,
+proposed next actions, or the HUMAN explanation/reason for choosing A/B.**
+The separately retained exact seven-column PRIVATE decision CSV is still
+required for those reasons and for native `reconcile.py finalize`.
+The cover has no JavaScript, form submission, network connections, remote
+assets, external links or scripts. HTML is escaped when generated.
+No original laboratory source evidence is embedded. This is **not an
+anonymous public release**: receipt/reviewer hashes, aggregate source
+kinds and review stages may be confidential or correlatable. Recipient,
+legal basis, source owner, actual current client/operator authenticated
+consent and action-time revocation must be checked independently. The
+cover cannot authorize disclosure, prove identity, verify security
+findings, grant scope or advance project release gates.
+
+Changing a HUMAN decision, restoring an older draft, undoing/redoing
+a choice, or applying a filtered bulk HOLD invalidates the previous
+decision CSV and **also blocks** the cover download until the updated
+current A/B decisions are explicitly exported again. No persistent
+browser storage or automatic sending is added.
