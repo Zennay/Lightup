@@ -22,7 +22,7 @@
   });
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
-  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, bulkProposal: null, sourceText: "", revisionCandidate: null, revisionHistory: []};
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, bulkProposal: null, pendingWorkroomReceipt: null, sourceText: "", revisionCandidate: null, revisionHistory: []};
 
   function fail(message) { throw new Error(message); }
   function exactObject(obj, keys) {
@@ -329,6 +329,7 @@
     state.rows = plan.incomingRows;
     state.digest = plan.toDigest;
     state.journal = staged.journal;
+    clearWorkroomReceipt();
     invalidateBulkPreview();
     state.revisionHistory = staged.history;
     state.selected = -1; state.bulkUndo = null; state.pending = false;
@@ -364,9 +365,35 @@
     download(JSON.stringify(output, null, 2) + "\n", "lightup-private-prior-human-revisions.json", "application/json");
     status("PRIVATE prior-human source archive offered. Original or absent finding not verified or fixed.", false);
   }
+  function workroomFingerprint() {
+    return JSON.stringify([state.digest, state.journal, state.revisionHistory]);
+  }
+  function clearWorkroomReceipt() {
+    state.pendingWorkroomReceipt = null;
+    $("ackWorkroom").disabled = true;
+    $("saveReceipt").textContent = "No confirmed local complete-workroom download for the current HUMAN state.";
+  }
+  function acknowledgeWorkroom() {
+    if (state.pending) {
+      status("Apply or discard pending HUMAN form edits before confirming storage.", true);
+      return;
+    }
+    const receipt = state.pendingWorkroomReceipt;
+    if (!receipt || receipt.fingerprint !== workroomFingerprint()) {
+      clearWorkroomReceipt();
+      status("Workroom changed since download. Encrypt and save the complete current workroom again.", true);
+      return;
+    }
+    if (!confirm("Confirm HUMAN-only storage: have you checked the complete encrypted .luew file exists in a protected folder and SHA-256 equals " +
+      receipt.sha256 + " (" + receipt.bytes + " UTF-8 bytes)? This acknowledgment is not independent source, consent, client or security proof.")) return;
+    state.dirty = false;
+    clearWorkroomReceipt();
+    $("saveReceipt").textContent = "Operator acknowledged a protected local .luew file; this is HUMAN-only storage confirmation, never an authenticated source or release approval.";
+    status("Human operator acknowledged private storage; no original finding, client grant or active work changed.", false);
+  }
   function wipe() {
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
-    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.bulkProposal = null; state.sourceText = ""; state.revisionHistory = [];
+    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.bulkProposal = null; state.pendingWorkroomReceipt = null; state.sourceText = ""; state.revisionHistory = [];
     clearRevisionCandidate(); refreshRevisionArchive();
     $("revisionArchiveDesk").hidden = true; $("revisionHistorySearch").value = "";
     $("sourceFile").value = ""; $("journalFile").value = ""; $("workroomFile").value = ""; $("vaultPass").value = "";
@@ -376,6 +403,7 @@
     $("detail").hidden = true;
     $("noneSelected").hidden = false;
     setEnabled(false);
+    clearWorkroomReceipt();
     renderOwnerBoard();
   }
   function selectedIndices() {
@@ -521,6 +549,7 @@
     } catch (error) { status(error.message, true); return; }
     if (JSON.stringify(entry) !== JSON.stringify(state.journal[state.selected])) {
       state.journal[state.selected] = entry;
+      clearWorkroomReceipt();
       invalidateBulkPreview();
       clearRevisionCandidate();
       state.dirty = true;
@@ -546,6 +575,7 @@
       state.rows = stagedRows;
       state.digest = sha;
       state.sourceText = value;
+      clearWorkroomReceipt();
       state.revisionHistory = [];
       clearRevisionCandidate(); refreshRevisionArchive();
       state.journal = stagedRows.map(r => blankEntry(r.id));
@@ -611,7 +641,7 @@
       }
       const staged = admitJournalDocument(parsed);
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
-      state.journal = staged; invalidateBulkPreview(); clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
+      state.journal = staged; clearWorkroomReceipt(); invalidateBulkPreview(); clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
@@ -680,9 +710,17 @@
         revision_history: state.revisionHistory
       };
       const sealed = await LightUpEncryptedJournal.sealWorkroom(doc, pass);
+      const packed = enc.encode(sealed);
+      const receiptHash = await digest(packed);
       download(sealed, "lightup-private-entire-workroom.luew", "application/json");
-      state.dirty = false;
-      status("Encrypted complete source+HUMAN workroom offered for local PRIVATE save; no external transfer.", false);
+      state.pendingWorkroomReceipt = {
+        fingerprint: workroomFingerprint(), sha256: receiptHash, bytes: packed.length
+      };
+      $("ackWorkroom").disabled = false;
+      $("saveReceipt").textContent = "Encrypted PRIVATE .luew offered for local save: " +
+        packed.length + " UTF-8 bytes · SHA-256 " + receiptHash +
+        ". Your unsaved-changes warning remains until you independently check the local protected file and acknowledge storage.";
+      status("Encrypted complete workroom offered. Verify local file and SHA-256 before acknowledging save.", false);
     } catch (error) {
       status("Complete PRIVATE workroom encryption HOLD: " + error.message, true);
     } finally {
@@ -719,6 +757,7 @@
           "Replace this browser's current workspace? This does not establish authenticated tenant lineage.")) return;
       state.rows = admittedRows; state.digest = candidateSha; state.sourceText = doc.csv_utf8;
       state.journal = admittedJournal; state.revisionHistory = admittedHistory;
+      clearWorkroomReceipt();
       invalidateBulkPreview(); clearRevisionCandidate(); refreshRevisionArchive();
       state.filename = "[PRIVATE ENCRYPTED WORKROOM]";
       state.selected = -1; state.dirty = false; state.pending = false; state.bulkUndo = null;
@@ -936,6 +975,7 @@
         "The source CSV, actual retest and remediation are NOT changed. Only this browser's private HUMAN journal changes. " +
         "Keep an encrypted complete workroom for source-history continuity.")) return;
     clearRevisionCandidate();
+    clearWorkroomReceipt();
     for (const item of now.changes) {
       state.journal[item.index] = {...item.next};
     }
@@ -958,6 +998,7 @@
     const previous = state.bulkUndo;
     if (!previous || !previous.length) return;
     clearRevisionCandidate();
+    clearWorkroomReceipt();
     for (const item of previous) {
       state.journal[item.index] = {...item.original};
     }
@@ -1010,6 +1051,7 @@
     $("saveCalendar").addEventListener("click", saveCalendar);
     $("saveVault").addEventListener("click", saveVault);
     $("saveWorkroom").addEventListener("click", saveWorkroom);
+    $("ackWorkroom").addEventListener("click", acknowledgeWorkroom);
     $("loadWorkroom").addEventListener("click", () => $("workroomFile").click());
     $("workroomFile").addEventListener("change", e => {
       if (e.target.files[0]) loadWorkroom(e.target.files[0]);
