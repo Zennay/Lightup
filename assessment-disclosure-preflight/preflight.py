@@ -14,7 +14,6 @@ import os
 from pathlib import Path
 import stat
 import sys
-import tempfile
 
 KINDS = ("isolated_lab_input_preview", "offline_lab_benchmark_source", "isolated_lab_assessment")
 SEVERITIES = ("critical", "high", "medium", "low", "info")
@@ -244,45 +243,53 @@ def output_directory(path: str) -> Path:
 
 
 def publish(directory: Path, files: dict[str, str]) -> None:
-    """Prepare complete owner-only files before publishing any final filename.
+    """Prepare full 0600 files in one pinned owner-only directory descriptor.
 
-    An ordinary failure rolls back new final names. A sudden crash may leave
-    private staging files, but never a partially-written final artifact.
+    Final names appear by exclusive hard-link only after complete fsynced staging.
+    On ordinary failure new final names are removed. Sudden process failure may
+    leave PRIVATE staging files but cannot publish a partial final file.
     """
-    staged: list[Path] = []
-    created: list[Path] = []
+    dirfd = -1
+    staged: list[str] = []
+    created: list[str] = []
     try:
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+        dirfd = os.open(directory, flags)
+        info = os.fstat(dirfd)
+        require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
+                and info.st_mode & 0o077 == 0)
+        require(type(files) is dict and set(files) == set(FILES))
         for name in FILES:
-            fd, tmp = tempfile.mkstemp(prefix=".lightup-disclosure-private-", dir=directory)
-            stage = Path(tmp)
+            stage = ".lightup-disclosure-private-" + os.urandom(16).hex()
+            fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                         getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=dirfd)
             staged.append(stage)
             with os.fdopen(fd, "wb") as stream:
                 stream.write(files[name].encode("utf-8"))
                 stream.flush()
                 os.fsync(stream.fileno())
-        # Hard links fail if a destination or symlink already exists: no overwrite.
+        # Every final must be new; no symlink or existing file is overwritten.
         for name, stage in zip(FILES, staged):
-            target = directory / name
-            os.link(stage, target)
-            created.append(target)
-        dirfd = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(dirfd)
-        finally:
-            os.close(dirfd)
-    except (OSError, ValueError):
-        for path in reversed(created):
-            try:
-                path.unlink()
-            except OSError:
-                pass
+            os.link(stage, name, src_dir_fd=dirfd, dst_dir_fd=dirfd,
+                    follow_symlinks=False)
+            created.append(name)
+        os.fsync(dirfd)
+    except (OSError, ValueError, TypeError):
+        for name in reversed(created):
+            if dirfd >= 0:
+                try:
+                    os.unlink(name, dir_fd=dirfd)
+                except OSError:
+                    pass
         raise Hold("HOLD: private outputs were not published") from None
     finally:
-        for stage in staged:
-            try:
-                stage.unlink()
-            except OSError:
-                pass
+        if dirfd >= 0:
+            for stage in staged:
+                try:
+                    os.unlink(stage, dir_fd=dirfd)
+                except OSError:
+                    pass
+            os.close(dirfd)
 
 
 def main(argv: list[str] | None = None) -> int:
