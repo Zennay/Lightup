@@ -36,6 +36,13 @@
           <div class="section-top"><div><p class="kicker">WORKSHOP / 8 SLOTS</p><h3 id="bank-title">Scenarioverzameling</h3></div><span class="pill">ALLEEN LOKAAL GEHEUGEN</span></div>
           <p class="muted">Bewaar acht fictieve beslisverlopen naast elkaar, vergelijk status en oefenblokkades, en herstel een scenario naar de editor. Opslaan of laden vervangt nooit echte LightUp-toestemming.</p>
           <div class="bank-actions"><button id="save-board" type="button" class="button minor">Volledige verzameling opslaan (.json)</button><button id="save-board-brief" type="button" class="button minor">Groepsbrief (.md)</button></div>
+          <div class="bank-comparison" aria-labelledby="slot-compare-title">
+            <h4 id="slot-compare-title">Vergelijk twee opgeslagen oefenscenario’s</h4>
+            <div class="bank-choose"><label for="compare-a">Scenario A <select id="compare-a" aria-label="Scenario links"></select></label>
+            <label for="compare-b">Scenario B <select id="compare-b" aria-label="Scenario rechts"></select></label></div>
+            <p id="slot-compare-summary" class="muted">Bewaar minimaal twee fictieve scenario’s in de slots.</p>
+            <ul class="needs" id="slot-compare-details"></ul>
+          </div>
           <div class="bank-scroll"><table class="bank-table"><caption class="sr-only">Acht uitsluitend fictieve scenario-slots</caption>
             <thead><tr><th>Scenario</th><th>Fictieve toestand</th><th>Acties</th></tr></thead><tbody id="bank-rows"></tbody></table></div>
         </section>
