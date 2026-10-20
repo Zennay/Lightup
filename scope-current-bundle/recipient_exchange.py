@@ -23,6 +23,7 @@ from change_brief import AUTHORITY, no_duplicates, require_fresh_private_directo
 from human_followup import FIELDS, STAGES, human_text, worksheet
 from review_history import admit_human
 from recipient_browser import render_recipient
+from owner_decision import original_owner_desk
 
 FORMAT = "lightup.source_minimized_human_exchange.v1"
 RECEIPT_LIMIT = 256_000
@@ -277,6 +278,10 @@ def reconcile(argv: list[str]):
         *pending_source_rows
     ]
     proposal_csv = encoded_csv(stream)
+    # Original-owner local-only explicit HUMAN accept/retain workroom.
+    owner_html = original_owner_desk(
+        original_rows, (previous_hash, current_hash), pending_source_rows
+    )
     counts = {
         "format": "lightup.human_recipient_return_counts.v1",
         "posture": "INCUBATE_M3_M7_DRAFT_HOLD",
@@ -291,6 +296,7 @@ def reconcile(argv: list[str]):
         raise ValueError("New output needs an ordinary existing parent directory")
     require_fresh_private_directory(out)
     write_private(out / "PRIVATE-HUMAN-proposals.html", html_page)
+    write_private(out / "PRIVATE-HUMAN-owner-decisions.html", owner_html)
     write_private(out / "PRIVATE-HUMAN-proposals.csv", proposal_csv)
     write_private(out / "source-minimized-counts.json", (json.dumps(counts, indent=2, sort_keys=True) + "\n").encode("utf-8"))
     print("PRIVATE source-owner HUMAN proposal triage:", out)
