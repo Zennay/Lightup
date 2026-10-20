@@ -178,3 +178,20 @@ The native CLI first asks the LOCAL private passphrase in a protected terminal, 
 
 Only local HUMAN history carries forward. This is not cryptographic signer identity, proof that two packets belong to one client, chronological ordering, verified source finding, actual consent or authorization. A 0700 workroom and password do not replace separately approved recipient access, source-owner permission, hosted/named CI, independent review or HUMAN GO.
 
+
+## NEW: selected-only PRIVATE HUMAN follow-up, without transferring any original source
+
+The offline scheduler now has **Encrypt selected HUMAN-only handoff (visible tasks)**. After the operator chooses filters, the browser shows a disclosure warning and allows independent choices about whether to include any HUMAN owner labels or private HUMAN notes (both **excluded by default**). It creates a new masked-password AES-256-GCM, PBKDF2-SHA256 (600,000 iterations) encrypted `.luhq` file with only the chosen locally HUMAN task category/stage/tentative date/next action and separately included notes/labels.
+
+The `.luhq` **deliberately excludes every original source SHA-256, Cockpit packet/ordinal, original slot, source count, case/client identity, raw evidence and source-owner material**. The source is intentionally **not reconstructible or independently verifiable** from this file. It cannot serve as a verifiable finding, authenticated sender, consent receipt, approved recipient identity, retest, permission, grant or verified remediation. HUMAN labels and dates may remain identifying, especially for small selections: separate real client/operator recipient and disclosure consent is still required.
+
+The recipient, using the independently authenticated trusted LightUp software on a private authorized Linux machine, saves the file as a single-link 0600 regular file in an existing 0700 PRIVATE folder, then opens it **locally without any source evidence**:
+
+```bash
+python3 remediation-recipient-scheduler/queue_handoff.py \
+  --handoff "$HOME/lightup-private/approved-selected-followup.luhq" \
+  --output-dir "$HOME/lightup-private/received-human-followup-01"
+```
+
+The receiver requires the passphrase interactively, checks exact closed source-redacted schema, fixed false authority/consent/source-auth flags, bounded HUMAN labels and local original source-free reason vocabulary, and decrypts the AES-GCM envelope in memory. It exclusively creates an owner-private `index.html`, a **scriptless read-only PRIVATE follow-up HTML** and an anonymous count/field-inclusion receipt. It never reconstructs a source-free Cockpit, writes original evidence, performs a scan/retest/remediation or establishes actual recipient permission. Keep the handoff passphrase in a separately approved channel and delete local plaintext follow-up files only according to established retention rules. Password loss has no recovery path. The complete software-only bundle/strict source-only receiver include the new `queue_handoff.py` runtime.
+
