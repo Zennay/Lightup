@@ -3,6 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import human_console
+import remediation_console
 import os
 from pathlib import Path
 import subprocess
@@ -38,6 +39,9 @@ class Session:
     reviewer_kit: str = ""
     ledger_kit: str = ""
     notes_kit: str = ""
+    remediation_kit: str = ""
+    original_comparison: str = ""
+    findings_csv: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -281,6 +285,7 @@ def last_packages(session: Session) -> None:
         ("Original PRIVATE multi-reviewer HUMAN workroom", session.reviewer_kit),
         ("Original PRIVATE workspace ledger", session.ledger_kit),
         ("Original PRIVATE credential-masked HUMAN notes", session.notes_kit),
+        ("Original canonical lab-to-client HUMAN follow-up", session.remediation_kit),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -303,9 +308,11 @@ def main() -> int:
         "13": lambda x: human_console.ledger_finalize(x, path_prompt, ask),
         "14": lambda x: human_console.notes_prepare(x, path_prompt, ask),
         "15": lambda x: human_console.notes_finalize(x, path_prompt, ask),
+        "16": lambda x: remediation_console.prepare(x, path_prompt, ask),
+        "17": lambda x: remediation_console.prepare(x, path_prompt, ask, cohorts=True),
     }
     while True:
-        print("\n1. Prepare PRIVATE original briefing + 13 offline HUMAN workrooms")
+        print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
         print("2. Prepare exact-source PRIVATE HUMAN selection studio")
         print("3. Build source-selected PRIVATE HUMAN finding dossier")
         print("4. Review two original PRIVATE lab source revisions")
@@ -320,6 +327,8 @@ def main() -> int:
         print("13. Finalize source-bound PRIVATE HUMAN ledger suggestions")
         print("14. Prepare original credential-masked PRIVATE assessment notes")
         print("15. Finalize source-bound PRIVATE HUMAN note decisions")
+        print("16. Map original completed benchmark + authenticated client findings into HUMAN follow-up")
+        print("17. Generate canonical original cohort comparison and private HUMAN client finding follow-up")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -327,7 +336,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 15.")
+                print("Choose a number from 0 to 17.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
