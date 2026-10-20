@@ -154,6 +154,13 @@ def _html_editor(rows: list[dict]) -> bytes:
         "or prove permission. No scan, grant, network, model or dispatch.</p>"
         "</footer><script>" + js + "</script></body></html>"
     )
+    # Pin the exact generated inline CSS as well as the inline JS.
+    # Offline browser output never needs generic unsafe-inline styling.
+    start = page.index("<style>") + len("<style>")
+    end = page.index("</style>", start)
+    style_pin = b64encode(sha256(page[start:end].encode("utf-8")).digest()).decode("ascii")
+    page = page.replace("style-src 'unsafe-inline'",
+                        "style-src 'sha256-" + style_pin + "'")
     return page.encode("utf-8")
 
 
@@ -242,7 +249,11 @@ def finalize(packets: list[str], room: str, edited_csv: str, parent: str,
             or receipt["source_bytes_included"] is not False
             or receipt["verified_source"] is not False
             or receipt["verified_consent"] is not False
-            or receipt["authority"] != privacy.AUTHORITY):
+            or type(receipt["authority"]) is not dict
+            or set(receipt["authority"]) != set(privacy.AUTHORITY)
+            or any(type(receipt["authority"][key]) is not bool
+                   or receipt["authority"][key] is not False
+                   for key in privacy.AUTHORITY)):
         raise privacy.Hold("HOLD: original HUMAN review receipt/session changed")
     rows = _rows_admit(original, edited_csv)
     summary = {
