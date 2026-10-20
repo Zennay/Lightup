@@ -79,6 +79,8 @@ def receipt(name: str) -> tuple[str, list[dict]]:
 def safe_note(text: object) -> str:
     require(type(text) is str and len(text) <= MAX_TEXT)
     require(all(char >= " " and char != "\x7f" for char in text))
+    # Spreadsheet software may evaluate formulas even when CSV cells are quoted.
+    require(not text.lstrip().startswith(("=", "+", "-", "@")))
     return text
 
 
