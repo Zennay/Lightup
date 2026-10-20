@@ -37,6 +37,40 @@ python3 assessment-retention-desk/history.py --output /private/operator/history.
 python3 assessment-retention-desk/drift.py --output /private/operator/source-diff.html /private/operator/plan-01.json /private/operator/plan-02.json
 ```
 
+## Source-bound HUMAN custody and retention-hold decisions (schema v2)
+
+The browser workroom now includes **HUMAN-declared custodian or team**, a
+**HUMAN sensitivity classification** (unknown, internal, confidential,
+restricted) and an explicit **HUMAN-only hold indicator** (unknown, human
+declared active, human declared no known restriction). None is authenticated,
+a real legal-hold determination, owner permission or verified source metadata.
+
+Every newly created PRIVATE plan and encrypted `.lurt` carries the exact
+original-byte-bound **version 2** HUMAN row shape. The offline `history.py`,
+`drift.py`, `vault_history.py` and `vault_drift.py` read and display this
+custodian/classification/hold metadata and compare it between revision moments.
+**Older version-1 browser plans and encrypted vaults remain readable**.
+They are upgraded **in memory** with `custodian=""`,
+`classification="unknown"`, `hold_flag="unknown"`. Older missing
+metadata must NEVER be interpreted as cleared or approved. Exporting
+subsequent private plans uses v2 and preserves all explicit HUMAN fields.
+
+Proposed deletion remains only a PRIVATE unverified HUMAN request and is
+**never an executable delete**. In v2 a publishable proposal also requires a
+nonempty HUMAN custodian, explicit human next action and the operator-selected
+"no known restriction" *claim*. If any are missing, export and native v2
+admission HOLD; selecting this UI value **never proves actual absence of legal
+hold or authentic consent**. In v1, a previous human delete proposal can still
+be read, but the missing custodian and hold metadata become UNKNOWN, so it
+cannot silently be re-exported as a complete new v2 proposal.
+
+The UI includes filters for undeclared holder, declared active/unknown hold
+and incomplete delete proposals, alongside due-date workload summaries.
+Counts-only CSV includes these HUMAN-only categories (not individual source
+identifiers). This may still be sensitive for small cohorts. New metadata is
+PRIVATE even when encrypted; avoid placing personal information in aliases,
+owner fields or free-text descriptions unless there is a need and permission.
+
 ## Native encrypted HUMAN history with original-byte revalidation
 
 The existing browser `.lurt` AES-256-GCM HUMAN vaults can now be compared without exporting decrypted JSON to disk. `vault_history.py` opens each vault in memory via an independently entered non-echoed password, validates the original unchanged browser HUMAN receipt, and **re-hashes every separately selected genuine source file**. Missing/changed/duplicate original bytes HOLD before publishing any report. The operator-declared vault order never proves a real chronology or authenticated source provenance.
