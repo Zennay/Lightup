@@ -249,6 +249,7 @@
       byId("exportEncrypted").disabled = false;
       byId("compare").disabled = false;
       byId("exportCounts").disabled = false;
+      byId("exportPrint").disabled = false;
       refresh();
       notice("REVIEW_ONLY: exact receipt bytes and matching HUMAN CSV admitted locally. No authority.");
     } catch (_) {
@@ -340,6 +341,57 @@
       notice("HOLD: PRIVATE HUMAN summary not admitted, no export.", true);
     }
   }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/gu, char =>
+      ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
+  }
+  function exportPrintableReport() {
+    try {
+      serializedCsv(); // Full original receipt/ordinal/stage/text admission.
+      ensure(confirm("Export PRIVATE plaintext HUMAN notes into a printable HTML report? Downloads may sync with cloud storage. Only separately authenticated recipients may receive it. No finding, consent or release is verified."));
+      const totals = STAGES.map(stage => ({
+        stage, count: records.filter(row => row.stage === stage).length
+      }));
+      const counts = totals.map(item =>
+        "<li>" + escapeHtml(item.stage) + ": " + item.count + "</li>").join("");
+      const rows = records.map(row =>
+        "<tr><th scope='row'>" + row.ordinal + "</th><td>" +
+        escapeHtml(row.kind) + "</td><td>" + escapeHtml(row.stage) +
+        "</td><td>" + escapeHtml(row.question) + "</td><td>" +
+        escapeHtml(row.action) + "</td></tr>").join("");
+      const html = [
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+        '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; ',
+        'style-src &#39;unsafe-inline&#39;; img-src &#39;none&#39;; connect-src &#39;none&#39;; ',
+        'form-action &#39;none&#39;; frame-src &#39;none&#39;">',
+        '<meta name="viewport" content="width=device-width,initial-scale=1">',
+        '<title>PRIVATE HUMAN assessment follow-up — non-authorizing</title>',
+        '<style>body{font:16px/1.5 system-ui;max-width:1080px;margin:2rem auto;padding:1rem}',
+        'header{border:2px solid #773;padding:1rem}table{border-collapse:collapse;width:100%}',
+        'th,td{border:1px solid #999;padding:.6rem;text-align:left;vertical-align:top;overflow-wrap:anywhere}',
+        '@media print{body{margin:0}header{border:1px solid #444}}</style></head><body>',
+        '<header><h1>PRIVATE HUMAN follow-up · REVIEW ONLY</h1>',
+        '<p>This is an unsigned local HUMAN transcription from a source-free ',
+        'offline receipt and manually entered notes. No source-byte provenance, ',
+        'reviewer identity, original findings, consent, authorization, verified ',
+        'fix, client grant, retest, approval or release has been established. ',
+        'This report contains PRIVATE plaintext HUMAN notes; manual disclosure ',
+        'review is required before any external handoff.</p></header>',
+        '<h2>Self-declared HUMAN stages (not security findings)</h2><ul>',
+        counts, '</ul><h2>HUMAN-only follow-up</h2>',
+        '<table><thead><tr><th>Local ordinal</th><th>Source-declared kind</th>',
+        '<th>HUMAN stage</th><th>HUMAN question</th><th>HUMAN next action</th>',
+        '</tr></thead><tbody>',rows,'</tbody></table>',
+        '<p>Keep PRIVATE. A count, SHA, HUMAN answer or printable page ',
+        'cannot grant assessment rights. Original security and consent gates ',
+        'remain mandatory.</p></body></html>'
+      ].join("");
+      download(html,"PRIVATE-human-browser-report.html","text/html;charset=utf-8");
+      notice("REVIEW_ONLY: local source-free HUMAN printable report exported as PRIVATE plaintext. No release.");
+    } catch (_) {
+      notice("HOLD: printable HUMAN report not admitted or privacy confirmation declined.", true);
+    }
+  }
   async function comparePrevious() {
     const password = byId("comparePassword");
     try {
@@ -384,6 +436,7 @@
   byId("exportEncrypted").addEventListener("click", exportEncrypted);
   byId("compare").addEventListener("click", comparePrevious);
   byId("exportCounts").addEventListener("click", exportCounts);
+  byId("exportPrint").addEventListener("click", exportPrintableReport);
   byId("stageFilter").addEventListener("change", refresh);
   byId("query").addEventListener("input", refresh);
   window.addEventListener("beforeunload", event => {
