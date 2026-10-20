@@ -443,7 +443,12 @@
     catch (error) { status("compare-status", "HOLD: " + (error?.message || "Unable to select B changes")); }
   });
   el("subset-export").addEventListener("click", encryptSubset);
-  el("clear-all").addEventListener("click", () => { clear(0); clear(1); });
+  el("clear-all").addEventListener("click", () => {
+    clear(0); clear(1); clearCapture(true); expireDownloads();
+    el("subset-pass").value = "";
+    el("subset-confirm").value = "";
+    status("subset-status", "All selected PRIVATE data and passwords cleared from the workroom UI.");
+  });
   window.addEventListener("pagehide", () => {
     generations[0]++; generations[1]++;
     release(0); release(1);
