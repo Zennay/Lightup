@@ -45,6 +45,20 @@ De nieuwe knop **Download PRIVATE HUMAN bespreekagenda** maakt uitsluitend na ee
 
 Deze agenda is **PRIVATE en brongebonden**, niet een anonieme publieksrapportage. Ongetekende hashes authenticeren niemand. Geen voorstel, consensus, agenda of HUMAN keuze bevat echte geauthenticeerde cliënt/operator-consent, grant, actuele revocation of toestemming om te scannen, deployen of een beveiligingsclaim te doen. Bestaande owner-, security/privacy/browser- en exact-HEAD hosted + geregistreerde VPS-CI-gates blijven ongewijzigd. De agenda kan niet op zichzelf naar een live assessment worden gepromoveerd.
 
+## PRIVATE HUMAN conceptkeuzes veilig opslaan en hervatten
+
+Met de reeds geladen oorspronkelijke bronnen en twee tot acht exact gebonden HUMAN reviewpakketten kun je in de bespreekdesk per oorspronkelijke bestandsrij eerst een pakketnummer kiezen zonder iets toe te passen. Via **Bewaar PRIVATE HUMAN conceptkeuzes (.json)** kan deze onvoltooide selectie expliciet worden geëxporteerd. Er is nooit automatische browser- of serveropslag; de bestandsdownload vraagt nogmaals om privacybevestiging en bevat de volgende strikt begrensde zelfgerapporteerde metadata:
+
+- Alle 1–16 oorspronkelijke bronverwijzingen in de huidige volgorde, met letterlijke naam, bytegrootte, ongetekende SHA-256, onbevestigde structuurhint en per bron exact één gekozen pakketnummer 1–8 of `-1` voor **NIETS OVERNEMEN**.
+- Elk van de 2–8 oorspronkelijk ingelezen reviewer-pakketnummers in de exacte gekozen volgorde, met oorspronkelijke bytegrootte en ongetekende SHA-256. Zo is een gelijk bestandslabel met nieuwe inhoud **niet** dezelfde HUMAN review.
+- Verplicht `REVIEW_ONLY`-schema `lightup.scope_PRIVATE_human_proposal_draft.v1` met alle zes autoriteitsclaims expliciet `false`. Geen originele bronbytes, HUMAN notitietekst, true consent, grant, intrekking of scannerrecht.
+
+**Heropenprocedure:** selecteer eerst exact dezelfde oorspronkelijke lokale bronnen in dezelfde volgorde. Laad vervolgens opnieuw de werkelijke reviewinventarissen met hun identieke bytes en pakketvolgorde. Kies pas dan het eerder opgeslagen PRIVATE concept JSON bij **Heropen PRIVATE HUMAN conceptbestand**. De bestaande strikte JSON-parser weigert dubbele of onbekende velden, ongeldige autoriteitsclaims, dubbele bronidentiteiten, verkeerd gekozen pakketnummers en bestanden boven de grens van 64 KiB. De app vergelijkt daarna elke bron letterlijk op naam/grootte/hash/structuur en ieder reviewpakketnummer op echte digest + bytegrootte. Iedere afwijking weigert het complete importplan; de eerdere selecties blijven intact.
+
+Een exacte match herstelt **alleen** de voorlopige per-bron keuze in de huidige tabel, na een aparte bevestiging. Dit verandert of verwijdert **geen** oorspronkelijke bronbestanden, geen lokale HUMAN route/fase/team/notities, geen ontvangen reviewerbestanden en geen echte veiligheids- of autorisatiegegevens. Een daadwerkelijke overname vereist later de bestaande afzonderlijke HUMAN toepassing met eigen expliciete bevestiging. De keuzevoorvertoning, conflicten en aandachtspuntfilters werken daarna gewoon verder. Het gedeelde JSON-concept bevat vertrouwelijke namen/hashes en mag alleen via een apart vertrouwd PRIVÉ kanaal worden verspreid.
+
+Deze functie dient uitsluitend menselijke vervolgcontinuïteit in **Incubate M3/M7 DRAFT/HOLD**, niet het authentiseren van reviewinstellingen of het passeren van bronhouder-, privacy/security/browser-, exacte hosted+named-VPS-CI-, gescheiden actuele client/operator-consent-, action-time revocation- of HUMAN GO-voorwaarden.
+
 ## Privacy by default · ALL-TEAMS HUMAN exports (20 oktober 2026)
 
 De algemene **PRIVATE HUMAN team- en escalatiebrief** en **PRIVATE brongebonden JSON-inventaris** kunnen gegevens van *alle* geladen teams bevatten en zijn daarom uitsluitend bestemd voor vooraf gecontroleerde interne, bevoegde menselijke ontvangers. Ze delen nooit oorspronkelijke bronbytes maar kunnen vertrouwelijke oorspronkelijke bestandsnamen en ongetekende SHA-256 bevatten. Een menselijke route, fase, hash of notitie verleent geen toestemming of runtime-autoriteit.
