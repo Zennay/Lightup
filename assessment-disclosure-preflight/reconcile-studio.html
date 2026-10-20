@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE HUMAN reconciliation desk</title>
+<link rel="stylesheet" href="./reconcile-studio.css">
+<script src="./reconcile-studio.js" defer></script>
+</head>
+<body>
+<header><p class="eyebrow">LIGHTUP / LOCAL-ONLY / ASSESSMENT LAB</p>
+<h1>PRIVATE reviewer reconciliation</h1>
+<p>Compare two already-completed HUMAN reviews against <strong>the same exact unsigned PRIVATE receipt bytes</strong>. Select what to carry forward yourself. Nothing is scanned, uploaded, authorized, or released.</p></header>
+<main>
+<section class="warning" aria-labelledby="holdTitle">
+<h2 id="holdTitle">REVIEW ONLY · RELEASE HOLD</h2>
+<p>This workroom does <strong>not</strong> authenticate the original laboratory evidence, either reviewer, their identity, client/operator consent, at-action revocation or a remediated finding. Identical HUMAN words are not independent verification. All selections default to HOLD, even when both reviewers agree. Both incoming reviewer files and this workroom remain PRIVATE.</p>
+<p>Works only in a trusted secure offline browser context with WebCrypto. No scripts, styles, images or other resources are loaded over the network. Files remain in page memory unless you explicitly download a PRIVATE decision CSV. Native <code>reconcile.py finalize</code> must re-admit the exact original inputs and your decisions before any HUMAN handoff.</p>
+</section>
+<section aria-labelledby="openTitle">
+<h2 id="openTitle">1 · Open exact matching sources</h2>
+<div class="grid">
+<label>Original PRIVATE-receipt.json<input id="receipt" type="file" accept=".json,application/json"></label>
+<label>Independent reviewer A HUMAN CSV<input id="reviewA" type="file" accept=".csv,text/csv"></label>
+<label>Independent reviewer B HUMAN CSV<input id="reviewB" type="file" accept=".csv,text/csv"></label>
+</div>
+<p class="hint">The browser accepts the existing native HUMAN CSV format. To compare encrypted <code>.luhd</code> / <code>.luhb</code> sources without making plaintext browser files, use the companion native <code>reconcile.py</code> CLI; never weaken password or browser restrictions.</p>
+<div class="actions"><button id="open" type="button">Open exact review trio</button><button id="clear" type="button" class="secondary">Clear PRIVATE session</button></div>
+<p id="notice" role="status" aria-live="polite">No PRIVATE material loaded.</p>
+</section>
+<section id="desk" hidden aria-labelledby="deskTitle">
+<h2 id="deskTitle">2 · Resolve every original ordinal yourself</h2>
+<div class="stats"><span id="totals"></span><span id="different"></span><span id="selected"></span></div>
+<div class="grid">
+<label>View <select id="view"><option value="all">All ordinals</option><option value="different">Different HUMAN text</option><option value="same">Same HUMAN text (unverified)</option><option value="undecided">HOLD only</option><option value="selected">Explicit HUMAN selection</option></select></label>
+<label>Search local HUMAN text/ordinal/kind<input id="query" type="search" autocomplete="off" placeholder="PRIVATE local filter"></label>
+</div>
+<p id="visible" role="status" aria-live="polite"></p>
+<p class="hint">Filters only affect visibility. Every original ordinal is exported, including hidden rows. Changing the underlying original files requires a new load. Choosing A or B requires an explicit HUMAN reason. A selection is not approval.</p>
+<div id="entries" class="entries" aria-label="PRIVATE reviewer comparisons"></div>
+<div class="sticky"><span id="saveState" role="status" aria-live="polite">No decisions saved.</span>
+<button id="save" type="button" disabled>Export PRIVATE decision CSV</button></div>
+<p class="hint">The output pins SHA-256 of the exact original receipt and both complete native HUMAN CSV byte streams. On the same trusted machine, run <code>reconcile.py finalize --decisions ...</code> with the unchanged source files. It rejects any changed source, reordered ordinal, invalid stage, CSV or decision. A SHA-256 digest proves byte equality only, never origin or authority. Local browser downloads may receive normal filesystem permissions: move the PRIVATE file into a trusted owner-only directory before finalization.</p>
+</section>
+</main>
+<footer>LightUp · INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD · no source claims, scanning, authorization, recipient delivery or release</footer>
+</body></html>
