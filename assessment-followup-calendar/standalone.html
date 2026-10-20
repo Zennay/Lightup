@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FVcWaM1kvJahzhuSlQsOCC7h6vwsmlnogzc1apMvDog='; style-src 'sha256-HUlm6aqEChCFyhlqqnwAML8DEcKWrxeYmb62wHptVvw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hp5+wdGNS5u9baZd+I9JUnYkaFXSqDdAs0u92kfZrWc='; style-src 'sha256-HUlm6aqEChCFyhlqqnwAML8DEcKWrxeYmb62wHptVvw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -25,7 +25,7 @@
   const MAX_BYTES = 1024*1024, MAX_ROWS = 2048, PAGE = 35;
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
-  let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0;
+  let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -144,7 +144,7 @@
     $("prev").disabled=page===0;$("next").disabled=page>=pages-1;
     const body=$("rows");body.replaceChildren();
     visible.slice(page*PAGE,page*PAGE+PAGE).forEach(r=>{
-      const tr=dom("tr"),slot=plan.get(r.ordinal);
+      const tr=dom("tr"),slot=plan.get(r.ordinal);tr.dataset.ordinal=String(r.ordinal);
       tr.append(dom("td","#"+r.ordinal),dom("td",r.severity,"severity"),
         dom("td",r.stage+" / "+(r.group||"unassigned")),
         dom("td",r.action||"No HUMAN action supplied"));
@@ -165,6 +165,49 @@
       for(const element of [d,t,length,reminder]){let td=dom("td");td.append(element);tr.append(td);}
       body.append(tr);
     });
+    renderAgenda();
+  }
+  function renderAgenda(){
+    if(!active)return;
+    const now=new Date(),days=$("agendaHorizon").value;
+    const q=$("agendaQuery").value.trim().toLocaleLowerCase();
+    let upcoming=items.filter(r=>{
+      const p=plan.get(r.ordinal);if(!p)return false;
+      const at=eventDate(p.day,p.time);
+      if(days==="overdue" && at>=now)return false;
+      if(days==="7"||days==="30"){
+        const limit=new Date(now.getTime()+Number(days)*86400000);
+        if(at<now||at>limit)return false;
+      }
+      return !q || [r.group,r.action,r.blocker,String(r.ordinal)].some(v=>v.toLocaleLowerCase().includes(q));
+    });
+    upcoming.sort((a,b)=>{
+      const p=plan.get(a.ordinal),v=plan.get(b.ordinal);
+      return (p.day+"T"+p.time).localeCompare(v.day+"T"+v.time)||a.ordinal-b.ordinal;
+    });
+    const totalPages=Math.max(1,Math.ceil(upcoming.length/50));
+    agendaPage=Math.max(0,Math.min(agendaPage,totalPages-1));
+    $("agendaPrev").disabled=agendaPage===0;
+    $("agendaNext").disabled=agendaPage>=totalPages-1;
+    $("agendaSummary").textContent=upcoming.length+" scheduled HUMAN reminders in this view · page "+(agendaPage+1)+" of "+totalPages+" · "+zone+" · PRIVATE planning, not security evidence.";
+    const body=$("agendaRows");body.replaceChildren();
+    for(const r of upcoming.slice(agendaPage*50,agendaPage*50+50)){
+      const p=plan.get(r.ordinal),tr=dom("tr"),edit=dom("button","Edit original #"+r.ordinal,"ghost");
+      edit.type="button";
+      edit.addEventListener("click",()=>{
+        $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
+        page=Math.floor((r.ordinal-1)/PAGE);
+        render();
+        const source=document.querySelector('#rows tr[data-ordinal="'+r.ordinal+'"] input[type="date"]');
+        $("desk").scrollIntoView({behavior:"smooth",block:"start"});
+        if(source)source.focus({preventScroll:true});
+      });
+      const cell=dom("td");cell.append(edit);
+      tr.append(dom("td",p.day+" "+p.time),dom("td","#"+r.ordinal),
+        dom("td",r.severity),dom("td",(r.stage||"unset")+" / "+(r.group||"unassigned")),
+        dom("td",r.action||"No HUMAN action supplied"),cell);
+      body.append(tr);
+    }
   }
   function restore(parsed){
     hold(JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD));
@@ -184,11 +227,12 @@
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
-    items=parsed;hash=h;plan=new Map();active=true;changed=false;page=0;
-    $("desk").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    items=parsed;hash=h;plan=new Map();active=true;changed=false;page=0;agendaPage=0;
+    $("desk").hidden=false;$("agenda").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";$("tz").textContent=zone;
+    $("agendaHorizon").value="7";$("agendaQuery").value="";
     render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
   async function onRestore(file){
@@ -197,7 +241,7 @@
     hold(!raw.startsWith("\uFEFF"));
     const imported=restore(csv(raw,PLAN_HEAD.length));
     if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
-    plan=imported;page=0;changed=false;render();
+    plan=imported;page=0;agendaPage=0;changed=false;render();
     inform(`Restored ${plan.size} HUMAN-only reminders matched to the exact original worksheet and timezone.`);
   }
   function planExport(){
@@ -263,12 +307,16 @@
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
-    items=[];plan=new Map();hash="";active=false;changed=false;
-    $("desk").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    items=[];plan=new Map();hash="";active=false;changed=false;agendaPage=0;
+    $("desk").hidden=true;$("agenda").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     $("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
+  hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
+  hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
+  hook("agendaPrev","click",()=>{agendaPage--;renderAgenda();});
+  hook("agendaNext","click",()=>{agendaPage++;renderAgenda();});
   function bulk(clear=false){
     const candidates=filtered();
     if(!candidates.length){inform("No matching rows to schedule.",true);return;}
@@ -357,7 +405,13 @@
 <div class="tablebox"><table><thead><tr><th>Original ordinal</th><th>Source severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Local date</th><th>Time</th><th>Duration</th><th>Reminder</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div class="row"><button id="prev" type="button" class="ghost">Previous</button><button id="next" type="button" class="ghost">Next</button></div>
 </section>
-<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">3 · Save / resume or export calendar</h2>
+<section id="agenda" class="panel" hidden aria-labelledby="agendaHeading"><h2 id="agendaHeading">3 · Upcoming HUMAN agenda</h2>
+<p>Human-proposed dates only, ordered by local scheduled time. Past-due does not prove an unresolved vulnerability. Select any event to edit the original ordinal in the private planning desk.</p>
+<div class="toolbar"><label>View <select id="agendaHorizon"><option value="all">All scheduled</option><option value="7" selected>Next 7 days</option><option value="30">Next 30 days</option><option value="overdue">Past due</option></select></label><label>Search HUMAN group / action <input type="search" id="agendaQuery" maxlength="120" placeholder="Local only"></label></div>
+<p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
+<div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
+</section>
+<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">4 · Save / resume or export calendar</h2>
 <p>Scheduled events use original anonymous ordinals and source-reported severity, with your own HUMAN next-action text only when explicitly opted in. <strong>Original lab-source fields are never imported here, but HUMAN notes can themselves mention private targets, clients or evidence. Review before exporting.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
 <div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
 <div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
