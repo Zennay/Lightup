@@ -124,7 +124,7 @@ th{background:#e6eef7}#detail:empty{display:none}
 @media(max-width:720px){.scroll{overflow-x:auto}table{min-width:760px}}
 @media print{body{padding:0;background:white}button,.controls{display:none}}
 """
-    document = """<!doctype html><html lang="en"><meta charset="utf-8">
+    document = ("""<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-""" + sha + """'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>LightUp PRIVATE HUMAN privacy timeline</title><style>""" + css + """</style>
@@ -158,5 +158,5 @@ Literal changes since previous round only</label>
 <footer>Incubate M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.
 No scans, models, target access, release, grants, authentication, retest,
 deletion, exports or external recipients.</footer>
-<script>""" + script + """</script></html>"""
+<script>""" + script + """</script></html>""")
     return document.encode("utf-8")
