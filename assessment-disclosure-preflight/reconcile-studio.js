@@ -472,6 +472,7 @@
     const ready = !invalid && exportedRevision === decisionRevision &&
                   Boolean(source.receipt) && globalThis.LightUpHumanVault;
     byId("seal").disabled = !ready;
+    byId("exportPlain").disabled = !ready || typeof exportedDecisionHash !== "string";
     byId("counts").disabled = !ready;
     byId("cover").disabled = !ready;
     byId("exportReceiving").disabled = !(ready && receivingRecord &&
@@ -609,6 +610,29 @@
         "HOLD: encryption, changed HUMAN choices, incomplete password, browser context or consent prompt refused. Existing decisions retained.";
     } finally {
       pass.value = ""; repeat.value = "";
+    }
+  }
+  function exportPlain() {
+    const savedSource = source, currentEpoch = epoch, currentRevision = decisionRevision;
+    try {
+      admitted(savedSource && exportedRevision === currentRevision &&
+               typeof exportedDecisionHash === "string" &&
+               /^[a-f0-9]{64}$/u.test(exportedDecisionHash) &&
+               decisions.length === savedSource.rows.length);
+      const originalFormatCsv = nativeSelectedCsv(nativeSelectedRows());
+      admitted(savedSource === source && currentEpoch === epoch &&
+               currentRevision === decisionRevision && exportedRevision === currentRevision);
+      admitted(confirm("Export an UNENCRYPTED complete PRIVATE HUMAN CSV containing selected ORIGINAL questions and next actions? Other browser downloads can expose this file. Store in a trusted owner-only 0600 location and retain the separate A/B/HOLD decision CSV. This never authorizes disclosure."));
+      admitted(savedSource === source && currentEpoch === epoch &&
+               currentRevision === decisionRevision && exportedRevision === currentRevision);
+      localDownload(originalFormatCsv, "PRIVATE-browser-reconciled-human.csv",
+                    "text/csv;charset=utf-8");
+      byId("sealStatus").textContent =
+        "REVIEW_ONLY: complete ORIGINAL-format UNENCRYPTED HUMAN CSV downloaded. Keep PRIVATE with 0600 custody and independent authorization checks.";
+      notice("REVIEW_ONLY: complete PRIVATE HUMAN CSV offered locally, not approved, released or automatically shared.");
+    } catch (_) {
+      byId("sealStatus").textContent =
+        "HOLD: plaintext export rejected due to stale original HUMAN decision, unsafe data or declined explicit privacy confirmation.";
     }
   }
   function countsCsv(rows) {
@@ -853,6 +877,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
   byId("clear").addEventListener("click", clear);
   byId("save").addEventListener("click", exportDecisions);
   byId("seal").addEventListener("click", sealResult);
+  byId("exportPlain").addEventListener("click", exportPlain);
   byId("counts").addEventListener("click", exportCounts);
   byId("cover").addEventListener("click", exportCover);
   byId("restore").addEventListener("click", restoreDecisions);
