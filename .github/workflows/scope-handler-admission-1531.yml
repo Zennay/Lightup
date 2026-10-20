@@ -1,0 +1,109 @@
+name: scope-1531-offline-handler-admission
+on:
+  push:
+    branches:
+      - chatgpt/scope-1531-handler-admission-review-20261017-0247
+    paths:
+      - scripts/scope_handler_admission_review_20261017.py
+      - tests/test_scope_handler_admission_20261017.py
+      - tests/test_scope_handler_admission_boundary_20261017.py
+      - docs/scope-handler-admission-20261017.md
+      - .github/workflows/scope-handler-admission-1531.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope-1531-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fictional-offline-acceptance:
+    if: github.repository == 'Zennay/Lightup'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Assert exclusive additive scope and run tests (6 source REDs)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          base=e73b7445c87ad239bdb03c50a99078ef93163b02
+          test "${{ github.ref_name }}" = "chatgpt/scope-1531-handler-admission-review-20261017-0247"
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          git merge-base --is-ancestor "$base" HEAD
+          owned=(
+            '.github/workflows/scope-handler-admission-1531.yml'
+            'docs/scope-handler-admission-20261017.md'
+            'scripts/scope_handler_admission_review_20261017.py'
+            'tests/test_scope_handler_admission_20261017.py'
+            'tests/test_scope_handler_admission_boundary_20261017.py'
+          )
+          assert_owned_tree() {
+            local expected actual file mode kind oid entry
+            expected="$(printf '%s\n' "${owned[@]}" | sort)"
+            actual="$(git -c diff.external= diff-tree --no-commit-id -r --no-ext-diff --name-only "$base" HEAD | sort)"
+            test "$actual" = "$expected"
+            # No pre-existing files may be modified, deleted or renamed.
+            git -c diff.external= diff-tree --no-commit-id -r --no-ext-diff --name-status "$base" HEAD |
+              awk -F '\t' 'NF != 2 || $1 != "A" { exit 1 }'
+            for file in "${owned[@]}"; do
+              entry="$(git ls-tree HEAD -- "$file")"
+              read -r mode kind oid file_in_tree <<< "$entry"
+              test "$mode" = "100644"
+              test "$kind" = "blob"
+              test "$file_in_tree" = "$file"
+              test "$(git cat-file -s "$oid")" -le 262144
+              test -f "$file" && test ! -L "$file"
+            done
+            echo "scope1531_additive_tree=PASS"
+          }
+          assert_owned_tree
+          python -I -S -B -m unittest discover -s tests -p 'test_scope_handler_admission*20261017.py' -v
+          assert_owned_tree
+          # Deliberately require the original-source strict suite to be RED
+          # until the original production owner repairs handler admission.
+          # Never mistake six recorded source regressions for source approval.
+          strict_log="$(mktemp)"
+          trap 'rm -f "$strict_log"' EXIT
+          if LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX=1 python -I -S -B -m unittest discover -s tests -p 'test_scope_handler_admission*20261017.py' -q >"$strict_log" 2>&1; then
+            echo "Unexpected strict success: owner-source state changed; review expected RED markers"
+            exit 1
+          fi
+          grep -F 'Ran 42 tests' "$strict_log"
+          grep -Fx 'FAILED (failures=6)' "$strict_log"
+          # A count alone is insufficient: one newly broken unrelated test could
+          # mask a fixed source-owner acceptance test while the total remains six.
+          # Compare each exact unittest FAIL identifier, no unexpected errors.
+          expected_red_names="$(printf '%s\n' 'test_source_red_noncallable_must_be_rejected_before_registration' 'test_source_red_numeric_handler_must_be_rejected_atomically' 'test_source_red_wrong_handler_arity_must_fail_before_registry_mutation' 'test_source_red_async_handler_must_fail_before_registry_mutation' 'test_source_red_generator_handler_must_be_rejected_atomically' 'test_source_red_foreign_callable_signature_must_not_be_reflected' | sort)"
+          actual_red_names="$(awk '$1 == "FAIL:" {print $2}' "$strict_log" | sort)"
+          test "$actual_red_names" = "$expected_red_names"
+          # All six failures must have the original missing-exception reason.
+          # Wrong behavior at the same method name must not pass as known RED.
+          actual_missing_rejection="$(grep -Ec '^AssertionError: OrchestrationError not raised$' "$strict_log" || true)"
+          test "$actual_missing_rejection" = "6"
+          if grep -E '^(ERROR: |UNEXPECTED SUCCESS: )' "$strict_log"; then
+            echo 'Unexpected additional source/test error in strict gate'
+            exit 1
+          fi
+          echo 'scope1531_strict_source_red_names=PASS'
+          echo 'scope1531_strict_source_red_reasons=PASS'
+          echo 'scope1531_strict_source_red=6'
+          # Broader stock ToolRegistry/ToolExecutor policy regression, isolated
+          # in this matrix; uses fictional callbacks and temporary local SQLite.
+          # This is NOT a network scan, active work, permanent VPS proof or release.
+          python -I -S -B -c 'import sys, unittest; sys.path.insert(0, "src"); suite=unittest.defaultTestLoader.discover("tests", pattern="test_orchestration.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
+          echo 'scope1531_stock_orchestration=PASS'
+          assert_owned_tree
