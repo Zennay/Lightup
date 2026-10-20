@@ -29,6 +29,11 @@ tbody tr:hover { background:#1a3046 }
 td small { display:block; color:#a8c0d2; font-size:.77rem; margin-top:2px; }
 .stats { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0 19px; }
 .stat { background:#20354b; border:1px solid #355672; border-radius:12px; padding:12px 15px; min-width:175px; flex:1; font-size:.87rem; }
+.vault { border:1px solid #468aa8; background:#112f3e; padding:16px 18px; border-radius:14px; margin:15px 0 20px; }
+.vault h3 { margin:0 0 7px; font-size:1.05rem; color:#b5e5ff; }
+.vault .actions label:not(.filelabel) { display:grid; gap:5px; font-size:.9rem; color:#e4f0fc; }
+.vault .actions input[type=password] { background:#07131f; border:1px solid #8cb5cd; border-radius:9px; color:#fff; min-width:220px; padding:9px; font:inherit; }
+.vault .actions input[type=password]:focus-visible {outline:3px solid #fce18b; outline-offset:2px;}
 .drift { border:1px solid #506985; border-radius:11px; background:#1b3046; padding:12px 17px; margin:13px 0; overflow-wrap:anywhere; }
 .drift strong { color:#c1e6f8; }
 .drift li { padding:3px 0; font-size:.85rem; }
@@ -44,6 +49,8 @@ button:disabled { opacity:.43; cursor:not-allowed; }
 footer { color:#95adbe; font-size:.78rem; text-align:center; }
 @media(max-width:720px) { main {width:96vw;padding-top:8px} header {padding-top:18px} .panel {padding:16px} .filelabel,button{width:100%;text-align:center} }
 @media print {
+.vault {display:none!important}
+
 :root {color-scheme:light; background:white; color:black}
 main{width:100%;padding:0}header{padding:0}
 .panel{break-inside:avoid;box-shadow:none;background:#fff;color:#000;border:1px solid #999;padding:9px;margin:9px 0}
