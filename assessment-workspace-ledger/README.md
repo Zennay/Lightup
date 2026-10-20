@@ -710,11 +710,13 @@ customer data or these PRIVATE files without a separate authorized disclosure
 process. The **source checkout** includes `portfolio.py`; the native
 `package.py build` now produces a complete v18 offline software ZIP with
 this module included, using only installed original trusted software bytes.
-The **previously checked-in v16 binary ZIP is historical and has NOT
-been rebuilt or replaced in this run**. The native local inspector remains
-able to inspect original v16 and historical v17 ZIP manifests separately from v18.
-Do not claim a v18 downloadable ZIP until its new binary is actually committed.
-Neither software archive contains original customer data.
+The branch's [published source-only v18 offline ZIP](LightUp-Workspace-Ledger-Offline.zip)
+contains all original and newly added software files, including both portfolio
+modules. It is an **UNSIGNED** offline toolkit: source hashes are byte
+identities, not software publisher authentication, security review or permission.
+The native inspector retains read-only compatibility with prior v16/v17
+archive layouts; those historical layouts are not the current branch download.
+The v18 software package contains no original customer data.
 
 For minimum-necessary casework, specify an optional exact proposed owner:
 
@@ -770,7 +772,7 @@ The original customer kits are NOT reopened, real consent is NOT revalidated,
 and a removed proposal is NEVER proof that a vulnerability was fixed.
 Neither output auto-dispatches actions, launches assessments, creates deadlines
 or authenticates the proposed human recipient. Privacy depends on explicit
-operator control of owner-only outputs. Source-built v18 offline software
-will include both portfolio modules; the repository's earlier ZIP still
-contains the old v16 sources until a separately authorized software build
-actually replaces it. No QA/regression/test suites are created or run.
+operator control of owner-only outputs. The committed current v18 offline source-only ZIP includes both portfolio
+modules and the original complete software. SHA-256 hashes authenticate only
+local byte equality, NOT the publisher or an approved real security action.
+No QA/regression/test suites are created or run.
