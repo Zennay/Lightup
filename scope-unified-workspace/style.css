@@ -67,3 +67,13 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-peer-preview-list li+li{border-top:1px solid #385262;padding-top:8px}
 .shelf-peer-preview .shelf-status{margin-top:10px;white-space:normal;overflow-wrap:anywhere}
 @media print{.shelf-peer-toolbar,.shelf-peer-preview{display:none}}
+
+/* PRIVATE HUMAN decision draft: explicitly portable, never automatically persisted. */
+.shelf-peer-draft-desk{display:grid;gap:10px;margin:16px 0;padding:15px;background:#1b3444;border:1px solid #5a7b8a;border-radius:10px}
+.shelf-peer-draft-desk h4{font-size:14px;color:#e2f7f0;margin:0;font-weight:750}
+.shelf-peer-draft-desk p{font-size:12px;line-height:1.6;margin:0;color:#c3d7d9}
+.shelf-peer-draft-desk label{font-size:12px;font-weight:700;color:#d6e7e7}
+.shelf-peer-draft-desk input[type=file]{max-width:100%}
+.shelf-peer-draft-desk .action{justify-self:start}
+.shelf-peer-draft-desk input:focus-visible,.shelf-peer-draft-desk button:focus-visible{outline:3px solid #adf0df;outline-offset:2px}
+.shelf-peer-draft-desk :disabled{opacity:.5;cursor:not-allowed}
