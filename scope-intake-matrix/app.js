@@ -14,7 +14,11 @@
     inventory: "Passive inventory proposal",
     http_baseline: "Passive HTTP baseline proposal",
     tls_baseline: "Passive TLS baseline proposal",
-    lab_review: "Isolated LAB review proposal"
+    lab_review: "Isolated LAB review proposal",
+    "inventory+http_baseline": "Passive inventory + HTTP baseline proposal",
+    "inventory+tls_baseline": "Passive inventory + TLS baseline proposal",
+    "http_baseline+tls_baseline": "Passive HTTP + TLS baseline proposal",
+    "inventory+http_baseline+tls_baseline": "Passive inventory + HTTP + TLS baseline proposal"
   });
   const OWNERSHIP = Object.freeze({
     unverified: "Unverified",
