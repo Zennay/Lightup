@@ -69,3 +69,18 @@ python3 assessment-briefing/human_return.py \
 This strictly reopens the same independently obtained original lab file and verifies its **exact unsigned source-byte digest** against the original briefing manifest, original endpoint/finding totals, the complete seven-column worksheet header, EVERY original ordinal, EVERY original severity and its evidence-reference count before touching output. CSV size is limited to 1 MiB, human owner to 120 characters, each action/blocker to 600, and unknown status values or altered membership HOLD the whole import. There is no silent row matching or partial application. Both supplied original lab and worksheet are still untrusted local files; the unsigned manifest does not authenticate the producer or human identity.
 
 Creates an entirely NEW 0700 private directory containing `private-human-return.html` (printable scriptless private per-finding human plan plus original unchanged evidence in optional detail panels) and `private-human-summary.json` (self-reported status counts and no human names/notes). Each file is 0600, and any previous outputs or original source remain unchanged. Human edits are labels/proposals only, not verified remediation, approval, source authenticity, real-time consent, accepted scope or authorization. Exit 2 is REVIEW_ONLY and exit 3 is HOLD.
+
+## NEW: compare two source-bound HUMAN revisions (same original source)
+
+No code or model infers that a review-status movement proves an improved exposure. Compare two separately saved editable human worksheets against the **exact same original original lab source and original briefing manifest**:
+
+```bash
+python3 assessment-briefing/human_revision.py \
+  --source ./original-private-lab.json \
+  --manifest ./NEW-PRIVATE-BRIEFING/manifest.json \
+  --before-worksheet ./human-before.csv \
+  --after-worksheet ./human-after.csv \
+  --output-dir ./NEW-PRIVATE-HUMAN-REVISIONS
+```
+
+Both human CSVs are independently admitted in full using the same strict original-ordinal/severity/evidence-count contract; all changes are then explicitly compared by HUMAN stage, group, proposed action and blocker. The new private scriptless `private-human-revisions.html` shows only changed human fields with PRIVATE original finding titles; `human-revision-counts.json` contains only numeric change / HUMAN stage-transition totals and unsigned fingerprints (still PRIVATE). Ambiguous membership or unmatched source HOLD the entire operation, leaving all prior source and review files untouched. Original finding text, actual evidence, target state, client consent, reviewer identity or source authenticity are never modified or verified.
