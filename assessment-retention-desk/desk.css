@@ -22,7 +22,7 @@ input[type=text] { width:100%; min-width:175px }
 .filters label { display:grid; gap:3px; color:#b8cadb; font-size:.85rem }
 button:focus-visible,input:focus-visible,select:focus-visible,.filelabel:focus-visible { outline:3px solid #fed483; outline-offset:2px }
 .scroll { width:100%; overflow-x:auto; border:1px solid #31475d; border-radius:11px }
-table { border-collapse:collapse; width:100%; min-width:1010px; font-size:.9rem }
+table { border-collapse:collapse; width:100%; min-width:1710px; font-size:.9rem }
 th { color:#bbd5e7; text-align:left; font-size:.79rem; letter-spacing:.03em; background:#1c3047 }
 td,th { padding:12px; border-bottom:1px solid #34485e; vertical-align:top; }
 tbody tr:hover { background:#1a3046 }
@@ -63,3 +63,6 @@ table{min-width:0;font-size:10px}
 td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
 .stat{background:white;color:black;border:1px solid #aaa}
 }
+/* HUMAN custody/sensitivity/hold fields are visible and always private; none denotes a verified legal decision. */
+td select { max-width: 225px; width: 100%; }
+td input[type=text] { max-width: 255px; }
