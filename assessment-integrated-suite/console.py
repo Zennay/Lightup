@@ -7,6 +7,7 @@ import remediation_console
 import remediation_team_console
 import evidence_console
 import evidence_dialogue_console
+import disclosure_console
 import os
 from pathlib import Path
 import subprocess
@@ -57,6 +58,8 @@ class Session:
     recipient_reply: str = ""
     sender_preparation: str = ""
     sender_triage: str = ""
+    disclosure_workroom: str = ""
+    disclosure_review: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -304,6 +307,8 @@ def last_packages(session: Session) -> None:
         ("Original source-bound PRIVATE team collaboration", session.team_kit),
         ("Original PRIVATE evidence selection", session.evidence_preparation),
         ("Original PRIVATE evidence selected-only HUMAN dossier", session.evidence_dossier),
+        ("Original PRIVATE disclosure preflight + HUMAN workroom", session.disclosure_workroom),
+        ("Original source-free PRIVATE HUMAN disclosure report", session.disclosure_review),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -342,6 +347,9 @@ def main() -> int:
         "29": lambda x: evidence_dialogue_console.execute(x, path_prompt, ask, "sender-prepare"),
         "30": lambda x: evidence_dialogue_console.execute(x, path_prompt, ask, "sender-return"),
         "31": lambda x: evidence_dialogue_console.execute(x, path_prompt, ask, "next-round"),
+        "32": lambda x: disclosure_console.original(x, ask, path_prompt, "prepare"),
+        "33": lambda x: disclosure_console.original(x, ask, path_prompt, "render"),
+        "34": lambda x: disclosure_console.original(x, ask, path_prompt, "summarize"),
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
@@ -375,6 +383,9 @@ def main() -> int:
         print("29. Prepare original PRIVATE HUMAN sender triage workroom")
         print("30. Admit original PRIVATE HUMAN sender triage and follow-up")
         print("31. Prepare exact-source PRIVATE next HUMAN question proposal (no sending)")
+        print("32. Prepare original PRIVATE disclosure preflight + source-free HUMAN workroom")
+        print("33. Admit exact-receipt PRIVATE HUMAN disclosure decisions locally")
+        print("34. Generate original small-cohort-suppressed HUMAN stage counts (PRIVATE)")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -382,7 +393,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 31.")
+                print("Choose a number from 0 to 34.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
