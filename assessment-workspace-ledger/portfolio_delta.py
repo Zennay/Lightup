@@ -210,7 +210,8 @@ def row_csv(differences):
     return buffer.getvalue()
 
 
-def summary_html(previous, current, changes, summary, shifted):
+def summary_html(previous, current, changes, summary, shifted,
+                 newly_visible=(), no_longer_visible=()):
     bits = [
         "<p>PRIVATE HUMAN proposals from two expressly selected historical unsigned "
         "portfolio packets. The original case context identities must match "
@@ -223,8 +224,11 @@ def summary_html(previous, current, changes, summary, shifted):
         "; unchanged: " + str(summary.get("unchanged", 0)) + ".</p>",
         "<p>Original signed/reviewed chain verified: NO. Historical original "
         "HUMAN packet changes in " + str(shifted) +
-        " local case slots (unsigned metadata only). Removed human proposals "
-        "must NOT be reported as fixed findings.</p>",
+        " shared local case slots (unsigned metadata only). Newly visible "
+        "owner-filtered case slots: " + str(len(newly_visible)) +
+        "; no longer visible: " + str(len(no_longer_visible)) +
+        ". Visibility is HUMAN proposal membership, NOT source removal, a "
+        "verified fix, a revoked authorization or completed security work.</p>",
         "<p><a href='PRIVATE-HUMAN-delta.html'>Open PRIVATE source-bound "
         "HUMAN change details</a>. Confidential owner/action text is omitted "
         "from this overview and remains in the owner-private detail and CSV.</p>",
@@ -261,6 +265,7 @@ def changes_html(changes):
 
 def run(args):
     if (not isinstance(args.before, str) or not isinstance(args.after, str) or
+        not os.path.isabs(args.before) or not os.path.isabs(args.after) or
         os.path.normpath(args.before) != args.before or
         os.path.normpath(args.after) != args.after or args.before == args.after):
         reject("PRIVATE HOLD: choose two distinct canonical original portfolios")
@@ -271,14 +276,23 @@ def run(args):
         now["owner_filter_is_unauthenticated_human_label"] or
         old["proposed_owner_filter"] != now["proposed_owner_filter"]):
         reject("PRIVATE HOLD: incompatible per-owner HUMAN disclosure filter")
-    if (set(previous[2]) != set(current[2]) or
-        any(previous[2][i]["context_sha256"] != current[2][i]["context_sha256"]
-            for i in previous[2])):
-        reject("PRIVATE HOLD: different ORIGINAL case identities/ordinals")
+    before_ids, after_ids = previous[2], current[2]
+    overlap = set(before_ids) & set(after_ids)
+    filtered = old["owner_filter_is_unauthenticated_human_label"]
+    if (not overlap or (not filtered and set(before_ids) != set(after_ids)) or
+        any(before_ids[i]["context_sha256"] != after_ids[i]["context_sha256"]
+            for i in overlap)):
+        reject("PRIVATE HOLD: different or unanchored ORIGINAL case identities")
+    # Owner-filtered views omit all cases without proposals for that exact
+    # HUMAN owner. A case may appear/disappear WITHOUT source drift. Only
+    # permit this within a shared unchanged original-case anchor; two
+    # unrelated all-disjoint collections must fail closed.
+    newly_visible = sorted(set(after_ids) - set(before_ids))
+    no_longer_visible = sorted(set(before_ids) - set(after_ids))
     changes, counts = compare(previous, current)
     changed_packets = sum(
-        previous[2][i]["original_human_actions_sha256"] !=
-        current[2][i]["original_human_actions_sha256"] for i in previous[2]
+        before_ids[i]["original_human_actions_sha256"] !=
+        after_ids[i]["original_human_actions_sha256"] for i in overlap
     )
     # Second read: no stored historical input may drift during presentation.
     if digest(read_portfolio(args.before)[0]) != digest(previous[0]) or (
@@ -298,14 +312,24 @@ def run(args):
         "human_change_counts": counts,
         "human_changes": changes,
         "changed_original_human_packet_slots": changed_packets,
+        "newly_visible_human_case_slots": newly_visible,
+        "no_longer_visible_human_case_slots": no_longer_visible,
+        "shared_original_case_anchor_count": len(overlap),
     }
+    encoded = canonical(output)
+    if len(encoded) > MAX_MANIFEST:
+        reject("PRIVATE HOLD: HUMAN comparison exceeds native private manifest bound")
+    private_csv = row_csv(changes)
+    if len(private_csv.encode("utf-8")) > MAX_MANIFEST:
+        reject("PRIVATE HOLD: HUMAN delta CSV exceeds private admission bound")
     folder = new_private(args.private_parent)
     try:
         write_private(folder, "OPEN-PRIVATE.html",
-                      summary_html(previous, current, changes, counts, changed_packets))
+                      summary_html(previous, current, changes, counts, changed_packets,
+                                   newly_visible, no_longer_visible))
         write_private(folder, "PRIVATE-HUMAN-delta.html", changes_html(changes))
-        write_private(folder, "PRIVATE-HUMAN-delta.csv", row_csv(changes))
-        write_private(folder, "PRIVATE-HUMAN-delta.json", canonical(output))
+        write_private(folder, "PRIVATE-HUMAN-delta.csv", private_csv)
+        write_private(folder, "PRIVATE-HUMAN-delta.json", encoded)
     except BaseException:
         shutil.rmtree(folder)
         raise
