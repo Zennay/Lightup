@@ -256,6 +256,7 @@ def publish(vault: Path, cockpits: list[str], destination: Path,
             vault not in destination.parents and vault != destination and
             all(Path(p).is_absolute() and
                 Path(p) != destination and destination not in Path(p).parents
+                and Path(p) not in destination.parents
                 for p in cockpits),
             "New owner-only output must not overlap source or encrypted input")
     plan = open_vault(vault)
