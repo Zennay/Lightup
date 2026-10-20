@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import argparse
 import collections
+import csv
+import io
 import sys
 
 from curate import (
@@ -141,6 +143,31 @@ def human_action(row: dict) -> str:
     return "HUMAN: await separately approved recipient response; no message sent"
 
 
+def human_review_queue(rows: list[dict]) -> bytes:
+    """Local proposed HUMAN action list; NO actual queue, assignment or dispatch.
+
+    Only original ordinal and canonical source-reported severity, HUMAN priority
+    and self-reported workflow fields. Does not export raw original targets,
+    client IDs, findings, evidence or human freeform questions/replies.
+    """
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\r\n")
+    writer.writerow((
+        "original_ordinal", "source_reported_severity", "human_priority",
+        "recipient_human_stage", "sender_human_route",
+        "proposed_human_next_action_not_executed",
+    ))
+    rank = {key: i for i, key in enumerate(("urgent", "soon", "routine"))}
+    for row in sorted(rows, key=lambda r: (
+            rank[r["human_priority"]], r["original_ordinal"])):
+        writer.writerow((
+            row["original_ordinal"], row["source_reported_severity"],
+            row["human_priority"], row["recipient_human_stage"],
+            row["sender_human_route"], human_action(row),
+        ))
+    return output.getvalue().encode("utf-8")
+
+
 def label_cards(counts: dict[str, int], caption: str) -> str:
     return ("<section class='card'><h2>" + h(caption) + "</h2>" +
             "".join("<p><strong>" + h(name) + ":</strong> " + str(value) +
@@ -191,7 +218,7 @@ def render_hub(rows: list[dict], reported_total: int,
         " actual owner, client consent, operator consent, source evidence, grant,"
         " revocation, remediation, live runtime, scanner dispatch or release"
         " is established by this report or any source-reported stage.</p>"
-        "<p>This is a **local HUMAN document handoff**, not a live assessment queue."
+        "<p>This is a local HUMAN document handoff, not a live assessment queue."
         " Nothing is sent, approved, rescanned or scheduled automatically.</p>"
         "<p>Source-identifier-minimized fields only, but HUMAN freeform questions,"
         " group names and recipient replies can still identify clients."
@@ -223,6 +250,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                       else "HUMAN_RECIPIENT_REPLY_AVAILABLE" if recipient_notes is not None
                       else "HUMAN_SELECTION_ONLY")
     master = render_hub(records, len(source["findings"]), document_stage)
+    action_queue = human_review_queue(records)
     priorities = {
         priority: render_hub(records, len(source["findings"]), document_stage,
                              priority)
@@ -255,6 +283,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "sender_human_triage_sha256_unsigned":
             None if triage_bytes is None else digest(triage_bytes),
         "private_master_overview_sha256_unsigned": digest(master),
+        "private_human_review_queue_sha256_unsigned": digest(action_queue),
         "private_priority_overview_sha256_unsigned": {
             priority: digest(contents) for priority, contents in priorities.items()
         },
@@ -263,6 +292,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     }
     publish_new(destination, {
         "PRIVATE-HUMAN-assessment-overview.html": master,
+        "PRIVATE-HUMAN-review-candidates-NOT-DISPATCHED.csv": action_queue,
         "PRIVATE-HUMAN-assessment-overview-receipt.json": json_bytes(receipt),
         "PRIVATE-HUMAN-assessment-overview-counts.json": json_bytes(aggregate),
         **{
