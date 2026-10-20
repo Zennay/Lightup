@@ -119,7 +119,11 @@ HUMAN handoff, open a private local browser that displays the earlier
 answers, stages and clarification questions under each original request.
 Every earlier reply is DISPLAY ONLY, not an authenticated reviewer.
 The coordinator enters a NEW HUMAN stage, answer and question from blank
-fields and saves a separate encrypted <code>.luhr</code>. That return uses
+fields and saves a separate encrypted <code>.luhr</code>. To resume an
+earlier independently saved coordinator response, explicitly pass
+<code>--continuation "$HOME/lightup-private/older-coordinator.luhr"</code>;
+the original redacted source, all previous replies and the saved coordinator
+response are admitted again before a fresh workroom is published. That return uses
 the SAME strict original recipient reply format; no automatic agreement
 or closure is inferred.</p>
 <pre>python3 remediation-human-replies/coordination.py \
@@ -139,7 +143,11 @@ HUMAN-only review register: open clarification questions, awaiting responses,
 ongoing discussion, declined HUMAN requests, and previously answered-but-
 NOT-verified HUMAN requests. Original distinct case identity is not inferred.
 The static private HTML, structured private-human-followup.json and
-private-aggregate.json stay offline and PRIVATE.</p>
+private-aggregate.json stay offline and PRIVATE. If separately provided,
+<code>--comparison "$HOME/lightup-private/multi-replies/private-comparison.json"</code>
+binds an existing native multi-reply HUMAN comparison to the SAME original
+selected source digest and marks literal earlier disagreements for human
+priority without claiming independent reviewers or validated fixes.</p>
 <pre>python3 remediation-human-replies/worklist.py \
   --handoff "$HOME/lightup-private/selected-human.luhq" \
   --reply "$HOME/lightup-private/reply-one.luhr" \
