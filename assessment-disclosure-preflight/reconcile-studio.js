@@ -16,6 +16,8 @@
   const byId = name => document.getElementById(name);
   let source = null, decisions = [], dirty = false, epoch = 0;
   let decisionRevision = 0, exportedRevision = -1;
+  let undoStack = [], redoStack = [], noteEditTimer = null;
+  const HISTORY_LIMIT = 40;
   const urls = new Set();
 
   function admitted(condition) {
@@ -229,6 +231,7 @@
       if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
       source = {digest, rows, receipt: receiptRaw.slice(0)};
       decisions = rows.map(() => ({choice: "HOLD", reason: ""}));
+      discardHistory();
       dirty = false;
       decisionRevision++;
       exportedRevision = -1;
@@ -263,6 +266,98 @@
     node("h5", "PRIVATE next action", el);
     node("p", reviewer.next_action || "—", el, "notes");
   }
+  function matchesView(row, choice, filter, query) {
+    if (filter === "different" && !row.different ||
+        filter === "same" && row.different ||
+        filter === "undecided" && choice.choice !== "HOLD" ||
+        filter === "selected" && choice.choice === "HOLD") return false;
+    const searchable = [row.original.ordinal, row.original.kind, row.a.stage,
+      row.a.question, row.a.next_action, row.b.stage, row.b.question,
+      row.b.next_action, choice.choice, choice.reason].join(" ").toLocaleLowerCase();
+    return !query || searchable.includes(query);
+  }
+  function originalChoiceSnapshot() {
+    return decisions.map(item => ({choice: item.choice, reason: item.reason}));
+  }
+  function discardHistory() {
+    if (noteEditTimer !== null) clearTimeout(noteEditTimer);
+    noteEditTimer = null;
+    undoStack = []; redoStack = [];
+  }
+  function checkpoint(explicit) {
+    // The previous state is recorded BEFORE a HUMAN mutation. Local typing
+    // is coalesced for 650 ms, while selections and imported drafts form a
+    // distinct undo step. Nothing is written outside browser memory.
+    if (!explicit && noteEditTimer !== null) {
+      clearTimeout(noteEditTimer);
+      noteEditTimer = setTimeout(() => { noteEditTimer = null; }, 650);
+      return;
+    }
+    if (noteEditTimer !== null) clearTimeout(noteEditTimer);
+    noteEditTimer = null;
+    undoStack.push(originalChoiceSnapshot());
+    if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+    redoStack = [];
+    if (!explicit) noteEditTimer = setTimeout(() => { noteEditTimer = null; }, 650);
+  }
+  function navigateHistory(direction) {
+    if (!source) return;
+    if (noteEditTimer !== null) clearTimeout(noteEditTimer);
+    noteEditTimer = null;
+    const backward = direction === "undo";
+    const from = backward ? undoStack : redoStack;
+    const to = backward ? redoStack : undoStack;
+    if (!from.length) return;
+    to.push(originalChoiceSnapshot());
+    if (to.length > HISTORY_LIMIT) to.shift();
+    const next = from.pop();
+    admitted(next.length === source.rows.length);
+    decisions = next;
+    dirty = true;
+    decisionRevision++;
+    exportedRevision = -1;
+    refresh();
+    byId("historyStatus").textContent =
+      (backward ? "Undid" : "Redid") +
+      " one PRIVATE HUMAN edit. The earlier exported decision CSV is STALE until re-export.";
+  }
+  function filteredSelectedIndices() {
+    if (!source) return [];
+    const filter = byId("view").value;
+    const query = byId("query").value.trim().toLocaleLowerCase();
+    return source.rows.flatMap((row, index) =>
+      decisions[index].choice !== "HOLD" &&
+      matchesView(row, decisions[index], filter, query) ? [index] : []);
+  }
+  function holdVisibleSelections() {
+    const selected = filteredSelectedIndices();
+    if (!selected.length) return;
+    const ordinals = selected.map(index => source.rows[index].original.ordinal).join(", ");
+    if (!confirm("Set ONLY these currently matching HUMAN selections to HOLD and clear their reasons? Original ordinals: " +
+                 ordinals + ". No hidden or already-held row will be changed; nothing is approved or released.")) return;
+    checkpoint(true);
+    selected.forEach(index => { decisions[index] = {choice: "HOLD", reason: ""}; });
+    dirty = true;
+    decisionRevision++;
+    exportedRevision = -1;
+    refresh();
+    byId("historyStatus").textContent =
+      "Set " + selected.length + " explicitly selected matching HUMAN rows to HOLD. Undo is available; audit CSV must be re-exported.";
+  }
+  function updateHistoryControls() {
+    byId("undo").disabled = !source || undoStack.length === 0;
+    byId("redo").disabled = !source || redoStack.length === 0;
+    const eligible = filteredSelectedIndices().length;
+    byId("holdFiltered").disabled = eligible === 0;
+    if (!source) return;
+    byId("historyStatus").textContent =
+      undoStack.length + " local undo steps / " + redoStack.length +
+      " redo steps (maximum " + HISTORY_LIMIT + ") · " +
+      eligible + " visible selected rows eligible for explicit HOLD. " +
+      (exportedRevision === decisionRevision ?
+        "Current HUMAN decision CSV was exported." :
+        "Re-export decision CSV before sealing.");
+  }
   function refresh() {
     if (!source) return;
     const visible = byId("entries");
@@ -274,14 +369,7 @@
       const choice = decisions[index];
       if (row.different) changed++;
       if (choice.choice !== "HOLD") selected++;
-      if (filter === "different" && !row.different ||
-          filter === "same" && row.different ||
-          filter === "undecided" && choice.choice !== "HOLD" ||
-          filter === "selected" && choice.choice === "HOLD") return;
-      const searchable = [row.original.ordinal, row.original.kind, row.a.stage,
-                          row.a.question, row.a.next_action, row.b.stage, row.b.question,
-                          row.b.next_action, choice.choice, choice.reason].join(" ").toLocaleLowerCase();
-      if (query && !searchable.includes(query)) return;
+      if (!matchesView(row, choice, filter, query)) return;
       shown++;
       const section = node("article", undefined, visible, "case");
       const heading = node("h3", "Ordinal " + row.original.ordinal +
@@ -311,6 +399,8 @@
       input.setAttribute("aria-label", "PRIVATE HUMAN selection reason for ordinal " + row.original.ordinal);
       input.placeholder = "Why is this HUMAN proposal selected? No consent or authority claim.";
       select.addEventListener("change", () => {
+        if (choice.choice === select.value) return;
+        checkpoint(true);
         choice.choice = select.value;
         if (choice.choice === "HOLD") { choice.reason = ""; input.value = ""; }
         dirty = true;
@@ -320,6 +410,8 @@
         else updateCounts();
       });
       input.addEventListener("input", () => {
+        if (choice.reason === input.value) return;
+        checkpoint(false);
         choice.reason = input.value;
         dirty = true;
         decisionRevision++;
@@ -369,6 +461,7 @@
     byId("saveState").textContent = invalid ? invalid + " selections missing safe reason · HOLD" :
       dirty ? "Unsaved PRIVATE HUMAN choices · no release" : "All decisions HOLD by default";
     byId("save").disabled = Boolean(invalid);
+    updateHistoryControls();
     renderFinalPreview();
     const ready = !invalid && exportedRevision === decisionRevision &&
                   Boolean(source.receipt) && globalThis.LightUpHumanVault;
@@ -400,6 +493,7 @@
       });
       admitted(confirm("Replace current PRIVATE HUMAN choices with this entire EXACT-RECEIPT + EXACT-TWO-REVIEWER draft? No consent or release is inferred."));
       admitted(sequence === epoch && source === current);
+      checkpoint(true);
       decisions = next;
       dirty = true;
       decisionRevision++;
@@ -537,6 +631,7 @@
     epoch++;
     if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
     source = null; decisions = []; dirty = false;
+    discardHistory();
     decisionRevision++;
     exportedRevision = -1;
     byId("entries").replaceChildren();
@@ -552,6 +647,9 @@
   byId("seal").addEventListener("click", sealResult);
   byId("counts").addEventListener("click", exportCounts);
   byId("restore").addEventListener("click", restoreDecisions);
+  byId("undo").addEventListener("click", () => navigateHistory("undo"));
+  byId("redo").addEventListener("click", () => navigateHistory("redo"));
+  byId("holdFiltered").addEventListener("click", holdVisibleSelections);
   byId("view").addEventListener("change", refresh);
   byId("query").addEventListener("input", refresh);
   addEventListener("beforeunload", event => {
@@ -561,6 +659,7 @@
     epoch++;
     if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
     source = null; decisions = []; dirty = false;
+    discardHistory();
     decisionRevision++;
     exportedRevision = -1;
     byId("entries").replaceChildren();
