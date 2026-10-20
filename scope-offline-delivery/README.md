@@ -69,11 +69,11 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `124c700c263b6099a3cee2941bab47c158990c20ea45d45bae5a3415c4236144`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `b1afea890e76831df8bf61b787bda8f581059795a289ec8c0ee8abfc738ef542`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `9cbb2ec7cdab90cd1a159e07ffc0ce20ee3fbdd6f962b84a5e9bf1fe5e2ecb89`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `e908d14d384e180bff588d1af555ba013b49d9d33d8135fc28835570a789877c`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `d0b27c5739bdd793b5f31148746d0d06a2630002a05f044951cbae7c03265f70`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `56a2d1e6ad8c0a07f88cbde8f7b3834e7d386946f81bdff0b04beaef93c4d75e`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `1b9fc3a64276469bfec4d1ffec6906e0dd25f010a7945b839eee4dd137b6fbf6`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `6634d3183f6915b761736d208683398c65bb24787da2db8c1f3619059f9d86e4`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
 
@@ -124,6 +124,12 @@ After explicit HUMAN acknowledgement that the note came from a **separately auth
 The original source-only sender now has a separate offline **Review returned HUMAN receipt** panel after producing a role ZIP and choosing to save the exact original HUMAN sender note. If the recipient separately returns the previously described **UNSIGNED PRIVATE recipient-review JSON** (up to 12 KiB), the sender must explicitly acknowledge a separately received channel, then the browser reconstructs its **exact canonical original receipt bytes** using the *current original locally built role ZIP SHA and byte size*, pinned full source ZIP digest, exact original sender note SHA-256, and complete original sorted file inventory. Only a byte-for-byte match is reported; inconsistent, duplicate-field, reordered, incomplete, altered or unrelated receipts leave HOLD and cannot save a result.
 
 Optionally the HUMAN may save a **source-only, unsigned return summary** containing just source/role/note/recipient-bon digests and explicit false approval, consent, identity, grant and release flags. This has no credentials, customer information or confidential source bytes. Role reselection, new builder output, source change, updated return file or changed separate-channel checkbox clear previous results. **Unsigned receipt agreement is not proof of reviewer identity, actual delivery, legal consent, client/operator approval, scope authorization or readiness for real execution.**
+
+### Prepare all three independent HUMAN-role packages in one offline operation
+
+After admitting a complete separately SHA-matched original kit, the browser's **Prepare all three roles locally** operation now creates privacy-recipient, privacy-editor and scope-reviewer source-only ZIPs together. All three pass the **same original-role SHA, native ZIP and receipt admission** as the single-role workflow; there is no second permissive archive parser, server, credentials, target activation or bulk recipient archive. Each role has its **own** explicit ZIP download and separate original HUMAN sender-note download. Selecting one role's original HUMAN note opens the existing single-note source-bound recipient-return flow for that role only. Other role content is never included in a role's ZIP.
+
+A separately downloaded **PRIVATE unsigned three-role digest sheet** includes only whole-source and per-role ZIP SHA-256 hashes, roles and byte sizes with literal no-consent/no-grant posture. Share expected digests only over an independently authenticated channel; a digest sheet is no proof of sender identity, confidentiality, recipient access, authorization or source licensing. Any original source or role selection change cancels the previous batch and its intended downloads. The original single-role builder remains available.
 
 ### Role unpack stability under local file replacement
 

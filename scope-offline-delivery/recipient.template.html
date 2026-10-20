@@ -36,6 +36,15 @@
 <button id="save-inspection-receipt" type="button" hidden>Save PRIVATE role inspection receipt (unsigned JSON)</button>
 <p>A saved receipt contains original source filenames, byte digests and the received whole-ZIP digest. Treat it as PRIVATE metadata. It proves no sender identity, consent or permission, and cannot replace independent human disclosure review.</p>
 </section>
+<section id="batch-role-panel">
+<h2>Prepare source-only packages for all three HUMAN roles</h2>
+<p>Once the full original offline ZIP is SHA-matched and its pinned original source components have been admitted, the browser can prepare three least-disclosure role ZIPs together. Every role remains separate and requires its own conscious download. No multi-recipient archive, client data, consent, encryption or transfers are created.</p>
+<button id="build-all-roles" type="button" disabled>Prepare all three roles locally</button>
+<p id="batch-role-status" role="status" aria-live="polite"></p>
+<div id="batch-role-choices"></div>
+<button id="save-batch-digests" type="button" hidden>Save one unsigned PRIVATE role digest handoff sheet</button>
+<p>The digest sheet is for independently authenticated HUMAN delivery, not evidence of identity, permission or confidentiality. Each role ZIP is the same original-source-bounded format as the single-role builder.</p>
+</section>
 <section id="received-handoff-panel" hidden>
 <h2>Receive a source-bound PRIVATE HUMAN sender note</h2>
 <p>After a separately authenticated SHA-256 comparison and original native role-package inspection, you may compare the sender's independently obtained note against this *exact* original role, complete ZIP SHA-256, original source SHA, file bytes and all source fingerprints. Nothing is uploaded or granted; the note is UNSIGNED.</p>

@@ -117,7 +117,7 @@ def no_authority(obj: dict) -> bool:
 
 def render_receiver() -> bytes:
     template = read(HERE / "recipient.template.html", 10000).decode("utf-8")
-    js = read(HERE / "recipient.js", 10000).decode("utf-8") + "\n" + read(HERE / "recipient_zip.js", 22000).decode("utf-8") + "\n" + read(HERE / "role_builder.js", 22000).decode("utf-8") + "\n" + read(HERE / "handoff_review.js", 12000).decode("utf-8") + "\n" + read(HERE / "ack_return.js", 10000).decode("utf-8")
+    js = read(HERE / "recipient.js", 10000).decode("utf-8") + "\n" + read(HERE / "recipient_zip.js", 22000).decode("utf-8") + "\n" + read(HERE / "role_builder.js", 30000).decode("utf-8") + "\n" + read(HERE / "handoff_review.js", 12000).decode("utf-8") + "\n" + read(HERE / "ack_return.js", 10000).decode("utf-8")
     css = read(HERE / "recipient.css", 10000).decode("utf-8")
     for token in ("__SCRIPT_HASH__", "__STYLE_HASH__", "__SCRIPT__", "__STYLE__"):
         if template.count(token) != 1:
@@ -261,7 +261,7 @@ def build() -> Path:
                   "tools/recipient.js": read(HERE / "recipient.js"),
                   "tools/recipient.css": read(HERE / "recipient.css"),
                   "tools/recipient_zip.js": read(HERE / "recipient_zip.js"),
-                  "tools/role_builder.js": read(HERE / "role_builder.js", 22000),
+                  "tools/role_builder.js": read(HERE / "role_builder.js", 30000),
                   "tools/handoff_review.js": read(HERE / "handoff_review.js", 12000),
                   "tools/ack_return.js": read(HERE / "ack_return.js", 10000),
                   "tools/role_pack.py": read(HERE / "role_pack.py", 25000),
