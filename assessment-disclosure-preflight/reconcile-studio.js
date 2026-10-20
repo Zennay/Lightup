@@ -316,7 +316,8 @@
         dirty = true;
         decisionRevision++;
         exportedRevision = -1;
-        updateCounts();
+        if (byId("view").value !== "all" || byId("query").value.trim()) refresh();
+        else updateCounts();
       });
       input.addEventListener("input", () => {
         choice.reason = input.value;
@@ -328,6 +329,33 @@
     });
     byId("visible").textContent = shown + " displayed / " + source.rows.length + " original ordinals";
     updateCounts();
+  }
+  function renderFinalPreview() {
+    const parent = byId("finalPreview");
+    parent.replaceChildren();
+    if (!source) return;
+    // PRIVATE notes are shown only after a local operator expands the row.
+    source.rows.forEach((row, index) => {
+      const choice = decisions[index];
+      const selected = choice.choice === "A" ? row.a :
+                       choice.choice === "B" ? row.b : null;
+      const wrapper = node("article", undefined, parent, "outcome");
+      const summary = node("p", "Ordinal " + row.original.ordinal + " · " +
+        (selected ? "HUMAN reviewer " + choice.choice + " tentatively selected" :
+                    "HOLD — no HUMAN reviewer selected"), wrapper, "outcomeTitle");
+      summary.dataset.mode = selected ? "selected" : "hold";
+      node("span", row.original.kind.replaceAll("_", " "), wrapper, "outcomeKind");
+      node("p", "Final HUMAN stage: " + (selected ? selected.stage : "unreviewed"), wrapper);
+      if (selected) {
+        node("p", "Operator's PRIVATE reason: " + choice.reason, wrapper);
+        const disclosure = node("details", undefined, wrapper);
+        node("summary", "Show original PRIVATE selected question and action", disclosure);
+        node("p", "Question: " + (selected.question || "—"), disclosure, "notes");
+        node("p", "Next action: " + (selected.next_action || "—"), disclosure, "notes");
+      } else {
+        node("p", "No prior HUMAN note or next action is inherited.", wrapper);
+      }
+    });
   }
   function updateCounts() {
     if (!source) return;
@@ -341,6 +369,7 @@
     byId("saveState").textContent = invalid ? invalid + " selections missing safe reason · HOLD" :
       dirty ? "Unsaved PRIVATE HUMAN choices · no release" : "All decisions HOLD by default";
     byId("save").disabled = Boolean(invalid);
+    renderFinalPreview();
     const ready = !invalid && exportedRevision === decisionRevision &&
                   Boolean(source.receipt) && globalThis.LightUpHumanVault;
     byId("seal").disabled = !ready;
