@@ -14,6 +14,16 @@
     stop: ["Withdrawal / STOP Desk", "../withdrawal-desk/standalone.html"],
     vault: ["Private Scope Packet Vault", "../scope-vault/standalone.html"]
   });
+  const stages = Object.freeze({
+    unreviewed: "Nog niet beoordeeld (HUMAN)",
+    preparing: "Menselijk onderzoek loopt (HUMAN)",
+    escalated: "Menselijke escalatie nodig (HUMAN)",
+    documented: "Opvolging gedocumenteerd (NIET opgelost)"
+  });
+  const teams = Object.freeze({
+    unassigned: "Nog geen team", security: "Security", privacy: "Privacy",
+    client_ops: "Client operations", platform: "Platform"
+  });
   const items = [];
   let busy = false;
   let generation = 0;
@@ -62,11 +72,14 @@
     const blob = new Blob([JSON.stringify(documentBody, null, 2) + "\n"], { type: "application/json" });
     download(blob, name);
   };
+  const viewSummary = () => items.length
+    ? items.length + " PRIVATE bronbestanden · " + items.reduce((s, e) => s + e.file.size, 0).toLocaleString("nl-NL") +
+      " bytes · " + items.filter((e) => e.stage === "escalated").length + " HUMAN escalaties · " +
+      items.filter((e) => e.stage === "unreviewed").length + " onbeoordeeld · NOOIT GEAUTORISEERD"
+    : "Nog geen PRIVATE bestanden ingeladen. Geen inhoud of bestandsnaam wordt opgeslagen.";
   function render() {
     rows.replaceChildren();
-    summary.textContent = items.length
-      ? items.length + " PRIVATE bronbestanden · " + items.reduce((s, e) => s + e.file.size, 0).toLocaleString("nl-NL") + " bytes · alle keuzes HUMAN / REVIEW_ONLY"
-      : "Nog geen PRIVATE bestanden ingeladen. Geen inhoud of bestandsnaam wordt opgeslagen.";
+    summary.textContent = viewSummary();
     for (const item of items) {
       const tr = document.createElement("tr");
       cell(tr, item.file.name, "file-name");
@@ -90,6 +103,42 @@
       });
       routeCell.append(select);
       tr.append(routeCell);
+      const triage = document.createElement("td");
+      const addChoice = (label, options, value, update) => {
+        const caption = document.createElement("label");
+        caption.textContent = label;
+        const picker = document.createElement("select");
+        picker.setAttribute("aria-label", label + " voor " + item.file.name);
+        for (const [key, name] of Object.entries(options)) {
+          const option = document.createElement("option");
+          option.value = key;
+          option.textContent = name;
+          picker.append(option);
+        }
+        picker.value = value;
+        picker.addEventListener("change", () => {
+          if (!Object.hasOwn(options, picker.value)) return;
+          update(picker.value);
+          summary.textContent = viewSummary();
+        });
+        caption.append(picker);
+        triage.append(caption);
+      };
+      addChoice("HUMAN reviewfase", stages, item.stage, (v) => { item.stage = v; });
+      addChoice("HUMAN opvolgteam", teams, item.team, (v) => { item.team = v; });
+      const privateLabel = document.createElement("label");
+      privateLabel.textContent = "Optionele PRIVATE opvolgnotitie (max. 280 tekens)";
+      const note = document.createElement("textarea");
+      note.maxLength = 280;
+      note.rows = 2;
+      note.value = item.note;
+      note.setAttribute("aria-label", "PRIVATE opvolgnotitie voor " + item.file.name);
+      note.addEventListener("input", () => {
+        item.note = note.value;
+      });
+      privateLabel.append(note);
+      triage.append(privateLabel);
+      tr.append(triage);
       const actions = document.createElement("td");
       if (routes[item.route][1]) actions.append(link(routes[item.route][1], "Open werkruimte ↗"));
       const save = document.createElement("button");
@@ -147,7 +196,7 @@
         const hash = await SHA(await file.arrayBuffer());
         if (existing.has(hash)) throw new Error("duplicate");
         existing.add(hash);
-        proposed.push({ file, hash, inspection, route: inspection.route });
+        proposed.push({ file, hash, inspection, route: inspection.route, stage: "unreviewed", team: "unassigned", note: "" });
       }
       if (epoch !== generation) throw new Error("cancelled");
       items.push(...proposed);  // atomic admission
@@ -189,7 +238,9 @@
     exportJSON("lightup-scope-handoff-PRIVATE-source-inventory.json", {
       format: "lightup.scope_handoff_PRIVATE_inventory.v1", status: "REVIEW_ONLY",
       authority: { client_consent: false, operator_consent: false, grant: false, scan: false, deploy: false, release: false },
-      entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size, unsigned_sha256: e.hash, structural_kind_unverified: e.inspection.kind, human_route: e.route })),
+      entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size,
+        unsigned_sha256: e.hash, structural_kind_unverified: e.inspection.kind,
+        human_route: e.route, human_stage: e.stage, human_team: e.team, private_human_note: e.note })),
       warning: "PRIVATE unsigned inventory, never source or recipient authentication. No file content included."
     });
     report("REVIEW_ONLY — expliciete PRIVATE ongetekende bestandsinventaris lokaal gedownload.");

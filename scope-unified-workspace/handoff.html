@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kkN2UFDTwx7VRX/7RTLml3HcboDhfSErMuTtKf09+8I='; script-src 'sha256-s7z6vP2gv1yfSg+kovHZMIl32XcZe+mIX7LaE7+VH5U=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-6vW08nSj81ECumccDRq0Nz1k03WhEjIrWbxZCUbp5VU='; script-src 'sha256-nwXQA6SWh/2WLBMzOfi9nRMXqyEzZo/y0Im12DIji3I=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -21,6 +21,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 
 .route-alert{margin:23px 0 0;background:#171e29;border-left:3px solid #d9af77;padding:23px 24px;color:#c1ccd5;font-size:13px;line-height:1.8}.route-alert strong{color:#ffe0af}.route-alert a{color:#a1e7bd;font-weight:800;margin-left:6px;white-space:nowrap}
 .shelf-upload{background:#111c29;padding:25px;border:1px solid #355164;border-radius:10px;display:flex;flex-direction:column;gap:13px}.shelf-upload label{font-weight:750;color:#d8ebe9}.shelf-upload input{color:#ccdde4;min-height:47px;border:1px dashed #567389;border-radius:7px;padding:12px}.shelf-upload p,.shelf-status,.shelf-summary{font-size:13px;color:#b4c5cf;line-height:1.7}.shelf-status{background:#1c242e;border-left:3px solid #c4a678;padding:15px 18px}.shelf-summary{font-weight:800}.table-scroller{overflow:auto;border:1px solid #394957;border-radius:11px}.shelf-table{width:100%;border-collapse:collapse;font-size:12px;text-align:left;min-width:900px}.shelf-table th{background:#1e3040;color:#d2e7e4;font-weight:800;padding:14px}.shelf-table td{padding:12px;color:#b6c4cf;border-top:1px solid #354554;vertical-align:top;line-height:1.8;max-width:300px;overflow-wrap:anywhere}.shelf-table td.hash{font-family:ui-monospace,monospace;color:#9cddbe;font-size:11px;max-width:160px}.shelf-table td.file-name{color:#e2edf2;font-weight:650}.shelf-table select{font:inherit;color:#e1f5ef;background:#162735;border:1px solid #557181;border-radius:6px;padding:9px;width:100%;max-width:225px}.shelf-open{display:block;color:#a9ebc9;font-weight:800;margin-bottom:5px}.plain-action{display:inline-block;cursor:pointer;border:0;background:transparent;color:#b2d7e9;font-size:12px;text-align:left;margin:4px 9px 0 0;padding:0;text-decoration:underline;text-underline-offset:4px}.plain-action.danger{color:#ebb5a4}.shelf-actions{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0}.shelf-actions .action{font:inherit;font-size:12px;cursor:pointer;border:0;flex:1 1 190px;display:flex}.action.danger-solid{background:#51352f;color:#f8d4bf}.action.danger-solid:hover{background:#704239}
+.shelf-table td.kind{min-width:185px;max-width:230px;color:#b3d1df}.shelf-table td label{display:block;font-size:11px;color:#acc4ca;font-weight:650;margin-bottom:8px}.shelf-table td label select,.shelf-table td label textarea{display:block;width:100%;margin-top:5px}.shelf-table td textarea{font:inherit;background:#162735;color:#e5f1f1;border:1px solid #557181;border-radius:6px;padding:9px;resize:vertical;max-width:230px;min-width:140px}.shelf-table td .plain-action{white-space:normal}.shelf-table td.hash{word-break:break-all}
 </style>
 </head>
 <body>
@@ -31,7 +32,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <section class="hero compact">
 <div class="kicker"><span class="dot" aria-hidden="true"></span> HUMAN WORKFLOW / IN MEMORY / REVIEW ONLY</div>
 <h1>Één lokale plek voor je <em>bestands­overdracht.</em></h1>
-<p>Breng lokale bronbestanden tijdelijk bijeen, bekijk hun exacte SHA-256, kies naar welk bestaand LightUp-onderdeel je ze handmatig wilt overdragen en bewaar ongewijzigde originele bytes. Je oorspronkelijke bestanden blijven op schijf; de gekozen werkset wordt niet persistent opgeslagen.</p>
+<p>Breng lokale bronbestanden tijdelijk bijeen, bekijk hun exacte SHA-256, stel per bronbestand een HUMAN opvolgfase en team in, en bewaar ongewijzigde originele bytes. Je oorspronkelijke bestanden blijven op schijf; de gekozen werkset wordt niet persistent opgeslagen.</p>
 <div class="hold" role="note"><strong>GEEN BRONAUTHENTICATIE.</strong> Bestandsnamen, extensies, digests, HUMAN-routering en ingebouwde importknoppen verlenen nooit toestemming, grants of bevoegdheid. De ontvangende originele werkruimte moet elk bestand onafhankelijk opnieuw controleren. Gebruik deze pagina alleen offline met privégegevens op een vertrouwd apparaat.</div>
 <p class="verify-cta"><a href="index.html">← Terug naar volledige offline scopewerkruimte</a></p>
 </section>
@@ -40,16 +41,16 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <div class="shelf-upload">
 <label for="shelf-files">Kies 1–16 originele lokale bronbestanden</label>
 <input id="shelf-files" type="file" multiple aria-describedby="shelf-privacy">
-<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles en digests in dit tabblad. Het formaat wordt uitsluitend structureel herkend: geen bewijs van auteur, consent of geldige grant. Kies de bestemming bewust.</p>
+<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles, digests en zelf getypte HUMAN status/notities in dit tabblad. Het formaat wordt uitsluitend structureel herkend: geen bewijs van auteur, consent of geldige grant. Kies de bestemming bewust.</p>
 </div>
 <p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
-<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
+<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">HUMAN opvolging (uitsluitend lokaal)</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
 <tbody id="shelf-rows"></tbody></table></div>
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
-<button type="button" id="private-copy" class="action muted">PRIVATE bestandsinventaris exporteren <span aria-hidden="true">↗</span></button>
+<button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>
 </div>
 </section>
@@ -257,6 +258,16 @@ const LightUpPrivateSourceInspector = (() => {
     stop: ["Withdrawal / STOP Desk", "../withdrawal-desk/standalone.html"],
     vault: ["Private Scope Packet Vault", "../scope-vault/standalone.html"]
   });
+  const stages = Object.freeze({
+    unreviewed: "Nog niet beoordeeld (HUMAN)",
+    preparing: "Menselijk onderzoek loopt (HUMAN)",
+    escalated: "Menselijke escalatie nodig (HUMAN)",
+    documented: "Opvolging gedocumenteerd (NIET opgelost)"
+  });
+  const teams = Object.freeze({
+    unassigned: "Nog geen team", security: "Security", privacy: "Privacy",
+    client_ops: "Client operations", platform: "Platform"
+  });
   const items = [];
   let busy = false;
   let generation = 0;
@@ -305,11 +316,14 @@ const LightUpPrivateSourceInspector = (() => {
     const blob = new Blob([JSON.stringify(documentBody, null, 2) + "\n"], { type: "application/json" });
     download(blob, name);
   };
+  const viewSummary = () => items.length
+    ? items.length + " PRIVATE bronbestanden · " + items.reduce((s, e) => s + e.file.size, 0).toLocaleString("nl-NL") +
+      " bytes · " + items.filter((e) => e.stage === "escalated").length + " HUMAN escalaties · " +
+      items.filter((e) => e.stage === "unreviewed").length + " onbeoordeeld · NOOIT GEAUTORISEERD"
+    : "Nog geen PRIVATE bestanden ingeladen. Geen inhoud of bestandsnaam wordt opgeslagen.";
   function render() {
     rows.replaceChildren();
-    summary.textContent = items.length
-      ? items.length + " PRIVATE bronbestanden · " + items.reduce((s, e) => s + e.file.size, 0).toLocaleString("nl-NL") + " bytes · alle keuzes HUMAN / REVIEW_ONLY"
-      : "Nog geen PRIVATE bestanden ingeladen. Geen inhoud of bestandsnaam wordt opgeslagen.";
+    summary.textContent = viewSummary();
     for (const item of items) {
       const tr = document.createElement("tr");
       cell(tr, item.file.name, "file-name");
@@ -333,6 +347,42 @@ const LightUpPrivateSourceInspector = (() => {
       });
       routeCell.append(select);
       tr.append(routeCell);
+      const triage = document.createElement("td");
+      const addChoice = (label, options, value, update) => {
+        const caption = document.createElement("label");
+        caption.textContent = label;
+        const picker = document.createElement("select");
+        picker.setAttribute("aria-label", label + " voor " + item.file.name);
+        for (const [key, name] of Object.entries(options)) {
+          const option = document.createElement("option");
+          option.value = key;
+          option.textContent = name;
+          picker.append(option);
+        }
+        picker.value = value;
+        picker.addEventListener("change", () => {
+          if (!Object.hasOwn(options, picker.value)) return;
+          update(picker.value);
+          summary.textContent = viewSummary();
+        });
+        caption.append(picker);
+        triage.append(caption);
+      };
+      addChoice("HUMAN reviewfase", stages, item.stage, (v) => { item.stage = v; });
+      addChoice("HUMAN opvolgteam", teams, item.team, (v) => { item.team = v; });
+      const privateLabel = document.createElement("label");
+      privateLabel.textContent = "Optionele PRIVATE opvolgnotitie (max. 280 tekens)";
+      const note = document.createElement("textarea");
+      note.maxLength = 280;
+      note.rows = 2;
+      note.value = item.note;
+      note.setAttribute("aria-label", "PRIVATE opvolgnotitie voor " + item.file.name);
+      note.addEventListener("input", () => {
+        item.note = note.value;
+      });
+      privateLabel.append(note);
+      triage.append(privateLabel);
+      tr.append(triage);
       const actions = document.createElement("td");
       if (routes[item.route][1]) actions.append(link(routes[item.route][1], "Open werkruimte ↗"));
       const save = document.createElement("button");
@@ -390,7 +440,7 @@ const LightUpPrivateSourceInspector = (() => {
         const hash = await SHA(await file.arrayBuffer());
         if (existing.has(hash)) throw new Error("duplicate");
         existing.add(hash);
-        proposed.push({ file, hash, inspection, route: inspection.route });
+        proposed.push({ file, hash, inspection, route: inspection.route, stage: "unreviewed", team: "unassigned", note: "" });
       }
       if (epoch !== generation) throw new Error("cancelled");
       items.push(...proposed);  // atomic admission
@@ -432,7 +482,9 @@ const LightUpPrivateSourceInspector = (() => {
     exportJSON("lightup-scope-handoff-PRIVATE-source-inventory.json", {
       format: "lightup.scope_handoff_PRIVATE_inventory.v1", status: "REVIEW_ONLY",
       authority: { client_consent: false, operator_consent: false, grant: false, scan: false, deploy: false, release: false },
-      entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size, unsigned_sha256: e.hash, structural_kind_unverified: e.inspection.kind, human_route: e.route })),
+      entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size,
+        unsigned_sha256: e.hash, structural_kind_unverified: e.inspection.kind,
+        human_route: e.route, human_stage: e.stage, human_team: e.team, private_human_note: e.note })),
       warning: "PRIVATE unsigned inventory, never source or recipient authentication. No file content included."
     });
     report("REVIEW_ONLY — expliciete PRIVATE ongetekende bestandsinventaris lokaal gedownload.");

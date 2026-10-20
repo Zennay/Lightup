@@ -15,7 +15,7 @@
 <section class="hero compact">
 <div class="kicker"><span class="dot" aria-hidden="true"></span> HUMAN WORKFLOW / IN MEMORY / REVIEW ONLY</div>
 <h1>Één lokale plek voor je <em>bestands­overdracht.</em></h1>
-<p>Breng lokale bronbestanden tijdelijk bijeen, bekijk hun exacte SHA-256, kies naar welk bestaand LightUp-onderdeel je ze handmatig wilt overdragen en bewaar ongewijzigde originele bytes. Je oorspronkelijke bestanden blijven op schijf; de gekozen werkset wordt niet persistent opgeslagen.</p>
+<p>Breng lokale bronbestanden tijdelijk bijeen, bekijk hun exacte SHA-256, stel per bronbestand een HUMAN opvolgfase en team in, en bewaar ongewijzigde originele bytes. Je oorspronkelijke bestanden blijven op schijf; de gekozen werkset wordt niet persistent opgeslagen.</p>
 <div class="hold" role="note"><strong>GEEN BRONAUTHENTICATIE.</strong> Bestandsnamen, extensies, digests, HUMAN-routering en ingebouwde importknoppen verlenen nooit toestemming, grants of bevoegdheid. De ontvangende originele werkruimte moet elk bestand onafhankelijk opnieuw controleren. Gebruik deze pagina alleen offline met privégegevens op een vertrouwd apparaat.</div>
 <p class="verify-cta"><a href="index.html">← Terug naar volledige offline scopewerkruimte</a></p>
 </section>
@@ -24,16 +24,16 @@
 <div class="shelf-upload">
 <label for="shelf-files">Kies 1–16 originele lokale bronbestanden</label>
 <input id="shelf-files" type="file" multiple aria-describedby="shelf-privacy">
-<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles en digests in dit tabblad. Het formaat wordt uitsluitend structureel herkend: geen bewijs van auteur, consent of geldige grant. Kies de bestemming bewust.</p>
+<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles, digests en zelf getypte HUMAN status/notities in dit tabblad. Het formaat wordt uitsluitend structureel herkend: geen bewijs van auteur, consent of geldige grant. Kies de bestemming bewust.</p>
 </div>
 <p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
-<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
+<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">HUMAN opvolging (uitsluitend lokaal)</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
 <tbody id="shelf-rows"></tbody></table></div>
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
-<button type="button" id="private-copy" class="action muted">PRIVATE bestandsinventaris exporteren <span aria-hidden="true">↗</span></button>
+<button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>
 </div>
 </section>
