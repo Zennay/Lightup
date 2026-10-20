@@ -64,7 +64,13 @@ def combine(source_dirs: list[str], output_dir: str) -> tuple[int, int]:
         )
         + "The combined packet must be independently re-opened and reviewed.\n"
     )
-    build(selected, output_dir, human_handoff_note=handoff)
+    build(
+        selected, output_dir, human_handoff_note=handoff,
+        source_segments=tuple(
+            (len(source["endpoints"]), source["manifest_sha256"])
+            for source in sources
+        ),
+    )
     return len(sources), len(selected)
 
 
