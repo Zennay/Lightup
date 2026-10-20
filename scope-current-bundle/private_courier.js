@@ -12,8 +12,8 @@
   const HEADER = 40;
   const sealInput = document.getElementById("plainInput");
   const openInput = document.getElementById("vaultInput");
-  const secret = document.getElementById("secret");
-  const confirmSecret = document.getElementById("secretConfirm");
+  const pwBox = document.getElementById("entryA");
+  const confirmBox = document.getElementById("entryB");
   const message = document.getElementById("message");
   const lockBtn = document.getElementById("seal");
   const unlockBtn = document.getElementById("open");
@@ -72,8 +72,8 @@
   async function seal() {
     if (!crypto?.subtle || !crypto.getRandomValues) throw Error("WebCrypto unavailable");
     const file = choose(sealInput.files?.[0], MAX_BYTES);
-    const pass = acceptPass(secret.value);
-    if (pass !== confirmSecret.value) throw Error("password confirmation mismatch");
+    const pass = acceptPass(pwBox.value);
+    if (pass !== confirmBox.value) throw Error("password confirmation mismatch");
     const name = encoder.encode(file.name);
     if (!validName(file.name) || name.length > 120) throw Error("unsafe private filename");
     const sourceBytes = await bytesForFile(file);
@@ -96,14 +96,14 @@
     if (!confirm("Save an encrypted PRIVATE handoff? Share the passphrase through a different authenticated channel. Encryption alone is NOT client/operator authorization.")) return;
     save("LightUp-PRIVATE-HUMAN-handoff.luhr", out, "application/octet-stream");
     say("Encrypted PRIVATE courier file prepared. Confirm the download was saved safely; no recipient/source authority was established.");
-    secret.value = ""; confirmSecret.value = "";
+    pwBox.value = ""; confirmBox.value = "";
     sealInput.value = "";
   }
   async function open() {
     if (!crypto?.subtle) throw Error("WebCrypto unavailable");
     const file = choose(openInput.files?.[0], MAX_ENVELOPE);
     if (!file.name.toLowerCase().endsWith(".luhr")) throw Error("not a courier envelope");
-    const pass = acceptPass(secret.value);
+    const pass = acceptPass(pwBox.value);
     const blob = new Uint8Array(await file.arrayBuffer());
     if (blob.length < HEADER + 16) throw Error("short envelope");
     if (!MAGIC.every((v, i) => v === blob[i])) throw Error("wrong envelope version");
@@ -129,7 +129,7 @@
     if (!confirm("Decrypt this locally authenticated AES-GCM payload? The content and sender are NOT independently trusted. Save privately; do not open HTML from unknown people.")) return;
     save(originalName, data, "application/octet-stream");
     say("PRIVATE original file downloaded without automatic execution. The sender, reviewer, source, consent and grant are not authenticated.");
-    secret.value = ""; confirmSecret.value = ""; openInput.value = "";
+    pwBox.value = ""; confirmBox.value = ""; openInput.value = "";
     plain.fill(0);
   }
   lockBtn.addEventListener("click", exclusive(seal));
