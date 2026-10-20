@@ -59,7 +59,14 @@ python3 remediation-private-backup/integrate.py \
 # Return code 2 means REVIEW_ONLY source-only installation, not production approval.
 # Open locally:
 # $HOME/lightup-private/original-plus-recovery-001/START-HERE.html
+
+# Later, reopen this same installed software using original source-owner
+# inspection plus independent private recovery inventory admission:
+python3 remediation-private-backup/integrate.py inspect \
+  --workspace "$HOME/lightup-private/original-plus-recovery-001"
 ```
+
+The new **inspect** workflow reopens a complete previously installed PRIVATE suite, rejects unexpected/missing files, changed bytes, symlinks/hardlinks, group-readable assets, malformed/duplicate manifest fields, incompatible CSP/JS bytes, and a modified scriptless portal. It **must** successfully call the original owner's unchanged `install.py inspect` on `original-suite/` before returning `REVIEW_ONLY=2`. Inspection establishes only unsigned local consistency, never trusted source ownership, client permission or safe release.
 
 The independent composer requires Linux atomic no-replace directory publication, a trusted owner-private directory outside the checkout, and the original native `remediation-integrated-workspace/install.py` source. It delegates complete original source-lock admission to that pinned native installer; refuses its HOLD instead of bypassing it. It installs the original complete offline source software under `original-suite/`, copies only seven approved companion source files under `private-recovery/`, and creates one scriptless local portal and a **PRIVATE UNSIGNED** source digest inventory. No operator backup, tenant bytes, secrets or evidence are bundled automatically. The original installer returns its own REVIEW_ONLY status; neither checksum inventory authenticates real source or grants authority.
 
