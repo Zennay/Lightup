@@ -153,15 +153,28 @@
       const digest = hex(await crypto.subtle.digest("SHA-256", raw));
       const decoded = new TextDecoder("utf-8", {fatal: true}).decode(raw);
       const sourceRows = validateReceipt(JSON.parse(decoded));
-      const csvBytes = await bounded(byId("csv").files[0]);
-      const csvText = new TextDecoder("utf-8", {fatal: true}).decode(csvBytes).replace(/^\uFEFF/u, "");
-      const rows = validateRows(parseCsv(csvText), sourceRows, digest);
+      const csvFile = byId("csv").files[0];
+      const vaultFile = byId("vault").files[0];
+      ensure(Boolean(csvFile) !== Boolean(vaultFile));
+      let csvText;
+      if (vaultFile) {
+        const pw = byId("openPassword");
+        try {
+          ensure(globalThis.LightUpHumanVault && vaultFile.size <= LightUpHumanVault.maxVaultBytes);
+          csvText = await LightUpHumanVault.open(await vaultFile.arrayBuffer(), pw.value, digest);
+        } finally { pw.value = ""; }
+      } else {
+        const csvBytes = await bounded(csvFile);
+        csvText = new TextDecoder("utf-8", {fatal: true}).decode(csvBytes);
+      }
+      const rows = validateRows(parseCsv(csvText.replace(/^\uFEFF/u, "")), sourceRows, digest);
       if (dirty && !confirm("Discard unsaved HUMAN edits in memory?")) return;
       records = rows;
       receiptDigest = digest;
       dirty = false;
       byId("editor").hidden = false;
       byId("export").disabled = false;
+      byId("exportEncrypted").disabled = false;
       refresh();
       notice("REVIEW_ONLY: exact receipt bytes and matching HUMAN CSV admitted locally. No authority.");
     } catch (_) {
@@ -171,23 +184,30 @@
   function csvField(value) {
     return '"' + String(value).replaceAll('"', '""') + '"';
   }
+  function serializedCsv() {
+    ensure(records.length >= 1 && /^[0-9a-f]{64}$/u.test(receiptDigest));
+    const lines = [FIELDS.map(csvField).join(",")];
+    records.forEach((row, i) => {
+      ensure(row.ordinal === i + 1 && KINDS.includes(row.kind) &&
+             STAGES.includes(row.stage) && safeText(row.question) && safeText(row.action));
+      lines.push([receiptDigest, row.ordinal, row.kind, row.stage,
+                  row.question, row.action].map(csvField).join(","));
+    });
+    return lines.join("\n") + "\n";
+  }
+  function download(bytes, filename, contentType) {
+    const url = URL.createObjectURL(new Blob([bytes], {type:contentType}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
   function exportCsv() {
     try {
-      ensure(records.length >= 1 && /^[0-9a-f]{64}$/u.test(receiptDigest));
-      const lines = [FIELDS.map(csvField).join(",")];
-      records.forEach((row, i) => {
-        ensure(row.ordinal === i + 1 && KINDS.includes(row.kind) &&
-               STAGES.includes(row.stage) && safeText(row.question) && safeText(row.action));
-        lines.push([receiptDigest, row.ordinal, row.kind, row.stage,
-                    row.question, row.action].map(csvField).join(","));
-      });
+      const csv = serializedCsv();
       ensure(confirm("Save a PRIVATE plaintext HUMAN CSV locally? It may contain sensitive notes. This NEVER releases an assessment."));
-      const blob = new Blob([lines.join("\n") + "\n"], {type: "text/csv;charset=utf-8"});
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url; link.download = "PRIVATE-human-reviewed.csv";
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      download(csv, "PRIVATE-human-reviewed.csv", "text/csv;charset=utf-8");
       dirty = false;
       refresh();
       notice("REVIEW_ONLY: source-free HUMAN CSV exported. Use native render to re-admit; no release.");
@@ -195,8 +215,26 @@
       notice("HOLD: invalid or incomplete HUMAN fields; no export.", true);
     }
   }
+  async function exportEncrypted() {
+    const pass = byId("newPassword"), repeated = byId("confirmPassword");
+    try {
+      ensure(globalThis.LightUpHumanVault);
+      const csv = serializedCsv();
+      ensure(pass.value === repeated.value && pass.value.length >= 14 &&
+             pass.value.length <= 256 && !/[\u0000-\u001f\u007f]/u.test(pass.value));
+      ensure(confirm("Create a new locally encrypted PRIVATE HUMAN .luhd file? Keep a separately authenticated receipt and passphrase. Password encryption does not prove client authority, source authenticity or consent."));
+      const encrypted = await LightUpHumanVault.seal(csv, pass.value, receiptDigest);
+      download(encrypted, "PRIVATE-human-reviewed.luhd", "application/octet-stream");
+      dirty = false;
+      refresh();
+      notice("REVIEW_ONLY: encrypted HUMAN vault exported. Reopen with exact receipt bytes and password.");
+    } catch (_) {
+      notice("HOLD: encrypted HUMAN export refused. Check notes and matching passphrase; previous edits retained.", true);
+    } finally { pass.value = ""; repeated.value = ""; }
+  }
   byId("load").addEventListener("click", load);
   byId("export").addEventListener("click", exportCsv);
+  byId("exportEncrypted").addEventListener("click", exportEncrypted);
   byId("stageFilter").addEventListener("change", refresh);
   byId("query").addEventListener("input", refresh);
   window.addEventListener("beforeunload", event => {
