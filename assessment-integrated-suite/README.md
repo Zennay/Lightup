@@ -1466,3 +1466,41 @@ exact-head named-VPS + hosted CI, source-owner and independent security/
 privacy/browser review, authenticated current separate client/operator
 consent with revocation-at-use, #177/#182/#829 and explicit HUMAN GO gates
 remain in force. No QA/regression/test suites have been added or run.
+
+## NEW: source-rechecked multi-team HUMAN Lab proposal history (option 64)
+
+When team replies arrive across several separate, not-yet-finalized private
+operator rounds, choose foreground console **64** to compare **2–8 distinct
+saved original PRIVATE multi-team batch rooms** in operator-specified order.
+Every source and every saved room must still be available and pass the
+**original** source-bound multi-team reopener (option 63). Unavailable, modified,
+not privately owned or mismatched source files yield HOLD and no new history.
+
+```bash
+python3 assessment-integrated-suite/lab_review_team_batch_history.py \
+  --packet ORIGINAL_LAUNCHPAD_0700 \
+  --final-room ORIGINAL_FINAL_0700 \
+  --handoff-room ORIGINAL_TEAM_HANDOFF_0700 \
+  --batch-room ROUND_A_0700 --batch-room ROUND_B_0700 \
+  --private-parent OWNER_PRIVATE_PARENT_0700 \
+  --folder NEW-HUMAN-BATCH-HISTORY \
+  --human-confirm 'BUILD PRIVATE LAB TEAM BATCH HISTORY'
+```
+
+The new exclusive 0700 folder contains an owner-0600
+`OPEN-PRIVATE.html` scriptless HUMAN timeline of stage distributions,
+**human team adopted/withheld/no-response transitions** and stage/question
+changes per original ordinal, plus the source-minimized
+`PRIVATE-HUMAN-BATCH-HISTORY.json` and
+`PRIVATE-HUMAN-BATCH-CHANGES.csv` (ordinal/team/stage + Boolean only,
+never private question text). No source URLs, client name, source paths,
+SHA, credentials or original lab targets are copied into these reports.
+Rounds are explicitly **operator-supplied positions**, not verified
+real chronology or proof that a finding was resolved. Future human
+finalization still requires unchanged original Studio, current authentic
+source/consent and original mandatory review/CI/HUMAN GO gates.
+
+This is a self-contained useful offline HUMAN workflow, **not** a release,
+security attestation, activity timeline, automatic notification, client
+approval, asset ownership proof or authority to scan. Existing Incubate
+M3/M7 DRAFT/HOLD remains; no QA/regression/test suites authored or run.
