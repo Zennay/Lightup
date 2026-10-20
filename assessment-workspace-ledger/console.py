@@ -13,6 +13,7 @@ import sys
 import ledger
 import compare
 import continuity
+import human_revisions
 from browser_studio import render_studio
 
 TITLE = "LightUp PRIVATE Assessment Workspace · Foreground HUMAN Console"
@@ -24,6 +25,7 @@ MENU = (
     ("5", "Continue previous HUMAN proposals on unchanged original kits"),
     ("6", "Export complete source-free single-file offline HUMAN studio"),
     ("7", "Show PRIVATE session-only action results"),
+    ("8", "Review historical HUMAN stage/owner/question changes on unchanged kit bytes"),
     ("0", "Exit"),
 )
 
@@ -89,6 +91,13 @@ def handle_action(action):
             previous=prompt("Original PRIVATE previous ledger.json"),
             human=prompt("Native old HUMAN-only.json from finalize"),
             current=prompt("Original current ledger.json from capture --previous"),
+            private_parent=private_parent()
+        ))
+    if action == "8":
+        return human_revisions.run(argparse.Namespace(
+            ledger=prompt("Exact original PRIVATE ledger.json"),
+            before=prompt("Original earlier native HUMAN-only.json"),
+            after=prompt("Original later native HUMAN-only.json"),
             private_parent=private_parent()
         ))
     if action == "6":
