@@ -56,7 +56,7 @@ const list=document.getElementById('sources');
 const message=document.getElementById('message');
 const status=document.getElementById('count');
 const find=document.getElementById('find');
-const onlyConflict=document.getElementById('conflicts');
+const focus=document.getElementById('focus');
 const proposal=new Map();
 const csvCell = value => '"' + String(value).replaceAll('"','""') + '"';
 function conflict(record) {
@@ -71,22 +71,34 @@ function make(tag, text, cls) {
   return el;
 }
 function sync() {
-  let shown=0, totalConflicts=0, withhold=0;
+  let shown=0, disputes=0, noteDisputes=0, withhold=0;
   for(const record of originals) {
     const value=proposal.get(record.ordinal);
     const dispute=conflict(record);
-    if(dispute)totalConflicts++;
-    if(record.reviewers.some(x=>x.stage==='WITHHOLD'))withhold++;
-    const show = (!onlyConflict.checked || dispute) &&
-      (!find.value.trim() || String(record.ordinal).includes(find.value.trim()));
-    value.card.hidden=!show;
-    if(show)shown++;
+    const declaredWithhold=record.reviewers.some(x=>x.stage==='WITHHOLD');
+    const declaredReview=record.reviewers.some(x=>x.stage==='REVIEW_REQUIRED');
+    const filter=focus.value;
+    if(dispute)disputes++;
+    if(record.noteDisagreement)noteDisputes++;
+    if(declaredWithhold)withhold++;
+    const relevant=filter==='ALL' ||
+      (filter==='DISAGREEMENT' && dispute) ||
+      (filter==='NOTE_DISAGREEMENT' && record.noteDisagreement) ||
+      (filter==='WITHHOLD' && declaredWithhold) ||
+      (filter==='REVIEW_REQUIRED' && declaredReview) ||
+      (filter==='AGREED' && !dispute);
+    const visible=relevant && (!find.value.trim() ||
+      String(record.ordinal).includes(find.value.trim()));
+    value.card.hidden=!visible;
+    if(visible)shown++;
   }
   status.textContent=shown+' of '+originals.length+' original positions shown · '+
-    totalConflicts+' categorical HUMAN disagreements · '+
-    withhold+' originally declared WITHHOLD concerns.'+
+    disputes+' HUMAN disagreements (including '+noteDisputes+
+    ' PRIVATE note-only/content disagreement positions) · '+
+    withhold+' positions with at least one declared WITHHOLD.'+
     (exactSameHumanCSVSlots.length ? ' '+exactSameHumanCSVSlots.length+
-    ' pairs of HUMAN review slots have byte-identical decisions; this is NOT independently authenticated reviewer agreement.' : '');
+    ' slot pairs have byte-identical HUMAN decisions; this is NOT independent reviewer authentication.' : '')+
+    ' Filtering does not alter the complete original-bound HUMAN export.';
 }
 for(const record of originals) {
   const card=make('section',undefined,'source');
@@ -248,9 +260,9 @@ reopen.addEventListener('change',async()=>{
   }finally{reopen.value='';}
 });
 find.addEventListener('input',sync);
-onlyConflict.addEventListener('change',sync);
+focus.addEventListener('change',sync);
 window.addEventListener('pagehide',()=>{
-  find.value='';onlyConflict.checked=false;
+  find.value='';focus.value='ALL';
   for(const p of proposal.values()){
     p.stage.value='PENDING';p.note.value='';
     for(const [name,box] of p.checks)box.checked=name==='UNKNOWN';
@@ -302,8 +314,15 @@ Copying any earlier HUMAN choice requires a source-specific confirmation and
 does NOT carry forward any private HUMAN free-text note.</p></header>
 <main><label for="find">Filter original ordinal
 <input id="find" type="search" inputmode="numeric"></label>
-<label for="conflicts"><input type="checkbox" id="conflicts">
-Display declared HUMAN status/category disagreement only</label>
+<label for="focus">HUMAN follow-up focus
+<select id="focus" aria-describedby="count">
+<option value="ALL">All original source positions</option>
+<option value="DISAGREEMENT">Any HUMAN disagreement (including hidden note text)</option>
+<option value="NOTE_DISAGREEMENT">PRIVATE HUMAN notes differ (text withheld)</option>
+<option value="WITHHOLD">At least one HUMAN WITHHOLD</option>
+<option value="REVIEW_REQUIRED">At least one HUMAN REVIEW_REQUIRED</option>
+<option value="AGREED">Same HUMAN stage/category/note values</option>
+</select></label>
 <p id="count" role="status" aria-live="polite"></p><div id="sources"></div>
 <p><label for="reopen">Resume complete earlier PRIVATE HUMAN draft (exact original sources only)</label>
 <input id="reopen" type="file" accept=".csv,text/csv" aria-describedby="message"></p>
