@@ -448,6 +448,13 @@ def main() -> int:
     reconcile.add_argument("--review", action="append", required=True,
                            help="separately completed owner-private HUMAN sensitivity packet")
     reconcile.add_argument("--private-parent", required=True)
+    workbench = commands.add_parser(
+        "sensitivity-workbench", help="one PRIVATE offline HUMAN timeline/reviewer suite and next draft")
+    workbench.add_argument("--completed-packet", required=True)
+    workbench.add_argument("--mode", required=True, choices=("timeline", "reviewers"))
+    workbench.add_argument("--review", action="append", required=True,
+                           help="two to eight completed source-bound HUMAN reviews")
+    workbench.add_argument("--private-parent", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -519,6 +526,10 @@ def main() -> int:
             from privacy_triage_reconcile import build as build_sensitivity_reconcile
             return build_sensitivity_reconcile(
                 args.completed_packet, args.review, args.private_parent)
+        if args.action == "sensitivity-workbench":
+            from privacy_triage_workbench import build as build_sensitivity_workbench
+            return build_sensitivity_workbench(
+                args.completed_packet, args.mode, args.review, args.private_parent)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(
