@@ -161,3 +161,20 @@ On a trusted authorized offline machine, open the new PRIVATE `index.html` to ac
 
 This native complete handoff entry point is included in the additive software-only `bundle.py` inventory and strict `bundle_receive.py` closed member checks. All original security/privacy/crypto/browser review, hosted/named VPS CI, explicit HUMAN GO and independently verified current client+operator consent requirements remain DRAFT/HOLD.
 
+
+## NEW: native source-exact carry-forward into a changed packet selection
+
+When a recipient has a prior privately browser-encrypted `.lurp` HUMAN schedule and now receives **a new separate set or ordering of truly original source-free Cockpit directories**, the new [`carry_native.py`](carry_native.py) can prepare a fresh native PRIVATE offline scheduler. It uses unchanged original source-free `single_review.original` admission and the existing browser-encrypted `.lurp` native reader before proposing any carry. The full previous HUMAN packet schema, authority=false flags, original source SHA-256 digests, reason group counts and every individual slot/reason/count/HUMAN-only owner, note, stage, date and action value are required.
+
+```bash
+python3 remediation-recipient-scheduler/carry_native.py \
+  --vault "$HOME/lightup-private/previous-private-human.lurp" \
+  --cockpit "$HOME/lightup-private/recent-original-01" \
+  --cockpit "$HOME/lightup-private/recent-original-02" \
+  --output-dir "$HOME/lightup-private/private-human-carry-01"
+```
+
+The native CLI first asks the LOCAL private passphrase in a protected terminal, prints an aggregate preview of exact source digest matches versus new/changed packets and requires the HUMAN operator to type **CARRY** before exclusively publishing a new 0700/0600 workroom. No existing ciphertext or original source-free folder is modified. All previously recorded HUMAN assignments/notes/stages are carried only when the **entire original source-free digest and its full reason/slot/count membership exactly match**. Changed, new or absent sources **never** inherit prior HUMAN decisions or automatically become marked fixed. The new selected ordering is bound to the newly generated browser seed; save a **new** encrypted `.lurp` using the offline masked password modal to persist the revised version.
+
+Only local HUMAN history carries forward. This is not cryptographic signer identity, proof that two packets belong to one client, chronological ordering, verified source finding, actual consent or authorization. A 0700 workroom and password do not replace separately approved recipient access, source-owner permission, hosted/named CI, independent review or HUMAN GO.
+
