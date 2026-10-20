@@ -37,6 +37,10 @@ For long workrooms, **Save PRIVATE HUMAN draft** produces a separate `.lurd` AES
 
 After reopening the exact same two original `.lupt` files in the same A/B order, **Restore PRIVATE HUMAN draft** verifies complete canonical encrypted schema, crypto authenticity, literal six false source authority flags, all current original file digest/size/name references, both original current HUMAN CSV digests, current case count and every allowed choice. A different source, changed HUMAN revision, swapped A/B input or invalid decision means full HOLD without overwriting current selections. Human confirmation precedes atomic replacement in browser memory. The draft does not convey current client consent or any authority and does not authenticate the claimed original producer.
 
+## Explicit local PRIVATE session disposal
+
+The offline desk now offers **Erase current PRIVATE browser workroom**, an explicit operator-confirmed action that overwrites retained mutable original-source byte buffers with zeros where JavaScript permits, drops the current A/B workset, local conflict selections, rationale/notepad state and read-only received memo, clears file/password input selections and removes displayed private cases. While original encrypted output is being prepared, the desk disables HUMAN decision selectors and refuses receipt-bound exports on an in-progress or changed workset; a later decision change invalidates the previously offered memo hash association. This erases application state, **not** the immutable browser-engine copies, GC-retained strings, downloads or files already saved to disk. No special privacy deletion guarantee is asserted.
+
 ## Admission, bounded execution and source relationship
 
 - Exact canonical original envelope, encrypted payload and base64; v1 schema, GCM authentication, strict source file manifest size and SHA-256, consecutive original filenames and final single HUMAN CSV; fixed 26 MiB encrypted, 20 MiB plaintext and 12 MiB source bounds.

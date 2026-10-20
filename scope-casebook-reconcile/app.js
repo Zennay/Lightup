@@ -238,6 +238,7 @@ function show(){
   $("cases").append(card);
  });
  $("shown").textContent="Zichtbaar: "+shown+" van "+work.cases.length;
+ for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=busy;
  tally();
 }
 async function publish(){
@@ -291,6 +292,8 @@ async function publish(){
 function setBusy(v){
  busy=v;$("open").disabled=v;$("publish").disabled=v||!work;
  $("aggregate").disabled=v||!work;
+ $("clear-session").disabled=v;
+ for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=v;
 }
 $("open").addEventListener("click",async()=>{
  if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
@@ -416,7 +419,7 @@ window.LightUpCasebookDraftAPI=Object.freeze({
 });
 window.LightUpCasebookReceiptAPI=Object.freeze({
  snapshot:()=>{
-  if(!work||!work.finalReceipt)return null;
+  if(!work||busy||!work.finalReceipt)return null;
   let pending=false;
   work.a.rows.forEach((r,i)=>r.slice(3).forEach((v,j)=>{
    if(v!==work.b.rows[i][j+3]&&!resolved(work.choices[i][j],j))pending=true;
@@ -432,6 +435,23 @@ window.LightUpCasebookReceiptAPI=Object.freeze({
    }))};
  }
 });
-window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}});
+$("clear-session").addEventListener("click",()=>{
+ if(busy)return;
+ if(!work&&!window.LightUpCasebookReceiptClear)return;
+ if(!window.confirm("Wis alle lokale PRIVATE Casebook-werksetbytes, HUMAN-keuzes, notities, ingelezen reviewmemo en formulierselecties uit dit browsertabblad? Opgeslagen originele bestanden op schijf blijven onaangeroerd."))return;
+ if(work){zero(work.a);zero(work.b);}
+ work=null;
+ window.LightUpCasebookNotes?.reset(0);
+ window.LightUpCasebookReceiptClear?.();
+ $("cases").replaceChildren();$("shown").textContent="";
+ $("summary").textContent="Lokale PRIVATE werkset gewist; geen originele bronnen geladen.";
+ for(const el of document.querySelectorAll('input[type="password"],input[type="file"]'))el.value="";
+ $("search").value="";$("conflicts").checked=false;
+ $("unresolved-only").checked=false;
+ $("publish").disabled=true;$("aggregate").disabled=true;
+ status("Lokale PRIVATE werkset, reviewmemo en keuzecontext uit appstatus verwijderd; browsergeheugen kan door de runtime nog tijdelijk kopieën bevatten.");
+});
+window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}
+ window.LightUpCasebookReceiptClear?.();});
 $("publish").disabled=true;$("aggregate").disabled=true;
 })();

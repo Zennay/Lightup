@@ -24,6 +24,10 @@ const blockers=["none","missing-source","missing-owner","needs-independent-conse
  "requires-revocation-review","unresolved-tenant-lineage"];
 const enums=[stages,routes,blockers];
 let opened=null,working=false;
+window.LightUpCasebookReceiptClear=()=>{
+ opened=null;$("receipt-view").replaceChildren();
+ status("PRIVATE lokaal ontvangen memo uit weergave verwijderd.");
+};
 function status(message,error=false){
  $("receipt-status").textContent=(error?"HOLD: ":"")+message;
  $("receipt-status").classList.toggle("error",error);

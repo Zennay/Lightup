@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-PhWMRttCg+YsdvZWCtAgiWoClI3ngAHNSZhY++pCEYE='; script-src 'sha256-38A4vyPS5RZ3bF+tJD+C0TRF5gMUGApEY1RzMWiZn6A='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-c/nCpZd/HTN0lTDb3brYXHhPzUN1lr9xOQZCQE4jtrQ='; script-src 'sha256-xwtyF/wG3So+PkrLtGDh0IMeFOYGOQzpAKLIupC7xZQ='">
 <title>LightUp · PRIVATE HUMAN reconciliatie</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0b111c;color:#eaf1ff;font-size:15px}
 *{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1180px;margin:auto;padding:28px 20px}
 header{padding-top:50px}.mark{letter-spacing:.16em;font-weight:900;color:#86bbff}.mark span{font-size:.7em;color:#b1c3d9;background:#25334b;padding:7px 12px;border-radius:30px;margin-left:10px}
@@ -37,6 +37,9 @@ td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{pa
 .receipt-view{overflow:auto;max-height:590px;margin-top:16px;border-top:1px solid #384960}
 .receipt-view td{white-space:pre-line;max-width:300px}
 .receipt-view p{overflow-wrap:anywhere}
+
+button.secondary{background:#334962;color:#eff7ff;border:1px solid #7a8da6;margin-left:12px}
+button.secondary:hover{background:#405a76}
 </style></head>
 <body>
 <header><div class="mark">LIGHTUP <span>PRIVATE / OFFLINE</span></div>
@@ -55,6 +58,7 @@ td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{pa
 </div>
 <label class="consent"><input id="ack" type="checkbox"> Ik begrijp dat dit een PRIVATE, uitsluitend menselijke samenvoeging zonder autorisatie is en dat plaintext brongegevens lokaal zichtbaar kunnen zijn.</label>
 <button id="open" type="button">Open en vergelijk PRIVATE bronsets</button>
+<button id="clear-session" type="button" class="secondary">Wis huidige PRIVATE browsersessie (expliciet)</button>
 <p id="status" role="status" aria-live="polite">Geen oorspronkelijke brongegevens geladen.</p>
 </section>
 <section aria-labelledby="review-title">
@@ -563,6 +567,7 @@ function show(){
   $("cases").append(card);
  });
  $("shown").textContent="Zichtbaar: "+shown+" van "+work.cases.length;
+ for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=busy;
  tally();
 }
 async function publish(){
@@ -616,6 +621,8 @@ async function publish(){
 function setBusy(v){
  busy=v;$("open").disabled=v;$("publish").disabled=v||!work;
  $("aggregate").disabled=v||!work;
+ $("clear-session").disabled=v;
+ for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=v;
 }
 $("open").addEventListener("click",async()=>{
  if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
@@ -741,7 +748,7 @@ window.LightUpCasebookDraftAPI=Object.freeze({
 });
 window.LightUpCasebookReceiptAPI=Object.freeze({
  snapshot:()=>{
-  if(!work||!work.finalReceipt)return null;
+  if(!work||busy||!work.finalReceipt)return null;
   let pending=false;
   work.a.rows.forEach((r,i)=>r.slice(3).forEach((v,j)=>{
    if(v!==work.b.rows[i][j+3]&&!resolved(work.choices[i][j],j))pending=true;
@@ -757,7 +764,24 @@ window.LightUpCasebookReceiptAPI=Object.freeze({
    }))};
  }
 });
-window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}});
+$("clear-session").addEventListener("click",()=>{
+ if(busy)return;
+ if(!work&&!window.LightUpCasebookReceiptClear)return;
+ if(!window.confirm("Wis alle lokale PRIVATE Casebook-werksetbytes, HUMAN-keuzes, notities, ingelezen reviewmemo en formulierselecties uit dit browsertabblad? Opgeslagen originele bestanden op schijf blijven onaangeroerd."))return;
+ if(work){zero(work.a);zero(work.b);}
+ work=null;
+ window.LightUpCasebookNotes?.reset(0);
+ window.LightUpCasebookReceiptClear?.();
+ $("cases").replaceChildren();$("shown").textContent="";
+ $("summary").textContent="Lokale PRIVATE werkset gewist; geen originele bronnen geladen.";
+ for(const el of document.querySelectorAll('input[type="password"],input[type="file"]'))el.value="";
+ $("search").value="";$("conflicts").checked=false;
+ $("unresolved-only").checked=false;
+ $("publish").disabled=true;$("aggregate").disabled=true;
+ status("Lokale PRIVATE werkset, reviewmemo en keuzecontext uit appstatus verwijderd; browsergeheugen kan door de runtime nog tijdelijk kopieën bevatten.");
+});
+window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}
+ window.LightUpCasebookReceiptClear?.();});
 $("publish").disabled=true;$("aggregate").disabled=true;
 })();
 /* Offline private HUMAN reconciliation reasons; no grant, client authorization or source mutation. */
@@ -1011,6 +1035,10 @@ const blockers=["none","missing-source","missing-owner","needs-independent-conse
  "requires-revocation-review","unresolved-tenant-lineage"];
 const enums=[stages,routes,blockers];
 let opened=null,working=false;
+window.LightUpCasebookReceiptClear=()=>{
+ opened=null;$("receipt-view").replaceChildren();
+ status("PRIVATE lokaal ontvangen memo uit weergave verwijderd.");
+};
 function status(message,error=false){
  $("receipt-status").textContent=(error?"HOLD: ":"")+message;
  $("receipt-status").classList.toggle("error",error);

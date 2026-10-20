@@ -34,3 +34,6 @@ td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{pa
 .receipt-view{overflow:auto;max-height:590px;margin-top:16px;border-top:1px solid #384960}
 .receipt-view td{white-space:pre-line;max-width:300px}
 .receipt-view p{overflow-wrap:anywhere}
+
+button.secondary{background:#334962;color:#eff7ff;border:1px solid #7a8da6;margin-left:12px}
+button.secondary:hover{background:#405a76}
