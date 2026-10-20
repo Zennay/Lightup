@@ -47,6 +47,36 @@ python3 remediation-private-backup/vault.py compare \
 
 The passwords are prompted interactively and **never accepted as CLI arguments or environment variables**; create and rotate require a confirmation. Use distinct strong passwords and a secured device. Losing the password loses access; this program does not offer a recovery backdoor or password logging. Old archives are never overwritten/deleted, including after re-encryption.
 
+## Complete original + recovery workroom (one offline portal)
+
+For an operator who already has the held original integrated-remediation source files checked out, the independent `integrate.py` composes a completely NEW self-contained owner-private suite using the **unchanged native original installer**. It **does not modify, overwrite, repack or relabel** the original integrated source owner's installed directory or source lock. A separate scriptless launcher gives direct local links to the original installed workroom and this recovery desk.
+
+```sh
+mkdir -p "$HOME/lightup-private"
+chmod 700 "$HOME/lightup-private"
+python3 remediation-private-backup/integrate.py \
+  --output-dir "$HOME/lightup-private/original-plus-recovery-001"
+# Return code 2 means REVIEW_ONLY source-only installation, not production approval.
+# Open locally:
+# $HOME/lightup-private/original-plus-recovery-001/START-HERE.html
+```
+
+The independent composer requires Linux atomic no-replace directory publication, a trusted owner-private directory outside the checkout, and the original native `remediation-integrated-workspace/install.py` source. It delegates complete original source-lock admission to that pinned native installer; refuses its HOLD instead of bypassing it. It installs the original complete offline source software under `original-suite/`, copies only six approved companion source files under `private-recovery/`, and creates one scriptless local portal and a **PRIVATE UNSIGNED** source digest inventory. No operator backup, tenant bytes, secrets or evidence are bundled automatically. The original installer returns its own REVIEW_ONLY status; neither checksum inventory authenticates real source or grants authority.
+
+`integrate.py` has been committed as runnable product source; a full native integrated installation on a real owner-controlled private directory is still NOT claimed. Source-owner, CI and independent security/privacy/browser review are required before any main merge/deployment.
+
+## Interactive original-private source selection (CLI)
+
+Instead of manually typing individual paths, the opt-in **wizard** shows only directly contained eligible single-link, current-owner PRIVATE 0600 files in one explicit 0700 source directory. It does **not** recurse, select automatically, copy anything before explicit operator selection, or include existing `.lupb` archives. The human chooses at most 32 numbered files and then confirms a fresh archive password:
+
+```sh
+python3 remediation-private-backup/vault.py wizard \
+  "$HOME/lightup-private/reviewer-01" \
+  --output "$HOME/lightup-private/reviewer-backup-interactive-001.lupb"
+```
+
+Only the selected originals are encrypted; it never infers customer consent, source validity or whether selected data are safe to disclose.
+
 ## Ready-to-open PRIVATE offline browser (no server)
 
 [Open the shipped portable one-file recovery desk](standalone.html) after saving a trusted copy locally, or use the original two-file [index.html](index.html) with [browser.js](browser.js) beside it. The portable HTML is deliberately **script SHA-256 CSP pinned**, `connect-src 'none'`, with no external scripts, network, cloud, browser storage, HTTP endpoints or source grants. Browser JS lives in memory; decrypting or comparing does **not** upload data.
@@ -84,7 +114,7 @@ It asks for the old password and a **new password with confirmation**, authentic
 ## Immutable output & restore boundary
 
 - The backup contains at most 32 explicitly selected files, each ≤2 MiB and ≤16 MiB combined. Symlink or hardlinked input, files not owned by the current user or with group/other permissions, the reserved REVIEW-ONLY.txt name, unsafe names, duplicate names including case-insensitive collisions, mutation during read, malformed/duplicate JSON keys, unknown envelopes, wrong passwords, altered ciphertext, changed payload bytes, oversized content and noncanonical inner JSON are HOLD. No directory traversal, autodiscovery or recursive collection.
-- The archive is a single new 0600 file in an existing directory owned by this user with no group/other permission bits. A fully authenticated archive can also restore only exact selected original basenames using repeatable --only options (unknown or duplicate names HOLD; no output). The selected dataset is staged into a new sibling owner-only 0700 directory; each file is created 0600 and fsynced, and the directory is renamed to the final **unused** destination only after all files were admitted. Existing output paths are refused. The reserved REVIEW-ONLY.txt name cannot be supplied in an archive, so every restored folder always receives a PRIVATE literal HOLD warning.
+- The archive is a single new 0600 file in an existing directory owned by this user with no group/other permission bits. Linux directory restore uses atomic NOREPLACE publication to avoid replacing even a concurrently created empty destination folder. A fully authenticated archive can also restore only exact selected original basenames using repeatable --only options (unknown or duplicate names HOLD; no output). The selected dataset is staged into a new sibling owner-only 0700 directory; each file is created 0600 and fsynced, and the directory is renamed to the final **unused** destination only after all files were admitted. Existing output paths are refused. The reserved REVIEW-ONLY.txt name cannot be supplied in an archive, so every restored folder always receives a PRIVATE literal HOLD warning.
 - The inventory, private subset derivation and two-snapshot comparison require successful decryption before printing PRIVATE source basenames, hashes or differences. Both backup passwords are prompted separately; neither file chronology nor actual remediation can be inferred from the resulting differences. Outer metadata asserts all four non-authority flags as literal false.
 - All operations return 0 only to mean local file operation completed, **not** a release authorization, accepted remediation or successful original evidence verification. Refused input returns **3/HOLD**.
 
