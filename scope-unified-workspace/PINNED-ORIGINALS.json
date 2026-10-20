@@ -1,0 +1,332 @@
+{
+  "format": "lightup.scope_snapshot_pins.v1",
+  "heads": {
+    "authorization-portfolio": "2ac15c5b24bf5646c3749c26fed577209b1b1221",
+    "scope-casebook-history": "2e10197061fe7876dcd6458ae4fc70d9674af9d3",
+    "scope-casebook-reconcile": "7de3f5a5549c738eeb90f81c687c9a7d9c7cab3a",
+    "scope-casebook-transfer": "f40b0d2cf626e49bbd8f764968df132ba9d4365a",
+    "scope-intake-matrix": "480e4c5e0ff6ffbf020719f0ab3c03c9d1162538",
+    "scope-vault": "49a569b2125a80dcaac21655febc07861afa0df2",
+    "studio": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+    "withdrawal-desk": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338"
+  },
+  "purpose": "unsigned build-time original source immutability; NOT original Git author authentication or consent",
+  "source_files": {
+    "authorization-portfolio": [
+      {
+        "path": "authorization-portfolio/README.md",
+        "sha256": "2d9dac9e9e54069dcd11ed34c747ef4a604e7e48bf2851baff9ca4b40f9aede7",
+        "size": 8940
+      },
+      {
+        "path": "authorization-portfolio/app.js",
+        "sha256": "c5507dcc5cbd9d331dc4e27dbca2c4699251aa9f5655e5d024d592050e2b5546",
+        "size": 43761
+      },
+      {
+        "path": "authorization-portfolio/build.py",
+        "sha256": "7c830043f932ddf7d1bc5a4918d4de15e75352c7460d4abdbc69b211f9562339",
+        "size": 1732
+      },
+      {
+        "path": "authorization-portfolio/index.html",
+        "sha256": "e45ba69cb247f119fa7706615d1c8d14cf7a8efe427996dd030e7a56d924d162",
+        "size": 7362
+      },
+      {
+        "path": "authorization-portfolio/standalone.html",
+        "sha256": "6810112d3cc93cb9b120341781e7ee94fc88f2b3802036f4f52c0e4bce061a2e",
+        "size": 54492
+      },
+      {
+        "path": "authorization-portfolio/style.css",
+        "sha256": "a4e0c4d0f3d42c2d43767d02d3d81333c4eecf57f13309665cc2c27ddfad93cd",
+        "size": 3130
+      }
+    ],
+    "scope-casebook-history": [
+      {
+        "path": "scope-casebook-history/README.md",
+        "sha256": "fbe54837d92715f20cc90d611504b12f310a33c08e9892367fe7711c1e550c70",
+        "size": 20249
+      },
+      {
+        "path": "scope-casebook-history/capture.py",
+        "sha256": "0f27658fb89ce8fca66b08a355cefd2ae33e49b871de1449882f2552fe2df6b2",
+        "size": 6425
+      },
+      {
+        "path": "scope-casebook-history/history.py",
+        "sha256": "cc835d70be398fb0c980137ac89111effa65f14983075f47d84aa163dec09b81",
+        "size": 46272
+      },
+      {
+        "path": "scope-casebook-history/reopen.py",
+        "sha256": "27cdefd4c91ccfc7513fec2b591ff0776c45a85321b47ff2f1b87ce660a2b6d7",
+        "size": 5603
+      },
+      {
+        "path": "scope-casebook-history/workroom.js",
+        "sha256": "66af297a27ede2a431e7ce132b76d660e7566bfa7aa0b2c46b9bdc0d56680ce1",
+        "size": 10065
+      },
+      {
+        "path": "scope-casebook-history/workroom.py",
+        "sha256": "e862d7915fb9ec5d26a49dc691c3dcdee698489285fcd5fd3adce84a60a04039",
+        "size": 10521
+      }
+    ],
+    "scope-casebook-reconcile": [
+      {
+        "path": "scope-casebook-reconcile/README.md",
+        "sha256": "5f1f492fb61482280e284f61e6a365ceae9ad509913128d763429f67e90f09f1",
+        "size": 20980
+      },
+      {
+        "path": "scope-casebook-reconcile/app.js",
+        "sha256": "c57ded665906bcdf3822a01aee52f7270955e99a5d795a1a200c61e1f59a6c89",
+        "size": 26640
+      },
+      {
+        "path": "scope-casebook-reconcile/build_standalone.py",
+        "sha256": "6bd2ec8a7020045d2044a0be51ff328524ecc5d3e48a46bc30b76f1edd384108",
+        "size": 2404
+      },
+      {
+        "path": "scope-casebook-reconcile/bulk.js",
+        "sha256": "306674952165a532322a44bcb32aeb7286dd9f9871de3e3dc2f8178c256bb85e",
+        "size": 7128
+      },
+      {
+        "path": "scope-casebook-reconcile/draft.js",
+        "sha256": "eb28630773f36946bf1f6b100d930797a059e71e70a89f9a0ce29d0a78da10f6",
+        "size": 7265
+      },
+      {
+        "path": "scope-casebook-reconcile/index.template.html",
+        "sha256": "9f8f02c851c131398dcfe3ae3adbbf5fca3c44be1c55815f13fce84c51910959",
+        "size": 18687
+      },
+      {
+        "path": "scope-casebook-reconcile/note-bulk.js",
+        "sha256": "119b37efdd3935736b3a70b1d81ca30b223e384f9e1dbdf74e7d00bd2c71bfdc",
+        "size": 5212
+      },
+      {
+        "path": "scope-casebook-reconcile/notes.js",
+        "sha256": "dc219794da600fd603c345fac2a02780b96fb8b50ecfc7932d1a69e63a058999",
+        "size": 5092
+      },
+      {
+        "path": "scope-casebook-reconcile/portfolio.js",
+        "sha256": "697247538ea09b57252b2b43fa5e143b1ec6bedb223dfd33c55ea4732e5be789",
+        "size": 7970
+      },
+      {
+        "path": "scope-casebook-reconcile/preview.js",
+        "sha256": "978c112e9f60f562510f9515905636c38ad6d902c2f648dc82588a6f839ad266",
+        "size": 7197
+      },
+      {
+        "path": "scope-casebook-reconcile/receipt.js",
+        "sha256": "c4f5ef820348e491fd26a13b390d973b53eaee70851aaf609224d419edaf25e4",
+        "size": 13348
+      },
+      {
+        "path": "scope-casebook-reconcile/revision.js",
+        "sha256": "22582483b31d29c6f05ce138e9679b6682ea0782d386b3a8eb4afe2771bfdeff",
+        "size": 6834
+      },
+      {
+        "path": "scope-casebook-reconcile/standalone.html",
+        "sha256": "6495d67d0c898125283ad939d4a92d7ed1e54fc8af79693ac03de9f68231cf4c",
+        "size": 129484
+      },
+      {
+        "path": "scope-casebook-reconcile/style.css",
+        "sha256": "2f06a8c3fdc1b18f066d657ddc7dbc767cba614a5d107ea59bde5883acfbfa3c",
+        "size": 5311
+      },
+      {
+        "path": "scope-casebook-reconcile/timeline.js",
+        "sha256": "26ec53409fef55096a0d4332f7ee18851c124ad9eccba5af3bed4952fdd8233d",
+        "size": 6003
+      }
+    ],
+    "scope-casebook-transfer": [
+      {
+        "path": "scope-casebook-transfer/README.md",
+        "sha256": "3a833a6187d7a998c168b71b16322e4b44c30a4c9afc34a46141c947438516fc",
+        "size": 14857
+      },
+      {
+        "path": "scope-casebook-transfer/build_standalone.py",
+        "sha256": "a1b172315d8a6714300f07e65dc0d593340f949b121ef166810b6b050705f202",
+        "size": 2084
+      },
+      {
+        "path": "scope-casebook-transfer/continuity.js",
+        "sha256": "b9518c7b0fc7b361b818245524687e8d006f69856cccf8bbdd587da28f61abe1",
+        "size": 9613
+      },
+      {
+        "path": "scope-casebook-transfer/human-board.js",
+        "sha256": "7900001ddcaff502ba6d1adf053b527e3aa620946b34bcf7eb7c8b042340682b",
+        "size": 12554
+      },
+      {
+        "path": "scope-casebook-transfer/standalone.html",
+        "sha256": "f33bfe1ae467aa54ca2ede33776090a0f35bac56a7aa8adce9a1559e821863f0",
+        "size": 57566
+      },
+      {
+        "path": "scope-casebook-transfer/transfer.css",
+        "sha256": "88c00ba4537c8a776724c5a5597dea2b00454a9dacea7690c658250d9cb5df4f",
+        "size": 3814
+      },
+      {
+        "path": "scope-casebook-transfer/transfer.html",
+        "sha256": "560ed3185b0304c9f4b19db33b0e93755ae8eb1e947bad89c03d5e3f75d701f5",
+        "size": 6219
+      },
+      {
+        "path": "scope-casebook-transfer/transfer.js",
+        "sha256": "64e591382c5755cbab6f9059db96d33d1854b09423d09ebed9f8ccd463fae04d",
+        "size": 25269
+      }
+    ],
+    "scope-intake-matrix": [
+      {
+        "path": "scope-intake-matrix/README.md",
+        "sha256": "24731db66593b06dba86feccba8ddd6e275455bdb689ea9eed443949c532a0a6",
+        "size": 18941
+      },
+      {
+        "path": "scope-intake-matrix/app.js",
+        "sha256": "625f8edaa9d911393e64a0774c2bdad55ff2dfed26a1f7ebfc75c1bbf5d99a03",
+        "size": 66296
+      },
+      {
+        "path": "scope-intake-matrix/build_standalone.py",
+        "sha256": "8bcd8ec406431fb5ebcf8f24cbcd93e1bf4f35644f1a98ae3b4ee6189d5c915e",
+        "size": 1747
+      },
+      {
+        "path": "scope-intake-matrix/casebook_bridge.js",
+        "sha256": "3df8741ed8a4eeaaed204bfb61f2da34b0c7c7bb5d070f7e44293095fd496d65",
+        "size": 44520
+      },
+      {
+        "path": "scope-intake-matrix/index.html",
+        "sha256": "23fbb724bb8a21309c31667a6385406b8cf097e8f53afae0abb247f4c1bac7d6",
+        "size": 21697
+      },
+      {
+        "path": "scope-intake-matrix/standalone.html",
+        "sha256": "7dd009e724b2996662ef57c2a408d654c950e0d5fe8e4d97fe4e85a4234c6911",
+        "size": 132560
+      }
+    ],
+    "scope-vault": [
+      {
+        "path": "scope-vault/build_standalone.py",
+        "sha256": "f551df31d8e01d15647d749424de326bdc0072c77ee2dcdd110e1d4c42e66e41",
+        "size": 2005
+      },
+      {
+        "path": "scope-vault/index.html",
+        "sha256": "48586da568134e8ace5e5a5ff90414250b0d938ded6fabb017f721277a223832",
+        "size": 12118
+      },
+      {
+        "path": "scope-vault/standalone.html",
+        "sha256": "39351fd3300d265eb9edec6d5307dedea1ce5d6f5fbdcdb8d34543f565777465",
+        "size": 81282
+      },
+      {
+        "path": "scope-vault/style.css",
+        "sha256": "699125b0886bd4e10521cd84dc9cad4a70a9e30344df734e13ffbc7c384f9231",
+        "size": 4898
+      },
+      {
+        "path": "scope-vault/vault.js",
+        "sha256": "c5b7b718242ab3d2cf071eae74b20fead1ede7503bcf7165761a6f3dbccd73c0",
+        "size": 64214
+      }
+    ],
+    "studio": [
+      {
+        "path": "studio/effective-scope.html",
+        "sha256": "e809b6878ed12f63a9fe1993698ea572b951296d854f27f3935434fece8069c9",
+        "size": 11985
+      },
+      {
+        "path": "studio/engagement-handoff.html",
+        "sha256": "acbd94d870e6606d2064e904ed45a6bc5ffe12ae63123ac254ad39ed4d648b7a",
+        "size": 18407
+      },
+      {
+        "path": "studio/index.html",
+        "sha256": "b916a1b91dea724ed0481004f0a70e8561d74aaa174340265aad49575a844b2a",
+        "size": 3989
+      },
+      {
+        "path": "studio/planning-window.js",
+        "sha256": "17f1536e80c390016bfb60a7655ccec55ad462d980cdf29dbee7a263d10b7a21",
+        "size": 4742
+      },
+      {
+        "path": "studio/scope-change-review.html",
+        "sha256": "109626ba3aaabbfc1cfe11c9beca0d50e94613b01fab829146935ed54211ca07",
+        "size": 16278
+      },
+      {
+        "path": "studio/scope-fingerprint.js",
+        "sha256": "5f89ce8c7a979787048c355da8e0c9e2688819b287c1a4811df824d58e04c90e",
+        "size": 2360
+      },
+      {
+        "path": "studio/scope-network.js",
+        "sha256": "6a06c93b7395b9c8b0b3b857e04ed677559b6fef4e2a9ef894b993cbfd25abe4",
+        "size": 10296
+      },
+      {
+        "path": "studio/scope-portfolio.html",
+        "sha256": "a44ebf68013d1ed97baecbe7e53d37fbb06ad4ec398c197b27f06c74284c2ff3",
+        "size": 17329
+      },
+      {
+        "path": "studio/scope-proposal.html",
+        "sha256": "fd030bd1623acc1f79f845cbf85fab5b6eff54f210363152d46ec3912d097454",
+        "size": 22466
+      }
+    ],
+    "withdrawal-desk": [
+      {
+        "path": "withdrawal-desk/build_standalone.py",
+        "sha256": "f3991edad84c78ba6c4c6debec8d1e33cf733ccb2db9cc48a2e8f5b890cd4fd3",
+        "size": 1746
+      },
+      {
+        "path": "withdrawal-desk/desk.js",
+        "sha256": "8fcc66b59ef625b7da54662450600ce16010547a65eaade3411ca9e740347c96",
+        "size": 19361
+      },
+      {
+        "path": "withdrawal-desk/index.html",
+        "sha256": "896ec63115bcaa76e053ebdce4110dfdcbc59dda41d50eb14542125083b824b1",
+        "size": 5952
+      },
+      {
+        "path": "withdrawal-desk/standalone.html",
+        "sha256": "76bc9f28cc87cb930560fe5c03e14785901b50cfac9c3807d8a91e0b378475e1",
+        "size": 29005
+      },
+      {
+        "path": "withdrawal-desk/style.css",
+        "sha256": "88262af4891617e3825eda602fe6908f1194461fa042ad812e34e549d416812b",
+        "size": 3647
+      }
+    ]
+  }
+}

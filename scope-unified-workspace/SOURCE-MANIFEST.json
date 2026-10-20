@@ -214,19 +214,24 @@
       "size": 132560
     },
     {
+      "path": "scope-unified-workspace/PINNED-ORIGINALS.json",
+      "sha256": "884b0e38eb5d712653d042215abd733749b901c3c85e4ff90ef6187ab5e2ec1e",
+      "size": 11638
+    },
+    {
       "path": "scope-unified-workspace/README.md",
-      "sha256": "ec4651e4c63cb470a6fb4f22630dfca9d48ec01d340aea2aaba66939fb1218de",
-      "size": 9843
+      "sha256": "259087f96a18df960cff2f6f8ee01080e552377a39bd4a6b27ce38b359dde8c3",
+      "size": 10957
     },
     {
       "path": "scope-unified-workspace/build.py",
-      "sha256": "c4541281942a4187c87665ffa5e3a8a9555b7760df3e30849b8308d8f3b055f2",
-      "size": 7537
+      "sha256": "b9df5ebf66687731c899e59dc03535d40ee21b46c352ef0db3ed62c126975f2e",
+      "size": 7772
     },
     {
       "path": "scope-unified-workspace/check_bundle.py",
-      "sha256": "b2293e12b8abf9794c66f21b4cb7c2007ee91ab81c583b6b82f40ab769b6d3f8",
-      "size": 9704
+      "sha256": "669913683a25f68f86732faae477dbd46ecc7c65748cd3b2c230995e0103a85d",
+      "size": 9803
     },
     {
       "path": "scope-unified-workspace/extra-cards.html",
@@ -257,6 +262,11 @@
       "path": "scope-unified-workspace/index.html",
       "sha256": "35336950cba96c6f5fd9d51a35a987342d2d4d8260cd0c3e18849821e7c2fdab",
       "size": 18566
+    },
+    {
+      "path": "scope-unified-workspace/source_pins.py",
+      "sha256": "781631ce17f454ef53f8ed5748428c85dcc5b9b8e211bf09df821baa64154a97",
+      "size": 4214
     },
     {
       "path": "scope-unified-workspace/style.css",

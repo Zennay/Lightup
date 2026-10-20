@@ -14,6 +14,7 @@ import stat
 import tempfile
 import zipfile
 from pathlib import Path
+from source_pins import verify_snapshot
 
 ROOT = Path(__file__).resolve().parent.parent
 HUB = ROOT / "scope-unified-workspace"
@@ -27,7 +28,7 @@ SOURCES = (
     ("scope-vault", "49a569b2125a80dcaac21655febc07861afa0df2", True),
     ("studio", "71d9e5f760ef2bff46a72b979173bb3181179afb", False),
 )
-HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py", "verify-local.js", "verify.template.html", "extra-cards.html", "handoff.js", "handoff.template.html")
+HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py", "verify-local.js", "verify.template.html", "extra-cards.html", "handoff.js", "handoff.template.html", "source_pins.py", "PINNED-ORIGINALS.json")
 ARCHIVE = HUB / "LightUp-Scope-Offline-DRAFT-HOLD.zip"
 MAX_FILE = 8 * 1024 * 1024
 MAX_ALL = 30 * 1024 * 1024
@@ -46,6 +47,8 @@ def sha(blob: bytes) -> str:
 
 
 def package():
+    verified = verify_snapshot(ROOT, SOURCES)
+    print("Pinned original source bytes:", verified, "unchanged files across", len(SOURCES), "workrooms")
     css = raw(HUB / "style.css")
     template = raw(HUB / "hub.template.html").decode("utf-8", "strict")
     if template.count("<!-- EMBED_STYLE -->") != 1 or template.count("CSP_STYLE_HASH") != 1:

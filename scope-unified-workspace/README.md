@@ -30,6 +30,12 @@ The start page makes **zero network requests**, uses **zero JavaScript**, contai
 
 This is a **snapshot**, not ongoing automatic propagation. Parent source-owner PRs and their branches stay untouched. Changes to those originals need a separately reviewed composition and a new frozen inventory. Duplicated or older assets must never be represented as current original authorization truth.
 
+## Pin every imported original to its copied source bytes
+
+The committed `PINNED-ORIGINALS.json` enumerates **all 60 copied original files** under eight owner compartments, with exact declared original PR HEAD, original relative path, byte size and SHA-256. `source_pins.py` is a fail-closed local **product build prerequisite**, not a QA suite: `build.py` refuses to package an added, removed, renamed, symlinked, size-changed or byte-changed original file, and rejects an unrecognized/mismatched source-head claim. To refresh originals deliberately, separately re-verify the exact upstream PR head, record all changed files and update the pin document in a dedicated reviewed composition commit. Never silently edit a copied original's code.
+
+The committed SHA-256 inventory is **unsigned**: it detects accidental drift relative to this Git commit, but does not independently authenticate GitHub, the original developer, client/tenant identity, consent or release. Exact SHA content review, original source-owner approval and mandatory original hosted and named VPS CI still remain outside this offline bundle.
+
 ## Rebuild portable package (product build only)
 
 Run on a trusted local/offline developer checkout:
