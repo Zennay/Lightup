@@ -34,6 +34,7 @@
   let source = null;
   let human = new Map();
   let digestHex = null;
+  let rawPrivateSource = null;
 
   // Fully recursive bounded parser: unlike a JSON.parse + stringify roundtrip,
   // each object's duplicate-key check is independent of key order and original
@@ -257,6 +258,7 @@
     if (confirmHuman && source && !confirm("Discard the PRIVATE original Casebook source and local HUMAN labels from browser memory? Your proposed scope draft will remain untouched.")) return;
     source = null;
     digestHex = null;
+    rawPrivateSource = null;
     human.clear();
     $("casebook-selected").hidden = true;
     $("casebook-selected").textContent = "";
@@ -371,7 +373,7 @@
     const hash = globalThis.crypto?.subtle ?
       await globalThis.crypto.subtle.digest("SHA-256", bytes) : null;
     const fingerprint = hash ? Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("") : null;
-    return {parsed, fingerprint};
+    return {parsed, fingerprint, raw};
   }
 
   function download(name, payload) {
@@ -415,6 +417,7 @@
         }
         source = result.parsed;
         digestHex = result.fingerprint;
+        rawPrivateSource = result.raw;
         human.clear();
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
