@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Foreground local PRIVATE lab review coordination. No network, scanner or launch."""
+from __future__ import annotations
+from dataclasses import dataclass
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parent
+SCRIPTS = {
+    "prepare": ROOT / "suite.py",
+    "curation": ROOT / "curation.py",
+    "dossier": ROOT / "publish.py",
+    "drift": ROOT / "drift.py",
+}
+MAX_REPLY = 8192
+
+
+@dataclass
+class Session:
+    parent: str = ""
+    original: str = ""
+    initial_kit: str = ""
+    curation_kit: str = ""
+    selected_kit: str = ""
+    drift_kit: str = ""
+
+
+def ask(label: str, default: str = "") -> str:
+    suffix = f" [{default}]" if default else ""
+    answer = input(f"{label}{suffix}: ").strip()
+    return answer if answer else default
+
+
+def path_prompt(label: str, default: str = "") -> str:
+    text = ask(label, default)
+    if not text or len(text) > 4096 or any(c in text for c in "\x00\r\n"):
+        raise ValueError("HOLD: a required local file path is missing or malformed")
+    return text
+
+
+def run_native(script: str, flags: list[str]) -> tuple[bool, str]:
+    path = SCRIPTS[script]
+    if not path.is_file():
+        print("HOLD: the native original-source component is not installed.")
+        return False, ""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-P", str(path), *flags],
+            cwd=str(ROOT.parent),
+            capture_output=True,
+            timeout=240,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        print("HOLD: offline native stage did not finish; inspect private workspace locally.")
+        return False, ""
+    if result.returncode != 2:
+        # No raw stderr, no source filenames, no private input bytes.
+        print("HOLD: original private admission refused; existing source remains unchanged.")
+        return False, ""
+    answer = result.stdout.decode("utf-8", errors="replace")
+    marker = "OPEN LOCALLY: "
+    path_text = next((line[len(marker):].strip() for line in answer.splitlines()
+                      if line.startswith(marker)), "")
+    if not path_text or len(path_text) > 4096 or not Path(path_text).is_file():
+        print("HOLD: original stage returned no usable local PRIVATE entry page.")
+        return False, ""
+    print("REVIEW_ONLY: PRIVATE local package prepared.")
+    print("Open on a trusted offline device: " + path_text)
+    return True, str(Path(path_text).parent)
+
+
+def prepare(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent directory", session.parent)
+    original = path_prompt("First already-produced ORIGINAL PRIVATE lab JSON", session.original)
+    sources = [original]
+    while len(sources) < 12:
+        extra = ask("Optional next ORIGINAL PRIVATE lab JSON (empty to finish)")
+        if not extra:
+            break
+        if len(extra) > 4096:
+            raise ValueError("HOLD: source path exceeds local length bound")
+        sources.append(extra)
+    detail = ask("Include original PRIVATE full findings and HUMAN worksheet? (yes/no)", "yes").lower()
+    if detail not in ("yes", "no"):
+        raise ValueError("HOLD: choose yes or no explicitly")
+    flags = sum((["--source", name] for name in sources), [])
+    flags.extend(["--private-parent", parent])
+    if detail == "yes":
+        flags.append("--brief")
+    ok, kit = run_native("prepare", ["prepare", *flags])
+    if ok:
+        session.parent = parent
+        session.original = original
+        session.initial_kit = kit if detail == "yes" else ""
+        session.curation_kit = ""
+        session.selected_kit = ""
+        print("To prepare selected original finding questions, choose menu option 2.")
+
+
+def curate(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    original = path_prompt("Exact SAME original PRIVATE lab JSON", session.original)
+    kit = path_prompt("Original PRIVATE full briefing kit", session.initial_kit)
+    ok, next_kit = run_native("curation", [
+        "--source", original, "--original-kit", kit, "--private-parent", parent,
+    ])
+    if ok:
+        session.parent = parent
+        session.original = original
+        session.initial_kit = kit
+        session.curation_kit = next_kit
+        session.selected_kit = ""
+        print("Edit the original selection CSV in the private HUMAN studio before option 3.")
+
+
+def dossier(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    original = path_prompt("Exact SAME original PRIVATE lab JSON", session.original)
+    initial = path_prompt("Original PRIVATE full briefing kit", session.initial_kit)
+    selection_kit = path_prompt("Existing PRIVATE HUMAN curation kit", session.curation_kit)
+    selection = path_prompt("HUMAN completed original source-bound PRIVATE selection CSV")
+    ok, next_kit = run_native("dossier", [
+        "--source", original, "--original-kit", initial,
+        "--curation-kit", selection_kit, "--selection", selection,
+        "--private-parent", parent,
+    ])
+    if ok:
+        session.parent, session.original = parent, original
+        session.initial_kit, session.curation_kit = initial, selection_kit
+        session.selected_kit = next_kit
+        print("Nothing has been externally distributed. Dossier and minimized handoff remain PRIVATE.")
+
+
+def drift(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    before = path_prompt("Original PRIVATE lab JSON before", session.original)
+    after = path_prompt("Different separately-produced ORIGINAL PRIVATE lab JSON after")
+    ok, result = run_native("drift", [
+        "--before", before, "--after", after, "--private-parent", parent,
+    ])
+    if ok:
+        session.parent, session.drift_kit = parent, result
+        print("Only literal source-declared changes are shown, never proven fixes.")
+
+
+def last_packages(session: Session) -> None:
+    for label, value in (
+        ("PRIVATE full briefing", session.initial_kit),
+        ("Original HUMAN selection", session.curation_kit),
+        ("Selected PRIVATE dossier", session.selected_kit),
+        ("Original PRIVATE source A/B drift", session.drift_kit),
+    ):
+        print(f"{label}: {value or 'not prepared this session'}")
+    print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
+
+
+def main() -> int:
+    if not sys.stdin.isatty():
+        print("HOLD: this operator console requires a foreground interactive terminal.")
+        return 3
+    session = Session()
+    print("LightUp original PRIVATE assessment console")
+    print("INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD")
+    print("No scan, model, network, grant, deletion, retest, source verification or release.")
+    menu = {
+        "1": prepare, "2": curate, "3": dossier, "4": drift, "5": last_packages,
+    }
+    while True:
+        print("\n1. Prepare PRIVATE original briefing + 10 offline HUMAN workrooms")
+        print("2. Prepare exact-source PRIVATE HUMAN selection studio")
+        print("3. Build source-selected PRIVATE HUMAN finding dossier")
+        print("4. Review two original PRIVATE lab source revisions")
+        print("5. Show local package paths (current session only)")
+        print("0. Exit without scheduling or executing anything")
+        try:
+            choice = ask("Choice", "0")
+            if choice == "0":
+                print("Exited. No external tasks were scheduled or executed.")
+                return 0
+            if choice not in menu:
+                print("Choose 0, 1, 2, 3, 4, or 5.")
+                continue
+            menu[choice](session)
+        except (KeyboardInterrupt, EOFError):
+            print("\nExited; no external work scheduled.")
+            return 0
+        except (ValueError, OSError) as exc:
+            # No arbitrary exception data or PRIVATE input values printed.
+            print(str(exc) if isinstance(exc, ValueError) and str(exc).startswith("HOLD:")
+                  else "HOLD: local input could not be admitted; no other workflow affected.")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

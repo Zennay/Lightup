@@ -151,3 +151,30 @@ to every app from the same private scriptless landing page. All original rules f
 source admission, original plan identity, HUMAN status and cryptographic data remain
 the responsibility of the original owner module, not the suite wrapper. A launcher
 link is not permission, verification, a PASS finding, or a production approval.
+
+## NEW: one foreground PRIVATE operator console (no command assembly)
+
+Run the new five-screen workflow navigator from a trusted interactive terminal:
+
+~~~sh
+python3 assessment-integrated-suite/console.py
+~~~
+
+The operator can prepare the original PRIVATE disclosure/briefing with ten original
+offline browser workrooms; continue into original exact-source HUMAN finding
+selection; complete the selected-only PRIVATE dossier after manually saving the
+selection; review an independent original A/B lab source drift; or display the
+private package locations produced **during this session only**.
+
+All native processing uses only the four source-integrated standalone original
+wrappers with subprocess argument vectors and no shell. No assessment execution,
+grants, API, internet, browser auto-open, queuing, retained session history or
+scheduled operations. Inputs and potentially sensitive paths are not logged to
+Notion/GitHub. Full source details never appear in the console's error output.
+Original source admission and owner-only PRIVATE parent checks remain mandatory.
+
+The console never chooses HUMAN answers automatically; it refuses selection
+publication until a human separately supplies the original completed selection
+CSV and unmodified original source, briefing, and selection-kit files. A menu
+success means only locally prepared REVIEW_ONLY private files. This is *not*
+current customer consent, review signoff, or permission to deploy.
