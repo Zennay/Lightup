@@ -89,10 +89,19 @@ def read_human_csv(raw: bytes, source: dict) -> list[dict]:
 
 
 def review_page(source: dict, sha: str, notes: list[dict]) -> str:
-    from briefing import render
-    base = render(source, sha)
-    # Retain original source display exactly as in the already-produced
-    # briefing, but render a distinct immutable human report, not mutate source.
+    from briefing import CSS
+    import base64
+    pin = base64.b64encode(hashlib.sha256(CSS.encode("utf-8")).digest()).decode("ascii")
+    csp = ("default-src 'none'; style-src 'sha256-" + pin +
+           "'; script-src 'none'; connect-src 'none'; img-src 'none'; " +
+           "form-action 'none'; base-uri 'none'; object-src 'none'")
+    # Render the human return directly. Never needlessly render a full original
+    # finding briefing only to throw its body away (large sources can be 8 MiB).
+    prefix = ("<!doctype html><html lang='en'><head><meta charset='utf-8'>" +
+              "<meta http-equiv='Content-Security-Policy' content=\"" + h(csp) + "\">" +
+              "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+              "<title>PRIVATE LightUp HUMAN return</title><style>" + CSS +
+              "</style></head>")
     bodies = []
     progress = {s: sum(n["stage"] == s for n in notes) for s in STAGES[1:]}
     for ordinal, (f, n) in enumerate(zip(source["findings"], notes), 1):
@@ -119,8 +128,6 @@ def review_page(source: dict, sha: str, notes: list[dict]) -> str:
         bodies.append(human)
     summary = "".join("<section class='card'><h3>" + h(k) + "</h3><div class='value'>" +
                       str(v) + "</div></section>" for k, v in progress.items())
-    # Reuse the existing pinned CSP stylesheet and full source without DOM/scripts.
-    prefix = base.split("<body>", 1)[0]
     return (prefix + "<body><header><h1>LightUp · PRIVATE HUMAN follow-up return</h1>" +
             "<p class='notice'>REVIEW ONLY — original source and HUMAN input NOT " +
             "independently authenticated. Human labels are NOT actual approvals, " +
