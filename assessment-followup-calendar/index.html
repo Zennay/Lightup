@@ -45,7 +45,16 @@
 <p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
 <div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
 </section>
-<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">4 · Save / resume or export calendar</h2>
+<section id="workload" class="panel" hidden aria-labelledby="workloadHeading">
+<h2 id="workloadHeading">4 · HUMAN owner workload</h2>
+<p>PRIVATE human group names from the original worksheet, not verified personnel or assigned authority. Counts are appointment planning, never proof of remediation or accepted scope.</p>
+<div class="toolbar"><label>Filter HUMAN groups <input type="search" id="workloadQuery" maxlength="120" placeholder="Private group name"></label>
+<button type="button" id="clearGroup" class="ghost">Clear group focus</button><span id="focusedGroup" class="subtle">All groups</span></div>
+<p id="workloadSummary" class="subtle"></p><div class="tablebox">
+<table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
+<div class="row"><button type="button" id="workloadPrev" class="ghost">Previous</button><button type="button" id="workloadNext" class="ghost">Next</button></div>
+</section>
+<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">5 · Save / resume or export calendar</h2>
 <p>Scheduled events use original anonymous ordinals and source-reported severity, with your own HUMAN next-action text only when explicitly opted in. <strong>Original lab-source fields are never imported here, but HUMAN notes can themselves mention private targets, clients or evidence. Review before exporting.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
 <div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
 <div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
