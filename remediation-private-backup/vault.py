@@ -2,6 +2,8 @@
 """PRIVATE offline encrypted backup of explicitly selected LightUp HUMAN workroom files."""
 from __future__ import annotations
 import argparse
+import ctypes
+import errno
 import base64
 import getpass
 import hashlib
@@ -192,6 +194,27 @@ def private_write(path, content):
     finally:
         os.close(fd)
 
+def atomic_publish_new_directory(source: Path, destination: Path):
+    """Linux renameat2 NOREPLACE: never replace a concurrent empty directory."""
+    try:
+        libc = ctypes.CDLL(None, use_errno=True)
+        renameat2 = libc.renameat2
+    except (AttributeError, OSError) as err:
+        raise Hold("atomic no-replace directory publication requires Linux renameat2") from err
+    renameat2.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                          ctypes.c_char_p, ctypes.c_uint]
+    renameat2.restype = ctypes.c_int
+    at_fdcwd = -100
+    no_replace = 1
+    result = renameat2(at_fdcwd, os.fsencode(source), at_fdcwd,
+                       os.fsencode(destination), no_replace)
+    if result:
+        error = ctypes.get_errno()
+        if error in (errno.EEXIST, errno.ENOTEMPTY):
+            raise Hold("new private destination appeared concurrently; no overwrite")
+        raise Hold("atomic no-replace publication refused by this Linux filesystem")
+
+
 def create(args):
     target = Path(args.output)
     target_free(target)
@@ -234,7 +257,7 @@ def restore(args):
                       b"PRIVATE DRAFT/HOLD. Unverified operator-selected files. "
                       b"No consent, real source proof, permission, remediation verification or release.\n")
         target_free(destination)
-        os.rename(temporary, destination)
+        atomic_publish_new_directory(temporary, destination)
     except BaseException:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
