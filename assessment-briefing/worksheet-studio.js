@@ -13,6 +13,7 @@
   const txt = (v) => String(v ?? "");
   let rows = [], originalName = "", sourceSize = 0, page = 0, dirty = false;
   let sourceFileSha = "", selectionFilter = "", lastBulk = null;
+  let incoming = null;
   const headById = Object.fromEntries(HEAD.map((x,i)=>[x,i]));
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 
@@ -97,6 +98,7 @@
     const raw = decode.decode(await file.arrayBuffer()).replace(/^\uFEFF/,"");
     const admitted=admit(parseCSV(raw));
     if (dirty && !confirm("Replace your unsaved PRIVATE HUMAN edits? Download before replacing.")) return;
+    discardReply("Incoming HUMAN proposals cleared for new original worksheet.");
     rows=admitted;originalName=file.name;sourceSize=file.size;
     page=0;dirty=false;lastBulk=null;sourceFileSha="";
     $("severityFilter").value="all";$("stageFilter").value="all";
@@ -168,6 +170,7 @@
         (key==="stage"&&!STAGES.includes(value))) {
       field.value=row[key];message("Unsafe or overlong PRIVATE HUMAN field rejected. No export mutation.",true);return;
     }
+    discardReply("Incoming HUMAN proposals invalidated by local edit. Re-open to compare.");
     row[key]=value;lastBulk=null;dirty=true;render();
     message("Edited local HUMAN proposal only. Download PRIVATE CSV to retain this change.");
   }
@@ -225,6 +228,7 @@
       if (stage!=="unchanged")r.stage=stage;
       if (group!=="")r.group=group==="__CLEAR__"?"":group;
     });
+    discardReply("Incoming HUMAN proposals invalidated by local batch edit. Re-open to compare.");
     lastBulk=snapshot;dirty=true;page=0;render();
     message("Batch HUMAN change applied locally to "+selected.length+" filtered original ordinals. Single-step Undo available.");
   }
@@ -235,6 +239,7 @@
       const row=index.get(old.ordinal);
       if (row){row.stage=old.stage;row.group=old.group;}
     });
+    discardReply("Incoming HUMAN proposals invalidated by local Undo. Re-open to compare.");
     lastBulk=null;dirty=true;render();message("Last HUMAN batch edit reverted in memory.");
   }
   function download(name,content,type) {
@@ -277,9 +282,98 @@
   }
   function forget() {
     if ((dirty||rows.length) && !confirm("Forget all local PRIVATE worksheet data? Downloaded files are unaffected.")) return;
+    discardReply("Incoming HUMAN proposal cleared.");
     rows=[];dirty=false;lastBulk=null;sourceSize=0;originalName="";sourceFileSha="";
     $("fileInput").value="";$("workroom").hidden=true;
     $("tableBody").replaceChildren();message("Private workroom cleared from application memory (best effort). Downloaded files remain on disk.");
+  }
+  /* Independent HUMAN peer worksheet inbox (not producer or reviewer authentication). */
+  function discardReply(reason="Incoming HUMAN proposals discarded.") {
+    incoming=null;
+    $("replyBoard").hidden=true;
+    $("replyRows").replaceChildren();
+    $("replyInput").value="";
+    $("replyStatus").textContent=reason;
+    $("replyStatus").dataset.error="false";
+  }
+  function replyVisible() {
+    if (!incoming)return [];
+    return incoming.changes.slice(incoming.page*PAGE,(incoming.page+1)*PAGE);
+  }
+  function renderReply() {
+    if (!incoming) return;
+    const list=incoming.changes,selected=list.filter(c=>c.checked).length;
+    $("replyBoard").hidden=list.length===0;
+    $("replyRows").replaceChildren();
+    replyVisible().forEach(item=>{
+      const tr=document.createElement("tr");
+      const tdCheckbox=document.createElement("td"),box=document.createElement("input");
+      box.type="checkbox";box.checked=item.checked;
+      box.setAttribute("aria-label","Select incoming human "+item.field+
+        " for original ordinal "+item.ordinal);
+      box.addEventListener("change",()=>{item.checked=box.checked;renderReply();});
+      tdCheckbox.append(box);tr.append(tdCheckbox);
+      tr.append(td("#"+item.ordinal),td(item.field));
+      const before=td(item.before||"(empty)"),after=td(item.after||"(empty)");
+      before.className="peerValue";after.className="peerValue peerAfter";
+      tr.append(before,after);$("replyRows").append(tr);
+    });
+    const pages=Math.max(1,Math.ceil(list.length/PAGE));
+    $("replyPage").textContent="Page "+(incoming.page+1)+"/"+pages+" · "+selected+
+      " of "+list.length+" human fields selected";
+    $("replyPrev").disabled=incoming.page===0;
+    $("replyNext").disabled=incoming.page>=pages-1;
+    $("acceptReply").disabled=selected===0;
+    $("replyStatus").textContent=list.length
+      ? list.length+" changed HUMAN fields in PRIVATE incoming worksheet; "+
+        selected+" selected. No source or permission records modified."
+      : "Incoming PRIVATE HUMAN worksheet is identical in allowed fields. No changes to import.";
+    $("replyStatus").dataset.error="false";
+  }
+  async function previewReply() {
+    const file=$("replyInput").files[0];
+    need(rows.length>0 && file && file.size>0 && file.size<=MAX_BYTES);
+    const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer())
+      .replace(/^\uFEFF/,"");
+    const proposed=admit(parseCSV(raw));
+    need(proposed.length===rows.length);
+    const changed=[];
+    rows.forEach((row,i)=>{
+      const other=proposed[i];
+      need(row.ordinal===other.ordinal && row.severity===other.severity &&
+        row.evidence===other.evidence);
+      for (const field of ["stage","group","action","blocker"]) {
+        const before=row[field],after=other[field];
+        if(before!==after)changed.push({ordinal:row.ordinal,idx:i,field,
+                                      before,after,checked:false});
+      }
+    });
+    need(changed.length<=MAX_ROWS*4);
+    incoming={filename:file.name,changes:changed,page:0,
+      baseline:rows.map(r=>({stage:r.stage,group:r.group,
+                            action:r.action,blocker:r.blocker}))};
+    renderReply();
+    message("PRIVATE peer proposal compared with matching original ordinal metadata. Human identity NOT authenticated.");
+  }
+  function applyReply() {
+    if (!incoming) return;
+    const selected=incoming.changes.filter(c=>c.checked);
+    if (!selected.length){message("No incoming HUMAN fields selected.",true);return;}
+    // Every baseline HUMAN field must be unchanged, even if not selected:
+    // never silently reconcile incoming values against a mutated snapshot.
+    for(let i=0;i<rows.length;i++){
+      const row=rows[i],baseline=incoming.baseline[i];
+      if(!baseline||["stage","group","action","blocker"].some(k=>row[k]!==baseline[k])){
+        discardReply("HOLD: local HUMAN worksheet changed since incoming preview.");
+        message("Source changed since incoming preview; re-open incoming CSV before accepting.",true);
+        return;
+      }
+    }
+    if(!confirm("Accept exactly "+selected.length+" selected HUMAN field proposals? Peer identity, source producer, current consent and security outcomes are NOT authenticated."))return;
+    selected.forEach(c=>{rows[c.idx][c.field]=c.after;});
+    discardReply("Selected HUMAN fields applied in memory. Download PRIVATE original-format CSV to retain.");
+    lastBulk=null;dirty=true;page=0;render();
+    message("Selected HUMAN proposals applied locally only. No original source, grant or evidence changed.");
   }
   $("load").addEventListener("click",async()=>{
     try{await importFile($("fileInput").files[0]);}
@@ -295,6 +389,27 @@
   $("saveCsv").addEventListener("click",exportCsv);
   $("saveCounts").addEventListener("click",exportCounts);
   $("forget").addEventListener("click",forget);
+  $("previewReply").addEventListener("click",async()=>{
+    try{await previewReply();}
+    catch(_){
+      $("replyStatus").dataset.error="true";
+      $("replyStatus").textContent="HOLD: PRIVATE incoming worksheet is invalid or has different original row membership. Existing local HUMAN work and any prior preview remain unchanged.";
+    }
+  });
+  $("replyPrev").addEventListener("click",()=>{if(incoming){incoming.page--;renderReply();}});
+  $("replyNext").addEventListener("click",()=>{if(incoming){incoming.page++;renderReply();}});
+  $("selectVisibleReply").addEventListener("click",()=>{
+    if(!incoming)return;
+    const list=replyVisible();
+    if(list.length&&confirm("Select "+list.length+" currently visible HUMAN fields for explicit acceptance? No source authority is inferred.")){
+      list.forEach(c=>c.checked=true);renderReply();
+    }
+  });
+  $("clearReplySelections").addEventListener("click",()=>{
+    if(incoming){incoming.changes.forEach(c=>c.checked=false);renderReply();}
+  });
+  $("acceptReply").addEventListener("click",applyReply);
+  $("discardReply").addEventListener("click",()=>discardReply());
   addEventListener("beforeunload",e=>{if (dirty){e.preventDefault();e.returnValue="";}});
   message("Load an existing PRIVATE original ordinal worksheet. Nothing is uploaded or stored by this application.");
 })();
