@@ -21,7 +21,7 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 </style></head>
 <body><header><small>LIGHTUP / EVIDENCE-REMEDIATION / HUMAN-ONLY</small><h1>PRIVATE encrypted recovery desk</h1>
 <p class="warning">DRAFT/HOLD · INCUBATE M3/M7 · PLAN/LAB ONLY. This tool does NOT verify original evidence, remediation, permissions, source identity, or client/operator consent.</p>
-<p>Open two local <code>.lupb</code> archives in memory. Review exact file inventory and byte digests, compare locally, then explicitly download only needed original files. No uploads, endpoints, browser storage or background transfers.</p>
+<p>Open two local <code>.lupb</code> archives in memory. Review exact file inventory and byte digests, compare locally, then explicitly download only needed original files or re-encrypt a minimum-necessary selected subset. No uploads, endpoints, browser storage or background transfers.</p>
 </header>
 <main>
 <section aria-labelledby="a-h"><h2 id="a-h">Archive A</h2><label for="a-file">Private encrypted archive</label><input id="a-file" type="file" accept=".lupb,application/json">
@@ -36,8 +36,14 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 <label for="source-select">Active decrypted archive</label><select id="source-select"><option value="0">Archive A</option><option value="1">Archive B</option></select>
 <p>Original file names and SHA-256 are sensitive. Never share a complete original owner workroom when a separately approved selective HUMAN recipient handoff is required.</p>
 <output id="inventory-status" role="status" aria-live="polite">Unlock archive A or B to inspect.</output>
-<div style="overflow-x:auto"><table><thead><tr><th>Source basename</th><th>Bytes</th><th>SHA-256</th><th>Private recovery</th></tr></thead><tbody id="file-rows"></tbody></table></div>
-<div id="file-meta" aria-live="polite"></div><pre id="preview" class="hide" aria-label="Selected private text preview"></pre></section>
+<div style="overflow-x:auto"><table><thead><tr><th>Source basename</th><th>Bytes</th><th>SHA-256</th><th>Private recovery</th><th>Include in encrypted subset</th></tr></thead><tbody id="file-rows"></tbody></table></div>
+<div id="file-meta" aria-live="polite"></div><pre id="preview" class="hide" aria-label="Selected private text preview"></pre>
+<h2>New encrypted minimum-necessary subset</h2>
+<p>Explicitly select files above to produce a NEW password-encrypted <code>.lupb</code> archive. No plaintext files, upload, consent or permission is generated. Browser download destinations may NOT be owner-private; move the result into a secure private folder immediately.</p>
+<label for="subset-pass">New independent archive password</label><input id="subset-pass" type="password" autocomplete="new-password">
+<label for="subset-confirm">Confirm new archive password</label><input id="subset-confirm" type="password" autocomplete="new-password">
+<button id="subset-export" type="button">Encrypt selected files locally</button>
+<output id="subset-status" role="status" aria-live="polite">Choose source filenames, then encrypt.</output></section>
 <section class="wide"><h2>PRIVATE file changes · A versus B</h2>
 <p>A and B are independently password-authenticated. Local byte differences do not prove real chronology, verified remediation, or a resolved security finding.</p>
 <output id="compare-status" role="status" aria-live="polite">Unlock both archives to compare.</output>
