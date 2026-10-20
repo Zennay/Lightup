@@ -54,7 +54,8 @@ JS = r"""
         !teams.has(item.team) || question.length>300 ||
         /^[\s]*[=+@-]/.test(question) ||
         (item.day && !/^\d{4}-\d{2}-\d{2}$/.test(item.day)) ||
-        (item.day && new Date(item.day+"T00:00:00Z").toISOString().slice(0,10)!==item.day) ||
+        (item.day && (Number.isNaN(Date.parse(item.day+"T00:00:00Z")) ||
+          new Date(item.day+"T00:00:00Z").toISOString().slice(0,10)!==item.day)) ||
         (item.proposal==="NO_PROPOSAL" &&
           (item.team!=="UNASSIGNED" || item.day || question))) return null;
     return [
@@ -221,7 +222,7 @@ Dates are HUMAN suggestions, not reminders or appointments.</p></section>
 <main>""" + "".join(cards) + """</main>
 <footer><button id="save" type="button">Save complete PRIVATE HUMAN agenda CSV</button>
 <p id="message" role="status" aria-live="polite"></p>
-<p class="warn">Saving does NOT run native \`agenda-finalize\`, schedule any
+<p class="warn">Saving does NOT run native `agenda-finalize`, schedule any
 event, assign a human owner, authenticate consent, disclose source material,
 or authorize a scan. Current original source identity must be checked
 again by the separate offline native command. Incubate M3/M7 DRAFT/HOLD.</p>
