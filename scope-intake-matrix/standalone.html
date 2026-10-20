@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-P/Kodm7DTAlySJaYQzvLNl9vlxZp6vK4RBQiQrJvb/w='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-snCUtWTiaaWnITqZDk1+41dNhsPLwZATD8kcTB16jns='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp — Scope Intake Matrix (draft only)</title>
 <style>
 :root{color-scheme:dark;--bg:#0c1322;--panel:#151f32;--panel2:#1b2940;--line:#35455d;--ink:#eef4ff;--dim:#aebed0;--accent:#75e0c2;--warning:#ffcd7c;--danger:#ff8e99}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1000px 460px at 65% -20%,#214b5a,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}header{padding:24px clamp(18px,5vw,72px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:13px;letter-spacing:.15em;color:var(--accent);font-weight:800}.brand strong{display:block;font-size:29px;letter-spacing:-.035em;color:var(--ink)}.fence{border:1px solid #936d38;background:#392c1c;color:#ffe1ad;border-radius:40px;padding:8px 15px;font-weight:750;font-size:12px}main{max-width:1460px;margin:auto;padding:28px clamp(18px,5vw,72px) 80px}.intro{max-width:900px;color:var(--dim);margin:0 0 24px}h2{font-size:18px;margin:0 0 17px}h3{font-size:15px;margin:0 0 12px}.section{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px;margin-bottom:21px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.wide{grid-column:span 2}label{display:block;font-weight:650;font-size:13px;color:#dce6f1}input,select,textarea{background:var(--panel2);border:1px solid #4b5c74;border-radius:8px;color:var(--ink);font:inherit;padding:9px 10px;min-width:0;width:100%;margin-top:6px}textarea{min-height:73px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}button{font:inherit;cursor:pointer;border-radius:9px;padding:10px 14px;border:1px solid #647792;background:#25364e;color:var(--ink);font-weight:700}button.primary{background:var(--accent);border-color:var(--accent);color:#091e24}button.danger{color:#ffc5cd;border-color:#9b5363}button:hover{filter:brightness(1.16)}button:focus-visible{outline:3px solid var(--warning)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:12px;border-radius:10px;background:#22314a;border:1px solid var(--line)}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--dim)}.muted{color:var(--dim)}.warning{color:var(--warning)}.danger-text{color:var(--danger)}.table-wrap{overflow-x:auto}table{border-collapse:separate;border-spacing:0;width:100%;min-width:960px}th{text-align:left;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);padding:10px 7px}td{vertical-align:top;border-bottom:1px solid #2c3e56;padding:7px}td input,td select{font-size:13px;margin:0;padding:8px}th:nth-child(1){width:25%}th:nth-child(2){width:12%}th:nth-child(3){width:19%}th:nth-child(4){width:11%}th:nth-child(5){width:14%}th:nth-child(6){width:13%}.row-tools{display:flex;gap:4px}.row-tools button{font-size:12px;padding:7px}.privacy{padding:13px;border-left:3px solid var(--warning);background:#3c3025;margin-top:16px}.notice{padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);margin:12px 0;white-space:pre-wrap}.notice[hidden],section[hidden],div[hidden]{display:none!important}.compare-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.compare-items pre{overflow-wrap:anywhere;white-space:pre-wrap;background:#0e192a;border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}.small{font-size:12px}.right{margin-left:auto}.filter{max-width:290px}.footer{margin-top:20px;font-size:12px;color:var(--dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.compare-items{grid-template-columns:1fr}.section{padding:16px}}@media print{body{background:white;color:black}header,.actions,.privacy,.footer,#compare-section,#file-import,#file-compare,.row-tools,.filter{display:none!important}main{padding:0}.section{break-inside:avoid;border:1px solid #ccc;background:white}input,select,textarea{border:0;background:white;color:black;padding:3px}th,td,.muted,.stat span{color:black}.stat{background:white;color:black}.table-wrap{overflow:visible}table{min-width:unset}}
@@ -758,6 +758,39 @@
       "No canonical numeric IPv4 literals. DNS proposals are never automatically resolved.";
   }
 
+  function queueOverlapReview() {
+    const coverage = computeCoverage();
+    const relevant = new Set();
+    for (const pair of coverage.pairs) {
+      for (const asset of [pair.a, pair.b]) relevant.add(asset);
+    }
+    const patches = state.rows.filter(row =>
+      relevant.has(row.asset) && !row.excluded && row.status !== "needs-client-review"
+    ).map(row => ({
+      id: row.id, asset: row.asset, field: "status",
+      before: row.status, after: "needs-client-review"
+    }));
+    if (!patches.length) {
+      announce("No included overlapping HUMAN proposals need a new review status."); return;
+    }
+    const preview = patches.map(p => p.asset + ": " + p.before + " → " + p.after).join("\n");
+    if (!confirm("Queue " + patches.length +
+      " INCLUDED, numerically overlapping proposed literals for HUMAN client review?\n" +
+      preview + "\n\nThis is only a preparation status: no actual client has approved anything.")) return;
+    const byId = new Map(state.rows.map(row => [row.id, row]));
+    if (patches.some(p => !byId.has(p.id) || byId.get(p.id).asset !== p.asset ||
+      byId.get(p.id).status !== p.before)) {
+      announce("HOLD: source proposal changed; no bulk review status was applied.", true);
+      return;
+    }
+    for (const patch of patches) byId.get(patch.id).status = patch.after;
+    humanUndo.push(patches);
+    if (humanUndo.length > 20) humanUndo.shift();
+    $("triage-panel").open = true;
+    renderRows(); refresh(true);
+    announce(patches.length + " overlapping included proposals queued for HUMAN-only review. Undo is available in HUMAN triage. No client permission issued.");
+  }
+
   function exportCoverageBrief() {
     const errors = validate(state);
     if (errors.length) { announce("Complete the draft before private coverage briefing: " + errors[0], true); return; }
@@ -1166,6 +1199,7 @@
     $("receipt").addEventListener("click", exportCounts);
     $("export-agenda").addEventListener("click", exportAgenda);
     $("export-overlap").addEventListener("click", exportCoverageBrief);
+    $("queue-overlap-review").addEventListener("click", queueOverlapReview);
     $("preview-membership").addEventListener("click", previewMembership);
     $("download-membership").addEventListener("click", exportMembershipPreview);
     $("membership-lines").addEventListener("input", clearMembershipPreview);
@@ -1253,7 +1287,7 @@
 <div class="actions"><button id="add-bottom" type="button">+ Add row</button></div>
 </section>
 <section class="section" id="overlap-section" aria-labelledby="overlap-heading">
-<div class="actions"><h2 id="overlap-heading">03 / Local IPv4 scope boundaries &amp; exceptions</h2><button type="button" id="export-overlap" class="right">Export PRIVATE boundary brief</button></div>
+<div class="actions"><h2 id="overlap-heading">03 / Local IPv4 scope boundaries &amp; exceptions</h2><button type="button" id="queue-overlap-review">Queue affected included rows for HUMAN review</button><button type="button" id="export-overlap" class="right">Export PRIVATE boundary brief</button></div>
 <p class="muted">Deterministic comparisons of human-declared IPv4 addresses and narrow CIDRs only. No DNS lookup, reachability check or authority inference. A host inside an included subnet is not automatically approved, and exclusions must be resolved by the original source-owned policy.</p>
 <div class="stats"><div class="stat"><strong id="overlap-count">0</strong><span>Overlapping literal pairs</span></div><div class="stat"><strong id="cross-boundary-count">0</strong><span>Inclusion/exclusion pairs for HUMAN review</span></div><div class="stat"><strong id="overlap-include-count">0</strong><span>Overlapping proposed inclusions</span></div><div class="stat"><strong id="special-address-count">0</strong><span>Numeric nonordinary ranges to review</span></div></div>
 <div id="overlap-notice" class="notice" role="status">Add literal IPv4/CIDR proposals to see boundary review.</div>
