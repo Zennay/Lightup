@@ -1,0 +1,1635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-fNnY+LJ9GeQRREIY5XoswYBt/Y2H0RC8C1lrLSzDSvE=' 'sha256-Jy852yurFXWrtSh50aol1DvQ4ooyvbgJH3noO0R4ymk=' 'sha256-ZJzVvwKHoFQ5Hlhmr0UrefGgjPup4TAZMDIO4TnEU48='; style-src 'sha256-mGMtz8pHKCVtqYFCpG23nrfGvgrIcD3cyvjaZsj9Blc='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>LightUp · PRIVATE finding follow-up</title>
+<style>:root { color-scheme: dark; --ink:#edf5f3; --muted:#91aca9; --bg:#091513; --panel:#102421; --panel2:#142d29; --line:#28504a; --accent:#80e5c0; --danger:#ffd1ba; font: 15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+* { box-sizing:border-box; }
+body { margin:0; background:radial-gradient(ellipse at 75% 0%,#17392f 0%,transparent 43%),var(--bg); color:var(--ink); }
+.top { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px max(22px,calc((100vw - 1280px)/2)); border-bottom:1px solid var(--line); }
+.identity { font-weight:800; letter-spacing:.17em; font-size:.95rem; } .identity-light { color:var(--muted); font-weight:500; font-size:.77rem; }
+.mark { color:var(--accent); font-size:1.4em; } .pill { border:1px solid var(--line); border-radius:30px; padding:6px 12px; font-size:.7rem; letter-spacing:.1em; font-weight:700; color:var(--accent); }
+main { max-width:1280px; padding:30px 22px 60px; margin:auto; }
+.intro { max-width:900px; padding:26px 0 20px; }
+.eyebrow { color:var(--accent); letter-spacing:.19em; font-size:.68rem; font-weight:800; }
+h1 { margin:0 0 15px; font-size:clamp(2.4rem,5vw,4.5rem); line-height:1.07; letter-spacing:-.04em; }
+h1 em { font-style:normal; color:var(--accent); } h2 { margin:0 0 9px; font-size:1.25rem; line-height:1.25; } p { color:#bbceca; }
+.intro>p:not(.eyebrow):not(.warning) { font-size:1.1rem; max-width:720px; }
+.warning { background:#29251c; border-left:3px solid #d8bd78; padding:12px 16px; color:#eadbc0; font-size:.9rem; border-radius:0 10px 10px 0; }
+.import { display:grid; grid-template-columns:1fr 1fr; gap:20px; background:var(--panel); border:1px solid var(--line); padding:22px; border-radius:14px; }
+.label { display:block; margin-bottom:9px; font-size:.75rem; letter-spacing:.15em; color:var(--accent); font-weight:800; }
+small { display:block; color:var(--muted); margin-top:10px; }
+input,textarea,select,button { font:inherit; }
+input:not([type="file"]),textarea,select { width:100%; background:#0a1b19; border:1px solid #36615a; border-radius:8px; color:var(--ink); padding:10px 12px; min-width:0; }
+input[type="file"] { max-width:100%; color:var(--ink); } input[type="file"]::file-selector-button { padding:9px 14px; margin-right:12px; border:1px solid var(--accent); border-radius:8px; background:#1b4437; color:var(--ink); cursor:pointer; }
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible { outline:3px solid #b8eeca; outline-offset:2px; }
+button { background:#203e38; border:1px solid #436f62; border-radius:9px; color:var(--ink); padding:10px 14px; cursor:pointer; font-weight:650; }
+button:disabled,input:disabled,select:disabled { opacity:.4; cursor:not-allowed; }
+button:not(:disabled):hover { border-color:var(--accent); background:#2a4e43; }
+button.primary { background:var(--accent); color:#0b1e18; border-color:var(--accent); margin-top:14px; }
+button.primary:hover { background:#bcf5dc; } button.subtle { background:transparent; }
+.mono { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.76rem; overflow-wrap:anywhere; color:var(--muted); }
+.provenance { padding:0 12px; border-left:1px solid var(--line); } .provenance p:first-child { font-weight:750; color:var(--ink); }
+.status { margin:12px 0 22px; padding:12px 16px; border:1px solid var(--line); border-radius:8px; font-size:.83rem; color:var(--muted); }
+.status.ok { color:var(--accent); } .status.error { border-color:#9b5546; color:var(--danger); background:#2f1e1a; }
+.toolbar { display:grid; grid-template-columns:2fr 1fr 1fr; gap:15px; margin:0 0 14px; }
+label:not(.label) { display:block; font-size:.76rem; font-weight:750; margin:0 0 7px; color:#d9e9e5; }
+.workroom { display:grid; grid-template-columns:minmax(280px, 430px) minmax(0,1fr); gap:18px; min-height:480px; }
+.queue,.detail-panel,.exports>div { border:1px solid var(--line); background:var(--panel); border-radius:14px; }
+.panel-head { padding:18px 20px; border-bottom:1px solid var(--line); }
+.panel-head p { color:var(--muted); margin:0; font-size:.8rem; }
+.list { padding:10px; max-height:665px; overflow:auto; }
+.case { width:100%; padding:14px 13px; border:1px solid transparent; background:transparent; border-radius:8px; text-align:left; margin-bottom:4px; }
+.case strong,.case span { display:block; overflow-wrap:anywhere; } .case strong { font-size:.86rem; line-height:1.3; } .case span { color:var(--muted); font-size:.72rem; margin-top:5px; }
+.case.active { border-color:var(--accent); background:#1d4439; }
+.detail-panel { padding:24px; } .empty-state { text-align:center; padding:80px 10px; color:var(--muted); } .empty-state span { color:var(--accent); font-size:3rem; }
+.detail-header { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+#findingTitle,#remediation { overflow-wrap:anywhere; white-space:pre-wrap; } .meta { font-size:.86rem; color:var(--accent); }
+.remediation { margin:22px 0; padding:16px; background:var(--panel2); border-radius:9px; }
+.remediation strong { font-size:.77rem; } .remediation p { margin-bottom:0; }
+.formgrid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.detail-panel input,.detail-panel textarea,.detail-panel select { margin-bottom:14px; }
+.exports { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:20px; } .exports>div { padding:24px; } .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }
+footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; color:var(--muted); } a { color:var(--accent); }
+@media(max-width:860px) { .workroom,.import,.exports { grid-template-columns:1fr; } .provenance { border:0; border-top:1px solid var(--line); padding-top:10px; } .toolbar { grid-template-columns:1fr 1fr; } .toolbar-search { grid-column:1/-1; } .list { max-height:280px; } }
+@media(max-width:520px) { .toolbar,.formgrid { grid-template-columns:1fr; } .toolbar-search { grid-column:auto; } .top { padding:14px; } .identity-light { display:none; } main { padding:15px; } .detail-panel { padding:15px; } }
+@media(prefers-reduced-motion:no-preference) { button { transition:background-color .15s ease,border-color .15s ease; } }
+
+.bulk { margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:8px; } .bulk label { grid-column:1/-1; } .bulk select { grid-column:1/-1; } .bulk button { font-size:.78rem; min-height:38px; padding:8px; }
+@media(max-width:520px) { .bulk { grid-template-columns:1fr; } }
+
+.brief-actions { border-top:1px solid var(--line); margin-top:18px; padding-top:16px; } .brief-actions .brief-toggle { display:flex; align-items:center; gap:9px; font-size:.8rem; margin-bottom:12px; } .brief-actions .brief-toggle input { width:auto; margin:0; } .brief-actions .minor { font-size:.75rem; color:var(--muted); }
+
+.vault-controls { border-top:1px solid var(--line); padding-top:18px; margin-top:18px; } .vault-controls input[type="password"] { width:100%; background:#0a1b19; color:var(--ink); border:1px solid #36615a; border-radius:8px; padding:10px 12px; } .vault-controls .minor { font-size:.78rem; color:var(--muted); }
+
+/* Source revision: PRIVATE, review-only before explicitly choosing new CSV */
+.revision { border:1px solid var(--line); background:var(--panel); border-radius:14px; padding:24px; margin:22px 0; }
+.revision-copy { max-width:900px; }
+.revision h2 { font-size:1.6rem; }
+.revision .minor { color:var(--muted); font-size:.78rem; }
+.revision input[type=file] { padding:9px 0; }
+.revision-option { border:1px solid var(--line); border-radius:9px; padding:14px; background:var(--panel2); margin:18px 0; }
+.revision-groups { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:20px; }
+.revision-groups>div { min-width:0; border:1px solid var(--line); border-radius:9px; padding:12px 14px; }
+.revision-groups h4 { color:var(--accent); margin:0 0 12px; font-size:.9rem; }
+.revision-list { overflow:auto; max-height:260px; }
+.revision-list p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.8rem; border-bottom:1px solid var(--line); padding-bottom:9px; }
+.revision-archive { margin-top:18px; border-top:1px solid var(--line); padding-top:12px; }
+.revision-archive p:not(.eyebrow) { font-size:.85rem; }
+#revisionDigest { overflow-wrap:anywhere; }
+@media(max-width:700px) { .revision-groups { grid-template-columns:1fr; } .revision { padding:16px; } }
+
+@media(min-width:701px) and (max-width:1050px) { .revision-groups { grid-template-columns:1fr 1fr; } }
+
+.revision-list details { border-bottom:1px solid var(--line); padding:9px 0; font-size:.8rem; }
+.revision-list details summary { cursor:pointer; font-weight:700; overflow-wrap:anywhere; }
+.revision-list details summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.revision-list details>div { border-left:2px solid var(--line); margin:12px 0 10px; padding-left:10px; }
+.revision-list details p { overflow-wrap:anywhere; white-space:pre-wrap; color:var(--muted); margin:6px 0; }
+.revision-list details strong { color:var(--accent); font-size:.76rem; }
+
+.private-history-desk { border:1px solid var(--line); border-radius:10px; margin-top:18px; padding:14px; background:var(--panel2); }
+.private-history-desk input { margin-bottom:12px; }
+.private-history-list { max-height:520px; overflow:auto; }
+.revision-history-moment { border-top:1px solid var(--line); padding:12px 4px; }
+.revision-history-moment>summary { cursor:pointer; font-weight:750; color:var(--accent); }
+.revision-history-moment details { margin:9px 0 9px 15px; border-left:2px solid var(--line); padding:7px 12px; }
+.revision-history-moment details>summary { cursor:pointer; overflow-wrap:anywhere; }
+.revision-history-moment p { font-size:.8rem; white-space:pre-wrap; overflow-wrap:anywhere; margin:8px 0; }
+.private-history-list summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* Owner workload and explicit HUMAN-only batch planning */
+.owner-board { margin:16px 0 18px; padding:22px; border:1px solid var(--line); border-radius:14px; background:var(--panel); }
+.owner-board-heading { display:flex; justify-content:space-between; align-items:start; gap:20px; }
+.owner-board-heading p { font-size:.84rem; margin:3px 0 12px; }
+.owner-picker { min-width:220px; max-width:330px; flex:1; }
+.owner-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(225px,1fr)); gap:10px; }
+.owner-tile { text-align:left; min-height:99px; border:1px solid var(--line); background:var(--panel2); padding:14px; }
+.owner-tile[aria-pressed="true"] { border-color:var(--accent); background:#1d4439; }
+.owner-tile strong,.owner-tile span,.owner-tile small { display:block; overflow-wrap:anywhere; }
+.owner-tile strong { font-size:.86rem; margin-bottom:5px; }
+.owner-tile span { font-size:.76rem; color:#d9e9e5; }
+.owner-tile small { font-size:.73rem; color:var(--accent); margin-top:5px; }
+.bulk { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.bulk p.eyebrow { grid-column:1/-1; margin:8px 0 0; }
+.bulk label { grid-column:1/-1; margin:5px 0 0; }
+.bulk select,.bulk input { grid-column:1/-1; }
+.bulk .minor { grid-column:1/-1; font-size:.74rem; color:var(--muted); margin:2px 0 10px; }
+#bulkPreview,#bulkApply,#bulkUndo { grid-column:1/-1; }
+#bulkSummary { white-space:pre-wrap; overflow-wrap:anywhere; }
+@media(max-width:780px) { .owner-board-heading { flex-direction:column; } .owner-picker { width:100%; max-width:none; } }
+
+#saveReceipt { grid-column:1/-1; white-space:pre-wrap; overflow-wrap:anywhere; margin:5px 0 12px; padding:9px 10px; background:var(--panel2); border-left:2px solid var(--line); }
+#ackWorkroom { border-color:#6dba91; }
+</style>
+<script>"use strict";
+/* PRIVATE encrypted HUMAN journal transport, memory-only decrypted source.
+ * A passphrase authenticates ciphertext, NOT original source/client/consent.
+ * Standalone companion; no target, network, persistence or grant.
+ */
+(function () {
+  const SCHEMA = "lightup.offline_human_csv_encrypted_journal.v1";
+  const TYPE = "PRIVATE_HUMAN_ONLY";
+  const KDF = "PBKDF2-SHA256";
+  const CIPHER = "AES-256-GCM";
+  const ITERATIONS = 600000;
+  const MAX_PLAIN = 512 * 1024;
+  const MAX_FILE = 1024 * 1024;
+  const WORKROOM_SCHEMA = "lightup.offline_encrypted_csv_human_workroom.v1";
+  const WORKROOM_TYPE = "PRIVATE_SOURCE_AND_HUMAN_ONLY";
+  const MAX_WORKROOM_PLAIN = 3 * 1024 * 1024;
+  const MAX_WORKROOM_FILE = 5 * 1024 * 1024;
+  const enc = new TextEncoder();
+  const dec = new TextDecoder("utf-8", {fatal: true});
+
+  function reject() { throw new Error("Encrypted PRIVATE journal could not be admitted or opened"); }
+  function exact(value, fields) {
+    return value !== null && typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === fields.length &&
+      fields.every(field => Object.prototype.hasOwnProperty.call(value, field));
+  }
+  function to64(data) {
+    let chars = "";
+    for (let i = 0; i < data.length; i += 32768) {
+      chars += String.fromCharCode(...data.subarray(i, i + 32768));
+    }
+    return btoa(chars);
+  }
+  function from64(input, len, maxLen) {
+    if (typeof input !== "string" || input.length > maxLen * 2 ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input)) reject();
+    let bytes;
+    try {
+      bytes = Uint8Array.from(atob(input), character => character.charCodeAt(0));
+    } catch (_) { reject(); }
+    if ((len !== null && bytes.length !== len) ||
+        bytes.length > maxLen || to64(bytes) !== input) reject();
+    return bytes;
+  }
+  async function derive(passphrase, salt, operations) {
+    if (typeof passphrase !== "string" || passphrase.length < 12 ||
+        enc.encode(passphrase).length > 1024) {
+      throw new Error("Private passphrase must contain 12–1024 UTF-8 bytes");
+    }
+    if (!globalThis.crypto?.subtle || !globalThis.crypto.getRandomValues) {
+      throw new Error("This local browser cannot provide required WebCrypto");
+    }
+    const raw = enc.encode(passphrase);
+    try {
+      const material = await crypto.subtle.importKey("raw", raw, "PBKDF2", false, ["deriveKey"]);
+      return await crypto.subtle.deriveKey(
+        {name: "PBKDF2", salt, iterations: ITERATIONS, hash: "SHA-256"}, material,
+        {name: "AES-GCM", length: 256}, false, operations);
+    } finally {
+      raw.fill(0);
+    }
+  }
+  function admittedPlain(value, maxPlain) {
+    const bytes = enc.encode(JSON.stringify(value, null, 2) + "\n");
+    if (!bytes.length || bytes.length > maxPlain) {
+      throw new Error("PRIVATE journal exceeds supported size");
+    }
+    return bytes;
+  }
+  async function sealVariant(document, passphrase, schema, type, maxPlain) {
+    const data = admittedPlain(document, maxPlain);
+    try {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      const key = await derive(passphrase, salt, ["encrypt"]);
+      const cipher = await crypto.subtle.encrypt({name: "AES-GCM", iv: nonce}, key, data);
+      const obj = {
+        schema, classification: type,
+        kdf: KDF, iterations: ITERATIONS, cipher: CIPHER,
+        salt: to64(salt), nonce: to64(nonce), ciphertext: to64(new Uint8Array(cipher))
+      };
+      return JSON.stringify(obj, null, 2) + "\n";
+    } finally {
+      data.fill(0);
+    }
+  }
+  async function unsealVariant(text, passphrase, schema, type, maxPlain, maxFile) {
+    if (typeof text !== "string" || enc.encode(text).length > maxFile) reject();
+    let obj;
+    try { obj = JSON.parse(text); } catch (_) { reject(); }
+    if (!exact(obj, ["schema", "classification", "kdf", "iterations",
+                     "cipher", "salt", "nonce", "ciphertext"]) ||
+        obj.schema !== schema || obj.classification !== type ||
+        obj.kdf !== KDF || obj.iterations !== ITERATIONS ||
+        obj.cipher !== CIPHER || text !== JSON.stringify(obj, null, 2) + "\n") reject();
+    const salt = from64(obj.salt, 16, maxFile);
+    const nonce = from64(obj.nonce, 12, maxFile);
+    const ciphertext = from64(obj.ciphertext, null, maxFile);
+    if (ciphertext.length < 17 || ciphertext.length > maxPlain + 16) reject();
+    let plain;
+    try {
+      const key = await derive(passphrase, salt, ["decrypt"]);
+      plain = new Uint8Array(await crypto.subtle.decrypt({name: "AES-GCM", iv: nonce}, key, ciphertext));
+      if (plain.length > maxPlain) reject();
+      const raw = dec.decode(plain);
+      const result = JSON.parse(raw);
+      if (raw !== JSON.stringify(result, null, 2) + "\n") reject();
+      return result;
+    } catch (_) {
+      reject();
+    } finally {
+      if (plain) plain.fill(0);
+    }
+  }
+  const seal = (doc, password) => sealVariant(doc, password, SCHEMA, TYPE, MAX_PLAIN);
+  const unseal = (ciphertext, password) => unsealVariant(ciphertext, password, SCHEMA, TYPE, MAX_PLAIN, MAX_FILE);
+  const sealWorkroom = (doc, password) =>
+    sealVariant(doc, password, WORKROOM_SCHEMA, WORKROOM_TYPE, MAX_WORKROOM_PLAIN);
+  const unsealWorkroom = (ciphertext, password) =>
+    unsealVariant(ciphertext, password, WORKROOM_SCHEMA, WORKROOM_TYPE, MAX_WORKROOM_PLAIN, MAX_WORKROOM_FILE);
+  globalThis.LightUpEncryptedJournal = Object.freeze({seal, unseal, sealWorkroom, unsealWorkroom});
+})();
+</script>
+<script>"use strict";
+/* HUMAN-only literal source snapshot comparison. No tenant / chronology / fix claims. */
+(function () {
+  const SCHEMA = "lightup.offline_private_csv_revision.v1";
+  const DIGEST = /^[0-9a-f]{64}$/;
+  const MAX_HISTORY = 3;
+  const MAX_HISTORY_BYTES = 512 * 1024;
+  const ENCODER = new TextEncoder();
+  const TYPES = new Set(["changed", "absent"]);
+  const POLICY = new Set(["reset", "retain"]);
+
+  function exact(obj, keys) {
+    return obj && typeof obj === "object" && !Array.isArray(obj) &&
+      Object.keys(obj).length === keys.length &&
+      keys.every(key => Object.prototype.hasOwnProperty.call(obj, key));
+  }
+  function fail() { throw new Error("PRIVATE source revision history is invalid or too large"); }
+  function sameSource(a,b) {
+    return a.id === b.id && a.title === b.title && a.severity === b.severity &&
+      a.retest === b.retest && a.remediation === b.remediation;
+  }
+  function build(oldRows, incomingRows, oldJournal, fromDigest, toDigest) {
+    if (!Array.isArray(oldRows) || !Array.isArray(incomingRows) ||
+        !Array.isArray(oldJournal) || oldRows.length !== oldJournal.length ||
+        !DIGEST.test(fromDigest) || !DIGEST.test(toDigest) ||
+        fromDigest === toDigest) fail();
+    const previous = new Map(oldRows.map((row, i) => [row.id, {row, human: oldJournal[i]}]));
+    const incoming = new Set(incomingRows.map(row => row.id));
+    const stats = {unchanged: 0, changed: 0, added: 0, absent: 0};
+    const kinds = [];
+    const affected = [];
+    for (const row of incomingRows) {
+      const past = previous.get(row.id);
+      if (!past) {
+        kinds.push("added"); stats.added++;
+      } else if (sameSource(past.row, row)) {
+        kinds.push("unchanged"); stats.unchanged++;
+      } else {
+        kinds.push("changed"); stats.changed++;
+        affected.push({id: row.id, type: "changed", source_title: past.row.title,
+          source_severity: past.row.severity, source_retest: past.row.retest,
+          human: {...past.human}});
+      }
+    }
+    for (const old of oldRows) {
+      if (!incoming.has(old.id)) {
+        const item = previous.get(old.id);
+        stats.absent++;
+        affected.push({id: old.id, type: "absent", source_title: old.title,
+          source_severity: old.severity, source_retest: old.retest,
+          human: {...item.human}});
+      }
+    }
+    return {oldRows, incomingRows, oldJournal, fromDigest, toDigest, kinds, stats, affected};
+  }
+  function migrate(plan, choice, blankEntry, existingHistory) {
+    if (!POLICY.has(choice) || typeof blankEntry !== "function" ||
+        !Array.isArray(existingHistory)) fail();
+    const old = new Map(plan.oldRows.map((row,i) => [row.id, plan.oldJournal[i]]));
+    const journal = plan.incomingRows.map((row, i) => {
+      const kind = plan.kinds[i];
+      if (kind === "added" || (kind === "changed" && choice === "reset")) return blankEntry(row.id);
+      const from = old.get(row.id);
+      if (!from) fail();
+      if (kind === "changed") {
+        return {...from, stage: "needs_evidence"};
+      }
+      return {...from};
+    });
+    const entry = {
+      schema: SCHEMA, from_sha256: plan.fromDigest, to_sha256: plan.toDigest,
+      counts: {...plan.stats}, changed_policy: choice,
+      affected: plan.affected.map(item => ({
+        id: item.id, type: item.type, source_title: item.source_title,
+        source_severity: item.source_severity, source_retest: item.source_retest,
+        human: {...item.human}
+      }))
+    };
+    const history = [...existingHistory, entry];
+    if (history.length > MAX_HISTORY ||
+        ENCODER.encode(JSON.stringify(history)).length > MAX_HISTORY_BYTES) {
+      throw new Error("PRIVATE revision archive would exceed its limit (3 revisions / 512 KiB). " +
+        "Save the current encrypted complete workroom before starting another revision; " +
+        "never silently discard previously missing HUMAN records.");
+    }
+    return {journal, history};
+  }
+  function admitHistory(history, currentDigest, admitHuman, safeDisplay) {
+    if (!Array.isArray(history) || history.length > MAX_HISTORY ||
+        !DIGEST.test(currentDigest) || !admitHuman || !safeDisplay ||
+        ENCODER.encode(JSON.stringify(history)).length > MAX_HISTORY_BYTES) fail();
+    let prior;
+    const canonical = [];
+    for (const item of history) {
+      if (!exact(item, ["schema", "from_sha256", "to_sha256", "counts", "changed_policy", "affected"]) ||
+          item.schema !== SCHEMA || !DIGEST.test(item.from_sha256) ||
+          !DIGEST.test(item.to_sha256) || item.from_sha256 === item.to_sha256 ||
+          !POLICY.has(item.changed_policy) ||
+          (prior && prior !== item.from_sha256) ||
+          !exact(item.counts, ["unchanged","changed","added","absent"]) ||
+          !Object.values(item.counts).every(n => Number.isSafeInteger(n) && n >= 0 && n <= 128) ||
+          !Array.isArray(item.affected) || item.affected.length > 128 ||
+          item.affected.length !== item.counts.changed + item.counts.absent) fail();
+      if (item.counts.unchanged + item.counts.changed + item.counts.absent > 128 ||
+          item.counts.unchanged + item.counts.changed + item.counts.added > 128) fail();
+      const seen = new Set();
+      const affected = item.affected.map(row => {
+        if (!exact(row, ["id","type","source_title","source_severity","source_retest","human"]) ||
+            !TYPES.has(row.type) || typeof row.id !== "string" ||
+            seen.has(row.id) || !safeDisplay(row.id, 32768, false) ||
+            !safeDisplay(row.source_title, 32768, false) ||
+            !["critical","high","medium","low","info"].includes(row.source_severity) ||
+            !["not_tested","fix_pending","fixed","regression"].includes(row.source_retest)) fail();
+        seen.add(row.id);
+        return {...row, human: admitHuman(row.human, row.id)};
+      });
+      if (affected.filter(x => x.type === "changed").length !== item.counts.changed ||
+          affected.filter(x => x.type === "absent").length !== item.counts.absent) fail();
+      canonical.push({...item, counts: {...item.counts}, affected});
+      prior = item.to_sha256;
+    }
+    if (prior && prior !== currentDigest) fail();
+    return canonical;
+  }
+  globalThis.LightUpCsvRevision = Object.freeze({build, migrate, admitHistory});
+})();
+</script>
+<script>"use strict";
+
+/* Offline HUMAN workflow for already-exported LightUp CSV summaries.
+ * No original source mutation, persistence, network, authentication or grant. */
+(function () {
+  const HEADER = ["finding_id", "title", "severity", "retest_status", "remediation"];
+  const SEVERITIES = ["critical", "high", "medium", "low", "info"];
+  const RETEST = ["not_tested", "fix_pending", "fixed", "regression"];
+  const STAGES = ["unreviewed", "triage", "queued", "waiting_owner", "needs_evidence", "followup_requested", "human_reviewed"];
+  const MAX_FILE = 2 * 1024 * 1024;
+  const MAX_ROWS = 128;
+  const MAX_CELL_BYTES = 32768;
+  const MAX_JOURNAL_BYTES = 512 * 1024;
+  const DECODER = new TextDecoder("utf-8", {fatal: true});
+  const SCHEMA = "lightup.offline_human_csv_review.v1";
+  const WORKROOM_SCHEMA = "lightup.offline_csv_human_workroom_payload.v1";
+  const AGGREGATE = "lightup.anonymous_human_csv_counts.v1";
+  const NO_AUTHORITY = Object.freeze({
+    verified_findings: false, verified_remediation: false,
+    authenticated_source: false, authenticated_consent: false,
+    authorization_grant: false, permission_to_scan: false
+  });
+  const $ = (id) => document.getElementById(id);
+  const enc = new TextEncoder();
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, bulkProposal: null, pendingWorkroomReceipt: null, sourceText: "", revisionCandidate: null, revisionHistory: []};
+
+  function fail(message) { throw new Error(message); }
+  function exactObject(obj, keys) {
+    return obj !== null && typeof obj === "object" && !Array.isArray(obj) &&
+      Object.keys(obj).length === keys.length &&
+      keys.every((key) => Object.prototype.hasOwnProperty.call(obj, key));
+  }
+  function textOK(value, maxBytes, allowEmpty) {
+    return typeof value === "string" &&
+      (allowEmpty || value.trim().length > 0) &&
+      enc.encode(value).length <= maxBytes &&
+      !/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\p{Zl}\p{Zp}]/u.test(value);
+  }
+  function safeDisplay(value, maxBytes, allowEmpty) {
+    if (!textOK(value, maxBytes, allowEmpty)) return false;
+    if (!value) return !!allowEmpty;
+    const normalized = value.normalize("NFKC");
+    if (!textOK(normalized, maxBytes * 4, allowEmpty)) return false;
+    // The existing LightUp exporter prefixes a real ASCII formula with "'".
+    // Never interpret an invisible or compatibility-disguised expression.
+    let prefix = normalized.replace(/^[\p{Zs}\p{M}]+/gu, "");
+    if (/^[=+\-@]/u.test(prefix)) return false;
+    if (/^[\p{M}]+$/u.test(normalized)) return false;
+    return true;
+  }
+  function csvRows(input) {
+    // Require the exact all-quoted CRLF shape of the existing CSV serializer.
+    // Reject partial/malformed records before touching any displayed state.
+    const rows = [];
+    let i = 0;
+    if (!input || input.charCodeAt(0) === 0xFEFF) fail("Unexpected CSV encoding or BOM");
+    while (i < input.length) {
+      const cells = [];
+      for (let col = 0; col < 5; col++) {
+        if (input[i++] !== '"') fail("Expected quoted CSV cell");
+        let value = "";
+        let closed = false;
+        while (i < input.length) {
+          const ch = input[i++];
+          if (ch === '"') {
+            if (input[i] === '"') { i++; value += '"'; continue; }
+            closed = true; break;
+          }
+          value += ch;
+          if (value.length > MAX_CELL_BYTES) fail("CSV field exceeds limit");
+        }
+        if (!closed) fail("Unterminated CSV cell");
+        if (enc.encode(value).length > MAX_CELL_BYTES) fail("CSV field exceeds UTF-8 limit");
+        cells.push(value);
+        if (col < 4 && input[i++] !== ",") fail("Incorrect CSV column count");
+      }
+      if (input.slice(i, i + 2) !== "\r\n") fail("Expected canonical CSV record boundary");
+      i += 2;
+      rows.push(cells);
+      if (rows.length > MAX_ROWS + 1) fail("CSV row limit exceeded");
+    }
+    if (rows.length === 0 || rows[0].some((v, j) => v !== HEADER[j])) fail("Unexpected CSV header");
+    return rows.slice(1);
+  }
+  function admitCsv(input) {
+    const rows = csvRows(input);
+    const seen = new Set();
+    const displaySeen = new Set();
+    return rows.map((cells) => {
+      if (!cells.every((v, idx) => safeDisplay(v, MAX_CELL_BYTES, idx === 4))) {
+        fail("Invalid source display text or unsafe formula prefix");
+      }
+      const [id, title, severity, retest, remediation] = cells;
+      if (!id || id !== id.trim() || !title || !remediation ||
+          !SEVERITIES.includes(severity) || !RETEST.includes(retest)) {
+        fail("Invalid canonical finding fields");
+      }
+      if (seen.has(id) || displaySeen.has(id.normalize("NFKC"))) fail("Duplicate or ambiguous finding identity");
+      seen.add(id);
+      displaySeen.add(id.normalize("NFKC"));
+      return Object.freeze({id, title, severity, retest, remediation});
+    });
+  }
+  async function digest(bytes) {
+    if (!crypto || !crypto.subtle) fail("Local SHA-256 is unavailable in this browser");
+    const result = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(result), b => b.toString(16).padStart(2, "0")).join("");
+  }
+  function todayValid(value) {
+    if (value === "") return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const d = new Date(value + "T00:00:00Z");
+    return Number.isFinite(d.valueOf()) && d.toISOString().slice(0, 10) === value;
+  }
+  function blankEntry(id) { return {id, stage: STAGES[0], owner: "", due: "", note: ""}; }
+  function admitEntry(entry, id) {
+    if (!exactObject(entry, ["id", "stage", "owner", "due", "note"]) || entry.id !== id ||
+        !STAGES.includes(entry.stage) || !textOK(entry.owner, 160, true) ||
+        !textOK(entry.note, 2048, true) || !todayValid(entry.due) ||
+        !safeDisplay(entry.owner, 160, true) || !safeDisplay(entry.note, 2048, true)) {
+      fail("Human journal contains invalid or mismatched fields");
+    }
+    return {id, stage: entry.stage, owner: entry.owner, due: entry.due, note: entry.note};
+  }
+  function localDate() {
+    const d = new Date();
+    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+  }
+  function status(message, error) {
+    $("status").textContent = message;
+    $("status").className = "status " + (error ? "error" : "ok");
+  }
+  function setEnabled(yes) {
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "ownerPicker", "orderBy", "revisionFile", "bulkStageMode", "bulkStage", "bulkOwnerMode", "bulkOwner", "bulkDueMode", "bulkDue", "bulkPreview", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveWorkroom", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
+      $(id).disabled = !yes;
+    });
+    $("bulkApply").disabled = true;
+  }
+  function stageText(s) { return s.replaceAll("_", " "); }
+  function clearRevisionCandidate() {
+    state.revisionCandidate = null;
+    $("revisionPreview").hidden = true;
+    $("revisionFile").value = "";
+    $("revisionChangedList").replaceChildren();
+    $("revisionAbsentList").replaceChildren();
+    $("revisionAddedList").replaceChildren();
+  }
+  function refreshRevisionArchive() {
+    const hasHistory = state.revisionHistory.length > 0;
+    $("revisionHistoryDownload").disabled = !hasHistory;
+    $("revisionHistoryToggle").disabled = !hasHistory;
+    $("revisionHistoryDownload").textContent = hasHistory
+      ? "Download PRIVATE prior HUMAN archive (" + state.revisionHistory.length + " revision(s))"
+      : "No prior HUMAN archive";
+    if (!hasHistory) $("revisionArchiveDesk").hidden = true;
+    if (!$("revisionArchiveDesk").hidden) renderRevisionHistory();
+  }
+  function renderRevisionHistory() {
+    const container = $("revisionHistoryList");
+    container.replaceChildren();
+    const query = $("revisionHistorySearch").value.trim().toLocaleLowerCase();
+    let visible = 0;
+    let total = 0;
+    for (let index = state.revisionHistory.length - 1; index >= 0; index--) {
+      const revision = state.revisionHistory[index];
+      total += revision.affected.length;
+      const matching = revision.affected.filter(item =>
+        !query || [item.id, item.source_title, item.human.owner]
+          .some(value => value.toLocaleLowerCase().includes(query)));
+      if (!matching.length && query) continue;
+      visible += matching.length;
+      const block = document.createElement("details");
+      block.className = "revision-history-moment";
+      const title = document.createElement("summary");
+      title.textContent = "PRIVATE human-selected source transition " + (index + 1) +
+        " · " + revision.counts.changed + " changed · " +
+        revision.counts.absent + " absent (NOT FIXED)";
+      block.append(title);
+      const hashes = document.createElement("p");
+      hashes.className = "mono";
+      hashes.textContent = "Prior unsigned CSV SHA-256 " + revision.from_sha256 +
+        " → selected unsigned CSV SHA-256 " + revision.to_sha256 +
+        " · HUMAN choice " + revision.changed_policy +
+        " (not chronological or client-authenticated)";
+      block.append(hashes);
+      for (const item of matching) {
+        const row = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = (item.type === "absent" ? "ABSENT, not fixed" : "CHANGED, not verified") +
+          " · " + item.id + " · " + item.source_title.slice(0, 150);
+        row.append(summary);
+        const description = document.createElement("p");
+        description.textContent = "PRIOR source-declared severity " + item.source_severity +
+          " / retest " + item.source_retest +
+          " · HUMAN stage " + stageText(item.human.stage);
+        const followup = document.createElement("p");
+        followup.textContent = "PRIOR PRIVATE HUMAN owner: " + (item.human.owner || "—") +
+          " · tentative due: " + (item.human.due || "—");
+        const note = document.createElement("p");
+        note.textContent = "PRIOR PRIVATE HUMAN note: " + (item.human.note || "—");
+        row.append(description, followup, note);
+        block.append(row);
+      }
+      container.append(block);
+    }
+    $("revisionHistoryCounts").textContent = visible + " visible / " + total +
+      " prior changed/absent source records. These are PRIVATE HUMAN-only notes, never retest or closure evidence.";
+  }
+  async function previewRevision(file) {
+    if (state.pending) {
+      status("Apply or discard unapplied HUMAN edits before source comparison.", true);
+      return;
+    }
+    if (!state.rows.length) {
+      status("Open an original source CSV before comparing another snapshot.", true);
+      return;
+    }
+    try {
+      const {bytes, value} = await readFile(file, MAX_FILE);
+      const nextRows = admitCsv(value);
+      if (!nextRows.length) fail("An empty next source cannot be promoted; missing records are not fixed");
+      const sha = await digest(bytes);
+      const plan = LightUpCsvRevision.build(state.rows, nextRows, state.journal, state.digest, sha);
+      clearRevisionCandidate();
+      state.revisionCandidate = {...plan, csvText: value};
+      $("revisionPreview").hidden = false;
+      $("revisionChanged").value = "reset";
+      $("revisionDigest").textContent = "Current (unsigned): " + state.digest +
+        " · selected incoming (unsigned): " + sha;
+      $("revisionCounts").textContent = plan.stats.unchanged + " unchanged · " +
+        plan.stats.changed + " source-edited · " + plan.stats.added +
+        " new · " + plan.stats.absent + " absent (NOT fixed)";
+      const previous = new Map(state.rows.map(row => [row.id, row]));
+      const nextById = new Map(plan.incomingRows.map(row => [row.id, row]));
+      const textSnippet = value => value.length > 1600 ?
+        value.slice(0, 1600) + "\n[DISPLAY TRUNCATED; accepted source remains byte-exact]" : value;
+      const makeDifference = (label, a, b) => {
+        const box = document.createElement("div");
+        const name = document.createElement("strong");
+        name.textContent = label + " · old → selected incoming";
+        const previousText = document.createElement("p");
+        previousText.textContent = "OLD: " + textSnippet(a);
+        const nextText = document.createElement("p");
+        nextText.textContent = "NEW (source-declared): " + textSnippet(b);
+        box.append(name, previousText, nextText);
+        return box;
+      };
+      for (const item of plan.affected) {
+        const entry = document.createElement("details");
+        const heading = document.createElement("summary");
+        const current = nextById.get(item.id);
+        const original = previous.get(item.id);
+        const columns = item.type === "changed" && current ?
+          ["title","severity","retest","remediation"].filter(name => original[name] !== current[name]) : [];
+        heading.textContent = item.id + " · PRIOR " + item.source_severity.toUpperCase() +
+          " · " + item.source_title.slice(0, 160) +
+          (item.source_title.length > 160 ? "…" : "") +
+          (columns.length ? " · CHANGED: " + columns.join(", ") : "") +
+          (item.type === "absent" ? " · MISSING IS NOT FIXED" : " · NEEDS HUMAN REVIEW");
+        entry.append(heading);
+        if (columns.length) {
+          for (const field of columns) {
+            entry.append(makeDifference(field, original[field], current[field]));
+          }
+        } else {
+          const previousStage = document.createElement("p");
+          previousStage.textContent = "Prior HUMAN stage: " + stageText(item.human.stage) +
+            " · original absence is not closure/retest/revocation. Retained in PRIVATE archive.";
+          entry.append(previousStage);
+        }
+        (item.type === "changed" ? $("revisionChangedList") : $("revisionAbsentList")).append(entry);
+      }
+      for (let i = 0; i < plan.incomingRows.length; i++) {
+        if (plan.kinds[i] !== "added") continue;
+        const row = plan.incomingRows[i];
+        const entry = document.createElement("details");
+        const heading = document.createElement("summary");
+        heading.textContent = row.id + " · source-declared " + row.severity.toUpperCase() +
+          " · " + row.title.slice(0,160) + " · NEW HUMAN REVIEW";
+        const details = document.createElement("p");
+        details.textContent = "Source remediation proposal (unverified): " + textSnippet(row.remediation);
+        entry.append(heading, details);
+        $("revisionAddedList").append(entry);
+      }
+      status("New source fully admitted for local comparison. Current source and HUMAN choices remain intact.", false);
+    } catch (error) {
+      clearRevisionCandidate();
+      status("Incoming source rejected without changing the current workspace: " + error.message, true);
+    }
+  }
+  function exportRevisionCounts() {
+    const plan = state.revisionCandidate;
+    if (!plan || plan.fromDigest !== state.digest) return;
+    if (!confirm("Download source-free comparison counts? Tiny cohorts can still be sensitive. " +
+        "Only a separately approved disclosure may leave this PRIVATE device. No source identity " +
+        "or actual chronological, security, consent or remediation verdict is provided.")) return;
+    const data = {
+      schema: "lightup.anonymous_csv_human_delta_counts.v1",
+      classification: "ANONYMOUS_COUNTS_ONLY", authority: NO_AUTHORITY,
+      declared_temporal_order: false, verified_fix: false,
+      unchanged: plan.stats.unchanged, source_changed: plan.stats.changed,
+      newly_present: plan.stats.added, absent_not_fixed: plan.stats.absent
+    };
+    download(JSON.stringify(data, null, 2) + "\n", "lightup-source-free-human-delta-counts.json", "application/json");
+    status("Source-free delta totals offered, without source hashes, original IDs, text or HUMAN notes.", false);
+  }
+  function commitRevision() {
+    const plan = state.revisionCandidate;
+    if (!plan || plan.fromDigest !== state.digest || state.pending) {
+      status("Candidate is stale or current HUMAN edits are still pending. Compare the source again.", true);
+      return;
+    }
+    let staged;
+    try {
+      staged = LightUpCsvRevision.migrate(plan, $("revisionChanged").value,
+        blankEntry, state.revisionHistory);
+    } catch (error) {
+      status("PRIVATE source transition held: " + error.message, true);
+      return;
+    }
+    if (!confirm("Replace the active source with this separately selected CSV? " +
+        "Unchanged literal records retain HUMAN notes. New records start unreviewed. " +
+        "Changed records are " + ($("revisionChanged").value === "reset"
+          ? "RESET for HUMAN reassessment" : "retained only as HUMAN NEEDS EVIDENCE") +
+        "; absent and changed PRIOR HUMAN details are archived privately. " +
+        "Save a new encrypted COMPLETE workroom afterward to preserve the private archive. " +
+        "No removed source record is deemed fixed, revoked or approved.")) return;
+    state.sourceText = plan.csvText;
+    state.rows = plan.incomingRows;
+    state.digest = plan.toDigest;
+    state.journal = staged.journal;
+    clearWorkroomReceipt();
+    invalidateBulkPreview();
+    state.revisionHistory = staged.history;
+    state.selected = -1; state.bulkUndo = null; state.pending = false;
+    state.dirty = true; state.filename = "[HUMAN-SELECTED SOURCE SNAPSHOT]";
+    $("bulkUndo").disabled = true;
+    $("sourceFile").value = "";
+    $("detail").hidden = true; $("noneSelected").hidden = false;
+    $("sourceId").textContent = "Human-selected source CSV SHA-256: " + state.digest +
+      " (unsigned; NOT chronological or client-authenticated)";
+    $("summary").textContent = state.rows.length + " selected source finding(s). " +
+      state.revisionHistory.length + " PRIVATE HUMAN source revision(s) retained.";
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter"].forEach(id => { $(id).value = ""; });
+    $("orderBy").value = "severity";
+    clearRevisionCandidate();
+    refreshRevisionArchive();
+    renderList();
+    status("New source selected with explicit HUMAN migration. PRIVATE history is in memory only: save encrypted complete workroom.", false);
+  }
+  function exportRevisionArchive() {
+    if (!state.revisionHistory.length) return;
+    if (state.pending) {
+      status("Apply or discard the active HUMAN form before exporting PRIVATE revision history.", true);
+      return;
+    }
+    if (!confirm("Download PRIVATE previous-source revision records containing old IDs, titles, HUMAN owner and notes? " +
+        "They are not anonymous or independently source-authenticated. Save only to a separately authorized private device.")) return;
+    const output = {
+      schema: "lightup.private_human_csv_source_revision_archive.v1",
+      classification: "PRIVATE_HUMAN_ONLY", authority: NO_AUTHORITY,
+      current_source_sha256: state.digest,
+      revisions: state.revisionHistory
+    };
+    download(JSON.stringify(output, null, 2) + "\n", "lightup-private-prior-human-revisions.json", "application/json");
+    status("PRIVATE prior-human source archive offered. Original or absent finding not verified or fixed.", false);
+  }
+  function workroomFingerprint() {
+    return JSON.stringify([state.digest, state.journal, state.revisionHistory]);
+  }
+  function clearWorkroomReceipt() {
+    state.pendingWorkroomReceipt = null;
+    $("ackWorkroom").disabled = true;
+    $("saveReceipt").textContent = "No confirmed local complete-workroom download for the current HUMAN state.";
+  }
+  function acknowledgeWorkroom() {
+    if (state.pending) {
+      status("Apply or discard pending HUMAN form edits before confirming storage.", true);
+      return;
+    }
+    const receipt = state.pendingWorkroomReceipt;
+    if (!receipt || receipt.fingerprint !== workroomFingerprint()) {
+      clearWorkroomReceipt();
+      status("Workroom changed since download. Encrypt and save the complete current workroom again.", true);
+      return;
+    }
+    if (!confirm("Confirm HUMAN-only storage: have you checked the complete encrypted .luew file exists in a protected folder and SHA-256 equals " +
+      receipt.sha256 + " (" + receipt.bytes + " UTF-8 bytes)? This acknowledgment is not independent source, consent, client or security proof.")) return;
+    state.dirty = false;
+    clearWorkroomReceipt();
+    $("saveReceipt").textContent = "Operator acknowledged a protected local .luew file; this is HUMAN-only storage confirmation, never an authenticated source or release approval.";
+    status("Human operator acknowledged private storage; no original finding, client grant or active work changed.", false);
+  }
+  function wipe() {
+    state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
+    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.bulkProposal = null; state.pendingWorkroomReceipt = null; state.sourceText = ""; state.revisionHistory = [];
+    clearRevisionCandidate(); refreshRevisionArchive();
+    $("revisionArchiveDesk").hidden = true; $("revisionHistorySearch").value = "";
+    $("sourceFile").value = ""; $("journalFile").value = ""; $("workroomFile").value = ""; $("vaultPass").value = "";
+    $("summary").textContent = "No source CSV loaded.";
+    $("sourceId").textContent = "";
+    $("list").replaceChildren();
+    $("detail").hidden = true;
+    $("noneSelected").hidden = false;
+    setEnabled(false);
+    clearWorkroomReceipt();
+    renderOwnerBoard();
+  }
+  function selectedIndices() {
+    const query = $("search").value.trim().toLocaleLowerCase();
+    const severity = $("severityFilter").value;
+    const stage = $("stageFilter").value;
+    const dueFilter = $("dueFilter").value;
+    const ownerFilter = $("ownerFilter").value;
+    const ownerSelection = $("ownerPicker").value;
+    const sortMode = $("orderBy").value;
+    const today = localDate();
+    const end = new Date(today + "T00:00:00Z");
+    end.setUTCDate(end.getUTCDate() + 7);
+    const weekEnd = end.toISOString().slice(0, 10);
+    const matched = state.rows.map((_, i) => i).filter(i => {
+      const r = state.rows[i], j = state.journal[i];
+      return (!ownerSelection || (ownerSelection === "unassigned" ? !j.owner : ownerSelection === "owner:" + j.owner)) &&
+        (!severity || severity === r.severity) &&
+        (!stage || stage === j.stage) &&
+        (!query || [r.id, r.title, r.remediation].some(v => v.toLocaleLowerCase().includes(query))) &&
+        (!ownerFilter || (ownerFilter === "assigned" ? j.owner.length > 0 : !j.owner)) &&
+        (!dueFilter || (dueFilter === "unscheduled" ? !j.due :
+          dueFilter === "overdue" ? !!j.due && j.due < today :
+          dueFilter === "today" ? j.due === today :
+          !!j.due && j.due >= today && j.due <= weekEnd));
+    });
+    const bySeverity = (a, b) => SEVERITIES.indexOf(state.rows[a].severity) -
+      SEVERITIES.indexOf(state.rows[b].severity);
+    return matched.sort((a, b) =>
+      (sortMode === "due" ? ((state.journal[a].due || "9999-12-31")
+        .localeCompare(state.journal[b].due || "9999-12-31")) :
+        sortMode === "id" ? state.rows[a].id.localeCompare(state.rows[b].id) :
+        bySeverity(a, b)) ||
+      bySeverity(a, b) || state.rows[a].id.localeCompare(state.rows[b].id));
+  }
+  function renderList() {
+    const list = $("list");
+    list.replaceChildren();
+    renderOwnerBoard();
+    const indices = selectedIndices();
+    $("counts").textContent = indices.length + " visible / " + state.rows.length + " total; " +
+      state.journal.filter(j => j.stage !== "unreviewed").length + " human-updated; " +
+      state.journal.filter(j => j.due && j.due < localDate()).length +
+      " tentative overdue.";
+    for (const index of indices) {
+      const row = state.rows[index], journal = state.journal[index];
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "case" + (index === state.selected ? " active" : "");
+      btn.setAttribute("aria-pressed", index === state.selected ? "true" : "false");
+      const strong = document.createElement("strong");
+      strong.textContent = row.severity.toUpperCase() + " · " + row.title;
+      const small = document.createElement("span");
+      small.textContent = row.id + " · " + stageText(journal.stage) + (journal.due ? " · due " + journal.due : "");
+      btn.append(strong, small);
+      btn.addEventListener("click", () => selectCase(index));
+      list.append(btn);
+    }
+  }
+  function renderOwnerBoard() {
+    const picker = $("ownerPicker");
+    const current = picker.value;
+    const owners = [...new Set(state.journal.map(j => j.owner).filter(Boolean))]
+      .sort((a,b) => a.localeCompare(b));
+    picker.replaceChildren();
+    function addChoice(label,value) {
+      const item = document.createElement("option");
+      item.textContent = label; item.value = value; picker.append(item);
+    }
+    addChoice("All HUMAN contacts","");
+    addChoice("Unassigned HUMAN follow-ups","unassigned");
+    for (const owner of owners) addChoice(owner,"owner:" + owner);
+    picker.value = [...picker.options].some(x => x.value === current) ? current : "";
+    const groups = new Map();
+    const end = new Date(localDate() + "T00:00:00Z");
+    end.setUTCDate(end.getUTCDate()+7);
+    const weekEnd = end.toISOString().slice(0,10);
+    for (let i=0;i<state.rows.length;i++) {
+      const row=state.rows[i], human=state.journal[i];
+      const key=human.owner ? "owner:" + human.owner : "unassigned";
+      if (!groups.has(key)) groups.set(key, {key, label:human.owner||"Unassigned HUMAN follow-ups",
+        total:0, updated:0, overdue:0, week:0, high:0});
+      const g=groups.get(key);
+      g.total++;
+      if (human.stage !== "unreviewed") g.updated++;
+      if (human.due && human.due < localDate()) g.overdue++;
+      if (human.due && human.due >= localDate() && human.due <= weekEnd) g.week++;
+      if (["high","critical"].includes(row.severity)) g.high++;
+    }
+    const view=$("ownerBoard");
+    view.replaceChildren();
+    for (const group of [...groups.values()].sort((a,b) =>
+      b.overdue-a.overdue || b.high-a.high || b.total-a.total || a.label.localeCompare(b.label))) {
+      const button=document.createElement("button");
+      button.type="button"; button.className="owner-tile";
+      button.setAttribute("aria-pressed",picker.value===group.key ? "true" : "false");
+      const title=document.createElement("strong");
+      title.textContent=group.label;
+      const summary=document.createElement("span");
+      summary.textContent=group.total+" source claims · "+group.updated+
+        " HUMAN-touched · "+group.high+" source-declared high/critical";
+      const due=document.createElement("small");
+      due.textContent=group.overdue+" tentative overdue · "+group.week+" within 7 days";
+      button.append(title,summary,due);
+      button.addEventListener("click",()=>{
+        picker.value=group.key; invalidateBulkPreview(); renderList();
+      });
+      view.append(button);
+    }
+    if (!groups.size) {
+      const note=document.createElement("p");
+      note.textContent="Open an authorized original CSV to view local HUMAN routing.";
+      view.append(note);
+    }
+  }
+  function selectCase(index) {
+    if (state.pending && !confirm("Discard unapplied edits to the current HUMAN form?")) return;
+    state.pending = false;
+    state.selected = index;
+    const row = state.rows[index], journal = state.journal[index];
+    $("noneSelected").hidden = true; $("detail").hidden = false;
+    $("findingId").textContent = row.id;
+    $("findingTitle").textContent = row.title;
+    $("findingMeta").textContent = "Source-declared " + row.severity + " · source retest " + row.retest +
+      " (not independently verified)";
+    $("remediation").textContent = row.remediation;
+    $("humanStage").value = journal.stage;
+    $("humanOwner").value = journal.owner;
+    $("humanDue").value = journal.due;
+    $("humanNote").value = journal.note;
+    renderList();
+  }
+  function writeEntry() {
+    if (state.selected < 0) return;
+    const row = state.rows[state.selected];
+    let entry;
+    try {
+      entry = admitEntry({
+        id: row.id, stage: $("humanStage").value,
+        owner: $("humanOwner").value.trim(), due: $("humanDue").value,
+        note: $("humanNote").value
+      }, row.id);
+    } catch (error) { status(error.message, true); return; }
+    if (JSON.stringify(entry) !== JSON.stringify(state.journal[state.selected])) {
+      state.journal[state.selected] = entry;
+      clearWorkroomReceipt();
+      invalidateBulkPreview();
+      clearRevisionCandidate();
+      state.dirty = true;
+      state.bulkUndo = null;
+      $("bulkUndo").disabled = true;
+    }
+    state.pending = false;
+    renderList();
+    status("HUMAN note updated in memory only. Download a PRIVATE draft to keep it.", false);
+  }
+  async function readFile(file, limit) {
+    if (!file || file.size < 1 || file.size > limit) fail("File absent or exceeds the bounded upload size");
+    const bytes = await file.arrayBuffer();
+    return {bytes, value: DECODER.decode(bytes)};
+  }
+  async function loadSource(file) {
+    if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN changes and open a new source?")) return;
+    try {
+      const {bytes, value} = await readFile(file, MAX_FILE);
+      const stagedRows = admitCsv(value);
+      const sha = await digest(bytes);
+      // No mutation until the complete source has been admitted.
+      state.rows = stagedRows;
+      state.digest = sha;
+      state.sourceText = value;
+      clearWorkroomReceipt();
+      state.revisionHistory = [];
+      clearRevisionCandidate(); refreshRevisionArchive();
+      state.journal = stagedRows.map(r => blankEntry(r.id));
+      state.filename = file.name;
+      state.selected = -1;
+      state.dirty = false;
+      state.pending = false;
+      state.bulkUndo = null;
+      invalidateBulkPreview();
+      $("bulkUndo").disabled = true;
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      $("sourceId").textContent = "Exact file SHA-256: " + sha + " (unsigned; NOT sender authentication)";
+      $("summary").textContent = stagedRows.length + " original CSV finding(s), loaded into this local browser only.";
+      ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter"].forEach(id => { $(id).value = ""; });
+      $("orderBy").value = "severity";
+      setEnabled(true); renderList();
+      status("CSV admitted. Source claims are not proof of a finding, fix or consent.", false);
+    } catch (error) {
+      status("CSV rejected without changing the existing workspace: " + error.message, true);
+    }
+  }
+  function journalDocument() {
+    return {
+      schema: SCHEMA, classification: "PRIVATE_HUMAN_ONLY", authority: NO_AUTHORITY,
+      csv_sha256: state.digest, count: state.rows.length,
+      entries: state.journal.map(j => ({...j}))
+    };
+  }
+  function download(content, name, mime) {
+    const blob = new Blob([content], {type: mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2500);
+  }
+  function saveJournal() {
+    if (state.pending) { status("Apply or discard the current HUMAN form before exporting a journal.", true); return; }
+    if (!confirm("PRIVATE export includes finding IDs, HUMAN owners and notes. Save only into a protected location. Continue?")) return;
+    download(JSON.stringify(journalDocument(), null, 2) + "\n", "lightup-private-human-review.json", "application/json");
+    state.dirty = state.revisionHistory.length > 0 || Boolean(state.pendingWorkroomReceipt);
+    status(state.dirty ? "PRIVATE active journal offered, but PRIOR SOURCE HUMAN HISTORY is not included. Save the encrypted COMPLETE workroom to preserve that history." :
+      "PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", state.dirty);
+  }
+  function admitJournalDocument(parsed, rows = state.rows, csvSha = state.digest) {
+    if (!exactObject(parsed, ["schema", "classification", "authority", "csv_sha256", "count", "entries"]) ||
+        parsed.schema !== SCHEMA || parsed.classification !== "PRIVATE_HUMAN_ONLY" ||
+        !exactObject(parsed.authority, Object.keys(NO_AUTHORITY)) ||
+        Object.keys(NO_AUTHORITY).some(k => parsed.authority[k] !== false) ||
+        parsed.csv_sha256 !== csvSha || parsed.count !== rows.length ||
+        !Array.isArray(parsed.entries) || parsed.entries.length !== rows.length) {
+      fail("PRIVATE HUMAN draft is not bound to this exact original CSV");
+    }
+    return parsed.entries.map((e, i) => admitEntry(e, rows[i].id));
+  }
+  async function loadJournal(file) {
+    if (state.pending && !confirm("Discard unapplied HUMAN form edits before reopening a saved draft?")) return;
+    try {
+      const {value} = await readFile(file, MAX_JOURNAL_BYTES);
+      const parsed = JSON.parse(value);
+      if (value !== JSON.stringify(parsed, null, 2) + "\n") {
+        fail("Only this tool's exact canonical journal format is accepted");
+      }
+      const staged = admitJournalDocument(parsed);
+      if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
+      state.journal = staged; clearWorkroomReceipt(); invalidateBulkPreview(); clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0 || Boolean(state.pendingWorkroomReceipt); state.pending = false; state.selected = -1;
+      state.bulkUndo = null; $("bulkUndo").disabled = true;
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      renderList();
+      status(state.dirty ? "HUMAN journal reopened. Existing prior-source history remains UNSAVED by this journal; save encrypted COMPLETE workroom." :
+        "Original CSV byte-bound HUMAN journal restored locally (not an authenticated review).", state.dirty);
+    } catch(error) {
+      status("Draft rejected without changing the workspace: " + error.message, true);
+    }
+  }
+  async function saveVault() {
+    if (state.pending) { status("Apply or discard the HUMAN form edits before encrypting.", true); return; }
+    const pass = $("vaultPass").value;
+    if (!confirm("Encrypt an owner-private HUMAN journal, using a unique passphrase you must remember? No client identity, consent, or source authentication is established.")) return;
+    $("saveVault").disabled = true;
+    try {
+      const blob = await LightUpEncryptedJournal.seal(journalDocument(), pass);
+      download(blob, "lightup-private-human-review.luej", "application/json");
+      state.dirty = state.revisionHistory.length > 0 || Boolean(state.pendingWorkroomReceipt);
+      status(state.dirty ? "Encrypted HUMAN-only journal offered; PRIOR SOURCE HUMAN HISTORY is NOT included. Save a complete encrypted workroom." :
+        "Encrypted PRIVATE HUMAN journal offered for local save; confirm actual file storage.", state.dirty);
+    } catch (error) {
+      status("PRIVATE encryption HOLD: " + error.message, true);
+    } finally {
+      $("vaultPass").value = "";
+      $("saveVault").disabled = !state.rows.length;
+    }
+  }
+  async function loadVault(file) {
+    if (state.pending && !confirm("Discard unapplied HUMAN form edits before encrypted restore?")) return;
+    let pass = $("vaultPass").value;
+    $("loadVault").disabled = true;
+    try {
+      const {value} = await readFile(file, 1024 * 1024);
+      if (!pass) fail("Enter the PRIVATE passphrase before opening the encrypted journal");
+      const document = await LightUpEncryptedJournal.unseal(value, pass);
+      const staged = admitJournalDocument(document);
+      if (!confirm("Original CSV SHA-256 and all HUMAN IDs match. Replace current in-memory HUMAN notes?")) return;
+      state.journal = staged; invalidateBulkPreview(); clearRevisionCandidate();
+      state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
+      state.bulkUndo = null; $("bulkUndo").disabled = true;
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      renderList();
+      status(state.dirty ? "Encrypted HUMAN-only journal opened; previous source history still requires an encrypted COMPLETE workroom save." :
+        "Encrypted source-bound PRIVATE HUMAN journal opened in memory; not an authenticated source or permission.", state.dirty);
+    } catch (error) {
+      status("Encrypted journal rejected with current work unchanged: " + error.message, true);
+    } finally {
+      pass = "";
+      $("vaultPass").value = "";
+      $("loadVault").disabled = !state.rows.length;
+    }
+  }
+  async function saveWorkroom() {
+    if (state.pending) { status("Apply or discard unfinished HUMAN fields before encryption.", true); return; }
+    if (!state.sourceText) { status("No original locally admitted CSV is present.", true); return; }
+    if (!confirm("Encrypt the COMPLETE original source CSV and PRIVATE HUMAN journal into one local file? " +
+        "It contains confidential original findings. Use a strong, separate remembered password; " +
+        "possession does not prove source, client, consent or disclosure permission.")) return;
+    const pass = $("vaultPass").value;
+    $("saveWorkroom").disabled = true;
+    try {
+      const doc = {
+        schema: WORKROOM_SCHEMA, classification: "PRIVATE_SOURCE_AND_HUMAN_ONLY",
+        authority: NO_AUTHORITY, csv_utf8: state.sourceText,
+        csv_sha256: state.digest, journal: journalDocument(),
+        revision_history: state.revisionHistory
+      };
+      const sealed = await LightUpEncryptedJournal.sealWorkroom(doc, pass);
+      const packed = enc.encode(sealed);
+      const receiptHash = await digest(packed);
+      download(sealed, "lightup-private-entire-workroom.luew", "application/json");
+      state.pendingWorkroomReceipt = {
+        fingerprint: workroomFingerprint(), sha256: receiptHash, bytes: packed.length
+      };
+      $("ackWorkroom").disabled = false;
+      $("saveReceipt").textContent = "Encrypted PRIVATE .luew offered for local save: " +
+        packed.length + " UTF-8 bytes · SHA-256 " + receiptHash +
+        ". Your unsaved-changes warning remains until you independently check the local protected file and acknowledge storage.";
+      status("Encrypted complete workroom offered. Verify local file and SHA-256 before acknowledging save.", false);
+    } catch (error) {
+      status("Complete PRIVATE workroom encryption HOLD: " + error.message, true);
+    } finally {
+      $("vaultPass").value = "";
+      $("saveWorkroom").disabled = !state.rows.length;
+    }
+  }
+  async function loadWorkroom(file) {
+    if ((state.dirty || state.pending) && !confirm("Discard local unsaved HUMAN state before encrypted full-workroom restore?")) return;
+    let pass = $("vaultPass").value;
+    $("loadWorkroom").disabled = true;
+    try {
+      if (!pass) fail("Enter the complete workroom passphrase first");
+      const {value} = await readFile(file, 5 * 1024 * 1024);
+      const doc = await LightUpEncryptedJournal.unsealWorkroom(value, pass);
+      const legacy = exactObject(doc, ["schema", "classification", "authority", "csv_utf8", "csv_sha256", "journal"]);
+      const current = exactObject(doc, ["schema", "classification", "authority", "csv_utf8", "csv_sha256", "journal", "revision_history"]);
+      if ((!legacy && !current) ||
+          doc.schema !== WORKROOM_SCHEMA || doc.classification !== "PRIVATE_SOURCE_AND_HUMAN_ONLY" ||
+          !exactObject(doc.authority, Object.keys(NO_AUTHORITY)) ||
+          Object.keys(NO_AUTHORITY).some(k => doc.authority[k] !== false) ||
+          typeof doc.csv_utf8 !== "string" ||
+          enc.encode(doc.csv_utf8).length > MAX_FILE ||
+          typeof doc.csv_sha256 !== "string" || !/^[0-9a-f]{64}$/.test(doc.csv_sha256)) {
+        fail("Invalid complete source+HUMAN workspace");
+      }
+      const admittedRows = admitCsv(doc.csv_utf8);
+      const candidateSha = await digest(enc.encode(doc.csv_utf8));
+      if (candidateSha !== doc.csv_sha256) fail("Original CSV byte digest mismatch");
+      const admittedJournal = admitJournalDocument(doc.journal, admittedRows, candidateSha);
+      const admittedHistory = LightUpCsvRevision.admitHistory(
+        current ? doc.revision_history : [], candidateSha, admitEntry, safeDisplay);
+      if (!confirm("The encrypted packet's contained original CSV and HUMAN journal were admitted. " +
+          "Replace this browser's current workspace? This does not establish authenticated tenant lineage.")) return;
+      state.rows = admittedRows; state.digest = candidateSha; state.sourceText = doc.csv_utf8;
+      state.journal = admittedJournal; state.revisionHistory = admittedHistory;
+      clearWorkroomReceipt();
+      invalidateBulkPreview(); clearRevisionCandidate(); refreshRevisionArchive();
+      state.filename = "[PRIVATE ENCRYPTED WORKROOM]";
+      state.selected = -1; state.dirty = false; state.pending = false; state.bulkUndo = null;
+      $("bulkUndo").disabled = true;
+      $("sourceFile").value = "";
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      $("sourceId").textContent = "Recovered exact source CSV SHA-256: " + candidateSha + " (unsigned)";
+      $("summary").textContent = admittedRows.length + " original CSV finding(s) and source-matched PRIVATE HUMAN notes reopened in browser memory.";
+      ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter"].forEach(id => { $(id).value = ""; });
+      $("orderBy").value = "severity";
+      setEnabled(true); renderList();
+      status("Encrypted complete workroom opened locally. No client authenticity, grant, consent or verified remediation established.", false);
+    } catch (error) {
+      status("Encrypted workroom HOLD; previous state preserved: " + error.message, true);
+    } finally {
+      pass = "";
+      $("vaultPass").value = "";
+      $("loadWorkroom").disabled = false;
+    }
+  }
+  function htmlEscape(v) {
+    return String(v).replace(/[&<>"']/g, ch => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[ch]);
+  }
+  async function saveBrief() {
+    if (state.pending) {
+      status("Apply or discard the current HUMAN form before preparing a PRIVATE brief.", true);
+      return;
+    }
+    const onlyUpdated = $("briefFollowups").checked;
+    const positions = selectedIndices().filter(i =>
+      !onlyUpdated || state.journal[i].stage !== STAGES[0]);
+    if (!positions.length) {
+      status("No visible HUMAN findings match the PRIVATE brief selection.", true);
+      return;
+    }
+    if (!confirm("PRIVATE printable brief for " + positions.length +
+      " finding(s): includes original IDs, titles, remediation and HUMAN owner/notes. " +
+      "This is not anonymous or an authorization. Save on a protected device only. Continue?")) return;
+    // Scriptless, hash-pinned portable HTML. Source and HUMAN strings are escaped
+    // as text and never interpreted as markup, attributes, CSS or JavaScript.
+    const css = "html{font:15px/1.55 system-ui,sans-serif;color:#172522;max-width:880px;margin:auto;padding:20px}h1{font-size:2rem}header{border-bottom:2px solid #384b44;padding-bottom:14px}small{color:#52655f}article{page-break-inside:avoid;border:1px solid #abbab2;border-radius:9px;padding:15px;margin:16px 0}h2{margin:0;font-size:1.2rem}p{white-space:pre-wrap;overflow-wrap:anywhere}dt{font-weight:700}dd{margin:0 0 8px}strong{font-weight:800}.hold{padding:12px;border-left:4px solid #ab813e;background:#fcf1d9}@media print{html{padding:0}article{border-color:#777}a{color:inherit}}";
+    let key;
+    try {
+      const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(css)));
+      key = btoa(String.fromCharCode(...hash));
+    } catch (error) {
+      status("Browser cannot create a hash-pinned PRIVATE HTML brief.", true);
+      return;
+    }
+    const rows = positions.map(i => {
+      const source = state.rows[i], human = state.journal[i];
+      const field = (label, v) => "<dt>" + htmlEscape(label) + "</dt><dd>" +
+        htmlEscape(v || "—") + "</dd>";
+      return "<article><h2>" + htmlEscape(source.title) + "</h2><small>Original finding ID: " +
+        htmlEscape(source.id) + " · source-declared severity: " + htmlEscape(source.severity) +
+        " · source-declared retest: " + htmlEscape(source.retest) +
+        "</small><dl>" + field("Original proposed remediation (not verified)", source.remediation) +
+        field("HUMAN stage", stageText(human.stage)) +
+        field("HUMAN contact / owner", human.owner) +
+        field("Tentative HUMAN review date", human.due) +
+        field("HUMAN note", human.note) +
+        "</dl></article>";
+    }).join("\n");
+    const csp = "default-src 'none'; style-src 'sha256-" + key +
+      "'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; " +
+      "script-src 'none'; form-action 'none'";
+    const markup = "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">" +
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"" + csp + "\">" +
+      "<meta name=\"referrer\" content=\"no-referrer\">" +
+      "<title>PRIVATE LightUp HUMAN follow-up brief</title><style>" + css +
+      "</style></head><body><header><small>LIGHTUP · PRIVATE / HUMAN FOLLOW-UP</small>" +
+      "<h1>Human next-action brief</h1><p class=\"hold\">PRIVATE, locally authored HUMAN-only work. " +
+      "Original severity/remediation/retest values are unverified source claims. " +
+      "NOT a client authentication, finding verification, remediation, grant, " +
+      "retirement, consent or permission to act.</p></header>" +
+      "<p>Exact imported source CSV SHA-256 (unsigned): <strong>" + htmlEscape(state.digest) +
+      "</strong><br>Local preparation day (not authenticated chronology): " +
+      htmlEscape(localDate()) + "<br>Included visible source items: " +
+      positions.length + "</p>" + rows +
+      "<footer><small>Self-contained offline PRIVATE human artifact. No script, storage, network, " +
+      "client authorization or verified security result. Explicit disclosure approval required.</small></footer>" +
+      "</body></html>\n";
+    download(markup, "lightup-private-human-next-actions.html", "text/html");
+    status("PRIVATE scriptless HUMAN brief offered; original source and local workroom remain unchanged.", false);
+  }
+  function saveCalendar() {
+    if (state.pending) {
+      status("Apply or discard the current HUMAN form edits before PRIVATE calendar export.", true);
+      return;
+    }
+    const dated = selectedIndices().filter(i =>
+      state.journal[i].due && state.journal[i].stage !== "unreviewed");
+    if (!dated.length) {
+      status("No visible HUMAN-updated findings have a tentative date.", true);
+      return;
+    }
+    if (!confirm("Offer " + dated.length + " tentative all-day HUMAN follow-up event(s) as a PRIVATE .ics file? " +
+      "Calendar apps may synchronize it. This contains no original IDs, titles, targets, evidence or owner text. " +
+      "It is NOT a scheduled scan/retest, authenticated finding or actual calendar booking.")) return;
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0",
+      "PRODID:-//LightUp//PRIVATE HUMAN Offline Follow-up//EN",
+      "CALSCALE:GREGORIAN"];
+    for (const position of dated) {
+      const record = state.journal[position];
+      const start = record.due.replaceAll("-", "");
+      const end = new Date(record.due + "T00:00:00Z");
+      end.setUTCDate(end.getUTCDate() + 1);
+      const endValue = end.toISOString().slice(0, 10).replaceAll("-", "");
+      const random = new Uint8Array(16);
+      try { crypto.getRandomValues(random); }
+      catch (_) { status("Secure random UID generation unavailable; calendar not exported.", true); return; }
+      const uid = Array.from(random, byte => byte.toString(16).padStart(2, "0")).join("") + "@lightup.invalid";
+      lines.push("BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + stamp,
+        "DTSTART;VALUE=DATE:" + start, "DTEND;VALUE=DATE:" + endValue,
+        "CLASS:PRIVATE", "TRANSP:TRANSPARENT",
+        "SUMMARY:Tentative HUMAN follow-up (review only)",
+        "DESCRIPTION:Manually proposed PRIVATE follow-up; no verified finding or authorization.",
+        "END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download(lines.join("\r\n") + "\r\n", "lightup-tentative-human-calendar.ics", "text/calendar");
+    status("Tentative PRIVATE HUMAN calendar offered locally; not sent, booked or authorized.", false);
+  }
+  function saveCounts() {
+    if (!confirm("Counts may reveal sensitive cohort sizes. Have you separately approved this disclosure?")) return;
+    const severity = Object.fromEntries(SEVERITIES.map(s => [s, state.rows.filter(r => r.severity === s).length]));
+    const human_stage = Object.fromEntries(STAGES.map(s => [s, state.journal.filter(r => r.stage === s).length]));
+    const counts = {
+      schema: AGGREGATE, classification: "ANONYMOUS_COUNTS_ONLY",
+      authority: NO_AUTHORITY, total: state.rows.length, severity, human_stage,
+      human_overdue_proposed: state.journal.filter(j => j.due && j.due < localDate()).length
+    };
+    download(JSON.stringify(counts, null, 2) + "\n", "lightup-anonymous-review-counts.json", "application/json");
+    status("Counts-only file offered; no original IDs, title, source digest or HUMAN notes exported.", false);
+  }
+  function invalidateBulkPreview() {
+    state.bulkProposal = null;
+    $("bulkApply").disabled = true;
+    $("bulkSummary").textContent = "Batch preview cleared; review the visible queue again before applying.";
+  }
+  function proposeBulk() {
+    if (state.pending) fail("Apply or discard unfinished individual HUMAN fields before bulk planning");
+    if (!state.rows.length) fail("Open a separately authorized original source first");
+    const indices = selectedIndices();
+    if (!indices.length) fail("No matching HUMAN follow-ups are visible");
+    const modes = {
+      stage: $("bulkStageMode").value,
+      owner: $("bulkOwnerMode").value,
+      due: $("bulkDueMode").value
+    };
+    if (!["keep","set"].includes(modes.stage) ||
+        !["keep","set","clear"].includes(modes.owner) ||
+        !["keep","set","clear"].includes(modes.due)) fail("Invalid HUMAN bulk assignment choices");
+    if (Object.values(modes).every(x => x === "keep")) fail("Choose an actual HUMAN stage, contact or follow-up date change");
+    const owner = $("bulkOwner").value.trim();
+    const due = $("bulkDue").value;
+    if (modes.stage === "set" && !STAGES.includes($("bulkStage").value)) fail("Invalid HUMAN stage");
+    if (modes.owner === "set" && !safeDisplay(owner, 160, false)) fail("Enter one safe agreed HUMAN owner (160 bytes maximum)");
+    if (modes.due === "set" && (!due || !todayValid(due))) fail("Choose one valid tentative date");
+    const changes = [];
+    for (const index of indices) {
+      const original = {...state.journal[index]};
+      const next = {...original};
+      if (modes.stage === "set") next.stage = $("bulkStage").value;
+      if (modes.owner === "set") next.owner = owner;
+      if (modes.owner === "clear") next.owner = "";
+      if (modes.due === "set") next.due = due;
+      if (modes.due === "clear") next.due = "";
+      const admitted = admitEntry(next, state.rows[index].id);
+      if (JSON.stringify(admitted) !== JSON.stringify(original)) {
+        changes.push({index, original, next: admitted});
+      }
+    }
+    if (!changes.length) fail("All visible HUMAN fields already match this proposal");
+    return {source: state.digest, indices, changes, modes};
+  }
+  function previewBulk() {
+    try {
+      const proposal = proposeBulk();
+      state.bulkProposal = proposal;
+      $("bulkApply").disabled = false;
+      $("bulkSummary").textContent =
+        proposal.changes.length + " of " + proposal.indices.length + " visible HUMAN findings would change. " +
+        (proposal.modes.stage === "set" ? "Stage → " + stageText($("bulkStage").value) + ". " : "") +
+        (proposal.modes.owner === "set" ? "Assign owner → " + $("bulkOwner").value.trim() + ". " :
+          proposal.modes.owner === "clear" ? "Clear owner. " : "") +
+        (proposal.modes.due === "set" ? "Tentative date → " + $("bulkDue").value + ". " :
+          proposal.modes.due === "clear" ? "Clear due date. " : "") +
+        "No source records, retest states or original remediation text will change. Confirm to apply.";
+      status("HUMAN batch proposal prepared in memory only; no changes yet.", false);
+    } catch (error) {
+      invalidateBulkPreview();
+      status("HUMAN batch preview refused: " + error.message, true);
+    }
+  }
+  function applyBulk() {
+    const frozen = state.bulkProposal;
+    if (!frozen || frozen.source !== state.digest) {
+      status("HUMAN batch preview is missing or the source changed.", true);
+      return;
+    }
+    let now;
+    try { now = proposeBulk(); }
+    catch (error) { invalidateBulkPreview(); status(error.message, true); return; }
+    if (JSON.stringify(now) !== JSON.stringify(frozen)) {
+      invalidateBulkPreview();
+      status("HUMAN queue or current fields changed after preview. Review the batch again.", true);
+      return;
+    }
+    if (!confirm("Apply " + now.changes.length + " explicitly previewed HUMAN-only assignments/dates/stages? " +
+        "The source CSV, actual retest and remediation are NOT changed. Only this browser's private HUMAN journal changes. " +
+        "Keep an encrypted complete workroom for source-history continuity.")) return;
+    clearRevisionCandidate();
+    clearWorkroomReceipt();
+    for (const item of now.changes) {
+      state.journal[item.index] = {...item.next};
+    }
+    state.bulkUndo = now.changes.map(({index,original}) => ({index, original: {...original}}));
+    state.dirty = true;
+    invalidateBulkPreview();
+    $("bulkUndo").disabled = false;
+    if (state.selected >= 0) {
+      const current = state.journal[state.selected];
+      $("humanStage").value = current.stage;
+      $("humanOwner").value = current.owner;
+      $("humanDue").value = current.due;
+      $("humanNote").value = current.note;
+    }
+    renderList();
+    status(now.changes.length + " HUMAN follow-up assignments updated locally; one-step undo available. Save PRIVATE journal/workroom.", false);
+  }
+  function undoBulk() {
+    if (state.pending) { status("Apply or discard individual HUMAN form edits first.", true); return; }
+    const previous = state.bulkUndo;
+    if (!previous || !previous.length) return;
+    clearRevisionCandidate();
+    clearWorkroomReceipt();
+    for (const item of previous) {
+      state.journal[item.index] = {...item.original};
+    }
+    state.bulkUndo = null;
+    $("bulkUndo").disabled = true;
+    invalidateBulkPreview();
+    state.dirty = true;
+    if (state.selected >= 0) {
+      const current = state.journal[state.selected];
+      $("humanStage").value = current.stage;
+      $("humanOwner").value = current.owner;
+      $("humanDue").value = current.due;
+      $("humanNote").value = current.note;
+    }
+    renderList();
+    status("Last HUMAN owner/date/stage batch reversed locally. No original finding was changed.", false);
+  }
+  function init() {
+    STAGES.forEach(v => {
+      for (const id of ["humanStage", "stageFilter", "bulkStage"]) {
+        const opt = document.createElement("option"); opt.value = v; opt.textContent = stageText(v);
+        $(id).append(opt);
+      }
+    });
+    SEVERITIES.forEach(v => {
+      const opt = document.createElement("option"); opt.value = v; opt.textContent = v;
+      $("severityFilter").append(opt);
+    });
+    $("sourceFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadSource(e.target.files[0]);
+    });
+    $("journalFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadJournal(e.target.files[0]);
+      e.target.value = "";
+    });
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "ownerPicker", "orderBy"].forEach(id =>
+      $(id).addEventListener("input", () => { invalidateBulkPreview(); renderList(); }));
+    ["humanStage", "humanOwner", "humanDue", "humanNote"].forEach(id => {
+      $(id).addEventListener("input", () => { state.pending = true; status("Unapplied HUMAN form edits — click Apply before switching findings or exporting a PRIVATE draft.", true); });
+    });
+    $("applyHuman").addEventListener("click", writeEntry);
+    $("bulkPreview").addEventListener("click", previewBulk);
+    $("bulkApply").addEventListener("click", applyBulk);
+    ["bulkStageMode","bulkStage","bulkOwnerMode","bulkOwner","bulkDueMode","bulkDue"].forEach(id =>
+      $(id).addEventListener("input", invalidateBulkPreview));
+    $("bulkUndo").addEventListener("click", undoBulk);
+    $("saveJournal").addEventListener("click", saveJournal);
+    $("loadJournal").addEventListener("click", () => $("journalFile").click());
+    $("saveCounts").addEventListener("click", saveCounts);
+    $("saveCalendar").addEventListener("click", saveCalendar);
+    $("saveVault").addEventListener("click", saveVault);
+    $("saveWorkroom").addEventListener("click", saveWorkroom);
+    $("ackWorkroom").addEventListener("click", acknowledgeWorkroom);
+    $("loadWorkroom").addEventListener("click", () => $("workroomFile").click());
+    $("workroomFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadWorkroom(e.target.files[0]);
+      e.target.value = "";
+    });
+    $("loadVault").addEventListener("click", () => $("vaultFile").click());
+    $("vaultFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadVault(e.target.files[0]);
+      e.target.value = "";
+    });
+    $("saveBrief").addEventListener("click", saveBrief);
+    $("revisionFile").addEventListener("change", e => {
+      if (e.target.files[0]) previewRevision(e.target.files[0]);
+      e.target.value = "";
+    });
+    $("revisionCommit").addEventListener("click", commitRevision);
+    $("revisionCountsExport").addEventListener("click", exportRevisionCounts);
+    $("revisionCancel").addEventListener("click", () => {
+      clearRevisionCandidate(); status("Source candidate discarded; original workspace remains unchanged.", false);
+    });
+    $("revisionHistoryDownload").addEventListener("click", exportRevisionArchive);
+    $("revisionHistoryToggle").addEventListener("click", () => {
+      const desk = $("revisionArchiveDesk");
+      desk.hidden = !desk.hidden;
+      if (!desk.hidden) renderRevisionHistory();
+    });
+    $("revisionHistorySearch").addEventListener("input", renderRevisionHistory);
+    $("clearAll").addEventListener("click", () => {
+      if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
+      wipe(); status("All loaded application state released from the interface.", false);
+    });
+    window.addEventListener("beforeunload", e => {
+      if (state.dirty || state.pending) { e.preventDefault(); e.returnValue = ""; }
+    });
+    wipe();
+  }
+  document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</head>
+<body>
+<header class="top">
+  <div class="identity"><span class="mark" aria-hidden="true">◆</span> LIGHTUP <span class="identity-light">/ PRIVATE HUMAN DESK</span></div>
+  <div class="pill">OFFLINE · REVIEW ONLY</div>
+</header>
+<main>
+  <section class="intro" aria-labelledby="title">
+    <p class="eyebrow">SOURCE-BOUND FOLLOW-UP / M3·M7 INCUBATE</p>
+    <h1 id="title">Evidence to <em>human action.</em></h1>
+    <p>Open an <strong>already authorized and exported</strong> LightUp finding-summary CSV. Prioritize proposed work, annotate HUMAN ownership and dates, and keep private draft notes bound to the exact source file.</p>
+    <p class="warning"><strong>Not a security decision.</strong> Imported severity, remediation and retest values are source claims. No verified finding, verified fix, consent, tenant identity, permission to scan or remediation authority is established here. This tool never contacts a service.</p>
+  </section>
+
+  <section class="import" aria-label="Private source">
+    <div class="file-widget">
+      <label for="sourceFile" class="label">1 · LOAD SOURCE CSV</label>
+      <input type="file" id="sourceFile" accept=".csv,text/csv">
+      <small>Existing five-column, canonical all-quoted LightUp CSV only · UTF-8 · max 128 findings / 2 MiB. Do not upload actual client records into a shared device.</small>
+    </div>
+    <div class="provenance" aria-live="polite">
+      <p id="summary">No source CSV loaded.</p>
+      <p id="sourceId" class="mono"></p>
+    </div>
+  </section>
+  <div id="status" class="status" role="status" aria-live="polite">Local-only. No data loaded.</div>
+
+  <div class="toolbar" aria-label="Offline review controls">
+    <div class="toolbar-search">
+      <label for="search">Search source findings</label>
+      <input id="search" type="search" placeholder="Search ID, title or remediation" disabled>
+    </div>
+    <div class="toolbar-select">
+      <label for="severityFilter">Severity</label>
+      <select id="severityFilter" disabled><option value="">All severities</option></select>
+    </div>
+    <div class="toolbar-select">
+      <label for="stageFilter">HUMAN status</label>
+      <select id="stageFilter" disabled><option value="">All statuses</option></select>
+    </div>
+    <div class="toolbar-select">
+      <label for="dueFilter">Tentative date</label>
+      <select id="dueFilter" disabled><option value="">All dates</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="next7">Next 7 days</option><option value="unscheduled">Unscheduled</option></select>
+    </div>
+    <div class="toolbar-select">
+      <label for="ownerFilter">HUMAN owner</label>
+      <select id="ownerFilter" disabled><option value="">Any owner</option><option value="assigned">Assigned</option><option value="unassigned">Not assigned</option></select>
+    </div>
+    <div class="toolbar-select">
+      <label for="orderBy">Queue ordering</label>
+      <select id="orderBy" disabled><option value="severity">Source severity</option><option value="due">Tentative due date first</option><option value="id">Original ID</option></select>
+    </div>
+  </div>
+
+  <section class="owner-board" aria-labelledby="ownerBoardTitle">
+    <div class="owner-board-heading">
+      <div><p class="eyebrow">PRIVATE HUMAN ROUTING · NOT A GRANT</p><h2 id="ownerBoardTitle">Follow-up ownership desk</h2>
+      <p>Local workload by HUMAN-entered contact. Counts and due flags are not verified findings, assignments, risk or consent.</p></div>
+      <div class="owner-picker"><label for="ownerPicker">Show a contact's private follow-ups</label>
+        <select id="ownerPicker" disabled><option value="">All contacts</option></select></div>
+    </div>
+    <div class="owner-tiles" id="ownerBoard" aria-live="polite"><p>Open an authorized original CSV to see HUMAN routing.</p></div>
+  </section>
+
+  <div class="workroom">
+    <section class="queue" aria-labelledby="queueTitle">
+      <div class="panel-head"><h2 id="queueTitle">Review queue</h2><p id="counts" aria-live="polite">Open a source CSV to begin.</p><div class="bulk" aria-label="HUMAN bulk owner and follow-up planner">
+  <p class="eyebrow">PRIVATE · BATCH HUMAN ACTIONS</p>
+  <label for="bulkStageMode">Follow-up stage</label>
+  <select id="bulkStageMode" disabled><option value="keep">Keep existing stage</option><option value="set">Set HUMAN stage</option></select>
+  <select id="bulkStage" aria-label="Selected HUMAN stage" disabled></select>
+  <label for="bulkOwnerMode">Responsible HUMAN contact</label>
+  <select id="bulkOwnerMode" disabled><option value="keep">Keep existing owner</option><option value="set">Assign HUMAN contact</option><option value="clear">Clear HUMAN owner</option></select>
+  <input id="bulkOwner" maxlength="160" autocomplete="off" placeholder="HUMAN contact, only if actually agreed" aria-label="Contact for selected findings" disabled>
+  <label for="bulkDueMode">Tentative follow-up date</label>
+  <select id="bulkDueMode" disabled><option value="keep">Keep existing due date</option><option value="set">Propose tentative date</option><option value="clear">Clear tentative date</option></select>
+  <input id="bulkDue" type="date" aria-label="Tentative follow-up date for selected findings" disabled>
+  <p class="minor">Only currently visible findings are considered. Existing HUMAN notes are never replaced; source records and actual retest status are never modified.</p>
+  <button type="button" id="bulkPreview" disabled>Preview visible HUMAN changes</button>
+  <button type="button" id="bulkApply" disabled>Apply reviewed HUMAN batch</button>
+  <button type="button" id="bulkUndo" disabled>Undo last HUMAN batch</button>
+  <p id="bulkSummary" class="minor" aria-live="polite">Preview before applying any batch.</p>
+</div></div>
+      <div id="list" class="list"></div>
+    </section>
+    <section class="detail-panel" aria-labelledby="detailTitle">
+      <div id="noneSelected" class="empty-state">
+        <span aria-hidden="true">↗</span><h2>Choose a finding</h2><p>The queue is ordered by source-declared severity. HUMAN decisions never change the source CSV.</p>
+      </div>
+      <div id="detail" hidden>
+        <p class="eyebrow">LOCAL PRIVATE HUMAN ANNOTATION</p>
+        <div class="detail-header"><h2 id="detailTitle"><span id="findingTitle"></span></h2><span id="findingId" class="mono"></span></div>
+        <p id="findingMeta" class="meta"></p>
+        <div class="remediation">
+          <strong>Original suggested remediation — unverified</strong>
+          <p id="remediation"></p>
+        </div>
+        <div class="formgrid">
+          <div><label for="humanStage">Human follow-up stage</label><select id="humanStage"></select></div>
+          <div><label for="humanDue">Tentative follow-up date</label><input id="humanDue" type="date"></div>
+        </div>
+        <label for="humanOwner">HUMAN contact / owner (PRIVATE)</label>
+        <input id="humanOwner" maxlength="160" autocomplete="off" placeholder="Only if a person has actually agreed">
+        <label for="humanNote">HUMAN note (PRIVATE; do not paste secrets)</label>
+        <textarea id="humanNote" rows="5" maxlength="2048" placeholder="Next question, dependency or operator-supplied context. No automated evidence or fix claims."></textarea>
+        <button id="applyHuman" class="primary" type="button">Apply HUMAN note in memory</button>
+      </div>
+    </section>
+  </div>
+
+<section class="revision" aria-labelledby="revisionTitle">
+    <div class="revision-copy">
+      <p class="eyebrow">4 · PRIVATE SOURCE SNAPSHOT CONTINUITY</p>
+      <h2 id="revisionTitle">Review a later source export</h2>
+      <p>Compare another <strong>separately authorized</strong> original five-column CSV with the currently opened snapshot. This only compares two <em>operator-selected files</em>; it does not establish chronology, shared tenant, fixes, retest outcomes or owner authority.</p>
+      <label for="revisionFile">Choose a separate incoming CSV (max 2 MiB / 128 rows)</label>
+      <input type="file" id="revisionFile" accept=".csv,text/csv" disabled>
+      <p class="minor">No uploads or service calls. The entire candidate is admitted before a preview is shown; your current workspace remains untouched until you confirm migration.</p>
+    </div>
+    <div id="revisionPreview" hidden>
+      <h3>PRIVATE source comparison proposal</h3>
+      <p id="revisionDigest" class="mono"></p>
+      <p id="revisionCounts" aria-live="polite"></p>
+      <div class="revision-option">
+        <label for="revisionChanged">Changed source rows · HUMAN continuity policy</label>
+        <select id="revisionChanged">
+          <option value="reset">Reset HUMAN stage/owner/date/note for changed rows (safer default)</option>
+          <option value="retain">Explicitly retain existing HUMAN notes as UNVERIFIED / needs_evidence</option>
+        </select>
+      </div>
+      <div class="revision-groups">
+        <div><h4>Changed source records</h4><div id="revisionChangedList" class="revision-list"></div></div>
+        <div><h4>No longer present (NOT fixed)</h4><div id="revisionAbsentList" class="revision-list"></div></div>
+        <div><h4>New in selected source (UNREVIEWED)</h4><div id="revisionAddedList" class="revision-list"></div></div>
+      </div>
+      <p class="warning"><strong>Migration is not a source merge or verification.</strong> Unchanged means literal five-field equality only. Changed source labels are never a confirmed fix; absent means missing in the selected next CSV, never resolved. HUMAN notes from changed or absent rows remain in the PRIVATE revision archive inside the encrypted workroom if saved.</p>
+      <div class="actions">
+        <button id="revisionCountsExport" type="button">Download source-free delta totals</button>
+        <button id="revisionCommit" type="button" class="primary">Review &amp; move to incoming snapshot</button>
+        <button id="revisionCancel" type="button" class="subtle">Discard candidate</button>
+      </div>
+    </div>
+    <div class="revision-archive">
+      <p class="eyebrow">PRIOR HUMAN REVIEW PRESERVATION</p>
+      <p>After selecting a new source, removed records remain PRIVATE absent/unknown, not fixed. The encrypted complete workroom preserves up to three bounded prior HUMAN source transitions.</p>
+      <button id="revisionHistoryDownload" type="button" disabled>Download PRIVATE prior HUMAN archive</button>
+      <button id="revisionHistoryToggle" type="button" disabled>Open PRIVATE prior HUMAN history</button>
+      <div id="revisionArchiveDesk" class="private-history-desk" hidden>
+        <label for="revisionHistorySearch">PRIVATE historical ID, title or HUMAN owner search</label>
+        <input id="revisionHistorySearch" type="search" placeholder="Local-only search in previous source workrooms">
+        <p id="revisionHistoryCounts" class="minor"></p>
+        <div id="revisionHistoryList" class="private-history-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="exports" aria-label="Private local exports">
+    <div><p class="eyebrow">2 · HUMAN CONTINUITY</p><h2>Save your private work.</h2><p>Export a PRIVATE JSON with finding IDs, HUMAN owner, stage, date and notes. Resume it only against <strong>exactly the same CSV bytes</strong>. Your browser does not autosave.</p><div class="actions"><button id="saveJournal" disabled>Download PRIVATE draft</button><button id="loadJournal" disabled>Open PRIVATE draft</button><input type="file" id="journalFile" accept=".json,application/json" hidden></div><div class="vault-controls"><p class="eyebrow">ENCRYPTED PRIVATE JOURNAL</p><label for="vaultPass">Private local passphrase (minimum 12 characters; not a login or client authentication)</label><input id="vaultPass" type="password" autocomplete="new-password" maxlength="1024" placeholder="Unique strong passphrase; never sent anywhere"><div class="actions"><button id="saveVault" disabled>Save encrypted PRIVATE journal (.luej)</button><button id="loadVault" disabled>Open encrypted PRIVATE journal</button><input type="file" id="vaultFile" accept=".luej,.json" hidden><button id="saveWorkroom" disabled>Save encrypted complete workroom (.luew)</button><button id="ackWorkroom" disabled>Confirm complete private file saved</button><p id="saveReceipt" class="minor" role="status" aria-live="polite">The complete PRIVATE workroom has not been offered for local download in this session.</p><button id="loadWorkroom">Open encrypted complete workroom</button><input type="file" id="workroomFile" accept=".luew,.json" hidden></div><p class="minor">Journal format encrypts only HUMAN details and requires the original CSV at resume; complete workroom format encrypts original CSV and HUMAN details together for single-file PRIVATE resume. WebCrypto AES-256-GCM / PBKDF2-SHA256 600k; random salt and nonce. A correct passphrase decrypts a private file but proves nothing about consent or source authenticity. Forgetting it prevents recovery.</p></div><div class="brief-actions"><label class="brief-toggle" for="briefFollowups"><input id="briefFollowups" type="checkbox" checked> Only HUMAN-updated findings in visible queue</label><button id="saveBrief" disabled>Download printable PRIVATE HUMAN brief</button><p class="minor">Local scriptless HTML for a trusted private recipient. Includes IDs, source-declared remediation, owners and HUMAN notes; NEVER an anonymous handoff.</p></div></div>
+    <div><p class="eyebrow">3 · SEPARATE DISCLOSURE</p><h2>Counts only, if authorized.</h2><p>The optional anonymous aggregate contains totals by original severity and HUMAN stage, without finding IDs, titles, notes, source hash or target. Even small counts can be sensitive. Calendar download is an explicit PRIVATE local all-day tentative appointment export for dated visible HUMAN actions, with anonymous local ordinals only; calendar software may sync it. No attendees or calendar APIs are used.</p><div class="actions"><button id="saveCounts" disabled>Download counts-only JSON</button><button id="saveCalendar" disabled>Download tentative HUMAN calendar (.ics)</button><button id="clearAll" disabled class="subtle">Clear local workspace</button></div></div>
+  </section>
+</main>
+<footer>LightUp / PRIVATE HUMAN DESK · No network · No cookies · No persistent browser storage · No active target · No release approval. Standalone local PRIVATE software · see source README for operator guidance</footer>
+</body>
+</html>
