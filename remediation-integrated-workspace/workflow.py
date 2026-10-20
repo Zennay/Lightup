@@ -28,6 +28,7 @@ sys.path.insert(0, str(RECIPIENT))
 import trend
 import recipient_workload_series
 import recipient_studio
+import single_review
 
 review = prepare.review
 workspace = prepare.workspace
@@ -125,14 +126,20 @@ def owner_start(inputs: list[Path], bundles: list[Path], dest: Path) -> None:
 
 def recipient_start(cockpits: list[Path], dest: Path) -> None:
     private_sources(cockpits, dest)
-    require(len(cockpits) >= 2,
-            "Recipient series requires 2-12 original separately admitted source-free packets")
     stage = dest.parent / (".lightup-recipient-stage-" + secrets.token_hex(12))
     os.mkdir(stage, 0o700)
     try:
         report = stage / "source-free-report"
         studio = stage / "human-studio"
-        if len(cockpits) == 2:
+        if len(cockpits) == 1:
+            source_status = read_cockpit.inspect(cockpits[0])
+            entries, _, _, _ = single_review.original(cockpits[0])
+            single_review.publish(cockpits[0], studio, None)
+            kind = "single"
+            selected = 1
+            last_pending = source_status["local_pending_human_questions_not_fixes"]
+            studio_result = {"human_reason_groups": len(entries)}
+        elif len(cockpits) == 2:
             result = trend.publish(cockpits[0], cockpits[1], report)
             kind = "compare"
             selected = 2
@@ -142,17 +149,22 @@ def recipient_start(cockpits: list[Path], dest: Path) -> None:
             kind = "series"
             selected = result["snapshot_count"]
             last_pending = result["last_pending"]
-        studio_result = recipient_studio.publish(report, kind, studio)
+        if kind != "single":
+            studio_result = recipient_studio.publish(report, kind, studio)
+        links = (
+            [("Single original source-free HUMAN reviewer", "human-studio/index.html",
+              "One real original Cockpit, private HUMAN journal and local continuation. NO synthetic second snapshot.")]
+            if kind == "single" else
+            [("Native source-free count comparison", "source-free-report/index.html",
+              "Operator-selected aggregate packet differences, NEVER verified source identity or time."),
+             ("Editable source-free HUMAN follow-up", "human-studio/index.html",
+              "Original recipient reviewer, local HUMAN journal and manual owner follow-up.")]
+        )
         portal = page(
-            "PRIVATE source-free HUMAN recipient follow-up",
-            [
-                ("Native original source-free counts", "source-free-report/index.html",
-                 "Only operator-selected packet differences; no source ID or verified chronology."),
-                ("Editable HUMAN follow-up workspace", "human-studio/index.html",
-                 "Human reviewers can locally edit follow-up stages and download a separate PRIVATE journal; no source writeback."),
-            ],
-            "RECIPIENT SOURCE-FREE MACHINE. The original source-owner records have not "
-            "been copied. Selected packet order cannot prove chronological or cohort identity."
+            "PRIVATE source-free HUMAN recipient follow-up", links,
+            "RECIPIENT SOURCE-FREE MACHINE. Original client/evidence records remain at their owner. "
+            "The number of human-selected packets cannot establish identical cohorts, "
+            "security improvements, real chronology or actual consent."
         )
         install.write_file(stage / "index.html", portal)
         summary = {"kind": "lightup.human_only_source_free_recipient_workflow",
@@ -186,7 +198,7 @@ def main() -> int:
     p = actions.add_parser("recipient-start",
                            help="Create source-free comparison/series PLUS editable HUMAN reviewer studio")
     p.add_argument("--cockpit", action="append", type=Path, required=True,
-                   help="Original complete source-free PRIVATE cockpit packet, repeat 2-12")
+                   help="Original complete source-free PRIVATE cockpit packet, repeat 1-12")
     p.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     try:
