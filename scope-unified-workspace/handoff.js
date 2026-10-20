@@ -1129,7 +1129,9 @@
   });
   el("shelf-workplan").addEventListener("click", () => {
     if (!items.length) return report("HOLD — selecteer eerst PRIVATE bronbestanden voor een HUMAN teambrief.");
-    if (!confirm("PRIVATE HUMAN teambrief exporteren met originele bestandsnamen, hashes en mogelijk vertrouwelijke notities? Ontvanger en kanaal moeten afzonderlijk worden geauthenticeerd; dit verleent geen toestemming.")) return;
+    const includePrivateNotes = el("shelf-all-private-notes").checked;
+    const noteCount = items.filter(e => e.note.length > 0).length;
+    if (!confirm("PRIVATE HUMAN teambrief voor ALLE " + items.length + " geselecteerde originele bronverwijzingen maken? De brief bevat namen en SHA-256 van ALLE teams. PRIVATE notitieteksten: " + (includePrivateNotes ? "BEWUST INBEGREPEN (" + noteCount + " ingevuld)" : "STANDAARD UIT (" + noteCount + " afgeschermd)") + ". Controleer afnemer en kanaal onafhankelijk; geen toestemming of grant.")) return;
     const ordered = ["escalated", "unreviewed", "preparing", "documented"];
     const lines = [
       "# LightUp — PRIVATE HUMAN teamoverdracht",
@@ -1161,7 +1163,7 @@
             "  - Bytes: " + e.file.size + "; ongetekende SHA-256: " + e.hash,
             "  - Structurele hint (NIET geauthenticeerd): " + JSON.stringify(e.inspection.label),
             "  - Voorgestelde HUMAN route: " + JSON.stringify(routes[e.route][0]),
-            "  - Menselijke PRIVATE notitie: " + JSON.stringify(e.note || "(geen)"),
+            "  - Menselijke PRIVATE notitie: " + (includePrivateNotes ? JSON.stringify(e.note || "(geen)") : "(bewust niet meegestuurd)"),
             "  - Vereiste vervolgstap: bronhouder, originele toestemming, actuele revocatie en context afzonderlijk laten controleren.",
             "");
         }
@@ -1172,20 +1174,24 @@
       "Originele security/privacy/browserreview, exact-head hosted en named-VPS CI, aparte actuele client/operator-consent met revocation-at-use en expliciete HUMAN GO blijven vereist.",
       "Dit document is vertrouwelijk en ongetekend; verspreid uitsluitend via een passend apart geauthenticeerd privé-kanaal.", "");
     download(new Blob([lines.join("\n")], {type:"text/markdown;charset=utf-8"}), "lightup-scope-PRIVATE-HUMAN-team-brief.md");
-    report("REVIEW_ONLY — PRIVATE HUMAN teambrief lokaal gedownload; bronbestanden ongewijzigd, nooit vrijgave.");
+    report("REVIEW_ONLY — PRIVATE HUMAN brief van alle teams lokaal gedownload, notitieteksten " + (includePrivateNotes ? "bewust opgenomen" : "afgeschermd") + "; bronbestanden niet gewijzigd.");
   });
   sourceCopy.addEventListener("click", () => {
     if (!items.length) return report("HOLD — geen PRIVATE bronbestanden geselecteerd.");
-    if (!confirm("PRIVATE INVENTARIS exporteren inclusief originele bestandsnamen, bytes en SHA-256? Kan klant- of projectdetails onthullen. Deel uitsluitend met bedoelde, apart geauthenticeerde ontvanger.")) return;
+    const includePrivateNotes = el("shelf-all-private-notes").checked;
+    const noteCount = items.filter(e => e.note.length > 0).length;
+    if (!confirm("PRIVATE INVENTARIS met " + items.length + " originele namen, bytes en SHA-256 van ALLE teams exporteren? PRIVATE HUMAN-notities: " + (includePrivateNotes ? "BEWUST INBEGREPEN (" + noteCount + " ingevuld)" : "STANDAARD UIT (" + noteCount + " afgeschermd)") + ". Deel alleen via een apart geauthenticeerde vertrouwelijke ontvanger. Geen toestemming of grant.")) return;
     exportJSON("lightup-scope-handoff-PRIVATE-source-inventory.json", {
-      format: "lightup.scope_handoff_PRIVATE_inventory.v1", status: "REVIEW_ONLY",
+      format: "lightup.scope_handoff_PRIVATE_inventory.v2", status: "REVIEW_ONLY",
       authority: { client_consent: false, operator_consent: false, grant: false, scan: false, deploy: false, release: false },
       entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size,
         unsigned_sha256: e.hash, structural_kind_unverified: e.inspection.kind,
-        human_route: e.route, human_stage: e.stage, human_team: e.team, private_human_note: e.note })),
-      warning: "PRIVATE unsigned inventory, never source or recipient authentication. No file content included."
+        human_route: e.route, human_stage: e.stage, human_team: e.team,
+        private_note_included: includePrivateNotes,
+        private_human_note: includePrivateNotes ? e.note : "" })),
+      warning: "PRIVATE unsigned V2 HUMAN inventory; notes omitted unless explicitly enabled. Original files and producer identity are not included or authenticated."
     });
-    report("REVIEW_ONLY — expliciete PRIVATE ongetekende bestandsinventaris lokaal gedownload.");
+    report("REVIEW_ONLY — privé broninventaris van alle teams gedownload, notitieteksten " + (includePrivateNotes ? "bewust opgenomen." : "veilig afgeschermd."));
   });
   render();
   renderReturnJournal();
