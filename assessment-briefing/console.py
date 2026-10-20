@@ -10,6 +10,7 @@ from aggregate import create as create_aggregate
 from human_return import create as create_human_return
 from human_revision import create as create_human_revision
 from paged_review import make_paged_package
+from human_matrix import create as create_human_matrix
 
 MENU = (
     ("Create PRIVATE full source briefing + editable HUMAN worksheet",
@@ -29,6 +30,10 @@ MENU = (
     ("Build paged PRIVATE original finding library (up to 52 local pages)",
      ("Original PRIVATE lab result JSON", "NEW PRIVATE output directory"),
      make_paged_package),
+    ("Produce PRIVATE severity × HUMAN attention matrix and ordinal queue",
+     ("Original PRIVATE lab result JSON", "Original briefing manifest.json",
+      "Filled original HUMAN CSV", "NEW PRIVATE output directory"),
+     create_human_matrix),
     ("Compare two source-bound original HUMAN worksheet revisions",
      ("Original PRIVATE lab result JSON", "Original briefing manifest.json",
       "Older human-followup.csv", "Newer human-followup.csv",
