@@ -1224,7 +1224,14 @@
   render();
   renderReturnJournal();
   window.addEventListener("pageshow", event => {
-    if (event.persisted) resetPrivateDisclosure();
+    if (event.persisted) {
+      resetPrivateDisclosure();
+      // The original private files are no longer in the in-tab workset.
+      // Also clear all stale DOM rows upon back/forward cache restoration.
+      render();
+      renderReturnJournal();
+      report("REVIEW_ONLY — tab heropend: vorige PRIVATE bronwerkset en HUMAN-overzichten zijn gewist. Kies originele bronnen opnieuw.");
+    }
   });
   window.addEventListener("pagehide", () => {
     returnJournal.length = 0;
@@ -1234,5 +1241,7 @@
     clearReviewHistory();
     invalidateDrift();
     items.splice(0);
+    renderReturnJournal();
+    render(); // never preserve source filenames, hashes or HUMAN notes in bfcache DOM
   });
 })();
