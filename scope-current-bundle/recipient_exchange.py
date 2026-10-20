@@ -31,7 +31,16 @@ RECEIPT_LIMIT = 256_000
 REPLY_LIMIT = 300_000
 MAX_TEAMS = 16
 HEX = re.compile(r"[0-9a-f]{32}\Z")
-GROUP = re.compile(r"[a-z][a-z0-9_-]{0,39}\Z")
+def admitted_team(value: str) -> bool:
+    """Keep bounded existing HUMAN team display labels, never invent path slugs.
+
+    Files are numbered numeric PRIVATE recipient slots, not team filenames.
+    No claim of actual recipient identity or original client permission.
+    """
+    try:
+        return bool(value) and value == value.strip() and human_text(value, 80) == value
+    except ValueError:
+        return False
 ASSIGN_FIELDS = (
     "exchange_token", "team_slot", "review_row", "private_row_token",
     "declared_source_change", "original_human_stage", "proposed_human_stage",
@@ -102,8 +111,8 @@ def make_exchange(argv: list[str]):
         _source, changed, _old, _new, stage, team, _notes = row
         if not team:
             continue
-        if not GROUP.fullmatch(team):
-            raise ValueError("Assigned HUMAN team must use a-z, 0-9, underscore or dash")
+        if not admitted_team(team):
+            raise ValueError("Invalid bounded original HUMAN team display label")
         entries = assignments.setdefault(team, [])
         entries.append({
             "ordinal": index,
@@ -180,7 +189,7 @@ def admit_receipt(path: Path, original_hashes, original_rows):
         if type(group) is not dict or set(group) != {"team", "team_slot", "rows"}:
             raise ValueError("Malformed recipient group")
         team, slot = group["team"], group["team_slot"]
-        if type(team) is not str or not GROUP.fullmatch(team) or team in seen_teams or slot != str(expected_slot):
+        if not admitted_team(team) or team in seen_teams or slot != str(expected_slot):
             raise ValueError("Ambiguous HUMAN recipient identity/slot")
         seen_teams.add(team)
         if type(group["rows"]) is not list or not group["rows"]:
