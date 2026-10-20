@@ -33,13 +33,24 @@ WARNING = (
 def require(condition: bool, explanation: str) -> None:
     review.require(condition, explanation)
 
-def build(archives: list[Path], dest: Path, encrypted: bool = False) -> None:
+def build(archives: list[Path], dest: Path, encrypted: bool = False, unsigned_receipt: Path | None = None) -> None:
     require(1 <= len(archives) <= 12 and len(set(archives)) == len(archives),
             "Select 1 to 12 distinct original source-free archive files")
     require(dest.is_absolute() and dest.parent == dest.parent.resolve(strict=True)
             and not dest.exists() and not dest.is_symlink(),
             "New output must be a literal absolute PRIVATE directory")
     install.owner_dir(dest.parent)
+    # Optional byte custody only: an UNSIGNED receipt is never consent.
+    expected_slots = None
+    receipt_raw = None
+    if unsigned_receipt is not None:
+        import packet_fingerprint
+        require(unsigned_receipt not in archives and unsigned_receipt != dest,
+                "Original PRIVATE unsigned receipt must be separate")
+        receipt_raw = packet_fingerprint.receipt_bytes(unsigned_receipt)
+        expected_slots = packet_fingerprint.load_receipt(unsigned_receipt)["files"]
+        require(len(archives) == len(expected_slots),
+                "Unsigned original receipt slot count mismatch")
     seen = set()
     original_bytes = []
     for archive in archives:
@@ -54,6 +65,11 @@ def build(archives: list[Path], dest: Path, encrypted: bool = False) -> None:
         require(0 < len(raw) <= (encrypted_cockpit.MAX_ENVELOPE if encrypted
                                 else portable_cockpit.MAX_ZIP),
                 "Private source-free archive exceeds original transport limit")
+        if expected_slots is not None:
+            slot = expected_slots[len(original_bytes)]
+            require(slot["bytes"] == len(raw)
+                    and slot["sha256"] == hashlib.sha256(raw).hexdigest(),
+                    "Received source-free packet differs from UNSIGNED receipt")
         signature = hashlib.sha256(raw).digest()
         require(signature not in seen,
                 "The same exact source-free archive cannot be two HUMAN revisions")
@@ -109,6 +125,11 @@ def build(archives: list[Path], dest: Path, encrypted: bool = False) -> None:
             "warning": WARNING,
         }
         install.write_file(stage / "private-summary.json", install.canonical(stats))
+        if receipt_raw is not None:
+            import packet_fingerprint
+            require(packet_fingerprint.receipt_bytes(unsigned_receipt) == receipt_raw
+                    and packet_fingerprint.load_receipt(unsigned_receipt)["files"] == expected_slots,
+                    "Original UNSIGNED receipt changed during recipient intake")
         require(not dest.exists(), "Recipient output appeared before final private publication")
         workspace.exclusive_dir_publish(stage, dest)
     finally:
@@ -130,10 +151,12 @@ def main() -> int:
                         help="PASSPHRASE encrypted .luhx archive; repeat 1-12; interactive prompt")
     parser.add_argument("--output-dir", required=True, type=Path,
                         help="NEW absolute original owner-private 0700 recipient folder")
+    parser.add_argument("--receipt", type=Path, default=None,
+                        help="Optional ORIGINAL private UNSIGNED source-free SHA-256 receipt, match before decrypt and final publication")
     args = parser.parse_args()
     try:
         build(args.encrypted_archive or args.archive, args.output_dir,
-              encrypted=args.encrypted_archive is not None)
+              encrypted=args.encrypted_archive is not None, unsigned_receipt=args.receipt)
         return 2
     except (review.Hold, install.Hold, OSError, ValueError, TypeError, KeyError,
             RuntimeError, EOFError, zipfile.BadZipFile) as exc:

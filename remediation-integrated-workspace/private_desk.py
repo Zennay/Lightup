@@ -43,6 +43,7 @@ OPERATIONS = {
     "archives": ("archive_workflow.py", (), (
         ("--archive", "Source-free original .luhz archive (repeatable)", True, False),
         ("--encrypted-archive", "Private .luhx encrypted archive (repeatable)", True, False),
+        ("--receipt", "Optional original PRIVATE UNSIGNED byte receipt (check BEFORE decrypt)", False, False),
         ("--output-dir", "NEW private review directory", False, True),
     ), "Use ONLY actually received packets; no synthetic moment or identity."),
     "pack": ("portable_cockpit.py", ("pack",), (

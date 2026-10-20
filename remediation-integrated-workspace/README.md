@@ -394,3 +394,22 @@ actual permission, chronology, current scope, verified remediation or
 security release. The original ZIP/envelope admission remains a separate
 mandatory native step. Existing held original CI/review/consent/HUMAN GO
 requirements are unchanged.
+
+### Native receive + optional byte-custody check before decrypt
+
+The existing archives operation and original archive_workflow.py now accept
+an optional separately authorized PRIVATE UNSIGNED --receipt input:
+
+    python3 remediation-integrated-workspace/private_desk.py archives --encrypted-archive /absolute/private/received-01.luhx --receipt /absolute/private/original-unsigned-fingerprints.json --output-dir /absolute/private/NEW-sourcefree-human-review
+
+Before decryption or original native HUMAN review publication, actual
+received packet byte lengths and SHA-256 must match the same ordered slots
+of the original separately supplied receipt. Original receipt bytes and
+schema are checked before and immediately prior to exclusive publication.
+Original source-free ZIP/envelope admission, original authority guardrails,
+private destination ownership and native decryption all remain unchanged.
+This is OPTIONAL byte consistency, not a newly imposed consent/release gate.
+Without --receipt, original 1-12 native packet workflow is unchanged; with
+it, comparison is bounded by the native 1-8 receipt contract. A matching
+unsigned hash is NEVER real sender/client identity, permission, verified
+remediation, a grant, active target authorization or HUMAN GO.
