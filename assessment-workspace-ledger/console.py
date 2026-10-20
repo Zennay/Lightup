@@ -21,6 +21,7 @@ import history_actions
 import history_owner_brief
 import history_progress
 import portfolio
+import portfolio_delta
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -51,6 +52,7 @@ MENU = (
     ("22", "Build source-exact PRIVATE single-HUMAN-owner minimum-necessary briefing"),
     ("23", "Compare 2-8 ORIGINAL HUMAN action versions + PRIVATE changes and worklist"),
     ("24", "Combine 2-8 DIFFERENT source-bound HUMAN cases in one private portfolio desk"),
+    ("25", "Compare two PRIVATE cross-case HUMAN proposal portfolios as a local delta"),
     ("0", "Exit"),
 )
 
@@ -199,6 +201,12 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "25":
+        return portfolio_delta.run(argparse.Namespace(
+            before=prompt("ORIGINAL previous PRIVATE-HUMAN-portfolio.json"),
+            after=prompt("ORIGINAL later PRIVATE-HUMAN-portfolio.json"),
+            private_parent=private_parent()
         ))
     if action == "24":
         print("Choose 2–8 DIFFERENT original private HUMAN action cases.")
