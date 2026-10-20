@@ -38,10 +38,13 @@ const LightUpPrivateSourceInspector = (() => {
     if (typeof text !== "string" || text.length > MAX_JSON_BYTES) throw Error("oversized JSON");
     let i = 0, nodes = 0;
     const ws = () => { while (i < text.length && /[\x20\t\n\r]/u.test(text[i])) i++; };
+    const stringMatcher = /"(?:\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})|[^"\\\u0000-\u001f])*"/uy;
+    const numberMatcher = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/uy;
     const quoted = () => {
-      const m = /^"(?:\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})|[^"\\\u0000-\u001f])*"/u.exec(text.slice(i));
+      stringMatcher.lastIndex = i;
+      const m = stringMatcher.exec(text);
       if (!m) throw Error("invalid JSON string");
-      i += m[0].length;
+      i = stringMatcher.lastIndex;
       return JSON.parse(m[0]);
     };
     const visit = (depth) => {
@@ -72,11 +75,11 @@ const LightUpPrivateSourceInspector = (() => {
           if (text[i++] !== ",") throw Error("invalid array delimiter");
         }
       }
-      const rest = text.slice(i);
-      const n = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u.exec(rest);
-      if (n) { i += n[0].length; const v = Number(n[0]); if (!Number.isFinite(v)) throw Error("invalid number"); return v; }
+      numberMatcher.lastIndex = i;
+      const n = numberMatcher.exec(text);
+      if (n) { i = numberMatcher.lastIndex; const v = Number(n[0]); if (!Number.isFinite(v)) throw Error("invalid number"); return v; }
       for (const [literal, value] of [["true", true], ["false", false], ["null", null]]) {
-        if (rest.startsWith(literal)) { i += literal.length; return value; }
+        if (text.startsWith(literal, i)) { i += literal.length; return value; }
       }
       throw Error("invalid JSON value");
     };
