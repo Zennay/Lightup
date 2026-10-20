@@ -15,7 +15,7 @@ import stat
 import sys
 import tempfile
 import zipfile
-from package import inspect, FILES
+from package import inspect, FILES, PRIVACY_FILES
 
 MAX_ORIGINAL_MEMBERS = 256
 MAX_UNPACK_BYTES = 16_000_000
@@ -79,7 +79,7 @@ def publish(archive: Path, destination: Path) -> dict:
                         output.flush()
                         os.fsync(output.fileno())
 
-                for name in sorted(set(FILES) | {
+                for name in sorted(set(FILES) | set(PRIVACY_FILES) | {
                     "tools/package.py", "tools/unpack.py", "README.txt",
                     "START-HERE.html", "manifest.json"}):
                     put(name, outside.read(name))

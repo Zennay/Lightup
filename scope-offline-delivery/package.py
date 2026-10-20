@@ -18,6 +18,11 @@ SRC = ROOT / "scope-current-bundle"
 OUTPUT = "LightUp-PRIVATE-HUMAN-Transfer-DRAFT-HOLD.zip"
 PARENT_SHA = "0f76f2f90a89f5b64bc8033aa2e2ee6ec2fc49cc"
 COURIER_SHA = "55cbef56f7ca0df32ad5fe65ea6868efc4c7ac2f1abf01ecb1e4d97b7e327edf"
+DISCLOSURE_HEAD = "91842b75d9965adca6448b19bf31346c48d1be5c"
+PRIVACY_FILES = {
+  "privacy/disclosure-preflight.html": ("disclosure-preflight.html", "d23b51b73b39c994edbb681e20b7e501bd037be366488870470bfe68ef34bb24"),
+  "privacy/disclosure-recipient-verify.html": ("disclosure-recipient-verify.html", "a3b48236e0b297f1a903f2d02ba8fdedf4ea63b03109089a96f116cab1011483"),
+}
 STATUS = "INCUBATE_M3_M7_DRAFT_HOLD"
 AUTHORITY = dict.fromkeys(("client_consent", "operator_consent", "grant",
                            "scan", "deploy", "release"), False)
@@ -32,6 +37,10 @@ README = """LightUp PRIVATE HUMAN scope delivery — INCUBATE M3/M7 DRAFT/HOLD
 1. Extract this complete outer ZIP to a local private folder.
 2. Verify the entire ZIP: python3 package.py inspect ORIGINAL.zip
 3. Open START-HERE.html locally; never host it publicly.
+   For HUMAN text, redact first with privacy/disclosure-preflight.html.
+   Then encrypt the redacted note with courier/PRIVATE-encrypted-courier.html.
+   Recipient decrypts, opens privacy/disclosure-recipient-verify.html and
+   checks redacted exact bytes/receipt. Matching SHA is not identity.
    Portable inspector: python3 tools/package.py inspect ORIGINAL.zip
 4. Or run: python3 tools/unpack.py ORIGINAL.zip PRIVATE_PARENT/NEW_DIR
    Then open NEW_DIR/original-workspace/scope-unified-workspace/index.html.
@@ -50,9 +59,15 @@ a{color:#9addff}section{padding:1.2rem;margin:1rem 0;border:1px solid #64748b;bo
 <p><strong>INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</strong></p>
 <p>Extract this entire ZIP locally. All companion applications work offline and cannot authorize work or verify consent.</p>
 <section><h2>1 · Original scope workspace</h2><p><a href="workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip" download>Save current complete original scope workspace ZIP</a></p><p>Extract that ZIP separately, then open its original index.html.</p><p>Using the PRIVATE CLI unpacker instead? <a href="original-workspace/scope-unified-workspace/index.html">Open the already-unpacked original workspace here</a> (available only after CLI unpack). No auto-launch.</p></section>
-<section><h2>2 · Encrypted human courier</h2><p><a href="courier/PRIVATE-encrypted-courier.html">Open offline PRIVATE encryption courier</a></p><p>Choose original workspace ZIP or reviewer notes. Recipient and current permissions must be verified independently. Exchange the password separately.</p></section>
-<section><h2>3 · Bounded private unpack</h2><p>In a terminal with Python 3.11+, run <code>python3 tools/unpack.py /path/to/outer.zip /private-parent/new-workroom</code>. The parent folder must already be mode 0700, owned by you, and the destination must not exist. This command checks original bytes and opens source entries locally without scans or grants.</p></section>
-<section><h2>4 · Source byte records</h2><p><a href="workspace/verify.html">Open original offline ZIP-byte verifier</a> · <a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
+<section><h2>2 · Disclose only deliberately redacted HUMAN text</h2>
+<p><a href="privacy/disclosure-preflight.html">Open pinned original private disclosure/redaction desk</a></p>
+<p>Manually mask bounded HUMAN text, review every page and confirm export. This source-owner tool is unchanged, offline, and may HOLD on remaining credential hints. A redacted file is not automatically safe or approved to disclose.</p></section>
+<section><h2>3 · Encrypted human courier</h2><p><a href="courier/PRIVATE-encrypted-courier.html">Open offline PRIVATE encryption courier</a></p><p>Choose original workspace ZIP or reviewer notes. Recipient and current permissions must be verified independently. Exchange the password separately.</p></section>
+<section><h2>4 · Recipient redacted-byte review</h2>
+<p><a href="privacy/disclosure-recipient-verify.html">Open pinned original recipient review desk</a></p>
+<p>After separately receiving and decrypting redacted HUMAN text, compare the literal bytes to its original receipt. Human review is still required even if fingerprints match.</p></section>
+<section><h2>5 · Bounded private unpack</h2><p>In a terminal with Python 3.11+, run <code>python3 tools/unpack.py /path/to/outer.zip /private-parent/new-workroom</code>. The parent folder must already be mode 0700, owned by you, and the destination must not exist. This command checks original bytes and opens source entries locally without scans or grants.</p></section>
+<section><h2>6 · Source byte records</h2><p><a href="workspace/verify.html">Open original offline ZIP-byte verifier</a> · <a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
 <p>No scans, network requests, browser storage, client approval, grants, automatic execution or deployment. Original source-owner + security/privacy review, exact-head hosted and named-VPS CI, real separately authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory for any release.</p>
 </body></html>"""
 
@@ -112,7 +127,7 @@ def original_admission(workspace: bytes, source: bytes, dist: bytes) -> None:
 
 def receipt(blobs: dict[str, bytes]) -> bytes:
     item = {"format": "lightup.scope_private_delivery.v1", "posture": STATUS,
-            "original_source_sha": PARENT_SHA, "authenticated_release": False,
+            "original_source_sha": PARENT_SHA, "disclosure_original_sha": DISCLOSURE_HEAD, "authenticated_release": False,
             "authority": AUTHORITY, "files": [
                 {"path": n, "bytes": len(v), "sha256": digest(v)}
                 for n, v in sorted(blobs.items())],
@@ -122,7 +137,7 @@ def receipt(blobs: dict[str, bytes]) -> bytes:
 def inspect(path: Path) -> dict:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_500_000:
         raise ValueError("Unsafe or oversized transfer")
-    expected = set(FILES) | {"tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
+    expected = set(FILES) | set(PRIVACY_FILES) | {"tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
     with zipfile.ZipFile(path) as z:
         infos = z.infolist()
         if len(infos) != len(expected) or {x.filename for x in infos} != expected:
@@ -132,15 +147,17 @@ def inspect(path: Path) -> dict:
             raise ValueError("Unexpected compressed or encrypted transfer member")
         m = strict_json(z.read("manifest.json"))
         data = {n: z.read(n) for n in sorted(expected - {"manifest.json"})}
-    if (set(m) != {"format", "posture", "original_source_sha",
+    if (set(m) != {"format", "posture", "original_source_sha", "disclosure_original_sha",
                    "authenticated_release", "authority", "files", "note"} or
         m["format"] != "lightup.scope_private_delivery.v1" or m["posture"] != STATUS or
-        m["original_source_sha"] != PARENT_SHA or m["authenticated_release"] is not False or
+        m["original_source_sha"] != PARENT_SHA or m["disclosure_original_sha"] != DISCLOSURE_HEAD or m["authenticated_release"] is not False or
         not no_authority(m) or m["files"] != [
             {"path": n, "bytes": len(v), "sha256": digest(v)} for n, v in sorted(data.items())]):
         raise ValueError("Original delivery file receipt / HOLD flags mismatch")
     if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode() or data["tools/package.py"] != read(Path(__file__)) or data["tools/unpack.py"] != read(HERE / "unpack.py"):
         raise ValueError("Built-in operator instructions changed")
+    if any(digest(data[name]) != pin for name, (_path, pin) in PRIVACY_FILES.items()):
+        raise ValueError("Pinned original disclosure or recipient preflight changed")
     if digest(data["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
         raise ValueError("Original courier bytes changed")
     original_admission(data["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip"],
@@ -155,6 +172,11 @@ def build() -> Path:
     # Existing original production packager, invoked as a build (not a QA suite).
     subprocess.run([sys.executable, str(SRC / "build.py")], cwd=ROOT, check=True, timeout=120)
     blobs = {dst: read(SRC / src) for dst, src in FILES.items()}
+    for name, (filename, pin) in PRIVACY_FILES.items():
+        original = read(HERE / filename)
+        if digest(original) != pin:
+            raise ValueError("Disclosure source-owner byte pin changed: " + filename)
+        blobs[name] = original
     original_admission(blobs["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip"],
                        blobs["workspace/SOURCE-MANIFEST.json"],
                        blobs["workspace/DIST-MANIFEST.json"])
