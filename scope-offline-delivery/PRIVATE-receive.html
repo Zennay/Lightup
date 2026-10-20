@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FIhciINwECyQcDgK5PSL2j2/QrlZ5ajIfvN/nmObmkw='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0uAG3LKPOAkw8aa5+z8XjNY9hAgE64z59b8CTffSmvo='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE recipient byte comparison</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:2.5rem 1rem;background:#0b1422;color:#ebf1fa;font:1rem/1.65 system-ui,sans-serif}main{max-width:750px;margin:auto}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15}h2{font-size:1.15rem}.tag{font-size:.76rem;letter-spacing:.12em;color:#9ec6ff;font-weight:750}section{padding:1.4rem;margin:1.25rem 0;border:1px solid #52647f;border-radius:14px;background:#16243a}label{display:block;font-weight:650;margin:1rem 0 .3rem}input{width:100%;border-radius:7px;border:1px solid #a5bad4;padding:.75rem;background:#0b1422;color:#fff;font:inherit}input:focus,button:focus{outline:3px solid #95d6fa;outline-offset:2px}button{margin-top:.85rem;cursor:pointer;border:0;border-radius:8px;padding:.8rem 1.25rem;font:inherit;font-weight:750;background:#93dbfd;color:#082235}button:disabled{opacity:.6;cursor:wait}p{overflow-wrap:anywhere}strong{color:#ffdb9a}#status{font-weight:750;padding:.8rem;border-left:4px solid #9ec6ff}#status[data-state="hold"]{border-color:#f2a0a8;color:#ffc4c9}#status[data-state="match"]{border-color:#97edbc;color:#b2ffce}a{color:#92d9ff}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.89rem;overflow-wrap:anywhere}footer{font-size:.82rem;color:#b6c6db;margin:2.5rem 0}
 .download-choices{display:flex;flex-wrap:wrap;gap:.6rem}.download-choices button{margin:.35rem 0}details{border:1px solid #64748b;border-radius:8px;padding:.75rem}summary{cursor:pointer}ol{max-height:14rem;overflow:auto;padding-left:1.6rem}li{margin:.35rem 0}section[hidden]{display:none}
@@ -28,7 +28,7 @@
 </section>
 <section id="archive-panel" hidden>
 <h2>Inspect a matched original offline ZIP locally</h2>
-<p>Only after BYTE MATCH above, inspect its bounded stored ZIP members. The original source components must match seven independent pinned LightUp SHA-256 values before you can save individual components. Nothing is executed, installed, unzipped to disk, or uploaded automatically.</p>
+<p>Only after BYTE MATCH above, inspect bounded stored ZIP members in the full kit or one of the three role-specific source-only packs. Selected original source components must match their exact independent pinned LightUp SHA-256 values before you can save individual components. Nothing is executed, installed, unzipped to disk, or uploaded automatically.</p>
 <button id="examine-archive" type="button" disabled>Inspect known original ZIP sources</button>
 <p id="archive-summary" role="status" aria-live="polite"></p>
 <details><summary>Original ZIP member inventory (paths and sizes only)</summary><ol id="archive-inventory" class="mono"></ol></details>
@@ -144,6 +144,13 @@ button.addEventListener("click", async () => {
       sha: "a3b48236e0b297f1a903f2d02ba8fdedf4ea63b03109089a96f116cab1011483",
       name: "PRIVATE-disclosure-recipient-verify.html" },
   ];
+  const roleBase = ["PRIVATE-ROLE-START-HERE.html", "PRIVATE-ROLE-README.txt",
+    "PRIVATE-ROLE-RECEIPT.json", "tools/role_pack.py"];
+  const profiles = {
+    "privacy-recipient": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-recipient-verify.html"],
+    "privacy-editor": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"],
+    "scope-reviewer": ["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json", "workspace/verify.html"],
+  };
   let accepted = null, generation = 0, extracted = new Map();
 
   function clear() {
@@ -268,8 +275,21 @@ button.addEventListener("click", async () => {
       if (!accepted) throw Error("No independently matched archive is loaded");
       if (!crypto?.subtle) throw Error("Local WebCrypto is unavailable");
       const entries = parseStoredZip(accepted);
+      // The full integrated kit has all seven original sources. Smaller role
+      // packets must match one exact allowlisted role inventory, not mere names.
+      let role = null;
+      let admittedPaths = selections.map(s => s.path);
+      if (entries.has("PRIVATE-ROLE-RECEIPT.json")) {
+        const found = Object.entries(profiles).filter(([_name, paths]) => {
+          const expected = [...roleBase, ...paths];
+          return expected.length === entries.size && expected.every(name => entries.has(name));
+        });
+        if (found.length !== 1) throw Error("Unknown or mixed private recipient role");
+        role = found[0][0];
+        admittedPaths = found[0][1];
+      }
       const admissible = [];
-      for (const descriptor of selections) {
+      for (const descriptor of selections.filter(s => admittedPaths.includes(s.path))) {
         const candidate = entries.get(descriptor.path);
         if (!candidate) throw Error("Missing expected source product: " + descriptor.path);
         const hash = await sha(candidate.bytes);
@@ -295,13 +315,14 @@ button.addEventListener("click", async () => {
         });
         saveRow.append(button);
       }
-      sourceInfo.textContent = "REVIEW ONLY · " + entries.size +
-        " canonical stored members listed; seven original product files match pinned source SHA-256. " +
+      sourceInfo.textContent = "REVIEW ONLY · " + (role ? "private role " + role : "full original scope kit") +
+        " · " + entries.size + " canonical members; " + admissible.length +
+        " original component file(s) match pinned SHA-256. Role receipts remain unsigned; " +
         "Choose exactly the components you need to save. This does not authenticate the sender or approve any disclosure.";
     } catch (_) {
       if (current !== generation) return;
       inventory.replaceChildren(); saveRow.replaceChildren();
-      sourceInfo.textContent = "HOLD — ZIP structure, size or original source identity not admitted. " +
+      sourceInfo.textContent = "HOLD — ZIP structure, role membership, size or original source identity not admitted. " +
         "Nothing can be extracted from this browser tool. Use the Python source inspector on an independently authenticated copy.";
     } finally {
       if (current === generation) examine.disabled = false;

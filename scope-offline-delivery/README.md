@@ -69,10 +69,14 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `60e2e3c821c9fc09713c613712e4c64515d9425bac9207e77ee02c91c956049a`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `94a4cf0c2064afc1a317f27c0765e924d35f12201ffe51822a9a058880bd82e8`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 54,522 bytes; SHA256 `c0ddbca2e5173db39531f3cbb1bff875ffd5011dfa4ce509dfe43f7da4b17c89`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 90,170 bytes; SHA256 `ac80727952904dfb0be17e3f4f805d69099b58edea0180bc41250a0fdda8003e`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 537,072 bytes; SHA256 `fec0b8153fbacb56e69d6d49445a0270b1e8b088928c4f4c21719963cc400354`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 54,522 bytes; SHA256 `3a6f9bf963329d517a2e85db2b4d44841c3d10f73f431aa24f1ca086f00db35f`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 90,170 bytes; SHA256 `badc95d4545ddf02f01ff6a3f6259ed9772d2e2af386aae715da369ad47d9b43`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 537,072 bytes; SHA256 `efdcc7a84bd4abbfbf0a71f3f19a0938bcd5d54b6d616ba60648cda791e2c573`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
+
+### Browser-only role ZIP reception
+
+The same [single-file local browser receiver](PRIVATE-receive.html) now recognizes either the **complete original source ZIP** or one of these **three exact private role ZIP inventories** after a complete ZIP byte-match against a separately supplied trusted SHA-256. It identifies the role from an exact list of source filenames and admits the role only when its original source files individually match their seven fixed original SHA-256 fingerprints. The matched original tools can then be individually downloaded without Python, sharing the full scope workspace, executing content, or sending network requests. Unknown, mixed-role or altered member sets HOLD. The accompanying private role receipt is unsigned; use the native role inspector for complete receipt-shape checks. Filename/role selection does not authenticate people or replace live authorization.

@@ -29,6 +29,13 @@
       sha: "a3b48236e0b297f1a903f2d02ba8fdedf4ea63b03109089a96f116cab1011483",
       name: "PRIVATE-disclosure-recipient-verify.html" },
   ];
+  const roleBase = ["PRIVATE-ROLE-START-HERE.html", "PRIVATE-ROLE-README.txt",
+    "PRIVATE-ROLE-RECEIPT.json", "tools/role_pack.py"];
+  const profiles = {
+    "privacy-recipient": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-recipient-verify.html"],
+    "privacy-editor": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"],
+    "scope-reviewer": ["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json", "workspace/verify.html"],
+  };
   let accepted = null, generation = 0, extracted = new Map();
 
   function clear() {
@@ -153,8 +160,21 @@
       if (!accepted) throw Error("No independently matched archive is loaded");
       if (!crypto?.subtle) throw Error("Local WebCrypto is unavailable");
       const entries = parseStoredZip(accepted);
+      // The full integrated kit has all seven original sources. Smaller role
+      // packets must match one exact allowlisted role inventory, not mere names.
+      let role = null;
+      let admittedPaths = selections.map(s => s.path);
+      if (entries.has("PRIVATE-ROLE-RECEIPT.json")) {
+        const found = Object.entries(profiles).filter(([_name, paths]) => {
+          const expected = [...roleBase, ...paths];
+          return expected.length === entries.size && expected.every(name => entries.has(name));
+        });
+        if (found.length !== 1) throw Error("Unknown or mixed private recipient role");
+        role = found[0][0];
+        admittedPaths = found[0][1];
+      }
       const admissible = [];
-      for (const descriptor of selections) {
+      for (const descriptor of selections.filter(s => admittedPaths.includes(s.path))) {
         const candidate = entries.get(descriptor.path);
         if (!candidate) throw Error("Missing expected source product: " + descriptor.path);
         const hash = await sha(candidate.bytes);
@@ -180,13 +200,14 @@
         });
         saveRow.append(button);
       }
-      sourceInfo.textContent = "REVIEW ONLY · " + entries.size +
-        " canonical stored members listed; seven original product files match pinned source SHA-256. " +
+      sourceInfo.textContent = "REVIEW ONLY · " + (role ? "private role " + role : "full original scope kit") +
+        " · " + entries.size + " canonical members; " + admissible.length +
+        " original component file(s) match pinned SHA-256. Role receipts remain unsigned; " +
         "Choose exactly the components you need to save. This does not authenticate the sender or approve any disclosure.";
     } catch (_) {
       if (current !== generation) return;
       inventory.replaceChildren(); saveRow.replaceChildren();
-      sourceInfo.textContent = "HOLD — ZIP structure, size or original source identity not admitted. " +
+      sourceInfo.textContent = "HOLD — ZIP structure, role membership, size or original source identity not admitted. " +
         "Nothing can be extracted from this browser tool. Use the Python source inspector on an independently authenticated copy.";
     } finally {
       if (current === generation) examine.disabled = false;
