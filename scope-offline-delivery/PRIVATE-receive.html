@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-IrhLROfuPDZKE71Sq6sMzVNT91LGc8GVLeevKMWk/TY='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FIhciINwECyQcDgK5PSL2j2/QrlZ5ajIfvN/nmObmkw='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE recipient byte comparison</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:2.5rem 1rem;background:#0b1422;color:#ebf1fa;font:1rem/1.65 system-ui,sans-serif}main{max-width:750px;margin:auto}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15}h2{font-size:1.15rem}.tag{font-size:.76rem;letter-spacing:.12em;color:#9ec6ff;font-weight:750}section{padding:1.4rem;margin:1.25rem 0;border:1px solid #52647f;border-radius:14px;background:#16243a}label{display:block;font-weight:650;margin:1rem 0 .3rem}input{width:100%;border-radius:7px;border:1px solid #a5bad4;padding:.75rem;background:#0b1422;color:#fff;font:inherit}input:focus,button:focus{outline:3px solid #95d6fa;outline-offset:2px}button{margin-top:.85rem;cursor:pointer;border:0;border-radius:8px;padding:.8rem 1.25rem;font:inherit;font-weight:750;background:#93dbfd;color:#082235}button:disabled{opacity:.6;cursor:wait}p{overflow-wrap:anywhere}strong{color:#ffdb9a}#status{font-weight:750;padding:.8rem;border-left:4px solid #9ec6ff}#status[data-state="hold"]{border-color:#f2a0a8;color:#ffc4c9}#status[data-state="match"]{border-color:#97edbc;color:#b2ffce}a{color:#92d9ff}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.89rem;overflow-wrap:anywhere}footer{font-size:.82rem;color:#b6c6db;margin:2.5rem 0}
 .download-choices{display:flex;flex-wrap:wrap;gap:.6rem}.download-choices button{margin:.35rem 0}details{border:1px solid #64748b;border-radius:8px;padding:.75rem}summary{cursor:pointer}ol{max-height:14rem;overflow:auto;padding-left:1.6rem}li{margin:.35rem 0}section[hidden]{display:none}
@@ -28,7 +28,7 @@
 </section>
 <section id="archive-panel" hidden>
 <h2>Inspect a matched original offline ZIP locally</h2>
-<p>Only after BYTE MATCH above, inspect its bounded stored ZIP members. The original source components must match four independent pinned LightUp SHA-256 values before you can save individual components. Nothing is executed, installed, unzipped to disk, or uploaded automatically.</p>
+<p>Only after BYTE MATCH above, inspect its bounded stored ZIP members. The original source components must match seven independent pinned LightUp SHA-256 values before you can save individual components. Nothing is executed, installed, unzipped to disk, or uploaded automatically.</p>
 <button id="examine-archive" type="button" disabled>Inspect known original ZIP sources</button>
 <p id="archive-summary" role="status" aria-live="polite"></p>
 <details><summary>Original ZIP member inventory (paths and sizes only)</summary><ol id="archive-inventory" class="mono"></ol></details>
@@ -125,6 +125,15 @@ button.addEventListener("click", async () => {
     { path: "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", title: "Original offline scope workspace (ZIP)",
       sha: "60f9086490ecb00d725ae00da173ee6eb843de9d346d4c39b5f4a51a359703de",
       name: "LightUp-Scope-Offline-DRAFT-HOLD.zip" },
+    { path: "workspace/SOURCE-MANIFEST.json", title: "Original source-bound scope manifest (JSON)",
+      sha: "dc1aa82f9d335e07e142466b1e144b31f97239af4339b5b56279ee1a28235f63",
+      name: "LightUp-Scope-SOURCE-MANIFEST.json" },
+    { path: "workspace/DIST-MANIFEST.json", title: "Original offline delivery manifest (JSON)",
+      sha: "c8cb4d972d4822939bc542c6b292f72e5e246d772ed32587d3a9ed4fed1f629d",
+      name: "LightUp-Scope-DIST-MANIFEST.json" },
+    { path: "workspace/verify.html", title: "Original offline source byte verifier (HTML)",
+      sha: "d1d0d2ca5a53599d2dc85589c58a4af6eddf7528cb519498185943a5718723c5",
+      name: "LightUp-Scope-Source-Verify.html" },
     { path: "courier/PRIVATE-encrypted-courier.html", title: "Original encrypted HUMAN courier (offline HTML)",
       sha: "55cbef56f7ca0df32ad5fe65ea6868efc4c7ac2f1abf01ebc1e4d97b7e327edf",
       name: "PRIVATE-encrypted-courier.html" },
@@ -287,7 +296,7 @@ button.addEventListener("click", async () => {
         saveRow.append(button);
       }
       sourceInfo.textContent = "REVIEW ONLY · " + entries.size +
-        " canonical stored members listed; four original product files match pinned source SHA-256. " +
+        " canonical stored members listed; seven original product files match pinned source SHA-256. " +
         "Choose exactly the components you need to save. This does not authenticate the sender or approve any disclosure.";
     } catch (_) {
       if (current !== generation) return;

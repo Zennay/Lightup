@@ -10,6 +10,15 @@
     { path: "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", title: "Original offline scope workspace (ZIP)",
       sha: "60f9086490ecb00d725ae00da173ee6eb843de9d346d4c39b5f4a51a359703de",
       name: "LightUp-Scope-Offline-DRAFT-HOLD.zip" },
+    { path: "workspace/SOURCE-MANIFEST.json", title: "Original source-bound scope manifest (JSON)",
+      sha: "dc1aa82f9d335e07e142466b1e144b31f97239af4339b5b56279ee1a28235f63",
+      name: "LightUp-Scope-SOURCE-MANIFEST.json" },
+    { path: "workspace/DIST-MANIFEST.json", title: "Original offline delivery manifest (JSON)",
+      sha: "c8cb4d972d4822939bc542c6b292f72e5e246d772ed32587d3a9ed4fed1f629d",
+      name: "LightUp-Scope-DIST-MANIFEST.json" },
+    { path: "workspace/verify.html", title: "Original offline source byte verifier (HTML)",
+      sha: "d1d0d2ca5a53599d2dc85589c58a4af6eddf7528cb519498185943a5718723c5",
+      name: "LightUp-Scope-Source-Verify.html" },
     { path: "courier/PRIVATE-encrypted-courier.html", title: "Original encrypted HUMAN courier (offline HTML)",
       sha: "55cbef56f7ca0df32ad5fe65ea6868efc4c7ac2f1abf01ebc1e4d97b7e327edf",
       name: "PRIVATE-encrypted-courier.html" },
@@ -172,7 +181,7 @@
         saveRow.append(button);
       }
       sourceInfo.textContent = "REVIEW ONLY · " + entries.size +
-        " canonical stored members listed; four original product files match pinned source SHA-256. " +
+        " canonical stored members listed; seven original product files match pinned source SHA-256. " +
         "Choose exactly the components you need to save. This does not authenticate the sender or approve any disclosure.";
     } catch (_) {
       if (current !== generation) return;
