@@ -43,6 +43,38 @@ bytes/authorization afresh. Presence of a page is **not** correctness,
 readiness, approval or proof of identity. Existing review/CI/consent HOLD
 still applies; never send or publish this board.
 
+## NEW: original source-bound offline HUMAN browser editor
+
+The existing native options **42 and 43** now produce a **fully interactive
+owner-only 0600 `OPEN-PRIVATE.html`** alongside the original scriptless
+`PRIVATE-READONLY.html`, strict owner-only CSV and JSON. This browser UI
+uses one embedded SHA-256 CSP-pinned copy of the original committed
+`human_queue_editor.js`; the **only** initial data is the native-generated
+original exact-session-bound HUMAN queue. No hosted HTML, JavaScript, API,
+external asset, cookies, localStorage, IndexedDB, service worker, fetch,
+network request, scan, grant, release or upload is used.
+
+Use the offline UI to search/filter the original workflow rows; deliberately
+choose HUMAN stage/team and local follow-up date; edit a short private HUMAN
+question; and download a **complete** exact-session-bound six-column CSV,
+even when filters hide other rows. All selections remain in browser memory
+until deliberately downloaded. An existing original HUMAN CSV may be
+reimported via a manual local file picker; strict quoted-CSV, exact workflow
+order/session digest, stage/team/date/question rules are checked before
+replacing current browser edits. Invalid input **does not partially change**
+the open draft. The original native Python option 43 remains the independent
+authoritative owner-only CSV parser and admission gate.
+
+**Important:** browser downloads may receive operating-system default
+permissions (for example 0644) and do not automatically go into owner-only
+private custody. Before passing one to native option 43, move it into an
+existing owner-only 0700 directory outside the repository and set its file
+mode to 0600. The browser cannot establish permission on downloaded files,
+or authenticate actual human identities, original sources or recipients.
+The HTML file itself contains confidential `file:` links and any locally
+restored HUMAN question text; keep the full original 0700 kit private.
+The scriptless fallback remains available when running without JavaScript.
+
 ## NEW: owner-private manual assessment HUMAN work queue (options 42 and 43)
 
 The native foreground console now generates a complete **manual** queue for

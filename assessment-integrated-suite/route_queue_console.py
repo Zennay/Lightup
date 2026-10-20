@@ -19,7 +19,11 @@ def create(session, path_prompt, ask) -> None:
         print("HOLD: PRIVATE HUMAN queue not created; original sessions unchanged.")
         return
     print("PRIVATE REVIEW_ONLY: HUMAN CSV and HTML created in: " + str(page.parent))
-    print("Edit the owner-only 0600 PRIVATE-HUMAN-QUEUE.csv MANUALLY.")
+    print("Open interactive OFFLINE HUMAN Studio: " + str(page))
+    print("PRIVATE-READONLY.html remains as a scriptless alternative.")
+    print("Edit HUMAN choices locally and explicitly export the full private CSV.")
+    print("Browser downloads may have public OS permissions: before native import")
+    print("move the exported CSV into an owner-only 0700 folder and chmod 0600.")
     print("Use menu 43 with the same unmodified session path references to reopen.")
 
 
@@ -39,5 +43,6 @@ def reopen(session, path_prompt, ask) -> None:
         print("HOLD: HUMAN CSV/session drift or PRIVATE custody mismatch.")
         print("No original, current console session or existing CSV was modified.")
         return
-    print("PRIVATE REVIEW_ONLY: source-free HUMAN revision created: " + str(page))
+    print("PRIVATE REVIEW_ONLY: HUMAN revision + offline interactive Studio: " + str(page))
+    print("Original scriptless fallback: " + str(page.parent / "PRIVATE-READONLY.html"))
     print("All HUMAN statuses remain unauthenticated and non-authorizing.")

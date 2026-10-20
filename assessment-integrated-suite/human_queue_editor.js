@@ -1,0 +1,295 @@
+"use strict";
+(() => {
+  const COLUMNS = ["snapshot_sha256", "workflow_key", "human_stage", "review_team",
+                   "followup_date", "human_question"];
+  const STAGES = ["UNASSESSED", "HOLD", "NEEDS_INPUT", "HUMAN_REVIEW", "HUMAN_FOLLOWUP"];
+  const TEAMS = ["", "Security", "Privacy", "Client operations", "Platform"];
+  const MAX_BYTES = 65536;
+  const q = (id) => document.getElementById(id);
+  const original = JSON.parse(q("original-data").textContent);
+  const reference = original.rows;
+  let draft = reference.map((row) => ({ ...row }));
+  let dirty = false;
+  let updateGeneration = 0;
+  const status = q("status");
+  const savedHash = reference[0]?.snapshot_sha256 || "";
+  const setMessage = (message, problem = false) => {
+    status.textContent = message;
+    status.className = problem ? "feedback error" : "feedback";
+  };
+  const safeQuestion = (value) => typeof value === "string" && value.length <= 240 &&
+    !/[\x00-\x1f\x7f]/.test(value) && !/^[\s]*[=+\-@]/.test(value);
+  const validDate = (value) => {
+    if (!value) return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split("-").map(Number);
+    const object = new Date(Date.UTC(year, month - 1, day));
+    return object.getUTCFullYear() === year && object.getUTCMonth() + 1 === month &&
+      object.getUTCDate() === day;
+  };
+  function validRow(row) {
+    return STAGES.includes(row.human_stage) && TEAMS.includes(row.review_team) &&
+      validDate(row.followup_date) && safeQuestion(row.human_question) &&
+      (row.human_stage !== "UNASSESSED" ||
+       !(row.review_team || row.followup_date || row.human_question));
+  }
+  function showCounts() {
+    const summary = STAGES.map((stage) => {
+      const count = draft.filter((item) => item.human_stage === stage).length;
+      return count + " " + stage.toLowerCase().replaceAll("_", " ");
+    }).join(" · ");
+    q("counts").textContent = summary;
+    q("dirty").textContent = dirty ?
+      "Unsaved HUMAN changes — export a NEW private CSV before closing." :
+      "No unsaved changes since original/local import.";
+  }
+  function el(name, className, value) {
+    const node = document.createElement(name);
+    if (className) node.className = className;
+    if (value !== undefined) node.textContent = value;
+    return node;
+  }
+  function optionSelect(values, current, onChange, ariaLabel) {
+    const select = el("select");
+    select.setAttribute("aria-label", ariaLabel);
+    for (const choice of values) {
+      const option = el("option", "", choice || "Not assigned");
+      option.value = choice;
+      select.append(option);
+    }
+    select.value = current;
+    select.addEventListener("change", () => onChange(select.value));
+    return select;
+  }
+  function markChanged(row, key, value) {
+    const revised = { ...draft[row], [key]: value };
+    // Reset all downstream HUMAN metadata on returning to UNASSESSED, but
+    // only after explicit user selection, never on normal rendering.
+    if (key === "human_stage" && value === "UNASSESSED") {
+      revised.review_team = "";
+      revised.followup_date = "";
+      revised.human_question = "";
+    }
+    if (!validRow(revised)) {
+      setMessage("HOLD: invalid HUMAN stage, date, question, or spreadsheet formula prefix.", true);
+      return false;
+    }
+    draft[row] = revised;
+    dirty = true;
+    updateGeneration += 1;
+    showCounts();
+    return true;
+  }
+  function render() {
+    const search = q("search").value.trim().toLocaleLowerCase();
+    const stageFilter = q("stage-filter").value;
+    const teamFilter = q("team-filter").value;
+    const host = q("list");
+    host.replaceChildren();
+    let visible = 0;
+    for (let i = 0; i < draft.length; i++) {
+      const item = draft[i];
+      if (search && !(item.title + " " + item.workflow_key + " " + item.human_next)
+        .toLocaleLowerCase().includes(search)) continue;
+      if (stageFilter && stageFilter !== item.human_stage) continue;
+      if (teamFilter && teamFilter !== item.review_team) continue;
+      visible += 1;
+      const card = el("article", "card");
+      card.append(el("h3", "", item.title));
+      const state = el("p", "hint", "Original page: " +
+        item.local_state.replaceAll("_", " ") + " · HUMAN-only · " + item.group);
+      card.append(state);
+      const fields = el("div", "grid");
+      const stageWrap = el("label", "", "Provisional HUMAN stage");
+      stageWrap.append(optionSelect(STAGES, item.human_stage, (v) => {
+        if (markChanged(i, "human_stage", v)) render();
+      }, "HUMAN stage for " + item.title));
+      fields.append(stageWrap);
+      const teamWrap = el("label", "", "Proposed HUMAN team");
+      teamWrap.append(optionSelect(TEAMS, item.review_team, (v) => {
+        if (markChanged(i, "review_team", v)) render();
+      }, "HUMAN team for " + item.title));
+      fields.append(teamWrap);
+      const dateWrap = el("label", "", "Follow-up date, not scheduled");
+      const dateInput = el("input");
+      dateInput.type = "date";
+      dateInput.value = item.followup_date;
+      dateInput.addEventListener("change", () => {
+        if (markChanged(i, "followup_date", dateInput.value)) render();
+        else dateInput.value = draft[i].followup_date;
+      });
+      dateWrap.append(dateInput);
+      fields.append(dateWrap);
+      card.append(fields);
+      const questionWrap = el("label", "question", "PRIVATE HUMAN question (up to 240 characters)");
+      const note = el("input");
+      note.type = "text";
+      note.maxLength = 240;
+      note.autocomplete = "off";
+      note.value = item.human_question;
+      note.addEventListener("change", () => {
+        if (markChanged(i, "human_question", note.value)) render();
+        else note.value = draft[i].human_question;
+      });
+      questionWrap.append(note);
+      card.append(questionWrap);
+      card.append(el("p", "hint", "Suggested manual next step: " + item.human_next));
+      if (item.local_href && item.local_href.startsWith("file:///")) {
+        const link = el("a", "", "Open original owner-private page");
+        link.href = item.local_href;
+        link.rel = "noopener noreferrer";
+        card.append(link);
+      }
+      host.append(card);
+    }
+    q("visible").textContent = visible + " of " + draft.length +
+      " original workflow rows shown (filters do not exclude rows from export).";
+    showCounts();
+  }
+  // Strict CSV reader handling UTF-8 quotes, embedded comma and CRLF.
+  // Reject malformed quoting/line endings instead of guessing.
+  function csvParse(source) {
+    const table = [];
+    let row = [], cell = "", quoted = false, closed = false;
+    for (let i = 0; i < source.length; i++) {
+      const ch = source[i];
+      if (quoted) {
+        if (ch === '"') {
+          if (source[i + 1] === '"') { cell += '"'; i++; }
+          else { quoted = false; closed = true; }
+        } else cell += ch;
+        continue;
+      }
+      if (closed && ch !== "," && ch !== "\r" && ch !== "\n") throw new Error("Invalid CSV quote boundary");
+      if (ch === "," || ch === "\r" || ch === "\n") {
+        row.push(cell); cell = ""; closed = false;
+        if (ch === ",") continue;
+        if (ch === "\r") {
+          if (source[i + 1] !== "\n") throw new Error("Expected canonical CRLF");
+          i++;
+        } else throw new Error("Expected canonical CRLF");
+        table.push(row); row = [];
+      } else if (ch === '"') {
+        if (cell || closed) throw new Error("Invalid CSV quote");
+        quoted = true;
+      } else cell += ch;
+    }
+    if (quoted) throw new Error("Unterminated CSV quote");
+    if (cell || row.length || closed) {
+      row.push(cell); table.push(row);
+    }
+    return table;
+  }
+  function readRows(csv) {
+    const lines = csvParse(csv);
+    if (lines.length !== reference.length + 1 ||
+        JSON.stringify(lines[0]) !== JSON.stringify(COLUMNS))
+      throw new Error("Expected the exact original 6-column HUMAN queue, in original row order.");
+    const records = [];
+    for (let index = 0; index < reference.length; index++) {
+      const cells = lines[index + 1];
+      if (cells.length !== COLUMNS.length) throw new Error("Unexpected CSV field count.");
+      const obj = Object.fromEntries(COLUMNS.map((name, idx) => [name, cells[idx]]));
+      if (obj.workflow_key !== reference[index].workflow_key ||
+          obj.snapshot_sha256 !== savedHash)
+        throw new Error("The original path snapshot or workflow order differs. HOLD.");
+      if (!validRow(obj)) throw new Error("Invalid HUMAN date, stage, team or question.");
+      records.push({ ...reference[index], ...obj });
+    }
+    return records;
+  }
+  function encodedCSV(rows) {
+    function csvCell(value) {
+      if (!/[",\r\n]/.test(value)) return value;
+      return '"' + value.replaceAll('"', '""') + '"';
+    }
+    const head = COLUMNS.join(",");
+    const lines = rows.map((row) => COLUMNS.map((key) => csvCell(row[key])).join(","));
+    return head + "\r\n" + lines.join("\r\n") + "\r\n";
+  }
+  async function importCSV(file) {
+    if (!file) return;
+    if (file.size === 0 || file.size > MAX_BYTES) {
+      setMessage("HOLD: original CSV must be between 1 and 65,536 bytes.", true);
+      return;
+    }
+    const revision = updateGeneration;
+    try {
+      const decoder = new TextDecoder("utf-8", { fatal: true });
+      const source = decoder.decode(await file.arrayBuffer());
+      const admitted = readRows(source);
+      if (revision !== updateGeneration) throw new Error("Local edits changed during import.");
+      if (dirty && !window.confirm("Replace all unexported HUMAN edits with selected local CSV?")) {
+        setMessage("Import cancelled: previous HUMAN edits preserved.");
+        return;
+      }
+      draft = admitted;
+      dirty = false;
+      updateGeneration += 1;
+      setMessage("Original matching HUMAN CSV loaded in memory; no disk files changed.");
+      render();
+    } catch (error) {
+      setMessage("HOLD: source-bound CSV import rejected. No in-memory changes. " +
+        String(error.message || "Invalid file"), true);
+    }
+  }
+  function exportCSV() {
+    for (const item of draft) {
+      if (!validRow(item)) {
+        setMessage("HOLD: fix unsupported HUMAN values before export.", true);
+        return;
+      }
+    }
+    if (!window.confirm("Export the entire PRIVATE HUMAN CSV for manual local custody? Browser downloads may NOT have owner-only permissions; move to a private 0700 directory and set 0600 permissions before native import. No approval or dispatch is implied.")) return;
+    const bytes = new TextEncoder().encode(encodedCSV(draft));
+    if (bytes.length > MAX_BYTES) {
+      setMessage("HOLD: private HUMAN CSV exceeds the native 65,536-byte limit.", true);
+      return;
+    }
+    const file = new Blob([bytes], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(file);
+    const anchor = el("a");
+    anchor.href = url;
+    anchor.download = "LightUp-PRIVATE-HUMAN-QUEUE-review-only.csv";
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+    dirty = false;
+    showCounts();
+    setMessage("PRIVATE CSV download requested. Confirm browser saved it, then move to owner-only 0700 and set 0600 before native option 43. Never distribute automatically.");
+  }
+  for (const id of ["search", "stage-filter", "team-filter"])
+    q(id).addEventListener(id === "search" ? "input" : "change", render);
+  q("csv-input").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    await importCSV(file);
+    event.target.value = "";
+  });
+  q("download").addEventListener("click", exportCSV);
+  q("reset").addEventListener("click", () => {
+    if (!dirty || window.confirm("Discard unexported HUMAN edits and return to original, source-bound draft?")) {
+      draft = reference.map((row) => ({ ...row }));
+      dirty = false; updateGeneration += 1;
+      setMessage("Original HUMAN queue draft restored in memory. No files changed.");
+      render();
+    }
+  });
+  window.addEventListener("beforeunload", (event) => {
+    if (dirty) { event.preventDefault(); event.returnValue = ""; }
+  });
+  q("stage-filter").replaceChildren(el("option", "", "All HUMAN stages"));
+  q("stage-filter").firstChild.value = "";
+  STAGES.forEach((stage) => {
+    const option = el("option", "", stage.replaceAll("_", " "));
+    option.value = stage; q("stage-filter").append(option);
+  });
+  q("team-filter").replaceChildren(el("option", "", "All HUMAN teams"));
+  q("team-filter").firstChild.value = "";
+  TEAMS.slice(1).forEach((team) => {
+    const option = el("option", "", team);
+    option.value = team; q("team-filter").append(option);
+  });
+  setMessage("Owner-private, source-PATH-bound HUMAN queue loaded in memory. No external requests.");
+  render();
+})();

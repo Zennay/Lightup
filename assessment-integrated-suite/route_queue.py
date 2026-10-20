@@ -18,6 +18,7 @@ import stat
 
 import private_session as privacy
 import route_board
+import queue_browser
 
 SCHEMA = "lightup.private.assessment-human-queue.v1"
 COLUMNS = ("snapshot_sha256", "workflow_key", "human_stage", "review_team",
@@ -207,7 +208,8 @@ def build(session, parent_name: str, name: str,
     rows, digest = rows_for(session)
     if imported_csv:
         rows = admit_human_edits(rows, imported_csv)
-    html_bytes = render_html(rows)
+    html_bytes = queue_browser.render(rows)
+    readonly_bytes = render_html(rows)
     csv_document = csv_bytes(rows)
     summary = {
         "schema": SCHEMA, "status": "REVIEW_ONLY", "authority": privacy.AUTHORITY,
@@ -225,6 +227,7 @@ def build(session, parent_name: str, name: str,
         if not privacy.private(destination, True):
             raise privacy.Hold("new work queue not owner-private")
         privacy.private_write(destination, "OPEN-PRIVATE.html", html_bytes)
+        privacy.private_write(destination, "PRIVATE-READONLY.html", readonly_bytes)
         privacy.private_write(destination, "PRIVATE-HUMAN-QUEUE.csv", csv_document)
         privacy.private_write(destination, "PRIVATE-HUMAN-QUEUE.json", json_bytes)
         fd = os.open(destination, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
