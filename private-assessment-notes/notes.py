@@ -426,6 +426,12 @@ def main() -> int:
     team.add_argument("--team", required=True,
                       choices=("SECURITY", "PRIVACY", "CLIENT_OPERATIONS", "PLATFORM"))
     team.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
+    extra = commands.add_parser(
+        "mask-copy", help="manual extra PRIVATE masking of selected completed original HUMAN notes")
+    extra.add_argument("--completed-packet", required=True, help="completed original owner-private HUMAN packet")
+    extra.add_argument("--rules-json", required=True,
+                       help="owner-only 0600 secret-containing HUMAN literal masking rules")
+    extra.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
     args = p.parse_args()
     try:
         if args.action == "prepare":
@@ -449,6 +455,9 @@ def main() -> int:
             from agenda_team import team_packet
             return team_packet(args.review_kit, args.history_kit, args.latest_packet,
                                args.team, args.private_parent)
+        if args.action == "mask-copy":
+            from manual_mask import prepare as prepare_extra_mask
+            return prepare_extra_mask(args.completed_packet, args.rules_json, args.private_parent)
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
