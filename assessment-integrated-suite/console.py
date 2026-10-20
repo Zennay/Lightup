@@ -23,6 +23,7 @@ import workpack_continue_console
 import operator_navigation
 import lab_plans_console
 import lab_plan_portfolio_console
+import lab_plan_review_console
 import private_session
 import os
 from pathlib import Path
@@ -428,6 +429,8 @@ def main() -> int:
         "53": lambda x: lab_plans_console.reopen(x, path_prompt, ask),
         "54": lambda x: lab_plans_console.compare(x, path_prompt, ask),
         "55": lambda x: lab_plan_portfolio_console.prepare(x, path_prompt, ask),
+        "56": lambda x: lab_plan_review_console.prepare(x, path_prompt, ask),
+        "57": lambda x: lab_plan_review_console.finalize(x, path_prompt, ask),
     }
     while True:
         operator_navigation.overview()
@@ -455,7 +458,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 55.")
+                print("Choose a number from 0 to 57.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):

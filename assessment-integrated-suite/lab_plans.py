@@ -169,7 +169,17 @@ def main() -> int:
                    help="repeat 3–8 existing 0700 owner-private proposal packets")
     d.add_argument("--private-parent", required=True)
     d.add_argument("--folder", required=True)
-    for sub in (a, b, c, d):
+    e = commands.add_parser("review-prepare", help="PRIVATE original HUMAN lab proposal editor")
+    e.add_argument("--packet", action="append", required=True)
+    e.add_argument("--private-parent", required=True)
+    e.add_argument("--folder", required=True)
+    f = commands.add_parser("review-finalize", help="re-admit source-bound HUMAN lab decisions")
+    f.add_argument("--packet", action="append", required=True)
+    f.add_argument("--review-room", required=True)
+    f.add_argument("--human-csv", required=True)
+    f.add_argument("--private-parent", required=True)
+    f.add_argument("--folder", required=True)
+    for sub in (a, b, c, d, e, f):
         sub.add_argument("--human-confirm", required=True,
                          help="exactly PREPARE PRIVATE LAB PLAN / REOPEN PRIVATE LAB PLAN / COMPARE PRIVATE LAB PLANS")
     options = parser.parse_args()
@@ -178,6 +188,8 @@ def main() -> int:
         "reopen": "REOPEN PRIVATE LAB PLAN",
         "compare": "COMPARE PRIVATE LAB PLANS",
         "portfolio": "BUILD PRIVATE LAB PORTFOLIO",
+        "review-prepare": "PREPARE PRIVATE LAB HUMAN REVIEW",
+        "review-finalize": "FINALIZE PRIVATE LAB HUMAN REVIEW",
     }
     try:
         if options.human_confirm != expected[options.operation]:
@@ -189,10 +201,19 @@ def main() -> int:
             page = reopen(options.packet)
         elif options.operation == "compare":
             page = compare(options.before, options.after, options.private_parent, options.folder)
-        else:
+        elif options.operation == "portfolio":
             import lab_plan_portfolio
             page = lab_plan_portfolio.build(options.packet, options.private_parent,
                                             options.folder)
+        else:
+            import lab_plan_review
+            if options.operation == "review-prepare":
+                page = lab_plan_review.prepare(options.packet, options.private_parent,
+                                               options.folder)
+            else:
+                page = lab_plan_review.finalize(options.packet, options.review_room,
+                                                options.human_csv, options.private_parent,
+                                                options.folder)
         print("PRIVATE REVIEW_ONLY: original Lab Launchpad plan admitted. No scan.")
         print("OPEN LOCALLY: " + str(page))
         return 2
