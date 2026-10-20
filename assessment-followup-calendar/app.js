@@ -306,12 +306,54 @@
         render();$("desk").scrollIntoView({behavior:"smooth",block:"start"});
       });
       cell.append(button);
+      const calendarCell=dom("td");
+      const exportGroup=dom("button","PRIVATE .ics","ghost");exportGroup.type="button";
+      exportGroup.disabled=!exportedPlan || g.rows===g.unscheduled;
+      exportGroup.addEventListener("click",()=>{
+        try{exportGroupCalendar(g.name);}
+        catch(_){inform("Group export held. Save/restore matching v2 plan with scheduled HUMAN reminders first.",true);}
+      });
+      calendarCell.append(exportGroup);
       tr.append(dom("td",g.name||"(unassigned)"),dom("td",String(g.rows)),
         dom("td",String(g.unscheduled)),dom("td",String(g.past)),
         dom("td",String(g.blocked)),dom("td",String(g.collisions)),
-        dom("td",Number.isFinite(g.next)?new Date(g.next).toLocaleString():"—"),cell);
+        dom("td",Number.isFinite(g.next)?new Date(g.next).toLocaleString():"—"),cell,calendarCell);
       tbody.append(tr);
     }
+  }
+  function exportGroupCalendar(group){
+    hold(active && exportedPlan && typeof group==="string");
+    const relevant=items.filter(row=>row.group===group && plan.has(row.ordinal));
+    hold(relevant.length>0);
+    const include=$("includeAction").checked;
+    if(!confirm("Export exactly "+relevant.length+" PRIVATE proposed HUMAN follow-ups for the "+(group||"(unassigned)")+
+      " group? Original group names are unverified HUMAN labels. "+
+      (include?"Optional HUMAN action descriptions MAY reveal private targets/client details. ":"")+
+      "Calendar clients may share data. Original assessment data, permission and source authenticity are NOT verified."))return;
+    const stamp=icsTime(new Date());
+    const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN",
+      "CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Group Follow-ups"];
+    for(const row of relevant){
+      const slot=plan.get(row.ordinal),start=eventDate(slot.day,slot.time),
+        end=new Date(start.getTime()+Number(slot.duration)*60000);
+      lines.push("BEGIN:VEVENT","UID:"+seriesId+"-"+row.ordinal+"@lightup-private.invalid",
+        "DTSTAMP:"+stamp,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
+        "STATUS:TENTATIVE","TRANSP:TRANSPARENT",
+        "SUMMARY:"+icsText("PRIVATE HUMAN follow-up #"+row.ordinal),
+        "DESCRIPTION:"+icsText("REVIEW_ONLY: source-reported "+row.severity+
+          "; HUMAN stage "+(row.stage||"unset")+
+          "; not independently verified; not a permission or vulnerability verdict."+
+          (include?" HUMAN next action: "+row.action:"")),
+        "X-LIGHTUP-REVIEW-ONLY:TRUE");
+      if(Number(slot.reminder)>0)lines.push("BEGIN:VALARM","ACTION:DISPLAY",
+        "DESCRIPTION:PRIVATE HUMAN follow-up reminder",
+        "TRIGGER:-PT"+slot.reminder+"M","END:VALARM");
+      lines.push("END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download(lines.map(fold).join("\r\n")+"\r\n",
+      "lightup-private-human-group-calendar.ics","text/calendar;charset=utf-8");
+    inform("Exported "+relevant.length+" PRIVATE HUMAN group reminders. No external calendar modified.");
   }
   function slotEquals(a,b){
     return !!a && !!b && a.day===b.day && a.time===b.time &&
