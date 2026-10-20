@@ -1195,3 +1195,17 @@ The source-only offline v28 ZIP contains both source scripts and the
 ready-to-open standalone app; original v16–v27 software-inventory inspection
 remains supported. No external sharing, action dispatch, scan, model,
 approval, live consent or deployment is invoked.
+
+### Resume an original owner HUMAN reply draft without source drift
+
+The portable source-free owner Studio now has an optional explicit second file
+picker to reopen a previous `HUMAN-owner-reply-template.csv` against the
+**exact same original PRIVATE-HUMAN-owner.json**. The complete native column
+order, every original case/transition/kit identifier in the original row
+order, exact original full owner-packet SHA-256, allowable HUMAN-only statuses
+and bounded safe notes must match. Invalid, extra, missing or source-drifted
+rows are rejected as a single transaction and existing in-memory HUMAN choices
+are never changed. Only after an explicit HUMAN confirmation are those
+unapplied local choices restored. No reviewer identity is verified, and native
+`portfolio_owner_reply.py` source re-admission remains required before
+private HUMAN return creation. No customer data is embedded in software.

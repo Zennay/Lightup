@@ -83,7 +83,14 @@ and run the native strict <code>portfolio_owner_reply.py</code> finalizer.</p>
 <option value="needs_discussion">Needs discussion</option>
 <option value="proposed_followup">Proposed follow-up</option>
 <option value="hold">HOLD</option></select></label>
-</div><p id="visible"></p><div class="actions">
+</div><p id="visible"></p>
+<label for="restore">Optional: restore original complete same-owner HUMAN reply CSV
+<input id="restore" type="file" accept=".csv,text/csv"></label>
+<p><small>Restore requires the exact original owner packet SHA-256, all
+original row identities/order, and valid HUMAN-only fields. All proposals
+are applied together only after explicit HUMAN confirmation. The native
+original source admission remains mandatory.</small></p>
+<div class="actions">
 <button id="download" type="button">Export ALL original owner rows as PRIVATE HUMAN CSV</button>
 <button id="clear" type="button" class="secondary">Clear selected PRIVATE data</button>
 </div><p><small>Visual filters do not remove original source rows from export.

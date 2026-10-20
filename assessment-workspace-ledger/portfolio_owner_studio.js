@@ -152,7 +152,7 @@
   async function load(file) {
     clear();
     if (!file || !file.size || file.size > MAX) return hold("Original private owner JSON must be 1–1048576 bytes");
-    if (!crypto || !crypto.subtle) return hold(
+    if (!globalThis.crypto || !crypto.subtle) return hold(
       "Local secure SHA-256 unavailable; cannot export original-bound response");
     try {
       const raw = await file.arrayBuffer();
@@ -175,6 +175,73 @@
     } catch (_e) {
       clear();
       hold("Original owner packet is not an admissible browser preview");
+    }
+  }
+  function parseCsv(raw) {
+    const result = [], fields = [];
+    let value = "", quoted = false, closed = false;
+    for (let i = 0; i < raw.length; i++) {
+      const c = raw[i];
+      if (quoted) {
+        if (c === '"') {
+          if (raw[i + 1] === '"') { value += '"'; i++; }
+          else { quoted = false; closed = true; }
+        } else { value += c; }
+      } else if (c === '"' && !value && !closed) {
+        quoted = true;
+      } else if (c === '"') {
+        throw Error("invalid CSV quote");
+      } else if (c === "," || c === "\n" || c === "\r") {
+        fields.push(value); value = ""; closed = false;
+        if (c !== ",") {
+          if (c === "\r") {
+            if (raw[i + 1] !== "\n") throw Error("invalid CSV newline");
+            i++;
+          }
+          result.push(fields.splice(0));
+        }
+      } else if (closed) {
+        throw Error("invalid quoted CSV field suffix");
+      } else { value += c; }
+    }
+    if (quoted) throw Error("unclosed CSV quote");
+    if (value || fields.length) { fields.push(value); result.push(fields); }
+    return result;
+  }
+  async function restore(file) {
+    if (!original || !sha || !rows.length) return hold(
+      "Open original source owner packet before restoring HUMAN reply");
+    if (!file || !file.size || file.size > MAX) return hold(
+      "PRIVATE HUMAN reply CSV must be bounded to 1 MiB");
+    try {
+      const text = new TextDecoder("utf-8", {fatal:true}).decode(await file.arrayBuffer());
+      const data = parseCsv(text);
+      if (data.length !== rows.length + 1 ||
+        data[0].length !== CSV_KEYS.length ||
+        !CSV_KEYS.every((v, i) => data[0][i] === v)) throw Error("schema");
+      const proposal = [];
+      for (let i = 0; i < rows.length; i++) {
+        const original = rows[i], selected = data[i + 1];
+        if (selected.length !== CSV_KEYS.length ||
+          selected[0] !== String(original.local_case) ||
+          selected[1] !== String(original.historical_transition) ||
+          selected[2] !== String(original.original_kit) ||
+          selected[3] !== sha || !STAGES.includes(selected[4]) ||
+          !allowed(selected[5])) throw Error("source mismatch");
+        proposal.push({replyStage:selected[4], replyNote:selected[5]});
+      }
+      if (!confirm("Replace local HUMAN draft with this full exact-source CSV? " +
+        "Original native finalization will still be mandatory.")) return;
+      proposal.forEach((p, i) => {
+        rows[i].replyStage = p.replyStage;
+        rows[i].replyNote = p.replyNote;
+      });
+      dirty = true;
+      render();
+      status("PRIVATE DRAFT ONLY: original-source-bound CSV restored to local memory. " +
+        "Not authenticated, finalized, scheduled or sent.");
+    } catch (_e) {
+      hold("HUMAN reply CSV restore refused, all existing local choices preserved");
     }
   }
   function quote(value) {
@@ -206,16 +273,20 @@
   $("source").addEventListener("change", event => {
     void load(event.target.files && event.target.files[0]);
   });
+  $("restore").addEventListener("change", event => {
+    void restore(event.target.files && event.target.files[0]);
+    event.target.value = "";
+  });
   $("search").addEventListener("input", render);
   $("stageFilter").addEventListener("change", render);
   $("download").addEventListener("click", download);
   $("clear").addEventListener("click", () => {
     if (dirty && !confirm("Discard unsaved local HUMAN draft edits?")) return;
-    $("source").value = ""; clear();
+    $("source").value = ""; $("restore").value = ""; clear();
   });
   window.addEventListener("beforeunload", e => {
     if (dirty) { e.preventDefault(); e.returnValue = ""; }
   });
-  window.addEventListener("pagehide", () => { $("source").value = ""; clear(); });
+  window.addEventListener("pagehide", () => { $("source").value = ""; $("restore").value = ""; clear(); });
   clear();
 })();
