@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<title>LightUp · PRIVATE Scope Disclosure Desk</title>
+<link rel="stylesheet" href="./desk.css">
+<script defer src="./desk.js"></script>
+</head>
+<body>
+<header><div class="brand">LightUp <span>PRIVATE · LOCAL ONLY</span></div><h1>Scope disclosure desk</h1><p>Inspect, selectively mask, and explicitly export a <strong>new text-only copy</strong> of a human-owned handoff. Nothing is uploaded, scanned, approved or authorized.</p></header>
+<main>
+<section class="banner" aria-label="Safety boundary"><strong>DRAFT / HOLD · M3/M7 PLAN/LAB ONLY</strong><p>Redaction is not reliable declassification. Review every exported byte. A hash proves byte equality, not identity, approval, consent, or permission to assess an asset. Do not load untrusted executable files.</p></section>
+<section class="card" aria-labelledby="source-title">
+<h2 id="source-title"><span>01</span> Open PRIVATE text</h2>
+<label for="file">Choose a local UTF-8 TXT, CSV, JSON, MD, or LOG file (maximum 2 MiB)</label>
+<input id="file" type="file" accept=".txt,.csv,.json,.md,.log,text/plain,text/csv,application/json">
+<div class="grid three"><div class="metric"><b id="filename">None</b><small>Selected source (private)</small></div><div class="metric"><b id="filesize">—</b><small>Original bytes</small></div><div class="metric"><b id="originalHash">—</b><small>Original SHA-256 prefix (private)</small></div></div>
+<div id="openStatus" class="status" role="status" aria-live="polite">Choose a source file to begin.</div>
+</section>
+<section class="card" aria-labelledby="mask-title">
+<h2 id="mask-title"><span>02</span> Manual exact-text masking</h2>
+<p>Type a sensitive literal as it appears in the source. Each rule replaces <em>every exact case-sensitive occurrence</em> with <code>[REDACTED]</code>. No fuzzy matching or automatic safety guarantee. Never share the original.</p>
+<div class="ruleform"><label for="rule">Sensitive literal to mask (3–128 characters, single line)</label><input id="rule" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Exact text to mask"><button id="addRule" type="button">Add mask rule</button></div>
+<div id="rules" class="rules" aria-live="polite">No masking rules yet.</div>
+<div class="actions"><button id="review" type="button" disabled>Prepare redacted preview</button><button id="clear" type="button" class="secondary">Clear local session</button></div>
+</section>
+<section class="card" aria-labelledby="review-title">
+<h2 id="review-title"><span>03</span> Inspect the resulting copy</h2>
+<div class="grid three"><div class="metric"><b id="matches">—</b><small>Literal replacements</small></div><div class="metric"><b id="residual">—</b><small>Residual pattern hints</small></div><div class="metric"><b id="outputHash">—</b><small>Redacted SHA-256 prefix</small></div></div>
+<div id="warnings" class="warnings" role="status" aria-live="polite">No preview prepared.</div>
+<label for="preview">Read-only beginning of redacted text (max 40,000 characters; exports use the whole text)</label>
+<textarea id="preview" rows="12" readonly spellcheck="false"></textarea>
+<label class="tick"><input type="checkbox" id="readAll"> I have reviewed the entire proposed export, including text beyond the on-screen preview, using my own appropriate private review process.</label>
+<label class="tick"><input type="checkbox" id="accept"> I understand masking may miss secrets and this is NOT an authorization, consent, or security clearance.</label>
+<label for="confirm">Type <strong>EXPORT REDACTED</strong> to enable export</label>
+<input id="confirm" type="text" autocomplete="off" spellcheck="false" placeholder="EXPORT REDACTED">
+<div class="actions"><button id="exportText" disabled type="button">Export redacted .txt</button><button id="exportReceipt" disabled type="button" class="secondary">Export PRIVATE counts receipt</button></div>
+<div id="exportStatus" class="status" aria-live="polite">Exports are locked until explicit confirmation.</div>
+</section>
+</main>
+<footer>Offline human preparation only · no network, persistence, grants, scans, targets, or automatic execution. Keep originals private and unchanged.</footer>
+</body></html>
