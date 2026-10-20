@@ -131,7 +131,7 @@
     $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy", "revisionFile", "bulkStageMode", "bulkStage", "bulkOwnerMode", "bulkOwner", "bulkDueMode", "bulkDue", "bulkPreview", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveWorkroom", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "ownerPicker", "orderBy", "revisionFile", "bulkStageMode", "bulkStage", "bulkOwnerMode", "bulkOwner", "bulkDueMode", "bulkDue", "bulkPreview", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveWorkroom", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
     $("bulkApply").disabled = true;
@@ -365,7 +365,7 @@
   }
   function wipe() {
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
-    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.sourceText = ""; state.revisionHistory = [];
+    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.bulkProposal = null; state.sourceText = ""; state.revisionHistory = [];
     clearRevisionCandidate(); refreshRevisionArchive();
     $("revisionArchiveDesk").hidden = true; $("revisionHistorySearch").value = "";
     $("sourceFile").value = ""; $("journalFile").value = ""; $("workroomFile").value = ""; $("vaultPass").value = "";
@@ -375,6 +375,7 @@
     $("detail").hidden = true;
     $("noneSelected").hidden = false;
     setEnabled(false);
+    renderOwnerBoard();
   }
   function selectedIndices() {
     const query = $("search").value.trim().toLocaleLowerCase();
@@ -382,6 +383,7 @@
     const stage = $("stageFilter").value;
     const dueFilter = $("dueFilter").value;
     const ownerFilter = $("ownerFilter").value;
+    const ownerSelection = $("ownerPicker").value;
     const sortMode = $("orderBy").value;
     const today = localDate();
     const end = new Date(today + "T00:00:00Z");
@@ -389,7 +391,8 @@
     const weekEnd = end.toISOString().slice(0, 10);
     const matched = state.rows.map((_, i) => i).filter(i => {
       const r = state.rows[i], j = state.journal[i];
-      return (!severity || severity === r.severity) &&
+      return (!ownerSelection || (ownerSelection === "unassigned" ? !j.owner : ownerSelection === "owner:" + j.owner)) &&
+        (!severity || severity === r.severity) &&
         (!stage || stage === j.stage) &&
         (!query || [r.id, r.title, r.remediation].some(v => v.toLocaleLowerCase().includes(query))) &&
         (!ownerFilter || (ownerFilter === "assigned" ? j.owner.length > 0 : !j.owner)) &&
@@ -428,6 +431,63 @@
       btn.append(strong, small);
       btn.addEventListener("click", () => selectCase(index));
       list.append(btn);
+    }
+    renderOwnerBoard();
+  }
+  function renderOwnerBoard() {
+    const picker = $("ownerPicker");
+    const current = picker.value;
+    const owners = [...new Set(state.journal.map(j => j.owner).filter(Boolean))]
+      .sort((a,b) => a.localeCompare(b));
+    picker.replaceChildren();
+    function addChoice(label,value) {
+      const item = document.createElement("option");
+      item.textContent = label; item.value = value; picker.append(item);
+    }
+    addChoice("All HUMAN contacts","");
+    addChoice("Unassigned HUMAN follow-ups","unassigned");
+    for (const owner of owners) addChoice(owner,"owner:" + owner);
+    picker.value = [...picker.options].some(x => x.value === current) ? current : "";
+    const groups = new Map();
+    const end = new Date(localDate() + "T00:00:00Z");
+    end.setUTCDate(end.getUTCDate()+7);
+    const weekEnd = end.toISOString().slice(0,10);
+    for (let i=0;i<state.rows.length;i++) {
+      const row=state.rows[i], human=state.journal[i];
+      const key=human.owner ? "owner:" + human.owner : "unassigned";
+      if (!groups.has(key)) groups.set(key, {key, label:human.owner||"Unassigned HUMAN follow-ups",
+        total:0, updated:0, overdue:0, week:0, high:0});
+      const g=groups.get(key);
+      g.total++;
+      if (human.stage !== "unreviewed") g.updated++;
+      if (human.due && human.due < localDate()) g.overdue++;
+      if (human.due && human.due >= localDate() && human.due <= weekEnd) g.week++;
+      if (["high","critical"].includes(row.severity)) g.high++;
+    }
+    const view=$("ownerBoard");
+    view.replaceChildren();
+    for (const group of [...groups.values()].sort((a,b) =>
+      b.overdue-a.overdue || b.high-a.high || b.total-a.total || a.label.localeCompare(b.label))) {
+      const button=document.createElement("button");
+      button.type="button"; button.className="owner-tile";
+      button.setAttribute("aria-pressed",picker.value===group.key ? "true" : "false");
+      const title=document.createElement("strong");
+      title.textContent=group.label;
+      const summary=document.createElement("span");
+      summary.textContent=group.total+" source claims · "+group.updated+
+        " HUMAN-touched · "+group.high+" source-declared high/critical";
+      const due=document.createElement("small");
+      due.textContent=group.overdue+" tentative overdue · "+group.week+" within 7 days";
+      button.append(title,summary,due);
+      button.addEventListener("click",()=>{
+        picker.value=group.key; invalidateBulkPreview(); renderList();
+      });
+      view.append(button);
+    }
+    if (!groups.size) {
+      const note=document.createElement("p");
+      note.textContent="Open an authorized original CSV to view local HUMAN routing.";
+      view.append(note);
     }
   }
   function selectCase(index) {
@@ -930,7 +990,7 @@
       if (e.target.files[0]) loadJournal(e.target.files[0]);
       e.target.value = "";
     });
-    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy"].forEach(id =>
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "ownerPicker", "orderBy"].forEach(id =>
       $(id).addEventListener("input", () => { invalidateBulkPreview(); renderList(); }));
     ["humanStage", "humanOwner", "humanDue", "humanNote"].forEach(id => {
       $(id).addEventListener("input", () => { state.pending = true; status("Unapplied HUMAN form edits — click Apply before switching findings or exporting a PRIVATE draft.", true); });
