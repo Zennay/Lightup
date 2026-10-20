@@ -21,7 +21,7 @@ import sys
 from history_owner_brief import admitted_original
 from history_team import private_parent_for_originals
 from ledger import (
-    FLAGS, Hold, canonical, digest, html_page, new_private,
+    FLAGS, Hold, MAX_MANIFEST, canonical, digest, html_page, new_private,
     private_parent, reject, safe_human, write_private,
 )
 
@@ -271,12 +271,18 @@ def run(args):
         "human_case_counts": stats,
         "human_proposals": entries,
     }
+    encoded = canonical(record)
+    if len(encoded) > MAX_MANIFEST:
+        reject("PRIVATE HOLD: cross-case HUMAN record exceeds re-openable private manifest limit")
+    private_csv = csv_report(entries)
+    if len(private_csv.encode("utf-8")) > MAX_MANIFEST:
+        reject("PRIVATE HOLD: private HUMAN portfolio CSV exceeds storage bound")
     folder = new_private(args.private_parent)
     try:
         write_private(folder, "OPEN-PRIVATE.html", summary_html(cases, stats, entries, owner))
         write_private(folder, "PRIVATE-HUMAN-portfolio.html", detailed_html(entries, owner))
-        write_private(folder, "PRIVATE-HUMAN-portfolio.csv", csv_report(entries))
-        write_private(folder, "PRIVATE-HUMAN-portfolio.json", canonical(record))
+        write_private(folder, "PRIVATE-HUMAN-portfolio.csv", private_csv)
+        write_private(folder, "PRIVATE-HUMAN-portfolio.json", encoded)
     except BaseException:
         shutil.rmtree(folder)
         raise
