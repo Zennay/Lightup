@@ -1500,3 +1500,36 @@ New source-only **v36** ZIP includes the full browser → private native
 receiving workflow and the fixed unsigned v16–v35 inventory reader. Notion
 Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD and all original CI/review/consent/
 HUMAN GO gates remain unchanged.
+
+## v37 — separate PRIVATE HUMAN owner timeline batch · console 43
+
+New [portfolio_inbox_timeline_batch.py](portfolio_inbox_timeline_batch.py)
+receives 1–8 *separate* browser-generated original HUMAN owner selection CSVs
+against exactly ONE original native PRIVATE-HUMAN-inbox-history.json.
+
+    python3 assessment-workspace-ledger/portfolio_inbox_timeline_batch.py \
+      --history /private/history/PRIVATE-HUMAN-inbox-history.json \
+      --owner 'Owner A' --selection-csv /private/a/PRIVATE-selected.csv \
+      --owner 'Owner B' --selection-csv /private/b/PRIVATE-selected.csv \
+      --private-parent /private/operator-only
+
+All owners, all original native history details and **all exact CSVs** are
+validated up front through the existing strict canonical original history
+and selection admission, with duplicate/foreign/overlapping owner or case
+slots refused. Any historical single-owner source cannot be widened.
+Original source and all owner CSV bytes are reread before any output.
+On success one new 0700 root contains independently created 0700 PRIVATE
+owner-only subrooms with each original HUMAN CSV, 0600 canonical JSON,
+detailed HTML and anonymous counts. The root's private scriptless
+OPEN-PRIVATE.html lists only packet ordinals, round and counts with local
+links, not source identities or owner labels. A separately stored 0600
+operator-only batch manifest records proposed owner-to-subroom mapping.
+Failures remove only the incomplete new output tree, never sources.
+
+No actual sending, recipient authentication, authorization, consent, scan,
+grant, verification, assignment or remediation claim. A proposed owner label
+is not an authenticated recipient. Source hashes are unsigned byte identities.
+Foreground console **43** exposes this original HUMAN-only batch workflow.
+Fixed source-only package **v37** retains v16–v36 inventory reads.
+Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD and all exact original CI, owner,
+security/privacy/browser review and HUMAN GO gates remain unchanged.

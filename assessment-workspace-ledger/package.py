@@ -25,11 +25,13 @@ NAMES = (
     "console.py", "human_revisions.py", "browser_intake.py", "history.py", "history_human.py", "history_studio.py",
     "history_team.py", "history_team_browser.py", "history_actions.py",
     "history_actions_browser.py", "history_owner_brief.py",
-    "history_progress.py", "portfolio.py", "portfolio_delta.py", "portfolio_owner_packets.py", "portfolio_dayboard.py", "portfolio_focus.py", "portfolio_focus_review.py", "portfolio_focus_history.py", "portfolio_focus_owner_handoff.py", "portfolio_owner_reply.py", "portfolio_owner_inbox.py", "portfolio_owner_inbox_review.py", "portfolio_owner_attention.py", "portfolio_inbox_history.py", "portfolio_inbox_timeline.py", "portfolio_inbox_timeline_selection.py", "portfolio_inbox_timeline.js", "portfolio-inbox-timeline.html", "portfolio_inbox_studio.py", "portfolio_inbox_studio.js", "portfolio-inbox-studio.html", "portfolio_owner_studio.py", "portfolio_owner_studio.js", "portfolio-owner-studio.html", "portfolio_focus_studio.py", "portfolio_focus_studio.js", "portfolio-focus-studio.html", "package.py", "standalone.html",
+    "history_progress.py", "portfolio.py", "portfolio_delta.py", "portfolio_owner_packets.py", "portfolio_dayboard.py", "portfolio_focus.py", "portfolio_focus_review.py", "portfolio_focus_history.py", "portfolio_focus_owner_handoff.py", "portfolio_owner_reply.py", "portfolio_owner_inbox.py", "portfolio_owner_inbox_review.py", "portfolio_owner_attention.py", "portfolio_inbox_history.py", "portfolio_inbox_timeline.py", "portfolio_inbox_timeline_selection.py", "portfolio_inbox_timeline_batch.py", "portfolio_inbox_timeline.js", "portfolio-inbox-timeline.html", "portfolio_inbox_studio.py", "portfolio_inbox_studio.js", "portfolio-inbox-studio.html", "portfolio_owner_studio.py", "portfolio_owner_studio.js", "portfolio-owner-studio.html", "portfolio_focus_studio.py", "portfolio_focus_studio.js", "portfolio-focus-studio.html", "package.py", "standalone.html",
 )
-SCHEMA = "lightup.private.workspace-ledger-software.v36"
+SCHEMA = "lightup.private.workspace-ledger-software.v37"
+V36_SCHEMA = "lightup.private.workspace-ledger-software.v36"
+V36_NAMES = tuple(n for n in NAMES if n != "portfolio_inbox_timeline_batch.py")
 V35_SCHEMA = "lightup.private.workspace-ledger-software.v35"
-V35_NAMES = tuple(n for n in NAMES if n != "portfolio_inbox_timeline_selection.py")
+V35_NAMES = tuple(n for n in V36_NAMES if n != "portfolio_inbox_timeline_selection.py")
 V34_SCHEMA = "lightup.private.workspace-ledger-software.v34"
 V34_NAMES = tuple(n for n in V35_NAMES if n not in ("portfolio_inbox_timeline.py", "portfolio_inbox_timeline.js", "portfolio-inbox-timeline.html"))
 LATEST_SCHEMA = "lightup.private.workspace-ledger-software.v33"
@@ -186,7 +188,7 @@ def inspect(args):
     with zipfile.ZipFile(io.BytesIO(raw), "r") as src:
         entries = src.infolist()
         stored = [entry.filename for entry in entries]
-        profiles = ((NAMES, SCHEMA), (V35_NAMES, V35_SCHEMA), (V34_NAMES, V34_SCHEMA), (LATEST_NAMES, LATEST_SCHEMA), (CURRENT_PRIOR_NAMES, CURRENT_PRIOR_SCHEMA), (MIDDLE_NAMES, MIDDLE_SCHEMA), (PRIOR_NAMES, PRIOR_SCHEMA), (RECENT_NAMES, RECENT_SCHEMA), (PREVIOUS_NAMES, PREVIOUS_SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA), (OLDER_NAMES, OLDER_SCHEMA), (OLDEST_NAMES, OLDEST_SCHEMA), (ANCIENT_NAMES, ANCIENT_SCHEMA), (FIRST_NAMES, FIRST_SCHEMA), (BASE_NAMES, BASE_SCHEMA), (ORIGIN_NAMES, ORIGIN_SCHEMA), (ANCIENT_BASE_NAMES, ANCIENT_BASE_SCHEMA), (FIRST_BASE_NAMES, FIRST_BASE_SCHEMA), (ORIGINAL_NAMES, ORIGINAL_SCHEMA), (MINIMUM_NAMES, MINIMUM_SCHEMA), (ZERO_NAMES, ZERO_SCHEMA))
+        profiles = ((NAMES, SCHEMA), (V36_NAMES, V36_SCHEMA), (V35_NAMES, V35_SCHEMA), (V34_NAMES, V34_SCHEMA), (LATEST_NAMES, LATEST_SCHEMA), (CURRENT_PRIOR_NAMES, CURRENT_PRIOR_SCHEMA), (MIDDLE_NAMES, MIDDLE_SCHEMA), (PRIOR_NAMES, PRIOR_SCHEMA), (RECENT_NAMES, RECENT_SCHEMA), (PREVIOUS_NAMES, PREVIOUS_SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA), (OLDER_NAMES, OLDER_SCHEMA), (OLDEST_NAMES, OLDEST_SCHEMA), (ANCIENT_NAMES, ANCIENT_SCHEMA), (FIRST_NAMES, FIRST_SCHEMA), (BASE_NAMES, BASE_SCHEMA), (ORIGIN_NAMES, ORIGIN_SCHEMA), (ANCIENT_BASE_NAMES, ANCIENT_BASE_SCHEMA), (FIRST_BASE_NAMES, FIRST_BASE_SCHEMA), (ORIGINAL_NAMES, ORIGINAL_SCHEMA), (MINIMUM_NAMES, MINIMUM_SCHEMA), (ZERO_NAMES, ZERO_SCHEMA))
         selected = next((
             (names, schema) for names, schema in profiles
             if stored == [PREFIX + name for name in names] + [PREFIX + "manifest.json"]

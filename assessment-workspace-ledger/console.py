@@ -36,6 +36,7 @@ import portfolio_owner_attention
 import portfolio_inbox_history
 import portfolio_inbox_timeline
 import portfolio_inbox_timeline_selection
+import portfolio_inbox_timeline_batch
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -86,6 +87,7 @@ MENU = (
     ("40", "Export one original proposed HUMAN owner's PRIVATE discussion history"),
     ("41", "Build source-free offline original HUMAN inbox timeline browser"),
     ("42", "Native-admit source-bound PRIVATE HUMAN timeline owner selection"),
+    ("43", "Prepare separate PRIVATE HUMAN history packets for 1–8 original owners"),
     ("0", "Exit"),
 )
 
@@ -234,6 +236,22 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "43":
+        owners, selections = [], []
+        print("Select 1–8 exact original HUMAN owner labels and their source-bound CSVs.")
+        while len(owners) < 8:
+            owner = prompt("Original HUMAN owner label " + str(len(owners)+1),
+                           required=not owners)
+            if not owner:
+                break
+            selected = prompt("Matching explicit PRIVATE HUMAN browser-selection.csv")
+            owners.append(owner)
+            selections.append(selected)
+        return portfolio_inbox_timeline_batch.run(argparse.Namespace(
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            owner=owners, selection_csv=selections,
+            private_parent=private_parent()
         ))
     if action == "42":
         return portfolio_inbox_timeline_selection.run(argparse.Namespace(
