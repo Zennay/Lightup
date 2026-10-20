@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<title>LightUp · PRIVATE HUMAN reconciliatie</title><style>__STYLE__</style></head>
+<body>
+<header><div class="mark">LIGHTUP <span>PRIVATE / OFFLINE</span></div>
+<h1>Casebook · samen beslissen</h1>
+<p class="lead">Vergelijk twee apart ingevulde HUMAN-opvolgwerkruimtes op <strong>precies dezelfde</strong> originele bron. Kies expliciet bij verschillen en maak één nieuwe versleutelde privéoverdracht.</p>
+<p class="warning"><strong>DRAFT/HOLD · INCUBATE M3/M7.</strong> Dit programma bewijst geen oorspronkelijke bron, identiteit, geauthenticeerde cliënt/operatortoestemming, revocation-at-use, grant, onderzoek of toestemming om te scannen. Houd originele validatie en veiligheidsbesluiten intact.</p>
+</header>
+<main>
+<section aria-labelledby="intake-title"><h2 id="intake-title">1 · Ontvang twee bestaande PRIVATE overdrachten</h2>
+<p>Selecteer twee originele .lupt-bundels uit de brongebonden scope Casebook-workroom. Wachtwoorden worden niet bewaard. Beide bundels moeten 1–12 exact dezelfde originele opeenvolgende casebook-NN.json-bronmomenten bevatten, plus ieder een apart opgeslagen workroom-current-template.csv.</p>
+<div class="grid">
+<div class="panel"><h3>Ontvanger A</h3><label for="file-a">Versleutelde overdracht</label><input id="file-a" type="file" accept=".lupt" autocomplete="off">
+<label for="password-a">Wachtwoord A</label><input id="password-a" type="password" autocomplete="off"></div>
+<div class="panel"><h3>Ontvanger B</h3><label for="file-b">Versleutelde overdracht</label><input id="file-b" type="file" accept=".lupt" autocomplete="off">
+<label for="password-b">Wachtwoord B</label><input id="password-b" type="password" autocomplete="off"></div>
+</div>
+<label class="consent"><input id="ack" type="checkbox"> Ik begrijp dat dit een PRIVATE, uitsluitend menselijke samenvoeging zonder autorisatie is en dat plaintext brongegevens lokaal zichtbaar kunnen zijn.</label>
+<button id="open" type="button">Open en vergelijk PRIVATE bronsets</button>
+<p id="status" role="status" aria-live="polite">Geen oorspronkelijke brongegevens geladen.</p>
+</section>
+<section aria-labelledby="review-title">
+<h2 id="review-title">2 · Beslis HUMAN-verschillen per veld</h2>
+<p id="summary" aria-live="polite">Nog geen twee volledig ingelezen PRIVATE bronsets.</p>
+<div class="toolbar"><label for="search">Zoek lokaal op PRIVATE bron-ID of actie <input id="search" type="search" autocomplete="off" placeholder="Dossier of bronactie"></label>
+<label class="consent"><input id="conflicts" type="checkbox"> Alleen dossiers met verschillen</label></div>
+<p id="shown"></p><div id="cases" class="cases"></div>
+</section>
+<section aria-labelledby="export-title"><h2 id="export-title">3 · Nieuwe versleutelde PRIVATE overdracht</h2>
+<p>Bij identieke HUMAN-keuzes wordt die keuze behouden. Elk afwijkend veld vereist <strong>A, B of bewust opnieuw onbehandeld</strong>; er is geen verborgen meerderheidsstem of automatische bronbeslissing. De originele bronbytes blijven exact gelijk. Heropen het resultaat via de oorspronkelijke Casebook-validator voordat iemand enige werkelijke handeling overweegt.</p>
+<label for="new-password">Nieuw zelfstandig overdrachtswachtwoord (minimaal 12 tekens)</label>
+<input id="new-password" type="password" autocomplete="new-password">
+<button id="publish" type="button" disabled>Maak versleuteld samengevoegd .lupt-bestand</button>
+<p class="muted">Alle input en keuzes leven alleen in dit browsertabblad. Geen opslag, netwerkverkeer, grant, scan, CI-wijziging of bronmutatie. Sluiten wist de lokale werkruimte waar de browser dit toestaat.</p>
+</section>
+</main><footer>LightUp · oorspronkelijke bronlabels en SHA-256 zijn géén onafhankelijke producentauthenticatie. Alleen menselijk brongebonden opvolgwerk.</footer>
+<script>__SCRIPT__</script></body></html>
