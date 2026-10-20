@@ -238,7 +238,10 @@
     hold(active);
     const raw=decoder.decode(await bytes(file));
     hold(!raw.startsWith("\uFEFF"));
-    const imported=restore(csv(raw,8));
+    const legacyHeader=PLAN_HEAD.join(","),modernHeader=PLAN_HEAD_V2.join(",");
+    const first=raw.split(/\r?\n/,1)[0];
+    hold(first===legacyHeader || first===modernHeader);
+    const imported=restore(csv(raw,first===modernHeader?8:7));
     if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
     plan=imported.schedule;seriesId=imported.series;exportedPlan=!imported.legacy;page=0;agendaPage=0;changed=false;render();
     inform(`Restored ${plan.size} HUMAN reminders. ${imported.legacy?"Legacy plan: save the new v2 plan before repeatable calendar export.":"Stable private calendar identities restored."}`);
