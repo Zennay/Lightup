@@ -62,7 +62,7 @@ def source(path):
         name, size, dig = row["path"], row["size"], row["sha256"]
         if type(name) is not str or not VALID_PATH.fullmatch(name) or name.startswith("/") or any(part in ("", ".", "..") for part in name.split("/")):
             raise ValueError("Unsafe original file path")
-        if type(size) is not int or not 0 <= size <= 8_000_000 or type(dig) is not str or not HEX.fullmatch(dig) or name in files:
+        if type(size) is not int or not 0 <= size <= 8 * 1024 * 1024 or type(dig) is not str or not HEX.fullmatch(dig) or name in files:
             raise ValueError("Invalid size/hash or duplicate file path")
         files[name] = (size, dig)
     return files, heads, hashlib.sha256(raw).hexdigest()
