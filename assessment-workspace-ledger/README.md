@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Thirteen console actions provide original kit capture, exact-byte reopen, original-bound
+Fifteen console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -340,3 +340,64 @@ The fixed allowlist source-only ZIP packaging schema is now v11 and includes
 this timeline CLI. A prior committed v10 ZIP remains a **previous software
 revision**, not a representation of these new committed sources: build a new
 software-only ZIP with `package.py build` from the current source tree.
+
+
+## NEW v12: complete OFFLINE historical HUMAN review and local browser custody
+
+The earlier history feature now has an interactive operator workflow, without
+reopening original kit data, granting assessment authority or requiring a
+web server. Open the owner-private \`REVIEW-HISTORY-IN-BROWSER.html\` generated
+alongside \`OPEN-PRIVATE.html\` by history.py. The self-contained browser uses
+a CSP SHA-256 pin, no remote resources, no fetch or browser storage. It carries
+only source-minimal original private kit labels, numeric changes, unsigned
+per-kit file-list SHA-256 and the exact ORIGINAL ledger SHA-256 chain. Keep
+this generated PRIVATE HTML under 0700/0600 custody.
+
+The editor shows every original transition/kit, filters by HUMAN status,
+supports local search, and allows HUMAN-only stage/owner/next-question
+proposals. It can reopen an exactly matching previously exported
+\`HUMAN-history-review.csv\`; it rejects missing/reordered/mismatched original
+ledger/kit SHA-256, unexpected fields/rows/quoting, formula-prefixed text,
+oversized or multiline values. A draft resume requires confirmation before
+discarding unsaved local HUMAN entries. Nothing is published or scanned by
+the browser. An export creates \`HUMAN-history-review.csv\` in the browser's
+normal Downloads area, potentially readable by other local users.
+
+Native [history_human.py](history_human.py) **must** be run separately to
+finalize the HUMAN packet. It reopens the exact 2–12 ORIGINAL archived private
+ledger.json files in the same order, admits the original full-ledger
+\`capture --previous\` SHA-256 links, verifies every CSV transition's
+original source-ledger SHA-256, kit file-list digest, immutable numeric counts,
+dossier-label drift, HUMAN status and bounded safe text. The exact original
+ledger bytes are opened AGAIN immediately before private publication.
+No current customer source files are reopened by historical-finalize; use the
+original \`ledger.py reopen\` separately for a new live source-byte check.
+
+**Private 0600 CSV already staged:**
+
+    python3 assessment-workspace-ledger/history_human.py --ledger /private/one/ledger.json --ledger /private/two/ledger.json --plan /private/staged/HUMAN-history-review.csv --private-parent /private/private-ledgers
+
+**Explicit original browser-downloaded CSV, with source file left unchanged:**
+
+    python3 assessment-workspace-ledger/history_human.py --ledger /private/one/ledger.json --ledger /private/two/ledger.json --browser-csv /home/operator/Downloads/HUMAN-history-review.csv --private-parent /private/private-ledgers
+
+Repeat \`--ledger\` for every additional capture-linked original in exact
+HUMAN-selected order. Console options **14** and **15** guide the same native
+private-plan or browser-downloaded workflow. Strict original browser CSV
+admission refuses symlinks, hardlinks, nonregular input, another user's files,
+and changed/oversized bytes, then publishes a *new* 0700/0600 original-bound
+PRIVATE packet with \`PRIVATE-HUMAN-history.json\`,
+\`PRIVATE-HUMAN-history.html\`, a fresh PRIVATE copy of
+\`HUMAN-history-review.csv\`, and \`OPEN-PRIVATE.html\`. The ORIGINAL browser
+file is never chmodded, overwritten, moved or deleted; prior exposure cannot
+be reversed. Returned status remains **HOLD 3**, including HUMAN stages
+labelled reference_only.
+
+Older v11 historical numeric-only review templates cannot pass v12's new
+native importer because v12 binds every review row to exact source ledger
+SHA-256 and original per-kit digest. Regenerate the new template or export
+from its private browser. The previous committed v11 software ZIP is an old
+source-only revision; the v12 source-only ZIP now includes the actual native
+historical HUMAN finalizer and CSP-pinned browser renderer. No new QA/tests,
+authorization, client handling, verified security claim, network, active
+scan, external publication or deployment was added.
