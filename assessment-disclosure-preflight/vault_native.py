@@ -31,23 +31,44 @@ def require(valid: bool) -> None:
         raise VaultHold("HOLD: PRIVATE HUMAN ciphertext not admitted")
 
 
-def read_vault(path: str) -> bytes:
+def private_ciphertext_bytes(path: str, minimum: int, maximum: int) -> bytes:
+    """Open one owned 0600 ciphertext file, reject aliases and source mutation.
+
+    This is local PRIVATE custody, not client consent or authentic sender proof.
+    """
     fd = -1
     try:
+        listed = os.stat(path, follow_symlinks=False)
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) |
                      getattr(os, "O_NOFOLLOW", 0))
-        info = os.fstat(fd)
-        require(stat.S_ISREG(info.st_mode) and HEADER_BYTES + 16 < info.st_size <= MAX_VAULT)
+        opened = os.fstat(fd)
+        require(stat.S_ISREG(opened.st_mode)
+                and minimum < opened.st_size <= maximum
+                and opened.st_uid == os.getuid()
+                and opened.st_mode & 0o077 == 0
+                and opened.st_nlink == 1)
+        def identity(item):
+            return (item.st_dev, item.st_ino, item.st_mode, item.st_uid,
+                    item.st_nlink, item.st_size, item.st_mtime_ns,
+                    item.st_ctime_ns)
+        require(identity(listed) == identity(opened))
         with os.fdopen(fd, "rb") as stream:
             fd = -1
-            data = stream.read(MAX_VAULT + 1)
-        require(HEADER_BYTES + 16 < len(data) <= MAX_VAULT)
+            data = stream.read(maximum + 1)
+            after_read = os.fstat(stream.fileno())
+        require(minimum < len(data) <= maximum
+                and identity(opened) == identity(after_read)
+                and identity(opened) == identity(os.stat(path, follow_symlinks=False)))
         return data
     except (OSError, ValueError, MemoryError):
         raise VaultHold("HOLD: PRIVATE HUMAN ciphertext file refused") from None
     finally:
         if fd >= 0:
             os.close(fd)
+
+
+def read_vault(path: str) -> bytes:
+    return private_ciphertext_bytes(path, HEADER_BYTES + 16, MAX_VAULT)
 
 
 def decrypt_vault(path: str, expected_receipt_sha256: str) -> bytes:
@@ -177,22 +198,7 @@ def decrypt_bundle(path: str) -> tuple[bytes, bytes]:
         from cryptography.exceptions import InvalidTag
     except ImportError:
         raise VaultHold("HOLD: cryptography dependency unavailable") from None
-    fd = -1
-    try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) |
-                     getattr(os, "O_NOFOLLOW", 0))
-        info = os.fstat(fd)
-        require(stat.S_ISREG(info.st_mode) and
-                BUNDLE_HEADER + BUNDLE_CONTENT_HEADER + 16 < info.st_size <= MAX_BUNDLE)
-        with os.fdopen(fd, "rb") as stream:
-            fd = -1
-            data = stream.read(MAX_BUNDLE + 1)
-        require(BUNDLE_HEADER + BUNDLE_CONTENT_HEADER + 16 < len(data) <= MAX_BUNDLE)
-    except (OSError, ValueError, MemoryError):
-        raise VaultHold("HOLD: encrypted HUMAN file not admitted") from None
-    finally:
-        if fd >= 0:
-            os.close(fd)
+    data = private_ciphertext_bytes(path, BUNDLE_HEADER + BUNDLE_CONTENT_HEADER + 16, MAX_BUNDLE)
     header = data[:BUNDLE_HEADER]
     require(header[:8] == BUNDLE_MAGIC)
     password = _bundle_password(confirm=False)
