@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kkN2UFDTwx7VRX/7RTLml3HcboDhfSErMuTtKf09+8I='; script-src 'sha256-dGCB3c4RtYraljJ2F1vyfIcHQt2ds5HMtvRWhSrxoao=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kkN2UFDTwx7VRX/7RTLml3HcboDhfSErMuTtKf09+8I='; script-src 'sha256-FEp92bgRcBi4S9m4sW/YdzyN83L0god8R/6/gznEvTo=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -83,6 +83,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
   });
   const items = [];
   let busy = false;
+  let generation = 0;
   const el = (id) => document.getElementById(id);
   const input = el("shelf-files");
   const rows = el("shelf-rows");
@@ -204,17 +205,20 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
       return;
     }
     busy = true;
+    const epoch = generation;
     input.disabled = true;
     report("Lokale SHA-256 berekening; bestanden verlaten de browser niet…");
     try {
       const proposed = [];
       const existing = new Set(items.map((e) => e.hash));
       for (const file of chosen) {
+        if (epoch !== generation) throw new Error("cancelled");
         const hash = await SHA(await file.arrayBuffer());
         if (existing.has(hash)) throw new Error("duplicate");
         existing.add(hash);
         proposed.push({ file, hash, route: suggest(file.name) });
       }
+      if (epoch !== generation) throw new Error("cancelled");
       items.push(...proposed);  // atomic admission
       render();
       report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Bestandsnaamhints zijn géén bronvalidatie.");
@@ -226,8 +230,9 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
     }
   });
   el("shelf-clear").addEventListener("click", () => {
-    if (!items.length) return;
+    if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
+    generation++; // invalidate any asynchronous import in flight
     items.splice(0);
     render();
     report("REVIEW_ONLY — tabblad-werkset gewist. Browser/JavaScript garanderen geen fysieke geheugenwissing.");

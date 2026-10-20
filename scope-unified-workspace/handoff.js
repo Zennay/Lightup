@@ -16,6 +16,7 @@
   });
   const items = [];
   let busy = false;
+  let generation = 0;
   const el = (id) => document.getElementById(id);
   const input = el("shelf-files");
   const rows = el("shelf-rows");
@@ -137,17 +138,20 @@
       return;
     }
     busy = true;
+    const epoch = generation;
     input.disabled = true;
     report("Lokale SHA-256 berekening; bestanden verlaten de browser niet…");
     try {
       const proposed = [];
       const existing = new Set(items.map((e) => e.hash));
       for (const file of chosen) {
+        if (epoch !== generation) throw new Error("cancelled");
         const hash = await SHA(await file.arrayBuffer());
         if (existing.has(hash)) throw new Error("duplicate");
         existing.add(hash);
         proposed.push({ file, hash, route: suggest(file.name) });
       }
+      if (epoch !== generation) throw new Error("cancelled");
       items.push(...proposed);  // atomic admission
       render();
       report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Bestandsnaamhints zijn géén bronvalidatie.");
@@ -159,8 +163,9 @@
     }
   });
   el("shelf-clear").addEventListener("click", () => {
-    if (!items.length) return;
+    if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
+    generation++; // invalidate any asynchronous import in flight
     items.splice(0);
     render();
     report("REVIEW_ONLY — tabblad-werkset gewist. Browser/JavaScript garanderen geen fysieke geheugenwissing.");
