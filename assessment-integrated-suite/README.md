@@ -1669,7 +1669,13 @@ Every original ordinal defaults to **KEEP_PREVIOUS**.
 
 Open `EDIT-PRIVATE.html` locally on a trusted offline device. It provides
 independent per-ordinal checkboxes, previous/returned HUMAN stage, assigned
-team and whether the confidential HUMAN question differs. No source
+team and whether the confidential HUMAN question differs. It now includes
+source-minimal original team/stage/changed-question/ordinal filters,
+bounded in-memory undo/redo (25 snapshots) and deliberate KEEP/APPLY actions
+limited to CURRENTLY VISIBLE filtered rows; bulk APPLY explicitly confirms.
+**The complete CSV still includes all original source-bound positions**,
+even if filtered out of view, so hidden rows cannot be dropped or rewritten
+by a filtered export. No source
 findings, client identities, original target URLs or private question text
 are embedded. **The PRIVATE HTML itself does include unsigned source and
 previous candidate SHA bindings within its data-only rows**, necessary
