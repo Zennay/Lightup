@@ -120,7 +120,8 @@
     if (!file) return;
     try {
       if (file.size > 400000) throw new Error("PRIVATE HUMAN CSV file exceeds 400 KB");
-      const data = parseCSV(await file.text());
+      // Fatal UTF-8: refuse undecodable bytes instead of silently changing HUMAN text.
+      const data = parseCSV(new TextDecoder("utf-8", {fatal:true}).decode(await file.arrayBuffer()));
       if (data.length !== records.length + 1 ||
           data[0]?.length !== header.length || !data[0].every((x,i) => x === header[i]))
         throw new Error("Missing or extra source rows/columns");
