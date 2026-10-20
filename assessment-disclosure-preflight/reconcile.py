@@ -24,6 +24,7 @@ DECISION_FIELDS = (
     "ordinal", "source_kind", "choice", "human_reason",
 )
 DECISIONS = "PRIVATE-reconcile-decisions.csv"
+INTERACTIVE_DECISIONS = "PRIVATE-reconcile-interactive-decisions.csv"
 COMPARISON = "PRIVATE-reconcile-comparison.html"
 RECONCILED = "PRIVATE-reconciled-human.csv"
 OUTCOME = "PRIVATE-reconciled-report.html"
@@ -72,6 +73,39 @@ def decision_template(digest: str, originals: list[dict], a_sha: str, b_sha: str
     writer.writerow(DECISION_FIELDS)
     for item in originals:
         writer.writerow((digest, a_sha, b_sha, item["ordinal"], item["kind"], "HOLD", ""))
+    return stream.getvalue()
+
+
+def interactive_decisions(digest: str, originals: list[dict],
+                          a_sha: str, a: list[dict],
+                          b_sha: str, b: list[dict]) -> str:
+    """HUMAN-only trusted terminal decision entry; never select automatically."""
+    require(sys.stdin.isatty() and sys.stdout.isatty())
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\\n")
+    writer.writerow(DECISION_FIELDS)
+    print("PRIVATE HUMAN review only. Use a trusted terminal without recording.")
+    print("Open the PRIVATE comparison HTML locally before selecting. No grant/GO.")
+    for original, left, right in zip(originals, a, b):
+        changed = any(left[key] != right[key] for key in
+                      ("stage", "question", "next_action"))
+        print(f"Ordinal {original['ordinal']}: {original['kind']}")
+        print(f"A HUMAN stage: {left['stage']} | B HUMAN stage: {right['stage']}")
+        print("HUMAN text differs" if changed else
+              "Same HUMAN text (NOT authenticated or verified)")
+        try:
+            choice = input("Choose HOLD (default), A or B; Q cancels entire desk: ").strip().upper()
+            if choice == "Q":
+                raise Hold("HOLD: HUMAN cancelled")
+            choice = choice or "HOLD"
+            require(choice in CHOICES)
+            reason = input("PRIVATE HUMAN reason for selecting reviewer (blank for HOLD): ") if choice != "HOLD" else ""
+        except (EOFError, KeyboardInterrupt):
+            raise Hold("HOLD: HUMAN entry cancelled") from None
+        reason = safe_note(reason)
+        require(choice == "HOLD" or bool(reason.strip()))
+        writer.writerow((digest, a_sha, b_sha, original["ordinal"],
+                         original["kind"], choice, reason))
     return stream.getvalue()
 
 
@@ -174,7 +208,7 @@ into HUMAN free-text by a reviewer. Keep the entire document owner-PRIVATE.</p>
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="PRIVATE HUMAN two-reviewer desk; never release authority")
-    parser.add_argument("action", choices=("prepare", "finalize"))
+    parser.add_argument("action", choices=("prepare", "decide", "finalize"))
     parser.add_argument("--receipt", required=True, help="exact original unsigned PRIVATE receipt")
     parser.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
     for role in ("a", "b"):
@@ -189,10 +223,15 @@ def main(argv: list[str] | None = None) -> int:
                         help="privacy floor 5-12 for separate source-free aggregate HUMAN counts")
     args = parser.parse_args(argv)
     try:
-        require((args.action == "prepare" and args.decisions is None) or
+        require((args.action in ("prepare", "decide") and args.decisions is None) or
                 (args.action == "finalize" and args.decisions is not None))
         require(not args.encrypt_result or args.action == "finalize")
         original_bytes, digest, originals, a_sha, a, b_sha, b = load_context(args)
+        if args.action == "decide":
+            publish(args.private_output_dir, INTERACTIVE_DECISIONS,
+                    interactive_decisions(digest, originals, a_sha, a, b_sha, b))
+            print("REVIEW_ONLY: explicit PRIVATE interactive decisions saved; no release")
+            return 2
         if args.action == "prepare":
             decisions = None
             first_name = DECISIONS
