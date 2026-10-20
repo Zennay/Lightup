@@ -34,16 +34,18 @@ def _selected_manifest(room: Path, base: list[dict], fingerprint: str) -> dict:
     if not isinstance(entries, list) or len(entries) > MAX_TEAMS + 1:
         raise privacy.Hold("HOLD: original HUMAN team directory malformed")
     by_team = {}
+    unassigned_seen = False
     for entry in entries:
         if type(entry) is not dict or set(entry) != {"label", "filename", "human_tasks"}:
             raise privacy.Hold("HOLD: original HUMAN team directory malformed")
         label = entry["label"]
         if label not in handoff.SLUGS:
-            if (label != "Unassigned HUMAN follow-up"
+            if (label != "Unassigned HUMAN follow-up" or unassigned_seen
                     or entry["filename"] != "TEAM-unassigned-operator-only.html"
                     or type(entry["human_tasks"]) is not int
                     or entry["human_tasks"] < 1):
                 raise privacy.Hold("HOLD: unknown original HUMAN team directory entry")
+            unassigned_seen = True
             continue
         count = sum(row["human_team"] == label for row in base)
         if (label in by_team or count == 0
@@ -54,10 +56,13 @@ def _selected_manifest(room: Path, base: list[dict], fingerprint: str) -> dict:
         by_team[label] = count
     if set(by_team) != {row["human_team"] for row in base if row["human_team"] in handoff.SLUGS}:
         raise privacy.Hold("HOLD: original HUMAN team directory incomplete")
+    expected_unassigned = sum(row["human_team"] == "" and row["human_stage"] != "UNASSESSED" for row in base)
+    if unassigned_seen != (expected_unassigned > 0):
+        raise privacy.Hold("HOLD: original unassigned HUMAN team handoff differs")
     return by_team
 
 
-def _private_html(changes: list[dict], team_counts: list[dict]) -> bytes:
+def _private_html(changes: list[dict], team_counts: list[dict], missing: list[dict]) -> bytes:
     esc = lambda x: html.escape(str(x), quote=True)
     rows = "".join("<tr><th scope='row'>" + esc(x["team"]) + "</th><td>" +
                    str(x["assigned"]) + "</td><td>" + str(x["changed"]) + "</td></tr>"
@@ -68,6 +73,9 @@ def _private_html(changes: list[dict], team_counts: list[dict]) -> bytes:
                       " · private question changed: " +
                       ("YES" if x["private_question_changed"] else "NO") + "</li>"
                       for x in changes)
+    pending = "".join("<li>" + esc(x["team"]) + " · " + str(x["assigned"]) +
+                      " original HUMAN assignments · no returned CSV; unchanged</li>"
+                      for x in missing)
     return ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
@@ -83,6 +91,9 @@ strong{color:#ffdea0}</style></head><body>
 <p>Original assignments and separately returned HUMAN edits are displayed by
 original ordinal only. No actor has been authenticated. This is NOT an authorized
 scan, security finding, approval or completed assessment.</p></header>
+<section><h2>Assigned teams without a response</h2><ul>""" +
+            (pending or "<li>All originally assigned teams supplied a response.</li>") +
+            """</ul><p>A missing response never means agreement, consent or closure.</p></section>
 <section><h2>Manual team participation</h2><table><thead><tr><th>HUMAN team</th>
 <th>Original assignments</th><th>Proposed changed entries</th></tr></thead><tbody>""" +
             rows + """</tbody></table></section>
@@ -145,6 +156,8 @@ def build(packets: list[str], final_room: str, handoff_room: str,
             next_rows[slot_index[old["proposal_slot"]]] = new
         overview.append({"team": team, "assigned": len(selected), "changed": changed_count})
 
+    missing = [{"team": team, "assigned": count} for team, count in counts.items()
+               if team not in {name for name, _ in returns}]
     # The original complete ordering is preserved and unselected teams retain
     # their existing decisions. No stage is interpreted as permission or PASS.
     receipt = {
@@ -156,7 +169,8 @@ def build(packets: list[str], final_room: str, handoff_room: str,
         "private_question_text_included": False,
         "original_source_snapshot_sha256_unsigned": fingerprint,
         "teams": overview, "changed_ordinals": len(changes),
-        "unreturned_original_team_count": len(counts) - len(returns),
+        "unreturned_original_team_count": len(missing),
+        "unreturned_original_teams": missing,
     }
     diff_stream = io.StringIO(newline="")
     fields = ("team", "proposal_slot", "previous_stage", "current_stage",
@@ -166,7 +180,7 @@ def build(packets: list[str], final_room: str, handoff_room: str,
     for change in changes:
         writer.writerow([change[k] for k in fields])
     docs = (
-        ("OPEN-PRIVATE.html", _private_html(changes, overview)),
+        ("OPEN-PRIVATE.html", _private_html(changes, overview, missing)),
         ("PRIVATE-HUMAN-CANDIDATE.csv", lab_plan_review._csv(next_rows)),
         ("PRIVATE-HUMAN-MULTITEAM-DIFF.csv", diff_stream.getvalue().encode("utf-8")),
         ("PRIVATE-HUMAN-MULTITEAM-RECEIPT.json",
