@@ -157,6 +157,37 @@ def trusted(directory: Path, fingerprint: str) -> dict:
     return obj
 
 
+def minimum_signers(directory: Path) -> int:
+    """Return persistent local minimum, never trusting caller flags to weaken it."""
+    _subdirs(directory)
+    marker = directory / "two-signers-required.json"
+    if not marker.exists() and not marker.is_symlink():
+        return 1
+    obj = _json_file(marker)
+    if obj != {
+        "format": VERSION,
+        "policy": "TWO_DISTINCT_LOCALLY_TRUSTED_SIGNERS_REQUIRED",
+    }:
+        raise Hold("signed-software local minimum signer policy file is malformed")
+    return 2
+
+
+def require_two(directory: Path) -> None:
+    """One-way durable local increase, never a grant, approval or release act."""
+    _subdirs(directory)
+    if minimum_signers(directory) == 2:
+        raise Hold("local two-signer policy already exists; it cannot be relaxed")
+    if len(list((directory / "keys").glob("*.json"))) < 2:
+        raise Hold("register at least two independently confirmed custody keys first")
+    marker = {
+        "format": VERSION,
+        "policy": "TWO_DISTINCT_LOCALLY_TRUSTED_SIGNERS_REQUIRED",
+    }
+    _write_new_private(directory / "two-signers-required.json", _canonical(marker) + b"\n")
+    print("REVIEW_ONLY: local minimum now requires TWO distinct non-revoked keys.")
+    print("No automatic downgrade; local policy is not customer consent or release approval.")
+
+
 def listing(directory: Path) -> None:
     _subdirs(directory)
     found = sorted((directory / "keys").iterdir())
@@ -175,7 +206,7 @@ def listing(directory: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("init", "register", "revoke", "list"):
+    for name in ("init", "register", "revoke", "list", "require-two"):
         sub.add_parser(name).add_argument("--directory", type=Path, required=True)
     reg = sub.choices["register"]
     reg.add_argument("--public-key", type=Path, required=True)
