@@ -69,11 +69,11 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `b1afea890e76831df8bf61b787bda8f581059795a289ec8c0ee8abfc738ef542`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `0a0c3eae73db0a6dab387cb816f1fa7523541ee175f5a72c39c6204870fcfe9d`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `56a2d1e6ad8c0a07f88cbde8f7b3834e7d386946f81bdff0b04beaef93c4d75e`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `1b9fc3a64276469bfec4d1ffec6906e0dd25f010a7945b839eee4dd137b6fbf6`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `6634d3183f6915b761736d208683398c65bb24787da2db8c1f3619059f9d86e4`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `77887b6d0a6981901660b3deab463989b436cc8c3b3499833df11f5e22af9acf`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `a1b3a543d322278c6c7dc46cb275e0a751cfd4ed85fa203b1e464effa3cb7a09`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `d549bd30840cf9e6a6fbf057b42ede7901f79d436b7d907c5f75a53bb2d153ec`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
 
@@ -130,6 +130,12 @@ Optionally the HUMAN may save a **source-only, unsigned return summary** contain
 After admitting a complete separately SHA-matched original kit, the browser's **Prepare all three roles locally** operation now creates privacy-recipient, privacy-editor and scope-reviewer source-only ZIPs together. All three pass the **same original-role SHA, native ZIP and receipt admission** as the single-role workflow; there is no second permissive archive parser, server, credentials, target activation or bulk recipient archive. Each role has its **own** explicit ZIP download and separate original HUMAN sender-note download. Selecting one role's original HUMAN note opens the existing single-note source-bound recipient-return flow for that role only. Other role content is never included in a role's ZIP.
 
 A separately downloaded **PRIVATE unsigned three-role digest sheet** includes only whole-source and per-role ZIP SHA-256 hashes, roles and byte sizes with literal no-consent/no-grant posture. Share expected digests only over an independently authenticated channel; a digest sheet is no proof of sender identity, confidentiality, recipient access, authorization or source licensing. Any original source or role selection change cancels the previous batch and its intended downloads. The original single-role builder remains available.
+
+### Side-by-side previous/current offline source-only release delta
+
+After a HUMAN independently hashes and admits the current complete original source-only outer ZIP, the browser also accepts an **earlier separate ZIP** (maximum 2.5 MB), with its own SHA-256 obtained from a **separately authenticated channel**. The new offline **Compare a previous source-only toolkit** workbench reuses the existing strict stored-ZIP parser and requires all seven original scope/courier/privacy source members in both bundles. It compares original local source filenames, SHA-256 and exact bytes counts, reporting added, removed, modified and unchanged components without displaying or executing any original source content.
+
+The HUMAN can explicitly download a **PRIVATE unsigned JSON source-delta report**, recording both full outer ZIP digests and each changed path with before/after sizes and hashes, no code or unredacted content. Every source ZIP or expected digest change clears previous comparisons, and malformed or mismatched source files fail closed as HOLD. This is **not** owner authentication, signed provenance, review approval, security evidence, client/operator consent or release permission. The report is source inventory metadata for an independently authorized recipient only.
 
 ### Role unpack stability under local file replacement
 

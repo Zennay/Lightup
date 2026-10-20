@@ -1,7 +1,7 @@
 LightUp source-only PRIVATE role kits — 20 October 2026
 DRAFT/HOLD · REVIEW ONLY · UNSIGNED SOURCE BYTES
-56a2d1e6ad8c0a07f88cbde8f7b3834e7d386946f81bdff0b04beaef93c4d75e  PRIVATE-privacy-recipient-DRAFT-HOLD.zip
-1b9fc3a64276469bfec4d1ffec6906e0dd25f010a7945b839eee4dd137b6fbf6  PRIVATE-privacy-editor-DRAFT-HOLD.zip
-6634d3183f6915b761736d208683398c65bb24787da2db8c1f3619059f9d86e4  PRIVATE-scope-reviewer-DRAFT-HOLD.zip
-Outer source ZIP SHA256: b1afea890e76831df8bf61b787bda8f581059795a289ec8c0ee8abfc738ef542
+77887b6d0a6981901660b3deab463989b436cc8c3b3499833df11f5e22af9acf  PRIVATE-privacy-recipient-DRAFT-HOLD.zip
+a1b3a543d322278c6c7dc46cb275e0a751cfd4ed85fa203b1e464effa3cb7a09  PRIVATE-privacy-editor-DRAFT-HOLD.zip
+d549bd30840cf9e6a6fbf057b42ede7901f79d436b7d907c5f75a53bb2d153ec  PRIVATE-scope-reviewer-DRAFT-HOLD.zip
+Outer source ZIP SHA256: 0a0c3eae73db0a6dab387cb816f1fa7523541ee175f5a72c39c6204870fcfe9d
 These unsigned hashes do not authenticate sender, current client or operator consent, HUMAN GO or permission.

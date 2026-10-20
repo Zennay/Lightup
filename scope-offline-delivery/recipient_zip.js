@@ -146,6 +146,16 @@
   }
 
 
+  // Read-only strict original source member inventory for offline version diff.
+  // A caller must independently verify the earlier outer ZIP SHA-256.
+  document.addEventListener("lightup:strict-zip-read", event => {
+    const detail = event.detail;
+    if (!detail || !accepted || !acceptedSha ||
+        !(detail.bytes instanceof ArrayBuffer) ||
+        detail.bytes.byteLength > 2500000) return;
+    detail.entries = parseStoredZip(detail.bytes);
+  });
+
   // Match the actual deterministic Python role receipt, rather than assuming
   // that matching ZIP member names and source SHA pins authenticate a handoff.
   // Byte-canonical JSON rejects duplicate fields and alternate encodings.
@@ -332,7 +342,7 @@
         "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
         "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html",
         "PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css",
-        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/role_pack.py",
+        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/version_delta.js", "tools/role_pack.py",
         "tools/recipient.template.html", "tools/package.py", "tools/unpack.py",
         "START-HERE.html", "README.txt", "manifest.json"
       ];

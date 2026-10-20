@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KfS33Hhyp5s0HLEfsx0C1NO+VxPmpG51PEMY7NNYgUc='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zJGcgy1f+nzc/1qo3qH6MobgLCE+8s4ICUye+FPAqj0='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE recipient byte comparison</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:2.5rem 1rem;background:#0b1422;color:#ebf1fa;font:1rem/1.65 system-ui,sans-serif}main{max-width:750px;margin:auto}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15}h2{font-size:1.15rem}.tag{font-size:.76rem;letter-spacing:.12em;color:#9ec6ff;font-weight:750}section{padding:1.4rem;margin:1.25rem 0;border:1px solid #52647f;border-radius:14px;background:#16243a}label{display:block;font-weight:650;margin:1rem 0 .3rem}input{width:100%;border-radius:7px;border:1px solid #a5bad4;padding:.75rem;background:#0b1422;color:#fff;font:inherit}input:focus,button:focus{outline:3px solid #95d6fa;outline-offset:2px}button{margin-top:.85rem;cursor:pointer;border:0;border-radius:8px;padding:.8rem 1.25rem;font:inherit;font-weight:750;background:#93dbfd;color:#082235}button:disabled{opacity:.6;cursor:wait}p{overflow-wrap:anywhere}strong{color:#ffdb9a}#status{font-weight:750;padding:.8rem;border-left:4px solid #9ec6ff}#status[data-state="hold"]{border-color:#f2a0a8;color:#ffc4c9}#status[data-state="match"]{border-color:#97edbc;color:#b2ffce}a{color:#92d9ff}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.89rem;overflow-wrap:anywhere}footer{font-size:.82rem;color:#b6c6db;margin:2.5rem 0}
 .download-choices{display:flex;flex-wrap:wrap;gap:.6rem}.download-choices button{margin:.35rem 0}details{border:1px solid #64748b;border-radius:8px;padding:.75rem}summary{cursor:pointer}ol{max-height:14rem;overflow:auto;padding-left:1.6rem}li{margin:.35rem 0}section[hidden]{display:none}
@@ -46,6 +46,20 @@
 <div id="batch-role-choices"></div>
 <button id="save-batch-digests" type="button" hidden>Save one unsigned PRIVATE role digest handoff sheet</button>
 <p>The digest sheet is for independently authenticated HUMAN delivery, not evidence of identity, permission or confidentiality. Each role ZIP is the same original-source-bounded format as the single-role builder.</p>
+</section>
+<section id="version-delta-panel" hidden>
+<h2>Compare a previous source-only toolkit with this one</h2>
+<p>The currently admitted complete original toolkit is the source-of-truth for the NEW side. Choose an earlier separate original toolkit ZIP and supply its whole SHA-256 through an independently authenticated channel. This compares local source filenames, byte sizes and SHA-256 only. No source content is executed, scanned or uploaded.</p>
+<label for="version-delta-file">Earlier source-only offline toolkit ZIP</label>
+<input id="version-delta-file" type="file" accept=".zip,application/zip">
+<label for="version-delta-sha">Separately authenticated earlier ZIP SHA-256 (64 lowercase hex)</label>
+<input id="version-delta-sha" type="text" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="64 lowercase hex characters">
+<button id="version-delta-compare" type="button" disabled>Compare exact local source bytes</button>
+<p id="version-delta-status" role="status" aria-live="polite" data-state="idle"></p>
+<details><summary>Source changes (paths and digests, no source content)</summary>
+<ol id="version-delta-inventory" class="mono"></ol></details>
+<button id="version-delta-save" type="button" hidden>Save PRIVATE unsigned JSON source-delta report</button>
+<p>Even a perfect match is not a signature, content safety proof, owner review, valid consent, authorization or release. Treat the source inventory and filenames as PRIVATE metadata.</p>
 </section>
 <section id="received-handoff-panel" hidden>
 <h2>Receive a source-bound PRIVATE HUMAN sender note</h2>
@@ -328,6 +342,16 @@ button.addEventListener("click", async () => {
   }
 
 
+  // Read-only strict original source member inventory for offline version diff.
+  // A caller must independently verify the earlier outer ZIP SHA-256.
+  document.addEventListener("lightup:strict-zip-read", event => {
+    const detail = event.detail;
+    if (!detail || !accepted || !acceptedSha ||
+        !(detail.bytes instanceof ArrayBuffer) ||
+        detail.bytes.byteLength > 2500000) return;
+    detail.entries = parseStoredZip(detail.bytes);
+  });
+
   // Match the actual deterministic Python role receipt, rather than assuming
   // that matching ZIP member names and source SHA pins authenticate a handoff.
   // Byte-canonical JSON rejects duplicate fields and alternate encodings.
@@ -514,7 +538,7 @@ button.addEventListener("click", async () => {
         "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
         "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html",
         "PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css",
-        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/role_pack.py",
+        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/version_delta.js", "tools/role_pack.py",
         "tools/recipient.template.html", "tools/package.py", "tools/unpack.py",
         "START-HERE.html", "README.txt", "manifest.json"
       ];
@@ -1189,6 +1213,139 @@ button.addEventListener("click", async () => {
     const url = URL.createObjectURL(blob), a = document.createElement("a");
     a.href=url; a.download="LightUp-PRIVATE-HUMAN-return-REVIEW-ONLY.json";
     a.rel="noopener"; document.body.append(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  });
+})();
+
+"use strict";
+/* Offline source-only original-kit version comparison. Never grants authority. */
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("version-delta-panel"), oldFile = el("version-delta-file");
+  const oldDigest = el("version-delta-sha"), inspect = el("version-delta-compare");
+  const status = el("version-delta-status"), inventory = el("version-delta-inventory");
+  const saveReport = el("version-delta-save");
+  const mandatory = [
+    "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip",
+    "workspace/SOURCE-MANIFEST.json","workspace/DIST-MANIFEST.json",
+    "workspace/verify.html","courier/PRIVATE-encrypted-courier.html",
+    "privacy/disclosure-preflight.html","privacy/disclosure-recipient-verify.html"
+  ];
+  let current = null, result = null, revision = 0;
+  const digest = async bytes => Array.from(new Uint8Array(
+    await crypto.subtle.digest("SHA-256",bytes)),
+    b => b.toString(16).padStart(2,"0")).join("");
+  const validHex = value => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+  function reset(hide = true) {
+    revision++; result = null;
+    status.dataset.state = "idle"; status.textContent = "";
+    inventory.replaceChildren(); saveReport.hidden = true;
+    inspect.disabled = !current;
+    if (hide) {
+      current = null; panel.hidden = true; oldFile.value = ""; oldDigest.value = "";
+    }
+  }
+  document.addEventListener("lightup:selection-reset", () => reset());
+  document.addEventListener("lightup:full-kit-admitted", event => {
+    reset();
+    const detail = event.detail;
+    if (!detail || !(detail.entries instanceof Map) ||
+        !validHex(detail.sha256) || mandatory.some(name=>!detail.entries.has(name))) return;
+    current = {entries:detail.entries,sha256:detail.sha256};
+    panel.hidden = false; inspect.disabled = false;
+    status.textContent = "Current original source-only kit admitted. Supply a separate authenticated SHA-256 for the earlier kit.";
+  });
+  for (const node of [oldFile, oldDigest]) {
+    node.addEventListener(node === oldFile ? "change" : "input", () => reset(false));
+  }
+  const sorted = items => items.sort((a,b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  async function inventoryOf(entries, revisionAtStart) {
+    if (!(entries instanceof Map) || entries.size < mandatory.length ||
+        mandatory.some(name => !entries.has(name)) || entries.size > 64) {
+      throw Error("Source-only ZIP missing original scope members");
+    }
+    const rows = [];
+    for (const [path, entry] of entries) {
+      if (revision !== revisionAtStart) return null;
+      if (!entry || !(entry.bytes instanceof Uint8Array) ||
+          !Number.isSafeInteger(entry.size) || entry.size !== entry.bytes.length) {
+        throw Error("Malformed member identity");
+      }
+      rows.push({path, bytes:entry.size, sha256:await digest(entry.bytes)});
+    }
+    return sorted(rows);
+  }
+  inspect.addEventListener("click", async () => {
+    const token = ++revision;
+    inspect.disabled = true; result = null;
+    saveReport.hidden = true; inventory.replaceChildren();
+    status.dataset.state = "idle";
+    const hold = () => {
+      if (token !== revision) return;
+      result = null; inventory.replaceChildren();
+      saveReport.hidden = true; status.dataset.state = "hold";
+      status.textContent = "HOLD — earlier source-only ZIP or separately supplied digest was not admitted. Nothing compared.";
+    };
+    try {
+      const file = oldFile.files && oldFile.files[0];
+      const expected = oldDigest.value.trim();
+      if (!current || !crypto?.subtle || !validHex(expected) ||
+          !file || oldFile.files.length !== 1 || !/\.zip$/i.test(file.name) ||
+          !Number.isSafeInteger(file.size) || file.size < 100 ||
+          file.size > 2500000) {hold();return;}
+      status.textContent = "Reading two local source inventories; no uploads...";
+      const bytes = await file.arrayBuffer();
+      if (token !== revision) return;
+      if (bytes.byteLength !== file.size || await digest(bytes) !== expected) {hold();return;}
+      if (token !== revision) return;
+      const request = {bytes,entries:null};
+      document.dispatchEvent(new CustomEvent("lightup:strict-zip-read",{detail:request}));
+      const previous = await inventoryOf(request.entries,token);
+      const next = await inventoryOf(current.entries,token);
+      if (token !== revision || !previous || !next) return;
+      const oldMap = new Map(previous.map(row => [row.path,row]));
+      const nextMap = new Map(next.map(row => [row.path,row]));
+      const added = next.filter(row => !oldMap.has(row.path));
+      const removed = previous.filter(row => !nextMap.has(row.path));
+      const changed = next.filter(row => oldMap.has(row.path) &&
+        (oldMap.get(row.path).sha256 !== row.sha256 || oldMap.get(row.path).bytes !== row.bytes))
+        .map(row=>({path:row.path,before:oldMap.get(row.path),after:row}));
+      const unchanged = next.length - added.length - changed.length;
+      result = {
+        format:"lightup.scope_offline_source_delta.v1",
+        posture:"INCUBATE_M3_M7_DRAFT_HOLD",decision:"REVIEW_ONLY",
+        signed:false,authenticated_sender:false,client_consent:false,
+        operator_consent:false,grant:false,release:false,
+        earlier_zip_sha256:expected,current_zip_sha256:current.sha256,
+        earlier_members:previous.length,current_members:next.length,
+        unchanged,added,removed,changed,
+        note:"UNSIGNED exact local source-byte comparison; no identity, consent, security review or authorization."
+      };
+      for (const [type,rows] of [["Added",added],["Removed",removed],["Changed",changed]]) {
+        for (const row of rows) {
+          const line = document.createElement("li");
+          line.textContent = type + ": " + row.path + (type === "Changed" ?
+            " · before " + row.before.sha256 + " · after " + row.after.sha256 :
+            " · " + row.bytes + " bytes · SHA-256 " + row.sha256);
+          inventory.append(line);
+        }
+      }
+      if (token !== revision) return;
+      status.dataset.state = "match";
+      status.textContent = "SOURCE BYTE DELTA / REVIEW ONLY · " + added.length +
+        " added, " + changed.length + " changed, " + removed.length +
+        " removed, " + unchanged + " unchanged. Independent sender identity and original release gates remain.";
+      saveReport.hidden = false;
+    } catch (_) {hold();}
+    finally {if (token === revision) inspect.disabled = false;}
+  });
+  saveReport.addEventListener("click", () => {
+    if (!result || !current || result.current_zip_sha256 !== current.sha256) return;
+    if (!window.confirm("Save unsigned PRIVATE source-only difference metadata? No security approval is implied.")) return;
+    const blob = new Blob([JSON.stringify(result,null,2)+"\n"],{type:"application/octet-stream"});
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href=url;a.download="LightUp-PRIVATE-source-delta-REVIEW-ONLY.json";
+    a.rel="noopener";document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),30000);
   });
 })();
