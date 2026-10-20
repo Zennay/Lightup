@@ -128,66 +128,9 @@ def write_file(path: Path, payload: bytes) -> None:
         os.close(fd)
 
 def home() -> bytes:
-    apps = [
-        ("Original finding casework", "casework/index.html",
-         "Manual, source-local remediation planning; self-declared HUMAN inputs only."),
-        ("Original evidence artifact ledger", "remediation-artifact-ledger/standalone.html",
-         "Review owner-declared evidence and prepare separate owner handoffs."),
-        ("HUMAN portfolio studio", "remediation-portfolio/studio.html",
-         "Offline aggregate capacity and routing drafts."),
-        ("Encrypted HUMAN handoff studio", "remediation-human-handoff/browser.html",
-         "Password-protected HUMAN-only local work sessions and selective handoffs."),
-    ]
-    cards = "".join(
-        "<article><h2><a href='" + html.escape(link) + "'>" + html.escape(title) +
-        "</a></h2><p>" + html.escape(desc) + "</p></article>"
-        for title, link, desc in apps
-    )
-    return ("""<!doctype html><html lang="en"><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; img-src 'none'; form-action 'none'; base-uri 'none'">
-<title>LightUp · PRIVATE offline remediation workspace</title>
-<style>body{font:16px system-ui;background:#f4f6fa;color:#14253b;margin:0}
-main{max-width:1050px;margin:2rem auto;padding:0 1.4rem}
-h1{font-size:2rem}article,aside,section{background:#fff;padding:1.3rem;border-radius:12px;margin:1rem 0}
-article{border:1px solid #e2e6ef}article p{margin:.5rem 0 0}
-aside{border-left:6px solid #ba7b16}a{color:#0751a4}
-small{display:block;line-height:1.5}</style>
-<main><h1>LightUp · PRIVATE HUMAN Remediation Workspace</h1>
-<aside><strong>LOCAL OFFLINE · DRAFT/HOLD · NEVER EXECUTION AUTHORITY.</strong>
- This software bundles two original source-pinned held workstreams. Original evidence, owner notes, private client IDs and plaintext workspaces are never added by this installer. An encrypted file cannot prove source authenticity or client consent. No scan, retest, grant, native Apply or verified fix.</aside>
-<section><h2>Start at the source owner</h2><p>Open the original Casework and Evidence Ledger locally for human review, then use the offline HUMAN Portfolio and the encrypted selective handoff when a private recipient actually needs it. Do not copy a full private workspace when only a selected human follow-up is appropriate.</p></section>
-""" + cards + """
-<section><h2>Guided offline operator studio</h2>
-<p><a href="operator.html">Open de PRIVATE operatorstudio</a> voor alle bestaande native HUMAN-workflows, originele bronpaden en een lokaal gegenereerd commandovoorbeeld. De browser voert niets uit, bewaart niets, verzendt niets en doet geen autorisatieclaim. Open alleen op een prive apparaat, en plak een voorbereid commando uitsluitend na eigen controle in een geautoriseerde private Linux terminal.</p></section>
-<section><h2>Private receiving desk and timeline</h2>
-<p>For independently delivered <em>source-free</em> Cockpit packets, use the bundled native <code>remediation-recipient-trend/receiver_desk.py</code> commands described in <a href="remediation-recipient-trend/README.md">the receiving guide</a>. Those outputs remain private and are not automatically linked or uploaded. Original evidence source admission and HUMAN revisions are explained in <a href="remediation-evidence-bundle-integrity/README.md">the Evidence Workroom guide</a>.</p>
-<p>Unkeyed package checksums establish local file consistency only. Owner permissions, current authenticated client/operator consent, revocation-at-use, exact-head CI, source-owner and independent privacy/security review, and explicit HUMAN GO remain independent requirements for any genuine release.</p></section>
-<section><h2>Operator quick-start · HUMAN only</h2>
-<p>Run these locally on an authorized private Linux machine with existing 0700 folders. Enter secret passphrases interactively: never in commands, URLs or logs. These examples <strong>do not</strong> create a grant, scan, verified fix or consent.</p>
-<h3>One native guided PRIVATE operator menu</h3>
-<pre>python3 remediation-integrated-workspace/private_desk.py menu</pre>
-<p>This offline launcher has only explicit original read/admit/HUMAN operations; it forwards input to the existing native policy and security checks. Choose literal absolute paths and new owner-only output folders. No target execution, scope authorization, consent or fix status is inferred.</p>
-<h3>Original evidence owner → separated source-free packet</h3>
-<pre>python3 remediation-integrated-workspace/workflow.py owner-start \
-  --input-dir "$HOME/lightup-private/original-ledger" \
-  --output-dir "$HOME/lightup-private/owner-review-001"</pre>
-<p>Original private source remains in <code>owner-review-001/original/</code>. Only the separately native-approved <code>source-free-recipient/</code> can be considered for separately authorized HUMAN disclosure.</p>
-<h3>Single or multiple source-free archives → private reviewer</h3>
-<pre>python3 remediation-integrated-workspace/archive_workflow.py \
-  --archive "$HOME/lightup-private/human-counts-01.luhz" \
-  --output-dir "$HOME/lightup-private/received-human-01"</pre>
-<p>A single source-free packet opens the one-Cockpit HUMAN journal; two create a native comparison, three to twelve a native ordinal series. Repeated exact input packets never prove another chronology.</p>
-<h3>Password-encrypted counts archive → private reviewer</h3>
-<pre>python3 remediation-integrated-workspace/archive_workflow.py \
-  --encrypted-archive "$HOME/lightup-private/approved-human-01.luhx" \
-  --output-dir "$HOME/lightup-private/decrypted-review-01"</pre>
-<p>Optional local Python <code>cryptography</code> dependency and an interactive private terminal are required. No plaintext ZIP intermediates; decrypted HUMAN counts remain private plaintext files on the recipient machine. No authenticated sender or consent is inferred.</p>
-<p>See <a href="remediation-integrated-workspace/README.md">the full private operator guide</a> and <a href="remediation-integrated-workspace/SINGLE_REVIEW.md">single-Cockpit journal/brief workflow</a> for separate HUMAN continuation and privacy conditions.</p></section>
-<section><h2>Encrypted HUMAN journal continuation</h2><p>Use the <a href="remediation-integrated-workspace/JOURNAL_VAULT.md">PRIVATE source-bound journal vault guide</a> to encrypt an explicitly downloaded local HUMAN journal, reopen the same original-source-bound review, publish a scriptless private follow-up brief, or rekey without a plaintext intermediate journal file. This never authenticates client consent, source owner or fixes.</p></section>
-<section><h2>Encrypted complete source-free HUMAN review</h2><p>The <a href="remediation-integrated-workspace/REVIEW_PACKAGE.md">one-file source-free Cockpit + bound HUMAN journal guide</a> explains how to encrypt the original anonymous Cockpit and its exact native HUMAN journal into a single portable private file, then receive it in a new source-bound private reviewer. No real source-owner identity, consent or authenticated security claim is established.</p></section>
-<small>Software-only, pinned original source snapshots. Operator-selectable steps are HUMAN-only; downloaded plaintext artifacts can be sensitive. No network, browser storage, script, account login or target activity is added by this launcher.</small></main></html>
-""").encode("utf-8")
+    # Single source-of-truth for the complete PRIVATE scriptless entry page.
+    import landing
+    return landing.render()
 
 def exclusive_publish(stage: Path, destination: Path) -> None:
     """Linux renameat2(NO_REPLACE), as original native PRIVATE workspace publisher.
@@ -242,6 +185,7 @@ def build(dest: Path) -> None:
         for name in ("remediation-integrated-workspace/install.py",
                      "remediation-integrated-workspace/private_desk.py",
                      "remediation-integrated-workspace/operator_console.py",
+                     "remediation-integrated-workspace/landing.py",
                      "remediation-integrated-workspace/operator_ui.js",
                      "remediation-integrated-workspace/fingerprint_ui.js",
                      "remediation-integrated-workspace/packet_fingerprint.py",
@@ -342,6 +286,7 @@ def verify(folder: Path) -> None:
                                              "remediation-integrated-workspace/install.py",
                      "remediation-integrated-workspace/private_desk.py",
                      "remediation-integrated-workspace/operator_console.py",
+                     "remediation-integrated-workspace/landing.py",
                      "remediation-integrated-workspace/operator_ui.js",
                      "remediation-integrated-workspace/fingerprint_ui.js",
                      "remediation-integrated-workspace/packet_fingerprint.py",
