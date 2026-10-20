@@ -94,3 +94,24 @@ python3 private-assessment-notes/notes.py sensitivity-finalize \
 ```
 
 The history builder re-admits **every** original completed review against the original source SHA/byte identity, full original HUMAN CSV, category/status count receipts and literal-false authority flags. Reused byte-identical round CSVs refuse as false new rounds, and a single altered/different source refuses the entire history. The next round is an independently finalized new PRIVATE HUMAN packet, not a revision of earlier results. All history artifacts stay local owner-private. A reduction in `WITHHOLD` or `REVIEW_REQUIRED` is only a local human reclassification, **never** evidence of sanitization, consent, remediation or security PASS.
+
+
+## Source-bound HUMAN attention-only handoff from two reviews
+
+The original complete 2–8-round history lets the operator understand drift without calling it remediation. A separate foreground native route can prepare a **minimum-necessary, local PRIVATE HUMAN attention agenda** from any **two distinct, independently finalized original source-bound sensitivity reviews**, even before producing a larger timeline:
+
+~~~sh
+python3 private-assessment-notes/notes.py sensitivity-attention \
+  --completed-packet /private/owner/PRIVATE-lightup-human-handoff-ORIGINAL \
+  --earlier-review /private/owner/PRIVATE-lightup-sensitivity-review-ROUND1 \
+  --later-review /private/owner/PRIVATE-lightup-sensitivity-review-ROUND2 \
+  --kind CHANGES_ONLY \
+  --topic PERSONAL_DATA \
+  --private-parent /private/owner
+~~~
+
+One of three explicit HUMAN-only local filters is mandatory. `ALL_ATTENTION` includes only new literal changes or the current human-labeled WITHHOLD/REVIEW_REQUIRED rows; `CHANGES_ONLY` includes changed local HUMAN stage/categories or free-note-change flags; `CURRENT_WITHHOLD` includes sources still locally marked WITHHOLD. An optional category narrows exclusively to one category **in the latest original review**, never to a guessed client scope. An empty selection refuses with HOLD.
+
+The native source re-opens the original completed source/decision packet and **both** complete original sensitivity round receipts and full original CSVs. Each selected source position is bound to its ordinal, the unsigned original manifest, complete HUMAN decision digest and both exact completed review receipt/CSV digests. The new 0700/0600 owner-only packet contains a private, scriptless HTML conversation board, selected-only CSV and PRIVATE receipt. The board shows only original ordinal, two HUMAN stages, two declared categories, and Boolean HUMAN note present/changed. **No original or pattern-masked note contents, original source filename/digest, or free-text HUMAN note contents appear in the browser/CSV.** Nothing is sent.
+
+Status/category transitions are HUMAN opinions, not verified privacy improvement. A drop from WITHHOLD to PENDING, disappearance of a listed category or unchanged free notes does **not** establish that any sensitive data was removed or that anything can be disclosed. The command **always exits HOLD (3) even after successfully writing a PRIVATE human conversation proposal**. All original current separately authenticated client/operator consent, action-time revocation, independent privacy/security/source-owner approvals and HUMAN GO requirements remain unchanged.
