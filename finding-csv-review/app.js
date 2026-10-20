@@ -522,8 +522,9 @@
     if (state.pending) { status("Apply or discard the current HUMAN form before exporting a journal.", true); return; }
     if (!confirm("PRIVATE export includes finding IDs, HUMAN owners and notes. Save only into a protected location. Continue?")) return;
     download(JSON.stringify(journalDocument(), null, 2) + "\n", "lightup-private-human-review.json", "application/json");
-    state.dirty = false;
-    status("PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", false);
+    state.dirty = state.revisionHistory.length > 0;
+    status(state.dirty ? "PRIVATE active journal offered, but PRIOR SOURCE HUMAN HISTORY is not included. Save the encrypted COMPLETE workroom to preserve that history." :
+      "PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", state.dirty);
   }
   function admitJournalDocument(parsed, rows = state.rows, csvSha = state.digest) {
     if (!exactObject(parsed, ["schema", "classification", "authority", "csv_sha256", "count", "entries"]) ||
@@ -546,11 +547,12 @@
       }
       const staged = admitJournalDocument(parsed);
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
-      state.journal = staged; clearRevisionCandidate(); state.dirty = false; state.pending = false; state.selected = -1;
+      state.journal = staged; clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
-      status("Original CSV byte-bound HUMAN journal restored locally (not an authenticated review).", false);
+      status(state.dirty ? "HUMAN journal reopened. Existing prior-source history remains UNSAVED by this journal; save encrypted COMPLETE workroom." :
+        "Original CSV byte-bound HUMAN journal restored locally (not an authenticated review).", state.dirty);
     } catch(error) {
       status("Draft rejected without changing the workspace: " + error.message, true);
     }
@@ -563,8 +565,9 @@
     try {
       const blob = await LightUpEncryptedJournal.seal(journalDocument(), pass);
       download(blob, "lightup-private-human-review.luej", "application/json");
-      state.dirty = false;
-      status("Encrypted PRIVATE HUMAN journal offered for local save; confirm actual file storage.", false);
+      state.dirty = state.revisionHistory.length > 0;
+      status(state.dirty ? "Encrypted HUMAN-only journal offered; PRIOR SOURCE HUMAN HISTORY is NOT included. Save a complete encrypted workroom." :
+        "Encrypted PRIVATE HUMAN journal offered for local save; confirm actual file storage.", state.dirty);
     } catch (error) {
       status("PRIVATE encryption HOLD: " + error.message, true);
     } finally {
@@ -583,11 +586,12 @@
       const staged = admitJournalDocument(document);
       if (!confirm("Original CSV SHA-256 and all HUMAN IDs match. Replace current in-memory HUMAN notes?")) return;
       state.journal = staged; clearRevisionCandidate();
-      state.dirty = false; state.pending = false; state.selected = -1;
+      state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
-      status("Encrypted source-bound PRIVATE HUMAN journal opened in memory; not an authenticated source or permission.", false);
+      status(state.dirty ? "Encrypted HUMAN-only journal opened; previous source history still requires an encrypted COMPLETE workroom save." :
+        "Encrypted source-bound PRIVATE HUMAN journal opened in memory; not an authenticated source or permission.", state.dirty);
     } catch (error) {
       status("Encrypted journal rejected with current work unchanged: " + error.message, true);
     } finally {
