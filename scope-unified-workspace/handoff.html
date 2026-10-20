@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jLf1ZUo1dJvvsuLiaMzkdQ7Fqu5Wa4Y7e1M2pO7PP7M='; script-src 'sha256-GtBgsZCG8si8fMCR47g6WSvJzQ/TDuXdfsd0qK+ey7E=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-MQBX7v3pCRCtkeSLO0uON62F3O51pFmO4eSEvyRpX8o='; script-src 'sha256-0QKqN+wshaF19sA4PYSPSDzydRoCQU+u0wetN/3BYNY=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -59,6 +59,21 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-peer-list li+li{border-top:1px solid #345064;padding-top:7px}
 .shelf-board input[type=file]{max-width:100%;color:#cee3e1;border:1px dashed #567389;border-radius:7px;padding:12px}
 .shelf-board button:focus-visible,.shelf-board select:focus-visible{outline:3px solid #a3e9d4;outline-offset:3px}
+
+/* Offline PRIVATE HUMAN review discussion desk; no network, reviewer authority or automated choices. */
+.shelf-peer-toolbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:end;margin:14px 0}
+.shelf-peer-toolbar label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#cee4de}
+.shelf-peer-toolbar select,.shelf-peer-toolbar input{font:inherit;font-size:13px;min-height:44px;padding:8px;color:#f2fffb;background:#1a3041;border:1px solid #6b8b9b;border-radius:8px;max-width:100%}
+.shelf-peer-toolbar select:focus-visible,.shelf-peer-toolbar input:focus-visible{outline:3px solid #afeee1;outline-offset:2px}
+.shelf-peer-toolbar p{grid-column:1/-1;margin:0}
+.shelf-peer-row-hidden{display:none!important}
+.shelf-peer-preview{background:#1a3041;border:1px solid #53768a;border-radius:9px;padding:12px;margin:15px 0}
+.shelf-peer-preview summary{font-size:13px;font-weight:700;cursor:pointer;color:#e5faf2}
+.shelf-peer-preview-list{padding-left:23px;margin:10px 0 0;display:grid;gap:8px;max-height:320px;overflow:auto}
+.shelf-peer-preview-list li{font-size:12px;line-height:1.6;overflow-wrap:anywhere;color:#d4ebe5}
+.shelf-peer-preview-list li+li{border-top:1px solid #385262;padding-top:8px}
+.shelf-peer-preview .shelf-status{margin-top:10px;white-space:normal;overflow-wrap:anywhere}
+@media print{.shelf-peer-toolbar,.shelf-peer-preview{display:none}}
 </style>
 </head>
 <body>
@@ -95,10 +110,30 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <label for="shelf-peer-files">Kies 2–8 PRIVATE HUMAN-reviewpakketten (max. 96 KiB per pakket)</label>
 <input id="shelf-peer-files" type="file" accept=".json,application/json" multiple aria-describedby="shelf-peer-status">
 <p id="shelf-peer-status" class="shelf-status" role="status" aria-live="polite">Nog geen reviewportfolio geladen. Bronafwijkingen blokkeren alle voorstellen met dezelfde oorspronkelijke bestandsnaam; voor samenhangende bronnen blijft overname altijd per rij een expliciete HUMAN keuze.</p>
+<div class="shelf-peer-toolbar" role="group" aria-label="Filter de lokale PRIVATE HUMAN bespreekdesk">
+<label for="shelf-peer-filter">Toon HUMAN vervolgwerk
+<select id="shelf-peer-filter">
+<option value="all">Alle oorspronkelijke bronnen</option>
+<option value="attention">Alle menselijke aandacht nodig</option>
+<option value="conflicts">Tegenstrijdige voorstellen</option>
+<option value="redacted">Onbekende PRIVATE notitiedekking</option>
+<option value="partial">Ontbrekende reviewpakketten</option>
+<option value="mismatch">Oorspronkelijke bronblokkades</option>
+<option value="selected">Expliciet gekozen overnames</option>
+</select></label>
+<label for="shelf-peer-search">Zoek binnen oorspronkelijke PRIVÉ bestandsnamen
+<input id="shelf-peer-search" type="search" autocomplete="off" spellcheck="false" placeholder="Zoeken blijft in deze lokale browser"></label>
+<p id="shelf-peer-filter-count" class="shelf-status" aria-live="polite">Selecteer eerst reviewpakketten. De filters wijzigen geen HUMAN-keuzes.</p>
+</div>
 <div class="table-scroller"><table class="shelf-table" aria-label="Alle lokale reviewvoorstellen bronexact vergeleken">
 <thead><tr><th scope="col">Originele PRIVATE bron</th><th scope="col">Menselijke consensus / conflict</th><th scope="col">Voorstellen per reviewpakket (NOOIT geauthenticeerd)</th><th scope="col">Bewust per bron kiezen</th></tr></thead>
 <tbody id="shelf-peer-rows"></tbody></table></div>
+<details class="shelf-peer-preview" open>
+<summary>HUMAN keuzevoorvertoning · huidige lokale stand tegenover bewust gekozen pakket</summary>
+<div id="shelf-peer-decision-preview" class="shelf-status" aria-live="polite">Nog geen bronexacte menselijke overname gekozen. Niets wordt automatisch toegepast.</div>
+</details>
 <div class="shelf-actions">
+<button type="button" id="shelf-peer-agenda" class="action muted" disabled>Download PRIVATE HUMAN bespreekagenda (.md) — géén autorisatie</button>
 <button type="button" id="shelf-peer-apply" class="action muted" disabled>Pas alleen apart gekozen bronexacte HUMAN voorstellen toe</button>
 <button type="button" id="shelf-peer-summary-export" class="action muted" disabled>Download bronvrije PRIVÉ consensus- en conflictaantallen (.json)</button>
 <button type="button" id="shelf-peer-receipt" class="action muted" disabled>Download brongebonden PRIVÉ HUMAN-returnbon (.json)</button>
@@ -1188,7 +1223,10 @@ const LightUpPrivateDrift = (() => {
     peerPreview = null;
     peerApply.disabled = true;
     peerSummaryExport.disabled = true;
+    el("shelf-peer-agenda").disabled = true;
     peerRows.replaceChildren();
+    el("shelf-peer-filter-count").textContent = "Geen actuele bronexacte menselijke vergelijking.";
+    el("shelf-peer-decision-preview").textContent = "Geen actuele bewuste HUMAN overname gekozen.";
     peerStatus.textContent = "PRIVATE bron-/HUMAN-state gewijzigd. Kies de reviewpakketten opnieuw.";
   };
   const sourceEqual = (row,item) => !!row &&
@@ -1206,11 +1244,81 @@ const LightUpPrivateDrift = (() => {
     : "Geen voorstel voor deze oorspronkelijke bron";
   const peerPending = () => peerPreview &&
     peerPreview.decisions.some(d => Number.isInteger(d.choice) && d.choice >= 0);
+  // A local-only triage desk: filtering never modifies selected HUMAN choices.
+  const peerFilter = el("shelf-peer-filter");
+  const peerSearch = el("shelf-peer-search");
+  const peerAgenda = el("shelf-peer-agenda");
+  const peerPreviewText = el("shelf-peer-decision-preview");
+  const peerFilterCount = el("shelf-peer-filter-count");
+  const peerHumanShort = row => row
+    ? teams[row.human_team] + " / " + stages[row.human_stage] +
+      " / " + routes[row.human_route][0] +
+      (row.private_note_included ? " / PRIVÉ notitie aangeleverd" : " / PRIVÉ notitie onbekend")
+    : "NIETS OVERNEMEN";
+  const refreshPeerDesk = () => {
+    const plan = peerPreview;
+    if (!plan) {
+      peerFilterCount.textContent = "Geen actuele bronexacte menselijke vergelijking.";
+      peerPreviewText.textContent = "Nog geen bewuste HUMAN overname gekozen.";
+      return;
+    }
+    const filter = peerFilter.value;
+    const term = peerSearch.value.normalize("NFC").toLowerCase().trim();
+    const chosen = plan.decisions.filter(d => d.choice >= 0);
+    let visible = 0;
+    for (const d of plan.decisions) {
+      const attention = d.mismatch || d.conflicting || d.noteUncertain ||
+        d.proposalCount < plan.counts.packets;
+      const matches =
+        (filter === "all" || filter === "attention" && attention ||
+         filter === "conflicts" && d.conflicting ||
+         filter === "redacted" && d.noteUncertain ||
+         filter === "partial" && d.proposalCount < plan.counts.packets ||
+         filter === "mismatch" && d.mismatch ||
+         filter === "selected" && d.choice >= 0) &&
+        (!term || d.item.file.name.normalize("NFC").toLowerCase().includes(term));
+      d.row.hidden = !matches;
+      d.row.classList.toggle("shelf-peer-row-hidden",!matches);
+      if (matches) visible++;
+    }
+    peerFilterCount.textContent = visible + "/" + plan.decisions.length +
+      " PRIVATE originele bronnen zichtbaar; " + chosen.length +
+      " bewust gekozen HUMAN voorstellen (ook buiten de huidige filter). Filters nemen niets over.";
+    const container = document.createElement("div");
+    if (!chosen.length) {
+      container.textContent = "Geen HUMAN voorstel gekozen. Zelfs overeenstemmende reviewers veranderen de huidige lokale werkset niet.";
+    } else {
+      const intro = document.createElement("p");
+      intro.textContent = chosen.length + " EXPLICIETE LOCAL HUMAN keuzes, nog NIET toegepast. " +
+        "Huidige PRIVATE notities worden niet in deze voorvertoning weergegeven.";
+      container.append(intro);
+      const ol = document.createElement("ol");
+      ol.className = "shelf-peer-preview-list";
+      for (const d of chosen) {
+        const li = document.createElement("li");
+        const selected = d.allowed[d.choice];
+        li.textContent = d.item.file.name + ": HUIDIG " +
+          teams[d.item.team] + " / " + stages[d.item.stage] + " / " +
+          routes[d.item.route][0] + " → PAKKET " + (d.choice+1) + " " +
+          peerHumanShort(selected) +
+          (d.conflicting ? " · HUMAN CONFLICT" : "") +
+          (d.noteUncertain ? " · NOTITIE ONZEKER" : "");
+        ol.append(li);
+      }
+      container.append(ol);
+    }
+    peerPreviewText.replaceChildren(container);
+  };
+  peerFilter.addEventListener("change", refreshPeerDesk);
+  peerSearch.addEventListener("input", refreshPeerDesk);
   peerInput.addEventListener("change", async () => {
     const files = Array.from(peerInput.files || []);
     peerInput.value = "";
     peerPreview = null; peerRows.replaceChildren();
-    peerApply.disabled = true; peerSummaryExport.disabled = true;
+    peerApply.disabled = true; peerSummaryExport.disabled = true; peerAgenda.disabled = true;
+    peerPreviewText.textContent = "Geen actuele HUMAN-keuze.";
+    peerFilterCount.textContent = "Geen actuele PRIVATE reviewpakketten.";
+    peerFilter.value = "all"; peerSearch.value = "";
     if (busy || !items.length || files.length < 2 || files.length > MAX_PEER_PACKETS ||
         files.some(f => f.size < 10 || f.size > 96 * 1024)) {
       peerStatus.textContent = "HOLD — selecteer originele bronnen en 2–8 PRIVATE reviewpakketten (maximaal 96 KiB per pakket).";
@@ -1281,13 +1389,15 @@ const LightUpPrivateDrift = (() => {
           }
           if (proposals.length < files.length) counts.partial_reviewer_coverage++;
         }
-        const entry = {item,allowed,choice:-1,mismatch,
+        const entry = {item,allowed,choice:-1,mismatch,state,
+          proposalCount:proposals.length,
           conflicting:state==="TEGENSTRIJDIGE HUMAN-KEUZES",
           noteUncertain:state==="PRIVATE NOTITIEDEKKING ONBEKEND"};
         decisions.push(entry);
         const tr = document.createElement("tr");
         cell(tr,item.file.name,"file-name");
-        cell(tr,state + " · " + proposals.length + "/" + files.length + " pakketten");
+        cell(tr,state + " · " + proposals.length + "/" + files.length + " pakketten" +
+          (proposals.length > 0 && proposals.length < files.length ? " · ONVOLLEDIGE DEKKING" : ""));
         const proposalsCell = document.createElement("td");
         const list = document.createElement("ol");
         list.className = "shelf-peer-list";
@@ -1320,14 +1430,17 @@ const LightUpPrivateDrift = (() => {
             entry.choice = Number.isInteger(selected) && (selected===-1 || allowed[selected])
               ? selected : -1;
             peerApply.disabled = !peerPending();
+            refreshPeerDesk();
           });
           td.append(select);
         } else td.textContent = "Niet mogelijk";
-        tr.append(td); peerRows.append(tr);
+        tr.append(td); entry.row = tr; peerRows.append(tr);
       }
       if (epoch !== generation || revision !== humanRevision) throw Error("stale review");
       peerPreview = {decisions,epoch,revision,counts,packetBytes};
       peerSummaryExport.disabled = false;
+      peerAgenda.disabled = false;
+      refreshPeerDesk();
       peerStatus.textContent = "REVIEW_ONLY / NIETS AUTOMATISCH TOEGEPAST — " +
         files.length + " ongetekende pakketten, " + counts.consensus +
         " menselijke overeenkomsten, " + counts.divergent_human_choices +
@@ -1336,13 +1449,105 @@ const LightUpPrivateDrift = (() => {
         " inconsistente originele bronnen. Zelfs consensus verleent NOOIT toestemming.";
     } catch (_) {
       peerPreview = null; peerRows.replaceChildren();
-      peerSummaryExport.disabled = true; peerApply.disabled = true;
+      peerSummaryExport.disabled = true; peerApply.disabled = true; peerAgenda.disabled = true;
+      peerFilterCount.textContent = "Geen geldige reviewpakketten.";
+      peerPreviewText.textContent = "Geen menselijke keuze mogelijk.";
       peerStatus.textContent =
         "HOLD — ongeldige, byte-identieke, ambigue of stale PRIVATE reviewpakketten. Bestaande HUMAN-keuzes behouden.";
     } finally {
       busy = false; peerInput.disabled = false; input.disabled = false;
     }
   });
+  peerAgenda.addEventListener("click", () => {
+    const plan = peerPreview;
+    if (!plan || busy) return report("HOLD — er is geen actuele bronexacte HUMAN bespreeklijst.");
+    if (plan.epoch !== generation || plan.revision !== humanRevision) {
+      discardPeerPreview();
+      return report("HOLD — HUMAN bron/reviewrevisie gewijzigd; agenda niet gemaakt.");
+    }
+    const attention = plan.decisions.filter(d => d.mismatch || d.conflicting ||
+      d.noteUncertain || d.proposalCount < plan.counts.packets);
+    if (!confirm("Download PRIVATE HUMAN bespreekagenda voor ALLE "+plan.decisions.length+
+      " oorspronkelijke bronnen, inclusief "+attention.length+" aandachtspunten, originele bestandsnamen, SHA-256 en alle packet-digests? "+
+      "Dit bevat geen originele bronbytes of PRIVATE notitietekst. Filters worden niet stilzwijgend toegepast. "+
+      "Verifieer de vertrouwelijke ontvanger en het kanaal zelf; nooit consent of grant.")) return;
+    // Unfiltered, source-bound private HUMAN meeting docket. All entries are
+    // serialized via JSON inside Markdown code fences, not rendered as active HTML.
+    const rank = d => d.mismatch ? 0 : d.conflicting ? 1 :
+      d.noteUncertain ? 2 : d.proposalCount < plan.counts.packets ? 3 : 4;
+    const order = [...plan.decisions].sort((a,b) => rank(a)-rank(b));
+    const humanRecord = row => row ? {
+      human_team:row.human_team, human_stage:row.human_stage,
+      human_route:row.human_route, private_note_included:row.private_note_included
+    } : null;
+    const agenda = [
+      "# LightUp — PRIVATE HUMAN review-bespreekagenda",
+      "",
+      "**REVIEW_ONLY · INCUBATE M3/M7 · DRAFT/HOLD · geen autorisatie of scannerrecht.**",
+      "",
+      "Vereist: afzonderlijk gecontroleerde bronhouder, echte actuele client/operatorconsent, "+
+        "revocation-at-use, originele CI/review en expliciete HUMAN GO; dit document vervangt niets daarvan.",
+      "",
+      "Deze export bevat vertrouwelijke oorspronkelijke namen, SHA-256 en menschlijke team/route/fase-keuzes.",
+      "PRIVATE notitieteksten en oorspronkelijke bronbytes ontbreken. "+
+        "Gelijke ongetekende voorstellen bewijzen geen onafhankelijke revieweridentiteit of consent.",
+      "Tabel- en zoekfilters zijn NIET op deze complete agenda toegepast.",
+      "",
+      "## Ontvangen ongetekende HUMAN pakketten (lokale volgorde)",
+      "",
+      "```json",
+      JSON.stringify(plan.packetBytes,null,2),
+      "```",
+      "",
+      "## Bronvrije triageaantallen",
+      "",
+      "```json",
+      JSON.stringify(plan.counts,null,2),
+      "```",
+      "",
+      "## Alle oorspronkelijke dossiers op bespreekprioriteit",
+      ""
+    ];
+    for (const [idx,d] of order.entries()) {
+      const originallySelected = d.choice >= 0 ? d.allowed[d.choice] : null;
+      const entry = {
+        original_source:{
+          name:d.item.file.name,
+          byte_length:d.item.file.size,
+          unsigned_sha256:d.item.hash,
+          structural_kind_unverified:d.item.inspection.kind
+        },
+        human_status:d.state,
+        present_proposals:d.proposalCount,
+        reviewed_packet_count:plan.counts.packets,
+        fenced_all_reviewers:d.mismatch,
+        local_human_before:{
+          human_team:d.item.team,human_stage:d.item.stage,human_route:d.item.route,
+          private_note_present:d.item.note.length>0
+        },
+        human_packets:d.allowed.map((row,index) => ({
+          local_packet_number:index+1,review:humanRecord(row)
+        })),
+        explicit_choice:d.choice < 0 ? "NIETS OVERNEMEN" : "PAKKET "+(d.choice+1),
+        chosen_human_after:humanRecord(originallySelected),
+        no_execution_authority:true
+      };
+      agenda.push("### Dossier "+(idx+1)+" — "+d.state,"",
+        "```json",JSON.stringify(entry,null,2),"```","");
+    }
+    agenda.push("## HUMAN afhandelpunten", "",
+      "1. Leg apart de ontvanger en oorspronkelijke broneigenaar vast; hashes tonen alleen bytes.",
+      "2. Los conflicten en afgeschermde notities afzonderlijk buiten dit document op.",
+      "3. Bepaal per bron opnieuw de handmatige HUMAN keuze; geen bulkautorisatie.",
+      "4. Deel alleen via vertrouwd PRIVATE kanaal. Geen oorspronkelijke bronbestandbytes opgenomen.",
+      "5. Bestaande echte toestemming, grant, revocation, security review en CI blijven gescheiden.",
+      "");
+    download(new Blob([agenda.join("\n")],{type:"text/markdown;charset=utf-8"}),
+      "lightup-scope-PRIVATE-HUMAN-multi-peer-review-agenda.md");
+    report("REVIEW_ONLY — PRIVATE brongebonden HUMAN bespreekagenda met "+
+      order.length+" oorspronkelijke dossiers lokaal gedownload. Geen bronbytes, notitietekst of toestemming.");
+  });
+
   el("shelf-peer-summary-export").addEventListener("click", () => {
     const plan = peerPreview;
     if (!plan) return report("HOLD — eerst een actuele PRIVATE vergelijking maken.");
@@ -1430,6 +1635,9 @@ const LightUpPrivateDrift = (() => {
     peerStatus.textContent="REVIEW_ONLY — "+chosen.length+
       " individueel gekozen HUMAN voorstellen uit "+plan.counts.packets+
       " pakketten overgenomen; de overige lokale reviews behouden.";
+    // The existing preview cannot be replayed against the changed HUMAN workset.
+    peerPreviewText.textContent = "Toegepaste HUMAN keuzes: "+chosen.length+
+      ". Kies opnieuw originele reviewpakketten voor een nieuwe vóór/na-vergelijking.";
     report("REVIEW_ONLY — alleen expliciete bronexacte PRIVATE HUMAN-keuzes toegepast.");
   });
 
@@ -1728,6 +1936,11 @@ const LightUpPrivateDrift = (() => {
     peerRows.replaceChildren();
     peerApply.disabled = true;
     peerSummaryExport.disabled = true;
+    peerAgenda.disabled = true;
+    peerSearch.value = "";
+    peerFilter.value = "all";
+    peerFilterCount.textContent = "PRIVATE reviewvoorstellen uit de browser gewist.";
+    peerPreviewText.textContent = "Geen actuele bronexacte reviewkeuze.";
     peerStatus.textContent = "REVIEW_ONLY — vorige PRIVATE reviewpakketten gewist.";
     lastPeerReceipt = null;
     el("shelf-peer-receipt").disabled = true;

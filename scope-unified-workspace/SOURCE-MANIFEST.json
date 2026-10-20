@@ -220,8 +220,8 @@
     },
     {
       "path": "scope-unified-workspace/README.md",
-      "sha256": "95d4a23698adc9eecae37bebb3fa1d4e808c6d19033f33ad13e43e7c289f4d24",
-      "size": 35765
+      "sha256": "d67849fa1977a1a14dc12ef204161bc516665b8f379f8886ca8cd438c1995160",
+      "size": 38901
     },
     {
       "path": "scope-unified-workspace/build.py",
@@ -240,18 +240,18 @@
     },
     {
       "path": "scope-unified-workspace/handoff.html",
-      "sha256": "107886e173903db53b54957ab8b73f7457d5da83efd13c7ac120ad238549f409",
-      "size": 119028
+      "sha256": "6f2afde6748f6dd9588996d8595832ee3373797040638b6ae481b1b286bfd99a",
+      "size": 131366
     },
     {
       "path": "scope-unified-workspace/handoff.js",
-      "sha256": "35076c5aeea91c5d73f650f763653f3a27264255095927c0966599031705741a",
-      "size": 71612
+      "sha256": "7fdc83208fd0a487a1e8a15526e95c0eaf4965d3ad52061a203444ef9c22d1ef",
+      "size": 81055
     },
     {
       "path": "scope-unified-workspace/handoff.template.html",
-      "sha256": "f08bafedfee8f2d707f88bcaabbc9bd81b449a7da90b849fab58f2eed32fffe0",
-      "size": 18207
+      "sha256": "ea07d01bf1157948c435bb698abe72c801f69f3a67de477c2286f90b8f6cdd46",
+      "size": 19703
     },
     {
       "path": "scope-unified-workspace/hub.template.html",
@@ -260,8 +260,8 @@
     },
     {
       "path": "scope-unified-workspace/index.html",
-      "sha256": "4d3335a2e7d66c50c171ed04ec458c5b16f3be165108537cb1059caffc8c03b7",
-      "size": 23109
+      "sha256": "6ab4a8b0c4a82e5c4a1a6e3831f2db1ff542a0747fa37c692ec80d271ee64a62",
+      "size": 24508
     },
     {
       "path": "scope-unified-workspace/source-drift.js",
@@ -280,8 +280,8 @@
     },
     {
       "path": "scope-unified-workspace/style.css",
-      "sha256": "8cb7f5654a35749befb2e2e268cce4750ec5aaee566b863b7b5336a4eecf3fb3",
-      "size": 13016
+      "sha256": "310057eefde90910ad91e48b3b4b8e37ad85dcee75a4598ee1e484bf24695fca",
+      "size": 14415
     },
     {
       "path": "scope-unified-workspace/verify-local.js",
@@ -290,8 +290,8 @@
     },
     {
       "path": "scope-unified-workspace/verify.html",
-      "sha256": "48a44327c760da267bded629b6c60867e978d559d504d7ae0611164ce75bd4f0",
-      "size": 19583
+      "sha256": "6e9a4fb9feecb2fccb9c09f13f180d76b1f6a57a932ca74cc2a0cfe90b211cb9",
+      "size": 20982
     },
     {
       "path": "scope-unified-workspace/verify.template.html",
