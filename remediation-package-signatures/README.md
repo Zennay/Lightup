@@ -328,6 +328,43 @@ HTML file cannot enforce current trust or remote revocation by itself.
 Original CI, independent reviews, client/operator consent, and HUMAN GO
 remain mandatory for any actual release.
 
+## Private historic software impact desk after LOCAL signer revocation
+
+Revoking a local trust record stops normal **fresh admission/reopen**, but it
+cannot pull back software already downloaded by another operator. The
+independent offline impact desk permits a **read-only inventory** of old
+original signed software, *including packages signed by now-revoked keys*,
+WITHOUT upgrading such packages to trusted status.
+
+The user explicitly selects 1–12 previous, owner-private original software
+inboxes, up to 24 total original source-only packages. Each original ZIP
+byte digest, all original Ed25519 signatures and original native installed
+source inventory are checked before the tool derives the local status for
+each original key. The output is a fresh PRIVATE scriptless HTML and
+source-bound JSON report showing signed original software digests, locally
+REVOKED signers, and clear HUMAN follow-up, with no client data, permissions
+or remediation verification.
+
+    python3 remediation-package-signatures/revocation_impact.py \
+      --keyring /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry \
+      --inbox /ABSOLUTE/OWNER/PRIVATE/custody-workroom/earlier-inbox \
+      --output-dir /ABSOLUTE/OWNER/PRIVATE/custody-workroom/new-impact-desk
+
+Use **operator desk menu option 9** for the same private, foreground flow.
+Even when the archived original signature is cryptographically valid, a
+currently REVOKED signer is shown as **LOCAL_REVOKED_HOLD**. This never
+restores trust, never issues an authorization or pretends prior distribution
+can be erased. The key's old human label and the current HUMAN label may
+differ between two independently curated local registries; the actual
+Ed25519 public key fingerprint, not a human label, defines byte identity.
+
+Local revocation records can be managed only by the owner-controlled local
+registry; they are not remotely authenticated client consent or a distributed
+PKI. The impact report is a static private snapshot and must be regenerated
+when key state changes. The original source-owner, security/privacy reviews,
+mandatory exact-head CI, explicit separate current consent, action-time
+revocation and HUMAN GO remain outside these tools.
+
 ## Limits and operational risks
 
 - Password/key loss cannot be recovered; do not store the private PEM in Git.
