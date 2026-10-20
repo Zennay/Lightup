@@ -53,3 +53,8 @@ The source file content is never included in either output; **the redacted conte
 ## Source ownership
 
 This lane is exclusively `private-assessment-notes/` plus the **exact original** `src/lightup/redaction.py` fix from [PR #672](https://github.com/Zennay/Lightup/pull/672). It does **not** alter the concurrently active [assessment-integrated-suite PR #1688](https://github.com/Zennay/Lightup/pull/1688), any active source-authority owner, assessment executor, domain state, auth policy, persistence, runner, CI, test path or third-party repo. The original author PR is not silently claimed as complete.
+
+**CSV safety:** PRIVATE human notes beginning with a spreadsheet formula prefix
+(`=`, `+`, `-`, or `@`, even after whitespace) are rejected in
+both the browser export and native finalize. Do not open untrusted CSV with
+spreadsheet macros or auto-link execution enabled.

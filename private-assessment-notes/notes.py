@@ -290,6 +290,7 @@ def load_decisions(raw: bytes, bindings: list[dict]) -> list[dict]:
             raise Hold("HOLD: original PRIVATE identity or HUMAN decision is invalid")
         note = decision["human_note"]
         if (type(note) is not str or len(note) > 500
+                or note.lstrip().startswith(("=", "+", "-", "@"))
                 or any(ord(ch) < 32 and ch not in "\t" for ch in note)):
             raise Hold("HOLD: HUMAN note must be short plain text")
         out.append({"human_stage": decision["human_stage"], "human_note": note,

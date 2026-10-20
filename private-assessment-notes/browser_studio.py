@@ -29,7 +29,8 @@ JS = r"""
           .replace(/[\r\n\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ")
           .trim();
       if (!/^([0-9a-f]{64})$/.test(source) || !/^\d+$/.test(ordinal)
-          || !permitted.has(stage) || note.length > 500) {
+          || !permitted.has(stage) || note.length > 500
+          || /^[\s]*[=+@-]/.test(note)) {
         message.textContent = "HOLD: invalid local HUMAN decision; nothing saved.";
         return;
       }
