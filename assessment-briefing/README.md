@@ -53,3 +53,19 @@ python3 assessment-briefing/aggregate.py --source ./original-private-lab.json --
 ```
 
 This prepares a scriptless printable `private-human-aggregate.html` and the corresponding `private-human-aggregate.json`, using only original **source-declared totals**: endpoint/finding counts, severity distribution, records with an evidence-reference list and records with an evidence-summary. Neither file carries original finding names, IDs, targets, run labels, scenario labels, evidence text or source hashes. All permission and validity flags are explicitly false, and actionable human questions are supplied without inferring fixes or execution. Success exit code is 2 (REVIEW_ONLY). **Aggregate counts can still reveal sensitive information**, so use only a separately approved private channel. Not a release, not a source authenticity signature, and not a public safe-to-share certification.
+
+## NEW: completed human worksheet → PRIVATE follow-up return
+
+The original `human-followup.csv` is now genuinely reusable. After a human fills the **four original human columns** (`human_stage`, `human_owner_group`, `human_next_action`, `human_blocker`) in a PRIVATE local spreadsheet, close the file and export it as UTF-8 CSV with the original seven headers and original row ordering. Human stage may be blank or `needs_review`, `discussing`, `blocked`, `documented`; the program never infers approval from any value.
+
+```bash
+python3 assessment-briefing/human_return.py \
+  --source ./original-private-lab.json \
+  --manifest ./NEW-PRIVATE-BRIEFING/manifest.json \
+  --worksheet ./human-filled-followup.csv \
+  --output-dir ./NEW-PRIVATE-HUMAN-RETURN
+```
+
+This strictly reopens the same independently obtained original lab file and verifies its **exact unsigned source-byte digest** against the original briefing manifest, original endpoint/finding totals, the complete seven-column worksheet header, EVERY original ordinal, EVERY original severity and its evidence-reference count before touching output. CSV size is limited to 1 MiB, human owner to 120 characters, each action/blocker to 600, and unknown status values or altered membership HOLD the whole import. There is no silent row matching or partial application. Both supplied original lab and worksheet are still untrusted local files; the unsigned manifest does not authenticate the producer or human identity.
+
+Creates an entirely NEW 0700 private directory containing `private-human-return.html` (printable scriptless private per-finding human plan plus original unchanged evidence in optional detail panels) and `private-human-summary.json` (self-reported status counts and no human names/notes). Each file is 0600, and any previous outputs or original source remain unchanged. Human edits are labels/proposals only, not verified remediation, approval, source authenticity, real-time consent, accepted scope or authorization. Exit 2 is REVIEW_ONLY and exit 3 is HOLD.
