@@ -150,6 +150,61 @@
     element.addEventListener("click", handler);
     return element;
   }
+  function asBase64(bytes) {
+    const chunks = [];
+    for (let i = 0; i < bytes.length; i += 8192) {
+      chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
+    }
+    return btoa(chunks.join(""));
+  }
+  async function encryptSubset() {
+    const active = slots[Number(el("source-select").value)];
+    const pass = el("subset-pass"), verify = el("subset-confirm");
+    const secret = pass.value, confirmed = verify.value;
+    pass.value = ""; verify.value = "";
+    el("subset-export").disabled = true;
+    try {
+      demand(active, "Unlock and select a PRIVATE archive");
+      const checkboxes = [...el("file-rows").querySelectorAll("input[type=checkbox]:checked")];
+      demand(checkboxes.length > 0 && checkboxes.length <= MAX_FILES, "Select one or more original files");
+      const selected = checkboxes.map(input => active.files[Number(input.value)]);
+      demand(selected.every(Boolean), "Invalid current selection");
+      demand(secret === confirmed, "New passwords do not match");
+      demand(encoder.encode(secret).length >= 12 && encoder.encode(secret).length <= 1024,
+        "New password must be 12-1024 UTF-8 bytes");
+      demand(globalThis.isSecureContext && crypto?.subtle, "WebCrypto unavailable");
+      demand(confirm("Encrypt " + selected.length + " original PRIVATE files into a new download? " +
+        "This does NOT authorize any disclosure or data transfer."), "Operator declined new archive");
+      const files = selected.map(file => ({ name: file.name, size: file.size,
+        sha256: file.sha256, bytes: asBase64(file.bytes) }));
+      const inner = { version: VERSION, authority: FLAGS, files };
+      const plaintext = encoder.encode(asJsonAscii(inner));
+      demand(plaintext.byteLength <= MAX_ARCHIVE, "Private selected payload exceeds budget");
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      const imported = await crypto.subtle.importKey("raw", encoder.encode(secret), "PBKDF2", false, ["deriveKey"]);
+      const key = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256",
+        salt, iterations: ROUNDS }, imported, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
+      const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce,
+        additionalData: AAD, tagLength: 128 }, key, plaintext));
+      const envelope = { version: VERSION, kdf: "PBKDF2-HMAC-SHA256", iterations: ROUNDS,
+        salt: asBase64(salt), nonce: asBase64(nonce),
+        ciphertext: asBase64(cipher), authority: FLAGS };
+      const output = encoder.encode(asJsonAscii(envelope) + "\n");
+      demand(output.length <= MAX_ARCHIVE, "Encrypted backup exceeds 38 MiB browser budget");
+      const blob = new Blob([output], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob), anchor = document.createElement("a");
+      anchor.href = url; anchor.download = "LightUp-PRIVATE-HUMAN-selected-DRAFT-HOLD.lupb";
+      anchor.rel = "noopener"; anchor.hidden = true;
+      document.body.append(anchor); anchor.click(); anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      status("subset-status", "PRIVATE HOLD: encrypted " + selected.length +
+        " exact original files into a newly downloaded .lupb. Browser download location may be unsafe; " +
+        "move to owner-private storage. No approval/disclosure implied.");
+    } catch (error) {
+      status("subset-status", "HOLD: " + (error?.message || "Subset encryption failed"));
+    } finally { el("subset-export").disabled = false; }
+  }
   function download(file) {
     if (!confirm("Export this original PRIVATE file as unencrypted plaintext? No authorization or sanitization is implied.")) return;
     const blob = new Blob([file.bytes], { type: "application/octet-stream" });
@@ -195,6 +250,12 @@
       controls.append(button("Preview", () => preview(f)));
       controls.append(button("Download plaintext", () => download(f)));
       row.append(controls);
+      const selection = document.createElement("td");
+      const input = document.createElement("input");
+      input.type = "checkbox"; input.value = String(archive.files.indexOf(f));
+      input.setAttribute("aria-label", "Include original " + f.name + " in a new encrypted PRIVATE archive");
+      selection.append(input);
+      row.append(selection);
       root.append(row);
     }
   }
@@ -226,6 +287,7 @@
   el("a-clear").addEventListener("click", () => clear(0));
   el("b-clear").addEventListener("click", () => clear(1));
   el("source-select").addEventListener("change", renderInventory);
+  el("subset-export").addEventListener("click", encryptSubset);
   el("clear-all").addEventListener("click", () => { clear(0); clear(1); });
   window.addEventListener("pagehide", () => { slots[0] = null; slots[1] = null; });
   render();
