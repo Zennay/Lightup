@@ -7,7 +7,7 @@
   const el = id => document.getElementById(id);
   const sourceKeys = new Map(model.sources.map(x => [x.packet, x.source_sha256]));
   const original = model.tasks.map(x => ({packet:x.packet,slot:x.slot,reason:x.reason,count:x.count}));
-  let rows = model.tasks.map(x => ({...x})), dirty = false;
+  let rows = model.tasks.map(x => ({...x})), dirty = false, lastBatch = null;
 
   const fatal = reason => { throw new Error(reason); };
   const sameKeys = (obj,keys) => obj && typeof obj === "object" && !Array.isArray(obj) &&
@@ -121,6 +121,56 @@
     if(!visible){const p=document.createElement("p");p.textContent="No HUMAN tasks match your filters.";host.append(p);}
     renderStats();
   }
+  // Bulk actions apply only to the presently visible, source-bound HUMAN rows.
+  // Never rewrite source-free packet identity/counts, notes, or trusted chronology.
+  function visibleIndices() {
+    const q=el("search").value.trim().toLocaleLowerCase(), f=el("filter").value, p=el("source").value;
+    const result=[];
+    for(let i=0;i<rows.length;i++){
+      const x=rows[i];
+      if(p!=="all"&&String(x.packet)!==p)continue;
+      if(q&&![x.reason,x.owner,x.next_action,x.human_note,String(x.packet)].join(" ").toLocaleLowerCase().includes(q))continue;
+      if(f==="overdue"&&!overdue(x))continue;
+      if(f==="unscheduled"&&x.due)continue;
+      if(f==="unowned"&&x.owner.trim())continue;
+      if(f==="pending"&&x.stage==="answered_human_only")continue;
+      result.push(i);
+    }
+    return result;
+  }
+  function applyBulk() {
+    const indices=visibleIndices(), useOwner=el("batchUseOwner").checked,
+      useDue=el("batchUseDue").checked,stage=el("batchStage").value,
+      owner=el("batchOwner").value,due=el("batchDue").value;
+    if(!indices.length)fatal("No currently visible HUMAN tasks");
+    if(!useOwner&&!useDue&&stage==="keep")fatal("Choose at least one field to change");
+    if(useOwner&&!validText(owner,64,256))fatal("Invalid bulk HUMAN owner");
+    if(useDue&&!validDate(due))fatal("Invalid tentative bulk date");
+    if(stage!=="keep"&&!STAGES.includes(stage))fatal("Unknown HUMAN stage");
+    const candidate=rows.map(x=>({...x}));
+    for(const i of indices) {
+      if(useOwner) candidate[i].owner=owner;
+      if(useDue) candidate[i].due=due;
+      if(stage!=="keep")candidate[i].stage=stage;
+    }
+    validate(candidate);
+    const changed=indices.filter(i=>JSON.stringify(rows[i])!==JSON.stringify(candidate[i])).length;
+    if(!changed)fatal("Batch would make no HUMAN planning changes");
+    const preview=`Apply to ${changed} of ${indices.length} visible source-bound HUMAN tasks? `+
+      `Owner: ${useOwner?(owner||"[clear]"):"KEEP"}; tentative date: ${useDue?(due||"[clear]"):"KEEP"}; stage: ${stage}. `+
+      "These are HUMAN proposals only, not remediation, authorization or verified fixes.";
+    if(!confirm(preview))return;
+    lastBatch={before:rows.map(x=>({...x})),after:JSON.stringify(candidate),wasDirty:dirty};
+    rows=candidate;dirty=true;el("undo").disabled=false;render();
+    status(`Applied HUMAN-only planning change to ${changed} task(s). Original source-free evidence and HUMAN notes untouched.`);
+  }
+  function undoBatch() {
+    if(!lastBatch)fatal("No previous batch to undo");
+    if(JSON.stringify(rows)!==lastBatch.after)fatal("HUMAN records changed since batch: do not overwrite newer edits");
+    if(!confirm("Undo the entire last HUMAN bulk action?"))return;
+    rows=validate(lastBatch.before);dirty=lastBatch.wasDirty;lastBatch=null;
+    el("undo").disabled=true;render();status("Last HUMAN-only batch undone completely; original source untouched.");
+  }
   async function saveEncrypted() {
     if(!crypto?.subtle) fatal("Web Crypto unavailable in this offline browser");
     const plan=snapshot(),phrase=prompt("Enter a NEW private plan password (at least 12 characters).");
@@ -160,7 +210,7 @@
       await keyFor(password,salt,["decrypt"]),cipher);
     const candidate=admitPlan(JSON.parse(textDecoder.decode(plain)));
     if(dirty&&!confirm("Replace unsaved HUMAN schedule edits with the admitted encrypted plan?"))return;
-    rows=candidate;dirty=false;render();status("Original source-bound PRIVATE HUMAN schedule reopened. This is not authenticated sender or consent proof.");
+    rows=candidate;dirty=false;lastBatch=null;el("undo").disabled=true;render();status("Original source-bound PRIVATE HUMAN schedule reopened. This is not authenticated sender or consent proof.");
   }
   function exportCalendar() {
     const due=validate(rows).filter(x=>x.due);
@@ -196,6 +246,8 @@
   el("search").addEventListener("input",render);
   el("filter").addEventListener("change",render);
   el("source").addEventListener("change",render);
+  el("bulk").addEventListener("click",()=>{try{applyBulk();}catch(e){status("HOLD: "+e.message);}});
+  el("undo").addEventListener("click",()=>{try{undoBatch();}catch(e){status("HOLD: "+e.message);}});
   el("save").addEventListener("click",()=>saveEncrypted().catch(e=>status("HOLD: "+e.message)));
   el("open").addEventListener("click",()=>el("openfile").click());
   el("openfile").addEventListener("change",e=>{openEncrypted(e.target.files[0]).catch(err=>status("HOLD: "+err.message));e.target.value="";});
