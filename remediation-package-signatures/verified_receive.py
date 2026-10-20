@@ -81,6 +81,8 @@ def receive(
         # admitted software; failures leave no partially received final suite.
         install.exclusive_publish(unpublished, fresh_output_dir)
     print("SIGNED-CUSTODY + SOURCE-LOCK REVIEW_ONLY: PRIVATE local suite received.")
+    print("Published new source-admitted recipient:", fresh_output_dir)
+    print("Open offline original local suite:", fresh_output_dir / "index.html")
     print("This is NOT release approval, identity proof, consent, or permission to run scans.")
 
 
