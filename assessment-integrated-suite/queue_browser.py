@@ -30,6 +30,7 @@ button,.file-label{background:#234f67;color:#edf9ff;font:inherit;font-weight:680
 button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,
 .file-label:focus-within{outline:3px solid #ffe1a0;outline-offset:3px}
 button:hover,.file-label:hover{background:#306681}
+button:disabled{opacity:.42;cursor:not-allowed}
 .file-label input{position:absolute;opacity:0;width:1px;height:1px}
 .secondary{background:#34485a}
 .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));
@@ -112,6 +113,9 @@ Never share, upload, email, paste into public cloud tools, or run HTTP server.</
 </section>
 <div class="actions">
 <button type="button" id="download">Export entire PRIVATE HUMAN CSV</button>
+<button class="secondary" type="button" id="saved" disabled>Acknowledge local save</button>
+<button class="secondary" type="button" id="undo" disabled>Undo</button>
+<button class="secondary" type="button" id="redo" disabled>Redo</button>
 <label class="file-label">Import original local HUMAN CSV
 <input type="file" id="csv-input" accept=".csv,text/csv"></label>
 <button class="secondary" type="button" id="reset">Discard drafts</button>
@@ -123,6 +127,14 @@ Never share, upload, email, paste into public cloud tools, or run HTTP server.</
 <label>Search existing workflows<input id="search" type="search" autocomplete="off"></label>
 <label>Filter HUMAN stage<select id="stage-filter"></select></label>
 <label>Filter assigned team<select id="team-filter"></select></label>
+</div>
+<div class="actions">
+<label>Bulk stage for FILTERED visible rows only
+<select id="bulk-stage">
+<option value="HOLD">HOLD</option>
+<option value="NEEDS_INPUT">NEEDS INPUT</option>
+</select></label>
+<button class="secondary" type="button" id="bulk">Apply HUMAN stage to visible rows</button>
 </div>
 <p id="visible" class="hint" aria-live="polite"></p>
 <main id="list"></main>

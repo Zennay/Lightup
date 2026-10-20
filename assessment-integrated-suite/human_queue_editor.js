@@ -11,6 +11,10 @@
   let draft = reference.map((row) => ({ ...row }));
   let dirty = false;
   let updateGeneration = 0;
+  let exportedRevision = -1;
+  const undoStack = [];
+  const redoStack = [];
+  const MAX_HISTORY = 25;
   const status = q("status");
   const savedHash = reference[0]?.snapshot_sha256 || "";
   const setMessage = (message, problem = false) => {
@@ -33,6 +37,37 @@
       (row.human_stage !== "UNASSESSED" ||
        !(row.review_team || row.followup_date || row.human_question));
   }
+  function checkpoint() {
+    undoStack.push({ rows: draft.map((row) => ({ ...row })), dirty });
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    redoStack.length = 0;
+  }
+  function timeTravel(from, to, message) {
+    if (!from.length) return;
+    to.push({ rows: draft.map((row) => ({ ...row })), dirty });
+    if (to.length > MAX_HISTORY) to.shift();
+    const earlier = from.pop();
+    draft = earlier.rows.map((row) => ({ ...row }));
+    dirty = earlier.dirty;
+    updateGeneration += 1;
+    exportedRevision = -1;
+    setMessage(message + " This remains PRIVATE HUMAN-only.");
+    render();
+  }
+  function visibleIndices() {
+    const search = q("search").value.trim().toLocaleLowerCase();
+    const stage = q("stage-filter").value;
+    const team = q("team-filter").value;
+    const indexes = [];
+    draft.forEach((item, i) => {
+      if (search && !(item.title + " " + item.workflow_key + " " + item.human_next)
+        .toLocaleLowerCase().includes(search)) return;
+      if (stage && stage !== item.human_stage) return;
+      if (team && team !== item.review_team) return;
+      indexes.push(i);
+    });
+    return indexes;
+  }
   function showCounts() {
     const summary = STAGES.map((stage) => {
       const count = draft.filter((item) => item.human_stage === stage).length;
@@ -40,8 +75,11 @@
     }).join(" · ");
     q("counts").textContent = summary;
     q("dirty").textContent = dirty ?
-      "Unsaved HUMAN changes — export a NEW private CSV before closing." :
-      "No unsaved changes since original/local import.";
+      "HUMAN edits not acknowledged saved — export CSV and confirm local custody." :
+      "No unacknowledged HUMAN edits since original/admitted CSV.";
+    q("undo").disabled = undoStack.length === 0;
+    q("redo").disabled = redoStack.length === 0;
+    q("saved").disabled = exportedRevision !== updateGeneration;
   }
   function el(name, className, value) {
     const node = document.createElement(name);
@@ -74,26 +112,22 @@
       setMessage("HOLD: invalid HUMAN stage, date, question, or spreadsheet formula prefix.", true);
       return false;
     }
+    if (["human_stage", "review_team", "followup_date", "human_question"]
+      .every((field) => revised[field] === draft[row][field])) return true;
+    checkpoint();
     draft[row] = revised;
     dirty = true;
     updateGeneration += 1;
+    exportedRevision = -1;
     showCounts();
     return true;
   }
   function render() {
-    const search = q("search").value.trim().toLocaleLowerCase();
-    const stageFilter = q("stage-filter").value;
-    const teamFilter = q("team-filter").value;
     const host = q("list");
     host.replaceChildren();
-    let visible = 0;
-    for (let i = 0; i < draft.length; i++) {
+    const visibleRows = visibleIndices();
+    for (const i of visibleRows) {
       const item = draft[i];
-      if (search && !(item.title + " " + item.workflow_key + " " + item.human_next)
-        .toLocaleLowerCase().includes(search)) continue;
-      if (stageFilter && stageFilter !== item.human_stage) continue;
-      if (teamFilter && teamFilter !== item.review_team) continue;
-      visible += 1;
       const card = el("article", "card");
       card.append(el("h3", "", item.title));
       const state = el("p", "hint", "Original page: " +
@@ -142,12 +176,12 @@
       }
       host.append(card);
     }
-    q("visible").textContent = visible + " of " + draft.length +
+    q("visible").textContent = visibleRows.length + " of " + draft.length +
       " original workflow rows shown (filters do not exclude rows from export).";
     showCounts();
   }
-  // Strict CSV reader handling UTF-8 quotes, embedded comma and CRLF.
-  // Reject malformed quoting/line endings instead of guessing.
+  // Strict CSV reader handling UTF-8 quotes, embedded comma, LF and CRLF.
+  // Reject malformed quoting and isolated CR.
   function csvParse(source) {
     const table = [];
     let row = [], cell = "", quoted = false, closed = false;
@@ -167,7 +201,7 @@
         if (ch === "\r") {
           if (source[i + 1] !== "\n") throw new Error("Expected canonical CRLF");
           i++;
-        } else throw new Error("Expected canonical CRLF");
+        } else if (ch !== "\n") throw new Error("Expected LF or CRLF");
         table.push(row); row = [];
       } else if (ch === '"') {
         if (cell || closed) throw new Error("Invalid CSV quote");
@@ -223,9 +257,11 @@
         setMessage("Import cancelled: previous HUMAN edits preserved.");
         return;
       }
+      checkpoint();
       draft = admitted;
       dirty = false;
       updateGeneration += 1;
+      exportedRevision = -1;
       setMessage("Original matching HUMAN CSV loaded in memory; no disk files changed.");
       render();
     } catch (error) {
@@ -255,9 +291,9 @@
     anchor.click();
     anchor.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-    dirty = false;
+    exportedRevision = updateGeneration;
     showCounts();
-    setMessage("PRIVATE CSV download requested. Confirm browser saved it, then move to owner-only 0700 and set 0600 before native option 43. Never distribute automatically.");
+    setMessage("CSV download REQUESTED, not verified saved. Confirm actual browser download and owner-only 0700/0600 custody, then explicitly acknowledge local save.");
   }
   for (const id of ["search", "stage-filter", "team-filter"])
     q(id).addEventListener(id === "search" ? "input" : "change", render);
@@ -267,10 +303,52 @@
     event.target.value = "";
   });
   q("download").addEventListener("click", exportCSV);
+  q("saved").addEventListener("click", () => {
+    if (exportedRevision !== updateGeneration) {
+      setMessage("HOLD: latest export is older than the HUMAN draft.", true);
+      return;
+    }
+    if (window.confirm("Did you verify the CSV download, move it into owner-only 0700, and set 0600 permissions? This is NOT approval or source authentication.")) {
+      dirty = false;
+      exportedRevision = -1;
+      setMessage("Local HUMAN save acknowledged. Original native CSV admission remains required.");
+      showCounts();
+    }
+  });
+  q("undo").addEventListener("click", () => timeTravel(
+    undoStack, redoStack, "Undid previous HUMAN change."));
+  q("redo").addEventListener("click", () => timeTravel(
+    redoStack, undoStack, "Reapplied HUMAN change."));
+  q("bulk").addEventListener("click", () => {
+    const choice = q("bulk-stage").value;
+    if (!["HOLD", "NEEDS_INPUT"].includes(choice)) {
+      setMessage("HOLD: only non-authorizing bulk actions are supported.", true);
+      return;
+    }
+    const visible = visibleIndices();
+    const changed = visible.filter((i) => draft[i].human_stage !== choice);
+    if (!changed.length) {
+      setMessage("No visible HUMAN workflow needs this status change.");
+      return;
+    }
+    if (!window.confirm("Set " + changed.length + " of " + visible.length +
+      " FILTERED visible HUMAN rows to " + choice +
+      "? Hidden rows are untouched. No assessment will execute.")) return;
+    checkpoint();
+    changed.forEach((i) => { draft[i] = { ...draft[i], human_stage: choice }; });
+    dirty = true;
+    exportedRevision = -1;
+    updateGeneration += 1;
+    setMessage("Only " + changed.length + " visible HUMAN rows set to " + choice +
+      ". Undo is available. Original files are unchanged.");
+    render();
+  });
   q("reset").addEventListener("click", () => {
     if (!dirty || window.confirm("Discard unexported HUMAN edits and return to original, source-bound draft?")) {
+      checkpoint();
       draft = reference.map((row) => ({ ...row }));
       dirty = false; updateGeneration += 1;
+      exportedRevision = -1;
       setMessage("Original HUMAN queue draft restored in memory. No files changed.");
       render();
     }

@@ -57,7 +57,22 @@ network request, scan, grant, release or upload is used.
 Use the offline UI to search/filter the original workflow rows; deliberately
 choose HUMAN stage/team and local follow-up date; edit a short private HUMAN
 question; and download a **complete** exact-session-bound six-column CSV,
-even when filters hide other rows. All selections remain in browser memory
+even when filters hide other rows. The editor also supports **up to 25
+in-memory undo/redo snapshots** and confirmation-gated **bulk HOLD or
+NEEDS_INPUT for only currently visible filtered rows**. A filtered bulk action
+cannot assign a team, verify a finding, mark PASS or change hidden records.
+When a saved CSV is imported, its original session binding and exact workflow
+order are checked before replacing the draft; pre-existing edits can be
+discarded only after a separate HUMAN confirmation. The CSV parser admits
+canonical LF or CRLF while rejecting isolated CR and malformed quote syntax.
+
+Export means only **download requested**; browsers can cancel downloads.
+The editor therefore still shows unsaved HUMAN edits until the operator
+manually confirms that the downloaded file truly exists in owner-only
+0700 custody with 0600 file permissions. That local acknowledgement does
+not prove the original source, HUMAN identity or permission. Any subsequent
+HUMAN edit invalidates the old export acknowledgement; a fresh export and
+native option 43 re-admission are required. All selections remain in browser memory
 until deliberately downloaded. An existing original HUMAN CSV may be
 reimported via a manual local file picker; strict quoted-CSV, exact workflow
 order/session digest, stage/team/date/question rules are checked before
