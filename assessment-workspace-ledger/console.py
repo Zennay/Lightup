@@ -16,6 +16,7 @@ import continuity
 import human_revisions
 import history
 import history_human
+import history_team
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -37,6 +38,9 @@ MENU = (
     ("13", "Review 2-12 ORIGINAL capture-linked inventory snapshots as PRIVATE HUMAN history"),
     ("14", "Native-finalize ORIGINAL chain-bound HUMAN historical review CSV"),
     ("15", "Native-finalize explicit browser-downloaded HUMAN historical CSV in PRIVATE custody"),
+    ("16", "Prepare PRIVATE source-bound two-to-eight HUMAN reviewer conflict workroom"),
+    ("17", "Finalize explicit original HUMAN reviewer choices in native PRIVATE custody"),
+    ("18", "Finalize browser-downloaded original HUMAN reviewer choices in PRIVATE custody"),
     ("0", "Exit"),
 )
 
@@ -121,6 +125,27 @@ def handle_action(action):
             ledger=originals,
             plan=csv_path if action == "14" else None,
             browser_csv=csv_path if action == "15" else None,
+            private_parent=private_parent()
+        ))
+    if action == "16":
+        print("Select 2-8 distinct original native PRIVATE-HUMAN-history.json packets.")
+        reviewer_packets = []
+        while len(reviewer_packets) < 8:
+            source = prompt("Original HUMAN packet " + str(len(reviewer_packets) + 1),
+                            required=len(reviewer_packets) < 2)
+            if not source:
+                break
+            reviewer_packets.append(source)
+        return history_team.prepare(argparse.Namespace(
+            ledger=history_paths(), reviewer=reviewer_packets,
+            private_parent=private_parent()
+        ))
+    if action in ("17", "18"):
+        return history_team.finalize(argparse.Namespace(
+            context=prompt("Exact original PRIVATE-team-context.json"),
+            csv=prompt("Original PRIVATE HUMAN-team-review.csv") if action == "17" else None,
+            browser_csv=prompt("Explicit browser Downloads HUMAN-team-review.csv")
+            if action == "18" else None,
             private_parent=private_parent()
         ))
     if action == "5":
