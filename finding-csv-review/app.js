@@ -22,7 +22,7 @@
   });
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
-  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, sourceText: ""};
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, sourceText: "", revisionCandidate: null, revisionHistory: []};
 
   function fail(message) { throw new Error(message); }
   function exactObject(obj, keys) {
@@ -131,14 +131,124 @@
     $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveWorkroom", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy", "revisionFile", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveWorkroom", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
   }
   function stageText(s) { return s.replaceAll("_", " "); }
+  function clearRevisionCandidate() {
+    state.revisionCandidate = null;
+    $("revisionPreview").hidden = true;
+    $("revisionFile").value = "";
+    $("revisionChangedList").replaceChildren();
+    $("revisionAbsentList").replaceChildren();
+  }
+  function refreshRevisionArchive() {
+    $("revisionHistoryDownload").disabled = state.revisionHistory.length === 0;
+    $("revisionHistoryDownload").textContent = state.revisionHistory.length
+      ? "Download PRIVATE prior HUMAN archive (" + state.revisionHistory.length + " revision(s))"
+      : "No prior HUMAN archive";
+  }
+  async function previewRevision(file) {
+    if (state.pending) {
+      status("Apply or discard unapplied HUMAN edits before source comparison.", true);
+      return;
+    }
+    if (!state.rows.length) {
+      status("Open an original source CSV before comparing another snapshot.", true);
+      return;
+    }
+    try {
+      const {bytes, value} = await readFile(file, MAX_FILE);
+      const nextRows = admitCsv(value);
+      if (!nextRows.length) fail("An empty next source cannot be promoted; missing records are not fixed");
+      const sha = await digest(bytes);
+      const plan = LightUpCsvRevision.build(state.rows, nextRows, state.journal, state.digest, sha);
+      clearRevisionCandidate();
+      state.revisionCandidate = {...plan, csvText: value};
+      $("revisionPreview").hidden = false;
+      $("revisionChanged").value = "reset";
+      $("revisionDigest").textContent = "Current (unsigned): " + state.digest +
+        " · selected incoming (unsigned): " + sha;
+      $("revisionCounts").textContent = plan.stats.unchanged + " unchanged · " +
+        plan.stats.changed + " source-edited · " + plan.stats.added +
+        " new · " + plan.stats.absent + " absent (NOT fixed)";
+      for (const item of plan.affected) {
+        const row = document.createElement("p");
+        row.textContent = item.id + " · prior " + item.source_severity.toUpperCase() +
+          " · " + item.source_title +
+          (item.human.stage !== "unreviewed" ? " · PRIVATE HUMAN: " + stageText(item.human.stage) : "");
+        (item.type === "changed" ? $("revisionChangedList") : $("revisionAbsentList")).append(row);
+      }
+      status("New source fully admitted for local comparison. Current source and HUMAN choices remain intact.", false);
+    } catch (error) {
+      clearRevisionCandidate();
+      status("Incoming source rejected without changing the current workspace: " + error.message, true);
+    }
+  }
+  function commitRevision() {
+    const plan = state.revisionCandidate;
+    if (!plan || plan.fromDigest !== state.digest || state.pending) {
+      status("Candidate is stale or current HUMAN edits are still pending. Compare the source again.", true);
+      return;
+    }
+    let staged;
+    try {
+      staged = LightUpCsvRevision.migrate(plan, $("revisionChanged").value,
+        blankEntry, state.revisionHistory);
+    } catch (error) {
+      status("PRIVATE source transition held: " + error.message, true);
+      return;
+    }
+    if (!confirm("Replace the active source with this separately selected CSV? " +
+        "Unchanged literal records retain HUMAN notes. New records start unreviewed. " +
+        "Changed records are " + ($("revisionChanged").value === "reset"
+          ? "RESET for HUMAN reassessment" : "retained only as HUMAN NEEDS EVIDENCE") +
+        "; absent and changed PRIOR HUMAN details are archived privately. " +
+        "Save a new encrypted COMPLETE workroom afterward to preserve the private archive. " +
+        "No removed source record is deemed fixed, revoked or approved.")) return;
+    state.sourceText = plan.csvText;
+    state.rows = plan.incomingRows;
+    state.digest = plan.toDigest;
+    state.journal = staged.journal;
+    state.revisionHistory = staged.history;
+    state.selected = -1; state.bulkUndo = null; state.pending = false;
+    state.dirty = true; state.filename = "[HUMAN-SELECTED SOURCE SNAPSHOT]";
+    $("bulkUndo").disabled = true;
+    $("sourceFile").value = "";
+    $("detail").hidden = true; $("noneSelected").hidden = false;
+    $("sourceId").textContent = "Human-selected source CSV SHA-256: " + state.digest +
+      " (unsigned; NOT chronological or client-authenticated)";
+    $("summary").textContent = state.rows.length + " selected source finding(s). " +
+      state.revisionHistory.length + " PRIVATE HUMAN source revision(s) retained.";
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter"].forEach(id => { $(id).value = ""; });
+    $("orderBy").value = "severity";
+    clearRevisionCandidate();
+    refreshRevisionArchive();
+    renderList();
+    status("New source selected with explicit HUMAN migration. PRIVATE history is in memory only: save encrypted complete workroom.", false);
+  }
+  function exportRevisionArchive() {
+    if (!state.revisionHistory.length) return;
+    if (state.pending) {
+      status("Apply or discard the active HUMAN form before exporting PRIVATE revision history.", true);
+      return;
+    }
+    if (!confirm("Download PRIVATE previous-source revision records containing old IDs, titles, HUMAN owner and notes? " +
+        "They are not anonymous or independently source-authenticated. Save only to a separately authorized private device.")) return;
+    const output = {
+      schema: "lightup.private_human_csv_source_revision_archive.v1",
+      classification: "PRIVATE_HUMAN_ONLY", authority: NO_AUTHORITY,
+      current_source_sha256: state.digest,
+      revisions: state.revisionHistory
+    };
+    download(JSON.stringify(output, null, 2) + "\n", "lightup-private-prior-human-revisions.json", "application/json");
+    status("PRIVATE prior-human source archive offered. Original or absent finding not verified or fixed.", false);
+  }
   function wipe() {
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
-    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.sourceText = "";
+    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.sourceText = ""; state.revisionHistory = [];
+    clearRevisionCandidate(); refreshRevisionArchive();
     $("sourceFile").value = ""; $("journalFile").value = ""; $("workroomFile").value = ""; $("vaultPass").value = "";
     $("summary").textContent = "No source CSV loaded.";
     $("sourceId").textContent = "";
@@ -231,6 +341,7 @@
     } catch (error) { status(error.message, true); return; }
     if (JSON.stringify(entry) !== JSON.stringify(state.journal[state.selected])) {
       state.journal[state.selected] = entry;
+      clearRevisionCandidate();
       state.dirty = true;
       state.bulkUndo = null;
       $("bulkUndo").disabled = true;
@@ -254,6 +365,8 @@
       state.rows = stagedRows;
       state.digest = sha;
       state.sourceText = value;
+      state.revisionHistory = [];
+      clearRevisionCandidate(); refreshRevisionArchive();
       state.journal = stagedRows.map(r => blankEntry(r.id));
       state.filename = file.name;
       state.selected = -1;
@@ -315,7 +428,7 @@
       }
       const staged = admitJournalDocument(parsed);
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
-      state.journal = staged; state.dirty = false; state.pending = false; state.selected = -1;
+      state.journal = staged; clearRevisionCandidate(); state.dirty = false; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
@@ -351,7 +464,7 @@
       const document = await LightUpEncryptedJournal.unseal(value, pass);
       const staged = admitJournalDocument(document);
       if (!confirm("Original CSV SHA-256 and all HUMAN IDs match. Replace current in-memory HUMAN notes?")) return;
-      state.journal = staged;
+      state.journal = staged; clearRevisionCandidate();
       state.dirty = false; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
@@ -377,7 +490,8 @@
       const doc = {
         schema: WORKROOM_SCHEMA, classification: "PRIVATE_SOURCE_AND_HUMAN_ONLY",
         authority: NO_AUTHORITY, csv_utf8: state.sourceText,
-        csv_sha256: state.digest, journal: journalDocument()
+        csv_sha256: state.digest, journal: journalDocument(),
+        revision_history: state.revisionHistory
       };
       const sealed = await LightUpEncryptedJournal.sealWorkroom(doc, pass);
       download(sealed, "lightup-private-entire-workroom.luew", "application/json");
@@ -398,7 +512,9 @@
       if (!pass) fail("Enter the complete workroom passphrase first");
       const {value} = await readFile(file, 5 * 1024 * 1024);
       const doc = await LightUpEncryptedJournal.unsealWorkroom(value, pass);
-      if (!exactObject(doc, ["schema", "classification", "authority", "csv_utf8", "csv_sha256", "journal"]) ||
+      const legacy = exactObject(doc, ["schema", "classification", "authority", "csv_utf8", "csv_sha256", "journal"]);
+      const current = exactObject(doc, ["schema", "classification", "authority", "csv_utf8", "csv_sha256", "journal", "revision_history"]);
+      if ((!legacy && !current) ||
           doc.schema !== WORKROOM_SCHEMA || doc.classification !== "PRIVATE_SOURCE_AND_HUMAN_ONLY" ||
           !exactObject(doc.authority, Object.keys(NO_AUTHORITY)) ||
           Object.keys(NO_AUTHORITY).some(k => doc.authority[k] !== false) ||
@@ -411,10 +527,14 @@
       const candidateSha = await digest(enc.encode(doc.csv_utf8));
       if (candidateSha !== doc.csv_sha256) fail("Original CSV byte digest mismatch");
       const admittedJournal = admitJournalDocument(doc.journal, admittedRows, candidateSha);
+      const admittedHistory = LightUpCsvRevision.admitHistory(
+        current ? doc.revision_history : [], candidateSha, admitEntry, safeDisplay);
       if (!confirm("The encrypted packet's contained original CSV and HUMAN journal were admitted. " +
           "Replace this browser's current workspace? This does not establish authenticated tenant lineage.")) return;
       state.rows = admittedRows; state.digest = candidateSha; state.sourceText = doc.csv_utf8;
-      state.journal = admittedJournal; state.filename = "[PRIVATE ENCRYPTED WORKROOM]";
+      state.journal = admittedJournal; state.revisionHistory = admittedHistory;
+      clearRevisionCandidate(); refreshRevisionArchive();
+      state.filename = "[PRIVATE ENCRYPTED WORKROOM]";
       state.selected = -1; state.dirty = false; state.pending = false; state.bulkUndo = null;
       $("bulkUndo").disabled = true;
       $("sourceFile").value = "";
@@ -566,6 +686,7 @@
       " visible finding(s) to '" + stageText(stage) +
       "'? This does NOT change original source, retest or remediation. Unfiltered rows stay unchanged.")) return;
     const previous = changed.map(i => ({index: i, stage: state.journal[i].stage}));
+    clearRevisionCandidate();
     for (const i of changed) state.journal[i] = {...state.journal[i], stage};
     state.bulkUndo = previous;
     state.dirty = true;
@@ -578,6 +699,7 @@
     if (state.pending) { status("Apply or discard individual HUMAN form edits first.", true); return; }
     const previous = state.bulkUndo;
     if (!previous || !previous.length) return;
+    clearRevisionCandidate();
     for (const item of previous) {
       state.journal[item.index] = {...state.journal[item.index], stage: item.stage};
     }
@@ -631,6 +753,15 @@
       e.target.value = "";
     });
     $("saveBrief").addEventListener("click", saveBrief);
+    $("revisionFile").addEventListener("change", e => {
+      if (e.target.files[0]) previewRevision(e.target.files[0]);
+      e.target.value = "";
+    });
+    $("revisionCommit").addEventListener("click", commitRevision);
+    $("revisionCancel").addEventListener("click", () => {
+      clearRevisionCandidate(); status("Source candidate discarded; original workspace remains unchanged.", false);
+    });
+    $("revisionHistoryDownload").addEventListener("click", exportRevisionArchive);
     $("clearAll").addEventListener("click", () => {
       if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
       wipe(); status("All loaded application state released from the interface.", false);
