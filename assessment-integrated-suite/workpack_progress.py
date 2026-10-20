@@ -188,6 +188,31 @@ def _changes(snapshots: list[tuple[str, list[dict]]]) -> list[dict]:
 
 
 
+def _declared_movement(snapshots: list[tuple[str, list[dict]]]) -> list[dict]:
+    """HUMAN stage movements across operator-ordered snapshots, not outcomes."""
+    result = []
+    for index in range(1, len(snapshots)):
+        before, after = snapshots[index - 1][1], snapshots[index][1]
+        old_attention = [r["human_stage"] in ("HOLD", "NEEDS_INPUT") for r in before]
+        new_attention = [r["human_stage"] in ("HOLD", "NEEDS_INPUT") for r in after]
+        result.append({
+            "from_snapshot": index, "to_snapshot": index + 1,
+            "human_stage_changes": sum(a["human_stage"] != b["human_stage"]
+                                       for a, b in zip(before, after)),
+            "human_team_changes": sum(a["review_team"] != b["review_team"]
+                                      for a, b in zip(before, after)),
+            "newly_declared_attention": sum(not a and b for a, b in zip(
+                old_attention, new_attention)),
+            "no_longer_declared_attention": sum(a and not b for a, b in zip(
+                old_attention, new_attention)),
+            "continuously_declared_attention": sum(a and b for a, b in zip(
+                old_attention, new_attention)),
+            "human_question_edits": sum(a["human_question"] != b["human_question"]
+                                        for a, b in zip(before, after)),
+        })
+    return result
+
+
 def _latest_attention(snapshots: list[tuple[str, list[dict]]]) -> list[dict]:
     """Last HUMAN HOLD/NEEDS_INPUT, never an inferred security severity."""
     result = []
@@ -308,13 +333,20 @@ def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
             or os.path.lexists(destination)):
         raise privacy.Hold("HOLD: repeated or overwritten original HUMAN workpack refused")
     base, _ = route_queue.rows_for(session)
-    snapshots = [_read_workpack(folder, base) for folder in workpacks]
+    admitted = [original_workpack(folder, base) for folder in workpacks]
+    # Copies of the exact same HUMAN date+CSV are not separate observations.
+    identities = {(date, hashlib.sha256(raw).digest())
+                  for date, _, raw in admitted}
+    if len(identities) != len(admitted):
+        raise privacy.Hold("HOLD: repeated exact HUMAN snapshot is not a new review")
+    snapshots = [(date, rows) for date, rows, _ in admitted]
     metrics = [_counts(rows) for _, rows in snapshots]
+    movement = _declared_movement(snapshots)
     changes = _changes(snapshots)
     attention = _latest_attention(snapshots)
     # Optional local-only CSP-pinned interactive cockpit; preserve the
     # independent scriptless reading option for restricted browsers.
-    page = workpack_progress_browser.render(snapshots, metrics, changes, attention)
+    page = workpack_progress_browser.render(snapshots, metrics, changes, attention, movement)
     scriptless = _html(snapshots, metrics, changes, attention)
     metadata = {
         "schema": SCHEMA, "status": "REVIEW_ONLY", "authority": privacy.AUTHORITY,
@@ -331,6 +363,7 @@ def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
             {key: value for key, value in change.items() if key != "workflow_title"}
             for change in changes
         ],
+        "human_transition_summary": movement,
         "latest_declared_attention": [
             {key: value for key, value in item.items() if key != "workflow_title"}
             for item in attention
@@ -370,6 +403,19 @@ def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
         privacy.private_write(
             destination, "PRIVATE-HUMAN-ATTENTION.csv",
             attention_csv.getvalue().encode("utf-8"))
+        movement_csv = io.StringIO(newline="")
+        movement_writer = csv.writer(movement_csv, lineterminator="\r\n")
+        columns = (
+            "from_snapshot", "to_snapshot", "human_stage_changes",
+            "human_team_changes", "newly_declared_attention",
+            "no_longer_declared_attention", "continuously_declared_attention",
+            "human_question_edits")
+        movement_writer.writerow(columns)
+        for item in movement:
+            movement_writer.writerow([item[key] for key in columns])
+        privacy.private_write(
+            destination, "PRIVATE-HUMAN-STAGE-MOVEMENT.csv",
+            movement_csv.getvalue().encode("utf-8"))
         privacy.private_write(destination, "PRIVATE-HUMAN-PROGRESS.json", data)
         privacy.private_write(
             destination, "PRIVATE-HUMAN-TRANSITIONS.csv", stream.getvalue().encode("utf-8"))

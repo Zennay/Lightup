@@ -428,6 +428,14 @@ historical declared transitions. Search by original workflow key/title or
 declared review date; filter by exact HUMAN stage, team, still-declared
 attention or changed-since-first, and reset without ever mutating a row.
 The latest HUMAN HOLD/NEEDS_INPUT streaks are displayed separately.
+The cockpit now also compares adjacent declared snapshots as a source-free
+HUMAN stage/team movement matrix (newly marked, no-longer-marked and still
+marked HOLD/NEEDS_INPUT, HUMAN question edits without question text).
+The new owner-private 0600 `PRIVATE-HUMAN-STAGE-MOVEMENT.csv` supports
+deliberate offline HUMAN coordination without opening original evidence.
+Exact byte-identical copied snapshot/date pairs are rejected as repeated,
+not double-counted HUMAN review moments. None of these counts proves a
+real incident, a fix, a security result or genuine chronology.
 
 This browser interface is rendered **only** from previously re-admitted
 native owner-private workpack snapshots and contains no private question text,

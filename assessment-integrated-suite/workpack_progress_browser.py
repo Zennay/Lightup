@@ -88,7 +88,8 @@ details{margin:10px 0}summary{cursor:pointer;font-weight:700;padding:9px 0}
 
 
 def render(snapshots: list[tuple[str, list[dict]]],
-           metrics: list[dict], changes: list[dict], attention: list[dict]) -> bytes:
+           metrics: list[dict], changes: list[dict], attention: list[dict],
+           movement: list[dict]) -> bytes:
     esc = lambda value: html.escape(str(value), quote=True)
     oldest = snapshots[0][1]
     latest = snapshots[-1][1]
@@ -152,6 +153,18 @@ def render(snapshots: list[tuple[str, list[dict]]],
             esc(change["previous_team"] or "Unassigned") + " → " +
             esc(change["current_team"] or "Unassigned") + "</span></li>"
         )
+    movement_rows = []
+    for item in movement:
+        movement_rows.append(
+            "<tr><th scope='row'>#" + str(item["from_snapshot"]) + " → #" +
+            str(item["to_snapshot"]) + "</th><td>" +
+            str(item["human_stage_changes"]) + "</td><td>" +
+            str(item["human_team_changes"]) + "</td><td>" +
+            str(item["newly_declared_attention"]) + "</td><td>" +
+            str(item["no_longer_declared_attention"]) + "</td><td>" +
+            str(item["continuously_declared_attention"]) + "</td><td>" +
+            str(item["human_question_edits"]) + "</td></tr>"
+        )
     options_stage = "".join('<option value="' + esc(value) + '">' +
                             esc(value) + "</option>" for value in route_queue.STAGES)
     options_team = "".join('<option value="' + esc(team) + '">' +
@@ -194,6 +207,14 @@ native HUMAN workpack workflow (console 51 or CLI workpack-continue).</p>
 <p>No real duration, source findings or incident severity is inferred.</p><ol>""" +
             ("".join(attention_rows) or "<li>No latest HUMAN attention declarations.</li>") +
             """</ol></section>
+<section><h2>Declared HUMAN movement between snapshots</h2>
+<p>Newly marked HOLD and no-longer-marked HOLD are only operator
+status choices, NEVER a new security incident or verified fix.</p>
+<div class="scroller"><table><thead><tr><th>Declared positions</th>
+<th>Stage edits</th><th>Team edits</th><th>New attention</th>
+<th>No longer marked</th><th>Still marked</th><th>Private question edits</th>
+</tr></thead><tbody>""" + "".join(movement_rows) + """</tbody></table></div>
+</section>
 <section><details><summary>Show all declared snapshot summaries</summary>
 <div class="scroller"><table><thead><tr><th>Snapshot</th><th>Declared date</th>
 <th>Unassessed</th><th>Attention</th><th>Review</th><th>Follow-up</th><th>Teams</th>
