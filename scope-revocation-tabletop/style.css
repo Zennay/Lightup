@@ -32,3 +32,10 @@
 .bank-comparison .needs{margin:8px 0 0;display:grid;grid-template-columns:1fr 1fr;column-gap:20px;padding-left:22px}
 @media(max-width:560px){.bank-comparison .needs{grid-template-columns:1fr}}
 @media print{.bank-comparison{background:white;color:black;border:1px solid #888}.bank-choose{display:none}.bank-comparison .needs li{color:black}}
+
+.timeline-filter{width:100%;margin-bottom:12px}
+.attempt-history{margin-top:17px;padding:15px;border:1px solid #766647;background:#302d2a;border-radius:11px}
+.attempt-history h3{margin:0 0 8px;font-size:.98rem;color:#ffe0aa}
+.attempt-history p{margin:5px 0 10px}.attempt-history .needs{margin-bottom:0}
+.attempt-history .needs li{color:#f1d8c1}
+@media print{.timeline-filter{display:none}.attempt-history{background:white;color:black;border:1px solid #999}.attempt-history h3,.attempt-history .needs li{color:black}}
