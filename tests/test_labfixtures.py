@@ -117,7 +117,8 @@ class ScriptedDemoGatewayTest(unittest.TestCase):
             gateway = scripted_demo_gateway((url,))
             result = run_planned_assessment(gateway, scenario, self.base / "s.db")
             self.assertEqual([c["tool_id"] for c in result["plan"]],
-                             ["lab-http-baseline", "lab-service-inventory"])
+                             ["lab-http-baseline", "lab-web-exposure",
+                              "lab-service-inventory"])
             metrics = result["evaluation"]["metrics"]
             self.assertEqual(metrics["valid_findings"], 5)
             self.assertEqual(metrics["missed_findings"], 0)

@@ -56,3 +56,8 @@ jobs:
         env:
           PYTHONPATH: src
         run: python scripts/check_safety_canaries.py
+
+      - name: Detection benchmark (precision/recall/F1 vs planted ground truth)
+        env:
+          PYTHONPATH: src
+        run: python -m lightup.cli lab-benchmark --fail-under 1.0

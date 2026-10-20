@@ -34,6 +34,20 @@ The repository contains:
 - further lab-only capability workers: **TCP service inventory**
   (`lightup.workers.service_inventory`) and **TLS baseline**
   (`lightup.workers.tls_baseline`: protocol, cipher, chain trust);
+- a **web configuration-hygiene** worker (`lightup.workers.web_exposure`):
+  served dev/metadata paths, debug/stack-trace leakage, directory listing,
+  weak session-cookie attributes, origin-reflecting CORS and advertised TRACE,
+  with soft-404 calibration so catch-all servers yield no false positives;
+- an **offline supply-chain advisory engine** (`lightup.advisories`,
+  `lightup.supply_chain`): OSV-schema matching with computed CVSS v3 severity,
+  CISA KEV flagging, lockfile/SBOM parsing and a pre-merge dependency-risk diff
+  for the Future Security lane — analysis-only, no target contact;
+- **finding prioritization and attack-chain correlation**
+  (`lightup.prioritization`): a deterministic "fix first" ranking plus
+  conservative multi-finding attack chains;
+- an **offline detection benchmark** (`lightup.benchmark`, CLI
+  `lightup lab-benchmark`) scoring the engine's precision/recall/F1 against
+  hand-maintained planted ground truth, wired into CI;
 - a **planner role** (`lightup.ai.planner`): the model proposes a typed
   multi-lane plan that is strictly parsed and then executed call-by-call
   behind the policy gate, with denials recorded as policy-violation metrics

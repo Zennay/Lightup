@@ -58,6 +58,20 @@ def build_parser() -> argparse.ArgumentParser:
     boot.add_argument("--name", required=True)
     boot.add_argument("--password", help="omit to be prompted securely")
 
+    bench = sub.add_parser("lab-benchmark",
+                           help="run the offline detection benchmark across all "
+                                "planted lab fixtures (precision/recall/F1)")
+    bench.add_argument("--fail-under", type=float, default=1.0,
+                       help="exit non-zero if micro-F1 is below this (default 1.0)")
+
+    supply = sub.add_parser("supply-chain",
+                            help="offline: match a dependency manifest against an "
+                                 "OSV advisory database")
+    supply.add_argument("manifest", help="path to a dependency manifest/lockfile/SBOM")
+    supply.add_argument("--advisories", action="append", default=[], required=True,
+                        help="OSV JSON file or directory (repeatable)")
+    supply.add_argument("--kev", help="CISA KEV-format catalog JSON (optional)")
+
     cuser = sub.add_parser("create-client-user",
                            help="create a client portal account")
     cuser.add_argument("--db", default="lightup.db")
@@ -87,6 +101,26 @@ def _account_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _supply_chain_command(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from .advisories import AdvisoryDatabase
+    from .supply_chain import ManifestError, parse_manifest, scan_manifests
+
+    try:
+        database = AdvisoryDatabase.load(*args.advisories, kev_path=args.kev)
+        path = Path(args.manifest)
+        report = scan_manifests({path.name: path.read_text(encoding="utf-8")}, database)
+    except (ManifestError, ValueError, OSError) as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        return 2
+    output = report.to_dict()
+    output["advisory_database"] = {"loaded": len(database),
+                                   "skipped_records": database.skipped_records}
+    print(json.dumps(output, indent=2))
+    return 1 if report.matches else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -114,6 +148,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.no_review:
             argv.append("--no-review")
         return main_assess(argv)
+
+    if args.command == "lab-benchmark":
+        from .benchmark import main as benchmark_main
+
+        return benchmark_main(["--fail-under", str(args.fail_under)])
+
+    if args.command == "supply-chain":
+        return _supply_chain_command(args)
 
     if args.command in {"create-operator", "create-client-user"}:
         return _account_command(args)
