@@ -360,11 +360,12 @@
   }
   function refreshDrillStatus() {
     write("drill-progress",progressText());
+    const current=scenarioMatchesDrill();
+    $("drill-choices").querySelectorAll("button").forEach(b=>{b.disabled=!current;});
     if (activeDrill===null) return;
-    if (!scenarioMatchesDrill()) {
+    if (!current) {
       write("drill-feedback","De huidige fictieve tijdlijn wijkt af van de geladen oefenkaart. Laad de kaart opnieuw voordat je een didactisch antwoord bespreekt.");
     }
-    $("drill-choices").querySelectorAll("button").forEach(b=>{b.disabled=!scenarioMatchesDrill();});
   }
   function selectDrill(index) {
     selectedDrill=index;
@@ -391,6 +392,33 @@
     });
     refreshDrillStatus();
   }
+  function facilitatorPack() {
+    const lines=["# LightUp — PRIVATE trainingspakket scope-autorisatie",
+      "",
+      "**ZES VASTE FICTIEVE OEFENKAARTEN. DIT IS GEEN ORIGINEEL SCAN-/CONSENT-/CI-/VRIJGAVEBEWIJS.**",
+      "",
+      "Gescheiden echte huidige geauthenticeerde client- en operatortoestemming, brongebonden assets/capability/risico, action-time revocation, privacy/securityreview, originele hosted en permanente VPS CI en HUMAN GO zijn altijd verplicht.",
+      "",
+      "## Didactische voortgang van deze lokale browsersessie",
+      progressText(),
+      ""];
+    DRILLS.forEach((d,i)=>{
+      lines.push("## Kaart "+(i+1)+": "+d.title,
+        "",d.summary,
+        "Fictieve tijdlijn: "+d.events.map(e=>TYPES[e][0]).join(" → "),
+        "",
+        "**Vraag:** "+d.question);
+      d.choices.forEach((c,n)=>lines.push(String.fromCharCode(65+n)+". "+c));
+      lines.push("","**Didactisch passende bespreekkeuze:** "+String.fromCharCode(65+d.correct),
+        "**Toelichting:** "+d.explain,
+        "**Lokaal oefenantwoord:** "+(drillAnswers[i]===null?"Nog niet besproken":String.fromCharCode(65+drillAnswers[i])),
+        "");
+    });
+    lines.push("## Geen uitvoermachtiging","Deze oefening kan geen identiteit, oorspronkelijke bron, actuele scope, werkelijk verleende toestemming, intrekking of doelwitrechten verifiëren.",
+      "AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false · DEPLOY_ALLOWED=false",
+      "");
+    return lines.join("\n");
+  }
   function initDrills() {
     DRILLS.forEach((x,i)=>$("drill-select").append(new Option((i+1)+". "+x.title,String(i))));
     $("drill-select").addEventListener("change",()=>selectDrill(Number($("drill-select").value)));
@@ -406,6 +434,10 @@
       if(!window.confirm("Alleen didactische antwoordvoortgang uit dit browsergeheugen wissen?"))return;
       drillAnswers=Array(DRILLS.length).fill(null);
       selectDrill(selectedDrill);
+    });
+    $("drill-print-pack").addEventListener("click",()=>{
+      bytesDownload("lightup-fictional-facilitator-pack.md",facilitatorPack(),"text/markdown");
+      feedback("PRIVATE fictief lespakket met didactische toelichting lokaal aangeboden.");
     });
     selectDrill(0);
   }
