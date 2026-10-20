@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp — Scope Intake Matrix (draft only)</title>
+<style>
+:root{color-scheme:dark;--bg:#0c1322;--panel:#151f32;--panel2:#1b2940;--line:#35455d;--ink:#eef4ff;--dim:#aebed0;--accent:#75e0c2;--warning:#ffcd7c;--danger:#ff8e99}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1000px 460px at 65% -20%,#214b5a,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}header{padding:24px clamp(18px,5vw,72px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:13px;letter-spacing:.15em;color:var(--accent);font-weight:800}.brand strong{display:block;font-size:29px;letter-spacing:-.035em;color:var(--ink)}.fence{border:1px solid #936d38;background:#392c1c;color:#ffe1ad;border-radius:40px;padding:8px 15px;font-weight:750;font-size:12px}main{max-width:1460px;margin:auto;padding:28px clamp(18px,5vw,72px) 80px}.intro{max-width:900px;color:var(--dim);margin:0 0 24px}h2{font-size:18px;margin:0 0 17px}h3{font-size:15px;margin:0 0 12px}.section{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px;margin-bottom:21px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.wide{grid-column:span 2}label{display:block;font-weight:650;font-size:13px;color:#dce6f1}input,select,textarea{background:var(--panel2);border:1px solid #4b5c74;border-radius:8px;color:var(--ink);font:inherit;padding:9px 10px;min-width:0;width:100%;margin-top:6px}textarea{min-height:73px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}button{font:inherit;cursor:pointer;border-radius:9px;padding:10px 14px;border:1px solid #647792;background:#25364e;color:var(--ink);font-weight:700}button.primary{background:var(--accent);border-color:var(--accent);color:#091e24}button.danger{color:#ffc5cd;border-color:#9b5363}button:hover{filter:brightness(1.16)}button:focus-visible{outline:3px solid var(--warning)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:12px;border-radius:10px;background:#22314a;border:1px solid var(--line)}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--dim)}.muted{color:var(--dim)}.warning{color:var(--warning)}.danger-text{color:var(--danger)}.table-wrap{overflow-x:auto}table{border-collapse:separate;border-spacing:0;width:100%;min-width:960px}th{text-align:left;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);padding:10px 7px}td{vertical-align:top;border-bottom:1px solid #2c3e56;padding:7px}td input,td select{font-size:13px;margin:0;padding:8px}th:nth-child(1){width:25%}th:nth-child(2){width:12%}th:nth-child(3){width:19%}th:nth-child(4){width:11%}th:nth-child(5){width:14%}th:nth-child(6){width:13%}.row-tools{display:flex;gap:4px}.row-tools button{font-size:12px;padding:7px}.privacy{padding:13px;border-left:3px solid var(--warning);background:#3c3025;margin-top:16px}.notice{padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);margin:12px 0;white-space:pre-wrap}.notice[hidden],section[hidden],div[hidden]{display:none!important}.compare-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.compare-items pre{overflow-wrap:anywhere;white-space:pre-wrap;background:#0e192a;border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}.small{font-size:12px}.right{margin-left:auto}.filter{max-width:290px}.footer{margin-top:20px;font-size:12px;color:var(--dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.compare-items{grid-template-columns:1fr}.section{padding:16px}}@media print{body{background:white;color:black}header,.actions,.privacy,.footer,#compare-section,#file-import,#file-compare,.row-tools,.filter{display:none!important}main{padding:0}.section{break-inside:avoid;border:1px solid #ccc;background:white}input,select,textarea{border:0;background:white;color:black;padding:3px}th,td,.muted,.stat span{color:black}.stat{background:white;color:black}.table-wrap{overflow:visible}table{min-width:unset}}
+</style>
+<script src="./app.js" defer></script>
+<script src="./casebook_bridge.js" defer></script>
+</head>
+<body>
+<header><div class="brand">LIGHTUP <strong>Scope Intake Matrix</strong></div><div class="fence">PREPARATION ONLY · NOT AUTHORIZED</div></header>
+<main>
+<p class="intro">Prepare a human-readable, offline scope request and compare local revisions. This tool <b>does not issue or verify consent, approvals, grants, findings, revocation, or permission to scan</b>. Every item remains an untrusted human proposal until the original authenticated LightUp workflow independently validates it.</p>
+<section class="section" aria-labelledby="project-heading">
+<h2 id="project-heading">01 / Proposed engagement</h2>
+<div class="grid">
+<label>Internal draft name <input id="project" maxlength="80" placeholder="e.g. October lab baseline" autocomplete="off"></label>
+<label>Client-provided label (unverified) <input id="client" maxlength="100" placeholder="Organisation label" autocomplete="off"></label>
+<label>Human review contact (alias) <input id="contact" maxlength="80" placeholder="Reviewer alias, no credentials" autocomplete="off"></label>
+<label>Requested window start (local, unverified) <input id="start" type="datetime-local"></label>
+<label>Requested window end (local, unverified) <input id="end" type="datetime-local"></label>
+<label>Requested ceiling (descriptive only) <select id="risk"><option value="informational">Informational</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High — HOLD for review</option></select></label>
+<label class="wide">Proposed purpose / explicit human review questions <textarea id="purpose" maxlength="1800" placeholder="What are we asking reviewers to assess?"></textarea></label>
+<label>Evidence reference label (not verified) <input id="evidence" maxlength="120" placeholder="Do not paste a secret or token" autocomplete="off"></label>
+</div>
+<p class="small muted">Date/time is a requested local planning window, not a trusted authorization clock or approval. Keep real client details PRIVATE.</p>
+</section>
+<section class="section" aria-labelledby="assets-heading">
+<div class="actions"><h2 id="assets-heading">02 / Proposed boundaries</h2><button id="add" type="button" class="primary right">+ Add proposed asset</button></div>
+<p class="muted small">Up to 32 exact DNS hostnames, canonical IPv4 addresses or IPv4 CIDRs of /24–/32. No schemes, ports, paths, wildcards or implied subnet expansion. Each asset is a literal proposal only. Excluded rows are never silently treated as covered.</p>
+<div class="actions"><label class="filter">Find local rows <input id="filter" aria-label="Filter proposed rows" placeholder="Filter by asset or question"></label><label class="filter">Show status <select id="status-filter"><option value="all">All</option><option value="draft">Draft</option><option value="needs-client-review">Needs client review</option><option value="blocked">Blocked</option></select></label></div>
+<details id="bulk-panel">
+<summary><b>Bulk add exact proposed assets</b> — one per line, prefix ! for an explicit exclusion</summary>
+<p class="small muted">Local-only atomic import. Valid canonical DNS / IPv4 / narrow /24–/32 networks only. All included entries default to passive inventory proposals, all exclusions to no capability. No partial row insertion on a malformed, duplicate or oversized input.</p>
+<label>PRIVATE asset lines<textarea id="bulk-lines" rows="5" maxlength="4096" placeholder="example.internal\n!excluded.example.internal\n192.168.10.0/24" autocomplete="off"></textarea></label>
+<div class="actions"><button id="bulk-add" type="button">Add all valid lines as DRAFT (atomic)</button></div>
+</details>
+<div class="table-wrap"><table><thead><tr><th>Asset (literal)</th><th>Boundary</th><th>Requested capability</th><th>Ownership evidence</th><th>Human status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="empty-rows" class="muted">No proposed assets yet.</p>
+<details id="triage-panel">
+<summary><b>HUMAN bulk review of the currently visible proposals</b></summary>
+<p class="small muted">This only changes untrusted HUMAN preparation labels. It cannot approve ownership, risk, consent, grants or execution. The visible filter defines which literal proposals will be included in the preview.</p>
+<div class="grid">
+<label>Field to update<select id="triage-field"><option value="status">HUMAN review status</option><option value="ownership">Ownership evidence label (unverified)</option></select></label>
+<label>Proposed HUMAN value<select id="triage-value"><option value="needs-client-review">Needs client review</option><option value="blocked">Blocked</option><option value="draft">Draft</option></select></label>
+</div>
+<div class="actions"><button type="button" id="triage-preview">Preview change for visible rows</button><button type="button" class="primary" id="triage-apply" disabled>Confirm HUMAN changes</button><button type="button" id="triage-undo" disabled>Undo last bulk change</button></div>
+<div id="triage-preview-box" class="notice" aria-live="polite" hidden></div>
+</details>
+<div class="actions"><button id="add-bottom" type="button">+ Add row</button></div>
+</section>
+<section class="section" id="overlap-section" aria-labelledby="overlap-heading">
+<div class="actions"><h2 id="overlap-heading">03 / Local IPv4 scope boundaries &amp; exceptions</h2><button type="button" id="queue-overlap-review">Queue affected included rows for HUMAN review</button><button type="button" id="export-overlap" class="right">Export PRIVATE boundary brief</button></div>
+<p class="muted">Deterministic comparisons of human-declared IPv4 addresses and narrow CIDRs only. No DNS lookup, reachability check or authority inference. A host inside an included subnet is not automatically approved, and exclusions must be resolved by the original source-owned policy.</p>
+<div class="stats"><div class="stat"><strong id="overlap-count">0</strong><span>Overlapping literal pairs</span></div><div class="stat"><strong id="cross-boundary-count">0</strong><span>Inclusion/exclusion pairs for HUMAN review</span></div><div class="stat"><strong id="overlap-include-count">0</strong><span>Overlapping proposed inclusions</span></div><div class="stat"><strong id="special-address-count">0</strong><span>Numeric nonordinary ranges to review</span></div></div>
+<div id="overlap-notice" class="notice" role="status">Add literal IPv4/CIDR proposals to see boundary review.</div>
+<div class="table-wrap"><table id="overlap-table"><thead><tr><th>Proposed literal A</th><th>Proposed literal B</th><th>Relationship</th><th>Human follow-up</th></tr></thead><tbody id="overlap-rows"></tbody></table></div>
+<h3>Literal address classifications — not network discovery</h3>
+<div id="address-classification" class="notice"></div>
+<div class="actions"><h3>Read-only proposed target membership preview</h3><button type="button" id="preview-membership" class="right">Preview literal membership</button><button type="button" id="download-membership">PRIVATE human preview handoff</button></div>
+<p class="small muted">Enter up to 16 exact literal IPv4 hosts or lowercase DNS names, one per line. Strictly local numeric/literal comparison with the proposed rows only. No DNS resolution, external contact, permission, exception resolution or original-policy invocation. Every result remains NOT AUTHORIZED.</p>
+<label>PRIVATE target literals (never contacted)<textarea id="membership-lines" maxlength="4096" rows="4" placeholder="192.168.10.22&#10;example.internal"></textarea></label>
+<div id="membership-status" class="notice" aria-live="polite">No target membership preview. The app never checks actual target reachability.</div>
+<div class="table-wrap"><table><thead><tr><th>Human-entered target</th><th>Proposed included rows</th><th>Explicit exclusions</th><th>Human-only conclusion</th></tr></thead><tbody id="membership-result"></tbody></table></div>
+</section>
+<section class="section" id="source-casebook-section" aria-labelledby="casebook-heading">
+<div class="actions"><h2 id="casebook-heading">04 / Original Casebook source review — PRIVATE / read-only</h2><button id="choose-casebook" class="primary right" type="button">Open original PRIVATE Casebook JSON</button><button id="save-casebook-secure" type="button">Save encrypted PRIVATE source + HUMAN stages</button><button id="open-casebook-secure" type="button">Open encrypted PRIVATE source + HUMAN stages</button><button id="clear-casebook" type="button">Clear source from memory</button></div>
+<p class="muted">Independent offline view of an existing <code>lightup.auth_casebook.v1</code> exported through the original credential-backed, read-only Casebook CLI. Importing a file here does NOT reauthenticate the source producer, original tenant, client consent, operator consent or revocation. All six source authority flags must remain false. No original database, network, scanner or grant is accessed.</p>
+<input id="casebook-file" type="file" accept=".json,application/json" hidden>
+<input id="casebook-secure-file" type="file" accept=".lucb,application/json" hidden>
+<div id="casebook-import-status" class="notice" role="status">No original source loaded. Your proposed scope is independent and NOT AUTHORIZED.</div>
+<div class="stats"><div class="stat"><strong id="casebook-engagement-count">0</strong><span>Source engagements</span></div><div class="stat"><strong id="casebook-grant-hold-count">0</strong><span>Grant linkage HOLDs</span></div><div class="stat"><strong id="casebook-risk-review-count">0</strong><span>Risk source reviews</span></div><div class="stat"><strong id="casebook-case-attention-count">0</strong><span>HOLD case overviews</span></div></div>
+<div class="actions"><label class="filter">Filter source cases <input id="casebook-filter" placeholder="Search local source case ID or attention" autocomplete="off"></label><label class="filter">Source attention <select id="casebook-category"><option value="all">All</option><option value="hold">HOLD only</option><option value="risk">Risk-review cases</option><option value="other">Other review</option></select></label><button id="casebook-aggregate" type="button">Export source-free HUMAN counts</button></div>
+<p class="small warning">Original CASE ID and request/grant lineage remain PRIVATE in this tab only. A prior recorded approval/grant is NOT authentic current consent or permission. No source ID is automatically tied to any untrusted draft asset.</p>
+<div class="table-wrap"><table><thead><tr><th>Original source engagement</th><th>Recorded state</th><th>Recorded grants / risks</th><th>Original source attention</th><th>HUMAN next action</th><th>Local source detail</th></tr></thead><tbody id="casebook-cases"></tbody></table></div>
+<div id="casebook-selected" class="notice" hidden></div>
+<h3>Original approved-request and unbound-request HUMAN inbox (#177 companion)</h3>
+<p class="small muted">Purely local retrospective request/source records. A prior approved request, linked grant, or local HUMAN stage never proves action-time consent, tenant identity, approved scope or execution authority.</p>
+<div class="actions"><label class="filter">Source request filter <input id="request-filter" placeholder="Original request ID or source state" autocomplete="off"></label><label class="filter">Source request attention<select id="request-category"><option value="all">All source requests</option><option value="unbound">Approved without recorded grant binding</option><option value="hold">Recorded link HOLD</option><option value="pending">Pending/not approved</option></select></label></div>
+<div class="actions"><button type="button" id="queue-unbound-requests">Queue approved-looking unbound requests for HUMAN follow-up</button><button type="button" id="undo-unbound-requests" disabled>Undo latest request queue action</button></div>
+<div class="table-wrap"><table><thead><tr><th>Original request (PRIVATE)</th><th>Stored decision</th><th>Proposed mode/risk</th><th>Stored grant links</th><th>Source attention (UNVERIFIED)</th><th>Local HUMAN follow-up</th></tr></thead><tbody id="casebook-requests"></tbody></table></div>
+<div class="notice" id="casebook-request-status" role="status">No stored original request data loaded. No authorization can be inferred.</div>
+<div id="casebook-request-detail" class="notice" hidden></div>
+</section>
+<section class="section" aria-labelledby="result-heading">
+<h2 id="result-heading">05 / Local completeness & handoff</h2>
+<div class="stats"><div class="stat"><strong id="total-count">0</strong><span>Proposed rows</span></div><div class="stat"><strong id="excluded-count">0</strong><span>Explicit exclusions</span></div><div class="stat"><strong id="review-count">0</strong><span>Explicit client-review requests</span></div><div class="stat"><strong id="blocked-count">0</strong><span>Blocked proposals</span></div></div>
+<div id="notice" role="status" class="notice">Add and review draft details. Nothing is saved automatically.</div>
+<div class="actions">
+<button id="export-encrypted" class="primary" type="button">Save encrypted PRIVATE workroom</button>
+<button id="choose-import-encrypted" type="button">Open encrypted workroom</button>
+<button id="choose-compare-encrypted" type="button">Compare encrypted older workroom</button>
+<button id="choose-rekey" type="button">Re-encrypt PRIVATE file for new recipient</button>
+<button id="receipt" type="button">Export anonymous counts</button>
+<button id="print" type="button">Print private human brief</button>
+<button id="clear" class="danger" type="button">Clear memory</button>
+</div>
+<details><summary>Advanced: unencrypted PRIVATE drafts (legacy compatibility)</summary>
+<p class="small warning">These plain JSON downloads expose client and asset details; prefer encrypted workrooms. Plain downloads are never permission, consent or approval.</p>
+<div class="actions">
+<button id="export" type="button">Export UNENCRYPTED PRIVATE JSON</button>
+<button id="choose-import" type="button">Open old unencrypted draft</button>
+<button id="choose-compare" type="button">Compare old unencrypted draft</button>
+</div>
+</details>
+<input id="file-import" type="file" accept=".json,application/json" hidden>
+<input id="file-compare" type="file" accept=".json,application/json" hidden>
+<input id="file-import-encrypted" type="file" accept=".luie,application/json" hidden>
+<input id="file-compare-encrypted" type="file" accept=".luie,application/json" hidden>
+<input id="file-rekey" type="file" accept=".luie,application/json" hidden>
+<div class="privacy"><b>Privacy / release boundary:</b> Encrypted workrooms use local AES-256-GCM and PBKDF2 but do not authenticate the actual client, operator, consent or grant. Strong passwords and separate authenticated delivery are necessary. Legacy JSON, printed pages and agenda HTML remain UNENCRYPTED. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
+</section>
+<section class="section" id="agenda-section" aria-labelledby="agenda-heading">
+<div class="actions"><h2 id="agenda-heading">06 / PRIVATE human follow-up agenda</h2><button id="export-agenda" type="button" class="right">Export standalone PRIVATE agenda</button></div>
+<p class="muted">Human review questions inferred only from this self-declared proposal. These are reminders, not validation, permission, or compliance evidence. Original authenticated operators and clients must still make their own decisions.</p>
+<p id="agenda-count" class="small warning" role="status"></p>
+<ol id="agenda-items"></ol>
+</section>
+<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">07 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed HUMAN fields</h3><pre id="changed"></pre></div></div><h3 class="warning">Potential requested scope widening — HUMAN HOLD</h3><pre class="notice" id="expansions"></pre><h3>Potential reduction — NOT proven revocation</h3><pre class="notice" id="restrictions"></pre><div class="actions"><button id="export-change-brief" type="button">Export PRIVATE scriptless change brief</button><button id="close-compare" type="button">Close comparison</button></div></section>
+<p class="footer">LightUp • independent offline preparation companion • INCUBATE M3/M7 PLAN/LAB ONLY • no scans, network, grants, bypasses, approvals, deployment or main release.</p>
+</main>
+</body>
+</html>
