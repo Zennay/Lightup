@@ -9,6 +9,19 @@
     quarantine: "Afzonderen (voorstel)",
     propose_delete: "Verwijdering voorstellen — GEEN wisopdracht"
   });
+  const CLASSIFICATIONS = Object.freeze({
+    unknown:"Onbekend (HUMAN)",
+    internal:"Intern (HUMAN)",
+    confidential:"Vertrouwelijk (HUMAN)",
+    restricted:"Beperkt gevoelig (HUMAN)"
+  });
+  const HOLD_FLAGS = Object.freeze({
+    unknown:"Onbekend / nog bespreken",
+    human_claim_active:"HUMAN meldt actieve bewaarbeperking",
+    human_declared_clear:"HUMAN meldt geen bekende beperking — NIET geverifieerd"
+  });
+  const V2_COLUMNS = ["sha256","bytes","alias","status","review_date","action","custodian","classification","hold_flag"];
+  const HUMAN_FIELDS = ["alias","status","review_date","action","custodian","classification","hold_flag"];
   const AUTHORITY = Object.freeze({
     authorizes_scan: false, authorizes_delete: false, verifies_finding: false,
     verifies_remediation: false, proves_consent: false, authenticates_source: false
@@ -78,6 +91,9 @@
     const overdue = entries.filter(e => e.review_date && e.review_date < today).length;
     const dueSoon = entries.filter(e => e.review_date && e.review_date >= today && e.review_date <= soon).length;
     const noDate = entries.filter(e => !e.review_date).length;
+    const humanHolds = entries.filter(e=>e.hold_flag==="human_claim_active").length;
+    const unassigned = entries.filter(e=>!e.custodian.trim()).length;
+    const decisionHolds = entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length;
     const target = $("stats");
     target.replaceChildren();
     for (const [key, label] of Object.entries(STATES)) {
@@ -87,6 +103,9 @@
     target.append(text("div", overdue + " · voorlopige HUMAN reviews verstreken", "stat attention"));
     target.append(text("div", dueSoon + " · voorlopige HUMAN reviews komende 7 dagen", "stat"));
     target.append(text("div", noDate + " · zonder voorlopige reviewdatum", "stat"));
+    target.append(text("div", unassigned + " · HUMAN dossierhouder onbekend", "stat attention"));
+    target.append(text("div", humanHolds + " · HUMAN meldt mogelijke bewaarbeperking", "stat attention"));
+    target.append(text("div", decisionHolds + " · verwijdervoorstellen onvolledig (HOLD)", "stat attention"));
   }
   function visibleEntries() {
     const q = $("query").value.trim().toLowerCase();
@@ -115,6 +134,20 @@
         text("small", item.bytes.toLocaleString("nl-NL") + " bytes"));
       const alias = document.createElement("td");
       alias.append(input(item.alias, 80, "Vrij alias", value => { item.alias = value; }));
+      const custodian = document.createElement("td");
+      custodian.append(input(item.custodian, 80, "HUMAN dossierhouder of team", value => { item.custodian=value; }));
+      const sensitivity = document.createElement("td");
+      const cls = document.createElement("select");
+      for(const [key,label] of Object.entries(CLASSIFICATIONS))cls.add(new Option(label,key));
+      cls.value = item.classification;
+      cls.addEventListener("change",()=>{item.classification=cls.value;invalidateUndo();updateCounts();});
+      sensitivity.append(cls);
+      const hold = document.createElement("td");
+      const holdSelect=document.createElement("select");
+      for(const [key,label] of Object.entries(HOLD_FLAGS))holdSelect.add(new Option(label,key));
+      holdSelect.value=item.hold_flag;
+      holdSelect.addEventListener("change",()=>{item.hold_flag=holdSelect.value;invalidateUndo();updateCounts();});
+      hold.append(holdSelect);
       const stage = document.createElement("td");
       const select = document.createElement("select");
       for (const [value, label] of Object.entries(STATES)) {
@@ -147,12 +180,12 @@
         render();
       });
       remove.append(btn);
-      row.append(identity, alias, stage, due, action, remove);
+      row.append(identity, alias, custodian, sensitivity, hold, stage, due, action, remove);
       body.append(row);
     }
     if (!shown.length) {
       const tr = document.createElement("tr"); const td = document.createElement("td");
-      td.colSpan = 6; td.textContent = entries.length ? "Geen rijen voor dit filter." : "Selecteer eerst bestanden.";
+      td.colSpan = 9; td.textContent = entries.length ? "Geen rijen voor dit filter." : "Selecteer eerst bestanden.";
       tr.append(td); body.append(tr);
     }
     updateCounts();
@@ -176,7 +209,8 @@
         if (seen.has(sha256)) throw new Error("Dubbel identiek bestand; geen herhaalde bronidentiteiten.");
         seen.add(sha256);
         staged.push({sha256, bytes:file.size, alias:"Bron " + (entries.length + staged.length + 1),
-          status:"needs_review", review_date:"", action:""});
+          status:"needs_review", review_date:"", action:"",
+          custodian:"", classification:"unknown", hold_flag:"unknown"});
       }
       // Atomic: no selected source is installed before every new source has been admitted.
       entries = entries.concat(staged); invalidateUndo(); resetDrift();
@@ -190,13 +224,23 @@
   }
   function record(e) {
     return {sha256:e.sha256, bytes:e.bytes, alias:e.alias,
-      status:e.status, review_date:e.review_date, action:e.action};
+      status:e.status, review_date:e.review_date, action:e.action,
+      custodian:e.custodian, classification:e.classification, hold_flag:e.hold_flag};
+  }
+  function removalProposalReady(e) {
+    return e.status!=="propose_delete" || (
+      Boolean(e.action.trim()) && Boolean(e.custodian.trim()) &&
+      e.hold_flag==="human_declared_clear"
+    );
+  }
+  function requireCompleteHumanProposals() {
+    if(entries.some(e=>!removalProposalReady(e)))
+      throw Error("Verwijdervoorstel-HOLD: dossierhouder, HUMAN-actie en expliciete (onbevestigde) check op bewaarbeperking nodig. Dit verleent NOOIT wisbevoegdheid.");
   }
   function sourcePlan() {
     if (!entries.length || processing) throw Error("Selecteer eerst privébronnen.");
-    if (entries.some(e => e.status === "propose_delete" && !e.action.trim()))
-      throw Error("Verwijderingsvoorstel heeft een HUMAN vervolgactie nodig.");
-    return {kind:"lightup.private.assessment.retention.plan",version:1,authority:AUTHORITY,
+    requireCompleteHumanProposals();
+    return {kind:"lightup.private.assessment.retention.plan",version:2,authority:AUTHORITY,
       rows:entries.map(record).sort((a,b)=>a.sha256.localeCompare(b.sha256))};
   }
   function restoreOriginal(raw, label) {
@@ -218,7 +262,7 @@
     for (const e of entries) {
       const before = earlier.get(e.sha256);
       stageCounts[before.status] += 1;
-      const fields = ["alias","status","review_date","action"].filter(k=>e[k]!==before[k]);
+      const fields = HUMAN_FIELDS.filter(k=>e[k]!==before[k]);
       if (fields.length) changed.push({sha:e.sha256.slice(0,16),fields});
     }
     target.replaceChildren(text("strong","PRIVATE AES-GCM HUMAN-planning vergelijking — zelfde originele bytes"));
@@ -245,11 +289,9 @@
   });
   function exportReceipt() {
     if (!entries.length || processing) return status("Selecteer eerst privébronnen.", true);
-    if (entries.some(e => e.status === "propose_delete" && !e.action.trim())) {
-      return status("HOLD: bij elk voorstel tot verwijderen is een HUMAN reden/vervolgactie vereist. Dit is nooit toestemming tot wissen.", true);
-    }
+    try {requireCompleteHumanProposals();} catch(e) {return status("HOLD: "+e.message,true);}
     const obj = {
-      kind:"lightup.private.assessment.retention.plan", version:1,
+      kind:"lightup.private.assessment.retention.plan", version:2,
       authority:AUTHORITY,
       rows:entries.map(record).sort((a,b) => a.sha256.localeCompare(b.sha256))
     };
@@ -411,8 +453,9 @@
     if (!Object.hasOwn(STATES, stage) || !validDate(due) || !safeHuman(action, 400)) {
       return status("HOLD: ongeldige voorgestelde status, reviewdatum of menselijke actie.", true);
     }
-    if (stage === "propose_delete" && !action.trim()) {
-      return status("HOLD: voor een nieuw verwijderingsvoorstel is een duidelijke HUMAN vervolgactie vereist; geen wisopdracht.", true);
+    if (stage === "propose_delete" && (
+      !action.trim() || candidates.some(e=>!e.custodian.trim() || e.hold_flag!=="human_declared_clear"))) {
+      return status("HOLD: HUMAN verwijderen-voorstel vereist actie, dossierhouder en expliciete onbevestigde bewaarbeperkingcontrole op elke zichtbare rij.", true);
     }
     if (!window.confirm("Je staat op het punt de HUMAN-planning van " + candidates.length +
       " zichtbaar gefilterde bronrij(en) lokaal te wijzigen naar '" + STATES[stage] +
