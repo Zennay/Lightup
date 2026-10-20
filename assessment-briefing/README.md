@@ -121,3 +121,22 @@ The same fully offline `worksheet-studio-standalone.html` additionally supports 
 4. After editing, download a new PRIVATE CSV or another new encrypted PRIVATE file. The old downloaded ciphertext, original source and other saved files are never changed. There is **no key escrow or password recovery**.
 
 **This encryption is a confidentiality convenience only**, not verified identity, trustworthy provenance, source authenticity, client/operator authorization, current consent/revocation, or an approved way to distribute client data. WebCrypto support, device/browser security, passphrase strength, human access controls and separately authorized private transport remain required. No independent cryptographic/browser security assessment has been performed. The entire original feature remains DRAFT/HOLD; no production security claim or real-client deployment follows from it.
+
+
+## Large original findings: PRIVATE paged report library (up to 2,048)
+
+A large original finding source may not fit into one comfortable print/browser document. **Now use this entirely new read-only offline pipeline instead of truncating any original record**:
+
+```bash
+python3 assessment-briefing/paged_review.py \
+  --source ./original-private-lab.json \
+  --output-dir ./NEW-PRIVATE-PAGED-REPORT
+```
+
+Or choose **Build paged PRIVATE original finding library** from the same `console.py` foreground menu. This source-reader accepts the same already-produced strict original lab JSON (no new work/scan), renders at most 40 original findings per scriptless PRIVATE local HTML page and keeps each **original source ordinal unchanged**. For the maximum 2,048 original findings, the output has at most 52 linked pages; zero original findings produce an explicit empty page rather than a fabricated finding.
+
+All files are written exclusively inside one new 0700 directory as 0600 regular files, with no overwrites: `index.html` (PRIVATE severity distribution, original ordinal ranges and local links), `page-0001.html` and later pages (original private source details, literal targets, evidence summary, mitigations, human-only blank review worksheets), `human-followup.csv` (the SAME seven-column original rows/ordinals suitable for the browser HUMAN Studio) and `manifest.json` (unsigned exact original source hash, each PRIVATE page digest, row ranges, aggregate counts and literal false authority flags).
+
+The original `human_return.py` and `human_revision.py` now admit up to 64 KiB of **PRIVATE paged manifest** while maintaining the original exact source-byte SHA, finding/endpoint counts and HUMAN-row membership boundaries. The extra manifest size only accommodates the paged file inventory; it does not establish source authenticity or independent client consent. The HTML remains scriptless, Content Security Policy pinned, locally linked only and with original PRIVATE text HTML-escaped.
+
+**PRIVATE file hygiene:** these pages intentionally contain potentially confidential original target URLs, finding titles, evidence and source descriptions, unlike the source-free browser ordinal Studio. Keep the *entire* directory private and within separately approved human controls; none of the pages contacts a target or resolves DNS. No production rollout is justified, and all original M3/M7 DRAFT/HOLD gates remain in force.
