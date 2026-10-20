@@ -55,6 +55,14 @@ They are upgraded **in memory** with `custodian=""`,
 metadata must NEVER be interpreted as cleared or approved. Exporting
 subsequent private plans uses v2 and preserves all explicit HUMAN fields.
 
+For multiple sources, the **filtered bulk editor** also supports shared HUMAN
+custodian, sensitivity and hold updates without overwriting the existing
+status, review date or other fields (each dimension has an explicit
+"keep unchanged" option). It prepares the complete proposed state
+before asking for confirmation; any incomplete HUMAN delete proposal fails
+the **entire batch** without partial changes. The one-step undo now
+restores all v2 HUMAN metadata together. Neither operation changes files.
+
 Proposed deletion remains only a PRIVATE unverified HUMAN request and is
 **never an executable delete**. In v2 a publishable proposal also requires a
 nonempty HUMAN custodian, explicit human next action and the operator-selected
