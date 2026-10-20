@@ -86,6 +86,13 @@ def read(path: Path, maximum=1_500_000) -> bytes:
         raise ValueError("Missing, symlinked or oversized source: " + path.name)
     return path.read_bytes()
 
+def original_privacy_bytes(filename: str) -> bytes:
+    # Original checkout: own source files; portable received ZIP: privacy/ next
+    # to tools/. Never fall back to arbitrary current working directory.
+    root = HERE.parent / "privacy" if HERE.name == "tools" else HERE
+    return read(root / filename, 100_000)
+
+
 def strict_json(data: bytes) -> dict:
     def unique(pairs):
         result = {}
@@ -199,7 +206,8 @@ def inspect(path: Path, expected_sha256: str | None = None) -> dict:
         raise ValueError("Standalone recipient browser is not byte-identical to pinned source build")
     if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode() or data["tools/package.py"] != read(Path(__file__)) or data["tools/unpack.py"] != read(HERE / "unpack.py"):
         raise ValueError("Built-in operator instructions changed")
-    if any(digest(data[name]) != pin for name, (_path, pin) in PRIVACY_FILES.items()):
+    if any(digest(data[name]) != pin or data[name] != original_privacy_bytes(filename)
+           for name, (filename, pin) in PRIVACY_FILES.items()):
         raise ValueError("Pinned original disclosure or recipient preflight changed")
     if digest(data["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
         raise ValueError("Original courier bytes changed")
@@ -231,7 +239,7 @@ def build() -> Path:
     subprocess.run([sys.executable, str(SRC / "build.py")], cwd=ROOT, check=True, timeout=120)
     blobs = {dst: read(SRC / src) for dst, src in FILES.items()}
     for name, (filename, pin) in PRIVACY_FILES.items():
-        original = read(HERE / filename)
+        original = original_privacy_bytes(filename)
         if digest(original) != pin:
             raise ValueError("Disclosure source-owner byte pin changed: " + filename)
         blobs[name] = original
