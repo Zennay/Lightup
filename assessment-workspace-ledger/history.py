@@ -116,7 +116,7 @@ def render(sources, transitions, hotspots):
                 "and export native-finalizable CSV. HUMAN proposals are NOT "
                 "verified findings, repairs or consent.</p>"
                 "<p><a href='PRIVATE-hotspots.html'>"
-                "Open PRIVATE per-file churn review</a> for source-relative 
+                "Open PRIVATE per-file churn review</a> for source-relative "
                 "filenames and repeat changes. This separate HTML is sensitive.</p>"
                 "<p>Original relative filenames and any hashes are "
                 "omitted from this overview; they are PRIVATE in "
