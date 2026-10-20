@@ -126,6 +126,35 @@ certificate: statuses and questions may change for reasons unrelated to
 the actual security/privacy of an asset. Successful local creation
 still returns **HOLD (exit 3)**. Nothing is sent or granted.
 
+### PRIVATE latest-HUMAN follow-up attention desk
+
+New source-bound history rooms also contain
+`PRIVATE-HUMAN-latest-focus.html` and
+`PRIVATE-HUMAN-latest-focus.csv`. This is a printable, scriptless,
+strictly source-minimal original-ordinal follow-up desk sorted by the
+**latest declared HUMAN next action**, not by any inferred security
+severity. The desk distinguishes WITHHOLD, REQUEST_OWNER_CONTEXT,
+DISCUSS and PENDING for every originally selected source, along with
+how many human next-action and private-question **content** changes
+were declared in manually ordered rounds. Actual question text,
+masked notes, client details and source hashes do not enter these
+overview artifacts.
+
+The native original-byte source receipt now includes
+`latest_human_focus_original_bound`. New rooms require both exact
+focus files when read-only reopening. Previously saved genuine history
+rooms remain independently readable under their older canonical
+receipt shape, without falsely claiming they contain a new focus desk.
+The printable history also now uses the **actual original source
+ordinal** (e.g. #2 and #9), not the index within the selected subset.
+The earlier index-labelled HTML remains strictly acceptable only
+inside its originally produced older history receipt form.
+
+The focus desk is PRIVATE HUMAN discussion, not a to-do assignment,
+risk ranking, remediation proof or client authorization. Follow up
+through the original native finalizer, never directly through a
+receipt or dashboard.
+
 ### Prepare the next independent HUMAN round directly from the history room
 
 Each new history room contains a **fresh blank** source-bound

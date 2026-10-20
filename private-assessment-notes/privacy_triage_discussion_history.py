@@ -20,6 +20,7 @@ import tempfile
 from notes import Hold, file_new, private_directory, private_input, save_json
 from privacy_triage import FALSE_FLAGS
 from privacy_triage_discussion_history_studio import render as history_studio
+from privacy_triage_discussion_focus import focus_rows, csv_bytes as focus_csv, page as focus_page
 from privacy_triage_discussion_actions import (
     studio as action_editor, rows_csv as action_csv, blank_rows,
     receipt as action_receipt,
@@ -48,14 +49,20 @@ def csv_history(rows: list[dict]) -> bytes:
     return output.getvalue().encode("utf-8")
 
 
-def overview(items: list[dict], selected_count: int, copies: list[list[int]]) -> bytes:
+def overview(items: list[dict], selected_count: int, copies: list[list[int]],
+             legacy_slots: bool = False) -> bytes:
     lines = []
-    for ordinal in range(1, selected_count+1):
-        subset = [row for row in items if row["slot"] == ordinal]
+    # The manual selection may be sparse, e.g. ORIGINAL #2 and #9.
+    # Display the actual source ordinal, never the selected-row index.
+    ordinals = [row["ordinal"] for row in items if row["round"] == 1]
+    for original_ordinal in ordinals:
+        subset = [row for row in items if row["ordinal"] == original_ordinal]
         chronology = " → ".join(html.escape(row["step"]) for row in subset)
         steps = sum(row["stage_changed"] for row in subset)
         notes = sum(row["question_changed"] for row in subset)
-        lines.append("<li><b>Selected ORIGINAL slot #" + str(ordinal) +
+        display = ("Selected ORIGINAL slot #" + str(len(lines) + 1)
+                   if legacy_slots else "Original source #" + str(original_ordinal))
+        lines.append("<li><b>" + display +
                      "</b>: " + chronology + " · literal HUMAN stage changes " +
                      str(steps) + " · PRIVATE question changes " + str(notes) +
                      " (text withheld)</li>")
@@ -156,6 +163,7 @@ def history_receipt(sources, manifest, decisions, packets, selected_raw,
         "independent_reviewer_identities_not_verified": True,
         "human_stages_are_not_remediation_evidence": True,
         "blank_next_human_round_original_bound": True,
+        "latest_human_focus_original_bound": True,
         **{flag: False for flag in FALSE_FLAGS},
     }
 
@@ -178,6 +186,10 @@ def create(original: str, reviews: list[str], received_room: str,
                  overview(summaries, len(selected), copies))
         file_new(output / "PRIVATE-HUMAN-action-history-studio.html",
                  history_studio(summaries, len(selected), len(action_rounds)))
+        attention = focus_rows(summaries, [x[0] for x in selected], len(action_rounds))
+        file_new(output / "PRIVATE-HUMAN-latest-focus.csv", focus_csv(attention))
+        file_new(output / "PRIVATE-HUMAN-latest-focus.html",
+                 focus_page(attention, len(action_rounds)))
         # Next round starts explicitly EMPTY/PENDING, not adopted from
         # earlier HUMAN submissions. Original action-finalize independently
         # checks these native source bytes when this room is used as draft.
@@ -191,6 +203,8 @@ def create(original: str, reviews: list[str], received_room: str,
         finished = True
         print("HOLD: PRIVATE source-bound HUMAN action chronology written; NO review clearance")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-HUMAN-action-history.html"))
+        print("LATEST HUMAN ATTENTION: " +
+              str(output / "PRIVATE-HUMAN-latest-focus.html"))
         print("NEXT HUMAN ROUND (blank): " +
               str(output / "PRIVATE-HUMAN-action-editor.html"))
         return 3
@@ -220,39 +234,50 @@ def reopen_history(original: str, reviews: list[str], received_room: str,
                    ensure_ascii=False) + "\n").encode("utf-8")
     actual_receipt = private_input(
         str(room / "PRIVATE-HUMAN-action-history-receipt.json"), 65536)
-    legacy_binding = dict(binding)
-    legacy_binding.pop("blank_next_human_round_original_bound")
-    legacy_receipt = (
-        json.dumps(legacy_binding, indent=2, sort_keys=True,
-                   ensure_ascii=False) + "\n").encode("utf-8")
+    previous_binding = dict(binding)
+    previous_binding.pop("latest_human_focus_original_bound")
+    oldest_binding = dict(previous_binding)
+    oldest_binding.pop("blank_next_human_round_original_bound")
+    def receipt_bytes(value):
+        return (json.dumps(value, indent=2, sort_keys=True,
+                           ensure_ascii=False) + "\n").encode("utf-8")
+
+    full_next_files = (
+        ("PRIVATE-HUMAN-action-source.json", next_original_receipt),
+        ("PRIVATE-HUMAN-action-template.csv", action_csv(blank_rows(selected))),
+        ("PRIVATE-HUMAN-action-editor.html", action_editor(selected)),
+    )
+    focus = focus_rows(summaries, [x[0] for x in selected], len(action_rounds))
+    latest_files = (
+        ("PRIVATE-HUMAN-latest-focus.csv", focus_csv(focus)),
+        ("PRIVATE-HUMAN-latest-focus.html", focus_page(focus, len(action_rounds))),
+    )
     if actual_receipt == original_receipt:
-        # New original-bound HISTORY bundles MUST retain all three extra
-        # source-bound blank HUMAN continuation artifacts.
-        next_artifacts = (
-            ("PRIVATE-HUMAN-action-source.json", next_original_receipt),
-            ("PRIVATE-HUMAN-action-template.csv", action_csv(blank_rows(selected))),
-            ("PRIVATE-HUMAN-action-editor.html", action_editor(selected)),
-        )
-    elif actual_receipt == legacy_receipt:
-        # Historical pre-continuation rooms legitimately predate the blank
-        # editor; they are still strictly re-admitted against full originals.
-        # Never misrepresent a legacy packet as a new continuation room.
-        for extra in (
-            "PRIVATE-HUMAN-action-source.json",
-            "PRIVATE-HUMAN-action-template.csv",
-            "PRIVATE-HUMAN-action-editor.html",
-        ):
-            if (room / extra).exists() or (room / extra).is_symlink():
-                raise Hold("HOLD: legacy HUMAN history mixed with changed new-round files")
+        # Only new outputs with the source-bound focus flag can claim a
+        # latest-HUMAN attention workspace; every exact file is required.
+        next_artifacts = (*full_next_files, *latest_files)
+        legacy_slots = False
+    elif actual_receipt == receipt_bytes(previous_binding):
+        # Pre-attention originals had blank NEXT HUMAN room but no focus files.
+        next_artifacts = full_next_files
+        legacy_slots = True
+    elif actual_receipt == receipt_bytes(oldest_binding):
+        # Historical pre-continuation originals have neither optional feature.
         next_artifacts = ()
+        legacy_slots = True
     else:
         raise Hold("HOLD: source-bound private history receipt changed")
+    absent = {filename for filename, _ in (*full_next_files, *latest_files)}
+    present = {filename for filename, _ in next_artifacts}
+    for filename in absent - present:
+        if (room / filename).exists() or (room / filename).is_symlink():
+            raise Hold("HOLD: historical PRIVATE history mixed with new format files")
     required = (
         ("PRIVATE-HUMAN-action-history-receipt.json", actual_receipt),
         *next_artifacts,
         ("PRIVATE-HUMAN-action-history.csv", csv_history(export)),
         ("PRIVATE-HUMAN-action-history.html",
-         overview(summaries, len(selected), copies)),
+         overview(summaries, len(selected), copies, legacy_slots=legacy_slots)),
         ("PRIVATE-HUMAN-action-history-studio.html",
          history_studio(summaries, len(selected), len(action_rounds))),
     )
