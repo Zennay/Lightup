@@ -69,6 +69,7 @@
   };
 
   const invalidateReturnReceipt = () => {
+    if (typeof discardPeerPreview === "function" && peerPreview) discardPeerPreview();
     if (lastReturnReceipt === null) return;
     lastReturnReceipt = null;
     el("shelf-return-receipt").disabled = true;
@@ -649,6 +650,150 @@
       " niet opnieuw geselecteerd bleven zonder overname. Ongedaan maken is beschikbaar.";
     report("REVIEW_ONLY — " + chosen.length + " expliciet geselecteerde PRIVATE HUMAN-rijen overgenomen; lokale conflicten niet stilzwijgend vervangen.");
   });
+
+  // Two independent PRIVATE HUMAN reviewers: reconcile proposals without elevating
+  // either packet to source, identity or execution authority.
+  const peerInput = el("shelf-peer-files");
+  const peerRows = el("shelf-peer-rows");
+  const peerStatus = el("shelf-peer-status");
+  const peerApply = el("shelf-peer-apply");
+  let peerPreview = null;
+  const discardPeerPreview = () => {
+    peerPreview = null;
+    peerApply.disabled = true;
+    peerRows.replaceChildren();
+    peerStatus.textContent = "PRIVATE bron-/HUMAN-state gewijzigd. Kies beide teampakketten opnieuw voor een actuele vergelijking.";
+  };
+  const sourceEqual = (row, item) => !!row &&
+    row.original_name === item.file.name &&
+    row.byte_length === item.file.size &&
+    row.unsigned_sha256 === item.hash &&
+    row.structural_kind_unverified === item.inspection.kind;
+  const humanEqual = (a, b) => a.human_route === b.human_route &&
+    a.human_stage === b.human_stage && a.human_team === b.human_team &&
+    // A redacted note is UNKNOWN, not an agreement to erase anything.
+    (!a.private_note_included || !b.private_note_included ||
+      a.private_human_note === b.private_human_note);
+  const peerLabel = (entry) => entry
+    ? teams[entry.human_team] + " / " + stages[entry.human_stage] +
+      " / " + routes[entry.human_route][0] +
+      (entry.private_note_included ? " / PRIVATE notitie aangeleverd" : " / notitie afgeschermd")
+    : "Geen HUMAN voorstel in dit pakket";
+  peerInput.addEventListener("change", async () => {
+    const files = Array.from(peerInput.files || []);
+    peerInput.value = "";
+    peerPreview = null; peerRows.replaceChildren(); peerApply.disabled = true;
+    if (busy || !items.length || files.length !== 2 ||
+        files.some(f => f.size < 10 || f.size > 96 * 1024)) {
+      peerStatus.textContent = "HOLD — kies eerst originele bronbestanden en precies twee begrensde PRIVATE HUMAN-inventarissen.";
+      return;
+    }
+    const epoch = generation, revision = humanRevision;
+    busy = true; peerInput.disabled = true; input.disabled = true;
+    try {
+      // Existing strict v1/v2 reader rejects duplicate keys, false authority
+      // violations, noncanonical source identifiers and ambiguous inventories.
+      const first = await LightUpPrivateSourceInspector.readHumanInventory(files[0]);
+      const second = await LightUpPrivateSourceInspector.readHumanInventory(files[1]);
+      if (generation !== epoch || humanRevision !== revision) throw Error("stale import");
+      const lookup = entries => new Map(entries.map(entry =>
+        [entry.original_name.normalize("NFC").toLowerCase(), entry]));
+      const a = lookup(first), b = lookup(second);
+      // Never use case-folding to override the literal source identity.
+      const current = new Set(items.map(item => item.file.name.normalize("NFC").toLowerCase()));
+      const absent = [...a.keys(),...b.keys()].filter((key,i,all) =>
+        !current.has(key) && all.indexOf(key) === i).length;
+      const decisions = [];
+      let conflicts = 0, changed = 0, agreed = 0, single = 0;
+      for (const item of items) {
+        const key = item.file.name.normalize("NFC").toLowerCase();
+        const rawA = a.get(key), rawB = b.get(key);
+        const x = sourceEqual(rawA,item) ? rawA : null;
+        const y = sourceEqual(rawB,item) ? rawB : null;
+        if ((rawA && !x) || (rawB && !y)) changed++;
+        const conflicting = !!(x && y && !humanEqual(x,y));
+        if (conflicting) conflicts++;
+        else if (x && y) agreed++;
+        else if (x || y) single++;
+        const entry = {item, x, y, rawA, rawB, choice: "none", conflicting};
+        decisions.push(entry);
+        const tr = document.createElement("tr");
+        cell(tr,item.file.name,"file-name");
+        cell(tr,(rawA&&!x)||(rawB&&!y) ? "CHANGED / NO COPY" :
+          conflicting ? "CONFLICT / HUMAN KEUZE" :
+          x&&y ? "EENSGEZIND / ONGETEKEND" :
+          x||y ? "ENKEL VOORSTEL" : "NEW / GEEN VOORSTEL");
+        cell(tr,peerLabel(x));
+        cell(tr,peerLabel(y));
+        const td = document.createElement("td");
+        if (x || y) {
+          const select = document.createElement("select");
+          select.setAttribute("aria-label","Kies PRIVATE HUMAN voorstel voor "+item.file.name);
+          const choices = [["none","Niets overnemen"]];
+          if (x) choices.push(["a","Reviewerbestand 1 expliciet overnemen"]);
+          if (y) choices.push(["b","Reviewerbestand 2 expliciet overnemen"]);
+          for (const [id,label] of choices) {
+            const option = document.createElement("option");
+            option.value = id; option.textContent = label; select.append(option);
+          }
+          select.addEventListener("change",()=>{
+            if (!peerPreview || peerPreview.decisions !== decisions) return;
+            entry.choice = select.value;
+            peerApply.disabled = !decisions.some(d=>d.choice!=="none");
+          });
+          td.append(select);
+        } else td.textContent = "Geen bronexacte HUMAN-keuze";
+        tr.append(td); peerRows.append(tr);
+      }
+      if (generation !== epoch || humanRevision !== revision) throw Error("stale selection");
+      peerPreview = {decisions, epoch, revision};
+      peerStatus.textContent = "ALLEEN VOORSTEL: " + agreed + " gelijke voorstellen, " +
+        conflicts + " HUMAN-conflicten, " + single + " enkelzijdig, " +
+        changed + " afwijkende oorspronkelijke bronverwijzingen, " +
+        absent + " niet lokaal geselecteerd. Standaard wordt NIETS overgenomen. " +
+        "Zelfs gelijke ongetekende voorstellen zijn geen echte autorisatie.";
+    } catch (_) {
+      peerPreview = null; peerRows.replaceChildren();
+      peerStatus.textContent = "HOLD — ongeldig of veranderd PRIVATE teampakket; geen HUMAN review of originele bron gewijzigd.";
+    } finally {
+      busy = false; peerInput.disabled = false; input.disabled = false;
+    }
+  });
+  peerApply.addEventListener("click", () => {
+    if (!peerPreview || busy) return;
+    const plan = peerPreview;
+    const chosen = plan.decisions.filter(d=>d.choice!=="none");
+    if (!chosen.length) return;
+    if (plan.epoch!==generation || plan.revision!==humanRevision ||
+        !chosen.every(d=>items.includes(d.item) &&
+          sourceEqual(d.choice==="a"?d.x:d.y,d.item))) {
+      discardPeerPreview();
+      return report("HOLD — bron of HUMAN review gewijzigd sinds peer-preview; niets toegepast.");
+    }
+    const replacing = chosen.filter(({item})=>item.stage!=="unreviewed" ||
+      item.team!=="unassigned" || item.note!=="").length;
+    const conflicts = chosen.filter(d=>d.conflicting).length;
+    if (!confirm("Pas "+chosen.length+" expliciet gekozen PRIVATE HUMAN voorstellen toe, inclusief "+
+        conflicts+" tegenstrijdige reviewers en "+replacing+
+        " bestaande lokale HUMAN reviews? Alle overige bronnen blijven ongemoeid. " +
+        "Geen originele toestemming, grant, authenticatie of uitvoering. Undo blijft beschikbaar.")) return;
+    if (plan.epoch!==generation || plan.revision!==humanRevision) return;
+    recordReviewEdit(); // invalidates both preview and any old return receipt
+    for (const d of chosen) {
+      const src = d.choice==="a" ? d.x : d.y;
+      d.item.route=src.human_route;
+      d.item.stage=src.human_stage;
+      d.item.team=src.human_team;
+      if (src.private_note_included) d.item.note=src.private_human_note;
+    }
+    humanRevision++;
+    render();
+    peerStatus.textContent="REVIEW_ONLY — "+chosen.length+
+      " expliciete bronexacte HUMAN-reviewkeuzes toegepast; "+conflicts+
+      " reviewerconflicten bewust geselecteerd. Niet-geselecteerde oorspronkelijke en lokale HUMAN gegevens behouden.";
+    report("REVIEW_ONLY — twee privé-teampakketten bronexact vergeleken en alleen bewuste HUMAN-keuzes overgenomen.");
+  });
+
   el("shelf-return-receipt").addEventListener("click", () => {
     if (!lastReturnReceipt) return report("HOLD — geen actuele PRIVATE HUMAN ontvangstbon. Importeer eerst bewust bronexacte HUMAN-keuzes.");
     if (!confirm("Download PRIVATE ontvangstbon met oorspronkelijke bestandsnamen, ongetekende SHA-256 en oude/nieuwe HUMAN team/fase (zonder oorspronkelijke bronbytes of notitieteksten)? Deze informatie kan vertrouwelijk zijn. Ontvanger en kanaal afzonderlijk verifiëren. Geen echte toestemming, bewijs of security-vrijgave.")) return;
