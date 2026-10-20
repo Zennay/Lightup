@@ -70,6 +70,7 @@
 
   const invalidateReturnReceipt = () => {
     if (typeof discardPeerPreview === "function" && peerPreview) discardPeerPreview();
+    if (typeof invalidatePeerReceipt === "function") invalidatePeerReceipt();
     if (lastReturnReceipt === null) return;
     lastReturnReceipt = null;
     el("shelf-return-receipt").disabled = true;
@@ -658,6 +659,13 @@
   const peerStatus = el("shelf-peer-status");
   const peerApply = el("shelf-peer-apply");
   let peerPreview = null;
+  let lastPeerReceipt = null;
+  const invalidatePeerReceipt = () => {
+    if (lastPeerReceipt === null) return;
+    lastPeerReceipt = null;
+    el("shelf-peer-receipt").disabled = true;
+    el("shelf-peer-receipt-note").textContent = "Bron-/HUMAN-state gewijzigd; vorige PRIVÉ peer-retourbon ongeldig voor actuele HUMAN status.";
+  };
   const discardPeerPreview = () => {
     peerPreview = null;
     peerApply.disabled = true;
@@ -771,6 +779,12 @@
       busy = false; peerInput.disabled = false; input.disabled = false;
     }
   });
+  el("shelf-peer-receipt").addEventListener("click", () => {
+    if (!lastPeerReceipt) return report("HOLD — geen actuele PRIVATE HUMAN peer-retourbon.");
+    if (!confirm("Download PRIVATE bronexact HUMAN peer-retourbon met oorspronkelijke namen en ongetekende SHA-256, reviewerkeuze en oude/nieuwe HUMAN route/fase/team? Bevat GEEN privé-notitietekst of originele bronbytes. Controleer ontvanger en kanaal apart. Nooit echte toestemming, grant of security release.")) return;
+    exportJSON("lightup-scope-PRIVATE-HUMAN-peer-return-receipt.json",lastPeerReceipt);
+    report("REVIEW_ONLY — actuele PRIVATE peer-retourbon lokaal gedownload. Geen geauthenticeerde autoriteit.");
+  });
   el("shelf-peer-summary-export").addEventListener("click", () => {
     if (!peerPreview) return report("HOLD — maak eerst een actuele vergelijking.");
     if (peerPreview.epoch !== generation || peerPreview.revision !== humanRevision) {
@@ -807,6 +821,20 @@
         " bestaande lokale HUMAN reviews? Alle overige bronnen blijven ongemoeid. " +
         "Geen originele toestemming, grant, authenticatie of uitvoering. Undo blijft beschikbaar.")) return;
     if (plan.epoch!==generation || plan.revision!==humanRevision) return;
+    const peerChanges = chosen.map(d => {
+      const source = d.choice === "a" ? d.x : d.y;
+      return {
+        original_name:d.item.file.name, byte_length:d.item.file.size,
+        unsigned_sha256:d.item.hash, structural_kind_unverified:d.item.inspection.kind,
+        human_packet_selected:d.choice === "a" ? 1 : 2,
+        reviewer_choices_disagreed:d.conflicting,
+        note_disclosure_incomplete:d.partialNote,
+        before:{human_route:d.item.route,human_stage:d.item.stage,human_team:d.item.team},
+        after:{human_route:source.human_route,human_stage:source.human_stage,human_team:source.human_team},
+        private_note_transferred:source.private_note_included,
+        private_note_changed:source.private_note_included && d.item.note !== source.private_human_note
+      };
+    });
     recordReviewEdit(); // invalidates both preview and any old return receipt
     for (const d of chosen) {
       const src = d.choice==="a" ? d.x : d.y;
@@ -816,6 +844,19 @@
       if (src.private_note_included) d.item.note=src.private_human_note;
     }
     humanRevision++;
+    lastPeerReceipt = {
+      format:"lightup.scope_PRIVATE_human_peer_receipt.v1",
+      status:"REVIEW_ONLY", posture:"INCUBATE_M3_M7_DRAFT_HOLD",
+      authority:{client_consent:false,operator_consent:false,grant:false,
+        scan:false,deploy:false,release:false},
+      original_source_bound_human_choices:peerChanges,
+      conflicts_explicitly_resolved:conflicts,
+      local_human_reviews_replaced:replacing,
+      warning:"Unsigned, unverified PRIVATE HUMAN peer decisions only; neither producer identity, current consent, actual grant, scan, revocation nor security release verified."
+    };
+    el("shelf-peer-receipt").disabled = false;
+    el("shelf-peer-receipt-note").textContent = "Eenmalige actuele PRIVATE HUMAN peer-retourbon voor " + chosen.length +
+      " bewust gekozen bronnen beschikbaar, zonder bronbytes of PRIVATE notitieteksten.";
     render();
     peerStatus.textContent="REVIEW_ONLY — "+chosen.length+
       " expliciete bronexacte HUMAN-reviewkeuzes toegepast; "+conflicts+
