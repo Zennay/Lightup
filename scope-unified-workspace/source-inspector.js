@@ -152,6 +152,7 @@ const LightUpPrivateSourceInspector = (() => {
     }
 
     if (data.format === "lightup.scope_handoff_PRIVATE_inventory.v1" ||
+        data.format === "lightup.scope_handoff_PRIVATE_inventory.v2" ||
         data.format === "lightup.scope_handoff_anonymous_counts.v1") {
       return { kind: "SELF_REPORTED_INVENTORY", route: "none",
         label: "HUMAN inventaris; geen oorspronkelijke bron" };
