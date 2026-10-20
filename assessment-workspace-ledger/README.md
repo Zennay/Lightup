@@ -104,7 +104,34 @@ Native Python independently re-admits the bounded original ledger and re-hashes 
 
 Limits: 1–12 kits, <=256 files per kit, <=64 MiB each kit, <=32 MiB per individual file, <=256 MiB combined, max depth 5, <=1 MiB ledger JSON, <=64 KiB HUMAN CSV. Existing owner-private input folders, owner-only 0700 output parent, 0700 exclusive generated folders and 0600 output files. No implicit scans, no original source modification and no overwrites.
 
-Original private ledger/HUMAN file reads refuse hardlinked and special (including FIFO) inputs before reading; non-blocking opens prevent a caller-supplied FIFO from suspending the offline operator workflow.\n\n## Owner-private ingress from a browser Downloads HUMAN-review.csv
+Original private ledger/HUMAN file reads refuse hardlinked and special (including FIFO) inputs before reading; non-blocking opens prevent a caller-supplied FIFO from suspending the offline operator workflow.\n\n## HUMAN review CSV v2 — exact original ledger identity
+
+**Important change for all current review workflows:** HUMAN-review.csv now
+has six columns, in this exact order:
+
+    ordinal,ledger_sha256,kit_digest,stage,owner,question
+
+Every HUMAN row binds to the SHA-256 of the entire original ledger.json file
+AND the original kit digest, not merely to potentially identical kit bytes.
+Native `ledger.py finalize`, `browser_intake.py`, `continuity.py` and the
+offline browser now produce/accept these exact source-bound v2 rows. This
+prevents applying a review to a different case ledger sharing identical kit
+contents. Source identity is an UNSIGNED byte-level consistency relation,
+never source-owner authentication, consent, or security clearance.
+
+**Legacy migration:** Five-column v1 HUMAN-review.csv from the earlier
+held software will be rejected by native finalize/import rather than
+silently treated as current case context. To recover the old HUMAN decisions,
+open the new standalone.html locally, select the ORIGINAL current ledger.json
+and then import the old HUMAN-review.csv. The browser warns that the old
+review is UNBOUND to the complete ledger, requires explicit human confirmation
+before importing as an UNTRUSTED draft, and requires a manual review of every
+proposed stage/owner/question. Export a NEW six-column source-bound CSV,
+then perform the normal PRIVATE ingress/finalization procedure. The legacy
+draft is NOT automatically approved or independently source-proven. If the
+offline browser cannot compute the ledger SHA-256, v2 export fails closed.
+
+## Owner-private ingress from a browser Downloads HUMAN-review.csv
 
 Browsers normally save the HUMAN-review.csv into Downloads using local
 filesystem defaults; it may be readable by other users and intentionally
