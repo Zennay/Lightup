@@ -18,6 +18,7 @@ SCRIPT = r"""
   const exportButton = document.getElementById('export');
   const carryInput = document.getElementById('carry');
   const csvInput = document.getElementById('resume');
+  const humanInput = document.getElementById('human-final');
   const queryInput = document.getElementById('query');
   const stageFilter = document.getElementById('stage-filter');
   const summary = document.getElementById('summary');
@@ -120,6 +121,7 @@ SCRIPT = r"""
     currentDigest = null;
     carryInput.disabled = true;
     csvInput.disabled = true;
+    humanInput.disabled = true;
     dirty = false;
     rows.replaceChildren();
     updateView();
@@ -205,6 +207,7 @@ SCRIPT = r"""
     currentDigest = hexDigest;
     carryInput.disabled = !hexDigest;
     csvInput.disabled = false;
+    humanInput.disabled = !hexDigest;
     dirty = false;
     rows.replaceChildren(fragment);
     updateView();
@@ -311,6 +314,60 @@ SCRIPT = r"""
       'Reconfirm manually; native finalize will re-read all source files. No authority inferred.';
   });
 
+  humanInput.addEventListener('change', async () => {
+    if (!current.length || !currentDigest) {
+      status.textContent = 'HOLD — load original PRIVATE ledger.json first.';
+      return;
+    }
+    const file = humanInput.files && humanInput.files[0];
+    if (!file || file.name !== 'HUMAN-only.json' || file.size < 8 ||
+        file.size > 1048576) {
+      status.textContent = 'HOLD — choose native PRIVATE HUMAN-only.json <= 1MiB.';
+      return;
+    }
+    let packet;
+    try {
+      packet = JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(await file.arrayBuffer()));
+    } catch (_) {
+      status.textContent = 'HOLD — malformed HUMAN-only.json; existing edits kept.';
+      return;
+    }
+    const allowedKeys = ['schema','authority','ledger_sha256','plan_sha256','rows'];
+    const flags = ['authorization','consent','release_approval','source_authentication',
+      'verified_finding','verified_remediation'];
+    const authority = packet && packet.authority;
+    if (!packet || Array.isArray(packet) || typeof packet !== 'object' ||
+        Object.keys(packet).sort().join(',') !== allowedKeys.sort().join(',') ||
+        packet.schema !== 'lightup.private.workspace-ledger-human.v1' ||
+        !authority || typeof authority !== 'object' || Array.isArray(authority) ||
+        Object.keys(authority).sort().join(',') !== flags.sort().join(',') ||
+        !Object.values(authority).every(v => v === false) ||
+        packet.ledger_sha256 !== currentDigest || !hex(packet.plan_sha256) ||
+        !Array.isArray(packet.rows) || packet.rows.length !== current.length ||
+        !packet.rows.every((row, i) =>
+          row && typeof row === 'object' && !Array.isArray(row) &&
+          Object.keys(row).sort().join(',') ===
+            ['ordinal','stage','owner','question','kit_digest'].sort().join(',') &&
+          row.ordinal === current[i].ordinal && row.kit_digest === current[i].digest &&
+          validHuman(row))) {
+      status.textContent = 'HOLD — original HUMAN packet schema or source digest differs. Edits kept.';
+      return;
+    }
+    if (!confirmOverwrite()) {
+      status.textContent = 'Original unsaved edits retained; packet not imported.';
+      return;
+    }
+    for (const [i, row] of packet.rows.entries()) {
+      current[i].stage.value = row.stage;
+      current[i].owner.value = row.owner;
+      current[i].question.value = row.question;
+    }
+    dirty = true;
+    updateView();
+    status.textContent = 'PRIVATE HUMAN-only packet reloaded against EXACT ledger bytes. ' +
+      'These are human proposals only. Reconfirm and export NEW CSV; native finalize rechecks originals.';
+  });
+
   window.addEventListener('beforeunload', event => {
     if (dirty) { event.preventDefault(); event.returnValue = ''; }
   });
@@ -373,6 +430,8 @@ def render_studio():
             "HUMAN-carry.json <input type='file' id='carry' accept='.json,application/json' disabled></label>"
             "<label>Or resume an exact-source locally saved HUMAN-review.csv "
             "<input type='file' id='resume' accept='.csv,text/csv' disabled></label>"
+            "<label>Or reopen source-bound original finalized HUMAN-only.json "
+            "<input type='file' id='human-final' accept='.json,application/json' disabled></label>"
             "<p>Resume/import never verifies current source bytes. All decisions remain HUMAN-only.</p>"
             "<p id='status' role='status' aria-live='polite'>Choose only an original locally generated "
             "PRIVATE ledger.json. Nothing is uploaded or persisted by this browser.</p></section>"
