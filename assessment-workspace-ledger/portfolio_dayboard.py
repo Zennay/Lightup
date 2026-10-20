@@ -144,7 +144,7 @@ def private_worklist(entries, when, owner, capacity):
     ]
     # Proposed owner-level workload comparison is entirely PRIVATE. It is
     # intentionally absent from the anonymous high-level HTML summary.
-    body.insert(3,
+    body.insert(2,
         "<p><strong>Proposed HUMAN workload by locally selected owner:</strong> " +
         " · ".join(
             html.escape(row["proposed_human_owner"], quote=True) +
