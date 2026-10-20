@@ -34,7 +34,7 @@ DISPOSITION = "REVIEW_ONLY_DRAFT_HOLD"
 WARNING = ("PRIVATE offline software-only, unsigned and non-authorizing. No "
            "authenticated producer, consent, finding, fix, security review, "
            "scan, grant or HUMAN GO. INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD.")
-COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py")
+COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py")
 FILES = frozenset("remediation-human-replies/" + n for n in COMPANION)
 PORTABLE = "LightUp-PRIVATE-HUMAN-Reply-Software-DRAFT-HOLD.zip"
 ORIGINAL_ZIP = "original-scheduler-software-only.zip"
@@ -98,6 +98,21 @@ workroom continuing that exact encrypted HUMAN reply. Neither is remediation,
 grant, a validated client finding, consent or verified fix.</p>
 <p><a href="remediation-human-replies/README.md">Complete HUMAN reply
 operator instructions</a>.</p></section>
+<section><h2>5 · Compare multiple independently received HUMAN reply files</h2>
+<p>After authorized receipt of 2–8 separately encrypted <code>.luhr</code> files
+for the SAME originally selected HUMAN packet, compare literal response
+differences offline. Matching rows are not actual independent reviewer
+consensus or verified remediation. Local file slots are not authenticated
+people or dates.</p>
+<pre>python3 remediation-human-replies/reconcile.py \
+  --handoff "$HOME/lightup-private/selected-human.luhq" \
+  --reply "$HOME/lightup-private/reply-one.luhr" \
+  --reply "$HOME/lightup-private/reply-two.luhr" \
+  --output-dir "$HOME/lightup-private/private-human-comparison-01"</pre>
+<p>A new PRIVATE scriptless side-by-side report and separate small-cohort
+cautionary anonymous count receipt are produced only after every original
+and encrypted HUMAN reply packet is admitted completely.</p>
+</section>
 <section><h2>Security and release fence</h2>
 <p>Original exact-head hosted and permanently named VPS CI, source-owner,
 independent privacy/security/browser/crypto reviews, #177/#182/#829,
