@@ -109,17 +109,27 @@ def rotate(original: Path, previous: Path, destination: Path) -> None:
         require(reply.encrypted_cockpit.private_envelope(original) == source_bytes
                 and reply.schedule_vault.private_vault(previous) == previous_bytes,
                 "PRIVATE original selected source or reply changed during rotation")
+        # Check the private staging inode before publishing. An already
+        # present destination always causes an atomic EEXIST refusal.
+        prepared = pending.lstat()
+        require(stat.S_ISREG(prepared.st_mode) and prepared.st_nlink == 1
+                and prepared.st_mode & 0o077 == 0
+                and prepared.st_uid == os.getuid()
+                and prepared.st_size == len(new_bytes),
+                "Prepared PRIVATE HUMAN ciphertext is not complete and owner-only")
         os.link(pending, destination, follow_symlinks=False)
-        descriptor = destination.lstat()
-        require(stat.S_ISREG(descriptor.st_mode) and
-                descriptor.st_mode & 0o077 == 0 and
-                descriptor.st_uid == os.getuid(),
-                "New PRIVATE HUMAN ciphertext output is not owner only")
-        directory = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY)
         try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
+            directory = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        except OSError:
+            # Only unlink the destination we atomically created; no rewrite of
+            # input or pre-existing destination is ever performed.
+            if destination.exists() and destination.stat().st_ino == prepared.st_ino:
+                destination.unlink()
+            raise
     finally:
         if pending.exists():
             pending.unlink()
