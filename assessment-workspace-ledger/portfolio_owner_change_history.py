@@ -194,8 +194,10 @@ def run(args):
                 } for i,v in enumerate(stored,1)],
                 "human_proposed_history_rows":selected,
             }
+            from portfolio_owner_change_history_studio import render as render_history_studio
             outputs={
                 "OPEN-PRIVATE.html":anonym(selected,len(stored)),
+                "PRIVATE-HUMAN-operator-version-studio.html":render_history_studio(),
                 "PRIVATE-HUMAN-operator-version-history.html":owner_html(owner,selected,len(stored)),
                 "PRIVATE-HUMAN-operator-version-history.csv":csv_source(selected),
                 "PRIVATE-HUMAN-operator-version-history.json":canonical(data),

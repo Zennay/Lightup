@@ -1941,3 +1941,42 @@ client/operator consent with revocation-at-use, independent security/privacy/
 browser review, original exact-head hosted+named VPS CI and explicit HUMAN GO
 remain mandatory. Notion Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD; no real
 targets, scans, dispatch, grants, live deployment, approval or merge.
+
+## v48 — original source-free HUMAN operator version explorer
+
+Every original native multi-round comparison (console 54) now includes a
+ready-to-open `PRIVATE-HUMAN-operator-version-studio.html` in each new
+0700/0600 owner-private version-history output room. The browser contains
+no embedded original owner records: locally and explicitly select the
+existing `PRIVATE-HUMAN-operator-version-history.json` generated in that
+same room. It performs strict bounded (≤1 MiB) source schema checking,
+including literal false-authority flags, 2–8 original ordered receipts,
+original owner scope, round-sequenced status identities, duplicate-key
+rejection, and no free-text human note contents.
+
+The offline CSP/SHA-pinned viewer gives operators a manually chosen
+HUMAN round selector, proposed-stage filter, original case/transition/kit
+search, separate status-changed / private-note-changed / both / unchanged
+filters, and anonymous visible counts JSON export. The source-driven view
+shows only changed-note ROUND NUMBERS, never copied note contents.
+An empty or stable history never implies a verified fix or task completion.
+All source data stays in local browser memory; no network, cookies, API
+calls, background dispatch, grants, scans or authorizations.
+
+Portable original source-free [Studio](portfolio-owner-change-history-studio.html)
+ships in the v48 software ZIP and may also be rendered into an existing
+operator-only 0700 directory:
+
+    python3 assessment-workspace-ledger/portfolio_owner_change_history_studio.py \
+      --output /private/software/NEW-HUMAN-operator-version-studio.html
+
+Foreground console **55** builds only the software; console **54** builds
+the corresponding complete, independent original native PRIVATE owner
+history with ready-to-open browser. Fixed software-only v48 ZIP preserves
+read-only unsigned historical v16–v47 inventory compatibility. Current
+posture remains Notion Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD: no real
+targets, client action, verified findings, consent, scope grants, or live
+deployment. Original CI, source-owner, independent browser/security/privacy
+review, separately authenticated present client/operator consent with
+action-time revocation, and explicit HUMAN GO remain required before
+real authorized release.

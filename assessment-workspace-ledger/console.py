@@ -46,6 +46,7 @@ import portfolio_owner_followup_studio
 import portfolio_owner_change_briefs
 import portfolio_owner_change_board
 import portfolio_owner_change_history
+import portfolio_owner_change_history_studio
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -108,6 +109,7 @@ MENU = (
     ("52", "Create source-bound per-owner PRIVATE HUMAN follow-up change briefs"),
     ("53", "Build portable offline PRIVATE HUMAN operator change board"),
     ("54", "Compare 2–8 original HUMAN operator versions per private owner"),
+    ("55", "Build portable offline ORIGINAL HUMAN operator version explorer"),
     ("0", "Exit"),
 )
 
@@ -256,6 +258,10 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "55":
+        return portfolio_owner_change_history_studio.build(argparse.Namespace(
+            output=prompt("Absolute NEW PRIVATE HUMAN version Studio .html inside 0700 parent")
         ))
     if action == "54":
         originals, csvs = [], []
