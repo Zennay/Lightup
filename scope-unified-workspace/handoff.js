@@ -34,6 +34,8 @@
   const summary = el("shelf-summary");
   const sourceCopy = el("private-copy");
   const anonymousCopy = el("counts-copy");
+  const stageFilter = el("shelf-stage-filter");
+  const searchFilter = el("shelf-search");
   const SHA = (bytes) => crypto.subtle.digest("SHA-256", bytes).then((x) =>
     Array.from(new Uint8Array(x), (n) => n.toString(16).padStart(2, "0")).join(""));
   const cleanName = (name) => typeof name === "string" && name.length > 0 &&
@@ -81,6 +83,8 @@
     rows.replaceChildren();
     summary.textContent = viewSummary();
     for (const item of items) {
+      if (stageFilter.value !== "all" && item.stage !== stageFilter.value) continue;
+      if (searchFilter.value.trim() && !item.file.name.normalize("NFC").toLowerCase().includes(searchFilter.value.trim().normalize("NFC").toLowerCase())) continue;
       const tr = document.createElement("tr");
       cell(tr, item.file.name, "file-name");
       cell(tr, item.file.size.toLocaleString("nl-NL") + " B");
@@ -163,7 +167,10 @@
       tr.append(actions);
       rows.append(tr);
     }
+    if (items.length) summary.textContent += " · " + rows.childElementCount + " zichtbaar na lokale filters";
   }
+  stageFilter.addEventListener("change", render);
+  searchFilter.addEventListener("input", render);
   input.addEventListener("change", async () => {
     const chosen = Array.from(input.files || []);
     input.value = "";

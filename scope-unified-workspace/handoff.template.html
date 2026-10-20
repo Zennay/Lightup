@@ -32,6 +32,12 @@
 <p id="shelf-restore-note">Een lokaal reviewplan bevat bestandsnamen, originele SHA-256 en mogelijk vertrouwelijke notities. Herstel wordt volledig geweigerd bij bron-, volgorde-, formaat- of SHA-afwijking. Het plan geeft geen toestemming en wijzigt nooit bronbestanden.</p>
 </div>
 <p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
+<div class="shelf-filter">
+<label for="shelf-stage-filter">Filter HUMAN reviewfase
+<select id="shelf-stage-filter"><option value="all">Alle reviewfases</option><option value="unreviewed">Nog niet beoordeeld</option><option value="preparing">Menselijk onderzoek</option><option value="escalated">Escalatie nodig</option><option value="documented">Gedocumenteerd (NIET opgelost)</option></select></label>
+<label for="shelf-search">Zoek uitsluitend lokaal in PRIVATE bestandsnamen
+<input type="search" id="shelf-search" placeholder="Zoek bronbestand…" autocomplete="off" spellcheck="false" maxlength="120"></label>
+</div>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
 <thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">HUMAN opvolging (uitsluitend lokaal)</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>

@@ -65,6 +65,8 @@ Open `scope-unified-workspace/handoff.html` on a trusted offline browser. Import
 
 Any collision of normalized (NFC/case-insensitive) original filenames now HOLDs the **whole** incoming batch, even when different bytes claim the same name; manually remove a prior version before introducing its replacement, so a case never silently switches between source revisions.
 
+The workroom now has PRIVATE in-tab **local text search and HUMAN-stage filtering** for navigating the source-bound review desk; filters affect presentation only, never file admission, origin binding or the complete source inventory export.
+
 Each selected original file now gets source-SHA-256-bound **local HUMAN triage**: unreviewed / preparing / escalated / documented-but-NOT-resolved, a team (security, privacy, client operations, platform or unassigned), and an optional 280-character PRIVATE note. These HUMAN values do not change the original source, signal real consent or revoke grants. Removing the original also removes its local HUMAN choices.
 
 Two separately confirmed exports are available: an anonymous route-counts JSON without source identifiers; and a PRIVATE original filename+size+unsigned-digest+HUMAN stage/team/private note handoff containing potentially sensitive details, to be transferred only to authenticated recipients. Browser memory wiping is not guaranteed. No grants, dispatch or revocation are performed.
