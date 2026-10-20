@@ -1550,3 +1550,55 @@ PRIVATE input, target, client, grant, scan, model, network, action or
 authorization was activated. All original Incubate M3/M7 HUMAN GO and exact
 hosted/named VPS CI plus independent owner/security/privacy/browser gates
 remain unchanged.
+
+## v39 — complete PRIVATE HUMAN owner response against original source
+
+A new [portfolio_inbox_owner_return.py](portfolio_inbox_owner_return.py)
+closes the missing **human reply** step after original history selection.
+This operator-only CLI prepares a complete owner-private HUMAN reply template,
+then independently re-admits the owner-edited file into a new PRIVATE
+receipt. No real tasks or authenticated recipient are implied.
+
+To prepare an original owner-only CSV template using already-produced native
+history and selection files:
+
+    python3 assessment-workspace-ledger/portfolio_inbox_owner_return.py prepare \
+      --selection /private/owner/PRIVATE-HUMAN-history-selection.json \
+      --history /private/history/PRIVATE-HUMAN-inbox-history.json \
+      --selection-csv /private/owner/PRIVATE-HUMAN-original-selection.csv \
+      --private-parent /private/operator-only
+
+The native producer reads the complete original canonical history and the
+existing originally selected HUMAN CSV using the **unchanged existing native
+validators**. It verifies the complete selected original owner packet,
+original review round, source SHA and all original HUMAN case rows. A new
+0700/0600 owner PRIVATE room contains a full
+`HUMAN-owner-history-reply-template.csv` and scriptless HUMAN instructions.
+Every original row remains present in exact order; only the proposed HUMAN
+reply stage and 240-character private HUMAN note are editable.
+
+After the HUMAN proposes a reply in a genuinely PRIVATE local copy, use:
+
+    python3 assessment-workspace-ledger/portfolio_inbox_owner_return.py receive \
+      --selection /private/owner/PRIVATE-HUMAN-history-selection.json \
+      --history /private/history/PRIVATE-HUMAN-inbox-history.json \
+      --selection-csv /private/owner/PRIVATE-HUMAN-original-selection.csv \
+      --reply-csv /private/replies/HUMAN-owner-history-reply-template.csv \
+      --private-parent /private/operator-only
+
+The native re-admission enforces exact original selection-byte-SHA across
+the full CSV, identical original owner-row ordinals, original HUMAN stages,
+matching fixed CSV schema, complete row population, bounded and
+formula-safe private HUMAN notes, and only three historical HUMAN status
+values. All original source/csv bytes are re-read before publishing a new
+exclusive 0700 PRIVATE room with scriptless summary, detailed 0600 HTML,
+canonical source-bound 0600 JSON and unchanged original HUMAN CSV.
+Original inputs are never modified.
+
+Foreground console **44 prepare** and **45 receive** provide the complete
+same-source manual workflow. Neither a HUMAN label nor an unsigned SHA
+authenticates a real recipient. No external send, network, scanner, model,
+grant, consent, verified remediation, task creation, action or security PASS.
+Every original release gate remains mandatory; PR stays DRAFT/HOLD at Notion
+Incubate M3/M7 PLAN/LAB ONLY. Source-only software bundle v39 maintains
+read-only unsigned v16–v38 software inventory inspection.

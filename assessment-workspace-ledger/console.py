@@ -37,6 +37,7 @@ import portfolio_inbox_history
 import portfolio_inbox_timeline
 import portfolio_inbox_timeline_selection
 import portfolio_inbox_timeline_batch
+import portfolio_inbox_owner_return
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -88,6 +89,8 @@ MENU = (
     ("41", "Build source-free offline original HUMAN inbox timeline browser"),
     ("42", "Native-admit source-bound PRIVATE HUMAN timeline owner selection"),
     ("43", "Prepare separate PRIVATE HUMAN history packets for 1–8 original owners"),
+    ("44", "Prepare source-exact PRIVATE HUMAN owner reply template"),
+    ("45", "Receive complete original PRIVATE HUMAN owner reply"),
     ("0", "Exit"),
 )
 
@@ -236,6 +239,16 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action in ("44", "45"):
+        return portfolio_inbox_owner_return.run(argparse.Namespace(
+            mode="prepare" if action == "44" else "receive",
+            selection=prompt("Original PRIVATE-HUMAN-history-selection.json"),
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            selection_csv=prompt("Original PRIVATE-HUMAN-original-selection.csv"),
+            reply_csv=prompt("Completed original HUMAN-owner-history-reply-template.csv")
+            if action == "45" else None,
+            private_parent=private_parent()
         ))
     if action == "43":
         owners, selections = [], []
