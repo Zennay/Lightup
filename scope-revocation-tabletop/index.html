@@ -88,6 +88,15 @@
             <button type="button" id="replay-brief" class="button minor">Stapbeslisbrief (.md)</button></div>
           <p id="replay-hint" class="muted">Vertakkingen worden alleen in een vrij lokaal geheugen-slot geplaatst. Geen toestemming, bronbewijs, grant of echte uitvoer.</p>
         </section>
+        <section class="moment-comparison" aria-labelledby="moment-title">
+          <h4 id="moment-title">Vergelijk twee fictieve beslismomenten</h4>
+          <p class="muted">Kies twee punten binnen dezelfde oefentijdlijn. Vergelijk de oorspronkelijke verklaringen, scope-/risicorevisies, STOP en historische pogingen. Geen echte toestemming of controle.</p>
+          <div class="bank-choose"><label for="moment-from">Van stap <select id="moment-from"></select></label>
+          <label for="moment-to">Naar stap <select id="moment-to"></select></label></div>
+          <p id="moment-summary" class="muted" role="status">Nog geen oefenmomenten vergeleken.</p>
+          <ul id="moment-deltas" class="needs"></ul>
+          <button id="moment-brief" class="button minor" type="button">PRIVATE momentvergelijking (.md)</button>
+        </section>
         <ol id="timeline" class="timeline" aria-live="polite"></ol>
         <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
       </section>

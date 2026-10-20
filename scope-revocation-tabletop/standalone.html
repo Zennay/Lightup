@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-jXrlQ7M9o0MKpah3Gq63dCs2+2qRFwes0lnNvhHnOA0='; style-src 'sha256-GzxoAhQSlGQsSotM/FsHHKmgzPY/IWC1JlblUu2aGlg='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JpUnJV44XeuVDL0bXjUyS5pgSjvoPoIgGNBe4TE2rPI='; style-src 'sha256-GzxoAhQSlGQsSotM/FsHHKmgzPY/IWC1JlblUu2aGlg='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
   <meta name="referrer" content="no-referrer">
   <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
   <style>:root{color-scheme:dark;--bg:#0b1220;--surface:#121e30;--surface2:#19283a;--border:#31445c;--text:#f3f7fc;--muted:#adbed1;--aqua:#5ee5cf;--warn:#ffd07d;--red:#ff9b9b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -172,6 +172,7 @@
   // Eight fixed slots; no names, external identifiers or automatic persistence.
   let slots = Array(8).fill(null);
   let replayCursor = null; // null follows the current final fictitious step.
+  let momentFrom=0, momentTo=null; // display-only fictional comparison; not an authority decision.
   const HISTORY_MAX=48;
   let undoFrames=[],redoFrames=[];
   let workspaceVersion=0; // monotonic, including undo/redo: rejects import read-back ABA races.
@@ -252,6 +253,65 @@
       ? "Vrije fictieve scenario-slots: "+slots.filter(x=>x===null).length+
         ". Vertakking bewaart het geselecteerde voortraject en houdt het oorspronkelijke volledige scenario als nulmeting."
       : "Alle acht scenario-slots zijn gevuld. Wis eerst bewust een eigen slot om veilig te kunnen vertakken.");
+  }
+  function momentComparison() {
+    const start=Math.min(events.length,Math.max(0,momentFrom));
+    const finish=Math.min(events.length,Math.max(0,momentTo===null?events.length:momentTo));
+    const a=replayContext(start),b=replayContext(finish);
+    const differences=[
+      ["Client-oefenverklaring",a.state.client,b.state.client,x=>x?"fictief aanwezig":"ontbreekt"],
+      ["Operator-oefenverklaring",a.state.operator,b.state.operator,x=>x?"fictief aanwezig":"ontbreekt"],
+      ["Geldigheidsvenster",a.state.window,b.state.window,x=>x?"fictief open":"verlopen"],
+      ["Noodstop",a.state.stop,b.state.stop,x=>x?"ACTIEF":"niet actief"],
+      ["Scope-revisie",a.state.scope+1,b.state.scope+1,x=>"v"+x],
+      ["Risico-revisie",a.state.risk+1,b.state.risk+1,x=>"v"+x],
+      ["Uitvoerpogingen tot moment",a.attempts,b.attempts,String]
+    ].map(([name,oldValue,newValue,fmt])=>
+      name+": "+fmt(oldValue)+" → "+fmt(newValue)+(oldValue===newValue?" (onveranderd)":" (gewijzigd)"));
+    const aMissing=new Set(a.missing),bMissing=new Set(b.missing);
+    const added=b.missing.filter(x=>!aMissing.has(x));
+    const removed=a.missing.filter(x=>!bMissing.has(x));
+    differences.push("Nieuwe fictieve HOLD-redenen: "+(added.length?added.join("; "):"geen"));
+    differences.push("Verdwenen fictieve HOLD-redenen: "+(removed.length?removed.join("; "):"geen"));
+    const earlier=Math.min(start,finish),later=Math.max(start,finish);
+    const interval=events.slice(earlier,later).map((type,i)=>
+      "Stap "+(earlier+i+1)+": "+TYPES[type][0]);
+    return {start,finish,differences,interval,from:a,to:b};
+  }
+  function renderMomentComparison() {
+    const from=$("moment-from"),to=$("moment-to");
+    momentFrom=Math.min(momentFrom,events.length);
+    if(momentTo!==null)momentTo=Math.min(momentTo,events.length);
+    for(const [select,value] of [[from,momentFrom],[to,momentTo===null?events.length:momentTo]]) {
+      select.replaceChildren();
+      for(let i=0;i<=events.length;i++){
+        const option=document.createElement("option");
+        option.value=String(i);
+        option.textContent=i===0?"0 · begin":"Stap "+i+" · "+TYPES[events[i-1]][0];
+        select.append(option);
+      }
+      select.value=String(value);
+    }
+    const report=momentComparison();
+    write("moment-summary","Fictief moment "+report.start+" → "+report.finish+
+      ". "+report.interval.length+" gebeurtenis(sen) tussen deze momenten, "+
+      report.to.missing.length+" fictieve HOLD-redenen op eindmoment. NOOIT een echte vrijgave.");
+    const list=$("moment-deltas");
+    list.replaceChildren();
+    report.differences.forEach(t=>list.append(el("li","",t)));
+    if(!report.interval.length)list.append(el("li","","Geen tussenliggende fictieve gebeurtenissen."));
+  }
+  function momentBrief(){
+    const report=momentComparison();
+    return ["# LightUp — PRIVATE fictieve momentvergelijking","",
+      "**Oefengegevens, geen bronidentiteit, toestemming, grant, daadwerkelijke scan of release.**","",
+      "Van stap "+report.start+" naar stap "+report.finish+".",
+      "Fictieve gebeurtenissen tussen gekozen momenten:",...(
+        report.interval.length?report.interval.map(x=>"- "+x):["- Geen"]),"",
+      "## Verschillen",...report.differences.map(x=>"- "+x),"",
+      "## Werkelijke voorwaarden blijven buiten deze oefening",
+      "Originele brongebonden scope/asset/capability, apart geauthenticeerde client- en operatorconsent, live revocation vóór I/O, onafhankelijke reviews, originele exacte CI en expliciete HUMAN GO.",
+      "AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false · DEPLOY_ALLOWED=false",""].join("\n");
   }
   function replayBrief() {
     const moment=replayContext(replayPosition()),final=replayContext(events.length);
@@ -404,6 +464,7 @@
     }
     renderBank();
     renderReplay();
+    renderMomentComparison();
     refreshDrillStatus();
     return {s,steps,missing};
   }
@@ -820,6 +881,16 @@
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("timeline-filter").addEventListener("change",render);
+  $("moment-from").addEventListener("change",event=>{
+    momentFrom=Number(event.target.value);renderMomentComparison();
+  });
+  $("moment-to").addEventListener("change",event=>{
+    momentTo=Number(event.target.value);renderMomentComparison();
+  });
+  $("moment-brief").addEventListener("click",()=>{
+    bytesDownload("lightup-fictional-moment-comparison.md",momentBrief(),"text/markdown");
+    feedback("PRIVATE fictieve momentvergelijking lokaal aangeboden. Geen echte toestemming of autorisatie.");
+  });
   $("replay-step").addEventListener("input",event=>{replayCursor=Number(event.target.value);render();});
   $("replay-prev").addEventListener("click",()=>{replayCursor=Math.max(0,replayPosition()-1);render();});
   $("replay-next").addEventListener("click",()=>{replayCursor=Math.min(events.length,replayPosition()+1);render();});
@@ -922,6 +993,15 @@
           <div class="replay-buttons"><button type="button" id="replay-fork" class="button primary">Maak scenariovertakking</button>
             <button type="button" id="replay-brief" class="button minor">Stapbeslisbrief (.md)</button></div>
           <p id="replay-hint" class="muted">Vertakkingen worden alleen in een vrij lokaal geheugen-slot geplaatst. Geen toestemming, bronbewijs, grant of echte uitvoer.</p>
+        </section>
+        <section class="moment-comparison" aria-labelledby="moment-title">
+          <h4 id="moment-title">Vergelijk twee fictieve beslismomenten</h4>
+          <p class="muted">Kies twee punten binnen dezelfde oefentijdlijn. Vergelijk de oorspronkelijke verklaringen, scope-/risicorevisies, STOP en historische pogingen. Geen echte toestemming of controle.</p>
+          <div class="bank-choose"><label for="moment-from">Van stap <select id="moment-from"></select></label>
+          <label for="moment-to">Naar stap <select id="moment-to"></select></label></div>
+          <p id="moment-summary" class="muted" role="status">Nog geen oefenmomenten vergeleken.</p>
+          <ul id="moment-deltas" class="needs"></ul>
+          <button id="moment-brief" class="button minor" type="button">PRIVATE momentvergelijking (.md)</button>
         </section>
         <ol id="timeline" class="timeline" aria-live="polite"></ol>
         <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>

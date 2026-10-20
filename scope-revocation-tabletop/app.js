@@ -76,6 +76,7 @@
   // Eight fixed slots; no names, external identifiers or automatic persistence.
   let slots = Array(8).fill(null);
   let replayCursor = null; // null follows the current final fictitious step.
+  let momentFrom=0, momentTo=null; // display-only fictional comparison; not an authority decision.
   const HISTORY_MAX=48;
   let undoFrames=[],redoFrames=[];
   let workspaceVersion=0; // monotonic, including undo/redo: rejects import read-back ABA races.
@@ -156,6 +157,65 @@
       ? "Vrije fictieve scenario-slots: "+slots.filter(x=>x===null).length+
         ". Vertakking bewaart het geselecteerde voortraject en houdt het oorspronkelijke volledige scenario als nulmeting."
       : "Alle acht scenario-slots zijn gevuld. Wis eerst bewust een eigen slot om veilig te kunnen vertakken.");
+  }
+  function momentComparison() {
+    const start=Math.min(events.length,Math.max(0,momentFrom));
+    const finish=Math.min(events.length,Math.max(0,momentTo===null?events.length:momentTo));
+    const a=replayContext(start),b=replayContext(finish);
+    const differences=[
+      ["Client-oefenverklaring",a.state.client,b.state.client,x=>x?"fictief aanwezig":"ontbreekt"],
+      ["Operator-oefenverklaring",a.state.operator,b.state.operator,x=>x?"fictief aanwezig":"ontbreekt"],
+      ["Geldigheidsvenster",a.state.window,b.state.window,x=>x?"fictief open":"verlopen"],
+      ["Noodstop",a.state.stop,b.state.stop,x=>x?"ACTIEF":"niet actief"],
+      ["Scope-revisie",a.state.scope+1,b.state.scope+1,x=>"v"+x],
+      ["Risico-revisie",a.state.risk+1,b.state.risk+1,x=>"v"+x],
+      ["Uitvoerpogingen tot moment",a.attempts,b.attempts,String]
+    ].map(([name,oldValue,newValue,fmt])=>
+      name+": "+fmt(oldValue)+" → "+fmt(newValue)+(oldValue===newValue?" (onveranderd)":" (gewijzigd)"));
+    const aMissing=new Set(a.missing),bMissing=new Set(b.missing);
+    const added=b.missing.filter(x=>!aMissing.has(x));
+    const removed=a.missing.filter(x=>!bMissing.has(x));
+    differences.push("Nieuwe fictieve HOLD-redenen: "+(added.length?added.join("; "):"geen"));
+    differences.push("Verdwenen fictieve HOLD-redenen: "+(removed.length?removed.join("; "):"geen"));
+    const earlier=Math.min(start,finish),later=Math.max(start,finish);
+    const interval=events.slice(earlier,later).map((type,i)=>
+      "Stap "+(earlier+i+1)+": "+TYPES[type][0]);
+    return {start,finish,differences,interval,from:a,to:b};
+  }
+  function renderMomentComparison() {
+    const from=$("moment-from"),to=$("moment-to");
+    momentFrom=Math.min(momentFrom,events.length);
+    if(momentTo!==null)momentTo=Math.min(momentTo,events.length);
+    for(const [select,value] of [[from,momentFrom],[to,momentTo===null?events.length:momentTo]]) {
+      select.replaceChildren();
+      for(let i=0;i<=events.length;i++){
+        const option=document.createElement("option");
+        option.value=String(i);
+        option.textContent=i===0?"0 · begin":"Stap "+i+" · "+TYPES[events[i-1]][0];
+        select.append(option);
+      }
+      select.value=String(value);
+    }
+    const report=momentComparison();
+    write("moment-summary","Fictief moment "+report.start+" → "+report.finish+
+      ". "+report.interval.length+" gebeurtenis(sen) tussen deze momenten, "+
+      report.to.missing.length+" fictieve HOLD-redenen op eindmoment. NOOIT een echte vrijgave.");
+    const list=$("moment-deltas");
+    list.replaceChildren();
+    report.differences.forEach(t=>list.append(el("li","",t)));
+    if(!report.interval.length)list.append(el("li","","Geen tussenliggende fictieve gebeurtenissen."));
+  }
+  function momentBrief(){
+    const report=momentComparison();
+    return ["# LightUp — PRIVATE fictieve momentvergelijking","",
+      "**Oefengegevens, geen bronidentiteit, toestemming, grant, daadwerkelijke scan of release.**","",
+      "Van stap "+report.start+" naar stap "+report.finish+".",
+      "Fictieve gebeurtenissen tussen gekozen momenten:",...(
+        report.interval.length?report.interval.map(x=>"- "+x):["- Geen"]),"",
+      "## Verschillen",...report.differences.map(x=>"- "+x),"",
+      "## Werkelijke voorwaarden blijven buiten deze oefening",
+      "Originele brongebonden scope/asset/capability, apart geauthenticeerde client- en operatorconsent, live revocation vóór I/O, onafhankelijke reviews, originele exacte CI en expliciete HUMAN GO.",
+      "AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false · DEPLOY_ALLOWED=false",""].join("\n");
   }
   function replayBrief() {
     const moment=replayContext(replayPosition()),final=replayContext(events.length);
@@ -308,6 +368,7 @@
     }
     renderBank();
     renderReplay();
+    renderMomentComparison();
     refreshDrillStatus();
     return {s,steps,missing};
   }
@@ -724,6 +785,16 @@
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("timeline-filter").addEventListener("change",render);
+  $("moment-from").addEventListener("change",event=>{
+    momentFrom=Number(event.target.value);renderMomentComparison();
+  });
+  $("moment-to").addEventListener("change",event=>{
+    momentTo=Number(event.target.value);renderMomentComparison();
+  });
+  $("moment-brief").addEventListener("click",()=>{
+    bytesDownload("lightup-fictional-moment-comparison.md",momentBrief(),"text/markdown");
+    feedback("PRIVATE fictieve momentvergelijking lokaal aangeboden. Geen echte toestemming of autorisatie.");
+  });
   $("replay-step").addEventListener("input",event=>{replayCursor=Number(event.target.value);render();});
   $("replay-prev").addEventListener("click",()=>{replayCursor=Math.max(0,replayPosition()-1);render();});
   $("replay-next").addEventListener("click",()=>{replayCursor=Math.min(events.length,replayPosition()+1);render();});

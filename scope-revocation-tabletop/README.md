@@ -43,3 +43,7 @@ This is **not an interpreter, acceptance gate or simulator of LightUp's real pol
 ## Current implementation limits
 
 No user-provided names/text in the workspace; no real timestamp, actor identity, source signatures or legal permissions; no trusted parser of outside exports. Files may still require appropriate private handling. Use the shipped one-file `standalone.html` offline artifact or the three-source-file developer build; the UI and canonical JSON are bounded and never persist automatically. This is a tabletop aid, not a production release.
+
+## Twee fictieve beslismomenten vergelijken
+
+De sectie **Vergelijk twee fictieve beslismomenten** toont voor elk gekozen tijdlijnpaar afzonderlijk de zelf ingevoerde client-/operatorverklaringen, geldigheidsvenster, permanente noodstop, scope-/risicoversies, historische uitvoerpogingen en toegevoegde/verdwenen fictieve HOLD-redenen. De tussenliggende gebeurtenislijst is altijd gebaseerd op de actuele eigen oefentijdlijn. Bij aanpassen, laden of herstellen worden momenten tot bestaande stappen begrensd. Via **PRIVATE momentvergelijking (.md)** wordt dezelfde uitleg zonder echte asset-, persoon- of tenantgegevens lokaal gedownload. Deze vergelijking bewijst geen echte autorisatie, identiteitscontrole of veilige uitvoering.
