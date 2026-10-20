@@ -41,6 +41,7 @@
   let state = blankDocument();
   let pendingTriage = null;
   let humanUndo = [];
+  let lastComparison = null;
 
   function blankDocument() {
     return {
@@ -399,6 +400,7 @@
     clearTriagePreview(preserveBulkUndo);
     // Any actual proposal mutation makes the previously rendered comparison stale.
     $("compare-section").hidden = true;
+    lastComparison = null;
     $("total-count").textContent = state.rows.length;
     $("excluded-count").textContent = state.rows.filter(row => row.excluded).length;
     $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
@@ -701,6 +703,102 @@
       announce("PRIVATE draft opened locally after full strict admission. Still DRAFT/HOLD.");
     } catch (error) { announce("OPEN REJECTED: " + error.message + " Existing draft was retained.", true); }
   }
+  function proposedScopeImpact(before, after) {
+    const oldRows = new Map(before.rows.map(row => [row.asset, row]));
+    const newRows = new Map(after.rows.map(row => [row.asset, row]));
+    const widen = [];
+    const narrow = [];
+    const attention = [];
+    const humanOnly = [];
+    const caps = row => row.excluded || row.capability === "none" ? new Set() :
+      new Set(row.capability.split("+"));
+    for (const row of after.rows) {
+      const previous = oldRows.get(row.asset);
+      if (!previous) {
+        if (!row.excluded) widen.push("NEW proposed included literal " + row.asset +
+          " (unverified; not approved)");
+        else attention.push("NEW explicit exclusion " + row.asset + " (human declared only)");
+        continue;
+      }
+      if (previous.excluded && !row.excluded) {
+        widen.push("Removed explicit exclusion for " + row.asset + " (HUMAN HOLD; not authorized)");
+      }
+      if (!previous.excluded && row.excluded) {
+        narrow.push("Proposed newly excluded literal " + row.asset + " (NOT a proven revocation)");
+      }
+      const oldCaps = caps(previous), newCaps = caps(row);
+      const added = [...newCaps].filter(x => !oldCaps.has(x));
+      const removed = [...oldCaps].filter(x => !newCaps.has(x));
+      if (added.length) widen.push(row.asset + ": requested extra capabilities " + added.join(", ") +
+        " (NOT granted)");
+      if (removed.length) narrow.push(row.asset + ": removed proposed capabilities " +
+        removed.join(", ") + " (NOT proof of runtime disablement)");
+      if (row.ownership !== previous.ownership || row.status !== previous.status ||
+          row.question !== previous.question) {
+        humanOnly.push(row.asset + ": HUMAN preparation labels/questions changed (not validated)");
+      }
+    }
+    for (const row of before.rows) {
+      if (newRows.has(row.asset)) continue;
+      if (row.excluded) {
+        widen.push("Removed previous explicit exclusion " + row.asset +
+          " (HUMAN HOLD; absent ≠ authorized)");
+      } else {
+        narrow.push("Removed proposed included literal " + row.asset +
+          " (NOT a real-world revoked authorization)");
+      }
+    }
+    const ranks = {informational: 0, low: 1, medium: 2, high: 3};
+    if (ranks[after.risk] > ranks[before.risk]) widen.push(
+      "Requested descriptive ceiling increased " + before.risk + " → " + after.risk);
+    if (ranks[after.risk] < ranks[before.risk]) narrow.push(
+      "Requested descriptive ceiling decreased " + before.risk + " → " + after.risk);
+    if (after.start < before.start) widen.push(
+      "Requested local start moved earlier " + before.start + " → " + after.start);
+    if (after.start > before.start) narrow.push(
+      "Requested local start moved later " + before.start + " → " + after.start);
+    if (after.end > before.end) widen.push(
+      "Requested local end moved later " + before.end + " → " + after.end);
+    if (after.end < before.end) narrow.push(
+      "Requested local end moved earlier " + before.end + " → " + after.end);
+    if (before.client !== after.client) attention.push(
+      "Client-declared label CHANGED; identity matching is not authenticated. Stop HUMAN reconciliation.");
+    for (const field of ["project", "contact", "purpose", "evidence"]) {
+      if (before[field] !== after[field]) humanOnly.push("Private HUMAN field changed: " + field);
+    }
+    return {widen, narrow, attention, humanOnly};
+  }
+
+  function exportChangeBrief() {
+    const impact = lastComparison;
+    if (!impact || $("compare-section").hidden) {
+      announce("Create a valid exact PRIVATE revision comparison before export.", true); return;
+    }
+    if (!confirm("Export UNENCRYPTED PRIVATE change brief with client labels and proposed asset literals? A diff, hash or note NEVER authenticates consent or scope. Keep the recipient private.")) return;
+    const bullets = (lines, label) =>
+      "<h2>" + escapeHtml(label) + "</h2><ul>" +
+      (lines.length ? lines.map(line => "<li>" + escapeHtml(line) + "</li>").join("") : "<li>(none)</li>") +
+      "</ul>";
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<title>LightUp PRIVATE human scope change brief</title>' +
+      '<style>body{font:16px/1.55 system-ui,sans-serif;max-width:900px;margin:40px auto;padding:0 18px;color:#1c2734}h1{border-bottom:2px solid #457364}h2{font-size:19px;margin-top:28px}li{margin:8px 0}aside{border-left:4px solid #a13a3a;background:#fff3f3;padding:14px}footer{margin:40px 0;color:#555}</style>' +
+      '</head><body><h1>PRIVATE HUMAN scope proposal change brief</h1>' +
+      '<aside>Unverified literal proposal changes only. No PASS, approval, signed timestamp, actual revocation, permission or verified risk.</aside>' +
+      '<p>Previous self-declared client: ' + escapeHtml(impact.beforeClient) +
+      '<br>Current self-declared client: ' + escapeHtml(impact.afterClient) + '</p>' +
+      bullets(impact.widen, "Potential requested widening — HUMAN HOLD") +
+      bullets(impact.narrow, "Potential proposed reduction — not verified revocation") +
+      bullets(impact.attention, "Human identity/exclusion attention") +
+      bullets(impact.humanOnly, "Other HUMAN label changes") +
+      '<footer>LightUp Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD. Revalidate every source, authentic separate operator/client consent and at-use revocation in the original domain before any active work. This unsigned PRIVATE brief does not authorize action.</footer>' +
+      '</body></html>';
+    if (textBytes(html) > MAX_ENCRYPTED) { announce("PRIVATE change brief exceeds 100 KiB.", true); return; }
+    download("lightup-scope-change-PRIVATE.html", html, "text/html");
+    announce("PRIVATE human change-impact brief downloaded locally. No actual authorization or revocation proven.");
+  }
+
   async function compareDraft(file, encrypted = false) {
     try {
       const before = encrypted ? await decryptWorkroom(file) : await readFile(file);
@@ -715,6 +813,15 @@
         return old && ROW_KEYS.filter(key => key !== "id" && key !== "asset")
           .some(key => JSON.stringify(old[key]) !== JSON.stringify(row[key]));
       }).map(row => row.asset + " — proposed boundary/capability/review fields changed");
+      const impact = proposedScopeImpact(before, state);
+      lastComparison = {
+        ...impact, beforeClient: before.client, afterClient: state.client
+      };
+      $("expansions").textContent = [...impact.widen, ...impact.attention].join("\n") ||
+        "(no detectable literal widening; this is NOT an authorization verdict)";
+      $("restrictions").textContent = impact.narrow.join("\n") ||
+        "(no detectable literal narrowing; this is NOT a revocation verdict)";
+      for (const info of impact.humanOnly) if (!changed.includes(info)) changed.push(info);
       const headerChanged = FORM_FIELDS.filter(key => before[key] !== state[key]);
       if (headerChanged.length) changed.unshift("Proposed engagement fields changed: " + headerChanged.join(", "));
       $("added").textContent = added.join("\n") || "(none)";
@@ -772,6 +879,7 @@
     $("file-compare-encrypted").addEventListener("change", async event => {
       const file = event.target.files[0]; event.target.value = ""; if (file) await compareDraft(file, true);
     });
+    $("export-change-brief").addEventListener("click", exportChangeBrief);
     $("close-compare").addEventListener("click", () => $("compare-section").hidden = true);
     $("clear").addEventListener("click", () => {
       if (!confirm("Discard all current PRIVATE draft state in this page? This cannot be undone.")) return;
