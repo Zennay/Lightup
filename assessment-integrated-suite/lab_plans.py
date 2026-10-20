@@ -179,7 +179,14 @@ def main() -> int:
     f.add_argument("--human-csv", required=True)
     f.add_argument("--private-parent", required=True)
     f.add_argument("--folder", required=True)
-    for sub in (a, b, c, d, e, f):
+    g = commands.add_parser("review-resume",
+                            help="PRIVATE original source-bound HUMAN lab review draft continuation")
+    g.add_argument("--packet", action="append", required=True)
+    g.add_argument("--prior-room", required=True)
+    g.add_argument("--prior-csv", required=True)
+    g.add_argument("--private-parent", required=True)
+    g.add_argument("--folder", required=True)
+    for sub in (a, b, c, d, e, f, g):
         sub.add_argument("--human-confirm", required=True,
                          help="exactly PREPARE PRIVATE LAB PLAN / REOPEN PRIVATE LAB PLAN / COMPARE PRIVATE LAB PLANS")
     options = parser.parse_args()
@@ -190,6 +197,7 @@ def main() -> int:
         "portfolio": "BUILD PRIVATE LAB PORTFOLIO",
         "review-prepare": "PREPARE PRIVATE LAB HUMAN REVIEW",
         "review-finalize": "FINALIZE PRIVATE LAB HUMAN REVIEW",
+        "review-resume": "RESUME PRIVATE LAB HUMAN REVIEW",
     }
     try:
         if options.human_confirm != expected[options.operation]:
@@ -207,9 +215,11 @@ def main() -> int:
                                             options.folder)
         else:
             import lab_plan_review
-            if options.operation == "review-prepare":
-                page = lab_plan_review.prepare(options.packet, options.private_parent,
-                                               options.folder)
+            if options.operation in ("review-prepare", "review-resume"):
+                page = lab_plan_review.prepare(
+                    options.packet, options.private_parent, options.folder,
+                    prior_room=options.prior_room if options.operation == "review-resume" else "",
+                    prior_csv=options.prior_csv if options.operation == "review-resume" else "")
             else:
                 page = lab_plan_review.finalize(options.packet, options.review_room,
                                                 options.human_csv, options.private_parent,
