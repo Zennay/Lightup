@@ -25,6 +25,19 @@ The planner **does not connect to a calendar**: importing the exported `.ics` in
 
 This is deliberately a *source-free, HUMAN-only* interface. It is **not** a substitute for reopening the independently obtained original PRIVATE lab JSON plus unsigned manifest in the original `human_return.py` before treating any worksheet as an actual original-source-bound handoff. A worksheet SHA-256 is a byte identity hint, not a signature, a verified person, client consent, accepted asset scope, authorization, or successful security remediation.
 
+## New PRIVATE publication and HUMAN group handoff
+
+The workroom can reconcile **two copies of its own already-existing v2 plans**, for the **same exact original HUMAN worksheet byte digest, timezone, and opaque private calendar-series ID**. This is useful when a human has already imported a full iCalendar file and must review changes without silently losing removed reminders.
+
+1. Save the original complete PRIVATE `.csv` v2 plan **before** a first manual calendar import. Keep that old file as a history snapshot; this workspace does not automatically write or sync a calendar.
+2. Modify the HUMAN reminders locally; save the **new** v2 plan. Both plans must still belong to the **same exact HUMAN worksheet bytes**. No cross-source matching or migration is attempted.
+3. In the **PRIVATE calendar change desk**, load the previous saved plan as a **comparison baseline**. Admission rechecks every original ordinal, membership, timezone, SHA and opaque calendar series. All-or-nothing rejection leaves existing current plan intact. The page displays additions, changed times/reminders and removals; no finding or security conclusion is inferred.
+4. Download a source-bound **PRIVATE change-register CSV** with only original anonymous ordinals, old/new schedule fields, unsigned worksheet SHA and opaque series ID, without original target, finding, evidence or HUMAN description fields.
+5. Download added/rescheduled events as a **separate tentative PUBLISH `.ics`**. Download removed events as a **separate CANCEL `.ics`** with the **same stable UIDs** and historical original times. Both require HUMAN confirmation and local manual import to the same authorized calendar. All update/cancel events use conservative `SEQUENCE:1` and no remote API. **There is no guarantee that a provider applies an update, removes an event, or supports repeated multi-revision updates**; users must inspect the resulting calendar manually. Do not infer actual cancellation or security remediation.
+6. For separate private HUMAN groups, the **HUMAN owner workload** table offers `PRIVATE .ics` per group. It includes only that group's currently scheduled anonymous original ordinals with the same calendar UIDs as the main export. It requires a saved/restored v2 plan, explicit HUMAN disclosure confirmation and a separate trusted private delivery channel. Group names are unverified original human fields, not authenticated recipients; the user must choose the real recipient separately. Optional HUMAN action text may include highly sensitive information and is off by default.
+
+Both exports are **non-authorizing PRIVATE offline human artifacts**. A SHA digest or calendar series ID is not source authentication, a signature, actual client/operator consent, actual operator identity, grant or proof of verification. Do not import into public or automatically shared calendars. Group calendars and one-step changes do not create persistent sync, cloud appointments or external authorization.
+
 ## Building the standalone artifact
 
 ```sh
