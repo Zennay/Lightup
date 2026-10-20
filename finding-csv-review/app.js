@@ -329,6 +329,7 @@
     state.rows = plan.incomingRows;
     state.digest = plan.toDigest;
     state.journal = staged.journal;
+    invalidateBulkPreview();
     state.revisionHistory = staged.history;
     state.selected = -1; state.bulkUndo = null; state.pending = false;
     state.dirty = true; state.filename = "[HUMAN-SELECTED SOURCE SNAPSHOT]";
@@ -413,6 +414,7 @@
   function renderList() {
     const list = $("list");
     list.replaceChildren();
+    renderOwnerBoard();
     const indices = selectedIndices();
     $("counts").textContent = indices.length + " visible / " + state.rows.length + " total; " +
       state.journal.filter(j => j.stage !== "unreviewed").length + " human-updated; " +
@@ -432,7 +434,6 @@
       btn.addEventListener("click", () => selectCase(index));
       list.append(btn);
     }
-    renderOwnerBoard();
   }
   function renderOwnerBoard() {
     const picker = $("ownerPicker");
@@ -520,6 +521,7 @@
     } catch (error) { status(error.message, true); return; }
     if (JSON.stringify(entry) !== JSON.stringify(state.journal[state.selected])) {
       state.journal[state.selected] = entry;
+      invalidateBulkPreview();
       clearRevisionCandidate();
       state.dirty = true;
       state.bulkUndo = null;
@@ -552,6 +554,7 @@
       state.dirty = false;
       state.pending = false;
       state.bulkUndo = null;
+      invalidateBulkPreview();
       $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       $("sourceId").textContent = "Exact file SHA-256: " + sha + " (unsigned; NOT sender authentication)";
@@ -608,7 +611,7 @@
       }
       const staged = admitJournalDocument(parsed);
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
-      state.journal = staged; clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
+      state.journal = staged; invalidateBulkPreview(); clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
@@ -646,7 +649,7 @@
       const document = await LightUpEncryptedJournal.unseal(value, pass);
       const staged = admitJournalDocument(document);
       if (!confirm("Original CSV SHA-256 and all HUMAN IDs match. Replace current in-memory HUMAN notes?")) return;
-      state.journal = staged; clearRevisionCandidate();
+      state.journal = staged; invalidateBulkPreview(); clearRevisionCandidate();
       state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
@@ -716,7 +719,7 @@
           "Replace this browser's current workspace? This does not establish authenticated tenant lineage.")) return;
       state.rows = admittedRows; state.digest = candidateSha; state.sourceText = doc.csv_utf8;
       state.journal = admittedJournal; state.revisionHistory = admittedHistory;
-      clearRevisionCandidate(); refreshRevisionArchive();
+      invalidateBulkPreview(); clearRevisionCandidate(); refreshRevisionArchive();
       state.filename = "[PRIVATE ENCRYPTED WORKROOM]";
       state.selected = -1; state.dirty = false; state.pending = false; state.bulkUndo = null;
       $("bulkUndo").disabled = true;
