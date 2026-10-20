@@ -1649,3 +1649,40 @@ Notion Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD, source-owner and independent
 security/privacy/browser reviews, exact hosted/named VPS CI, #177/#182/#829,
 separate authenticated current client/operator consent with action-time
 revocation and explicit HUMAN GO remain mandatory before any main release.
+
+## v41 — complete 1–8 ORIGINAL HUMAN owner response operator inbox
+
+The new [portfolio_inbox_owner_reconcile.py](portfolio_inbox_owner_reconcile.py)
+finishes the HUMAN-only owner reply loop after v39–v40 prepare/edit/receive.
+It accepts 1–8 separate explicit quadruples:
+`--selection` original PRIVATE-HUMAN-history-selection.json,
+`--selection-csv` its exact selected source CSV,
+`--reply` its original native PRIVATE-HUMAN-owner-history-reply.json,
+and `--reply-csv` its complete edited original HUMAN reply CSV.
+All selected owner packets must share the exact same original
+`--history PRIVATE-HUMAN-inbox-history.json` and one already-existing PRIVATE
+`--private-parent`. Repeat all four options together per original owner.
+
+The producer reuses the original canonical source_history and source_selection
+parsers and original HUMAN reply CSV admission. It rejects owner-group reuse,
+overlapping local-case/transition/kit ordinals, altered HUMAN stages or note
+values, changed original source/selected/reply CSV hashes, nonfalse authority
+flags, or any foreign/dropped/excess original slot. Source bytes for every
+input are independently re-admitted before the new private output is made.
+No partial acceptance or original input overwrite.
+
+Result: an exclusively new 0700 owner-private operator room with scriptless
+count-only `OPEN-PRIVATE.html`, detailed 0600 operator
+`PRIVATE-HUMAN-owner-inbox.html`, complete original-human-only CSV and
+canonical source-bound 0600 JSON. The summary intentionally contains no
+owner labels, private notes, source slot identifiers or SHA hashes.
+Confidential complete HUMAN note texts appear only in the private operator
+detail; this is not approved for automated recipient disclosure.
+
+Foreground console **47** exposes this same offline multi-owner workflow.
+No dispatch, external API, real target, assessment, consent, grant, actual
+task, verified fix or independent reviewer authentication is executed.
+Source-only v41 preserves original v16–v40 software inventory reads. Notion
+posture Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD and all original source-owner,
+CI, independent security/privacy/browser-review, action-time client/operator
+consent and explicit HUMAN GO release gates remain unchanged.

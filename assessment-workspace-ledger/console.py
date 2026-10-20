@@ -39,6 +39,7 @@ import portfolio_inbox_timeline_selection
 import portfolio_inbox_timeline_batch
 import portfolio_inbox_owner_return
 import portfolio_inbox_owner_return_studio
+import portfolio_inbox_owner_reconcile
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -93,6 +94,7 @@ MENU = (
     ("44", "Prepare source-exact PRIVATE HUMAN owner reply template"),
     ("45", "Receive complete original PRIVATE HUMAN owner reply"),
     ("46", "Build source-free offline PRIVATE HUMAN owner reply Studio"),
+    ("47", "Reconcile 1–8 source-bound PRIVATE HUMAN owner replies into operator inbox"),
     ("0", "Exit"),
 )
 
@@ -241,6 +243,23 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "47":
+        packets, selections, replies, edited = [], [], [], []
+        print("Choose 1–8 matching original owner JSON, selected CSV, native HUMAN reply JSON and edited reply CSV quartets.")
+        while len(packets) < 8:
+            pth = prompt("Original owner selection JSON " + str(len(packets)+1),
+                         required=not packets)
+            if not pth:
+                break
+            packets.append(pth)
+            selections.append(prompt("Matching original owner selection CSV"))
+            replies.append(prompt("Matching original native HUMAN owner reply JSON"))
+            edited.append(prompt("Matching complete edited HUMAN owner reply CSV"))
+        return portfolio_inbox_owner_reconcile.run(argparse.Namespace(
+            history=prompt("ONE original PRIVATE-HUMAN-inbox-history.json"),
+            selection=packets, selection_csv=selections,
+            reply=replies, reply_csv=edited, private_parent=private_parent()
         ))
     if action == "46":
         return portfolio_inbox_owner_return_studio.build(argparse.Namespace(
