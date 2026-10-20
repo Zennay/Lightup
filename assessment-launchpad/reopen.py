@@ -39,10 +39,16 @@ def _read_private(dirfd: int, name: str) -> bytes:
     with os.fdopen(fd, "rb") as stream:
         before = os.fstat(stream.fileno())
         if (not stat.S_ISREG(before.st_mode)
+                or before.st_nlink != 1
                 or stat.S_IMODE(before.st_mode) != 0o600
                 or before.st_uid != os.getuid()
                 or not 0 < before.st_size <= _BOUNDS[name]):
             raise Hold("not an owner-private ordinary packet file")
+        # Reject pathname-to-descriptor swaps and hardlinked packet inputs
+        # before consuming the original private bytes.
+        entry = os.stat(name, dir_fd=dirfd, follow_symlinks=False)
+        if (entry.st_dev, entry.st_ino) != (before.st_dev, before.st_ino):
+            raise Hold("private packet path changed before read")
         data = stream.read(_BOUNDS[name] + 1)
         after = os.fstat(stream.fileno())
         if (len(data) != before.st_size
