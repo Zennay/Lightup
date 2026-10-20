@@ -122,7 +122,45 @@ def assemble_from_existing(private_dir: str) -> tuple[bytes, dict]:
             manifest_bytes.decode("utf-8"), object_pairs_hook=strict_pairs,
             parse_constant=lambda _: require(False))
         paths = admit_inventory(manifest)
-        require(set(os.listdir(dir_fd)) == set(paths) | {"manifest.json"})
+        actual = set(os.listdir(dir_fd))
+        original_files = set(paths) | {"manifest.json"}
+        restored_files = original_files | {
+            "START-HERE-PRIVATE.txt", "PRIVATE-restore-receipt.json"
+        }
+        require(actual in (original_files, restored_files))
+        if actual == restored_files:
+            # Round-trip a locally restored PRIVATE report without treating an
+            # unsigned receipt as authority or copying the old receipt onward.
+            notice = read_private_file(dir_fd, "START-HERE-PRIVATE.txt", 4096)
+            require(notice == START_HERE_PRIVATE)
+            old_receipt = json.loads(
+                read_private_file(dir_fd, "PRIVATE-restore-receipt.json", 8192)
+                    .decode("utf-8"),
+                object_pairs_hook=strict_pairs,
+                parse_constant=lambda _: require(False))
+            require(type(old_receipt) is dict and
+                    set(old_receipt) == {
+                        "schema", "status", "archive_sha256_unsigned",
+                        "original_source_sha256_unsigned",
+                        "restored_original_artifact_count",
+                        "source_authenticated", "ground_truth_verified",
+                        "client_consent_verified", "operator_consent_verified",
+                        "authorization_granted", "dispatch_allowed",
+                        "release_allowed"
+                    })
+            require(old_receipt["schema"] ==
+                    "lightup.private_paged_restore_receipt.v1" and
+                    old_receipt["status"] == "REVIEW_ONLY" and
+                    sha_ok(old_receipt["archive_sha256_unsigned"]) and
+                    old_receipt["original_source_sha256_unsigned"] ==
+                    manifest["original_source_sha256_unsigned"] and
+                    type(old_receipt["restored_original_artifact_count"]) is int and
+                    old_receipt["restored_original_artifact_count"] == len(paths)+2)
+            require(all(old_receipt[flag] is False for flag in (
+                "source_authenticated", "ground_truth_verified",
+                "client_consent_verified", "operator_consent_verified",
+                "authorization_granted", "dispatch_allowed", "release_allowed"
+            )))
 
         total = len(manifest_bytes)
         payload = {"manifest.json": manifest_bytes}
