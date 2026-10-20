@@ -128,7 +128,8 @@ def render(rows: list[dict], prepared: bool) -> bytes:
         for row in rows
     )
     copy = ("Fill a COPY of the complete PRIVATE template CSV locally; never "
-            "edit the source template. Then explicitly run finalize with that "
+            "edit the source template. Alternatively open PRIVATE-HUMAN-sensitivity-editor.html " 
+            "to save the complete local CSV. Then explicitly run finalize with that "
             "copy and the unchanged original packet."
             if prepared else
             "HUMAN observations only. Every label may be wrong; this output "
@@ -173,6 +174,9 @@ def prepare(original: str, parent_string: str) -> int:
         rows = default_rows(sources)
         save_json(destination / "PRIVATE-triage-bindings.json", bindings)
         file_new(destination / "PRIVATE-HUMAN-sensitivity-template.csv", csv_bytes(rows))
+        from privacy_triage_studio import render as render_sensitivity_studio
+        file_new(destination / "PRIVATE-HUMAN-sensitivity-editor.html",
+                 render_sensitivity_studio(rows))
         file_new(destination / "OPEN-PRIVATE.html", render(rows, prepared=True))
         complete = True
         print("REVIEW_ONLY: complete original-bound HUMAN sensitivity template created")
