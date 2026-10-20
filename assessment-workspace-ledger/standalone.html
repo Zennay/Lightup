@@ -1,4 +1,4 @@
-<!doctype html><html lang='en'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content="default-src &#x27;none&#x27;; script-src &#x27;sha256-3+yEpx7YPDHSZngMbiuEXNfL7Qj+/IKlhP+QmKze1dc=&#x27;; style-src &#x27;unsafe-inline&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;"><title>PRIVATE LightUp HUMAN Ledger Studio</title><style>
+<!doctype html><html lang='en'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content="default-src &#x27;none&#x27;; script-src &#x27;sha256-djQShfUAgRawLtsuTr11wvg09TyMNmWiy2oJ37LRW50=&#x27;; style-src &#x27;unsafe-inline&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;"><title>PRIVATE LightUp HUMAN Ledger Studio</title><style>
 body{font:16px/1.55 system-ui,sans-serif;margin:0;background:#f2f5f9;color:#17324c}
 main{max-width:960px;margin:auto;padding:24px}
 section,article{background:white;border:1px solid #c2ccdc;border-radius:12px;padding:20px;margin:16px 0}
@@ -101,19 +101,23 @@ button:disabled{opacity:.45}strong{color:#81320c}
     if (started || closed || field !== '' || row.length) {
       row.push(field); table.push(row);
     }
-    if (!table.length || table[0].join(',') !== 'ordinal,kit_digest,stage,owner,question')
-      throw new Error('Unexpected HUMAN CSV header');
+    const head = table[0] && table[0].join(',');
+    const modern = head === 'ordinal,ledger_sha256,kit_digest,stage,owner,question';
+    const legacy = head === 'ordinal,kit_digest,stage,owner,question';
+    if (!modern && !legacy) throw new Error('Unexpected HUMAN CSV header');
+    if (modern && !currentDigest) throw new Error('Exact original ledger digest unavailable');
     if (table.length !== current.length + 1)
       throw new Error('Wrong number of HUMAN rows');
     const result = table.slice(1).map((r, i) => {
-      if (r.length !== 5 || r[0] !== String(current[i].ordinal) ||
-          r[1] !== current[i].digest)
-        throw new Error('HUMAN CSV source ordinal/byte identity mismatch');
-      const obj = {stage:r[2],owner:r[3],question:r[4]};
+      if (r.length !== (modern ? 6 : 5) || r[0] !== String(current[i].ordinal) ||
+          (modern && r[1] !== currentDigest) || r[modern ? 2 : 1] !== current[i].digest)
+        throw new Error('HUMAN CSV original ledger/kit identity mismatch');
+      const offset = modern ? 1 : 0;
+      const obj = {stage:r[2+offset],owner:r[3+offset],question:r[4+offset]};
       if (!validHuman(obj)) throw new Error('Invalid HUMAN status or text');
       return obj;
     });
-    return result;
+    return {rows:result, legacy};
   }
 
   function refuse(msg) {
@@ -212,7 +216,8 @@ button:disabled{opacity:.45}strong{color:#81320c}
     rows.replaceChildren(fragment);
     updateView();
     status.textContent = 'PRIVATE HUMAN draft loaded. No client identity, original verification or consent established.';
-    exportButton.disabled = false;
+    exportButton.disabled = !hexDigest;
+    if (!hexDigest) status.textContent = 'HOLD — browser cannot compute exact original ledger SHA-256 in this context.';
   });
   carryInput.addEventListener('change', async () => {
     if (!current.length || !currentDigest) {
@@ -299,19 +304,27 @@ button:disabled{opacity:.45}strong{color:#81320c}
       status.textContent = 'HOLD — HUMAN CSV invalid, incomplete or bound to different kit bytes. Edits retained.';
       return;
     }
+    if (imported.legacy && !window.confirm(
+      'LEGACY CSV has NO full ledger binding. Kit bytes match, but original case context may differ. ' +
+      'Load only as UNTRUSTED HUMAN DRAFT, manually review all fields, then export new exact-ledger v2?'
+    )) {
+      status.textContent = 'Unbound legacy HUMAN CSV was not imported.';
+      return;
+    }
     if (!confirmOverwrite()) {
       status.textContent = 'Previous unsaved HUMAN decisions retained.';
       return;
     }
-    for (const [i,row] of imported.entries()) {
+    for (const [i,row] of imported.rows.entries()) {
       current[i].stage.value = row.stage;
       current[i].owner.value = row.owner;
       current[i].question.value = row.question;
     }
     dirty = true;
     updateView();
-    status.textContent = 'PRIVATE HUMAN CSV restored for matching ORIGINAL kit byte digests. ' +
-      'Reconfirm manually; native finalize will re-read all source files. No authority inferred.';
+    status.textContent = imported.legacy
+      ? 'LEGACY UNBOUND HUMAN DRAFT restored for manual review only; export a fresh v2. Native finalizer refuses old unbound CSV.'
+      : 'PRIVATE HUMAN CSV restored for exact original ledger SHA and kit digests. Native finalizer rechecks all originals.';
   });
 
   humanInput.addEventListener('change', async () => {
@@ -373,8 +386,11 @@ button:disabled{opacity:.45}strong{color:#81320c}
   });
 
   exportButton.addEventListener('click', () => {
-    if (!current.length) return refuse('No ledger loaded');
-    const lines = ['ordinal,kit_digest,stage,owner,question'];
+    if (!current.length || !currentDigest) {
+      status.textContent = 'HOLD — no exact ledger SHA-256 available; no export.';
+      return;
+    }
+    const lines = ['ordinal,ledger_sha256,kit_digest,stage,owner,question'];
     for (const row of current) {
       const owner = row.owner.value, question = row.question.value;
       if (!STAGES.includes(row.stage.value) || owner.length > 80 || question.length > 500 ||
@@ -383,7 +399,7 @@ button:disabled{opacity:.45}strong{color:#81320c}
         status.textContent = 'HOLD — invalid HUMAN text or spreadsheet formula. Correct before export.';
         return;
       }
-      lines.push([row.ordinal, row.digest, row.stage.value, owner, question].map(escCsv).join(','));
+      lines.push([row.ordinal, currentDigest, row.digest, row.stage.value, owner, question].map(escCsv).join(','));
     }
     const blob = new Blob([lines.join('\n') + '\n'], {type:'text/csv;charset=utf-8'});
     const url = URL.createObjectURL(blob);
