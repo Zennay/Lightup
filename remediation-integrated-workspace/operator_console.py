@@ -135,7 +135,7 @@ retestbewijs, herstelbewijs of vrijgave naar productie.</p></div>
 </section></div>
 <footer>Geen scripts of paden gedeeld met externe diensten. Geen browsergeschiedenis
 van bronbestanden, geen netwerk, geen accountlogin, geen client-authority.
-<a href="index.html">Terug naar offline startpagina</a>.</footer>
+De originele offline startpagina blijft beschikbaar via de vorige browserpagina.</footer>
 <script type="application/json" id="operations">""" + source + """</script>
 <script>""" + js_text + """</script></main></body></html>
 """).encode("utf-8")

@@ -272,3 +272,24 @@ already-existing packet path, symlinked output parent or non-owner-private
 destination HOLDs immediately, instead of first producing a private original
 workroom that cannot be safely paired with its recipient packet. The unchanged
 native owner, recipient and encryption validators remain authoritative.
+
+
+### Directly openable browser product — without a software install
+
+A **generated standalone operator.html** is committed alongside the source
+renderer, so an authorized user can copy this one source-only HTML file into
+a trusted offline local environment and open it directly. The HTML embeds
+the exact-current bounded action inventory, CSP-hashed script and stylesheet.
+No client data, original evidence, HUMAN notes, passphrase, private identifier,
+credential or target is included. No server, setup, scanner, login, file
+upload, browser cache persistence, command execution, grant or external
+authorization is provided. The user can prepare but must separately execute
+any chosen native operation only where the matching original pinned Python
+software exists and current external consent is genuinely established.
+
+The portable native suite installer still regenerates and rechecks its own
+operator.html from exact accompanying native Python/JS/CSS, rather than
+trusting an HTML artifact received without its original source-lock.
+The standalone file can be opened for UI use independently, but it does not
+authenticate a source or replace the mandatory hosted/VPS CI and independent
+security/privacy/browser/crypto approvals.
