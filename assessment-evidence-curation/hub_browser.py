@@ -44,7 +44,9 @@ article[data-open='yes'] .details{display:block}
 .pager span{font-weight:700}#filtered-count{font-weight:bold;margin:14px 0}
 @media(max-width:600px){body{padding:9px}.pager{flex-wrap:wrap}}
 @media print{.controls,.toolbar,.pager,button{display:none!important}
-body{background:white}article{break-inside:avoid}.details{display:block!important}}
+body{background:white}article{break-inside:avoid}
+article[data-open='yes'] .details{display:block}
+article[data-open='no'] .details{display:none}}
 """
 JS = r"""
 (function(){
@@ -135,7 +137,7 @@ document.getElementById("reveal-all").addEventListener("click",()=>{
  document.getElementById("reveal-all").textContent=state.showAll?
   "Hide all PRIVATE notes":"Reveal all PRIVATE notes";});
 document.getElementById("print").addEventListener("click",()=>{
- if(!window.confirm("Print PRIVATE HUMAN workroom? Browser printing may expose customer-identifying HUMAN text."))return;
+ if(!window.confirm("Print this current PRIVATE browser page only (not all records)? Any notes you explicitly revealed may expose confidential customer information. For a full private print use the separate scriptless report."))return;
  window.print();});
 draw();
 })();
