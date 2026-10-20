@@ -42,25 +42,82 @@ def read_limited_file(path: str, maximum: int) -> bytes:
 
 
 def source_manifest(raw: bytes, digest: str, source: dict) -> None:
+    """Admit only original legacy or paged source manifests, without granting trust.
+
+    Source SHA remains UNSIGNED: it identifies exact bytes, not a producer.
+    Check the full claimed authority and ordinal inventory, not just 3 flags.
+    """
+    from briefing import DENIAL_FLAGS, followup_csv
+    import re
+
+    shared = {"schema", "status", "original_source_sha256_unsigned",
+              "declared_endpoint_count", "declared_finding_count",
+              "private_artifact_sha256", "source_authenticated",
+              "ground_truth_verified", "client_consent_verified",
+              "operator_consent_verified", *DENIAL_FLAGS}
+    legacy = {"findings_with_source_evidence_ids"}
+    paged = {"layout", "original_report_pages"}
+
+    def hex_digest(value: object) -> bool:
+        return type(value) is str and len(value) == 64 and all(
+            ch in "0123456789abcdef" for ch in value
+        )
+
     try:
         manifest = json.loads(raw.decode("utf-8"),
                               object_pairs_hook=__import__("briefing").strict_pairs,
                               parse_constant=lambda _: require(False))
         require(type(manifest) is dict and
-                manifest.get("schema") == "lightup.private_lab_briefing.v1" and
-                manifest.get("status") == "REVIEW_ONLY" and
-                manifest.get("source_authenticated") is False and
-                manifest.get("authorization_granted") is False and
-                manifest.get("dispatch_allowed") is False and
-                manifest.get("release_allowed") is False)
-        require(manifest.get("original_source_sha256_unsigned") == digest)
-        require(type(manifest.get("declared_finding_count")) is int and
+                set(manifest) in (shared | legacy, shared | paged))
+        require(manifest["schema"] == "lightup.private_lab_briefing.v1" and
+                manifest["status"] == "REVIEW_ONLY")
+        for flag in ("source_authenticated", "ground_truth_verified",
+                     "client_consent_verified", "operator_consent_verified",
+                     *DENIAL_FLAGS):
+            require(manifest[flag] is False)
+        require(hex_digest(digest) and
+                manifest["original_source_sha256_unsigned"] == digest)
+        require(type(manifest["declared_finding_count"]) is int and
                 manifest["declared_finding_count"] == len(source["findings"]))
-        require(type(manifest.get("declared_endpoint_count")) is int and
+        require(type(manifest["declared_endpoint_count"]) is int and
                 manifest["declared_endpoint_count"] == len(source["targets"]))
-    except (ValueError, UnicodeError, OverflowError, RecursionError, TypeError):
-        raise Hold("PRIVATE source binding rejected (HOLD)") from None
+        files = manifest["private_artifact_sha256"]
+        require(type(files) is dict and
+                hex_digest(files.get("human-followup.csv")))
+        expected_csv = hashlib.sha256(followup_csv(source).encode("utf-8")).hexdigest()
+        require(files["human-followup.csv"] == expected_csv)
 
+        if "layout" not in manifest:
+            require(type(manifest["findings_with_source_evidence_ids"]) is int and
+                    manifest["findings_with_source_evidence_ids"] ==
+                    sum(bool(f["evidence_ids"]) for f in source["findings"]))
+            require(set(files) == {"private-briefing.html", "human-followup.csv"} and
+                    hex_digest(files["private-briefing.html"]))
+        else:
+            require(manifest["layout"] == "paged_private_source_report")
+            require(set(files) == {"index.html", "human-followup.csv"} and
+                    hex_digest(files["index.html"]))
+            inventory = manifest["original_report_pages"]
+            require(type(inventory) is dict)
+            count = max(1, (len(source["findings"]) + 39) // 40)
+            require(1 <= count <= 52 and len(inventory) == count)
+            for n in range(count):
+                name = f"page-{n+1:04d}.html"
+                require(name in inventory and type(inventory[name]) is dict)
+                meta = inventory[name]
+                require(set(meta) ==
+                        {"original_first_ordinal", "original_last_ordinal",
+                         "source_declaration_count", "sha256_unsigned"})
+                start, end = n * 40, min(len(source["findings"]), (n+1)*40)
+                require(meta["original_first_ordinal"] ==
+                        (start+1 if end > start else None) and
+                        meta["original_last_ordinal"] == (end if end > start else None))
+                require(type(meta["source_declaration_count"]) is int and
+                        meta["source_declaration_count"] == end-start and
+                        hex_digest(meta["sha256_unsigned"]))
+    except (ValueError, UnicodeError, OverflowError, RecursionError, TypeError,
+            KeyError, MemoryError):
+        raise Hold("PRIVATE source binding rejected (HOLD)") from None
 
 def read_human_csv(raw: bytes, source: dict) -> list[dict]:
     try:
