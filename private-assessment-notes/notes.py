@@ -423,11 +423,16 @@ def main() -> int:
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
-    except (Hold, OSError, ValueError) as exc:
+    except (Hold, OSError, ValueError, KeyError, TypeError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: PRIVATE notes workflow refused",
               file=sys.stderr)
         return 3
 
 
 if __name__ == "__main__":
+    # CLI companions import 'notes'. Avoid importing this same executable a
+    # second time under a distinct module identity: two Hold classes would
+    # leak an uncaught traceback (and possibly PRIVATE pathname) on refusal.
+    # Keep one canonical import identity before dispatching any companion.
+    sys.modules.setdefault("notes", sys.modules[__name__])
     raise SystemExit(main())
