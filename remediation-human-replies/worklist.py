@@ -151,7 +151,14 @@ def grouped(original: dict, rows: list[dict], key: str,
             "earlier_human_reply_files_differed":
                 previous_differences[ordinal - 1] if previous_differences is not None else None,
         })
-    selected.sort(key=lambda row: (row["human_followup_category"], row["ordinal"]))
+    # Within each HUMAN-only follow-up group, surface original-selected
+    # reason groups with literal differences in prior encrypted reply files
+    # first. The original human stage never becomes a verified severity.
+    selected.sort(key=lambda row: (
+        row["human_followup_category"],
+        0 if row["earlier_human_reply_files_differed"] is True else 1,
+        row["ordinal"]
+    ))
     return selected, counts
 
 def html_page(rows: list[dict], counts: dict) -> bytes:
@@ -177,10 +184,19 @@ def html_page(rows: list[dict], counts: dict) -> bytes:
     for kind, warning in STEPS.values():
         fragments.extend(['<tr><td>', esc(warning), '</td><td>',
                           str(counts[kind]), '</td></tr>'])
+    differed = sum(row["earlier_human_reply_files_differed"] is True
+                   for row in rows)
+    supplied = any(row["earlier_human_reply_files_differed"] is not None
+                   for row in rows)
     fragments.extend(['</tbody></table>',
                       '<p>These totals are ORIGINAL SELECTED HUMAN reason groups, ',
                       'not distinct client cases or findings. All answered entries ',
-                      'remain HUMAN-only and unverified.</p></section>'])
+                      'remain HUMAN-only and unverified.</p>',
+                      '<p>Prior locally observed literal HUMAN reply differences: ',
+                      str(differed) if supplied else 'UNKNOWN (no earlier comparison supplied)',
+                      '. This does not establish number of humans or security severity. ',
+                      'When provided, groups with earlier differences appear first ',
+                      'within each HUMAN follow-up category.</p></section>'])
     previous_category = None
     for row in rows:
         kind = row["human_followup_category"]
