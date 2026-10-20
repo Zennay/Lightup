@@ -13,6 +13,7 @@ import csv
 from hashlib import sha256
 import html
 import io
+import json
 import os
 from pathlib import Path
 import shutil
@@ -140,6 +141,43 @@ remediation assertion, consent or release. Original full native HUMAN review
 and all external authority checks remain required.</footer></html>""").encode("utf-8")
 
 
+def landing() -> bytes:
+    return ("""<!doctype html><html lang="en">
+<meta charset="utf-8"><meta http-equiv="Content-Security-Policy"
+content="default-src 'none';style-src 'unsafe-inline';connect-src 'none';base-uri 'none'">
+<title>PRIVATE HUMAN discussion</title><h1>PRIVATE · DRAFT/HOLD</h1>
+<p>This original-bound local room is not authorized for sharing or release.</p>
+<ul><li><a href="PRIVATE-HUMAN-conversation.html">Printable selected HUMAN discussion</a></li>
+<li><a href="PRIVATE-HUMAN-selected-discussion.csv">Exact selected local original CSV (private)</a></li>
+<li><a href="PRIVATE-HUMAN-selected-receipt.json">Unsigned PRIVATE original custody receipt</a></li></ul>
+<p>No authenticated identity, verified privacy clearance, scope grant, customer
+consent, external recipient or assessment activation.</p></html>""").encode("utf-8")
+
+
+def receipt_for(sources, manifest_sha, decisions_sha, packets, csv_raw,
+                selected, identical) -> dict:
+    receipt = {
+        "schema": SCHEMA,
+        "claimed_status": "HOLD",
+        "human_only": True,
+        "not_authenticated_reviewer_identity": True,
+        "not_a_privacy_clearance": True,
+        "original_count": len(sources),
+        "selected_count": len(selected),
+        "original_manifest_sha256_unsigned": manifest_sha,
+        "original_human_csv_sha256_unsigned": decisions_sha,
+        "selected_csv_sha256_unsigned": sha256(csv_raw).hexdigest(),
+        "manual_review_original_receipts_sha256_unsigned": [
+            packet["receipt_sha256_unsigned"] for packet in packets],
+        "manual_review_csv_sha256_unsigned": [
+            packet["csv_sha256_unsigned"] for packet in packets],
+        "identical_content_human_slot_pairs": identical,
+        "selected_original_ordinals": [row[0] for row in selected],
+        **{flag: False for flag in FALSE_FLAGS},
+    }
+    return receipt
+
+
 def create(original: str, reviews: list[str], selection: str, parent_string: str) -> int:
     # Admission is completed before creating any output directory.
     sources, manifest_sha, decisions_sha, packets, csv_raw, selected = admit(
@@ -155,39 +193,13 @@ def create(original: str, reviews: list[str], selection: str, parent_string: str
     os.chmod(room, 0o700)
     finished = False
     try:
-        receipt = {
-            "schema": SCHEMA,
-            "claimed_status": "HOLD",
-            "human_only": True,
-            "not_authenticated_reviewer_identity": True,
-            "not_a_privacy_clearance": True,
-            "original_count": len(sources),
-            "selected_count": len(selected),
-            "original_manifest_sha256_unsigned": manifest_sha,
-            "original_human_csv_sha256_unsigned": decisions_sha,
-            "selected_csv_sha256_unsigned": sha256(csv_raw).hexdigest(),
-            "manual_review_original_receipts_sha256_unsigned": [
-                packet["receipt_sha256_unsigned"] for packet in packets],
-            "manual_review_csv_sha256_unsigned": [
-                packet["csv_sha256_unsigned"] for packet in packets],
-            "identical_content_human_slot_pairs": identical,
-            "selected_original_ordinals": [row[0] for row in selected],
-            **{flag: False for flag in FALSE_FLAGS},
-        }
+        receipt = receipt_for(sources, manifest_sha, decisions_sha, packets,
+                              csv_raw, selected, identical)
         file_new(room / "PRIVATE-HUMAN-selected-discussion.csv", csv_raw)
         save_json(room / "PRIVATE-HUMAN-selected-receipt.json", receipt)
         file_new(room / "PRIVATE-HUMAN-conversation.html",
                  page(selected, len(sources), len(packets), len(identical)))
-        file_new(room / "OPEN-PRIVATE.html", ("""<!doctype html><html lang="en">
-<meta charset="utf-8"><meta http-equiv="Content-Security-Policy"
-content="default-src 'none';style-src 'unsafe-inline';connect-src 'none';base-uri 'none'">
-<title>PRIVATE HUMAN discussion</title><h1>PRIVATE · DRAFT/HOLD</h1>
-<p>This original-bound local room is not authorized for sharing or release.</p>
-<ul><li><a href="PRIVATE-HUMAN-conversation.html">Printable selected HUMAN discussion</a></li>
-<li><a href="PRIVATE-HUMAN-selected-discussion.csv">Exact selected local original CSV (private)</a></li>
-<li><a href="PRIVATE-HUMAN-selected-receipt.json">Unsigned PRIVATE original custody receipt</a></li></ul>
-<p>No authenticated identity, verified privacy clearance, scope grant, customer
-consent, external recipient or assessment activation.</p></html>""").encode("utf-8"))
+        file_new(room / "OPEN-PRIVATE.html", landing())
         finished = True
         print("HOLD: PRIVATE HUMAN selected discussion admitted; NEVER authorization")
         print("OPEN LOCALLY: " + str(room / "OPEN-PRIVATE.html"))
@@ -197,15 +209,52 @@ consent, external recipient or assessment activation.</p></html>""").encode("utf
             shutil.rmtree(room)
 
 
+
+def reopen(original: str, reviews: list[str], room_name: str) -> int:
+    """Read-only original-bound reopener, not an approval or a fix verdict."""
+    room = private_directory(room_name)
+    sources, manifest_sha, decisions_sha, packets, csv_raw, selected = admit(
+        original, reviews, str(room / "PRIVATE-HUMAN-selected-discussion.csv"))
+    identical = [
+        [i+1, j+1]
+        for i in range(len(packets))
+        for j in range(i+1, len(packets))
+        if packets[i]["csv_sha256_unsigned"] == packets[j]["csv_sha256_unsigned"]
+    ]
+    receipt = receipt_for(
+        sources, manifest_sha, decisions_sha, packets, csv_raw, selected, identical)
+    expected_receipt = (json.dumps(receipt, indent=2, sort_keys=True,
+                                   ensure_ascii=False) + "\n").encode("utf-8")
+    required = (
+        ("PRIVATE-HUMAN-selected-receipt.json", expected_receipt),
+        ("PRIVATE-HUMAN-conversation.html",
+         page(selected, len(sources), len(packets), len(identical))),
+        ("OPEN-PRIVATE.html", landing()),
+    )
+    for filename, expected in required:
+        if private_input(str(room / filename), 65536) != expected:
+            raise Hold("HOLD: previously received PRIVATE HUMAN packet is altered")
+    print("HOLD: original PRIVATE HUMAN selected packet reopened with exact source/review/derived-byte bindings")
+    print("OPEN LOCALLY: " + str(room / "OPEN-PRIVATE.html"))
+    return 3
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Original-bound offline PRIVATE selected HUMAN discussion receipt")
     parser.add_argument("--completed-packet", required=True)
     parser.add_argument("--review", action="append", required=True)
-    parser.add_argument("--selected-csv", required=True)
-    parser.add_argument("--private-parent", required=True)
+    parser.add_argument("--selected-csv")
+    parser.add_argument("--private-parent")
+    parser.add_argument("--room", help="reopen a previously received owner-private room; read-only")
     args = parser.parse_args()
     try:
+        if args.room:
+            if args.selected_csv or args.private_parent:
+                raise Hold("HOLD: reopen accepts only --room with original reviews")
+            return reopen(args.completed_packet, args.review, args.room)
+        if not args.selected_csv or not args.private_parent:
+            raise Hold("HOLD: receive requires --selected-csv and --private-parent")
         return create(args.completed_packet, args.review, args.selected_csv, args.private_parent)
     except (Hold, OSError, ValueError, TypeError, KeyError):
         print("HOLD: PRIVATE selected HUMAN discussion admission refused", file=sys.stderr)

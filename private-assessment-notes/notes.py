@@ -464,6 +464,13 @@ def main() -> int:
     discussion.add_argument("--selected-csv", required=True,
                             help="owner-private exact browser selected-discussion CSV")
     discussion.add_argument("--private-parent", required=True)
+    reopen_discussion = commands.add_parser(
+        "sensitivity-discussion-reopen",
+        help="read-only re-admission of previous PRIVATE selected HUMAN discussion room")
+    reopen_discussion.add_argument("--completed-packet", required=True)
+    reopen_discussion.add_argument("--review", action="append", required=True)
+    reopen_discussion.add_argument("--room", required=True,
+                                   help="unchanged original owner-private received discussion room")
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -544,6 +551,9 @@ def main() -> int:
             return receive_discussion(
                 args.completed_packet, args.review, args.selected_csv,
                 args.private_parent)
+        if args.action == "sensitivity-discussion-reopen":
+            from privacy_triage_selected_discussion import reopen as reopen_discussion
+            return reopen_discussion(args.completed_packet, args.review, args.room)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(

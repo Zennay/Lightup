@@ -247,3 +247,30 @@ receipt; hashes are not cryptographic signatures or authentic identities.
 order as the Studio that made the CSV.** A selected-only CSV is deliberately
 not an alternative to the COMPLETE original source-bound CSV accepted by the
 unchanged native `sensitivity-finalize`. No network or real assessment is run.
+
+
+### Reopen the ORIGINAL received PRIVATE HUMAN discussion, read-only
+
+A later operator can now re-admit a previously produced discussion room
+without importing trust from the room itself. The native reader independently
+re-opens the same original completed owner packet and all 2–8 ORIGINAL HUMAN
+review packets in the same manual order, compares selected Boolean values,
+then demands **byte-identical canonical owner-private receipt, discussion HTML
+and opening page**. Missing, altered, stale or swapped files cause HOLD. This
+is a read-only custody/reopening feature, not a QA approval, authenticated
+identity, replacement for the full original HUMAN decisions or consent.
+
+~~~sh
+python3 private-assessment-notes/notes.py sensitivity-discussion-reopen \
+  --completed-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<id> \
+  --review /private/operator-lightup-work/PRIVATE-sensitivity-review-<first> \
+  --review /private/operator-lightup-work/PRIVATE-sensitivity-review-<second> \
+  --room /private/operator-lightup-work/PRIVATE-lightup-human-discussion-<id>
+~~~
+
+The output deliberately remains **HOLD (exit 3)** even for a complete intact
+reopening. A SHA digest or matching browser export never proves that the
+original HUMAN reviewers are different, that original sources were authentic,
+or that anyone can send, disclose or assess anything. All original review,
+CI, security/privacy, current independently authenticated client/operator
+consent, action-time revocation and HUMAN GO gates remain unchanged.
