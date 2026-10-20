@@ -248,8 +248,42 @@ def calendar(tasks: list[dict]) -> bytes:
     lines.append("END:VCALENDAR")
     return ("\r\n".join(lines)+"\r\n").encode("utf-8")
 
+def select_human_work(rows: list[dict], *, owner: str | None,
+                      unassigned: bool, pending: bool, overdue: bool,
+                      due_next_days: int | None, stage: str | None) -> list[dict]:
+    """Create one HUMAN recipient agenda; never reinterpret source-free records."""
+    require(not (owner is not None and unassigned)
+            and not (overdue and due_next_days is not None),
+            "Conflicting private HUMAN assignment/date filters")
+    require(owner is None or (local_text(owner, 64, 256) and owner.strip()),
+            "Owner filter must be one bounded literal HUMAN self-declared owner")
+    require(due_next_days is None or
+            (type(due_next_days) is int and 0 <= due_next_days <= 90),
+            "HUMAN upcoming window must be 0–90 days")
+    require(stage is None or stage in single_review.STAGES,
+            "Unknown HUMAN-only stage")
+    today = date.today()
+    last_day = today + timedelta(days=due_next_days or 0)
+    selected = []
+    for row in rows:
+        if owner is not None and row["owner"] != owner: continue
+        if unassigned and row["owner"].strip(): continue
+        if pending and row["stage"] == "answered_human_only": continue
+        if stage is not None and row["stage"] != stage: continue
+        if overdue and not (row["due"] and date.fromisoformat(row["due"]) < today
+                            and row["stage"] != "answered_human_only"): continue
+        if due_next_days is not None and not (
+                row["due"] and today <= date.fromisoformat(row["due"]) <= last_day
+                and row["stage"] != "answered_human_only"): continue
+        selected.append(row)
+    require(selected, "No exact HUMAN planning items match the private work-queue filters")
+    return selected
+
+
 def publish(vault: Path, cockpits: list[str], destination: Path,
-            include_notes: bool, include_calendar: bool) -> None:
+            include_notes: bool, include_calendar: bool, *,
+            owner: str | None, unassigned: bool, pending: bool,
+            overdue: bool, due_next_days: int | None, stage: str | None) -> None:
     schedule.private_parent(destination.parent)
     require(destination.is_absolute() and destination.parent == destination.parent.resolve(strict=True)
             and not destination.exists() and not destination.is_symlink() and
@@ -260,11 +294,16 @@ def publish(vault: Path, cockpits: list[str], destination: Path,
                 for p in cockpits),
             "New owner-only output must not overlap source or encrypted input")
     plan = open_vault(vault)
-    rows = admit(plan, cockpits)
-    stage = destination.parent / (".lightup-human-plan-open-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
+    admitted = admit(plan, cockpits)
+    rows = select_human_work(admitted, owner=owner, unassigned=unassigned,
+                             pending=pending, overdue=overdue,
+                             due_next_days=due_next_days, stage=stage)
+    require(not include_calendar or any(t["due"] for t in rows),
+            "No scheduled HUMAN follow-up in selected private calendar queue")
+    temp = destination.parent / (".lightup-human-plan-open-" + secrets.token_hex(12))
+    os.mkdir(temp, 0o700)
     try:
-        schedule.private_write(stage, "private-human-agenda.html",
+        schedule.private_write(temp, "private-human-agenda.html",
                                private_report(rows,include_notes))
         data = {"kind":"lightup.source_free_human_schedule_native_counts",
                 "version":1, "disposition":"REVIEW_ONLY",
@@ -276,13 +315,13 @@ def publish(vault: Path, cockpits: list[str], destination: Path,
                 "human_unscheduled":sum(not t["due"] for t in rows),
                 "human_unassigned":sum(not t["owner"].strip() for t in rows),
                 "warning":WARNING}
-        schedule.private_write(stage,"anonymous-counts.json",schedule.canonical(data))
+        schedule.private_write(temp,"anonymous-counts.json",schedule.canonical(data))
         if include_calendar:
-            schedule.private_write(stage,"tentative-human-calendar.ics",calendar(rows))
+            schedule.private_write(temp,"tentative-human-calendar.ics",calendar(rows))
         require(not destination.exists(), "Private destination appeared before publish")
-        workflow.workspace.exclusive_dir_publish(stage,destination)
+        workflow.workspace.exclusive_dir_publish(temp,destination)
     finally:
-        if stage.exists(): shutil.rmtree(stage)
+        if temp.exists(): shutil.rmtree(temp)
     print("REVIEW_ONLY: independently source-bound HUMAN planning brief:",destination)
     print("Original source-free groups:",len(rows))
     print("Unkeyed source hashes and encrypted notes are not consent, authority or verified fixes.")
@@ -298,9 +337,23 @@ def main() -> int:
                         help="Include sensitive HUMAN notes in private scriptless HTML output")
     parser.add_argument("--calendar",action="store_true",
                         help="Add anonymous self-declared all-day reminders; never sends them")
+    parser.add_argument("--owner", type=str,
+                        help="Exact local HUMAN owner label to produce one private work queue")
+    parser.add_argument("--unassigned", action="store_true",
+                        help="Include only ownerless HUMAN follow-ups")
+    parser.add_argument("--pending", action="store_true",
+                        help="Exclude self-reported answered HUMAN tasks")
+    parser.add_argument("--overdue", action="store_true",
+                        help="Only locally overdue, still-pending HUMAN tasks")
+    parser.add_argument("--due-next-days", type=int,
+                        help="Only still-pending HUMAN tasks due within 0–90 days")
+    parser.add_argument("--stage", type=str,
+                        help="Exact local HUMAN stage (not a verified remediation status)")
     a=parser.parse_args()
     try:
-        publish(a.vault,a.cockpit,a.output_dir,a.include_notes,a.calendar)
+        publish(a.vault,a.cockpit,a.output_dir,a.include_notes,a.calendar,
+                owner=a.owner, unassigned=a.unassigned, pending=a.pending,
+                overdue=a.overdue, due_next_days=a.due_next_days, stage=a.stage)
         return 2
     except (single_review.review.Hold,install.Hold,UnicodeError,ValueError,
             OSError,KeyError,TypeError,OverflowError,ImportError,RuntimeError,
