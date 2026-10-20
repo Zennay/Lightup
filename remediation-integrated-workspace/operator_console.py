@@ -115,6 +115,20 @@ NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
 <p id="packet-message" role="status" aria-live="polite">Alle bytes blijven lokaal;
 maximaal acht bestanden, 20 MiB per bestand en 64 MiB samen.</p>
 <div id="packet-result" class="fingerprint-result"></div>
+<div class="fingerprint-match">
+<label for="packet-expected">Ontvangen oorspronkelijke SHA-256, optioneel
+(alleen na apart geautoriseerde uitwisseling)</label>
+<input id="packet-expected" type="text" inputmode="latin" spellcheck="false"
+autocomplete="off" maxlength="64" placeholder="64 kleine hexadecimale tekens">
+<label for="packet-expected-size">Verwachte oorspronkelijke grootte in bytes, optioneel</label>
+<input id="packet-expected-size" type="text" inputmode="numeric"
+autocomplete="off" maxlength="12" placeholder="Bijvoorbeeld 102400">
+<p id="packet-expected-result" aria-live="polite" role="status"></p>
+<small>Vergelijk met het afzonderlijk ontvangen bronhouder-fingerprint.
+Dit is een ONDERTEKEND: nee / REVIEW_ONLY hulpmiddel; SHA op zichzelf
+bewijst nooit de identiteit van de bronhouder of toestemming.</small>
+</div>
+
 <p id="packet-comparison" class="fingerprint-comparison" aria-live="polite"></p>
 <small>Een PRIVATE checksum is niet ondertekend; wie het bronpakket en
 de fingerprint beheerst, kan beide vervangen. Native ontvangst, afzonderlijke

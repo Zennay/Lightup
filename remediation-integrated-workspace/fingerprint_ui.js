@@ -7,6 +7,9 @@
   const output = document.getElementById("packet-result");
   const notice = document.getElementById("packet-message");
   const comparison = document.getElementById("packet-comparison");
+  const expected = document.getElementById("packet-expected");
+  const expectedSize = document.getElementById("packet-expected-size");
+  const expectedResult = document.getElementById("packet-expected-result");
   const limitCount = 8;
   const limitItem = 20 * 1024 * 1024;
   const limitTotal = 64 * 1024 * 1024;
@@ -17,9 +20,40 @@
     output.replaceChildren();
     comparison.textContent = "";
     exportButton.disabled = true;
+    compareDeclaredSource();
   }
   function message(s) {
     notice.textContent = s;
+  }
+  function compareDeclaredSource() {
+    expectedResult.textContent = "";
+    const digest = expected.value.trim();
+    const sizeText = expectedSize.value.trim();
+    if (!digest && !sizeText) return;
+    if (!digest || !/^[0-9a-f]{64}$/.test(digest)) {
+      expectedResult.textContent = "HOLD: voer exact 64 kleine hexadecimale SHA-256-tekens in.";
+      return;
+    }
+    if (sizeText && (!/^[1-9][0-9]{0,11}$/.test(sizeText) ||
+                     !Number.isSafeInteger(Number(sizeText)) ||
+                     Number(sizeText) > limitItem)) {
+      expectedResult.textContent = "HOLD: verwachte lengte moet een geldige originele bytegrootte <= 20 MiB zijn.";
+      return;
+    }
+    if (!inventory.length) {
+      expectedResult.textContent = "Eerst lokaal pakketten selecteren en SHA-256 berekenen.";
+      return;
+    }
+    const targetSize = sizeText ? Number(sizeText) : null;
+    const matches = inventory.filter(x => x.sha256 === digest &&
+      (targetSize === null || x.size === targetSize));
+    if (!matches.length) {
+      expectedResult.textContent = "HOLD: geen lokaal bestand heeft deze verwachte SHA-256 / bytegrootte. Controleer onafhankelijk de oorspronkelijke pakketversie. Geen automatische vervanging.";
+      return;
+    }
+    expectedResult.textContent = matches.map(x => "Lokaal slot " + x.slot).join(", ") +
+      " heeft dezelfde bytes-fingerprint" + (targetSize === null ? "" : " en bytegrootte") +
+      " als de afzonderlijk aangeleverde, ONDERTEKENDE: nee bronnotitie. Dit bewijst GEEN afzender, toestemming of veiligheid.";
   }
   function hex(bytes) {
     return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, "0")).join("");
@@ -52,6 +86,8 @@
     output.replaceChildren(tab);
   }
 
+  expected.addEventListener("input", compareDeclaredSource);
+  expectedSize.addEventListener("input", compareDeclaredSource);
   analyze.addEventListener("click", async () => {
     forget();
     const files = Array.from(picker.files || []);
@@ -104,6 +140,7 @@
         comparison.textContent = "Deze fingerprint kan later op een afzonderlijk geautoriseerd apparaat worden vergeleken; er is geen geauthenticeerde afzender of inhoudstoelating.";
       }
       exportButton.disabled = false;
+      compareDeclaredSource();
       message("PRIVATE fingerprint-overzicht klaar. Geen bestanden verzonden of bewaard. Verwijder lokaal na gebruik.");
     } catch (_) {
       forget();

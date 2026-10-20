@@ -358,3 +358,18 @@ approval. The native SHA comparator does not decrypt/read ZIP members, and
 never substitutes for the unchanged original native source admission,
 cryptography, owner/security/privacy/browser review, consent/revocation and
 explicit HUMAN GO. REVIEW_ONLY is not a release signal.
+
+### Cross-device HUMAN fingerprint lookup inside the offline browser
+
+An independently disclosed, source-owner-declared SHA-256 can now be pasted
+into the source-free packet workroom alongside an optional exact byte length.
+After local WebCrypto hashing, the page identifies the matching LOCAL ordinal
+or explicitly HOLDS when no locally selected packet matches. This supports
+comparing actual original/received packet bytes on different authorized
+machines without uploading the original packet, reading ZIP members, saving
+full original file paths in a receipt, or automatically importing any
+untrusted JSON receipt. Only canonical 64-character lowercase hex SHA-256 and
+bounded exact decimal byte lengths are accepted. The typed comparison is
+ephemeral browser memory and never approves a recipient, identity, consent,
+fix, release or transfer. Native packet_fingerprint.py compare remains the
+strict owner-private source-bound receipt comparison counterpart.

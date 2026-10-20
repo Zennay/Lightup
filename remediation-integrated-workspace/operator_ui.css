@@ -69,3 +69,8 @@ a{color:#146578}button:focus-visible,a:focus-visible{outline:3px solid #8ad6d7;o
 .fingerprint-result td:last-child{font:12px/1.5 ui-monospace,monospace;overflow-wrap:anywhere;min-width:240px}
 .fingerprint-comparison{font-weight:750;color:#244d59}
 .fingerprint small{color:#677b8d;line-height:1.5}
+.fingerprint-match{border:1px solid #bfdce0;border-radius:11px;background:#f3f9fa;padding:16px 17px;margin:18px 0}
+.fingerprint-match label{font-size:.86rem;color:#315465}
+.fingerprint-match input{width:min(100%,550px);display:block;background:#fff;color:#1b3147}
+#packet-expected{font:13px ui-monospace,monospace;letter-spacing:.005em}
+#packet-expected-result{font-size:.88rem;font-weight:750;line-height:1.55;color:#30586a;overflow-wrap:anywhere}
