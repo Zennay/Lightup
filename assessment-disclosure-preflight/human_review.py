@@ -28,6 +28,7 @@ REPORT = "PRIVATE-human-followup.html"
 SUMMARY = "PRIVATE-human-summary.csv"
 VAULT = "PRIVATE-human-reviewed.luhd"
 BUNDLE = "PRIVATE-human-handoff.luhb"
+REKEYED_BUNDLE = "PRIVATE-human-handoff-rekeyed.luhb"
 
 
 def source_bytes(name: str) -> bytes:
@@ -200,7 +201,7 @@ def publish(output_dir: str, filename: str, content: str | bytes) -> None:
         info = os.fstat(dirfd)
         require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
                 and info.st_mode & 0o077 == 0)
-        require(filename in (TEMPLATE, REPORT, SUMMARY, VAULT, BUNDLE))
+        require(filename in (TEMPLATE, REPORT, SUMMARY, VAULT, BUNDLE, REKEYED_BUNDLE))
         stage = ".lightup-human-private-" + os.urandom(16).hex()
         fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
                      getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=dirfd)
@@ -232,13 +233,15 @@ def publish(output_dir: str, filename: str, content: str | bytes) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="PRIVATE source-free HUMAN follow-up, never authority")
     commands = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "render", "summarize", "seal", "seal-bundle"):
+    for name in ("prepare", "render", "summarize", "seal", "seal-bundle", "rekey-bundle"):
         sub = commands.add_parser(name)
         sub.add_argument("--receipt", required=name in ("prepare", "seal", "seal-bundle"),
                          help="unsigned PRIVATE preflight receipt (not needed for --bundle)")
         sub.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
         if name in ("seal", "seal-bundle"):
             sub.add_argument("--answers", required=True, help="source-free admitted PRIVATE HUMAN CSV")
+        elif name == "rekey-bundle":
+            sub.add_argument("--bundle", required=True, help="original encrypted PRIVATE HUMAN handoff")
         elif name != "prepare":
             inputs = sub.add_mutually_exclusive_group(required=True)
             inputs.add_argument("--answers", help="plaintext PRIVATE HUMAN CSV")
@@ -251,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         source = None
         raw_receipt = None
-        if args.action in ("render", "summarize") and args.bundle:
+        if args.action in ("render", "summarize", "rekey-bundle") and args.bundle:
             require(args.receipt is None)
             try:
                 from vault_native import VaultHold, decrypt_bundle
@@ -265,6 +268,14 @@ def main(argv: list[str] | None = None) -> int:
             digest, rows = receipt_content(raw_receipt)
         if args.action == "prepare":
             publish(args.private_output_dir, TEMPLATE, template(digest, rows))
+        elif args.action == "rekey-bundle":
+            admitted_answers(source, digest, rows)
+            try:
+                from vault_native import VaultHold, encrypt_bundle
+                sealed = encrypt_bundle(raw_receipt, source)
+            except (ImportError, VaultHold):
+                raise Hold("HOLD: encrypted HUMAN rekey refused") from None
+            publish(args.private_output_dir, REKEYED_BUNDLE, sealed)
         elif args.action in ("seal", "seal-bundle"):
             source = source_bytes(args.answers)
             admitted_answers(source, digest, rows)
