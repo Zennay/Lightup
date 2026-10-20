@@ -110,8 +110,13 @@ def render(sources, transitions, hotspots):
                 ("HOLD: HUMAN attention" if row["human_attention"] else
                  "REVIEW_ONLY: historical files unchanged") + "</td></tr>"
             )
-    body.append("</tbody></table><p><a href='PRIVATE-hotspots.html'>"
-                "Open PRIVATE per-file churn review</a> for source-relative "
+    body.append("</tbody></table><p><a href='REVIEW-HISTORY-IN-BROWSER.html'>"
+                "Open local PRIVATE HUMAN historical editor</a> to review all "
+                "original source-bound transitions, resume saved HUMAN drafts "
+                "and export native-finalizable CSV. HUMAN proposals are NOT "
+                "verified findings, repairs or consent.</p>"
+                "<p><a href='PRIVATE-hotspots.html'>"
+                "Open PRIVATE per-file churn review</a> for source-relative 
                 "filenames and repeat changes. This separate HTML is sensitive.</p>"
                 "<p>Original relative filenames and any hashes are "
                 "omitted from this overview; they are PRIVATE in "
@@ -180,23 +185,19 @@ def run(args):
         "sources_reopened": False,
         "items": hotspots,
     }
-    output = io.StringIO(newline="")
-    writer = csv.writer(output, lineterminator="\n")
-    writer.writerow(["transition", "kit_ordinal", "label_changed", "added", "removed",
-                     "changed", "unchanged", "human_stage", "human_owner", "human_question"])
-    for step in transitions:
-        for kit in step["kits"]:
-            writer.writerow([step["transition"], kit["ordinal"], int(kit["label_changed"]),
-                             kit["added_file_count"], kit["removed_file_count"],
-                             kit["changed_file_count"], kit["unchanged_file_count"],
-                             "needs_review", "", ""])
+    # Native exporter/finalizer share EXACT immutable source-bound CSV fields.
+    from history_human import encode_csv, expected_rows
+    from history_studio import render as render_history_studio
+    review_csv = encode_csv(expected_rows(sources, transitions))
     private = new_private(args.private_parent)
     try:
         write_private(private, "PRIVATE-history.json", canonical(overview))
         write_private(private, "PRIVATE-relative-file-hotspots.json", canonical(hot))
-        write_private(private, "PRIVATE-HUMAN-history-template.csv", output.getvalue())
+        write_private(private, "PRIVATE-HUMAN-history-template.csv", review_csv)
         write_private(private, "OPEN-PRIVATE.html", render(sources, transitions, hotspots))
         write_private(private, "PRIVATE-hotspots.html", render_hotspots(hotspots))
+        write_private(private, "REVIEW-HISTORY-IN-BROWSER.html",
+                      render_history_studio(sources, transitions))
     except BaseException:
         shutil.rmtree(private)
         raise
