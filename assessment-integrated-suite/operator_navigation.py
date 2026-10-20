@@ -67,6 +67,7 @@ ACTIONS: dict[str, str] = {
     '57': 'Finalize source-bound HUMAN lab proposal decisions offline (NO SCAN)',
     '58': 'Resume exact original HUMAN Lab decisions in a new PRIVATE Studio',
     '59': 'Compare 2–8 source-bound finalized PRIVATE HUMAN Lab review rounds',
+    '60': 'Prepare minimum-necessary PRIVATE HUMAN Lab team workrooms',
 }
 
 CATEGORIES = (
@@ -78,7 +79,7 @@ CATEGORIES = (
     ("Owner-private session continuity", tuple(str(x) for x in range(37, 42))),
     ("HUMAN task queues", tuple(str(x) for x in range(42, 48))),
     ("Integrated HUMAN workpacks", tuple(str(x) for x in range(48, 52))),
-    ("Isolated lab offline planning", tuple(str(x) for x in range(52, 60))),
+    ("Isolated lab offline planning", tuple(str(x) for x in range(52, 61))),
 )
 
 
@@ -88,7 +89,7 @@ def overview() -> None:
     for name, ids in CATEGORIES:
         print("  " + ids[0] + "–" + ids[-1] + "   " + name)
     print("Suggested safe HUMAN-only workflow: 37 → 49 → manual editor →")
-    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59.")
+    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60.")
     print("Enter an action number, ALL for full catalog, ?keyword to search,")
     print("HELP for a HUMAN walkthrough or 0 to exit. No action is automatic.")
 
@@ -140,6 +141,7 @@ def help_flow() -> None:
     print("57. Re-admit original packets and finalize PRIVATE HUMAN choices.")
     print("58. Reopen exact source-bound HUMAN Lab choices in a NEW PRIVATE editor.")
     print("59. Compare 2-8 exact original finalized HUMAN Lab review snapshots.")
+    print("60. Build separate PRIVATE minimal team workrooms from FINAL HUMAN review.")
     print("Every step remains PRIVATE and REVIEW_ONLY. No scan, grant, report")
     print("verification, real scheduling, recipient dispatch or consent.")
     print("Original current authenticated client+operator consent, revocation")
