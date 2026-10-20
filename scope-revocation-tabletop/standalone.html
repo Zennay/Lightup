@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZmVNplqq7Zr958re9KnZpKXWat4HaX850aEdot+gyrg='; style-src 'sha256-QwznhkI41YE8gSdDL5Y7BS8uhtS6iiYizrFuS/uaBIU='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-g/zFGqI58VgKhVEuwoqRFi2NV0rrGCMPMhlvkmBZVTk='; style-src 'sha256-QwznhkI41YE8gSdDL5Y7BS8uhtS6iiYizrFuS/uaBIU='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
   <meta name="referrer" content="no-referrer">
   <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
   <style>:root{color-scheme:dark;--bg:#0b1220;--surface:#121e30;--surface2:#19283a;--border:#31445c;--text:#f3f7fc;--muted:#adbed1;--aqua:#5ee5cf;--warn:#ffd07d;--red:#ff9b9b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -413,6 +413,10 @@
       lines.push("| "+(i+1)+" | "+r.steps+" | "+r.holds+" | "+r.attempts+
         " | "+r.attemptHolds+" | "+(r.stop?"Actief":"Niet actief")+" |");
     });
+    lines.push("","## Didactische leskaarten (niet geverifieerd)",progressText());
+    DRILLS.forEach((d,i)=>lines.push("Kaart "+(i+1)+" — "+d.title+": "+
+      (drillAnswers[i]===null?"niet besproken":("keuze "+String.fromCharCode(65+drillAnswers[i])+
+      (drillAnswers[i]===d.correct?" (didactisch passend)":" (didactisch aandachtspunt)")))));
     lines.push("","## Menselijke vervolgvragen","Welke originele actuele, apart geauthenticeerde client- en operatorconsent zijn aantoonbaar?","Welke exacte goedgekeurde assets/capabilities en risico's zijn gebonden?","Hoe wordt revocation bij daadwerkelijk I/O-gebruik onafhankelijk gecontroleerd?","Is originele hosted plus permanente named-VPS CI op juiste SHA en HUMAN GO aanwezig?","",
       "**AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false**");
     return lines.join("\n")+"\n";
@@ -515,9 +519,10 @@
     events.push(e); feedback("");render();
   }
   function data() {
-    return {schema:"lightup.fictional.scope-tabletop.v3",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
+    return {schema:"lightup.fictional.scope-tabletop.v4",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
       baseline_events:baseline===null?null:baseline.slice(),
       slots:slots.map(x=>x===null?null:slotEntry(x.events,x.baseline_events)),
+      drill_answers:drillAnswers.slice(),
       authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,
         dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
   }
@@ -575,9 +580,10 @@
       x.every(e=>typeof e==="string" && Object.hasOwn(TYPES,e));
     if (!validSeq(parsed.events)) throw new Error("Ongeldige fictieve gebeurtenissen.");
     if (parsed.title!=="Fictief scope-/intrekkingsoefenscenario") throw new Error("Onbekende titel.");
-    if (!["lightup.fictional.scope-tabletop.v1","lightup.fictional.scope-tabletop.v2","lightup.fictional.scope-tabletop.v3"].includes(parsed.schema))
+    if (!["lightup.fictional.scope-tabletop.v1","lightup.fictional.scope-tabletop.v2","lightup.fictional.scope-tabletop.v3","lightup.fictional.scope-tabletop.v4"].includes(parsed.schema))
       throw new Error("Onbekend scenarioformaat.");
-    const v3=parsed.schema==="lightup.fictional.scope-tabletop.v3";
+    const v4=parsed.schema==="lightup.fictional.scope-tabletop.v4";
+    const v3=v4||parsed.schema==="lightup.fictional.scope-tabletop.v3";
     const v2=v3||parsed.schema==="lightup.fictional.scope-tabletop.v2";
     if(v2 && parsed.baseline_events!==null && !validSeq(parsed.baseline_events))
       throw new Error("Ongeldige fictieve nulmeting.");
@@ -585,15 +591,20 @@
       x!==null && (!x || typeof x!=="object" || !validSeq(x.events) ||
         (x.baseline_events!==null && !validSeq(x.baseline_events))))))
       throw new Error("Ongeldige fictieve verzameling.");
+    if (v4 && (!Array.isArray(parsed.drill_answers) || parsed.drill_answers.length!==DRILLS.length ||
+        parsed.drill_answers.some(x=>x!==null && (!Number.isInteger(x) || x<0 || x>2))))
+      throw new Error("Ongeldige fictieve lesvoortgang.");
     const normalized={schema:parsed.schema,title:parsed.title,events:parsed.events};
     if(v2) normalized.baseline_events=parsed.baseline_events;
     if(v3) normalized.slots=parsed.slots;
+    if(v4) normalized.drill_answers=parsed.drill_answers;
     normalized.authority={authenticated_client:false,authenticated_operator:false,consent_verified:false,
       dispatch_allowed:false,release_allowed:false,deploy_allowed:false};
     // Exact own-export bytes only. Duplicate keys, unknown fields and authority changes fail closed.
     if (JSON.stringify(normalized,null,2)!==text) throw new Error("Niet-canoniek of gewijzigd exportbestand.");
     return {events:parsed.events.slice(),baseline:v2 && parsed.baseline_events!==null ? parsed.baseline_events.slice() : null,
-      slots:v3?parsed.slots.map(x=>x===null?null:slotEntry(x.events,x.baseline_events)):Array(8).fill(null)};
+      slots:v3?parsed.slots.map(x=>x===null?null:slotEntry(x.events,x.baseline_events)):Array(8).fill(null),
+      drillAnswers:v4?parsed.drill_answers.slice():Array(DRILLS.length).fill(null)};
   }
   $("load-preset").addEventListener("click",()=>{
     const key=$("preset").value;
@@ -626,10 +637,11 @@
         feedback("HOLD: lokale werkruimte gewijzigd tijdens inlezen; bestand niet toegepast.");
         return;
       }
-      if ((events.length || baseline!==null || slots.some(x=>x!==null)) &&
-          !window.confirm("Editor, nulmeting en alle acht opgeslagen oefenscenario's vervangen?")) return;
+      if ((events.length || baseline!==null || slots.some(x=>x!==null) || drillAnswers.some(x=>x!==null)) &&
+          !window.confirm("Editor, nulmeting, acht slots én fictieve lesantwoorden vervangen?")) return;
       events=next.events;baseline=next.baseline;slots=next.slots;
-      feedback("Fictief scenario en acht-slotsverzameling atomair hersteld.");render();
+      drillAnswers=next.drillAnswers;activeDrill=null;
+      feedback("Fictief scenario, lesantwoorden en slotverzameling atomair hersteld.");selectDrill(selectedDrill);render();
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("timeline-filter").addEventListener("change",render);
