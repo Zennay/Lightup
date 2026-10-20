@@ -9,6 +9,36 @@
   },
   "file_entries": [
     {
+      "path": "authorization-portfolio/README.md",
+      "sha256": "2d9dac9e9e54069dcd11ed34c747ef4a604e7e48bf2851baff9ca4b40f9aede7",
+      "size": 8940
+    },
+    {
+      "path": "authorization-portfolio/app.js",
+      "sha256": "c5507dcc5cbd9d331dc4e27dbca2c4699251aa9f5655e5d024d592050e2b5546",
+      "size": 43761
+    },
+    {
+      "path": "authorization-portfolio/build.py",
+      "sha256": "7c830043f932ddf7d1bc5a4918d4de15e75352c7460d4abdbc69b211f9562339",
+      "size": 1732
+    },
+    {
+      "path": "authorization-portfolio/index.html",
+      "sha256": "e45ba69cb247f119fa7706615d1c8d14cf7a8efe427996dd030e7a56d924d162",
+      "size": 7362
+    },
+    {
+      "path": "authorization-portfolio/standalone.html",
+      "sha256": "6810112d3cc93cb9b120341781e7ee94fc88f2b3802036f4f52c0e4bce061a2e",
+      "size": 54492
+    },
+    {
+      "path": "authorization-portfolio/style.css",
+      "sha256": "a4e0c4d0f3d42c2d43767d02d3d81333c4eecf57f13309665cc2c27ddfad93cd",
+      "size": 3130
+    },
+    {
       "path": "scope-casebook-history/README.md",
       "sha256": "fbe54837d92715f20cc90d611504b12f310a33c08e9892367fe7711c1e550c70",
       "size": 20249
@@ -185,33 +215,38 @@
     },
     {
       "path": "scope-unified-workspace/README.md",
-      "sha256": "7173afb3c2c75e1ceaf9c9ccf789cdec035303e5ab54d1f8a2d574c48a6928f3",
-      "size": 6587
+      "sha256": "b6e95b1332f95c4586798a09e1c3ff74fb0f1977d4077f4928921d0d1687ae2a",
+      "size": 8656
     },
     {
       "path": "scope-unified-workspace/build.py",
-      "sha256": "fcf65e7a5359fc7dd0fe607769a1a0cbaa8007ec679093079cd5986cba6cdc4a",
-      "size": 6056
+      "sha256": "1aaddf317bd4372cb5305687eba181e4d75b5a807f9458d7216ae9b0aa40c9ad",
+      "size": 6599
     },
     {
       "path": "scope-unified-workspace/check_bundle.py",
-      "sha256": "f886dd0782c687741ebfb4bf1f10dd23657c709252f47823b80c66039bd88f56",
-      "size": 9217
+      "sha256": "f2d6e39796556b6ff77eab09628bb6dab69146b4c8bd8e30b44090d4268f9706",
+      "size": 9660
+    },
+    {
+      "path": "scope-unified-workspace/extra-cards.html",
+      "sha256": "8fc95348f13e16285d4028f26f720a475c4daac7a27dc5d1a92ebdbf94017991",
+      "size": 2300
     },
     {
       "path": "scope-unified-workspace/hub.template.html",
-      "sha256": "c5ceb262c664bc31ae11002571b3b1670e7999d193a5406935758c647cfd4e58",
-      "size": 7138
+      "sha256": "90f152b7b9e1de3285f0477e72e30e75c7e09cd9090f8cfa4dc97d7950c7f4c2",
+      "size": 7623
     },
     {
       "path": "scope-unified-workspace/index.html",
-      "sha256": "ec1cb8e7208e09a6ccc9ea553c3438000d5970558a4a62f8c5726c0c5fd50745",
-      "size": 13600
+      "sha256": "a2d9cfd400f5782d86bba0815d0584086f7299dd918e4f84072c335d95dc73cb",
+      "size": 16622
     },
     {
       "path": "scope-unified-workspace/style.css",
-      "sha256": "6a2decd43f69d87e5a54299f58b411625f1472c5e215de9eac884bb11d3f3f65",
-      "size": 6437
+      "sha256": "4c2e932ca56c973a57af2a73f07375df4f4b989996bf4e341a8a7ac4969b8fea",
+      "size": 6694
     },
     {
       "path": "scope-unified-workspace/verify-local.js",
@@ -220,22 +255,121 @@
     },
     {
       "path": "scope-unified-workspace/verify.html",
-      "sha256": "0d9c7db562dea3e0c02dd809e299c4da5c46028513cc8ee0e5e35592135713b7",
-      "size": 13004
+      "sha256": "409950bde27ec81bb96d5540ac9f9ef6fafb306b748b5f37403ff1b58fc24b18",
+      "size": 13261
     },
     {
       "path": "scope-unified-workspace/verify.template.html",
       "sha256": "3f8707ac434f078569ac33cbacc47699f964a9a173e05765017b6ad39c6cb81f",
       "size": 4009
+    },
+    {
+      "path": "scope-vault/build_standalone.py",
+      "sha256": "f551df31d8e01d15647d749424de326bdc0072c77ee2dcdd110e1d4c42e66e41",
+      "size": 2005
+    },
+    {
+      "path": "scope-vault/index.html",
+      "sha256": "48586da568134e8ace5e5a5ff90414250b0d938ded6fabb017f721277a223832",
+      "size": 12118
+    },
+    {
+      "path": "scope-vault/standalone.html",
+      "sha256": "39351fd3300d265eb9edec6d5307dedea1ce5d6f5fbdcdb8d34543f565777465",
+      "size": 81282
+    },
+    {
+      "path": "scope-vault/style.css",
+      "sha256": "699125b0886bd4e10521cd84dc9cad4a70a9e30344df734e13ffbc7c384f9231",
+      "size": 4898
+    },
+    {
+      "path": "scope-vault/vault.js",
+      "sha256": "c5b7b718242ab3d2cf071eae74b20fead1ede7503bcf7165761a6f3dbccd73c0",
+      "size": 64214
+    },
+    {
+      "path": "studio/effective-scope.html",
+      "sha256": "e809b6878ed12f63a9fe1993698ea572b951296d854f27f3935434fece8069c9",
+      "size": 11985
+    },
+    {
+      "path": "studio/engagement-handoff.html",
+      "sha256": "acbd94d870e6606d2064e904ed45a6bc5ffe12ae63123ac254ad39ed4d648b7a",
+      "size": 18407
+    },
+    {
+      "path": "studio/index.html",
+      "sha256": "b916a1b91dea724ed0481004f0a70e8561d74aaa174340265aad49575a844b2a",
+      "size": 3989
+    },
+    {
+      "path": "studio/planning-window.js",
+      "sha256": "17f1536e80c390016bfb60a7655ccec55ad462d980cdf29dbee7a263d10b7a21",
+      "size": 4742
+    },
+    {
+      "path": "studio/scope-change-review.html",
+      "sha256": "109626ba3aaabbfc1cfe11c9beca0d50e94613b01fab829146935ed54211ca07",
+      "size": 16278
+    },
+    {
+      "path": "studio/scope-fingerprint.js",
+      "sha256": "5f89ce8c7a979787048c355da8e0c9e2688819b287c1a4811df824d58e04c90e",
+      "size": 2360
+    },
+    {
+      "path": "studio/scope-network.js",
+      "sha256": "6a06c93b7395b9c8b0b3b857e04ed677559b6fef4e2a9ef894b993cbfd25abe4",
+      "size": 10296
+    },
+    {
+      "path": "studio/scope-portfolio.html",
+      "sha256": "a44ebf68013d1ed97baecbe7e53d37fbb06ad4ec398c197b27f06c74284c2ff3",
+      "size": 17329
+    },
+    {
+      "path": "studio/scope-proposal.html",
+      "sha256": "fd030bd1623acc1f79f845cbf85fab5b6eff54f210363152d46ec3912d097454",
+      "size": 22466
+    },
+    {
+      "path": "withdrawal-desk/build_standalone.py",
+      "sha256": "f3991edad84c78ba6c4c6debec8d1e33cf733ccb2db9cc48a2e8f5b890cd4fd3",
+      "size": 1746
+    },
+    {
+      "path": "withdrawal-desk/desk.js",
+      "sha256": "8fcc66b59ef625b7da54662450600ce16010547a65eaade3411ca9e740347c96",
+      "size": 19361
+    },
+    {
+      "path": "withdrawal-desk/index.html",
+      "sha256": "896ec63115bcaa76e053ebdce4110dfdcbc59dda41d50eb14542125083b824b1",
+      "size": 5952
+    },
+    {
+      "path": "withdrawal-desk/standalone.html",
+      "sha256": "76bc9f28cc87cb930560fe5c03e14785901b50cfac9c3807d8a91e0b378475e1",
+      "size": 29005
+    },
+    {
+      "path": "withdrawal-desk/style.css",
+      "sha256": "88262af4891617e3825eda602fe6908f1194461fa042ad812e34e549d416812b",
+      "size": 3647
     }
   ],
   "format": "lightup.scope_offline_bundle.v1",
   "note": "Unsigned transport inventory only; no source authenticity, tenant identity, approval or security release.",
   "pinned_original_branch_heads": {
+    "authorization-portfolio": "2ac15c5b24bf5646c3749c26fed577209b1b1221",
     "scope-casebook-history": "2e10197061fe7876dcd6458ae4fc70d9674af9d3",
     "scope-casebook-reconcile": "7de3f5a5549c738eeb90f81c687c9a7d9c7cab3a",
     "scope-casebook-transfer": "f40b0d2cf626e49bbd8f764968df132ba9d4365a",
-    "scope-intake-matrix": "480e4c5e0ff6ffbf020719f0ab3c03c9d1162538"
+    "scope-intake-matrix": "480e4c5e0ff6ffbf020719f0ab3c03c9d1162538",
+    "scope-vault": "49a569b2125a80dcaac21655febc07861afa0df2",
+    "studio": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+    "withdrawal-desk": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338"
   },
   "posture": "INCUBATE_M3_M7_DRAFT_HOLD"
 }

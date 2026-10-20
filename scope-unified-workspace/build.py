@@ -22,8 +22,12 @@ SOURCES = (
     ("scope-casebook-history", "2e10197061fe7876dcd6458ae4fc70d9674af9d3", False),
     ("scope-casebook-transfer", "f40b0d2cf626e49bbd8f764968df132ba9d4365a", True),
     ("scope-casebook-reconcile", "7de3f5a5549c738eeb90f81c687c9a7d9c7cab3a", True),
+    ("authorization-portfolio", "2ac15c5b24bf5646c3749c26fed577209b1b1221", True),
+    ("withdrawal-desk", "0235d93fe285edc0cc49ea3aec3580b7dc4e1338", True),
+    ("scope-vault", "49a569b2125a80dcaac21655febc07861afa0df2", True),
+    ("studio", "71d9e5f760ef2bff46a72b979173bb3181179afb", False),
 )
-HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py", "verify-local.js", "verify.template.html")
+HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py", "verify-local.js", "verify.template.html", "extra-cards.html")
 ARCHIVE = HUB / "LightUp-Scope-Offline-DRAFT-HOLD.zip"
 MAX_FILE = 8 * 1024 * 1024
 MAX_ALL = 30 * 1024 * 1024
@@ -47,6 +51,9 @@ def package():
     if template.count("<!-- EMBED_STYLE -->") != 1 or template.count("CSP_STYLE_HASH") != 1:
         raise ValueError("Ambiguous or missing HTML template markers")
     style_digest = base64.b64encode(hashlib.sha256(css).digest()).decode("ascii")
+    if template.count("<!-- EXTRA_CARDS -->") != 1:
+        raise ValueError("Missing extra workroom cards slot")
+    template = template.replace("<!-- EXTRA_CARDS -->", raw(HUB / "extra-cards.html").decode("utf-8", "strict"))
     html = template.replace("CSP_STYLE_HASH", style_digest).replace(
         "<!-- EMBED_STYLE -->", "<style>" + css.decode("utf-8", "strict") + "</style>"
     )

@@ -24,6 +24,10 @@ SOURCES = {
     "scope-casebook-history": "2e10197061fe7876dcd6458ae4fc70d9674af9d3",
     "scope-casebook-transfer": "f40b0d2cf626e49bbd8f764968df132ba9d4365a",
     "scope-casebook-reconcile": "7de3f5a5549c738eeb90f81c687c9a7d9c7cab3a",
+    "authorization-portfolio": "2ac15c5b24bf5646c3749c26fed577209b1b1221",
+    "withdrawal-desk": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338",
+    "scope-vault": "49a569b2125a80dcaac21655febc07861afa0df2",
+    "studio": "71d9e5f760ef2bff46a72b979173bb3181179afb",
 }
 AUTHORITY_KEYS = {"client_consent", "operator_consent", "grant", "scan", "deploy", "release"}
 MANDATORY = {
@@ -34,6 +38,11 @@ MANDATORY = {
     "scope-intake-matrix/standalone.html",
     "scope-casebook-transfer/standalone.html",
     "scope-casebook-reconcile/standalone.html",
+    "authorization-portfolio/standalone.html",
+    "withdrawal-desk/standalone.html",
+    "scope-vault/standalone.html",
+    "studio/index.html",
+    "studio/scope-proposal.html",
     "scope-casebook-history/README.md",
 }
 MAX_FILES = 100

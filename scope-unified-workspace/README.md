@@ -2,7 +2,7 @@
 
 **Status: INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD. Not approved for live use.**
 
-This branch composes four **existing independently owned** scope-authorization companion workrooms into one portable offline package, preserving their exact source bytes. It adds only a navigation hub, offline packaging, unsigned file inventory and operator instructions. It does **not** integrate or promote the original source-owner authorization engine, alter grants, verify client identity, dispatch work, contact a target, modify CI or produce security findings.
+This branch composes eight **existing independently owned** scope-authorization companion workrooms into one portable offline package, preserving their exact source bytes. It adds only a navigation hub, offline packaging, unsigned file inventory and operator instructions. It does **not** integrate or promote the original source-owner authorization engine, alter grants, verify client identity, dispatch work, contact a target, modify CI or produce security findings.
 
 ## Open and use
 
@@ -23,6 +23,11 @@ The start page makes **zero network requests**, uses **zero JavaScript**, contai
 | [#1671](https://github.com/Zennay/Lightup/pull/1671) | `scope-casebook-transfer/` | `f40b0d2cf626e49bbd8f764968df132ba9d4365a` |
 | [#1674](https://github.com/Zennay/Lightup/pull/1674) | `scope-casebook-reconcile/` | `7de3f5a5549c738eeb90f81c687c9a7d9c7cab3a` |
 
+| [#1588](https://github.com/Zennay/Lightup/pull/1588) | `authorization-portfolio/` | `2ac15c5b24bf5646c3749c26fed577209b1b1221` |
+| [#1577](https://github.com/Zennay/Lightup/pull/1577) | `withdrawal-desk/` | `0235d93fe285edc0cc49ea3aec3580b7dc4e1338` |
+| [#1574](https://github.com/Zennay/Lightup/pull/1574) | `scope-vault/` | `49a569b2125a80dcaac21655febc07861afa0df2` |
+| [#1567](https://github.com/Zennay/Lightup/pull/1567) | `studio/` | `71d9e5f760ef2bff46a72b979173bb3181179afb` |
+
 This is a **snapshot**, not ongoing automatic propagation. Parent source-owner PRs and their branches stay untouched. Changes to those originals need a separately reviewed composition and a new frozen inventory. Duplicated or older assets must never be represented as current original authorization truth.
 
 ## Rebuild portable package (product build only)
@@ -34,6 +39,15 @@ python3 scope-unified-workspace/build.py
 ```
 
 This deterministic Python-stdlib build generates `index.html`, `SOURCE-MANIFEST.json` and `LightUp-Scope-Offline-DRAFT-HOLD.zip`. The manifest lists file sizes, SHA-256 digests and original parent commits for **transport comparison only**. It is **unsigned**, not an independent proof of original authorship, authorized source, tenant identity, runtime behavior or security correctness. The ZIP has fixed metadata and is assembled atomically. It contains no data provided by an operator, browser session, account, customer or database.
+
+## Additional operator-facing workflows
+
+- **Five-screen Scope Studio** (`studio/index.html`, original held #1567): prepare offline `DRAFT_ONLY` scopes, effective CIDR/risk/change summaries, UTC schedule, human handoff. These documents are self-reports, never grants.
+- **Withdrawal Coordination Desk** (`withdrawal-desk/standalone.html`, held #1577): import eligible ORIGINAL Studio draft bytes, write local urgent stop/withdrawal HUMAN contacts and source-bound follow-up. The desk does not contact a real source or STOP workers: separately notify the genuine authenticated grant owner and action-time revocation system.
+- **Authorization Risk Portfolio** (`authorization-portfolio/standalone.html`, held #1588): accept separately obtained original operator readiness JSONs, triage HUMAN attention across multiple scopes, export source-minimal counts. This package does not include or impersonate the held source-owner operator CLI and cannot generate authentic original exports itself.
+- **Private Scope Packet Vault** (`scope-vault/standalone.html`, held #1574): optionally bundle distinct self-authored scope/review files and names using its own local password protection. It cannot decrypt unrelated `.lupt`/`.lucb` originals, and does not authenticate an actual sender or recipient.
+
+The original standalone products' file contracts remain independent; the hub is navigation, not an undisclosed auto-import or invisible bridge. A second app does not automatically see a first app's memory: HUMAN must choose and separately re-import the appropriate locally exported file.
 
 ## Browser-only package digest (no Python required)
 

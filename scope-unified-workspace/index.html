@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; script-src 'none'; img-src 'none'; style-src 'sha256-ai3s1D9p2H5aVCmfWLQRYl8UcsXiFd6erIhLsR0/P2U='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; script-src 'none'; img-src 'none'; style-src 'sha256-TC6TLKVslzpXrypz8HN1309LmJmWv040Gop6xJabj+o='">
 <meta name="color-scheme" content="dark">
 <title>LightUp — Private Scope Operations</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
@@ -19,6 +19,8 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.action{transition:none}}
 /* Shared portable browser-verification companion */
 .verify-cta{margin:24px 0 0!important;font-weight:800;font-size:13px!important}.verify-cta a{color:#a4ecc8;text-decoration:underline;text-underline-offset:5px}.hero.compact{padding-bottom:32px}.hero.compact h1{font-size:clamp(38px,5vw,64px)}.digest-panel{display:grid;grid-template-columns:1fr 1fr;gap:22px}.digest-panel form,.digest-output{background:#151e2b;border:1px solid #334659;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:15px}.digest-panel label{color:#cde1e9;font-size:13px;font-weight:750}.digest-panel input{min-width:0;width:100%;font:inherit;font-size:13px;color:#e4f4f3;background:#0b1420;border:1px solid #4c6372;padding:14px;border-radius:7px}.digest-panel input[type=file]{cursor:pointer}.digest-panel .fine{color:#91a5b4;font-size:12px;line-height:1.7;margin:0}.digest-panel button{cursor:pointer;border:0;margin-top:auto}.digest-output{gap:17px}.digest-output h3{font-size:15px}.digest-output output{display:block;overflow-wrap:anywhere;line-height:1.75;font-size:14px;color:#a1edc8;background:#0d1720;padding:17px;border:1px solid #344a53;border-radius:7px}.digest-output [role=status]{font-size:13px;line-height:1.7;border-left:3px solid #bd9f72;padding:12px 14px;background:#1c2128;margin:0}.digest-output [data-state=match]{border-left-color:#8be7b8}.nav-row{display:flex;flex-wrap:wrap;gap:15px}.nav-row .action{flex:1 1 240px}@media(max-width:750px){.digest-panel{grid-template-columns:1fr}}
+
+.route-alert{margin:23px 0 0;background:#171e29;border-left:3px solid #d9af77;padding:23px 24px;color:#c1ccd5;font-size:13px;line-height:1.8}.route-alert strong{color:#ffe0af}.route-alert a{color:#a1e7bd;font-weight:800;margin-left:6px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -29,10 +31,10 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <section class="hero" aria-labelledby="title">
 <div class="kicker"><span class="dot" aria-hidden="true"></span> INCUBATE / M3–M7 / PLAN & LAB ONLY</div>
 <h1 id="title">Van scopevoorstel naar <em>controleerbare</em> menselijke opvolging.</h1>
-<p>Een gezamenlijke, volledig lokale toegang tot vier bestaande LightUp-workrooms. Maak een voorstel, inspecteer een afzonderlijk aangeleverde oorspronkelijke Casebook-export, draag private bronbestanden versleuteld over en vergelijk menselijke reviewer-keuzes — zonder een grant uit te geven.</p>
+<p>Een gezamenlijke, volledig lokale toegang tot acht bestaande LightUp-werkruimtes. Maak een voorstel, inspecteer een afzonderlijk aangeleverde oorspronkelijke Casebook-export, draag private bronbestanden versleuteld over en vergelijk menselijke reviewer-keuzes — zonder een grant uit te geven.</p>
 <div class="hold" role="note"><strong>DRAFT / HOLD — NIET GEAUTORISEERD.</strong> Geen van deze schermen bewijst identiteit, cliënttoestemming, actuele intrekking, scope-goedkeuring of een veiligheidsoordeel. Geen productie-release, actieve scan of automatische autorisatie.</div>
 <p class="verify-cta"><a href="verify.html">Controleer een ontvangen pakket lokaal met SHA-256 <span aria-hidden="true">↗</span></a></p>
-<div class="hero-meta"><span>3 direct te openen browserapps</span><span>1 brongebonden CLI-companion</span><span>Geen server, account of verbinding</span></div>
+<div class="hero-meta"><span>7 direct te openen browserapps + Studio-schermen</span><span>1 brongebonden CLI-companion</span><span>Geen server, account of verbinding</span></div>
 </section>
 
 <section class="section" aria-labelledby="apps-title">
@@ -62,16 +64,45 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <p class="source">Gebaseerd op scope PR #1668 · zie de eigen handleiding en afhankelijkheden.</p>
 <a class="action muted" href="../scope-casebook-history/README.md">Lees CLI-handleiding <span aria-hidden="true">↗</span></a>
 </article>
+<article class="card">
+<div class="card-top"><span class="tag">RISICO'S OVERZIEN</span><span class="index">05</span></div>
+<h3>Authorization Risk Portfolio</h3>
+<p>Bundel maximaal twaalf door de oorspronkelijke operator geëxporteerde readinessrapporten. Prioriteer rode vlaggen, verdeel menselijke opvolging en maak privacyarme reviewoverzichten.</p>
+<p class="source">PR #1588 · historische waarnemingen betekenen geen actuele toestemming.</p>
+<a class="action" href="../authorization-portfolio/standalone.html">Open risicoportfolio <span aria-hidden="true">↗</span></a>
+</article>
+<article class="card">
+<div class="card-top"><span class="tag">STOP &amp; INTREKKING</span><span class="index">06</span></div>
+<h3>Withdrawal Coordination Desk</h3>
+<p>Maak een menselijk STOP-/intrekkingsverzoek, bind het aan oorspronkelijke Studio-conceptbytes en doorloop afzonderlijke contact- en opvolgstappen. Deze tool stopt zelf niets.</p>
+<p class="source">PR #1577 · geen automatische grant-revocation, scan-stop of bronmutatie.</p>
+<a class="action" href="../withdrawal-desk/standalone.html">Open STOP-werkruimte <span aria-hidden="true">↗</span></a>
+</article>
+<article class="card">
+<div class="card-top"><span class="tag">VERSLEUTELDE VERZAMELMAP</span><span class="index">07</span></div>
+<h3>Private Scope Packet Vault</h3>
+<p>Verzamel scopevoorstellen en menselijke review-exports. Versleutel bestandsnamen en inhoud in één lokale overdracht; controleer ontvanger en herkomst apart.</p>
+<p class="source">PR #1574 · encryptie geeft geen grant, bewijs van identiteit of consent.</p>
+<a class="action" href="../scope-vault/standalone.html">Open privékluis <span aria-hidden="true">↗</span></a>
+</article>
+<article class="card">
+<div class="card-top"><span class="tag">BRON VOOR STOP-DESK</span><span class="index">08</span></div>
+<h3>Five-screen Scope Studio</h3>
+<p>Maak oorspronkelijke conceptscopes, onderzoek veranderingen en effectieve netwerken, plan expliciet in UTC en stel een menselijke operationele overdracht samen. Lever conceptbronbestanden apart aan de STOP-werkruimte.</p>
+<p class="source">PR #1567 · afzonderlijke offline schermen, geen live uitvoering.</p>
+<a class="action" href="../studio/index.html">Open scope Studio <span aria-hidden="true">↗</span></a>
+</article>
 </div></section>
 
 <section class="section" aria-labelledby="route-title">
-<div class="section-heading"><div><p class="eyebrow">02 / WORKFLOW</p><h2 id="route-title">Welke route past bij je?</h2></div><p>Alles hieronder is handmatige review. Het echte autorisatiesysteem blijft leidend.</p></div>
+<div class="section-heading"><div><p class="eyebrow">02 / WORKFLOW</p><h2 id="route-title">Kies de juiste route</h2></div><p>Alles hieronder is handmatige review. Het echte autorisatiesysteem blijft leidend.</p></div>
 <div class="flow">
-<div class="step"><span>1</span><div><h3>Bereid scope voor</h3><p>Definieer exacte voorgestelde assets, beperkingen en risico's in Intake Matrix. Een voorgesteld asset is geen geautoriseerd asset.</p></div></div>
+<div class="step"><span>1</span><div><h3>Bereid scope voor</h3><p>Definieer exacte voorgestelde assets, beperkingen en risico's in Studio of Intake Matrix. Een voorgesteld asset is geen geautoriseerd asset.</p></div></div>
 <div class="step"><span>2</span><div><h3>Onderzoek originele records</h3><p>Importeer uitsluitend onafhankelijk verkregen, passende originele Casebook-JSON in een private werkruimte. Bronrecords zijn historische observaties, geen actueel consent.</p></div></div>
-<div class="step"><span>3</span><div><h3>Draag met beleid over</h3><p>Gebruik Transfer voor de bedoelde ontvanger. Wachtwoordbeveiliging is geen verificatie van oorspronkelijke producent of ontvangersidentiteit.</p></div></div>
+<div class="step"><span>3</span><div><h3>Draag met beleid over</h3><p>Gebruik Casebook Transfer voor de originele bron of Scope Packet Vault voor andere private reviewbestanden. Wachtwoordbeveiliging is geen verificatie van oorspronkelijke producent of ontvangersidentiteit.</p></div></div>
 <div class="step"><span>4</span><div><h3>Los menselijke conflicten op</h3><p>Reconcile vergelijkt workrooms uitsluitend bij exact dezelfde originele bron. Gewijzigde of afwezige bronvermeldingen zijn nooit automatisch gerepareerd of ingetrokken.</p></div></div>
 </div>
+<p class="route-alert"><strong>Urgente STOP of intrekking?</strong> Open een brongebonden HUMAN-opvolging in de Withdrawal Desk. Laat de echte geauthenticeerde grant-eigenaar en incidentcontacten onafhankelijk direct handelen; een browserformulier stopt geen scanner en trekt geen toestemming in. <a href="../withdrawal-desk/standalone.html">Open STOP-werkruimte →</a></p>
 </section>
 <section class="details" aria-labelledby="requirements-title">
 <div><p class="eyebrow">03 / AFBAKENING</p><h2 id="requirements-title">Voor echte uitvoering ontbreken nog afzonderlijke bewijzen.</h2></div>
