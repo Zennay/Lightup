@@ -267,7 +267,7 @@ def main() -> int:
             receive(args.archive, args.output_dir)
         return 2
     except (review.Hold, install.Hold, OSError, ValueError, TypeError, KeyError,
-            ImportError, UnicodeError, EOFError, zipfile.BadZipFile) as exc:
+            ImportError, UnicodeError, EOFError, RuntimeError, zipfile.BadZipFile) as exc:
         print("HOLD: original PRIVATE encrypted HUMAN source delivery refused: " + str(exc),
               file=sys.stderr)
         return 3

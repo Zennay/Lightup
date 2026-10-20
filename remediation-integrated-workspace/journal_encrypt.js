@@ -113,6 +113,8 @@
         throw Error('Encrypted HUMAN source-bound journal envelope too large');
       }
       download(serialized);
+      document.getElementById('reasons').dispatchEvent(
+        new CustomEvent('lightup-private-encrypted-journal-saved'));
       status.textContent = 'PRIVATE source-bound journal encrypted locally (.luhj). ' +
         'No plaintext download made by this action. Passphrase loss is permanent.';
     } catch (e) {

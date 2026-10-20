@@ -137,6 +137,11 @@
     changed();
     status.textContent = 'In-memory HUMAN edits reset. Download a new PRIVATE journal to preserve this choice.';
   });
+  root.addEventListener('lightup-private-encrypted-journal-saved', () => {
+    dirty = false;
+    status.textContent = 'Encrypted PRIVATE source-bound HUMAN journal downloaded. ' +
+      'No plaintext download made by this action; keep the passphrase separately.';
+  });
   // Only the locally CSP-hash-pinned vault reader dispatches this in-page
   // event after authenticating the encrypted bytes and the source-bound
   // original HUMAN reason inventory. There is no browser storage or network.
