@@ -33,6 +33,17 @@ python3 remediation-human-replies/reply.py open \
   --output-dir "$HOME/lightup-private/human-reply-report-01"
 ~~~
 
+If the recipient needs to **continue editing** an already encrypted response, preserve the original exact .luhq and saved .luhr; reopen them through the separate native resume command in a NEW private directory:
+
+~~~bash
+python3 remediation-human-replies/reply.py resume \
+  --handoff "$HOME/lightup-private/selected-private-human.luhq" \
+  --reply "$HOME/lightup-private/lightup-private-human-reply.luhr" \
+  --output-dir "$HOME/lightup-private/human-reply-resumed-01"
+~~~
+
+Resume performs the **same** two-password original admission and exact source-redacted selected item checks as open; it generates a newly editable offline browser with previously accepted HUMAN replies, rather than silently accepting a changed original source. The new browser is plaintext PRIVATE and only its later deliberate save creates another encrypted .luhr. It does not overwrite any earlier response or output.
+
 The new 0700 private report directory contains scriptless index.html and source-identity-free anonymous-counts.json, both 0600 via the unchanged original atomic exclusive directory publisher. Outputs never overwrite prior documents. Exit 2 = REVIEW_ONLY; exit 3 = HOLD. No positive authorization exit or claims.
 
 ## Security and limitations
