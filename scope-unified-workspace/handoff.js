@@ -30,6 +30,44 @@
   // Changes to HUMAN choices must also invalidate an in-flight PRIVATE restore.
   let humanRevision = 0;
   let lastReturnReceipt = null;
+  const returnJournal = [];
+  let nextLocalReturnOrdinal = 1;
+  const renderReturnJournal = () => {
+    const holder = el("shelf-return-journal-list");
+    holder.replaceChildren();
+    for (const round of returnJournal) {
+      const row = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = "Lokale ronde " + round.ordinal +
+        " · " + round.receipt.selected_private_human_changes.length +
+        " bronexacte HUMAN keuzewijzigingen · HISTORISCH, geen actuele toestemming.";
+      row.append(label);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Download PRIVATE historische ronde " + round.ordinal;
+      button.addEventListener("click", () => {
+        if (!confirm("PRIVATE historische HUMAN ronde " + round.ordinal +
+          " downloaden met oorspronkelijke namen, ongetekende SHA-256 en HANDMATIGE oude/nieuwe team/fase? Dit is geen actuele bron of toestemming. Ontvanger en kanaal apart controleren.")) return;
+        exportJSON("lightup-scope-PRIVATE-HUMAN-round-" + round.ordinal + ".json", round.receipt);
+        report("REVIEW_ONLY — lokaal historisch HUMAN retourbewijs gedownload, niet een actuele security-beslissing.");
+      });
+      row.append(button);
+      holder.append(row);
+    }
+    if (!returnJournal.length) {
+      const empty = document.createElement("li");
+      empty.textContent = "Nog geen historische lokale HUMAN retourrondes.";
+      holder.append(empty);
+    }
+    el("shelf-return-journal-export").disabled = returnJournal.length === 0;
+    el("shelf-return-journal-clear").disabled = returnJournal.length === 0;
+  };
+  const appendReturnJournal = receipt => {
+    returnJournal.push({ordinal: nextLocalReturnOrdinal++, receipt});
+    if (returnJournal.length > 12) returnJournal.shift();
+    renderReturnJournal();
+  };
+
   const invalidateReturnReceipt = () => {
     if (lastReturnReceipt === null) return;
     lastReturnReceipt = null;
@@ -600,6 +638,7 @@
       },
       warning: "LOCAL unsigned HUMAN decisions, not authenticated source, reviewer or recipient. No proof of grant, scope, revocation, fixed issue, CI, security approval or release."
     };
+    appendReturnJournal(lastReturnReceipt);
     el("shelf-return-receipt-note").textContent = "PRIVATE HUMAN ontvangstbon voor " + chosen.length +
       " bewust geselecteerde bronexacte menselijke wijzigingen beschikbaar. Bevat geen oorspronkelijke broninhoud en geen PRIVATE notitieteksten.";
     render();
@@ -615,6 +654,27 @@
     if (!confirm("Download PRIVATE ontvangstbon met oorspronkelijke bestandsnamen, ongetekende SHA-256 en oude/nieuwe HUMAN team/fase (zonder oorspronkelijke bronbytes of notitieteksten)? Deze informatie kan vertrouwelijk zijn. Ontvanger en kanaal afzonderlijk verifiëren. Geen echte toestemming, bewijs of security-vrijgave.")) return;
     exportJSON("lightup-scope-PRIVATE-HUMAN-return-receipt.json", lastReturnReceipt);
     report("REVIEW_ONLY — ontvangstbon lokaal gedownload voor de laatste daadwerkelijk gekozen HUMAN statusovername. Geen originele bron, grant of toestemming gewijzigd.");
+  });
+  el("shelf-return-journal-export").addEventListener("click", () => {
+    if (!returnJournal.length) return;
+    if (!confirm("PRIVATE historisch HUMAN retourjournaal exporteren met maximaal 12 lokaal gemaakte rondes? Bevat vertrouwelijke oorspronkelijke namen en SHA-256, maar geen bronbytes of PRIVATE notitieteksten. Oude rondes zijn GEEN huidige reviewstatus, revoke of toestemming.")) return;
+    exportJSON("lightup-scope-PRIVATE-HUMAN-historical-return-journal.json", {
+      format: "lightup.scope_PRIVATE_human_return_journal.v1",
+      status: "REVIEW_ONLY",
+      posture: "INCUBATE_M3_M7_DRAFT_HOLD",
+      authority: {client_consent:false,operator_consent:false,grant:false,scan:false,deploy:false,release:false},
+      historical_only: true,
+      local_rounds: returnJournal.map(round => ({local_ordinal: round.ordinal, human_receipt: round.receipt})),
+      warning: "Untrusted local historical HUMAN notes; no identity, original source authenticity, current consent, revocation, grant, fixed issue, valid scan or release asserted."
+    });
+    report("REVIEW_ONLY — PRIVATE historisch journaal lokaal gedownload. Geen actuele bron, bewijs of toestemming.");
+  });
+  el("shelf-return-journal-clear").addEventListener("click", () => {
+    if (!returnJournal.length) return;
+    if (!confirm("Alle " + returnJournal.length + " uitsluitend lokaal bewaarde historische HUMAN retourrondes uit dit tabblad wissen? Eerder gedownloade bestanden blijven bestaan.")) return;
+    returnJournal.length = 0;
+    renderReturnJournal();
+    report("REVIEW_ONLY — lokaal historisch HUMAN journaal geleegd; dit wist geen eerder gedownloade bestanden.");
   });
   const restoreInput = el("shelf-review-reopen");
   restoreInput.addEventListener("change", async () => {
@@ -857,7 +917,10 @@
     report("REVIEW_ONLY — expliciete PRIVATE ongetekende bestandsinventaris lokaal gedownload.");
   });
   render();
+  renderReturnJournal();
   window.addEventListener("pagehide", () => {
+    returnJournal.length = 0;
+    lastReturnReceipt = null;
     generation++;  // never repopulate a private tab after navigation / bfcache
     clearReviewHistory();
     invalidateDrift();

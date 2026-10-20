@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-BUa4oZyXceI61of0CiUk5F97kFOydutyZlbAVPnSmaQ='; script-src 'sha256-aFvrrituPDKWvMGzUCeiyRulWx7bcBZVRnrNkpSapj4=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kmqAcMTIRRi/9LZerTbMpPVJR1xIS1sDERjWT4GkvWI='; script-src 'sha256-+teVitT7+3FCnYezwpkQ0kz450IT5XmKBmfeGavnTU4=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -47,6 +47,11 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 
 .shelf-private-choice{display:flex!important;align-items:center;gap:10px;line-height:1.6;font-size:13px}
 .shelf-private-choice input{width:20px;height:20px;accent-color:#a8e9d7;flex:none}
+
+.shelf-journal-list{display:grid;gap:8px;padding-left:22px}
+.shelf-journal-list li{color:#dcebe7;font-size:12px;border-bottom:1px solid #405466;padding:7px}
+.shelf-journal-list button{margin:8px 0 2px;display:block;cursor:pointer;font:inherit;font-size:12px;color:#d5efe7;background:#233e4d;border:1px solid #7596a6;border-radius:7px;padding:8px;min-height:44px}
+.shelf-journal-list button:focus-visible{outline:3px solid #ade9dc;outline-offset:2px}
 </style>
 </head>
 <body>
@@ -79,6 +84,15 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <button id="shelf-selective-apply" type="button" class="action muted" disabled>Pas alleen exact ongewijzigde HUMAN-keuzes toe (na bevestiging)</button>
 <button id="shelf-return-receipt" type="button" class="action muted" disabled>Download PRIVATE HUMAN retourontvangstbon (.json)</button>
 <p id="shelf-return-receipt-note" class="shelf-status">Een ontvangstbon wordt pas na bewuste bronexacte HUMAN-statusovername beschikbaar. De bon is privé, ongetekend en geen bron-/toestemmings- of revocatiebewijs.</p>
+<section class="shelf-board" aria-labelledby="shelf-journal-heading">
+<h3 id="shelf-journal-heading">PRIVATE historisch HUMAN-retourjournaal</h3>
+<p>Maximaal 12 lokale brongebonden retourrondes. Historische besluiten zijn nooit de actuele staat, origineel bronbewijs, een grant, echte toestemming of een security PASS. Geen browseropslag.</p>
+<ol id="shelf-return-journal-list" class="shelf-journal-list"></ol>
+<div class="shelf-actions">
+<button id="shelf-return-journal-export" type="button" class="action muted" disabled>PRIVATE historisch retourjournaal (.json)</button>
+<button id="shelf-return-journal-clear" type="button" class="action danger-solid" disabled>Wis historisch HUMAN-journaal uit tabblad</button>
+</div>
+</section>
 
 </div>
 <p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
@@ -472,6 +486,44 @@ const LightUpPrivateDrift = (() => {
   // Changes to HUMAN choices must also invalidate an in-flight PRIVATE restore.
   let humanRevision = 0;
   let lastReturnReceipt = null;
+  const returnJournal = [];
+  let nextLocalReturnOrdinal = 1;
+  const renderReturnJournal = () => {
+    const holder = el("shelf-return-journal-list");
+    holder.replaceChildren();
+    for (const round of returnJournal) {
+      const row = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = "Lokale ronde " + round.ordinal +
+        " · " + round.receipt.selected_private_human_changes.length +
+        " bronexacte HUMAN keuzewijzigingen · HISTORISCH, geen actuele toestemming.";
+      row.append(label);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Download PRIVATE historische ronde " + round.ordinal;
+      button.addEventListener("click", () => {
+        if (!confirm("PRIVATE historische HUMAN ronde " + round.ordinal +
+          " downloaden met oorspronkelijke namen, ongetekende SHA-256 en HANDMATIGE oude/nieuwe team/fase? Dit is geen actuele bron of toestemming. Ontvanger en kanaal apart controleren.")) return;
+        exportJSON("lightup-scope-PRIVATE-HUMAN-round-" + round.ordinal + ".json", round.receipt);
+        report("REVIEW_ONLY — lokaal historisch HUMAN retourbewijs gedownload, niet een actuele security-beslissing.");
+      });
+      row.append(button);
+      holder.append(row);
+    }
+    if (!returnJournal.length) {
+      const empty = document.createElement("li");
+      empty.textContent = "Nog geen historische lokale HUMAN retourrondes.";
+      holder.append(empty);
+    }
+    el("shelf-return-journal-export").disabled = returnJournal.length === 0;
+    el("shelf-return-journal-clear").disabled = returnJournal.length === 0;
+  };
+  const appendReturnJournal = receipt => {
+    returnJournal.push({ordinal: nextLocalReturnOrdinal++, receipt});
+    if (returnJournal.length > 12) returnJournal.shift();
+    renderReturnJournal();
+  };
+
   const invalidateReturnReceipt = () => {
     if (lastReturnReceipt === null) return;
     lastReturnReceipt = null;
@@ -1042,6 +1094,7 @@ const LightUpPrivateDrift = (() => {
       },
       warning: "LOCAL unsigned HUMAN decisions, not authenticated source, reviewer or recipient. No proof of grant, scope, revocation, fixed issue, CI, security approval or release."
     };
+    appendReturnJournal(lastReturnReceipt);
     el("shelf-return-receipt-note").textContent = "PRIVATE HUMAN ontvangstbon voor " + chosen.length +
       " bewust geselecteerde bronexacte menselijke wijzigingen beschikbaar. Bevat geen oorspronkelijke broninhoud en geen PRIVATE notitieteksten.";
     render();
@@ -1057,6 +1110,27 @@ const LightUpPrivateDrift = (() => {
     if (!confirm("Download PRIVATE ontvangstbon met oorspronkelijke bestandsnamen, ongetekende SHA-256 en oude/nieuwe HUMAN team/fase (zonder oorspronkelijke bronbytes of notitieteksten)? Deze informatie kan vertrouwelijk zijn. Ontvanger en kanaal afzonderlijk verifiëren. Geen echte toestemming, bewijs of security-vrijgave.")) return;
     exportJSON("lightup-scope-PRIVATE-HUMAN-return-receipt.json", lastReturnReceipt);
     report("REVIEW_ONLY — ontvangstbon lokaal gedownload voor de laatste daadwerkelijk gekozen HUMAN statusovername. Geen originele bron, grant of toestemming gewijzigd.");
+  });
+  el("shelf-return-journal-export").addEventListener("click", () => {
+    if (!returnJournal.length) return;
+    if (!confirm("PRIVATE historisch HUMAN retourjournaal exporteren met maximaal 12 lokaal gemaakte rondes? Bevat vertrouwelijke oorspronkelijke namen en SHA-256, maar geen bronbytes of PRIVATE notitieteksten. Oude rondes zijn GEEN huidige reviewstatus, revoke of toestemming.")) return;
+    exportJSON("lightup-scope-PRIVATE-HUMAN-historical-return-journal.json", {
+      format: "lightup.scope_PRIVATE_human_return_journal.v1",
+      status: "REVIEW_ONLY",
+      posture: "INCUBATE_M3_M7_DRAFT_HOLD",
+      authority: {client_consent:false,operator_consent:false,grant:false,scan:false,deploy:false,release:false},
+      historical_only: true,
+      local_rounds: returnJournal.map(round => ({local_ordinal: round.ordinal, human_receipt: round.receipt})),
+      warning: "Untrusted local historical HUMAN notes; no identity, original source authenticity, current consent, revocation, grant, fixed issue, valid scan or release asserted."
+    });
+    report("REVIEW_ONLY — PRIVATE historisch journaal lokaal gedownload. Geen actuele bron, bewijs of toestemming.");
+  });
+  el("shelf-return-journal-clear").addEventListener("click", () => {
+    if (!returnJournal.length) return;
+    if (!confirm("Alle " + returnJournal.length + " uitsluitend lokaal bewaarde historische HUMAN retourrondes uit dit tabblad wissen? Eerder gedownloade bestanden blijven bestaan.")) return;
+    returnJournal.length = 0;
+    renderReturnJournal();
+    report("REVIEW_ONLY — lokaal historisch HUMAN journaal geleegd; dit wist geen eerder gedownloade bestanden.");
   });
   const restoreInput = el("shelf-review-reopen");
   restoreInput.addEventListener("change", async () => {
@@ -1299,7 +1373,10 @@ const LightUpPrivateDrift = (() => {
     report("REVIEW_ONLY — expliciete PRIVATE ongetekende bestandsinventaris lokaal gedownload.");
   });
   render();
+  renderReturnJournal();
   window.addEventListener("pagehide", () => {
+    returnJournal.length = 0;
+    lastReturnReceipt = null;
     generation++;  // never repopulate a private tab after navigation / bfcache
     clearReviewHistory();
     invalidateDrift();
