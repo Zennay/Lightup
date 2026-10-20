@@ -54,3 +54,5 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 @media(max-width:520px) { .bulk { grid-template-columns:1fr; } }
 
 .brief-actions { border-top:1px solid var(--line); margin-top:18px; padding-top:16px; } .brief-actions .brief-toggle { display:flex; align-items:center; gap:9px; font-size:.8rem; margin-bottom:12px; } .brief-actions .brief-toggle input { width:auto; margin:0; } .brief-actions .minor { font-size:.75rem; color:var(--muted); }
+
+.vault-controls { border-top:1px solid var(--line); padding-top:18px; margin-top:18px; } .vault-controls input[type="password"] { width:100%; background:#0a1b19; color:var(--ink); border:1px solid #36615a; border-radius:8px; padding:10px 12px; } .vault-controls .minor { font-size:.78rem; color:var(--muted); }
