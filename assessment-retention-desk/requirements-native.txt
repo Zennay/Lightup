@@ -1,0 +1,4 @@
+# Optional ONLY for offline native AES-256-GCM browser vault interoperability.
+# The main HTML workroom uses built-in WebCrypto and needs no installation.
+# No network, scanning or remote authorization is performed by these scripts.
+cryptography>=43
