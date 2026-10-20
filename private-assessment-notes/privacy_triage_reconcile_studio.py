@@ -26,10 +26,18 @@ def render(sources: list[dict], packets: list[dict]) -> bytes:
                 "topics": row["privacy_topics"].split("|"),
                 "notePresent": bool(row["human_followup"]),
             })
+        # Original HUMAN free-text notes remain Python-side only. A single
+        # Boolean reveals disagreement without embedding any note contents,
+        # hashes of guessable note strings, source filenames or identities.
+        note_disagreement = len({
+            packet["rows"][ordinal - 1]["human_followup"]
+            for packet in packets
+        }) > 1
         data.append({
             "ordinal": ordinal,
             "sha": source["source_sha256_unsigned"],
             "reviewers": reviewers,
+            "noteDisagreement": note_disagreement,
         })
     encoded = json.dumps(data, ensure_ascii=True, separators=(",", ":")).replace("<", r"\u003c")
     identical_pairs = [
@@ -53,7 +61,8 @@ const proposal=new Map();
 const csvCell = value => '"' + String(value).replaceAll('"','""') + '"';
 function conflict(record) {
   return new Set(record.reviewers.map(x=>x.stage)).size>1 ||
-    new Set(record.reviewers.map(x=>x.topics.join('|'))).size>1;
+    new Set(record.reviewers.map(x=>x.topics.join('|'))).size>1 ||
+    record.noteDisagreement;
 }
 function make(tag, text, cls) {
   const el=document.createElement(tag);
@@ -100,8 +109,16 @@ for(const record of originals) {
   }
   table.append(body);card.append(table);
   const disputed=conflict(record);
-  const summary=make('p',disputed?'HUMAN categories/stages disagree; resolve manually.':
-       'Literal HUMAN labels align. This is not a privacy PASS.',disputed?'warn':'neutral');
+  const reasons=[];
+  if(new Set(record.reviewers.map(x=>x.stage)).size>1) reasons.push('declared stages');
+  if(new Set(record.reviewers.map(x=>x.topics.join('|'))).size>1) reasons.push('categories');
+  if(record.noteDisagreement) reasons.push('PRIVATE follow-up note content (withheld)');
+  if(record.reviewers.some(x=>x.stage==='WITHHOLD'))
+    reasons.push('at least one declared WITHHOLD concern');
+  const summary=make('p',reasons.length ?
+    'Original HUMAN discussion: '+reasons.join(' · ')+'. No automatic consensus or privacy clearance.' :
+    'Literal HUMAN stage/category/PRIVATE note choices align; this is NOT a privacy PASS.',
+    reasons.length?'warn':'neutral');
   card.append(summary);
   const controls=make('div',undefined,'controls');
   const stageLabel=make('label','Your NEXT independent HUMAN stage');
