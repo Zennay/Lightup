@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-WnV23+7pNggwghs59FUD2SbrDnWZh/o51ErVhpn+eys='; script-src 'sha256-M7RfXoSI3Ote5htSWhOvxLeHCu9vYsnE6f7gnkEaohs=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-WnV23+7pNggwghs59FUD2SbrDnWZh/o51ErVhpn+eys='; script-src 'sha256-s6TUYkzoVn3THW22p0azPiHugxblW0XdYx8IvSlbCAM=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -103,6 +103,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 </section>
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
+<button type="button" id="shelf-team-counts" class="action">Alleen anonieme HUMAN team/fase-aantallen exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-workplan" class="action muted">PRIVATE HUMAN team- en escalatiebrief (.md) <span aria-hidden="true">↗</span></button>
 <button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>
@@ -811,6 +812,28 @@ const LightUpPrivateDrift = (() => {
     items.splice(0);
     render();
     report("REVIEW_ONLY — tabblad-werkset gewist. Browser/JavaScript garanderen geen fysieke geheugenwissing.");
+  });
+
+  el("shelf-team-counts").addEventListener("click", () => {
+    if (!items.length) return report("HOLD — geen HUMAN dossiers voor een bronvrije teamtelling.");
+    if (!confirm("Alleen vaste HUMAN team/fase-aantallen delen? Geen namen, originele SHA-256, routes of notities worden geëxporteerd. Bij kleine aantallen kan context alsnog gevoelig zijn.")) return;
+    const matrix = Object.fromEntries(Object.keys(teams).map(team =>
+      [team, Object.fromEntries(Object.keys(stages).map(stage => [stage, 0]))]));
+    for (const item of items) {
+      if (!Object.hasOwn(matrix, item.team) || !Object.hasOwn(stages, item.stage)) {
+        return report("HOLD — onverwachte HUMAN indeling, geen export gemaakt.");
+      }
+      matrix[item.team][item.stage] += 1;
+    }
+    exportJSON("lightup-scope-handoff-anonymous-team-workload.json", {
+      format: "lightup.scope_handoff_anonymous_human_team_counts.v1",
+      status: "REVIEW_ONLY", posture: "INCUBATE_M3_M7_DRAFT_HOLD",
+      authority: { client_consent: false, operator_consent: false, grant: false, scan: false, deploy: false, release: false },
+      number_of_local_files: items.length,
+      human_declared_team_by_stage_counts: matrix,
+      warning: "Small-group counts may still identify people by inference. No source authenticity, finding validity, solved issue, real human identity, permission or release is asserted."
+    });
+    report("REVIEW_ONLY — alleen HUMAN team/fase-tellingen lokaal gedownload, zonder oorspronkelijke bronmetadata.");
   });
   anonymousCopy.addEventListener("click", () => {
     if (!items.length) return report("HOLD — er is nog niets voor een bronvrije telling geselecteerd.");

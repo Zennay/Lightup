@@ -408,6 +408,28 @@
     render();
     report("REVIEW_ONLY — tabblad-werkset gewist. Browser/JavaScript garanderen geen fysieke geheugenwissing.");
   });
+
+  el("shelf-team-counts").addEventListener("click", () => {
+    if (!items.length) return report("HOLD — geen HUMAN dossiers voor een bronvrije teamtelling.");
+    if (!confirm("Alleen vaste HUMAN team/fase-aantallen delen? Geen namen, originele SHA-256, routes of notities worden geëxporteerd. Bij kleine aantallen kan context alsnog gevoelig zijn.")) return;
+    const matrix = Object.fromEntries(Object.keys(teams).map(team =>
+      [team, Object.fromEntries(Object.keys(stages).map(stage => [stage, 0]))]));
+    for (const item of items) {
+      if (!Object.hasOwn(matrix, item.team) || !Object.hasOwn(stages, item.stage)) {
+        return report("HOLD — onverwachte HUMAN indeling, geen export gemaakt.");
+      }
+      matrix[item.team][item.stage] += 1;
+    }
+    exportJSON("lightup-scope-handoff-anonymous-team-workload.json", {
+      format: "lightup.scope_handoff_anonymous_human_team_counts.v1",
+      status: "REVIEW_ONLY", posture: "INCUBATE_M3_M7_DRAFT_HOLD",
+      authority: { client_consent: false, operator_consent: false, grant: false, scan: false, deploy: false, release: false },
+      number_of_local_files: items.length,
+      human_declared_team_by_stage_counts: matrix,
+      warning: "Small-group counts may still identify people by inference. No source authenticity, finding validity, solved issue, real human identity, permission or release is asserted."
+    });
+    report("REVIEW_ONLY — alleen HUMAN team/fase-tellingen lokaal gedownload, zonder oorspronkelijke bronmetadata.");
+  });
   anonymousCopy.addEventListener("click", () => {
     if (!items.length) return report("HOLD — er is nog niets voor een bronvrije telling geselecteerd.");
     if (!confirm("Bronvrij HUMAN-exportje met aantallen delen? Kleine aantallen kunnen in context toch gevoelig zijn.")) return;
