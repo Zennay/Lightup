@@ -176,6 +176,112 @@ async function importCsv(file){
   page=0;query.value="";filter.value="all";render();fail("");
  }catch(e){fail("HOLD: PRIVATE sender CSV rejected; current in-memory choices unchanged.");}
 }
+
+const PRIVATE_SCHEMA="lightup.private_sender_human_triage_encrypted.v1";
+const FLAGS=["source_authenticated","human_identity_authenticated",
+"client_consent_verified","operator_consent_verified",
+"authorized","consent_verified","dispatch_allowed","release_allowed"];
+const utf8=new TextEncoder();
+function requireCrypto(){
+ if(!globalThis.isSecureContext||!globalThis.crypto||!crypto.subtle||!crypto.getRandomValues)
+  throw Error("WebCrypto secure context required, no plaintext fallback.");
+}
+function clearPass(){document.getElementById("password").value="";
+ document.getElementById("password-confirm").value="";}
+function password(confirm){
+ const p=document.getElementById("password").value;
+ if(p.length<12||p.length>120)throw Error("PRIVATE password must contain 12–120 characters.");
+ if(confirm&&p!==document.getElementById("password-confirm").value)
+  throw Error("PRIVATE password confirmation differs.");
+ return p;
+}
+function base64(bytes){let s="";for(const v of new Uint8Array(bytes))s+=String.fromCharCode(v);return btoa(s);}
+function admit64(value,length){
+ if(typeof value!=="string"||!value||value.length>1500000||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(value))throw Error("Malformed PRIVATE base64.");
+ const binary=atob(value),bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+ if(base64(bytes)!==value||(length&&bytes.length!==length))throw Error("Noncanonical PRIVATE ciphertext.");
+ return bytes;
+}
+async function derive(pass,salt){
+ const key=await crypto.subtle.importKey("raw",utf8.encode(pass),"PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+  key,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function sourceHash(){
+ const hash=new Uint8Array(await crypto.subtle.digest("SHA-256",utf8.encode(JSON.stringify(original))));
+ return Array.from(hash,b=>b.toString(16).padStart(2,"0")).join("");
+}
+function aad(hash){
+ if(!/^[0-9a-f]{64}$/.test(hash))throw Error("Unsupported PRIVATE source hash.");
+ const a=utf8.encode(PRIVATE_SCHEMA+"|REVIEW_ONLY|"),
+       b=Uint8Array.from(hash.match(/../g),x=>parseInt(x,16));
+ const data=new Uint8Array(a.length+b.length);data.set(a);data.set(b,a.length);
+ return data;
+}
+async function saveEncrypted(){
+ let secret="";
+ try{
+  requireCrypto();const csv=writeCsv(stages);
+  secret=password(true);
+  if(!window.confirm("Encrypt local sender HUMAN triage? This does not authenticate the source or grant permission."))return;
+  const binding=await sourceHash(),salt=crypto.getRandomValues(new Uint8Array(16)),
+   nonce=crypto.getRandomValues(new Uint8Array(12));
+  const key=await derive(secret,salt);
+  const raw=await crypto.subtle.encrypt({name:"AES-GCM",iv:nonce,
+   additionalData:aad(binding),tagLength:128},key,utf8.encode(csv));
+  const envelope={
+   schema:PRIVATE_SCHEMA,status:"REVIEW_ONLY",
+   original_recipient_rows_sha256_unsigned:binding,
+   kdf:{algorithm:"PBKDF2-SHA256",iterations:310000,salt_b64:base64(salt)},
+   cipher:{algorithm:"AES-256-GCM",nonce_b64:base64(nonce),ciphertext_b64:base64(raw)}
+  };
+  for(const name of FLAGS)envelope[name]=false;
+  const url=URL.createObjectURL(new Blob([JSON.stringify(envelope)+"\n"],
+   {type:"application/octet-stream"}));
+  const link=document.createElement("a");link.href=url;link.download="PRIVATE-sender-HUMAN-triage.luts";
+  link.click();setTimeout(()=>URL.revokeObjectURL(url),3000);fail("");
+ }catch(e){fail("HOLD: "+String(e.message||"Encrypted sender draft refused"));}
+ finally{secret="";clearPass();}
+}
+async function loadEncrypted(file){
+ let secret="";
+ if(!file)return;
+ if(!file.size||file.size>1500000){fail("HOLD: Encrypted sender HUMAN draft file size invalid.");return;}
+ try{
+  requireCrypto();secret=password(false);
+  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  const value=JSON.parse(raw);
+  if(!value||Array.isArray(value)||JSON.stringify(value)+"\n"!==raw||
+    Object.keys(value).length!==13||value.schema!==PRIVATE_SCHEMA||
+    value.status!=="REVIEW_ONLY"||
+    Object.keys(value.kdf||{}).join(",")!=="algorithm,iterations,salt_b64"||
+    Object.keys(value.cipher||{}).join(",")!=="algorithm,nonce_b64,ciphertext_b64"||
+    value.kdf.algorithm!=="PBKDF2-SHA256"||value.kdf.iterations!==310000||
+    value.cipher.algorithm!=="AES-256-GCM"||
+    FLAGS.some(k=>value[k]!==false))
+   throw Error("Invalid canonical PRIVATE sender envelope.");
+  const source=await sourceHash();
+  if(value.original_recipient_rows_sha256_unsigned!==source)
+   throw Error("Wrong exact recipient HUMAN source rows.");
+  const salt=admit64(value.kdf.salt_b64,16),nonce=admit64(value.cipher.nonce_b64,12),
+   ciphertext=admit64(value.cipher.ciphertext_b64);
+  if(ciphertext.length<16||ciphertext.length>1024*1024)throw Error("Invalid ciphertext length.");
+  const key=await derive(secret,salt);
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:nonce,
+   additionalData:aad(source),tagLength:128},key,ciphertext);
+  if(plain.byteLength>1024*1024)throw Error("Decrypted sender HUMAN data too large.");
+  // Full original source ordinal + recipient reply digest + human decision
+  // membership still passes through the same atomic import and HUMAN confirm.
+  await importCsv(new Blob([plain],{type:"text/csv;charset=utf-8"}));
+ }catch(e){fail("HOLD: Wrong source, password or invalid PRIVATE sender draft; current choices retained.");}
+ finally{secret="";clearPass();}
+}
+document.getElementById("save-encrypted").addEventListener("click",()=>{void saveEncrypted();});
+document.getElementById("load-encrypted").addEventListener("change",e=>{
+ const file=e.target.files&&e.target.files[0];e.target.value="";void loadEncrypted(file);
+});
+
 function dispose(){
  if(!window.confirm("Discard unsaved PRIVATE HUMAN triage edits? Previously downloaded files are not deleted."))return;
  for(let i=0;i<stages.length;i++)stages[i]={route:"",owner:"",next:""};
@@ -239,6 +345,10 @@ def render_studio(notes: list[dict]) -> bytes:
         "<div class='toolbar'><button id='export' type='button'>Export PRIVATE HUMAN triage CSV</button>"
         "<label>Restore PRIVATE triage CSV <input id='restore' type='file' accept='.csv,text/csv'></label>"
         "<button id='dispose' class='secondary' type='button'>Discard local edits</button>"
+        "<label>PRIVATE passphrase <input id='password' type='password' autocomplete='off'></label>"
+        "<label>Confirm passphrase to encrypt <input id='password-confirm' type='password' autocomplete='off'></label>"
+        "<button type='button' id='save-encrypted'>Save encrypted PRIVATE triage</button>"
+        "<label>Open encrypted PRIVATE triage <input id='load-encrypted' type='file' accept='.luts,application/octet-stream'></label>"
         "</div><p id='notice' class='warning' role='alert' hidden></p></section>"
         "<main id='entries'></main><nav><button id='prev' type='button'>Previous</button>"
         "<span id='page'></span><button id='next' type='button'>Next</button></nav>"
