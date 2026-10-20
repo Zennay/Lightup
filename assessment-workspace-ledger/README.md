@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Twenty-four console actions provide original kit capture, exact-byte reopen, original-bound
+Twenty-five console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -708,12 +708,12 @@ verified vulnerabilities, release clearance, source re-opening, consent,
 authorization, scan output, dispatch, or remediation. Do not share original
 customer data or these PRIVATE files without a separate authorized disclosure
 process. The **source checkout** includes `portfolio.py`; the native
-`package.py build` now produces a complete v17 offline software ZIP with
+`package.py build` now produces a complete v18 offline software ZIP with
 this module included, using only installed original trusted software bytes.
 The **previously checked-in v16 binary ZIP is historical and has NOT
 been rebuilt or replaced in this run**. The native local inspector remains
-able to inspect that original v16 artifact and differentiates it from v17.
-Do not claim a v17 downloadable ZIP until its new binary is actually committed.
+able to inspect original v16 and historical v17 ZIP manifests separately from v18.
+Do not claim a v18 downloadable ZIP until its new binary is actually committed.
 Neither software archive contains original customer data.
 
 For minimum-necessary casework, specify an optional exact proposed owner:
@@ -735,3 +735,42 @@ case before private export. An owner string is **not authenticated identity**
 or disclosure consent. Only exact matching manual proposals appear; zero
 matches is HOLD. Console option 24 supports the same optional filter.
 No QA/regression/test suite is created or executed.
+
+## PRIVATE original cross-case HUMAN portfolio changes (console 25)
+
+The independent native [portfolio_delta.py](portfolio_delta.py) performs a
+**historical HUMAN change review** between two existing original
+`PRIVATE-HUMAN-portfolio.json` records created by the native cross-case
+portfolio workflow above, after their corresponding ORIGINAL completed
+HUMAN actions have been re-admitted separately on capture.
+
+    python3 assessment-workspace-ledger/portfolio_delta.py \
+      --before /private/portfolio-previous/PRIVATE-HUMAN-portfolio.json \
+      --after /private/portfolio-current/PRIVATE-HUMAN-portfolio.json \
+      --private-parent /private/portfolio-delta-output
+
+Console **option 25** guides the same workflow. It requires that both
+originals have matching original **case ordinals and source-context SHA-256s**
+and the same filtered/unfiltered HUMAN-owner scope. It reads only the
+pre-existing 0600 local historical snapshots (bounded 1 MiB, single-link,
+owner-only), rejects duplicate and malformed JSON keys, wrong canonical byte
+representation, contradictory original HUMAN case status counts and changed
+source identities. Each ordinal/transition/kit HUMAN action remains distinct;
+owners, HUMAN stages, suggested dates and free-text follow-ups are NEVER
+interpreted as actual activities.
+
+**New owner-private output:** a source-minimal `OPEN-PRIVATE.html` shows
+counts of HUMAN proposals added, removed, edited, and unchanged. A separate
+`PRIVATE-HUMAN-delta.html` contains detailed escaped old/new HUMAN suggestions;
+`PRIVATE-HUMAN-delta.csv` and `PRIVATE-HUMAN-delta.json` preserve the
+unsigned source-record hashes and before/after fields for offline review.
+
+The action-context SHA match is only **unsigned, historical consistency**.
+The original customer kits are NOT reopened, real consent is NOT revalidated,
+and a removed proposal is NEVER proof that a vulnerability was fixed.
+Neither output auto-dispatches actions, launches assessments, creates deadlines
+or authenticates the proposed human recipient. Privacy depends on explicit
+operator control of owner-only outputs. Source-built v18 offline software
+will include both portfolio modules; the repository's earlier ZIP still
+contains the old v16 sources until a separately authorized software build
+actually replaces it. No QA/regression/test suites are created or run.
