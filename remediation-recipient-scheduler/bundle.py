@@ -54,13 +54,26 @@ def page() -> bytes:
 <main><h1>LightUp · PRIVATE HUMAN recipient planner</h1><aside>''' + warning + '''</aside>
 <section><h2>1 · Original held evidence workroom</h2>
 <p><a href="original-home.html">Open unchanged original private offline suite</a>. This contains the original Casework, Evidence Ledger, portfolio and encrypted human handoff interfaces. No current customer authority is implied by opening this file.</p></section>
-<section><h2>2 · Receive source-free HUMAN evidence into an actual plan</h2>
-<p>The planner cannot fabricate evidence or display a trustworthy workspace without a complete **previously produced and separately authorized** original source-free Cockpit. Run locally in this unpacked software directory:</p>
+<section><h2>2 · Receive genuine source-free HUMAN packets</h2>
+<p>Only use originally produced, separately authorized source-free native Cockpits; the planner cannot fabricate a validated finding or permission. From this offline private software directory:</p>
+<h3>Source-free plain .luhz or encrypted .luhx</h3>
 <pre>python3 remediation-recipient-scheduler/archive_schedule.py \
-  --archive "$HOME/lightup-private/handoff-01.luhz" \
+  --archive "$HOME/lightup-private/approved-human-01.luhz" \
   --output-dir "$HOME/lightup-private/recipient-plan-01"</pre>
-<p>For encrypted original Cockpit files, use <code>--encrypted-archive</code>. Interactive passwords stay local. The new output contains a private working <code>index.html</code> linking both the unchanged native reviewer and the HUMAN planning board. No external server, scanner, grant or calendar API is invoked.</p></section>
-<section><h2>3 · Continue, encrypt or print HUMAN planning</h2><p>The recipient's offline dashboard supports local owners, deadlines, search, bulk actions, private AES-GCM checkpoint files and source-bound carry-forward. Use <code>schedule_vault.py</code> for native browserless reopening, anonymous counts and optional offline tentative ICS. Printed notes remain confidential. <a href="remediation-recipient-scheduler/README.md">Complete private operator guide</a>.</p></section>
+<p>For source-free password encrypted .luhx, use <code>--encrypted-archive</code>. The unchanged original native admission and HUMAN recipient reviewer remain included. No plaintext ZIP intermediate.</p>
+<h3>Encrypted native full .luhp Cockpit plus HUMAN journal</h3>
+<pre>python3 remediation-recipient-scheduler/complete_handoff.py \
+  --review-package "$HOME/lightup-private/approved-full-01.luhp" \
+  --output-dir "$HOME/lightup-private/full-human-schedule-01"</pre>
+<p>This decrypts the full original source-free Cockpit plus its exact bound original HUMAN journal in memory, then creates a new PRIVATE recipient review and scheduler. Output contains sensitive plaintext HUMAN notes in 0700/0600 directories. No sender/client identity or consent is authenticated by passwords alone.</p></section>
+<section><h2>3 · Continue or print private HUMAN planning</h2>
+<p>The offline HUMAN board offers owner and due-date planning, filtered backlog, bulk edits, optional encrypted private .lurp checkpoints and carefully bounded anonymous calendar reminders. For offline native reopening and owner-scoped scriptless agendas use <code>schedule_vault.py</code>.</p>
+<h3>New or reordered source-free packet selection</h3><p>Use <code>carry_native.py</code> to carry previous HUMAN fields only for exact original packet matches with explicit typed human approval. Changed/absent packets never become automatically resolved.</p>
+<pre>python3 remediation-recipient-scheduler/carry_native.py \
+  --vault "$HOME/lightup-private/previous-human-plan.lurp" \
+  --cockpit "$HOME/lightup-private/current-original-01" \
+  --output-dir "$HOME/lightup-private/human-carry-01"</pre>
+<p><a href="remediation-recipient-scheduler/README.md">Complete private recipient operator guide</a>. No network, scanner, grant or calendar API is invoked by these tools.</p></section>
 <section><h2>Protect the original held release gates</h2><p>All original source-owner review, exact-head hosted and permanently named VPS CI, independent security/privacy/browser/crypto review, original #177/#182/#829, genuine current separately authenticated client and operator consent with action-time revocation and explicit HUMAN GO remain mandatory. The package is software-only. Local hashes are NOT source signatures or approvals.</p></section>
 </main></body></html>''').encode("utf-8")
 
