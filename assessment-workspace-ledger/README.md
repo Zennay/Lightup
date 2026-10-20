@@ -14,11 +14,11 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Seven screens provide original kit capture, exact-byte reopen, original-bound
+Eight console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
-single-file browser editor export and an in-memory status-only local action
-summary. Every user-selected action runs **once, synchronously**, with no
+single-file browser editor export, a native same-source HUMAN revision desk,
+and an in-memory status-only local action summary. Every user-selected action runs **once, synchronously**, with no
 subprocess/shell, service, queue, background job, network, model, scan,
 consent grant, scheduled activity or source deletion. A HOLD (3) keeps the
 foreground console accessible so the operator can choose a different safe
@@ -141,6 +141,26 @@ Unchanged inventories yield review-only exit 2; changed original kit bytes
 lead to HOLD exit 3 even when a separate private continuity workroom is created.
 The previous original HUMAN packet remains unchanged. No historical source
 files are deleted, overwritten, shared or copied.
+
+## PRIVATE original HUMAN revision journal — same source, two human packets
+
+Native human_revisions.py provides the missing source-bound historical review
+when a human has finalized different notes/stages for the SAME original ledger.
+It requires two distinct original HUMAN-only.json snapshots from the native
+ledger.py finalize, plus exactly their original ledger.json. It re-admits
+the identical original source kit files before comparing proposals and verifies
+that both native HUMAN packet source hashes/ordinals match that exact ledger.
+Nothing missing, changed or unverifiable can be admitted as a valid revision.
+
+    python3 assessment-workspace-ledger/human_revisions.py --ledger /private/ledger/ledger.json --before /private/human-old/HUMAN-only.json --after /private/human-new/HUMAN-only.json --private-parent /private/private-ledgers
+
+A fresh 0700/0600 PRIVATE dossier contains printable source-minimal stage
+change counts and per-kit HUMAN field change flags, a separate PRIVATE exact
+before/after owner/question JSON, and a local HUMAN follow-up CSV. Prior
+PACKETS REMAIN unchanged. Even a stage change from HOLD to reference_only
+is merely a HUMAN opinion and never a completed remediation, approval,
+authentication or scan authorization. Exit 2 = no differences / REVIEW_ONLY,
+exit 3 = changed proposal / HOLD. The same action is console menu 8.
 
 ## Historical comparison when source kits are no longer present
 
