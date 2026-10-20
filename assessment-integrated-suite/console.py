@@ -15,6 +15,7 @@ SCRIPTS = {
     "drift": ROOT / "drift.py",
     "archive": ROOT / "archive_room.py",
     "portfolio": ROOT / "portfolio_room.py",
+    "benchmark": ROOT / "benchmark_room.py",
 }
 MAX_REPLY = 8192
 
@@ -29,6 +30,7 @@ class Session:
     drift_kit: str = ""
     archive_kit: str = ""
     portfolio_kit: str = ""
+    benchmark_kit: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -60,18 +62,23 @@ def run_native(script: str, flags: list[str]) -> tuple[bool, str]:
     except (OSError, subprocess.TimeoutExpired):
         print("HOLD: offline native stage did not finish; inspect private workspace locally.")
         return False, ""
-    if result.returncode != 2:
-        # No raw stderr, no source filenames, no private input bytes.
+    # A complete, source-admitted benchmark regression is HOLD (exit 3),
+    # but still has a useful original PRIVATE HUMAN comparison to inspect.
+    answer = result.stdout.decode("utf-8", errors="replace")
+    adverse = (script == "benchmark" and result.returncode == 3
+               and answer.startswith("ORIGINAL DECLARATION: HOLD;"))
+    if result.returncode != 2 and not adverse:
+        # Never echo native stderr or private source details.
         print("HOLD: original private admission refused; existing source remains unchanged.")
         return False, ""
-    answer = result.stdout.decode("utf-8", errors="replace")
     marker = "OPEN LOCALLY: "
     path_text = next((line[len(marker):].strip() for line in answer.splitlines()
                       if line.startswith(marker)), "")
     if not path_text or len(path_text) > 4096 or not Path(path_text).is_file():
         print("HOLD: original stage returned no usable local PRIVATE entry page.")
         return False, ""
-    print("REVIEW_ONLY: PRIVATE local package prepared.")
+    print("HOLD — source-declared adverse benchmark requires HUMAN review."
+          if adverse else "REVIEW_ONLY: PRIVATE local package prepared.")
     print("Open on a trusted offline device: " + path_text)
     return True, str(Path(path_text).parent)
 
@@ -188,6 +195,24 @@ def portfolio(session: Session) -> None:
         print("Original HUMAN proposals are not scheduled events or customer instructions.")
 
 
+def benchmark(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    choice = ask("Original comparison: single / cohort / scored", "cohort").lower()
+    if choice not in ("single", "cohort", "scored"):
+        raise ValueError("HOLD: comparison kind must be single, cohort or scored")
+    before = path_prompt("Already-produced original PRIVATE baseline JSON")
+    after = path_prompt("Separately-produced original PRIVATE candidate JSON")
+    ok, kit = run_native("benchmark", [
+        "--kind", choice, "--before", before, "--after", after,
+        "--private-parent", parent,
+    ])
+    if ok:
+        session.parent = parent
+        session.benchmark_kit = kit
+        print("The original comparison can be HOLD even when its PRIVATE report is readable.")
+        print("A source-declared no-regression result is REVIEW_ONLY, not PASS.")
+
+
 def last_packages(session: Session) -> None:
     for label, value in (
         ("PRIVATE full briefing", session.initial_kit),
@@ -196,6 +221,7 @@ def last_packages(session: Session) -> None:
         ("Original PRIVATE source A/B drift", session.drift_kit),
         ("Original PRIVATE source archive", session.archive_kit),
         ("Original HUMAN agenda portfolio", session.portfolio_kit),
+        ("Original PRIVATE lab benchmark comparison", session.benchmark_kit),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -211,7 +237,7 @@ def main() -> int:
     print("No scan, model, network, grant, deletion, retest, source verification or release.")
     menu = {
         "1": prepare, "2": curate, "3": dossier, "4": drift, "5": last_packages,
-        "6": archive, "7": portfolio,
+        "6": archive, "7": portfolio, "8": benchmark,
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 10 offline HUMAN workrooms")
@@ -221,6 +247,7 @@ def main() -> int:
         print("5. Show local package paths (current session only)")
         print("6. Prepare original multi-artifact PRIVATE source archive")
         print("7. Prepare original PRIVATE HUMAN agenda portfolio")
+        print("8. Compare already-recorded lab benchmark originals (single/cohort/scored)")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -228,7 +255,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 7.")
+                print("Choose a number from 0 to 8.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):

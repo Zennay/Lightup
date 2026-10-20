@@ -273,3 +273,49 @@ python3 assessment-integrated-suite/package_offline.py \
 
 The output must not already exist. This command reads a fixed source-only list
 and cannot invoke any scan, model, network, customer ingestion or auto-publish.
+
+## Offline original lab benchmark comparison, scenario/cohort HUMAN workroom
+
+The original #1513 source owner [PR #1515](https://github.com/Zennay/Lightup/pull/1515)
+at immutable `bb107d32ef8ce89b7f4068ed065f91bc639ecee3` is physically
+integrated: four untouched assessment comparison library modules, three
+original CLI scripts and their original docs. No upstream tests, workflows,
+runtime dispatch, scope authorization or owner PR branches modified.
+
+~~~sh
+python3 assessment-integrated-suite/benchmark_room.py \
+  --kind cohort \
+  --before /private/previous-cohort.json \
+  --after /private/new-cohort.json \
+  --private-parent /private/owner-0700
+~~~
+
+Select `--kind single` for a single existing original lab evaluation or
+`--kind scored` for 1-64 original paired ground-truth lab scenarios.
+Source files are bounded to original CLI limits (65,536 bytes per single,
+262,144 per cohort), opened read-only without symlinks. Original source
+descriptors are reused in the unchanged offline CLI child, rather than
+reopening possibly swapped source paths.
+
+For a structurally admitted original lab comparison, produces a NEW
+0700 PRIVATE workroom with 0600 original per-metric HTML report, source-byte
+SHA-bound unsigned PRIVATE comparison JSON, ordinal-only numeric HUMAN CSV
+and a scriptless CSP-limited local index. It highlights original metric
+regressions, per-scenario baseline/candidate/delta and displays explicit
+REVIEW_ONLY or HOLD. Original byte details, original input files and
+target URLs are not copied into the packet; HTML still contains PRIVATE
+original scenario identifiers, never suitable for public sharing.
+
+An actual adverse original comparator result remains **HOLD (exit 3)**,
+but creates the private human report; unsupported, incomplete, invalid or
+ambiguous input stays generic HOLD without publication. Only a
+non-regressed ORIGINAL comparison yields REVIEW_ONLY (exit 2) and that
+never means PASS, authentic ground truth, client/operator authorization,
+source ownership, release, verified remediation or deployment.
+`console.py` offers this as menu option **8**.
+
+No network, scan, models, grants, handlers, retest or execution. Separate
+source-owner + independent privacy/security/browser review, existing
+exact-head hosted/permanently registered named VPS CI, original #177/#182/#829,
+current separate authenticated client/operator consent with action-time
+revocation and explicit HUMAN GO remain mandatory. DRAFT/HOLD.
