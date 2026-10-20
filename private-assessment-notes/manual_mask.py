@@ -168,7 +168,10 @@ def prepare(completed_packet: str, rules_file: str, parent: str) -> int:
                     break
                 spans.append((index, index + len(value)))
                 found += 1
-                offset = index + len(value)
+                # Also find self-overlapping occurrences (e.g. "aba" in
+                # "ababa"): silently leaving a portion behind is not safe.
+                # All intersecting ranges then fail closed below.
+                offset = index + 1
             if found == 0:
                 raise Hold("HOLD: literal missing from original completed PRIVATE masked note")
         spans.sort()
