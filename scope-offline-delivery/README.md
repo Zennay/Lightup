@@ -69,17 +69,23 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `9fc6c82abbbfb25c6013b2a16699a6d40492aac9c81a928103d93beff0330d10`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `7468808b7d693fbc27dd9bd4efd2400b868bcd504ba49d858b9697aa535f2f8d`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `c71612dcf2e685a685c1104f2e0da4c76a0ac372d872da69d39ba231ecad5c8d`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `d7136bcec92321cc399a873ff899b2770309f15e74835bb53f105d114e7407cd`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `7fb159c4b4b61c119323ed480cc74a58624572f3de04a68e5f03912eb6c9d2dc`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `f4ac53cf2616fba2c6f871f3bb14de19897ee3cac000c89342fe1e7d3a75f459`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `f8415e792f5129b4150f515d80179b24844b5487fa2dec91fc8aac446843ba97`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `daeae8937c14680c48573516a9f5e4f92972bf00fb7263cdcf60b4c7dbe2d59c`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
 
 ### Browser-only role ZIP reception
 
 The same [single-file local browser receiver](PRIVATE-receive.html) now recognizes either the **complete original source ZIP** or one of these **three exact private role ZIP inventories** after a complete ZIP byte-match against a separately supplied trusted SHA-256. It identifies the role from an exact list of source filenames and admits the role only when its original source files individually match their seven fixed original SHA-256 fingerprints. The matched original tools can then be individually downloaded without Python, sharing the full scope workspace, executing content, or sending network requests. Unknown, mixed-role or altered member sets HOLD. The accompanying private role receipt is unsigned; use the native role inspector for complete receipt-shape checks. Filename/role selection does not authenticate people or replace live authorization.
+
+### Browser-native complete role receipt inspection (source-only)
+
+After an independently supplied **whole-ZIP SHA-256** matches, the standalone offline browser now also checks an exact, deterministic Python-produced `PRIVATE-ROLE-RECEIPT.json` before offering original downloads. It rejects ambiguous/noncanonical JSON (including duplicate keys), wrong role/posture/original-head values, altered file sets and per-file digests, unsupported authority keys, non-boolean or affirmative consent/grant/release values, and an unfamiliar pinned `tools/role_pack.py` source. All role members — not just the original HTML tools — must agree with the byte-bound receipt. Original components are additionally pinned to immutable LightUp source digests. This closes the previous browser-only receipt verification gap; the native Python inspector remains available.
+
+**Important:** All checks verify structure, deterministic source equality and local bytes **only**. The receipt is unsigned; even an exact match does not authenticate a person, protect confidential material in transit, check real client/operator permission or replace independent security review. Files stay local until a separate HUMAN chooses an explicit download; no content is automatically executed.
 
 ### Role unpack stability under local file replacement
 

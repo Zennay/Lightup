@@ -139,6 +139,64 @@
     return entries;
   }
 
+
+  // Match the actual deterministic Python role receipt, rather than assuming
+  // that matching ZIP member names and source SHA pins authenticate a handoff.
+  // Byte-canonical JSON rejects duplicate fields and alternate encodings.
+  const ROLE_SCRIPT_SHA = "43d9b6e915ba991dea63572f01750ef7661261c8b505c5198609029da0894e43";
+  const ROLE_HEAD = "0f76f2f90a89f5b64bc8033aa2e2ee6ec2fc49cc";
+  const ROLE_AUTHORITY = ["client_consent", "deploy", "grant", "operator_consent", "release", "scan"];
+  const exactKeys = (obj, keys) => obj && typeof obj === "object" && !Array.isArray(obj) &&
+    Object.keys(obj).sort().join("|") === [...keys].sort().join("|");
+  const validDigest = value => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+  function canonicalJSON(value, depth = 0) {
+    if (value === null || typeof value !== "object") return JSON.stringify(value);
+    const names = Array.isArray(value) ? value.map((_v, i) => i) : Object.keys(value).sort();
+    if (!names.length) return Array.isArray(value) ? "[]" : "{}";
+    const pad = "  ".repeat(depth + 1);
+    const rows = names.map(key => pad + (Array.isArray(value) ? "" : JSON.stringify(key) + ": ") +
+      canonicalJSON(value[key], depth + 1));
+    return (Array.isArray(value) ? "[" : "{") + "\n" + rows.join(",\n") +
+      "\n" + "  ".repeat(depth) + (Array.isArray(value) ? "]" : "}");
+  }
+  async function validateRoleReceipt(entries, profile) {
+    const entry = entries.get("PRIVATE-ROLE-RECEIPT.json");
+    if (!entry || entry.size < 100 || entry.size > 12000) throw Error("Role receipt is missing or too large");
+    const source = new TextDecoder("utf-8", {fatal: true}).decode(entry.bytes);
+    const receipt = JSON.parse(source);
+    if (source !== canonicalJSON(receipt) + "\n" ||
+        !exactKeys(receipt, ["format", "posture", "profile", "source_head",
+          "source_outer_sha256", "authenticated_sender", "release", "authority", "files", "note"]) ||
+        receipt.format !== "lightup.scope_private_role_handoff.v1" ||
+        receipt.posture !== "INCUBATE_M3_M7_DRAFT_HOLD" ||
+        receipt.profile !== profile || receipt.source_head !== ROLE_HEAD ||
+        !validDigest(receipt.source_outer_sha256) ||
+        receipt.authenticated_sender !== false || receipt.release !== false ||
+        !exactKeys(receipt.authority, ROLE_AUTHORITY) ||
+        !ROLE_AUTHORITY.every(field => receipt.authority[field] === false) ||
+        receipt.note !== "UNSIGNED PRIVATE REVIEW ONLY; no client or operator consent or release.") {
+      throw Error("Role receipt is noncanonical or contains authority claims");
+    }
+    const records = [...entries.values()].filter(item => item.name !== "PRIVATE-ROLE-RECEIPT.json")
+      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    if (!Array.isArray(receipt.files) || receipt.files.length !== records.length) {
+      throw Error("Role file inventory is incomplete");
+    }
+    for (let i = 0; i < records.length; i++) {
+      const row = receipt.files[i], item = records[i];
+      if (!exactKeys(row, ["path", "bytes", "sha256"]) ||
+          row.path !== item.name || !Number.isSafeInteger(row.bytes) ||
+          row.bytes !== item.size || !validDigest(row.sha256) ||
+          row.sha256 !== await sha(item.bytes)) {
+        throw Error("Original role file differs from unsigned byte receipt");
+      }
+      if (item.name === "tools/role_pack.py" && row.sha256 !== ROLE_SCRIPT_SHA) {
+        throw Error("Unrecognized role inspector source bytes");
+      }
+    }
+    return true; // Receipt coherence ONLY; never sender identity or consent.
+  }
+
   const sha = async bytes => Array.from(new Uint8Array(
     await crypto.subtle.digest("SHA-256", bytes))).map(x => x.toString(16).padStart(2,"0")).join("");
 
@@ -182,6 +240,7 @@
         if (hash !== descriptor.sha) throw Error("Original source-pinned byte mismatch: " + descriptor.path);
         admissible.push({descriptor, candidate});
       }
+      if (role) await validateRoleReceipt(entries, role);
       if (current !== generation) return;
       for (const name of Array.from(entries.keys()).sort()) {
         const item = document.createElement("li");

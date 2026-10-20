@@ -26,7 +26,7 @@
 </section>
 <section id="archive-panel" hidden>
 <h2>Inspect a matched original offline ZIP locally</h2>
-<p>Only after BYTE MATCH above, inspect bounded stored ZIP members in the full kit or one of the three role-specific source-only packs. Selected original source components must match their exact independent pinned LightUp SHA-256 values before you can save individual components. Nothing is executed, installed, unzipped to disk, or uploaded automatically.</p>
+<p>Only after BYTE MATCH above, inspect bounded stored ZIP members in the full kit or one of the three role-specific source-only packs. Selected original source components must match their exact pinned LightUp SHA-256 values. For role ZIPs, the unsigned receipt must additionally be byte-canonical, have no duplicate JSON keys, list every exact stored file hash/size and assert literal false for all authority fields before any component can be saved. Nothing is executed, installed, unzipped to disk, or uploaded automatically.</p>
 <button id="examine-archive" type="button" disabled>Inspect known original ZIP sources</button>
 <p id="archive-summary" role="status" aria-live="polite"></p>
 <details><summary>Original ZIP member inventory (paths and sizes only)</summary><ol id="archive-inventory" class="mono"></ol></details>
