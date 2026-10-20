@@ -13,6 +13,7 @@ import secrets
 import shutil
 import stat
 import subprocess
+import tempfile
 import sys
 
 HERE = Path(__file__).resolve().parent
@@ -240,6 +241,47 @@ def parse_inventory(raw: bytes):
     return files
 
 
+def native_inspect_installed(workspace: Path):
+    """Recreate ONLY original owner source layout for exact native inspector.
+
+    The original unmodified install.py expects source-lock.json next to its
+    sources, whereas its installed release stores that lock at suite root.
+    Copy installed source-only software to disposable owner-private space,
+    never modifying the original installed package or its source code.
+    """
+    original = workspace / "original-suite"
+    private_directory(original)
+    module = original / "remediation-integrated-workspace"
+    private_directory(module)
+    with tempfile.TemporaryDirectory(prefix=".lightup-original-inspect-", dir=workspace.parent) as staged:
+        root = Path(staged) / "read-only-original-source"
+        root.mkdir(mode=0o700)
+        dest = root / "remediation-integrated-workspace"
+        dest.mkdir(mode=0o700)
+        children = list(module.iterdir())
+        insist(1 <= len(children) <= 64, "original native inspector source module count invalid")
+        original_names = set()
+        for member in children:
+            insist(member.name not in (".", "..") and not member.name.startswith(".")
+                   and len(member.name) <= 160 and
+                   member.suffix in (".py", ".md", ".html", ".js", ".css"),
+                   "unknown original inspector source module path")
+            private_file(dest / member.name, read_private_asset(member, max_bytes=4_000_000))
+            original_names.add(member.name)
+        insist({"install.py", "operator_console.py", "landing.py"}.issubset(original_names),
+               "missing original native inspector or renderer")
+        # Exactly the original package's own manifest-bound source lock is used:
+        # no custom lock, no synthetic trusted digest or runtime code patch.
+        original_lock = read_private_asset(original / "source-lock.json")
+        private_file(dest / "source-lock.json", original_lock)
+        run = subprocess.run(
+            [sys.executable, str(dest / "install.py"), "inspect", "--workspace", str(original)],
+            cwd=str(root), shell=False, timeout=180, stdin=subprocess.DEVNULL,
+            capture_output=True, text=True)
+        insist(run.returncode == 2,
+               "the unchanged original native source-owner inspector rejected the installed workroom")
+
+
 def inspect(workspace: Path):
     private_directory(workspace)
     insist(set(p.name for p in workspace.iterdir()) ==
@@ -259,15 +301,10 @@ def inspect(workspace: Path):
            "scriptless local launcher differs from original fixed template")
     local_html_integrity(read_private_asset(recovery / "standalone.html"),
                          read_private_asset(recovery / "browser.js"))
-    # Reuse original native source-lock verification unchanged: never promote an
-    # unsigned companion inventory over original source-owner admission.
-    original = subprocess.run(
-        [sys.executable, str(native_installer()), "inspect", "--workspace",
-         str(workspace / "original-suite")],
-        cwd=str(ROOT), shell=False, timeout=180, stdin=subprocess.DEVNULL,
-        capture_output=True, text=True)
-    insist(original.returncode == 2,
-           "original source-owner native inspection HOLD; no independent override")
+    # Execute the ORIGINAL unchanged native inspector from installed original
+    # software with its exact original source lock, even after safe offline relocation.
+    # Failure is always HOLD: local recovery manifests cannot override source owner.
+    native_inspect_installed(workspace)
     print("REVIEW_ONLY: installed original native suite and encrypted recovery software agree")
     print("Local unsigned file digests do not prove sender, source consent, remediation or release.")
     return 2
