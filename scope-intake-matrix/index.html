@@ -51,7 +51,13 @@
 <input id="file-compare" type="file" accept=".json,application/json" hidden>
 <div class="privacy"><b>Privacy / release boundary:</b> Draft JSON and printouts can contain private client/asset details and are unencrypted. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
 </section>
-<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">04 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed human fields</h3><pre id="changed"></pre></div></div><button id="close-compare" type="button">Close comparison</button></section>
+<section class="section" id="agenda-section" aria-labelledby="agenda-heading">
+<div class="actions"><h2 id="agenda-heading">04 / PRIVATE human follow-up agenda</h2><button id="export-agenda" type="button" class="right">Export standalone PRIVATE agenda</button></div>
+<p class="muted">Human review questions inferred only from this self-declared proposal. These are reminders, not validation, permission, or compliance evidence. Original authenticated operators and clients must still make their own decisions.</p>
+<p id="agenda-count" class="small warning" role="status"></p>
+<ol id="agenda-items"></ol>
+</section>
+<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">05 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed human fields</h3><pre id="changed"></pre></div></div><button id="close-compare" type="button">Close comparison</button></section>
 <p class="footer">LightUp • independent offline preparation companion • INCUBATE M3/M7 PLAN/LAB ONLY • no scans, network, grants, bypasses, approvals, deployment or main release.</p>
 </main>
 </body>
