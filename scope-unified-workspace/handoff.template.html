@@ -121,6 +121,10 @@ PRIVATE notitieteksten bewust opnemen in TEAM-overdracht (standaard UIT; geldt v
 <button id="shelf-recipient-inventory" type="button" class="action muted">PRIVATE bronexact HUMAN-teampakket (.json) voor latere selectieve retour</button>
 </div>
 <p class="shelf-status">De selectie is uitsluitend een lokale HUMAN-routering, geen geauthenticeerde ontvanger. Deze export bevat alleen dossiers die aan het gekozen team zijn toegewezen, ongeacht de tabel-filters. Controleer het bestand en kanaal bewust; geen bronbytes, toestemming of release.</p>
+<label for="shelf-all-private-notes" class="shelf-private-choice">
+<input id="shelf-all-private-notes" type="checkbox">
+PRIVATE HUMAN notitieteksten bewust opnemen in de ALLE-TEAMS Markdown-brief én originele brongebonden JSON-inventaris (standaard UIT; alleen vertrouwelijk delen)</label>
+<p class="shelf-status">De twee ALLE-TEAMS exports bevatten altijd PRIVATE originele namen en SHA-256. Notities blijven standaard afgeschermd. Kies voor één team liever de gerichte HUMAN teamoverdracht hierboven.</p>
 <button type="button" id="shelf-workplan" class="action muted">PRIVATE HUMAN team- en escalatiebrief (.md) <span aria-hidden="true">↗</span></button>
 <button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>
