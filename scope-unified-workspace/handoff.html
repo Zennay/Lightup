@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jX8dS/pBXIwZA9ElqPttOxm/b9XJeUJtvzC766vojtI='; script-src 'sha256-+AqySLtQBliqZiIDh3vgqE2mD6hk7kZJz5QrMeOBYAw=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jX8dS/pBXIwZA9ElqPttOxm/b9XJeUJtvzC766vojtI='; script-src 'sha256-wGkNs6L7cGQ//akvIcvd5V6Fe+sUfVPvAPMIPIwzIK8=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -99,7 +99,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
  * No network, persistent storage, grants, scans, execution or HTML rendering.
  */
 const LightUpPrivateSourceInspector = (() => {
-  const MAX_JSON_BYTES = 512 * 1024;
+  const MAX_JSON_BYTES = 2 * 1024 * 1024;
   const OPAQUE = Object.freeze({
     ".lucb": { kind: "ENCRYPTED_CASEBOOK", route: "intake", label: "Versleutelde Casebook: inhoud niet gecontroleerd" },
     ".luie": { kind: "ENCRYPTED_INTAKE", route: "intake", label: "Versleutelde intake: inhoud niet gecontroleerd" },
@@ -131,14 +131,17 @@ const LightUpPrivateSourceInspector = (() => {
     if (typeof text !== "string" || text.length > MAX_JSON_BYTES) throw Error("oversized JSON");
     let i = 0, nodes = 0;
     const ws = () => { while (i < text.length && /[\x20\t\n\r]/u.test(text[i])) i++; };
+    const stringMatcher = /"(?:\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})|[^"\\\u0000-\u001f])*"/uy;
+    const numberMatcher = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/uy;
     const quoted = () => {
-      const m = /^"(?:\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})|[^"\\\u0000-\u001f])*"/u.exec(text.slice(i));
+      stringMatcher.lastIndex = i;
+      const m = stringMatcher.exec(text);
       if (!m) throw Error("invalid JSON string");
-      i += m[0].length;
+      i = stringMatcher.lastIndex;
       return JSON.parse(m[0]);
     };
     const visit = (depth) => {
-      if (depth > 28 || ++nodes > 30000) throw Error("unbounded JSON structure");
+      if (depth > 30 || ++nodes > 150000) throw Error("unbounded JSON structure");
       ws(); const ch = text[i];
       if (ch === '"') return quoted();
       if (ch === "{") {
@@ -165,11 +168,11 @@ const LightUpPrivateSourceInspector = (() => {
           if (text[i++] !== ",") throw Error("invalid array delimiter");
         }
       }
-      const rest = text.slice(i);
-      const n = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u.exec(rest);
-      if (n) { i += n[0].length; const v = Number(n[0]); if (!Number.isFinite(v)) throw Error("invalid number"); return v; }
+      numberMatcher.lastIndex = i;
+      const n = numberMatcher.exec(text);
+      if (n) { i = numberMatcher.lastIndex; const v = Number(n[0]); if (!Number.isFinite(v)) throw Error("invalid number"); return v; }
       for (const [literal, value] of [["true", true], ["false", false], ["null", null]]) {
-        if (rest.startsWith(literal)) { i += literal.length; return value; }
+        if (text.startsWith(literal, i)) { i += literal.length; return value; }
       }
       throw Error("invalid JSON value");
     };
@@ -178,10 +181,11 @@ const LightUpPrivateSourceInspector = (() => {
     return data;
   }
 
-  function classifyJSON(data) {
+  function classifyJSON(data, size) {
     if (!asObject(data)) return { kind: "UNKNOWN_JSON", route: "none", label: "Onbekende JSON: handmatige review vereist" };
 
     if (data.kind === "lightup.scope_proposal_draft") {
+      if (size > 65536) throw Error("oversized original Studio draft");
       const valid = data.schema_version === 1 && data.state === "DRAFT_ONLY" &&
         FALSE_SCOPE.every((key) => data[key] === false) &&
         Array.isArray(data.requested_assets) && data.requested_assets.length <= 80 &&
@@ -200,6 +204,7 @@ const LightUpPrivateSourceInspector = (() => {
     }
 
     if (data.schema === "lightup.auth_casebook.v1") {
+      if (size > 512 * 1024) throw Error("oversized original Casebook source");
       const counts = data.declared_counts;
       const top = ["schema", "status", "source", "as_of", "client_id", "requests", "engagements",
         "grants", "risk_approvals", "case_overview", "declared_counts", ...CASEBOOK_AUTH];
@@ -222,6 +227,7 @@ const LightUpPrivateSourceInspector = (() => {
     }
 
     if (data.format === "lightup.authorization_readiness_operator_v1") {
+      if (size > 2000000) throw Error("oversized original operator-readiness report");
       const keys = ["format", "disposition", "request_binding_schema_present",
         "scope_fingerprint", "scope_description", "authority", "limitations",
         "summary", "engagements", "review_queue", "request_history"];
@@ -263,7 +269,7 @@ const LightUpPrivateSourceInspector = (() => {
         throw Error("untrusted source asserts authorization");
       }
     }
-    return classifyJSON(data);
+    return classifyJSON(data, file.size);
   }
   async function readHumanInventory(file) {
     if (!file || file.size < 10 || file.size > 96 * 1024) {
