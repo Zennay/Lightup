@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   const $ = id => document.getElementById(id);
-  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","maskPrivateBlocks","pemStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus","humanReplyFile","importHuman","humanReturnStatus","humanReturnOutcome","humanReturnNote"];
+  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","maskPrivateBlocks","pemStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","reviewSearch","reviewFindPrev","reviewFindNext","reviewFindStatus","readAll","accept","confirm","exportText","exportReceipt","exportStatus","humanReplyFile","importHuman","humanReturnStatus","humanReturnOutcome","humanReturnNote"];
   const e = Object.fromEntries(ids.map(id => [id,$(id)]));
   const encoder = new TextEncoder();
   let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0, revision = 0;
@@ -30,6 +30,7 @@
   function invalidate() {
     revision++; // invalidate async preview calculations when the human changes masks or source
     prepared = null; seen = new Set(); page = 0; e.preview.value = "";
+    e.reviewSearch.value="";searchMatches=[];searchIndex=-1;updateSearchNav();
     ["matches","residual","outputHash"].forEach(id=>message(id,"—"));
     message("warnings","No preview prepared.");
     e.warnings.className="warnings";
@@ -211,6 +212,44 @@
       return [label,count];
     }).filter(v=>v[1]>0);
   }
+
+  // Search only the sanitized review copy. No original secret value is indexed or exported.
+  let searchMatches=[], searchIndex=-1;
+  function updateSearchNav(){
+    const available=prepared!==null && searchMatches.length>0;
+    e.reviewFindPrev.disabled=e.reviewFindNext.disabled=!available;
+    message("reviewFindStatus",available?
+      "Match "+(searchIndex+1)+" of "+searchMatches.length+" (PRIVATE local preview)":
+      "No active matches. This is not a privacy-safety finding.");
+  }
+  function navigateMatch(direction) {
+    if(!prepared || !searchMatches.length)return;
+    searchIndex=(searchIndex+direction+searchMatches.length)%searchMatches.length;
+    const position=searchMatches[searchIndex];
+    showPage(Math.floor(position/8000));
+    const within=position-page*8000;
+    e.preview.focus();
+    e.preview.setSelectionRange(within,within+e.reviewSearch.value.length);
+    updateSearchNav();
+  }
+  e.reviewSearch.addEventListener("input",()=>{
+    searchMatches=[];searchIndex=-1;
+    if(!prepared){updateSearchNav();return;}
+    const needle=e.reviewSearch.value;
+    if(needle.length<2 || needle.length>120 || /[\x00-\x1f]/.test(needle)){updateSearchNav();return;}
+    const haystack=prepared.text.toLowerCase(), lower=needle.toLowerCase();
+    let offset=0,next;
+    while((next=haystack.indexOf(lower,offset))!==-1){
+      searchMatches.push(next);offset=next+Math.max(1,lower.length);
+      if(searchMatches.length>=500){
+        searchMatches=[];message("reviewFindStatus","HOLD: too many private matches. Narrow the search.");return;
+      }
+    }
+    if(searchMatches.length){searchIndex=-1;navigateMatch(1);}
+    else updateSearchNav();
+  });
+  e.reviewFindPrev.addEventListener("click",()=>navigateMatch(-1));
+  e.reviewFindNext.addEventListener("click",()=>navigateMatch(1));
   function showPage(n) {
     if(!prepared)return;
     const total=Math.max(1,Math.ceil(prepared.text.length/8000));
@@ -256,6 +295,7 @@
         "Potential sensitive patterns remain: "+remaining.map(x=>x[0]+" "+x[1]+(x[1]===1000?"+":"")).join("; ")+". Not exhaustive.":
         "No heuristic pattern matches; this does not imply safe sharing. Inspect the entire file.");
       seen=new Set();showPage(0);
+      searchMatches=[];searchIndex=-1;updateSearchNav();
       message("exportStatus",highRisk ? "HOLD: possible key, Bearer token or credential remains. Mask it and prepare a new preview before export." : "Review every page, then confirm privately.");
     }catch(err){
       if(current!==ticket)return;
