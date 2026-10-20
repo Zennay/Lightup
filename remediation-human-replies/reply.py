@@ -121,11 +121,20 @@ def admit_reply(obj: dict, packet: dict, digest: str) -> list[dict]:
 def hash_csp(raw: bytes) -> str:
     return "'sha256-" + base64.b64encode(hashlib.sha256(raw).digest()).decode("ascii") + "'"
 
-def editable_page(packet: dict, digest: str, previous: list[dict] | None = None) -> bytes:
+def editable_page(packet: dict, digest: str, previous: list[dict] | None = None,
+                  comparisons: list[list[dict]] | None = None) -> bytes:
     script = (HERE / "reply.js").read_bytes()
     require(len(script) < 32000 and b"</script" not in script.lower(),
             "Unsafe local recipient source script")
     seed = payload(packet, digest, previous if previous is not None else responses_default(packet["items"]))
+    if comparisons is not None:
+        require(type(comparisons) is list and len(comparisons) == len(packet["items"])
+                and all(type(rows) is list and 2 <= len(rows) <= 8 and
+                        all(type(r) is dict and
+                            set(r) == {"file_slot", "status", "answer", "question"}
+                            for r in rows) for rows in comparisons),
+                "Original PRIVATE HUMAN comparison must have complete bounded rows")
+        seed["comparison_slots"] = comparisons  # Browser-only; never exported to .luhr.
     seed_json = json.dumps(seed, ensure_ascii=True, separators=(",", ":")).replace(
         "<", "\\u003c")
     policy = ("default-src 'none'; script-src " + hash_csp(script) +
