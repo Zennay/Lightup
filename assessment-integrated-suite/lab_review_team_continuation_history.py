@@ -18,6 +18,7 @@ import sys
 
 import lab_plans
 import lab_plan_review
+import lab_review_history
 import lab_review_team_batch_history as base_history
 import lab_review_team_batch_reopen as batch_reopen
 import lab_review_team_continue_reopen as continued_reopen
@@ -57,6 +58,13 @@ def build(packets: list[str], final_room: str, handoff_room: str,
     # admission. A missing predecessor is HOLD, not a created new round.
     batch_reopen.inspect(packets, final_room, handoff_room, root_batch)
     originals, fingerprint = lab_plan_review._source_rows(packets)
+    original_final = lab_review_history._admit_final(
+        final_room, originals, fingerprint)
+    original_team_sizes = {
+        row["human_team"]: sum(item["human_team"] == row["human_team"]
+                               for item in original_final)
+        for row in original_final if row["human_team"]
+    }
     root_rows = lab_plan_review._rows_admit(
         originals, str(root / "PRIVATE-HUMAN-CANDIDATE.csv"))
     root_receipt = workpack_progress._private_receipt(
@@ -80,7 +88,8 @@ def build(packets: list[str], final_room: str, handoff_room: str,
         if receipt["original_source_fingerprint_sha256_unsigned"] != fingerprint:
             raise privacy.Hold("HOLD: source identity changed across PRIVATE HUMAN rounds")
         roster = [*receipt["team_outcomes"], *[
-            {"team": name, "assigned": 0, "disposition": "NOT_RETURNED"}
+            {"team": name, "assigned": original_team_sizes.get(name, 0),
+             "disposition": "NOT_RETURNED"}
             for name in receipt["not_returned_team_names"]
         ]]
         snapshots.append(data)
