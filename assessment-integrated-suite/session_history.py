@@ -21,7 +21,7 @@ def prepare(session, parent_name: str, name: str,
         raise private_session.Hold("2–8 distinct private operator session manifests required")
     if not private_session.NAME.fullmatch(name):
         raise private_session.Hold("invalid PRIVATE history name")
-    parent = Path(parent_name).absolute()
+    parent = Path(parent_name).resolve(strict=True)
     if (parent == private_session.ROOT
             or private_session.ROOT in parent.parents
             or not private_session.private(parent, True)):

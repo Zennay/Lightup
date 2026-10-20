@@ -153,7 +153,7 @@ def private_write(parent: Path, filename: str, data: bytes) -> None:
 def save(session, parent_name: str, prefix: str) -> tuple[Path, Path]:
     if not NAME.fullmatch(prefix):
         raise Hold("invalid unique owner-private workroom name")
-    parent = Path(parent_name).absolute()
+    parent = Path(parent_name).resolve(strict=True)
     if parent == ROOT or ROOT in parent.parents or not private(parent, True):
         raise Hold("owner-private 0700 parent outside checkout required")
     values = clean_paths(session)
@@ -194,8 +194,9 @@ def unique_pairs(items: list[tuple[str, object]]) -> dict:
 
 def restore(session, filename: str) -> dict[str, str]:
     path = Path(filename)
-    if not path.is_absolute() or not private(path, False) or not private(path.parent, True):
-        raise Hold("existing owner-private 0600 session + 0700 parent required")
+    if (not path.is_absolute() or ROOT in path.parents or
+            not private(path, False) or not private(path.parent, True)):
+        raise Hold("existing owner-private 0600 session + 0700 parent outside checkout required")
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
                  getattr(os, "O_NONBLOCK", 0))
     try:
