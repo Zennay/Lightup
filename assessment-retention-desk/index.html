@@ -47,7 +47,19 @@
 <div class="bulk panel-mini">
 <h3>Gefilterde HUMAN-planning (voorbeeld → bevestigen → één stap terug)</h3>
 <div class="actions">
-<label>Status voor zichtbare rijen <select id="bulk-status"><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden — voorstel</option><option value="quarantine">Afzonderen — voorstel</option><option value="propose_delete">Verwijdering voorstellen (geen actie)</option></select></label>
+<label>Status voor zichtbare rijen <select id="bulk-status"><option value="__keep__">Huidige status behouden</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden — voorstel</option><option value="quarantine">Afzonderen — voorstel</option><option value="propose_delete">Verwijdering voorstellen (geen actie)</option></select></label>
+<label>HUMAN houder (leeg = behouden) <input type="text" id="bulk-custodian" maxlength="80" placeholder="Team of dossierhouder"></label>
+<label>HUMAN gevoeligheid <select id="bulk-classification">
+<option value="__keep__">Niet wijzigen</option>
+<option value="unknown">Onbekend</option><option value="internal">Intern</option>
+<option value="confidential">Vertrouwelijk</option><option value="restricted">Beperkt gevoelig</option>
+</select></label>
+<label>HUMAN bewaarbeperking <select id="bulk-hold">
+<option value="__keep__">Niet wijzigen</option>
+<option value="unknown">Onbekend / onderzoek nodig</option>
+<option value="human_claim_active">HUMAN meldt actief</option>
+<option value="human_declared_clear">HUMAN meldt geen bekende beperking (onbevestigd)</option>
+</select></label>
 <label>Optionele voorlopige reviewdatum <input type="date" id="bulk-date" min="2000-01-01" max="2099-12-31"></label>
 <label>Menselijke vervolgactie <input type="text" id="bulk-action" maxlength="400" placeholder="Bij verwijderen verplicht: reden/goedkeuring volgen"></label>
 <button id="bulk-apply" type="button">Toepassen op zichtbare rijen</button>
