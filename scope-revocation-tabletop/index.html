@@ -26,6 +26,12 @@
         <label for="event-type">Volgende gebeurtenis</label>
         <div class="preset-group"><select id="event-type"><option value="CLIENT_CONSENT">Fictieve client verklaart toestemming</option><option value="OPERATOR_CONSENT">Fictieve operator verklaart toestemming</option><option value="SCOPE_CHANGED">Scope wijzigt (verklaringen vervallen)</option><option value="RISK_CHANGED">Risico stijgt (verklaringen vervallen)</option><option value="CLIENT_REVOKED">Client trekt verklaring in</option><option value="OPERATOR_REVOKED">Operator trekt verklaring in</option><option value="WINDOW_EXPIRED">Geldigheidsvenster verloopt</option><option value="NEW_WINDOW">Nieuw fictief venster (nieuwe verklaringen nodig)</option><option value="EMERGENCY_STOP">Noodstop blijft actief</option><option value="DISPATCH_ATTEMPT">Gesimuleerde poging tot uitvoering</option></select><button type="button" class="button primary" id="add-event">+ Voeg toe</button></div>
         <div class="quick"><button type="button" id="undo" class="button minor">↶ Laatste ongedaan</button><button type="button" id="clear" class="button danger">Scenario wissen</button></div>
+        <section class="baseline-controls" aria-labelledby="baseline-title">
+          <h3 id="baseline-title">Wat-als vergelijking</h3>
+          <p class="muted">Leg de huidige fictieve situatie vast en verander daarna de gebeurtenissen. De nulmeting blijft alleen in dit browsergeheugen totdat je deze bewust wist of een opgeslagen scenario vervangt.</p>
+          <div class="buttons"><button type="button" id="set-baseline" class="button minor">Huidige situatie vastleggen</button><button type="button" id="clear-baseline" class="button minor">Nulmeting wissen</button></div>
+          <p class="muted" id="baseline-hint">Geen nulmeting vastgelegd.</p>
+        </section>
         <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
         <ol id="timeline" class="timeline" aria-live="polite"></ol>
         <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
@@ -37,6 +43,7 @@
         <dl class="facts"><div><dt>Clientverklaring</dt><dd id="client-state">Niet aanwezig</dd></div><div><dt>Operatorverklaring</dt><dd id="operator-state">Niet aanwezig</dd></div><div><dt>Scope & risico</dt><dd id="scope-state">Startversie</dd></div><div><dt>Geldigheidsvenster</dt><dd id="window-state">Open (fictief)</dd></div><div><dt>Noodstop</dt><dd id="stop-state">Niet gesimuleerd</dd></div><div><dt>Laatste uitvoerpoging</dt><dd id="attempt-state">Geen</dd></div></dl>
         <h3 class="subheading">Human review: benodigde verificatie</h3>
         <ul class="needs" id="needs"><li>Actueel onafhankelijk geauthenticeerd bewijs van beide echte partijen.</li><li>Exacte actuele assets, capability, risico en geldigheidsvenster.</li><li>Actuele brongebonden intrekkingscontrole vlak vóór uitvoering.</li><li>Onafhankelijke privacy/security-goedkeuring en expliciete HUMAN GO.</li></ul>
+        <section class="comparison" aria-labelledby="comparison-title"><h3 id="comparison-title">Fictieve wijzigingsimpact</h3><p id="compare-summary" class="muted">Leg links een nulmeting vast om veranderingen te vergelijken.</p><ul id="compare-deltas" class="needs"></ul></section>
         <div class="export"><h3>PRIVATE lokaal bewaren</h3><p>Bestanden bevatten uitsluitend vaste fictieve gebeurteniscodes, geen echte klantgegevens, targets, credentials of geauthenticeerde claims.</p><div class="buttons"><button type="button" id="save-json" class="button primary">Scenario opslaan (.json)</button><button type="button" id="save-md" class="button minor">Beslisbrief (.md)</button><button type="button" id="import-btn" class="button minor">Scenario openen</button><input id="import-file" type="file" accept=".json,application/json" hidden><button type="button" id="print" class="button minor">Afdrukken</button></div><p class="muted" id="feedback" role="status" aria-live="polite"></p></div>
       </section>
     </main>
