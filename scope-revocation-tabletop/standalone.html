@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MXYnCdeUSCdK2YIwCR/BK4UDiubEkXn43gLpd1GZdP0='; style-src 'sha256-mCnZALcFHItAhS5JrZPh9oft4MLimBJMM8NAojJ+nKI='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
+  <style>:root{color-scheme:dark;--bg:#0b1220;--surface:#121e30;--surface2:#19283a;--border:#31445c;--text:#f3f7fc;--muted:#adbed1;--aqua:#5ee5cf;--warn:#ffd07d;--red:#ff9b9b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{background:radial-gradient(ellipse at 78% 4%,#193445 0%,var(--bg) 55%);color:var(--text);margin:0;line-height:1.5}.shell{width:min(1220px,calc(100% - 36px));margin:auto}.top{display:flex;gap:22px;align-items:center;justify-content:space-between;padding:39px 0 25px}.brand{display:flex;align-items:center;gap:18px}.mark{width:68px;height:68px;flex:none;display:grid;place-items:center;font-size:24px;font-weight:900;border-radius:18px;background:linear-gradient(135deg,#24576b,#126656);border:1px solid #4faeab}.mark span{color:var(--aqua)}.eyebrow,.kicker{font-size:.77rem;font-weight:850;letter-spacing:.11em;color:var(--aqua);margin:0 0 6px}.brand h1{font-size:clamp(1.45rem,2.8vw,2.5rem);line-height:1.1;margin:0 0 5px}.brand p{color:var(--muted);margin:0}.posture{white-space:nowrap;border:1px solid #8b6c43;padding:9px 13px;border-radius:100px;background:#382b20;color:#ffdb9b;font-size:.75rem;font-weight:800;letter-spacing:.045em}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:6px}.alert{border-left:4px solid var(--warn);padding:18px 20px;margin:0 0 23px;background:#2b2730;border-radius:4px 12px 12px 4px}.alert strong{color:#ffdfb0}.alert p{color:#e6dcd8;margin:5px 0 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:21px;align-items:start}.card{background:rgba(18,30,48,.97);border:1px solid var(--border);border-radius:18px;padding:25px;min-width:0;box-shadow:0 14px 35px #0003}.section-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.section-top h2{font-size:1.55rem;margin:0 0 25px}.pill{border:1px solid var(--border);border-radius:40px;padding:5px 9px;color:#d4deeb;white-space:nowrap;font-size:.7rem;font-weight:700}.card label{display:block;font-size:.87rem;font-weight:750;margin:13px 0 8px}.preset-group{display:flex;gap:8px}.preset-group select{flex:1;min-width:0}.card select{appearance:auto;background:#0f1a2c;color:var(--text);border:1px solid #556a81;border-radius:9px;padding:10px 11px;min-height:44px;font:inherit}.button{display:inline-flex;justify-content:center;align-items:center;border:1px solid #587185;border-radius:9px;padding:10px 14px;cursor:pointer;min-height:44px;font-size:.82rem;font-weight:770;white-space:nowrap;color:var(--text);background:var(--surface2)}.button:hover{filter:brightness(1.18)}.button:focus-visible,select:focus-visible{outline:3px solid var(--aqua);outline-offset:3px}.button.primary{background:#137f71;border-color:#239f8f}.button.danger{background:#442939;border-color:#9b5465}.quick{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0 21px}.log-title{border-top:1px solid var(--border);padding-top:12px}.log-title h3,.subheading{font-size:.98rem}.count,.muted{color:var(--muted);font-size:.83rem}.timeline{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;max-height:430px;overflow:auto}.timeline li{background:#182a3d;border:1px solid #354b60;border-radius:10px;display:flex;align-items:center;gap:10px;padding:10px 12px}.number{display:grid;place-items:center;min-width:28px;height:28px;background:#284255;border-radius:9px;color:#cbeaf2;font-size:.75rem;font-weight:900}.event-name{font-size:.89rem;font-weight:700}.event-note{font-size:.75rem;color:var(--muted);display:block}.verdict{display:flex;gap:16px;align-items:center;background:#293240;border:1px solid #716b56;padding:18px;border-radius:13px}.status-icon{font-size:1.4rem;font-weight:900;display:grid;place-items:center;flex:none;width:50px;height:50px;border-radius:13px;color:#fbd494;background:#5c4829}.verdict h3{font-size:1.25rem;line-height:1.25;margin:0 0 5px}.verdict p:last-child{color:#d7dce5;font-size:.83rem;margin:0}.subheading{margin:23px 0 12px}.facts{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:9px}.facts div{padding:13px;border:1px solid var(--border);border-radius:10px;background:#16263a}.facts dt{font-size:.75rem;color:var(--muted)}.facts dd{margin:3px 0 0;font-weight:750;font-size:.86rem}.needs{padding-left:21px;color:#d0e0ea;font-size:.87rem}.needs li{margin-bottom:8px}.export{border-top:1px solid var(--border);margin-top:24px}.export h3{margin-bottom:5px}.export p{color:var(--muted);font-size:.85rem}.buttons{display:flex;flex-wrap:wrap;gap:8px}footer{color:#9faebe;text-align:center;font-size:.72rem;padding:32px 0;line-height:2;letter-spacing:.035em}@media(max-width:900px){.grid{grid-template-columns:1fr}.top{flex-wrap:wrap}.posture{margin-left:0}}@media(max-width:560px){.shell{width:calc(100% - 22px)}.card{padding:16px}.brand{align-items:flex-start}.mark{width:48px;height:48px;font-size:18px}.preset-group{flex-direction:column}.button{white-space:normal}.facts{grid-template-columns:1fr}}@media print{body{background:white;color:black}.shell{width:100%}.card,.alert{background:white;color:black;border:1px solid #888;box-shadow:none}.grid{display:block}.card{break-inside:avoid;margin:12px 0}.button,.preset-group,.quick,.export,.posture{display:none!important}.timeline{max-height:none;overflow:visible}.facts div,.timeline li{background:white;color:black}.eyebrow,.kicker,.event-name,.card p{color:black!important}footer{color:black}}
+</style>
+  <script>"use strict";
+/**
+ * Standalone, fictional, in-memory education aid.
+ * Never read production sources, call an API, authenticate anyone, grant scope, or dispatch tools.
+ */
+(() => {
+  const TYPES = Object.freeze({
+    CLIENT_CONSENT: ["Fictieve clientverklaring", "Een zelf ingevoerde oefenverklaring; geen echte clientauthenticatie."],
+    OPERATOR_CONSENT: ["Fictieve operatorverklaring", "Een zelf ingevoerde oefenverklaring; geen echte operatorauthenticatie."],
+    SCOPE_CHANGED: ["Scopewijziging", "Vorige verklaringen zijn niet overgedragen naar gewijzigde scope."],
+    RISK_CHANGED: ["Risicowijziging", "Vorige verklaringen zijn niet overgedragen naar hoger risico."],
+    CLIENT_REVOKED: ["Fictieve clientintrekking", "De clientverklaring is vanaf dit oefenmoment ongeldig."],
+    OPERATOR_REVOKED: ["Fictieve operatorintrekking", "De operatorverklaring is vanaf dit oefenmoment ongeldig."],
+    WINDOW_EXPIRED: ["Venster verlopen", "Geen fictieve gebruiksgeldigheid meer."],
+    NEW_WINDOW: ["Nieuw tijdvenster", "Een nieuw fictief venster vereist beide verklaringen opnieuw."],
+    EMERGENCY_STOP: ["Noodstop", "De oefenstop blijft actief voor de rest van dit scenario."],
+    DISPATCH_ATTEMPT: ["Gesimuleerde uitvoerpoging", "Alleen fictieve controle. Er wordt NOOIT een tool aangeroepen."]
+  });
+  const presets = Object.freeze({
+    empty: [],
+    happy: ["CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"],
+    revoke: ["CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT","CLIENT_REVOKED","DISPATCH_ATTEMPT"],
+    scope: ["CLIENT_CONSENT","OPERATOR_CONSENT","SCOPE_CHANGED","DISPATCH_ATTEMPT","CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"],
+    stop: ["CLIENT_CONSENT","OPERATOR_CONSENT","EMERGENCY_STOP","DISPATCH_ATTEMPT","NEW_WINDOW","CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"]
+  });
+  const MAX = 64;
+  const $ = id => document.getElementById(id);
+  let events = [];
+
+  function fresh() {
+    return {client:false,operator:false,scope:0,risk:0,window:true,stop:false,attempts:0,lastAttempt:null};
+  }
+  function blockers(s) {
+    const list = [];
+    if (s.stop) list.push("Fictieve noodstop staat aan");
+    if (!s.window) list.push("Fictief geldigheidsvenster is verlopen");
+    if (!s.client) list.push("Nieuwe fictieve clientverklaring ontbreekt");
+    if (!s.operator) list.push("Nieuwe fictieve operatorverklaring ontbreekt");
+    return list;
+  }
+  function apply(s, event) {
+    switch (event) {
+      case "CLIENT_CONSENT": s.client = true; break;
+      case "OPERATOR_CONSENT": s.operator = true; break;
+      case "SCOPE_CHANGED": s.scope += 1; s.client = false; s.operator = false; break;
+      case "RISK_CHANGED": s.risk += 1; s.client = false; s.operator = false; break;
+      case "CLIENT_REVOKED": s.client = false; break;
+      case "OPERATOR_REVOKED": s.operator = false; break;
+      case "WINDOW_EXPIRED": s.window = false; s.client = false; s.operator = false; break;
+      case "NEW_WINDOW": s.window = true; s.client = false; s.operator = false; break;
+      case "EMERGENCY_STOP": s.stop = true; break;
+      case "DISPATCH_ATTEMPT":
+        s.attempts += 1;
+        s.lastAttempt = {step:s.attempts,missing:blockers(s)};
+        break;
+      default: throw new Error("Onbekende fictieve gebeurtenis");
+    }
+    return s;
+  }
+  function play(seq) {
+    const s = fresh();
+    const steps = [];
+    for (const event of seq) {
+      if (!Object.hasOwn(TYPES,event)) throw new Error("Onbekende gebeurtenis");
+      apply(s,event);
+      steps.push({event,missing:event === "DISPATCH_ATTEMPT" ? s.lastAttempt.missing.slice() : []});
+    }
+    return {state:s,steps};
+  }
+  function el(tag,cls,content) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (typeof content === "string") node.textContent = content;
+    return node;
+  }
+  function write(id, text) { $(id).textContent = text; }
+  function render() {
+    const {state:s,steps} = play(events);
+    const holder = $("timeline");
+    holder.replaceChildren();
+    steps.forEach((step,i)=>{
+      const item=el("li");
+      item.append(el("span","number",String(i+1)));
+      const inner=el("span");
+      inner.append(el("span","event-name",TYPES[step.event][0]));
+      const note=step.event==="DISPATCH_ATTEMPT"
+        ? step.missing.length
+          ? "OEFEN-HOLD: " + step.missing.join(" · ")
+          : "OEFENPRECONDITIES AANWEZIG · geen echte toestemming"
+        : TYPES[step.event][1];
+      inner.append(el("span","event-note",note));
+      item.append(inner);
+      holder.append(item);
+    });
+    write("step-count",events.length+" / "+MAX);
+    $("empty").hidden=events.length>0;
+    $("undo").disabled=events.length===0;
+    $("add-event").disabled=events.length>=MAX;
+    write("client-state",s.client ? "Fictief aanwezig" : "Ontbreekt / vervallen");
+    write("operator-state",s.operator ? "Fictief aanwezig" : "Ontbreekt / vervallen");
+    write("scope-state","Scope v"+(s.scope+1)+" · Risico v"+(s.risk+1));
+    write("window-state",s.window ? "Fictief open" : "Verlopen");
+    write("stop-state",s.stop ? "ACTIEF – niet heropenbaar" : "Niet geactiveerd");
+    write("attempt-state",s.attempts ? s.attempts+" gesimuleerd; laatste "+(s.lastAttempt.missing.length ? "HOLD":"oefenprecondities aanwezig") : "Geen");
+    const missing=blockers(s);
+    if (!events.length) {
+      write("status-title","Wacht op scenario");
+      write("status-reason","Voeg gebeurtenissen toe of laad een fictief voorbeeld. Geen echte autorisatiecontrole.");
+    } else if (missing.length) {
+      write("status-title","OEFEN-HOLD · "+missing.length+" aandachtspunten");
+      write("status-reason",missing.join(" · ")+". Dit geldt uitsluitend binnen het fictieve scenario.");
+    } else {
+      write("status-title","Oefenprecondities aanwezig");
+      write("status-reason","Zelf ingevoerde scenarioverklaringen lijken compleet. Werkelijke authenticatie, actuele revocatie en uitvoergrenzen zijn NIET gecontroleerd. Geen toestemming tot handelen.");
+    }
+    write("status-icon",missing.length ? "!" : "i");
+    const needs=$("needs");
+    needs.replaceChildren();
+    const messages=[
+      "Echte onafhankelijke actuele client- en operatorauthenticatie buiten deze app.",
+      "Werkelijk goedgekeurde asset, tenant, capability, risicoklasse en gebruiksperiode.",
+      "Werkelijke duurzame intrekking + controle onmiddellijk vóór elke I/O/uitvoering.",
+      "Oorspronkelijke source-owner en onafhankelijke security/privacy/browserreview.",
+      "Originele exact-head hosted én permanente named VPS CI; expliciete HUMAN GO."
+    ];
+    missing.forEach(m=>messages.unshift("Fictief: "+m+"."));
+    messages.forEach(t=>needs.append(el("li","",t)));
+    return {s,steps,missing};
+  }
+  function feedback(t) { write("feedback",t); }
+  function add(e) {
+    if (events.length>=MAX || !Object.hasOwn(TYPES,e)) { feedback("Geen gebeurtenis toegevoegd: maximum of onbekende code.");return; }
+    events.push(e); feedback("");render();
+  }
+  function data() {
+    return {schema:"lightup.fictional.scope-tabletop.v1",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
+      authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,
+        dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
+  }
+  function bytesDownload(filename,text,mime) {
+    const blob = new Blob([text],{type:mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url;a.download=filename;a.rel="noopener";document.body.append(a);a.click();a.remove();
+    window.setTimeout(()=>URL.revokeObjectURL(url),30000);
+  }
+  function md() {
+    const {s,steps,missing}=render();
+    const lines=[
+      "# LightUp — fictieve scope-/intrekkingsoefening",
+      "",
+      "**Uitsluitend PRIVATE, offline HUMAN review. Geen werkelijk bronbewijs, consent, grant, scan of release.**",
+      "",
+      "| Stap | Fictieve gebeurtenis | Simulatie-effect |",
+      "| ---: | --- | --- |"
+    ];
+    steps.forEach((x,i)=>{
+      const info=x.event==="DISPATCH_ATTEMPT" ? (x.missing.length?"OEFEN-HOLD":"Alleen fictieve precondities aanwezig, nooit uitvoeren") : TYPES[x.event][1];
+      lines.push("| "+(i+1)+" | "+TYPES[x.event][0]+" | "+info+" |");
+    });
+    lines.push("","## Samenvatting (uitsluitend fictief)",
+      "Clientverklaring: "+(s.client?"ingevoerd":"niet geldig"),
+      "Operatorverklaring: "+(s.operator?"ingevoerd":"niet geldig"),
+      "Scope-revisie: "+(s.scope+1),
+      "Risico-revisie: "+(s.risk+1),
+      "Venster: "+(s.window?"open":"verlopen"),
+      "Noodstop: "+(s.stop?"actief":"niet actief"),
+      "Simulatiepogingen: "+s.attempts,
+      "Fictieve huidige blokkades: "+(missing.length?missing.join("; "):"geen in deze zelf ingevoerde oefenprecondities"),
+      "",
+      "## Verplichte echte vervolgstappen",
+      "Oorspronkelijke trusted scope-/tenant-/assetvalidatie, afzonderlijk geauthenticeerde huidige client- en operatorconsent, real-time revocation en uitvoergrens, onafhankelijke reviews, originele exact-head CI op permanente VPS, expliciete menselijke GO. Dit document is nooit autorisatiebewijs.",
+      "",
+      "AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false · DEPLOY_ALLOWED=false");
+    return lines.join("\n")+"\n";
+  }
+  function validateImport(text) {
+    if (text.length > 32768 || !text.length) throw new Error("Bestand buiten de toegestane limiet (32 KiB).");
+    const parsed=JSON.parse(text);
+    if (!parsed || typeof parsed!=="object" || Array.isArray(parsed)) throw new Error("Geen object.");
+    if (!Array.isArray(parsed.events) || parsed.events.length>MAX || parsed.events.some(e=>typeof e!=="string" || !Object.hasOwn(TYPES,e))) throw new Error("Ongeldige fictieve gebeurtenislijst.");
+    if (parsed.schema!=="lightup.fictional.scope-tabletop.v1" || parsed.title!=="Fictief scope-/intrekkingsoefenscenario") throw new Error("Onbekende of niet-fictieve inhoud.");
+    const normalized={schema:parsed.schema,title:parsed.title,events:parsed.events,
+      authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
+    // Byte-canonical own-file-only import: rejects duplicate JSON keys, unknown fields, altered authority flags and malformed formatting.
+    if (JSON.stringify(normalized,null,2)!==text) throw new Error("Niet-canoniek of gewijzigd exportbestand.");
+    return parsed.events.slice();
+  }
+  $("load-preset").addEventListener("click",()=>{
+    const key=$("preset").value;
+    if (!Object.hasOwn(presets,key)) return;
+    if (events.length && !window.confirm("Bestaand oefenscenario vervangen?")) return;
+    events=presets[key].slice(); feedback("Fictief voorbeeld geladen.");render();
+  });
+  $("add-event").addEventListener("click",()=>add($("event-type").value));
+  $("undo").addEventListener("click",()=>{events.pop();feedback("Laatste gebeurtenis verwijderd.");render();});
+  $("clear").addEventListener("click",()=>{if (events.length && !window.confirm("Alle fictieve stappen wissen?")) return;events=[];feedback("Scenario gewist.");render();});
+  $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario lokaal aangeboden voor opslag.");});
+  $("save-md").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.md",md(),"text/markdown");feedback("PRIVATE, niet-autoriseren­de beslisbrief lokaal aangeboden.");});
+  $("import-btn").addEventListener("click",()=>$("import-file").click());
+  $("import-file").addEventListener("change",async event=>{
+    const file=event.target.files?.[0];event.target.value="";if (!file)return;
+    if (file.size>32768){feedback("HOLD: scenario groter dan 32 KiB.");return;}
+    try {
+      const text=await file.text();
+      const next=validateImport(text);
+      if (events.length && !window.confirm("Bestaand fictief scenario vervangen door dit bestand?")) return;
+      events=next;feedback("Oorspronkelijke fictieve JSON-indeling exact hersteld.");render();
+    } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
+  });
+  $("print").addEventListener("click",()=>window.print());
+  render();
+})();
+</script>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand"><div class="mark" aria-hidden="true">L<span>U</span></div><div><div class="eyebrow">LIGHTUP / SCOPE LAB</div><h1>Autorisatie & intrekking</h1><p>Offline oefenruimte met fictieve scenario’s. Geen werkelijke toestemming of toegang.</p></div></div>
+      <div class="posture" role="status"><span class="dot"></span> INCUBATE · DRAFT / HOLD</div>
+    </header>
+    <section class="alert" aria-labelledby="guard-title">
+      <div><strong id="guard-title">Dit is een oefensimulatie, geen autorisatiesysteem.</strong><p>Alle deelnemers, gebeurtenissen en beslissingen zijn fictief. De echte LightUp-grants, client-/operatoridentiteit, risico- en revocatiestatus worden niet gelezen, gecontroleerd of aangepast. <b>Geen enkele uitkomst mag worden gebruikt om een scan, tool, release of deployment te starten.</b></p></div>
+    </section>
+    <main class="grid">
+      <section class="card builder" aria-labelledby="builder-title">
+        <div class="section-top"><div><p class="kicker">01 / SCENARIO</p><h2 id="builder-title">Bouw een beslisverloop</h2></div><span class="pill">MAX 64 stappen</span></div>
+        <label for="preset">Startscenario</label>
+        <div class="preset-group"><select id="preset"><option value="empty">Leeg scenario</option><option value="happy">Fictieve complete voorwaarden</option><option value="revoke">Toestemming wordt ingetrokken</option><option value="scope">Scope verandert na toestemming</option><option value="stop">Noodstop vóór uitvoerpoging</option></select><button type="button" class="button minor" id="load-preset">Laden</button></div>
+        <label for="event-type">Volgende gebeurtenis</label>
+        <div class="preset-group"><select id="event-type"><option value="CLIENT_CONSENT">Fictieve client verklaart toestemming</option><option value="OPERATOR_CONSENT">Fictieve operator verklaart toestemming</option><option value="SCOPE_CHANGED">Scope wijzigt (verklaringen vervallen)</option><option value="RISK_CHANGED">Risico stijgt (verklaringen vervallen)</option><option value="CLIENT_REVOKED">Client trekt verklaring in</option><option value="OPERATOR_REVOKED">Operator trekt verklaring in</option><option value="WINDOW_EXPIRED">Geldigheidsvenster verloopt</option><option value="NEW_WINDOW">Nieuw fictief venster (nieuwe verklaringen nodig)</option><option value="EMERGENCY_STOP">Noodstop blijft actief</option><option value="DISPATCH_ATTEMPT">Gesimuleerde poging tot uitvoering</option></select><button type="button" class="button primary" id="add-event">+ Voeg toe</button></div>
+        <div class="quick"><button type="button" id="undo" class="button minor">↶ Laatste ongedaan</button><button type="button" id="clear" class="button danger">Scenario wissen</button></div>
+        <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
+        <ol id="timeline" class="timeline" aria-live="polite"></ol>
+        <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
+      </section>
+      <section class="card output" aria-labelledby="output-title">
+        <div class="section-top"><div><p class="kicker">02 / INTERPRETATIE</p><h2 id="output-title">Wat verandert er?</h2></div><span class="pill">HUMAN REVIEW ONLY</span></div>
+        <div class="verdict"><span id="status-icon" class="status-icon">!</span><div><p class="eyebrow">FICTIEVE PRECONDITIES</p><h3 id="status-title">Wacht op scenario</h3><p id="status-reason">De simulatie beoordeelt alleen handmatig ingevoerde gebeurtenissen.</p></div></div>
+        <h3 class="subheading">Fictieve toestand</h3>
+        <dl class="facts"><div><dt>Clientverklaring</dt><dd id="client-state">Niet aanwezig</dd></div><div><dt>Operatorverklaring</dt><dd id="operator-state">Niet aanwezig</dd></div><div><dt>Scope & risico</dt><dd id="scope-state">Startversie</dd></div><div><dt>Geldigheidsvenster</dt><dd id="window-state">Open (fictief)</dd></div><div><dt>Noodstop</dt><dd id="stop-state">Niet gesimuleerd</dd></div><div><dt>Laatste uitvoerpoging</dt><dd id="attempt-state">Geen</dd></div></dl>
+        <h3 class="subheading">Human review: benodigde verificatie</h3>
+        <ul class="needs" id="needs"><li>Actueel onafhankelijk geauthenticeerd bewijs van beide echte partijen.</li><li>Exacte actuele assets, capability, risico en geldigheidsvenster.</li><li>Actuele brongebonden intrekkingscontrole vlak vóór uitvoering.</li><li>Onafhankelijke privacy/security-goedkeuring en expliciete HUMAN GO.</li></ul>
+        <div class="export"><h3>PRIVATE lokaal bewaren</h3><p>Bestanden bevatten uitsluitend vaste fictieve gebeurteniscodes, geen echte klantgegevens, targets, credentials of geauthenticeerde claims.</p><div class="buttons"><button type="button" id="save-json" class="button primary">Scenario opslaan (.json)</button><button type="button" id="save-md" class="button minor">Beslisbrief (.md)</button><button type="button" id="import-btn" class="button minor">Scenario openen</button><input id="import-file" type="file" accept=".json,application/json" hidden><button type="button" id="print" class="button minor">Afdrukken</button></div><p class="muted" id="feedback" role="status" aria-live="polite"></p></div>
+      </section>
+    </main>
+    <footer>SCENARIO ≠ SCOPE · HASH ≠ AUTHENTICATIE · REVIEW ≠ TOESTEMMING · NO NETWORK / NO STORAGE / NO DISPATCH<br>Originele LightUp M3/M7-bronnen, autorisatie- en releasevoorwaarden blijven ongewijzigd.</footer>
+  </div>
+</body>
+</html>
