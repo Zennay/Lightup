@@ -245,6 +245,32 @@ retraction, no unilateral return to trusted state):
       --directory /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry \
       --trusted-fingerprint 64-lowercase-hex-fingerprint-to-revoke
 
+### Persistent minimum signing policy: no accidental two-to-one downgrade
+
+Once TWO distinct public keys have been independently validated and registered,
+the operator can permanently require two **currently trusted** Ed25519 signers
+for all future inbox imports and reopens. Use operator desk menu option 7 or:
+
+    python3 remediation-package-signatures/trust_registry.py require-two \
+      --directory /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry
+
+This creates a private immutable local two-signer minimum marker (0600,
+durable directory fsync). The listing command shows the current minimum.
+The CLI's single-signature option cannot weaken this rule; higher persistent
+local policy is applied even when the two-signer flag was omitted. New inboxes
+also record their enforced original minimum. Reopen uses the stricter of
+that recorded minimum, the current registry minimum, and the caller choice.
+Old inboxes using the original schema remain readable under the current
+registry floor, but can never silently lower it. Revoked keys do not qualify.
+
+The marker is only a local owner-controlled custody policy. It is **not** an
+authenticated organisational approval, remotely enforced permission or
+tamper-proof policy against an attacker controlling the same local account.
+It cannot make any archived software safe to deploy. The original exact-head
+CI, source-owner review, independent crypto/security/privacy review, genuine
+separate client/operator consent, revocation at use and HUMAN GO still govern
+all release and active actions.
+
 **Security and privacy limits of this HUMAN workflow:**
 - Registration relies on the HUMAN already having independently authenticated
   the *correct* out-of-band fingerprint. A signature does not establish the
