@@ -164,3 +164,30 @@ The NEW 0700 directory contains the following 0600 PRIVATE artifacts:
 - `manifest.json`: unsigned original source hash and output digest references, NEVER producer authentication.
 
 Even counts-only results are PRIVATE and may re-identify a small cohort. This is a HUMAN coordination report only: stage `documented` cannot prove a fix, source severity is not independently verified, and an explicit HUMAN blocker does not establish permission or incident status. **No active scanning, source mutation, verified verdict, consent or grant is performed.**
+
+
+## Portable PRIVATE paged ZIP handoff (two-way local workflow)
+
+**Product gap closed:** a paged 1–52 file original report is awkward to transfer between two trusted offline devices. You can now bundle an **already-produced** paged PRIVATE report and restore it to a NEW protected folder, without running a scan, invoking models, opening a target, widening scopes, creating any permission or changing its original source.
+
+**Sender, from an already-produced `paged_review.py` directory:**
+
+```bash
+python3 assessment-briefing/private_paged_zip.py \
+  --private-paged-dir ./NEW-PRIVATE-PAGED-REPORT \
+  --output-dir ./NEW-PRIVATE-ZIP-HANDOFF
+```
+
+The sender strictly requires the *exact original* paged manifest v1: original source declaration byte SHA, literal false authority flags, 1–16 original declared endpoint count, ≤2048 original rows, expected 40-row page ordinal ranges and **the unsigned original private HTML/CSV SHA-256 digests of every page**. It reads only fixed expected private local filenames relative to a no-follow directory descriptor, rejects symlinks/other group/world-readable source artifacts and unexpected extra files, and refuses any mismatch before making a new 0700 directory. The output contains a 0600 **`LightUp-PRIVATE-Paged-Review.zip`** and 0600 `PRIVATE-archive-receipt.json` with unsigned byte digest and explicit `archive_is_encrypted:false`. ZIP contents include source target literals, findings, summaries and evidence references. The ZIP is **NOT ENCRYPTED**: keep it offline or transfer only using a separately approved confidential encrypted channel. The source total and ZIP size are bounded (≤64 MiB original files / ≤23 MiB zip) and larger packs HOLD without truncation.
+
+**Recipient, on a trusted offline device:**
+
+```bash
+python3 assessment-briefing/private_paged_restore.py \
+  --private-zip ./LightUp-PRIVATE-Paged-Review.zip \
+  --output-dir ./NEW-PRIVATE-RESTORED-REVIEW
+```
+
+The receiver first admits the bounded ZIP and its exact manifest and original page inventory. It rejects duplicate/ambiguous ZIP member names, arbitrary paths/traversal, directories, symlinks, altered content/checksums, encrypted ZIP entries, unexpected compression, appended files and modified operator instructions. **Only after every original member is admitted and complete** are known relative artifacts extracted into one entirely NEW 0700 protected directory as 0600 files, with an explicit private local restore-receipt and retained original manifest. The recipient opens the resulting `index.html` LOCALLY; links reach the original source-ordinal pages. The original `human-followup.csv` can enter the existing browser HUMAN Studio or `human_return.py`. A source digest remains an **UNSIGNED identifier**; matching it is not source producer, client/operator identity, consent, authorization, verified findings, remediation or release.
+
+Both tools are also in the foreground `console.py` menu. Neither performs a background operation. **Do not publish the ZIP or restored directory to a public host.** No production deployment or active target activity is allowed under the current M3/M7 DRAFT/HOLD phase.
