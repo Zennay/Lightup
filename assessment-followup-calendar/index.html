@@ -69,6 +69,9 @@
 <strong>PRIVATE calendar change desk · comparing two exact-sheet HUMAN plans</strong>
 <p>To reconcile a calendar previously imported by a HUMAN, load a separate copy of that previously published <strong>v2 PRIVATE plan CSV</strong>. It must match this exact worksheet byte digest, timezone and private calendar series ID. No network, attendee, grant or source authentication. Compare before export; changed plan dates never prove any target's risk changed.</p>
 <div class="row"><label class="file">Previously published PRIVATE v2 plan <input id="baselinePlan" type="file" accept=".csv,text/csv"></label><span id="baselineStatus" class="subtle">No previous publication loaded.</span><button type="button" id="clearBaseline" class="ghost" disabled>Clear previous snapshot</button></div>
+<div class="row"><label>Previous encrypted-plan passphrase <input id="baselinePassword" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+<label class="file">OR previous encrypted PRIVATE plan (.luhc) <input id="encryptedBaseline" type="file" accept=".luhc,application/octet-stream"></label></div>
+<p class="subtle">The encrypted comparison baseline decrypts only into local memory. The currently open HUMAN schedule is never replaced by this separate input. Clear the passphrase input after admission or failure.</p>
 <p id="changesSummary" role="status" aria-live="polite">Load a previous PRIVATE plan to see what changed.</p>
 <div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Change</th><th>Previously planned</th><th>Current HUMAN plan</th></tr></thead><tbody id="changesRows"></tbody></table></div>
 <div class="row"><button id="changePrev" type="button" class="ghost">Previous</button><button id="changeNext" type="button" class="ghost">Next</button></div>
