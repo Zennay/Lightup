@@ -8,6 +8,7 @@ original source/owner, client consent, revocation or assessment approval.
 from __future__ import annotations
 
 import getpass
+import hmac
 import hashlib
 import os
 import stat
@@ -51,6 +52,7 @@ def read_vault(path: str) -> bytes:
 def decrypt_vault(path: str, expected_receipt_sha256: str) -> bytes:
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        from cryptography.exceptions import InvalidTag
     except ImportError:
         raise VaultHold("HOLD: installed cryptography dependency required") from None
     require(type(expected_receipt_sha256) is str and len(expected_receipt_sha256) == 64)
@@ -64,17 +66,20 @@ def decrypt_vault(path: str, expected_receipt_sha256: str) -> bytes:
     require(header[:8] == MAGIC)
     # Header is itself authenticated as AES-GCM AAD. Use constant-time comparison
     # to avoid distinct error categories for matching/nonmatching source receipts.
-    require(__import__("hmac").compare_digest(header[36:68], expected))
+    require(hmac.compare_digest(header[36:68], expected))
     # Non-echoed interactive TTY required. No password in argv or plaintext files.
     require(sys.stdin.isatty())
-    secret = getpass.getpass("PRIVATE HUMAN vault password (not client consent): ")
+    try:
+        secret = getpass.getpass("PRIVATE HUMAN vault password (not client consent): ")
+    except (EOFError, KeyboardInterrupt):
+        raise VaultHold("HOLD: PRIVATE HUMAN password entry cancelled") from None
     try:
         require(14 <= len(secret) <= 256 and all(" " <= c < "\x7f" or ord(c) >= 128 for c in secret))
         key = hashlib.pbkdf2_hmac("sha256", secret.encode("utf-8"), header[8:24], KDF_ROUNDS, 32)
         plain = AESGCM(key).decrypt(header[24:36], data[HEADER_BYTES:], header)
         require(0 < len(plain) <= MAX_CSV)
         return plain
-    except (ValueError, UnicodeError, TypeError, OverflowError, MemoryError):
+    except (ValueError, UnicodeError, TypeError, OverflowError, MemoryError, InvalidTag):
         raise VaultHold("HOLD: PRIVATE HUMAN vault decryption refused") from None
     finally:
         secret = ""  # Best effort: immutable Python strings cannot be securely wiped.
