@@ -14,7 +14,7 @@
   const MAX_BYTES = 1024*1024, MAX_ROWS = 2048, PAGE = 35;
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
-  let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0;
+  let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -133,7 +133,7 @@
     $("prev").disabled=page===0;$("next").disabled=page>=pages-1;
     const body=$("rows");body.replaceChildren();
     visible.slice(page*PAGE,page*PAGE+PAGE).forEach(r=>{
-      const tr=dom("tr"),slot=plan.get(r.ordinal);
+      const tr=dom("tr"),slot=plan.get(r.ordinal);tr.dataset.ordinal=String(r.ordinal);
       tr.append(dom("td","#"+r.ordinal),dom("td",r.severity,"severity"),
         dom("td",r.stage+" / "+(r.group||"unassigned")),
         dom("td",r.action||"No HUMAN action supplied"));
@@ -154,6 +154,49 @@
       for(const element of [d,t,length,reminder]){let td=dom("td");td.append(element);tr.append(td);}
       body.append(tr);
     });
+    renderAgenda();
+  }
+  function renderAgenda(){
+    if(!active)return;
+    const now=new Date(),days=$("agendaHorizon").value;
+    const q=$("agendaQuery").value.trim().toLocaleLowerCase();
+    let upcoming=items.filter(r=>{
+      const p=plan.get(r.ordinal);if(!p)return false;
+      const at=eventDate(p.day,p.time);
+      if(days==="overdue" && at>=now)return false;
+      if(days==="7"||days==="30"){
+        const limit=new Date(now.getTime()+Number(days)*86400000);
+        if(at<now||at>limit)return false;
+      }
+      return !q || [r.group,r.action,r.blocker,String(r.ordinal)].some(v=>v.toLocaleLowerCase().includes(q));
+    });
+    upcoming.sort((a,b)=>{
+      const p=plan.get(a.ordinal),v=plan.get(b.ordinal);
+      return (p.day+"T"+p.time).localeCompare(v.day+"T"+v.time)||a.ordinal-b.ordinal;
+    });
+    const totalPages=Math.max(1,Math.ceil(upcoming.length/50));
+    agendaPage=Math.max(0,Math.min(agendaPage,totalPages-1));
+    $("agendaPrev").disabled=agendaPage===0;
+    $("agendaNext").disabled=agendaPage>=totalPages-1;
+    $("agendaSummary").textContent=upcoming.length+" scheduled HUMAN reminders in this view · page "+(agendaPage+1)+" of "+totalPages+" · "+zone+" · PRIVATE planning, not security evidence.";
+    const body=$("agendaRows");body.replaceChildren();
+    for(const r of upcoming.slice(agendaPage*50,agendaPage*50+50)){
+      const p=plan.get(r.ordinal),tr=dom("tr"),edit=dom("button","Edit original #"+r.ordinal,"ghost");
+      edit.type="button";
+      edit.addEventListener("click",()=>{
+        $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
+        page=Math.floor((r.ordinal-1)/PAGE);
+        render();
+        const source=document.querySelector('#rows tr[data-ordinal="'+r.ordinal+'"] input[type="date"]');
+        $("desk").scrollIntoView({behavior:"smooth",block:"start"});
+        if(source)source.focus({preventScroll:true});
+      });
+      const cell=dom("td");cell.append(edit);
+      tr.append(dom("td",p.day+" "+p.time),dom("td","#"+r.ordinal),
+        dom("td",r.severity),dom("td",(r.stage||"unset")+" / "+(r.group||"unassigned")),
+        dom("td",r.action||"No HUMAN action supplied"),cell);
+      body.append(tr);
+    }
   }
   function restore(parsed){
     hold(JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD));
@@ -174,7 +217,7 @@
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     items=parsed;hash=h;plan=new Map();active=true;changed=false;page=0;
-    $("desk").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";$("tz").textContent=zone;
@@ -253,11 +296,15 @@
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
     items=[];plan=new Map();hash="";active=false;changed=false;
-    $("desk").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    $("desk").hidden=true;$("agenda").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     $("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
+  hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
+  hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
+  hook("agendaPrev","click",()=>{agendaPage--;renderAgenda();});
+  hook("agendaNext","click",()=>{agendaPage++;renderAgenda();});
   function bulk(clear=false){
     const candidates=filtered();
     if(!candidates.length){inform("No matching rows to schedule.",true);return;}
