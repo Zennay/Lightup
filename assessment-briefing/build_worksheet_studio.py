@@ -38,8 +38,9 @@ def render() -> str:
         raise ValueError("unsafe literal HTML terminator in app source")
     html = single(html, '<link rel="stylesheet" href="worksheet-studio.css">',
                   "<style>" + css + "</style>")
-    html = single(html, '<script src="worksheet-studio.js" defer></script>',
-                  "<script>" + script + "</script>")
+    html = single(html, '<script src="worksheet-studio.js" defer></script>', "")
+    # Inline scripts do not obey defer; inject after the full DOM has been parsed.
+    html = single(html, "</body>", "<script>" + script + "</script></body>")
     html = single(html, "script-src 'self'", "script-src 'sha256-" + sha_pin(script) + "'")
     html = single(html, "style-src 'self'", "style-src 'sha256-" + sha_pin(css) + "'")
     # Executable source, stylesheet and CSP are fully local and byte pinned.
