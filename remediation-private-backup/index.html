@@ -17,6 +17,8 @@ output{display:block;white-space:pre-wrap;word-break:break-word;font-size:.84rem
 table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{border-bottom:1px solid #40566b;text-align:left;padding:.6rem .4rem;vertical-align:top;overflow-wrap:anywhere}
 tbody tr:hover{background:#1b334b}button.subtle{background:#234258}code{overflow-wrap:anywhere;color:#a7e9fe}
 .status{font-weight:600}.hide{display:none}#file-meta{font-size:.9rem}pre{white-space:pre-wrap;word-break:break-word;max-height:20rem;overflow:auto;padding:.75rem;background:#071322;border-radius:7px}
+.review-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:1rem}
+.review-columns > div{min-width:0}.review-columns pre{min-height:5rem}
 footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 </style></head>
 <body><header><small>LIGHTUP / EVIDENCE-REMEDIATION / HUMAN-ONLY</small><h1>PRIVATE encrypted recovery desk</h1>
@@ -60,7 +62,13 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 <p>A and B are independently password-authenticated. Local byte differences do not prove real chronology, verified remediation, or a resolved security finding. The operator must deliberately choose which archive is B; it is not necessarily newer, safer or approved.</p>
 <button type="button" id="compare-select-b">Prepare encrypted recovery of B's added/changed files</button>
 <output id="compare-status" role="status" aria-live="polite">Unlock both archives to compare.</output>
-<div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source basename</th><th>Archive A bytes</th><th>Archive B bytes</th></tr></thead><tbody id="compare-rows"></tbody></table></div>
+<div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source basename</th><th>Archive A bytes</th><th>Archive B bytes</th><th>PRIVATE human review</th></tr></thead><tbody id="compare-rows"></tbody></table></div>
+<div id="difference-review" class="hide" aria-live="polite">
+<h2>Selected original PRIVATE text · A/B (operator-selected order)</h2>
+<p>Only explicitly opened local text is shown, truncated to 8 KiB per source. A/B is <strong>not</strong> an authenticated timeline or evidence of a verified fix. Browser previews cannot sanitize secrets.</p>
+<button type="button" id="difference-hide" class="subtle">Hide PRIVATE text review</button>
+<div class="review-columns"><div><strong>Archive A original</strong><pre id="difference-a"></pre></div><div><strong>Archive B original</strong><pre id="difference-b"></pre></div></div>
+</div>
 <button type="button" id="clear-all" class="subtle">Clear all selected PRIVATE sources and passwords</button></section>
 </main>
 <footer><p>Only a local operation of unreviewed PRIVATE bytes. Plaintext downloads must be stored in an appropriately protected folder, and are never automatically uploaded. This browser application is a separate user-interface companion to <code>vault.py</code>; cryptographic authenticity is limited to knowledge of the password used for the file. Existing LightUp security and HUMAN GO gates are unchanged.</p></footer>
