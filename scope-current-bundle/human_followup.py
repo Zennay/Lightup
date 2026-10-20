@@ -36,14 +36,14 @@ def human_text(s: str, limit: int) -> str:
     return s
 
 
-def worksheet(path: Path):
-    if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= MAX_CSV:
-        raise ValueError("Missing, linked or oversized private HUMAN worksheet")
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-    with os.fdopen(descriptor, "rb") as fp:
-        data = fp.read(MAX_CSV + 1)
-    if len(data) > MAX_CSV:
-        raise ValueError("HUMAN worksheet over budget")
+def worksheet_bytes(data: bytes):
+    """Read a single already-captured exact PRIVATE worksheet byte snapshot.
+
+    Importers that also bind worksheet SHA-256 must pass those SAME bytes to
+    avoid a second filesystem read observing a different revision.
+    """
+    if type(data) is not bytes or not 0 < len(data) <= MAX_CSV:
+        raise ValueError("HUMAN worksheet outside bounded byte budget")
     text = data.decode("utf-8", "strict")
     if "\r" in text.replace("\r\n", ""):
         raise ValueError("Unexpected carriage return in HUMAN worksheet")
@@ -57,6 +57,15 @@ def worksheet(path: Path):
     if any(len(row) != len(FIELDS) for row in rows):
         raise ValueError("Ambiguous HUMAN worksheet column count")
     return rows
+
+
+def worksheet(path: Path):
+    if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= MAX_CSV:
+        raise ValueError("Missing, linked or oversized private HUMAN worksheet")
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(descriptor, "rb") as fp:
+        data = fp.read(MAX_CSV + 1)
+    return worksheet_bytes(data)
 
 
 def expected_files(previous, current):
