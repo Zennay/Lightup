@@ -52,6 +52,51 @@ Result, NEW 0700 directory / private 0600 artifacts:
 
 Exit code 2 = REVIEW_ONLY product generated, 3 = HOLD; neither is a valid security verdict. All source and existing source-owner files remain unchanged.
 
+## Step 3 — Compare PRIVATE HUMAN selection revisions (without target work)
+
+Use two complete separately saved original-ordinal HUMAN selection CSVs, **both against the same exact original PRIVATE lab source, original manifest, seven-column HUMAN worksheet and selection-preparation receipt**:
+
+    python3 assessment-evidence-curation/revision.py \
+      --source ./PRIVATE-original-lab.json \
+      --manifest ./PRIVATE-original-briefing/manifest.json \
+      --worksheet ./PRIVATE-human-followup.csv \
+      --selection-receipt ./NEW-PRIVATE-PREPARATION/selection-receipt.json \
+      --before-selection ./PRIVATE-human-selection-v1.csv \
+      --after-selection ./PRIVATE-human-selection-v2.csv \
+      --output-dir ./NEW-PRIVATE-HUMAN-REVISION
+
+Each version is independently fully source-admitted, including all unchanged original ordinal/severity/evidence-count source rows, status and HUMAN question constraints. Creates only a NEW private output directory with:
+
+- PRIVATE-human-curation-revision.html — fully scriptless, printable human before/after for selected original ordinal, priority, question; clearly flags five kinds of change including added/removed selection and simultaneous question/priority changes; unchanged original evidence is NOT copied into the report.
+- PRIVATE-human-curation-revision-receipt.json — PRIVATE unsigned original source, exact HUMAN worksheet, two selection byte SHA-256 values, generated report hash and changed original ordinal list. Not a trusted producer signature.
+- human-revision-counts-PRIVATE.json — source-ID-free, hash-free numeric HUMAN selection move totals plus changed source-reported severity distribution; remains PRIVATE for small cohorts.
+
+**A selection removed means only that a HUMAN deselected it.** Never infer that original evidence, scope, risk, target validity, fix or consent changed.
+
+## Step 4 — View 2–12 separately saved PRIVATE HUMAN selection versions
+
+    python3 assessment-evidence-curation/history.py \
+      --source ./PRIVATE-original-lab.json \
+      --manifest ./PRIVATE-original-briefing/manifest.json \
+      --worksheet ./PRIVATE-human-followup.csv \
+      --selection-receipt ./NEW-PRIVATE-PREPARATION/selection-receipt.json \
+      --selection ./PRIVATE-human-selection-v1.csv \
+      --selection ./PRIVATE-human-selection-v2.csv \
+      --selection ./PRIVATE-human-selection-v3.csv \
+      --output-dir ./NEW-PRIVATE-HUMAN-HISTORY
+
+Provide between **2 and 12 --selection flags in explicit oldest-to-newest HUMAN order**. No clock chronology is fabricated: numbers v1–v12 are the user's declared sequence, not actual validated timestamps. Original source, manifest and exact HUMAN worksheet are re-admitted once, and every selection file is independently fully admitted before any output.
+
+Produces **PRIVATE-human-curation-history.html**: readable scriptless human timeline with 2–12 version HUMAN selections, ordinal/priority matrix, per-revision changed priority/questions with human-proposed wording and original reported severity. No original target/finding ID, evidence body, source hash or original HUMAN worksheet owner/action is included. **Human-entered questions may identify clients, so still PRIVATE.** A separate **human-curation-history-counts-PRIVATE.json** contains only grouped source-reported/priority HUMAN counts and step changes, no original IDs/hashes/notes, while **PRIVATE-human-curation-history-receipt.json** binds the original source, worksheet and ordered private version bytes with unsigned SHA-256 and exact selected ordinals. A missing HUMAN selection never indicates original finding fixed or revoked.
+
+## One foreground PRIVATE operator console
+
+Use the menu instead of assembling long paths or shell commands:
+
+    python3 assessment-evidence-curation/console.py
+
+It offers **all four complete offline workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections or inspect 2–12 HUMAN versions. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
+
 ## Safety / release fence
 
 No scanner, DNS, network target, model, subprocess, live assessment, authorization, grant, trusted producer, automated triage verdict, remediation/retest execution, or changing consent. Byte hashes do NOT authenticate any source, operator, tenant, findings or permission. HUMAN stages/priorities are proposals, not actual fixes.
