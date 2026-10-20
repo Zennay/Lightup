@@ -35,6 +35,7 @@
   let human = new Map();
   let privateNotes = new Map();
   let requestHuman = new Map();
+  let requestQueueUndo = null;
   let digestHex = null;
   let rawPrivateSource = null;
 
@@ -264,6 +265,7 @@
     human.clear();
     privateNotes.clear();
     requestHuman.clear();
+    requestQueueUndo = null;
     $("casebook-selected").hidden = true;
     $("casebook-selected").textContent = "";
     renderCases();
@@ -347,6 +349,75 @@
     });
   }
 
+  function inspectOriginalRequest(id) {
+    if (!source) return;
+    const item = sourceRequests().find(x => x.req.request_id === id);
+    if (!item) return;
+    const box = $("casebook-request-detail");
+    box.replaceChildren();
+    const heading = document.createElement("h3");
+    heading.textContent = "PRIVATE original request " + id + " · HUMAN retrospective only";
+    box.append(heading);
+    const info = text => {
+      const p = document.createElement("p"); p.textContent = text; box.append(p);
+    };
+    const {req,linked,attention} = item;
+    info("Original persisted state " + req.status + "; decision recorded flag: " +
+      req.decision_recorded + "; original requested mode: " + req.requested_mode +
+      "; recorded risk " + req.requested_risk + ". SOURCE observation, not live consent.");
+    info("Human attention: " + attention + ". The Casebook deliberately does not expose approved asset lists, so this request CANNOT be joined to your proposed target inputs.");
+    for (const grant of linked) {
+      info("Recorded reference grant " + grant.grant_id + " / original engagement " +
+        (grant.engagement_id || "(source missing)") + ": " +
+        grant.request_link_observation + ", " + grant.validity_observation +
+        ", recorded max-risk " + grant.max_risk +
+        ". Nothing here independently verifies permission, request asset coverage or at-use revocation.");
+    }
+    if (!linked.length) {
+      info("No stored grant references this request in the selected source. This does NOT prove a grant does not exist at the current original database snapshot or at action time.");
+    }
+    box.hidden = false;
+  }
+
+  function clearRequestQueueUndo() {
+    requestQueueUndo = null;
+    $("undo-unbound-requests").disabled = true;
+  }
+
+  function queueUnboundRequests() {
+    if (!source) {show("Load a real original PRIVATE Casebook first.",true); return;}
+    const patches = sourceRequests().filter(item =>
+      (item.req.status === "approved" && !item.linked.length) ||
+      item.attention.startsWith("HOLD_")
+    ).filter(item => !requestHuman.has(item.req.request_id) ||
+      requestHuman.get(item.req.request_id) === "unreviewed"
+    ).map(item => ({id:item.req.request_id,before:requestHuman.get(item.req.request_id) || null}));
+    if (!patches.length) {show("No currently unreviewed original request source gaps to queue."); return;}
+    if (!confirm("Mark " + patches.length +
+      " ORIGINAL request source gap(s) as HUMAN investigating?\n\nThis does not validate the original client/operator, create a grant, or approve target scope.")) return;
+    for (const patch of patches) requestHuman.set(patch.id,"investigating");
+    requestQueueUndo = patches;
+    $("undo-unbound-requests").disabled = false;
+    renderRequestInbox();
+    show(patches.length + " original request SOURCE gaps marked for HUMAN investigation only.");
+  }
+
+  function undoUnboundRequests() {
+    if (!requestQueueUndo?.length || !source) return;
+    if (requestQueueUndo.some(patch => requestHuman.get(patch.id) !== "investigating")) {
+      clearRequestQueueUndo();
+      show("HOLD: HUMAN request stages changed since bulk action. No stale undo applied.",true);
+      return;
+    }
+    for (const patch of requestQueueUndo) {
+      if (patch.before === null) requestHuman.delete(patch.id);
+      else requestHuman.set(patch.id,patch.before);
+    }
+    clearRequestQueueUndo();
+    renderRequestInbox();
+    show("HUMAN-only request queue action reverted. Original source unchanged.");
+  }
+
   function renderRequestInbox() {
     const tbody = $("casebook-requests"); tbody.replaceChildren();
     const query = $("request-filter").value.trim().toLowerCase();
@@ -377,10 +448,16 @@
       }
       sel.value = requestHuman.get(req.request_id) || "unreviewed";
       sel.addEventListener("change",event => {
+        clearRequestQueueUndo();
         requestHuman.set(req.request_id,event.target.value);
         show("Original request HUMAN stage updated only in browser memory — no approval or source mutation.");
       });
-      td.append(sel);tr.append(td);tbody.append(tr);shown++;
+      td.append(sel);
+      const inspect = document.createElement("button");inspect.type="button";
+      inspect.textContent="Inspect PRIVATE request";
+      inspect.addEventListener("click",() => inspectOriginalRequest(req.request_id));
+      td.append(inspect);
+      tr.append(td);tbody.append(tr);shown++;
     }
     $("casebook-request-status").textContent = source ?
       shown + " original request rows shown. " + lines.filter(x =>
@@ -730,6 +807,8 @@
     $("request-filter").addEventListener("input", renderRequestInbox);
     $("request-category").addEventListener("change", renderRequestInbox);
     $("casebook-aggregate").addEventListener("click", exportAggregate);
+    $("queue-unbound-requests").addEventListener("click", queueUnboundRequests);
+    $("undo-unbound-requests").addEventListener("click", undoUnboundRequests);
     $("save-casebook-secure").addEventListener("click", saveEncryptedHandoff);
     $("open-casebook-secure").addEventListener("click", () => $("casebook-secure-file").click());
     $("casebook-secure-file").addEventListener("change", async event => {
@@ -744,12 +823,16 @@
         human = result.stages;
         privateNotes = result.notes;
         requestHuman = result.requestStages;
+        requestQueueUndo = null;
         $("casebook-filter").value = "";
         $("casebook-category").value = "all";
         $("request-filter").value = "";
         $("request-category").value = "all";
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
+        $("casebook-request-detail").hidden = true;
+        $("casebook-request-detail").textContent = "";
+        $("undo-unbound-requests").disabled = true;
         renderCases();
         show("Encrypted ORIGINAL Casebook + local HUMAN stages restored. SHA-256 " + digestHex +
           ". No present-tense origin/consent/grant reauthenticated.");
@@ -772,6 +855,7 @@
         human.clear();
         privateNotes.clear();
         requestHuman.clear();
+        requestQueueUndo = null;
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
         $("casebook-filter").value = "";
