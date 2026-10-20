@@ -19,6 +19,8 @@ APPS = {
     "human-worksheet.html": ROOT / "assessment-briefing/worksheet-studio-standalone.html",
     "human-retention.html": ROOT / "assessment-retention-desk/standalone.html",
     "human-disclosure.html": ROOT / "assessment-disclosure-preflight/standalone.html",
+    "human-lab-review.html": ROOT / "assessment-lab-review/standalone.html",
+    "human-followup-calendar.html": ROOT / "assessment-followup-calendar/standalone.html",
 }
 
 class Hold(Exception):
@@ -78,6 +80,8 @@ def write_html(destination: Path, detail: bool, count: int) -> None:
         ("PRIVATE unsigned receipt", "disclosure/PRIVATE-receipt.json"),
         ("Offline disclosure HUMAN studio", "workrooms/human-disclosure.html"),
         ("Offline retention HUMAN studio", "workrooms/human-retention.html"),
+        ("Offline original lab finding HUMAN review", "workrooms/human-lab-review.html"),
+        ("Offline PRIVATE HUMAN follow-up calendar", "workrooms/human-followup-calendar.html"),
     ]
     if detail:
         links = [
