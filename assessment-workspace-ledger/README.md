@@ -109,7 +109,8 @@ Original private ledger/HUMAN file reads refuse hardlinked and special (includin
 Browsers normally save the HUMAN-review.csv into Downloads using local
 filesystem defaults; it may be readable by other users and intentionally
 fails the native 0600 PRIVATE finalizer. The new browser_intake.py explicitly
-accepts ONLY the HUMAN-review.csv chosen by the operator, does not follow its
+accepts ONLY an explicitly selected HUMAN-review.csv (including browser-renamed
+HUMAN-review (1).csv / HUMAN-review(1).csv variants), does not follow its
 final symlink, requires owner-owned ordinary single-link regular <=64KiB
 source, and reads stable original bytes before parsing all source-bound HUMAN
 rows and exact current source-kit hashes. Its private output is a NEW
