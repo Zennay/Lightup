@@ -1,0 +1,538 @@
+"""#1563: require negative scope regressions to catch deliberate fail-open mutations.
+
+This is an *offline test-suite diagnostic*, never production code. Every broken
+policy exists only under unittest.mock.patch and is restored automatically.
+No DNS, network I/O, target interaction, grants, or dispatch occur.
+"""
+from __future__ import annotations
+
+import importlib.util
+import io
+import argparse
+import hashlib
+import json
+from collections import Counter, defaultdict
+import pathlib
+import sys
+import unittest
+from unittest.mock import patch
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+spec = importlib.util.spec_from_file_location(
+    "test_scope_membership_metamorphic_20261017",
+    ROOT / "tests" / "test_scope_membership_metamorphic_20261017.py",
+)
+if spec is None or spec.loader is None:
+    raise SystemExit("HOLD: cannot load dedicated scope tests")
+suite_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(suite_module)
+
+from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason  # noqa: E402
+from lightup.orchestrator import Planner, AssessmentPlan
+from lightup.activation import ActivationGate
+import lightup.orchestrator as orchestrator_module
+import lightup.activation as activation_module
+REAL_PLAN = Planner.build
+REAL_ISSUE = ActivationGate.issue
+
+REAL_DECIDE = ScopePolicy.decide
+
+# A test-count-only check can be defeated by replacing a security case with an
+# unrelated method while preserving the total. Require all named contracts.
+REQUIRED_TEST_METHODS = frozenset({
+    "test_undeclared_public_hostname_is_invariant_under_grant_substitution",
+    "test_undeclared_public_network_is_invariant_under_grant_substitution",
+    "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag",
+    "test_unrelated_declared_hosts_cannot_change_membership",
+    "test_unrelated_declared_networks_cannot_change_membership",
+    "test_public_ipv6_outside_declared_prefix_stays_out_of_scope",
+    "test_untrusted_authorization_shape_and_label_cannot_mint_membership",
+    "test_unlisted_subdomain_parent_and_suffix_do_not_inherit_host_grant",
+    "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted",
+    "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted",
+    "test_generated_global_ipv4_nonmembers_do_not_gain_scope",
+    "test_normalized_host_is_not_rebound_to_a_declared_identity",
+    "test_nonmember_recheck_after_untrusted_grant_replacement_stays_denied",
+    "test_nonmember_cannot_enter_planner_capability_discovery",
+    "test_nonmember_never_reaches_permit_token_creation_in_any_mode",
+    "test_invalid_identity_stops_planner_and_permit_before_side_effects",
+})
+
+
+# These are the literal baseline counts of exercised offline, in-memory
+# `with self.subTest(...)` blocks, including nested permit-mode checks.
+# A security method may keep its name and succeed yet omit its entire matrix.
+EXPECTED_CASE_COUNTS = {
+    "test_generated_global_ipv4_nonmembers_do_not_gain_scope": 256,
+    "test_invalid_identity_stops_planner_and_permit_before_side_effects": 64,
+    "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag": 32,
+    "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted": 24,
+    "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted": 16,
+    "test_nonmember_cannot_enter_planner_capability_discovery": 24,
+    "test_nonmember_never_reaches_permit_token_creation_in_any_mode": 72,
+    "test_nonmember_recheck_after_untrusted_grant_replacement_stays_denied": 48,
+    "test_normalized_host_is_not_rebound_to_a_declared_identity": 12,
+    "test_public_ipv6_outside_declared_prefix_stays_out_of_scope": 32,
+    "test_undeclared_public_hostname_is_invariant_under_grant_substitution": 24,
+    "test_undeclared_public_network_is_invariant_under_grant_substitution": 24,
+    "test_unlisted_subdomain_parent_and_suffix_do_not_inherit_host_grant": 48,
+    "test_unrelated_declared_hosts_cannot_change_membership": 24,
+    "test_unrelated_declared_networks_cannot_change_membership": 24,
+    "test_untrusted_authorization_shape_and_label_cannot_mint_membership": 6,
+}
+
+
+EXPECTED_CASE_DIGESTS = {
+    "test_generated_global_ipv4_nonmembers_do_not_gain_scope": "df835d93f251d277490598d3d7acaa9ea4d5bde5d8f62b92697d9e208423b9a7",
+    "test_invalid_identity_stops_planner_and_permit_before_side_effects": "32209802dd6b36e6eaade259bc3f5a6e5e20c28454c631f44a5342ff02a7933c",
+    "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag": "a1ced0840c3603a51e409865a7e138d9e20b1fada68c1ae3308a9ec07813f5f8",
+    "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted": "20ec420ed6a86a9ea2baf3299cf6dfddc9226c30a566cbf2e38c03842e2fd5fe",
+    "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted": "b341517f9c821616c64bb3a8ad595c760c21c48825b7b6a17267f91cccbb7338",
+    "test_nonmember_cannot_enter_planner_capability_discovery": "f5d744db932c2a19b6d494f913b1dfc40c80cc63783f345fc8b8bcbc54dbcfe2",
+    "test_nonmember_never_reaches_permit_token_creation_in_any_mode": "032ba5fcc64b6a3cc472d96adc021a174a6644e9ef78c42ece7de2c78c651aa5",
+    "test_nonmember_recheck_after_untrusted_grant_replacement_stays_denied": "7324e8bc27098e95b74902a8bf1b223d27f51eccc28ad194636790b4f2003e11",
+    "test_normalized_host_is_not_rebound_to_a_declared_identity": "e2cc4acb414cfec61c71fd2c8badf2f8b4a2b95c48fba65a465c407ac29f572b",
+    "test_public_ipv6_outside_declared_prefix_stays_out_of_scope": "dab8345556cbd0f91eae7addc4c89653c647e1c72082319f1741a82bb3180aed",
+    "test_undeclared_public_hostname_is_invariant_under_grant_substitution": "f087e88a43748de7391667cc0a158bca4e15519c23bbc9cc91bddf3528eee759",
+    "test_undeclared_public_network_is_invariant_under_grant_substitution": "4d0bafac6f3634d2ebdbf8cd214fc9db7986cd3ed16d20396df8366366d9b049",
+    "test_unlisted_subdomain_parent_and_suffix_do_not_inherit_host_grant": "edfde215f492de7fee57b045fde9b102cca347c845da45be4e33db7b9bb831c9",
+    "test_unrelated_declared_hosts_cannot_change_membership": "79c476cf660ef515dd224e153ac4957e6d4f23aa408d97c513f19a743c304362",
+    "test_unrelated_declared_networks_cannot_change_membership": "f850bf8ce0c138274c4a02c5bef541140171ef7526e22ee1084c2fe84bebc430",
+    "test_untrusted_authorization_shape_and_label_cannot_mint_membership": "58e176e609ce32c77fa67c5ce57c1a1b19b7ff914d2f8f563b1e62c7e6168210",
+}
+
+
+def _case_digest(tokens: list[str]) -> str:
+    return hashlib.sha256("\n".join(sorted(tokens)).encode("ascii")).hexdigest()
+
+
+class CoverageResult(unittest.TextTestResult):
+    """Record actually completed subcases, not just named test discovery."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.subtest_attempts: Counter[str] = Counter()
+        self.subtest_passes: Counter[str] = Counter()
+        self.subtest_tokens: dict[str, list[str]] = defaultdict(list)
+
+    def addSubTest(self, test, subtest, err):
+        name = getattr(test, "_testMethodName", "")
+        self.subtest_attempts[name] += 1
+        try:
+            token = json.dumps(dict(subtest.params), sort_keys=True,
+                               ensure_ascii=True, separators=(",", ":"), allow_nan=False)
+        except (TypeError, ValueError, OverflowError):
+            token = "<NONCANONICAL-SUBTEST>"
+        self.subtest_tokens[name].append(token)
+        if err is None:
+            self.subtest_passes[name] += 1
+        super().addSubTest(test, subtest, err)
+
+
+def all_subcases_covered(result: unittest.TestResult) -> bool:
+    """Fail closed for a partial matrix or an unknown result implementation."""
+    return (
+        type(result) is CoverageResult
+        and set(EXPECTED_CASE_COUNTS) == REQUIRED_TEST_METHODS
+        and sum(EXPECTED_CASE_COUNTS.values()) == 730
+        and dict(result.subtest_attempts) == EXPECTED_CASE_COUNTS
+        and dict(result.subtest_passes) == EXPECTED_CASE_COUNTS
+        and set(EXPECTED_CASE_DIGESTS) == REQUIRED_TEST_METHODS
+        and all(
+            _case_digest(result.subtest_tokens.get(name, [])) == digest
+            for name, digest in EXPECTED_CASE_DIGESTS.items()
+        )
+    )
+
+
+
+def suite_manifest_valid() -> bool:
+    suite = unittest.defaultTestLoader.loadTestsFromModule(suite_module)
+    names: list[str] = []
+
+    def collect(node):
+        if isinstance(node, unittest.TestSuite):
+            for subcase in node:
+                collect(subcase)
+        elif isinstance(node, suite_module.ScopeMembershipMetamorphicTests):
+            names.append(node._testMethodName)
+        else:
+            names.append("<unrecognized test fixture>")
+
+    collect(suite)
+    return len(names) == len(REQUIRED_TEST_METHODS) and set(names) == REQUIRED_TEST_METHODS
+
+
+
+
+def run_suite() -> unittest.TestResult:
+    suite = unittest.defaultTestLoader.loadTestsFromModule(suite_module)
+    return unittest.TextTestRunner(
+        stream=io.StringIO(), verbosity=0, resultclass=CoverageResult,
+    ).run(suite)
+
+
+def illegally_mint_membership(self, target):
+    decision = REAL_DECIDE(self, target)
+    if decision.reason == ScopeReason.OUT_OF_SCOPE:
+        return ScopeDecision(True, decision.normalized_host, ScopeReason.EXPLICIT_HOST)
+    return decision
+
+
+def illegally_accept_invalid_target(self, target):
+    decision = REAL_DECIDE(self, target)
+    if decision.reason == ScopeReason.INVALID_TARGET:
+        return ScopeDecision(True, decision.normalized_host, ScopeReason.LOOPBACK)
+    return decision
+
+
+def illegally_check_grant_before_membership(self, target):
+    if target.authorization is not None:
+        target.authorization.is_current()
+    return REAL_DECIDE(self, target)
+
+
+def illegally_honor_authorized_label(self, target):
+    decision = REAL_DECIDE(self, target)
+    if (
+        "AUTHORIZED" in target.labels
+        and decision.reason == ScopeReason.OUT_OF_SCOPE
+    ):
+        return ScopeDecision(True, decision.normalized_host, ScopeReason.EXPLICIT_HOST)
+    return decision
+
+
+
+def illegally_promote_cidr_right_neighbor(self, target):
+    decision = REAL_DECIDE(self, target)
+    if decision.reason == ScopeReason.OUT_OF_SCOPE and decision.normalized_host == "9.9.9.16":
+        return ScopeDecision(True, decision.normalized_host, ScopeReason.EXPLICIT_NETWORK)
+    return decision
+
+
+def illegally_infer_wildcard_subdomain(self, target):
+    decision = REAL_DECIDE(self, target)
+    if (
+        decision.reason == ScopeReason.OUT_OF_SCOPE
+        and decision.normalized_host == "untrusted.scoped.example.test"
+    ):
+        return ScopeDecision(True, decision.normalized_host, ScopeReason.EXPLICIT_HOST)
+    return decision
+
+
+def illegally_rebind_denied_host_to_declared_host(self, target):
+    decision = REAL_DECIDE(self, target)
+    if (
+        decision.reason == ScopeReason.OUT_OF_SCOPE
+        and decision.normalized_host == "unlisted.example.test"
+    ):
+        return ScopeDecision(False, "declared.example.test", ScopeReason.OUT_OF_SCOPE)
+    return decision
+
+
+
+def illegally_serialize_reason_as_string(self, target):
+    decision = REAL_DECIDE(self, target)
+    if (
+        decision.reason == ScopeReason.OUT_OF_SCOPE
+        and decision.normalized_host == "unknown.example.test"
+    ):
+        return ScopeDecision(False, decision.normalized_host, "out_of_scope")
+    return decision
+
+
+def illegally_swap_canonical_decision_for_structural_proxy(self, target):
+    decision = REAL_DECIDE(self, target)
+    if (
+        decision.reason == ScopeReason.OUT_OF_SCOPE
+        and decision.normalized_host == "unknown.example.test"
+    ):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            allowed=False,
+            normalized_host=decision.normalized_host,
+            reason=ScopeReason.OUT_OF_SCOPE,
+        )
+    return decision
+
+
+MUTATIONS = (
+    ("grant_mints_membership", illegally_mint_membership, "test_undeclared_public_hostname"),
+    ("invalid_identity_rescued", illegally_accept_invalid_target, "test_invalid_target"),
+    ("grant_checked_before_scope", illegally_check_grant_before_membership, "test_undeclared_public_hostname"),
+    ("spoofed_label_authorizes", illegally_honor_authorized_label, "test_untrusted_authorization_shape"),
+    ("cidr_right_neighbor_authorizes", illegally_promote_cidr_right_neighbor, "test_ipv4_right_neighbor"),
+    ("hostname_wildcard_authorizes", illegally_infer_wildcard_subdomain, "test_unlisted_subdomain"),
+    ("denied_identity_rewritten", illegally_rebind_denied_host_to_declared_host, "test_normalized_host"),
+    ("reason_string_type_confusion", illegally_serialize_reason_as_string, "test_undeclared_public_hostname"),
+    ("decision_proxy_type_confusion", illegally_swap_canonical_decision_for_structural_proxy, "test_undeclared_public_hostname"),
+)
+
+
+def illegally_plan_capabilities_for_denied_target(self, target):
+    original = REAL_PLAN(self, target)
+    if not original.scope.allowed:
+        return AssessmentPlan(
+            original.target, original.scope, ("synthetic-untrusted-capability",),
+            execution_enabled=False,
+        )
+    return original
+
+
+def illegally_discover_capabilities_before_policy_denial(self, target):
+    orchestrator_module.get_capabilities()
+    return REAL_PLAN(self, target)
+
+
+def illegally_enable_denied_assessment_execution(self, target):
+    original = REAL_PLAN(self, target)
+    if not original.scope.allowed:
+        return AssessmentPlan(
+            original.target, original.scope, original.capability_ids,
+            execution_enabled=True,
+        )
+    return original
+
+
+def illegally_return_object_without_scope_permit(self, target, capability_id):
+    # A synthetic sentinel is deliberately NOT an ExecutionPermit or grant.
+    return object()
+
+
+def illegally_allocate_token_before_membership(self, target, capability_id):
+    activation_module.token_urlsafe(24)
+    return REAL_ISSUE(self, target, capability_id)
+
+
+DOWNSTREAM_MUTATIONS = (
+    ("planner_denied_capabilities", Planner, "build", illegally_plan_capabilities_for_denied_target,
+     "test_nonmember_cannot_enter_planner"),
+    ("planner_early_discovery", Planner, "build", illegally_discover_capabilities_before_policy_denial,
+     "test_nonmember_cannot_enter_planner"),
+    ("planner_execution_enabled", Planner, "build", illegally_enable_denied_assessment_execution,
+     "test_nonmember_cannot_enter_planner"),
+    ("permit_gate_missing_membership", ActivationGate, "issue", illegally_return_object_without_scope_permit,
+     "test_nonmember_never_reaches_permit"),
+    ("permit_token_before_membership", ActivationGate, "issue", illegally_allocate_token_before_membership,
+     "test_nonmember_never_reaches_permit"),
+)
+
+
+
+
+
+def baseline_is_strictly_green(result: unittest.TestResult) -> bool:
+    """A test reclassified as skipped/expectedFailure is unresolved RED, not green."""
+    return (
+        result.testsRun == len(REQUIRED_TEST_METHODS)
+        and result.wasSuccessful()
+        and not result.failures
+        and not result.errors
+        and not result.skipped
+        and not result.expectedFailures
+        and not result.unexpectedSuccesses
+        and all_subcases_covered(result)
+    )
+
+
+def source_test_method(case) -> str | None:
+    """Use the unittest object identity, never printable subTest parameters.
+
+    str(_SubTest) includes untrusted subTest parameters which can contain a
+    security method name unrelated to the genuinely failing method.
+    """
+    parent = getattr(case, "test_case", case)
+    name = getattr(parent, "_testMethodName", None)
+    return name if type(name) is str else None
+
+
+def mutation_subcases_valid(result: unittest.TestResult) -> bool:
+    """Early assertion failure may truncate nested cases only in its own test.
+
+    Every untouched test must still exercise its full original matrix. A
+    failing outer subTest can legitimately stop its own nested checks; that
+    missing coverage is evidence of the same already-caught regression.
+    """
+    if type(result) is not CoverageResult:
+        return False
+    attempted = result.subtest_attempts
+    if set(attempted) != REQUIRED_TEST_METHODS:
+        return False
+    failed_methods = set()
+    for case, _details in result.failures:
+        name = source_test_method(case)
+        if name in REQUIRED_TEST_METHODS:
+            failed_methods.add(name)
+    for name, expected in EXPECTED_CASE_COUNTS.items():
+        observed = attempted[name]
+        if type(observed) is not int or not 1 <= observed <= expected:
+            return False
+        if observed < expected and name not in failed_methods:
+            return False
+        if observed == expected and _case_digest(result.subtest_tokens.get(name, [])) != EXPECTED_CASE_DIGESTS[name]:
+            return False
+    return True
+
+
+def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) -> bool:
+    """Only real AssertionError safety denials count as killing a mutation.
+
+    An import error, AttributeError, TimeoutError or other test crash is not
+    evidence that a fail-open change was caught by the intended assertion.
+    """
+    if (
+        result.testsRun != len(REQUIRED_TEST_METHODS) or result.errors or result.expectedFailures
+        or result.unexpectedSuccesses or result.skipped or not result.failures
+        or not mutation_subcases_valid(result)
+    ):
+        return False
+    if not all("AssertionError:" in detail for _, detail in result.failures):
+        return False
+    return any(
+        (method := source_test_method(case)) is not None
+        and method.startswith(expected_test_prefix)
+        for case, _ in result.failures
+    )
+
+
+
+REQUIRED_SCOPE_MUTANT_NAMES = frozenset({
+    "grant_mints_membership", "invalid_identity_rescued",
+    "grant_checked_before_scope", "spoofed_label_authorizes",
+    "cidr_right_neighbor_authorizes", "hostname_wildcard_authorizes",
+    "denied_identity_rewritten", "reason_string_type_confusion",
+    "decision_proxy_type_confusion",
+})
+REQUIRED_DOWNSTREAM_MUTANT_NAMES = frozenset({
+    "planner_denied_capabilities", "planner_early_discovery",
+    "planner_execution_enabled", "permit_gate_missing_membership",
+    "permit_token_before_membership",
+})
+
+
+def mutant_inventory_valid() -> bool:
+    """A truncated witness inventory may never present itself as complete."""
+    return (
+        len(MUTATIONS) == len(REQUIRED_SCOPE_MUTANT_NAMES)
+        and len(DOWNSTREAM_MUTATIONS) == len(REQUIRED_DOWNSTREAM_MUTANT_NAMES)
+        and {name for name, _, _ in MUTATIONS} == REQUIRED_SCOPE_MUTANT_NAMES
+        and {name for name, _, _, _, _ in DOWNSTREAM_MUTATIONS}
+        == REQUIRED_DOWNSTREAM_MUTANT_NAMES
+    )
+
+
+def _review_template() -> dict:
+    """Non-authorizing, privacy-minimal review output: no real targets or grants."""
+    return {
+        "schema": "lightup.scope-1563.offline-evidence.v1",
+        "disposition": "HOLD",
+        "authority_granted": False,
+        "scan_permitted": False,
+        "release_approved": False,
+        "real_client_or_operator_consent_verified": False,
+        "registered_vps_ci_verified": False,
+        "original_full_ci_verified": False,
+        "immutable_git_history_verified": False,
+        "methods_required": len(REQUIRED_TEST_METHODS),
+        "cases_required": sum(EXPECTED_CASE_COUNTS.values()),
+        "methods_executed": 0,
+        "cases_passed": 0,
+        "expected_input_sha256": dict(sorted(EXPECTED_CASE_DIGESTS.items())),
+        "mutation_canaries_expected": len(MUTATIONS) + len(DOWNSTREAM_MUTATIONS),
+        "mutation_canaries_caught": 0,
+        "mutations": [],
+        "hold_reason": "NOT_RUN",
+    }
+
+
+def review_offline(*, verbose: bool = False) -> tuple[int, dict]:
+    """Execute real original denial suite + all mutants and return REVIEW_ONLY.
+
+    Even a perfect diagnostic has no authority to merge, grant, scan or deploy.
+    Source-owner repair, positive permissions, revocation and CI are separate.
+    """
+    evidence = _review_template()
+
+    def say(message):
+        if verbose:
+            print(message)
+
+    if not suite_manifest_valid():
+        evidence["hold_reason"] = "NAMED_TEST_MANIFEST_MISMATCH"
+        say("HOLD: required membership safety test manifest is incomplete or substituted")
+        return 2, evidence
+
+    if not mutant_inventory_valid():
+        evidence["hold_reason"] = "MUTATION_INVENTORY_INCOMPLETE"
+        say("HOLD: required 14 unsafe mutation scenarios incomplete or substituted")
+        return 2, evidence
+
+    baseline = run_suite()
+    evidence["methods_executed"] = baseline.testsRun
+    evidence["cases_passed"] = sum(getattr(baseline, "subtest_passes", {}).values())
+    if not baseline_is_strictly_green(baseline):
+        evidence["hold_reason"] = "BASELINE_INCOMPLETE_OR_FAILED"
+        say(
+            "HOLD: all 16 negative regressions must pass first; "
+            f"ran={baseline.testsRun} failures={len(baseline.failures)} "
+            f"errors={len(baseline.errors)} "
+            f"skipped={len(baseline.skipped)} expected_red={len(baseline.expectedFailures)} "
+            f"completed_subcases={evidence['cases_passed']}/730"
+        )
+        return 2, evidence
+
+    candidates = (
+        (name, ScopePolicy, "decide", broken, required)
+        for name, broken, required in MUTATIONS
+    )
+    downstream = iter(DOWNSTREAM_MUTATIONS)
+    from itertools import chain
+    for name, owner, attribute, broken, expected_test_prefix in chain(candidates, downstream):
+        with patch.object(owner, attribute, broken):
+            result = run_suite()
+        detected = mutation_detected(result, expected_test_prefix)
+        if not detected:
+            evidence["hold_reason"] = "MUTATION_NOT_CAUGHT"
+            evidence["mutations"].append({"name": name, "caught": False})
+            say(
+                f"HOLD: mutation {name} NOT caught by matching security assertion "
+                f"(ran={result.testsRun}, assertions={len(result.failures)}, "
+                f"unexpected_errors={len(result.errors)})"
+            )
+            return 2, evidence
+        evidence["mutations"].append({"name": name, "caught": True,
+                                      "assertions": len(result.failures)})
+        evidence["mutation_canaries_caught"] += 1
+        say(f"DETECTED {name}: {len(result.failures)} assertion-based negative regressions failed")
+
+    if (
+        ScopePolicy.decide is not REAL_DECIDE
+        or Planner.build is not REAL_PLAN
+        or ActivationGate.issue is not REAL_ISSUE
+    ):
+        evidence["hold_reason"] = "SOURCE_METHOD_NOT_RESTORED"
+        say("HOLD: restored source function identity changed")
+        return 2, evidence
+
+    evidence["disposition"] = "REVIEW_ONLY"
+    evidence["hold_reason"] = None
+    say("PASS: clean baseline and all 14 fail-open mutation canaries")
+    return 0, evidence
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Issue #1563: offline denial evidence only; never grants authorization"
+    )
+    parser.add_argument("--json", action="store_true",
+                        help="print one deterministic privacy-minimal JSON review record")
+    args = parser.parse_args(argv)
+    code, report = review_offline(verbose=not args.json)
+    if args.json:
+        print(json.dumps(report, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
+    return code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
