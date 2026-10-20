@@ -109,14 +109,22 @@ def compact_review_csv(summaries: list[dict]) -> bytes:
     out = io.StringIO(newline="")
     writer = csv.writer(out, lineterminator="\r\n")
     writer.writerow(("original_ordinal", "human_attention", "human_status_disagreement",
-                     "human_topic_disagreement", "private_note_disagreement"))
+                     "human_topic_disagreement", "private_note_disagreement",
+                     "at_least_one_human_withhold", "at_least_one_human_review_required"))
     for row in summaries:
+        # A handoff that includes every unaffected source slot increases
+        # disclosure for no operator benefit. Full original/source-bound rows
+        # stay available only in the separate owner-private reviewer matrix.
+        if not row["human_action_needed"]:
+            continue
         writer.writerow([
             row["original_ordinal"],
-            "TRUE" if row["human_action_needed"] else "FALSE",
+            "TRUE",
             "TRUE" if row["status_disagreement"] else "FALSE",
             "TRUE" if row["topic_disagreement"] else "FALSE",
             "TRUE" if row["human_note_disagreement"] else "FALSE",
+            "TRUE" if row["any_withhold"] else "FALSE",
+            "TRUE" if row["any_review_required"] else "FALSE",
         ])
     return out.getvalue().encode("utf-8")
 
