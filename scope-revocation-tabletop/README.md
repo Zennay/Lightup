@@ -9,8 +9,8 @@
 1. Start from one of four fictional examples or compose up to 64 named events. The fixed event vocabulary has no asset/target/tenant names or free-text field.
 2. Review each event's outcome and the five current fictional conditions. Press a simulated execution attempt to see whether **within this exercise only** a requirement is missing.
 3. Add an expiration, withdrawal, scope or risk change, fresh scenario attestation or emergency STOP. Move individual events up/down or remove any step; the full simulated timeline is recomputed immediately. Earlier fictional attestations never silently carry across scope/risk/window changes; STOP remains active in that scenario.
-4. Export the fixed-vocabulary JSON for private offline resume or Markdown for a HUMAN exercise conversation. Only exact byte-canonical JSON that this app emitted is admitted on import. A failed import does not replace the running scenario.
-5. Print a local summary. Start a new scenario to clear an emergency STOP; this does **not** reset or change any real LightUp state.
+4. **What-if comparison:** mark any fictional timeline as a baseline and then add, reorder or remove steps. Inspect the first diverging event, differences in toy HOLD reasons, stop, consent, scope/risk and attempted dispatch. Baseline remains in memory and can be explicitly cleared. Fictional comparison does not infer a real security verdict.\n5. Export the fixed-vocabulary JSON **v2** with optional local baseline, or Markdown with comparative HUMAN notes. Exact byte-canonical older v1 exports remain importable; only own canonical JSON is admitted and failed import cannot replace current timeline/baseline.
+6. Print a local summary. Start a new scenario to clear an emergency STOP; this does **not** reset or change any real LightUp state.
 
 ## Product boundary
 
