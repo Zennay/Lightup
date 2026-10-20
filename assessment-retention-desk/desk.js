@@ -355,6 +355,42 @@
   function resetDrift() {
     $("source-drift").textContent = "Geen actuele bronvergelijking. Verschillen geven nooit een herstel-, intrekkings- of wisclaim.";
   }
+  function exportHumanCalendar() {
+    if (processing || !entries.length) return status("Selecteer eerst originele PRIVÉ-bronnen.", true);
+    const dayCounts = new Map();
+    for (const item of entries) {
+      if (!item.review_date) continue;
+      if (!validDate(item.review_date)) return status("HOLD: ongeldige menselijke reviewdatum.", true);
+      dayCounts.set(item.review_date, (dayCounts.get(item.review_date) || 0) + 1);
+    }
+    if (!dayCounts.size) return status("Voeg eerst minstens één voorlopige HUMAN-reviewdatum toe.", true);
+    if (!globalThis.crypto?.getRandomValues) return status("Beveiligde willekeur is hier niet beschikbaar; geen kalender gegenereerd.", true);
+    if (!window.confirm("Maak een PRIVÉ agenda met uitsluitend voorgestelde datums en aantallen? Kalenders kunnen automatisch naar cloudaccounts synchroniseren; bij kleine groepen kunnen datums indirect gevoelig zijn. Dit is GEEN echt retention-/consentbesluit. Doorgaan?"))
+      return status("PRIVATE agenda-export geannuleerd; geen externe kalender bijgewerkt.");
+    const stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");
+    const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp PRIVATE HUMAN Review//NL",
+      "CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+    for (const [day,count] of [...dayCounts].sort(([a],[b])=>a.localeCompare(b))) {
+      const d = new Date(day + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate()+1);
+      const following = d.toISOString().slice(0,10).replaceAll("-","");
+      const entropy = new Uint8Array(16);
+      crypto.getRandomValues(entropy);
+      lines.push("BEGIN:VEVENT",
+        "UID:"+bytesToHex(entropy)+"@lightup.local.invalid",
+        "DTSTAMP:"+stamp,
+        "DTSTART;VALUE=DATE:"+day.replaceAll("-",""),
+        "DTEND;VALUE=DATE:"+following,
+        "SUMMARY:LightUp PRIVATE "+count+" HUMAN reviewvoorstel"+(count===1?"":"len"),
+        "DESCRIPTION:PRIVATE tentative HUMAN work only. No approval or deletion.",
+        "CLASS:PRIVATE","STATUS:TENTATIVE","TRANSP:TRANSPARENT",
+        "END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download("lightup-private-human-provisional-reviews.ics","text/calendar;charset=utf-8",
+      lines.join("\r\n")+"\r\n");
+    status("PRIVATE voorlopige HUMAN-reviewdatums geëxporteerd. Geen automatische agenda-upload, grant, verwijdering of statuswijziging.");
+  }
   function exportCounts() {
     if (!entries.length || processing) return status("Geen aantallen zonder geselecteerde privébronnen.", true);
     const rows = ["status,count"];
@@ -420,6 +456,7 @@
   $("compare").addEventListener("change", compareReceipt);
   $("export-plan").addEventListener("click", exportReceipt);
   $("export-counts").addEventListener("click", exportCounts);
+  $("export-calendar").addEventListener("click", exportHumanCalendar);
   $("query").addEventListener("input", render);
   $("status-filter").addEventListener("change", render);
   $("due-filter").addEventListener("change", render);
