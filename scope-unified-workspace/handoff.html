@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kkN2UFDTwx7VRX/7RTLml3HcboDhfSErMuTtKf09+8I='; script-src 'sha256-8KUAr7ST+5+LkHLPQO2EsVwQA2MaS8A1t1v7WrAsAXQ=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kkN2UFDTwx7VRX/7RTLml3HcboDhfSErMuTtKf09+8I='; script-src 'sha256-s7z6vP2gv1yfSg+kovHZMIl32XcZe+mIX7LaE7+VH5U=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -40,12 +40,12 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <div class="shelf-upload">
 <label for="shelf-files">Kies 1–16 originele lokale bronbestanden</label>
 <input id="shelf-files" type="file" multiple aria-describedby="shelf-privacy">
-<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles en digests in dit tabblad. Een naamhint is slechts een voorstel; kies bestemming bewust.</p>
+<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles en digests in dit tabblad. Het formaat wordt uitsluitend structureel herkend: geen bewijs van auteur, consent of geldige grant. Kies de bestemming bewust.</p>
 </div>
 <p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
-<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">HUMAN route</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
+<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
 <tbody id="shelf-rows"></tbody></table></div>
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
@@ -56,7 +56,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <section class="section">
 <div class="section-heading"><div><p class="eyebrow">02 / ACTUELE TOESTEMMING</p><h2>Het echte systeem blijft de bron.</h2></div><p>Een ingelezen bestand is nooit een originele goedgekeurde assessmentaanvraag, current client/operator-authenticatie of permit.</p></div>
 <div class="flow">
-<div class="step"><span>1</span><div><h3>Kies een bestemming</h3><p>De voorgestelde route is uitsluitend gebaseerd op de lokale bestandsnaam. Controleer de oorspronkelijke producent en het vereiste schema in de specifieke app-handleiding.</p></div></div>
+<div class="step"><span>1</span><div><h3>Kies een bestemming</h3><p>De voorgestelde route is gebaseerd op beperkte lokale formaatherkenning. Versleutelde bestanden blijven ondoorzichtig. Controleer de oorspronkelijke producent en het vereiste schema in de specifieke app-handleiding.</p></div></div>
 <div class="step"><span>2</span><div><h3>Open de app apart</h3><p>Open een werkruimte in een nieuw tabblad. Laat deze PRIVATE shelf open; de andere app leest niets automatisch uit dit tabblad.</p></div></div>
 <div class="step"><span>3</span><div><h3>Selecteer het origineel</h3><p>Kies in de originele app expliciet hetzelfde lokale bestand. Optioneel kan de shelf de originele File-bytes opnieuw opslaan; er vindt geen conversie plaats.</p></div></div>
 <div class="step"><span>4</span><div><h3>Beoordeel en verwijder</h3><p>Alleen de echte bronhouder, geauthenticeerde klant/operator en actuele revocation-gates kunnen een vervolgbesluit ondersteunen. Wis deze tijdelijke werkset na afloop.</p></div></div>
@@ -66,6 +66,182 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <footer><span>LIGHTUP · PRIVATE LOCAL HANDOFF</span><span>NO SCAN · NO GRANT · DRAFT/HOLD</span></footer>
 </div>
 <script>"use strict";
+/*
+ * PRIVATE source-format inspector (offline, read-only, non-authorizing).
+ * Structural admission for routing only; never authenticates producers, tenants,
+ * source values, current consent, revocation, or source owner code correctness.
+ * No network, persistent storage, grants, scans, execution or HTML rendering.
+ */
+const LightUpPrivateSourceInspector = (() => {
+  const MAX_JSON_BYTES = 512 * 1024;
+  const OPAQUE = Object.freeze({
+    ".lucb": { kind: "ENCRYPTED_CASEBOOK", route: "intake", label: "Versleutelde Casebook: inhoud niet gecontroleerd" },
+    ".luie": { kind: "ENCRYPTED_INTAKE", route: "intake", label: "Versleutelde intake: inhoud niet gecontroleerd" },
+    ".lupt": { kind: "ENCRYPTED_TRANSFER", route: "casebook", label: "Versleutelde overdracht: inhoud niet gecontroleerd" }
+  });
+  const CASEBOOK_AUTH = Object.freeze([
+    "source_authenticated", "client_consent_verified", "operator_consent_verified",
+    "authorization_granted", "execution_allowed", "release_approved"
+  ]);
+  const FALSE_SCOPE = Object.freeze([
+    "authorization", "client_consent", "operator_consent", "grant", "execution", "revocation_checked"
+  ]);
+  const FALSE_READINESS = Object.freeze([
+    "authorization_granted", "client_consent_verified", "execution_allowed",
+    "operator_consent_verified", "release_approved"
+  ]);
+  const asObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+  const onlyFalse = (v, keys) => asObject(v) && keys.every((k) => Object.hasOwn(v, k) && v[k] === false);
+  const bounded = (v, max = 200) => typeof v === "string" && v.length <= max &&
+    !/[\u0000-\u001f\u007f]/u.test(v);
+  const count = (v, max = 10000) => Number.isSafeInteger(v) && v >= 0 && v <= max;
+  const sha = (v) => typeof v === "string" && /^[0-9a-f]{64}$/u.test(v);
+  const exact = (value, expected) => asObject(value) && Object.keys(value).length === expected.length &&
+    expected.every((key) => Object.hasOwn(value, key));
+
+  // Bounded recursive parser that refuses nested, escaped and unescaped
+  // duplicate JSON keys. A regular JSON.parse silently collapses duplicates.
+  function parse(text) {
+    if (typeof text !== "string" || text.length > MAX_JSON_BYTES) throw Error("oversized JSON");
+    let i = 0, nodes = 0;
+    const ws = () => { while (i < text.length && /[\x20\t\n\r]/u.test(text[i])) i++; };
+    const quoted = () => {
+      const m = /^"(?:\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})|[^"\\\u0000-\u001f])*"/u.exec(text.slice(i));
+      if (!m) throw Error("invalid JSON string");
+      i += m[0].length;
+      return JSON.parse(m[0]);
+    };
+    const visit = (depth) => {
+      if (depth > 28 || ++nodes > 30000) throw Error("unbounded JSON structure");
+      ws(); const ch = text[i];
+      if (ch === '"') return quoted();
+      if (ch === "{") {
+        const obj = Object.create(null); const seen = new Set(); i++; ws();
+        if (text[i] === "}") { i++; return obj; }
+        for (;;) {
+          ws(); if (text[i] !== '"') throw Error("invalid object key");
+          const key = quoted();
+          if (seen.has(key)) throw Error("duplicate JSON property");
+          seen.add(key); if (seen.size > 3000) throw Error("too many properties");
+          ws(); if (text[i++] !== ":") throw Error("invalid separator");
+          obj[key] = visit(depth + 1); ws();
+          if (text[i] === "}") { i++; return obj; }
+          if (text[i++] !== ",") throw Error("invalid object delimiter");
+        }
+      }
+      if (ch === "[") {
+        const arr = []; i++; ws();
+        if (text[i] === "]") { i++; return arr; }
+        for (;;) {
+          if (arr.length >= 3000) throw Error("too many array elements");
+          arr.push(visit(depth + 1)); ws();
+          if (text[i] === "]") { i++; return arr; }
+          if (text[i++] !== ",") throw Error("invalid array delimiter");
+        }
+      }
+      const rest = text.slice(i);
+      const n = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u.exec(rest);
+      if (n) { i += n[0].length; const v = Number(n[0]); if (!Number.isFinite(v)) throw Error("invalid number"); return v; }
+      for (const [literal, value] of [["true", true], ["false", false], ["null", null]]) {
+        if (rest.startsWith(literal)) { i += literal.length; return value; }
+      }
+      throw Error("invalid JSON value");
+    };
+    const data = visit(0); ws();
+    if (i !== text.length) throw Error("trailing JSON content");
+    return data;
+  }
+
+  function classifyJSON(data) {
+    if (!asObject(data)) return { kind: "UNKNOWN_JSON", route: "none", label: "Onbekende JSON: handmatige review vereist" };
+
+    if (data.kind === "lightup.scope_proposal_draft") {
+      const valid = data.schema_version === 1 && data.state === "DRAFT_ONLY" &&
+        FALSE_SCOPE.every((key) => data[key] === false) &&
+        Array.isArray(data.requested_assets) && data.requested_assets.length <= 80 &&
+        data.requested_assets.every((a) => bounded(a, 253)) &&
+        Array.isArray(data.excluded_assets) && data.excluded_assets.length <= 80 &&
+        data.excluded_assets.every((a) => bounded(a, 253)) &&
+        count(data.requested_risk, 4) && data.requested_risk >= 1 &&
+        ["analysis_only", "authorized_assessment"].includes(data.requested_mode) &&
+        bounded(data.proposal_name, 120) && bounded(data.client_label, 100) &&
+        asObject(data.proposed_window_local) && asObject(data.proposed_window_utc) &&
+        asObject(data.proposed_activities);
+      if (!valid) throw Error("declared Studio source malformed or authority flag");
+      return { kind: "STUDIO_DRAFT", route: "studio",
+        label: "Studio DRAFT_ONLY · " + data.requested_assets.length +
+          " voorgestelde assets · risico " + data.requested_risk + " · NIET GEAUTORISEERD" };
+    }
+
+    if (data.schema === "lightup.auth_casebook.v1") {
+      const counts = data.declared_counts;
+      const top = ["schema", "status", "source", "as_of", "client_id", "requests", "engagements",
+        "grants", "risk_approvals", "case_overview", "declared_counts", ...CASEBOOK_AUTH];
+      const counterKeys = ["requests", "engagements", "grants", "risk_approvals", "grant_link_hold",
+        "risk_tenant_hold", "case_attention_hold", "foreign_tenant_row_count",
+        "recorded_window_review", "risk_provenance_hold", "pending_risk_review"];
+      if (!exact(data, top) || data.status !== "REVIEW_ONLY" ||
+          data.source !== "original_persisted_domain_unverified" ||
+          !CASEBOOK_AUTH.every((key) => data[key] === false) ||
+          !bounded(data.client_id, 180) || !exact(counts, counterKeys) ||
+          !counterKeys.every((key) => count(counts[key], 2000)) ||
+          !["requests", "engagements", "grants", "risk_approvals"].every((key) => count(counts[key])) ||
+          !["requests", "engagements", "grants", "risk_approvals", "case_overview"].every((key) =>
+            Array.isArray(data[key]) && data[key].length <= 200)) {
+        throw Error("declared original Casebook source malformed or authority flag");
+      }
+      return { kind: "CASEBOOK_SOURCE", route: "intake",
+        label: "Origineel Casebook-formaat · " + data.engagements.length +
+          " bronengagements · alleen retrospectief" };
+    }
+
+    if (data.format === "lightup.authorization_readiness_operator_v1") {
+      const keys = ["format", "disposition", "request_binding_schema_present",
+        "scope_fingerprint", "scope_description", "authority", "limitations",
+        "summary", "engagements", "review_queue", "request_history"];
+      const valid = exact(data, keys) && data.disposition === "REVIEW_ONLY" &&
+        (data.request_binding_schema_present === true || data.request_binding_schema_present === false) &&
+        sha(data.scope_fingerprint) && ["all_clients", "single_client", "single_engagement"].includes(data.scope_description) &&
+        exact(data.authority, FALSE_READINESS) &&
+        FALSE_READINESS.every((key) => data.authority[key] === false) &&
+        asObject(data.summary) && Array.isArray(data.engagements) && Array.isArray(data.review_queue) &&
+        Array.isArray(data.request_history) && data.engagements.length <= 3000 &&
+        data.review_queue.length <= 3000 && data.request_history.length <= 3000;
+      if (!valid) throw Error("declared operator readiness malformed or authority flag");
+      return { kind: "OPERATOR_READINESS", route: "risk",
+        label: "Operator-readinessformaat · " + data.engagements.length + " bronengagements · geen consent" };
+    }
+
+    if (data.format === "lightup.scope_handoff_PRIVATE_inventory.v1" ||
+        data.format === "lightup.scope_handoff_anonymous_counts.v1") {
+      return { kind: "SELF_REPORTED_INVENTORY", route: "none",
+        label: "HUMAN inventaris; geen oorspronkelijke bron" };
+    }
+    return { kind: "UNKNOWN_JSON", route: "none",
+      label: "Onbekende JSON: geen automatische bronroutering" };
+  }
+  async function inspect(file) {
+    if (!file || typeof file.name !== "string") throw Error("invalid file");
+    const ext = file.name.toLowerCase().match(/\.[a-z]{2,8}$/u)?.[0] || "";
+    if (Object.hasOwn(OPAQUE, ext)) return OPAQUE[ext];
+    if (ext !== ".json") return { kind: "OPAQUE_FILE", route: "none", label: "Niet-herkend bestand · inhoud niet gecontroleerd" };
+    if (file.size < 2 || file.size > MAX_JSON_BYTES) throw Error("unbounded JSON");
+    const bytes = await file.arrayBuffer();
+    const content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    const data = parse(content);
+    if (asObject(data)) {
+      const declarations = ["authorization", "client_consent", "operator_consent", "grant",
+        "execution", "revocation_checked", "source_authenticated", "client_consent_verified",
+        "operator_consent_verified", "authorization_granted", "execution_allowed", "release_approved"];
+      if (declarations.some((key) => Object.hasOwn(data, key) && data[key] !== false)) {
+        throw Error("untrusted source asserts authorization");
+      }
+    }
+    return classifyJSON(data);
+  }
+  return Object.freeze({ inspect });
+})();
+"use strict";
 // PRIVATE, in-tab-only file handoff shelf. Never parses source authority or calls network.
 (() => {
   const MAX_ITEMS = 16;
@@ -95,15 +271,6 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
     Array.from(new Uint8Array(x), (n) => n.toString(16).padStart(2, "0")).join(""));
   const cleanName = (name) => typeof name === "string" && name.length > 0 &&
     name.length <= 220 && !/[\x00-\x1f\x7f]/.test(name);
-  const suggest = (name) => {
-    const n = name.toLowerCase();
-    if (n.endsWith(".lupt")) return "casebook";
-    if (n.endsWith(".lucb") || n.endsWith(".luie")) return "intake";
-    if (n.includes("withdraw") || n.includes("stop-")) return "stop";
-    if (n.includes("readiness") && n.endsWith(".json")) return "risk";
-    if (n.includes("scope-proposal") && n.endsWith(".json")) return "studio";
-    return "none";
-  };
   const report = (text) => { message.textContent = text; };
   const cell = (row, value, cls) => {
     const c = document.createElement("td");
@@ -148,6 +315,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
       cell(tr, item.file.name, "file-name");
       cell(tr, item.file.size.toLocaleString("nl-NL") + " B");
       cell(tr, item.hash, "hash");
+      cell(tr, item.inspection.label + " · uitsluitend structurele hint", "kind");
       const routeCell = document.createElement("td");
       const select = document.createElement("select");
       select.setAttribute("aria-label", "HANDMATIGE routing voor " + item.file.name);
@@ -217,19 +385,21 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
         const key = file.name.normalize("NFC").toLowerCase();
         if (names.has(key)) throw new Error("name-conflict");
         names.add(key);
+        const inspection = await LightUpPrivateSourceInspector.inspect(file);
+        if (epoch !== generation) throw new Error("cancelled");
         const hash = await SHA(await file.arrayBuffer());
         if (existing.has(hash)) throw new Error("duplicate");
         existing.add(hash);
-        proposed.push({ file, hash, route: suggest(file.name) });
+        proposed.push({ file, hash, inspection, route: inspection.route });
       }
       if (epoch !== generation) throw new Error("cancelled");
       items.push(...proposed);  // atomic admission
       render();
-      report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Bestandsnaamhints zijn géén bronvalidatie.");
+      report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Structurele bronherkenning is géén bron-/toestemmingsvalidatie.");
     } catch (error) {
       report(error && error.message === "name-conflict"
         ? "HOLD — dubbele of tegenstrijdige oorspronkelijke bestandsnaam. Bestaande bron blijft intact; verwijder bewust eerst een oude versie en selecteer opnieuw."
-        : "HOLD — import onvolledig, geannuleerd of identieke bytes al aanwezig. Hele nieuwe batch geweigerd; vorige werkset behouden.");
+        : "HOLD — formaat onduidelijk/ongeldig, bronclaim tegenstrijdig, import geannuleerd of identieke bytes al aanwezig. Hele nieuwe batch geweigerd; vorige werkset behouden.");
     } finally {
       busy = false;
       input.disabled = false;
@@ -262,7 +432,7 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
     exportJSON("lightup-scope-handoff-PRIVATE-source-inventory.json", {
       format: "lightup.scope_handoff_PRIVATE_inventory.v1", status: "REVIEW_ONLY",
       authority: { client_consent: false, operator_consent: false, grant: false, scan: false, deploy: false, release: false },
-      entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size, unsigned_sha256: e.hash, human_route: e.route })),
+      entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size, unsigned_sha256: e.hash, structural_kind_unverified: e.inspection.kind, human_route: e.route })),
       warning: "PRIVATE unsigned inventory, never source or recipient authentication. No file content included."
     });
     report("REVIEW_ONLY — expliciete PRIVATE ongetekende bestandsinventaris lokaal gedownload.");

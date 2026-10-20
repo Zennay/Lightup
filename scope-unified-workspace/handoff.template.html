@@ -24,12 +24,12 @@
 <div class="shelf-upload">
 <label for="shelf-files">Kies 1–16 originele lokale bronbestanden</label>
 <input id="shelf-files" type="file" multiple aria-describedby="shelf-privacy">
-<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles en digests in dit tabblad. Een naamhint is slechts een voorstel; kies bestemming bewust.</p>
+<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles en digests in dit tabblad. Het formaat wordt uitsluitend structureel herkend: geen bewijs van auteur, consent of geldige grant. Kies de bestemming bewust.</p>
 </div>
 <p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
-<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">HUMAN route</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
+<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
 <tbody id="shelf-rows"></tbody></table></div>
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
@@ -40,7 +40,7 @@
 <section class="section">
 <div class="section-heading"><div><p class="eyebrow">02 / ACTUELE TOESTEMMING</p><h2>Het echte systeem blijft de bron.</h2></div><p>Een ingelezen bestand is nooit een originele goedgekeurde assessmentaanvraag, current client/operator-authenticatie of permit.</p></div>
 <div class="flow">
-<div class="step"><span>1</span><div><h3>Kies een bestemming</h3><p>De voorgestelde route is uitsluitend gebaseerd op de lokale bestandsnaam. Controleer de oorspronkelijke producent en het vereiste schema in de specifieke app-handleiding.</p></div></div>
+<div class="step"><span>1</span><div><h3>Kies een bestemming</h3><p>De voorgestelde route is gebaseerd op beperkte lokale formaatherkenning. Versleutelde bestanden blijven ondoorzichtig. Controleer de oorspronkelijke producent en het vereiste schema in de specifieke app-handleiding.</p></div></div>
 <div class="step"><span>2</span><div><h3>Open de app apart</h3><p>Open een werkruimte in een nieuw tabblad. Laat deze PRIVATE shelf open; de andere app leest niets automatisch uit dit tabblad.</p></div></div>
 <div class="step"><span>3</span><div><h3>Selecteer het origineel</h3><p>Kies in de originele app expliciet hetzelfde lokale bestand. Optioneel kan de shelf de originele File-bytes opnieuw opslaan; er vindt geen conversie plaats.</p></div></div>
 <div class="step"><span>4</span><div><h3>Beoordeel en verwijder</h3><p>Alleen de echte bronhouder, geauthenticeerde klant/operator en actuele revocation-gates kunnen een vervolgbesluit ondersteunen. Wis deze tijdelijke werkset na afloop.</p></div></div>

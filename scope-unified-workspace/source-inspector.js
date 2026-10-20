@@ -1,0 +1,176 @@
+"use strict";
+/*
+ * PRIVATE source-format inspector (offline, read-only, non-authorizing).
+ * Structural admission for routing only; never authenticates producers, tenants,
+ * source values, current consent, revocation, or source owner code correctness.
+ * No network, persistent storage, grants, scans, execution or HTML rendering.
+ */
+const LightUpPrivateSourceInspector = (() => {
+  const MAX_JSON_BYTES = 512 * 1024;
+  const OPAQUE = Object.freeze({
+    ".lucb": { kind: "ENCRYPTED_CASEBOOK", route: "intake", label: "Versleutelde Casebook: inhoud niet gecontroleerd" },
+    ".luie": { kind: "ENCRYPTED_INTAKE", route: "intake", label: "Versleutelde intake: inhoud niet gecontroleerd" },
+    ".lupt": { kind: "ENCRYPTED_TRANSFER", route: "casebook", label: "Versleutelde overdracht: inhoud niet gecontroleerd" }
+  });
+  const CASEBOOK_AUTH = Object.freeze([
+    "source_authenticated", "client_consent_verified", "operator_consent_verified",
+    "authorization_granted", "execution_allowed", "release_approved"
+  ]);
+  const FALSE_SCOPE = Object.freeze([
+    "authorization", "client_consent", "operator_consent", "grant", "execution", "revocation_checked"
+  ]);
+  const FALSE_READINESS = Object.freeze([
+    "authorization_granted", "client_consent_verified", "execution_allowed",
+    "operator_consent_verified", "release_approved"
+  ]);
+  const asObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+  const onlyFalse = (v, keys) => asObject(v) && keys.every((k) => Object.hasOwn(v, k) && v[k] === false);
+  const bounded = (v, max = 200) => typeof v === "string" && v.length <= max &&
+    !/[\u0000-\u001f\u007f]/u.test(v);
+  const count = (v, max = 10000) => Number.isSafeInteger(v) && v >= 0 && v <= max;
+  const sha = (v) => typeof v === "string" && /^[0-9a-f]{64}$/u.test(v);
+  const exact = (value, expected) => asObject(value) && Object.keys(value).length === expected.length &&
+    expected.every((key) => Object.hasOwn(value, key));
+
+  // Bounded recursive parser that refuses nested, escaped and unescaped
+  // duplicate JSON keys. A regular JSON.parse silently collapses duplicates.
+  function parse(text) {
+    if (typeof text !== "string" || text.length > MAX_JSON_BYTES) throw Error("oversized JSON");
+    let i = 0, nodes = 0;
+    const ws = () => { while (i < text.length && /[\x20\t\n\r]/u.test(text[i])) i++; };
+    const quoted = () => {
+      const m = /^"(?:\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})|[^"\\\u0000-\u001f])*"/u.exec(text.slice(i));
+      if (!m) throw Error("invalid JSON string");
+      i += m[0].length;
+      return JSON.parse(m[0]);
+    };
+    const visit = (depth) => {
+      if (depth > 28 || ++nodes > 30000) throw Error("unbounded JSON structure");
+      ws(); const ch = text[i];
+      if (ch === '"') return quoted();
+      if (ch === "{") {
+        const obj = Object.create(null); const seen = new Set(); i++; ws();
+        if (text[i] === "}") { i++; return obj; }
+        for (;;) {
+          ws(); if (text[i] !== '"') throw Error("invalid object key");
+          const key = quoted();
+          if (seen.has(key)) throw Error("duplicate JSON property");
+          seen.add(key); if (seen.size > 3000) throw Error("too many properties");
+          ws(); if (text[i++] !== ":") throw Error("invalid separator");
+          obj[key] = visit(depth + 1); ws();
+          if (text[i] === "}") { i++; return obj; }
+          if (text[i++] !== ",") throw Error("invalid object delimiter");
+        }
+      }
+      if (ch === "[") {
+        const arr = []; i++; ws();
+        if (text[i] === "]") { i++; return arr; }
+        for (;;) {
+          if (arr.length >= 3000) throw Error("too many array elements");
+          arr.push(visit(depth + 1)); ws();
+          if (text[i] === "]") { i++; return arr; }
+          if (text[i++] !== ",") throw Error("invalid array delimiter");
+        }
+      }
+      const rest = text.slice(i);
+      const n = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u.exec(rest);
+      if (n) { i += n[0].length; const v = Number(n[0]); if (!Number.isFinite(v)) throw Error("invalid number"); return v; }
+      for (const [literal, value] of [["true", true], ["false", false], ["null", null]]) {
+        if (rest.startsWith(literal)) { i += literal.length; return value; }
+      }
+      throw Error("invalid JSON value");
+    };
+    const data = visit(0); ws();
+    if (i !== text.length) throw Error("trailing JSON content");
+    return data;
+  }
+
+  function classifyJSON(data) {
+    if (!asObject(data)) return { kind: "UNKNOWN_JSON", route: "none", label: "Onbekende JSON: handmatige review vereist" };
+
+    if (data.kind === "lightup.scope_proposal_draft") {
+      const valid = data.schema_version === 1 && data.state === "DRAFT_ONLY" &&
+        FALSE_SCOPE.every((key) => data[key] === false) &&
+        Array.isArray(data.requested_assets) && data.requested_assets.length <= 80 &&
+        data.requested_assets.every((a) => bounded(a, 253)) &&
+        Array.isArray(data.excluded_assets) && data.excluded_assets.length <= 80 &&
+        data.excluded_assets.every((a) => bounded(a, 253)) &&
+        count(data.requested_risk, 4) && data.requested_risk >= 1 &&
+        ["analysis_only", "authorized_assessment"].includes(data.requested_mode) &&
+        bounded(data.proposal_name, 120) && bounded(data.client_label, 100) &&
+        asObject(data.proposed_window_local) && asObject(data.proposed_window_utc) &&
+        asObject(data.proposed_activities);
+      if (!valid) throw Error("declared Studio source malformed or authority flag");
+      return { kind: "STUDIO_DRAFT", route: "studio",
+        label: "Studio DRAFT_ONLY · " + data.requested_assets.length +
+          " voorgestelde assets · risico " + data.requested_risk + " · NIET GEAUTORISEERD" };
+    }
+
+    if (data.schema === "lightup.auth_casebook.v1") {
+      const counts = data.declared_counts;
+      const top = ["schema", "status", "source", "as_of", "client_id", "requests", "engagements",
+        "grants", "risk_approvals", "case_overview", "declared_counts", ...CASEBOOK_AUTH];
+      const counterKeys = ["requests", "engagements", "grants", "risk_approvals", "grant_link_hold",
+        "risk_tenant_hold", "case_attention_hold", "foreign_tenant_row_count",
+        "recorded_window_review", "risk_provenance_hold", "pending_risk_review"];
+      if (!exact(data, top) || data.status !== "REVIEW_ONLY" ||
+          data.source !== "original_persisted_domain_unverified" ||
+          !CASEBOOK_AUTH.every((key) => data[key] === false) ||
+          !bounded(data.client_id, 180) || !exact(counts, counterKeys) ||
+          !counterKeys.every((key) => count(counts[key], 2000)) ||
+          !["requests", "engagements", "grants", "risk_approvals"].every((key) => count(counts[key])) ||
+          !["requests", "engagements", "grants", "risk_approvals", "case_overview"].every((key) =>
+            Array.isArray(data[key]) && data[key].length <= 200)) {
+        throw Error("declared original Casebook source malformed or authority flag");
+      }
+      return { kind: "CASEBOOK_SOURCE", route: "intake",
+        label: "Origineel Casebook-formaat · " + data.engagements.length +
+          " bronengagements · alleen retrospectief" };
+    }
+
+    if (data.format === "lightup.authorization_readiness_operator_v1") {
+      const keys = ["format", "disposition", "request_binding_schema_present",
+        "scope_fingerprint", "scope_description", "authority", "limitations",
+        "summary", "engagements", "review_queue", "request_history"];
+      const valid = exact(data, keys) && data.disposition === "REVIEW_ONLY" &&
+        (data.request_binding_schema_present === true || data.request_binding_schema_present === false) &&
+        sha(data.scope_fingerprint) && ["all_clients", "single_client", "single_engagement"].includes(data.scope_description) &&
+        exact(data.authority, FALSE_READINESS) &&
+        FALSE_READINESS.every((key) => data.authority[key] === false) &&
+        asObject(data.summary) && Array.isArray(data.engagements) && Array.isArray(data.review_queue) &&
+        Array.isArray(data.request_history) && data.engagements.length <= 3000 &&
+        data.review_queue.length <= 3000 && data.request_history.length <= 3000;
+      if (!valid) throw Error("declared operator readiness malformed or authority flag");
+      return { kind: "OPERATOR_READINESS", route: "risk",
+        label: "Operator-readinessformaat · " + data.engagements.length + " bronengagements · geen consent" };
+    }
+
+    if (data.format === "lightup.scope_handoff_PRIVATE_inventory.v1" ||
+        data.format === "lightup.scope_handoff_anonymous_counts.v1") {
+      return { kind: "SELF_REPORTED_INVENTORY", route: "none",
+        label: "HUMAN inventaris; geen oorspronkelijke bron" };
+    }
+    return { kind: "UNKNOWN_JSON", route: "none",
+      label: "Onbekende JSON: geen automatische bronroutering" };
+  }
+  async function inspect(file) {
+    if (!file || typeof file.name !== "string") throw Error("invalid file");
+    const ext = file.name.toLowerCase().match(/\.[a-z]{2,8}$/u)?.[0] || "";
+    if (Object.hasOwn(OPAQUE, ext)) return OPAQUE[ext];
+    if (ext !== ".json") return { kind: "OPAQUE_FILE", route: "none", label: "Niet-herkend bestand · inhoud niet gecontroleerd" };
+    if (file.size < 2 || file.size > MAX_JSON_BYTES) throw Error("unbounded JSON");
+    const bytes = await file.arrayBuffer();
+    const content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    const data = parse(content);
+    if (asObject(data)) {
+      const declarations = ["authorization", "client_consent", "operator_consent", "grant",
+        "execution", "revocation_checked", "source_authenticated", "client_consent_verified",
+        "operator_consent_verified", "authorization_granted", "execution_allowed", "release_approved"];
+      if (declarations.some((key) => Object.hasOwn(data, key) && data[key] !== false)) {
+        throw Error("untrusted source asserts authorization");
+      }
+    }
+    return classifyJSON(data);
+  }
+  return Object.freeze({ inspect });
+})();

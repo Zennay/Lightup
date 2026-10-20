@@ -28,15 +28,6 @@
     Array.from(new Uint8Array(x), (n) => n.toString(16).padStart(2, "0")).join(""));
   const cleanName = (name) => typeof name === "string" && name.length > 0 &&
     name.length <= 220 && !/[\x00-\x1f\x7f]/.test(name);
-  const suggest = (name) => {
-    const n = name.toLowerCase();
-    if (n.endsWith(".lupt")) return "casebook";
-    if (n.endsWith(".lucb") || n.endsWith(".luie")) return "intake";
-    if (n.includes("withdraw") || n.includes("stop-")) return "stop";
-    if (n.includes("readiness") && n.endsWith(".json")) return "risk";
-    if (n.includes("scope-proposal") && n.endsWith(".json")) return "studio";
-    return "none";
-  };
   const report = (text) => { message.textContent = text; };
   const cell = (row, value, cls) => {
     const c = document.createElement("td");
@@ -81,6 +72,7 @@
       cell(tr, item.file.name, "file-name");
       cell(tr, item.file.size.toLocaleString("nl-NL") + " B");
       cell(tr, item.hash, "hash");
+      cell(tr, item.inspection.label + " · uitsluitend structurele hint", "kind");
       const routeCell = document.createElement("td");
       const select = document.createElement("select");
       select.setAttribute("aria-label", "HANDMATIGE routing voor " + item.file.name);
@@ -150,19 +142,21 @@
         const key = file.name.normalize("NFC").toLowerCase();
         if (names.has(key)) throw new Error("name-conflict");
         names.add(key);
+        const inspection = await LightUpPrivateSourceInspector.inspect(file);
+        if (epoch !== generation) throw new Error("cancelled");
         const hash = await SHA(await file.arrayBuffer());
         if (existing.has(hash)) throw new Error("duplicate");
         existing.add(hash);
-        proposed.push({ file, hash, route: suggest(file.name) });
+        proposed.push({ file, hash, inspection, route: inspection.route });
       }
       if (epoch !== generation) throw new Error("cancelled");
       items.push(...proposed);  // atomic admission
       render();
-      report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Bestandsnaamhints zijn géén bronvalidatie.");
+      report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Structurele bronherkenning is géén bron-/toestemmingsvalidatie.");
     } catch (error) {
       report(error && error.message === "name-conflict"
         ? "HOLD — dubbele of tegenstrijdige oorspronkelijke bestandsnaam. Bestaande bron blijft intact; verwijder bewust eerst een oude versie en selecteer opnieuw."
-        : "HOLD — import onvolledig, geannuleerd of identieke bytes al aanwezig. Hele nieuwe batch geweigerd; vorige werkset behouden.");
+        : "HOLD — formaat onduidelijk/ongeldig, bronclaim tegenstrijdig, import geannuleerd of identieke bytes al aanwezig. Hele nieuwe batch geweigerd; vorige werkset behouden.");
     } finally {
       busy = false;
       input.disabled = false;
@@ -195,7 +189,7 @@
     exportJSON("lightup-scope-handoff-PRIVATE-source-inventory.json", {
       format: "lightup.scope_handoff_PRIVATE_inventory.v1", status: "REVIEW_ONLY",
       authority: { client_consent: false, operator_consent: false, grant: false, scan: false, deploy: false, release: false },
-      entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size, unsigned_sha256: e.hash, human_route: e.route })),
+      entries: items.map((e) => ({ original_name: e.file.name, byte_length: e.file.size, unsigned_sha256: e.hash, structural_kind_unverified: e.inspection.kind, human_route: e.route })),
       warning: "PRIVATE unsigned inventory, never source or recipient authentication. No file content included."
     });
     report("REVIEW_ONLY — expliciete PRIVATE ongetekende bestandsinventaris lokaal gedownload.");

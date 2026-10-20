@@ -30,6 +30,10 @@ The start page makes **zero network requests**, uses **zero JavaScript**, contai
 
 This is a **snapshot**, not ongoing automatic propagation. Parent source-owner PRs and their branches stay untouched. Changes to those originals need a separately reviewed composition and a new frozen inventory. Duplicated or older assets must never be represented as current original authorization truth.
 
+## Structural source routing without authenticating consent
+
+The private handoff workroom includes its own **new source-inspector.js**, stitched into the existing CSP-pinned standalone. It rejects duplicate JSON keys, invalid UTF-8, oversized/unbounded JSON, and malformed declared original Studio DRAFT_ONLY, Casebook REVIEW_ONLY and operator-readiness REVIEW_ONLY source envelopes; unknown JSON remains **unverified/manual** and no arbitrary bytes become trusted. It shows category and non-sensitive source totals only, never injected inner HTML, original tenant IDs, client labels or asset hostnames. JSON imported through this companion still requires full independent re-validation by the *original receiving workroom*. This is not equivalent to source authentication or operator consent.
+
 ## Pin every imported original to its copied source bytes
 
 The committed `PINNED-ORIGINALS.json` enumerates **all 60 copied original files** under eight owner compartments, with exact declared original PR HEAD, original relative path, byte size and SHA-256. `source_pins.py` is a fail-closed local **product build prerequisite**, not a QA suite: `build.py` refuses to package an added, removed, renamed, symlinked, size-changed or byte-changed original file, and rejects an unrecognized/mismatched source-head claim. To refresh originals deliberately, separately re-verify the exact upstream PR head, record all changed files and update the pin document in a dedicated reviewed composition commit. Never silently edit a copied original's code.
