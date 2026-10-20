@@ -77,6 +77,11 @@
 <p class="small warning">Original CASE ID and request/grant lineage remain PRIVATE in this tab only. A prior recorded approval/grant is NOT authentic current consent or permission. No source ID is automatically tied to any untrusted draft asset.</p>
 <div class="table-wrap"><table><thead><tr><th>Original source engagement</th><th>Recorded state</th><th>Recorded grants / risks</th><th>Original source attention</th><th>HUMAN next action</th><th>Local source detail</th></tr></thead><tbody id="casebook-cases"></tbody></table></div>
 <div id="casebook-selected" class="notice" hidden></div>
+<h3>Original approved-request and unbound-request HUMAN inbox (#177 companion)</h3>
+<p class="small muted">Purely local retrospective request/source records. A prior approved request, linked grant, or local HUMAN stage never proves action-time consent, tenant identity, approved scope or execution authority.</p>
+<div class="actions"><label class="filter">Source request filter <input id="request-filter" placeholder="Original request ID or source state" autocomplete="off"></label><label class="filter">Source request attention<select id="request-category"><option value="all">All source requests</option><option value="unbound">Approved without recorded grant binding</option><option value="hold">Recorded link HOLD</option><option value="pending">Pending/not approved</option></select></label></div>
+<div class="table-wrap"><table><thead><tr><th>Original request (PRIVATE)</th><th>Stored decision</th><th>Proposed mode/risk</th><th>Stored grant links</th><th>Source attention (UNVERIFIED)</th><th>Local HUMAN follow-up</th></tr></thead><tbody id="casebook-requests"></tbody></table></div>
+<div class="notice" id="casebook-request-status" role="status">No stored original request data loaded. No authorization can be inferred.</div>
 </section>
 <section class="section" aria-labelledby="result-heading">
 <h2 id="result-heading">05 / Local completeness & handoff</h2>
