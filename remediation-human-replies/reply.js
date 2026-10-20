@@ -5,6 +5,9 @@
   const root = document.getElementById("tasks");
   const summary = document.getElementById("summary");
   const query = document.getElementById("filter");
+  const stageFilter = document.getElementById("stage-filter");
+  const bulkStage = document.getElementById("bulk-stage");
+  const bulkCount = document.getElementById("bulk-count");
   const message = document.getElementById("message");
   const form = document.getElementById("save-form");
   const pass = document.getElementById("password");
@@ -21,6 +24,7 @@
   ];
   let dirty = false;
   let encrypting = false;
+  let lastBulk = null;
   function notice(s) { message.textContent = s; }
   function element(tag, content) {
     const el = document.createElement(tag);
@@ -43,15 +47,25 @@
       stages.map(pair => pair[1] + ": " + rows.filter(r => r.status === pair[0]).length).join(" · ") +
       " · NOT verified fixes or source identity.";
   }
-  function render() {
-    root.replaceChildren();
+  function matchingIndexes() {
     const filter = query.value.toLocaleLowerCase().trim();
-    let seen = 0;
+    const selected = [];
     seed.original_items.forEach((item, i) => {
       const row = rows[i];
       const match = [item.reason, item.next_action, item.stage, row.status,
                      row.answer, row.question].join(" ").toLocaleLowerCase();
-      if (filter && !match.includes(filter)) return;
+      if ((!filter || match.includes(filter)) &&
+          (!stageFilter.value || row.status === stageFilter.value)) selected.push(i);
+    });
+    return selected;
+  }
+  function render() {
+    root.replaceChildren();
+    const selected = new Set(matchingIndexes());
+    let seen = 0;
+    seed.original_items.forEach((item, i) => {
+      const row = rows[i];
+      if (!selected.has(i)) return;
       seen++;
       const card = document.createElement("article");
       card.appendChild(element("h2", "Private HUMAN request " + (i + 1)));
@@ -69,6 +83,7 @@
       select.value = row.status;
       select.addEventListener("change", () => {
         row.status = select.value;
+        lastBulk = null;
         dirty = true;
         notice("Private HUMAN edits are in browser memory only.");
         updateSummary();
@@ -89,6 +104,7 @@
             return;
           }
           row[key] = area.value;
+          lastBulk = null;
           dirty = true;
           notice("HUMAN reply changed in memory; no network or autosave.");
         });
@@ -96,7 +112,9 @@
       }
       root.appendChild(card);
     });
-    if (!seen) root.appendChild(element("p", "No private HUMAN tasks match this filter."));
+    if (!seen) root.appendChild(element("p", "No private HUMAN tasks match these filters."));
+    bulkCount.textContent = String(seen) + " of " + String(rows.length) +
+      " original selected HUMAN tasks match the current filters. Bulk never fills answers.";
     updateSummary();
   }
   function b64(bytes) {
@@ -105,6 +123,33 @@
     return btoa(result);
   }
   query.addEventListener("input", render);
+  stageFilter.addEventListener("change", render);
+  document.getElementById("bulk-apply").addEventListener("click", () => {
+    const indexes = matchingIndexes();
+    if (!indexes.length) { notice("HOLD: no HUMAN tasks match the current filters."); return; }
+    if (!["received_human", "working_human", "declined_human"].includes(bulkStage.value)) {
+      notice("HOLD: only neutral HUMAN statuses are permitted in bulk."); return;
+    }
+    if (!window.confirm("Change HUMAN stage of exactly " + indexes.length +
+        " CURRENTLY FILTERED requests to " + bulkStage.value +
+        "? No answer, verification or original fields will change.")) return;
+    lastBulk = indexes.map(i => [i, rows[i].status]);
+    for (const i of indexes) rows[i].status = bulkStage.value;
+    dirty = true;
+    notice("Filtered HUMAN stages changed in memory. Last bulk action can be undone.");
+    render();
+  });
+  document.getElementById("bulk-undo").addEventListener("click", () => {
+    if (!lastBulk || !lastBulk.length) {
+      notice("No previous intact bulk HUMAN stage change to undo."); return;
+    }
+    if (!window.confirm("Undo previous HUMAN-only bulk stage change?")) return;
+    for (const [i, status] of lastBulk) rows[i].status = status;
+    lastBulk = null;
+    dirty = true;
+    notice("Previous bulk HUMAN stage change reversed in memory.");
+    render();
+  });
   window.addEventListener("beforeunload", event => {
     if (!dirty) return;
     event.preventDefault();
@@ -113,6 +158,7 @@
   document.getElementById("reset").addEventListener("click", () => {
     if (!window.confirm("Discard all locally edited HUMAN replies? Existing downloaded files are unaffected.")) return;
     seed.responses.forEach((row, i) => Object.assign(rows[i], row));
+    lastBulk = null;
     dirty = false;
     pass.value = "";
     confirmation.value = "";
