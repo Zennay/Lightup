@@ -370,3 +370,44 @@ permanently named VPS CI, original source-owner, independent security/privacy/
 browser review, actual separate client and operator consent including
 revocation at use and explicit HUMAN GO are still necessary before any
 production merge/deploy. DRAFT/HOLD.
+
+## Original 2–8 HUMAN reviewer packet reconciliation (complete PRIVATE handoff)
+
+Existing original [PR #1669](https://github.com/Zennay/Lightup/pull/1669)
+already provides an immutable offline consensus algorithm and full encrypted
+browser workroom. The source was physically integrated unchanged earlier in
+this candidate. New `reviewer_room.py` now makes the entire original workflow
+usable from the same native suite and `console.py` menu option **10**:
+
+~~~sh
+python3 assessment-integrated-suite/reviewer_room.py \
+  --plan /private/original-human-reviewer-a.json \
+  --plan /private/original-human-reviewer-b.json \
+  --private-parent /private/owner-0700
+~~~
+
+The original owner code requires 2–8 distinct valid original PRIVATE HUMAN
+plan files, identical original source-bound row identities and canonical
+human-only enum proposals, rejecting forged/duplicate/changed input. Builds a
+unique new owner-0700 PRIVATE workroom with unchanged original:
+`private-conflicts.html`, `private-resolver.html`,
+`private-resolutions.json`, `anonymous-counts.json`, and **only when all
+HUMAN conflicts resolved** the original `private-merged-original-plan.json`.
+The complete original offline encrypted Reviewer Studio is copied alongside.
+A scriptless private local index explains exactly which files to open.
+
+Unresolved HUMAN conflict remains a meaningful `HOLD` (exit 3), not an
+accepted default choice. Complete HUMAN proposal returns REVIEW_ONLY (exit 2)
+and is **not** authenticated reviewer identity, verified security finding,
+consent, source signature, grant, release or authorisation. When a person
+manually completes the original conflict packet, they can run again with
+`--resolutions /private/completed-original-resolutions.json` and the **same
+original reviewer files in the same order**; original source independently
+revalidates all SHA/row/choice bindings before emitting a new proposed packet.
+Original source and other workers remain untouched.
+
+No model, network, scan, evidence collection, retest, external sharing,
+background job or customer grant. This is an offline DRAFT/HOLD candidate
+subject to immutable-head CI, source-owner and independent security/privacy/
+browser approvals, genuine separate client/operator consent (action-time
+revocation), #177/#182/#829 and explicit HUMAN GO before any release.

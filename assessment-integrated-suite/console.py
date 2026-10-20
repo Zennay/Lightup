@@ -17,6 +17,7 @@ SCRIPTS = {
     "portfolio": ROOT / "portfolio_room.py",
     "benchmark": ROOT / "benchmark_room.py",
     "trajectory": ROOT / "trajectory.py",
+    "reviewers": ROOT / "reviewer_room.py",
 }
 MAX_REPLY = 8192
 
@@ -33,6 +34,7 @@ class Session:
     portfolio_kit: str = ""
     benchmark_kit: str = ""
     trajectory_kit: str = ""
+    reviewer_kit: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -70,6 +72,7 @@ def run_native(script: str, flags: list[str]) -> tuple[bool, str]:
     adverse = (result.returncode == 3 and (
         (script == "benchmark" and answer.startswith("ORIGINAL DECLARATION: HOLD;"))
         or (script == "trajectory" and answer.startswith("ORIGINAL TRAJECTORY: HOLD;"))
+        or (script == "reviewers" and answer.startswith("ORIGINAL HUMAN CONSENSUS: HOLD;"))
     ))
     if result.returncode != 2 and not adverse:
         # Never echo native stderr or private source details.
@@ -242,6 +245,26 @@ def trajectory(session: Session) -> None:
         print("Selection order is HUMAN-only, not verified assessment chronology.")
 
 
+def reviewers(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    plans = [path_prompt(f"Original PRIVATE HUMAN reviewer plan {n}") for n in range(1, 3)]
+    while len(plans) < 8:
+        extra = ask("Further original PRIVATE reviewer plan (empty to finish)")
+        if not extra:
+            break
+        if len(extra) > 4096:
+            raise ValueError("HOLD: plan path exceeds length bound")
+        plans.append(extra)
+    resolutions = ask("Optional existing completed PRIVATE conflict resolution JSON")
+    flags = sum((["--plan", name] for name in plans), [])
+    if resolutions:
+        flags.extend(["--resolutions", resolutions])
+    ok, kit = run_native("reviewers", [*flags, "--private-parent", parent])
+    if ok:
+        session.parent, session.reviewer_kit = parent, kit
+        print("Original HUMAN proposal, not authenticated review or consent.")
+
+
 def last_packages(session: Session) -> None:
     for label, value in (
         ("PRIVATE full briefing", session.initial_kit),
@@ -252,6 +275,7 @@ def last_packages(session: Session) -> None:
         ("Original HUMAN agenda portfolio", session.portfolio_kit),
         ("Original PRIVATE lab benchmark comparison", session.benchmark_kit),
         ("Original PRIVATE lab cohort trajectory", session.trajectory_kit),
+        ("Original PRIVATE multi-reviewer HUMAN workroom", session.reviewer_kit),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -268,6 +292,7 @@ def main() -> int:
     menu = {
         "1": prepare, "2": curate, "3": dossier, "4": drift, "5": last_packages,
         "6": archive, "7": portfolio, "8": benchmark, "9": trajectory,
+        "10": reviewers,
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 10 offline HUMAN workrooms")
@@ -279,6 +304,7 @@ def main() -> int:
         print("7. Prepare original PRIVATE HUMAN agenda portfolio")
         print("8. Compare already-recorded lab benchmark originals (single/cohort/scored)")
         print("9. Generate 3-12 original benchmark cohorts for native offline trends")
+        print("10. Reconcile exact-source PRIVATE HUMAN reviewer plans")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -286,7 +312,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 9.")
+                print("Choose a number from 0 to 10.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
