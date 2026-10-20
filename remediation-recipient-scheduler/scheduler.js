@@ -12,9 +12,11 @@
   const fatal = reason => { throw new Error(reason); };
   const sameKeys = (obj,keys) => obj && typeof obj === "object" && !Array.isArray(obj) &&
     Object.keys(obj).length === keys.length && keys.every(k => Object.hasOwn(obj,k));
-  const validText = (s,limit,bytes) => typeof s === "string" &&
+  // Mirror native Python's Unicode category C admission.  Original HUMAN
+  // notes and textarea actions may contain LF; owner labels never may.
+  const validText = (s,limit,bytes,multiline=false) => typeof s === "string" &&
     [...s].length <= limit && textEncoder.encode(s).length <= bytes &&
-    !/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(s);
+    [...s].every(ch => (multiline && ch === "\n") || !/\p{C}/u.test(ch));
   const validDate = d => {
     if (d === "") return true;
     if (typeof d !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
@@ -28,8 +30,8 @@
       if (!sameKeys(task, ["packet","slot","reason","count","stage","human_note","owner","due","next_action"]) ||
           task.packet !== basis.packet || task.slot !== basis.slot ||
           task.reason !== basis.reason || task.count !== basis.count ||
-          !STAGES.includes(task.stage) || !validText(task.human_note,240,960) ||
-          !validText(task.owner,64,256) || !validText(task.next_action,240,960) ||
+          !STAGES.includes(task.stage) || !validText(task.human_note,240,960,true) ||
+          !validText(task.owner,64,256) || !validText(task.next_action,240,960,true) ||
           !validDate(task.due)) fatal("Unknown task or invalid HUMAN-only field; no plan was restored");
       return {...task};
     });
@@ -289,8 +291,8 @@
           !Number.isInteger(t.slot) || t.slot<0 || t.slot>2048 ||
           !Number.isInteger(t.count) || t.count<1 || t.count>100000000 ||
           !validText(t.reason,128,512) || !t.reason ||
-          !STAGES.includes(t.stage) || !validText(t.human_note,240,960) ||
-          !validText(t.owner,64,256) || !validText(t.next_action,240,960) ||
+          !STAGES.includes(t.stage) || !validText(t.human_note,240,960,true) ||
+          !validText(t.owner,64,256) || !validText(t.next_action,240,960,true) ||
           !validDate(t.due))fatal("Invalid or incomplete previous HUMAN task");
       const packet=tasksByPacket.get(t.packet),key=String(t.slot)+"|"+t.reason;
       if(packet.has(key))fatal("Duplicate previous HUMAN task in source-free packet");
