@@ -22,7 +22,7 @@
   });
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
-  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, sourceText: "", revisionCandidate: null, revisionHistory: []};
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, bulkProposal: null, sourceText: "", revisionCandidate: null, revisionHistory: []};
 
   function fail(message) { throw new Error(message); }
   function exactObject(obj, keys) {
@@ -131,9 +131,10 @@
     $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy", "revisionFile", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveWorkroom", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy", "revisionFile", "bulkStageMode", "bulkStage", "bulkOwnerMode", "bulkOwner", "bulkDueMode", "bulkDue", "bulkPreview", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveWorkroom", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
+    $("bulkApply").disabled = true;
   }
   function stageText(s) { return s.replaceAll("_", " "); }
   function clearRevisionCandidate() {
@@ -794,28 +795,100 @@
     download(JSON.stringify(counts, null, 2) + "\n", "lightup-anonymous-review-counts.json", "application/json");
     status("Counts-only file offered; no original IDs, title, source digest or HUMAN notes exported.", false);
   }
+  function invalidateBulkPreview() {
+    state.bulkProposal = null;
+    $("bulkApply").disabled = true;
+    $("bulkSummary").textContent = "Batch preview cleared; review the visible queue again before applying.";
+  }
+  function proposeBulk() {
+    if (state.pending) fail("Apply or discard unfinished individual HUMAN fields before bulk planning");
+    if (!state.rows.length) fail("Open a separately authorized original source first");
+    const indices = selectedIndices();
+    if (!indices.length) fail("No matching HUMAN follow-ups are visible");
+    const modes = {
+      stage: $("bulkStageMode").value,
+      owner: $("bulkOwnerMode").value,
+      due: $("bulkDueMode").value
+    };
+    if (!["keep","set"].includes(modes.stage) ||
+        !["keep","set","clear"].includes(modes.owner) ||
+        !["keep","set","clear"].includes(modes.due)) fail("Invalid HUMAN bulk assignment choices");
+    if (Object.values(modes).every(x => x === "keep")) fail("Choose an actual HUMAN stage, contact or follow-up date change");
+    const owner = $("bulkOwner").value.trim();
+    const due = $("bulkDue").value;
+    if (modes.stage === "set" && !STAGES.includes($("bulkStage").value)) fail("Invalid HUMAN stage");
+    if (modes.owner === "set" && !safeDisplay(owner, 160, false)) fail("Enter one safe agreed HUMAN owner (160 bytes maximum)");
+    if (modes.due === "set" && (!due || !todayValid(due))) fail("Choose one valid tentative date");
+    const changes = [];
+    for (const index of indices) {
+      const original = {...state.journal[index]};
+      const next = {...original};
+      if (modes.stage === "set") next.stage = $("bulkStage").value;
+      if (modes.owner === "set") next.owner = owner;
+      if (modes.owner === "clear") next.owner = "";
+      if (modes.due === "set") next.due = due;
+      if (modes.due === "clear") next.due = "";
+      const admitted = admitEntry(next, state.rows[index].id);
+      if (JSON.stringify(admitted) !== JSON.stringify(original)) {
+        changes.push({index, original, next: admitted});
+      }
+    }
+    if (!changes.length) fail("All visible HUMAN fields already match this proposal");
+    return {source: state.digest, indices, changes, modes};
+  }
+  function previewBulk() {
+    try {
+      const proposal = proposeBulk();
+      state.bulkProposal = proposal;
+      $("bulkApply").disabled = false;
+      $("bulkSummary").textContent =
+        proposal.changes.length + " of " + proposal.indices.length + " visible HUMAN findings would change. " +
+        (proposal.modes.stage === "set" ? "Stage → " + stageText($("bulkStage").value) + ". " : "") +
+        (proposal.modes.owner === "set" ? "Assign owner → " + $("bulkOwner").value.trim() + ". " :
+          proposal.modes.owner === "clear" ? "Clear owner. " : "") +
+        (proposal.modes.due === "set" ? "Tentative date → " + $("bulkDue").value + ". " :
+          proposal.modes.due === "clear" ? "Clear due date. " : "") +
+        "No source records, retest states or original remediation text will change. Confirm to apply.";
+      status("HUMAN batch proposal prepared in memory only; no changes yet.", false);
+    } catch (error) {
+      invalidateBulkPreview();
+      status("HUMAN batch preview refused: " + error.message, true);
+    }
+  }
   function applyBulk() {
-    if (state.pending) { status("Apply or discard individual HUMAN form edits before bulk staging.", true); return; }
-    const selected = selectedIndices();
-    const stage = $("bulkStage").value;
-    if (!STAGES.includes(stage) || !selected.length) {
-      status("No canonical HUMAN stage or visible findings were selected.", true);
+    const frozen = state.bulkProposal;
+    if (!frozen || frozen.source !== state.digest) {
+      status("HUMAN batch preview is missing or the source changed.", true);
       return;
     }
-    const changed = selected.filter(i => state.journal[i].stage !== stage);
-    if (!changed.length) { status("Visible records already have this HUMAN stage.", false); return; }
-    if (!confirm("HUMAN-ONLY proposal: set " + changed.length +
-      " visible finding(s) to '" + stageText(stage) +
-      "'? This does NOT change original source, retest or remediation. Unfiltered rows stay unchanged.")) return;
-    const previous = changed.map(i => ({index: i, stage: state.journal[i].stage}));
+    let now;
+    try { now = proposeBulk(); }
+    catch (error) { invalidateBulkPreview(); status(error.message, true); return; }
+    if (JSON.stringify(now) !== JSON.stringify(frozen)) {
+      invalidateBulkPreview();
+      status("HUMAN queue or current fields changed after preview. Review the batch again.", true);
+      return;
+    }
+    if (!confirm("Apply " + now.changes.length + " explicitly previewed HUMAN-only assignments/dates/stages? " +
+        "The source CSV, actual retest and remediation are NOT changed. Only this browser's private HUMAN journal changes. " +
+        "Keep an encrypted complete workroom for source-history continuity.")) return;
     clearRevisionCandidate();
-    for (const i of changed) state.journal[i] = {...state.journal[i], stage};
-    state.bulkUndo = previous;
+    for (const item of now.changes) {
+      state.journal[item.index] = {...item.next};
+    }
+    state.bulkUndo = now.changes.map(({index,original}) => ({index, original: {...original}}));
     state.dirty = true;
+    invalidateBulkPreview();
     $("bulkUndo").disabled = false;
-    if (state.selected >= 0) $("humanStage").value = state.journal[state.selected].stage;
+    if (state.selected >= 0) {
+      const current = state.journal[state.selected];
+      $("humanStage").value = current.stage;
+      $("humanOwner").value = current.owner;
+      $("humanDue").value = current.due;
+      $("humanNote").value = current.note;
+    }
     renderList();
-    status(changed.length + " visible HUMAN stage(s) updated in memory. Original CSV unchanged. Undo available.", false);
+    status(now.changes.length + " HUMAN follow-up assignments updated locally; one-step undo available. Save PRIVATE journal/workroom.", false);
   }
   function undoBulk() {
     if (state.pending) { status("Apply or discard individual HUMAN form edits first.", true); return; }
@@ -823,14 +896,21 @@
     if (!previous || !previous.length) return;
     clearRevisionCandidate();
     for (const item of previous) {
-      state.journal[item.index] = {...state.journal[item.index], stage: item.stage};
+      state.journal[item.index] = {...item.original};
     }
     state.bulkUndo = null;
     $("bulkUndo").disabled = true;
+    invalidateBulkPreview();
     state.dirty = true;
-    if (state.selected >= 0) $("humanStage").value = state.journal[state.selected].stage;
+    if (state.selected >= 0) {
+      const current = state.journal[state.selected];
+      $("humanStage").value = current.stage;
+      $("humanOwner").value = current.owner;
+      $("humanDue").value = current.due;
+      $("humanNote").value = current.note;
+    }
     renderList();
-    status("Last bulk HUMAN stage changes reversed in memory only.", false);
+    status("Last HUMAN owner/date/stage batch reversed locally. No original finding was changed.", false);
   }
   function init() {
     STAGES.forEach(v => {
@@ -851,12 +931,15 @@
       e.target.value = "";
     });
     ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy"].forEach(id =>
-      $(id).addEventListener("input", renderList));
+      $(id).addEventListener("input", () => { invalidateBulkPreview(); renderList(); }));
     ["humanStage", "humanOwner", "humanDue", "humanNote"].forEach(id => {
       $(id).addEventListener("input", () => { state.pending = true; status("Unapplied HUMAN form edits — click Apply before switching findings or exporting a PRIVATE draft.", true); });
     });
     $("applyHuman").addEventListener("click", writeEntry);
+    $("bulkPreview").addEventListener("click", previewBulk);
     $("bulkApply").addEventListener("click", applyBulk);
+    ["bulkStageMode","bulkStage","bulkOwnerMode","bulkOwner","bulkDueMode","bulkDue"].forEach(id =>
+      $(id).addEventListener("input", invalidateBulkPreview));
     $("bulkUndo").addEventListener("click", undoBulk);
     $("saveJournal").addEventListener("click", saveJournal);
     $("loadJournal").addEventListener("click", () => $("journalFile").click());
