@@ -15,6 +15,7 @@ import sys
 
 import reply
 import install
+import reconcile
 
 KIND = "lightup.private_selected_human_followup_register.v1"
 WARNING = (
@@ -89,12 +90,14 @@ def source_bound_differences(matrix_file: Path, original: dict, key: str) -> tup
             and all(doc[k] is False for k in (
                 "authority_granted", "consent_verified", "source_authenticated",
                 "remediation_verified", "independent_reviewer_count_verified"))
-            and doc["original_selected_redacted_sha256"] == key,
+            and doc["original_selected_redacted_sha256"] == key
+            and doc["warning"] == reconcile.WARNING,
             "Wrong prior HUMAN comparison/original selection or raised authority")
     entries = doc["selected_human_rows"]
     require(type(entries) is list and len(entries) == len(original["items"]),
             "Incomplete or reordered source-redacted HUMAN original task matrix")
     differences: list[bool] = []
+    expected_file_count = None
     for ordinal, (record, expected) in enumerate(zip(entries, original["items"]), 1):
         require(type(record) is dict and set(record) == {
             "ordinal", "redacted_human_reason", "unverified_reply_file_slots"
@@ -104,6 +107,10 @@ def source_bound_differences(matrix_file: Path, original: dict, key: str) -> tup
         slots = record["unverified_reply_file_slots"]
         require(type(slots) is list and 2 <= len(slots) <= 8,
                 "Incomplete previous HUMAN response file slots")
+        if expected_file_count is None:
+            expected_file_count = len(slots)
+        require(len(slots) == expected_file_count,
+                "Earlier HUMAN comparison cannot vary original file slots")
         for index, slot in enumerate(slots, 1):
             require(type(slot) is dict and set(slot) == {
                 "slot", "human_status", "human_answer", "human_question"
@@ -111,7 +118,11 @@ def source_bound_differences(matrix_file: Path, original: dict, key: str) -> tup
                     and type(slot["human_status"]) is str
                     and slot["human_status"] in reply.STAGES
                     and reply.schedule_vault.local_text(slot["human_answer"], 240, 960, True)
-                    and reply.schedule_vault.local_text(slot["human_question"], 240, 960, True),
+                    and reply.schedule_vault.local_text(slot["human_question"], 240, 960, True)
+                    and (slot["human_status"] != "answered_human_only" or
+                         slot["human_answer"].strip())
+                    and (slot["human_status"] != "need_clarification_human" or
+                         slot["human_question"].strip()),
                     "Unsafe/misordered PRIVATE earlier HUMAN response data")
         differences.append(any(len({slot[field] for slot in slots}) > 1 for field in (
             "human_status", "human_answer", "human_question")))
