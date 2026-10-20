@@ -29,7 +29,7 @@ MAX_DEPTH = 5
 MAX_MANIFEST = 1024 * 1024
 MAX_CSV = 64 * 1024
 STAGES = ("needs_review", "owner_followup", "hold", "reference_only")
-CSV_HEADERS = ("ordinal", "kit_digest", "stage", "owner", "question")
+CSV_HEADERS = ("ordinal", "ledger_sha256", "kit_digest", "stage", "owner", "question")
 FLAGS = {
     "authorization": False,
     "consent": False,
@@ -393,15 +393,17 @@ def capture(args):
     rows.append("</tbody></table><p>No source files copied. Paths and SHA fingerprints remain only in "
                 "the PRIVATE ledger.json. Removed or changed paths never demonstrate remediation.</p>"
                 "<p><a href='REVIEW-IN-BROWSER.html'>Open PRIVATE HUMAN browser editor</a> "
-                "(local-only; choose adjacent ledger.json). Downloaded PRIVATE CSVs may be saved with public "
-                "default permissions: move them into a 0700 folder and chmod 0600 before native finalize.</p>"
+                "(local-only; choose adjacent ledger.json). Exported HUMAN CSV rows include the "
+                "EXACT ledger SHA-256, not just the kit digest. Browser Downloads may be publicly "
+                "readable: use browser_intake.py to create a NEW private copy; do not assume "
+                "that moving/chmod of the original reverses prior exposure.</p>"
                 "<p>Use the companion HUMAN-review.csv in a trusted editor, then run finalize. "
                 "Stages and notes are proposals, never source evidence.</p>")
     template = io.StringIO(newline="")
     writer = csv.writer(template, lineterminator="\n")
     writer.writerow(CSV_HEADERS)
     for k in kits:
-        writer.writerow((k["ordinal"], k["digest"], "needs_review", "", ""))
+        writer.writerow((k["ordinal"], digest(encoded), k["digest"], "needs_review", "", ""))
     output = new_private(args.private_parent)
     try:
         write_private(output, "ledger.json", encoded)
@@ -461,8 +463,10 @@ def finalize(args):
     for kit, row in zip(doc["kits"], decisions):
         if None in row or set(row) != set(CSV_HEADERS):
             reject("PRIVATE HOLD: HUMAN field count")
-        if row["ordinal"] != str(kit["ordinal"]) or row["kit_digest"] != kit["digest"]:
-            reject("PRIVATE HOLD: HUMAN plan does not match exact source ledger")
+        if (row["ordinal"] != str(kit["ordinal"]) or
+                row["ledger_sha256"] != digest(raw) or
+                row["kit_digest"] != kit["digest"]):
+            reject("PRIVATE HOLD: HUMAN plan does not match exact original ledger SHA and kit identity")
         stage = row["stage"]
         if stage not in STAGES:
             reject("PRIVATE HOLD: invalid HUMAN stage")
