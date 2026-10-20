@@ -27,6 +27,44 @@ python3 assessment-disclosure-preflight/preflight.py \
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
 
+## Read-only complete HUMAN handoff reopening
+
+`reconcile.py reopen` is a **new independent receiving operation** for an
+already-prepared PRIVATE two-reviewer HUMAN handoff. On the same trusted offline
+machine, provide the original unsigned PRIVATE receipt, both separately saved
+original reviewer submissions, the manually completed decision CSV, and the
+owner-only 0700 output directory. The operation re-admits the exact original
+receipt, original reviewer CSV bytes and every original decision; reconstructs
+the native complete HUMAN selection and counts; and compares all plaintext
+native handoff files **byte-for-byte** against their expected values.
+
+For a deliberately encrypted `--encrypt-result` handoff, `reopen` instead
+asks for the original private bundle passphrase through the existing native
+no-echo password reader, decrypts the previously published `.luhb` only in
+memory, and checks the original receipt and complete HUMAN selection against
+the same unchanged source inputs. It also independently checks the counts
+handoff bytes. No plaintext HUMAN CSV is written by encrypted reopening.
+
+~~~sh
+# The original operator receipt/review files and completed decisions must
+# still be available privately; no active scanning or publication occurs.
+python3 assessment-disclosure-preflight/reconcile.py reopen \
+  --receipt ./private/PRIVATE-receipt.json \
+  --a-csv ./private/reviewer-a.csv \
+  --b-csv ./private/reviewer-b.csv \
+  --decisions ./private/PRIVATE-reconcile-decisions.csv \
+  --private-output-dir ./private/reconciled-output
+# For the encrypted finalization, use the same options plus --encrypt-result.
+~~~
+
+Exit code **2** means the **declared unsigned source-free PRIVATE HUMAN files**
+matched this local read-only reconstruction and still require manual review.
+Any changed or missing output, mismatched reviewer/decision, invalid source,
+incorrect passphrase or altered counts yields **3 / HOLD**. No new outputs,
+labels, verification, consent, customer disclosure, scan, or authorization are
+created. Successful local reconstruction does **not** prove reviewer identity,
+original evidence provenance, correct findings, remediation or security.
+
 ## Complete two-reviewer publication (PRIVATE, no release)
 
 The native `reconcile.py prepare` and `reconcile.py finalize` paths now use
