@@ -77,6 +77,8 @@ ACTIONS: dict[str, str] = {
     '67': 'Build source-minimal HUMAN stage/team history from root batch and chained rounds',
     '68': 'Prepare original source-bound PRIVATE per-ordinal HUMAN conflict choice worksheet',
     '69': 'Publish explicitly selected HUMAN conflict choices to a NEW PRIVATE candidate',
+    '70': 'Reopen PRIVATE HUMAN conflict resolution against exact original source bytes',
+    '71': 'Admit resolved HUMAN source and open NEW ORIGINAL review Studio manually',
 }
 
 CATEGORIES = (
@@ -98,7 +100,7 @@ def overview() -> None:
     for name, ids in CATEGORIES:
         print("  " + ids[0] + "–" + ids[-1] + "   " + name)
     print("Suggested safe HUMAN-only workflow: 37 → 49 → manual editor →")
-    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60 → 61 → 62 → 63 → 64 → 65 → 66 → 67 → 68 → 69.")
+    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60 → 61 → 62 → 63 → 64 → 65 → 66 → 67 → 68 → 69 → 70 → 71.")
     print("Enter an action number, ALL for full catalog, ?keyword to search,")
     print("HELP for a HUMAN walkthrough or 0 to exit. No action is automatic.")
 
@@ -160,6 +162,8 @@ def help_flow() -> None:
     print("67. Review source-bound HUMAN decision continuity and team transitions.")
     print("68. Prepare owner-private source-bound per-ordinal HUMAN conflict choices.")
     print("69. Admit edited exact-source HUMAN choices into NEW unfinalized candidate.")
+    print("70. Reopen published HUMAN conflict choices read-only against originals.")
+    print("71. Open the exact-source resolved draft in NEW ORIGINAL HUMAN Studio.")
     print("Every step remains PRIVATE and REVIEW_ONLY. No scan, grant, report")
     print("verification, real scheduling, recipient dispatch or consent.")
     print("Original current authenticated client+operator consent, revocation")
