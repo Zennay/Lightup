@@ -20,7 +20,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from lightup.redaction import redact_text  # Exact unchanged original #672 source.
+from private_masking import mask_private_notes  # Core original producer + local defence-in-depth.
 from browser_studio import render as render_browser_studio
 
 MAX_FILE = 512 * 1024
@@ -222,7 +222,7 @@ def prepare(inputs: list[str], parent_string: str) -> int:
         if counter > MAX_TOTAL:
             raise Hold("HOLD: aggregate PRIVATE input exceeds 2 MiB")
         before = clean_text(raw)
-        after = redact_text(before)
+        after = mask_private_notes(before)
         if len(after.encode("utf-8")) > MAX_MASKED_FILE:
             raise Hold("HOLD: original redaction output exceeded PRIVATE size bound")
         row = {
