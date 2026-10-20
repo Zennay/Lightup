@@ -34,7 +34,7 @@ DISPOSITION = "REVIEW_ONLY_DRAFT_HOLD"
 WARNING = ("PRIVATE offline software-only, unsigned and non-authorizing. No "
            "authenticated producer, consent, finding, fix, security review, "
            "scan, grant or HUMAN GO. INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD.")
-COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py", "vault.py", "coordination.py", "worklist.py", "agenda.py")
+COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py", "vault.py", "coordination.py", "worklist.py", "agenda.py", "desk.py")
 FILES = frozenset("remediation-human-replies/" + n for n in COMPANION)
 PORTABLE = "LightUp-PRIVATE-HUMAN-Reply-Software-DRAFT-HOLD.zip"
 ORIGINAL_ZIP = "original-scheduler-software-only.zip"
@@ -173,7 +173,23 @@ no original HUMAN owner labels, reasons, questions or answers.</p>
 external service requires separately authenticated disclosure permission.
 Original self-declared answered/declined HUMAN stages are omitted from
 the .ics only; they are NOT classed as verified remediation.</p></section>
-<section><h2>9 · Rotate recipient response encryption with no plaintext intermediate</h2>
+<section><h2>9 · All-in-one PRIVATE HUMAN follow-up desk</h2>
+<p>The complete <code>desk.py</code> opens the same original native
+encrypted selected .luhq and current encrypted HUMAN .luhr exactly once
+each, then combines the HUMAN next-action register, declared-date agenda
+and privacy-minimised tentative local .ics in one PRIVATE offline workroom
+with a navigable dashboard. Pass an optional <code>--comparison</code>
+from <code>reconcile.py</code> to highlight earlier literal differences
+using the exact same original source binding. The original source, response
+and comparison files are all rechecked before separate private publication.</p>
+<pre>python3 remediation-human-replies/desk.py \
+  --handoff "$HOME/lightup-private/selected-human.luhq" \
+  --reply "$HOME/lightup-private/reply-one.luhr" \
+  --output-dir "$HOME/lightup-private/private-human-desk-01"</pre>
+<p>No automatically imported calendar, human consensus, verified fix,
+original source identity, authenticated consent or active scanner action.</p>
+</section>
+<section><h2>10 · Rotate recipient response encryption with no plaintext intermediate</h2>
 <p>The offline original-bound native <code>vault.py</code> independently
 reads the genuine original selected encrypted HUMAN handoff and already
 encrypted recipient reply, then prompts for a new, separately confirmed
