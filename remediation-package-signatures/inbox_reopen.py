@@ -21,7 +21,7 @@ from portable_handoff import (
     ARCHIVE_NAME, PUBLIC_NAME, RECEIPT_NAME, SECOND_PUBLIC_NAME,
     SECOND_RECEIPT_NAME, _unpack_bytes,
 )
-from trust_registry import _json_file, _owner_private, trusted
+from trust_registry import _json_file, _owner_private, minimum_signers, trusted
 
 SHA = re.compile(r"^[0-9a-f]{64}$")
 RECORD_FIELDS = frozenset({
@@ -39,8 +39,13 @@ def inspect(keyring: Path, workspace: Path, require_two: bool) -> None:
     _owner_private(workspace)
     install = _import_original_install()
     manifest = _json_file(workspace / "inbox.json")
-    if set(manifest) != ROOT_FIELDS or manifest["format"] != KIND or manifest["disposition"] != "PRIVATE_HUMAN_REVIEW_ONLY":
+    fields = set(manifest)
+    if fields not in (ROOT_FIELDS, ROOT_FIELDS | {"local_minimum_signers"}) or manifest["format"] != KIND or manifest["disposition"] != "PRIVATE_HUMAN_REVIEW_ONLY":
         raise Hold("private software inbox manifest format or authority differs")
+    original_floor = manifest.get("local_minimum_signers", 1)
+    if type(original_floor) is not int or original_floor not in (1, 2):
+        raise Hold("invalid original recorded signer floor")
+    require_two = require_two or original_floor == 2 or minimum_signers(keyring) == 2
     if any(manifest[key] is not False for key in (
         "source_owner_authenticated", "client_consent", "remediation_verified",
         "scan_authorized", "deployment_authorized", "human_go",
