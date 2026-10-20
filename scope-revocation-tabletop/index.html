@@ -32,6 +32,13 @@
           <div class="buttons"><button type="button" id="set-baseline" class="button minor">Huidige situatie vastleggen</button><button type="button" id="clear-baseline" class="button minor">Nulmeting wissen</button></div>
           <p class="muted" id="baseline-hint">Geen nulmeting vastgelegd.</p>
         </section>
+        <section class="scenario-bank" aria-labelledby="bank-title">
+          <div class="section-top"><div><p class="kicker">WORKSHOP / 8 SLOTS</p><h3 id="bank-title">Scenarioverzameling</h3></div><span class="pill">ALLEEN LOKAAL GEHEUGEN</span></div>
+          <p class="muted">Bewaar acht fictieve beslisverlopen naast elkaar, vergelijk status en oefenblokkades, en herstel een scenario naar de editor. Opslaan of laden vervangt nooit echte LightUp-toestemming.</p>
+          <div class="bank-actions"><button id="save-board" type="button" class="button minor">Volledige verzameling opslaan (.json)</button><button id="save-board-brief" type="button" class="button minor">Groepsbrief (.md)</button></div>
+          <div class="bank-scroll"><table class="bank-table"><caption class="sr-only">Acht uitsluitend fictieve scenario-slots</caption>
+            <thead><tr><th>Scenario</th><th>Fictieve toestand</th><th>Acties</th></tr></thead><tbody id="bank-rows"></tbody></table></div>
+        </section>
         <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
         <ol id="timeline" class="timeline" aria-live="polite"></ol>
         <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
