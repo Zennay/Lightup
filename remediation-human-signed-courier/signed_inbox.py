@@ -24,6 +24,7 @@ from signed_courier import (
 )
 sys.path.insert(0, str(ROOT / "remediation-human-replies"))
 import reconcile  # original author code, unchanged
+import coordination  # original editable source-bound HUMAN coordinator, unchanged
 sys.path.insert(0, str(ROOT / "remediation-integrated-workspace"))
 import install  # original atomic exclusive publication
 
@@ -31,7 +32,7 @@ MAX_RECEIVED = 8
 KIND = "lightup.private_encrypted_human_signed_reply_inbox.v1"
 
 
-def _page(records: list[dict]) -> bytes:
+def _page(records: list[dict], *, editable: bool) -> bytes:
     rows = []
     for row in records:
         rows.extend((
@@ -61,8 +62,8 @@ def _page(records: list[dict]) -> bytes:
         "signed courier. Each reply underwent the unchanged original source+"
         "password admission after cryptographic validation. File slots are NOT "
         "independent people, chronology, truth, agreement or authorization.</p>"
-        "<p><a href='original-human-comparison/index.html'>"
-        "Open original PRIVATE HUMAN reply comparison</a></p>"
+        "<p><a href='" + ("original-human-coordination" if editable else "original-human-comparison") + "/index.html'>"
+        + ("Open original PRIVATE editable HUMAN coordination" if editable else "Open original PRIVATE HUMAN reply comparison") + "</a></p>"
         "<h2>Local encrypted-file custody (PRIVATE)</h2>"
         "<table><thead><tr><th>Input slot</th><th>Trusted key fingerprint</th>"
         "<th>Exact encrypted reply SHA-256</th></tr></thead><tbody>"
@@ -73,7 +74,7 @@ def _page(records: list[dict]) -> bytes:
     ).encode("utf-8")
 
 
-def receive_many(selected: list[tuple[Path, str]], output: Path) -> None:
+def receive_many(selected: list[tuple[Path, str]], output: Path, *, editable_coordination: bool = False) -> None:
     if not 2 <= len(selected) <= MAX_RECEIVED:
         raise Hold("choose 2–8 original encrypted HUMAN signed couriers")
     if not sys.stdin.isatty():
@@ -121,17 +122,29 @@ def receive_many(selected: list[tuple[Path, str]], output: Path) -> None:
         # Delegates ALL semantic checks to original owner, including 2 separate
         # HUMAN passwords and exact ordinal/source-membership checks. Original
         # output is published locally inside our currently unpublished stage.
-        reconcile.compare(stage / "original-selected.luhq", paths, stage / "original-human-comparison")
+        if editable_coordination:
+            # Original owned source-bound HUMAN coordinator gives a new editable
+            # local response while preserving each respondent's original rows.
+            coordination.compile_workroom(
+                stage / "original-selected.luhq", paths,
+                stage / "original-human-coordination",
+            )
+        else:
+            reconcile.compare(
+                stage / "original-selected.luhq", paths,
+                stage / "original-human-comparison",
+            )
         for courier_file, old_bytes in packages:
             if private_bytes(courier_file, MAX_COURIER) != old_bytes:
                 raise Hold("signed encrypted reply courier mutated during original admission")
-        publish_new(stage / "index.html", _page(records))
+        publish_new(stage / "index.html", _page(records, editable=editable_coordination))
         receipt = {
             "kind": KIND, "version": 1, "disposition": "PRIVATE_HUMAN_ONLY_DRAFT_HOLD",
             "authority_granted": False, "consent_verified": False,
             "remediation_verified": False, "source_authenticated": False,
             "independent_humans_verified": False,
             "original_encrypted_handoff_sha256": hashlib.sha256(original_handoff).hexdigest(),
+            "original_human_flow": "editable_coordination" if editable_coordination else "read_only_comparison",
             "entries": records,
         }
         publish_new(stage / "private-custody.json", canonical(receipt) + b"\n")
@@ -148,11 +161,15 @@ def main() -> int:
     parser.add_argument("--signed-courier", action="append", required=True, type=Path)
     parser.add_argument("--trusted-fingerprint", action="append", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--editable-coordination", action="store_true")
     args = parser.parse_args()
     try:
         if len(args.signed_courier) != len(args.trusted_fingerprint):
             raise Hold("supply one independently trusted fingerprint PER signed private courier")
-        receive_many(list(zip(args.signed_courier, args.trusted_fingerprint)), args.output_dir)
+        receive_many(
+            list(zip(args.signed_courier, args.trusted_fingerprint)),
+            args.output_dir, editable_coordination=args.editable_coordination,
+        )
     except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
         print("HOLD:", exc, file=sys.stderr)
         return 3
