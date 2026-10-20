@@ -66,6 +66,74 @@
     ensure(rows[0].length === FIELDS.length && rows[0].every((x, i) => x === FIELDS[i]));
     return rows.slice(1);
   }
+  function parseUnambiguousJson(source) {
+    // JSON.parse silently accepts duplicate keys. PRIVATE receipt authority
+    // declarations and original ordinals must reject *all* ambiguous names.
+    let offset = 0;
+    const whitespace = () => {
+      while (offset < source.length && /[\u0009\u000a\u000d\u0020]/u.test(source[offset])) ++offset;
+    };
+    const stringToken = () => {
+      ensure(source[offset] === '"');
+      const start = offset++;
+      while (offset < source.length) {
+        if (source[offset] === "\\") { offset += 2; continue; }
+        if (source[offset++] === '"') {
+          const raw = source.slice(start, offset);
+          return JSON.parse(raw); // decode escaped property names canonically
+        }
+      }
+      ensure(false);
+    };
+    const parseValue = depth => {
+      ensure(depth <= 32);
+      whitespace();
+      const c = source[offset];
+      if (c === "{") {
+        ++offset;
+        const keys = new Set();
+        whitespace();
+        if (source[offset] === "}") { ++offset; return; }
+        while (offset < source.length) {
+          whitespace();
+          const key = stringToken();
+          ensure(!keys.has(key));
+          keys.add(key);
+          whitespace();
+          ensure(source[offset++] === ":");
+          parseValue(depth + 1);
+          whitespace();
+          if (source[offset] === "}") { ++offset; return; }
+          ensure(source[offset++] === ",");
+        }
+        ensure(false);
+      } else if (c === "[") {
+        ++offset;
+        whitespace();
+        if (source[offset] === "]") { ++offset; return; }
+        while (offset < source.length) {
+          parseValue(depth + 1);
+          whitespace();
+          if (source[offset] === "]") { ++offset; return; }
+          ensure(source[offset++] === ",");
+        }
+        ensure(false);
+      } else if (c === '"') {
+        stringToken();
+      } else {
+        const remainder = source.slice(offset);
+        const token = /^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/u.exec(remainder);
+        ensure(token);
+        offset += token[0].length;
+      }
+    };
+    parseValue(0);
+    whitespace();
+    ensure(offset === source.length);
+    const parsed = JSON.parse(source);
+    ensure(parsed && typeof parsed === "object" && !Array.isArray(parsed));
+    return parsed;
+  }
   function safeText(value) {
     return typeof value === "string" && value.length <= 1200 && !/[\u0000-\u001f\u007f]/u.test(value) &&
            !/^[\s]*[=+\-@]/u.test(value);
@@ -153,7 +221,7 @@
       const raw = await bounded(byId("receipt").files[0]);
       const digest = hex(await crypto.subtle.digest("SHA-256", raw));
       const decoded = new TextDecoder("utf-8", {fatal: true}).decode(raw);
-      const sourceRows = validateReceipt(JSON.parse(decoded));
+      const sourceRows = validateReceipt(parseUnambiguousJson(decoded));
       const csvFile = byId("csv").files[0];
       const vaultFile = byId("vault").files[0];
       ensure(Boolean(csvFile) !== Boolean(vaultFile));
