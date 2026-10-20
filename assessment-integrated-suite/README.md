@@ -451,7 +451,13 @@ strict restored saved-session PATH snapshot (not against a remembered filename).
 The original receipt is bounded, opened with NOFOLLOW, read once with full
 descriptor identity, rejects duplicate keys and noncanonical literal
 false-authority flags, and its team/card counts are independently checked
-against exact original pinned rows. The previous workpack cannot be the new
+against exact original pinned rows. New HUMAN workpacks also write a native
+**v2 receipt** with the unsigned exact pinned 0600 CSV byte length and SHA-256.
+Progress comparison and continuation require the pinned original bytes to
+match the v2 declaration before using their HUMAN decisions. Pre-existing
+original v1 workpacks remain explicitly readable under their original
+weaker (session/row/count bound, but no receipt digest) acceptance contract;
+they are never silently upgraded or called authenticated. The previous workpack cannot be the new
 output parent, and neither old workpack nor current console is modified.
 
 Use foreground **console option 51** or the native CLI:
@@ -474,6 +480,18 @@ CSV/JSON receipt in a new 0700 directory. Operators still need to export,
 locally re-admit and deliberately review subsequent edits. No client/private
 source opened, no scan, grant, external scheduling, authenticated reviewer
 identity, security verdict or release is implied.
+
+## Portable 15-original-studio software kit v16
+
+[Offline LightUp Assessment Toolkit v16](LightUp-Assessment-Offline-Toolkit-v16.zip)
+contains the original 15 unchanged standalone offline HUMAN browser studios
+and a refreshed software-only operator guide. The new guided native 51-action
+console, source-bound workpack continuation, v2 pinned CSV receipt integrity
+and offline filtered PRIVATE Progress Cockpit are explicitly described but
+**remain native-only**: no generated client data, original PRIVATE session,
+private CSV/workpack, authentic grant, or executable native Python is in this
+public browser software package. Unsigned local file digests cannot prove
+release authenticity or operator/client consent.
 
 ## Portable 15-original-studio software kit v15
 

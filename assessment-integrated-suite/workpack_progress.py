@@ -8,6 +8,8 @@ source-minimal HUMAN metadata, never original private question text.
 from __future__ import annotations
 
 import csv
+import hashlib
+import hmac
 import html
 import io
 import json
@@ -72,6 +74,16 @@ def original_workpack(folder: str, base: list[dict]) -> tuple[str, list[dict], b
         "automated_actions", "workflows", "human_staged", "team_decks",
         "generated_views",
     }
+    is_legacy = receipt.get("schema") == human_workpack.LEGACY_SCHEMA
+    if is_legacy:
+        pass  # Backward-compatible acceptance for existing original v1 workpacks.
+    elif receipt.get("schema") == human_workpack.SCHEMA:
+        expected_fields.update({
+            "pinned_private_human_csv_sha256_unsigned",
+            "pinned_private_human_csv_bytes",
+        })
+    else:
+        raise privacy.Hold("HOLD: unsupported original HUMAN workpack receipt schema")
     flags = ("original_client_source_included",
              "original_session_paths_included", "external_recipient_authenticated",
              "review_verified", "automated_actions")
@@ -86,7 +98,6 @@ def original_workpack(folder: str, base: list[dict]) -> tuple[str, list[dict], b
             or receipt.get("pinned_private_human_csv_included") is not True):
         raise privacy.Hold("HOLD: original workpack receipt authority or schema invalid")
     if (type(receipt) is not dict
-            or receipt.get("schema") != human_workpack.SCHEMA
             or receipt.get("status") != "REVIEW_ONLY"
             or receipt.get("authority") != privacy.AUTHORITY
             or receipt.get("original_client_source_included") is not False
@@ -103,6 +114,14 @@ def original_workpack(folder: str, base: list[dict]) -> tuple[str, list[dict], b
     if source.is_symlink():
         raise privacy.Hold("HOLD: pinned original HUMAN workpack CSV cannot be linked")
     raw = route_queue.read_owner_csv(str(source))
+    if not is_legacy:
+        digest = receipt["pinned_private_human_csv_sha256_unsigned"]
+        if (type(digest) is not str or len(digest) != 64
+                or not all(c in "0123456789abcdef" for c in digest)
+                or type(receipt["pinned_private_human_csv_bytes"]) is not int
+                or receipt["pinned_private_human_csv_bytes"] != len(raw)
+                or not hmac.compare_digest(digest, hashlib.sha256(raw).hexdigest())):
+            raise privacy.Hold("HOLD: original pinned HUMAN CSV digest/size differs")
     rows = route_queue.admit_human_edits_bytes(base, raw)
     teams = [(team, sum(row["review_team"] == team and
                         row["human_stage"] != "UNASSESSED" for row in rows))

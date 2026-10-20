@@ -8,6 +8,7 @@ Every original input is re-admitted by the existing native owner-only readers.
 from __future__ import annotations
 
 from datetime import date
+import hashlib
 import html
 import json
 import os
@@ -19,7 +20,8 @@ import private_session as privacy
 import route_queue
 import route_team
 
-SCHEMA = "lightup.private.assessment-human-workpack.v1"
+LEGACY_SCHEMA = "lightup.private.assessment-human-workpack.v1"
+SCHEMA = "lightup.private.assessment-human-workpack.v2"
 TEAM_FOLDERS = {
     "Security": "team-security",
     "Privacy": "team-privacy",
@@ -130,6 +132,8 @@ def build(session, source_csv: str, parent_name: str, name: str,
         "declared_review_date": review_date,
         "original_client_source_included": False,
         "pinned_private_human_csv_included": True,
+        "pinned_private_human_csv_sha256_unsigned": hashlib.sha256(source_bytes).hexdigest(),
+        "pinned_private_human_csv_bytes": len(source_bytes),
         "created_from_unassessed_session": seeded_from_session,
         "original_session_paths_included": False,
         "external_recipient_authenticated": False,

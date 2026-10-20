@@ -35,7 +35,7 @@ Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
 Native checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 50 actions, including original
+options 21/22. The same console now has 51 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
@@ -67,6 +67,20 @@ Native option 50 and suite.py workpack-progress can produce a separate
 owner-private offline HUMAN stage/team/declared-date progression from 2-8
 original exact-session workpack snapshots without copying question text.
 This remains NATIVE-ONLY and is not bundled in browser-only software.
+Native option 51 and suite.py workpack-continue re-admit an existing
+original owner-only workpack from a strict unchanged saved session and
+generate a fresh completely editable HUMAN workpack with a new explicitly
+declared review date; old workpack unchanged. New v2 unsigned workpack
+receipts bind the exact pinned 0600 CSV bytes/length; older v1 receipts
+remain legacy admission without a digest. Option 50 now publishes a
+source-minimal searchable offline Progress Cockpit with CSP-pinned local
+JavaScript and an independent scriptless 0600 fallback. The native
+console opens with a compact eight-group navigator; ALL shows every
+original numeric action, ?keyword searches, HELP shows the manual
+37->49->50->51 HUMAN-only flow. These are PRIVATE local workflows and
+are never actual risk certification, consent, scan permission or a
+production assessment service.
+
 The browser can preview proposed imported HUMAN field changes without
 revealing question text and bulk-assign staged visible tasks to a HUMAN
 team without contacting recipients or granting any assessment authority.
