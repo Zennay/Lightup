@@ -6,7 +6,6 @@ import argparse
 import ctypes
 import errno
 import hashlib
-import html
 import json
 import os
 from pathlib import Path
@@ -21,7 +20,7 @@ ROOT = HERE.parent
 NATIVE_INSTALLER = ROOT / "remediation-integrated-workspace" / "install.py"
 COMPANION_FILES = (
     "vault.py", "browser.js", "index.html", "standalone.html",
-    "build_browser.py", "README.md",
+    "build_browser.py", "integrate.py", "README.md",
 )
 MAX_ASSET = 512_000
 FLAGS = {"consent_verified": False, "authorized": False,
