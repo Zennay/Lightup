@@ -33,3 +33,14 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 .finalize .grid{margin-top:1rem}
 .resume{border-top:1px solid #cad6df;margin-top:1rem;padding-top:1rem}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* HUMAN final-result preview: every ordinal shown, notes collapsed by default. */
+.final-preview{display:grid;gap:.65rem;max-height:28rem;overflow:auto;padding:.3rem;margin-top:1rem;border:1px solid #b4c6d5;border-radius:.45rem;background:#fff}
+.outcome{padding:.75rem 1rem;background:#fff;border:1px solid #d0dce6;border-radius:.38rem;overflow-wrap:anywhere}
+.outcomeTitle{font-weight:750;margin:.2rem 0}.outcomeTitle[data-mode=hold]{color:#8a4f21}
+.outcomeTitle[data-mode=selected]{color:#246153}
+.outcomeKind{font-size:.82rem;color:#607286}
+.outcome details{margin:.65rem 0 0;padding:.65rem;border:1px solid #dce3ed;background:#f6f8fa;border-radius:.4rem}
+.outcome summary{cursor:pointer;font-weight:700}
+.outcome details .notes{margin:.45rem 0;white-space:pre-wrap;overflow-wrap:anywhere}
+@media print{.final-preview{max-height:none;overflow:visible}.outcome details:not([open]) .notes{display:none}}
