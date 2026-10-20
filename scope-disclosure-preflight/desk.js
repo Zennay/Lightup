@@ -374,6 +374,7 @@
          !["needs_more_masking","needs_context","read_only_notes"].includes(reply.human_followup) ||
          typeof reply.human_note!=="string" || reply.human_note.length>800 ||
          /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(reply.human_note) ||
+         hints(reply.human_note).some(([name])=>["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].includes(name)) ||
          !["sender_authenticated","client_consent","operator_consent",
            "revocation_at_use_verified","scanning_permitted","release_approved"].every(k=>reply[k]===false)){
         throw Error("invalid recipient response");
