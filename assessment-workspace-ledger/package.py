@@ -28,6 +28,8 @@ NAMES = (
     "history_progress.py", "portfolio.py", "package.py", "standalone.html",
 )
 SCHEMA = "lightup.private.workspace-ledger-software.v17"
+LEGACY_SCHEMA = "lightup.private.workspace-ledger-software.v16"
+LEGACY_NAMES = tuple(name for name in NAMES if name != "portfolio.py")
 FLAGS = {
     "authorization": False, "consent": False,
     "verified_finding": False, "release_approval": False,
@@ -142,12 +144,18 @@ def inspect(args):
         os.close(fd)
     with zipfile.ZipFile(io.BytesIO(raw), "r") as src:
         entries = src.infolist()
-        expected = [PREFIX + name for name in NAMES] + [PREFIX + "manifest.json"]
-        if len(entries) != len(expected) or [entry.filename for entry in entries] != expected:
+        stored = [entry.filename for entry in entries]
+        profiles = ((NAMES, SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA))
+        selected = next((
+            (names, schema) for names, schema in profiles
+            if stored == [PREFIX + name for name in names] + [PREFIX + "manifest.json"]
+        ), None)
+        if selected is None:
             reject("PRIVATE HOLD: ZIP entries are missing/reordered/extra/duplicate")
+        selected_names, selected_schema = selected
         content = {}
         total = 0
-        for entry, name in zip(entries, list(NAMES) + ["manifest.json"]):
+        for entry, name in zip(entries, list(selected_names) + ["manifest.json"]):
             if entry.flag_bits & 1 or entry.file_size <= 0 or entry.file_size > MAX_FILE or (
                 entry.external_attr >> 16
             ) & 0o170000 not in (0, 0o100000):
@@ -169,14 +177,14 @@ def inspect(args):
         raise Hold("PRIVATE HOLD: invalid manifest") from exc
     if not isinstance(manifest, dict) or set(manifest) != {
         "schema", "authority", "includes_customer_data", "files"
-    } or manifest["schema"] != SCHEMA or not literal_false_authority(manifest["authority"], FLAGS) or (
+    } or manifest["schema"] != selected_schema or not literal_false_authority(manifest["authority"], FLAGS) or (
         manifest["includes_customer_data"] is not False
     ):
         reject("PRIVATE HOLD: source-only manifest schema/authority")
     rows = manifest["files"]
-    if not isinstance(rows, list) or len(rows) != len(NAMES):
+    if not isinstance(rows, list) or len(rows) != len(selected_names):
         reject("PRIVATE HOLD: wrong manifest source count")
-    for row, name in zip(rows, NAMES):
+    for row, name in zip(rows, selected_names):
         data = content[name]
         if not isinstance(row, dict) or set(row) != {"path", "bytes", "sha256"} or (
             row["path"] != name or type(row["bytes"]) is not int or row["bytes"] != len(data)
@@ -184,6 +192,8 @@ def inspect(args):
         ):
             reject("PRIVATE HOLD: ZIP bytes disagree with manifest")
     print("PRIVATE REVIEW_ONLY: software archive internal file hashes and schema match")
+    if selected_schema == LEGACY_SCHEMA:
+        print("LEGACY v16 source-only ZIP: current v17 portfolio.py is NOT included.")
     print("UNSIGNED SHA256: " + sha256(raw))
     print("This is NOT software publisher authentication, approval, verified security, or consent.")
     return 2
