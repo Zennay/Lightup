@@ -1495,8 +1495,8 @@ changes per original ordinal, plus the source-minimized
 `PRIVATE-HUMAN-BATCH-CHANGES.csv` (ordinal/team/stage + Boolean only,
 never private question text), and a distinct `PRIVATE-HUMAN-TEAM-TRANSITIONS.csv`
 (operator positions, HUMAN team, previous/next manually declared inclusion
-or withholding). All remain owner-0600 and unsigned;
-never private question text). No source URLs, client name, source paths,
+or withholding). All remain owner-0600 and unsigned.
+No source URLs, client name, source paths,
 SHA, credentials or original lab targets are copied into these reports.
 Rounds are explicitly **operator-supplied positions**, not verified
 real chronology or proof that a finding was resolved. Future human
