@@ -55,3 +55,15 @@ python3 assessment-disclosure-preflight/human_review.py render \
 ~~~
 
 The CSV is **PRIVATE**, not a public anonymized report. It can contain confidential HUMAN questions or actions, and even a reviewed HUMAN stage **never** becomes an authorization, approved release, verified finding, grant, consent or successful remediation. Its SHA binds solely to the unsigned aggregate receipt's bytes — **never** to the original sensitive lab source, human sender identity or a real signing key. Wrong receipts HOLD without silently copying decisions. Both commands return REVIEW_ONLY exit code 2 or HOLD exit code 3; no automatic sharing, target interaction or release.
+
+
+## Third product: PRIVATE browser editor (no spreadsheet required)
+
+Open review-studio.html from a trusted offline browser with review-studio.js and review-studio.css in **the same directory**. Use modern browser WebCrypto in a secure local file context. The browser has a strict CSP with no connections, models, remote assets, storage or tracking. This source-only local three-file workspace is intentionally not a hosted app or merged product release. Where an offline browser cannot grant WebCrypto to local files it will HOLD; do not disable browser security protections.
+
+- Load PRIVATE-receipt.json and PRIVATE-human-template.csv together. Browser computes the exact full SHA-256 of the actual receipt bytes and admits a bounded receipt schema, all literal-false authority flags, all ordinals and allowed kinds and stages. Invalid files HOLD without replacing existing unsaved in-memory edits.
+- Filter/search all source-free review records, edit only HUMAN stage/question/next action, receive an unsaved-edit warning, and export a complete PRIVATE CSV in original ordinal order. Both browser and native importer refuse unknown stages, overlong/control-bearing HUMAN notes and risky spreadsheet formula prefixes.
+- Exported PRIVATE-human-reviewed.csv can be used instead of the completed template with the original native human_review.py render command. That CLI remains the stricter authoritative source-free receipt/CSV re-admission path.
+- No original assessment source artifact, target, evidence, scan, model, grant, reviewer authentication or signed provenance enters the studio. The user can type sensitive things into HUMAN notes: the output must remain PRIVATE. Local browser SHA covers only the source-free receipt, **not original PRIVATE lab artifact bytes**.
+
+This makes the entire workflow usable with a local visual HUMAN editing desk, but does **not** remove the mandatory original source-owner dependency, verified authorization and held release controls. Browser-side JSON does not independently detect duplicate JSON keys; the native report builder remains responsible for canonical CSV/receipt validation, and even that never grants release authority.
