@@ -13,11 +13,14 @@
   const DURATION = new Set(["15","30","60","90"]);
   const REMINDER = new Set(["0","15","60","1440"]);
   const MAX_BYTES = 1024*1024, MAX_ROWS = 2048, PAGE = 35;
+  const CAP_HEAD = ["worksheet_sha256_unsigned","private_calendar_series_id","time_zone",
+    "human_owner_group","weekdays_iso","local_start","local_end","maximum_daily","blackout_dates"];
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   let publicationBaseline = null, changesPage = 0;
+  let capacityRules = new Map(), capacityProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -355,6 +358,204 @@
       "lightup-private-human-group-calendar.ics","text/calendar;charset=utf-8");
     inform("Exported "+relevant.length+" PRIVATE HUMAN group reminders. No external calendar modified.");
   }
+  function capacityDefaultRule(){
+    return {days:[1,2,3,4,5],start:"09:00",end:"17:00",maximum:4,blackouts:[]};
+  }
+  function capacityGroups(){return Array.from(new Set(items.map(item=>item.group))).sort((a,b)=>a.localeCompare(b));}
+  function capacityMessage(message,denied=false){
+    $("capacityMessage").textContent=message;
+    $("capacityMessage").dataset.error=String(denied);
+  }
+  function admitCapacityRule(rule){
+    hold(rule && Array.isArray(rule.days) && rule.days.length>=1 && rule.days.length<=7);
+    hold(rule.days.every(day=>Number.isInteger(day)&&day>=0&&day<=6) &&
+      new Set(rule.days).size===rule.days.length);
+    const start=rule.start,end=rule.end;
+    hold(typeof start==="string"&&typeof end==="string");
+    hold(/^([01]\\d|2[0-3]):[0-5]\\d$/.test(start) &&
+      /^([01]\\d|2[0-3]):[0-5]\\d$/.test(end));
+    const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3,5));
+    hold(minutes(end)-minutes(start)>=30 && minutes(start)%15===0 &&
+      minutes(end)%15===0);
+    hold([1,2,4,6,8,12].includes(rule.maximum));
+    hold(Array.isArray(rule.blackouts) && rule.blackouts.length<=60);
+    const seen=new Set();
+    for(const day of rule.blackouts){
+      hold(typeof day==="string");
+      eventDate(day,"12:00");
+      hold(!seen.has(day));seen.add(day);
+    }
+    return {days:[...rule.days].sort((a,b)=>a-b),start,end,maximum:rule.maximum,
+      blackouts:[...seen].sort()};
+  }
+  function resetCapacity(){
+    capacityRules=new Map();
+    capacityProposal=null;
+    $("capacityApply").disabled=true;
+    const select=$("capacityGroup");
+    select.replaceChildren();
+    const groups=capacityGroups();
+    for(const group of groups){
+      const option=dom("option",group||"(unassigned)");
+      option.value=group;select.append(option);
+    }
+    if(groups.length){
+      select.value=groups[0];capacityLoadEditor();
+    }
+    $("capacityFirst").value=nowToday();
+    $("capacityHorizon").value="30";
+    capacityMessage("Original HUMAN group availability defaults loaded into local memory; no calendar or operator has been contacted.");
+    renderCapacity();
+  }
+  function capacityLoadEditor(){
+    const rule=capacityRules.get($("capacityGroup").value)||capacityDefaultRule();
+    $("capacityDaily").value=String(rule.maximum);
+    $("capacityStart").value=rule.start;$("capacityEnd").value=rule.end;
+    document.querySelectorAll('#capacityDays input[type="checkbox"]').forEach(box=>{
+      box.checked=rule.days.includes(Number(box.value));
+    });
+    $("capacityBlackout").value=rule.blackouts.join(", ");
+  }
+  function capacityEditorRule(){
+    const days=Array.from(document.querySelectorAll('#capacityDays input[type="checkbox"]'))
+      .filter(box=>box.checked).map(box=>Number(box.value));
+    const unavailable=$("capacityBlackout").value.trim();
+    const blackouts=unavailable?unavailable.split(",").map(day=>day.trim()):[];
+    return admitCapacityRule({days,start:$("capacityStart").value,
+      end:$("capacityEnd").value,maximum:Number($("capacityDaily").value),blackouts});
+  }
+  function capacitySnapshot(){
+    return JSON.stringify([hash,seriesId,zone,
+      Array.from(plan.entries()).sort((a,b)=>a[0]-b[0]),
+      Array.from(capacityRules.entries()).sort((a,b)=>a[0].localeCompare(b[0])),
+      $("capacityFirst").value,$("capacityHorizon").value]);
+  }
+  function renderCapacity(){
+    if(!active)return;
+    const unscheduled=new Map();
+    for(const row of items)if(!plan.has(row.ordinal)&&row.stage!=="blocked")
+      unscheduled.set(row.group,(unscheduled.get(row.group)||0)+1);
+    const body=$("capacityRows");body.replaceChildren();
+    for(const group of capacityGroups()){
+      const rule=capacityRules.get(group)||capacityDefaultRule();
+      const row=dom("tr");
+      const label=rule.days.map(n=>["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][n]).join(", ");
+      row.append(dom("td",group||"(unassigned)"),
+        dom("td",label+" · "+rule.start+"–"+rule.end+" · max "+rule.maximum+"/day"),
+        dom("td",String(rule.blackouts.length)),
+        dom("td",String(unscheduled.get(group)||0)));
+      body.append(row);
+    }
+  }
+  function capacityExport(){
+    hold(active && capacityGroups().length<=256 && /^[0-9a-f]{32}$/.test(seriesId));
+    const rows=[CAP_HEAD,...capacityGroups().map(group=>{
+      const rule=capacityRules.get(group)||capacityDefaultRule();
+      return [hash,seriesId,zone,group,rule.days.join(";"),
+        rule.start,rule.end,String(rule.maximum),rule.blackouts.join(";")];
+    })];
+    if(!confirm("Download the complete source-bound PRIVATE HUMAN group availability policy? This contains HUMAN group labels, time windows and holiday dates. It is UNSIGNED and authorizes no assessment or external calendar access."))return;
+    download(makeCsv(rows),"lightup-private-human-capacity.csv","text/csv;charset=utf-8");
+    capacityMessage("Source-bound PRIVATE HUMAN availability rules downloaded; not automatically persisted in the browser.");
+  }
+  async function capacityImport(file){
+    hold(active && capacityGroups().length<=256);
+    const currentHash=hash,currentSeries=seriesId,currentPlan=plan;
+    const raw=decoder.decode(await bytes(file));
+    hold(!raw.startsWith("\\uFEFF"));
+    const parsed=csv(raw,CAP_HEAD.length);
+    hold(JSON.stringify(parsed[0])===JSON.stringify(CAP_HEAD));
+    const groups=capacityGroups();
+    hold(parsed.length===groups.length+1);
+    const next=new Map();
+    for(let i=0;i<groups.length;i++){
+      const row=parsed[i+1];
+      hold(row[0]===currentHash&&row[1]===currentSeries&&row[2]===zone&&row[3]===groups[i]);
+      const days=row[4].split(";").map(n=>Number(n));
+      hold(row[4]===days.join(";") && /^([1-9]|1[0-2])$/.test(row[7]));
+      const blackouts=row[8]?row[8].split(";"):[];
+      const rule=admitCapacityRule({days,start:row[5],end:row[6],
+        maximum:Number(row[7]),blackouts});
+      next.set(row[3],rule);
+    }
+    if(!confirm("Replace current local HUMAN group availability rules with this exact-worksheet/series/timezone PRIVATE policy? Existing HUMAN appointments and the original worksheet will not change."))return;
+    hold(active&&hash===currentHash&&seriesId===currentSeries&&plan===currentPlan);
+    capacityRules=next;
+    capacityProposal=null;$("capacityApply").disabled=true;
+    capacityLoadEditor();renderCapacity();
+    capacityMessage("PRIVATE group availability reloaded; existing HUMAN reminders unchanged.");
+  }
+  function capacityPreview(){
+    hold(active && capacityGroups().length>0 && capacityGroups().length<=256);
+    const from=$("capacityFirst").value;
+    eventDate(from,"12:00");hold(from>=nowToday());
+    const horizon=Number($("capacityHorizon").value);
+    hold([14,30,60,90].includes(horizon));
+    const rules=capacityGroups().map(group=>({group,rule:capacityRules.get(group)||capacityDefaultRule()}));
+    const ranks={critical:0,high:1,medium:2,low:3,info:4};
+    const candidates=items.filter(row=>!plan.has(row.ordinal) && row.stage!=="blocked")
+      .sort((a,b)=>ranks[a.severity]-ranks[b.severity] || a.ordinal-b.ordinal);
+    const byGroup=new Map();
+    for(const row of candidates){
+      if(!byGroup.has(row.group))byGroup.set(row.group,[]);
+      byGroup.get(row.group).push(row);
+    }
+    const taken=new Map(),daily=new Map();
+    for(const event of eventIntervals()){
+      const date=plan.get(event.ordinal).day;
+      if(!taken.has(date))taken.set(date,[]);
+      taken.get(date).push(event);
+      const group=items[event.ordinal-1].group;
+      const key=JSON.stringify([group,date]);daily.set(key,(daily.get(key)||0)+1);
+    }
+    const proposed=new Map(),start=eventDate(from,"12:00");
+    for(let d=0;d<horizon && proposed.size<128;d++){
+      const date=new Date(start.getTime());date.setDate(start.getDate()+d);
+      const day=[date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),
+        String(date.getDate()).padStart(2,"0")].join("-");
+      for(const {group,rule} of rules){
+        if(proposed.size>=128)break;
+        const queue=byGroup.get(group);
+        if(!queue?.length || !rule.days.includes(date.getDay()) || rule.blackouts.includes(day))continue;
+        const key=JSON.stringify([group,day]);
+        let count=daily.get(key)||0;
+        const startMin=Number(rule.start.slice(0,2))*60+Number(rule.start.slice(3,5));
+        const endMin=Number(rule.end.slice(0,2))*60+Number(rule.end.slice(3,5));
+        for(let minute=startMin;minute+30<=endMin && count<rule.maximum && queue.length && proposed.size<128;minute+=30){
+          const time=String(Math.floor(minute/60)).padStart(2,"0")+":"+String(minute%60).padStart(2,"0");
+          const instant=eventDate(day,time).getTime(),last=instant+30*60000;
+          if(instant<=Date.now())continue;
+          const busy=taken.get(day)||[];
+          if(busy.some(event=>instant<event.end && event.start<last))continue;
+          const row=queue.shift(),slot={day,time,duration:"30",reminder:"15"};
+          proposed.set(row.ordinal,slot);
+          busy.push({ordinal:row.ordinal,start:instant,end:last});
+          taken.set(day,busy);count++;daily.set(key,count);
+        }
+      }
+    }
+    capacityProposal={slots:proposed,snapshot:capacitySnapshot()};
+    $("capacityApply").disabled=proposed.size===0;
+    const pending=candidates.length-proposed.size;
+    capacityMessage("Proposed "+proposed.size+" source-ordinal HUMAN reminders, "+
+      pending+" remain without new dates in this 14–90-day bounded preview. "+
+      "No existing appointments changed; 128 proposed changes maximum per confirmation. "+
+      (pending?"Extend horizon/availability or repeat after saving this batch.":"Review dates before applying."));
+  }
+  function capacityApply(){
+    hold(active && capacityProposal && capacityProposal.snapshot===capacitySnapshot());
+    const preview=capacityProposal.slots;
+    hold(preview.size>0 && preview.size<=128);
+    hold(Array.from(preview).every(([ordinal])=>!plan.has(ordinal) &&
+      items[ordinal-1] && items[ordinal-1].stage!=="blocked"));
+    if(!confirm("Apply "+preview.size+" proposed HUMAN-only dates in local memory? Original lab assessment, current source worksheet, already scheduled ordinals and any external calendars are NOT modified. Group hours and blackout dates are only self-reported planning hints."))return;
+    hold(capacityProposal.snapshot===capacitySnapshot());
+    for(const [ordinal,slot] of preview)plan.set(ordinal,slot);
+    changed=true;exportedPlan=false;
+    capacityProposal=null;$("capacityApply").disabled=true;
+    page=0;render();
+    capacityMessage("Applied PRIVATE HUMAN capacity proposals locally. Save the full v2 plan before calendar export.");
+  }
   function slotEquals(a,b){
     return !!a && !!b && a.day===b.day && a.time===b.time &&
       a.duration===b.duration && a.reminder===b.reminder;
@@ -604,12 +805,12 @@
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
-    $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
     $("agendaHorizon").value="7";$("agendaQuery").value="";$("workloadQuery").value="";
-    render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
+    resetCapacity();render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
   async function onRestore(file){
     hold(active);
@@ -757,6 +958,45 @@
     catch(_){$("baselinePassword").value="";inform("Encrypted historical PRIVATE plan denied (HOLD); existing planning and comparison remain unchanged.",true);}
     finally{e.target.value="";}
   });
+  hook("capacityGroup","change",capacityLoadEditor);
+  hook("capacityStore","click",()=>{
+    try{
+      const group=$("capacityGroup").value;
+      hold(active && capacityGroups().includes(group));
+      capacityRules.set(group,capacityEditorRule());
+      capacityProposal=null;$("capacityApply").disabled=true;
+      renderCapacity();capacityMessage("PRIVATE HUMAN group availability changed locally. Download the policy to preserve it.");
+    }catch(_){capacityMessage("Human group availability rejected (HOLD). Existing group policy unchanged.",true);}
+  });
+  hook("capacityDefault","click",()=>{
+    if(!active)return;
+    capacityRules.delete($("capacityGroup").value);
+    capacityProposal=null;$("capacityApply").disabled=true;
+    capacityLoadEditor();renderCapacity();
+    capacityMessage("Selected HUMAN group returned to private default weekdays; original appointments unchanged.");
+  });
+  hook("capacityPreview","click",()=>{
+    try{capacityPreview();}
+    catch(_){capacityProposal=null;$("capacityApply").disabled=true;
+      capacityMessage("HUMAN capacity preview held: check date/horizon/groups and original source state.",true);}
+  });
+  hook("capacityApply","click",()=>{
+    try{capacityApply();}
+    catch(_){capacityProposal=null;$("capacityApply").disabled=true;
+      capacityMessage("HUMAN capacity proposal no longer matches current original workroom or rules. Preview again.",true);}
+  });
+  hook("capacityDownload","click",()=>{
+    try{capacityExport();}catch(_){capacityMessage("PRIVATE availability policy export held.",true);}
+  });
+  hook("capacityImport","change",async e=>{
+    try{if(e.target.files[0])await capacityImport(e.target.files[0]);}
+    catch(_){capacityMessage("PRIVATE rules source binding or content invalid (HOLD). Original capacity rules and current plan unchanged.",true);}
+    finally{e.target.value="";}
+  });
+  ["capacityFirst","capacityHorizon"].forEach(id=>hook(id,"change",()=>{
+    capacityProposal=null;$("capacityApply").disabled=true;
+    capacityMessage("HUMAN availability preview cleared after date/horizon change.");
+  }));
   hook("baselinePlan","change",async e=>{
     try{if(e.target.files[0])await readPublishedBaseline(e.target.files[0]);}
     catch(_){inform("Previous PRIVATE schedule did not match exact worksheet, timezone or series (HOLD).",true);}
@@ -790,8 +1030,9 @@
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
+    capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
