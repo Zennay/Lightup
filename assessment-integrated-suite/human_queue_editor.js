@@ -38,6 +38,41 @@
       (row.human_stage !== "UNASSESSED" ||
        !(row.review_team || row.followup_date || row.human_question));
   }
+  const PRIORITIES = ["HOLD", "MISSING_ORIGINAL", "PAST_DATE",
+                     "DUE_DATE", "NEXT_WEEK", "UNASSIGNED", "OTHER"];
+  // The operator supplies an explicit date. These are HUMAN-only labels,
+  // not time-dependent enforcement, automatic scheduling or security rank.
+  function attentionFor(row) {
+    if (["HOLD", "NEEDS_INPUT"].includes(row.human_stage)) return "HOLD";
+    if (row.local_state === "HOLD_PAGE_UNAVAILABLE" ||
+        (row.human_stage !== "UNASSESSED" &&
+         row.local_state !== "LOCAL_PAGE_PRESENT_REVIEW_ONLY"))
+      return "MISSING_ORIGINAL";
+    const referenceDate = document.getElementById("review-date").value;
+    if (referenceDate && validDate(referenceDate) && row.followup_date) {
+      if (row.followup_date < referenceDate) return "PAST_DATE";
+      if (row.followup_date === referenceDate) return "DUE_DATE";
+      const from = new Date(referenceDate + "T00:00:00Z");
+      const due = new Date(row.followup_date + "T00:00:00Z");
+      if (due.getTime() - from.getTime() <= 7 * 86400000) return "NEXT_WEEK";
+    }
+    if (row.human_stage !== "UNASSESSED" && !row.review_team) return "UNASSIGNED";
+    return "OTHER";
+  }
+  function showAttention() {
+    const summary = PRIORITIES.map((bucket) =>
+      draft.filter((item) => attentionFor(item) === bucket).length +
+      " " + bucket.toLowerCase().replaceAll("_", " ")
+    ).join(" · ");
+    q("attention-summary").textContent = summary;
+    q("capacity").textContent = TEAMS.slice(1).map((team) =>
+      team + ": " + draft.filter((row) =>
+        row.review_team === team && row.human_stage !== "UNASSESSED").length
+    ).join(" · ");
+    q("date-warning").textContent = q("review-date").value ?
+      "Manually declared review date, not a real booked appointment." :
+      "Choose a HUMAN review date for overdue/today/next-week categories.";
+  }
   function checkpoint() {
     undoStack.push({ rows: draft.map((row) => ({ ...row })), dirty });
     if (undoStack.length > MAX_HISTORY) undoStack.shift();
@@ -59,12 +94,14 @@
     const search = q("search").value.trim().toLocaleLowerCase();
     const stage = q("stage-filter").value;
     const team = q("team-filter").value;
+    const priority = q("priority-filter").value;
     const indexes = [];
     draft.forEach((item, i) => {
       if (search && !(item.title + " " + item.workflow_key + " " + item.human_next)
         .toLocaleLowerCase().includes(search)) return;
       if (stage && stage !== item.human_stage) return;
       if (team && team !== item.review_team) return;
+      if (priority && priority !== attentionFor(item)) return;
       indexes.push(i);
     });
     return indexes;
@@ -81,6 +118,7 @@
     q("undo").disabled = undoStack.length === 0;
     q("redo").disabled = redoStack.length === 0;
     q("saved").disabled = exportedRevision !== updateGeneration;
+    showAttention();
   }
   function el(name, className, value) {
     const node = document.createElement(name);
@@ -134,6 +172,8 @@
       const state = el("p", "hint", "Original page: " +
         item.local_state.replaceAll("_", " ") + " · HUMAN-only · " + item.group);
       card.append(state);
+      card.append(el("p", "attention-tag", "HUMAN attention: " +
+        attentionFor(item).replaceAll("_", " ") + " (not a security verdict)"));
       const fields = el("div", "grid");
       const stageWrap = el("label", "", "Provisional HUMAN stage");
       stageWrap.append(optionSelect(STAGES, item.human_stage, (v) => {
@@ -315,7 +355,8 @@
     showCounts();
     setMessage("CSV download REQUESTED, not verified saved. Confirm actual browser download and owner-only 0700/0600 custody, then explicitly acknowledge local save.");
   }
-  for (const id of ["search", "stage-filter", "team-filter"])
+  for (const id of ["search", "stage-filter", "team-filter",
+                   "priority-filter", "review-date"])
     q(id).addEventListener(id === "search" ? "input" : "change", render);
   q("csv-input").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
@@ -418,6 +459,14 @@
     const option = el("option", "", team);
     option.value = team;
     q("bulk-team-select").append(option);
+  });
+  q("priority-filter").replaceChildren(
+    el("option", "", "All HUMAN attention categories"));
+  q("priority-filter").firstChild.value = "";
+  PRIORITIES.forEach((bucket) => {
+    const option = el("option", "", bucket.replaceAll("_", " "));
+    option.value = bucket;
+    q("priority-filter").append(option);
   });
   setMessage("Owner-private, source-PATH-bound HUMAN queue loaded in memory. No external requests.");
   render();

@@ -156,6 +156,27 @@ confidential HUMAN question text**, original source bytes, saved machine paths
 and snapshot path digest. Unmodified original input CSVs remain untouched.
 This is HUMAN planning continuity only, not a security or privacy approval.
 
+## NEW: live offline HUMAN attention and team-capacity dashboard
+
+The original locally generated interactive HUMAN Queue Studio now includes
+a **live, in-memory HUMAN attention board** alongside editable work items.
+The user manually selects an optional review date: there is NO implicit
+browser-clock read or real appointment. As the user edits a HUMAN row,
+the browser immediately recalculates counts for HOLD/needs-input, original
+referenced workroom unavailable, before selected date, selected day, next
+seven declared days, missing HUMAN team and remaining items. It also
+counts manually staged work per team. The new **HUMAN attention filter**
+can be combined with existing text/stage/team filters; CSV export always
+includes every original workflow in its exact order regardless of filters.
+
+The same locally declared statuses feed the browser preview; it remains
+unverified HUMAN coordination and **cannot** turn a local file bookmark
+into source authenticity, a validated severity, scheduled task, actual
+HUMAN identity, approved scope, consent, grant or scan. The native static
+priority desk (option 47) is still a separate owner-private snapshot made
+only after native strict CSV admission. Browser preview does NOT modify that
+snapshot, revalidate original client files or schedule anything.
+
 ## NEW: review imported CSV changes and route multiple HUMAN tasks
 
 The original interactive HUMAN browser Studio now presents a **per-field

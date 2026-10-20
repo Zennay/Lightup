@@ -48,6 +48,9 @@ input,select{font:inherit;background:#112338;color:#edf7fd;border:1px solid #617
 .grid label:last-child{grid-column:span 2}
 .question{margin:14px 0}
 .hint{color:#afc8d9}
+.attention-tag{color:#ffdfac;font-size:.88rem;font-weight:650}
+.attention-panel{border:1px solid #557184;border-radius:14px;
+ background:#1b3649;padding:19px;margin:20px 0}
 .feedback{background:#193c46;border-left:5px solid #a7e5d5;padding:13px}
 .feedback.error{background:#522c33;border-left-color:#ffac9b}
 .warning-box{border-left:5px solid #ffce82;background:#342d29;padding:15px}
@@ -123,10 +126,21 @@ Never share, upload, email, paste into public cloud tools, or run HTTP server.</
 <p id="status" class="feedback" role="status" aria-live="polite"></p>
 <p id="dirty" class="warn"></p>
 <p id="counts"></p>
+<section class="attention-panel">
+<h2>Live HUMAN attention and capacity (in-memory preview)</h2>
+<p>Local HUMAN routing only; no vulnerability severity, authenticated
+reviewer, client consent, booked appointment or security authorization.</p>
+<label>Operator-declared review date (not scheduled)
+<input type="date" id="review-date"></label>
+<p id="date-warning" class="warn"></p>
+<p id="attention-summary"></p>
+<p id="capacity" class="hint"></p>
+</section>
 <div class="filters">
 <label>Search existing workflows<input id="search" type="search" autocomplete="off"></label>
 <label>Filter HUMAN stage<select id="stage-filter"></select></label>
 <label>Filter assigned team<select id="team-filter"></select></label>
+<label>Filter HUMAN attention<select id="priority-filter"></select></label>
 </div>
 <div class="actions">
 <label>Bulk stage for FILTERED visible rows only
