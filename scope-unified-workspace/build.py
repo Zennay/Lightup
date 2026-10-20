@@ -48,7 +48,7 @@ def package():
         raise ValueError("Ambiguous or missing HTML template markers")
     style_digest = base64.b64encode(hashlib.sha256(css).digest()).decode("ascii")
     html = template.replace("CSP_STYLE_HASH", style_digest).replace(
-        "<!-- EMBED_STYLE -->", "<style>\n" + css.decode("utf-8", "strict") + "\n</style>"
+        "<!-- EMBED_STYLE -->", "<style>" + css.decode("utf-8", "strict") + "</style>"
     )
     result = html.encode("utf-8")
     (HUB / "index.html").write_bytes(result)

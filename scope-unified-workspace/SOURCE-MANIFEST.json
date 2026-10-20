@@ -190,8 +190,8 @@
     },
     {
       "path": "scope-unified-workspace/build.py",
-      "sha256": "fa69be5863aa103452b0c67fd5021a366d4d5c5a7d469bb92c0c6b35273facbc",
-      "size": 5102
+      "sha256": "dd8304eddaecbbfcaf910a00ea7e188bf1894a8d938cb5c683961c934f4da4f4",
+      "size": 5098
     },
     {
       "path": "scope-unified-workspace/check_bundle.py",
@@ -205,8 +205,8 @@
     },
     {
       "path": "scope-unified-workspace/index.html",
-      "sha256": "11aedea43a5b963bd5ff9403f70beee07c59f67a1d1fa31c99dbe6df5908310b",
-      "size": 11965
+      "sha256": "c070a5d95d074158b6ea5586277b8c2592922cf65c2d36570a372225230fc339",
+      "size": 11963
     },
     {
       "path": "scope-unified-workspace/style.css",
