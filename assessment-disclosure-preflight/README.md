@@ -206,3 +206,86 @@ python3 assessment-disclosure-preflight/human_review.py rekey-bundle \
 ~~~
 
 First enter the existing password, then a NEW password twice. The original LUHBP001 packet is decrypted in memory, the exact embedded unsigned receipt and source-free HUMAN CSV are readmitted, a new random salt and nonce are used, and PRIVATE-human-handoff-rekeyed.luhb is published exclusively as a new 0600 file. The original encrypted source file is never overwritten or deleted, and output is never a completed security review. Password change cannot revoke copies distributed earlier with an old password; recipients must handle deletion/revocation using real independent policy and controls. Use a different private output directory for additional revisions.
+
+
+## Fourth product: source-receipt-bound TWO-reviewer HUMAN reconciliation
+
+The optional native [reconcile.py](reconcile.py) composes TWO independently
+completed PRIVATE human assessments of the **same exact unsigned PRIVATE
+receipt bytes**. No original lab source, target network, models, scanning,
+grant, approval, identity inference or release is involved. This does not
+combine distinct source receipts, infer shared source identities from ordinals,
+or treat two agreeing reviewer texts as independently verified evidence.
+
+**Prepare**: admit the original receipt with the unchanged strict receipt
+parser and each completed CSV with the unchanged native HUMAN validator.
+Reviewers can supply the original plaintext .csv, receipt-bound encrypted
+.luhd vault, or all-in-one .luhb bundle. Encrypted inputs are decrypted only
+in memory using existing interactive non-echo prompts (requires optional
+cryptography dependency); bundled receipt bytes must be EXACTLY identical
+to the one supplied by --receipt. For each reviewer the **SHA-256 of original
+plaintext completed HUMAN CSV bytes** is pinned in every decision row;
+ciphertext identity or HUMAN sender identity are NOT inferred.
+
+The operator receives (both owner-only 0600, exclusive/non-overwriting):
+
+- `PRIVATE-reconcile-comparison.html`: local scriptless PRIVATE side-by-side
+  stage, question, next-action and disagreement report for every ordinal.
+  Contains potentially sensitive HUMAN text. Never distribute as anonymous.
+- `PRIVATE-reconcile-decisions.csv`: one explicit choice per source ordinal,
+  `HOLD` (default), `A`, or `B`, and an operator-entered human reason.
+  All original ordinals/kinds, the original receipt digest and both original
+  reviewer CSV digests are pinned. Selecting A or B requires a nonblank HUMAN
+  reason; no HUMAN decisions are accepted from unbound/missing/reordered rows.
+
+~~~sh
+mkdir -m 700 ./private-review-reconcile
+python3 assessment-disclosure-preflight/reconcile.py prepare \
+  --receipt ./private-disclosure-desk/PRIVATE-receipt.json \
+  --a-csv ./reviewer-A/PRIVATE-human-reviewed.csv \
+  --b-csv ./reviewer-B/PRIVATE-human-reviewed.csv \
+  --private-output-dir ./private-review-reconcile
+# Inspect PRIVATE-reconcile-comparison.html LOCALLY.
+# Edit PRIVATE-reconcile-decisions.csv manually (HOLD / A / B + reason).
+python3 assessment-disclosure-preflight/reconcile.py finalize \
+  --receipt ./private-disclosure-desk/PRIVATE-receipt.json \
+  --a-csv ./reviewer-A/PRIVATE-human-reviewed.csv \
+  --b-csv ./reviewer-B/PRIVATE-human-reviewed.csv \
+  --decisions ./private-review-reconcile/PRIVATE-reconcile-decisions.csv \
+  --private-output-dir ./private-review-reconcile
+~~~
+
+For encrypted reviewer inputs use `--a-vault file.luhd`,
+`--b-vault file.luhd`, `--a-bundle file.luhb` or
+`--b-bundle file.luhb` instead of the corresponding `--*-csv`.
+Each reviewer independently selects exactly ONE format. Do not put
+passwords in command arguments; the original decryptor prompts on the
+interactive local terminal.
+
+**Finalize** re-opens both original HUMAN submissions and the exact receipt.
+Any changed byte, absent reviewer, reordered, duplicated or extra choice,
+mismatched SHA-256, altered ordinal/kind, unexpected CSV field, unsupported
+selection, unsafe/fomula-like reason, or no justification for A/B produces
+HOLD (exit 3) without claiming approval. Accepted choices create an original
+native-importable `PRIVATE-reconciled-human.csv` and scriptless
+`PRIVATE-reconciled-report.html`; *unselected* rows always reset to
+`unreviewed` with empty notes, even if the reviewers agree. No source
+finding, consent, evidence or remediation state changes. The resulting
+CSV may be opened by the existing `human_review.py render` command for
+its unchanged additional admission; it is still PRIVATE and review-only.
+
+Each of the two output files in each command is independently atomically
+published with existing owner-owned 0700 directory / 0600 file rules.
+Pair publication itself is not one filesystem transaction: after an
+interrupted second publish, the first may remain. Inspect filenames and use
+a **fresh PRIVATE output directory** for a new attempt, never weaken custody,
+replace a report silently, or treat a partial pair as completion.
+A plaintext browser download elsewhere remains exposed until a HUMAN
+operator handles it. Source/receipt SHA-256 proves only equality of the
+specified bytes, not provenance, authenticated approval, reviewer identity,
+original customer consent, or security verification.
+
+**Release remains DRAFT/HOLD.** No changes to the original `lightup.lab_inspect`,
+scanner, runtime, scope grants, active targets, CI configuration or QA suites.
+Native offline implementation and source syntax checks are not human/security
+review or CI acceptance. All original release and consent gates above apply.
