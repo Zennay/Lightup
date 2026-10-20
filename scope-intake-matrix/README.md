@@ -20,6 +20,16 @@ Save both files into the same local folder and open index.html in a modern deskt
 10. Optionally export a separate aggregate-only counts file (with a human acknowledgement for possible small-cohort disclosure) or print a PRIVATE human brief. The aggregate omits client/asset labels and free text.
 11. Clear the page's in-memory draft explicitly. Reloading also discards unsaved data. The page never automatically saves or sends it.
 
+## Deterministic proposed IPv4 exception workroom
+
+The browser now includes a separate visual, continuously recalculated **local IPv4/CIDR boundaries and exceptions** desk. This is an actual end-user review tool, not a test utility. It computes, purely from the human-entered canonical IPv4 literals and /24–/32 networks, every pair of numeric intersecting ranges (bounded by 32 proposals). Exact CIDR/address intersections and subset relationships are numeric; nothing is resolved over the network.
+
+- Distinguishes **proposed included vs explicit excluded** overlapping pairs (human exception review), overlapping proposed inclusions (potential duplicated capability/ownership preparation), and overlapping exclusions. Such findings do NOT automatically invalidate intentionally narrower exceptions and never create a grant or permission.
+- Shows static IPv4 address-family notes (RFC1918, loopback, link-local, RFC 5737 documentation, CGNAT, benchmark, multicast, reserved, etc). These are literal numeric classifications; they do not prove actual network routing, ownership or internet reachability. DNS hostnames are **never** resolved and never inferred to be covered merely by suffix.
+- Adds relevant inclusion/exclusion and overlapping-inclusion HUMAN follow-up questions to the live task agenda. The operator can download a **PRIVATE UNENCRYPTED, scriptless** HTML boundary exception brief only after a separate human disclosure warning. Its private labels are escaped and its CSP prevents external content.
+- A zero-overlap display means only that the current *valid literal IPv4 rows* contain no numeric intersections. It never means the actual domain policy is correct, that all DNS records are safe, or that the intended authority is available. Malformed/unfinished rows are excluded from coverage calculations and still surface in the completeness validator.
+- This workroom does **not** implement a real CIDR exclusion policy, authorization, DNS lookup, target interaction, vulnerability finding or scanner. The original domain-owned authenticated membership, client/operator consent and at-action revocation controls remain mandatory.
+
 ## Trust boundary
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** The UI is deliberately not connected to any source-owned domain authorization logic, request registry, persisted grants, approval workflow, action-time revocation, execution permit, worker or scanner. A checked-off input is self-declared content, not independent customer or operator authentication, ownership proof, security review, revocation, evidence, risk approval or HUMAN GO.
