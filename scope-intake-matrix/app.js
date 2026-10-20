@@ -42,6 +42,7 @@
   let pendingTriage = null;
   let humanUndo = [];
   let lastComparison = null;
+  let membershipPreview = null;
 
   function blankDocument() {
     return {
@@ -401,6 +402,7 @@
     // Any actual proposal mutation makes the previously rendered comparison stale.
     $("compare-section").hidden = true;
     lastComparison = null;
+    clearMembershipPreview();
     $("total-count").textContent = state.rows.length;
     $("excluded-count").textContent = state.rows.filter(row => row.excluded).length;
     $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
@@ -766,6 +768,123 @@
     announce("PRIVATE IPv4/CIDR human exception brief exported; no permission asserted.");
   }
 
+
+  function clearMembershipPreview() {
+    membershipPreview = null;
+    $("membership-result").replaceChildren();
+    $("membership-status").textContent =
+      "Local membership preview is empty or stale. Never treat this as an authorization.";
+  }
+
+  function proposedMembership(query, rows = state.rows) {
+    const queryRange = parseIpv4Literal(query);
+    const exactHost = queryRange && queryRange.prefix === 32;
+    const included = [], excluded = [];
+    for (const row of rows) {
+      if (!validAsset(row.asset)) continue;
+      const proposed = parseIpv4Literal(row.asset);
+      const match = exactHost && proposed ?
+        queryRange.start >= proposed.start && queryRange.start <= proposed.end :
+        !queryRange && !proposed && query === row.asset;
+      if (!match) continue;
+      (row.excluded ? excluded : included).push(row);
+    }
+    let status;
+    if (excluded.length) {
+      status = included.length ?
+        "HUMAN HOLD: inclusion AND exclusion declarations intersect. NOT AUTHORIZED." :
+        "Explicit HUMAN exclusion only. NOT AUTHORIZED.";
+    } else if (included.length) {
+      status = "Matches HUMAN proposed inclusion, NOT AUTHORIZED.";
+    } else {
+      status = "No matching declared row. NOT AUTHORIZED.";
+    }
+    return {target: query, included: included.map(row => ({asset: row.asset, capability: row.capability,
+      human_status: row.status})), excluded: excluded.map(row => row.asset), status};
+  }
+
+  function previewMembership() {
+    clearMembershipPreview();
+    const raw = $("membership-lines").value;
+    if (raw.length > 4096 || !raw.trim()) {
+      announce("Enter 1–16 exact target literals for a local HUMAN-only preview.", true); return;
+    }
+    const lines = raw.trim().split(/\r?\n/);
+    if (lines.length > 16 || !lines.length) {
+      announce("HOLD: at most 16 exact candidate target literals per preview.", true); return;
+    }
+    const seen = new Set();
+    const targets = [];
+    for (let i = 0; i < lines.length; i++) {
+      const target = lines[i].trim();
+      const ip = parseIpv4Literal(target);
+      if (!validAsset(target) || target.includes("/") || (ip && ip.prefix !== 32) ||
+          !target || seen.has(target)) {
+        announce("HOLD: invalid, duplicate or non-host literal on preview line " + (i + 1) +
+          ". No partial preview produced.", true);
+        return;
+      }
+      seen.add(target);
+      targets.push(target);
+    }
+    const result = targets.map(value => proposedMembership(value));
+    membershipPreview = {
+      client: state.client, draft: state.project, entries: result
+    };
+    const body = $("membership-result");
+    for (const entry of result) {
+      const tr = document.createElement("tr");
+      const columns = [
+        entry.target,
+        entry.included.map(item => item.asset + " [" + item.capability + "; " + item.human_status + "]").join("\n") || "(none)",
+        entry.excluded.join("\n") || "(none)",
+        entry.status
+      ];
+      for (const value of columns) {
+        const td = document.createElement("td");
+        td.textContent = value; td.style.whiteSpace = "pre-line";
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+    const cross = result.filter(item => item.included.length && item.excluded.length).length;
+    $("membership-status").textContent = result.length + " wholly local proposed membership previews; " +
+      cross + " conflicting inclusion/exclusion literal(s). Zero authorizations or DNS queries.";
+    announce("Local human-declared membership preview complete. All targets remain NOT AUTHORIZED.");
+  }
+
+  function exportMembershipPreview() {
+    if (!membershipPreview || !membershipPreview.entries.length) {
+      announce("Create a fresh private HUMAN membership preview first.", true); return;
+    }
+    if (validate(state).length) {
+      announce("Complete the original proposed draft before exporting private membership preview.", true); return;
+    }
+    if (!confirm("Download UNENCRYPTED PRIVATE scriptless proposed-target membership preview? It contains literal targets and declared rows. This is NOT a policy decision or permission.")) return;
+    const rows = membershipPreview.entries.map(entry => {
+      const includes = entry.included.map(item => item.asset + " [" + item.capability + "]").join("; ") || "(none)";
+      return "<tr><td>" + escapeHtml(entry.target) + "</td><td>" + escapeHtml(includes) +
+        "</td><td>" + escapeHtml(entry.excluded.join("; ") || "(none)") +
+        "</td><td>" + escapeHtml(entry.status) + "</td></tr>";
+    }).join("\n");
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>LightUp PRIVATE proposed membership preview</title>' +
+      '<style>body{font:15px/1.5 system-ui,sans-serif;max-width:1040px;margin:35px auto;padding:0 18px;color:#24344b}table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid #ccd}aside{padding:15px;background:#fff1ee;border-left:4px solid #ad5050}</style>' +
+      '</head><body><h1>PRIVATE proposed membership preview</h1>' +
+      '<aside>UNTRUSTED LOCAL INPUT · NO DNS OR NETWORK · NO AUTHENTICATION, PERMISSION, REVOCATION OR GRANT. Every result is NOT AUTHORIZED regardless of rows.</aside>' +
+      '<p>Human-declared client label: ' + escapeHtml(membershipPreview.client) +
+      ' · PRIVATE draft: ' + escapeHtml(membershipPreview.draft) + '</p>' +
+      '<table><thead><tr><th>Literal target</th><th>Proposed inclusion</th><th>Explicit exclusion</th><th>HUMAN-only status</th></tr></thead><tbody>' +
+      rows + '</tbody></table></body></html>';
+    if (textBytes(html) > MAX_ENCRYPTED) {
+      announce("PRIVATE membership handoff exceeds 100 KiB.", true); return;
+    }
+    download("lightup-proposed-membership-PRIVATE.html", html, "text/html");
+    announce("PRIVATE HUMAN membership report downloaded; still no target permission.");
+  }
+
   function humanAgenda() {
     const items = [];
     items.push("Confirm the authentic current client and independently authenticated operator outside this offline draft.");
@@ -1021,6 +1140,9 @@
     $("receipt").addEventListener("click", exportCounts);
     $("export-agenda").addEventListener("click", exportAgenda);
     $("export-overlap").addEventListener("click", exportCoverageBrief);
+    $("preview-membership").addEventListener("click", previewMembership);
+    $("download-membership").addEventListener("click", exportMembershipPreview);
+    $("membership-lines").addEventListener("input", clearMembershipPreview);
     $("print").addEventListener("click", () => {
       const problems = validate(state);
       if (problems.length) { announce("Complete draft before printing: " + problems[0], true); return; }
