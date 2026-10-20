@@ -45,10 +45,12 @@
 <p>Een bestaand plan wordt uitsluitend in zijn geheel geaccepteerd wanneer de <em>actueel geselecteerde</em> bestandsbytes exact dezelfde SHA-256 en grootte hebben. Geen gedeeltelijke overname, geen automatische carry van gewijzigde bronnen. Het plan is <strong>PRIVATE en ongetekend</strong>: hashes alleen bewijzen bytegelijkheid.</p>
 <div class="actions">
 <label for="receipt" class="filelabel">Bestaand privéplan openen</label><input id="receipt" type="file" accept=".json,application/json">
+<label for="compare" class="filelabel secondary">Vergelijk ander privéplan (geen overname)</label><input id="compare" type="file" accept=".json,application/json">
 <button id="export-plan" type="button">Privéplan exporteren (.json)</button>
 <button id="export-counts" class="secondary" type="button">Alleen statusaantallen (.csv)</button>
 <button id="print" class="secondary" type="button">Privé-overzicht afdrukken</button>
 </div>
+<div id="source-drift" class="drift" aria-live="polite">Bronvergelijking is optioneel: selecteer eerst huidige originele bronnen, daarna een eerder privéplan. Ontbrekende bron = onbekend, nooit opgelost/verwijderd.</div>
 <p class="muted">Planexport bevat SHA-256, bestandsgrootte en jouw HUMAN-alias/status/actie. Dit is gevoelige privé-informatie; behandel de export als vertrouwelijk. Gegevens blijven alleen in browsergeheugen, niet in localStorage.</p>
 </section>
 <div id="message" role="status" aria-live="polite" tabindex="-1">Klaar voor lokale bestandsselectie.</div>
