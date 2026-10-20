@@ -701,7 +701,10 @@
     peerPreview = null;
     peerApply.disabled = true;
     peerSummaryExport.disabled = true;
+    el("shelf-peer-agenda").disabled = true;
     peerRows.replaceChildren();
+    el("shelf-peer-filter-count").textContent = "Geen actuele bronexacte menselijke vergelijking.";
+    el("shelf-peer-decision-preview").textContent = "Geen actuele bewuste HUMAN overname gekozen.";
     peerStatus.textContent = "PRIVATE bron-/HUMAN-state gewijzigd. Kies de reviewpakketten opnieuw.";
   };
   const sourceEqual = (row,item) => !!row &&
@@ -719,6 +722,72 @@
     : "Geen voorstel voor deze oorspronkelijke bron";
   const peerPending = () => peerPreview &&
     peerPreview.decisions.some(d => Number.isInteger(d.choice) && d.choice >= 0);
+  // A local-only triage desk: filtering never modifies selected HUMAN choices.
+  const peerFilter = el("shelf-peer-filter");
+  const peerSearch = el("shelf-peer-search");
+  const peerAgenda = el("shelf-peer-agenda");
+  const peerPreviewText = el("shelf-peer-decision-preview");
+  const peerFilterCount = el("shelf-peer-filter-count");
+  const peerHumanShort = row => row
+    ? teams[row.human_team] + " / " + stages[row.human_stage] +
+      " / " + routes[row.human_route][0] +
+      (row.private_note_included ? " / PRIVÉ notitie aangeleverd" : " / PRIVÉ notitie onbekend")
+    : "NIETS OVERNEMEN";
+  const refreshPeerDesk = () => {
+    const plan = peerPreview;
+    if (!plan) {
+      peerFilterCount.textContent = "Geen actuele bronexacte menselijke vergelijking.";
+      peerPreviewText.textContent = "Nog geen bewuste HUMAN overname gekozen.";
+      return;
+    }
+    const filter = peerFilter.value;
+    const term = peerSearch.value.normalize("NFC").toLowerCase().trim();
+    const chosen = plan.decisions.filter(d => d.choice >= 0);
+    let visible = 0;
+    for (const d of plan.decisions) {
+      const attention = d.mismatch || d.conflicting || d.noteUncertain ||
+        d.proposalCount < plan.counts.packets;
+      const matches =
+        (filter === "all" || filter === "attention" && attention ||
+         filter === "conflicts" && d.conflicting ||
+         filter === "redacted" && d.noteUncertain ||
+         filter === "partial" && d.proposalCount < plan.counts.packets ||
+         filter === "mismatch" && d.mismatch ||
+         filter === "selected" && d.choice >= 0) &&
+        (!term || d.item.file.name.normalize("NFC").toLowerCase().includes(term));
+      d.row.hidden = !matches;
+      if (matches) visible++;
+    }
+    peerFilterCount.textContent = visible + "/" + plan.decisions.length +
+      " PRIVATE originele bronnen zichtbaar; " + chosen.length +
+      " bewust gekozen HUMAN voorstellen (ook buiten de huidige filter). Filters nemen niets over.";
+    const container = document.createElement("div");
+    if (!chosen.length) {
+      container.textContent = "Geen HUMAN voorstel gekozen. Zelfs overeenstemmende reviewers veranderen de huidige lokale werkset niet.";
+    } else {
+      const intro = document.createElement("p");
+      intro.textContent = chosen.length + " EXPLICIETE LOCAL HUMAN keuzes, nog NIET toegepast. " +
+        "Huidige PRIVATE notities worden niet in deze voorvertoning weergegeven.";
+      container.append(intro);
+      const ol = document.createElement("ol");
+      ol.className = "shelf-peer-preview-list";
+      for (const d of chosen) {
+        const li = document.createElement("li");
+        const selected = d.allowed[d.choice];
+        li.textContent = d.item.file.name + ": HUIDIG " +
+          teams[d.item.team] + " / " + stages[d.item.stage] + " / " +
+          routes[d.item.route][0] + " → PAKKET " + (d.choice+1) + " " +
+          peerHumanShort(selected) +
+          (d.conflicting ? " · HUMAN CONFLICT" : "") +
+          (d.noteUncertain ? " · NOTITIE ONZEKER" : "");
+        ol.append(li);
+      }
+      container.append(ol);
+    }
+    peerPreviewText.replaceChildren(container);
+  };
+  peerFilter.addEventListener("change", refreshPeerDesk);
+  peerSearch.addEventListener("input", refreshPeerDesk);
   peerInput.addEventListener("change", async () => {
     const files = Array.from(peerInput.files || []);
     peerInput.value = "";
