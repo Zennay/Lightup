@@ -47,6 +47,11 @@
 <h2 id="review-title"><span>03</span> Inspect the resulting copy</h2>
 <div class="grid three"><div class="metric"><b id="matches">—</b><small>Literal replacements</small></div><div class="metric"><b id="residual">—</b><small>Residual pattern hints</small></div><div class="metric"><b id="outputHash">—</b><small>Redacted SHA-256 prefix</small></div></div>
 <div id="warnings" class="warnings" role="status" aria-live="polite">No preview prepared.</div>
+<div class="reader-search">
+<label for="reviewSearch">Find text only in the already-redacted PRIVATE copy (max 120 characters)</label>
+<input id="reviewSearch" type="search" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Find non-secret phrase in redacted output">
+<div class="actions"><button id="reviewFindPrev" type="button" class="secondary" disabled>Previous match</button><button id="reviewFindNext" type="button" class="secondary" disabled>Next match</button><span id="reviewFindStatus" role="status" aria-live="polite">No search active.</span></div>
+</div>
 <label for="preview">Read-only redacted text, paged in 8,000-character sections (exports contain the entire text)</label>
 <textarea id="preview" rows="12" readonly spellcheck="false"></textarea>
 <div class="actions"><button id="prevPage" class="secondary" type="button" disabled>Previous page</button><span id="pageInfo" role="status" aria-live="polite">No pages</span><button id="nextPage" class="secondary" type="button" disabled>Next page</button></div>
