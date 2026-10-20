@@ -60,6 +60,19 @@ It publishes only after **all** returned files and the original redacted handoff
 
 Repeat --reply for 2–8 different locally received encrypted response files. It rejects duplicate file paths, identical ciphertext packages, missing or changed original, malformed passwords or any replied claim of authority without partial publication. Exit 2=REVIEW_ONLY; 3=HOLD. There is no automatic selection of a winning opinion or assertion of consensus.
 
+## Offline encrypted HUMAN reply password rotation without plaintext disk intermediary
+
+The independent native vault.py consumes the exact original selected private .luhq and existing encrypted selected .luhr, invoking the same unchanged original .luhq source-admission and new strict original-bound reply decoder. Both existing passwords must be provided in the private terminal; a third, NEW unique 14–256-character NFC non-control password is independently confirmed via the unchanged original native password policy. Source and encrypted reply files are re-read to reject changes before publishing.
+
+The new .luhr ciphertext is encrypted **entirely in memory** using purpose-separated AES-256-GCM and PBKDF2-SHA256 with a fresh random nonce and salt, written as an owner-only 0600 staging file, fsynced, then published to a NEW .luhr path through an atomic no-overwrite hardlink. The input ciphertext stays intact and no temporary plaintext response file is written. Human answers, questions, selected reason and original redacted source hash are preserved; original owner labels/notes/action details are never added. The new password does not establish sender identity or consent.
+
+    python3 remediation-human-replies/vault.py \
+      --handoff "$HOME/lightup-private/selected-private-human.luhq" \
+      --reply "$HOME/lightup-private/selected-reply-A.luhr" \
+      --output-file "$HOME/lightup-private/selected-reply-A-rotated.luhr"
+
+Private file backups, swap/memory, old encrypted inputs and browser/download copies remain the operator's responsibility; rotation does **not** securely erase, revoke authorization or invalidate an old password against an old still-available file. Never disclose without real independent permission. Exit 2=REVIEW_ONLY or 3=HOLD. Passwords are never accepted in CLI arguments or output files.
+
 ## Portable complete software-only distribution and strict receiving
 
 The independent new distribution.py composes the original held pinned native evidence-remediation suite, the unchanged source-free scheduler, and all new recipient reply sources into one complete offline runnable software-only tree. No evidence, client files, private notes or passwords are packaged. No original/source-owner files or active branches are edited. The original native bundle.build, bundle.inspect and bundle_receive.admission are reused unchanged for independent exact native source admission.
@@ -79,7 +92,7 @@ A recipient with separately trusted matching source code and the four separately
       --parent-manifest "$HOME/lightup-private/software-human-replies-01/original-scheduler-manifest.json" \
       --output-dir "$HOME/lightup-private/software-received-01"
 
-The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all five additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
+The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all six additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
 
 The optional distribution.py inspect --workspace ABSOLUTE_PATH operation is for a *complete locally built* distribution directory, not the smaller received runnable subset. All operations exit 2=REVIEW_ONLY or 3=HOLD, never grant security authority. Syntax/manifest checks are not client authorization, independent security/crypto review, actual owner acceptance or real release.
 
