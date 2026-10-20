@@ -26,6 +26,17 @@
 <h2>2. Menselijke opvolging en beslissingen</h2>
 <p>De naam is een <strong>zelfgekozen lokaal alias</strong>, geen bewijs van herkomst. "Voorgesteld verwijderen" voert nooit een verwijdering uit. Elke rij blijft expliciet onbeoordeeld totdat een mens haar invult.</p>
 <div class="filters"><label>Zoeken <input type="search" id="query" placeholder="Alias of SHA-prefix"></label><label>Status <select id="status-filter"><option value="">Alle voorstellen</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden</option><option value="quarantine">Afzonderen</option><option value="propose_delete">Verwijdering voorstellen</option></select></label></div>
+<div class="bulk panel-mini">
+<h3>Gefilterde HUMAN-planning (voorbeeld → bevestigen → één stap terug)</h3>
+<div class="actions">
+<label>Status voor zichtbare rijen <select id="bulk-status"><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden — voorstel</option><option value="quarantine">Afzonderen — voorstel</option><option value="propose_delete">Verwijdering voorstellen (geen actie)</option></select></label>
+<label>Optionele voorlopige reviewdatum <input type="date" id="bulk-date" min="2000-01-01" max="2099-12-31"></label>
+<label>Menselijke vervolgactie <input type="text" id="bulk-action" maxlength="400" placeholder="Bij verwijderen verplicht: reden/goedkeuring volgen"></label>
+<button id="bulk-apply" type="button">Toepassen op zichtbare rijen</button>
+<button id="bulk-undo" class="secondary" type="button" disabled>Laatste bulkbewerking terugdraaien</button>
+</div>
+<p class="muted">Alleen zichtbaar gefilterde bronrijen worden aangepast. Bron-SHA en bestandsgrootte blijven altijd onveranderd. Dit is een lokale niet-bevoegdheidsplanning.</p>
+</div>
 <div id="stats" class="stats" aria-live="polite"></div>
 <div class="scroll"><table><thead><tr><th>Bronidentiteit</th><th>Privé-alias</th><th>Menselijke status</th><th>Reviewdatum</th><th>HUMAN actie / toelichting</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="6">Selecteer eerst bestanden.</td></tr></tbody></table></div>
 </section>
