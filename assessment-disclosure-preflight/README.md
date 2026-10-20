@@ -151,3 +151,44 @@ The original multi-file review-studio.html and adjacent CSS/JS remain usable as 
 The visual workroom and the actual standalone HTML now offer **Export printable PRIVATE HUMAN report**. It produces a complete, local, scriptless HTML containing only the source-free receipt's ordinal/kind and *human-entered* stage, question and next action. It includes a category breakdown and clear source-provenance/authorization warnings, has no scripts, remote resources, targets, original evidence payloads or full receipt hash, and uses HTML-escaped values rather than interpreting HUMAN text as markup. This is the pure-browser equivalent of the native read-only HUMAN report, useful for recipient preparation when Python is not installed.
 
 Unlike the small-cohort-suppressed category CSV, the printable HUMAN report is deliberately **not anonymous** and includes PRIVATE free text; browser downloads can sync to cloud storage. Therefore its export requires an explicit human privacy confirmation. The operator must separately review confidentiality, recipient identity and current client/operator permissions before any handoff. Browser-side acceptance remains an unsigned receipt/CSV check, not authentic source proof. For strict native original byte admission and 0600 owner-only file publishing, use the Python workflow instead.
+
+
+## Complete one-file encrypted PRIVATE HUMAN handoff — LUHBP001 (.luhb)
+
+The local browser and native HUMAN CLI now support one encrypted packet containing **both** the exact original **unsigned source-free preflight receipt** and the previously admitted PRIVATE HUMAN CSV. Recipients no longer need to separately preserve/locate the receipt. This never includes raw original lab results, targets, evidence bytes, models, authorization grants or original client documents. The packet is entirely password-encrypted, including its receipt metadata.
+
+### Native offline sender
+
+From a trusted offline terminal, with an existing owner-only 0700 output folder and installed optional cryptography dependency:
+
+~~~sh
+python3 assessment-disclosure-preflight/human_review.py seal-bundle \
+  --receipt ./private-disclosure-desk/PRIVATE-receipt.json \
+  --answers ./private-disclosure-desk/PRIVATE-human-reviewed.csv \
+  --private-output-dir ./another-private-handoff
+~~~
+
+The CLI first fully re-admits exact receipt+CSV identities, prompts twice for a new password on a non-echoed TTY, then publishes exactly one new 0600 PRIVATE-human-handoff.luhb in the existing private directory; it never overwrites existing files or writes an additional plaintext staging file.
+
+### Native offline recipient
+
+~~~sh
+python3 assessment-disclosure-preflight/human_review.py render \
+  --bundle ./another-private-handoff/PRIVATE-human-handoff.luhb \
+  --private-output-dir ./recipient-private-report
+python3 assessment-disclosure-preflight/human_review.py summarize \
+  --bundle ./another-private-handoff/PRIVATE-human-handoff.luhb \
+  --private-output-dir ./recipient-private-counts
+~~~
+
+Create each output directory beforehand with owner-only 0700 permission. The receipt is inside the encrypted package. Passing a second --receipt with --bundle is refused. Receipt bytes and HUMAN text are decrypted in memory, then independently readmitted by the original local receipt+CSV validators; no plaintext CSV is published en route. PRIVATE report HTML still contains HUMAN notes, while the separately generated counts-only CSV remains small-cohort-suppressed. These are human declarations, not release approvals.
+
+### Browser sender / recipient
+
+Load an original receipt with a matching HUMAN CSV or encrypted .luhd, edit locally, choose **Export complete encrypted PRIVATE HUMAN handoff (.luhb)**, and enter/confirm a new password. The receiving workroom instead selects only the .luhb and password; no second receipt needed. This is supported in the original multi-file browser and the source-bundled standalone. Earlier two-file .luhd imports/exports remain supported; neither workflow contacts a network or grants permission.
+
+### Binary format and precise trust limit
+
+LUHBP001 is a purpose-separated binary AES-256-GCM packet. Outer 36-byte header: eight-byte LUHBP001 marker, 16 random salt bytes, 12 random nonce bytes; the entire header is authenticated AES-GCM associated data. Key derivation: PBKDF2-HMAC-SHA256, 600,000 iterations, 256-bit key. Plaintext inside authenticated ciphertext: second LUHBP001 marker, big-endian 32-bit receipt length and CSV length, exact unsigned PRIVATE receipt bytes, exact HUMAN CSV bytes. Each source is strictly bounded to 256 KiB. Password mistakes, tag failure, unsupported version, inconsistent lengths, duplicate receipt keys and noncanonical HUMAN rows all refuse before any current HUMAN review is replaced.
+
+The ciphertext protects against passive disclosure/tampering while its password remains secret. It does NOT prove authentic original lab provenance, review authorship, client/operator consent, current revocation, fixes, approved assessment rights or HUMAN GO. Original receipt and HUMAN CSV are explicitly unsigned. No anonymity, secure memory erasure or password recovery is promised. Source/cryptography/browser CI reviews and action-time authorization/release gates remain mandatory. Keep PRIVATE, DRAFT/HOLD, without production target interaction, automatic transfer, merge or deployment.
