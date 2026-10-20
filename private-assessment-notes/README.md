@@ -544,3 +544,28 @@ REVIEW_ONLY (2); \`mask-copy\` returns HOLD (3) even after correctly writing
 the selected-only private local result. All original independent source-owner,
 security/privacy reviews, CI, client/operator separate active consent,
 action-time revocation and explicit HUMAN GO remain mandatory.
+
+### Offline guided source-by-source manual masking editor
+
+The native \`mask-template\` command now also generates
+\`PRIVATE-manual-mask-editor.html\`, linked from the private
+\`OPEN-PRIVATE.html\` workroom. This is a SHA-256-CSP-pinned **fully offline**
+HUMAN interface: expand only the pattern-masked original you want to review,
+click **Add original-specific PRIVATE literal**, type the exact remaining
+sensitive phrase, add/remove up to 24 original-source-bound rules, and
+explicitly export \`PRIVATE-manual-mask-rules-completed.json\`.
+
+All original SHA identities and exact completed HUMAN manifest/CSV digests
+come from the completed packet, not a user-supplied claim. The interface
+contains the already-pattern-masked PRIVATE source text (which can still
+contain real secrets), and the typed literal is itself SECRET, so never put
+the HTML or downloaded JSON on a shared drive or in a pull request. It has no
+network, persistence, upload, model or external recipient. The operator
+must immediately move the downloaded JSON to an ordinary owner-only 0600
+private file, then explicitly invoke \`notes.py mask-copy\`. A browser
+download alone does **not** enforce the 0600 filesystem requirement.
+
+The original blank \`PRIVATE-manual-mask-rules.json\` remains available for
+manual text editing without JavaScript; its empty placeholders must be filled
+or removed before native processing. \`mask-copy\` still rejects all unsafe,
+overlapping, stale, unmatched, ambiguous or unauthorized inputs.
