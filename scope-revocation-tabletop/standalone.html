@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nKYFH0YCzudzlIoYz3tLd3sfvfd3pMWhznBeanQzCHY='; style-src 'sha256-GzxoAhQSlGQsSotM/FsHHKmgzPY/IWC1JlblUu2aGlg='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-jXrlQ7M9o0MKpah3Gq63dCs2+2qRFwes0lnNvhHnOA0='; style-src 'sha256-GzxoAhQSlGQsSotM/FsHHKmgzPY/IWC1JlblUu2aGlg='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
   <meta name="referrer" content="no-referrer">
   <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
   <style>:root{color-scheme:dark;--bg:#0b1220;--surface:#121e30;--surface2:#19283a;--border:#31445c;--text:#f3f7fc;--muted:#adbed1;--aqua:#5ee5cf;--warn:#ffd07d;--red:#ff9b9b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -172,6 +172,9 @@
   // Eight fixed slots; no names, external identifiers or automatic persistence.
   let slots = Array(8).fill(null);
   let replayCursor = null; // null follows the current final fictitious step.
+  const HISTORY_MAX=48;
+  let undoFrames=[],redoFrames=[];
+  let workspaceVersion=0; // monotonic, including undo/redo: rejects import read-back ABA races.
   let activeDrill = null;
   let selectedDrill = 0;
   let drillAnswers = Array(DRILLS.length).fill(null);
@@ -309,21 +312,24 @@
       const up=el("button","small-button","↑");
       up.type="button";up.disabled=i===0;
       up.setAttribute("aria-label","Verplaats stap "+(i+1)+" omhoog");
-      up.addEventListener("click",()=>{[events[i-1],events[i]]=[events[i],events[i-1]];feedback("Stap verplaatst; simulatie volledig herberekend.");render();});
+      up.addEventListener("click",()=>mutateWorkspace(()=>{[events[i-1],events[i]]=[events[i],events[i-1]];},"Stap verplaatst; fictieve beslisvolgorde opnieuw berekend."));
       const down=el("button","small-button","↓");
       down.type="button";down.disabled=i===events.length-1;
       down.setAttribute("aria-label","Verplaats stap "+(i+1)+" omlaag");
-      down.addEventListener("click",()=>{[events[i],events[i+1]]=[events[i+1],events[i]];feedback("Stap verplaatst; simulatie volledig herberekend.");render();});
+      down.addEventListener("click",()=>mutateWorkspace(()=>{[events[i],events[i+1]]=[events[i+1],events[i]];},"Stap verplaatst; fictieve beslisvolgorde opnieuw berekend."));
       const remove=el("button","small-button remove-button","×");
       remove.type="button";remove.setAttribute("aria-label","Verwijder stap "+(i+1));
-      remove.addEventListener("click",()=>{events.splice(i,1);feedback("Stap verwijderd; simulatie volledig herberekend.");render();});
+      remove.addEventListener("click",()=>mutateWorkspace(()=>{events.splice(i,1);},"Fictieve stap verwijderd; herstel via ongedaan maken mogelijk."));
       actions.append(up,down,remove);
       item.append(actions);
       holder.append(item);
     });
     write("step-count",events.length+" / "+MAX);
     $("empty").hidden=events.length>0;
-    $("undo").disabled=events.length===0;
+    $("undo").disabled=undoFrames.length===0;
+    $("redo").disabled=redoFrames.length===0;
+    write("undo-hint",undoFrames.length+" herstelbare lokale wijzigingen · "+redoFrames.length+
+      " opnieuw uitvoerbaar. Bounded history, alleen in browsergeheugen.");
     $("add-event").disabled=events.length>=MAX;
     write("client-state",s.client ? "Fictief aanwezig" : "Ontbreekt / vervallen");
     write("operator-state",s.operator ? "Fictief aanwezig" : "Ontbreekt / vervallen");
@@ -426,7 +432,7 @@
       save.type="button";save.setAttribute("aria-label","Bewaar huidig scenario in slot "+(i+1));
       save.addEventListener("click",()=>{
         if(slot && !window.confirm("Scenario "+(i+1)+" in lokaal geheugen vervangen?")) return;
-        slots[i]=slotEntry(events,baseline);feedback("Fictief scenario "+(i+1)+" bewaard; geen automatische opslag.");render();
+        mutateWorkspace(()=>{slots[i]=slotEntry(events,baseline);},"Fictief scenario "+(i+1)+" in browsergeheugen bewaard.");
       });
       const load=el("button","small-button bank-button","Openen");
       load.type="button";load.disabled=!slot;
@@ -434,16 +440,17 @@
       load.addEventListener("click",()=>{
         if (!slots[i])return;
         if ((events.length || baseline!==null) && !window.confirm("Editor vervangen door scenario "+(i+1)+"?"))return;
-        events=slots[i].events.slice();
-        baseline=slots[i].baseline_events===null?null:slots[i].baseline_events.slice();
-        feedback("Scenario "+(i+1)+" lokaal geopend.");render();
+        mutateWorkspace(()=>{
+          events=slots[i].events.slice();
+          baseline=slots[i].baseline_events===null?null:slots[i].baseline_events.slice();
+        },"Scenario "+(i+1)+" lokaal geopend; vorige editorversie via ongedaan maken herstelbaar.");
       });
       const erase=el("button","small-button remove-button bank-button","Wissen");
       erase.type="button";erase.disabled=!slot;
       erase.setAttribute("aria-label","Wis scenario uit slot "+(i+1));
       erase.addEventListener("click",()=>{
         if(!slots[i] || !window.confirm("Slot "+(i+1)+" uit lokaal geheugen wissen?"))return;
-        slots[i]=null;feedback("Slot "+(i+1)+" gewist.");render();
+        mutateWorkspace(()=>{slots[i]=null;},"Fictief slot "+(i+1)+" uit lokaal geheugen gewist.");
       });
       actions.append(save,load,erase);tr.append(label,cell,actions);root.append(tr);
     });
@@ -582,7 +589,7 @@
         if(!scenarioMatchesDrill()) {
           write("drill-feedback","Deze kaart is niet langer exact geladen. Herstart hem zonder andere scenario's aan te passen.");return;
         }
-        drillAnswers[selectedDrill]=i;
+        mutateWorkspace(()=>{drillAnswers[selectedDrill]=i;},"Didactische keuze lokaal onthouden.");
         write("drill-feedback",(i===card.correct?"Didactisch passende keuze. ":"Didactisch aandachtspunt. ")+card.explain+
           " Alleen HUMAN oefenfeedback; nooit echte toestemming.");
         refreshDrillStatus();
@@ -625,13 +632,14 @@
       const card=DRILLS[selectedDrill];
       if((events.length || baseline!==null) &&
          !window.confirm("Huidige oefentijdlijn en nulmeting vervangen? Opgeslagen scenario-slots blijven bestaan."))return;
-      events=card.events.slice();baseline=null;activeDrill=selectedDrill;
-      feedback("Fictieve oefenkaart "+(selectedDrill+1)+" geladen. Geen externe uitvoer.");
-      render();selectDrill(selectedDrill);
+      mutateWorkspace(()=>{events=card.events.slice();baseline=null;activeDrill=selectedDrill;},
+        "Fictieve oefenkaart "+(selectedDrill+1)+" geladen. Geen externe uitvoer.");
+      selectDrill(selectedDrill);
     });
     $("drill-clear").addEventListener("click",()=>{
       if(!window.confirm("Alleen didactische antwoordvoortgang uit dit browsergeheugen wissen?"))return;
-      drillAnswers=Array(DRILLS.length).fill(null);
+      mutateWorkspace(()=>{drillAnswers=Array(DRILLS.length).fill(null);},
+        "Lokale didactische antwoordvoortgang gewist; herstelbaar via ongedaan maken.");
       selectDrill(selectedDrill);
     });
     $("drill-print-pack").addEventListener("click",()=>{
@@ -643,7 +651,7 @@
   function feedback(t) { write("feedback",t); }
   function add(e) {
     if (events.length>=MAX || !Object.hasOwn(TYPES,e)) { feedback("Geen gebeurtenis toegevoegd: maximum of onbekende code.");return; }
-    events.push(e); feedback("");render();
+    mutateWorkspace(()=>{events.push(e);},"Fictieve gebeurtenis toegevoegd.");
   }
   function data() {
     return {schema:"lightup.fictional.scope-tabletop.v4",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
@@ -652,6 +660,38 @@
       drill_answers:drillAnswers.slice(),
       authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,
         dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
+  }
+  function applyFrame(frame) {
+    events=frame.events.slice();
+    baseline=frame.baseline_events===null?null:frame.baseline_events.slice();
+    slots=frame.slots.map(x=>x===null?null:slotEntry(x.events,x.baseline_events));
+    drillAnswers=frame.drill_answers.slice();
+    activeDrill=null;replayCursor=null;
+  }
+  function mutateWorkspace(fn,msg) {
+    const old=data(),before=JSON.stringify(old);
+    fn();
+    if(JSON.stringify(data())!==before) {
+      undoFrames.push(old);
+      if(undoFrames.length>HISTORY_MAX)undoFrames.shift();
+      redoFrames=[];
+      workspaceVersion++;
+    }
+    feedback(msg||"");
+    render();
+  }
+  function historyStep(backward) {
+    const from=backward?undoFrames:redoFrames;
+    if(!from.length)return;
+    const current=data(),restore=from.pop(),other=backward?redoFrames:undoFrames;
+    other.push(current);
+    if(other.length>HISTORY_MAX)other.shift();
+    applyFrame(restore);
+    workspaceVersion++;
+    selectDrill(selectedDrill);
+    feedback(backward?"Laatste wijziging in de lokale fictieve werkruimte hersteld.":
+      "Fictieve wijziging opnieuw toegepast.");
+    render();
   }
   function bytesDownload(filename,text,mime) {
     const blob = new Blob([text],{type:mime});
@@ -737,13 +777,19 @@
     const key=$("preset").value;
     if (!Object.hasOwn(presets,key)) return;
     if (events.length && !window.confirm("Bestaand oefenscenario vervangen?")) return;
-    events=presets[key].slice(); feedback("Fictief voorbeeld geladen.");render();
+    mutateWorkspace(()=>{events=presets[key].slice();},"Fictief voorbeeld geladen.");
   });
   $("add-event").addEventListener("click",()=>add($("event-type").value));
-  $("set-baseline").addEventListener("click",()=>{baseline=events.slice();feedback("Fictieve nulmeting in geheugen vastgelegd.");render();});
-  $("clear-baseline").addEventListener("click",()=>{baseline=null;feedback("Nulmeting uit geheugen gewist.");render();});
-  $("undo").addEventListener("click",()=>{events.pop();feedback("Laatste gebeurtenis verwijderd.");render();});
-  $("clear").addEventListener("click",()=>{if (events.length && !window.confirm("Alle fictieve stappen wissen?")) return;events=[];feedback("Scenario gewist.");render();});
+  $("set-baseline").addEventListener("click",()=>mutateWorkspace(()=>{baseline=events.slice();},
+    "Fictieve nulmeting in lokaal geheugen vastgelegd."));
+  $("clear-baseline").addEventListener("click",()=>mutateWorkspace(()=>{baseline=null;},
+    "Nulmeting gewist; herstelbaar via ongedaan maken."));
+  $("undo").addEventListener("click",()=>historyStep(true));
+  $("redo").addEventListener("click",()=>historyStep(false));
+  $("clear").addEventListener("click",()=>{
+    if(events.length && !window.confirm("Alle fictieve stappen uit editor wissen? De andere lokale slots blijven bestaan."))return;
+    mutateWorkspace(()=>{events=[];},"Fictieve editor leeg; herstelbaar via ongedaan maken.");
+  });
   $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario inclusief slotverzameling lokaal aangeboden.");});
   $("save-board").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.json",JSON.stringify(data(),null,2),"application/json");feedback("PRIVATE fictieve workshop inclusief editor en slots lokaal aangeboden.");});
   $("save-board-brief").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.md",boardBrief(),"text/markdown");feedback("Fictieve groepsbrief voor PRIVATE HUMAN review aangeboden.");});
@@ -754,21 +800,23 @@
   $("import-file").addEventListener("change",async event=>{
     const file=event.target.files?.[0];event.target.value="";if (!file)return;
     if (file.size>32768){feedback("HOLD: scenario groter dan 32 KiB.");return;}
-    const oldSession=JSON.stringify(data());
+    const oldSession=JSON.stringify(data()),oldVersion=workspaceVersion;
     try {
       const text=await file.text();
       const next=validateImport(text);
       // A local file read may finish after a HUMAN has edited the current scenario.
       // Never silently overwrite those newer choices, including all saved slots.
-      if (JSON.stringify(data())!==oldSession) {
+      if (workspaceVersion!==oldVersion || JSON.stringify(data())!==oldSession) {
         feedback("HOLD: lokale werkruimte gewijzigd tijdens inlezen; bestand niet toegepast.");
         return;
       }
       if ((events.length || baseline!==null || slots.some(x=>x!==null) || drillAnswers.some(x=>x!==null)) &&
           !window.confirm("Editor, nulmeting, acht slots én fictieve lesantwoorden vervangen?")) return;
-      events=next.events;baseline=next.baseline;slots=next.slots;
-      drillAnswers=next.drillAnswers;activeDrill=null;
-      feedback("Fictief scenario, lesantwoorden en slotverzameling atomair hersteld.");selectDrill(selectedDrill);render();
+      mutateWorkspace(()=>{
+        events=next.events;baseline=next.baseline;slots=next.slots;
+        drillAnswers=next.drillAnswers;activeDrill=null;
+      },"Fictief scenario, lesantwoorden en slotverzameling atomair ingelezen; vorige workspace herstelbaar.");
+      selectDrill(selectedDrill);
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("timeline-filter").addEventListener("change",render);
@@ -782,10 +830,9 @@
     const selected=replayPosition();
     if(!window.confirm("Fictief traject t/m stap "+selected+" als alternatieve vertakking in leeg slot "+
       (first+1)+" bewaren? Bestaande editor blijft intact."))return;
-    slots[first]=slotEntry(events.slice(0,selected),events.slice());
-    feedback("Vertakking van stap "+selected+" in lokaal scenario-slot "+(first+1)+
-      " opgeslagen. Oorspronkelijke volledige afloop is de bijbehorende nulmeting.");
-    render();
+    mutateWorkspace(()=>{slots[first]=slotEntry(events.slice(0,selected),events.slice());},
+      "Fictieve vertakking bij stap "+selected+" in leeg slot "+(first+1)+
+      " opgeslagen; origineel scenario blijft als nulmeting en herstel via undo mogelijk.");
   });
   $("replay-brief").addEventListener("click",()=>{
     bytesDownload("lightup-fictional-step-review.md",replayBrief(),"text/markdown");
@@ -824,7 +871,7 @@
         <div class="preset-group"><select id="preset"><option value="empty">Leeg scenario</option><option value="happy">Fictieve complete voorwaarden</option><option value="revoke">Toestemming wordt ingetrokken</option><option value="scope">Scope verandert na toestemming</option><option value="stop">Noodstop vóór uitvoerpoging</option></select><button type="button" class="button minor" id="load-preset">Laden</button></div>
         <label for="event-type">Volgende gebeurtenis</label>
         <div class="preset-group"><select id="event-type"><option value="CLIENT_CONSENT">Fictieve client verklaart toestemming</option><option value="OPERATOR_CONSENT">Fictieve operator verklaart toestemming</option><option value="SCOPE_CHANGED">Scope wijzigt (verklaringen vervallen)</option><option value="RISK_CHANGED">Risico stijgt (verklaringen vervallen)</option><option value="CLIENT_REVOKED">Client trekt verklaring in</option><option value="OPERATOR_REVOKED">Operator trekt verklaring in</option><option value="WINDOW_EXPIRED">Geldigheidsvenster verloopt</option><option value="NEW_WINDOW">Nieuw fictief venster (nieuwe verklaringen nodig)</option><option value="EMERGENCY_STOP">Noodstop blijft actief</option><option value="DISPATCH_ATTEMPT">Gesimuleerde poging tot uitvoering</option></select><button type="button" class="button primary" id="add-event">+ Voeg toe</button></div>
-        <div class="quick"><button type="button" id="undo" class="button minor">↶ Laatste ongedaan</button><button type="button" id="clear" class="button danger">Scenario wissen</button></div>
+        <div class="quick"><button type="button" id="undo" class="button minor">↶ Ongedaan maken</button><button type="button" id="redo" class="button minor">↷ Opnieuw</button><button type="button" id="clear" class="button danger">Scenario wissen</button></div><p class="muted" id="undo-hint">Wijzigingen in deze fictieve werkruimte kunnen lokaal ongedaan worden gemaakt; niets wordt automatisch opgeslagen.</p>
         <section class="baseline-controls" aria-labelledby="baseline-title">
           <h3 id="baseline-title">Wat-als vergelijking</h3>
           <p class="muted">Leg de huidige fictieve situatie vast en verander daarna de gebeurtenissen. De nulmeting blijft alleen in dit browsergeheugen totdat je deze bewust wist of een opgeslagen scenario vervangt.</p>
