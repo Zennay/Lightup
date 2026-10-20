@@ -43,9 +43,14 @@ def admitted_counts(source: dict) -> dict:
     require(source.get("schema") == "lightup.lab_artifact_inspection.v1")
     require(source.get("status") == "REVIEW_ONLY")
     require(all(source.get(flag) is False for flag in FALSE_FLAGS))
-    require(source.get("comparison_performed") is False)
     kind = source.get("artifact_kind")
     require(type(kind) is str and kind in KINDS)
+    # The original preview deliberately has no comparison_performed field;
+    # benchmark and assessment summaries must expose literal false.
+    if kind == KINDS[0]:
+        require("comparison_performed" not in source)
+    else:
+        require(source.get("comparison_performed") is False)
     row = {"kind": kind}
     if kind == KINDS[0]:
         require(source.get("assessment_executed") is False)
