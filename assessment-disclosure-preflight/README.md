@@ -50,11 +50,17 @@ plaintext or encrypted result **and its entire suppressed-counts handoff**
 have been admitted against the exact original PRIVATE receipt, both independent
 HUMAN input files and all current original source-bound A/B/HOLD decisions.
 
-This explicit local export contains only the SHA-256 byte identities of the
+This explicit local export contains only SHA-256 byte identities of the
 unsigned original PRIVATE receipt, each separately provided original reviewer
-CSV, the actually reopened result and its counts file, together with the
-declared mode, an appropriately suppressed source count and literal false
-authority flags. It has **no reviewer note, question, next-action, reason or
+CSV, **the exact generated complete seven-column original A/B/HOLD HUMAN
+decision CSV**, the actually reopened result and its separate counts file,
+together with the declared mode, appropriately suppressed source count and
+literal false authority flags. The browser hashes the exact generated PRIVATE
+decision bytes *before* offering the download and refuses to promote those bytes
+to the current decision state if the source or HUMAN selections changed while
+hashing. The resulting local decision SHA demonstrates only what this browser
+generated, not that the browser successfully persisted a file to disk or that
+any signer was authenticated. It has **no reviewer note, question, next-action, reason or
 original lab finding content**. It is scriptless with a restrictive offline
 CSP. The receipt remains PRIVATE; hashes can correlate data and establish no
 client/operator identity, signature, consent, reviewer independence,
