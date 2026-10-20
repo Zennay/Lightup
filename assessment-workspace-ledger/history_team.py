@@ -19,7 +19,7 @@ import stat
 import sys
 
 from history import load_history, summarize
-from history_human import expected_rows, read_browser_csv as _original_browser_read
+from history_human import expected_rows
 from ledger import (
     FLAGS, Hold, MAX_MANIFEST, canonical, digest, hexhash, html_page,
     new_private, object_unique, read_owner_file, reject, safe_human, write_private,
@@ -30,6 +30,12 @@ MAX_REVIEWERS = 8
 MAX_REVIEW_CSV = 192 * 1024
 HEADERS = ("transition", "kit_ordinal", "to_ledger_sha256", "to_kit_digest",
            "chosen_packet_sha256", "stage", "owner", "question")
+def literal_false_authority(value):
+    # Python's equality treats 0 == False: no implicit numeric authority aliases.
+    return (type(value) is dict and set(value) == set(FLAGS) and
+            all(value[key] is False for key in FLAGS))
+
+
 PACKET_KEYS = {
     "schema", "authority", "sources_reopened", "historical_only",
     "human_review_is_not_authorization", "original_ledger_sha256",
@@ -47,7 +53,7 @@ def parse_packet(raw, sources, expected):
         raise Hold("PRIVATE HOLD: unreadable HUMAN reviewer packet") from exc
     if (not isinstance(obj, dict) or set(obj) != PACKET_KEYS or
             obj["schema"] != "lightup.private.workspace-ledger-history-human.v1" or
-            obj["authority"] != FLAGS or obj["sources_reopened"] is not False or
+            not literal_false_authority(obj["authority"]) or obj["sources_reopened"] is not False or
             obj["historical_only"] is not True or
             obj["human_review_is_not_authorization"] is not True or
             not hexhash(obj["human_plan_sha256"])):
@@ -131,7 +137,7 @@ def exact_context(raw):
             "schema", "authority", "historical_only", "sources_reopened",
             "original_ledgers", "original_reviewers"
         } or obj["schema"] != "lightup.private.workspace-ledger-team-context.v1" or
-            obj["authority"] != FLAGS or obj["historical_only"] is not True or
+            not literal_false_authority(obj["authority"]) or obj["historical_only"] is not True or
             obj["sources_reopened"] is not False):
         reject("PRIVATE HOLD: team context not from original private workflow")
     for key, low, high in (("original_ledgers", 2, 12), ("original_reviewers", 2, 8)):
@@ -253,6 +259,12 @@ def private_parent_for_originals(parent, sources):
 
 
 def prepare(args):
+    # Recorded original file paths must remain directly usable for strict
+    # exact-byte reopening. Reject paths that would be held by native finalize.
+    all_paths = list(args.ledger) + list(args.reviewer)
+    if any(not isinstance(p, str) or not os.path.isabs(p) or
+           os.path.normpath(p) != p or len(p) > 4096 for p in all_paths):
+        reject("PRIVATE HOLD: all original owner-private paths must be canonical absolute")
     sources = load_history(args.ledger)
     transitions, _, _ = summarize(sources)
     expected = expected_rows(sources, transitions)
