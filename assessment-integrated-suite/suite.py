@@ -208,6 +208,28 @@ def private_workpack_progress(args: argparse.Namespace) -> int:
     return 2
 
 
+
+def private_workpack_continue(args: argparse.Namespace) -> int:
+    """Recreate original selected HUMAN workpack with a new declared date."""
+    if args.human_confirm != "CONTINUE PRIVATE WORKPACK":
+        raise Hold("HOLD: exact continuation confirmation required")
+    from dataclasses import replace
+    import console
+    import private_session
+    import workpack_continue
+    current = console.Session()
+    admitted = private_session.restore(current, args.private_session)
+    isolated = replace(current, **admitted)
+    isolated.saved_session = args.private_session
+    page = workpack_continue.build(
+        isolated, args.from_workpack, args.private_parent,
+        args.folder, args.review_date)
+    print("PRIVATE REVIEW_ONLY: complete continued HUMAN workpack created.")
+    print("OPEN LOCALLY: " + str(page))
+    print("Every original HUMAN status is still unverified and editable.")
+    return 2
+
+
 def main() -> int:
     cli = argparse.ArgumentParser(description="PRIVATE local lab review composition; no scan")
     commands = cli.add_subparsers(dest="command", required=True)
@@ -240,6 +262,20 @@ def main() -> int:
     progress.add_argument("--folder", required=True, help="unused PRIVATE progress room name")
     progress.add_argument("--human-confirm", required=True,
                           help="must equal exactly BUILD PRIVATE PROGRESS")
+    following = commands.add_parser(
+        "workpack-continue",
+        help="continue original owner-private HUMAN workpack without changing decisions")
+    following.add_argument("--private-session", required=True,
+                           help="original saved owner-only 0600 PATH-only session")
+    following.add_argument("--from-workpack", required=True,
+                           help="existing original 0700 HUMAN workpack")
+    following.add_argument("--private-parent", required=True,
+                           help="existing owner-only 0700 PRIVATE parent")
+    following.add_argument("--folder", required=True, help="new unused HUMAN folder")
+    following.add_argument("--review-date", required=True,
+                           help="new explicitly operator-declared YYYY-MM-DD")
+    following.add_argument("--human-confirm", required=True,
+                           help="must equal CONTINUE PRIVATE WORKPACK")
     commands.add_parser("catalog", help="read-only inventory of installed original source modules")
     args = cli.parse_args()
     if args.command == "catalog":
@@ -253,6 +289,8 @@ def main() -> int:
             return private_human_workpack(args)
         if args.command == "workpack-progress":
             return private_workpack_progress(args)
+        if args.command == "workpack-continue":
+            return private_workpack_continue(args)
         return prepare(args)
     except (Hold, OSError, ValueError, TypeError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: local private preparation refused",

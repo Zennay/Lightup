@@ -87,7 +87,7 @@ and explicit HUMAN GO remain mandatory. Incubate M3/M7.</p></footer></html>""")
 
 
 def build(session, source_csv: str, parent_name: str, name: str,
-          review_date: str) -> Path:
+          review_date: str, *, original_snapshot: bytes | None = None) -> Path:
     human_priorities.as_of(review_date)
     if not privacy.NAME.fullmatch(name):
         raise privacy.Hold("HOLD: unique PRIVATE HUMAN workpack folder name required")
@@ -106,15 +106,17 @@ def build(session, source_csv: str, parent_name: str, name: str,
     # Two fully explicit HUMAN-only modes: read an original admitted
     # queue, or seed a first all-UNASSESSED queue from native session paths.
     # Never invent HUMAN decisions or reuse an unrelated original CSV.
-    seeded_from_session = not bool(source_csv)
+    if original_snapshot is not None and source_csv:
+        raise privacy.Hold("HOLD: provide only one original HUMAN snapshot source")
+    seeded_from_session = not bool(source_csv) and original_snapshot is None
     if seeded_from_session:
         rows = base
         source_bytes = route_queue.csv_bytes(base)
     else:
-        # One admitted owner-only descriptor snapshot drives both the HUMAN
-        # decisions and the exact bytes pinned for every child producer.
-        # Never reopen a potentially changed original CSV after admission.
-        source_bytes = route_queue.read_owner_csv(source_csv)
+        # Direct re-admission of a pinned original descriptor snapshot permits
+        # continuation without reopening an old mutable source path.
+        source_bytes = (original_snapshot if original_snapshot is not None else
+                        route_queue.read_owner_csv(source_csv))
         rows = route_queue.admit_human_edits_bytes(base, source_bytes)
     teams = [(team, sum(row["review_team"] == team and
                         row["human_stage"] != "UNASSESSED" for row in rows))

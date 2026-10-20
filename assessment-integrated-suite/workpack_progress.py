@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 
 import human_priorities
 import human_workpack
@@ -24,18 +25,65 @@ SCHEMA = "lightup.private.assessment-workpack-progress.v1"
 MAX_PACKS = 8
 
 
-def _read_workpack(folder: str, base: list[dict]) -> tuple[str, list[dict]]:
+def _private_receipt(path: Path) -> dict:
+    """Descriptor-pinned, duplicate-key-rejecting original private receipt."""
+    if not privacy.private(path.parent, True) or not privacy.private(path, False):
+        raise privacy.Hold("HOLD: original receipt parent/file is not owner-private")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        before = os.fstat(fd)
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.geteuid()
+                or before.st_nlink != 1 or stat.S_IMODE(before.st_mode) & 0o077
+                or not 0 < before.st_size <= privacy.MAX_JSON):
+            raise privacy.Hold("HOLD: original private receipt is not a regular owned file")
+        raw = os.read(fd, privacy.MAX_JSON + 1)
+        after = os.fstat(fd)
+        attrs = lambda st: (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns,
+                            st.st_mode, st.st_uid, st.st_nlink)
+        if attrs(before) != attrs(after) or len(raw) != before.st_size:
+            raise privacy.Hold("HOLD: original private receipt changed during reading")
+    finally:
+        os.close(fd)
+    try:
+        doc = json.loads(raw.decode("utf-8", "strict"),
+                         object_pairs_hook=privacy.unique_pairs,
+                         parse_constant=lambda _: (_ for _ in ()).throw(
+                             privacy.Hold("HOLD: invalid original receipt JSON constant")))
+    except (UnicodeError, ValueError):
+        raise privacy.Hold("HOLD: original private receipt malformed") from None
+    if type(doc) is not dict:
+        raise privacy.Hold("HOLD: original private receipt must be an object")
+    return doc
+
+
+def original_workpack(folder: str, base: list[dict]) -> tuple[str, list[dict], bytes]:
+    """Read original workpack and its pinned CSV *once*, preserving exact bytes."""
     path = Path(folder)
     if not path.is_absolute() or path.is_symlink() or not privacy.private(path, True):
         raise privacy.Hold("HOLD: original HUMAN workpack must be an owner-only directory, not a link")
-    receipt_path = path / "PRIVATE-WORKPACK-RECEIPT.json"
-    if not privacy.private(receipt_path, False):
-        raise privacy.Hold("HOLD: original workpack receipt must be owner-private")
-    # This is an unsigned LOCAL declaration, not authenticated provenance.
-    try:
-        receipt = json.loads(receipt_path.read_bytes())
-    except (ValueError, OSError):
-        raise privacy.Hold("HOLD: original HUMAN workpack receipt unreadable") from None
+    # Local unsigned HUMAN declaration; cannot authenticate the source.
+    receipt = _private_receipt(path / "PRIVATE-WORKPACK-RECEIPT.json")
+    expected_fields = {
+        "schema", "status", "authority", "declared_review_date",
+        "original_client_source_included", "pinned_private_human_csv_included",
+        "created_from_unassessed_session", "original_session_paths_included",
+        "external_recipient_authenticated", "review_verified",
+        "automated_actions", "workflows", "human_staged", "team_decks",
+        "generated_views",
+    }
+    flags = ("original_client_source_included",
+             "original_session_paths_included", "external_recipient_authenticated",
+             "review_verified", "automated_actions")
+    authority = receipt.get("authority")
+    if (set(receipt) != expected_fields
+            or type(authority) is not dict
+            or set(authority) != set(privacy.AUTHORITY)
+            or any(type(authority[key]) is not bool or authority[key] is not False
+                   for key in privacy.AUTHORITY)
+            or any(type(receipt.get(key)) is not bool or receipt[key] is not False
+                   for key in flags)
+            or receipt.get("pinned_private_human_csv_included") is not True):
+        raise privacy.Hold("HOLD: original workpack receipt authority or schema invalid")
     if (type(receipt) is not dict
             or receipt.get("schema") != human_workpack.SCHEMA
             or receipt.get("status") != "REVIEW_ONLY"
@@ -55,9 +103,24 @@ def _read_workpack(folder: str, base: list[dict]) -> tuple[str, list[dict]]:
         raise privacy.Hold("HOLD: pinned original HUMAN workpack CSV cannot be linked")
     raw = route_queue.read_owner_csv(str(source))
     rows = route_queue.admit_human_edits_bytes(base, raw)
+    teams = [(team, sum(row["review_team"] == team and
+                        row["human_stage"] != "UNASSESSED" for row in rows))
+             for team in human_workpack.TEAM_FOLDERS]
+    teams = [(team, count) for team, count in teams if count]
+    expected_decks = [{"team": team, "human_workflows": count}
+                      for team, count in teams]
+    expected_views = ["queue", "priorities"] + [
+        human_workpack.TEAM_FOLDERS[team] for team, _ in teams]
     if (receipt.get("human_staged") != sum(x["human_stage"] != "UNASSESSED" for x in rows)
-            or type(receipt.get("created_from_unassessed_session")) is not bool):
+            or type(receipt.get("created_from_unassessed_session")) is not bool
+            or receipt.get("team_decks") != expected_decks
+            or receipt.get("generated_views") != expected_views):
         raise privacy.Hold("HOLD: original HUMAN workpack receipt disagrees with pinned rows")
+    return date, rows, raw
+
+
+def _read_workpack(folder: str, base: list[dict]) -> tuple[str, list[dict]]:
+    date, rows, _ = original_workpack(folder, base)
     return date, rows
 
 

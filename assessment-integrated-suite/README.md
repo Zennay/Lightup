@@ -403,6 +403,42 @@ The existing original owner/private read guards and 0700/0600 write guards
 are reused; no tests/QA or actual scans, grants, scheduling, dispatch or
 deployment are part of this workflow.
 
+## NEW: continue an existing HUMAN assessment workpack (console 51)
+
+An operator can deliberately start a **new full original browser-editable workpack**
+without losing previously assigned HUMAN stages, teams, proposed follow-up
+dates and confidential HUMAN questions. The new workpack is generated entirely
+from the **single pinned private CSV descriptor snapshot** of an existing
+owner-only 0700 original workpack; no reconstructed user input or silent stage
+transition. Its original 0600 receipt and 0600 CSV are admitted against a
+strict restored saved-session PATH snapshot (not against a remembered filename).
+The original receipt is bounded, opened with NOFOLLOW, read once with full
+descriptor identity, rejects duplicate keys and noncanonical literal
+false-authority flags, and its team/card counts are independently checked
+against exact original pinned rows. The previous workpack cannot be the new
+output parent, and neither old workpack nor current console is modified.
+
+Use foreground **console option 51** or the native CLI:
+
+~~~sh
+python3 assessment-integrated-suite/suite.py workpack-continue \
+  --private-session /private/saved/PRIVATE-SESSION.json \
+  --from-workpack /private/original-human-workpack \
+  --private-parent /private/owner-only \
+  --folder next-human-workpack \
+  --review-date 2026-10-21 \
+  --human-confirm 'CONTINUE PRIVATE WORKPACK'
+~~~
+
+The new date is **only a human-entered reference**, not evidence of elapsed
+time, an appointment or an actual security deadline. Output includes a fresh
+original interactive HUMAN queue Studio, scriptless summary, declared-date
+priority review, original team-restricted HUMAN task decks and pinned 0600
+CSV/JSON receipt in a new 0700 directory. Operators still need to export,
+locally re-admit and deliberately review subsequent edits. No client/private
+source opened, no scan, grant, external scheduling, authenticated reviewer
+identity, security verdict or release is implied.
+
 ## Portable 15-original-studio software kit v15
 
 [Offline LightUp Assessment Toolkit v15](LightUp-Assessment-Offline-Toolkit-v15.zip)
