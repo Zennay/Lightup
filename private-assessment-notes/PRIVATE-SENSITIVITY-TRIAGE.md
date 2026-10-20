@@ -24,6 +24,8 @@ This creates a **new** `PRIVATE-lightup-sensitivity-draft-*` owner-only director
 
 In the browser, choose per source one of `PENDING`, `REVIEW_REQUIRED`, `WITHHOLD`. Select `UNKNOWN` **alone**, or one or more categories in canonical order `CREDENTIALS|PERSONAL_DATA|CLIENT_DATA|OTHER`. No status is a clearance. Free text is at most 300 characters and cannot begin with spreadsheet formula characters even after whitespace. Avoid copying actual secrets or PII into follow-up notes.
 
+**Resume:** the browser editor can reopen one earlier **browser-generated complete** PRIVATE HUMAN CSV through the local **Resume exact-source previous PRIVATE HUMAN browser CSV** picker. The editor fatally decodes UTF-8, checks the exact full row count, complete source ordinal/byte-SHA roster and all original HUMAN statuses, categories and notes before **any** state change. It asks for an explicit HUMAN confirmation; cancellation or a single mismatch leaves all current editor choices untouched. This restores only draft UI inputs, not privacy clearance, local file permissions, provenance, consent, or any finalizer receipt. No file is uploaded. The original native source re-admission on finalize remains required.
+
 After saving the browser-generated `PRIVATE-HUMAN-sensitivity-completed.csv`, move it to an owner-private location and `chmod 600` it: ordinary browser downloads may default to world-readable permissions.
 
 ```sh
