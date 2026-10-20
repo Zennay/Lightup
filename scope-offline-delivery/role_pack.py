@@ -10,6 +10,7 @@ import argparse
 import ctypes
 import hashlib
 import html
+import io
 import json
 import os
 from pathlib import Path
@@ -121,16 +122,31 @@ def receipt(profile: str, source_sha: str, parts: dict[str, bytes]) -> bytes:
     }
     return (json.dumps(fields, sort_keys=True, indent=2) + "\n").encode()
 
-def inspect_role(path: Path, expected_sha256: str | None) -> dict:
+def read_archive_snapshot(path: Path) -> bytes:
+    # Open once without following a last-component symlink. Never revisit the
+    # pathname between digest admission and local original-file publication.
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
+                 getattr(os, "O_CLOEXEC", 0))
+    with os.fdopen(fd, "rb") as stream:
+        meta = os.fstat(stream.fileno())
+        if not stat.S_ISREG(meta.st_mode) or not 1 <= meta.st_size <= 2_000_000:
+            raise ValueError("HOLD: oversized or unsafe private source file")
+        content = stream.read(2_000_001)
+    if len(content) != meta.st_size:
+        raise ValueError("HOLD: private source bytes changed while reading")
+    return content
+
+
+def inspect_role(path: Path, expected_sha256: str | None, snapshot: bytes | None = None) -> dict:
     if expected_sha256 is None or re.fullmatch("[0-9a-f]{64}", expected_sha256) is None:
         raise ValueError("HOLD: externally authenticated exact lowercase SHA-256 is required")
-    if path.is_symlink() or not path.is_file() or not 1 <= path.stat().st_size <= 2_000_000:
-        raise ValueError("HOLD: invalid or oversized role ZIP")
-    data = path.read_bytes()
+    data = read_archive_snapshot(path) if snapshot is None else snapshot
+    if not 1 <= len(data) <= 2_000_000:
+        raise ValueError("HOLD: invalid role ZIP snapshot size")
     digest = sha(data)
     if digest != expected_sha256:
         raise ValueError("HOLD: independently supplied role-package SHA-256 differs")
-    with zipfile.ZipFile(path) as z:
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
         infos = z.infolist()
         if not 5 <= len(infos) <= 8:
             raise ValueError("HOLD: unusual role-package member count")
@@ -187,7 +203,10 @@ def build_role(outer: Path, destination: Path, profile: str, outer_sha: str) -> 
         raise ValueError("HOLD: output parent must be operator-owned PRIVATE 0700")
     if destination.exists() or destination.is_symlink():
         raise ValueError("HOLD: destination exists; never overwrite")
-    with zipfile.ZipFile(outer) as z:
+    outer_snapshot = read_archive_snapshot(outer)
+    if sha(outer_snapshot) != outer_sha:
+        raise ValueError("HOLD: source ZIP changed since original byte admission")
+    with zipfile.ZipFile(io.BytesIO(outer_snapshot)) as z:
         originals = {n: z.read(n) for n in PROFILES[profile]}
     source_exact(originals, profile)
     parts = dict(originals)
@@ -216,7 +235,8 @@ def build_role(outer: Path, destination: Path, profile: str, outer_sha: str) -> 
             os.unlink(tmp)
 
 def unpack_role(archive: Path, destination: Path, expected_sha256: str) -> dict:
-    result = inspect_role(archive, expected_sha256)
+    snapshot = read_archive_snapshot(archive)
+    result = inspect_role(archive, expected_sha256, snapshot)
     parent = destination.absolute().parent
     if (not parent.is_dir() or parent.is_symlink() or
         parent.stat().st_uid != os.getuid() or (parent.stat().st_mode & 0o077)):
@@ -232,7 +252,7 @@ def unpack_role(archive: Path, destination: Path, expected_sha256: str) -> dict:
     stage = Path(tempfile.mkdtemp(prefix=".lightup-role-stage-", dir=parent))
     try:
         os.chmod(stage, 0o700)
-        with zipfile.ZipFile(archive) as z:
+        with zipfile.ZipFile(io.BytesIO(snapshot)) as z:
             for name in sorted(z.namelist()):
                 current = stage.joinpath(*name.split("/"))
                 current.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
