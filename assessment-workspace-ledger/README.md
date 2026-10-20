@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Twenty-five console actions provide original kit capture, exact-byte reopen, original-bound
+Twenty-six console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -710,7 +710,7 @@ customer data or these PRIVATE files without a separate authorized disclosure
 process. The **source checkout** includes `portfolio.py`; the native
 `package.py build` now produces a complete v18 offline software ZIP with
 this module included, using only installed original trusted software bytes.
-The branch's [published source-only v18 offline ZIP](LightUp-Workspace-Ledger-Offline.zip)
+The branch's [published source-only v19 offline ZIP](LightUp-Workspace-Ledger-Offline.zip)
 contains all original and newly added software files, including both portfolio
 modules. It is an **UNSIGNED** offline toolkit: source hashes are byte
 identities, not software publisher authentication, security review or permission.
@@ -776,3 +776,54 @@ operator control of owner-only outputs. The committed current v18 offline source
 modules and the original complete software. SHA-256 hashes authenticate only
 local byte equality, NOT the publisher or an approved real security action.
 No QA/regression/test suites are created or run.
+
+
+## New: source-bound PRIVATE HUMAN owner packet handoff (console 26)
+
+The native [portfolio_owner_packets.py](portfolio_owner_packets.py) is a
+separate **offline minimum-necessary recipient workroom builder** for an
+existing original private cross-case `PRIVATE-HUMAN-portfolio.json`.
+
+    python3 assessment-workspace-ledger/portfolio_owner_packets.py \
+      --portfolio /private/original/PRIVATE-HUMAN-portfolio.json \
+      --owner "EXACT PROPOSED HUMAN OWNER A" \
+      --owner "EXACT PROPOSED HUMAN OWNER B" \
+      --private-parent /private/local-workrooms
+
+The operator must explicitly choose **1–8 distinct exact proposed-human
+labels**; there is no "send everyone", automatic recipient discovery,
+email, cloud integration or silent distribution. Owner labels, plans and
+reviewer decisions remain **UNAUTHENTICATED HUMAN claims**, not actual
+client consent, legal permission, confirmed assignments or approved work.
+
+The original source file is admitted through the strict native v1 portfolio
+schema reader with owner-owned 0600, no-follow, single-link, bounded byte
+reads, literal all-false authority, canonical JSON, original context hashes
+and internally matching original action-packet identities. The exact stored
+source bytes are re-read before generating private output. Missing owner,
+duplicated owner, altered source or a request to broaden an already
+owner-filtered portfolio fails closed.
+
+A **new** exclusive owner-private 0700 directory contains one minimal local
+index showing only anonymous owner ordinals and suggested-action counts.
+Each deliberately selected owner gets its own dedicated 0700 subdirectory,
+0600 escaped HTML workroom, 0600 HUMAN-only CSV and 0600 original-portfolio
+SHA/source-case-exact private JSON; **other owners' names, action text and
+case hashes are excluded from that owner's files**. The local index does not
+display owner names, source hashes, case paths, targets or action text.
+All source content stays on the operator's machine; the originals are not
+modified, moved, uploaded, deleted, rescanned or reauthorized.
+
+The return state is always **PRIVATE HOLD (3)**. The code performs no
+disclosure, encryption, authentication, digital signature, network request,
+scan, security remediation, task dispatch, booking or notification. Private
+0600 filesystem permissions are not encryption. Before a human operator
+separately shares anything, real recipient identity and specific disclosure
+authority must be authenticated outside this offline workroom.
+
+The updated v19 software builder includes the original 21 software files
+plus `portfolio_owner_packets.py`; older v16/v17/v18 layouts remain
+recognizable *only* as historical unsigned software packages during
+read-only inspection. GitHub's packaged ZIP must be identified by its
+actual current commit and manifest; no previous release becomes authorized.
+No QA, regression or test suite has been created or executed.
