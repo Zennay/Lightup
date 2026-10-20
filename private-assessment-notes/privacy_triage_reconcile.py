@@ -90,8 +90,8 @@ def matrix_csv(records: list[dict]) -> bytes:
     writer.writeheader()
     for row in records:
         writer.writerow({
-            key: "TRUE" if row[key] else "FALSE"
-            if False else row[key]
+            key: ("TRUE" if row[key] else "FALSE")
+            if type(row[key]) is bool else row[key]
             for key in COLUMNS
         })
     return file.getvalue().encode("utf-8")
