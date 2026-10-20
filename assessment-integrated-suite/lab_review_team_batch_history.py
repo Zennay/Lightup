@@ -131,7 +131,13 @@ def build(packets: list[str], final_room: str, handoff_room: str,
             path / "PRIVATE-HUMAN-MULTITEAM-RECEIPT.json")
         if receipt["original_source_snapshot_sha256_unsigned"] != fingerprint:
             raise privacy.Hold("HOLD: original HUMAN Lab batch history source changed")
-        roster = list(receipt["teams"])
+        # Omitted replies are explicitly visible in EACH saved round;
+        # absence must never be misread as agreement or completion.
+        roster = list(receipt["teams"]) + [
+            {"team": item["team"], "assigned": item["assigned"],
+             "disposition": "NOT_RETURNED"}
+            for item in receipt["unreturned_original_teams"]
+        ]
         for row, old in zip(saved, final):
             if row["human_team"] != old["human_team"]:
                 raise privacy.Hold("HOLD: original HUMAN Lab team identity changed")
