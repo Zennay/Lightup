@@ -112,7 +112,7 @@
     });
     return rows.map(row => ({ordinal: row.ordinal, kind: row.kind}));
   }
-  function csvRows(value) {
+  function csvRows(value, expectedFields = FIELDS) {
     const rows = [], text = value.replace(/^\uFEFF/u, "");
     let row = [], field = "", quoted = false, afterQuote = false;
     for (let i = 0; i < text.length; i++) {
@@ -144,8 +144,8 @@
     admitted(!quoted);
     if (afterQuote || field || row.length) { row.push(field); rows.push(row); }
     admitted(rows.length >= 2 && rows.length <= 13);
-    admitted(rows[0].length === FIELDS.length &&
-             rows[0].every((cell, index) => cell === FIELDS[index]));
+    admitted(rows[0].length === expectedFields.length &&
+             rows[0].every((cell, index) => cell === expectedFields[index]));
     return rows.slice(1);
   }
   function humanSafe(text) {
@@ -288,6 +288,39 @@
       dirty ? "Unsaved PRIVATE HUMAN choices · no release" : "All decisions HOLD by default";
     byId("save").disabled = Boolean(invalid);
   }
+  async function restoreDecisions() {
+    const sequence = epoch;
+    const current = source;
+    try {
+      admitted(current && decisions.length === current.rows.length);
+      const file = byId("resume").files[0];
+      const raw = await readFile(file);
+      const records = csvRows(utf8(raw), CHOICE_FIELDS);
+      admitted(sequence === epoch && source === current);
+      admitted(records.length === current.rows.length);
+      const next = records.map((row, index) => {
+        const original = current.rows[index].original;
+        admitted(row.length === CHOICE_FIELDS.length &&
+                 row[0] === current.digest[0] &&
+                 row[1] === current.digest[1] &&
+                 row[2] === current.digest[2] &&
+                 row[3] === String(original.ordinal) &&
+                 row[4] === original.kind &&
+                 ["HOLD", "A", "B"].includes(row[5]) &&
+                 humanSafe(row[6]) &&
+                 (row[5] === "HOLD" || Boolean(row[6].trim())));
+        return {choice: row[5], reason: row[6]};
+      });
+      admitted(confirm("Replace current PRIVATE HUMAN choices with this entire EXACT-RECEIPT + EXACT-TWO-REVIEWER draft? No consent or release is inferred."));
+      admitted(sequence === epoch && source === current);
+      decisions = next;
+      dirty = true;
+      refresh();
+      notice("REVIEW_ONLY: exact-source-bound HUMAN decision draft restored. Every choice still requires original native finalize, separate authorization and HUMAN review.");
+    } catch (_) {
+      if (sequence === epoch) notice("HOLD: source-bound decision CSV, original receipt/reviewer bytes or explicit operator confirmation did not match. Prior choices kept.", true);
+    } finally { byId("resume").value = ""; }
+  }
   function quoted(value) {
     return '"' + String(value).replaceAll('"', '""') + '"';
   }
@@ -326,7 +359,7 @@
     source = null; decisions = []; dirty = false;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume"]) byId(id).value = "";
     for (const url of urls) URL.revokeObjectURL(url);
     urls.clear();
     notice("PRIVATE session cleared from this page. Previously downloaded files remain on your device; browser memory erasure is not guaranteed.");
@@ -334,6 +367,7 @@
   byId("open").addEventListener("click", open);
   byId("clear").addEventListener("click", clear);
   byId("save").addEventListener("click", exportDecisions);
+  byId("restore").addEventListener("click", restoreDecisions);
   byId("view").addEventListener("change", refresh);
   byId("query").addEventListener("input", refresh);
   addEventListener("beforeunload", event => {
@@ -343,7 +377,7 @@
     epoch++; source = null; decisions = []; dirty = false;
     byId("entries").replaceChildren();
     byId("desk").hidden = true;
-    for (const id of ["receipt", "reviewA", "reviewB"]) byId(id).value = "";
+    for (const id of ["receipt", "reviewA", "reviewB", "resume"]) byId(id).value = "";
     urls.forEach(url => URL.revokeObjectURL(url)); urls.clear();
   });
 })();
