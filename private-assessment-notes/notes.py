@@ -442,6 +442,16 @@ def main() -> int:
     sensitivity_end.add_argument("--triage-kit", required=True)
     sensitivity_end.add_argument("--completed-csv", required=True)
     sensitivity_end.add_argument("--private-parent", required=True)
+    sensitivity_attention = commands.add_parser(
+        "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
+    sensitivity_attention.add_argument("--completed-packet", required=True)
+    sensitivity_attention.add_argument("--earlier-review", required=True)
+    sensitivity_attention.add_argument("--later-review", required=True)
+    sensitivity_attention.add_argument("--kind", required=True,
+                                       choices=("ALL_ATTENTION", "CHANGES_ONLY", "CURRENT_WITHHOLD"))
+    sensitivity_attention.add_argument("--topic", choices=(
+        "CREDENTIALS", "PERSONAL_DATA", "CLIENT_DATA", "OTHER", "UNKNOWN"))
+    sensitivity_attention.add_argument("--private-parent", required=True)
     sensitivity_history = commands.add_parser(
         "sensitivity-history", help="2-8 completed original-bound HUMAN sensitivity rounds and next blank review")
     sensitivity_history.add_argument("--completed-packet", required=True)
@@ -499,6 +509,11 @@ def main() -> int:
             from privacy_triage import finalize as finalize_sensitivity
             return finalize_sensitivity(args.completed_packet, args.triage_kit,
                                         args.completed_csv, args.private_parent)
+        if args.action == "sensitivity-attention":
+            from privacy_triage_attention import create as build_sensitivity_attention
+            return build_sensitivity_attention(
+                args.completed_packet, args.earlier_review, args.later_review,
+                args.kind, args.topic, args.private_parent)
         if args.action == "sensitivity-history":
             from privacy_triage_history import build as build_sensitivity_history
             return build_sensitivity_history(
