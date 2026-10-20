@@ -62,10 +62,12 @@ def _selected_manifest(room: Path, base: list[dict], fingerprint: str) -> dict:
     return by_team
 
 
-def _private_html(changes: list[dict], team_counts: list[dict], missing: list[dict]) -> bytes:
+def _private_html(changes: list[dict], team_counts: list[dict], missing: list[dict],
+                  withheld: list[dict]) -> bytes:
     esc = lambda x: html.escape(str(x), quote=True)
     rows = "".join("<tr><th scope='row'>" + esc(x["team"]) + "</th><td>" +
-                   str(x["assigned"]) + "</td><td>" + str(x["changed"]) + "</td></tr>"
+                   str(x["assigned"]) + "</td><td>" + str(x["changed"]) + "</td><td>" +
+                   esc(x["disposition"]) + "</td></tr>"
                    for x in team_counts)
     bullets = "".join("<li>Original proposal #" + str(x["proposal_slot"]) +
                       " · " + esc(x["team"]) + " · HUMAN " +
@@ -76,6 +78,11 @@ def _private_html(changes: list[dict], team_counts: list[dict], missing: list[di
     pending = "".join("<li>" + esc(x["team"]) + " · " + str(x["assigned"]) +
                       " original HUMAN assignments · no returned CSV; unchanged</li>"
                       for x in missing)
+    pending_withheld = "".join("<li>" + esc(x["team"]) + " · " +
+                               str(x["assigned"]) + " original HUMAN assignments · " +
+                               str(x["proposed_changed"]) +
+                               " proposed edits withheld; original decisions retained</li>"
+                               for x in withheld)
     return ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
@@ -94,8 +101,12 @@ scan, security finding, approval or completed assessment.</p></header>
 <section><h2>Assigned teams without a response</h2><ul>""" +
             (pending or "<li>All originally assigned teams supplied a response.</li>") +
             """</ul><p>A missing response never means agreement, consent or closure.</p></section>
+<section><h2>Received HUMAN replies deliberately withheld</h2><ul>""" +
+            (pending_withheld or "<li>No returned team was withheld in this batch.</li>") +
+            """</ul><p>Withheld replies passed original source checks, but their edits
+are excluded from the candidate CSV. Inclusion requires a deliberate new HUMAN draft.</p></section>
 <section><h2>Manual team participation</h2><table><thead><tr><th>HUMAN team</th>
-<th>Original assignments</th><th>Proposed changed entries</th></tr></thead><tbody>""" +
+<th>Original assignments</th><th>Changes incorporated</th><th>Operator disposition</th></tr></thead><tbody>""" +
             rows + """</tbody></table></section>
 <section><h2>Selected proposed changes</h2><ol>""" +
             (bullets or "<li>No differences were declared.</li>") +
@@ -114,11 +125,18 @@ explicit HUMAN GO remain mandatory.</p></footer></body></html>""").encode("utf-8
 
 
 def build(packets: list[str], final_room: str, handoff_room: str,
-          returns: list[tuple[str, str]], parent: str, folder: str) -> Path:
+          returns: list[tuple[str, str]], parent: str, folder: str,
+          *, withhold_teams: tuple[str, ...] = ()) -> Path:
     if (not 1 <= len(returns) <= MAX_TEAMS or
             len({team for team, _ in returns}) != len(returns) or
             any(team not in handoff.SLUGS or not path for team, path in returns)):
         raise privacy.Hold("HOLD: choose 1–4 different original assigned HUMAN teams")
+    if (type(withhold_teams) is not tuple or
+            len(withhold_teams) > len(returns) or
+            len(set(withhold_teams)) != len(withhold_teams) or
+            any(team not in {entry[0] for entry in returns} for team in withhold_teams)):
+        raise privacy.Hold("HOLD: only an original returned HUMAN team can be withheld")
+    withhold = set(withhold_teams)
     target = lab_plans._new_path(parent, folder)
     originals, fingerprint = lab_plan_review._source_rows(packets)
     final = lab_plans._packet(final_room)
@@ -131,6 +149,8 @@ def build(packets: list[str], final_room: str, handoff_room: str,
     next_rows = [dict(row) for row in base]
     slot_index = {row["proposal_slot"]: i for i, row in enumerate(base)}
     changes = []
+    withheld_changes = []
+    withheld_overview = []
     overview = []
     for team, response_path in returns:
         if team not in counts:
@@ -153,8 +173,19 @@ def build(packets: list[str], final_room: str, handoff_room: str,
                     "current_stage": new["human_stage"],
                     "private_question_changed": old["human_question"] != new["human_question"]
                 })
-            next_rows[slot_index[old["proposal_slot"]]] = new
-        overview.append({"team": team, "assigned": len(selected), "changed": changed_count})
+            if team in withhold:
+                if old["human_stage"] != new["human_stage"] or old["human_question"] != new["human_question"]:
+                    withheld_changes.append(changes.pop())
+            else:
+                next_rows[slot_index[old["proposal_slot"]]] = new
+        disposition = ("WITHHELD_FOR_HUMAN_REVIEW" if team in withhold
+                       else "ADOPTED_AS_UNFINALIZED_HUMAN_DRAFT")
+        overview.append({"team": team, "assigned": len(selected),
+                         "changed": 0 if team in withhold else changed_count,
+                         "disposition": disposition})
+        if team in withhold:
+            withheld_overview.append({"team": team, "assigned": len(selected),
+                                      "proposed_changed": changed_count})
 
     missing = [{"team": team, "assigned": count} for team, count in counts.items()
                if team not in {name for name, _ in returns}]
@@ -171,6 +202,8 @@ def build(packets: list[str], final_room: str, handoff_room: str,
         "teams": overview, "changed_ordinals": len(changes),
         "unreturned_original_team_count": len(missing),
         "unreturned_original_teams": missing,
+        "received_but_withheld_teams": withheld_overview,
+        "withheld_proposed_changes": len(withheld_changes),
     }
     diff_stream = io.StringIO(newline="")
     fields = ("team", "proposal_slot", "previous_stage", "current_stage",
@@ -179,10 +212,16 @@ def build(packets: list[str], final_room: str, handoff_room: str,
     writer.writerow(fields)
     for change in changes:
         writer.writerow([change[k] for k in fields])
+    withheld_csv = io.StringIO(newline="")
+    withheld_writer = csv.writer(withheld_csv, lineterminator="\r\n")
+    withheld_writer.writerow(fields)
+    for item in withheld_changes:
+        withheld_writer.writerow([item[k] for k in fields])
     docs = (
-        ("OPEN-PRIVATE.html", _private_html(changes, overview, missing)),
+        ("OPEN-PRIVATE.html", _private_html(changes, overview, missing, withheld_overview)),
         ("PRIVATE-HUMAN-CANDIDATE.csv", lab_plan_review._csv(next_rows)),
         ("PRIVATE-HUMAN-MULTITEAM-DIFF.csv", diff_stream.getvalue().encode("utf-8")),
+        ("PRIVATE-HUMAN-WITHHELD-DIFF.csv", withheld_csv.getvalue().encode("utf-8")),
         ("PRIVATE-HUMAN-MULTITEAM-RECEIPT.json",
          (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")),
     )
@@ -210,6 +249,9 @@ def main(argv: list[str] | None = None) -> int:
     cli.add_argument("--handoff-room", required=True)
     cli.add_argument("--team-return", action="append", required=True,
                      metavar="TEAM=PRIVATE_CSV")
+    cli.add_argument("--withhold-team", action="append", default=[],
+                     choices=tuple(handoff.SLUGS),
+                     help="Admit returned team bytes but keep its original decisions")
     cli.add_argument("--private-parent", required=True)
     cli.add_argument("--folder", required=True)
     cli.add_argument("--human-confirm", required=True)
@@ -224,7 +266,8 @@ def main(argv: list[str] | None = None) -> int:
             team, path = item.split("=", 1)
             teams.append((team, path))
         page = build(opts.packet, opts.final_room, opts.handoff_room, teams,
-                     opts.private_parent, opts.folder)
+                     opts.private_parent, opts.folder,
+                     withhold_teams=tuple(opts.withhold_team))
         print("PRIVATE REVIEW_ONLY: multiple HUMAN team candidate prepared, not finalized")
         print("OPEN LOCALLY: " + str(page))
         return 2
