@@ -180,6 +180,28 @@ through native admission, and prepare a new queue. Old CSV/source paths are
 never silently relinked to an unrelated session. No source file or target
 is read, scanned, sent or authorized by this operation.
 
+## NEW: offline HUMAN attention / declared-date workload desk (47)
+
+From one original owner-private 0600 HUMAN queue CSV and the **unchanged
+current session PATH digest**, native menu **47** constructs an exclusive
+0700 source-free PRIVATE HUMAN priority dashboard. The operator supplies
+an explicit review date (canonical YYYY-MM-DD); this is **not** a live
+calendar query or proof of timing. Every original fixed workflow row is
+placed into exactly one category: HUMAN HOLD/NEEDS INPUT, original offline
+workroom absent, past declared follow-up date, same declared date, next
+seven declared days, unassigned HUMAN team, or other.
+The report also totals HUMAN stage assignments by team.
+
+Outputs are owner-only 0600 `OPEN-PRIVATE.html`, minimal
+`PRIVATE-PRIORITIES.csv`, and `PRIVATE-PRIORITIES.json`. They deliberately
+exclude HUMAN question text, all original local source filenames/paths and
+source-PATH digest values; the statuses and human-assigned dates still
+constitute PRIVATE planning metadata. Source/PATH/owner-only CSV admission
+is performed by the original unmodified strict reader before output.
+No calendar appointment, reviewer identity, source integrity, scope
+approval, security verdict, notification, scan, grant, target, retest,
+deletion or external distribution is created.
+
 ## Portable 15-original-studio software kit v10
 
 [Portable source-only LightUp Assessment Offline Toolkit v10](LightUp-Assessment-Offline-Toolkit-v10.zip)
