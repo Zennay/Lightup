@@ -46,16 +46,26 @@
 <div class="stats"><div class="stat"><strong id="total-count">0</strong><span>Proposed rows</span></div><div class="stat"><strong id="excluded-count">0</strong><span>Explicit exclusions</span></div><div class="stat"><strong id="review-count">0</strong><span>Explicit client-review requests</span></div><div class="stat"><strong id="blocked-count">0</strong><span>Blocked proposals</span></div></div>
 <div id="notice" role="status" class="notice">Add and review draft details. Nothing is saved automatically.</div>
 <div class="actions">
-<button id="export" class="primary" type="button">Export PRIVATE draft JSON</button>
+<button id="export-encrypted" class="primary" type="button">Save encrypted PRIVATE workroom</button>
+<button id="choose-import-encrypted" type="button">Open encrypted workroom</button>
+<button id="choose-compare-encrypted" type="button">Compare encrypted older workroom</button>
 <button id="receipt" type="button">Export anonymous counts</button>
 <button id="print" type="button">Print private human brief</button>
-<button id="choose-import" type="button">Open PRIVATE draft</button>
-<button id="choose-compare" type="button">Compare to older PRIVATE draft</button>
 <button id="clear" class="danger" type="button">Clear memory</button>
 </div>
+<details><summary>Advanced: unencrypted PRIVATE drafts (legacy compatibility)</summary>
+<p class="small warning">These plain JSON downloads expose client and asset details; prefer encrypted workrooms. Plain downloads are never permission, consent or approval.</p>
+<div class="actions">
+<button id="export" type="button">Export UNENCRYPTED PRIVATE JSON</button>
+<button id="choose-import" type="button">Open old unencrypted draft</button>
+<button id="choose-compare" type="button">Compare old unencrypted draft</button>
+</div>
+</details>
 <input id="file-import" type="file" accept=".json,application/json" hidden>
 <input id="file-compare" type="file" accept=".json,application/json" hidden>
-<div class="privacy"><b>Privacy / release boundary:</b> Draft JSON and printouts can contain private client/asset details and are unencrypted. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
+<input id="file-import-encrypted" type="file" accept=".luie,application/json" hidden>
+<input id="file-compare-encrypted" type="file" accept=".luie,application/json" hidden>
+<div class="privacy"><b>Privacy / release boundary:</b> Encrypted workrooms use local AES-256-GCM and PBKDF2 but do not authenticate the actual client, operator, consent or grant. Strong passwords and separate authenticated delivery are necessary. Legacy JSON, printed pages and agenda HTML remain UNENCRYPTED. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
 </section>
 <section class="section" id="agenda-section" aria-labelledby="agenda-heading">
 <div class="actions"><h2 id="agenda-heading">04 / PRIVATE human follow-up agenda</h2><button id="export-agenda" type="button" class="right">Export standalone PRIVATE agenda</button></div>
