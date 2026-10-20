@@ -82,6 +82,12 @@
   const message = el("shelf-status");
   const summary = el("shelf-summary");
   const sourceCopy = el("private-copy");
+  // Never carry an explicit disclosure opt-in into a different original source
+  // selection or a restored browser page (including bfcache restoration).
+  const resetPrivateDisclosure = () => {
+    el("shelf-all-private-notes").checked = false;
+    el("shelf-team-private-notes").checked = false;
+  };
   const anonymousCopy = el("counts-copy");
   const stageFilter = el("shelf-stage-filter");
   const teamFilter = el("shelf-team-filter");
@@ -329,6 +335,7 @@
       remove.textContent = "Verwijder";
       remove.addEventListener("click", () => {
         generation++;
+        resetPrivateDisclosure();
         clearReviewHistory();
         invalidateDrift();
         items.splice(items.indexOf(item), 1);
@@ -403,6 +410,7 @@
       }
       if (epoch !== generation) throw new Error("cancelled");
       generation++;
+      resetPrivateDisclosure();
       clearReviewHistory();
       invalidateDrift();
       items.push(...proposed);  // atomic admission
@@ -1003,6 +1011,7 @@
     if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
     generation++; // invalidate any asynchronous import in flight
+    resetPrivateDisclosure();
     clearReviewHistory();
     invalidateDrift();
     items.splice(0);
@@ -1193,12 +1202,17 @@
     });
     report("REVIEW_ONLY — privé broninventaris van alle teams gedownload, notitieteksten " + (includePrivateNotes ? "bewust opgenomen." : "veilig afgeschermd."));
   });
+  resetPrivateDisclosure(); // browser form restoration is not a privacy opt-in
   render();
   renderReturnJournal();
+  window.addEventListener("pageshow", event => {
+    if (event.persisted) resetPrivateDisclosure();
+  });
   window.addEventListener("pagehide", () => {
     returnJournal.length = 0;
     lastReturnReceipt = null;
     generation++;  // never repopulate a private tab after navigation / bfcache
+    resetPrivateDisclosure();
     clearReviewHistory();
     invalidateDrift();
     items.splice(0);
