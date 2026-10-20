@@ -75,6 +75,21 @@ admission, authenticated consent/revocation-at-use, independent review and
 HUMAN GO gates are never bypassed. No schedule is actually booked and no
 contact, scan, retest or notification is sent.
 
+## NEW: strictly recipient-team-filtered HUMAN task deck (option 44)
+
+After a HUMAN manually completes and saves an owner-only 0600
+`PRIVATE-HUMAN-QUEUE.csv`, console **option 44** selects exactly ONE of
+Security, Privacy, Client operations or Platform. The original queue reader
+revalidates the complete fixed workflow key order and exact unchanged
+PATH-session snapshot before making a new owner-only 0700 folder with
+`OPEN-PRIVATE.html`, `PRIVATE-TEAM-TASKS.csv`, and
+`PRIVATE-TEAM-RECEIPT.json`, all 0600. These show **only tasks assigned
+to that team**; other teams' questions, actual original file paths, snapshot
+path hashes, and original lab/recipient bytes are not reproduced. There is
+no auto-send. Only after a separate genuine authenticated recipient/channel
+and privacy review may a HUMAN decide how to handle this still-PRIVATE file.
+A team dropdown cannot establish identity or consent. No PASS or grant.
+
 ## Portable 15-original-studio software kit v9
 
 [Portable source-only LightUp Assessment Offline Toolkit v9](LightUp-Assessment-Offline-Toolkit-v9.zip)
