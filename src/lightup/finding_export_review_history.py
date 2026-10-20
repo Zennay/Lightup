@@ -151,6 +151,7 @@ def _difference(
 
 
 def _html(payload: dict) -> str:
+    """No-script focus lists: changed/added/absent first, unchanged collapsed."""
     blocks = [
         '<!doctype html><html lang="en"><head><meta charset="utf-8">',
         '<meta name="referrer" content="no-referrer">',
@@ -164,30 +165,58 @@ def _html(payload: dict) -> str:
         'Each transition reflects HUMAN-supplied order, NOT independently ',
         'verified chronology or matching tenant identity.</p>',
     ]
+    severity_priority = {"critical": 0, "high": 1, "medium": 2,
+                         "low": 3, "info": 4}
     for transition in payload["transitions"]:
+        totals = transition["counts"]
         blocks.extend(('<section><h2>HUMAN-selected packets ',
                        str(transition["from_ordinal"]), ' → ',
                        str(transition["to_ordinal"]), '</h2><p>',
-                       escape(json.dumps(transition["counts"], sort_keys=True)),
-                       '</p><p>Absent ≠ fixed or closed. Changed is only a ',
-                       'difference in *reported presentation fields*.</p>',
-                       '<table><thead><tr><th>Finding ID</th>',
-                       '<th>Presentation change</th><th>Changed fields</th>',
-                       '<th>Earlier severity</th><th>Later severity</th>',
-                       '<th>Earlier retest label</th><th>Later retest label',
-                       '</th></tr></thead><tbody>'))
-        for item in transition["items"]:
-            cells = (item["finding_id"], item["change_kind"],
-                     ", ".join(item["changed_display_fields"]),
-                     item["earlier_reported_severity"] or "not in selected packet",
-                     item["later_reported_severity"] or "not in selected packet",
-                     item["earlier_reported_retest_stage"] or "not in selected packet",
-                     item["later_reported_retest_stage"] or "not in selected packet")
-            blocks.append("<tr>")
-            blocks.extend("<td dir=\"auto\">" + escape(value, quote=True) + "</td>"
-                          for value in cells)
-            blocks.append("</tr>")
-        blocks.append("</tbody></table></section>")
+                       str(totals["changed"]), ' changed; ',
+                       str(totals["added"]), ' added to selection; ',
+                       str(totals["absent"]), ' absent from later selection; ',
+                       str(totals["unchanged"]), ' unchanged.',
+                       '</p><p>Absence does not mean fixed or closed. ',
+                       'Changed only means source-selected presentation fields ',
+                       'differ. Priority uses reported severity, not a risk verdict.</p>'))
+        for kind, heading in (
+            ("changed", "Changed reported fields"),
+            ("added", "Only in later selected packet"),
+            ("absent", "Absent from later selected packet (NOT fixed)"),
+            ("unchanged", "Unchanged reported presentation"),
+        ):
+            matching = [row for row in transition["items"]
+                        if row["change_kind"] == kind]
+            matching.sort(key=lambda item: (
+                severity_priority.get(item["later_reported_severity"]
+                                      or item["earlier_reported_severity"], 5),
+                item["finding_id"]))
+            blocks.extend(("<details" + ("" if kind == "unchanged" else " open") +
+                           "><summary>", escape(heading), " (",
+                           str(len(matching)), ")</summary>"))
+            if matching:
+                blocks.extend(('<table><thead><tr><th>Finding ID</th>',
+                               '<th>Changed columns</th><th>Earlier severity</th>',
+                               '<th>Later severity</th><th>Earlier retest label</th>',
+                               '<th>Later retest label</th></tr></thead><tbody>'))
+                for item in matching:
+                    cells = (
+                        item["finding_id"],
+                        ", ".join(item["changed_display_fields"]) or "—",
+                        item["earlier_reported_severity"] or "not selected",
+                        item["later_reported_severity"] or "not selected",
+                        item["earlier_reported_retest_stage"] or "not selected",
+                        item["later_reported_retest_stage"] or "not selected",
+                    )
+                    blocks.append("<tr>")
+                    blocks.extend('<td dir="auto">' + escape(value, quote=True) +
+                                  "</td>" for value in cells)
+                    blocks.append("</tr>")
+                blocks.append("</tbody></table>")
+            else:
+                blocks.append("<p>No records in this classification.</p>")
+            blocks.append("</details>")
+        blocks.append("</section>")
     blocks.extend(('<p>Local SHA-256 only detects comparison-input drift. ',
                    'Unsigned digests and claimed HUMAN grouping never prove ',
                    'sender identity, customer consent, findings or remediation.',
