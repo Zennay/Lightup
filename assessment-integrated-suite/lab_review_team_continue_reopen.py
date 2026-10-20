@@ -76,6 +76,13 @@ def inspect(packets: list[str], final_room: str, handoff_room: str,
             or len(set(prior_continuations)) != len(prior_continuations)
             or continued_room in prior_continuations):
         raise privacy.Hold("HOLD: 0–6 distinct earlier original HUMAN continuations required")
+    # Compare canonically admitted PRIVATE directory identities, never only
+    # literal operator-entered path strings: a past round cannot be replayed.
+    lineage = [lab_plans._packet(prior_batch)] + [
+        lab_plans._packet(name) for name in prior_continuations
+    ] + [lab_plans._packet(continued_room)]
+    if len(set(lineage)) != len(lineage):
+        raise privacy.Hold("HOLD: duplicated original PRIVATE HUMAN source in chain")
     # Re-admit the entire immutable source lineage, earliest first.
     original_reopen.inspect(packets, final_room, handoff_room, prior_batch)
     if prior_continuations:
