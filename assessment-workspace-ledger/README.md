@@ -896,3 +896,31 @@ consent, scope approval, a completed finding, a fix, authentic recipients or
 permission to share PRIVATE work. The source-only v20 software bundle adds
 `portfolio_dayboard.py`, preserving read-only historical package support
 for v16/v17/v18/v19; no QA/regression/test suites were created or run.
+
+## Source-bound PRIVATE HUMAN focus meeting · software v21
+
+The original [portfolio_focus.py](portfolio_focus.py) uses the already-created
+2–8-case owner-private HUMAN portfolio, not original assessment-kit data. It
+creates a minimum-necessary **HUMAN follow-up meeting packet** after the
+operator explicitly selects historical day buckets, priorities and optionally
+the exact proposed HUMAN owner (a label, never recipient authentication).
+
+    python3 assessment-workspace-ledger/portfolio_focus.py \
+      --portfolio /private/source/PRIVATE-HUMAN-portfolio.json \
+      --reference-day 2026-10-20 --title "Historical HUMAN review" \
+      --priority human_urgent --priority near_term \
+      --bucket past_proposed_day --bucket selected_reference_day \
+      --private-parent /private/owner-only
+
+Outputs in one exclusive 0700 private directory: source-minimal summary HTML,
+scriptless PRIVATE detailed meeting HTML, private Markdown and CSV, and
+source-portfolio-SHA-bound JSON. The original strict portfolio admission runs
+before output and immediately re-admits original bytes; owner-filtered input
+can never widen into another owner. Empty or malformed selection fails closed.
+Console option 28 provides the same foreground function.
+
+These historical suggestions are **not** deadlines, actual tasks, authorized
+recipients, real consent, verified remediation, scan permission, booking or
+HUMAN GO. No external communication, scheduling, network, worker, background
+task or original security scan is performed. The software-only ZIP v21 includes
+this module and continues inspecting legacy fixed v16–v20 software inventories.

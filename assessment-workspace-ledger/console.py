@@ -24,6 +24,7 @@ import portfolio
 import portfolio_delta
 import portfolio_owner_packets
 import portfolio_dayboard
+import portfolio_focus
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -57,6 +58,7 @@ MENU = (
     ("25", "Compare two PRIVATE cross-case HUMAN proposal portfolios as a local delta"),
     ("26", "Create owner-scoped PRIVATE HUMAN handoff workrooms from a previous portfolio"),
     ("27", "Open a PRIVATE date/priority HUMAN planning dayboard from an original portfolio"),
+    ("28", "Prepare a filtered PRIVATE HUMAN meeting packet"),
     ("0", "Exit"),
 )
 
@@ -205,6 +207,18 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "28":
+        print("Priorities: human_urgent,near_term,routine,unset")
+        print("Buckets: past_proposed_day,selected_reference_day,later_proposed_day,no_proposed_day")
+        return portfolio_focus.run(argparse.Namespace(
+            portfolio=prompt("ORIGINAL PRIVATE-HUMAN-portfolio.json"),
+            reference_day=prompt("Explicit yyyy-mm-dd HUMAN reference day"),
+            owner=prompt("EXACT proposed HUMAN owner (blank for all)", False) or None,
+            title=prompt("PRIVATE HUMAN meeting title"),
+            priority=[v.strip() for v in prompt("Comma-separated priorities").split(",")],
+            bucket=[v.strip() for v in prompt("Comma-separated day buckets").split(",")],
+            private_parent=private_parent()
         ))
     if action == "27":
         return portfolio_dayboard.run(argparse.Namespace(
