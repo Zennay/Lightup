@@ -155,3 +155,53 @@ The separate native `finalize` remains the authoritative source-bound
 PRIVATE step. Neither reopening a draft nor an unsigned SHA authenticates
 its author, establishes a grant/consent or authorizes a recipient. No browser
 storage, server transmission, network, scan or background submission occurs.
+
+## Visual original-bound selected discussion plans
+
+The offline original PRIVATE HUMAN editor now offers a per-source
+**Plan internal-only discussion** checkbox (disabled unless that particular
+source has been individually marked `INTERNAL_REVIEW_ONLY`). Stage changes
+back to withholding, owner-required or unreviewed status automatically
+clear and disable that source's checkbox. Filtering never selects or
+excludes original rows by itself.
+
+After saving the **complete** source-bound PRIVATE HUMAN decisions CSV,
+click **Save selected PRIVATE discussion plan**. Confirm the selected count:
+the browser downloads `PRIVATE-HUMAN-selected-plan.json` containing only
+the original source count, selected original ordinal/unsigned original-byte
+SHA pairs, strict false-authority flags and HOLD. It contains **no** original
+text, redacted text, HUMAN free note or recipient identity. This is an
+unsigned LOCAL reference plan, not a signature, source-owner authentication,
+privacy clearance or permission to share.
+
+**Required order:** native `prepare` → browser decisions CSV and separately
+browser-selected JSON plan → native `finalize` for the **whole original
+source set** → native `select --plan` on the completed owner-private packet.
+
+Store the locally downloaded plan only inside your existing private work area,
+and set its owner-only file mode before native selection. Browser download
+permissions are not guaranteed to be 0600:
+
+~~~sh
+chmod 600 /private/operator-lightup-work/PRIVATE-HUMAN-selected-plan.json
+
+python3 private-assessment-notes/notes.py select \
+  --completed-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<actual-id> \
+  --plan /private/operator-lightup-work/PRIVATE-HUMAN-selected-plan.json \
+  --private-parent /private/operator-lightup-work
+~~~
+
+The native command accepts **either** `--plan` **or** one or more
+`--position` arguments; never both. Native admission rejects unsafe or
+non-owner plans, duplicate JSON keys, extra schema keys, any implied authority,
+missing/reordered/mismatched original source identities, and any planned
+source that the final original HUMAN decisions did not individually mark
+`INTERNAL_REVIEW_ONLY`. No selected packet is written on an admission HOLD.
+Accepted plans remain source-only references; the existing fresh 0700/0600
+selected internal discussion packet is created locally and the command still
+returns HOLD (3). It never uploads, sends, grants permission or publishes.
+
+If you change a HUMAN stage after exporting a plan, export a new plan after
+the whole-source CSV is updated; old plans cannot override the final original
+HUMAN decision. The native completed-original SHA and stage accounting remain
+mandatory even when a browser selection appears valid.
