@@ -39,6 +39,16 @@
 </details>
 <div class="table-wrap"><table><thead><tr><th>Asset (literal)</th><th>Boundary</th><th>Requested capability</th><th>Ownership evidence</th><th>Human status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
 <p id="empty-rows" class="muted">No proposed assets yet.</p>
+<details id="triage-panel">
+<summary><b>HUMAN bulk review of the currently visible proposals</b></summary>
+<p class="small muted">This only changes untrusted HUMAN preparation labels. It cannot approve ownership, risk, consent, grants or execution. The visible filter defines which literal proposals will be included in the preview.</p>
+<div class="grid">
+<label>Field to update<select id="triage-field"><option value="status">HUMAN review status</option><option value="ownership">Ownership evidence label (unverified)</option></select></label>
+<label>Proposed HUMAN value<select id="triage-value"><option value="needs-client-review">Needs client review</option><option value="blocked">Blocked</option><option value="draft">Draft</option></select></label>
+</div>
+<div class="actions"><button type="button" id="triage-preview">Preview change for visible rows</button><button type="button" class="primary" id="triage-apply" disabled>Confirm HUMAN changes</button><button type="button" id="triage-undo" disabled>Undo last bulk change</button></div>
+<div id="triage-preview-box" class="notice" aria-live="polite" hidden></div>
+</details>
 <div class="actions"><button id="add-bottom" type="button">+ Add row</button></div>
 </section>
 <section class="section" aria-labelledby="result-heading">
