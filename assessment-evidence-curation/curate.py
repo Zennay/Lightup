@@ -274,6 +274,15 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
     selected = read_selection(selection_raw, source)
     private_report = page(source, original_digest, digest(human_raw), selected, notes)
     limited_handoff = private_question_handoff(source, selected)
+    # Optional independent human routing packets. A PRIVATE recipient receives
+    # only the selected HUMAN questions in their proposed priority group.
+    # No original producer, client or assigned reviewer identity is inferred.
+    prioritized = {
+        priority: private_question_handoff(
+            source, [item for item in selected if item["priority"] == priority])
+        for priority in PRIORITIES
+        if any(item["priority"] == priority for item in selected)
+    }
     counts = {s: sum(source["findings"][i["ordinal"]-1]["severity"] == s
                      for i in selected) for s in SEVERITIES}
     priorities = {p: sum(i["priority"] == p for i in selected) for p in PRIORITIES}
@@ -295,6 +304,9 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
         "human_selection_sha256_unsigned": digest(selection_raw),
         "private_curated_dossier_sha256_unsigned": digest(private_report),
         "source_minimized_human_handoff_sha256_unsigned": digest(limited_handoff),
+        "private_priority_handoff_sha256_unsigned": {
+            priority: digest(data) for priority, data in prioritized.items()
+        },
         "selected_original_ordinals": [i["ordinal"] for i in selected],
         **UNVERIFIED,
     }
@@ -303,6 +315,10 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
         "PRIVATE-source-minimized-HUMAN-handoff.html": limited_handoff,
         "PRIVATE-curation-receipt.json": json_bytes(private_receipt),
         "anonymous-counts-PRIVATE.json": json_bytes(aggregate),
+        **{
+            "PRIVATE-HUMAN-" + priority + "-priority.html": data
+            for priority, data in prioritized.items()
+        },
     })
 
 def main() -> int:
