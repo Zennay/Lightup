@@ -24,6 +24,17 @@
 <p>Type a sensitive literal as it appears in the source. Each rule replaces <em>every exact case-sensitive occurrence</em> with <code>[REDACTED]</code>. No fuzzy matching or automatic safety guarantee. Never share the original.</p>
 <div class="ruleform"><label for="rule">Sensitive literal to mask (3–128 characters, single line)</label><input id="rule" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Exact text to mask"><button id="addRule" type="button">Add mask rule</button></div>
 <div id="rules" class="rules" aria-live="polite">No masking rules yet.</div>
+<div class="assisted">
+<h3>Local sensitive-value suggestions</h3>
+<p>Optional human-triggered discovery only. The source is examined <strong>in browser memory</strong>; detected literal values are not shown or exported as a list. Suggested masks are not a guarantee that disclosure is safe.</p>
+<div class="suggest-options">
+<label class="tick"><input id="suggestCredentials" type="checkbox" checked> Bearer, credentials, API tokens and JWT-like values</label>
+<label class="tick"><input id="suggestEmail" type="checkbox"> Email addresses</label>
+<label class="tick"><input id="suggestNetwork" type="checkbox"> HTTP(S) URLs and IPv4-like addresses</label>
+</div>
+<div class="actions"><button id="stageSuggestions" type="button" disabled>Add all selected suggestions as masks</button></div>
+<div id="suggestStatus" class="status" role="status" aria-live="polite">Suggestions have not been requested.</div>
+</div>
 <div class="actions"><button id="review" type="button" disabled>Prepare redacted preview</button><button id="clear" type="button" class="secondary">Clear local session</button></div>
 </section>
 <section class="card" aria-labelledby="review-title">
