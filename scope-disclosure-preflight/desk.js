@@ -287,7 +287,7 @@
            "revocation_at_use_verified","scanning_permitted","release_approved"].every(k=>reply[k]===false)){
         throw Error("invalid recipient response");
       }
-      if(prepared!==current || !source || source.hash!==current.originalHash)
+      if(prepared!==current || e.humanReplyFile.files?.[0]!==file || !source || source.hash!==current.originalHash)
         throw Error("source changed while reading");
       e.humanReturnOutcome.textContent="HUMAN follow-up: "+reply.human_followup.replaceAll("_"," ")+
         " · sender identity and consent UNVERIFIED";
