@@ -125,3 +125,15 @@ information. Independently verify the intended real recipient, channel,
 actual consent, privacy, security and explicit HUMAN GO under the existing
 original release process. This CLI intentionally exits HOLD (3) even when it
 successfully wrote a private discussion copy.
+
+The same selection is now also available through the **existing unified native
+notes CLI**, without invoking an independent helper:
+
+~~~sh
+python3 private-assessment-notes/notes.py select \
+  --completed-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<actual-id> \
+  --position 1 --position 3 \
+  --private-parent /private/operator-lightup-work
+~~~
+
+Both entrypoints use exactly the same native fail-closed selection function.
