@@ -156,6 +156,46 @@ def private_html(rows, rounds):
     return html_page("LightUp PRIVATE original HUMAN discussion timeline", "".join(lines))
 
 
+def changed_brief_html(rows, original_slot_count, rounds):
+    body = [
+        "<p><strong>PRIVATE HUMAN-only change discussion — no verified fix, "
+        "security finding, recipient approval, consent or real work order.</strong> "
+        "Includes only original HUMAN rows whose proposed stage or private "
+        "note changed between adjacent explicitly supplied rounds. "
+        "Free-text notes are never copied.</p>",
+        "<p>Original scoped HUMAN slots: " + str(original_slot_count) +
+        "; changed HUMAN discussion rows: " + str(len(rows)) +
+        "; explicit HUMAN rounds: " + str(len(rounds)) + ".</p>",
+    ]
+    if not rows:
+        body.append("<p>No HUMAN-only proposed changes across these original rounds. "
+                    "This is NOT evidence that a finding was resolved.</p>")
+    else:
+        body.append("<table><thead><tr><th>Proposed HUMAN owner</th>"
+                    "<th>Original case / transition / kit</th>"
+                    "<th>First → latest HUMAN proposal</th>"
+                    "<th>Stage changes at rounds</th>"
+                    "<th>Private note changed at rounds (not content)</th>"
+                    "</tr></thead><tbody>")
+        for r in rows:
+            def esc(x):
+                return html.escape(str(x), quote=True)
+            body.append("<tr><td>" + esc(r["original_proposed_human_owner"]) +
+                        "</td><td>" + esc(r["local_case"]) + " / " +
+                        esc(r["historical_transition"]) + " / " +
+                        esc(r["original_kit"]) + "</td><td>" +
+                        esc(r["first_human_triage_stage"]) + " → " +
+                        esc(r["latest_human_triage_stage"]) + "</td><td>" +
+                        esc(",".join(map(str, r["stage_changed_rounds"])) or "none") +
+                        "</td><td>" +
+                        esc(",".join(map(str, r["private_note_changed_rounds"])) or "none") +
+                        "</td></tr>")
+        body.append("</tbody></table>")
+    body.append("<p>All inputs remain unchanged. Original notes stay solely "
+                "in the owner's original PRIVATE records.</p>")
+    return html_page("LightUp PRIVATE original HUMAN discussion changes", "".join(body))
+
+
 def as_csv(rows):
     stream = io.StringIO(newline="")
     writer = csv.writer(stream, lineterminator="\n")
@@ -216,11 +256,15 @@ def run(args):
         ],
         "private_human_history_slots": rows,
     }
+    changed = [r for r in rows if r["stage_changed_rounds"] or
+               r["private_note_changed_rounds"]]
     exports = {
         "OPEN-PRIVATE.html": minimal_html(rows, rounds, counts),
         "PRIVATE-HUMAN-inbox-history.html": private_html(rows, rounds),
         "PRIVATE-HUMAN-inbox-history.csv": as_csv(rows),
         "PRIVATE-HUMAN-inbox-history.json": canonical(result),
+        "PRIVATE-HUMAN-changed-only.html": changed_brief_html(changed, len(rows), rounds),
+        "PRIVATE-HUMAN-changed-only.csv": as_csv(changed),
     }
     if any(len(x if isinstance(x, bytes) else x.encode("utf-8")) >
            MAX_MANIFEST for x in exports.values()):

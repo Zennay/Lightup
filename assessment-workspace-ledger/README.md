@@ -1382,3 +1382,22 @@ owner-private 0700 `--private-parent`. No output is written on original
 owner/source mismatch. The v33 source-only software ZIP retains read-only
 inspection of historical fixed software v16–v32. All release, source-owner,
 security, privacy, and CI/HUMAN GO gates remain intact.
+
+## v34 — PRIVATE changed-only HUMAN discussion brief
+
+Historical HUMAN source review can now create two additional PRIVATE 0600
+artifacts in the same new 0700 output room:
+`PRIVATE-HUMAN-changed-only.html` and
+`PRIVATE-HUMAN-changed-only.csv`. They contain **only original rows whose
+HUMAN-proposed stage or PRIVATE human note changed between adjacent manually
+ordered rounds**. The rows show original proposed owner, original source slots,
+first/latest human-only stage, exact human round numbers where proposals changed,
+and the note-changed round numbers, **never private note text**. If none changed,
+the private HTML explains explicitly that this does not prove a fix.
+
+Both full-operator (console 39) and *one exact proposed HUMAN owner only*
+(console 40) modes support this narrower briefing; other owners' data never
+enters an owner-scoped brief. All original native source re-admission and
+owner-private 0700/0600 custody remain unchanged, with no new grant, target,
+scan, task assignment, notification or release. Source-only ZIP **v34**
+retains legacy unsigned v16–v33 inventory inspection.
