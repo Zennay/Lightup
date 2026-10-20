@@ -236,3 +236,40 @@ in-process ephemeral paths, and still performs no scheduled/remote action.
 
 All source-owner CI, scope/consent, independent review and explicit HUMAN GO
 requirements remain mandatory; no main merge or production deployment.
+
+## Ready-to-use complete software-only offline download — 11 original apps
+
+**[LightUp-Assessment-Offline-Toolkit.zip](LightUp-Assessment-Offline-Toolkit.zip)**
+is a real portable 205 KiB ZIP committed alongside its deterministic native
+[source bundler](package_offline.py). This is a complete browser-only
+**software** distribution of eleven unmodified original one-file apps: no
+client/source data, scanner, credentials, grants, workers, server, Python
+runtime, executable installation step or internet access included.
+
+Unpack into a **new, owner-private local directory**, open `START-HERE.html`
+locally in a modern offline browser, then use each original app's local file
+chooser for any separately approved PRIVATE source file. The branded accessible
+local cockpit organizes original research/review, isolated-lab preparation,
+benchmark analysis and HUMAN group decisions into four clearly named sections.
+The included `README.txt` and `manifest.json` carry the exact original
+source paths, unsigned SHA-256 for every included original app, byte size,
+literal REVIEW_ONLY and only-false permission declarations.
+
+The original HTML contents are never rewritten by the packager. The public ZIP
+contains **no PRIVATE original sources**. All future HUMAN or source data
+imported locally remains outside the distribution. The hash manifest is for
+local file identity, **not** producer attestation, verified finding, client
+consent, authorization or release. Current hosted/VPS exact-head CI,
+source-owner and independent security/privacy/browser review and real consent
+are still absent as release evidence. This portable product is **DRAFT/HOLD**
+even though the static software is immediately available to download.
+
+Rebuild on a trusted checkout, only when making a new owner-reviewed release:
+
+~~~sh
+python3 assessment-integrated-suite/package_offline.py \
+  --output /path/to/NEW-software-only-kit.zip
+~~~
+
+The output must not already exist. This command reads a fixed source-only list
+and cannot invoke any scan, model, network, customer ingestion or auto-publish.
