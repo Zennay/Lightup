@@ -18,7 +18,6 @@ def create(session, path_prompt, ask) -> None:
     except (OSError, ValueError):
         print("HOLD: PRIVATE HUMAN queue not created; original sessions unchanged.")
         return
-    session.parent = parent
     print("PRIVATE REVIEW_ONLY: HUMAN CSV and HTML created in: " + str(page.parent))
     print("Edit the owner-only 0600 PRIVATE-HUMAN-QUEUE.csv MANUALLY.")
     print("Use menu 43 with the same unmodified session path references to reopen.")
@@ -40,6 +39,5 @@ def reopen(session, path_prompt, ask) -> None:
         print("HOLD: HUMAN CSV/session drift or PRIVATE custody mismatch.")
         print("No original, current console session or existing CSV was modified.")
         return
-    session.parent = parent
     print("PRIVATE REVIEW_ONLY: source-free HUMAN revision created: " + str(page))
     print("All HUMAN statuses remain unauthenticated and non-authorizing.")
