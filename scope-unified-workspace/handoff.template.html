@@ -26,6 +26,11 @@
 <input id="shelf-files" type="file" multiple aria-describedby="shelf-privacy">
 <p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles, digests en zelf getypte HUMAN status/notities in dit tabblad. Het formaat wordt uitsluitend structureel herkend: geen bewijs van auteur, consent of geldige grant. Kies de bestemming bewust.</p>
 </div>
+<div class="shelf-restore">
+<label for="shelf-review-reopen">PRIVATE HUMAN-opvolgplan heropenen (max. 96 KiB, alleen met alle oorspronkelijke bestanden opnieuw gekozen)</label>
+<input id="shelf-review-reopen" type="file" accept=".json,application/json" aria-describedby="shelf-restore-note">
+<p id="shelf-restore-note">Een lokaal reviewplan bevat bestandsnamen, originele SHA-256 en mogelijk vertrouwelijke notities. Herstel wordt volledig geweigerd bij bron-, volgorde-, formaat- of SHA-afwijking. Het plan geeft geen toestemming en wijzigt nooit bronbestanden.</p>
+</div>
 <p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">

@@ -220,8 +220,8 @@
     },
     {
       "path": "scope-unified-workspace/README.md",
-      "sha256": "2429c68ad3726facf19fa50ae18c214f4774ebbded2b312a77c0f32b93681074",
-      "size": 12310
+      "sha256": "c26508699df87a9f602582dee32a3cdfd10e7ff4637d7a2349700c12b682d556",
+      "size": 13469
     },
     {
       "path": "scope-unified-workspace/build.py",
@@ -240,18 +240,18 @@
     },
     {
       "path": "scope-unified-workspace/handoff.html",
-      "sha256": "6fe75c4cab4355cb9ca325c379ebfc082252fa082e49d0e5d75f478faea8e035",
-      "size": 36674
+      "sha256": "7e3de4bea24056f26976a5a95f4eeffef6b0474fcfea32593c659302edf001f0",
+      "size": 42368
     },
     {
       "path": "scope-unified-workspace/handoff.js",
-      "sha256": "2997b38758e62bc3ed1ab51cff840740ef33475d8a4a8f7f48ef68be13229024",
-      "size": 12280
+      "sha256": "56caa42dc68f66856f956c918263b651ac707f97570a814bfe141de9cb2b2c63",
+      "size": 14682
     },
     {
       "path": "scope-unified-workspace/handoff.template.html",
-      "sha256": "d69affbd9a223998ed5b3f1f27a4b7232be7e3c555b3b5f00e361638c7dd314f",
-      "size": 5288
+      "sha256": "a8aaefbd55b991246d00a3a2ead52ac4ba2d439c8890d3d6b51e2699098b3521",
+      "size": 5862
     },
     {
       "path": "scope-unified-workspace/hub.template.html",
@@ -260,13 +260,13 @@
     },
     {
       "path": "scope-unified-workspace/index.html",
-      "sha256": "cf98e30d3b6a2ba5b624c4191b980999ed68070813049d2d20eef987637bbf38",
-      "size": 19098
+      "sha256": "977af9d218c612b5119bd26cbbbbcdbb2232845a281539790e1f6369666bca5e",
+      "size": 19494
     },
     {
       "path": "scope-unified-workspace/source-inspector.js",
-      "sha256": "a15e7e37f4f11b2fb5f29ab379f186e3ebfc0d587c8990a8a71fa5a3e51a23f2",
-      "size": 10050
+      "sha256": "2791883f15a962d39d2b8b22062690d943384208a8c1049bb4d6a1e1df03283a",
+      "size": 12372
     },
     {
       "path": "scope-unified-workspace/source_pins.py",
@@ -275,8 +275,8 @@
     },
     {
       "path": "scope-unified-workspace/style.css",
-      "sha256": "eaf5b4f274a3f35102ba671c0d1ab4373d64d375a112322b59bc590946e9e555",
-      "size": 9005
+      "sha256": "7ed61c6100d908c7a773d21d440ef6a27fb537fbc6fdd8f569d9ab851ab27786",
+      "size": 9401
     },
     {
       "path": "scope-unified-workspace/verify-local.js",
@@ -285,8 +285,8 @@
     },
     {
       "path": "scope-unified-workspace/verify.html",
-      "sha256": "25f335780366879e16f18b61b8222b57e5bf7bea54024175679aa7d191033839",
-      "size": 15572
+      "sha256": "8516c50131f6f2f6ee34c3d5d8a3c645a4f7f564c507813e01d528a3eef0626c",
+      "size": 15968
     },
     {
       "path": "scope-unified-workspace/verify.template.html",

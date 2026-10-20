@@ -211,6 +211,55 @@
       input.disabled = false;
     }
   });
+  const restoreInput = el("shelf-review-reopen");
+  restoreInput.addEventListener("change", async () => {
+    const backup = restoreInput.files && restoreInput.files[0];
+    restoreInput.value = "";
+    if (!backup || busy) return;
+    if (!items.length) {
+      report("HOLD — importeer eerst exact dezelfde oorspronkelijke bestanden en volgorde voordat HUMAN-keuzes mogen terugkomen.");
+      return;
+    }
+    busy = true;
+    restoreInput.disabled = true;
+    input.disabled = true;
+    const epoch = generation;
+    try {
+      const rows = await LightUpPrivateSourceInspector.readHumanInventory(backup);
+      if (epoch !== generation || rows.length !== items.length) {
+        throw Error("different source set or concurrent clear");
+      }
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i], original = items[i];
+        if (row.original_name !== original.file.name ||
+            row.byte_length !== original.file.size ||
+            row.unsigned_sha256 !== original.hash ||
+            row.structural_kind_unverified !== original.inspection.kind) {
+          throw Error("source bytes, name, order or kind changed");
+        }
+      }
+      if (!confirm("PRIVATE HUMAN-keuzes herstellen voor exact " + rows.length +
+          " opnieuw geselecteerde originele bestanden? Alleen lokale route, HUMAN fase, team en notities veranderen. Geen echte autorisatie, bronwijziging of grant.")) {
+        report("REVIEW_ONLY — herstel geannuleerd; bestaande HUMAN werkset ongewijzigd.");
+        return;
+      }
+      if (epoch !== generation) throw Error("source set changed before replacement");
+      for (let i = 0; i < rows.length; i++) {
+        items[i].route = rows[i].human_route;
+        items[i].stage = rows[i].human_stage;
+        items[i].team = rows[i].human_team;
+        items[i].note = rows[i].private_human_note;
+      }
+      render();
+      report("REVIEW_ONLY — exacte originele source-bytes en volgorde herkend; uitsluitend PRIVATE HUMAN-reviewkeuzes hersteld. Nooit toestemming of revocation.");
+    } catch (_) {
+      report("HOLD — onjuist/ambigue PRIVATE plan of andere originele bestanden. Geen enkele bestaande HUMAN-keuze is gewijzigd.");
+    } finally {
+      busy = false;
+      restoreInput.disabled = false;
+      input.disabled = false;
+    }
+  });
   el("shelf-clear").addEventListener("click", () => {
     if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
@@ -246,5 +295,8 @@
     report("REVIEW_ONLY — expliciete PRIVATE ongetekende bestandsinventaris lokaal gedownload.");
   });
   render();
-  window.addEventListener("pagehide", () => { items.splice(0); });
+  window.addEventListener("pagehide", () => {
+    generation++;  // never repopulate a private tab after navigation / bfcache
+    items.splice(0);
+  });
 })();

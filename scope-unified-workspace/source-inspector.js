@@ -172,5 +172,43 @@ const LightUpPrivateSourceInspector = (() => {
     }
     return classifyJSON(data);
   }
-  return Object.freeze({ inspect });
+  async function readHumanInventory(file) {
+    if (!file || file.size < 10 || file.size > 96 * 1024) {
+      throw Error("PRIVATE source inventory outside bounded size");
+    }
+    const raw = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+    const doc = parse(raw);
+    if (!exact(doc, ["format", "status", "authority", "entries", "warning"]) ||
+        doc.format !== "lightup.scope_handoff_PRIVATE_inventory.v1" ||
+        doc.status !== "REVIEW_ONLY" ||
+        !exact(doc.authority, ["client_consent", "operator_consent", "grant", "scan", "deploy", "release"]) ||
+        !Object.values(doc.authority).every((v) => v === false) ||
+        !Array.isArray(doc.entries) || doc.entries.length < 1 || doc.entries.length > 16 ||
+        typeof doc.warning !== "string" || doc.warning.length > 300) {
+      throw Error("Untrusted PRIVATE inventory format or authority flags");
+    }
+    const fields = ["original_name", "byte_length", "unsigned_sha256", "structural_kind_unverified",
+      "human_route", "human_stage", "human_team", "private_human_note"];
+    const names = new Set(), hashes = new Set();
+    const routes = ["none", "studio", "intake", "casebook", "reconcile", "risk", "stop", "vault"];
+    const stages = ["unreviewed", "preparing", "escalated", "documented"];
+    const teams = ["unassigned", "security", "privacy", "client_ops", "platform"];
+    for (const row of doc.entries) {
+      if (!exact(row, fields) || !bounded(row.original_name, 220) || !row.original_name ||
+          !count(row.byte_length, 8 * 1024 * 1024) || row.byte_length < 1 ||
+          !sha(row.unsigned_sha256) || !bounded(row.structural_kind_unverified, 80) ||
+          !routes.includes(row.human_route) || !stages.includes(row.human_stage) ||
+          !teams.includes(row.human_team) ||
+          typeof row.private_human_note !== "string" || row.private_human_note.length > 280) {
+        throw Error("PRIVATE inventory contains invalid source binding or HUMAN values");
+      }
+      const key = row.original_name.normalize("NFC").toLowerCase();
+      if (names.has(key) || hashes.has(row.unsigned_sha256)) {
+        throw Error("Ambiguous PRIVATE inventory source identity");
+      }
+      names.add(key); hashes.add(row.unsigned_sha256);
+    }
+    return doc.entries;
+  }
+  return Object.freeze({ inspect, readHumanInventory });
 })();
