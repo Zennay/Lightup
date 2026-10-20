@@ -411,3 +411,47 @@ finalization returns HOLD (3), **even when the local proposal was created
 successfully**. All original main-merge, CI, source-owner, security/privacy,
 current separately authenticated client/operator consent, action-time
 revocation and explicit HUMAN GO gates remain mandatory.
+
+## Team-minimal PRIVATE HUMAN discussion excerpt (never delivery)
+
+After preparing a complete and source-bound **local HUMAN agenda review**, an
+operator may deliberately generate an additional separate **single-team**
+PRIVATE conversation excerpt for one manually proposed team label. The
+full original agenda, original completed HUMAN packet and history remain
+unchanged. There is **no recipient authentication** and no automatic transfer.
+
+~~~sh
+python3 private-assessment-notes/notes.py agenda-team \
+  --review-kit /private/operator-lightup-work/PRIVATE-lightup-human-agenda-review-<id> \
+  --history-kit /private/operator-lightup-work/PRIVATE-lightup-human-history-<id> \
+  --latest-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<last-id> \
+  --team PRIVACY \
+  --private-parent /private/operator-lightup-work
+~~~
+
+`--team` is one of `SECURITY`, `PRIVACY`, `CLIENT_OPERATIONS`, or
+`PLATFORM`. The native path **reopens the complete original final HUMAN
+review packet, all original source-bound history identities, and the complete
+PRIVATE review CSV** before selecting only original human proposals
+explicitly labelled for the requested team. Non-selected teams' questions,
+dates, contents, names and source positions are entirely excluded from
+the resulting team HTML, CSV and JSON. Empty-team selection returns HOLD
+without creating a packet.
+
+The output lives in a new owner-private 0700 directory, with private 0600
+`OPEN-PRIVATE.html`, `PRIVATE-HUMAN-team-brief.csv`, and
+`PRIVATE-HUMAN-team-brief.json`. These contain only the selected team's
+original source ordinals, last HUMAN stage, manual discussion category, proposed
+day and original HUMAN question. The JSON binds the source privately through
+unsigned local artifact SHA-256 values, **not** signatures or proof of an
+authenticated team member.
+
+**Important:** the `--team` label is an unauthenticated suggestion, not a
+verified recipient, validated group membership, accepted client request,
+actual assignment, calendar booking, permission to disclose, security verdict,
+or communication channel. Do not publish or transmit the PRIVATE result
+without genuine independent recipient verification, current security/privacy
+approval, separate live client/operator consent, action-time revocation and
+explicit HUMAN GO. No network, email, notification, task dispatch, scan or
+authorization action occurs. The operation returns HOLD (3), including on a
+successfully created local private packet.
