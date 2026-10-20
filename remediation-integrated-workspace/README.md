@@ -52,3 +52,21 @@ On a **separately authorized** private machine, obtain the exact pinned current 
     python3 remediation-integrated-workspace/install.py inspect --workspace "$HOME/lightup-private/received-suite"
 
 Receiving rejects unexpected/duplicate member paths, unsafe archive types, inflated assets, changed original source bytes, mismatched launcher/installer contents, and destination overwrite. It atomically creates a fresh private 0700 folder with original 0600 software and fresh unsigned local manifest. REVIEW_ONLY=2; HOLD=3. This is **not** a signed sender, current consent or verification of findings and it never loads private evidence or contacts a service.
+
+## Integrated native HUMAN owner and recipient workflow
+
+The separate `workflow.py` entry point builds on the original, unchanged source-owner `prepare.publish` / `handoff.prepare` and recipient `trend.publish` / `recipient_workload_series.publish` / `recipient_studio.publish`. Both paths publish their combined result only after every original native component has been admitted. A failed operation deletes only its newly allocated private staging folder; it never edits an original source folder or existing result. Return codes: 2 = REVIEW_ONLY, 3 = HOLD.
+
+**Original private source owner:** source folder must contain the canonical `current.json` plus optional `previous.json` and `session.json`, as required by the original Evidence Relationship Desk. Use an existing owner-only 0700 parent and a new absolute output directory:
+
+    python3 remediation-integrated-workspace/workflow.py owner-start --input-dir "$HOME/lightup-private/original-ledger" --output-dir "$HOME/lightup-private/owner-review-001"
+
+This publishes `owner-review-001/original/` (FULL ORIGINAL PRIVATE, not shareable) and `owner-review-001/source-free-recipient/` (original exact source-free Cockpit, still PRIVATE and transferable *only* after real separate disclosure authorization). The top-level portal and HUMAN-only count summary are local. **Never share the parent directory.** Repeat `--input-dir` or add `--bundle` for 1-12 complete independent original source records; do not fabricate additional records.
+
+**Separately authorized source-free HUMAN recipient:** two source-free canonical Cockpit packets allow a useful actual human-reason workroom; for 3-12 separately received packets the original native ordinal series replaces two-way comparison. Only HUMAN-selected order, not authenticated chronology or same-client membership:
+
+    python3 remediation-integrated-workspace/workflow.py recipient-start --cockpit "$HOME/lightup-private/received-01" --cockpit "$HOME/lightup-private/received-02" --output-dir "$HOME/lightup-private/recipient-review-001"
+
+The private result contains `source-free-report/` with original source-free counts and `human-studio/` with the original browser-editable HUMAN reason follow-ups and exportable local HUMAN journal. No customer identity, original evidence or case-level join is added. Open the generated `index.html` locally. A single received Cockpit can still be opened with native `read_cockpit.py` directly; the integrated recipient comparison does **not** manufacture a second cohort.
+
+Neither workflow creates approval, grant, scan, exploitation, native Apply, verified mitigation, authenticated sender or real client consent. All pre-existing release gates remain unchanged.

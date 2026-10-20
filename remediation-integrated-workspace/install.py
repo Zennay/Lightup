@@ -191,6 +191,7 @@ def build(dest: Path) -> None:
         # authorized device: carry this CLI and its operator guide too.
         for name in ("remediation-integrated-workspace/install.py",
                      "remediation-integrated-workspace/receiver.py",
+                     "remediation-integrated-workspace/workflow.py",
                      "remediation-integrated-workspace/README.md"):
             data = (ROOT / name).read_bytes()
             require(len(data) <= MAX_SOURCE, "Installer asset oversized")
@@ -267,6 +268,7 @@ def verify(folder: Path) -> None:
         require(safe_name(name) or name in ("index.html", "software-only.zip", "source-lock.json",
                                              "remediation-integrated-workspace/install.py",
                                              "remediation-integrated-workspace/receiver.py",
+                                             "remediation-integrated-workspace/workflow.py",
                                              "remediation-integrated-workspace/README.md"),
                 "Unexpected package name")
         require(type(descriptor) is dict and set(descriptor) == {"sha256", "bytes"}
