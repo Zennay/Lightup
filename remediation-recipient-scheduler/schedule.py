@@ -135,6 +135,7 @@ def render(sources: list[dict], tasks: list[dict]) -> bytes:
 <button id="bulk">Preview and apply to currently visible tasks</button><button id="undo" disabled>Undo previous batch</button></div>
 <div class="controls"><button id="save">Save encrypted PRIVATE plan</button>
 <button id="open">Open encrypted plan</button><input id="openfile" type="file" accept=".lurp,application/json" hidden>
+<button id="agenda">Export printable PRIVATE HUMAN agenda (visible tasks)</button>
 <button id="calendar">Export tentative PRIVATE calendar (.ics)</button>
 <button id="counts">Export anonymous counts</button></div>
 <p class="muted">Passwords are entered only in this browser tab. No storage, telemetry, network or calendar API; downloads require protected offline custody. ICS contains only anonymous task labels by default, not private notes or identities. Anonymous counts can still disclose small cohorts.</p>
