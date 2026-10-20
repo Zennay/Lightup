@@ -180,6 +180,7 @@ small{display:block;line-height:1.5}</style>
 <p>Optional local Python <code>cryptography</code> dependency and an interactive private terminal are required. No plaintext ZIP intermediates; decrypted HUMAN counts remain private plaintext files on the recipient machine. No authenticated sender or consent is inferred.</p>
 <p>See <a href="remediation-integrated-workspace/README.md">the full private operator guide</a> and <a href="remediation-integrated-workspace/SINGLE_REVIEW.md">single-Cockpit journal/brief workflow</a> for separate HUMAN continuation and privacy conditions.</p></section>
 <section><h2>Encrypted HUMAN journal continuation</h2><p>Use the <a href="remediation-integrated-workspace/JOURNAL_VAULT.md">PRIVATE source-bound journal vault guide</a> to encrypt an explicitly downloaded local HUMAN journal, reopen the same original-source-bound review, publish a scriptless private follow-up brief, or rekey without a plaintext intermediate journal file. This never authenticates client consent, source owner or fixes.</p></section>
+<section><h2>Encrypted complete source-free HUMAN review</h2><p>The <a href="remediation-integrated-workspace/REVIEW_PACKAGE.md">one-file source-free Cockpit + bound HUMAN journal guide</a> explains how to encrypt the original anonymous Cockpit and its exact native HUMAN journal into a single portable private file, then receive it in a new source-bound private reviewer. No real source-owner identity, consent or authenticated security claim is established.</p></section>
 <small>Software-only, pinned original source snapshots. Operator-selectable steps are HUMAN-only; downloaded plaintext artifacts can be sensitive. No network, browser storage, script, account login or target activity is added by this launcher.</small></main></html>
 """).encode("utf-8")
 
@@ -246,6 +247,8 @@ def build(dest: Path) -> None:
                      "remediation-integrated-workspace/journal_vault.py",
                      "remediation-integrated-workspace/journal_encrypt.js",
                      "remediation-integrated-workspace/journal_open.js",
+                     "remediation-integrated-workspace/review_package.py",
+                     "remediation-integrated-workspace/REVIEW_PACKAGE.md",
                      "remediation-integrated-workspace/JOURNAL_VAULT.md",
                      "remediation-integrated-workspace/README.md"):
             data = (ROOT / name).read_bytes()
@@ -334,6 +337,8 @@ def verify(folder: Path) -> None:
                      "remediation-integrated-workspace/journal_vault.py",
                      "remediation-integrated-workspace/journal_encrypt.js",
                      "remediation-integrated-workspace/journal_open.js",
+                     "remediation-integrated-workspace/review_package.py",
+                     "remediation-integrated-workspace/REVIEW_PACKAGE.md",
                      "remediation-integrated-workspace/JOURNAL_VAULT.md",
                                              "remediation-integrated-workspace/README.md"),
                 "Unexpected package name")

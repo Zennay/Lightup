@@ -24,6 +24,8 @@ TOOLS = frozenset((
     "remediation-integrated-workspace/journal_vault.py",
     "remediation-integrated-workspace/journal_encrypt.js",
     "remediation-integrated-workspace/journal_open.js",
+    "remediation-integrated-workspace/review_package.py",
+    "remediation-integrated-workspace/REVIEW_PACKAGE.md",
     "remediation-integrated-workspace/JOURNAL_VAULT.md",
     "remediation-integrated-workspace/README.md",
 ))
