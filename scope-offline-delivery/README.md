@@ -69,11 +69,11 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `56ebc620709a42e6c1582662dff48978557506276eafecc6d67cd5330acb3a61`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `c318e2065441f2cee59935d7ef19b84da4b11cb97908f9b221c9dce622a3d2d2`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `a715eacd3511447d665d6a1aa452459db3ef53065513c6c071f36424644c105e`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `ab8834a845fd4b0fc51e067b3dd6a402501d50487ae3a9458405f85a43167883`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `d7db12210c4d3643a14cb44e65fa92d8f64e37c2fb236210b31e82f99524939d`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `acd722df636ec2a1a1c2b21f53e11d6a17732465caa63265b41bb41b348b74af`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `1afa377b99cd97eaf9201ebc08267f628eddf37098a4ae3fd8211b5c784ac8bf`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `55986f0d454f894c5437c5cadeb262fec903d62c0c3db8f366f9265daa7bbd87`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
 
@@ -90,6 +90,18 @@ After an independently supplied **whole-ZIP SHA-256** matches, the standalone of
 ### PRIVATE local inspection receipt (one-click browser workflow)
 
 For a separately matched, structurally admitted and original-source-pinned **role ZIP**, the browser now offers **Save PRIVATE role inspection receipt**. This manually downloads a small source-only `lightup.scope_private_local_inspection.v1` JSON with the selected exact role, SHA-256 and byte size of the entire received ZIP, plus every original role member's name, length and SHA-256 as admitted by the byte-canonical original receipt. No original source material, passwords, reviewer notes or contact details are included. The in-memory receipt is cleared on any file, digest or selection change and is unavailable for unknown ZIPs, malformed receipts or unmatched sources. It is **unsigned, locally produced, and REVIEW_ONLY**: human recipients and transfer channels must still be authenticated independently, and the receipt cannot assert consent, grant, release, client authority or confidentiality.
+
+### Zero-install offline role kit preparation — complete browser feature
+
+In the **standalone original offline [recipient page](PRIVATE-receive.html)**, select the **complete source-only outer ZIP** and supply its whole SHA-256 via a separately authenticated channel. After the browser checks the strict original stored ZIP layout, seven immutable original source digests and the pinned native source inspector, a new **Prepare a minimum-disclosure recipient ZIP locally** workflow becomes available. Select exactly one role:
+
+- `privacy-recipient` — original encrypted HUMAN courier and source-redacted recipient text viewer only;
+- `privacy-editor` — the same courier + original local manual redactor and receiver;
+- `scope-reviewer` — original unchanged offline scope workspace ZIP, source and distribution manifests, and original byte verifier only.
+
+The browser creates a byte-canonical, Linux-compatible stored ZIP and an exact native `lightup.scope_private_role_handoff.v1` **unsigned non-authorizing receipt** (file byte counts, SHA-256, original parent source digest, every authority flag exactly `false`) entirely in memory. The original source components and the original native role inspector are copied unchanged; the browser builds only the role's own static, scriptless start page and instructions. A generated SHA-256 is shown, and a HUMAN has to explicitly confirm a separate **Save role ZIP** action. Change the role, source ZIP, or supplied digest and the pending role disappears; nothing is stored, sent, unzipped, opened, scanned or authorized automatically. The original Python CLI remains an equal alternative; a native recipient may use `tools/role_pack.py inspect/unpack` against the saved browser-created ZIP with an **independently authenticated** supplied role digest.
+
+**Browser convenience is NOT encryption, recipient authentication, client/operator consent, clearance to share confidential material, trusted signing, revocation or HUMAN GO.** Encrypt confidential files with the original, separately validated encrypted HUMAN courier and verify the recipient and channel separately before any transfer. The entire LightUp release remains **DRAFT/HOLD / PLAN-LAB ONLY**.
 
 ### Role unpack stability under local file replacement
 

@@ -20,7 +20,7 @@
       sha: "d1d0d2ca5a53599d2dc85589c58a4af6eddf7528cb519498185943a5718723c5",
       name: "LightUp-Scope-Source-Verify.html" },
     { path: "courier/PRIVATE-encrypted-courier.html", title: "Original encrypted HUMAN courier (offline HTML)",
-      sha: "55cbef56f7ca0df32ad5fe65ea6868efc4c7ac2f1abf01ebc1e4d97b7e327edf",
+      sha: "55cbef56f7ca0df32ad5fe65ea6868efc4c7ac2f1abf01ecb1e4d97b7e327edf",
       name: "PRIVATE-encrypted-courier.html" },
     { path: "privacy/disclosure-preflight.html", title: "Original manual PRIVATE disclosure desk (offline HTML)",
       sha: "d23b51b73b39c994edbb681e20b7e501bd037be366488870470bfe68ef34bb24",
@@ -203,6 +203,37 @@
     return receipt.files; // Receipt coherence ONLY; never sender identity or consent.
   }
 
+  // Two-way local admission: use the same strict ZIP and role receipt
+  // boundary before permitting a freshly browser-created role download.
+  document.addEventListener("lightup:role-build-inspection", event => {
+    const candidate = event.detail;
+    if (!candidate || !accepted || !acceptedSha ||
+        !(candidate.bytes instanceof Uint8Array) ||
+        candidate.sourceSha256 !== acceptedSha ||
+        !Object.hasOwn(profiles,candidate.role) ||
+        !/^[0-9a-f]{64}$/.test(candidate.sha256 || "")) return;
+    const revision = generation;
+    candidate.check = (async () => {
+      if (await sha(candidate.bytes) !== candidate.sha256) throw Error("New role SHA mismatch");
+      const rows = parseStoredZip(candidate.bytes.buffer);
+      const required = [...roleBase, ...profiles[candidate.role]];
+      if (rows.size !== required.length || required.some(name => !rows.has(name))) {
+        throw Error("New role member set differs from native profile");
+      }
+      const receipt = await validateRoleReceipt(rows, candidate.role);
+      if (receipt.length !== required.length - 1) throw Error("New role receipt incomplete");
+      for (const desc of selections.filter(x => profiles[candidate.role].includes(x.path))) {
+        if (await sha(rows.get(desc.path).bytes) !== desc.sha) {
+          throw Error("Locally created role changed a pinned original source");
+        }
+      }
+      if (generation !== revision || !accepted || acceptedSha !== candidate.sourceSha256) {
+        throw Error("Original source selection changed");
+      }
+      return true;
+    })();
+  });
+
   const sha = async bytes => Array.from(new Uint8Array(
     await crypto.subtle.digest("SHA-256", bytes))).map(x => x.toString(16).padStart(2,"0")).join("");
 
@@ -284,6 +315,25 @@
           save(candidate.bytes, descriptor.name);
         });
         saveRow.append(button);
+      }
+      // Browser sender may build a smaller source-only package ONLY from the
+      // complete known original outer kit, never from an arbitrary role/mixed ZIP.
+      const knownOuter = [
+        "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip",
+        "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json",
+        "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
+        "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html",
+        "PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css",
+        "tools/recipient_zip.js", "tools/role_builder.js", "tools/role_pack.py",
+        "tools/recipient.template.html", "tools/package.py", "tools/unpack.py",
+        "START-HERE.html", "README.txt", "manifest.json"
+      ];
+      if (!role && entries.size === knownOuter.length &&
+          knownOuter.every(path => entries.has(path)) &&
+          await sha(entries.get("tools/role_pack.py").bytes) === ROLE_SCRIPT_SHA) {
+        if (current !== generation) return;
+        document.dispatchEvent(new CustomEvent("lightup:full-kit-admitted",
+          {detail:{entries,sha256:acceptedSha}}));
       }
       if (role && roleFiles && acceptedSha) {
         localInspection = {generation: current, profile: role, files: roleFiles};

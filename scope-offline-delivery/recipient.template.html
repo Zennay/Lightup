@@ -34,6 +34,21 @@
 <button id="save-inspection-receipt" type="button" hidden>Save PRIVATE role inspection receipt (unsigned JSON)</button>
 <p>A saved receipt contains original source filenames, byte digests and the received whole-ZIP digest. Treat it as PRIVATE metadata. It proves no sender identity, consent or permission, and cannot replace independent human disclosure review.</p>
 </section>
+<section id="role-builder-panel" hidden>
+<h2>Prepare a minimum-disclosure recipient ZIP · locally</h2>
+<p>Available only after the complete original source ZIP matches the SHA-256 you obtained through a separate authenticated channel and all original source components match exact immutable fingerprints. Nothing is uploaded, run or sent. A role never authenticates a recipient or grants permission.</p>
+<label for="role-profile">Only include source files needed for this HUMAN role</label>
+<select id="role-profile">
+<option value="privacy-recipient">Privacy recipient · courier + redacted-text receiver</option>
+<option value="privacy-editor">Privacy editor · courier + redaction + receiver</option>
+<option value="scope-reviewer">Scope reviewer · original workspace + manifests + verifier</option>
+</select>
+<button id="build-role" type="button" disabled>Build source-only role ZIP locally</button>
+<p id="role-build-status" role="status" aria-live="polite"></p>
+<p id="role-build-digest" class="mono"></p>
+<button id="save-built-role" type="button" hidden>Save role ZIP (unsigned · not encrypted)</button>
+<p>Verify the intended reviewer, approval and transfer channel independently. A matching original digest proves byte equality, not consent; encrypt any confidential transfer separately with the original HUMAN courier.</p>
+</section>
 <section>
 <h2>After a BYTE MATCH</h2>
 <p>Independently verify the sender, intended recipient and lawful scope. Open the original <a href="START-HERE.html">PRIVATE workflow home</a> for manual redaction, encrypted HUMAN courier and explicit receiver review. A matching SHA proves equal bytes only: <strong>not identity, consent, approval, content safety or remediation.</strong></p>
