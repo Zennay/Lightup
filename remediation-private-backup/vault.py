@@ -224,15 +224,7 @@ def restore(args):
     destination = Path(args.destination)
     target_free(destination)
     _, files = unseal(args.vault)
-    if args.only:
-        wanted = set(args.only)
-        if (len(wanted) != len(args.only) or len(wanted) > MAX_FILES
-                or any(not name_safe(name) for name in wanted)):
-            raise Hold("invalid or duplicate selection names")
-        available = {name for name, _, _ in files}
-        if not wanted.issubset(available):
-            raise Hold("requested restore selection not present in authenticated backup")
-        files = [row for row in files if row[0] in wanted]
+    files = selected_rows(files, args.only)
     temporary = Path(tempfile.mkdtemp(prefix=".lightup-private-hold-", dir=destination.parent))
     try:
         os.chmod(temporary, 0o700)
@@ -255,6 +247,37 @@ def rotate(args):
     print(f"Re-encrypting {len(files)} source files entirely in memory")
     private_write(target, seal(document, ask(confirm=True)))
     print(f"PRIVATE DRAFT/HOLD: new encrypted archive {target}; old archive unchanged")
+
+def selected_rows(files, requested):
+    if not requested:
+        return files
+    wanted = set(requested)
+    if (len(wanted) != len(requested) or len(wanted) > MAX_FILES
+            or any(not name_safe(name) for name in wanted)):
+        raise Hold("invalid or duplicate selection names")
+    available = {name for name, _, _ in files}
+    if not wanted.issubset(available):
+        raise Hold("requested name absent from authenticated PRIVATE backup")
+    return [row for row in files if row[0] in wanted]
+
+
+def encrypted_subset(args):
+    """Re-encrypt selected source bytes, never publish unencrypted scratch files."""
+    target = Path(args.output)
+    target_free(target)
+    _, files = unseal(args.vault)
+    selected = selected_rows(files, args.only)
+    if not selected:
+        raise Hold("select one or more source names for private subset")
+    # Exact admitted original bytes are encoded again; don't mutate source archive.
+    rows = [{"name": name, "size": len(raw), "sha256": digest,
+             "bytes": b64(raw)} for name, raw, digest in selected]
+    check_rows(rows)
+    inner = {"version": VERSION, "authority": FLAGS, "files": rows}
+    print(f"Encrypting {len(rows)} selected PRIVATE files; no plaintext output")
+    private_write(target, seal(inner, ask(confirm=True)))
+    print(f"PRIVATE DRAFT/HOLD: separate encrypted subset at {target}; NOT disclosure approval")
+
 
 def compare(args):
     # Both independently encrypted archives must authenticate completely first.
@@ -303,10 +326,14 @@ def main():
     p = sub.add_parser("compare", help="PRIVATE differences between two authenticated snapshots")
     p.add_argument("before")
     p.add_argument("after")
+    p = sub.add_parser("subset", help="Fresh encrypted archive containing ONLY selected private files")
+    p.add_argument("vault")
+    p.add_argument("--only", required=True, action="append", metavar="ORIGINAL_NAME")
+    p.add_argument("--output", required=True)
     args = parser.parse_args()
     try:
         {"create": create, "inventory": inventory, "restore": restore,
-         "rotate": rotate, "compare": compare}[args.command](args)
+         "rotate": rotate, "compare": compare, "subset": encrypted_subset}[args.command](args)
     except (Hold, OSError) as err:
         print(f"HOLD: {err}", file=sys.stderr)
         return 3
