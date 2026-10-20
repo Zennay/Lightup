@@ -66,11 +66,11 @@
       <p class="small muted">This adjusts only local HUMAN stage/group proposals on currently filtered original ordinals. Original immutable ordinal, severity, evidence-reference count, action, blocker and source file are untouched.</p>
       <div class="batchControls">
         <label>HUMAN stage<select id="bulkStage"><option value="unchanged">Do not change stage</option><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="blocked">Blocked</option><option value="documented">Documented</option></select></label>
-        <label>HUMAN group<input id="bulkGroup" maxlength="120" placeholder="Leave unchanged, or type group"></label>
+        <label>HUMAN group<input id="bulkGroup" maxlength="120" placeholder="Blank = unchanged; __CLEAR__ = clear"></label>
         <button id="applyBulk" type="button" class="primary">Apply to visible rows</button>
         <button id="undoBulk" type="button" disabled>Undo last batch</button>
       </div>
-      <p class="muted small">Enter <code>unchanged</code> to keep the group field; enter a group name for a new HUMAN-only value. A row-level edit invalidates bulk Undo to avoid rolling back later individual work.</p>
+      <p class="muted small">Leave the group field blank to preserve the current group, enter <code>__CLEAR__</code> to explicitly clear it, or type a new HUMAN-only group name. A row-level edit invalidates bulk Undo to avoid rolling back later individual work.</p>
     </section>
 
     <section class="panel finish">
