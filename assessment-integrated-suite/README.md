@@ -17,6 +17,17 @@ checkout, an unused simple folder name, and explicitly type
 `BUILD PRIVATE BOARD`. This writes only a new exclusive owner-private 0700
 folder with `OPEN-PRIVATE.html` and `PRIVATE-ROUTE-SUMMARY.json`, both 0600.
 
+Alternatively, **option 41** asks for an existing original 0600
+`PRIVATE-SESSION.json` in a 0700 owner-only folder outside the checkout,
+the output parent and a new folder. After the exact
+`BOARD SAVED SESSION` confirmation, the pre-existing strict duplicate-key,
+full original session-schema and all-literal-false authority reader admits
+only the saved PATH-ONLY references. A separate in-memory session copy is
+then used for the board: **the current live interactive session and previous
+checkpoint are never overwritten**. The original source artifacts remain
+unopened and every old file: bookmark is only a current local availability
+observation, not saved trusted state.
+
 The static, scriptless file: dashboard groups original workrooms by intake,
 benchmarks, select-only evidence, human remediation and retention. Each row
 shows **LOCAL PAGE PRESENT / REVIEW ONLY**, **NOT PREPARED**, or
@@ -31,6 +42,17 @@ makes bookmarks stale; open the original workflow and re-admit original
 bytes/authorization afresh. Presence of a page is **not** correctness,
 readiness, approval or proof of identity. Existing review/CI/consent HOLD
 still applies; never send or publish this board.
+
+## Portable 15-original-studio software kit v9
+
+[Portable source-only LightUp Assessment Offline Toolkit v9](LightUp-Assessment-Offline-Toolkit-v9.zip)
+contains 15 **unchanged** original offline HTML studios and a current software-only
+operator guide. Build artifact size: **249,151 bytes**; unsigned SHA-256:
+`40c41907bdf1ca4ea03c34b287974ccf8419be8c484565b3efce87f5e0687ac3`.
+The native-only route board (options 40/41) is deliberately NOT shipped
+inside this browser-only ZIP: its file: bookmarks necessarily reference real
+original owner-private workroom paths. The ZIP contains no PRIVATE client
+files, HUMAN outcomes, notebook, source-specific receipts or session paths.
 
 ## Run completely locally in a trusted checkout
 

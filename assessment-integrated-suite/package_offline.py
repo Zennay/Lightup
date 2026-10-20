@@ -35,7 +35,7 @@ Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
 Native checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 40 actions, including original
+options 21/22. The same console now has 41 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
@@ -43,7 +43,9 @@ and drift (35-36). Source-specific workrooms still require native original
 admission. An operator can now explicitly save and restore owner-only 0600
 PATH-ONLY console sessions, view local PRIVATE workspace bookmarks and
 compare 2-8 saved session path histories (37-39), and prepare a
-source-free PRIVATE route board of existing local workrooms (40).
+source-free PRIVATE route board of existing local workrooms (40), or
+read a STRICT saved owner-private session for an isolated route board without
+changing the live console paths (41).
 The route board is native-only and contains sensitive file: bookmarks.
 The session JSON may
 reveal confidential client folder names and must NEVER be put in this ZIP.
