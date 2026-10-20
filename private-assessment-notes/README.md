@@ -585,3 +585,9 @@ reopens the original completed source packet; a browser resume is **not**
 trusted source, verified masking, file authorization or consent. Imported and
 exported rule JSON contains original sensitive literal strings and must remain
 owner-private; never upload or share it.
+
+## Complete PRIVATE HUMAN sensitivity triage (offline)
+
+The original completed credential-masked HUMAN note packet now also supports three integrated native `notes.py` commands: `sensitivity-prepare` for a complete exact-original-source-bound owner-private concern template plus offline browser editor, `sensitivity-finalize` for a fresh source- and HUMAN-decision-byte-bound PRIVATE review/receipt, and `sensitivity-focus` for a minimum-necessary private HUMAN agenda for **one explicitly chosen** possible sensitivity category and one original HUMAN review status. Original source text is never copied into these triage and agenda artifacts; source identifiers and HUMAN notes remain owner-private. Browser drafts can be resumed locally only after full original byte-identity and row/category validation, without changes on mismatch. All routes deliberately remain REVIEW_ONLY/HOLD and never grant privacy clearance, source authenticity, real consent, recipients, permissions, disclosure or assessment execution.
+
+[Open the complete sensitivity triage & exact-source HUMAN follow-up operator guide](PRIVATE-SENSITIVITY-TRIAGE.md). This extends only the existing separate DRAFT/HOLD assessment-notes workroom. Mandatory original source-owner/security/privacy/browser review, exact-head hosted/named VPS CI, current separately authenticated client/operator consent with action-time revocation and explicit HUMAN GO are untouched.
