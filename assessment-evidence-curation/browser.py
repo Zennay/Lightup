@@ -41,7 +41,7 @@ const pages=document.getElementById("page-info"), error=document.getElementById(
 const search=document.getElementById("filter"), severity=document.getElementById("severity");
 const onlySelected=document.getElementById("selected-only");
 const formula=/^[\s]*[=+@-]/u;
-const prohibited=/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/u;
+const prohibited=/[\u0000-\u001f\u007f\p{Cf}\p{Cs}\p{Co}\p{Cn}]/u;
 function selectedCount(){return states.reduce((n,x)=>n+(x.yes?1:0),0);}
 function showError(message){error.textContent=message;error.hidden=!message;}
 function filtered(){
@@ -115,8 +115,7 @@ function exportCsv(){
   const s=states[i];
   if(!s.yes)continue;
   const v=s.question;
-  if(!v.trim() || v.length>500 || formula.test(v) || prohibited.test(v) ||
-    [...v].some(c=>["Cf","Cs"].includes(c))) {
+  if(!v.trim() || v.length>500 || formula.test(v) || prohibited.test(v)) {
    showError("HOLD: original ordinal #"+(i+1)+" needs a safe HUMAN question without control/formula prefixes.");
    return;
   }
