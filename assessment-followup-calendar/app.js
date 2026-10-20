@@ -458,6 +458,7 @@
     const ranks={critical:0,high:1,medium:2,low:3,info:4};
     unscheduled.sort((a,b)=>ranks[a.severity]-ranks[b.severity] || a.ordinal-b.ordinal);
     const perDate=new Map(),usedTimes=new Map();
+    const occupied=eventIntervals();
     for(const p of plan.values()){
       perDate.set(p.day,(perDate.get(p.day)||0)+1);
       if(!usedTimes.has(p.day))usedTimes.set(p.day,new Set());
@@ -475,8 +476,12 @@
           const hour=9+Math.floor(slot*40/60),minute=(slot*40)%60;
           const time=String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
           if(reserved.has(time))continue;
+          const candidate=eventDate(key,time).getTime(),end=candidate+30*60000;
+          if(occupied.some(o=>candidate<o.end && o.start<end))continue;
           const suggestion=admitSlot(key,time,"30","15");
-          proposal.set(unscheduled[index].ordinal,suggestion);
+          const ordinal=unscheduled[index].ordinal;
+          proposal.set(ordinal,suggestion);
+          occupied.push({ordinal,start:candidate,end});
           reserved.add(time);count++;index++;
         }
       }
