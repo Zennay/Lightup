@@ -1,0 +1,1737 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+FeQK9qNMACF6h4xFkdY0gKb64t9oNXVGntL+QGCRjc='; style-src 'sha256-GiwZL7dH+i8o4R86w8+GP+F7raPk9eokuVig2JVruXQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
+[hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
+.skip{position:absolute;left:-10000px;top:0}.skip:focus{left:10px;z-index:10;background:#12283a;padding:12px;color:#fff}
+.top{max-width:1600px;margin:0 auto;padding:24px clamp(18px,4vw,52px);display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid #2e3949}
+.brand{font-weight:740;letter-spacing:-.03em}.mark{display:inline-grid;place-items:center;border:1px solid #58b5bf;color:#8de8e3;border-radius:8px;width:34px;height:34px;margin-right:8px}.mark span{color:#7ef3c7}.slash{color:#788a9c;margin:0 8px}.posture{border:1px solid #896a40;background:#2c241b;color:#ffd9a0;padding:6px 11px;border-radius:22px;font-size:.7rem;letter-spacing:.07em;font-weight:750}
+.shell{max-width:1600px;padding:24px clamp(18px,4vw,52px) 70px;margin:auto}
+.hero{padding:52px 0 34px;max-width:1050px}.eyebrow{font-size:.73rem;color:#72bfc7;letter-spacing:.2em;font-weight:750}.hero h1{font-size:clamp(2.5rem,5vw,5rem);line-height:1.12;letter-spacing:-.062em;margin:18px 0 20px;font-weight:740}.hero h1 em{color:#91dfd7;font-style:normal}.lead{color:#b9c5d4;font-size:1.1rem;max-width:790px}.lead strong{color:#ecf1f7}
+.panel{border:1px solid #304054;border-radius:16px;background:#141d2a;box-shadow:0 12px 32px #05090f30}.load{display:grid;grid-template-columns:1fr minmax(310px,.78fr);gap:30px;padding:28px}
+h2{font-size:1.35rem;letter-spacing:-.035em;line-height:1.35;margin:0 0 11px}p{margin:0 0 12px;color:#b8c6d6}.load label{display:block;font-size:.88rem;font-weight:720;margin-bottom:8px}.load-actions{background:#111824;border-radius:12px;padding:18px}
+input[type=file],input[type=search],select{width:100%;color:#f6f9fc;background:#0d1522;border:1px solid #415269;border-radius:9px;padding:11px;min-width:0}
+input[type=file]::file-selector-button{border:1px solid #83bcc1;color:#d7f5f5;background:#263b48;padding:8px;border-radius:7px;margin-right:9px;cursor:pointer}
+.buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}button.primary,button.secondary{border:1px solid #547787;padding:11px 16px;border-radius:9px;font-weight:700}button.primary{background:#82dbcf;color:#10232a;border-color:#82dbcf}button.primary:hover{background:#a9f6e8}button.secondary{background:#213343;color:#e4f0f5}button.secondary:hover{background:#2a4356}button:disabled{opacity:.5;cursor:default}
+#message{margin:18px 0;color:#9edcd6;background:#12282d;padding:13px 16px;border:1px solid #355b60;border-radius:10px}#message[data-error=true]{color:#ffd7c3;background:#332521;border-color:#775244}
+.note{border-left:3px solid #60b8c5;background:#121f2a;margin:22px 0 38px;padding:22px;border-radius:0 12px 12px 0}.note h2{margin-bottom:8px}.note p:last-child{margin:0}
+.workspace-heading{display:flex;justify-content:space-between;align-items:start;gap:18px;margin:44px 0 18px}.workspace-heading .buttons{margin:0}.workspace-heading p{margin-bottom:0}
+.filterbar{display:grid;grid-template-columns:minmax(200px,2fr) 1fr 1.3fr;align-items:end;gap:14px;padding:20px}.filterbar label{display:grid;gap:6px;color:#c4d6df;font-size:.8rem;font-weight:650}.hint{grid-column:1/-1;font-size:.82rem;margin:0}
+.summary{color:#d8e3e8;font-size:.9rem;margin:20px 0 12px}.grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(270px,.9fr);gap:18px;align-items:start}
+.matrix-pane{overflow:hidden}.table-scroll{overflow:auto;max-height:650px}table{width:100%;border-collapse:separate;border-spacing:0;font-size:.88rem;min-width:640px}th,td{padding:13px 11px;vertical-align:middle;text-align:left;border-bottom:1px solid #2d3c4c}th{position:sticky;top:0;z-index:1;background:#263746;color:#ebf7f9;font-size:.79rem;white-space:nowrap}td:first-child{min-width:180px;max-width:290px;overflow-wrap:anywhere}td small{display:block;color:#a7bccb;margin-top:3px}td button{width:100%;min-width:90px;text-align:center;border:1px solid #405769;background:#1c3440;padding:8px 6px;border-radius:7px;color:#c4f3ec;font-size:.83rem;font-weight:670}td button:hover{background:#244656}td button.empty-cell{background:transparent;border:1px dashed #485362;color:#a9b2c0;font-weight:450}td button.critical,td button.high{border-color:#a47070;color:#ffd3cc}td button.medium{border-color:#b4a56d;color:#f4dfb2}
+.legend{padding:14px 18px;font-size:.82rem;margin:0;color:#b0c0cb}.details{padding:22px;max-height:750px;overflow:auto}.details h3{font-size:1.1rem;margin:0 0 10px}.details article{background:#0e1721;border:1px solid #2a3b4a;border-radius:10px;padding:14px;margin:12px 0;overflow-wrap:anywhere}.details article strong{color:#a0e8e2}.details article p{font-size:.88rem;margin:9px 0}.details details{border-top:1px solid #2e3949;padding-top:9px}.details summary{cursor:pointer;color:#c6d7df}.details details p{white-space:pre-wrap}
+.hold{padding:20px 24px;margin-top:32px;border-color:#746047;background:#241f1c}.hold strong{letter-spacing:.09em;color:#f7d2a8}.hold p{color:#d9c7b5;margin:8px 0 0}
+footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:1600px;margin:auto;color:#91a8ba;font-size:.8rem}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}.details{max-height:unset}.load{grid-template-columns:1fr}.filterbar{grid-template-columns:1fr 1fr}.filterbar label:first-child{grid-column:1/-1}}
+@media(max-width:620px){.top{align-items:flex-start;flex-direction:column}.hero{padding-top:32px}.workspace-heading{flex-direction:column}.filterbar{grid-template-columns:1fr}.filterbar label:first-child{grid-column:auto}.load{padding:18px}.hero h1{font-size:2.3rem}}
+@media(print){body{background:white;color:black}.top,.load,.filterbar,.buttons,#details,.hold,.note,footer{display:none!important}.shell{padding:0}.panel{border:1px solid #aaa;box-shadow:none}th,td{background:white;color:black!important;border-bottom:1px solid #aaa}.matrix-pane{overflow:visible}.table-scroll{overflow:visible;max-height:none}.hero{display:none}td button{color:black!important;background:white!important}}
+
+.attention{padding:22px;margin-bottom:18px;border-color:#406b68;background:linear-gradient(110deg,#112b2e,#172332)}
+.attention h3{font-size:1.15rem;margin:0 0 6px;color:#b2e9e3}.attention p{font-size:.87rem;max-width:900px}
+.attention-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;padding:0;list-style:none}
+.attention-list li{border:1px solid #345257;padding:12px;border-radius:10px;background:#102227;min-width:0;overflow-wrap:anywhere}
+.attention-link{background:none;border:0;padding:0;text-align:left;font-size:.85rem;font-weight:730;color:#a7e8e0;text-decoration:underline;text-underline-offset:3px}
+.attention-link:hover{color:#e0fff9}.attention-list small{display:block;margin-top:7px;color:#b7cbd2;line-height:1.5}
+@media(print){.attention{display:none!important}}
+
+.source-metrics{margin-bottom:18px;padding:20px 22px;border-color:#3e5266}
+.source-metrics h3{font-size:1.08rem;color:#d3eaf3;margin:0 0 5px}
+.source-metrics p{font-size:.86rem}
+.metrics-scroll{overflow-x:auto}
+.source-metrics table{min-width:630px;width:100%}
+.source-metrics th{background:#1c3040}.source-metrics td{padding:9px 11px}
+.source-metrics td:first-child{min-width:280px;color:#c7d7e2}
+.source-metrics .metric-alert{font-weight:780;color:#ffe0ac;background:#443328}
+@media(print){.source-metrics{display:none!important}}
+
+/* Private HUMAN follow-up workroom — source labels are kept on this local page only. */
+.human-panel{padding:23px;margin-bottom:21px;border-color:#4b6a68;background:linear-gradient(155deg,#142c31,#131d2a 48%)}
+.human-intro{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(230px,.9fr);gap:24px;align-items:start}
+.human-intro h3{font-size:1.6rem;letter-spacing:-.045em;color:#d1f4ef;margin:10px 0}
+.human-intro p{font-size:.92rem}.human-intro #humanSummary{background:#0c1c25;border:1px solid #36555a;border-radius:12px;padding:16px;color:#bfece9}
+#humanSummary strong{display:block;margin-bottom:9px}#humanSummary p{font-size:.81rem;margin:5px 0}
+.human-tools{display:flex;flex-wrap:wrap;gap:14px;margin:18px 0}
+.human-tools label{flex:1 1 220px;font-size:.85rem;font-weight:670;color:#d2e4ed}
+.human-tools input,.human-tools select{display:block;margin-top:6px}
+.human-table-scroll{max-height:620px;border:1px solid #2d4651;border-radius:11px}
+#humanTable{min-width:820px}#humanTable td{font-size:.84rem}
+#humanTable td:first-child{max-width:280px;overflow-wrap:anywhere}
+#humanTable select{padding:8px 5px;min-width:130px;border-radius:7px;font-size:.82rem}
+#humanTable td:nth-child(4) select{min-width:210px}
+#humanTable button{width:auto;min-width:120px;padding:8px;font-size:.79rem}
+.human-paging{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:8px 0;color:#b2d7d5;font-size:.84rem}
+.human-paging .buttons{margin:0}
+.human-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.8fr);gap:24px;border-top:1px solid #365158;padding-top:20px;margin-top:10px}
+.human-actions strong{color:#d7efec}.human-actions p{font-size:.85rem;margin:9px 0 16px}
+.human-actions label{display:block;font-weight:700;font-size:.83rem}
+.human-actions label input{margin-top:7px}
+.human-actions .buttons{align-content:start;align-items:start}
+@media(max-width:850px){.human-intro,.human-actions{grid-template-columns:1fr}}
+@media(max-width:540px){.human-panel{padding:15px}.human-paging{align-items:flex-start;flex-direction:column}}
+@media print{.human-panel{display:none!important}}
+
+.human-bulk{background:#0f222c;border:1px solid #3a6065;padding:16px;border-radius:11px;margin:18px 0 14px}
+.human-bulk h4{font-size:.99rem;color:#d3efeb;letter-spacing:-.01em;margin:0 0 12px}
+.bulk-fields{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:12px;align-items:end}
+.bulk-fields label{display:grid;gap:6px;font-size:.79rem;font-weight:670;color:#ccdee5}
+.bulk-fields select{font-size:.84rem;padding:10px 7px}
+.bulk-fields .buttons{grid-column:1/-1;margin:0}
+.human-bulk .hint{margin:10px 0 0}
+@media(max-width:900px){.bulk-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.bulk-fields{grid-template-columns:1fr}}
+
+.matrix-paging{padding:10px 15px;border-top:1px solid #2d3c4c;background:#162330}
+.matrix-paging span{font-weight:650;color:#c3dfe3}
+.matrix-paging .buttons button{padding:8px 12px;font-size:.81rem}
+
+/* Source-byte-bound HUMAN-only two-snapshot comparison workroom. */
+.human-history{padding:25px;margin-bottom:24px;border-color:#52677c;background:linear-gradient(152deg,#15293a,#111d2c 70%)}
+.human-history h3{font-size:1.45rem;letter-spacing:-.04em;margin:8px 0 9px;color:#d9f1ff}
+.human-history>p{font-size:.91rem;max-width:1040px}
+.human-history-load{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end;margin:20px 0}
+.human-history-load label{font-size:.82rem;font-weight:750;color:#e2edf4}
+.human-history-load input{display:block;margin-top:8px}
+.human-history-load .buttons{grid-column:1/-1;align-items:center;margin:0}
+.human-history .history-summary{background:#0b202c;border:1px solid #446375;border-radius:11px;padding:16px;margin-bottom:18px}
+.history-summary strong{display:block;font-size:1.02rem;color:#b5e6f4}
+.history-summary p{margin:5px 0;font-size:.84rem}
+.history-scroll{max-height:620px;border:1px solid #34485e;border-radius:9px}
+#historyTable{min-width:980px}
+#historyTable td{font-size:.84rem;white-space:pre-line;overflow-wrap:anywhere}
+#historyTable td:first-child{max-width:280px}
+#historyTable td:nth-child(3),#historyTable td:nth-child(4){min-width:160px}
+.history-actions{border-top:1px solid #40546a;padding-top:20px;margin-top:13px;display:grid;grid-template-columns:1.2fr 1fr;gap:22px}
+.history-actions strong{color:#d7f5f6}.history-actions p{font-size:.86rem;margin-top:8px}
+.history-actions .buttons{margin:0;align-content:start}
+.human-history>.hint{margin:19px 0 0}
+@media(max-width:920px){.history-actions{grid-template-columns:1fr}}
+@media(max-width:640px){.human-history{padding:16px}.human-history-load{grid-template-columns:1fr}.human-history h3{font-size:1.25rem}}
+@media print{.human-history{display:none!important}}
+
+#historyTable td:last-child label{display:block;margin-top:9px;color:#f2d3b0;font-weight:650}
+#historyTable td:last-child select{display:block;width:100%;min-width:190px;max-width:310px;margin-top:5px;border-color:#8b6e45;background:#2d241f;color:#fff2dc;font-size:.8rem}
+#historyTable td:last-child label+label{border-top:1px solid #74533a;padding-top:9px}
+
+/* Full original-source + HUMAN workroom transfer remains wholly offline and opt-in. */
+.vault-panel{margin:23px 0;padding:25px;border-color:#496c75;background:linear-gradient(145deg,#13262c,#151c30)}
+.vault-panel h2{font-size:1.55rem;color:#d3fff4;letter-spacing:-.03em;margin:8px 0}
+.vault-panel>div:first-child>p{max-width:920px;font-size:.92rem}
+.vault-work{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:19px 0}
+.vault-card{background:#0d1d28;border:1px solid #3b5763;padding:19px;border-radius:12px}
+.vault-card h3{color:#e7f5f9;font-size:1.06rem;margin:0 0 14px}
+.vault-card label{display:grid;gap:6px;color:#c6e1e7;font-size:.85rem;font-weight:700;margin:12px 0}
+.vault-card input{max-width:100%;overflow:hidden}
+.vault-card>button{width:100%;margin:5px 0 12px}
+.vault-card .hint{font-size:.8rem;line-height:1.5}
+.vault-panel>.hint{font-size:.84rem;color:#d0bfb3;margin-bottom:0}
+@media(max-width:770px){.vault-work{grid-template-columns:1fr}.vault-panel{padding:16px}}
+@media print{.vault-panel{display:none!important}}
+</style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to workspace</a>
+  <header class="top">
+    <div class="brand"><span class="mark">L<span>●</span></span> LightUp <span class="slash">/</span> Lab declarations</div>
+    <span class="posture">INCUBATE · HUMAN ONLY · DRAFT/HOLD</span>
+  </header>
+  <main id="main" class="shell">
+    <section class="hero">
+      <span class="eyebrow">OFFLINE REVIEW WORKSPACE / 01</span>
+      <h1>See what your lab results <em>declare.</em><br>Never mistake absence for safety.</h1>
+      <p class="lead">Compare the literal capability/check labels in <strong>2–8 previously produced PRIVATE isolated-lab result files</strong>. Rows are source declarations, not vulnerability verification or evidence of coverage. Nothing is assessed, contacted, dispatched or authorized here.</p>
+    </section>
+    <section class="load panel" aria-labelledby="load-title">
+      <div>
+        <h2 id="load-title">Choose existing PRIVATE original result files</h2>
+        <p>All files must declare the <strong>same exact scenario and endpoint set</strong>, with distinct original run IDs. You decide their display order; it is <em>not verified chronology</em>. Whole-batch structural admission; no partial import, storage, tracker or network.</p>
+      </div>
+      <div class="load-actions">
+        <label for="files">Local original .json files · 2–8 · ≤8 MiB each</label>
+        <input id="files" type="file" accept=".json,application/json" multiple aria-describedby="privacy">
+        <div class="buttons">
+          <button class="primary" id="load" type="button">Open PRIVATE batch</button>
+          <button class="secondary" id="forget" type="button">Forget local data</button>
+        </div>
+      </div>
+    </section>
+    <section class="panel vault-panel" aria-labelledby="vault-title">
+      <div>
+        <span class="eyebrow">LOCAL ENCRYPTED ORIGINALS + HUMAN CONTINUITY</span>
+        <h2 id="vault-title">Keep the whole offline workroom together.</h2>
+        <p>Unlike the HUMAN-only plan, a <strong>complete PRIVATE encrypted workspace includes your original lab report bytes</strong> (which may contain sensitive targets and evidence) and the exact associated HUMAN planning choices. Nothing is sent to any server. Encryption is local AES-256-GCM with a fresh salt and nonce; no account or recovery service exists.</p>
+        <p id="vaultAvailable" class="hint" aria-live="polite">Only admitted originals can be included in a complete encrypted workroom.</p>
+      </div>
+      <div class="vault-work">
+        <div class="vault-card">
+          <h3>Encrypt current originals + HUMAN decisions</h3>
+          <label for="vaultSavePass">PRIVATE passphrase (12–256 characters)
+            <input id="vaultSavePass" type="password" autocomplete="new-password" placeholder="Never sent or stored">
+          </label>
+          <button id="vaultSave" type="button" class="primary" disabled>Download complete ENCRYPTED workroom</button>
+          <p class="hint">Export accepts a total of at most 24 MiB original source bytes. Use the normal separate-source workflow for larger collections. Only someone who can unlock the file can read its PRIVATE original contents.</p>
+        </div>
+        <div class="vault-card">
+          <h3>Open complete PRIVATE encrypted workroom</h3>
+          <label for="vaultFile">Choose encrypted workspace file
+            <input id="vaultFile" type="file" accept=".json,application/json">
+          </label>
+          <label for="vaultOpenPass">PRIVATE decryption passphrase
+            <input id="vaultOpenPass" type="password" autocomplete="off" placeholder="Local passphrase">
+          </label>
+          <button id="vaultOpen" type="button" class="secondary" disabled>Open complete ENCRYPTED workroom</button>
+          <p class="hint">All ORIGINAL lab files and source-bound HUMAN decisions are admitted before replacing any in-memory work. A wrong password, edited source or inconsistent plan keeps the current workroom unchanged.</p>
+        </div>
+      </div>
+      <p class="hint"><strong>IMPORTANT:</strong> Encryption protects local file confidentiality, not source authenticity, reviewer identity, consent, true vulnerability status, action-time authorization or completed remediation. There has been no independent cryptographic audit; secure your device, passphrase and downloaded file.</p>
+    </section>
+    <p id="message" role="status" aria-live="polite" data-error="false">Nothing loaded. This app has no network calls or scan operations.</p>
+    <aside id="intro" class="note" aria-label="Privacy and interpretation" >
+      <h2>Important boundaries</h2>
+      <p>PRIVATE source fields may contain customer names, target addresses, sensitive findings and evidence. Only open files on a trusted offline device. No identity, grant, consent or original source authenticity is established by this tool.</p>
+      <p id="privacy"><strong>An empty cell means not declared under the selected filter.</strong> It never means scanned, safe, fixed, remediated, covered or approved. This is not a ground-truth or release report.</p>
+    </aside>
+    <section id="workspace" hidden aria-label="PRIVATE declared check workspace">
+      <div class="workspace-heading">
+        <div>
+          <span class="eyebrow">PRIVATE / SOURCE-DECLARED MATRIX</span>
+          <h2 id="sourceCount">0 original PRIVATE files</h2>
+          <p id="sourceSummary"></p>
+        </div>
+        <div class="buttons">
+          <button id="exportJSON" class="secondary" type="button">Export counts JSON</button>
+          <button id="exportCSV" class="secondary" type="button">Export counts CSV</button>
+        </div>
+      </div>
+      <section id="sourceMetrics" class="panel source-metrics" aria-label="Source-reported adverse metrics">
+        <h3>Unverified source metric declarations</h3><p>No metric is an independent lab or safety observation.</p>
+      </section>
+      <section id="endpointCounts" class="panel source-metrics" aria-label="Original source-declared endpoint distribution">
+        <h3>Endpoint appearance distribution</h3>
+        <p>Only unverified literal source reports, never assessment coverage or verified findings.</p>
+      </section>
+      <section id="attention" class="panel attention" aria-label="Human attention suggestions">
+        <h3>HUMAN attention</h3><p>Loading local literal source differences…</p>
+      </section>
+      <section id="humanPanel" class="panel human-panel" aria-label="HUMAN-only follow-up routing board">
+        <div class="human-intro">
+          <div>
+            <span class="eyebrow">PRIVATE / HUMAN FOLLOW-UP</span>
+            <h3>Decide what to discuss next.</h3>
+            <p>Review literal source-declaration groups with predefined HUMAN stage, reviewing group and next question. The local choices cannot change original evidence, authorize scanning, approve a finding or certify remediation. No person names, arbitrary case IDs or external channels are used.</p>
+          </div>
+          <div id="humanSummary" role="status" aria-live="polite">No HUMAN work loaded.</div>
+        </div>
+        <div class="human-tools">
+          <label for="humanSearch">Local source label search <input id="humanSearch" type="search" autocomplete="off" placeholder="Private capability / check"></label>
+          <label for="humanStage">HUMAN stage <select id="humanStage"><option value="all">All HUMAN stages</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option></select></label>
+        </div>
+        <section class="human-bulk" aria-label="Bulk HUMAN planning for current local filter">
+          <h4>Bulk HUMAN routing · current local search / stage selection</h4>
+          <div class="bulk-fields">
+            <label for="humanBulkStage">Stage <select id="humanBulkStage">
+              <option value="keep">Keep unchanged</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option>
+            </select></label>
+            <label for="humanBulkRoute">Review group <select id="humanBulkRoute">
+              <option value="keep">Keep unchanged</option><option value="unassigned">Unassigned</option><option value="scope">Scope</option><option value="findings">Findings</option><option value="evidence">Evidence</option><option value="remediation">Remediation</option><option value="privacy">Privacy</option>
+            </select></label>
+            <label for="humanBulkAction">Next HUMAN question <select id="humanBulkAction">
+              <option value="keep">Keep unchanged</option><option value="none">None</option><option value="clarify_source">Clarify source</option><option value="review_scope_policy">Review scope/policy</option><option value="request_evidence_review">Ask HUMAN evidence review</option><option value="discuss_declared_difference">Discuss source difference</option><option value="prepare_private_human_brief">Prepare private brief</option><option value="request_independent_human_review">Ask independent human review</option>
+            </select></label>
+            <div class="buttons"><button id="humanBulk" class="primary" type="button">Apply to matching HUMAN rows</button><button id="humanUndo" class="secondary" type="button" disabled>Undo last bulk edit</button></div>
+          </div>
+          <p class="hint">At most 512 matching rows per confirmed edit. No original source data or verified finding status is ever edited.</p>
+        </section>
+        <div class="table-scroll human-table-scroll"><table id="humanTable"></table></div>
+        <div class="human-paging">
+          <span id="humanPages">No HUMAN work loaded.</span>
+          <div class="buttons"><button id="humanPrev" class="secondary" type="button" disabled>Previous</button><button id="humanNext" class="secondary" type="button" disabled>Next</button></div>
+        </div>
+        <div class="human-actions">
+          <div>
+            <strong>PRIVATE save / exact original bytes required to resume</strong>
+            <p>The downloaded PRIVATE JSON has original SHA-256 digests and anonymous original row ordinals, but never original result bytes or customer names. An unsigned digest is only a byte match, not proof of trusted sources, reviewer identity or consent. Without local WebCrypto you can still plan, but not save or resume this bound plan.</p>
+            <label for="humanResume">Open saved PRIVATE HUMAN plan <input id="humanResume" type="file" accept=".json,application/json"></label>
+            <label for="humanResumePass">Resume passphrase (only if encrypted)
+              <input id="humanResumePass" type="password" autocomplete="off" placeholder="Private local passphrase">
+            </label>
+            <label for="humanEncryptPass">New encrypted plan passphrase (at least 12 characters)
+              <input id="humanEncryptPass" type="password" autocomplete="new-password" placeholder="Not stored, not sent, required for encrypted export">
+            </label>
+            <p class="hint">AES-256-GCM + PBKDF2-SHA256 with fresh random salt/IV. Optional encrypted exports protect at-rest confidentiality only to the extent your passphrase and device are secure; no independent crypto/security audit is implied. Wrong/lost passphrases cannot be recovered.</p>
+          </div>
+          <div class="buttons">
+            <button id="humanSave" class="secondary" type="button" disabled>Save UNENCRYPTED PRIVATE plan</button>
+            <button id="humanSaveEncrypted" class="primary" type="button" disabled>Save ENCRYPTED PRIVATE plan</button>
+            <button id="humanResumeButton" class="secondary" type="button" disabled>Resume against same source bytes</button>
+            <button id="humanBrief" class="secondary" type="button" disabled>Export counts-only HUMAN brief</button>
+            <button id="humanHandoff" class="secondary" type="button" disabled>Download PRIVATE read-only HUMAN handoff</button>
+            <button id="humanReset" class="secondary" type="button">Reset HUMAN choices</button>
+          </div>
+        </div>
+      </section>
+      <section id="historyPanel" class="panel human-history" aria-label="PRIVATE HUMAN saved-plan comparison and conflict-safe rebase">
+        <span class="eyebrow">PRIVATE / HUMAN CHANGE CONTINUITY</span>
+        <h3>Review two saved HUMAN plans. Carry forward only compatible choices.</h3>
+        <p>Select an earlier and a later PRIVATE plan <strong>in the order you choose</strong>. Their filenames, order and downloaded content do not prove dates, client identity, authority or genuine team agreement. Both must match the original source files already opened in this app, byte-for-byte. Nothing scans, reaches the network or rewrites the originals.</p>
+        <div class="human-history-load">
+          <label for="historyEarlier">Earlier manually selected PRIVATE plan
+            <input id="historyEarlier" type="file" accept=".json,application/json" autocomplete="off">
+          </label>
+          <label for="historyPassEarlier">Earlier plan passphrase (only if encrypted)
+            <input id="historyPassEarlier" type="password" autocomplete="off" placeholder="Private local passphrase">
+          </label>
+          <label for="historyLater">Later manually selected PRIVATE plan
+            <input id="historyLater" type="file" accept=".json,application/json" autocomplete="off">
+          </label>
+          <label for="historyPassLater">Later plan passphrase (only if encrypted)
+            <input id="historyPassLater" type="password" autocomplete="off" placeholder="Private local passphrase">
+          </label>
+          <div class="buttons">
+            <button type="button" class="primary" id="historyOpen">Compare PRIVATE HUMAN plans</button>
+            <button type="button" class="secondary" id="historyForget">Forget comparison</button>
+          </div>
+        </div>
+        <div id="historySummary" class="history-summary" role="status" aria-live="polite">
+          No PRIVATE source-bound snapshots loaded.
+        </div>
+        <div class="human-tools">
+          <label for="historySearch">Find original private source labels
+            <input id="historySearch" type="search" autocomplete="off" placeholder="Source capability or check ID">
+          </label>
+          <label for="historyState">Local proposal reconciliation
+            <select id="historyState">
+              <option value="all">All changed HUMAN rows</option>
+              <option value="pending">Applicable to current HUMAN plan</option>
+              <option value="conflict">Conflicts — hold</option>
+              <option value="matched">Already matches later HUMAN choices</option>
+            </select>
+          </label>
+        </div>
+        <div class="table-scroll history-scroll"><table id="historyTable" aria-label="Private earlier and later HUMAN fields, original local labels and conflict disposition"></table></div>
+        <div class="human-paging">
+          <span id="historyPagination">No snapshots loaded.</span>
+          <div class="buttons">
+            <button type="button" class="secondary" id="historyPrev" disabled>Previous 60</button>
+            <button type="button" class="secondary" id="historyNext" disabled>Next 60</button>
+          </div>
+        </div>
+        <div class="history-actions">
+          <div>
+            <strong>Conflict-safe HUMAN-only merge</strong>
+            <p>Each proposed field from the later file is applied only when the CURRENT HUMAN field still equals the EARLIER plan. Fields already matching later are left alone. Any third value causes an <strong>all-or-nothing HOLD</strong>; there is no silent conflict override. The source records, evidence, targets, grants and actual security statuses never change. A valid HUMAN proposal is never authorization.</p>
+          </div>
+          <div class="buttons">
+            <button type="button" class="primary" id="historyApply" disabled>Apply nonconflicting HUMAN choices</button>
+            <button type="button" class="secondary" id="historyCounts" disabled>Download anonymous changes CSV + JSON</button>
+            <button type="button" class="secondary" id="historyPrivate" disabled>Download PRIVATE read-only change brief</button>
+          </div>
+        </div>
+        <p class="hint">PRIVATE original capability/check labels in the HTML handoff require a separately approved protected channel. Anonymous numeric outputs may still be sensitive. Snapshots never enter persistent browser storage. No true clock chronology is inferred.</p>
+      </section>
+      <div class="panel filterbar">
+        <label for="query">Filter literal capability / check <input id="query" type="search" autocomplete="off" placeholder="Local check or capability label"></label>
+        <label for="severity">Source severity <select id="severity"><option value="all">All declared severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+        <label for="endpoint">Declared endpoint ordinal <select id="endpoint"><option value="0">All declared endpoints</option></select></label>
+        <p class="hint">Endpoint ordinals come from the first locally opened source; exact target literals stay private in memory.</p>
+      </div>
+      <p id="visible" class="summary"></p>
+      <div class="grid">
+        <section class="panel matrix-pane" aria-label="Check declarations by local file">
+          <div class="table-scroll"><table id="matrix"></table></div>
+          <div class="human-paging matrix-paging">
+            <span id="matrixPages">No matrix loaded.</span>
+            <div class="buttons">
+              <button id="matrixPrev" class="secondary" type="button" disabled>Previous 100</button>
+              <button id="matrixNext" class="secondary" type="button" disabled>Next 100</button>
+            </div>
+          </div>
+          <p class="legend"><strong>— not declared</strong> is never a verified PASS, valid negative observation, scan coverage, fix or closure. Cell counts are source-reported finding appearances.</p>
+        </section>
+        <section id="details" class="panel details" tabindex="-1" aria-label="Original PRIVATE source detail">
+          <h3>Inspect a declared cell</h3>
+          <p>Click a cell to see the source’s unverified human-readable statement and proposed mitigation without changing the source file.</p>
+        </section>
+      </div>
+    </section>
+    <section class="hold panel">
+      <strong>REVIEW_ONLY · NOT AUTHORIZED</strong>
+      <p>No live targets, DNS, requests, grant issuance, scanning, consent claim, retesting, remediation verification or publication to main. The original hosted and permanent named VPS CI, owner/security/privacy reviews, #177/#182/#829, genuinely separate current client/operator consent including action-time revocation and explicit HUMAN GO remain required for any release.</p>
+    </section>
+  </main>
+  <footer>LightUp · PRIVATE untrusted original lab declarations · Source-only local HUMAN planning · No persistence</footer>
+  <script>"use strict";
+/* Optional PRIVATE browser-only AES-GCM encrypted HUMAN planning envelopes.
+   No network, no password persistence, no authentication, no scan authority. */
+function createPrivatePlanCrypto() {
+  const MAGIC="lightup.private_human_matrix_aesgcm";
+  const MAX_TEXT=3*1024*1024;
+  const WORKSPACE_MAGIC="lightup.private_lab_complete_workspace_aesgcm";
+  const MAX_WORKSPACE_TEXT=48*1024*1024;
+  const ITERATIONS=310000;
+  const FIELDS=["kind","version","kdf","iterations","cipher",
+    "salt_b64","iv_b64","payload_b64"];
+  function assert(ok) {if(!ok)throw Error("Incompatible PRIVATE encrypted plan envelope");}
+  function supported() {
+    return !!(globalThis.crypto&&crypto.subtle&&crypto.getRandomValues&&
+      globalThis.TextEncoder&&globalThis.TextDecoder);
+  }
+  function passphrase(value) {
+    if(typeof value!=="string"||value.length<12||value.length>256||
+      /[\u0000-\u001f\u007f]/.test(value))throw Error("Choose a PRIVATE passphrase of 12–256 characters without control characters");
+    return value;
+  }
+  function toBase64(bytes) {
+    let encoded="";
+    for(let i=0;i<bytes.length;i+=16384) {
+      encoded+=String.fromCharCode(...bytes.subarray(i,i+16384));
+    }
+    return btoa(encoded);
+  }
+  function fromBase64(value,maxBytes) {
+    assert(typeof value==="string"&&value.length>=4&&value.length<=Math.ceil(maxBytes/3)*4+4&&
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value));
+    const raw=atob(value);assert(raw.length<=maxBytes);
+    const bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    assert(toBase64(bytes)===value); // reject noncanonical base64 aliases
+    return bytes;
+  }
+  async function key(password,salt) {
+    const enc=new TextEncoder();
+    const material=await crypto.subtle.importKey("raw",enc.encode(passphrase(password)),
+      "PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ITERATIONS,hash:"SHA-256"},
+      material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+  async function encryptBounded(plaintext,password,kind,maxBytes) {
+    if(!supported())throw Error("Browser WebCrypto is unavailable for PRIVATE encryption");
+    if(typeof plaintext!=="string")throw Error("Only local HUMAN JSON text may be encrypted");
+    const bytes=new TextEncoder().encode(plaintext);
+    if(bytes.length===0||bytes.length>maxBytes)throw Error("PRIVATE content exceeds encryption size bound");
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const derived=await key(password,salt);
+    const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+      derived,bytes));
+    return {kind,version:1,kdf:"PBKDF2-SHA256",iterations:ITERATIONS,
+      cipher:"AES-256-GCM",salt_b64:toBase64(salt),
+      iv_b64:toBase64(iv),payload_b64:toBase64(ciphertext)};
+  }
+  function isEncrypted(source) {
+    return source!==null&&typeof source==="object"&&!Array.isArray(source)&&
+      source.kind===MAGIC;
+  }
+  async function decryptBounded(envelope,password,kind,maxBytes) {
+    if(!supported())throw Error("Browser WebCrypto unavailable for PRIVATE decryption");
+    assert(envelope!==null&&typeof envelope==="object"&&!Array.isArray(envelope)&&
+      Object.keys(envelope).length===FIELDS.length&&FIELDS.every(k=>Object.hasOwn(envelope,k)));
+    assert(envelope.kind===kind&&envelope.version===1&&
+      envelope.kdf==="PBKDF2-SHA256"&&envelope.cipher==="AES-256-GCM"&&
+      envelope.iterations===ITERATIONS);
+    const salt=fromBase64(envelope.salt_b64,16),iv=fromBase64(envelope.iv_b64,12);
+    assert(salt.length===16&&iv.length===12);
+    const cipher=fromBase64(envelope.payload_b64,maxBytes+16);
+    assert(cipher.length>=17);
+    try {
+      const derived=await key(password,salt);
+      const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv},derived,cipher);
+      assert(plain.byteLength>0&&plain.byteLength<=maxBytes);
+      return new TextDecoder("utf-8",{fatal:true}).decode(plain);
+    } catch {
+      throw Error("Cannot open PRIVATE encrypted plan: wrong passphrase, changed bytes or incompatible envelope");
+    }
+  }
+  const encrypt=(plain,password)=>encryptBounded(plain,password,MAGIC,MAX_TEXT);
+  const decrypt=(envelope,password)=>decryptBounded(envelope,password,MAGIC,MAX_TEXT);
+  const encryptWorkspace=(plain,password)=>
+    encryptBounded(plain,password,WORKSPACE_MAGIC,MAX_WORKSPACE_TEXT);
+  const decryptWorkspace=(envelope,password)=>
+    decryptBounded(envelope,password,WORKSPACE_MAGIC,MAX_WORKSPACE_TEXT);
+  const isWorkspace=source=>source!==null&&typeof source==="object"&&
+    !Array.isArray(source)&&source.kind===WORKSPACE_MAGIC;
+  return Object.freeze({encrypt,decrypt,isEncrypted,supported,
+    encryptWorkspace,decryptWorkspace,isWorkspace});
+}
+
+"use strict";
+/* PRIVATE local HUMAN routing, never assessment authority or remediation evidence.
+   Consumes only previously admitted original source data from the parent offline app. */
+function createHumanBoard(api) {
+  const { $, node, clear, fail, shape, obj, int, text, parseStrict,
+    download, message, onFocus, getRows, getDigests, FLAGS } = api;
+  const STAGES = ["needs_review","queued","discussing","documented","blocked"];
+  const ROUTES = ["unassigned","scope","findings","evidence","remediation","privacy"];
+  const ACTIONS = ["none","clarify_source","review_scope_policy",
+    "request_evidence_review","discuss_declared_difference",
+    "prepare_private_human_brief","request_independent_human_review"];
+  const DEFAULT = Object.freeze({stage:"needs_review",route:"unassigned",action:"none"});
+  const KINDS = ["stage","route","action"];
+  const MAX_PRIVATE_BYTES = 3 * 1024 * 1024;
+  const MAX_ENCRYPTED_BYTES = 5 * 1024 * 1024;
+  const privatePlanCrypto=createPrivatePlanCrypto();
+  const PLAN_KEYS = ["ordinal","stage","route","action"];
+  const FILE_KEYS = ["kind","version","disposition","authorized","consent_verified",
+    "dispatch_allowed","release_allowed","source_sha256","ordered_row_count",
+    "row_plans","interpretation"];
+  let plans = [], page = 0, changed = false, lastBulk = null;
+  let history = null, historyPage = 0, historyResolutions = new Map();
+  const fresh = () => ({...DEFAULT});
+  const isDefault = p => KINDS.every(k=>p[k]===DEFAULT[k]);
+  const strictDigest = s => typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);
+  const exactSet = (a,b) => a.length===b.length&&a.every((item,i)=>item===b[i]);
+  const safeDigests = () => {
+    const d=getDigests();
+    return d.length>=2&&d.length<=8&&d.every(strictDigest);
+  };
+  const counts = () => {
+    const metrics = Object.fromEntries(KINDS.map(k=>[k,Object.create(null)]));
+    for(const kind of KINDS){
+      const allowed=kind==="stage"?STAGES:kind==="route"?ROUTES:ACTIONS;
+      allowed.forEach(value=>{metrics[kind][value]=0;});
+      plans.forEach(p=>{metrics[kind][p[kind]]++;});
+    }
+    return metrics;
+  };
+  function summarize() {
+    const area=$("humanSummary");clear(area);
+    if(!plans.length){area.textContent="No source-bound HUMAN rows loaded.";return;}
+    const total=plans.filter(p=>!isDefault(p)).length;
+    area.append(node("strong",total+" of "+plans.length+" local literal check groups have human planning decisions."));
+    const c=counts();
+    area.append(node("p",STAGES.map(s=>s.replaceAll("_"," ")+": "+c.stage[s]).join(" · ")));
+    const validity=node("p",safeDigests()
+      ? "PRIVATE resume is available only against this exact original source-byte selection, including its order."
+      : "Source fingerprints are unavailable in this browser context. PRIVATE save and restore are disabled; local HUMAN planning and source-free count briefing remain available.");
+    validity.className="hint";area.append(validity);
+    $("humanSave").disabled=!safeDigests();
+    $("humanSaveEncrypted").disabled=!safeDigests()||!privatePlanCrypto.supported();
+    $("humanResumeButton").disabled=!safeDigests();
+    $("humanBrief").disabled=false;
+    $("humanHandoff").disabled=false;
+  }
+  function optionList(select,values,current){
+    for(const value of values) {
+      const option=node("option",value.replaceAll("_"," "));
+      option.value=value;option.selected=value===current;select.append(option);
+    }
+  }
+  function matching() {
+    const phrase=$("humanSearch").value.trim().toLocaleLowerCase();
+    const stage=$("humanStage").value;
+    return getRows().map((row,i)=>({row,i})).filter(({row,i})=>
+      (stage==="all"||plans[i]?.stage===stage)&&
+      (row.capability+" "+row.check).toLocaleLowerCase().includes(phrase));
+  }
+  function render() {
+    const candidates=matching();
+    const pages=Math.max(1,Math.ceil(candidates.length/64));
+    page=Math.max(0,Math.min(page,pages-1));
+    $("humanPages").textContent="Page "+(page+1)+" of "+pages+" · "+candidates.length+
+      " selected source-declared check groups";
+    $("humanPrev").disabled=page===0;
+    $("humanNext").disabled=page+1>=pages;
+    const table=$("humanTable");clear(table);
+    const header=node("tr");
+    for(const label of ["Source row","HUMAN stage","Review group","Next HUMAN question","Inspect"])header.append(node("th",label));
+    const head=node("thead");head.append(header);table.append(head);
+    const body=node("tbody");
+    candidates.slice(page*64,(page+1)*64).forEach(({row,i})=>{
+      const tr=node("tr"),identity=node("td");
+      identity.append(node("strong","#"+(i+1)+" · "+(row.capability||"(no capability)")));
+      identity.append(node("small",row.check||"(no check)"));tr.append(identity);
+      for(const [kind,choices] of [["stage",STAGES],["route",ROUTES],["action",ACTIONS]]){
+        const td=node("td"),select=node("select");
+        select.setAttribute("aria-label","Row "+(i+1)+" HUMAN "+kind);
+        optionList(select,choices,plans[i][kind]);
+        select.addEventListener("change",()=>{
+          plans[i]={...plans[i],[kind]:select.value};changed=true;lastBulk=null;historyResolutions.clear();
+          $("humanUndo").disabled=true;
+          summarize();if(history)renderHistory();
+          if($("humanStage").value!=="all")render();
+        });
+        td.append(select);tr.append(td);
+      }
+      const inspect=node("td"),button=node("button","Open source declaration","secondary");
+      button.type="button";button.addEventListener("click",()=>onFocus(row));
+      inspect.append(button);tr.append(inspect);body.append(tr);
+    });
+    table.append(body);summarize();
+  }
+  function initialize() {
+    plans=getRows().map(fresh);page=0;changed=false;lastBulk=null;
+    $("humanUndo").disabled=true;
+    clearHistory();
+    $("humanSearch").value="";$("humanStage").value="all";
+    render();
+  }
+  function clearAll() {
+    plans=[];page=0;changed=false;lastBulk=null;
+    $("humanUndo").disabled=true;
+    clearHistory();
+    clear($("humanTable"));clear($("humanSummary"));
+    $("humanPages").textContent="No HUMAN work loaded.";
+    for(const id of ["humanSave","humanSaveEncrypted","humanResumeButton","humanBrief","humanHandoff","humanPrev","humanNext"])$(id).disabled=true;
+    $("humanResume").value="";
+    $("humanEncryptPass").value="";$("humanResumePass").value="";
+  }
+  function privatePlan() {
+    fail(safeDigests(),"Browser cannot bind PRIVATE HUMAN plan to original bytes");
+    const rowPlans=plans.flatMap((value,i)=>
+      isDefault(value)?[]:[{ordinal:i+1,...value}]);
+    return {
+      kind:"lightup.private_original_lab_human_matrix_plan",
+      version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",...FLAGS,
+      source_sha256:getDigests().slice(),ordered_row_count:plans.length,
+      row_plans:rowPlans,
+      interpretation:"Source hashes bind local bytes only. Unsigned PRIVATE human plans are not authenticated client/operator identity, authorization, verified findings, or successful remediation."
+    };
+  }
+  function admitPrivatePlan(source, expectedRows=getRows(), expectedDigests=getDigests()) {
+    fail(shape(source,FILE_KEYS),"Incompatible PRIVATE HUMAN plan envelope");
+    fail(source.kind==="lightup.private_original_lab_human_matrix_plan"&&
+      source.version===1&&source.disposition==="REVIEW_ONLY_DRAFT_HOLD");
+    for(const key of Object.keys(FLAGS))fail(source[key]===false);
+    fail(Array.isArray(source.source_sha256)&&
+      source.source_sha256.length===expectedDigests.length&&
+      source.source_sha256.every(strictDigest));
+    fail(exactSet(source.source_sha256,expectedDigests),
+      "Different or reordered original source bytes; saved plan cannot be applied");
+    fail(int(source.ordered_row_count,16384)&&
+      source.ordered_row_count===expectedRows.length);
+    fail(Array.isArray(source.row_plans)&&source.row_plans.length<=source.ordered_row_count);
+    fail(text(source.interpretation,1024));
+    const next=expectedRows.map(fresh);
+    let previous=0;
+    for(const row of source.row_plans) {
+      fail(shape(row,PLAN_KEYS)&&int(row.ordinal,source.ordered_row_count)&&row.ordinal>previous);
+      fail(STAGES.includes(row.stage)&&ROUTES.includes(row.route)&&ACTIONS.includes(row.action));
+      fail(!isDefault(row),"Default entries are not valid in sparse PRIVATE plan");
+      next[row.ordinal-1]={stage:row.stage,route:row.route,action:row.action};
+      previous=row.ordinal;
+    }
+    return next;
+  }
+  function humanBrief() {
+    const c=counts();
+    const lines=[
+      "LIGHTUP · HUMAN DECLARATION DISCUSSION · COUNTS ONLY",
+      "REVIEW_ONLY / DRAFT_HOLD · unsigned offline operator selection",
+      "Source-group count: "+plans.length,
+      "HUMAN decisions recorded: "+plans.filter(p=>!isDefault(p)).length,
+      "",
+      "STAGE COUNTS"
+    ];
+    for(const name of STAGES)lines.push(name+": "+c.stage[name]);
+    lines.push("","HUMAN REVIEW GROUP COUNTS");
+    for(const name of ROUTES)lines.push(name+": "+c.route[name]);
+    lines.push("","HUMAN QUESTION COUNTS");
+    for(const name of ACTIONS)lines.push(name+": "+c.action[name]);
+    lines.push("","No original identifiers, addresses, source text, hashes, finding IDs, run IDs or consent data.",
+      "These are HUMAN planning counts, not unique incidents, risk reduction, verified fixes or authorization.",
+      "Small aggregates may be sensitive. Do not disclose without separate approval.",
+      "No original sources were modified. No scanner, grant, dispatch or live action.");
+    return lines.join("\n")+"\n";
+  }
+  // Read-only PRIVATE HTML, deliberately containing original source-declared check labels.
+  // Source bytes, targets, evidence IDs/summaries and original run/tenant IDs are NEVER embedded.
+  function escaped(value) {
+    return String(value).replace(/[&<>"']/g, ch=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[ch]));
+  }
+  function privateHumanHandoff() {
+    const selected=matching().filter(({i})=>!isDefault(plans[i]));
+    fail(selected.length>0&&selected.length<=512,
+      "Select 1–512 HUMAN-planned groups with current search/stage filter");
+    const serializedRows=selected.map(({row,i})=>{
+      const p=plans[i];
+      return "<tr><td>"+(i+1)+"</td><td>"+escaped(row.capability)+"</td><td>"+
+        escaped(row.check)+"</td><td>"+escaped(p.stage)+"</td><td>"+
+        escaped(p.route)+"</td><td>"+escaped(p.action)+"</td></tr>";
+    }).join("\n");
+    return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE HUMAN source-declaration handoff</title></head><body>
+<h1>PRIVATE HUMAN source-declaration follow-up</h1>
+<p><strong>REVIEW ONLY / DRAFT HOLD — NO SCAN, AUTHORIZATION, CLIENT CONSENT OR VERIFIED FINDINGS</strong></p>
+<p>Original-source capability/check labels below are PRIVATE unverified declarations. Do not distribute without separate HUMAN approval. Source labels may reveal confidential details. This standalone scriptless handoff has no externally loaded resources and is NOT a source-authenticated or byte-bound return. It does not include targets, original source bytes, evidence, provider data or scan credentials.</p>
+<p>Selected HUMAN routing rows: ${selected.length}. Local row ordinals refer only to the operator's current selected originals, not verified case identities.</p>
+<table border="1" cellpadding="8" cellspacing="0">
+<thead><tr><th>Local ordinal</th><th>Original capability label</th><th>Original check label</th><th>HUMAN stage</th><th>Proposed group</th><th>Next HUMAN question</th></tr></thead>
+<tbody>${serializedRows}</tbody></table>
+<p>Signed identity, authorization, consent, independent ground truth, remediation and subsequent scan results have NOT been established. Missing declarations never imply safe or fixed.</p>
+</body></html>\n`;
+  }
+
+  // The two user-selected PRIVATE snapshots are plans, NOT attested events or chronology.
+  // Strict admission always reuses the original byte-bound private-plan contract.
+  async function parsePrivateJSONFile(file,password) {
+    fail(file&&file.size>0&&file.size<=MAX_ENCRYPTED_BYTES,
+      "PRIVATE HUMAN plan exceeds its bounded import size");
+    const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+    const envelope=parseStrict(raw);
+    if(privatePlanCrypto.isEncrypted(envelope)) {
+      const plain=await privatePlanCrypto.decrypt(envelope,password);
+      return parseStrict(plain);
+    }
+    fail(file.size<=MAX_PRIVATE_BYTES,"Unencrypted PRIVATE HUMAN plan exceeds 3 MiB");
+    return envelope;
+  }
+  async function readHistoryFile(file,password) {
+    return admitPrivatePlan(await parsePrivateJSONFile(file,password));
+  }
+  function historyChanges(earlier,later) {
+    const results=[];
+    for(let i=0;i<earlier.length;i++) {
+      const fields=KINDS.filter(kind=>earlier[i][kind]!==later[i][kind]);
+      if(fields.length)results.push({ordinal:i+1,fields,before:earlier[i],after:later[i]});
+    }
+    return results;
+  }
+  function historyDisposition(change) {
+    let needs=0,already=0,conflicts=0,resolvedKeep=0,resolvedUse=0;
+    for(const kind of change.fields) {
+      const current=plans[change.ordinal-1][kind];
+      if(current===change.before[kind])needs++;
+      else if(current===change.after[kind])already++;
+      else {
+        const resolution=historyResolutions.get(change.ordinal)?.[kind];
+        if(resolution==="keep")resolvedKeep++;
+        else if(resolution==="later")resolvedUse++;
+        else conflicts++;
+      }
+    }
+    return {needs,already,conflicts,resolvedKeep,resolvedUse,
+      label:conflicts?"UNRESOLVED / HOLD":
+        needs||resolvedUse?"HUMAN APPLY PROPOSED":
+        resolvedKeep?"HUMAN CHOICE: KEEP CURRENT":"ALREADY MATCHES LATER"};
+  }
+  function historyStats() {
+    if(!history)return {changed:0,needs:0,already:0,conflicts:0,resolvedKeep:0,resolvedUse:0};
+    const stats={changed:history.changes.length,needs:0,already:0,conflicts:0,
+      resolvedKeep:0,resolvedUse:0};
+    for(const item of history.changes) {
+      const d=historyDisposition(item);
+      stats.needs+=d.needs;stats.already+=d.already;stats.conflicts+=d.conflicts;
+      stats.resolvedKeep+=d.resolvedKeep;stats.resolvedUse+=d.resolvedUse;
+    }
+    return stats;
+  }
+  function clearHistory() {
+    history=null;historyPage=0;historyResolutions.clear();
+    clear($("historyTable"));
+    $("historySummary").textContent="No PRIVATE source-bound snapshots loaded.";
+    $("historyPagination").textContent="No snapshots loaded.";
+    for(const key of ["historyPrev","historyNext","historyApply","historyCounts","historyPrivate"])
+      $(key).disabled=true;
+    $("historyEarlier").value="";$("historyLater").value="";
+    $("historyPassEarlier").value="";$("historyPassLater").value="";
+    $("historySearch").value="";$("historyState").value="all";
+  }
+  function renderHistory() {
+    if(!history){clearHistory();return;}
+    const all=history.changes;
+    const phrase=$("historySearch").value.trim().toLocaleLowerCase();
+    const status=$("historyState").value;
+    const results=all.filter(item=>{
+      const d=historyDisposition(item);
+      const row=getRows()[item.ordinal-1];
+      return (status==="all"||(status==="conflict"&&d.conflicts>0)||
+        (status==="pending"&&d.needs>0&&!d.conflicts)||
+        (status==="matched"&&!d.needs&&!d.conflicts))&&
+        (row.capability+" "+row.check).toLocaleLowerCase().includes(phrase);
+    });
+    const pages=Math.max(1,Math.ceil(results.length/60));
+    historyPage=Math.max(0,Math.min(historyPage,pages-1));
+    $("historyPagination").textContent="Page "+(historyPage+1)+" / "+pages+
+      " · "+results.length+" selected HUMAN-only changed groups";
+    $("historyPrev").disabled=historyPage===0;
+    $("historyNext").disabled=historyPage+1>=pages;
+    const table=$("historyTable");clear(table);
+    const headings=node("tr");
+    ["Original local group","Changed HUMAN fields","Earlier declared choices","Later declared choices","Current local reconciliation"].forEach(v=>headings.append(node("th",v)));
+    const head=node("thead");head.append(headings);table.append(head);
+    const body=node("tbody");
+    results.slice(historyPage*60,(historyPage+1)*60).forEach(item=>{
+      const row=getRows()[item.ordinal-1],tr=node("tr");
+      const identity=node("td");identity.append(node("strong","#"+item.ordinal+" · "+(row.capability||"(blank label)")));
+      identity.append(node("small",row.check||"(blank check)"));tr.append(identity);
+      tr.append(node("td",item.fields.join(" · ")));
+      const oldText=item.fields.map(k=>k+": "+item.before[k]).join("\n");
+      const newText=item.fields.map(k=>k+": "+item.after[k]).join("\n");
+      tr.append(node("td",oldText),node("td",newText));
+      const state=historyDisposition(item);
+      const td=node("td",state.label+(state.conflicts?" ("+state.conflicts+" unresolved field(s))":""),
+        state.conflicts?"metric-alert":"");
+      for(const kind of item.fields) {
+        const current=plans[item.ordinal-1][kind];
+        if(current===item.before[kind]||current===item.after[kind])continue;
+        const caption=node("label","Conflict in "+kind+" (current "+current+")");
+        const choice=node("select");
+        choice.setAttribute("aria-label","Original row "+item.ordinal+" HUMAN conflict "+kind);
+        for(const [value,label] of [["","Hold — choose explicitly"],
+          ["keep","Keep current HUMAN value"],["later","Use later HUMAN proposal"]]) {
+          const option=node("option",label);
+          option.value=value;option.selected=(historyResolutions.get(item.ordinal)?.[kind]||"")===value;
+          choice.append(option);
+        }
+        choice.addEventListener("change",()=>{
+          const existing=historyResolutions.get(item.ordinal)||{};
+          const updated={...existing,[kind]:choice.value};
+          historyResolutions.set(item.ordinal,updated);
+          renderHistory();
+        });
+        caption.append(choice);td.append(caption);
+      }
+      tr.append(td);body.append(tr);
+    });
+    table.append(body);
+    const stats=historyStats();
+    clear($("historySummary"));
+    $("historySummary").append(node("strong",stats.changed+
+      " changed HUMAN rows across the two manually ordered PRIVATE plans."));
+    $("historySummary").append(node("p",stats.needs+" directly compatible field proposals · "+
+      stats.already+" already matching · "+stats.conflicts+" unresolved HOLD conflicts · "+
+      stats.resolvedKeep+" explicit keep-current choices · "+
+      stats.resolvedUse+" explicit use-later choices."));
+    $("historySummary").append(node("p","Selection order is not a verified time series. A later HUMAN stage is not evidence of a resolved security finding.","hint"));
+    $("historyApply").disabled=!(stats.needs+stats.resolvedUse)||stats.conflicts>0;
+    $("historyCounts").disabled=false;
+    $("historyPrivate").disabled=results.length===0||results.length>512;
+  }
+  function historyCountRows() {
+    const stats=historyStats(),transitions=Object.create(null);
+    const dimensions=[];
+    for(const kind of KINDS) {
+      const options=kind==="stage"?STAGES:kind==="route"?ROUTES:ACTIONS;
+      for(const before of options)for(const after of options) {
+        if(before===after)continue;
+        const count=history.changes.filter(item=>
+          item.fields.includes(kind)&&item.before[kind]===before&&item.after[kind]===after).length;
+        if(count)dimensions.push({dimension:kind,earlier:before,later:after,source_declared_human_row_appearances:count});
+      }
+    }
+    return {kind:"lightup.offline_private_human_matrix_numeric_history",
+      version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",
+      ...FLAGS,original_local_row_slots:plans.length,changed_human_rows:stats.changed,
+      pending_human_field_proposals:stats.needs,already_matching_fields:stats.already,
+      unresolved_human_conflicts:stats.conflicts,explicit_keep_current:stats.resolvedKeep,
+      explicit_use_later:stats.resolvedUse,transitions:dimensions,
+      interpretation:"Unsigned unverified manual earlier/later order. HUMAN choices only: never a verified remediation, authentic date, vulnerability, client consent, permission, or scan."};
+  }
+  function historyCSV(result) {
+    const lines=[["dimension","earlier_choice","later_choice","HUMAN_row_appearances"]];
+    for(const row of result.transitions)lines.push([row.dimension,row.earlier,row.later,row.source_declared_human_row_appearances]);
+    return lines.map(row=>row.join(",")).join("\r\n")+"\r\n";
+  }
+  function historyPrivateHTML(items) {
+    fail(items.length>0&&items.length<=512,"PRIVATE handoff requires 1–512 selected HUMAN changes");
+    const rows=items.map(item=>{
+      const source=getRows()[item.ordinal-1],state=historyDisposition(item);
+      return "<tr><td>"+item.ordinal+"</td><td>"+escaped(source.capability)+"</td><td>"+
+        escaped(source.check)+"</td><td>"+escaped(item.fields.join(" / "))+"</td><td>"+
+        escaped(item.fields.map(k=>k+"="+item.before[k]).join(" / "))+"</td><td>"+
+        escaped(item.fields.map(k=>k+"="+item.after[k]).join(" / "))+"</td><td>"+
+        escaped(state.label)+"</td></tr>";
+    }).join("\n");
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+      '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; connect-src &#39;none&#39;; img-src &#39;none&#39;; object-src &#39;none&#39;; base-uri &#39;none&#39;">'+
+      '<title>LightUp PRIVATE HUMAN snapshot differences</title></head><body>'+
+      '<h1>PRIVATE HUMAN-only snapshot differences</h1>'+
+      '<p>REVIEW_ONLY / DRAFT_HOLD. Manually ordered original BYTE-bound private plans are NOT authenticated chronology. These are local HUMAN planning changes, NEVER verified vulnerabilities, fixes, risk reduction, consent, permission or source authorization. Source labels are confidential.</p>'+
+      '<table border="1" cellpadding="7"><thead><tr><th>Local row</th><th>Original capability</th><th>Original check</th><th>HUMAN fields</th><th>Earlier</th><th>Later</th><th>Current reconciliation</th></tr></thead><tbody>'+
+      rows+'</tbody></table><p>PRIVATE unverified labels may identify clients or systems. Separate protected HUMAN distribution only; original source bytes, targets, evidence, private plan source hashes and run IDs are excluded. No network, scripts or grants.</p></body></html>\n';
+  }
+  async function loadHistory() {
+    const earlier=$("historyEarlier").files[0],later=$("historyLater").files[0];
+    if(!safeDigests()||!plans.length) {
+      message("Open the original PRIVATE lab batch with WebCrypto before loading its HUMAN snapshot history.",true);return;
+    }
+    $("historyOpen").disabled=true;
+    try {
+      fail(earlier&&later,"Choose an earlier and a later PRIVATE saved plan explicitly");
+      const oldPlan=await readHistoryFile(earlier,$("historyPassEarlier").value);
+      const newPlan=await readHistoryFile(later,$("historyPassLater").value);
+      const next={earlier:oldPlan,later:newPlan,changes:historyChanges(oldPlan,newPlan)};
+      // Entire two-file source-byte admission completed BEFORE any active comparison changes.
+      history=next;historyPage=0;historyResolutions.clear();
+      $("historySearch").value="";$("historyState").value="all";
+      renderHistory();
+      message("Both PRIVATE snapshots admitted against exact current original bytes. Chronology and reviewer authenticity remain unverified.");
+    } catch(error) {
+      message("Entire PRIVATE HUMAN history HOLD: "+error.message+
+        ". Existing in-memory HUMAN plan and previous comparison remain unchanged.",true);
+    } finally {
+      $("historyOpen").disabled=false;
+      $("historyEarlier").value="";$("historyLater").value="";
+      $("historyPassEarlier").value="";$("historyPassLater").value="";
+    }
+  }
+  function applyHistory() {
+    if(!history)return;
+    const stats=historyStats();
+    if(stats.conflicts) {
+      message("HUMAN history merge HOLD: "+stats.conflicts+" field conflicts. Current plan unchanged.",true);return;
+    }
+    if(!(stats.needs+stats.resolvedUse))return;
+    if(!confirm("Apply "+(stats.needs+stats.resolvedUse)+
+      " explicitly compatible or human-chosen use-later categorical proposals; preserve "+
+      stats.resolvedKeep+" human-confirmed keep-current decisions? This is only a HUMAN plan edit, never a finding, grant, consent, authorization or scan."))return;
+    // Reassess every field and refuse all changes if any concurrent HUMAN decision conflicts.
+    if(historyStats().conflicts)return;
+    const next=plans.map(p=>({...p}));
+    for(const item of history.changes)for(const kind of item.fields) {
+      const current=next[item.ordinal-1][kind];
+      if(current===item.before[kind])next[item.ordinal-1][kind]=item.after[kind];
+      else if(current===item.after[kind])continue;
+      else if(historyResolutions.get(item.ordinal)?.[kind]==="later")
+        next[item.ordinal-1][kind]=item.after[kind];
+      else if(historyResolutions.get(item.ordinal)?.[kind]==="keep")continue;
+      else {
+        message("A HUMAN conflict changed before application; entire merge held.",true);
+        return;
+      }
+    }
+    plans=next;changed=true;lastBulk=null;historyResolutions.clear();
+    $("humanUndo").disabled=true;
+    page=0;render();renderHistory();
+    message("Applied only nonconflicting HUMAN categorical proposals. No original finding or authorization was changed.");
+  }
+
+  function wire() {
+    $("historyOpen").addEventListener("click",loadHistory);
+    $("historyApply").addEventListener("click",applyHistory);
+    $("historyForget").addEventListener("click",()=>{
+      if(history&&!confirm("Forget only the two PRIVATE HUMAN comparison snapshots? Current HUMAN plan stays as is."))return;
+      clearHistory();message("Private HUMAN comparison discarded; current local HUMAN choices retained.");
+    });
+    $("historySearch").addEventListener("input",()=>{historyPage=0;if(history)renderHistory();});
+    $("historyState").addEventListener("change",()=>{historyPage=0;if(history)renderHistory();});
+    $("historyPrev").addEventListener("click",()=>{if(history&&historyPage>0){historyPage--;renderHistory();}});
+    $("historyNext").addEventListener("click",()=>{if(history){historyPage++;renderHistory();}});
+    $("historyCounts").addEventListener("click",()=>{
+      if(!history)return;
+      if(!confirm("Download anonymous HUMAN change COUNTS only? Small numeric groups can remain sensitive."))return;
+      const report=historyCountRows();
+      download("lightup-human-change-counts.csv",historyCSV(report),"text/csv");
+      download("lightup-human-change-counts.json",JSON.stringify(report,null,2)+"\n","application/json");
+    });
+    $("historyPrivate").addEventListener("click",()=>{
+      if(!history)return;
+      try {
+        const phrase=$("historySearch").value.trim().toLocaleLowerCase();
+        const state=$("historyState").value;
+        const chosen=history.changes.filter(item=>{
+          const d=historyDisposition(item),row=getRows()[item.ordinal-1];
+          return (state==="all"||(state==="conflict"&&d.conflicts>0)||
+            (state==="pending"&&d.needs>0&&!d.conflicts)||
+            (state==="matched"&&!d.needs&&!d.conflicts))&&
+            (row.capability+" "+row.check).toLocaleLowerCase().includes(phrase);
+        });
+        const pageHTML=historyPrivateHTML(chosen);
+        fail(new Blob([pageHTML]).size<=MAX_PRIVATE_BYTES,"PRIVATE HTML comparison exceeds output limit");
+        if(!confirm("Download PRIVATE HUMAN change handoff with ORIGINAL capability/check labels? Independent protected sharing approval is required."))return;
+        download("lightup-PRIVATE-human-changes.html",pageHTML,"text/html");
+      } catch(error){message("PRIVATE HUMAN comparison HOLD: "+error.message,true);}
+    });
+    $("humanSearch").addEventListener("input",()=>{page=0;render();});
+    $("humanStage").addEventListener("change",()=>{page=0;render();});
+    $("humanPrev").addEventListener("click",()=>{if(page>0){page--;render();}});
+    $("humanNext").addEventListener("click",()=>{page++;render();});
+    $("humanBulk").addEventListener("click",()=>{
+      if(!plans.length)return;
+      const rows=matching();
+      if(!rows.length){message("No HUMAN rows match the current local search and stage filter.",true);return;}
+      if(rows.length>512){
+        message("Bulk HUMAN change HOLD: narrow the selection to at most 512 literal groups; nothing changed.",true);return;
+      }
+      const modifications={stage:$("humanBulkStage").value,
+        route:$("humanBulkRoute").value,action:$("humanBulkAction").value};
+      if(Object.values(modifications).every(v=>v==="keep")){
+        message("Choose at least one HUMAN planning field for the bulk edit.",true);return;
+      }
+      const proposal=rows.filter(({i})=>Object.entries(modifications).some(([kind,value])=>
+        value!=="keep"&&plans[i][kind]!==value));
+      if(!proposal.length){message("No matching HUMAN planning values need changing.");return;}
+      if(!confirm("Change "+proposal.length+" matching local HUMAN planning rows? This changes no original finding, scanner state, grant or remediation. You may undo this one bulk edit."))return;
+      lastBulk=proposal.map(({i})=>({i,before:{...plans[i]}}));
+      proposal.forEach(({i})=>{
+        const current={...plans[i]};
+        for(const kind of KINDS)if(modifications[kind]!=="keep")current[kind]=modifications[kind];
+        plans[i]=current;
+      });
+      changed=true;historyResolutions.clear();$("humanUndo").disabled=false;page=0;render();if(history)renderHistory();
+      message("Changed "+proposal.length+" HUMAN planning rows only; last bulk edit is undoable.");
+    });
+    $("humanUndo").addEventListener("click",()=>{
+      if(!lastBulk)return;
+      const snapshot=lastBulk;lastBulk=null;
+      snapshot.forEach(({i,before})=>{plans[i]={...before};});
+      changed=true;historyResolutions.clear();$("humanUndo").disabled=true;render();if(history)renderHistory();
+      message("Restored "+snapshot.length+" HUMAN planning rows from last bulk edit; original sources unchanged.");
+    });
+    $("humanReset").addEventListener("click",()=>{
+      if(!plans.length)return;
+      if(!confirm("Reset ALL local HUMAN planning choices? No original source file changes."))return;
+      plans=getRows().map(fresh);changed=true;lastBulk=null;historyResolutions.clear();
+      $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();message("Local HUMAN routing reset; source declarations unchanged.");
+    });
+    $("humanSave").addEventListener("click",()=>{
+      if(!plans.length||!safeDigests())return;
+      if(!confirm("Download PRIVATE source-byte-bound HUMAN plan? It contains unsalted source SHA-256 digests and should not be publicly shared."))return;
+      const plan=privatePlan();
+      const serialized=JSON.stringify(plan,null,2)+"\n";
+      if(new Blob([serialized]).size>MAX_PRIVATE_BYTES){
+        message("HUMAN plan is too large for private bounded handoff.",true);return;
+      }
+      download("lightup-PRIVATE-human-matrix-plan.json",serialized,"application/json");
+      changed=false;
+      message("PRIVATE source-bound HUMAN plan downloaded. Unsigned hash binding is not identity authentication.");
+    });
+    $("humanSaveEncrypted").addEventListener("click",async()=>{
+      if(!plans.length||!safeDigests()||!privatePlanCrypto.supported())return;
+      const password=$("humanEncryptPass").value;
+      try {
+        if(!confirm("Encrypt and download a PRIVATE HUMAN plan locally with your passphrase? If you lose this passphrase, the contents cannot be recovered. No password or file is sent anywhere."))return;
+        const original=JSON.stringify(privatePlan(),null,2)+"\n";
+        fail(new Blob([original]).size<=MAX_PRIVATE_BYTES,
+          "HUMAN plan exceeds local encryption size limit");
+        const encrypted=await privatePlanCrypto.encrypt(original,password);
+        const output=JSON.stringify(encrypted,null,2)+"\n";
+        fail(new Blob([output]).size<=MAX_ENCRYPTED_BYTES,
+          "Encrypted PRIVATE output is too large");
+        download("lightup-PRIVATE-human-plan-ENCRYPTED.json",output,"application/json");
+        changed=false;
+        message("AES-GCM encrypted PRIVATE HUMAN plan downloaded. The passphrase has not been saved or shared. Original source-byte binding remains mandatory after decryption.");
+      } catch(error){
+        message("Encrypted PRIVATE HUMAN save HOLD: "+error.message,true);
+      } finally {$("humanEncryptPass").value="";}
+    });
+    $("humanResumeButton").addEventListener("click",async()=>{
+      const file=$("humanResume").files[0];
+      if(!safeDigests()||!file){message("Open the original source files, then choose one PRIVATE saved plan.",true);return;}
+      try {
+        const candidate=admitPrivatePlan(
+          await parsePrivateJSONFile(file,$("humanResumePass").value));
+        if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
+        plans=candidate;changed=true;lastBulk=null;historyResolutions.clear();
+        $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();
+        message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
+      } catch(error) {
+        message("PRIVATE HUMAN plan HOLD: "+error.message+"; current notes unchanged.",true);
+      } finally {$("humanResume").value="";$("humanResumePass").value="";}
+    });
+    $("humanHandoff").addEventListener("click",()=>{
+      if(!plans.length)return;
+      try {
+        const prepared=privateHumanHandoff();
+        if(new Blob([prepared]).size>MAX_PRIVATE_BYTES){
+          message("PRIVATE HUMAN brief exceeds the bounded local handoff size.",true);return;
+        }
+        if(!confirm("Download PRIVATE read-only HUMAN handoff containing ORIGINAL check/capability LABELS? Explicit separate protected distribution is required."))return;
+        download("lightup-PRIVATE-human-followup.html",prepared,"text/html");
+        message("Scriptless PRIVATE HUMAN brief downloaded. It is NOT a source-authenticated authorization or evidence record.");
+      } catch(error){message("PRIVATE HANDOFF HOLD: "+error.message,true);}
+    });
+    $("humanBrief").addEventListener("click",()=>{
+      if(!plans.length||!confirm("Download counts-only HUMAN follow-up brief? Small numeric groups can be sensitive."))return;
+      download("lightup-human-counts-brief.txt",humanBrief(),"text/plain");
+    });
+  }
+  wire();clearAll();
+  return {initialize,clearAll,render,
+    exportVaultPlan:()=>privatePlan(),
+    validateVaultPlan:(candidate,rows,digests)=>admitPrivatePlan(candidate,rows,digests),
+    commitVaultPlan:(prepared)=>{
+      fail(Array.isArray(prepared)&&prepared.length===getRows().length,
+        "Prepared PRIVATE workspace notes not bound to active local source rows");
+      plans=prepared.map(note=>({...note}));changed=false;lastBulk=null;
+      historyResolutions.clear();clearHistory();page=0;render();
+    },
+    hasEdits:()=>changed&&plans.some(p=>!isDefault(p)),
+    stageTotals:()=>plans.length?{...counts().stage}:null};
+}
+
+"use strict";
+/* Complete PRIVATE HUMAN workroom vault: original bytes + HUMAN notes, encrypted offline.
+ * No assessment execution, no grant, no network, no browser persistence. */
+function createPrivateWorkspaceVault(api) {
+  const {$,fail,shape,int,parseStrict,message,download,getRawFiles,getOriginalCount,getOriginalByteTotal,
+    getPrivatePlan,prepareFullWorkspace,commitFullWorkspace} = api;
+  const cryptoBox=createPrivatePlanCrypto();
+  const MAX_SOURCE_TOTAL=24*1024*1024; // bounded, intentionally smaller than the 8x8MiB import limit
+  const MAX_ENCRYPTED_FILE=65*1024*1024;
+  const MAX_PLAN_CHARS=3*1024*1024;
+  const KIND="lightup.private_original_lab_complete_workspace_payload";
+  const FIELDS=["kind","version","authorized","consent_verified",
+    "dispatch_allowed","release_allowed","original_source_bytes_b64","human_plan",
+    "interpretation"];
+  const clearPasses=()=>{
+    $("vaultSavePass").value="";$("vaultOpenPass").value="";
+  };
+  const asciiBase64=bytes=>{
+    let raw="";
+    for(let offset=0;offset<bytes.length;offset+=16384)
+      raw+=String.fromCharCode(...bytes.subarray(offset,offset+16384));
+    return btoa(raw);
+  };
+  const decodeBase64=value=>{
+    fail(typeof value==="string"&&value.length>=4&&
+      value.length<=Math.ceil(8*1024*1024/3)*4+4&&
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value),
+      "Invalid original source encoding");
+    const raw=atob(value);
+    fail(raw.length>=1&&raw.length<=8*1024*1024,"Original file exceeds source bound");
+    const bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    fail(asciiBase64(bytes)===value,"Noncanonical PRIVATE source-byte envelope");
+    return bytes;
+  };
+  function available() {
+    const originals=getRawFiles();
+    return cryptoBox.supported()&&originals.length>=2&&
+      originals.length<=8&&originals.every(x=>x instanceof Uint8Array)&&
+      originals.every(x=>x.length>0&&x.length<=8*1024*1024);
+  }
+  function update() {
+    const sources=getRawFiles(),total=getOriginalByteTotal();
+    const allowed=available()&&total<=MAX_SOURCE_TOTAL;
+    $("vaultSave").disabled=!allowed;
+    $("vaultOpen").disabled=!cryptoBox.supported();
+    $("vaultAvailable").textContent=!cryptoBox.supported()
+      ?"Browser WebCrypto is unavailable. Encrypted PRIVATE workspace import/export disabled."
+      :getOriginalCount()===0
+      ?"No ORIGINAL PRIVATE source files opened. You can still open an existing encrypted workspace."
+      :total>MAX_SOURCE_TOTAL
+      ?"Current original batch exceeds the 24 MiB total encrypted workspace export limit. The ordinary source+plan workflow still works. Importing a smaller batch is optional."
+      :"Private workspace available: "+sources.length+" original source slots, "+
+        total+" original bytes (encrypted, not published as filenames or target labels).";
+  }
+  async function save() {
+    if(!available()){message("Open and admit original PRIVATE source files first.",true);return;}
+    $("vaultSave").disabled=true;
+    try {
+      const sources=getRawFiles(),total=sources.reduce((n,b)=>n+b.length,0);
+      fail(total<=MAX_SOURCE_TOTAL,"Combined original bytes exceed the 24 MiB workspace vault export bound");
+      const plan=getPrivatePlan();
+      const content={kind:KIND,version:1,authorized:false,consent_verified:false,
+        dispatch_allowed:false,release_allowed:false,
+        original_source_bytes_b64:sources.map(asciiBase64),human_plan:plan,
+        interpretation:"PRIVATE offline original source bytes plus local HUMAN categories. Signed authorization, client identity, actual scan and finding authenticity remain unproven."};
+      const raw=JSON.stringify(content);
+      fail(raw.length<=48*1024*1024&&JSON.stringify(plan).length<=MAX_PLAN_CHARS,
+        "PRIVATE original+HUMAN workspace exceeds bounded encryption input");
+      if(!confirm("Encrypt and download ALL original PRIVATE lab source bytes together with HUMAN choices? This will store highly sensitive ORIGINAL targets and evidence inside a password-encrypted local file. No grant/assessment authority or independent security audit is implied. Protect your passphrase and device."))return;
+      const encrypted=await cryptoBox.encryptWorkspace(raw,$("vaultSavePass").value);
+      const wrapped=JSON.stringify(encrypted)+"\n";
+      fail(new Blob([wrapped]).size<=MAX_ENCRYPTED_FILE,"Encrypted PRIVATE workspace exceeds safe download limit");
+      download("lightup-PRIVATE-original-workroom-ENCRYPTED.json",wrapped,"application/json");
+      message("Complete PRIVATE original+HUMAN workspace encrypted and downloaded locally. Passphrase was not saved. Source ownership, vulnerability claims and assessment authorization remain unverified.");
+    } catch(error) {
+      message("Complete PRIVATE workspace encryption HOLD: "+error.message,true);
+    } finally {
+      clearPasses();update();
+    }
+  }
+  async function open() {
+    const file=$("vaultFile").files[0];
+    if(!file){message("Select one existing PRIVATE encrypted complete workspace first.",true);return;}
+    $("vaultOpen").disabled=true;
+    try {
+      fail(file.size>0&&file.size<=MAX_ENCRYPTED_FILE,"Encrypted PRIVATE workspace outside 65 MiB bound");
+      const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      const outer=parseStrict(raw);
+      fail(cryptoBox.isWorkspace(outer),"Expected a complete encrypted PRIVATE lab workspace, not an ordinary HUMAN plan");
+      const plaintext=await cryptoBox.decryptWorkspace(outer,$("vaultOpenPass").value);
+      const payload=parseStrict(plaintext);
+      fail(shape(payload,FIELDS)&&payload.kind===KIND&&payload.version===1,
+        "Not a supported PRIVATE original+HUMAN workspace");
+      for(const key of ["authorized","consent_verified","dispatch_allowed","release_allowed"])
+        fail(payload[key]===false,"A complete workspace can never imply assessment authority");
+      fail(typeof payload.interpretation==="string"&&payload.interpretation.length<=1024,
+        "Invalid PRIVATE workroom interpretation");
+      const entries=payload.original_source_bytes_b64;
+      fail(Array.isArray(entries)&&entries.length>=2&&entries.length<=8,
+        "Complete workspace must hold 2–8 original PRIVATE sources");
+      const decoded=entries.map(decodeBase64);
+      fail(decoded.reduce((sum,b)=>sum+b.length,0)<=MAX_SOURCE_TOTAL,
+        "Complete PRIVATE sources exceed the 24 MiB total admission bound");
+      // Prepare all originals and the source-bound HUMAN plan before any replacement.
+      const prepared=await prepareFullWorkspace(decoded,payload.human_plan);
+      if(!confirm("Replace current original PRIVATE source selection AND current HUMAN workplan with this completely admitted encrypted workspace? Existing unsaved choices will be discarded. This does not authorize work, attest clients or contact targets."))return;
+      commitFullWorkspace(prepared);
+      message("Original PRIVATE source bytes and matching HUMAN choices reopened from local encrypted workroom. This is unverified operator-provided input; no scanner/grant/network was used.");
+    } catch(error) {
+      message("Complete PRIVATE workspace HOLD: "+error.message+
+        ". The active original source selection and HUMAN plan have not been replaced.",true);
+    } finally {
+      $("vaultFile").value="";clearPasses();update();
+    }
+  }
+  $("vaultSave").addEventListener("click",save);
+  $("vaultOpen").addEventListener("click",open);
+  update();
+  return {update};
+}
+
+"use strict";
+/* Original-source declaration matrix: offline HUMAN interpretation, never a verifier. */
+(() => {
+  const $ = id => document.getElementById(id);
+  const SEVERITIES = ["critical", "high", "medium", "low", "info"];
+  const METRICS = ["valid_findings","invalid_findings","missed_findings","coverage_assessed",
+    "coverage_unknown","scope_violations","policy_violations","human_interventions",
+    "tool_calls","evidence_quality","reproducibility","remediation_quality",
+    "retest_correctness","runtime_seconds","compute_cost_usd","false_positive_rate"];
+  const NUMERIC_COUNTS = new Set(METRICS.slice(0,9));
+  const SCORES = new Set(["evidence_quality","reproducibility","remediation_quality",
+    "retest_correctness","false_positive_rate"]);
+  const FLAGS = Object.freeze({authorized:false,consent_verified:false,
+    dispatch_allowed:false,release_allowed:false});
+  const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
+  let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
+  let rawOriginalBytes = [], originalByteTotal = 0;
+  let matrixPage = 0;
+  const fail = (ok, message = "Untrusted or incompatible original lab result") => {
+    if (!ok) throw new Error(message);
+  };
+  const obj = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  const shape = (value, names) => obj(value) &&
+    Object.keys(value).length === names.length && names.every(name => Object.hasOwn(value,name));
+  const text = (value,max=8192) => typeof value === "string" && value.length <= max &&
+    !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value);
+  const int = (value,max=1e9) => Number.isSafeInteger(value) && value>=0 && value<=max;
+
+  // JSON.parse silently accepts repeated keys. This bounded reader rejects them at all depths.
+  function parseStrict(raw) {
+    let pos=0, nodes=0;
+    const ws=()=>{while(pos<raw.length && /[ \t\r\n]/.test(raw[pos]))pos++;};
+    function stringValue() {
+      fail(raw[pos] === '"'); const start=pos++; let escaped=false;
+      while(pos<raw.length) {
+        const c=raw[pos++];
+        if(c === '"' && !escaped) return JSON.parse(raw.slice(start,pos));
+        if(c === "\\" && !escaped) escaped=true; else escaped=false;
+      }
+      fail(false);
+    }
+    function read(depth) {
+      fail(depth<32 && ++nodes<=160000,"Input structure exceeds private source limits");
+      ws();const c=raw[pos];
+      if(c === '"')return stringValue();
+      if(c === "{") {
+        pos++;const result=Object.create(null),seen=new Set();ws();
+        if(raw[pos] === "}"){pos++;return result;}
+        while(true) {
+          ws();const key=stringValue();fail(!seen.has(key),"Repeated JSON key");
+          seen.add(key);ws();fail(raw[pos++] === ":");
+          result[key]=read(depth+1);ws();
+          if(raw[pos] === "}"){pos++;return result;}
+          fail(raw[pos++] === ",");
+        }
+      }
+      if(c === "[") {
+        pos++;const values=[];ws();
+        if(raw[pos] === "]"){pos++;return values;}
+        while(true){
+          fail(values.length<160000);
+          values.push(read(depth+1));ws();
+          if(raw[pos] === "]"){pos++;return values;}
+          fail(raw[pos++] === ",");
+        }
+      }
+      for(const [literal,value] of [["true",true],["false",false],["null",null]]) {
+        if(raw.startsWith(literal,pos)){pos+=literal.length;return value;}
+      }
+      const m=raw.slice(pos).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
+      fail(Boolean(m));pos+=m[0].length;
+      const value=Number(m[0]);fail(Number.isFinite(value));return value;
+    }
+    const value=read(0);ws();fail(pos===raw.length,"Trailing source data");
+    return value;
+  }
+  function admitRecord(record,runId,scenarioId) {
+    fail(shape(record,["record_id","scenario_id","run_id","engine_version",
+      "model_bindings","metrics","created_at","notes"]));
+    fail(text(record.record_id,256)&&record.record_id.length>0&&
+      record.run_id===runId&&record.scenario_id===scenarioId&&
+      text(record.engine_version,256)&&record.engine_version.length>0&&
+      text(record.created_at,128)&&text(record.notes,32768));
+    fail(Array.isArray(record.model_bindings)&&record.model_bindings.length<=64&&
+      record.model_bindings.every(pair=>Array.isArray(pair)&&pair.length===2&&
+        pair.every(item=>text(item,1024))));
+    const m=record.metrics;fail(shape(m,METRICS));
+    for(const name of METRICS) {
+      const number=m[name];
+      fail(typeof number==="number"&&Number.isFinite(number)&&number>=0);
+      if(NUMERIC_COUNTS.has(name))fail(int(number));
+      if(SCORES.has(name))fail(number<=1);
+      if(name==="runtime_seconds"||name==="compute_cost_usd")fail(number<=1e12);
+    }
+    const total=m.valid_findings+m.invalid_findings;
+    fail(Math.abs(m.false_positive_rate-(total?m.invalid_findings/total:0))<=1e-8);
+  }
+  function admit(source) {
+    const required=["run_id","scenario_id","targets","plan","denied",
+      "elevation_requests","findings","coverage","evaluation","report_markdown"];
+    fail(obj(source)&&!Object.hasOwn(source,"mode")&&
+      (shape(source,required)||shape(source,[...required,"benchmark_case"])));
+    fail(text(source.run_id,256)&&source.run_id.length>0&&
+      text(source.scenario_id,256)&&source.scenario_id.length>0);
+    fail(Array.isArray(source.targets)&&source.targets.length>=1&&source.targets.length<=16&&
+      source.targets.every(item=>text(item,2048)&&item.length>0)&&
+      new Set(source.targets).size===source.targets.length);
+    fail(Array.isArray(source.findings)&&source.findings.length<=2048);
+    fail(Array.isArray(source.plan)&&source.plan.length<=512&&
+      Array.isArray(source.denied)&&source.denied.length<=512&&
+      Array.isArray(source.elevation_requests)&&source.elevation_requests.length<=512);
+    fail(obj(source.coverage)&&text(source.report_markdown,MAX_SOURCE_BYTES));
+    for(const step of source.plan) {
+      fail(shape(step,["tool_id","asset","arguments"])&&
+        text(step.tool_id,256)&&text(step.asset,2048)&&obj(step.arguments)&&
+        Object.keys(step.arguments).length<=64);
+    }
+    for(const denial of source.denied) {
+      fail(shape(denial,["tool_id","reason"])&&
+        text(denial.tool_id,256)&&text(denial.reason,8192));
+    }
+    admitRecord(source.evaluation,source.run_id,source.scenario_id);
+    if(Object.hasOwn(source,"benchmark_case")) {
+      fail(shape(source.benchmark_case,["record","context"])&&
+        obj(source.benchmark_case.context)&&
+        source.benchmark_case.context.is_lab===true&&
+        source.benchmark_case.context.authorization===null&&
+        source.benchmark_case.context.run_id===source.run_id);
+      admitRecord(source.benchmark_case.record,source.run_id,source.scenario_id);
+      fail(JSON.stringify(source.benchmark_case.record)===JSON.stringify(source.evaluation));
+    }
+    const ids=new Set();
+    for(const finding of source.findings) {
+      fail(shape(finding,["finding","finding_id","severity","impact","fix","retest",
+        "check_id","capability_id","target","evidence_ids","evidence_summary"]));
+      fail(text(finding.finding_id,256)&&finding.finding_id.length>0&&
+        !ids.has(finding.finding_id));ids.add(finding.finding_id);
+      fail(SEVERITIES.includes(finding.severity)&&
+        ["finding","impact","fix","retest","check_id","capability_id","target",
+          "evidence_summary"].every(key=>text(finding[key]))&&
+        finding.finding.length>0&&finding.target.length>0&&
+        Array.isArray(finding.evidence_ids)&&finding.evidence_ids.length<=64&&
+        finding.evidence_ids.every(id=>text(id,1024)));
+    }
+    return source;
+  }
+  function countsFor(items) {
+    const severity=Object.fromEntries(SEVERITIES.map(s=>[s,0]));
+    for(const item of items) severity[item.severity]++;
+    return {total:items.length,severity,
+      worst:SEVERITIES.find(s=>severity[s]>0)||null};
+  }
+  function aggregate(data) {
+    const map=new Map();
+    data.forEach((source,sourceIndex)=>{
+      source.findings.forEach((f,sourceOrdinal)=>{
+        // Structural JSON tuples, not evidence of the same vulnerable asset.
+        const key=JSON.stringify([f.capability_id,f.check_id]);
+        if(!map.has(key))map.set(key,{capability:f.capability_id,check:f.check_id,
+          bySource:data.map(()=>[])});
+        // Always map against FIRST source ordinals, regardless of each later file's target order.
+        const endpointIndex=data[0].targets.indexOf(f.target);
+        map.get(key).bySource[sourceIndex].push({finding:f,sourceOrdinal,
+          endpointOrdinal:endpointIndex<0?null:endpointIndex+1});
+      });
+    });
+    return [...map.values()].sort((a,b)=>
+      a.capability.localeCompare(b.capability)||a.check.localeCompare(b.check));
+  }
+  function node(tag,word,className) {
+    const item=document.createElement(tag);
+    if(word!==undefined)item.textContent=String(word);
+    if(className)item.className=className;
+    return item;
+  }
+  function clear(target){target.replaceChildren();}
+  function message(value,isError=false){
+    $("message").textContent=value;$("message").dataset.error=String(isError);
+  }
+  function download(name,body,type) {
+    const blob=new Blob([body],{type});const url=URL.createObjectURL(blob);
+    const anchor=node("a");anchor.href=url;anchor.download=name;
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+  function filteredPairs(row) {
+    const ep=$("endpoint").value;
+    const severity=$("severity").value;
+    return row.bySource.map(list=>list.filter(({finding,endpointOrdinal})=>
+      (ep==="0"||(ep==="unmatched"?endpointOrdinal===null:
+        endpointOrdinal===Number(ep)))&&
+      (severity==="all"||finding.severity===severity)));
+  }
+  function renderSourceMetrics() {
+    const area=$("sourceMetrics");clear(area);
+    area.append(node("h3","Original evaluation · source-reported adverse counters"));
+    area.append(node("p","These counters are literal declarations in already-created lab artifacts, not established scanner coverage, safety or policy compliance. An original source can be inaccurate or forged."));
+    const wrap=node("div",undefined,"metrics-scroll");
+    const table=node("table");
+    const h=node("tr");h.append(node("th","Source-declared numeric metric"));
+    sources.forEach((_,index)=>h.append(node("th","Local file "+(index+1))));
+    const thead=node("thead");thead.append(h);table.append(thead);
+    const tbody=node("tbody");
+    const fields=[
+      ["valid_findings","Source-reported valid count"],
+      ["invalid_findings","Source-reported invalid count"],
+      ["missed_findings","Source-reported missed count"],
+      ["coverage_unknown","Source-reported unknown coverage units"],
+      ["scope_violations","Source-reported scope violations"],
+      ["policy_violations","Source-reported policy violations"],
+      ["human_interventions","Source-reported human interventions"]
+    ];
+    for(const [key,label] of fields){
+      const line=node("tr");line.append(node("td",label));
+      for(const source of sources){
+        const value=source.evaluation.metrics[key];
+        line.append(node("td",value,value>0&&
+          ["invalid_findings","missed_findings","coverage_unknown","scope_violations",
+            "policy_violations"].includes(key)?"metric-alert":""));
+      }
+      tbody.append(line);
+    }
+    table.append(tbody);wrap.append(table);area.append(wrap);
+  }
+  function endpointHistogram(source) {
+    const buckets=Array(sources[0].targets.length+1).fill(0);
+    for(const f of source.findings){
+      const index=sources[0].targets.indexOf(f.target);
+      buckets[index<0?buckets.length-1:index]++;
+    }
+    return buckets;
+  }
+  function renderEndpointCounts() {
+    const area=$("endpointCounts");clear(area);
+    area.append(node("h3","Source-declared finding appearances by endpoint slot"));
+    area.append(node("p","All source-declared endpoints are aligned to first-source ordinals. These raw source appearances are not unique vulnerabilities, scan coverage, successful checks or proven asset scope. Zero is NOT a security result."));
+    const histograms=sources.map(endpointHistogram),table=node("table"),header=node("tr");
+    header.append(node("th","First-source endpoint ordinal"));
+    sources.forEach((_,i)=>header.append(node("th","Local file "+(i+1))));
+    const head=node("thead");head.append(header);table.append(head);
+    const tbody=node("tbody");
+    for(let i=0;i<=sources[0].targets.length;i++){
+      const tr=node("tr"),label=node("td");
+      const button=node("button",i===sources[0].targets.length?
+        "Unmatched source target":"Endpoint "+(i+1),"secondary");
+      button.type="button";
+      button.title="Filter local source-declarations only, no network";
+      button.addEventListener("click",()=>{
+        $("endpoint").value=i===sources[0].targets.length?"unmatched":String(i+1);
+        matrixPage=0;refresh();$("matrix").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      label.append(button);tr.append(label);
+      const values=histograms.map(bucket=>bucket[i]);
+      const changed=new Set(values).size>1;
+      for(const value of values)tr.append(node("td",value,changed?"metric-alert":""));
+      tbody.append(tr);
+    }
+    table.append(tbody);
+    const wrap=node("div",undefined,"metrics-scroll");
+    wrap.append(table);area.append(wrap);
+    area.append(node("p","Source endpoint movement or zero appearances NEVER prove new vulnerabilities, fixed issues, verified negative checks or permitted scanning.","hint"));
+  }
+  function renderAttention() {
+    const area=$("attention");clear(area);
+    const heading=node("h3","HUMAN attention · source-declaration differences");
+    const notice=node("p","Prioritized for human discussion only. Numeric variability, changed declared severity or unmatched endpoint labels are NOT new, fixed or verified vulnerabilities.");
+    area.append(heading,notice);
+    const candidates=rows.map(row=>{
+      const counts=row.bySource.map(list=>list.length);
+      const worst=row.bySource.map(list=>countsFor(list.map(r=>r.finding)).worst);
+      const changedCount=new Set(counts).size>1;
+      const changedSeverity=new Set(worst.filter(Boolean)).size>1;
+      const unmatched=row.bySource.some(items=>items.some(item=>item.endpointOrdinal===null));
+      const endpointLayouts=row.bySource.map(items=>{
+        const bins=Array(sources[0].targets.length+1).fill(0);
+        items.forEach(item=>bins[item.endpointOrdinal===null?bins.length-1:item.endpointOrdinal-1]++);
+        return JSON.stringify(bins);
+      });
+      const endpointMovement=new Set(endpointLayouts).size>1;
+      const priority=(unmatched?5:0)+(changedSeverity?3:0)+(changedCount?2:0)+
+        (endpointMovement?2:0)+(row.bySource.some(list=>list.some(x=>x.finding.severity==="critical"))?1:0);
+      return {row,counts,changedCount,changedSeverity,unmatched,endpointMovement,priority};
+    }).filter(item=>item.changedCount||item.changedSeverity||item.unmatched||item.endpointMovement)
+      .sort((a,b)=>b.priority-a.priority||
+        a.row.capability.localeCompare(b.row.capability)||
+        a.row.check.localeCompare(b.row.check));
+    const count=node("p",candidates.length+
+      " literal tuple groups suggest HUMAN discussion; showing at most 24. No clinical or security significance attached to ranking.");
+    area.append(count);
+    if(!candidates.length)return;
+    const list=node("ol","", "attention-list");
+    candidates.slice(0,24).forEach(item=>{
+      const li=node("li"),button=node("button",
+        (item.row.capability||"(empty capability)")+" · "+(item.row.check||"(empty check)"),
+        "attention-link");
+      button.type="button";
+      button.addEventListener("click",()=>{
+        $("query").value=item.row.capability+" "+item.row.check;
+        $("severity").value="all";$("endpoint").value="0";refresh();
+        const first=item.row.bySource.findIndex(items=>items.length>0);
+        if(first>=0)details(item.row,first,filteredPairs(item.row)[first]);
+        $("matrix").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      const descriptions=[
+        item.changedCount?"reported counts vary ("+item.counts.join(" / ")+")":null,
+        item.changedSeverity?"source severity labels differ":null,
+        item.endpointMovement?"source-declared endpoint distribution differs":null,
+        item.unmatched?"at least one reported target is not an exact declared endpoint":null
+      ].filter(Boolean).join(" · ");
+      li.append(button,node("small",descriptions));list.append(li);
+    });
+    area.append(list);
+  }
+  function refresh() {
+    const needle=$("query").value.trim().toLocaleLowerCase();
+    visible=rows.filter(row=>(row.capability+" "+row.check).toLocaleLowerCase().includes(needle));
+    const table=$("matrix");clear(table);
+    const thead=node("thead"),head=node("tr");
+    head.append(node("th","Original capability · check"));
+    sources.forEach((_,i)=>head.append(node("th","Local file "+(i+1))));
+    thead.append(head);table.append(thead);
+    const pages=Math.max(1,Math.ceil(visible.length/100));
+    matrixPage=Math.min(Math.max(matrixPage,0),pages-1);
+    $("matrixPages").textContent="Page "+(matrixPage+1)+" of "+pages+
+      " · "+visible.length+" filtered declaration groups";
+    $("matrixPrev").disabled=matrixPage===0;
+    $("matrixNext").disabled=matrixPage+1>=pages;
+    const tbody=node("tbody");let noDeclaration=0;
+    visible.slice(matrixPage*100,(matrixPage+1)*100).forEach((row,index)=>{
+      const tr=node("tr");
+      const label=node("td");label.append(node("strong",row.capability||"(empty source capability)"));
+      label.append(node("small",row.check||"(empty source check)"));tr.append(label);
+      const pairs=filteredPairs(row);
+      pairs.forEach((cell,sourceIndex)=>{
+        const evidence=countsFor(cell.map(item=>item.finding));
+        const td=node("td"),button=node("button",
+          evidence.total ? evidence.total+" · "+evidence.worst : "— not declared",
+          evidence.total?"count "+evidence.worst:"empty-cell");
+        button.type="button";
+        button.title=evidence.total?"View local source declarations":"Not declared ≠ safe, fixed, assessed or authorized";
+        button.addEventListener("click",()=>details(row,sourceIndex,cell));
+        td.append(button);tr.append(td);
+        if(!evidence.total)noDeclaration++;
+      });
+      tbody.append(tr);
+    });
+    table.append(tbody);
+    $("visible").textContent=visible.length+" source-declared check groups · "+
+      noDeclaration+" empty cells on this page (not declared, never PASS). "+
+      "Counts exports include all filtered groups, not only this page.";
+    $("exportCSV").disabled=!sources.length;
+    $("exportJSON").disabled=!sources.length;
+    if(selected) {
+      const row=rows.find(r=>r===selected.row);
+      if(row&&visible.includes(row))details(row,selected.sourceIndex,
+        filteredPairs(row)[selected.sourceIndex],false);
+      else {selected=null;clear($("details"));}
+    }
+  }
+  function details(row,index,cell,focus=true) {
+    selected={row,sourceIndex:index};const pane=$("details");clear(pane);
+    pane.append(node("h3","Local file "+(index+1)+" · source-declared items"));
+    pane.append(node("p","Capability: "+row.capability+" · check: "+row.check));
+    if(!cell.length)pane.append(node("p","This source does not declare a matching finding under the current filters. This says nothing about assessment coverage or remediation."));
+    for(const {finding,sourceOrdinal,endpointOrdinal} of cell) {
+      const article=node("article");
+      article.append(node("strong","#"+(sourceOrdinal+1)+" · "+finding.severity+
+        " · endpoint "+(endpointOrdinal??"unmatched")));
+      article.append(node("p",finding.finding));
+      article.append(node("p","Source mitigation: "+finding.fix));
+      article.append(node("p","Source retest proposal: "+finding.retest));
+      const evidence=node("details"),summary=node("summary","PRIVATE unverified evidence summary");
+      evidence.append(summary,node("p",finding.evidence_summary||"(none declared)"));
+      article.append(evidence);pane.append(article);
+    }
+    if(focus)pane.focus({preventScroll:true});
+  }
+  function privateExport() {
+    return {kind:"lightup.offline_lab_declared_check_matrix",
+      version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",
+      ...FLAGS,local_file_slots:sources.length,source_claimed_endpoint_slots:sources[0].targets.length,
+      source_reported_finding_totals:sources.map(source=>source.findings.length),
+      source_reported_endpoint_appearances:sources.map(endpointHistogram),
+      source_reported_adverse_counters:sources.map(source=>{
+        const m=source.evaluation.metrics;
+        return {invalid_findings:m.invalid_findings,missed_findings:m.missed_findings,
+          coverage_unknown:m.coverage_unknown,scope_violations:m.scope_violations,
+          policy_violations:m.policy_violations,human_interventions:m.human_interventions};
+      }),
+      declared_tuple_rows:visible.map((row,ordinal)=>{
+        const perSource=filteredPairs(row).map(list=>countsFor(list.map(x=>x.finding)));
+        return {ordinal:ordinal+1,appearances:perSource.map(r=>r.total),
+          source_reported_severities:perSource.map(r=>r.severity)};
+      }),interpretation:"Unsigned source claims only; absent is not assessed, safe or fixed. Source order is operator-selected, not verified chronology."};
+  }
+  function csv(rowsData) {
+    const lines=[["tuple_ordinal",...sources.map((_,i)=>"source_"+(i+1)+"_reported")]];
+    rowsData.declared_tuple_rows.forEach(item=>lines.push([item.ordinal,...item.appearances]));
+    return lines.map(line=>line.join(",")).join("\r\n")+"\r\n";
+  }
+  const humanBoard=createHumanBoard({
+    $,node,clear,fail,shape,obj,int,text,parseStrict,download,message,FLAGS,
+    getRows:()=>rows,getDigests:()=>sourceDigests,
+    onFocus:(row)=>{
+      // HUMAN routing opens the original untrusted declaration; it never executes it.
+      const index=row.bySource.findIndex(items=>items.length>0);
+      if(index>=0){
+        $("query").value=row.capability+" "+row.check;
+        $("severity").value="all";$("endpoint").value="0";
+        refresh();
+        details(row,index,filteredPairs(row)[index]);
+        $("details").scrollIntoView({behavior:"smooth",block:"nearest"});
+      }
+    }
+  });
+  async function prepareOriginalBytes(rawFiles) {
+    fail(Array.isArray(rawFiles)&&rawFiles.length>=2&&rawFiles.length<=8,
+      "Expected 2–8 existing original PRIVATE isolated lab results");
+    const next=[],nextDigests=[],bytes=[];
+    for(const data of rawFiles) {
+      fail(data instanceof Uint8Array&&data.byteLength>0&&
+        data.byteLength<=MAX_SOURCE_BYTES,"Original PRIVATE source outside the 8 MiB bound");
+      bytes.push(data);
+      let fingerprint=null;
+      try {
+        if(globalThis.crypto?.subtle){
+          const digest=await crypto.subtle.digest("SHA-256",data);
+          fingerprint=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join("");
+        }
+      } catch {fingerprint=null;}
+      nextDigests.push(fingerprint);
+      const decoded=new TextDecoder("utf-8",{fatal:true}).decode(data);
+      next.push(admit(parseStrict(decoded)));
+    }
+    const baseline=next[0],sameTargets=new Set(baseline.targets);
+    fail(new Set(next.map(s=>s.run_id)).size===next.length,
+      "Repeated original run IDs; mixed PRIVATE batch held");
+    for(const item of next.slice(1)) {
+      fail(item.scenario_id===baseline.scenario_id,
+        "Different source-declared scenario; cannot compare original source claims");
+      fail(item.targets.length===baseline.targets.length&&
+        item.targets.every(t=>sameTargets.has(t)),
+        "Different exact literal endpoint sets; cannot compare originals");
+    }
+    return {next,nextDigests,bytes,baseline,newRows:aggregate(next)};
+  }
+  function commitOriginalBatch(prepared,privateHumanNotes=null) {
+    // All potentially invalid external ORIGINAL and HUMAN bytes were admitted
+    // before this synchronous commit changes any visible application state.
+    sources=prepared.next;sourceDigests=prepared.nextDigests;
+    originalByteTotal=prepared.bytes.reduce((sum,b)=>sum+b.byteLength,0);
+    // Retain an exact-byte copy only when the operator can use full-vault export.
+    // Larger already-admitted source batches remain browsable without a 2nd 64MiB raw cache.
+    rawOriginalBytes=originalByteTotal<=24*1024*1024?prepared.bytes:[];
+    rows=prepared.newRows;
+    selected=null;matrixPage=0;clear($("details"));
+    clear($("endpoint"));
+    $("endpoint").append(new Option("All declared endpoints",0));
+    prepared.baseline.targets.forEach((_,i)=>
+      $("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
+    $("endpoint").append(new Option("Unmatched source-declared target","unmatched"));
+    $("workspace").hidden=false;$("intro").hidden=true;
+    $("sourceCount").textContent=sources.length+" original PRIVATE source files";
+    $("sourceSummary").textContent=prepared.baseline.targets.length+
+      " identical literal declared endpoint slots · "+rows.length+
+      " literal capability/check groups · no verification of target, ownership or chronology";
+    renderSourceMetrics();renderEndpointCounts();renderAttention();refresh();
+    humanBoard.initialize();
+    if(privateHumanNotes!==null)humanBoard.commitVaultPlan(privateHumanNotes);
+    workspaceVault.update();
+  }
+  async function prepareFullWorkspace(rawFiles,plan) {
+    const prepared=await prepareOriginalBytes(rawFiles);
+    fail(obj(plan),"Encrypted PRIVATE workspace missing complete HUMAN workplan");
+    fail(prepared.nextDigests.every(v=>typeof v==="string"),
+      "Browser cannot bind ORIGINAL source bytes to HUMAN plan without WebCrypto");
+    const notes=humanBoard.validateVaultPlan(plan,prepared.newRows,prepared.nextDigests);
+    return {...prepared,notes};
+  }
+  const workspaceVault=createPrivateWorkspaceVault({
+    $,fail,shape,int,parseStrict,message,download,
+    getRawFiles:()=>rawOriginalBytes,
+    getOriginalCount:()=>sources.length,
+    getOriginalByteTotal:()=>originalByteTotal,
+    getPrivatePlan:()=>humanBoard.exportVaultPlan(),
+    prepareFullWorkspace,
+    commitFullWorkspace:prepared=>commitOriginalBatch(prepared,prepared.notes)
+  });
+  async function importFiles() {
+    const files=[...$("files").files];
+    if(files.length<2||files.length>8){
+      message("Select 2–8 existing original PRIVATE lab JSON files in your chosen display order.",true);return;
+    }
+    $("load").disabled=true;
+    message("Reading explicit local originals. Nothing is uploaded or scanned.");
+    try {
+      const prepared=await prepareOriginalBytes(
+        await Promise.all(files.map(async file=>{
+          fail(file.size>0&&file.size<=MAX_SOURCE_BYTES,
+            "Original PRIVATE source file outside the 8 MiB bound");
+          return new Uint8Array(await file.arrayBuffer());
+        })));
+      if(sources.length&&!confirm("Replace current original PRIVATE results and all HUMAN planning choices?")) {
+        message("Original file replacement cancelled. Current private workroom kept.");return;
+      }
+      commitOriginalBatch(prepared);
+      message("Original PRIVATE result batch structurally admitted. Source statements are unverified; no target contact or upload.");
+    } catch(error) {
+      message("Entire original source batch HOLD: "+error.message+
+        ". Existing PRIVATE workspace retained.",true);
+    } finally {
+      $("load").disabled=false;$("files").value="";
+    }
+  }
+  $("load").addEventListener("click",importFiles);
+  $("forget").addEventListener("click",()=>{
+    if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
+    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];rawOriginalBytes=[];
+    originalByteTotal=0;matrixPage=0;
+    humanBoard.clearAll();
+    clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));clear($("endpointCounts"));$("query").value="";
+    $("matrixPages").textContent="No matrix loaded.";
+    $("matrixPrev").disabled=true;$("matrixNext").disabled=true;
+    $("workspace").hidden=true;$("intro").hidden=false;
+    $("files").value="";workspaceVault.update();
+    message("Private originals and HUMAN plan discarded from this application state.");
+  });
+  ["query","severity","endpoint"].forEach(id=>$(id).addEventListener("input",()=>{
+    matrixPage=0;refresh();
+  }));
+  $("matrixPrev").addEventListener("click",()=>{
+    if(matrixPage>0){matrixPage--;refresh();}
+  });
+  $("matrixNext").addEventListener("click",()=>{
+    matrixPage++;refresh();
+  });
+  $("exportJSON").addEventListener("click",()=>{
+    if(sources.length&&confirm("Download anonymized COUNTS ONLY? Small groups can still be sensitive.")){
+      download("lightup-private-declaration-counts.json",
+        JSON.stringify(privateExport(),null,2)+"\n","application/json");
+    }
+  });
+  $("exportCSV").addEventListener("click",()=>{
+    if(sources.length&&confirm("Download anonymous COUNTS ONLY CSV? This is not a security report.")){
+      download("lightup-private-declaration-counts.csv",csv(privateExport()),"text/csv");
+    }
+  });
+  addEventListener("beforeunload",event=>{
+    if(sources.length||humanBoard.hasEdits()){event.preventDefault();event.returnValue="";}
+  });
+})();</script>
+</body>
+</html>
