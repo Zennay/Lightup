@@ -411,3 +411,24 @@ background job or customer grant. This is an offline DRAFT/HOLD candidate
 subject to immutable-head CI, source-owner and independent security/privacy/
 browser approvals, genuine separate client/operator consent (action-time
 revocation), #177/#182/#829 and explicit HUMAN GO before any release.
+
+## Source-bound HUMAN review returns for actual adverse original metrics
+
+The native original benchmark outputs now also include
+`PRIVATE-human-benchmark-followup.csv`: each **source-declared adverse**
+metric row carries both unsigned exact original input byte SHA-256 identities,
+the original scenario *ordinal only*, the canonical metric name and blank
+human stage/group/question/blocker fields. Nothing is assigned or decided
+automatically. For no original adverse observations the file has only its
+header, never invented findings or an automatic PASS.
+
+The 3–12-candidate trajectory kit similarly contains
+`PRIVATE-human-trajectory-followup.csv` with source-original baseline and
+candidate SHA-256, human-selected candidate position, original scenario
+ordinal, adverse metric count and wholly blank HUMAN follow-up columns.
+No original names, target URLs, evidence, source filenames, private notes
+or authorization are introduced into this separate PRIVATE CSV. The
+underlying complete original metric reports still require owner-approved
+PRIVATE handling. File SHA-256 labels bind bytes but do not attest owner,
+truth, permission or original chronology. Neither worksheet changes any
+original benchmark or authentic review system. Source is DRAFT/HOLD.

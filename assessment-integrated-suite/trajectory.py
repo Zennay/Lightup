@@ -6,7 +6,8 @@ Only original already-produced lab cohort files; no scanning, models or grants.
 from __future__ import annotations
 
 import argparse
-import hashlib
+import csv
+import io
 import html
 import json
 import os
@@ -72,6 +73,11 @@ def prepare(args: argparse.Namespace) -> int:
             "source_sha256_unsigned": source_sha["candidate"],
             "filename": f"PRIVATE-original-cohort-{index:02d}.json",
             "content": payload,
+            "adverse_ordinals": [
+                (ordinal, len(group["regressions"]))
+                for ordinal, group in enumerate(output["groups"], 1)
+                if group["regressions"]
+            ],
         })
 
     if not rows or baseline_sha is None:
@@ -99,6 +105,22 @@ def prepare(args: argparse.Namespace) -> int:
                 "<strong>" + html.escape(item["status"]) + "</strong> · " +
                 html.escape(count_text) + "</li>"
             )
+        followup = io.StringIO(newline="")
+        writer = csv.writer(followup)
+        writer.writerow((
+            "baseline_original_sha256_unsigned", "candidate_original_sha256_unsigned",
+            "candidate_ordinal", "source_scenario_ordinal",
+            "source_declared_adverse_metric_count", "human_review_stage",
+            "human_review_group", "human_next_question", "human_blocker",
+        ))
+        for item in rows:
+            for ordinal, count in item["adverse_ordinals"]:
+                writer.writerow((
+                    baseline_sha, item["source_sha256_unsigned"],
+                    item["position"], ordinal, count, "", "", "", "",
+                ))
+        private_file(kit / "PRIVATE-human-trajectory-followup.csv",
+                     followup.getvalue().encode("utf-8"))
         for target, original in ORIGINAL_STUDIOS.items():
             copy_app(original, kit / target)
         receipt = {
@@ -135,7 +157,8 @@ The original input files are not copied to this kit.</p>
  (import the same numbered canonical cohort JSON files)</li></ul>
 <h2>Canonical original comparator results — selected order</h2>
 <ol>""" + "".join(navigation) + """</ol>
-<p><a href="PRIVATE-trajectory-receipt.json">PRIVATE unsigned source-byte receipt</a>.</p>
+<p><a href="PRIVATE-trajectory-receipt.json">PRIVATE unsigned source-byte receipt</a>;
+<a href="PRIVATE-human-trajectory-followup.csv">SHA-bound blank HUMAN follow-up for adverse scenario positions</a>.</p>
 <p>In each Studio, use its built-in local file chooser to import the numbered
 canonical JSON files. Every original source parser still independently validates
 the original schema. HUMAN stage, dates or model comparisons never become grants,

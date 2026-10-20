@@ -265,6 +265,23 @@ def prepare(args: argparse.Namespace) -> int:
                                  row["candidate"], row["delta"],
                                  "HOLD" if row["regression"] else ""))
         private_file(kit / "PRIVATE-numeric-review.csv", csvio.getvalue().encode("utf-8"))
+        human = io.StringIO(newline="")
+        workflow = csv.writer(human)
+        workflow.writerow((
+            "original_baseline_sha256_unsigned", "original_candidate_sha256_unsigned",
+            "original_scenario_ordinal", "original_metric", "adverse_source_declaration",
+            "human_review_stage", "human_owner_group", "human_next_question", "human_blocker",
+        ))
+        source_ids = data["original_source_byte_hashes_unsigned"]
+        for ordinal, item in enumerate(data["groups"], 1):
+            for row in item["changes"]:
+                if row["regression"]:
+                    workflow.writerow((
+                        source_ids["baseline"], source_ids["candidate"], ordinal,
+                        row["name"], "HOLD", "", "", "", "",
+                    ))
+        private_file(kit / "PRIVATE-human-benchmark-followup.csv",
+                     human.getvalue().encode("utf-8"))
         canonical_link = (
             '<li><a href="PRIVATE-original-canonical-cohort.json">Exact original cohort comparison '
             'for offline trend / candidate studios</a></li>'
@@ -281,7 +298,8 @@ li{padding:.5rem}a{color:#175e88}.hold{font-weight:700;color:#833a1c}</style>
 <p class="hold">""" + html.escape(status) + """ — ALWAYS NON-AUTHORIZING, source claims only.</p>
 <ul><li><a href="PRIVATE-original-benchmark.html">Detailed PRIVATE original metric comparison</a></li>
 <li><a href="PRIVATE-original-comparison.json">PRIVATE unsigned source-bound result JSON</a></li>
-<li><a href="PRIVATE-numeric-review.csv">PRIVATE numeric HUMAN follow-up worksheet (ordinal-only)</a></li>""" + canonical_link + """</ul>
+<li><a href="PRIVATE-numeric-review.csv">PRIVATE numeric original metric summary</a></li>
+<li><a href="PRIVATE-human-benchmark-followup.csv">Original SHA-bound blank HUMAN follow-up for adverse metrics</a></li>""" + canonical_link + """</ul>
 <p>Review on a trusted local computer. No client data was sent to a server,
 no scanner/model/target was called, and no consent or release granted.
 INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD.</p></html>""")
