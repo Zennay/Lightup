@@ -157,6 +157,10 @@ def save(session, parent_name: str, prefix: str) -> tuple[Path, Path]:
     if parent == ROOT or ROOT in parent.parents or not private(parent, True):
         raise Hold("owner-private 0700 parent outside checkout required")
     values = clean_paths(session)
+    # Preserve the actual newly selected PRIVATE parent on resume rather than
+    # an outdated earlier-session parent, without mutating the live session
+    # until publication has completed.
+    values["parent"] = str(parent)
     room = parent / prefix
     if os.path.lexists(room):
         raise Hold("original PRIVATE session room exists; never overwrite")
