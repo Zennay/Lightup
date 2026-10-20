@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Create one 0600 offline browser artifact with exact inline CSP SHA-256 pins.
 
-Source is only these three trusted local product files. Never accesses assessment
+Source is only these four trusted local product files. Never accesses assessment
 data, network, subprocess, user credentials or target assets.
 """
 from __future__ import annotations
@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent
 CSP_TEMPLATE = """<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">"""
 CSS_TAG = '<link rel="stylesheet" href="desk.css">'
 JS_TAG = '<script src="desk.js" defer></script>'
+VAULT_TAG = '<script src="vault.js" defer></script>'
 
 
 def read_source(name, cap):
@@ -47,21 +48,23 @@ def bundle():
     html = read_source("index.html", 100_000)
     css = read_source("desk.css", 100_000)
     js = read_source("desk.js", 200_000)
+    vault = read_source("vault.js", 200_000)
     # Source HTML needs distinct inert placeholders; refuse script/style terminator
     # sequences in the bundled assets rather than letting an inline element escape.
-    if re.search(r"</\s*(script|style)\b", js + "\n" + css, re.IGNORECASE):
+    if re.search(r"</\s*(script|style)\b", js + "\n" + vault + "\n" + css, re.IGNORECASE):
         raise Hold("unsafe inline style/script terminator in source")
     csp = (
         "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; "
-        "script-src " + csp_sha(js) + "; style-src " + csp_sha(css) + "; "
+        "script-src " + csp_sha(js) + " " + csp_sha(vault) + "; style-src " + csp_sha(css) + "; "
         "img-src 'none'; connect-src 'none'; object-src 'none'; "
         "base-uri 'none'; form-action 'none'\">"
     )
     html = once(html, CSP_TEMPLATE, csp)
     html = once(html, CSS_TAG, "<style>" + css + "</style>")
     html = once(html, JS_TAG, "")
-    html = once(html, "</body>", "<script>" + js + "</script>\n</body>")
-    if 'src="desk.js"' in html or 'href="desk.css"' in html:
+    html = once(html, VAULT_TAG, "")
+    html = once(html, "</body>", "<script>" + js + "</script>\n<script>" + vault + "</script>\n</body>")
+    if 'src="desk.js"' in html or 'src="vault.js"' in html or 'href="desk.css"' in html:
         raise Hold("external source reference left in purported standalone product")
     return html
 
