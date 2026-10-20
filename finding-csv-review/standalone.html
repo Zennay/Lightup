@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-tEJ5xj97vl10GHDQ4HjKMf6frLeKG5Emu0GUdWpOZr0=' 'sha256-Jy852yurFXWrtSh50aol1DvQ4ooyvbgJH3noO0R4ymk=' 'sha256-ZJzVvwKHoFQ5Hlhmr0UrefGgjPup4TAZMDIO4TnEU48='; style-src 'sha256-iu80zm/vZoSGtAJyvIYOPErwdPahqPjj0MSiNFGN92w='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-k/kCIxts5mUixU/MYfTeV2ogINIuX+ccvN/MNaTsIJE=' 'sha256-Jy852yurFXWrtSh50aol1DvQ4ooyvbgJH3noO0R4ymk=' 'sha256-ZJzVvwKHoFQ5Hlhmr0UrefGgjPup4TAZMDIO4TnEU48='; style-src 'sha256-iuvgeoIKDkMRSNV/aXZuM0vcbzH5xuuwwfviLJZx0lE='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>LightUp · PRIVATE finding follow-up</title>
 <style>:root { color-scheme: dark; --ink:#edf5f3; --muted:#91aca9; --bg:#091513; --panel:#102421; --panel2:#142d29; --line:#28504a; --accent:#80e5c0; --danger:#ffd1ba; font: 15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
@@ -90,6 +90,16 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 .revision-list details>div { border-left:2px solid var(--line); margin:12px 0 10px; padding-left:10px; }
 .revision-list details p { overflow-wrap:anywhere; white-space:pre-wrap; color:var(--muted); margin:6px 0; }
 .revision-list details strong { color:var(--accent); font-size:.76rem; }
+
+.private-history-desk { border:1px solid var(--line); border-radius:10px; margin-top:18px; padding:14px; background:var(--panel2); }
+.private-history-desk input { margin-bottom:12px; }
+.private-history-list { max-height:520px; overflow:auto; }
+.revision-history-moment { border-top:1px solid var(--line); padding:12px 4px; }
+.revision-history-moment>summary { cursor:pointer; font-weight:750; color:var(--accent); }
+.revision-history-moment details { margin:9px 0 9px 15px; border-left:2px solid var(--line); padding:7px 12px; }
+.revision-history-moment details>summary { cursor:pointer; overflow-wrap:anywhere; }
+.revision-history-moment p { font-size:.8rem; white-space:pre-wrap; overflow-wrap:anywhere; margin:8px 0; }
+.private-history-list summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 </style>
 <script>"use strict";
 /* PRIVATE encrypted HUMAN journal transport, memory-only decrypted source.
@@ -489,10 +499,65 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     $("revisionAddedList").replaceChildren();
   }
   function refreshRevisionArchive() {
-    $("revisionHistoryDownload").disabled = state.revisionHistory.length === 0;
-    $("revisionHistoryDownload").textContent = state.revisionHistory.length
+    const hasHistory = state.revisionHistory.length > 0;
+    $("revisionHistoryDownload").disabled = !hasHistory;
+    $("revisionHistoryToggle").disabled = !hasHistory;
+    $("revisionHistoryDownload").textContent = hasHistory
       ? "Download PRIVATE prior HUMAN archive (" + state.revisionHistory.length + " revision(s))"
       : "No prior HUMAN archive";
+    if (!hasHistory) $("revisionArchiveDesk").hidden = true;
+    if (!$("revisionArchiveDesk").hidden) renderRevisionHistory();
+  }
+  function renderRevisionHistory() {
+    const container = $("revisionHistoryList");
+    container.replaceChildren();
+    const query = $("revisionHistorySearch").value.trim().toLocaleLowerCase();
+    let visible = 0;
+    let total = 0;
+    for (let index = state.revisionHistory.length - 1; index >= 0; index--) {
+      const revision = state.revisionHistory[index];
+      total += revision.affected.length;
+      const matching = revision.affected.filter(item =>
+        !query || [item.id, item.source_title, item.human.owner]
+          .some(value => value.toLocaleLowerCase().includes(query)));
+      if (!matching.length && query) continue;
+      visible += matching.length;
+      const block = document.createElement("details");
+      block.className = "revision-history-moment";
+      const title = document.createElement("summary");
+      title.textContent = "PRIVATE human-selected source transition " + (index + 1) +
+        " · " + revision.counts.changed + " changed · " +
+        revision.counts.absent + " absent (NOT FIXED)";
+      block.append(title);
+      const hashes = document.createElement("p");
+      hashes.className = "mono";
+      hashes.textContent = "Prior unsigned CSV SHA-256 " + revision.from_sha256 +
+        " → selected unsigned CSV SHA-256 " + revision.to_sha256 +
+        " · HUMAN choice " + revision.changed_policy +
+        " (not chronological or client-authenticated)";
+      block.append(hashes);
+      for (const item of matching) {
+        const row = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = (item.type === "absent" ? "ABSENT, not fixed" : "CHANGED, not verified") +
+          " · " + item.id + " · " + item.source_title.slice(0, 150);
+        row.append(summary);
+        const description = document.createElement("p");
+        description.textContent = "PRIOR source-declared severity " + item.source_severity +
+          " / retest " + item.source_retest +
+          " · HUMAN stage " + stageText(item.human.stage);
+        const followup = document.createElement("p");
+        followup.textContent = "PRIOR PRIVATE HUMAN owner: " + (item.human.owner || "—") +
+          " · tentative due: " + (item.human.due || "—");
+        const note = document.createElement("p");
+        note.textContent = "PRIOR PRIVATE HUMAN note: " + (item.human.note || "—");
+        row.append(description, followup, note);
+        block.append(row);
+      }
+      container.append(block);
+    }
+    $("revisionHistoryCounts").textContent = visible + " visible / " + total +
+      " prior changed/absent source records. These are PRIVATE HUMAN-only notes, never retest or closure evidence.";
   }
   async function previewRevision(file) {
     if (state.pending) {
@@ -655,6 +720,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
     state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.sourceText = ""; state.revisionHistory = [];
     clearRevisionCandidate(); refreshRevisionArchive();
+    $("revisionArchiveDesk").hidden = true; $("revisionHistorySearch").value = "";
     $("sourceFile").value = ""; $("journalFile").value = ""; $("workroomFile").value = ""; $("vaultPass").value = "";
     $("summary").textContent = "No source CSV loaded.";
     $("sourceId").textContent = "";
@@ -1169,6 +1235,12 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       clearRevisionCandidate(); status("Source candidate discarded; original workspace remains unchanged.", false);
     });
     $("revisionHistoryDownload").addEventListener("click", exportRevisionArchive);
+    $("revisionHistoryToggle").addEventListener("click", () => {
+      const desk = $("revisionArchiveDesk");
+      desk.hidden = !desk.hidden;
+      if (!desk.hidden) renderRevisionHistory();
+    });
+    $("revisionHistorySearch").addEventListener("input", renderRevisionHistory);
     $("clearAll").addEventListener("click", () => {
       if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
       wipe(); status("All loaded application state released from the interface.", false);
@@ -1301,6 +1373,13 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       <p class="eyebrow">PRIOR HUMAN REVIEW PRESERVATION</p>
       <p>After selecting a new source, removed records remain PRIVATE absent/unknown, not fixed. The encrypted complete workroom preserves up to three bounded prior HUMAN source transitions.</p>
       <button id="revisionHistoryDownload" type="button" disabled>Download PRIVATE prior HUMAN archive</button>
+      <button id="revisionHistoryToggle" type="button" disabled>Open PRIVATE prior HUMAN history</button>
+      <div id="revisionArchiveDesk" class="private-history-desk" hidden>
+        <label for="revisionHistorySearch">PRIVATE historical ID, title or HUMAN owner search</label>
+        <input id="revisionHistorySearch" type="search" placeholder="Local-only search in previous source workrooms">
+        <p id="revisionHistoryCounts" class="minor"></p>
+        <div id="revisionHistoryList" class="private-history-list"></div>
+      </div>
     </div>
   </section>
 
