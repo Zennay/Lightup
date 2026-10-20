@@ -28,6 +28,7 @@ COMPARISON = "PRIVATE-reconcile-comparison.html"
 RECONCILED = "PRIVATE-reconciled-human.csv"
 OUTCOME = "PRIVATE-reconciled-report.html"
 COUNTS = "PRIVATE-reconciled-counts.csv"
+SEALED_RESULT = "PRIVATE-reconciled-human.luhb"
 
 
 def load_review(args: argparse.Namespace, role: str, raw_receipt: bytes,
@@ -53,7 +54,7 @@ def load_review(args: argparse.Namespace, role: str, raw_receipt: bytes,
     return raw, admitted
 
 
-def load_context(args: argparse.Namespace) -> tuple[str, list[dict], str, list[dict], str, list[dict]]:
+def load_context(args: argparse.Namespace) -> tuple[bytes, str, list[dict], str, list[dict], str, list[dict]]:
     original_bytes = source_bytes(args.receipt)
     digest, originals = receipt_content(original_bytes)
     a_raw, a = load_review(args, "a", original_bytes, digest, originals)
@@ -62,7 +63,7 @@ def load_context(args: argparse.Namespace) -> tuple[str, list[dict], str, list[d
     # regardless of whether a reviewer supplied ciphertext or a plaintext file.
     a_sha = hashlib.sha256(a_raw).hexdigest()
     b_sha = hashlib.sha256(b_raw).hexdigest()
-    return digest, originals, a_sha, a, b_sha, b
+    return original_bytes, digest, originals, a_sha, a, b_sha, b
 
 
 def decision_template(digest: str, originals: list[dict], a_sha: str, b_sha: str) -> str:
@@ -182,13 +183,16 @@ def main(argv: list[str] | None = None) -> int:
         group.add_argument("--" + role + "-vault", help="encrypted HUMAN vault .luhd")
         group.add_argument("--" + role + "-bundle", help="encrypted receipt + HUMAN bundle .luhb")
     parser.add_argument("--decisions", help="human-edited exact receipt + reviewer-bound decision CSV")
+    parser.add_argument("--encrypt-result", action="store_true",
+                        help="finalize only: save encrypted original receipt + chosen HUMAN CSV; no plaintext report")
     parser.add_argument("--minimum-cohort", type=int, default=5,
                         help="privacy floor 5-12 for separate source-free aggregate HUMAN counts")
     args = parser.parse_args(argv)
     try:
         require((args.action == "prepare" and args.decisions is None) or
                 (args.action == "finalize" and args.decisions is not None))
-        digest, originals, a_sha, a, b_sha, b = load_context(args)
+        require(not args.encrypt_result or args.action == "finalize")
+        original_bytes, digest, originals, a_sha, a, b_sha, b = load_context(args)
         if args.action == "prepare":
             decisions = None
             first_name = DECISIONS
@@ -202,12 +206,21 @@ def main(argv: list[str] | None = None) -> int:
             counts_content = human_counts(final_rows, args.minimum_cohort)
             second_name = OUTCOME
             second_content = comparison_html(originals, a, b, decisions)
+            if args.encrypt_result:
+                try:
+                    from vault_native import VaultHold, encrypt_bundle
+                    first_content = encrypt_bundle(original_bytes, first_content.encode("utf-8"))
+                except (ImportError, VaultHold):
+                    raise Hold("HOLD: encrypted reconciled HUMAN result refused") from None
+                first_name = SEALED_RESULT
+                second_name = COUNTS
+                second_content = counts_content
         # Each artifact is independently exclusive+private. If the second
         # publication fails, an already completed first output remains PRIVATE;
         # never overwrite it or claim that the paired handoff finished.
         publish(args.private_output_dir, first_name, first_content)
         publish(args.private_output_dir, second_name, second_content)
-        if args.action == "finalize":
+        if args.action == "finalize" and not args.encrypt_result:
             publish(args.private_output_dir, COUNTS, counts_content)
     except (Hold, OSError, TypeError, ValueError, MemoryError):
         print("HOLD: PRIVATE HUMAN reconciliation not completed; no authority", file=sys.stderr)
