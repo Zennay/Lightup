@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Twenty-six console actions provide original kit capture, exact-byte reopen, original-bound
+Twenty-seven console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -841,3 +841,58 @@ collections with no shared case are rejected. Full, unfiltered portfolio
 comparison still demands exactly identical source-case rosters. No removed
 HUMAN proposal, slot or worklist row is evidence of a fixed vulnerability,
 revoked grant, completed action or successful retest.
+
+## PRIVATE cross-case HUMAN date/priority planning dayboard · console 27
+
+The native [portfolio_dayboard.py](portfolio_dayboard.py) opens an existing
+original owner-private, source-bound `PRIVATE-HUMAN-portfolio.json` from the
+prior cross-case workflow. It creates a *new* isolated source-bound HUMAN
+planning view grouped by the **explicitly selected reference day**, manually
+proposed HUMAN priority, status and proposed owner.
+
+    python3 assessment-workspace-ledger/portfolio_dayboard.py \
+      --portfolio /private/portfolio/PRIVATE-HUMAN-portfolio.json \
+      --reference-day 2026-10-20 \
+      --private-parent /private/dayboards
+
+To restrict the PRIVATE output to one original proposed HUMAN label, add:
+
+    --owner "EXACT PROPOSED HUMAN OWNER LABEL"
+
+**There is no implicit local/system date and no real deadline claim.** The
+HUMAN must choose the comparison date. Each original proposed day is grouped
+into `past_proposed_day`, `selected_reference_day`,
+`later_proposed_day` or `no_proposed_day`; these are **historical HUMAN
+proposal-relative buckets**, never proof of actual overdue assignments or
+appointments. Existing owner-filtered original portfolios cannot be
+expanded: omitting `--owner` on such an input automatically preserves the
+original exact HUMAN-owner scope and does not reveal other owners.
+
+The native source reader re-admits the original canonical 0600 owner-only
+source record, checks unsigned exact original case identities and all-false
+authority, and reads the unchanged original a second time before producing
+anything. It neither accesses original customer kits nor any target/network.
+
+New 0700 output folder and strictly owner-private 0600 files:
+- `OPEN-PRIVATE.html`: counts by historical HUMAN date bucket and priority
+  with NO owner names, action text, case hashes or target identities.
+- `PRIVATE-HUMAN-dayboard.html`: fully escaped PRIVATE workboard with proposed
+  day, priority, original case/transition/kit, original HUMAN status,
+  proposed owner and next step.
+- `PRIVATE-HUMAN-dayboard.csv`: source-relative HUMAN worklist, for PRIVATE
+  offline review only.
+- `PRIVATE-HUMAN-owner-capacity.csv`: detailed **PRIVATE** per-proposed-owner
+  suggestion counts for dates/priorities. These do NOT authenticate real
+  assignments or reveal an actual person's workload.
+- `PRIVATE-HUMAN-dayboard.json`: original source-portfolio SHA, the explicitly
+  chosen date, exact original visible case SHA identities, literal no-authority
+  flags and the HUMAN-only proposals/aggregates, all <= native 1 MiB limit.
+
+Console **option 27** provides the same guided single foreground run with
+manual date and optional exact owner. Nothing is queued, transmitted,
+scheduled, signed, approved or independently verified; exit remains HOLD (3).
+Neither source SHA nor unsigned planner stages constitute client/operator
+consent, scope approval, a completed finding, a fix, authentic recipients or
+permission to share PRIVATE work. The source-only v20 software bundle adds
+`portfolio_dayboard.py`, preserving read-only historical package support
+for v16/v17/v18/v19; no QA/regression/test suites were created or run.
