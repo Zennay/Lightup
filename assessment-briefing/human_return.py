@@ -16,7 +16,7 @@ from briefing import (CSS, DENIAL_FLAGS, Hold, SEVERITIES, h, json_bytes,
                       open_source, publish_new, require, text_value)
 
 MAX_CSV_BYTES = 1024 * 1024
-MAX_MANIFEST_BYTES = 8192
+MAX_MANIFEST_BYTES = 64 * 1024
 HEADER = ("original_ordinal", "source_reported_severity", "evidence_reference_count",
           "human_stage", "human_owner_group", "human_next_action", "human_blocker")
 STAGES = ("", "needs_review", "discussing", "blocked", "documented")
