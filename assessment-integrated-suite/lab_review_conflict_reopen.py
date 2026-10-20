@@ -43,12 +43,33 @@ def inspect(packets: list[str], final_room: str, handoff_room: str,
         raise privacy.Hold("HOLD: original exact-source HUMAN choices room changed")
     original_receipt = workpack_progress._private_receipt(
         original_choices / "PRIVATE-HUMAN-DECISIONS-RECEIPT.json")
-    if (type(original_receipt) is not dict
+    original_keys = {
+        "schema", "status", "authority", "verified_client_consent",
+        "verified_operator_consent", "verified_reviewer_identity",
+        "verified_source_identity", "human_go_recorded", "scan_or_release_allowed",
+        "automatic_finalization", "external_contact",
+        "private_question_text_included_in_overview",
+        "original_source_sha256_unsigned", "previous_candidate_sha256_unsigned",
+        "human_decisions_to_apply", "private_artifact_sha256_unsigned",
+    }
+    if (type(original_receipt) is not dict or set(original_receipt) != original_keys
             or original_receipt.get("schema") != conflict.SCHEMA
             or original_receipt.get("status") != "REVIEW_ONLY"
             or original_receipt.get("original_source_sha256_unsigned") != source_sha
             or original_receipt.get("previous_candidate_sha256_unsigned") != original_digest
-            or original_receipt.get("human_decisions_to_apply") != 0):
+            or type(original_receipt.get("human_decisions_to_apply")) is not int
+            or original_receipt["human_decisions_to_apply"] != 0
+            or type(original_receipt.get("authority")) is not dict
+            or set(original_receipt["authority"]) != set(privacy.AUTHORITY)
+            or any(type(original_receipt["authority"][key]) is not bool or
+                   original_receipt["authority"][key] is not False
+                   for key in privacy.AUTHORITY)
+            or any(original_receipt[key] is not False for key in (
+                "verified_client_consent", "verified_operator_consent",
+                "verified_reviewer_identity", "verified_source_identity",
+                "human_go_recorded", "scan_or_release_allowed",
+                "automatic_finalization", "external_contact",
+                "private_question_text_included_in_overview"))):
         raise privacy.Hold("HOLD: original HUMAN choices receipt/source differs")
     choice_receipt_files = original_receipt.get("private_artifact_sha256_unsigned")
     if (type(choice_receipt_files) is not dict
