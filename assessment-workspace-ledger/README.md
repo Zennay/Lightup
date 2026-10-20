@@ -1304,3 +1304,15 @@ recipient review is necessary before any manual transfer.
 Console foreground action **38** exposes the same bounded offline export.
 The source-only v31 software bundle includes the original code, still
 supporting fixed software inventory inspection v16–v30, without QA suites.
+
+### Bulk HUMAN discussion for one explicitly selected original owner · v31
+
+The source-free Inbox Studio now allows an operator to choose exactly one
+original proposed HUMAN owner and apply a HUMAN-only proposal stage to just
+the **currently visible** matching rows, after an explicit local confirmation.
+Original sources, original owner reply stages, private HUMAN notes and
+invisible rows are untouched. No owner filter means no bulk action. The CSV
+export still retains **all** original source rows in exact original order,
+regardless of filtering or mass HUMAN draft edits. Changes are still unsigned
+local concepts; the native original-inbox-bound finalizer remains mandatory.
+No real task assignment, authenticated receiver, consent or scan is created.

@@ -89,6 +89,18 @@ trusted PRIVATE custody. Do not upload client secrets to this UI.</p>
 <option value="proposed_followup">Proposed follow-up</option>
 <option value="hold">HOLD</option></select></label>
 </div><p id="visible"></p>
+<div class="controls">
+<label for="bulkStage">Set only VISIBLE rows for explicitly filtered HUMAN owner
+<select id="bulkStage">
+<option value="needs_discussion">Needs discussion (HUMAN draft)</option>
+<option value="proposed_followup">Proposed follow-up (HUMAN draft)</option>
+<option value="hold">HOLD (HUMAN draft)</option>
+</select></label>
+<div><p>Only one selected original HUMAN owner, exact currently visible
+filters and explicit local HUMAN confirmation are allowed.</p>
+<button id="bulkApply" type="button" class="secondary">
+Set visible HUMAN discussion proposals</button></div>
+</div>
 <label for="restore">Optional: restore complete same-inbox HUMAN review CSV
 <input id="restore" type="file" accept=".csv,text/csv"></label>
 <p><small>Original inbox SHA, every original case/transition/kit and entire

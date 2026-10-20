@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-XkVLqLvwdAUGWaCCpGJGc0lBM+hEDX5b4kkdoFFlM8o='; script-src 'sha256-DFoLdl0y4Nd+QVc2tMXVUZMGci9Imf01gNPqo0woLZM='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-XkVLqLvwdAUGWaCCpGJGc0lBM+hEDX5b4kkdoFFlM8o='; script-src 'sha256-fduNA/+6HQd9WCKYRCPFeGOxhGh7gYqFY6ViXG2aiIE='">
 <title>LightUp · PRIVATE HUMAN Inbox Studio</title><style>body{margin:0;background:#edf3f8;color:#10233a;font:16px/1.55 system-ui,sans-serif}
 header{padding:1.3rem max(1rem,calc((100vw - 1180px)/2));background:#112b46;color:#fff}
 main{max-width:1180px;margin:1.2rem auto;padding:0 1rem 4rem}
@@ -48,6 +48,18 @@ trusted PRIVATE custody. Do not upload client secrets to this UI.</p>
 <option value="proposed_followup">Proposed follow-up</option>
 <option value="hold">HOLD</option></select></label>
 </div><p id="visible"></p>
+<div class="controls">
+<label for="bulkStage">Set only VISIBLE rows for explicitly filtered HUMAN owner
+<select id="bulkStage">
+<option value="needs_discussion">Needs discussion (HUMAN draft)</option>
+<option value="proposed_followup">Proposed follow-up (HUMAN draft)</option>
+<option value="hold">HOLD (HUMAN draft)</option>
+</select></label>
+<div><p>Only one selected original HUMAN owner, exact currently visible
+filters and explicit local HUMAN confirmation are allowed.</p>
+<button id="bulkApply" type="button" class="secondary">
+Set visible HUMAN discussion proposals</button></div>
+</div>
 <label for="restore">Optional: restore complete same-inbox HUMAN review CSV
 <input id="restore" type="file" accept=".csv,text/csv"></label>
 <p><small>Original inbox SHA, every original case/transition/kit and entire
@@ -170,19 +182,22 @@ no reviewer authentication, active security scan, grants or approvals.</footer>
       allRows.filter(r => r.triageNote).length + " notes" +
       (dirty ? " • local draft edited" : "");
   }
-  function render() {
+  function visibleRow(row) {
     const owner = $("ownerFilter").value;
     const stage = $("stageFilter").value;
     const query = $("query").value.trim().toLocaleLowerCase();
+    if ((owner && row.original_proposed_human_owner !== owner) ||
+        (stage && row.triageStage !== stage)) return false;
+    const corpus = (row.local_case + " " + row.original_proposed_human_owner +
+      " " + row.original_human_priority + " " +
+      row.private_human_reply_text + " " + row.triageNote).toLocaleLowerCase();
+    return !query || corpus.includes(query);
+  }
+  function render() {
     const cards = $("cards"); cards.replaceChildren();
     let visible = 0;
     for (const row of allRows) {
-      if ((owner && row.original_proposed_human_owner !== owner) ||
-        (stage && row.triageStage !== stage)) continue;
-      const corpus = (row.local_case + " " + row.original_proposed_human_owner +
-        " " + row.original_human_priority + " " +
-        row.private_human_reply_text + " " + row.triageNote).toLocaleLowerCase();
-      if (query && !corpus.includes(query)) continue;
+      if (!visibleRow(row)) continue;
       visible++;
       const card = el("article",undefined,"card");
       card.append(el("h3","Original case " + row.local_case +
@@ -257,6 +272,27 @@ no reviewer authentication, active security scan, grants or approvals.</footer>
       empty();
       hold("Selected file is not an acceptable original inbox preview");
     }
+  }
+  function bulkApply() {
+    if (!source || !sha || !allRows.length)
+      return hold("Open original HUMAN inbox before local group discussion");
+    const owner = $("ownerFilter").value;
+    if (!owner) return hold(
+      "Select one original proposed HUMAN owner before group-stage editing");
+    const stage = $("bulkStage").value;
+    if (!STAGES.includes(stage)) return hold("Invalid HUMAN-only proposal stage");
+    const subset = allRows.filter(visibleRow);
+    if (!subset.length) return hold("No original HUMAN inbox rows match visible filters");
+    if (!confirm("Change only the " + subset.length + " visible HUMAN discussion " +
+      "draft stages for original owner '" + owner +
+      "' to " + stage.replaceAll("_"," ") + "? " +
+      "No real task, finding, authorization or grant will be changed.")) return;
+    for (const row of subset) row.triageStage = stage;
+    dirty = true;
+    render();
+    message("PRIVATE HUMAN draft: changed " + subset.length +
+      " original owner discussion-stage choices. All original source rows " +
+      "will still be included in source-bound CSV export. Not approved or sent.");
   }
   function csvEncode(value) {
     return '"' + String(value).replaceAll('"','""') + '"';
@@ -356,6 +392,7 @@ no reviewer authentication, active security scan, grants or approvals.</footer>
   $("query").addEventListener("input",render);
   $("stageFilter").addEventListener("change",render);
   $("ownerFilter").addEventListener("change",render);
+  $("bulkApply").addEventListener("click",bulkApply);
   $("download").addEventListener("click",exportCsv);
   $("clear").addEventListener("click",() => {
     if (dirty && !confirm("Discard unsaved HUMAN inbox draft edits?")) return;

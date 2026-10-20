@@ -106,19 +106,22 @@
       allRows.filter(r => r.triageNote).length + " notes" +
       (dirty ? " • local draft edited" : "");
   }
-  function render() {
+  function visibleRow(row) {
     const owner = $("ownerFilter").value;
     const stage = $("stageFilter").value;
     const query = $("query").value.trim().toLocaleLowerCase();
+    if ((owner && row.original_proposed_human_owner !== owner) ||
+        (stage && row.triageStage !== stage)) return false;
+    const corpus = (row.local_case + " " + row.original_proposed_human_owner +
+      " " + row.original_human_priority + " " +
+      row.private_human_reply_text + " " + row.triageNote).toLocaleLowerCase();
+    return !query || corpus.includes(query);
+  }
+  function render() {
     const cards = $("cards"); cards.replaceChildren();
     let visible = 0;
     for (const row of allRows) {
-      if ((owner && row.original_proposed_human_owner !== owner) ||
-        (stage && row.triageStage !== stage)) continue;
-      const corpus = (row.local_case + " " + row.original_proposed_human_owner +
-        " " + row.original_human_priority + " " +
-        row.private_human_reply_text + " " + row.triageNote).toLocaleLowerCase();
-      if (query && !corpus.includes(query)) continue;
+      if (!visibleRow(row)) continue;
       visible++;
       const card = el("article",undefined,"card");
       card.append(el("h3","Original case " + row.local_case +
@@ -193,6 +196,27 @@
       empty();
       hold("Selected file is not an acceptable original inbox preview");
     }
+  }
+  function bulkApply() {
+    if (!source || !sha || !allRows.length)
+      return hold("Open original HUMAN inbox before local group discussion");
+    const owner = $("ownerFilter").value;
+    if (!owner) return hold(
+      "Select one original proposed HUMAN owner before group-stage editing");
+    const stage = $("bulkStage").value;
+    if (!STAGES.includes(stage)) return hold("Invalid HUMAN-only proposal stage");
+    const subset = allRows.filter(visibleRow);
+    if (!subset.length) return hold("No original HUMAN inbox rows match visible filters");
+    if (!confirm("Change only the " + subset.length + " visible HUMAN discussion " +
+      "draft stages for original owner '" + owner +
+      "' to " + stage.replaceAll("_"," ") + "? " +
+      "No real task, finding, authorization or grant will be changed.")) return;
+    for (const row of subset) row.triageStage = stage;
+    dirty = true;
+    render();
+    message("PRIVATE HUMAN draft: changed " + subset.length +
+      " original owner discussion-stage choices. All original source rows " +
+      "will still be included in source-bound CSV export. Not approved or sent.");
   }
   function csvEncode(value) {
     return '"' + String(value).replaceAll('"','""') + '"';
@@ -292,6 +316,7 @@
   $("query").addEventListener("input",render);
   $("stageFilter").addEventListener("change",render);
   $("ownerFilter").addEventListener("change",render);
+  $("bulkApply").addEventListener("click",bulkApply);
   $("download").addEventListener("click",exportCsv);
   $("clear").addEventListener("click",() => {
     if (dirty && !confirm("Discard unsaved HUMAN inbox draft edits?")) return;
