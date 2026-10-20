@@ -74,7 +74,26 @@ python3 assessment-disclosure-preflight/reconcile.py reopen \
   --received-bundle ./owner/PRIVATE-browser-reconciled-human.luhb \
   --received-counts ./owner/PRIVATE-browser-reconciled-counts.csv \
   --private-output-dir ./owner/unused-private-receiving-desk
+
+# An independently saved complete plaintext final CSV uses the same original
+# inputs and source-bound HUMAN decisions, but omits --encrypt-result.
+python3 assessment-disclosure-preflight/reconcile.py reopen \
+  --receipt ./owner/PRIVATE-receipt.json \
+  --a-csv ./owner/original-reviewer-A.csv \
+  --b-csv ./owner/original-reviewer-B.csv \
+  --decisions ./owner/PRIVATE-reconcile-browser-decisions.csv \
+  --received-csv ./owner/PRIVATE-reconciled-human.csv \
+  --received-counts ./owner/PRIVATE-browser-reconciled-counts.csv \
+  --private-output-dir ./owner/unused-private-receiving-desk
 ~~~
+
+The native CLI enforces a single input mode: `--received-csv` (plaintext)
+or `--received-bundle` with `--encrypt-result`. The separate complete
+`--received-counts` file is mandatory in either explicit receiving mode.
+Every private reviewer and decision is re-admitted before comparing the entire
+logical CSV content and all declared count/authority fields. Ordinary native
+reopening without explicit receiving arguments still retains byte-exact
+comparison of the originally published native artifacts.
 
 This step reads original files but does not create new outputs, run a scanner,
 interpret finding validity, authenticate the sender, grant consent, approve a
