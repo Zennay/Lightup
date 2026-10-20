@@ -30,9 +30,10 @@
 <h2 id="review-title"><span>03</span> Inspect the resulting copy</h2>
 <div class="grid three"><div class="metric"><b id="matches">—</b><small>Literal replacements</small></div><div class="metric"><b id="residual">—</b><small>Residual pattern hints</small></div><div class="metric"><b id="outputHash">—</b><small>Redacted SHA-256 prefix</small></div></div>
 <div id="warnings" class="warnings" role="status" aria-live="polite">No preview prepared.</div>
-<label for="preview">Read-only beginning of redacted text (max 40,000 characters; exports use the whole text)</label>
+<label for="preview">Read-only redacted text, paged in 8,000-character sections (exports contain the entire text)</label>
 <textarea id="preview" rows="12" readonly spellcheck="false"></textarea>
-<label class="tick"><input type="checkbox" id="readAll"> I have reviewed the entire proposed export, including text beyond the on-screen preview, using my own appropriate private review process.</label>
+<div class="actions"><button id="prevPage" class="secondary" type="button" disabled>Previous page</button><span id="pageInfo" role="status" aria-live="polite">No pages</span><button id="nextPage" class="secondary" type="button" disabled>Next page</button></div>
+<label class="tick"><input type="checkbox" id="readAll"> I have inspected all displayed pages and independently considered sensitive information these masks and heuristics may miss.</label>
 <label class="tick"><input type="checkbox" id="accept"> I understand masking may miss secrets and this is NOT an authorization, consent, or security clearance.</label>
 <label for="confirm">Type <strong>EXPORT REDACTED</strong> to enable export</label>
 <input id="confirm" type="text" autocomplete="off" spellcheck="false" placeholder="EXPORT REDACTED">
