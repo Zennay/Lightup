@@ -153,12 +153,20 @@
     }
     return zip;
   }
+  // Explicitly revoke temporary local download URLs on navigation.
+  const activeDownloadURLs = new Set();
+  window.addEventListener("pagehide", () => {
+    for (const url of activeDownloadURLs) URL.revokeObjectURL(url);
+    activeDownloadURLs.clear();
+  });
+
   const save = (bytes, filename) => {
     const url = URL.createObjectURL(new Blob([bytes], {type:"application/octet-stream"}));
+    activeDownloadURLs.add(url);
     const anchor = document.createElement("a");
     anchor.href = url; anchor.download = filename; anchor.rel = "noopener";
     document.body.append(anchor); anchor.click(); anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    setTimeout(() => { URL.revokeObjectURL(url); activeDownloadURLs.delete(url); }, 30000);
   };
   buildButton.addEventListener("click", async () => {
     const current = ++revision;

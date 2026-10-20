@@ -17,6 +17,18 @@ function reset() {
   button.disabled = false;
 }
 
+// HUMAN-controlled privacy reset, plus navigation / BFCache clearing.
+function forgetLocalReview() {
+  selected.value = "";
+  expected.value = "";
+  reset();  // Also clears original ZIP inventory and browser-built role bytes.
+}
+pick("forget-local-review").addEventListener("click", forgetLocalReview);
+window.addEventListener("pagehide", forgetLocalReview);
+window.addEventListener("pageshow", event => {
+  if (event.persisted) forgetLocalReview();
+});
+
 selected.addEventListener("change", reset);
 expected.addEventListener("input", reset);
 

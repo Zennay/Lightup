@@ -69,11 +69,11 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `71f16675b054653e09c56e9b9fb9f6faa163aed60de31fc23844e71a25101b5a`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `aceec369c9a840e593fcc2fe47cf556ad0224d7183e3cba22e353af2bc7848d2`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `72d2e8f415b8f079d2c88b98996833a1707185311657104c24d990a52cc52a68`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `ff147140b1ffbaeb2370e71608e031685f269388dfec7b28d4826a3618386eea`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `ed5276f717b19a2e38511e587a213c6d78a511f3b4ad41679852bbec56f808e3`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `5ec306abe2dcf639c93978ed81a45128dd3d6d65cea217eab94b6f8b2dbf1118`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `46b6dadfc8e6f3a07837304084d6880dc0200991d6b5d711eb8bac51cdc5bf59`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `30d88b0145c820a770321b0c4883668c45818c53c249884b87e09c3f5ed4c9d2`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
 
@@ -108,6 +108,10 @@ The browser creates a byte-canonical, Linux-compatible stored ZIP and an exact n
 The sender now sees a complete local **original file name, size and SHA-256 inventory** for the chosen role before sharing anything. At most the original source components for that one role appear; no unrelated workrooms or client data are inserted. Changing the source archive or role immediately clears the old preview and disables any prior package download.
 
 After the browser's native-compatible ZIP builder and its independent ZIP/receipt admission finish, an optional **Save PRIVATE HUMAN sender digest and checklist** operation produces a separate, unsigned `lightup.scope_private_human_sender_note.v1` text file. It binds original source outer ZIP digest, newly generated role ZIP digest and length, exact selected role, and only source-only component digests. It deliberately contains neither original bytes nor PRIVATE free text, reviewer identity, passwords or consent. Transfer the expected digest *over a separately authenticated channel*, never treat this note arriving inside or beside an untrusted archive as proof of its own origin. Actual confidential transfer still needs independent recipient verification, separate original HUMAN encryption and original LightUp gates.
+
+### Clear local PRIVATE intake and stop stale browser handoffs
+
+The standalone browser receiver has a **Clear selected file, SHA-256 and local review** action. It clears the file input and expected out-of-band digest, invalidates the prior source byte-match, drops original ZIP/role inventory and role-builder source references and pending downloads, and restores the non-authorizing idle state. It also clears this state when navigating away (`pagehide`) and after browser back/forward cache restoration (`pageshow.persisted`). Any temporary browser Blob URLs made for explicitly downloaded original components or role ZIPs are revoked on page exit. This is a best-effort browser-reference reset, **not** secure physical wiping of browser/OS memory or files already downloaded by the HUMAN.
 
 ### Role unpack stability under local file replacement
 

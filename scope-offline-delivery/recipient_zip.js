@@ -237,13 +237,21 @@
   const sha = async bytes => Array.from(new Uint8Array(
     await crypto.subtle.digest("SHA-256", bytes))).map(x => x.toString(16).padStart(2,"0")).join("");
 
+  // Explicitly revoke temporary local download URLs on navigation.
+  const activeDownloadURLs = new Set();
+  window.addEventListener("pagehide", () => {
+    for (const url of activeDownloadURLs) URL.revokeObjectURL(url);
+    activeDownloadURLs.clear();
+  });
+
   function save(bytes, filename) {
     // Opaque local download: no auto-open or evaluation of HTML, scripts or ZIP contents.
     const url = URL.createObjectURL(new Blob([bytes], {type:"application/octet-stream"}));
+    activeDownloadURLs.add(url);
     const link = document.createElement("a");
     link.href = url; link.download = filename; link.rel = "noopener";
     document.body.append(link); link.click(); link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    setTimeout(() => { URL.revokeObjectURL(url); activeDownloadURLs.delete(url); }, 30000);
   }
 
   saveInspection.addEventListener("click", () => {
