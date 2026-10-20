@@ -202,6 +202,37 @@ No calendar appointment, reviewer identity, source integrity, scope
 approval, security verdict, notification, scan, grant, target, retest,
 deletion or external distribution is created.
 
+## NEW: integrated PRIVATE HUMAN Assessment Workpack (option 48)
+
+The **original native console option 48** combines previously separated
+source-bound PRIVATE HUMAN products into **one actually usable offline local
+workpack**, instead of requiring separate manual console sessions.
+From an already existing original strict owner-only 0600 HUMAN queue CSV
+with the exact current session-PATH digest, a deliberate HUMAN confirmation
+and an operator-declared review date, the software creates one **new**
+0700 folder outside the checkout with a 0600 scriptless
+`OPEN-PRIVATE.html` index linking only to its own child views:
+
+* `queue/OPEN-PRIVATE.html`: original interactive HUMAN Studio for all
+  workflow keys, with complete CSV export and native source-bound reimport;
+  `queue/PRIVATE-READONLY.html` remains scriptless.
+* `priorities/OPEN-PRIVATE.html`: original source-free HUMAN attention and
+  team workload report for the explicitly declared local review date.
+* `team-security`, `team-privacy`, `team-client-operations`,
+  `team-platform`: **only for teams with actual manually assigned tasks**,
+  each using the original native minimum-necessary private team desk.
+* Original source-free `PRIVATE-WORKPACK-RECEIPT.json`: numbers, team labels
+  and view names only. No original client source, local machine source
+  paths, HUMAN question text or unsigned session path digest.
+
+Original `route_queue`, `human_priorities` and `route_team` builders are
+reused directly; the workpack does **not** replace any source owner logic,
+skip the existing HUMAN CSV admission, weaken owner-only 0700/0600 modes,
+authenticate a real HUMAN identity or execute a target. A failed assembly
+removes **only its new never-before-existing incomplete output folder**,
+leaving all originals and older HUMAN workrooms intact. All pages remain
+PRIVATE. Nothing is sent, scheduled, approved or released.
+
 ## Portable 15-original-studio software kit v11
 
 [Portable source-only LightUp Assessment Offline Toolkit v11](LightUp-Assessment-Offline-Toolkit-v11.zip)
