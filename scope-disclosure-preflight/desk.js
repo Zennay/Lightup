@@ -110,7 +110,8 @@
       /\bBearer\s+[A-Za-z0-9._~+\/-]{8,}/g,
       /\b(?:password|passwd|api[_-]?key|secret|access[_-]?token|token)\s*[:=]\s*(?:"[^"\r\n]{3,}"|'[^'\r\n]{3,}'|[^\s,;}]{3,})/gi,
       /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16})\b/g,
-      /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g
+      /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g,
+      /\bsk-[A-Za-z0-9_-]{20,}\b/g
     ],
     email: [/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi],
     network: [/\bhttps?:\/\/[^\s"'<>]+/gi, /\b(?:\d{1,3}\.){3}\d{1,3}\b/g]
@@ -163,6 +164,10 @@
       ["Bearer",/\bBearer\s+[a-z0-9._~+/-]{8,}/gi],
       ["credential-like",/\b(?:password|passwd|api[_-]?key|secret|token)\s*[:=]\s*[^\s,;}]{3,}/gi],
       ["private key",/-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+      ["JWT-like",/\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g],
+      ["GitHub token",/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g],
+      ["AWS access key",/\bAKIA[A-Z0-9]{16}\b/g],
+      ["API token prefix",/\bsk-[A-Za-z0-9_-]{20,}\b/g],
       ["IPv4-like",/\b(?:\d{1,3}\.){3}\d{1,3}\b/g]
     ];
     return expressions.map(([label,re])=>{
@@ -197,7 +202,7 @@
       const sha=await hash(bytes);
       if(current!==ticket || !source)return;
       const remaining=hints(text);
-      const highRisk=remaining.some(([kind])=>["private key","Bearer","credential-like"].includes(kind));
+      const highRisk=remaining.some(([kind])=>["private key","Bearer","credential-like","JWT-like","GitHub token","AWS access key","API token prefix"].includes(kind));
       prepared={text,sha,bytes:bytes.length,count,remaining,highRisk,originalHash:source.hash};
       e.importHuman.disabled=false;
       message("matches",String(count));
