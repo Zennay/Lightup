@@ -1161,3 +1161,37 @@ assessment kits are not contacted, and response differences are NEVER proof
 of verified remediation. Console option **34** runs this offline foreground
 flow; portable software v27 includes the original native source and maintains
 fixed software inventory inspection for versions v16 through v26.
+
+## Portable source-free PRIVATE HUMAN owner reply browser · software v28
+
+The new ready-to-open
+[portfolio-owner-studio.html](portfolio-owner-studio.html) is a completely
+offline, standalone owner reply interface. No source/customer/private HUMAN
+bytes are embedded in this software. An operator explicitly chooses their
+original local PRIVATE-HUMAN-owner.json. The Studio hashes those exact bytes
+locally using Web Crypto, shows each original HUMAN slot with private prior
+proposal and discussion notes, filters without dropping hidden original
+entries, offers bounded status and note fields, and exports all original slots
+as `HUMAN-owner-reply-template.csv`, bound to the exact original owner packet
+SHA-256. Browser state is in memory; no network, cookies or persistent
+storage. Unsaved edits trigger the browser's leave warning.
+
+The downloaded original HUMAN draft must be transferred to owner-private
+0600 custody and passed to the separate native
+`portfolio_owner_reply.py` finalizer, which independently rejects changed
+source bytes, unexpected CSV or source rows, formula-like private notes,
+missing original slots and attempted owner-scope widening. The standalone
+HTML is only an unsigned user interface, not reviewer authentication,
+recipient permission, client consent or security evidence.
+
+[portfolio_owner_studio.py](portfolio_owner_studio.py) builds a new source-free
+offline .html using CSP-pinned local CSS and exact original JavaScript SHA-256:
+
+    python3 assessment-workspace-ledger/portfolio_owner_studio.py \
+      --output /private/software/new-owner-reply-studio.html
+
+Console **option 35** offers the same foreground software-only export.
+The source-only offline v28 ZIP contains both source scripts and the
+ready-to-open standalone app; original v16–v27 software-inventory inspection
+remains supported. No external sharing, action dispatch, scan, model,
+approval, live consent or deployment is invoked.

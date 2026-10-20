@@ -30,6 +30,7 @@ import portfolio_focus_history
 import portfolio_focus_owner_handoff
 import portfolio_owner_reply
 import portfolio_owner_inbox
+import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
 import package
@@ -71,6 +72,7 @@ MENU = (
     ("32", "Create minimum-necessary PRIVATE HUMAN owner packets from finalized meeting"),
     ("33", "Receive one local original owner human reply into PRIVATE HOLD packet"),
     ("34", "Reconcile 1–8 source-bound owner HUMAN replies in PRIVATE inbox"),
+    ("35", "Build source-free offline HUMAN owner reply browser Studio"),
     ("0", "Exit"),
 )
 
@@ -219,6 +221,10 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "35":
+        return portfolio_owner_studio.build(argparse.Namespace(
+            output=prompt("Absolute NEW .html software path in original 0700 PRIVATE folder")
         ))
     if action == "34":
         originals, returns, csvs = [], [], []
