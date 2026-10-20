@@ -329,6 +329,84 @@
     });
     return {schedule:next,series:v2?(restoredSeries||newSeriesId()):newSeriesId(),legacy:!v2};
   }
+  function privatePlanCSV(){
+    hold(active && /^[0-9a-f]{32}$/.test(seriesId));
+    return makeCsv([PLAN_HEAD_V2,...items.map(r=>{
+      const p=plan.get(r.ordinal);
+      return [hash,String(r.ordinal),p?.day||"",p?.time||"",p?.duration||"",p?.reminder||"",zone,seriesId];
+    })]);
+  }
+  function admitPlanText(raw){
+    hold(!raw.startsWith("\uFEFF"));
+    const legacyHeader=PLAN_HEAD.join(","),modernHeader=PLAN_HEAD_V2.join(",");
+    const first=raw.split(/\r?\n/,1)[0];
+    hold(first===legacyHeader || first===modernHeader);
+    return restore(csv(raw,first===modernHeader?8:7));
+  }
+  function clearPasswords(){
+    $("handoffPassword").value="";
+    $("handoffConfirm").value="";
+  }
+  async function handoffKey(password,salt){
+    hold(typeof password==="string" && password.length>=16 && password.length<=256);
+    hold(crypto.subtle && salt.length===16);
+    const raw=new TextEncoder().encode(password);
+    try{
+      const base=await crypto.subtle.importKey("raw",raw,"PBKDF2",false,["deriveKey"]);
+      return await crypto.subtle.deriveKey(
+        {name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+        base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+    }finally{raw.fill(0);}
+  }
+  const ENC_MAGIC=new Uint8Array([76,85,72,67,49,10]); // LUHC1 + LF
+  const ENC_AAD=new TextEncoder().encode("lightup.human_calendar.private_plan.v1|REVIEW_ONLY|NO_AUTHORITY");
+  async function saveEncrypted(){
+    hold(active && crypto.subtle);
+    const password=$("handoffPassword").value,confirmation=$("handoffConfirm").value;
+    hold(password.length>=16 && password.length<=256 && password===confirmation);
+    const plain=new TextEncoder().encode(privatePlanCSV());
+    const salt=new Uint8Array(16),iv=new Uint8Array(12);
+    crypto.getRandomValues(salt);crypto.getRandomValues(iv);
+    try{
+      const key=await handoffKey(password,salt);
+      const cipher=new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv,additionalData:ENC_AAD,tagLength:128},key,plain));
+      const result=new Uint8Array(ENC_MAGIC.length+salt.length+iv.length+cipher.length);
+      result.set(ENC_MAGIC,0);result.set(salt,ENC_MAGIC.length);
+      result.set(iv,ENC_MAGIC.length+16);result.set(cipher,ENC_MAGIC.length+28);
+      hold(result.length<=MAX_BYTES);
+      if(!confirm("Download a separate encrypted PRIVATE plan? Save the passphrase out of band. This authenticates only the encrypted bytes, NOT their original producer, permission or client/operator identity."))return;
+      download(result,"lightup-private-human-calendar.luhc","application/octet-stream");
+      changed=false;exportedPlan=true;render();
+      inform("Encrypted PRIVATE source-bound plan downloaded. Password cleared from input fields.");
+    }finally{plain.fill(0);clearPasswords();}
+  }
+  async function restoreEncryptedFile(file){
+    hold(active && crypto.subtle);
+    const password=$("handoffPassword").value;
+    hold(password.length>=16 && password.length<=256);
+    let plaintext=null;
+    try{
+      const encrypted=await bytes(file);
+      hold(encrypted.length>ENC_MAGIC.length+16+12+16);
+      hold(ENC_MAGIC.every((v,i)=>encrypted[i]===v));
+      const salt=encrypted.slice(6,22),iv=encrypted.slice(22,34),cipher=encrypted.slice(34);
+      const key=await handoffKey(password,salt);
+      try{
+        plaintext=new Uint8Array(await crypto.subtle.decrypt(
+          {name:"AES-GCM",iv,additionalData:ENC_AAD,tagLength:128},key,cipher));
+      }catch(_){hold(false);}
+      const admitted=admitPlanText(decoder.decode(plaintext));
+      hold(!admitted.legacy);
+      if(changed && !confirm("Replace current unsaved PRIVATE HUMAN reminder dates with the authenticated encrypted plan? This does not prove original-source authenticity."))return;
+      plan=admitted.schedule;seriesId=admitted.series;
+      changed=false;exportedPlan=true;page=0;agendaPage=0;render();
+      inform("Encrypted PRIVATE calendar plan opened and exact original worksheet / timezone readmitted. No assessment authority.");
+    }finally{
+      if(plaintext)plaintext.fill(0);
+      clearPasswords();
+    }
+  }
   async function onOriginal(file){
     const buffer=await bytes(file);
     const raw=decoder.decode(buffer);
@@ -340,29 +418,20 @@
     $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
-    $("restore").value="";$("tz").textContent=zone;
+    $("restore").value="";clearPasswords();$("tz").textContent=zone;
     $("agendaHorizon").value="7";$("agendaQuery").value="";$("workloadQuery").value="";
     render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
   async function onRestore(file){
     hold(active);
     const raw=decoder.decode(await bytes(file));
-    hold(!raw.startsWith("\uFEFF"));
-    const legacyHeader=PLAN_HEAD.join(","),modernHeader=PLAN_HEAD_V2.join(",");
-    const first=raw.split(/\r?\n/,1)[0];
-    hold(first===legacyHeader || first===modernHeader);
-    const imported=restore(csv(raw,first===modernHeader?8:7));
+    const imported=admitPlanText(raw);
     if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
     plan=imported.schedule;seriesId=imported.series;exportedPlan=!imported.legacy;page=0;agendaPage=0;changed=false;render();
     inform(`Restored ${plan.size} HUMAN reminders. ${imported.legacy?"Legacy plan: save the new v2 plan before repeatable calendar export.":"Stable private calendar identities restored."}`);
   }
   function planExport(){
-    const rows=[PLAN_HEAD_V2,...items.map(r=>{
-      const p=plan.get(r.ordinal);
-      return [hash,String(r.ordinal),p?.day||"",p?.time||"",
-        p?.duration||"",p?.reminder||"",zone,seriesId];
-    })];
-    download(makeCsv(rows),"lightup-private-human-followups.csv","text/csv;charset=utf-8");
+    download(privatePlanCSV(),"lightup-private-human-followups.csv","text/csv;charset=utf-8");
     changed=false;exportedPlan=true;render();inform("PRIVATE v2 plan downloaded with stable opaque calendar identities; original worksheet unchanged.");
   }
   const icsText=s=>String(s).replaceAll("\\","\\\\").replace(/\r\n|\r|\n/g,"\\n").replaceAll(";","\\;").replaceAll(",","\\,");
@@ -418,11 +487,19 @@
   function hook(id,event,fn){$(id).addEventListener(event,fn);}
   hook("worksheet","change",async e=>{try{if(e.target.files[0])await onOriginal(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
+  hook("encryptPlan","click",async()=>{
+    try{await saveEncrypted();}catch(_){clearPasswords();inform("Encrypted PRIVATE plan export refused (HOLD).",true);}
+  });
+  hook("restoreEncrypted","change",async e=>{
+    try{if(e.target.files[0])await restoreEncryptedFile(e.target.files[0]);}
+    catch(_){clearPasswords();inform("Encrypted PRIVATE plan could not be admitted (HOLD). Original local plans untouched.",true);}
+    finally{e.target.value="";}
+  });
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
     $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("out").hidden=true;$("reset").disabled=true;
-    $("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
+    clearPasswords();$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
