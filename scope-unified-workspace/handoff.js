@@ -1220,12 +1220,34 @@
     });
     report("REVIEW_ONLY — privé broninventaris van alle teams gedownload, notitieteksten " + (includePrivateNotes ? "bewust opgenomen." : "veilig afgeschermd."));
   });
+  // A completed comparison can leave a visual table even though its pending
+  // proposal has already been applied. Clear those DOM nodes explicitly too.
+  const scrubPrivateDOM = () => {
+    pendingSelective = null;
+    selectiveRows.replaceChildren();
+    selectiveApply.disabled = true;
+    selectiveStatus.textContent = "REVIEW_ONLY — vorige PRIVATE vergelijking gewist. Selecteer oorspronkelijke bestanden opnieuw.";
+    peerPreview = null;
+    peerRows.replaceChildren();
+    peerApply.disabled = true;
+    peerSummaryExport.disabled = true;
+    peerStatus.textContent = "REVIEW_ONLY — vorige PRIVATE reviewpakketten gewist.";
+    lastPeerReceipt = null;
+    el("shelf-peer-receipt").disabled = true;
+    el("shelf-peer-receipt-note").textContent = "Geen actuele PRIVATE HUMAN retourbon.";
+    lastReturnReceipt = null;
+    el("shelf-return-receipt").disabled = true;
+    el("shelf-return-receipt-note").textContent = "Geen actuele PRIVATE HUMAN retourbon.";
+    driftRows.replaceChildren();
+    driftExport.disabled = true;
+  };
   resetPrivateDisclosure(); // browser form restoration is not a privacy opt-in
   render();
   renderReturnJournal();
   window.addEventListener("pageshow", event => {
     if (event.persisted) {
       resetPrivateDisclosure();
+      scrubPrivateDOM();
       // The original private files are no longer in the in-tab workset.
       // Also clear all stale DOM rows upon back/forward cache restoration.
       render();
@@ -1241,6 +1263,7 @@
     clearReviewHistory();
     invalidateDrift();
     items.splice(0);
+    scrubPrivateDOM();
     renderReturnJournal();
     render(); // never preserve source filenames, hashes or HUMAN notes in bfcache DOM
   });
