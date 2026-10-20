@@ -99,13 +99,16 @@ def main(argv):
         "authority": {k: False for k in sorted(AUTHORITY)},
         "changed_human_rows": len(changes),
         "requiring_human_attention_rows": len(attention),
+        # Private counts-only is not formal anonymity. Suppress categories of
+        # one/two source rows to reduce small-cohort singling-out.
         "human_stage_transitions": {
-            f"{a}->{b}": sum(1 for prev, cur in zip(before, latest)
-                             if prev[4] == a and cur[4] == b)
-            for a in sorted(STAGES) for b in sorted(STAGES)
-            if any(prev[4] == a and cur[4] == b for prev, cur in zip(before, latest))
-        },
-        "note": "Anonymous aggregate only; not validated security progress, fix proof, consent or client authority."
+            f"{a}->{b}": count for a in sorted(STAGES) for b in sorted(STAGES)
+            if (count := sum(1 for prev, cur in zip(before, latest)
+                             if prev[4] == a and cur[4] == b)) >= 3
+        } if len(latest) >= 5 else {},
+        "small_cohort": len(latest) < 5,
+        "low_frequency_transitions_suppressed": True,
+        "note": "Source-minimized aggregate only; a small cohort is NOT anonymous. Not validated security progress, fix proof, consent or client authority."
     }
     path = Path(argv[5])
     if not path.parent.is_dir() or path.parent.is_symlink():
