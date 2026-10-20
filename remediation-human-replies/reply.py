@@ -251,10 +251,13 @@ def prepare(archive: Path, output: Path) -> None:
     })
     print("REVIEW_ONLY: PRIVATE source-redacted HUMAN recipient reply:", output / "index.html")
 
-def open_reply(reply_file: Path, archive: Path, output: Path, editable: bool = False) -> None:
-    require(reply_file.is_absolute() and archive.is_absolute() and reply_file != archive,
-            "Original .luhq and reply .luhr must be separate private inputs")
-    packet, digest, source_bytes = source(archive)
+def admitted_reply(reply_file: Path, packet: dict, digest: str) -> tuple[list[dict], bytes]:
+    """Admit a complete encrypted PRIVATE human reply against an exact redacted original.
+
+    Original source identity has already been independently admitted by source().
+    Returning the encrypted bytes allows the caller to recheck all inputs before
+    publishing without re-running an interactive password prompt.
+    """
     encrypted = schedule_vault.private_vault(reply_file)
     doc = schedule_vault.strict_json(encrypted, MAX_ENCRYPTED)
     require(frozenset(doc) == ENVELOPE_FIELDS and doc.get("kind") == ENVELOPE_KIND
@@ -284,9 +287,18 @@ def open_reply(reply_file: Path, archive: Path, output: Path, editable: bool = F
             "Wrong private HUMAN reply password or altered ciphertext") from exc
     body = schedule_vault.strict_json(raw, MAX_REPLY)
     replies = admit_reply(body, packet, digest)
-    require(schedule_vault.private_vault(reply_file) == encrypted
-            and encrypted_cockpit.private_envelope(archive) == source_bytes,
-            "Original PRIVATE encrypted handoff/reply changed during admission")
+    require(schedule_vault.private_vault(reply_file) == encrypted,
+            "Private encrypted HUMAN reply changed during native admission")
+    return replies, encrypted
+
+def open_reply(reply_file: Path, archive: Path, output: Path, editable: bool = False) -> None:
+    require(reply_file.is_absolute() and archive.is_absolute() and reply_file != archive,
+            "Original .luhq and reply .luhr must be separate private inputs")
+    packet, digest, source_bytes = source(archive)
+    replies, encrypted_bytes = admitted_reply(reply_file, packet, digest)
+    require(encrypted_cockpit.private_envelope(archive) == source_bytes
+            and schedule_vault.private_vault(reply_file) == encrypted_bytes,
+            "Original PRIVATE selected source or encrypted reply changed before publication")
     counts = {stage: sum(row["status"] == stage for row in replies)
               for stage in sorted(STAGES)}
     counts.update({"kind": "lightup.anonymous_human_reply_counts.v1",
