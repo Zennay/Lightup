@@ -130,7 +130,7 @@
     $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveBrief", "saveCounts", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveBrief", "saveCounts", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
   }
@@ -272,6 +272,17 @@
     state.dirty = false;
     status("PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", false);
   }
+  function admitJournalDocument(parsed) {
+    if (!exactObject(parsed, ["schema", "classification", "authority", "csv_sha256", "count", "entries"]) ||
+        parsed.schema !== SCHEMA || parsed.classification !== "PRIVATE_HUMAN_ONLY" ||
+        !exactObject(parsed.authority, Object.keys(NO_AUTHORITY)) ||
+        Object.keys(NO_AUTHORITY).some(k => parsed.authority[k] !== false) ||
+        parsed.csv_sha256 !== state.digest || parsed.count !== state.rows.length ||
+        !Array.isArray(parsed.entries) || parsed.entries.length !== state.rows.length) {
+      fail("PRIVATE HUMAN draft is not bound to this exact original CSV");
+    }
+    return parsed.entries.map((e, i) => admitEntry(e, state.rows[i].id));
+  }
   async function loadJournal(file) {
     if (state.pending && !confirm("Discard unapplied HUMAN form edits before reopening a saved draft?")) return;
     try {
@@ -280,15 +291,7 @@
       if (value !== JSON.stringify(parsed, null, 2) + "\n") {
         fail("Only this tool's exact canonical journal format is accepted");
       }
-      if (!exactObject(parsed, ["schema", "classification", "authority", "csv_sha256", "count", "entries"]) ||
-          parsed.schema !== SCHEMA || parsed.classification !== "PRIVATE_HUMAN_ONLY" ||
-          !exactObject(parsed.authority, Object.keys(NO_AUTHORITY)) ||
-          Object.keys(NO_AUTHORITY).some(k => parsed.authority[k] !== false) ||
-          parsed.csv_sha256 !== state.digest || parsed.count !== state.rows.length ||
-          !Array.isArray(parsed.entries) || parsed.entries.length !== state.rows.length) {
-        fail("PRIVATE HUMAN draft is not bound to this exact original CSV");
-      }
-      const staged = parsed.entries.map((e, i) => admitEntry(e, state.rows[i].id));
+      const staged = admitJournalDocument(parsed);
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
       state.journal = staged; state.dirty = false; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
@@ -297,6 +300,47 @@
       status("Original CSV byte-bound HUMAN journal restored locally (not an authenticated review).", false);
     } catch(error) {
       status("Draft rejected without changing the workspace: " + error.message, true);
+    }
+  }
+  async function saveVault() {
+    if (state.pending) { status("Apply or discard the HUMAN form edits before encrypting.", true); return; }
+    const pass = $("vaultPass").value;
+    if (!confirm("Encrypt an owner-private HUMAN journal, using a unique passphrase you must remember? No client identity, consent, or source authentication is established.")) return;
+    $("saveVault").disabled = true;
+    try {
+      const blob = await LightUpEncryptedJournal.seal(journalDocument(), pass);
+      download(blob, "lightup-private-human-review.luej", "application/json");
+      state.dirty = false;
+      status("Encrypted PRIVATE HUMAN journal offered for local save; confirm actual file storage.", false);
+    } catch (error) {
+      status("PRIVATE encryption HOLD: " + error.message, true);
+    } finally {
+      $("vaultPass").value = "";
+      $("saveVault").disabled = !state.rows.length;
+    }
+  }
+  async function loadVault(file) {
+    if (state.pending && !confirm("Discard unapplied HUMAN form edits before encrypted restore?")) return;
+    let pass = $("vaultPass").value;
+    $("loadVault").disabled = true;
+    try {
+      const {value} = await readFile(file, 1024 * 1024);
+      if (!pass) fail("Enter the PRIVATE passphrase before opening the encrypted journal");
+      const document = await LightUpEncryptedJournal.unseal(value, pass);
+      const staged = admitJournalDocument(document);
+      if (!confirm("Original CSV SHA-256 and all HUMAN IDs match. Replace current in-memory HUMAN notes?")) return;
+      state.journal = staged;
+      state.dirty = false; state.pending = false; state.selected = -1;
+      state.bulkUndo = null; $("bulkUndo").disabled = true;
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      renderList();
+      status("Encrypted source-bound PRIVATE HUMAN journal opened in memory; not an authenticated source or permission.", false);
+    } catch (error) {
+      status("Encrypted journal rejected with current work unchanged: " + error.message, true);
+    } finally {
+      pass = "";
+      $("vaultPass").value = "";
+      $("loadVault").disabled = !state.rows.length;
     }
   }
   function htmlEscape(v) {
@@ -444,6 +488,12 @@
     $("saveJournal").addEventListener("click", saveJournal);
     $("loadJournal").addEventListener("click", () => $("journalFile").click());
     $("saveCounts").addEventListener("click", saveCounts);
+    $("saveVault").addEventListener("click", saveVault);
+    $("loadVault").addEventListener("click", () => $("vaultFile").click());
+    $("vaultFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadVault(e.target.files[0]);
+      e.target.value = "";
+    });
     $("saveBrief").addEventListener("click", saveBrief);
     $("clearAll").addEventListener("click", () => {
       if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
