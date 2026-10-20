@@ -217,3 +217,8 @@ The new protected PRIVATE output folder contains:
 - `PRIVATE-proposal-manifest.json` — old/new UNSIGNED original source SHA-256, source-declaration category counts, private output hashes and literal false security/permission/release flags.
 
 A HUMAN should inspect and edit this proposed CSV in the [PRIVATE browser Studio](worksheet-studio-standalone.html), then run the **original** `briefing.py` or `paged_review.py` for the NEW original lab JSON and use its NEW manifest together with the reviewed CSV in `human_return.py`. This ensures the true new source byte-binding gate remains separate and compulsory. Source similarity never pre-approves any human action. This operator workflow is also available in the shared foreground console. Like all other LightUp modules, it remains DRAFT/HOLD pending original full release gates.
+
+
+### Portable ZIP round-trip after restore
+
+The same local ZIP packager now also accepts a directory produced by the safe `private_paged_restore.py` receiver. It permits exactly two extra private files from a legitimate original restore: `START-HERE-PRIVATE.txt` with the identical predefined no-authority instructions and `PRIVATE-restore-receipt.json` with the exact restored original source fingerprint, expected member count and all identity/authority/consent/release flags false. It refuses any altered or additional file. The old receipt is **not** included in the new ZIP; a new unsigned archive receipt is generated. This permits a private operator to pass an unmodified report onward without manual deletion or recreating source packages. It still authenticates neither the original producer nor receiving person, and the archive is still plain unencrypted ZIP.
