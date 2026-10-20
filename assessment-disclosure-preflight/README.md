@@ -67,3 +67,33 @@ Open review-studio.html from a trusted offline browser with review-studio.js and
 - No original assessment source artifact, target, evidence, scan, model, grant, reviewer authentication or signed provenance enters the studio. The user can type sensitive things into HUMAN notes: the output must remain PRIVATE. Local browser SHA covers only the source-free receipt, **not original PRIVATE lab artifact bytes**.
 
 This makes the entire workflow usable with a local visual HUMAN editing desk, but does **not** remove the mandatory original source-owner dependency, verified authorization and held release controls. Browser-side JSON does not independently detect duplicate JSON keys; the native report builder remains responsible for canonical CSV/receipt validation, and even that never grants release authority.
+
+
+## Encrypted PRIVATE HUMAN continuity (.luhd) and revision comparison
+
+The local browser now includes **review-vault.js**, a binary, purpose-separated HUMAN packet format LUHUM001. Its authenticated 68-byte header contains eight-byte purpose/version magic, fresh 16-byte PBKDF2 salt, fresh 12-byte AES-GCM nonce and raw 32-byte SHA-256 of the **exact PRIVATE receipt bytes**. The entire header is authenticated AES-GCM additional data. AES-256-GCM encrypts the already-admitted source-free HUMAN CSV under PBKDF2-SHA256 (600,000 iterations); max plaintext 256 KiB, min passphrase length 14, max 256. Every export uses fresh randomness. There is no automatic network or browser persistence.
+
+When reopening, the browser requires the exact PRIVATE receipt, either a plaintext CSV *or* encrypted .luhd and the corresponding passphrase. It checks the header and exact receipt digest before authenticated decryption, then runs the **same complete original ordinal/kind/stage/field CSV intake** on decrypted notes. Incorrect receipt, password or ciphertext → HOLD, with previous in-memory HUMAN edits preserved. Clear-text export still exists but requires an explicit privacy warning. Password inputs are cleared after use; this is not a secure memory-erasure claim. No password recovery.
+
+### Visual read-only HUMAN revision comparison
+
+After opening the current source-free HUMAN review, select an older encrypted .luhd and its separate password. The workroom decrypts into memory, re-admits it against the same exact receipt and displays changes in stage, question and next action. Prior notes are **read-only** and never copied into the current HUMAN choices. Literal matching never establishes authentic independent reviewer agreement, consent, original source provenance or verified remediation.
+
+### Native offline encrypted HUMAN report
+
+The native human_review.py render command accepts **either** --answers for a plaintext PRIVATE HUMAN CSV, **or** --vault for an encrypted PRIVATE HUMAN .luhd. The latter asks for a passphrase from an interactive non-echoed terminal, decrypts with the optional Python cryptography package, and immediately uses the same receipt-exact native CSV admissibility checks. No decrypted CSV intermediary is saved to disk; the **resulting PRIVATE scriptless HTML does include decrypted HUMAN notes**, so it must stay private until separately reviewed for legitimate recipient disclosure.
+
+Use a trusted offline system:
+
+~~~sh
+python3 -m pip install -r assessment-disclosure-preflight/requirements-native.txt
+mkdir -m 700 ./another-private-review
+python3 assessment-disclosure-preflight/human_review.py render \
+  --receipt ./private-disclosure-desk/PRIVATE-receipt.json \
+  --vault ./private-disclosure-desk/PRIVATE-human-reviewed.luhd \
+  --private-output-dir ./another-private-review
+~~~
+
+New private output filenames are exclusive and non-overwriting; previous HUMAN reports stay untouched. Opening and re-exporting under a **new** password performs memory-only re-encryption using new salt/nonce, without writing a plaintext export. Passwords, original lab source files and recipient authorization must be handled separately. The receipt hash binds to **unsigned count-only receipt bytes**, not the original source, tenant, owner, consenting actors or legal authority. Neither an encrypted file nor a HUMAN reviewed label is a signed, approved or source-authenticated assessment.
+
+**Release stays INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD**: original exact-head hosted and permanently registered VPS CI, original source owner, independent security/privacy/browser/crypto review, original #177/#182/#829, genuinely authenticated current separate client/operator consent including action-time revocation and explicit HUMAN GO remain mandatory. No QA/regression suites, scanner, grant, target interaction, merge or deployment have been added.
