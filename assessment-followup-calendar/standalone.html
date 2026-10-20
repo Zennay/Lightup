@@ -358,7 +358,7 @@
 <div class="row"><button id="prev" type="button" class="ghost">Previous</button><button id="next" type="button" class="ghost">Next</button></div>
 </section>
 <section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">3 · Save / resume or export calendar</h2>
-<p>Scheduled events use only original anonymous ordinal, source-reported severity and optionally your own HUMAN action. <strong>No source findings, evidence, target, scenario or grant enter the calendar.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
+<p>Scheduled events use original anonymous ordinals and source-reported severity, with your own HUMAN next-action text only when explicitly opted in. <strong>Original lab-source fields are never imported here, but HUMAN notes can themselves mention private targets, clients or evidence. Review before exporting.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
 <div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
 <div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
 <div class="row"><button id="calendar" type="button">Export PRIVATE calendar (.ics)</button><button id="summaryExport" type="button" class="ghost">Export counts only (.json)</button></div>
