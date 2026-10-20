@@ -108,28 +108,35 @@ function batch(yes){
  for(const {i} of toChange){states[i].yes=yes;if(!yes){states[i].priority="routine";states[i].question="";}}
  showError("");render();
 }
-function exportCsv(){
+function selectionCsv(){
  const count=selectedCount();
- if(!count){showError("HOLD: select at least one original ordinal.");return;}
+ if(!count)throw Error("Select at least one original ordinal.");
  for(let i=0;i<states.length;i++){
-  const s=states[i];
-  if(!s.yes)continue;
+  const s=states[i];if(!s.yes)continue;
   const v=s.question;
-  if(!v.trim() || v.length>500 || formula.test(v) || prohibited.test(v)) {
-   showError("HOLD: original ordinal #"+(i+1)+" needs a safe HUMAN question without control/formula prefixes.");
-   return;
-  }
+  if(!v.trim() || v.length>500 || formula.test(v) || prohibited.test(v))
+   throw Error("Original ordinal #"+(i+1)+" needs a safe HUMAN question without formula/control prefixes.");
  }
- if(!window.confirm("Export PRIVATE source-bound HUMAN selection for independent ORIGINAL source and worksheet re-admission? This does not authorize anything."))return;
  const csv=[["original_ordinal","source_reported_severity","evidence_reference_count","select_for_private_dossier","human_priority","human_question"]];
  for(let i=0;i<rows.length;i++){
   const r=rows[i],s=states[i];
   csv.push([r.ordinal,r.severity,r.evidence_count,s.yes?"yes":"",s.yes?s.priority:"",s.yes?s.question:""]);
  }
- const blob=new Blob([csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n"],{type:"text/csv;charset=utf-8"});
- const url=URL.createObjectURL(blob);
- const a=document.createElement("a");a.href=url;a.download="PRIVATE-human-selection.csv";a.click();
- setTimeout(()=>URL.revokeObjectURL(url),2000);showError("");
+ return csv.map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n";
+}
+function privateDownload(bytes,name,type){
+ const blob=new Blob([bytes],{type});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=name;a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+function exportCsv(){
+ try{
+  const plain=selectionCsv();
+  if(!window.confirm("Export UNENCRYPTED PRIVATE HUMAN CSV for original-source admission? Choose an appropriate private disclosure channel."))return;
+  privateDownload(plain,"PRIVATE-human-selection.csv","text/csv;charset=utf-8");
+  showError("");
+ }catch(e){showError("HOLD: "+e.message);}
 }
 
 function strictQuotedRow(line){
@@ -194,6 +201,106 @@ document.getElementById("restore-file").addEventListener("change",event=>{
  void resumeSelection(file);
 });
 
+
+const PRIVATE_SCHEMA="lightup.private_lab_curated_selection_encrypted.v1";
+const PRIVATE_AAD=new TextEncoder().encode(PRIVATE_SCHEMA+"|REVIEW_ONLY");
+const PRIVATE_FALSE=["source_authenticated","human_identity_authenticated","client_consent_verified",
+ "operator_consent_verified","authorized","consent_verified","dispatch_allowed","release_allowed"];
+function clearPasswords(){
+ document.getElementById("private-pass").value="";
+ document.getElementById("private-pass-confirm").value="";
+}
+function getPassword(needConfirm){
+ const first=document.getElementById("private-pass").value;
+ const second=document.getElementById("private-pass-confirm").value;
+ if(first.length<12 || first.length>120)throw Error("PRIVATE passphrase must be 12–120 characters.");
+ if(needConfirm&&first!==second)throw Error("PRIVATE passphrase confirmation differs.");
+ return first;
+}
+function toB64(bytes){
+ let chars="";const input=new Uint8Array(bytes);
+ for(let i=0;i<input.length;i++)chars+=String.fromCharCode(input[i]);
+ return btoa(chars);
+}
+function fromB64(text,expectedLength){
+ if(typeof text!=="string"||!text.length||text.length>1500000||
+  !/^[A-Za-z0-9+/]+={0,2}$/.test(text))throw Error("Invalid canonical encryption bytes.");
+ const decoded=atob(text);
+ if(toB64(Uint8Array.from(decoded,ch=>ch.charCodeAt(0)))!==text)
+  throw Error("Noncanonical PRIVATE encrypted bytes.");
+ if(expectedLength&&decoded.length!==expectedLength)throw Error("Unexpected encryption parameter size.");
+ return Uint8Array.from(decoded,ch=>ch.charCodeAt(0));
+}
+async function deriveKey(password,salt){
+ const raw=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),
+  "PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+  raw,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+function assertCrypto(){
+ if(!globalThis.isSecureContext || !crypto || !crypto.subtle || !crypto.getRandomValues)
+  throw Error("Browser WebCrypto secure context required; no plaintext fallback.");
+}
+async function saveEncrypted(){
+ let password="";
+ try{
+  assertCrypto();
+  const plain=selectionCsv();
+  password=getPassword(true);
+  if(!window.confirm("Save encrypted source-free PRIVATE HUMAN selection? This does not authenticate a producer, reviewer, target or permission."))return;
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const nonce=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(password,salt);
+  const ciphertext=await crypto.subtle.encrypt(
+   {name:"AES-GCM",iv:nonce,additionalData:PRIVATE_AAD,tagLength:128},
+   key,new TextEncoder().encode(plain));
+  const envelope={
+   schema:PRIVATE_SCHEMA,status:"REVIEW_ONLY",
+   kdf:{algorithm:"PBKDF2-SHA256",iterations:310000,salt_b64:toB64(salt)},
+   cipher:{algorithm:"AES-256-GCM",nonce_b64:toB64(nonce),ciphertext_b64:toB64(ciphertext)}
+  };
+  for(const flag of PRIVATE_FALSE)envelope[flag]=false;
+  privateDownload(JSON.stringify(envelope)+"\n","PRIVATE-human-selection-encrypted.luec",
+   "application/octet-stream");
+  showError("");
+ }catch(e){showError("HOLD: "+String(e.message||"Encrypted save rejected"));}
+ finally{password="";clearPasswords();}
+}
+async function openEncrypted(file){
+ let password="";
+ if(!file||!file.size)return;
+ if(file.size>1500000){showError("HOLD: encrypted PRIVATE file exceeds admission limit.");return;}
+ try{
+  assertCrypto();password=getPassword(false);
+  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  const x=JSON.parse(raw);
+  if(JSON.stringify(x)+"\n"!==raw || !x || Array.isArray(x)||
+   Object.keys(x).length!==12 || x.schema!==PRIVATE_SCHEMA || x.status!=="REVIEW_ONLY" ||
+   Object.keys(x.kdf||{}).join(",")!=="algorithm,iterations,salt_b64" ||
+   Object.keys(x.cipher||{}).join(",")!=="algorithm,nonce_b64,ciphertext_b64" ||
+   x.kdf.algorithm!=="PBKDF2-SHA256" || x.kdf.iterations!==310000 ||
+   x.cipher.algorithm!=="AES-256-GCM" || PRIVATE_FALSE.some(k=>x[k]!==false))
+    throw Error("Unsupported or noncanonical encrypted PRIVATE envelope.");
+  const salt=fromB64(x.kdf.salt_b64,16),nonce=fromB64(x.cipher.nonce_b64,12);
+  const ciphertext=fromB64(x.cipher.ciphertext_b64);
+  if(ciphertext.length<16||ciphertext.length>1024*1024)throw Error("Invalid ciphertext length.");
+  const key=await deriveKey(password,salt);
+  const plain=await crypto.subtle.decrypt(
+   {name:"AES-GCM",iv:nonce,additionalData:PRIVATE_AAD,tagLength:128},key,ciphertext);
+  if(plain.byteLength>1024*1024)throw Error("Decrypted PRIVATE selection too large.");
+  // Reuse exact full original-ordinal/sourced-severity membership admission
+  // before any local state replacement or HUMAN confirmation.
+  const blob=new Blob([plain],{type:"text/csv;charset=utf-8"});
+  await resumeSelection(blob);
+ }catch(e){showError("HOLD: encrypted PRIVATE source rejected or passphrase invalid. Current choices kept.");}
+ finally{password="";clearPasswords();}
+}
+document.getElementById("save-encrypted").addEventListener("click",()=>{void saveEncrypted();});
+document.getElementById("open-encrypted").addEventListener("change",event=>{
+ const file=event.target.files&&event.target.files[0];event.target.value="";
+ void openEncrypted(file);
+});
+
 for(const x of [search,severity,onlySelected])x.addEventListener(x===search?"input":"change",()=>{currentPage=0;render();});
 document.getElementById("prev").addEventListener("click",()=>{currentPage--;render();});
 document.getElementById("next").addEventListener("click",()=>{currentPage++;render();});
@@ -245,6 +352,10 @@ def source_free_studio(source: dict) -> bytes:
         "<button id='clear' class='secondary' type='button'>Clear filtered</button>"
         "<button id='export' type='button'>Export PRIVATE CSV</button>"
         "<label>Resume prior PRIVATE Studio CSV <input id='restore-file' type='file' accept='.csv,text/csv'></label></div>"
+        "<div class='toolbar'><label>PRIVATE passphrase (12+ chars) <input id='private-pass' type='password' autocomplete='off'></label>"
+        "<label>Confirm passphrase to save <input id='private-pass-confirm' type='password' autocomplete='off'></label>"
+        "<button id='save-encrypted' type='button'>Save encrypted PRIVATE draft</button>"
+        "<label>Open encrypted PRIVATE draft <input id='open-encrypted' type='file' accept='.luec,application/octet-stream'></label></div>"
         "<p id='error' class='warning' role='alert' hidden></p></section>"
         "<main id='entries'></main><nav class='panel page'>"
         "<button id='prev' class='secondary' type='button'>Previous</button>"
