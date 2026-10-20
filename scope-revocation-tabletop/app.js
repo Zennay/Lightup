@@ -23,12 +23,61 @@
     scope: ["CLIENT_CONSENT","OPERATOR_CONSENT","SCOPE_CHANGED","DISPATCH_ATTEMPT","CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"],
     stop: ["CLIENT_CONSENT","OPERATOR_CONSENT","EMERGENCY_STOP","DISPATCH_ATTEMPT","NEW_WINDOW","CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"]
   });
+  // Fixed fictional educational cases; neither these nor selections are security findings,
+  // policy evaluations, authenticated identities or authorizations.
+  const DRILLS = Object.freeze([
+    {title:"Twee onafhankelijke partijen",events:["CLIENT_CONSENT","DISPATCH_ATTEMPT"],
+      summary:"Een oefenclient is aangemeld; er ontbreekt een fictieve operatorverklaring.",
+      question:"Wat is buiten de oefening de verantwoordelijke vervolgstap?",
+      choices:["Echte afzonderlijk geauthenticeerde operatorverklaring en actuele scope laten bevestigen",
+        "Alleen een eerdere clientverklaring als uitvoermachtiging gebruiken",
+        "De simulatoruitkomst als toestemming registreren"],correct:0,
+      explain:"De ene partij kan de andere niet vervangen. Werkelijke actuele identiteit, specifieke assets/risico en onafhankelijke operatorreview horen bij de oorspronkelijke LightUp-autorisatiecode."},
+    {title:"Client trekt toestemming in",events:["CLIENT_CONSENT","OPERATOR_CONSENT","CLIENT_REVOKED","DISPATCH_ATTEMPT"],
+      summary:"Na twee fictieve verklaringen trekt de oefenclient de verklaring in.",
+      question:"Welke keuze is passend bij de uitvoergrens?",
+      choices:["De oudere verklaring blijven vertrouwen tot de volgende dag",
+        "Aan de feitelijke I/O-grens opnieuw intrekking controleren en uitvoering tegenhouden",
+        "De intrekking als metadata markeren maar alsnog doorgaan"],correct:1,
+      explain:"Een ingetrokken verklaring heeft geen restbevoegdheid. De echte uitvoeringspoort moet op het gebruiksmoment duurzaam en fail-closed hercontroleren; deze oefening controleert niets echt."},
+    {title:"Scope verandert na goedkeuring",events:["CLIENT_CONSENT","OPERATOR_CONSENT","SCOPE_CHANGED","DISPATCH_ATTEMPT"],
+      summary:"Een fictieve nieuwe asset-/capability-scope wordt voorgesteld nadat beide verklaringen waren ingevoerd.",
+      question:"Wat is de aangewezen menselijke vervolgstap?",
+      choices:["Oude verklaringen zonder herbeoordeling meenemen",
+        "Alleen een lagere fictieve risicoscore invullen",
+        "Nieuwe exacte scope door echte client én operator afzonderlijk laten beoordelen"],correct:2,
+      explain:"Een scopewijziging is geen behoud van eerder verleende rechten. Vraag toestemming op de exacte vernieuwde scope en risico's; de demo genereert geen grants."},
+    {title:"Geldigheidsvenster is voorbij",events:["CLIENT_CONSENT","OPERATOR_CONSENT","WINDOW_EXPIRED","DISPATCH_ATTEMPT"],
+      summary:"De fictieve tijdslimiet is verlopen voordat een oefenuitvoerpoging plaatsvindt.",
+      question:"Welke aanpak blijft binnen de veiligheidsgrens?",
+      choices:["Een nieuwe geldige periode én actuele onafhankelijke toestemming verifiëren voordat echte uitvoering überhaupt overwogen wordt",
+        "De lokale klok terugzetten en doorgaan",
+        "Het oude venster stilzwijgend verlengen"],correct:0,
+      explain:"Verlopen toestemming mag niet stilzwijgend worden verlengd. Een nieuwe periode vereist originele bron- en identiteitscontroles plus afzonderlijke actuele instemming."},
+    {title:"Noodstop is geactiveerd",events:["CLIENT_CONSENT","OPERATOR_CONSENT","EMERGENCY_STOP","DISPATCH_ATTEMPT"],
+      summary:"Er is een oefennoodstop gemeld, ook al waren daarvoor twee fictieve verklaringen ingevoerd.",
+      question:"Welke actie is toegestaan?",
+      choices:["Een andere operator aanwijzen en dezelfde uitvoering opnieuw starten",
+        "Uitvoering tegenhouden en alleen via het oorspronkelijke geautoriseerde incident-/herstelproces vervolg bepalen",
+        "Alleen de clientverklaring vernieuwen om de stop op te heffen"],correct:1,
+      explain:"Een noodstop heeft voorrang. Deze trainingsapp kan hem niet opheffen en heeft geen koppeling met een echte stop, bronstatus of run."},
+    {title:"Simulatie toont geen oefenblokkade",events:["CLIENT_CONSENT","OPERATOR_CONSENT","DISPATCH_ATTEMPT"],
+      summary:"Beide fictieve verklaringen zijn handmatig ingevoerd; het speelgoedmodel toont geen ontbrekende fictieve voorwaarden.",
+      question:"Wat mag je hieruit concluderen over echte targets?",
+      choices:["Er is een echte vrijgegeven scan mogelijk",
+        "Een lokale groenachtige tekst bewijst actuele toestemming",
+        "Niets over echte toestemming: originele brongebonden authenticatie, revocatie, CI, onafhankelijke reviews en HUMAN GO blijven verplicht"],correct:2,
+      explain:"Oefenprecondities zijn niet gelijk aan werkelijk bronbewijs of veiligheidsgoedkeuring. Geen enkele simulatoruitkomst verleent scan-, deploy- of grantbevoegdheid."}
+  ]);
   const MAX = 64;
   const $ = id => document.getElementById(id);
   let events = [];
   let baseline = null;
   // Eight fixed slots; no names, external identifiers or automatic persistence.
   let slots = Array(8).fill(null);
+  let activeDrill = null;
+  let selectedDrill = 0;
+  let drillAnswers = Array(DRILLS.length).fill(null);
 
   function fresh() {
     return {client:false,operator:false,scope:0,risk:0,window:true,stop:false,attempts:0,lastAttempt:null};
@@ -189,6 +238,7 @@
       details.forEach(t=>delta.append(el("li","",t)));
     }
     renderBank();
+    refreshDrillStatus();
     return {s,steps,missing};
   }
   function slotEntry(seq,base) {
@@ -298,6 +348,66 @@
     lines.push("","## Menselijke vervolgvragen","Welke originele actuele, apart geauthenticeerde client- en operatorconsent zijn aantoonbaar?","Welke exacte goedgekeurde assets/capabilities en risico's zijn gebonden?","Hoe wordt revocation bij daadwerkelijk I/O-gebruik onafhankelijk gecontroleerd?","Is originele hosted plus permanente named-VPS CI op juiste SHA en HUMAN GO aanwezig?","",
       "**AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false**");
     return lines.join("\n")+"\n";
+  }
+  function progressText() {
+    const attempted=drillAnswers.filter(x=>x!==null).length;
+    return attempted+" van "+DRILLS.length+" fictieve oefenkaarten besproken; didactisch, geen CI- of securitybewijs.";
+  }
+  function scenarioMatchesDrill() {
+    const card=DRILLS[selectedDrill];
+    return activeDrill===selectedDrill && events.length===card.events.length &&
+      card.events.every((e,i)=>e===events[i]);
+  }
+  function refreshDrillStatus() {
+    write("drill-progress",progressText());
+    if (activeDrill===null) return;
+    if (!scenarioMatchesDrill()) {
+      write("drill-feedback","De huidige fictieve tijdlijn wijkt af van de geladen oefenkaart. Laad de kaart opnieuw voordat je een didactisch antwoord bespreekt.");
+    }
+    $("drill-choices").querySelectorAll("button").forEach(b=>{b.disabled=!scenarioMatchesDrill();});
+  }
+  function selectDrill(index) {
+    selectedDrill=index;
+    const card=DRILLS[index];
+    write("drill-heading",card.title);
+    write("drill-description",card.summary);
+    write("drill-question",card.question);
+    write("drill-feedback","Laad deze fictieve oefenkaart in de tijdlijn. Geen van de antwoorden kan echte autorisatie geven.");
+    const holder=$("drill-choices");
+    holder.replaceChildren();
+    card.choices.forEach((label,i)=>{
+      const b=el("button","drill-choice",String.fromCharCode(65+i)+". "+label);
+      b.type="button";
+      b.addEventListener("click",()=>{
+        if(!scenarioMatchesDrill()) {
+          write("drill-feedback","Deze kaart is niet langer exact geladen. Herstart hem zonder andere scenario's aan te passen.");return;
+        }
+        drillAnswers[selectedDrill]=i;
+        write("drill-feedback",(i===card.correct?"Didactisch passende keuze. ":"Didactisch aandachtspunt. ")+card.explain+
+          " Alleen HUMAN oefenfeedback; nooit echte toestemming.");
+        refreshDrillStatus();
+      });
+      holder.append(b);
+    });
+    refreshDrillStatus();
+  }
+  function initDrills() {
+    DRILLS.forEach((x,i)=>$("drill-select").append(new Option((i+1)+". "+x.title,String(i))));
+    $("drill-select").addEventListener("change",()=>selectDrill(Number($("drill-select").value)));
+    $("drill-start").addEventListener("click",()=>{
+      const card=DRILLS[selectedDrill];
+      if((events.length || baseline!==null) &&
+         !window.confirm("Huidige oefentijdlijn en nulmeting vervangen? Opgeslagen scenario-slots blijven bestaan."))return;
+      events=card.events.slice();baseline=null;activeDrill=selectedDrill;
+      feedback("Fictieve oefenkaart "+(selectedDrill+1)+" geladen. Geen externe uitvoer.");
+      render();selectDrill(selectedDrill);
+    });
+    $("drill-clear").addEventListener("click",()=>{
+      if(!window.confirm("Alleen didactische antwoordvoortgang uit dit browsergeheugen wissen?"))return;
+      drillAnswers=Array(DRILLS.length).fill(null);
+      selectDrill(selectedDrill);
+    });
+    selectDrill(0);
   }
   function feedback(t) { write("feedback",t); }
   function add(e) {
@@ -424,5 +534,6 @@
   });
   $("timeline-filter").addEventListener("change",render);
   $("print").addEventListener("click",()=>window.print());
+  initDrills();
   render();
 })();
