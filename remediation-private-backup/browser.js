@@ -198,6 +198,101 @@
     }
     return btoa(chunks.join(""));
   }
+  async function sealedArchive(rows, secret) {
+    demand(globalThis.isSecureContext && crypto?.subtle, "WebCrypto unavailable");
+    const passBytes = encoder.encode(secret);
+    demand(passBytes.length >= 12 && passBytes.length <= 1024, "New password must be 12–1024 UTF-8 bytes");
+    demand(Array.isArray(rows) && rows.length >= 1 && rows.length <= MAX_FILES,
+      "Encrypted archive requires 1–32 explicitly chosen files");
+    const inner = { version: VERSION, authority: FLAGS, files: rows };
+    const plaintext = encoder.encode(asJsonAscii(inner));
+    demand(plaintext.byteLength <= MAX_ARCHIVE, "PRIVATE payload outside bounded archive budget");
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    try {
+      const imported = await crypto.subtle.importKey("raw", passBytes, "PBKDF2", false, ["deriveKey"]);
+      const key = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256",
+        salt, iterations: ROUNDS }, imported, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
+      const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce,
+        additionalData: AAD, tagLength: 128 }, key, plaintext));
+      const envelope = { version: VERSION, kdf: "PBKDF2-HMAC-SHA256", iterations: ROUNDS,
+        salt: asBase64(salt), nonce: asBase64(nonce),
+        ciphertext: asBase64(cipher), authority: FLAGS };
+      const output = encoder.encode(asJsonAscii(envelope) + "\n");
+      demand(output.byteLength <= MAX_ARCHIVE, "Encrypted backup exceeds browser budget");
+      return output;
+    } finally {
+      passBytes.fill(0);
+      plaintext.fill(0);
+    }
+  }
+
+  let captureGeneration = 0;
+  function clearCapture(resetFiles = true) {
+    captureGeneration++;
+    if (resetFiles) el("capture-files").value = "";
+    el("capture-pass").value = "";
+    el("capture-confirm").value = "";
+    el("capture-create").disabled = false;
+    status("capture-status", "Selection cleared. No original file data retained by the workroom.");
+  }
+  async function createCapture() {
+    const input = el("capture-files");
+    const selected = Array.from(input.files || []);
+    const generation = ++captureGeneration;
+    const secret = el("capture-pass").value;
+    const confirmation = el("capture-confirm").value;
+    el("capture-pass").value = ""; el("capture-confirm").value = "";
+    el("capture-create").disabled = true;
+    const admitted = [];
+    try {
+      demand(selected.length > 0 && selected.length <= MAX_FILES, "Select 1–32 local files explicitly");
+      demand(secret === confirmation, "New passwords do not match");
+      const names = new Set();
+      let total = 0;
+      for (const file of selected) {
+        demand(safeName(file.name) && !file.webkitRelativePath, "Unsafe or directory-derived filename");
+        demand(!file.name.toLowerCase().endsWith(".lupb"), "Archive nesting is not accepted");
+        const folded = file.name.normalize("NFC").toLowerCase();
+        demand(!names.has(folded), "Duplicate original filename");
+        names.add(folded);
+        demand(file.size <= MAX_FILE, "Original file exceeds 2 MiB");
+        total += file.size;
+        demand(total <= MAX_TOTAL, "Selected original files exceed 16 MiB");
+      }
+      demand(confirm("Encrypt exactly " + selected.length + " PRIVATE local file(s), " + total +
+        " bytes? No files are uploaded. A download may land in unprotected storage."),
+        "Local encryption cancelled");
+      status("capture-status", "Reading only the chosen original files; preparing encrypted archive…");
+      const rows = [];
+      for (const file of selected) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        admitted.push(bytes);
+        demand(bytes.byteLength === file.size, "Original selected file changed during reading");
+        const digest = hex(await crypto.subtle.digest("SHA-256", bytes));
+        rows.push({ name: file.name, size: bytes.byteLength, sha256: digest, bytes: asBase64(bytes) });
+        demand(captureGeneration === generation && selected.every((f, i) => input.files?.[i] === f),
+          "Source file selection changed; refusing stale capture");
+      }
+      const output = await sealedArchive(rows, secret);
+      demand(captureGeneration === generation && selected.every((f, i) => input.files?.[i] === f),
+        "Selection changed during encryption; no archive published");
+      localDownload(new Blob([output], { type: "application/octet-stream" }),
+        "LightUp-PRIVATE-HUMAN-new-DRAFT-HOLD.lupb");
+      output.fill(0);
+      input.value = "";
+      status("capture-status", "PRIVATE DRAFT/HOLD: created new encrypted local archive of " +
+        selected.length + " original file(s). Move browser download into owner-private storage. " +
+        "Not source authenticated, approved for disclosure, or permission to remediate.");
+    } catch (error) {
+      if (captureGeneration === generation)
+        status("capture-status", "HOLD: " + (error?.message || "Local archive creation failed"));
+    } finally {
+      for (const bytes of admitted) bytes.fill(0);
+      if (captureGeneration === generation) el("capture-create").disabled = false;
+    }
+  }
+
   async function encryptSubset() {
     const activeIndex = Number(el("source-select").value);
     const active = slots[activeIndex];
@@ -211,37 +306,22 @@
       const checkboxes = [...el("file-rows").querySelectorAll("input[type=checkbox]:checked")];
       demand(checkboxes.length > 0 && checkboxes.length <= MAX_FILES, "Select one or more original files");
       const selected = checkboxes.map(input => active.files[Number(input.value)]);
-      demand(selected.every(Boolean), "Invalid current selection");
+      demand(selected.every(Boolean), "Invalid source selection");
       demand(secret === confirmed, "New passwords do not match");
-      demand(encoder.encode(secret).length >= 12 && encoder.encode(secret).length <= 1024,
-        "New password must be 12-1024 UTF-8 bytes");
-      demand(globalThis.isSecureContext && crypto?.subtle, "WebCrypto unavailable");
-      demand(confirm("Encrypt " + selected.length + " original PRIVATE files into a new download? " +
-        "This does NOT authorize any disclosure or data transfer."), "Operator declined new archive");
-      const files = selected.map(file => ({ name: file.name, size: file.size,
+      demand(confirm("Create a NEW encrypted PRIVATE archive with " + selected.length +
+        " chosen original files? This is NOT an approved disclosure."),
+        "Operator declined");
+      const rows = selected.map(file => ({ name: file.name, size: file.size,
         sha256: file.sha256, bytes: asBase64(file.bytes) }));
-      const inner = { version: VERSION, authority: FLAGS, files };
-      const plaintext = encoder.encode(asJsonAscii(inner));
-      demand(plaintext.byteLength <= MAX_ARCHIVE, "Private selected payload exceeds budget");
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const nonce = crypto.getRandomValues(new Uint8Array(12));
-      const imported = await crypto.subtle.importKey("raw", encoder.encode(secret), "PBKDF2", false, ["deriveKey"]);
-      const key = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256",
-        salt, iterations: ROUNDS }, imported, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
-      const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce,
-        additionalData: AAD, tagLength: 128 }, key, plaintext));
-      const envelope = { version: VERSION, kdf: "PBKDF2-HMAC-SHA256", iterations: ROUNDS,
-        salt: asBase64(salt), nonce: asBase64(nonce),
-        ciphertext: asBase64(cipher), authority: FLAGS };
-      const output = encoder.encode(asJsonAscii(envelope) + "\n");
-      demand(output.length <= MAX_ARCHIVE, "Encrypted backup exceeds 38 MiB browser budget");
+      const output = await sealedArchive(rows, secret);
       demand(generations[activeIndex] === originalGeneration && slots[activeIndex] === active,
-        "Original PRIVATE source was cleared or changed during encryption; no export");
-      const blob = new Blob([output], { type: "application/octet-stream" });
-      localDownload(blob, "LightUp-PRIVATE-HUMAN-selected-DRAFT-HOLD.lupb");
-      status("subset-status", "PRIVATE HOLD: encrypted " + selected.length +
-        " exact original files into a newly downloaded .lupb. Browser download location may be unsafe; " +
-        "move to owner-private storage. No approval/disclosure implied.");
+        "Original source was cleared or changed during encryption; no export");
+      localDownload(new Blob([output], { type: "application/octet-stream" }),
+        "LightUp-PRIVATE-HUMAN-selected-DRAFT-HOLD.lupb");
+      output.fill(0);
+      status("subset-status", "PRIVATE DRAFT/HOLD: encrypted " + selected.length +
+        " exact original files into a newly downloaded .lupb. Browser downloads may be unsafe; " +
+        "move to owner-private storage. No disclosure approval.");
     } catch (error) {
       status("subset-status", "HOLD: " + (error?.message || "Subset encryption failed"));
     } finally { el("subset-export").disabled = false; }
@@ -326,6 +406,9 @@
   el("a-clear").addEventListener("click", () => clear(0));
   el("b-clear").addEventListener("click", () => clear(1));
   el("source-select").addEventListener("change", renderInventory);
+  el("capture-files").addEventListener("change", () => clearCapture(false));
+  el("capture-create").addEventListener("click", createCapture);
+  el("capture-clear").addEventListener("click", () => clearCapture(true));
   el("subset-export").addEventListener("click", encryptSubset);
   el("clear-all").addEventListener("click", () => { clear(0); clear(1); });
   window.addEventListener("pagehide", () => {
@@ -335,6 +418,7 @@
     el("a-pass").value = ""; el("b-pass").value = "";
     el("subset-pass").value = ""; el("subset-confirm").value = "";
     el("a-file").value = ""; el("b-file").value = "";
+    clearCapture(true);
     render(); // Do not leave filenames, digests or preview in bfcache DOM.
   });
   window.addEventListener("pageshow", event => {
