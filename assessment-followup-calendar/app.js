@@ -347,6 +347,7 @@
     $("changeNext").disabled=!has||changesPage>=pages-1;
     $("exportUpdated").disabled=!has||added+updated===0;
     $("exportCancelled").disabled=!has||cancelled===0;
+    $("exportChangesCsv").disabled=!has||all.length===0;
     const tbody=$("changesRows");tbody.replaceChildren();
     for(const row of all.slice(changesPage*60,changesPage*60+60)){
       const tr=dom("tr");
@@ -369,6 +370,24 @@
     $("baselineStatus").textContent="Original worksheet, timezone and calendar series matched. Comparison is HUMAN-only, unsigned.";
     renderChanges();
     inform("Previous PRIVATE HUMAN schedule loaded for local comparison, no changes published.");
+  }
+  function exportPrivateChangeRegister(){
+    hold(active && publicationBaseline);
+    const changes=publishedChanges();
+    hold(changes.length>0);
+    if(!confirm("Download "+changes.length+" source-bound PRIVATE HUMAN schedule changes as CSV? Contains original worksheet SHA-256, stable calendar series ID and before/after reminder times. Never publish openly; this is an unsigned HUMAN-only proposal, not proof of action."))return;
+    const header=["status","worksheet_sha256_unsigned","private_calendar_series_id","original_ordinal",
+      "human_schedule_change","before_date","before_time","before_minutes","before_reminder_minutes",
+      "after_date","after_time","after_minutes","after_reminder_minutes","current_plan_saved"];
+    const out=[header,...changes.map(change=>{
+      const b=change.before,n=change.now;
+      return ["REVIEW_ONLY",hash,seriesId,String(change.ordinal),change.kind,
+        b?.day||"",b?.time||"",b?.duration||"",b?.reminder||"",
+        n?.day||"",n?.time||"",n?.duration||"",n?.reminder||"",
+        exportedPlan?"true":"false"];
+    })];
+    download(makeCsv(out),"lightup-private-human-calendar-change-register.csv","text/csv;charset=utf-8");
+    inform("Source-bound PRIVATE HUMAN change register downloaded. No provider, scanner or approval contacted.");
   }
   function calendarDiffExport(cancelled){
     hold(active && publicationBaseline && exportedPlan);
@@ -604,6 +623,10 @@
   hook("changeNext","click",()=>{changesPage++;renderChanges();});
   hook("exportUpdated","click",()=>{
     try{calendarDiffExport(false);}catch(_){inform("PRIVATE event updates held: save the current v2 plan and select a matching previous publication first.",true);}
+  });
+  hook("exportChangesCsv","click",()=>{
+    try{exportPrivateChangeRegister();}
+    catch(_){inform("PRIVATE change register held: load a matching earlier HUMAN plan first.",true);}
   });
   hook("exportCancelled","click",()=>{
     try{calendarDiffExport(true);}catch(_){inform("PRIVATE cancellations held: save the current v2 plan and select a matching previous publication first.",true);}
