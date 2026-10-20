@@ -22,6 +22,7 @@ import sys
 from change_brief import AUTHORITY, no_duplicates, require_fresh_private_directory, source, write_private
 from human_followup import FIELDS, STAGES, human_text, worksheet
 from review_history import admit_human
+from recipient_browser import render_recipient
 
 FORMAT = "lightup.source_minimized_human_exchange.v1"
 RECEIPT_LIMIT = 256_000
@@ -137,6 +138,8 @@ def make_exchange(argv: list[str]):
                 item["change"], item["stage"], item["stage"], ""
             ))
         groups.append((f"recipient-{int(group['team_slot']):02d}.csv", encoded_csv(result)))
+        groups.append((f"recipient-{int(group['team_slot']):02d}.html",
+                       render_recipient(group["team"], group["team_slot"], session, group["rows"])))
     # All content is computed before any private output is created.
     require_fresh_private_directory(output)
     write_private(output / "PRIVATE-owner-receipt.json", receipt_blob)
