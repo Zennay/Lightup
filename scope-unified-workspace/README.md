@@ -30,6 +30,21 @@ Open de [PRIVATE handoff-workroom](handoff.html) op een vertrouwd, offline appar
 
 **Alle uitvoer is REVIEW_ONLY, INCUBATE M3/M7 DRAFT/HOLD.** Geen enkel pakket, stem, hash, route, retourbon, oorspronkelijke bronclaim of consensus verleent actuele geauthenticeerde cliënt/operatorconsent, grant, intrekking, onderzoekstoegang, scannerrecht, gevonden kwetsbaarheid of vrijgave. De app doet geen netwerkoproepen, creëert geen browserpersistente opslag, raakt nooit echte targets en wijzigt geen oorspronkelijke bronbestanden. Controleer het ontvangende menselijke kanaal en de ontvanger onafhankelijk.
 
+## PRIVATE HUMAN reviewbeslisdesk en bespreekagenda
+
+De bestaande offline reviewportfolio voor twee tot acht onafhankelijke PRIVATE HUMAN inventarisdocumenten beschikt nu over een **lokale bespreekdesk**, zonder automatische selectie of mutaties. Na het opnieuw kiezen van de echte oorspronkelijke bronbestanden en het laden van de strikt gelezen HUMAN v1/v2 reviewpakketten kun je de vergelijking filteren op:
+- alle oorspronkelijke bronnen, alle bronnen die HUMAN aandacht vragen, daadwerkelijk tegenstrijdige voorstellen;
+- onbekende dekking van afgeschermde PRIVÉ notities, gedeeltelijk afwezige reviewerbijdragen;
+- een incompatibele oorspronkelijke bronidentiteit of juist al bewust gekozen HUMAN overnames.
+
+Een lokale zoekbalk filtert oorspronkelijke PRIVÉ bestandsnamen in het huidige tabblad. Het tellerpaneel toont expliciet hoeveel van de originele rijen zichtbaar zijn en hoeveel HUMAN overnames er bewust zijn gekozen, **inclusief verborgen keuzes buiten het huidige filter**. Geen filter kan een keuze selecteren, aanpassen, goedkeuren of toepassen. Iedere overname blijft de bestaande afzonderlijke menselijke bronkeuze plus expliciete bevestiging vereisen.
+
+Een uitklapbare **HUMAN keuzevoorvertoning** vergelijkt bij iedere expliciete bronkeuze de huidige lokale team/fase/route met de route uit precies het gekozen reviewerbestand. Privénotitieteksten verschijnen daar niet; bij tegenstrijdige reviewers of afgeschermde notities worden de aandachtspunten zichtbaar vermeld. Gedeeltelijke dekking van bijvoorbeeld twee uit acht reviewers wordt nooit als volledig beoordeeld voorgesteld, zelfs als de aanwezige reviewers onderling overeenkomen.
+
+De nieuwe knop **Download PRIVATE HUMAN bespreekagenda** maakt uitsluitend na een afzonderlijke privacybevestiging een complete lokale Markdown-bespreeklijst. Deze gebruikt **altijd de volledige oorspronkelijke lokale set, onafhankelijk van zichtbare filters**, en rangschikt eerst onverenigbare originele bronidentiteit, echte HUMAN conflicten, onbekende PRIVATE notitiedekking en ontbrekende reviews. Daarna volgen overige dossiers. Per bron vermeldt de agenda de oorspronkelijke naam/grootte/ongetekende SHA-256/structurele hint, huidige menselijke waarden, elk genummerd reviewer-pakket, de handmatige keuze en de voorgestelde nieuwe waarden; nooit oorspronkelijke bytes of de vrije PRIVATE notitietekst. Een apart pakketoverzicht noemt per reviewer uitsluitend de exacte lokaal beoordeelde oorspronkelijke pakketbytes-lengte en ongetekende SHA-256 zodat het juiste originele PRIVATE pakket op een vertrouwelijk kanaal kan worden gecontroleerd.
+
+Deze agenda is **PRIVATE en brongebonden**, niet een anonieme publieksrapportage. Ongetekende hashes authenticeren niemand. Geen voorstel, consensus, agenda of HUMAN keuze bevat echte geauthenticeerde cliënt/operator-consent, grant, actuele revocation of toestemming om te scannen, deployen of een beveiligingsclaim te doen. Bestaande owner-, security/privacy/browser- en exact-HEAD hosted + geregistreerde VPS-CI-gates blijven ongewijzigd. De agenda kan niet op zichzelf naar een live assessment worden gepromoveerd.
+
 ## Privacy by default · ALL-TEAMS HUMAN exports (20 oktober 2026)
 
 De algemene **PRIVATE HUMAN team- en escalatiebrief** en **PRIVATE brongebonden JSON-inventaris** kunnen gegevens van *alle* geladen teams bevatten en zijn daarom uitsluitend bestemd voor vooraf gecontroleerde interne, bevoegde menselijke ontvangers. Ze delen nooit oorspronkelijke bronbytes maar kunnen vertrouwelijke oorspronkelijke bestandsnamen en ongetekende SHA-256 bevatten. Een menselijke route, fase, hash of notitie verleent geen toestemming of runtime-autoriteit.
