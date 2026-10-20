@@ -202,11 +202,21 @@ def dispatch(name: str, values: dict) -> None:
                 raise ValueError("Optional native AES-GCM dependency is missing") from exc
         owner_dest = Path(values["--output-dir"])
         packet_dest = Path(values["--output-file"])
+        # Reject confusing plaintext/encrypted filename identities before any
+        # private owner output is created. Existing native file gates remain.
+        expected_suffix = ".luhx" if name == "owner-encrypted" else ".luhz"
+        if packet_dest.suffix != expected_suffix:
+            raise ValueError("Separate source-free packet must use " + expected_suffix)
+        original_dirs = [Path(x) for x in values.get("--input-dir", [])]
+        original_bundles = [Path(x) for x in values.get("--bundle", [])]
+        original_sources = [*original_dirs, *original_bundles]
         if packet_dest == owner_dest or owner_dest in packet_dest.parents:
             raise ValueError("SOURCE-FREE packet must remain OUTSIDE ORIGINAL owner evidence")
+        if any(packet_dest == source or source in packet_dest.parents
+               or packet_dest in source.parents for source in original_sources):
+            raise ValueError("SOURCE-FREE packet cannot overwrite or enter original PRIVATE input evidence")
         print("Preparing private ORIGINAL owner workroom. No packet transmitted.", flush=True)
-        owner_start([Path(x) for x in values.get("--input-dir", [])],
-                    [Path(x) for x in values.get("--bundle", [])], owner_dest)
+        owner_start(original_dirs, original_bundles, owner_dest)
         print("Re-admitting the separate native SOURCE-FREE folder.", flush=True)
         if name == "owner-encrypted":
             from encrypted_cockpit import encrypt as native_encrypt

@@ -238,3 +238,18 @@ local clipboard history after use. Original hosted and permanent VPS CI,
 source-owner and independent security/privacy/browser/crypto review,
 #177/#182/#829, real independent current client/operator consent with at-use
 revocation and explicit HUMAN GO remain mandatory before any release.
+
+
+### Safe original evidence location and unmistakable transfer file types
+
+Both composed original-owner handoffs now refuse to start if the new portable
+output would be written **inside or over an original PRIVATE ledger/bundle
+input** (or overlap its path). They also require the exact deliberate
+transfer suffix: owner-package makes an unencrypted/unsigned .luhz;
+owner-encrypted makes an encrypted .luhx. This source/output separation
+and naming gate runs *before* original owner workroom publication, so a
+misplaced output cannot pollute or alter the original evidence directory.
+The offline operatorstudio mirrors these warnings, but the native Python
+path checks remain authoritative. Original native source read/ownership/
+link, package admission, private output and cryptographic validators remain
+unchanged. Files are never sent by either command.

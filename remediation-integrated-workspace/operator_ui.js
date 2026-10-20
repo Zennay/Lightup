@@ -81,6 +81,13 @@
       if (packet === destination || packet.startsWith(destination + "/")) {
         throw Error("Bronvrij pakket moet BUITEN de originele owner-map blijven.");
       }
+      const extension = chosen.name === "owner-encrypted" ? ".luhx" : ".luhz";
+      if (!packet.endsWith(extension)) throw Error("Gebruik uitsluitend " + extension + " voor deze overdracht.");
+      const originalInputs = [...vals("--input-dir"), ...vals("--bundle")];
+      if (originalInputs.some(source => packet === source ||
+          packet.startsWith(source + "/") || source.startsWith(packet + "/"))) {
+        throw Error("Nieuwe bronvrije output mag NOOIT in oorspronkelijke PRIVATE evidence staan.");
+      }
     }
     return result;
   }
