@@ -6,6 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN reconciliation desk</title>
 <link rel="stylesheet" href="./reconcile-studio.css">
+<script src="./review-vault.js" defer></script>
 <script src="./reconcile-studio.js" defer></script>
 </head>
 <body>
@@ -22,10 +23,14 @@
 <h2 id="openTitle">1 · Open exact matching sources</h2>
 <div class="grid">
 <label>Original PRIVATE-receipt.json<input id="receipt" type="file" accept=".json,application/json"></label>
-<label>Independent reviewer A HUMAN CSV<input id="reviewA" type="file" accept=".csv,text/csv"></label>
-<label>Independent reviewer B HUMAN CSV<input id="reviewB" type="file" accept=".csv,text/csv"></label>
+<label>Reviewer A format<select id="formatA"><option value="csv">Native HUMAN CSV</option><option value="vault">Encrypted receipt-bound .luhd</option><option value="bundle">Encrypted receipt + HUMAN .luhb</option></select></label>
+<label>Independent reviewer A file<input id="reviewA" type="file" accept=".csv,.luhd,.luhb"></label>
+<label>Reviewer A password (encrypted only)<input id="passwordA" type="password" minlength="14" maxlength="256" autocomplete="off"></label>
+<label>Reviewer B format<select id="formatB"><option value="csv">Native HUMAN CSV</option><option value="vault">Encrypted receipt-bound .luhd</option><option value="bundle">Encrypted receipt + HUMAN .luhb</option></select></label>
+<label>Independent reviewer B file<input id="reviewB" type="file" accept=".csv,.luhd,.luhb"></label>
+<label>Reviewer B password (encrypted only)<input id="passwordB" type="password" minlength="14" maxlength="256" autocomplete="off"></label>
 </div>
-<p class="hint">The browser accepts the existing native HUMAN CSV format. To compare encrypted <code>.luhd</code> / <code>.luhb</code> sources without making plaintext browser files, use the companion native <code>reconcile.py</code> CLI; never weaken password or browser restrictions.</p>
+<p class="hint">For each reviewer independently select an original native CSV, receipt-bound encrypted .luhd, or complete receipt+HUMAN .luhb. The app reuses the existing LightUp PBKDF2/AES-256-GCM implementation, decrypts locally in memory and re-admits exact native HUMAN CSV bytes. The receipt embedded in any .luhb must equal the selected original receipt byte-for-byte. Passphrases are cleared after every attempt. No extra plaintext reviewer file is written, no sender/consent authority is inferred. The native <code>reconcile.py</code> remains available for encrypted terminal-only handling.</p>
 <div class="actions"><button id="open" type="button">Open exact review trio</button><button id="clear" type="button" class="secondary">Clear PRIVATE session</button></div>
 <p id="notice" role="status" aria-live="polite">No PRIVATE material loaded.</p>
 </section>
