@@ -51,6 +51,6 @@ def prepare(session, path_prompt, ask, kind: str):
             raise ValueError("PRIVATE source-native page unavailable")
         print("REVIEW_ONLY: Open original private HUMAN retention report locally: " + str(page))
         session.parent, session.retention_last_plan, session.retention_workroom = (
-            parent, later, str(page.parent))
+            parent, plans[-1], str(page.parent))
     except (OSError, ValueError, UnicodeError, subprocess.TimeoutExpired):
         print("HOLD: original PRIVATE HUMAN retention source refused; no state changed.")

@@ -133,6 +133,9 @@ def run(args: argparse.Namespace) -> int:
         return hold("PRIVATE output already exists; never overwrite")
     if args.minimum_cohort < 5 or args.minimum_cohort > 12:
         return hold("minimum cohort disclosure threshold must be 5–12")
+    if args.action == "prepare" and (
+            not 1 <= len(args.source) <= 12 or len(set(args.source)) != len(args.source)):
+        return hold("1–12 distinct original source inputs required")
     try:
         destination.mkdir(mode=0o700)
         if not owner_private(destination, True):
