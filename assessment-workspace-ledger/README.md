@@ -104,7 +104,7 @@ Native Python independently re-admits the bounded original ledger and re-hashes 
 
 Limits: 1–12 kits, <=256 files per kit, <=64 MiB each kit, <=32 MiB per individual file, <=256 MiB combined, max depth 5, <=1 MiB ledger JSON, <=64 KiB HUMAN CSV. Existing owner-private input folders, owner-only 0700 output parent, 0700 exclusive generated folders and 0600 output files. No implicit scans, no original source modification and no overwrites.
 
-## Owner-private ingress from a browser Downloads HUMAN-review.csv
+Original private ledger/HUMAN file reads refuse hardlinked and special (including FIFO) inputs before reading; non-blocking opens prevent a caller-supplied FIFO from suspending the offline operator workflow.\n\n## Owner-private ingress from a browser Downloads HUMAN-review.csv
 
 Browsers normally save the HUMAN-review.csv into Downloads using local
 filesystem defaults; it may be readable by other users and intentionally
