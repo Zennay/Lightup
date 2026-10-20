@@ -359,19 +359,19 @@ may have a different PATH-only digest; that is **HOLD**, not an invitation
 to override the original saved-session admission. This route grants no
 security authority, authenticated client/operator consent or execution.
 
-## Portable 15-original-studio software kit v13
+## Portable 15-original-studio software kit v14
 
-[Portable source-only LightUp Assessment Offline Toolkit v13](LightUp-Assessment-Offline-Toolkit-v13.zip)
+[Portable source-only LightUp Assessment Offline Toolkit v14](LightUp-Assessment-Offline-Toolkit-v14.zip)
 contains 15 **unchanged** original offline HTML studios and the updated
 software-only operator guide covering native PRIVATE HUMAN console
-options 42-49, integrated first-use workpack creation WITHOUT prior CSV,
-strictly bound reimports, browser live attention/date/team capacity and
-one source-bound pinned PRIVATE snapshot for all local child views.
+options 42-49, direct unassessed first-use workpack creation,
+strictly bound local CSV admission, live HUMAN attention and team capacity
+and the new confirmed `suite.py human-workpack` foreground CLI command.
 All original client-/session-specific HUMAN workpacks remain
 **native-only**, NEVER embedded in the portable software-only ZIP.
 Its source-only ZIP manifest is unsigned and does not authenticate release.
-Build artifact size: **250,012 bytes**; unsigned SHA-256:
-`02d62d9aa5ec88eefa62099c199292f7872ddf0fd29a3cd85c94d2f16f1b7492`.
+Build artifact size: **250,180 bytes**; unsigned SHA-256:
+`19d0bef509cc72f81e6749cb90d8d9d107a604069b0839608dc3da7fa269b6f7`.
 The native-only route board (options 40/41) is deliberately NOT shipped
 inside this browser-only ZIP: its file: bookmarks necessarily reference real
 original owner-private workroom paths. The ZIP contains no PRIVATE client

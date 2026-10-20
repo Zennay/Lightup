@@ -70,6 +70,12 @@ Its browser-only HUMAN attention dashboard live-updates local HOLD,
 unavailable originals, manually selected review date, upcoming declared
 dates and team workloads, and can filter the workflow rows without hiding
 any rows from full original CSV export. No real calendar is queried or set.
+The original source-owned suite.py now also accepts a foreground
+human-workpack CLI subcommand to reconstruct PRIVATE local HUMAN workpacks
+from a strict original saved 0600 session. It requires an existing 0700
+parent outside the checkout, unique folder, a HUMAN declared review date
+and the EXACT 'BUILD PRIVATE WORKPACK' confirmation string. The original
+HUMAN CSV remains optional, with strict re-admission when supplied.
 The original queue editor supports a CSP SHA256-pinned source-bound
 interactive PRIVATE browser UI, HUMAN bulk HOLD/NEEDS INPUT, undo/redo and
 explicit custody acknowledgement after a requested browser CSV download.
