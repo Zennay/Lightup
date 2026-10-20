@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; script-src 'none'; img-src 'none'; style-src 'sha256-CSP_STYLE_HASH'">
+<meta name="color-scheme" content="dark">
+<title>LightUp — Private Scope Operations</title>
+<!-- EMBED_STYLE -->
+</head>
+<body>
+<a href="#main" class="skip">Ga naar inhoud</a>
+<div class="shell">
+<header class="topbar"><span class="logo"><span class="logo-mark" aria-hidden="true">✦</span> LIGHTUP <span class="logo-muted">/ SCOPE</span></span><span class="toplabel">LOCAL · OFFLINE · HUMAN REVIEW</span></header>
+<main id="main">
+<section class="hero" aria-labelledby="title">
+<div class="kicker"><span class="dot" aria-hidden="true"></span> INCUBATE / M3–M7 / PLAN & LAB ONLY</div>
+<h1 id="title">Van scopevoorstel naar <em>controleerbare</em> menselijke opvolging.</h1>
+<p>Een gezamenlijke, volledig lokale toegang tot acht bestaande LightUp-werkruimtes. Maak een voorstel, inspecteer een afzonderlijk aangeleverde oorspronkelijke Casebook-export, draag private bronbestanden versleuteld over en vergelijk menselijke reviewer-keuzes — zonder een grant uit te geven.</p>
+<div class="hold" role="note"><strong>DRAFT / HOLD — NIET GEAUTORISEERD.</strong> Geen van deze schermen bewijst identiteit, cliënttoestemming, actuele intrekking, scope-goedkeuring of een veiligheidsoordeel. Geen productie-release, actieve scan of automatische autorisatie.</div>
+<p class="verify-cta"><a href="verify.html">Controleer een ontvangen pakket lokaal met SHA-256 <span aria-hidden="true">↗</span></a></p>
+<p class="verify-cta"><a href="handoff.html">PRIVATE bestands-shelf: kies de juiste werkruimte en behoud originele bytes <span aria-hidden="true">↗</span></a></p>
+<div class="hero-meta"><span>7 direct te openen browserapps + Studio-schermen</span><span>1 brongebonden CLI-companion</span><span>Geen server, account of verbinding</span></div>
+</section>
+
+<section class="section" aria-labelledby="apps-title">
+<div class="section-heading"><div><p class="eyebrow">01 / TOOLS</p><h2 id="apps-title">Start een werkruimte</h2></div><p>Open de juiste standalone HTML rechtstreeks uit de uitgepakte map. Bestanden blijven op dit apparaat zolang jij ze niet zelf deelt.</p></div>
+<div class="cards">
+<article class="card primary">
+<div class="card-top"><span class="tag">BEGIN HIER</span><span class="index">01</span></div>
+<h3>Scope Intake Matrix</h3><p>Stel voorgestelde assets, uitzonderingen en passieve mogelijkheden samen; voeg een originele Casebook-export toe en behandel open bronverzoeken als menselijke aandachtspunten. Nooit toestemming.</p>
+<p class="source">Gebaseerd op scope PR #1676 · originele Casebook-bron blijft onafhankelijk.</p>
+<a class="action" href="../scope-intake-matrix/standalone.html">Open intake-workroom <span aria-hidden="true">↗</span></a>
+</article>
+<article class="card">
+<div class="card-top"><span class="tag">PRIVÉ OVERDRACHT</span><span class="index">02</span></div>
+<h3>Encrypted Casebook Transfer</h3><p>Bundel apart aangeleverde oorspronkelijke Casebook-snapshots en optionele HUMAN-statussen in een wachtwoordbeveiligd lokaal overdrachtspakket. Originele bronbytes blijven intact.</p>
+<p class="source">Gebaseerd op scope PR #1671 · gevoelige inhoud: deel uitsluitend met bevoegde ontvangers.</p>
+<a class="action" href="../scope-casebook-transfer/standalone.html">Open transfer-workroom <span aria-hidden="true">↗</span></a>
+</article>
+<article class="card">
+<div class="card-top"><span class="tag">VERGELIJK REVIEWERS</span><span class="index">03</span></div>
+<h3>Casebook Reconcile</h3><p>Vergelijk twee afzonderlijk versleutelde HUMAN-workrooms die naar precies dezelfde originele Casebook-bron verwijzen. Beslis expliciet over conflicterende menselijke follow-ups.</p>
+<p class="source">Gebaseerd op scope PR #1674 · bronverschil = HOLD, geen automatische samenvoeging.</p>
+<a class="action" href="../scope-casebook-reconcile/standalone.html">Open reconcile-workroom <span aria-hidden="true">↗</span></a>
+</article>
+<article class="card">
+<div class="card-top"><span class="tag">OPTIONELE CLI</span><span class="index">04</span></div>
+<h3>Casebook History</h3><p>Afzonderlijke Python-companion voor oorspronkelijke Casebook-momenten, brongebonden historie en HUMAN-workroom. Vereist de oorspronkelijke bronhouder uit de nog gehouden parent-PR; dit pakket activeert die bron niet.</p>
+<p class="source">Gebaseerd op scope PR #1668 · zie de eigen handleiding en afhankelijkheden.</p>
+<a class="action muted" href="../scope-casebook-history/README.md">Lees CLI-handleiding <span aria-hidden="true">↗</span></a>
+</article>
+<!-- EXTRA_CARDS -->
+</div></section>
+
+<section class="section" aria-labelledby="route-title">
+<div class="section-heading"><div><p class="eyebrow">02 / WORKFLOW</p><h2 id="route-title">Kies de juiste route</h2></div><p>Alles hieronder is handmatige review. Het echte autorisatiesysteem blijft leidend.</p></div>
+<div class="flow">
+<div class="step"><span>1</span><div><h3>Bereid scope voor</h3><p>Definieer exacte voorgestelde assets, beperkingen en risico's in Studio of Intake Matrix. Een voorgesteld asset is geen geautoriseerd asset.</p></div></div>
+<div class="step"><span>2</span><div><h3>Onderzoek originele records</h3><p>Importeer uitsluitend onafhankelijk verkregen, passende originele Casebook-JSON in een private werkruimte. Bronrecords zijn historische observaties, geen actueel consent.</p></div></div>
+<div class="step"><span>3</span><div><h3>Draag met beleid over</h3><p>Gebruik Casebook Transfer voor de originele bron of Scope Packet Vault voor andere private reviewbestanden. Wachtwoordbeveiliging is geen verificatie van oorspronkelijke producent of ontvangersidentiteit.</p></div></div>
+<div class="step"><span>4</span><div><h3>Los menselijke conflicten op</h3><p>Reconcile vergelijkt workrooms uitsluitend bij exact dezelfde originele bron. Gewijzigde of afwezige bronvermeldingen zijn nooit automatisch gerepareerd of ingetrokken.</p></div></div>
+</div>
+<p class="route-alert"><strong>Urgente STOP of intrekking?</strong> Open een brongebonden HUMAN-opvolging in de Withdrawal Desk. Laat de echte geauthenticeerde grant-eigenaar en incidentcontacten onafhankelijk direct handelen; een browserformulier stopt geen scanner en trekt geen toestemming in. <a href="../withdrawal-desk/standalone.html">Open STOP-werkruimte →</a></p>
+</section>
+<section class="details" aria-labelledby="requirements-title">
+<div><p class="eyebrow">03 / AFBAKENING</p><h2 id="requirements-title">Voor echte uitvoering ontbreken nog afzonderlijke bewijzen.</h2></div>
+<div class="requirements"><p>Actuele, apart geauthenticeerde cliënt- én operatortoestemming met revocation op gebruiksmoment; oorspronkelijke request→grant-binding (#177), tenant- en autorisatiebescherming (#182/#829); originele bronhouder-acceptatie, onafhankelijke security/privacy/browserreview en verplichte GitHub hosted + permanent geregistreerde VPS CI op exact de te promoten commit, gevolgd door expliciete HUMAN GO.</p><p class="fine">Deze bundel gebruikt bestaande aparte PR-artefacten zonder hun broncode te bewerken. De SHA-256 file-inventaris is een ongetekende transportcontrole; geen herkomstbewijs. Er zijn geen externe scripts, CSS-bestanden, afbeeldingen, cookies, opslag of netwerkverzoeken op deze startpagina. Andere workrooms hebben hun eigen bron- en privacybeperkingen.</p></div>
+</section>
+</main>
+<footer><span>LIGHTUP · PRIVATE OPERATOR DESK</span><span>DRAFT / HOLD · GEEN GRANT, SCAN OF DEPLOY</span></footer>
+</div>
+</body>
+</html>

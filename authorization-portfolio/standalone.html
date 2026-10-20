@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; connect-src 'none'; img-src 'none'; font-src 'none'; style-src 'sha256-pODE0PPULC1Ddn0C09gTM8Tuz1fxMwlmXMLCfd+tk80='; script-src 'sha256-xVB9zFy9nTMdxOJ9vKLEaZJRqp9WVeXQJNWSBQ4rVUY='"><title>LightUp · Authorization Portfolio</title><style>:root{font:16px/1.5 system-ui,Arial,sans-serif;color:#e8eef9;background:#0c1322}*{box-sizing:border-box}body{margin:auto;max-width:1280px;padding:26px 24px 70px}h1{font-size:clamp(2rem,5vw,3.4rem);letter-spacing:-.04em;margin:3px 0 10px}h2{font-size:1.32rem;margin:0 0 13px}p{max-width:1030px;color:#c9d7e8}header{border-bottom:1px solid #334562;padding:10px 0 25px}header p{font-size:1.08rem}.eyebrow{color:#9fc6fa;letter-spacing:.2em;font-size:.76rem;font-weight:bold}a{color:#a6d9ff}.card{border:1px solid #32455e;background:#142238;border-radius:15px;padding:22px;margin:24px 0}.actions{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin:18px 0}.actions label{display:grid;gap:5px;color:#d5e4f6;font-size:.92rem}button,.fileButton{appearance:none;border:1px solid #6599d4;background:#1e3c62;border-radius:8px;color:white;padding:10px 15px;font:inherit;font-weight:600;cursor:pointer}button:hover,.fileButton:hover{background:#305889}button:focus-visible,select:focus-visible,input:focus-visible,.fileButton:focus-within{outline:3px solid #a6dcff;outline-offset:2px}.fileButton{position:relative;display:inline-block!important;overflow:hidden}.fileButton input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}input[type=number],input[type=text],select{color:#e8eef9;background:#0a1527;border:1px solid #7890ae;border-radius:7px;padding:10px;min-width:125px;font:inherit}.hint{color:#adc0d7;font-size:.88rem}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:13px;margin-top:27px}.metric{background:#1b2c43;border:1px solid #344b68;padding:17px;border-radius:12px}.metric span{display:block;color:#b1c6dd;font-size:.88rem}.metric strong{display:block;font-size:2.1rem;margin-top:5px;color:#a8e0d4}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));gap:12px}.scope{border:1px solid #47607d;border-radius:12px;padding:16px;background:#192b42}.scope h3{font-size:1.13rem;margin:0 0 5px}.scope p{margin:6px 0}.scope ul{padding-left:19px;margin:9px 0}.scope li{margin:5px 0}.scope select{width:100%;margin-top:5px}.scope label{display:block;margin-top:10px}.tag{font-size:.77rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#e5f2ff}.tag.critical{color:#ff9c9c}.tag.high{color:#ffcc8e}.tag.medium{color:#a5cdff}.tag.routine{color:#9cd6be}.callout{padding:15px;background:#213852;border-left:4px solid #79baf1;border-radius:6px}table{border-collapse:collapse;width:100%;margin-top:15px}th,td{padding:10px;text-align:left;border-bottom:1px solid #38516e}footer{margin-top:28px;color:#adc3d9;border-top:1px solid #334562;padding-top:20px;font-size:.84rem}code{font-size:.88em;color:#b9e3ff}@media(max-width:600px){body{padding:14px}.card{padding:15px}.actions button,.fileButton{width:100%;text-align:center}}@media print{*{color:#000!important;background:#fff!important}button,input,select,.fileButton{display:none!important}.card,.scope{break-inside:avoid}}
+#flagActions{overflow-x:auto}#flagActions table{min-width:920px}#flagActions input[type=text]{min-width:180px;max-width:280px}#flagActions select{min-width:130px}
+</style></head>
+<body>
+<header><div class="eyebrow">LIGHTUP / OPERATOR REVIEW / OFFLINE</div><h1>Authorization risk portfolio</h1><p>Prioritize multiple previously exported, authenticated operator-readiness snapshots in one private, non-authorizing workspace. <strong>REVIEW_ONLY — no consent, grants, scan, deployment or release.</strong></p></header>
+<main>
+<section class="card"><h2>01 · Load original source exports</h2><p>Select 1–12 original <code>lightup.authorization_readiness_operator_v1</code> JSON exports from the separate operator readiness desk (PR #1569). Files are parsed only in this browser; no upload, analytics, storage or API calls. Scope selections may overlap: no total below certifies distinct clients or cases.</p><div class="actions"><label class="fileButton">Choose JSON snapshots <input id="sourceFiles" type="file" accept=".json,application/json" multiple></label><button id="clear">Forget all</button></div><p id="feedback" role="status" aria-live="polite">No original sources loaded.</p><p class="hint">Maximum 12 files · 2 MiB per file · 8 MiB combined. An invalid batch replaces nothing.</p></section>
+<section id="overview" hidden><div class="metrics"><div class="metric"><span>Original report scopes</span><strong id="scopeCount"></strong></div><div class="metric"><span>High-priority flags across reports*</span><strong id="priorityCount"></strong></div><div class="metric"><span>Pending original requests*</span><strong id="pendingCount"></strong></div><div class="metric"><span>Stored grant rows, NOT authorizations*</span><strong id="grantCount"></strong></div><div class="metric"><span>Cross-report changed record revisions*</span><strong id="overlapCount"></strong></div></div>
+<p class="hint">*Simple addition of original report counts; they may overlap, refer to different times or be incomplete. The underlying exports are unsigned, potentially stale and do not establish identities, consent or authority.</p>
+<section class="card"><h2>02 · Human attention board</h2><div class="actions"><label>Priority <select id="priorityFilter"><option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="routine">Routine</option></select></label><label>Preparation status <select id="stateFilter"><option value="all">All</option><option value="new">Unreviewed</option><option value="triage">In human triage</option><option value="escalate">Escalate</option><option value="discussed">Discussed (unverified)</option><option value="overdue">Past human target date (UTC)</option></select></label></div><div id="cards" class="cards"></div></section>
+<section class="card"><h2>Flag-level human follow-up register</h2><p>Track each original source-reported warning category separately. Fixed human review questions guide the actual grant/identity owners; private notes are included <strong>only in the user-downloaded private resume</strong>, never aggregate exports. A locally discussed flag does <strong>not</strong> mean repaired, revoked, approved or verified. Export these categories without names or record identities.</p><div class="actions"><label>Flag priority <select id="flagPriority"><option value="all">All bands</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="routine">Informational</option></select></label><label>Human state <select id="flagState"><option value="all">All states</option><option value="new">Unreviewed</option><option value="triage">In triage</option><option value="escalate">Escalate</option><option value="discussed">Discussed · unverified</option></select></label></div><div id="flagActions"></div></section>
+<section class="card"><h2>Cross-scope risk themes</h2><p>Aggregate original exporter warnings. Counts may be duplicated across overlapping selections; these are not independently verified vulnerabilities.</p><div id="themes"></div></section><section class="card"><h2>03 · Capacity and coordination scenario</h2><p>Hypothetical time for a <em>human</em> to review flagged records. This is not runtime, completion, or permission to execute. Counts can overlap between exported scopes.</p><div class="actions"><label>Weekly analyst hours <input id="hours" type="number" min="1" max="160" step="1" value="24"></label><label>Hours per critical flag <input id="effortCritical" type="number" min=".25" max="16" step=".25" value="3"></label><label>Hours per high flag <input id="effortHigh" type="number" min=".25" max="16" step=".25" value="1.5"></label><label>Hours per other flag <input id="effortOther" type="number" min=".25" max="16" step=".25" value=".5"></label></div><p id="capacitySummary" class="callout"></p><div id="schedule"></div></section>
+<section class="card"><h2>Historical source revision lens</h2><p>Locally compare 2–8 <em>existing</em> original operator-readiness JSON exports for the <strong>same exact source selection</strong>. File selection order is an unverified reviewer-chosen display order, <strong>not authenticated chronology</strong>. Different pseudonymous stored record counts or flags do not prove new problems, repairs or revocation.</p><div class="actions"><label class="fileButton">Choose 2–8 ordered historical JSON exports <input id="historyFiles" type="file" accept=".json,application/json" multiple></label><button id="clearHistory">Forget historical comparison</button><button id="exportHistory">Historical aggregate CSV</button></div><p id="historyFeedback" role="status" aria-live="polite">No historical comparison open.</p><div id="historyPanel"></div></section>
+<section class="card"><h2>04 · Local handoff and resumption</h2><p>Public coordination exports contain only numbered report slots, fixed source-defined flag labels and aggregate counts — never original client names, host/IPs, engagement details, source-file names, IDs or source hashes. A separate <strong>private</strong> resume file contains exact original-byte fingerprints and only local discussion statuses. Neither is authenticated evidence.</p><div class="actions"><button id="exportJson">Aggregate JSON</button><button id="exportCsv">Aggregate CSV</button><button id="exportBrief">Human briefing (Markdown)</button><button id="exportCapacity">Weekly review capacity CSV</button><button id="exportReminders">Human review reminders (.ics)</button><button id="exportFlags">Flag-level human register CSV</button><button id="saveDraft">Save private status draft</button><label class="fileButton">Restore private draft <input id="restoreDraft" type="file" accept=".json,application/json"></label></div><p id="exportFeedback" role="status" aria-live="polite"></p></section></section></main>
+<footer>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Administrative approval and database grant entries are not independently authenticated two-party consent. Recheck revocation at actual use; mandatory CI, privacy/security review and HUMAN GO remain required.</footer>
+<script>/* LightUp authorization portfolio: browser-only, operator-readable, NON-AUTHORIZING.
+ * Source operator snapshots are untrusted local bytes. No storage or network calls.
+ */
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const FIELDS=['authorization_granted','client_consent_verified','execution_allowed','operator_consent_verified','release_approved'];
+const CRITICAL=new Set(['TENANT_LINEAGE_MISMATCH','INVALID_APPROVED_REQUEST_BINDING','UNTRUSTED_APPROVED_REQUEST_ORIGIN','INVALID_CLIENT_REQUEST_ORIGIN','UNTRUSTED_ADMINISTRATIVE_APPROVAL','ORPHAN_GRANT']);
+const HIGH=new Set(['UNBOUND_APPROVAL_REQUEST','NO_COMPATIBLE_APPROVED_REQUEST','AMBIGUOUS_APPROVED_REQUEST_MATCH','INVALID_GRANT_WINDOW','INVALID_GRANT_CREATION_TIME','INVALID_GRANT_ASSETS','CLOSED_ENGAGEMENT_GRANT','INACTIVE_CLIENT_GRANT','INVALID_REQUEST_ASSETS','INVALID_REQUEST_RISK','NON_AUTHORIZED_ASSESSMENT_MODE','INVALID_REQUEST_CREATION_TIME','UNKNOWN_REQUEST_STATUS']);
+const MEDIUM=new Set(['EXPIRED_GRANT_WINDOW']);
+const ROUTINE=new Set(['PENDING_OPERATOR_REVIEW','RECORDED_ADMINISTRATIVE_APPROVAL','RECORDED_ADMINISTRATIVE_REJECTION']);
+const ALLOWED=new Set([...CRITICAL,...HIGH,...MEDIUM,...ROUTINE]);
+const states=['new','triage','escalate','discussed'];
+const teams=['unassigned','security','privacy','client-operations','platform'];
+const HASH=/^[a-f0-9]{64}$/;
+let reports=[];
+let historical=null;
+const reportLimit=12;
+const unknown=()=>{throw Error('HOLD: source schema/contents are ambiguous, altered or unsupported. Use the original operator JSON exporter.');};
+const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+const keys=(v,required,optional=[])=>object(v)&&required.every(k=>Object.hasOwn(v,k))&&Object.keys(v).every(k=>required.includes(k)||optional.includes(k));
+const int=(v,min=0,max=3000)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
+const sha=v=>typeof v==='string'&&HASH.test(v);
+const limited=(v,n)=>typeof v==='string'&&v.length<=n;
+const flags=(v)=>Array.isArray(v)&&v.length<=30&&v.every(x=>typeof x==='string'&&ALLOWED.has(x))&&new Set(v).size===v.length;
+const literalFalse=a=>keys(a,FIELDS)&&FIELDS.every(k=>a[k]===false);
+const setMessage=(id,message)=>{$(id).textContent=message;};
+const stamp={format:'lightup.authorization_portfolio_draft_v1',disposition:'REVIEW_ONLY',authority:Object.fromEntries(FIELDS.map(k=>[k,false]))};
+
+/* Small strict recursive-descent JSON decoder: rejects repeated decoded object keys.
+   Crucial: plain JSON.parse accepts duplicates and obscures authorization claims. */
+function parseStrict(input){
+ let i=0, nodes=0;
+ const fail=()=>{throw Error('HOLD: invalid, duplicate-key or overdeep JSON.');};
+ const ws=()=>{while(i<input.length&&/[ \t\r\n]/.test(input[i]))i++;};
+ const str=()=>{
+  if(input[i]!=='"')fail();
+  const start=i++;let escaped=false;
+  while(i<input.length){const c=input[i++];
+   if(!escaped&&c==='"'){try{return JSON.parse(input.slice(start,i));}catch{fail();}}
+   if(!escaped&&c.charCodeAt(0)<32)fail();
+   if(escaped){escaped=false;}else if(c==='\\')escaped=true;
+  }fail();
+ };
+ const value=depth=>{
+  if(depth>30||++nodes>150000)fail();
+  ws();const c=input[i];
+  if(c==='"')return str();
+  if(c==='{'){
+   i++;ws();const out=Object.create(null),seen=new Set();
+   if(input[i]==='}'){i++;return out;}
+   for(;;){ws();const key=str();if(seen.has(key))fail();seen.add(key);ws();
+    if(input[i++]!==':')fail();const v=value(depth+1);
+    Object.defineProperty(out,key,{value:v,enumerable:true,writable:true,configurable:true});
+    ws();if(input[i]==='}'){i++;return out;}if(input[i++]!==',')fail();
+   }
+  }
+  if(c==='['){
+   i++;ws();const arr=[];if(input[i]===']'){i++;return arr;}
+   for(;;){arr.push(value(depth+1));ws();if(input[i]===']'){i++;return arr;}if(input[i++]!==',')fail();}
+  }
+  const remaining=input.slice(i);const number=remaining.match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
+  if(number){i+=number[0].length;const val=Number(number[0]);if(!Number.isFinite(val))fail();return val;}
+  for(const [text,val] of [['true',true],['false',false],['null',null]]){
+   if(remaining.startsWith(text)){i+=text.length;return val;}
+  }fail();
+ };
+ const result=value(0);ws();if(i!==input.length)fail();return result;
+}
+const digest=async bytes=>{
+ if(!globalThis.crypto?.subtle)return null;
+ const b=await crypto.subtle.digest('SHA-256',bytes);
+ return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+};
+function validateReport(r){
+ const top=['format','disposition','request_binding_schema_present','scope_fingerprint','scope_description','authority','limitations','summary','engagements','review_queue','request_history'];
+ if(!keys(r,top)||r.format!=='lightup.authorization_readiness_operator_v1'||r.disposition!=='REVIEW_ONLY'||r.request_binding_schema_present!==true&&r.request_binding_schema_present!==false||!sha(r.scope_fingerprint)||!['all_clients','single_client','single_engagement'].includes(r.scope_description)||!literalFalse(r.authority))unknown();
+ if(!Array.isArray(r.limitations)||r.limitations.length>25||r.limitations.some(x=>!limited(x,800)))unknown();
+ const s=r.summary;
+ if(!keys(s,['clients','engagements','requests','grants','pending_requests','flag_counts'])||['clients','engagements','requests','grants','pending_requests'].some(k=>!int(s[k]))||s.pending_requests>s.requests||!object(s.flag_counts))unknown();
+ if(!Array.isArray(r.engagements)||!Array.isArray(r.review_queue)||!Array.isArray(r.request_history)||r.engagements.length>3000||r.review_queue.length>3000||r.request_history.length>3000||r.request_history.length!==s.requests||r.review_queue.length!==s.pending_requests||r.engagements.length>s.engagements)unknown();
+ if(s.clients===0&&s.engagements>0||s.clients===0&&s.requests>0||s.engagements===0&&r.engagements.length>0)unknown();
+ const count=Object.create(null), add=f=>{count[f]=(count[f]||0)+1;};
+ const identities=new Set(), queue=new Set(), history=new Set(), recordMap=new Map();let grantRecords=0;
+ for(const e of r.engagements){
+  if(!keys(e,['client','engagement','engagement_status','requests','approved_requests','untrusted_approved_requests','grants','grant_findings','identity_key','source_key','attention'])||!limited(e.client,500)||!limited(e.engagement,500)||!limited(e.engagement_status,100)||!limited(e.attention,500)||!int(e.requests)||!int(e.approved_requests)||!int(e.untrusted_approved_requests)||e.approved_requests>e.requests||e.untrusted_approved_requests>e.approved_requests||!int(e.grants)||!sha(e.identity_key)||!sha(e.source_key)||!Array.isArray(e.grant_findings)||e.grant_findings.length!==e.grants)unknown();
+  if(identities.has(e.identity_key))unknown();identities.add(e.identity_key);recordMap.set(e.identity_key,{kind:'engagement',revision:e.source_key});
+  for(const g of e.grant_findings){
+   if(!keys(g,['identity_key','source_key','grant_number','window','binding','flags','next_action'])||!sha(g.identity_key)||!sha(g.source_key)||!int(g.grant_number,1,3000)||!['invalid','missing','recorded_coherent_review_only'].includes(g.binding)||!['invalid','expired','future','within_window'].includes(g.window)||!flags(g.flags)||!limited(g.next_action,700)||identities.has(g.identity_key))unknown();
+   if(g.binding==='missing'&&!g.flags.includes('UNBOUND_APPROVAL_REQUEST')||g.binding==='invalid'&&!g.flags.includes('INVALID_APPROVED_REQUEST_BINDING')||g.binding==='recorded_coherent_review_only'&&(g.flags.includes('UNBOUND_APPROVAL_REQUEST')||g.flags.includes('INVALID_APPROVED_REQUEST_BINDING'))||g.window==='expired'&&!g.flags.includes('EXPIRED_GRANT_WINDOW')||g.window==='invalid'&&!g.flags.includes('INVALID_GRANT_WINDOW')||g.window==='within_window'&&(g.flags.includes('EXPIRED_GRANT_WINDOW')||g.flags.includes('INVALID_GRANT_WINDOW')))unknown();
+   identities.add(g.identity_key);recordMap.set(g.identity_key,{kind:'grant',revision:g.source_key});g.flags.forEach(add);grantRecords++;
+  }
+ }
+ if(grantRecords>s.grants)unknown();
+ for(const r0 of r.request_history){
+  if(!keys(r0,['identity_key','source_key','request_number','client','status','created_at','flags','next_action'])||!sha(r0.identity_key)||!sha(r0.source_key)||!int(r0.request_number,1,3000)||!limited(r0.client,500)||!limited(r0.status,50)||!limited(r0.created_at,60)||!flags(r0.flags)||!limited(r0.next_action,700)||identities.has(r0.identity_key))unknown();
+  const expected=['submitted','under_review'].includes(r0.status)?'PENDING_OPERATOR_REVIEW':r0.status==='approved'?'RECORDED_ADMINISTRATIVE_APPROVAL':r0.status==='rejected'?'RECORDED_ADMINISTRATIVE_REJECTION':'UNKNOWN_REQUEST_STATUS';
+  if(r0.flags[0]!==expected)unknown();
+  identities.add(r0.identity_key);recordMap.set(r0.identity_key,{kind:'request',revision:r0.source_key});history.add(r0.identity_key);
+  if(['submitted','under_review'].includes(r0.status)){r0.flags.forEach(add);queue.add(r0.identity_key);}
+ }
+ if(queue.size!==s.pending_requests)unknown();
+ const seenQ=new Set();
+ for(const r0 of r.review_queue){
+  if(!object(r0)||!sha(r0.identity_key)||!queue.has(r0.identity_key)||seenQ.has(r0.identity_key))unknown();
+  const orig=r.request_history.find(x=>x.identity_key===r0.identity_key);
+  if(!orig||JSON.stringify(orig)!==JSON.stringify(r0))unknown();seenQ.add(r0.identity_key);
+ }
+ if(seenQ.size!==queue.size)unknown();
+ const expected=Object.keys(count);let otherOrphans=0;
+ for(const [k,v] of Object.entries(s.flag_counts)){
+  if(!ALLOWED.has(k)||!int(v))unknown();
+  if(k==='ORPHAN_GRANT'){otherOrphans=v;continue;}
+  if((count[k]||0)!==v)unknown();
+ }
+ for(const k of expected)if((s.flag_counts[k]||0)!==count[k])unknown();
+ if(otherOrphans!==s.grants-grantRecords||r.scope_description!=='all_clients'&&otherOrphans>0)unknown();
+ const flagCount=Object.create(null);
+ for(const [k,v] of Object.entries(s.flag_counts))if(v)flagCount[k]=v;
+ // The original exporter counts pending requests in summary.flag_counts, while
+ // closed/approved/rejected request history lives only in request_history.
+ // Include these SOURCE-reported historical flags without re-counting pending.
+ for(const previous of r.request_history){
+  if(['submitted','under_review'].includes(previous.status))continue;
+  for(const flag of previous.flags)flagCount[flag]=(flagCount[flag]||0)+1;
+ }
+ const severity={critical:0,high:0,medium:0,routine:0};
+ for(const [k,v] of Object.entries(flagCount))severity[CRITICAL.has(k)?'critical':HIGH.has(k)?'high':MEDIUM.has(k)?'medium':'routine']+=v;
+ const priority=severity.critical?'critical':severity.high?'high':severity.medium?'medium':'routine';
+ // Strict data minimization: no names, source rows, scope identifiers or private notes kept.
+ return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests,historical_decisions:r.request_history.filter(item=>['approved','rejected'].includes(item.status)).length},severity,priority,flagCount,flagActions:Object.fromEntries(Object.keys(flagCount).map(k=>[k,{state:'new',team:'unassigned',note:''}])),state:'new',team:'unassigned',due:'',digest:null,recordMap,overlap:{shared:0,changed:0,unchanged:0}};
+}
+function validDue(v){
+ if(v==='')return true;
+ if(typeof v!=='string'||!/^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/.test(v))return false;
+ const d=new Date(v+'T00:00:00Z');
+ return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===v;
+}
+function isOverdue(r){
+ return r.due!==''&&validDue(r.due)&&r.due<new Date().toISOString().slice(0,10)&&r.state!=='discussed';
+}
+function pri(r){return ['critical','high','medium','routine'].indexOf(r.priority);}
+function label(n){return 'Source '+String(n+1).padStart(2,'0');}
+function e(tag,txt,cl){const el=document.createElement(tag);if(txt!==undefined)el.textContent=String(txt);if(cl)el.className=cl;return el;}
+function draw(){
+ const have=reports.length>0;$('overview').hidden=!have;if(!have)return;
+ $('scopeCount').textContent=reports.length;
+ $('overlapCount').textContent=reports.reduce((n,r)=>n+r.overlap.changed,0)/2;
+ $('pendingCount').textContent=reports.reduce((n,r)=>n+r.counts.pending,0);
+ $('grantCount').textContent=reports.reduce((n,r)=>n+r.counts.grants,0);
+ $('priorityCount').textContent=reports.reduce((n,r)=>n+r.severity.critical+r.severity.high,0);
+ const list=$('cards');list.replaceChildren();const sort=[...reports].sort((a,b)=>pri(a)-pri(b));
+ for(const r of sort){
+  if($('priorityFilter').value!=='all'&&$('priorityFilter').value!==r.priority)continue;
+  if($('stateFilter').value==='overdue'){if(!isOverdue(r))continue;}
+  else if($('stateFilter').value!=='all'&&$('stateFilter').value!==r.state)continue;
+  const index=reports.indexOf(r),box=e('article',undefined,'scope');
+  box.append(e('div',r.priority.toUpperCase()+' · '+r.description.replace('_',' '),'tag '+r.priority));
+  box.append(e('h3',label(index)));
+  box.append(e('p',r.counts.pending+' pending requests · '+r.counts.historical_decisions+' historical decisions (not consent) · '+r.counts.grants+' stored grant rows (not approval)'));
+  box.append(e('p',r.severity.critical+' critical · '+r.severity.high+' high · '+r.severity.medium+' medium review flags'));
+  if(r.overlap.shared)box.append(e('p','Cross-report pseudonymous overlap: '+r.overlap.shared+' shared records; '+r.overlap.changed+' changed revisions (unverified). Reconcile with source owners.','callout'));
+  const ul=e('ul');const order=Object.entries(r.flagCount).sort((a,b)=>{const rank=k=>CRITICAL.has(k)?0:HIGH.has(k)?1:MEDIUM.has(k)?2:3;return rank(a[0])-rank(b[0])||b[1]-a[1]||a[0].localeCompare(b[0]);});
+  for(const [k,n] of order.slice(0,7))ul.append(e('li',k.replaceAll('_',' ')+' × '+n));
+  if(order.length>7)ul.append(e('li','+'+(order.length-7)+' other categories'));
+  if(!order.length)ul.append(e('li','No recorded anomalies in this snapshot (NOT clearance).'));
+  box.append(ul);
+  const lbl=e('label','Local human follow-up stage (unverified)');const select=e('select');
+  for(const s of states){const opt=e('option',({new:'Unreviewed',triage:'In human triage',escalate:'Escalate to owners',discussed:'Discussed · unverified'})[s]);opt.value=s;opt.selected=r.state===s;select.append(opt);}
+  select.addEventListener('change',()=>{r.state=select.value;draw();});
+  lbl.append(select);box.append(lbl);
+  const teamLabel=e('label','Follow-up team (local self-report)'),team=e('select');
+  for(const t of teams){const opt=e('option',t.replaceAll('-',' '));opt.value=t;opt.selected=r.team===t;team.append(opt);}
+  team.addEventListener('change',()=>{r.team=team.value;draw();});
+  teamLabel.append(team);box.append(teamLabel);
+  const dateLabel=e('label','Human target date (UTC; not a scan booking)'),date=e('input');
+  date.type='date';date.min='2020-01-01';date.max='2100-12-31';date.value=r.due;
+  date.addEventListener('change',()=>{if(validDue(date.value)){r.due=date.value;draw();}else{date.value=r.due;setMessage('feedback','HOLD: invalid human target date.');}});
+  dateLabel.append(date);box.append(dateLabel);
+  if(isOverdue(r))box.append(e('p','LOCAL FOLLOW-UP DATE PASSED. Reconfirm with the human owners; this is not evidence of actual missed client consent.','tag high'));
+  list.append(box);
+ }
+ if(!list.childElementCount)list.append(e('p','No matching scopes.'));
+ drawCapacity();drawThemes();drawFlagActions();
+}
+function humanQuestion(flag){
+ switch(flag){
+  case 'TENANT_LINEAGE_MISMATCH':case 'ORPHAN_GRANT':
+   return 'Hold client-facing interpretation; ask domain tenant-lineage owner to reconcile the original persisted record without copying it into this file.';
+  case 'INVALID_APPROVED_REQUEST_BINDING':case 'UNBOUND_APPROVAL_REQUEST':
+  case 'NO_COMPATIBLE_APPROVED_REQUEST':case 'AMBIGUOUS_APPROVED_REQUEST_MATCH':
+   return 'Coordinate authentic client-origin request and separate operator-review provenance with grant source owner; never infer consent from a match.';
+  case 'UNTRUSTED_APPROVED_REQUEST_ORIGIN':case 'INVALID_CLIENT_REQUEST_ORIGIN':
+  case 'UNTRUSTED_ADMINISTRATIVE_APPROVAL':
+   return 'Verify separately authenticated client and operator request roles with identity owner before interpreting any stored approval.';
+  case 'INVALID_GRANT_WINDOW':case 'EXPIRED_GRANT_WINDOW':case 'INVALID_GRANT_CREATION_TIME':
+  case 'INVALID_REQUEST_CREATION_TIME':
+   return 'Ask responsible owner to reconcile original recorded UTC lifecycle and action-time expiry/revocation; do not extend a window locally.';
+  case 'CLOSED_ENGAGEMENT_GRANT':case 'INACTIVE_CLIENT_GRANT':
+   return 'Escalate engagement/client lifecycle status to the authorized owner; do not use the stored grant for active work.';
+  case 'INVALID_GRANT_ASSETS':case 'INVALID_REQUEST_ASSETS':
+  case 'INVALID_REQUEST_RISK':case 'NON_AUTHORIZED_ASSESSMENT_MODE':
+   return 'Request a fresh independently reviewed canonical scope, exclusions, activity mode and risk; never silently widen it.';
+  case 'PENDING_OPERATOR_REVIEW':
+   return 'Coordinate an independent operator review of the genuine client request; pending is not client/operator consent.';
+  case 'RECORDED_ADMINISTRATIVE_APPROVAL':
+   return 'Verify what was administratively approved; this record is not a consent signature, approved scan or grant.';
+  case 'RECORDED_ADMINISTRATIVE_REJECTION':
+   return 'Confirm the client-facing rejection notice and appropriate human next steps; do not reverse the decision offline.';
+  default:
+   return 'Request source-owner clarification; unrecognized or ambiguous evidence must remain HOLD and non-authorizing.';
+ }
+}
+function drawFlagActions(){
+ const root=$('flagActions');root.replaceChildren();
+ const ranking=name=>CRITICAL.has(name)?'critical':HIGH.has(name)?'high':MEDIUM.has(name)?'medium':'routine';
+ const entries=reports.flatMap((r,i)=>Object.entries(r.flagCount).map(([flag,count])=>({
+  source:i,flag,count,priority:ranking(flag),action:r.flagActions[flag]
+ })));
+ const selected=entries.filter(x=>($('flagPriority').value==='all'||x.priority===$('flagPriority').value)&&($('flagState').value==='all'||x.action.state===$('flagState').value));
+ selected.sort((a,b)=>['critical','high','medium','routine'].indexOf(a.priority)-['critical','high','medium','routine'].indexOf(b.priority)||b.count-a.count||a.source-b.source||a.flag.localeCompare(b.flag));
+ const summary=e('p',selected.length+' of '+entries.length+' original source flag/category pairs shown · '+entries.filter(x=>x.action.state==='escalate').length+' local escalations · '+entries.filter(x=>x.action.state==='discussed').length+' discussed but NOT verified fixed','hint');
+ root.append(summary);
+ if(!selected.length){root.append(e('p','No matching flagged categories.'));return;}
+ const table=e('table'),head=e('tr');for(const title of ['Scope','Original warning category','Reported count*','Priority','Human review question','Human stage','Discussion team','Private human note (resume only)'])head.append(e('th',title));
+ const thead=e('thead');thead.append(head);table.append(thead);
+ const body=e('tbody');for(const item of selected){
+  const row=e('tr'),action=item.action;
+  for(const text of [label(item.source),item.flag.replaceAll('_',' '),item.count,item.priority.toUpperCase(),humanQuestion(item.flag)])row.append(e('td',text));
+  const stateCell=e('td'),stateSelect=e('select');
+  for(const status of states){const opt=e('option',({new:'Unreviewed',triage:'In triage',escalate:'Escalate',discussed:'Discussed · unverified'})[status]);opt.value=status;opt.selected=action.state===status;stateSelect.append(opt);}
+  stateSelect.setAttribute('aria-label',label(item.source)+' '+item.flag+' human stage');stateSelect.addEventListener('change',()=>{action.state=stateSelect.value;drawFlagActions();});
+  stateCell.append(stateSelect);row.append(stateCell);
+  const teamCell=e('td'),teamSelect=e('select');
+  for(const team of teams){const opt=e('option',team.replaceAll('-',' '));opt.value=team;opt.selected=action.team===team;teamSelect.append(opt);}
+  teamSelect.setAttribute('aria-label',label(item.source)+' '+item.flag+' discussion team');teamSelect.addEventListener('change',()=>{action.team=teamSelect.value;});
+  teamCell.append(teamSelect);row.append(teamCell);
+  const noteCell=e('td'),note=e('input');note.type='text';note.maxLength=180;note.value=action.note;
+  note.setAttribute('aria-label',label(item.source)+' '+item.flag+' PRIVATE human note, never exported in aggregate');
+  note.placeholder='Private 180-character reviewer note';
+  note.addEventListener('change',()=>{action.note=note.value;});
+  noteCell.append(note);row.append(noteCell);body.append(row);
+ }
+ table.append(body);root.append(table);
+ root.append(e('p','*Different scopes or export times can repeat the same stored record. All locally selected stages and teams are self-reports; none authenticates consent, source repairs or approvals.','hint'));
+}
+function drawThemes(){
+ const root=$('themes');root.replaceChildren();
+ const totals=new Map();
+ for(const r of reports)for(const [name,count] of Object.entries(r.flagCount)){
+  const item=totals.get(name)||{sum:0,scopes:0};
+  item.sum+=count;item.scopes++;totals.set(name,item);
+ }
+ if(!totals.size){root.append(e('p','No reported source flags. That is not an authorization or safety conclusion.'));return;}
+ const priority=k=>CRITICAL.has(k)?0:HIGH.has(k)?1:MEDIUM.has(k)?2:3;
+ const sorted=[...totals].sort((a,b)=>priority(a[0])-priority(b[0])||b[1].scopes-a[1].scopes||b[1].sum-a[1].sum||a[0].localeCompare(b[0]));
+ const table=e('table'),thead=e('thead'),headers=e('tr');
+ for(const label of ['Exporter review flag','Source scopes affected*','Reported occurrences*','Follow-up tier'])headers.append(e('th',label));
+ thead.append(headers);table.append(thead);const body=e('tbody');
+ for(const [name,value] of sorted){
+  const row=e('tr');
+  for(const label of [name.replaceAll('_',' '),value.scopes,value.sum,['Critical','High','Medium','Informational'][priority(name)]])row.append(e('td',label));
+  body.append(row);
+ }
+ table.append(body);root.append(table);
+ root.append(e('p','*Source scope overlap and source history can double-count original records. Reconcile with original operator-authenticated export and source owners.','hint'));
+}
+function input(id){const v=Number($(id).value);return Number.isFinite(v)&&v>=.25&&v<=160?v:null;}
+function plan(){
+ const cap=input('hours'),critical=input('effortCritical'),high=input('effortHigh'),other=input('effortOther');
+ if(!cap||!critical||!high||!other||cap<1)return null;
+ const work=[];
+ reports.forEach((r,index)=>{
+  for(const [band,h] of [['critical',critical],['high',high],['medium',other],['routine',other]]){
+   if(r.severity[band])work.push({index,band,hours:r.severity[band]*h});
+  }
+ });
+ work.sort((a,b)=>['critical','high','medium','routine'].indexOf(a.band)-['critical','high','medium','routine'].indexOf(b.band)||a.index-b.index);
+ const weeks=Array.from({length:8},()=>({total:0,critical:0,high:0,medium:0,routine:0}));
+ let remaining=0;for(const w of work){
+  let hours=w.hours;
+  for(const week of weeks){const allowed=Math.max(0,cap-week.total);const spend=Math.min(allowed,hours);
+   week.total+=spend;week[w.band]+=spend;hours-=spend;if(hours<1e-8)break;
+  }remaining+=hours;
+ }
+ return {cap,weekly:weeks,remaining,total:work.reduce((x,w)=>x+w.hours,0)};
+}
+function drawCapacity(){
+ const value=plan();const target=$('schedule');target.replaceChildren();
+ if(!value){setMessage('capacitySummary','Use positive, bounded weekly hours and effort assumptions.');return;}
+ const fmt=v=>Math.round(v*10)/10;
+ setMessage('capacitySummary','Estimated '+fmt(value.total)+' human review-hours across these potentially overlapping source reports. '+fmt(value.remaining)+' estimated hours remain after eight simulated weeks. These are assumptions, not verified assignments, completion evidence or consent.');
+ const table=e('table'),thead=e('thead'),tr=e('tr');for(const x of ['Scenario week','Critical','High','Other','Total hours'])tr.append(e('th',x));thead.append(tr);table.append(thead);
+ const tbody=e('tbody');value.weekly.forEach((w,i)=>{const row=e('tr');for(const x of [String(i+1),fmt(w.critical),fmt(w.high),fmt(w.medium+w.routine),fmt(w.total)])row.append(e('td',x));tbody.append(row);});table.append(tbody);target.append(table);
+ const count=e('p','Local source-scope routing — '+teams.map(t=>t+': '+reports.filter(r=>r.team===t).length).join(' · ')+'. '+reports.filter(isOverdue).length+' past human target date (UTC); no verified work orders.','hint');
+ target.append(count);
+}
+function exportReviewReminders(){
+ const planned=reports.map((r,index)=>({r,index})).filter(({r})=>r.due&&validDue(r.due)&&r.state!=='discussed');
+ if(!planned.length){setMessage('exportFeedback','No valid uncompleted human review target dates. No calendar file created.');return;}
+ if(!confirm('This calendar file contains only numbered source slots, fixed human teams and generic risk bands. Importing it can upload reminders to your calendar cloud. It does NOT schedule scans, approve scope, grant consent or revoke permissions. Export these human-only reminders?'))return;
+ const escape=value=>String(value).replaceAll(';',' ').replaceAll(',',' ');
+ const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LightUp//Review-only human coordination//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:LightUp human follow-ups ONLY'];
+ const dtstamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+ const nextDay=value=>new Date(Date.parse(value+'T00:00:00Z')+86400000).toISOString().slice(0,10).replaceAll('-','');
+ for(const {r,index} of planned){
+  const date=r.due.replaceAll('-',''),slot=String(index+1).padStart(2,'0');
+  lines.push('BEGIN:VEVENT','UID:lightup-review-only-slot-'+slot+'-'+date+'@local.invalid',
+    'DTSTAMP:'+dtstamp,'DTSTART;VALUE=DATE:'+date,'DTEND;VALUE=DATE:'+nextDay(r.due),
+    'STATUS:TENTATIVE','TRANSP:TRANSPARENT',
+    'SUMMARY:'+escape('Human review follow-up | LightUp source '+slot),
+    'DESCRIPTION:'+escape('REVIEW_ONLY. Self-reported local human target date. Team: '+r.team+'. Highest flag band: '+r.priority+'. This is NOT an approved scan, client consent, authorization, revocation or actual work order. Independently reconfirm original identity and permission.'),
+    'END:VEVENT');
+ }
+ lines.push('END:VCALENDAR');
+ const folded=lines.flatMap(line=>{
+  const chunks=[];for(let start=0;start<line.length;start+=70)chunks.push((start?' ':'')+line.slice(start,start+70));
+  return chunks;
+ });
+ download('lightup-human-review-reminders.ics',folded.join('\r\n')+'\r\n','text/calendar;charset=utf-8');
+ setMessage('exportFeedback','Exported '+planned.length+' tentative generic human calendar reminders. No event was created or sent to a calendar by LightUp. Calendar import may sync externally.');
+}
+function exportData(){
+ return {format:'lightup.authorization_portfolio_aggregate_v1',disposition:'REVIEW_ONLY',authority:{...stamp.authority},overlap_unverified:true,untrusted_source:true,scope_count:reports.length,scopes:reports.map((r,i)=>({slot:i+1,priority:r.priority,discussion_status:r.state,follow_up_team:r.team,human_target_date_utc:r.due,selection:r.description,counts:{...r.counts},severity:{...r.severity},overlap:{...r.overlap},flags:{...r.flagCount},human_flag_discussion:Object.fromEntries(Object.entries(r.flagActions).map(([k,v])=>[k,{state:v.state,team:v.team}]))}))};
+}
+function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=e('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function output(kind){
+ const result=exportData();
+ if(kind==='json')download('lightup-authorization-portfolio-aggregate.json',JSON.stringify(result,null,2)+'\n','application/json');
+ if(kind==='csv'){
+  const quote=v=>'"'+String(v).replaceAll('"','""')+'"';
+  const rows=[['slot','selection','priority','local_discussion_stage','follow_up_team','human_target_date_utc','pending_requests','stored_grants_not_authorizations','critical_flags','high_flags','medium_flags','review_only','client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved','overlap_unverified']];
+  result.scopes.forEach(x=>rows.push([x.slot,x.selection,x.priority,x.discussion_status,x.follow_up_team,x.human_target_date_utc,x.counts.pending,x.counts.grants,x.severity.critical,x.severity.high,x.severity.medium,'REVIEW_ONLY',false,false,false,false,false,true]));
+  download('lightup-authorization-portfolio-aggregate.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
+ }
+ if(kind==='flag-register'){
+  const quote=v=>'"'+String(v).replaceAll('"','""')+'"';
+  const rows=[['scope_slot','original_fixed_source_flag','reported_occurrences_overlap_unverified','follow_up_band','fixed_human_review_question','local_human_stage_unverified','local_team','disposition','client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved']];
+  result.scopes.forEach(scope=>Object.entries(scope.flags).forEach(([flag,count])=>{
+   const a=scope.human_flag_discussion[flag],band=CRITICAL.has(flag)?'critical':HIGH.has(flag)?'high':MEDIUM.has(flag)?'medium':'routine';
+   rows.push([scope.slot,flag,count,band,humanQuestion(flag),a.state,a.team,'REVIEW_ONLY',false,false,false,false,false]);
+  }));
+  download('lightup-authorization-flag-discussion-register.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
+ }
+ if(kind==='capacity'){
+  const value=plan();if(!value)throw Error('HOLD: capacity assumptions must be positive bounded numbers.');
+  const quote=v=>'"'+String(v).replaceAll('"','""')+'"';
+  const rows=[['scenario_week','human_critical_review_hours','human_high_review_hours','human_other_review_hours','hypothetical_total_hours','review_only','source_overlap_unverified','authorization_granted','execution_allowed','release_approved']];
+  value.weekly.forEach((w,i)=>rows.push([i+1,w.critical.toFixed(2),w.high.toFixed(2),(w.medium+w.routine).toFixed(2),w.total.toFixed(2),'REVIEW_ONLY',true,false,false,false]));
+  rows.push(['UNALLOCATED','','','',''+value.remaining.toFixed(2),'REVIEW_ONLY',true,false,false,false]);
+  download('lightup-authorization-weekly-human-review-capacity.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
+ }
+ if(kind==='md'){
+  const lines=['# LightUp · Authorization risk review portfolio','','REVIEW_ONLY · all client/operator consent, grant, execution and release authority: FALSE','','These source snapshots are unsigned, stale-prone and possibly overlapping. No conclusion about distinct cases, resolution, readiness or scan authority.',''];
+  for(const x of result.scopes){
+   lines.push('## '+label(x.slot-1)+' · '+x.priority.toUpperCase(),'Local human stage: '+x.discussion_status+' (unverified)','Follow-up team: '+x.follow_up_team+'; human target date (UTC): '+(x.human_target_date_utc||'not set'),'Pending original requests: '+x.counts.pending+'; historical administrative decisions (not consent): '+x.counts.historical_decisions+' · stored grant records: '+x.counts.grants+' (NOT verified)','Critical flags: '+x.severity.critical+' · high: '+x.severity.high,'Repeated source pseudonyms: '+x.overlap.shared+'; different revisions: '+x.overlap.changed+' (unverified)','');
+   for(const [k,v] of Object.entries(x.flags).sort())lines.push('- '+k+': '+v);
+   lines.push('Follow up through separately authenticated client and operator channels. Reconfirm at-use revocation before any authorized action.','');
+  }
+  lines.push('This coordination export includes no original source identities. Independent privacy/security review, canonical hosted and VPS CI and explicit HUMAN GO remain mandatory.');
+  download('lightup-authorization-human-brief.md',lines.join('\n')+'\n','text/markdown');
+ }
+ setMessage('exportFeedback','Downloaded local '+kind+' review-only handoff (not an authorization or attestation).');
+}
+async function admit(files){
+ if(!files.length)return;
+ if(files.length>reportLimit||files.some(f=>!f||f.size>2000000||f.size===0)||files.reduce((n,f)=>n+f.size,0)>8000000)throw Error('HOLD: select 1–12 original JSON files within the file and batch limits.');
+ const next=[],scopeSeen=new Set(),bytesSeen=new Set();
+ for(const file of files){
+  const bytes=await file.arrayBuffer(),str=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  if(str.charCodeAt(0)===0xfeff||str.length>2000000)unknown();
+  const source=validateReport(parseStrict(str));
+  if(scopeSeen.has(source.scope))throw Error('HOLD: duplicate selected original export scope. Import one current snapshot per scope.');
+  scopeSeen.add(source.scope);source.digest=await digest(bytes);
+  if(source.digest&&bytesSeen.has(source.digest))throw Error('HOLD: duplicate original source bytes.');
+  if(source.digest)bytesSeen.add(source.digest);
+  next.push(source);
+ }
+ if(next.length>1&&next.some(x=>x.description==='all_clients'))throw Error('HOLD: an all-clients report cannot be combined with narrower possibly overlapping selections.');
+ // Compare opaque stable original pseudonyms only while source admission is atomic.
+ for(let i=0;i<next.length;i++)for(let j=i+1;j<next.length;j++){
+  const a=next[i].recordMap,b=next[j].recordMap;
+  for(const [key,left] of a){
+   const right=b.get(key);if(!right)continue;
+   if(left.kind!==right.kind)unknown();
+   for(const r of [next[i],next[j]]){r.overlap.shared++;r.overlap[left.revision===right.revision?'unchanged':'changed']++;}
+  }
+ }
+ for(const r of next)delete r.recordMap;
+ reports=next;setMessage('feedback','Imported '+next.length+' original, untrusted report scopes. No source identity or authorization was verified.');$('priorityFilter').value='all';$('stateFilter').value='all';draw();
+}
+async function importHistory(files){
+ if(files.length<2||files.length>8||files.some(f=>!f||!f.size||f.size>2000000)||files.reduce((n,f)=>n+f.size,0)>8000000)throw Error('HOLD: choose 2–8 existing original reports (2 MiB/file; 8 MiB total).');
+ const next=[],scopes=new Set(),digests=new Set();
+ for(const file of files){
+  const bytes=await file.arrayBuffer(),str=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  if(str.charCodeAt(0)===0xfeff||str.length>2000000)unknown();
+  const r=validateReport(parseStrict(str)),hash=await digest(bytes);
+  if(hash){if(digests.has(hash))throw Error('HOLD: duplicate byte-identical source revision.');digests.add(hash);}
+  scopes.add(r.scope);next.push(r);
+ }
+ if(scopes.size!==1)throw Error('HOLD: all historical source selections must be identical.');
+ const revisions=next.map((r,i)=>{
+  const earlier=i?next[i-1].recordMap:null;
+  const changes={new:0,changed:0,absent:0,unchanged:0};
+  if(earlier){
+   for(const [key,record] of r.recordMap){
+    const before=earlier.get(key);changes[!before?'new':before.revision===record.revision?'unchanged':'changed']++;
+   }
+   for(const key of earlier.keys())if(!r.recordMap.has(key))changes.absent++;
+  }
+  return {slot:i+1,selection:r.description,pending:r.counts.pending,
+   historical_decisions:r.counts.historical_decisions,stored_grants:r.counts.grants,
+   severity:{...r.severity},flags:{...r.flagCount},changes};
+ });
+ // No original record pseudonyms, filenames, scope fingerprint, byte hash,
+ // real asset or client identity survives the local comparison.
+ historical={disposition:'REVIEW_ONLY',authority:{...stamp.authority},display_order_unverified:true,source_unsigned:true,revisions};
+ drawHistory();
+ setMessage('historyFeedback','Imported '+revisions.length+' original copies with one matching source selection. Display order is unverified; changes, absence and approvals are not permission or repairs.');
+}
+function drawHistory(){
+ const root=$('historyPanel');root.replaceChildren();if(!historical)return;
+ const table=e('table'),thead=e('thead'),row=e('tr');
+ for(const name of ['Selected position*','Critical flags','High flags','Pending requests','Stored grants','New records','Changed','Absent','Unchanged'])row.append(e('th',name));
+ thead.append(row);table.append(thead);
+ const body=e('tbody');
+ for(const r of historical.revisions){
+  const row=e('tr');
+  for(const value of ['#'+r.slot,r.severity.critical,r.severity.high,r.pending,r.stored_grants,r.slot===1?'baseline':r.changes.new,r.slot===1?'—':r.changes.changed,r.slot===1?'—':r.changes.absent,r.slot===1?'—':r.changes.unchanged])row.append(e('td',value));
+  body.append(row);
+ }
+ table.append(body);root.append(table);
+ const flags=new Set(historical.revisions.flatMap(r=>Object.keys(r.flags)));
+ const bands=name=>CRITICAL.has(name)?0:HIGH.has(name)?1:MEDIUM.has(name)?2:3;
+ if(flags.size){
+  root.append(e('h3','Reported source warning trajectory by fixed flag category'));
+  const grid=e('table'),header=e('tr');header.append(e('th','Original exporter warning'));
+  historical.revisions.forEach(r=>header.append(e('th','Selected #'+r.slot)));
+  header.append(e('th','First-to-last difference*'));
+  const h=e('thead');h.append(header);grid.append(h);const body=e('tbody');
+  for(const name of [...flags].sort((a,b)=>bands(a)-bands(b)||a.localeCompare(b))){
+   const row=e('tr');row.append(e('td',name.replaceAll('_',' ')));
+   const counts=historical.revisions.map(r=>r.flags[name]||0);
+   for(const count of counts)row.append(e('td',count));
+   row.append(e('td',counts.at(-1)-counts[0]));body.append(row);
+  }
+  grid.append(body);root.append(grid);
+ }
+ const first=historical.revisions[0],last=historical.revisions.at(-1);
+ root.append(e('p','Source first-to-last (selected order) differences: critical flag count '+(last.severity.critical-first.severity.critical)+'; high flag count '+(last.severity.high-first.severity.high)+'. Not an authenticated timeline or security outcome.','callout'));
+ root.append(e('p','*The reviewer selects file order. A missing record is NOT resolved or revoked; a recorded approval is NOT verified client/operator consent.','hint'));
+}
+function exportHistorical(){
+ if(!historical){setMessage('historyFeedback','HOLD: import an original same-selection history first.');return;}
+ const quote=v=>'"'+String(v).replaceAll('"','""')+'"';
+ const rows=[['selected_position_unverified','critical_reported_flags','high_reported_flags','medium_reported_flags','pending_requests','historical_administrative_decisions_not_consent','stored_grants_not_authorization','new_rows','changed_rows','absent_rows_not_remediated','unchanged_rows','review_only','source_unsigned','client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved']];
+ for(const r of historical.revisions)rows.push([r.slot,r.severity.critical,r.severity.high,r.severity.medium,r.pending,r.historical_decisions,r.stored_grants,r.changes.new,r.changes.changed,r.changes.absent,r.changes.unchanged,'REVIEW_ONLY',true,false,false,false,false,false]);
+ download('lightup-authorization-historical-source-summary.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
+ setMessage('historyFeedback','Downloaded private local aggregate review; selected file order and source origin remain unauthenticated.');
+}
+
+async function save(){
+ if(!reports.length||reports.some(r=>!r.digest))throw Error('HOLD: secure browser SHA-256 unavailable; private exact-source resume disabled.');
+ const draft={...stamp,sources:reports.map(r=>({byte_sha256:r.digest,state:r.state,team:r.team,due:r.due,flag_discussion:r.flagActions}))};
+ const serialized=JSON.stringify(draft,null,2)+'\n';if(serialized.length>131072)throw Error('HOLD: private reviewer draft too large. Shorten human notes.');
+ download('lightup-authorization-private-resume.json',serialized,'application/json');
+ setMessage('exportFeedback','Saved PRIVATE original-byte-bound unverified local stages. Keep this file private; SHA-256 is not a signature.');
+}
+async function restore(file){
+ if(!reports.length||reports.some(r=>!r.digest)||!file||file.size>131072||file.size===0)throw Error('HOLD: open the exact original reports first, with secure SHA-256 available.');
+ const str=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());if(str.charCodeAt(0)===0xfeff)unknown();
+ const d=parseStrict(str);
+ if(!keys(d,['format','disposition','authority','sources'])||d.format!==stamp.format||d.disposition!=='REVIEW_ONLY'||!literalFalse(d.authority)||!Array.isArray(d.sources)||d.sources.length!==reports.length)unknown();
+ const changed=d.sources.map((r,i)=>{
+  if(!keys(r,['byte_sha256','state'],['team','due','flag_discussion'])||!sha(r.byte_sha256)||!states.includes(r.state)||r.byte_sha256!==reports[i].digest)unknown();
+  const team=r.team??'unassigned',due=r.due??'';
+  if(!teams.includes(team)||!validDue(due))unknown();
+  const current=reports[i].flagActions,imported=r.flag_discussion;
+  if(imported!==undefined){
+   if(!object(imported)||Object.keys(imported).length!==Object.keys(current).length)unknown();
+   for(const key of Object.keys(current)){
+    const a=imported[key];
+    if(!keys(a,['state','team'],['note'])||!states.includes(a.state)||!teams.includes(a.team)||a.note!==undefined&&(typeof a.note!=='string'||a.note.length>180))unknown();
+   }
+   if(Object.keys(imported).some(k=>!Object.hasOwn(current,k)))unknown();
+  }
+  return {state:r.state,team,due,flagActions:imported===undefined?current:Object.fromEntries(Object.entries(imported).map(([key,a])=>[key,{state:a.state,team:a.team,note:a.note??''}]))};
+ });
+ changed.forEach((data,i)=>Object.assign(reports[i],data));draw();
+ setMessage('exportFeedback','Restored only local human discussion stages against exact reopened original bytes; no approval/consent or permission restored.');
+}
+$('historyFiles').addEventListener('change',async event=>{try{await importHistory([...event.target.files]);}catch(error){setMessage('historyFeedback',error.message.startsWith('HOLD')?error.message:'HOLD: historical source rejected; prior view preserved.');}finally{event.target.value='';}});
+$('clearHistory').addEventListener('click',()=>{historical=null;$('historyPanel').replaceChildren();setMessage('historyFeedback','Historical summary forgotten.');});
+$('exportHistory').addEventListener('click',exportHistorical);
+$('sourceFiles').addEventListener('change',async ev=>{try{await admit([...ev.target.files]);}catch(err){setMessage('feedback',err.message.startsWith('HOLD')?err.message:'HOLD: source import failed; existing reports unchanged.');}finally{ev.target.value='';}});
+$('clear').addEventListener('click',()=>{reports=[];$('overview').hidden=true;setMessage('feedback','Forgot all original source summaries and local stages.');setMessage('exportFeedback','');});
+$('priorityFilter').addEventListener('change',draw);$('stateFilter').addEventListener('change',draw);
+$('flagPriority').addEventListener('change',drawFlagActions);$('flagState').addEventListener('change',drawFlagActions);
+for(const name of ['hours','effortCritical','effortHigh','effortOther'])$(name).addEventListener('input',drawCapacity);
+$('exportJson').addEventListener('click',()=>output('json'));$('exportCsv').addEventListener('click',()=>output('csv'));$('exportFlags').addEventListener('click',()=>output('flag-register'));$('exportReminders').addEventListener('click',exportReviewReminders);$('exportBrief').addEventListener('click',()=>output('md'));$('exportCapacity').addEventListener('click',()=>{try{output('capacity');}catch(e){setMessage('exportFeedback',e.message);}});
+$('saveDraft').addEventListener('click',()=>save().catch(e=>setMessage('exportFeedback',e.message)));
+$('restoreDraft').addEventListener('change',async ev=>{try{await restore(ev.target.files[0]);}catch(e){setMessage('exportFeedback',e.message.startsWith('HOLD')?e.message:'HOLD: private draft rejected atomically.');}finally{ev.target.value='';}});
+})();
+</script></body></html>

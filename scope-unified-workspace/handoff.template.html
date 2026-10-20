@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-CSP_STYLE_HASH'; script-src 'sha256-CSP_SCRIPT_HASH';">
+<title>LightUp — PRIVATE handoff-shelf</title>
+<!-- EMBED_STYLE -->
+</head>
+<body>
+<a class="skip" href="#main">Ga naar inhoud</a>
+<div class="shell">
+<header class="topbar"><span class="logo"><span class="logo-mark" aria-hidden="true">✦</span> LIGHTUP <span class="logo-muted">/ HANDOFF</span></span><span class="toplabel">PRIVATE TAB · GEEN NETWERK · GEEN TOESTEMMING</span></header>
+<main id="main">
+<section class="hero compact">
+<div class="kicker"><span class="dot" aria-hidden="true"></span> HUMAN WORKFLOW / IN MEMORY / REVIEW ONLY</div>
+<h1>Één lokale plek voor je <em>bestands­overdracht.</em></h1>
+<p>Breng lokale bronbestanden tijdelijk bijeen, bekijk hun exacte SHA-256, stel per bronbestand een HUMAN opvolgfase en team in, en bewaar ongewijzigde originele bytes. Je oorspronkelijke bestanden blijven op schijf; de gekozen werkset wordt niet persistent opgeslagen.</p>
+<div class="hold" role="note"><strong>GEEN BRONAUTHENTICATIE.</strong> Bestandsnamen, extensies, digests, HUMAN-routering en ingebouwde importknoppen verlenen nooit toestemming, grants of bevoegdheid. De ontvangende originele werkruimte moet elk bestand onafhankelijk opnieuw controleren. Gebruik deze pagina alleen offline met privégegevens op een vertrouwd apparaat.</div>
+<p class="verify-cta"><a href="index.html">← Terug naar volledige offline scopewerkruimte</a></p>
+</section>
+<section class="section">
+<div class="section-heading"><div><p class="eyebrow">01 / PRIVATE FILE SHELF</p><h2 id="shelf-heading">Voeg bestanden toe</h2></div><p>Maximaal 16 bestanden, 8 MiB per bestand en 32 MiB totale geselecteerde omvang. Nieuwe bestanden worden als hele batch opgenomen of helemaal niet.</p></div>
+<div class="shelf-upload">
+<label for="shelf-files">Kies 1–16 originele lokale bronbestanden</label>
+<input id="shelf-files" type="file" multiple aria-describedby="shelf-privacy">
+<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles, digests en zelf getypte HUMAN status/notities in dit tabblad. Het formaat wordt uitsluitend structureel herkend: geen bewijs van auteur, consent of geldige grant. Kies de bestemming bewust.</p>
+</div>
+<div class="shelf-restore">
+<label for="shelf-review-reopen">PRIVATE HUMAN-opvolgplan heropenen (max. 96 KiB, alleen met alle oorspronkelijke bestanden opnieuw gekozen)</label>
+<input id="shelf-review-reopen" type="file" accept=".json,application/json" aria-describedby="shelf-restore-note">
+<p id="shelf-restore-note">Een lokaal reviewplan bevat bestandsnamen, originele SHA-256 en mogelijk vertrouwelijke notities. Herstel wordt volledig geweigerd bij bron-, volgorde-, formaat- of SHA-afwijking. Het plan geeft geen toestemming en wijzigt nooit bronbestanden.</p>
+<label for="shelf-selective-reopen">Alleen ongewijzigde originele bronnen: eerder PRIVATE HUMAN-plan selectief hervatten (apart van volledig strikt heropenen)</label>
+<input id="shelf-selective-reopen" type="file" accept=".json,application/json" aria-describedby="shelf-selective-status">
+<p id="shelf-selective-status" aria-live="polite">Geen voortzetting geïmporteerd. De originele bestanden moeten eerst expliciet opnieuw geselecteerd zijn. Alleen exact gelijke oorspronkelijke namen, inhoudshashes, groottes en structurele typen mogen na afzonderlijke bevestiging HUMAN-keuzes overnemen. Bij verschil: geen automatisch besluit.</p>
+<div class="table-scroller"><table class="shelf-table" aria-label="Bronexact voorstel HUMAN voortzetting"><thead><tr><th scope="col">PRIVATE bronverwijzing</th><th scope="col">Vergelijking oorspronkelijke bytes</th><th scope="col">Gevolg voor HUMAN review</th><th scope="col">Overnemen?</th></tr></thead><tbody id="shelf-selective-rows"></tbody></table></div>
+<button id="shelf-selective-apply" type="button" class="action muted" disabled>Pas alleen exact ongewijzigde HUMAN-keuzes toe (na bevestiging)</button>
+<section class="shelf-board" aria-labelledby="shelf-peer-heading">
+<h3 id="shelf-peer-heading">HUMAN reviewportfolio · 2–8 PRIVATE pakketten bronexact vergelijken</h3>
+<p>Selecteer 2–8 afzonderlijk ontvangen lokale menselijke reviewinventarissen (v1/v2) voor de hierboven bewust gekozen oorspronkelijke bronbestanden. De app weigert byte-identieke duplicaten: kopieën zijn geen extra onafhankelijke reviewers. Er is <strong>geen geauthenticeerde revieweridentiteit</strong>. Een mening van meerdere pakketten is geen echte consent, grant, intrekking, onderzoeksresultaat of security PASS.</p>
+<label for="shelf-peer-files">Kies 2–8 PRIVATE HUMAN-reviewpakketten (max. 96 KiB per pakket)</label>
+<input id="shelf-peer-files" type="file" accept=".json,application/json" multiple aria-describedby="shelf-peer-status">
+<p id="shelf-peer-status" class="shelf-status" role="status" aria-live="polite">Nog geen reviewportfolio geladen. Bronafwijkingen blokkeren alle voorstellen met dezelfde oorspronkelijke bestandsnaam; voor samenhangende bronnen blijft overname altijd per rij een expliciete HUMAN keuze.</p>
+<div class="shelf-peer-toolbar" role="group" aria-label="Filter de lokale PRIVATE HUMAN bespreekdesk">
+<label for="shelf-peer-filter">Toon HUMAN vervolgwerk
+<select id="shelf-peer-filter">
+<option value="all">Alle oorspronkelijke bronnen</option>
+<option value="attention">Alle menselijke aandacht nodig</option>
+<option value="conflicts">Tegenstrijdige voorstellen</option>
+<option value="redacted">Onbekende PRIVATE notitiedekking</option>
+<option value="partial">Ontbrekende reviewpakketten</option>
+<option value="mismatch">Oorspronkelijke bronblokkades</option>
+<option value="selected">Expliciet gekozen overnames</option>
+</select></label>
+<label for="shelf-peer-search">Zoek binnen oorspronkelijke PRIVÉ bestandsnamen
+<input id="shelf-peer-search" type="search" autocomplete="off" spellcheck="false" placeholder="Zoeken blijft in deze lokale browser"></label>
+<p id="shelf-peer-filter-count" class="shelf-status" aria-live="polite">Selecteer eerst reviewpakketten. De filters wijzigen geen HUMAN-keuzes.</p>
+</div>
+<div class="table-scroller"><table class="shelf-table" aria-label="Alle lokale reviewvoorstellen bronexact vergeleken">
+<thead><tr><th scope="col">Originele PRIVATE bron</th><th scope="col">Menselijke consensus / conflict</th><th scope="col">Voorstellen per reviewpakket (NOOIT geauthenticeerd)</th><th scope="col">Bewust per bron kiezen</th></tr></thead>
+<tbody id="shelf-peer-rows"></tbody></table></div>
+<details class="shelf-peer-preview" open>
+<summary>HUMAN keuzevoorvertoning · huidige lokale stand tegenover bewust gekozen pakket</summary>
+<div id="shelf-peer-decision-preview" class="shelf-status" aria-live="polite">Nog geen bronexacte menselijke overname gekozen. Niets wordt automatisch toegepast.</div>
+</details>
+<div class="shelf-actions">
+<div class="shelf-peer-draft-desk" role="group" aria-label="Concept HUMAN bronkeuzes lokaal veilig opslaan en heropenen">
+<h4>Hervat later dezelfde HUMAN-conceptkeuzes · geen automatische overname</h4>
+<p>Een PRIVÉ conceptbestand bevat uitsluitend originele namen/SHA-256 en gekozen reviewpakketnummers. Kies bij heropenen opnieuw exact dezelfde oorspronkelijke bestanden en dezelfde reviewpakketten. De bestandsvolgorde mag veranderen: het programma koppelt alleen letterlijke bronidentiteiten en SHA-256 van dezelfde pakketbytes en zet oude pakketnummers veilig om. Ontbrekende of afwijkende bron/pakketbytes: GEEN herstel. De bestaande lokale reviews worden nooit automatisch toegepast.</p>
+<button type="button" id="shelf-peer-draft-save" class="action muted" disabled>Bewaar PRIVATE HUMAN conceptkeuzes (.json)</button>
+<label for="shelf-peer-draft-open">Heropen PRIVATE HUMAN conceptbestand · alleen na opnieuw kiezen van originele bron- en reviewpakketten</label>
+<input id="shelf-peer-draft-open" type="file" accept=".json,application/json" disabled aria-describedby="shelf-peer-draft-status">
+<p id="shelf-peer-draft-status" class="shelf-status" role="status" aria-live="polite">Geen concept heropend. Geen automatische HUMAN keuze, autorisatie of import.</p>
+</div>
+<button type="button" id="shelf-peer-agenda" class="action muted" disabled>Download volledige PRIVATE HUMAN bespreekagenda (.md) — intern</button>
+<div class="shelf-peer-team-agenda" role="group" aria-label="Minimum noodzakelijke PRIVATE HUMAN teamagenda">
+<label for="shelf-peer-agenda-team">Kies bewust het ontvangende HUMAN team voor uitsluitend de EIGEN oorspronkelijke bronnen
+<select id="shelf-peer-agenda-team">
+<option value="">Kies één HUMAN team</option>
+<option value="security">Security</option><option value="privacy">Privacy</option>
+<option value="client_ops">Client operations</option><option value="platform">Platform</option>
+</select></label>
+<button type="button" id="shelf-peer-team-agenda" class="action muted" disabled>Download alleen PRIVATE HUMAN dossiers voor dit team (.md)</button>
+<p class="shelf-status">De ontvangende persoon is NIET geauthenticeerd. Teamtoewijzingen zijn lokaal en handmatig; controleer de ontvanger onafhankelijk. De export toont geen dossiers of pakket-hashes die uitsluitend bij andere teams horen.</p>
+</div>
+<button type="button" id="shelf-peer-apply" class="action muted" disabled>Pas alleen apart gekozen bronexacte HUMAN voorstellen toe</button>
+<button type="button" id="shelf-peer-summary-export" class="action muted" disabled>Download bronvrije PRIVÉ consensus- en conflictaantallen (.json)</button>
+<button type="button" id="shelf-peer-receipt" class="action muted" disabled>Download brongebonden PRIVÉ HUMAN-returnbon (.json)</button>
+</div>
+<p id="shelf-peer-receipt-note" class="shelf-status">Retourbon pas na bewuste overname; oorspronkelijke namen/hash en handmatige keuzes, nooit originele bronbytes of privé-notitieteksten. Bij latere lokale wijzigingen ongeldig.</p>
+<p>De PRIVÉ retourbon bevat voortaan ook per aangeleverd pakket het originele aantal bytes en zijn <strong>ongetekende SHA-256</strong>. Daarmee kan de ontvanger het identieke lokaal bewaarde pakket later met de <a href="verify.html">offline byte-verificatie</a> vergelijken. Dit bewijst uitsluitend bytegelijkheid, geen afzenderidentiteit, onafhankelijke review, echte clientconsent of scope-autorisatie.</p>
+<p>Zelfs overeenstemmende menselijke beoordelingen blijven standaard <strong>NIETS OVERNEMEN</strong>. Afgeschermde notities zijn onbekend, nooit een opdracht tot wissen. De bestaande undo behoudt bronbestanden. Gebruik deze pagina uitsluitend offline op een vertrouwd apparaat; verifieer iedere externe ontvanger apart.</p>
+</section>
+<button id="shelf-return-receipt" type="button" class="action muted" disabled>Download PRIVATE HUMAN retourontvangstbon (.json)</button>
+<p id="shelf-return-receipt-note" class="shelf-status">Een ontvangstbon wordt pas na bewuste bronexacte HUMAN-statusovername beschikbaar. De bon is privé, ongetekend en geen bron-/toestemmings- of revocatiebewijs.</p>
+<section class="shelf-board" aria-labelledby="shelf-journal-heading">
+<h3 id="shelf-journal-heading">PRIVATE historisch HUMAN-retourjournaal</h3>
+<p>Maximaal 12 lokale brongebonden retourrondes. Historische besluiten zijn nooit de actuele staat, origineel bronbewijs, een grant, echte toestemming of een security PASS. Geen browseropslag.</p>
+<ol id="shelf-return-journal-list" class="shelf-journal-list"></ol>
+<div class="shelf-actions">
+<button id="shelf-return-journal-export" type="button" class="action muted" disabled>PRIVATE historisch retourjournaal (.json)</button>
+<button id="shelf-return-journal-clear" type="button" class="action danger-solid" disabled>Wis historisch HUMAN-journaal uit tabblad</button>
+</div>
+</section>
+
+</div>
+<p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
+<div class="shelf-filter">
+<label for="shelf-stage-filter">Filter HUMAN reviewfase
+<select id="shelf-stage-filter"><option value="all">Alle reviewfases</option><option value="unreviewed">Nog niet beoordeeld</option><option value="preparing">Menselijk onderzoek</option><option value="escalated">Escalatie nodig</option><option value="documented">Gedocumenteerd (NIET opgelost)</option></select></label>
+<label for="shelf-team-filter">Filter toegewezen HUMAN-team
+<select id="shelf-team-filter"><option value="all">Alle teams</option><option value="unassigned">Niet toegewezen</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="client_ops">Client operations</option><option value="platform">Platform</option></select></label>
+<label for="shelf-search">Zoek uitsluitend lokaal in PRIVATE bestandsnamen
+<input type="search" id="shelf-search" placeholder="Zoek bronbestand…" autocomplete="off" spellcheck="false" maxlength="120"></label>
+</div>
+<div class="shelf-filter" role="group" aria-label="Expliciete bulkactie op gefilterde HUMAN dossiers">
+<label for="shelf-bulk-team">Team voor zichtbare dossiers
+<select id="shelf-bulk-team"><option value="unchanged">Team niet wijzigen</option><option value="unassigned">Niet toegewezen</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="client_ops">Client operations</option><option value="platform">Platform</option></select></label>
+<label for="shelf-bulk-stage">Reviewfase voor zichtbare dossiers
+<select id="shelf-bulk-stage"><option value="unchanged">Fase niet wijzigen</option><option value="unreviewed">Nog niet beoordeeld</option><option value="preparing">Menselijk onderzoek</option><option value="escalated">Escalatie nodig</option><option value="documented">Gedocumenteerd, NIET opgelost</option></select></label>
+</div>
+<button type="button" id="shelf-bulk-apply" class="action muted">Pas HUMAN team/fase toe op uitsluitend gefilterde dossiers (na bevestiging)</button>
+<div class="shelf-review-history" role="group" aria-label="HUMAN bewerkingsgeschiedenis">
+<button type="button" id="shelf-review-undo" class="action muted" disabled>↶ HUMAN wijziging ongedaan maken</button>
+<button type="button" id="shelf-review-redo" class="action muted" disabled>↷ HUMAN wijziging opnieuw</button>
+</div>
+<p id="shelf-review-history-status" class="shelf-status">De laatste maximaal 32 lokale HUMAN wijzigingen zijn te herstellen. Bronselectie wissen, toevoegen of verwijderen begint bewust een nieuwe geschiedenis; de geschiedenis wordt niet geëxporteerd.</p>
+
+<p class="shelf-status">Uitsluitend lokale menselijke routering. Bulkacties zijn geen bronverificatie, oplossing, grant of consent. Kies vooraf bewust het filter en controleer het aantal in het bevestigingsvenster.</p>
+<p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
+<p id="shelf-workload" class="shelf-summary" aria-live="polite">Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.</p>
+<section class="shelf-board" aria-labelledby="shelf-board-heading">
+<h3 id="shelf-board-heading">HUMAN teamoverzicht (lokale concepten)</h3>
+<p>Niet geauthenticeerde voorgestelde reviewteams. Escalatie, open onderzoek en documentatie zijn geen PASS, intrekking, toestemming of oplossing.</p>
+<div id="shelf-team-board" class="shelf-board-grid"></div>
+</section>
+<div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
+<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">HUMAN opvolging (uitsluitend lokaal)</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
+<tbody id="shelf-rows"></tbody></table></div>
+<section class="shelf-drift" aria-labelledby="shelf-drift-title">
+<h3 id="shelf-drift-title">PRIVATE bronversies vergelijken · READ ONLY</h3>
+<label for="shelf-drift-file">Kies een eerdere PRIVATE HUMAN-inventaris (JSON) ter vergelijking met de nu geselecteerde originele bestanden</label>
+<input id="shelf-drift-file" type="file" accept=".json,application/json">
+<p>Wijzigt geen bron of huidige HUMAN-fase. Zelfde naam met andere SHA-256 wordt CHANGED; niet meer geselecteerd betekent ABSENT IN THIS LOCAL SELECTION, nooit automatisch ingetrokken of opgelost. Een bron met een andere naam wordt apart ADDED/ABSENT, nooit stilzwijgend gekoppeld.</p>
+<p id="shelf-drift-status" role="status" aria-live="polite">Er is nog geen oudere PRIVATE broninventaris vergeleken.</p>
+<div class="table-scroller"><table class="shelf-table" aria-label="PRIVATE lokale bronverschillen"><thead><tr><th scope="col">PRIVATE bronbestand</th><th scope="col">Wijziging / menselijke actie</th><th scope="col">Vorige ongetekende SHA-256</th><th scope="col">Nieuwe ongetekende SHA-256</th></tr></thead><tbody id="shelf-drift-rows"></tbody></table></div>
+<button type="button" class="action muted" id="shelf-drift-export" disabled>Download PRIVATE bronversieverschillen als REVIEW_ONLY JSON <span aria-hidden="true">↗</span></button>
+</section>
+<div class="shelf-actions">
+<button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
+<button type="button" id="shelf-team-counts" class="action">Alleen anonieme HUMAN team/fase-aantallen exporteren <span aria-hidden="true">↗</span></button>
+<div class="shelf-filter" role="group" aria-label="Minimum noodzakelijke PRIVATE HUMAN teamoverdracht">
+<label for="shelf-recipient-team">Welke HUMAN teamgroep krijgt uitsluitend de eigen dossiers?
+<select id="shelf-recipient-team"><option value="none">Kies bewust één team</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="client_ops">Client operations</option><option value="platform">Platform</option><option value="unassigned">Nog niet toegewezen — intern HOLD</option></select></label>
+<button id="shelf-minimum-handoff" type="button" class="action muted">PRIVATE minimum noodzakelijke teamoverdracht (.md)</button>
+<label for="shelf-team-private-notes" class="shelf-private-choice">
+<input id="shelf-team-private-notes" type="checkbox">
+PRIVATE notitieteksten bewust opnemen in TEAM-overdracht (standaard UIT; geldt voor de Markdown-brief en het gestructureerde JSON-teampakket)</label>
+<button id="shelf-recipient-inventory" type="button" class="action muted">PRIVATE bronexact HUMAN-teampakket (.json) voor latere selectieve retour</button>
+</div>
+<p class="shelf-status">De selectie is uitsluitend een lokale HUMAN-routering, geen geauthenticeerde ontvanger. Deze export bevat alleen dossiers die aan het gekozen team zijn toegewezen, ongeacht de tabel-filters. Controleer het bestand en kanaal bewust; geen bronbytes, toestemming of release.</p>
+<label for="shelf-all-private-notes" class="shelf-private-choice">
+<input id="shelf-all-private-notes" type="checkbox">
+PRIVATE HUMAN notitieteksten bewust opnemen in de ALLE-TEAMS Markdown-brief én originele brongebonden JSON-inventaris (standaard UIT; alleen vertrouwelijk delen)</label>
+<p class="shelf-status">De twee ALLE-TEAMS exports bevatten altijd PRIVATE originele namen en SHA-256. Notities blijven standaard afgeschermd. Kies voor één team liever de gerichte HUMAN teamoverdracht hierboven.</p>
+<p id="shelf-disclosure-preview" class="shelf-status" aria-live="polite">Nog geen oorspronkelijke lokale bronbestanden geselecteerd. Beide ALLE-TEAMS exports bevatten originele namen en SHA-256; PRIVÉ notities staan standaard UIT.</p>
+<button type="button" id="shelf-workplan" class="action muted">PRIVATE HUMAN team- en escalatiebrief (.md) <span aria-hidden="true">↗</span></button>
+<button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
+<button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>
+</div>
+</section>
+<section class="section">
+<div class="section-heading"><div><p class="eyebrow">02 / ACTUELE TOESTEMMING</p><h2>Het echte systeem blijft de bron.</h2></div><p>Een ingelezen bestand is nooit een originele goedgekeurde assessmentaanvraag, current client/operator-authenticatie of permit.</p></div>
+<div class="flow">
+<div class="step"><span>1</span><div><h3>Kies een bestemming</h3><p>De voorgestelde route is gebaseerd op beperkte lokale formaatherkenning. Versleutelde bestanden blijven ondoorzichtig. Controleer de oorspronkelijke producent en het vereiste schema in de specifieke app-handleiding.</p></div></div>
+<div class="step"><span>2</span><div><h3>Open de app apart</h3><p>Open een werkruimte in een nieuw tabblad. Laat deze PRIVATE shelf open; de andere app leest niets automatisch uit dit tabblad.</p></div></div>
+<div class="step"><span>3</span><div><h3>Selecteer het origineel</h3><p>Kies in de originele app expliciet hetzelfde lokale bestand. Optioneel kan de shelf de originele File-bytes opnieuw opslaan; er vindt geen conversie plaats.</p></div></div>
+<div class="step"><span>4</span><div><h3>Beoordeel en verwijder</h3><p>Alleen de echte bronhouder, geauthenticeerde klant/operator en actuele revocation-gates kunnen een vervolgbesluit ondersteunen. Wis deze tijdelijke werkset na afloop.</p></div></div>
+</div>
+</section>
+</main>
+<footer><span>LIGHTUP · PRIVATE LOCAL HANDOFF</span><span>NO SCAN · NO GRANT · DRAFT/HOLD</span></footer>
+</div>
+<!-- EMBED_SCRIPT -->
+</body></html>
