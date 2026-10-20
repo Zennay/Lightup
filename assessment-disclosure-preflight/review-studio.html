@@ -6,6 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE HUMAN disclosure studio</title>
 <link rel="stylesheet" href="./review-studio.css">
+<script src="./review-vault.js" defer></script>
 <script src="./review-studio.js" defer></script>
 </head>
 <body>
@@ -18,16 +19,18 @@
 <section class="hold" aria-label="Mandatory release HOLD">
 <h2>REVIEW ONLY — not release authorization</h2>
 <p>An exact SHA-256 match binds your CSV only to the selected <strong>receipt bytes</strong>, not to original lab source bytes, genuine client/operator consent, authenticated reviewers, target ownership, ground truth, remediation or a secure release. Even a manually reviewed row does not grant approval. The source-free template and HUMAN notes are still PRIVATE.</p>
-<p class="muted">All work is kept in page memory until you explicitly export a local file. No network dependencies, telemetry, IndexedDB, localStorage, cookies or clipboard collection. Closing this page before export loses unsaved HUMAN edits.</p>
+<p class="muted">All work is kept in page memory until you explicitly export a local file. Passwords are cleared from the input fields after each encrypt/decrypt attempt; this does not guarantee secure erasure from browser memory. No network dependencies, telemetry, IndexedDB, localStorage, cookies or clipboard collection. Closing this page before export loses unsaved HUMAN edits.</p>
 </section>
 <section aria-labelledby="loadTitle">
 <h2 id="loadTitle">1. Open PRIVATE source-free review files</h2>
 <div class="controls">
 <label for="receipt">Original PRIVATE-receipt.json<input id="receipt" type="file" accept=".json,application/json" aria-describedby="loadHelp"></label>
-<label for="csv">PRIVATE-human-template.csv (or previous HUMAN export)<input id="csv" type="file" accept=".csv,text/csv" aria-describedby="loadHelp"></label>
+<label for="csv">PRIVATE plaintext HUMAN CSV (optional)<input id="csv" type="file" accept=".csv,text/csv" aria-describedby="loadHelp"></label>
+<label for="vault">OR encrypted PRIVATE HUMAN vault (.luhd)<input id="vault" type="file" accept=".luhd,application/octet-stream" aria-describedby="loadHelp"></label>
+<label for="openPassword">Encrypted vault password, if selected<input id="openPassword" type="password" autocomplete="off" minlength="14" maxlength="256" aria-describedby="loadHelp"></label>
 <button id="load" type="button">Open matching pair</button>
 </div>
-<p id="loadHelp" class="muted">First use the native original preflight and human_review.py prepare. Select exactly those two matching files. A changed receipt, wrong ordinal, unsupported stage or unexpected source-kind fails closed without replacing your current in-memory edits. A modern offline browser with Web Crypto is required.</p>
+<p id="loadHelp" class="muted">First use the native original preflight and human_review.py prepare. Select the exact PRIVATE receipt and EITHER a matching CSV OR an encrypted HUMAN .luhd file with password, never both. A changed receipt, wrong ordinal, unsupported stage or unexpected source-kind fails closed without replacing your current in-memory edits. A modern offline browser with Web Crypto is required.</p>
 <p id="notice" role="status" aria-live="polite">Select your source-free PRIVATE receipt and CSV to begin. No file has been opened.</p>
 </section>
 <section id="editor" hidden aria-labelledby="editTitle">
@@ -58,7 +61,11 @@
 <section aria-labelledby="exportTitle">
 <h2 id="exportTitle">3. Export PRIVATE HUMAN CSV</h2>
 <p>Exports full ordinal order, even when the table is filtered. No source IDs, targets, evidence, model responses or credentials are included by this app unless a human manually types them into notes. Keep PRIVATE. Reopen with the existing native human_review.py render command for a new scriptless PRIVATE human report.</p>
-<button id="export" type="button" disabled>Export PRIVATE HUMAN CSV</button>
+<div class="controls"><label for="newPassword">New encrypted vault passphrase (14–256 characters)<input id="newPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
+<label for="confirmPassword">Repeat new encrypted vault passphrase<input id="confirmPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label></div>
+<p class="muted">Recommended private continuity: seal your HUMAN notes with AES-256-GCM and PBKDF2-SHA256 (600,000 iterations) using a fresh salt and nonce. This only encrypts HUMAN CSV bytes, bound to the exact unsignable PRIVATE receipt digest. Keep the passphrase separately. An incorrect password or different receipt causes HOLD. There is no password recovery.</p>
+<div class="controls"><button id="exportEncrypted" type="button" disabled>Export encrypted PRIVATE HUMAN vault (.luhd)</button>
+<button id="export" type="button" disabled>Export plaintext PRIVATE HUMAN CSV (explicit warning)</button></div>
 </section>
 </main>
 <footer>LightUp · Incubate / M3-M7 PLAN/LAB ONLY · DRAFT/HOLD · No permission, verification, grant or release</footer>
