@@ -30,6 +30,12 @@ OPERATIONS = {
         ("--output-dir", "NEW private owner workroom", False, True),
         ("--output-file", "NEW separate unsigned .luhz archive (NOT sent)", False, True),
     ), "One native owner workroom and a separate original source-free packet."),
+    "owner-encrypted": ("workflow.py", ("owner-start",), (
+        ("--input-dir", "Original PRIVATE ledger (repeatable)", True, False),
+        ("--bundle", "Original PRIVATE bundle (repeatable)", True, False),
+        ("--output-dir", "NEW private ORIGINAL owner workroom", False, True),
+        ("--output-file", "NEW encrypted source-free .luhx (NOT sent)", False, True),
+    ), "Build original owner workroom and locally encrypt source-free transfer in memory."),
     "recipient": ("workflow.py", ("recipient-start",), (
         ("--cockpit", "Received original source-free Cockpit (1–12)", True, True),
         ("--output-dir", "NEW private HUMAN review directory", False, True),
@@ -177,16 +183,23 @@ def dispatch(name: str, values: dict) -> None:
             if not path.is_absolute():
                 raise ValueError("Use a literal absolute path: " + flag)
             arguments.extend((flag, str(path)))
-    if name in ("owner", "owner-package") and not (values.get("--input-dir") or values.get("--bundle")):
+    if name in ("owner", "owner-package", "owner-encrypted") and not (values.get("--input-dir") or values.get("--bundle")):
         raise ValueError("Select actual original private evidence inputs")
     if name == "archives" and not (values.get("--archive") or values.get("--encrypted-archive")):
         raise ValueError("Select actual received original archive(s)")
     if name == "pack-review" and bool(values.get("--journal")) == bool(values.get("--journal-vault")):
         raise ValueError("Choose exactly one original source-bound HUMAN journal form")
-    if name == "owner-package":
+    if name in ("owner-package", "owner-encrypted"):
         # Explicit composition of two ORIGINAL bounded source admissions.
         from workflow import owner_start
         from portable_cockpit import pack as native_pack
+        if name == "owner-encrypted":
+            if not sys.stdin.isatty():
+                raise ValueError("Encrypted HUMAN owner handoff requires a PRIVATE interactive terminal")
+            try:
+                from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+            except ImportError as exc:
+                raise ValueError("Optional native AES-GCM dependency is missing") from exc
         owner_dest = Path(values["--output-dir"])
         packet_dest = Path(values["--output-file"])
         if packet_dest == owner_dest or owner_dest in packet_dest.parents:
@@ -195,8 +208,13 @@ def dispatch(name: str, values: dict) -> None:
         owner_start([Path(x) for x in values.get("--input-dir", [])],
                     [Path(x) for x in values.get("--bundle", [])], owner_dest)
         print("Re-admitting the separate native SOURCE-FREE folder.", flush=True)
-        native_pack(owner_dest / "source-free-recipient", packet_dest)
-        print("REVIEW_ONLY: packet is unsigned; disclosure requires separate approval.")
+        if name == "owner-encrypted":
+            from encrypted_cockpit import encrypt as native_encrypt
+            native_encrypt(owner_dest / "source-free-recipient", packet_dest)
+            print("REVIEW_ONLY: encrypted source-free packet created WITHOUT plaintext ZIP.")
+        else:
+            native_pack(owner_dest / "source-free-recipient", packet_dest)
+            print("REVIEW_ONLY: unsigned unencrypted packet, do not disclose without approval.")
         return 2
     if not (ROOT / module).is_file():
         raise ValueError("Pinned native module missing from PRIVATE software")

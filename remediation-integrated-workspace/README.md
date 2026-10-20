@@ -187,3 +187,26 @@ archive MUST be separate from the original directory; it is only prepared,
 never automatically sent. Real recipient disclosure permission remains
 external. The first private owner workroom may remain if the second stage
 fails, with no implied delivery or security approval.
+
+
+### Preferred encrypted original-owner to PRIVATE recipient handoff
+
+The native launcher can now prepare an owner workroom plus encrypted
+original-admitted **source-free** Cockpit in one explicit operator action,
+without creating any unencrypted portable ZIP:
+
+    python3 remediation-integrated-workspace/private_desk.py owner-encrypted --input-dir /absolute/private/original-ledger --output-dir /absolute/private/new-original-owner-workroom --output-file /absolute/private/new-encrypted-human-handoff.luhx
+
+This reuses unchanged original `workflow.owner_start` and unchanged
+`encrypted_cockpit.encrypt`, including independent original source
+re-admission, private 0600 no-overwrite publication, original purpose-bound
+AES-GCM cryptography and password confirmation. The optional cryptography
+dependency and PRIVATE interactive TTY are checked **before** creating the
+original owner workroom. The complete original owner workspace never leaves
+its source directory; only selected source-free original native output is
+encrypted in memory. A successful encrypted file does NOT authenticate
+the source owner/recipient, grant permission, allow release, prove fixed
+findings or revoke an older file. Nothing is automatically transmitted.
+Native failure after owner creation may leave the original private workroom.
+Keep passwords separate, and obtain genuine external disclosure permission
+before transfer. DRAFT/HOLD and all original release gates remain unchanged.
