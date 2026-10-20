@@ -749,6 +749,39 @@
       "No canonical numeric IPv4 literals. DNS proposals are never automatically resolved.";
   }
 
+  function queueOverlapReview() {
+    const coverage = computeCoverage();
+    const relevant = new Set();
+    for (const pair of coverage.pairs) {
+      for (const asset of [pair.a, pair.b]) relevant.add(asset);
+    }
+    const patches = state.rows.filter(row =>
+      relevant.has(row.asset) && !row.excluded && row.status !== "needs-client-review"
+    ).map(row => ({
+      id: row.id, asset: row.asset, field: "status",
+      before: row.status, after: "needs-client-review"
+    }));
+    if (!patches.length) {
+      announce("No included overlapping HUMAN proposals need a new review status."); return;
+    }
+    const preview = patches.map(p => p.asset + ": " + p.before + " → " + p.after).join("\n");
+    if (!confirm("Queue " + patches.length +
+      " INCLUDED, numerically overlapping proposed literals for HUMAN client review?\n" +
+      preview + "\n\nThis is only a preparation status: no actual client has approved anything.")) return;
+    const byId = new Map(state.rows.map(row => [row.id, row]));
+    if (patches.some(p => !byId.has(p.id) || byId.get(p.id).asset !== p.asset ||
+      byId.get(p.id).status !== p.before)) {
+      announce("HOLD: source proposal changed; no bulk review status was applied.", true);
+      return;
+    }
+    for (const patch of patches) byId.get(patch.id).status = patch.after;
+    humanUndo.push(patches);
+    if (humanUndo.length > 20) humanUndo.shift();
+    $("triage-panel").open = true;
+    renderRows(); refresh(true);
+    announce(patches.length + " overlapping included proposals queued for HUMAN-only review. Undo is available in HUMAN triage. No client permission issued.");
+  }
+
   function exportCoverageBrief() {
     const errors = validate(state);
     if (errors.length) { announce("Complete the draft before private coverage briefing: " + errors[0], true); return; }
@@ -1157,6 +1190,7 @@
     $("receipt").addEventListener("click", exportCounts);
     $("export-agenda").addEventListener("click", exportAgenda);
     $("export-overlap").addEventListener("click", exportCoverageBrief);
+    $("queue-overlap-review").addEventListener("click", queueOverlapReview);
     $("preview-membership").addEventListener("click", previewMembership);
     $("download-membership").addEventListener("click", exportMembershipPreview);
     $("membership-lines").addEventListener("input", clearMembershipPreview);
