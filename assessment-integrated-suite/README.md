@@ -403,6 +403,27 @@ The existing original owner/private read guards and 0700/0600 write guards
 are reused; no tests/QA or actual scans, grants, scheduling, dispatch or
 deployment are part of this workflow.
 
+## NEW: offline interactive HUMAN Progress Cockpit
+
+The original native `workpack-progress` and console 50 now produce a real
+offline HTML **Progress Cockpit** rather than only a static report. It shows
+the first-vs-latest state of **every** original HUMAN workflow, counts for
+the manually selected latest snapshot, all assigned-team workload and
+historical declared transitions. Search by original workflow key/title or
+declared review date; filter by exact HUMAN stage, team, still-declared
+attention or changed-since-first, and reset without ever mutating a row.
+The latest HUMAN HOLD/NEEDS_INPUT streaks are displayed separately.
+
+This browser interface is rendered **only** from previously re-admitted
+native owner-private workpack snapshots and contains no private question text,
+original file paths, original source names, source bytes or SHA. Its one
+inline JavaScript is CSP SHA256-pinned, `connect-src 'none'`,
+`form-action 'none'`, with no fetch, storage, library, network, HTML
+source ingestion, export or scanning. Operators without JavaScript open
+`PRIVATE-SCRIPTLESS.html` within the same new owner-private 0700 workroom.
+All generated HTML is 0600. Navigation and filtering are PRIVATE
+administrative conveniences, not evidence authentication or security GO.
+
 ## NEW: continue an existing HUMAN assessment workpack (console 51)
 
 An operator can deliberately start a **new full original browser-editable workpack**

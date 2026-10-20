@@ -20,6 +20,7 @@ import human_priorities
 import human_workpack
 import private_session as privacy
 import route_queue
+import workpack_progress_browser
 
 SCHEMA = "lightup.private.assessment-workpack-progress.v1"
 MAX_PACKS = 8
@@ -292,7 +293,10 @@ def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
     metrics = [_counts(rows) for _, rows in snapshots]
     changes = _changes(snapshots)
     attention = _latest_attention(snapshots)
-    page = _html(snapshots, metrics, changes, attention)
+    # Optional local-only CSP-pinned interactive cockpit; preserve the
+    # independent scriptless reading option for restricted browsers.
+    page = workpack_progress_browser.render(snapshots, metrics, changes, attention)
+    scriptless = _html(snapshots, metrics, changes, attention)
     metadata = {
         "schema": SCHEMA, "status": "REVIEW_ONLY", "authority": privacy.AUTHORITY,
         "human_order_declared_not_authenticated": True,
@@ -332,6 +336,7 @@ def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
         if not privacy.private(destination, True):
             raise privacy.Hold("HOLD: new progress folder not owner-private")
         privacy.private_write(destination, "OPEN-PRIVATE.html", page)
+        privacy.private_write(destination, "PRIVATE-SCRIPTLESS.html", scriptless)
         attention_csv = io.StringIO(newline="")
         attention_writer = csv.writer(attention_csv, lineterminator="\r\n")
         attention_writer.writerow((
