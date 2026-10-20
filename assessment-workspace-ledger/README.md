@@ -14,11 +14,11 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Eight console actions provide original kit capture, exact-byte reopen, original-bound
+Ten console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
-and an in-memory status-only local action summary. Every user-selected action runs **once, synchronously**, with no
+an in-memory status-only local action summary, and local offline software ZIP build/inspection. Every user-selected action runs **once, synchronously**, with no
 subprocess/shell, service, queue, background job, network, model, scan,
 consent grant, scheduled activity or source deletion. A HOLD (3) keeps the
 foreground console accessible so the operator can choose a different safe
@@ -41,6 +41,31 @@ Requires Python 3 standard library. Operate on a trusted machine with explicit o
 6. For a fresh snapshot against the *same explicit kit paths*, repeat capture with --previous /private/private-ledgers/PRIVATE-lightup-ledger-EXAMPLE/ledger.json. Added/removed/modified source-file counts are flagged as human-review HOLD, **not verified remediation**.
 
 **Exit 2 = PRIVATE REVIEW_ONLY** when no differences are observed. **Exit 3 = HOLD** on any input refusal, HUMAN finalization, or observed changes. A changed snapshot still creates a *new* exclusively private inventory to support follow-up; previous snapshots are not deleted or overwritten.
+
+## Complete local reproducible software custody and unsigned inventory
+
+The included native package.py provides a fixed allowlist of all source-only
+runtime documents/scripts and the current original standalone.html. Rebuild
+a new deterministic ZIP in an existing owner-private 0700 output folder
+OUTSIDE the checkout, without overwriting prior software:
+
+    python3 assessment-workspace-ledger/package.py build --output /private/software/NEW-LightUp-Workspace-Ledger.zip
+
+Inspect any locally saved ZIP with no network or extraction:
+
+    python3 assessment-workspace-ledger/package.py inspect --archive /private/software/NEW-LightUp-Workspace-Ledger.zip
+
+Build requires a trusted original checkout with the fixed source files present
+as ordinary bounded regular files, and writes one exclusive mode 0600
+software-only ZIP. It never reads existing customer kit directories or
+operational data. Inspection rejects unsafe/unknown/reordered/duplicate ZIP
+members, unsupported encodings, oversized entries, malformed or
+authority-claiming manifests and any SHA256/byte-length mismatch. The bounded
+software-only file hashes remain UNSIGNED, do NOT authenticate any original
+author/publisher, and do not prove independent security review, consent or
+permission. No scanner, active target, model, grants, network or deletion.
+
+Both features are also foreground console options 9 and 10.
 
 ## Ready-to-use actual offline HUMAN browser application
 
