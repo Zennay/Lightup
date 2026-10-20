@@ -46,6 +46,29 @@ Resume performs the **same** two-password original admission and exact source-re
 
 The new 0700 private report directory contains scriptless index.html and source-identity-free anonymous-counts.json, both 0600 via the unchanged original atomic exclusive directory publisher. Outputs never overwrite prior documents. Exit 2 = REVIEW_ONLY; exit 3 = HOLD. No positive authorization exit or claims.
 
+## Portable complete software-only distribution and strict receiving
+
+The independent new distribution.py composes the original held pinned native evidence-remediation suite, the unchanged source-free scheduler, and all new recipient reply sources into one complete offline runnable software-only tree. No evidence, client files, private notes or passwords are packaged. No original/source-owner files or active branches are edited. The original native bundle.build, bundle.inspect and bundle_receive.admission are reused unchanged for independent exact native source admission.
+
+Build under an already existing owner-only private 0700 parent, with the complete original held source tree available:
+
+    python3 remediation-human-replies/distribution.py build --output-dir "$HOME/lightup-private/software-human-replies-01"
+
+The new PRIVATE software portal is software-human-replies-01/software/index.html. The private build also contains the deterministic full software ZIP, its manifest, the unchanged original scheduler software ZIP and its separate original manifest. All are *unsigned* byte receipts, not sender authentication or permission. The original software-only assets and original-home.html remain unchanged within the new portable runnable tree; only the newly generated root landing page is replaced by a reply-aware portal.
+
+A recipient with separately trusted matching source code and the four separately acquired 0600 files can strictly unpack to a NEW 0700 directory:
+
+    python3 remediation-human-replies/distribution.py receive \
+      --archive "$HOME/lightup-private/software-human-replies-01/LightUp-PRIVATE-HUMAN-Reply-Software-DRAFT-HOLD.zip" \
+      --manifest "$HOME/lightup-private/software-human-replies-01/bundle-manifest.json" \
+      --parent-archive "$HOME/lightup-private/software-human-replies-01/original-scheduler-software-only.zip" \
+      --parent-manifest "$HOME/lightup-private/software-human-replies-01/original-scheduler-manifest.json" \
+      --output-dir "$HOME/lightup-private/software-received-01"
+
+The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all four additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
+
+The optional distribution.py inspect --workspace ABSOLUTE_PATH operation is for a *complete locally built* distribution directory, not the smaller received runnable subset. All operations exit 2=REVIEW_ONLY or 3=HOLD, never grant security authority. Syntax/manifest checks are not client authorization, independent security/crypto review, actual owner acceptance or real release.
+
 ## Security and limitations
 
 Original .luhq already excludes case identifiers, original evidence, target, original source packet digests and original counts. Its selected HUMAN planning text may still be identifying. The smaller .luhr return deliberately does not repeat original owner names, original actions or original selected private notes; it contains only the original digest, ordinal/reason and recipient HUMAN replies/questions. This deliberate redaction makes it **impossible** to correlate this return to real verified original case identities; this workflow binds only to the exact originally selected redacted HUMAN task payload. Free text can still contain identifying information. Browser HTML, printable report, and small-cohort anonymous counts remain PRIVATE; no auto-send, auto-sharing or secure erase.
