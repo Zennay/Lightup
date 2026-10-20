@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-mQbLFcmkEHn7f5psi6xfYFrv2wzp5VvtCToDMYimz4o='; script-src 'sha256-X3FTy0aO8sTokoEfVTiTPxJMUc1upLgznt6T030sQxM=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jX8dS/pBXIwZA9ElqPttOxm/b9XJeUJtvzC766vojtI='; script-src 'sha256-+AqySLtQBliqZiIDh3vgqE2mD6hk7kZJz5QrMeOBYAw=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -25,6 +25,8 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 
 .shelf-restore{margin-top:16px;background:#1a2834;padding:24px;border:1px solid #455a6c;border-radius:10px;display:flex;flex-direction:column;gap:12px}.shelf-restore label{font-size:13px;font-weight:800;color:#cfe5e0}.shelf-restore input{min-height:44px;padding:9px;border:1px solid #496174;color:#d8edeb;border-radius:7px}.shelf-restore p{font-size:12px;line-height:1.7;color:#a8bdc7;margin:0}
 .shelf-filter{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:18px 0 12px}.shelf-filter label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:750;color:#c4d9df}.shelf-filter input,.shelf-filter select{width:100%;min-width:0;background:#182b39;border:1px solid #4d6a7b;border-radius:7px;color:#e3eee9;font:inherit;padding:11px}@media(max-width:750px){.shelf-filter{grid-template-columns:1fr}}
+
+.shelf-drift{margin:30px 0 20px;padding:23px;background:#162532;border:1px solid #476070;border-radius:12px;display:flex;flex-direction:column;gap:14px}.shelf-drift h3{font-size:20px;color:#d5ebeb}.shelf-drift label{font-size:13px;font-weight:750;color:#bfd7db}.shelf-drift input{color:#cee7e0;min-height:45px;border:1px solid #526b7b;border-radius:7px;padding:9px}.shelf-drift p{font-size:12px;line-height:1.7;color:#b4c8cb;margin:0}.shelf-drift button{align-self:start;border:0;cursor:pointer}.shelf-drift button:disabled{opacity:.45;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -62,6 +64,15 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
 <thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">HUMAN opvolging (uitsluitend lokaal)</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
 <tbody id="shelf-rows"></tbody></table></div>
+<section class="shelf-drift" aria-labelledby="shelf-drift-title">
+<h3 id="shelf-drift-title">PRIVATE bronversies vergelijken · READ ONLY</h3>
+<label for="shelf-drift-file">Kies een eerdere PRIVATE HUMAN-inventaris (JSON) ter vergelijking met de nu geselecteerde originele bestanden</label>
+<input id="shelf-drift-file" type="file" accept=".json,application/json">
+<p>Wijzigt geen bron of huidige HUMAN-fase. Zelfde naam met andere SHA-256 wordt CHANGED; niet meer geselecteerd betekent ABSENT IN THIS LOCAL SELECTION, nooit automatisch ingetrokken of opgelost. Een bron met een andere naam wordt apart ADDED/ABSENT, nooit stilzwijgend gekoppeld.</p>
+<p id="shelf-drift-status" role="status" aria-live="polite">Er is nog geen oudere PRIVATE broninventaris vergeleken.</p>
+<div class="table-scroller"><table class="shelf-table" aria-label="PRIVATE lokale bronverschillen"><thead><tr><th scope="col">PRIVATE bronbestand</th><th scope="col">Wijziging / menselijke actie</th><th scope="col">Vorige ongetekende SHA-256</th><th scope="col">Nieuwe ongetekende SHA-256</th></tr></thead><tbody id="shelf-drift-rows"></tbody></table></div>
+<button type="button" class="action muted" id="shelf-drift-export" disabled>Download PRIVATE bronversieverschillen als REVIEW_ONLY JSON <span aria-hidden="true">↗</span></button>
+</section>
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
@@ -295,6 +306,68 @@ const LightUpPrivateSourceInspector = (() => {
   return Object.freeze({ inspect, readHumanInventory });
 })();
 "use strict";
+/* Original-file byte lineage comparison for a PRIVATE HUMAN desk only.
+ * The comparison never updates stored originals, merges review decisions,
+ * claims source authorship, validates consent or performs revocation.
+ */
+const LightUpPrivateDrift = (() => {
+  const key = (name) => name.normalize("NFC").toLowerCase();
+  const format = Object.freeze({
+    UNCHANGED: "Ongewijzigde lokale bronbytes · HUMAN-keuzes blijven apart",
+    CHANGED_REVIEW_REQUIRED: "Bronnaam-/byte-/formaatverschil · nieuwe HUMAN-review vereist",
+    NEW_REVIEW_REQUIRED: "Nieuw in lokale selectie · HUMAN-review vereist",
+    ABSENT_FROM_LOCAL_SELECTION: "Niet opnieuw geselecteerd · GEEN bewijs van intrekking/fix"
+  });
+  function compare(previous, current) {
+    if (!Array.isArray(previous) || !Array.isArray(current) ||
+        previous.length < 1 || previous.length > 16 || current.length < 1 || current.length > 16) {
+      throw Error("source set outside bounded comparison");
+    }
+    const seen = new Set();
+    const now = new Map();
+    for (const item of current) {
+      const id = key(item.file.name);
+      if (now.has(id)) throw Error("ambiguous active source identity");
+      now.set(id, item);
+    }
+    const rows = [];
+    for (const old of previous) {
+      const id = key(old.original_name);
+      if (seen.has(id)) throw Error("ambiguous earlier source identity");
+      seen.add(id);
+      const present = now.get(id);
+      const unchanged = Boolean(present) && old.original_name === present.file.name &&
+        old.byte_length === present.file.size &&
+        old.unsigned_sha256 === present.hash &&
+        old.structural_kind_unverified === present.inspection.kind;
+      const status = !present ? "ABSENT_FROM_LOCAL_SELECTION" :
+        unchanged ? "UNCHANGED" : "CHANGED_REVIEW_REQUIRED";
+      rows.push(Object.freeze({
+        original_name: present ? present.file.name : old.original_name,
+        previous_unsigned_sha256: old.unsigned_sha256,
+        selected_unsigned_sha256: present ? present.hash : null,
+        status, human_action: format[status]
+      }));
+    }
+    for (const item of current) {
+      const id = key(item.file.name);
+      if (seen.has(id)) continue;
+      rows.push(Object.freeze({
+        original_name: item.file.name,
+        previous_unsigned_sha256: null,
+        selected_unsigned_sha256: item.hash,
+        status: "NEW_REVIEW_REQUIRED",
+        human_action: format.NEW_REVIEW_REQUIRED
+      }));
+    }
+    const totals = Object.fromEntries(Object.keys(format).map(k => [k, 0]));
+    for (const row of rows) totals[row.status]++;
+    if (rows.length > 32) throw Error("source drift exceeds maximum inventory");
+    return Object.freeze({ rows, totals });
+  }
+  return Object.freeze({ compare });
+})();
+"use strict";
 // PRIVATE, in-tab-only file handoff shelf. Never parses source authority or calls network.
 (() => {
   const MAX_ITEMS = 16;
@@ -332,6 +405,17 @@ const LightUpPrivateSourceInspector = (() => {
   const anonymousCopy = el("counts-copy");
   const stageFilter = el("shelf-stage-filter");
   const searchFilter = el("shelf-search");
+  const driftFile = el("shelf-drift-file");
+  const driftStatus = el("shelf-drift-status");
+  const driftRows = el("shelf-drift-rows");
+  const driftExport = el("shelf-drift-export");
+  let driftReview = null;
+  const invalidateDrift = () => {
+    driftReview = null;
+    driftRows.replaceChildren();
+    driftExport.disabled = true;
+    driftStatus.textContent = "Bronselectie gewijzigd; vergelijk opnieuw met de eerdere PRIVATE inventaris.";
+  };
   const SHA = (bytes) => crypto.subtle.digest("SHA-256", bytes).then((x) =>
     Array.from(new Uint8Array(x), (n) => n.toString(16).padStart(2, "0")).join(""));
   const cleanName = (name) => typeof name === "string" && name.length > 0 &&
@@ -455,6 +539,8 @@ const LightUpPrivateSourceInspector = (() => {
       remove.className = "plain-action danger";
       remove.textContent = "Verwijder";
       remove.addEventListener("click", () => {
+        generation++;
+        invalidateDrift();
         items.splice(items.indexOf(item), 1);
         render();
         report("REVIEW_ONLY — bestand uit huidige lokale werkset verwijderd; bestaande schijfbestanden blijven bestaan.");
@@ -502,6 +588,8 @@ const LightUpPrivateSourceInspector = (() => {
         proposed.push({ file, hash, inspection, route: inspection.route, stage: "unreviewed", team: "unassigned", note: "" });
       }
       if (epoch !== generation) throw new Error("cancelled");
+      generation++;
+      invalidateDrift();
       items.push(...proposed);  // atomic admission
       render();
       report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Structurele bronherkenning is géén bron-/toestemmingsvalidatie.");
@@ -513,6 +601,60 @@ const LightUpPrivateSourceInspector = (() => {
       busy = false;
       input.disabled = false;
     }
+  });
+  driftFile.addEventListener("change", async () => {
+    const prior = driftFile.files && driftFile.files[0];
+    driftFile.value = "";
+    if (!prior || busy) return;
+    invalidateDrift();
+    if (!items.length) {
+      driftStatus.textContent = "HOLD — selecteer eerst de actuele originele bestanden. Afwezig in een tabblad betekent geen ingetrokken grant.";
+      return;
+    }
+    busy = true;
+    input.disabled = true;
+    driftFile.disabled = true;
+    const epoch = generation;
+    try {
+      const older = await LightUpPrivateSourceInspector.readHumanInventory(prior);
+      if (epoch !== generation) throw Error("source set changed during comparison");
+      const result = LightUpPrivateDrift.compare(older, items);
+      if (epoch !== generation) throw Error("source changed during comparison");
+      for (const row of result.rows) {
+        const tr = document.createElement("tr");
+        cell(tr, row.original_name, "file-name");
+        cell(tr, row.human_action, row.status === "UNCHANGED" ? "" : "kind");
+        cell(tr, row.previous_unsigned_sha256 || "—", "hash");
+        cell(tr, row.selected_unsigned_sha256 || "—", "hash");
+        driftRows.append(tr);
+      }
+      driftReview = result;
+      driftExport.disabled = false;
+      driftStatus.textContent = "REVIEW_ONLY · " + result.totals.UNCHANGED + " zelfde bronbytes · " +
+        result.totals.CHANGED_REVIEW_REQUIRED + " veranderd · " +
+        result.totals.NEW_REVIEW_REQUIRED + " nieuw geselecteerd · " +
+        result.totals.ABSENT_FROM_LOCAL_SELECTION + " niet opnieuw geselecteerd. " +
+        "Iedere verandering vraagt afzonderlijke echte bron-/consentcontrole; geen auto-carry van HUMAN-statussen.";
+    } catch (_) {
+      invalidateDrift();
+      driftStatus.textContent = "HOLD — onleesbare/onbetrouwbare vorige PRIVATE inventaris of bronselectie gewijzigd. Geen vergelijking of bronmutatie uitgevoerd.";
+    } finally {
+      busy = false;
+      input.disabled = false;
+      driftFile.disabled = false;
+    }
+  });
+  driftExport.addEventListener("click", () => {
+    if (!driftReview) return;
+    if (!confirm("PRIVATE bronverschil-export maken met originele bestandsnamen en SHA-256? Dit is slechts historische lokale waarneming, geen revocation of consent, en kan identiteiten onthullen.")) return;
+    exportJSON("lightup-scope-PRIVATE-original-source-drift.json", {
+      format: "lightup.scope_handoff_PRIVATE_drift_review.v1", disposition: "REVIEW_ONLY",
+      authority: { client_consent: false, operator_consent: false, grant: false,
+        scan: false, deploy: false, release: false },
+      counts: driftReview.totals, comparisons: driftReview.rows,
+      disclaimer: "Unsigned local history. ABSENT does not mean withdrawn, CHANGED does not imply remediated. Never use as permission or source authorization."
+    });
+    report("REVIEW_ONLY — expliciet PRIVATE bronverschil lokaal gedownload; alle oorspronkelijke HUMAN-keuzes ongewijzigd.");
   });
   const restoreInput = el("shelf-review-reopen");
   restoreInput.addEventListener("change", async () => {
@@ -567,6 +709,7 @@ const LightUpPrivateSourceInspector = (() => {
     if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
     generation++; // invalidate any asynchronous import in flight
+    invalidateDrift();
     items.splice(0);
     render();
     report("REVIEW_ONLY — tabblad-werkset gewist. Browser/JavaScript garanderen geen fysieke geheugenwissing.");
@@ -600,6 +743,7 @@ const LightUpPrivateSourceInspector = (() => {
   render();
   window.addEventListener("pagehide", () => {
     generation++;  // never repopulate a private tab after navigation / bfcache
+    invalidateDrift();
     items.splice(0);
   });
 })();

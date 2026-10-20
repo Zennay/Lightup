@@ -36,6 +36,17 @@
   const anonymousCopy = el("counts-copy");
   const stageFilter = el("shelf-stage-filter");
   const searchFilter = el("shelf-search");
+  const driftFile = el("shelf-drift-file");
+  const driftStatus = el("shelf-drift-status");
+  const driftRows = el("shelf-drift-rows");
+  const driftExport = el("shelf-drift-export");
+  let driftReview = null;
+  const invalidateDrift = () => {
+    driftReview = null;
+    driftRows.replaceChildren();
+    driftExport.disabled = true;
+    driftStatus.textContent = "Bronselectie gewijzigd; vergelijk opnieuw met de eerdere PRIVATE inventaris.";
+  };
   const SHA = (bytes) => crypto.subtle.digest("SHA-256", bytes).then((x) =>
     Array.from(new Uint8Array(x), (n) => n.toString(16).padStart(2, "0")).join(""));
   const cleanName = (name) => typeof name === "string" && name.length > 0 &&
@@ -159,6 +170,8 @@
       remove.className = "plain-action danger";
       remove.textContent = "Verwijder";
       remove.addEventListener("click", () => {
+        generation++;
+        invalidateDrift();
         items.splice(items.indexOf(item), 1);
         render();
         report("REVIEW_ONLY — bestand uit huidige lokale werkset verwijderd; bestaande schijfbestanden blijven bestaan.");
@@ -206,6 +219,8 @@
         proposed.push({ file, hash, inspection, route: inspection.route, stage: "unreviewed", team: "unassigned", note: "" });
       }
       if (epoch !== generation) throw new Error("cancelled");
+      generation++;
+      invalidateDrift();
       items.push(...proposed);  // atomic admission
       render();
       report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Structurele bronherkenning is géén bron-/toestemmingsvalidatie.");
@@ -217,6 +232,60 @@
       busy = false;
       input.disabled = false;
     }
+  });
+  driftFile.addEventListener("change", async () => {
+    const prior = driftFile.files && driftFile.files[0];
+    driftFile.value = "";
+    if (!prior || busy) return;
+    invalidateDrift();
+    if (!items.length) {
+      driftStatus.textContent = "HOLD — selecteer eerst de actuele originele bestanden. Afwezig in een tabblad betekent geen ingetrokken grant.";
+      return;
+    }
+    busy = true;
+    input.disabled = true;
+    driftFile.disabled = true;
+    const epoch = generation;
+    try {
+      const older = await LightUpPrivateSourceInspector.readHumanInventory(prior);
+      if (epoch !== generation) throw Error("source set changed during comparison");
+      const result = LightUpPrivateDrift.compare(older, items);
+      if (epoch !== generation) throw Error("source changed during comparison");
+      for (const row of result.rows) {
+        const tr = document.createElement("tr");
+        cell(tr, row.original_name, "file-name");
+        cell(tr, row.human_action, row.status === "UNCHANGED" ? "" : "kind");
+        cell(tr, row.previous_unsigned_sha256 || "—", "hash");
+        cell(tr, row.selected_unsigned_sha256 || "—", "hash");
+        driftRows.append(tr);
+      }
+      driftReview = result;
+      driftExport.disabled = false;
+      driftStatus.textContent = "REVIEW_ONLY · " + result.totals.UNCHANGED + " zelfde bronbytes · " +
+        result.totals.CHANGED_REVIEW_REQUIRED + " veranderd · " +
+        result.totals.NEW_REVIEW_REQUIRED + " nieuw geselecteerd · " +
+        result.totals.ABSENT_FROM_LOCAL_SELECTION + " niet opnieuw geselecteerd. " +
+        "Iedere verandering vraagt afzonderlijke echte bron-/consentcontrole; geen auto-carry van HUMAN-statussen.";
+    } catch (_) {
+      invalidateDrift();
+      driftStatus.textContent = "HOLD — onleesbare/onbetrouwbare vorige PRIVATE inventaris of bronselectie gewijzigd. Geen vergelijking of bronmutatie uitgevoerd.";
+    } finally {
+      busy = false;
+      input.disabled = false;
+      driftFile.disabled = false;
+    }
+  });
+  driftExport.addEventListener("click", () => {
+    if (!driftReview) return;
+    if (!confirm("PRIVATE bronverschil-export maken met originele bestandsnamen en SHA-256? Dit is slechts historische lokale waarneming, geen revocation of consent, en kan identiteiten onthullen.")) return;
+    exportJSON("lightup-scope-PRIVATE-original-source-drift.json", {
+      format: "lightup.scope_handoff_PRIVATE_drift_review.v1", disposition: "REVIEW_ONLY",
+      authority: { client_consent: false, operator_consent: false, grant: false,
+        scan: false, deploy: false, release: false },
+      counts: driftReview.totals, comparisons: driftReview.rows,
+      disclaimer: "Unsigned local history. ABSENT does not mean withdrawn, CHANGED does not imply remediated. Never use as permission or source authorization."
+    });
+    report("REVIEW_ONLY — expliciet PRIVATE bronverschil lokaal gedownload; alle oorspronkelijke HUMAN-keuzes ongewijzigd.");
   });
   const restoreInput = el("shelf-review-reopen");
   restoreInput.addEventListener("change", async () => {
@@ -271,6 +340,7 @@
     if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
     generation++; // invalidate any asynchronous import in flight
+    invalidateDrift();
     items.splice(0);
     render();
     report("REVIEW_ONLY — tabblad-werkset gewist. Browser/JavaScript garanderen geen fysieke geheugenwissing.");
@@ -304,6 +374,7 @@
   render();
   window.addEventListener("pagehide", () => {
     generation++;  // never repopulate a private tab after navigation / bfcache
+    invalidateDrift();
     items.splice(0);
   });
 })();

@@ -42,6 +42,15 @@
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
 <thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">HUMAN opvolging (uitsluitend lokaal)</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
 <tbody id="shelf-rows"></tbody></table></div>
+<section class="shelf-drift" aria-labelledby="shelf-drift-title">
+<h3 id="shelf-drift-title">PRIVATE bronversies vergelijken · READ ONLY</h3>
+<label for="shelf-drift-file">Kies een eerdere PRIVATE HUMAN-inventaris (JSON) ter vergelijking met de nu geselecteerde originele bestanden</label>
+<input id="shelf-drift-file" type="file" accept=".json,application/json">
+<p>Wijzigt geen bron of huidige HUMAN-fase. Zelfde naam met andere SHA-256 wordt CHANGED; niet meer geselecteerd betekent ABSENT IN THIS LOCAL SELECTION, nooit automatisch ingetrokken of opgelost. Een bron met een andere naam wordt apart ADDED/ABSENT, nooit stilzwijgend gekoppeld.</p>
+<p id="shelf-drift-status" role="status" aria-live="polite">Er is nog geen oudere PRIVATE broninventaris vergeleken.</p>
+<div class="table-scroller"><table class="shelf-table" aria-label="PRIVATE lokale bronverschillen"><thead><tr><th scope="col">PRIVATE bronbestand</th><th scope="col">Wijziging / menselijke actie</th><th scope="col">Vorige ongetekende SHA-256</th><th scope="col">Nieuwe ongetekende SHA-256</th></tr></thead><tbody id="shelf-drift-rows"></tbody></table></div>
+<button type="button" class="action muted" id="shelf-drift-export" disabled>Download PRIVATE bronversieverschillen als REVIEW_ONLY JSON <span aria-hidden="true">↗</span></button>
+</section>
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
