@@ -7,6 +7,7 @@ A source lock and unkeyed hashes are local consistency only, NEVER provenance.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import hashlib
 import html
 import json
@@ -181,6 +182,30 @@ small{display:block;line-height:1.5}</style>
 <small>Software-only, pinned original source snapshots. Operator-selectable steps are HUMAN-only; downloaded plaintext artifacts can be sensitive. No network, browser storage, script, account login or target activity is added by this launcher.</small></main></html>
 """).encode("utf-8")
 
+def exclusive_publish(stage: Path, destination: Path) -> None:
+    """Linux renameat2(NO_REPLACE), as original native PRIVATE workspace publisher.
+
+    Never fall back to a replace-capable rename if exclusive publication
+    is unsupported; an independently created target must remain untouched.
+    """
+    libc = ctypes.CDLL(None, use_errno=True)
+    operation = getattr(libc, "renameat2", None)
+    require(operation is not None, "Exclusive Linux recipient publication unavailable")
+    operation.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                          ctypes.c_char_p, ctypes.c_uint]
+    operation.restype = ctypes.c_int
+    at_fdcwd = getattr(os, "AT_FDCWD", -100)
+    rc = operation(at_fdcwd, os.fsencode(stage), at_fdcwd,
+                   os.fsencode(destination), 1)
+    if rc:
+        number = ctypes.get_errno()
+        raise OSError(number, os.strerror(number), str(destination))
+    fd = os.open(destination.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
 def build(dest: Path) -> None:
     lock_raw, lock = catalog()
     require(dest.is_absolute() and not dest.exists() and not dest.is_symlink()
@@ -253,7 +278,7 @@ def build(dest: Path) -> None:
             require(digest((ROOT / name).read_bytes()) == descriptor["sha256"],
                     "Source changed during build")
         require(not dest.exists(), "Destination appeared during build")
-        os.rename(stage, dest)
+        exclusive_publish(stage, dest)
         print("PRIVATE offline integrated workspace:", dest)
         print("Open locally:", dest / "index.html")
         print("Software-only archive:", dest / "software-only.zip")

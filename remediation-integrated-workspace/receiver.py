@@ -81,7 +81,7 @@ def receive(archive: Path, destination: Path) -> None:
         suite.require(suite.digest(suite.read_owner_file(archive)) == suite.digest(raw),
                       "Received ZIP changed during admission")
         suite.require(not destination.exists(), "Recipient destination unexpectedly appeared")
-        os.rename(stage, destination)
+        suite.exclusive_publish(stage, destination)
     finally:
         if stage.exists():
             shutil.rmtree(stage)
