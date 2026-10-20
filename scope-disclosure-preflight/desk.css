@@ -6,3 +6,10 @@
 .assisted .suggest-options label{margin:3px 0;font-weight:550}
 .assisted .status{background:#fff}
 @media(max-width:700px){.assisted{padding:14px}}
+
+/* Recipient review stays local, paged, and accessible for a complete manual read. */
+.recipient-review{margin-top:22px;padding-top:16px;border-top:1px solid #d9e2ee}
+.recipient-review h3{margin:0 0 8px;font-size:1.12rem}
+.recipient-review textarea{margin-top:9px;min-height:250px}
+.recipient-review .actions{align-items:center}
+.recipient-review .actions span{font-size:.87rem;color:#3b506f}
