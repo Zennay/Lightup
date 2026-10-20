@@ -169,6 +169,66 @@ def render_triage(notes: list[dict]) -> bytes:
     return private_frame("PRIVATE HUMAN response triage", body)
 
 
+
+def private_human_handoff(notes: list[dict], route: str) -> bytes:
+    """Print only a route-specific recipient HUMAN action queue.
+
+    No original assessment target, original finding IDs, raw evidence or other
+    route recipients' notes. HUMAN questions/owner labels remain PRIVATE.
+    """
+    selected = [note for note in notes if note["sender_human_route"] == route]
+    blocks = []
+    for note in selected:
+        blocks.append(
+            "<article><h2>Original ordinal #" + str(note["ordinal"]) + "</h2>"
+            "<p>HUMAN priority: " + h(note["priority"]) +
+            " · recipient-self-reported stage: " +
+            h(note["recipient_reported_stage"]) + "</p>"
+            "<p>HUMAN owner/group label (NOT an authenticated recipient): " +
+            h(note["sender_human_owner_group"] or "Not assigned") + "</p>"
+            "<h3>Sender HUMAN next question</h3><pre>" +
+            h(note["sender_human_next_question"] or "Not recorded") +
+            "</pre><p>Source-provided evidence and targets are not included."
+            " Human review and separately authorized private handoff are required.</p>"
+            "</article>"
+        )
+    return private_frame("PRIVATE sender HUMAN handoff: " + route, (
+        "<header><h1>PRIVATE sender HUMAN next actions · " + h(route) + "</h1>"
+        "<p class='notice'>HUMAN proposal ONLY, not authenticated identity,"
+        " actual owner assignment, original finding validity, verified"
+        " remediation, client consent, scope authorization or active task."
+        " No message was sent. This private report can still contain"
+        " identifying HUMAN questions and groups.</p>"
+        "<p>Original ordinal-only recipient packets: " + str(len(selected)) +
+        ".</p></header>" +
+        ("".join(blocks) if blocks else
+         "<section class='card'>No HUMAN next actions of this route.</section>")
+    ))
+
+
+def human_action_csv(notes: list[dict]) -> bytes:
+    """PRIVATE human-only route handoff with original ordinal and next question.
+
+    This carries no original finding, target, evidence, run or tenant identifiers.
+    Recipient/channel consent and security/privacy review remain separate.
+    """
+    buf = io.StringIO(newline="")
+    out = csv.writer(buf, lineterminator="\r\n")
+    out.writerow((
+        "original_ordinal", "sender_human_route",
+        "sender_human_owner_group", "sender_human_next_question",
+    ))
+    for note in notes:
+        if note["sender_human_route"] == "unreviewed":
+            continue
+        out.writerow((
+            note["ordinal"], note["sender_human_route"],
+            note["sender_human_owner_group"],
+            note["sender_human_next_question"],
+        ))
+    return buf.getvalue().encode("utf-8")
+
+
 def prepare(source: str, manifest: str, worksheet: str, receipt: str,
             selection: str, binding: str, reply: str, destination: str):
     _, source_sha, worksheet_sha, selection_sha, reply_raw, notes = original_reply(
@@ -214,6 +274,9 @@ def finish(source: str, manifest: str, worksheet: str, receipt: str,
     triage_bytes = read_limited_file(triage_csv, MAX_CSV_BYTES)
     final = read_triage(triage_bytes, notes)
     html_report = render_triage(final)
+    clarifications = private_human_handoff(final, "request_clarification")
+    owner_handoff = private_human_handoff(final, "route_to_owner")
+    human_actions = human_action_csv(final)
     routes = {k: sum(n["sender_human_route"] == k for n in final)
               for k in ("unreviewed", *ROUTES[1:])}
     aggregate = {
@@ -236,11 +299,17 @@ def finish(source: str, manifest: str, worksheet: str, receipt: str,
         "original_recipient_reply_sha256_unsigned": digest(reply_raw),
         "sender_human_triage_sha256_unsigned": digest(triage_bytes),
         "private_sender_triage_report_sha256_unsigned": digest(html_report),
+        "private_human_clarifications_sha256_unsigned": digest(clarifications),
+        "private_human_owner_handoff_sha256_unsigned": digest(owner_handoff),
+        "private_human_action_csv_sha256_unsigned": digest(human_actions),
         "human_original_ordinal_list": [x["ordinal"] for x in final],
         **UNVERIFIED,
     }
     publish_new(destination, {
         "PRIVATE-sender-HUMAN-triage.html": html_report,
+        "PRIVATE-HUMAN-request-clarification.html": clarifications,
+        "PRIVATE-HUMAN-route-to-owner.html": owner_handoff,
+        "PRIVATE-HUMAN-next-actions.csv": human_actions,
         "PRIVATE-sender-HUMAN-triage-receipt.json": json_bytes(receipt_info),
         "sender-HUMAN-route-counts-PRIVATE.json": json_bytes(aggregate),
     })
