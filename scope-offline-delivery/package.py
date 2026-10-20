@@ -211,6 +211,20 @@ def inspect(path: Path, expected_sha256: str | None = None) -> dict:
             "workspace_sha256": digest(data["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip"]),
             "courier_sha256": COURIER_SHA}
 
+def publish_receiver_standalone(content: bytes) -> None:
+    target = HERE / "PRIVATE-receive.html"
+    if target.exists() or target.is_symlink():
+        if read(target, 100000) != content:
+            raise ValueError("Original standalone recipient already exists with different bytes")
+        return
+    fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY |
+                 getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(fd, "wb") as output:
+        output.write(content)
+        output.flush()
+        os.fsync(output.fileno())
+
+
 def build() -> Path:
     # Existing original production packager, invoked as a build (not a QA suite).
     subprocess.run([sys.executable, str(SRC / "build.py")], cwd=ROOT, check=True, timeout=120)
@@ -225,7 +239,8 @@ def build() -> Path:
                        blobs["workspace/DIST-MANIFEST.json"])
     if digest(blobs["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
         raise ValueError("Original encrypted courier drift")
-    blobs.update({"PRIVATE-receive.html": render_receiver(),
+    receiver_html = render_receiver()
+    blobs.update({"PRIVATE-receive.html": receiver_html,
                   "tools/recipient.js": read(HERE / "recipient.js"),
                   "tools/recipient.css": read(HERE / "recipient.css"),
                   "tools/recipient.template.html": read(HERE / "recipient.template.html"),
@@ -253,6 +268,7 @@ def build() -> Path:
         else:
             os.link(temp, path)
         inspect(path)
+        publish_receiver_standalone(receiver_html)
         return path
     finally:
         Path(temp).unlink(missing_ok=True)
