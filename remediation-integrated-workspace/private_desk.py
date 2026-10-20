@@ -24,6 +24,12 @@ OPERATIONS = {
         ("--bundle", "Original PRIVATE evidence bundle (optional, repeatable)", True, False),
         ("--output-dir", "NEW owner-private workroom directory", False, True),
     ), "Original evidence stays with owner; separate source-free HUMAN handoff."),
+    "owner-package": ("workflow.py", ("owner-start",), (
+        ("--input-dir", "Original PRIVATE ledger (repeatable)", True, False),
+        ("--bundle", "Original PRIVATE bundle (repeatable)", True, False),
+        ("--output-dir", "NEW private owner workroom", False, True),
+        ("--output-file", "NEW separate unsigned .luhz archive (NOT sent)", False, True),
+    ), "One native owner workroom and a separate original source-free packet."),
     "recipient": ("workflow.py", ("recipient-start",), (
         ("--cockpit", "Received original source-free Cockpit (1–12)", True, True),
         ("--output-dir", "NEW private HUMAN review directory", False, True),
@@ -171,12 +177,27 @@ def dispatch(name: str, values: dict) -> None:
             if not path.is_absolute():
                 raise ValueError("Use a literal absolute path: " + flag)
             arguments.extend((flag, str(path)))
-    if name == "owner" and not (values.get("--input-dir") or values.get("--bundle")):
+    if name in ("owner", "owner-package") and not (values.get("--input-dir") or values.get("--bundle")):
         raise ValueError("Select actual original private evidence inputs")
     if name == "archives" and not (values.get("--archive") or values.get("--encrypted-archive")):
         raise ValueError("Select actual received original archive(s)")
     if name == "pack-review" and bool(values.get("--journal")) == bool(values.get("--journal-vault")):
         raise ValueError("Choose exactly one original source-bound HUMAN journal form")
+    if name == "owner-package":
+        # Explicit composition of two ORIGINAL bounded source admissions.
+        from workflow import owner_start
+        from portable_cockpit import pack as native_pack
+        owner_dest = Path(values["--output-dir"])
+        packet_dest = Path(values["--output-file"])
+        if packet_dest == owner_dest or owner_dest in packet_dest.parents:
+            raise ValueError("SOURCE-FREE packet must remain OUTSIDE ORIGINAL owner evidence")
+        print("Preparing private ORIGINAL owner workroom. No packet transmitted.", flush=True)
+        owner_start([Path(x) for x in values.get("--input-dir", [])],
+                    [Path(x) for x in values.get("--bundle", [])], owner_dest)
+        print("Re-admitting the separate native SOURCE-FREE folder.", flush=True)
+        native_pack(owner_dest / "source-free-recipient", packet_dest)
+        print("REVIEW_ONLY: packet is unsigned; disclosure requires separate approval.")
+        return 2
     if not (ROOT / module).is_file():
         raise ValueError("Pinned native module missing from PRIVATE software")
     print("Delegating to original native source checks. " + WARNING, flush=True)
@@ -200,8 +221,8 @@ def main() -> int:
             name = args.action
             values = {flag: getattr(args, flag.lstrip("-").replace("-", "_"))
                       for flag, _, _, _ in OPERATIONS[name][2]}
-        dispatch(name, values)
-        return 3  # execv never returns on success
+        result = dispatch(name, values)
+        return result if result is not None else 3  # execv never returns on success
     except (ValueError, OSError) as exc:
         print("HOLD:", exc, file=sys.stderr)
         return 3

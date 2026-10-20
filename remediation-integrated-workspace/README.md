@@ -173,3 +173,17 @@ inventory and should not be silently relabelled. Source hashes are unsigned.
 No actual client/operator permission, original producer identity, #177/#182/
 #829 closure, source-owner/security/privacy review, mandatory CI or HUMAN GO
 is implied. No main merge, deploy, scan, native Apply, verified fix or retest.
+
+
+### One-operation original-owner desk + prepared source-free archive
+
+Use `private_desk.py owner-package --input-dir /absolute/private/ledger
+--output-dir /absolute/private/new-owner-review --output-file
+/absolute/private/new-unsent-handoff.luhz` to run original
+`workflow.owner_start` followed by a separate original
+`portable_cockpit.pack` admission. The original PRIVATE owner directory
+is **never packaged or disclosed**. The unsigned/unencrypted source-free
+archive MUST be separate from the original directory; it is only prepared,
+never automatically sent. Real recipient disclosure permission remains
+external. The first private owner workroom may remain if the second stage
+fails, with no implied delivery or security approval.
