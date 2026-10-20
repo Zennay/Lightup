@@ -327,3 +327,87 @@ The stage grouping uses `WITHHOLD`, `SOURCE_OWNER_REQUIRED`,
 discussion; it is explicitly not a risk score, urgency claim, security verdict,
 assignment, consent, or notification. All original entries remain included in
 the unchanged source-bound outputs irrespective of visual filters or sorting.
+
+## NEW: original-bound PRIVATE HUMAN discussion agenda, offline round trip
+
+The completed `notes.py history` workflow now has a separately admitted,
+original-bound follow-up conversation planner. Its purpose is **local HUMAN
+proposals only** — not a task assignment, real client contact, notification,
+deadline, review clearance, privacy verification, security verdict or consent.
+
+**1. Prepare an editable PRIVATE HUMAN agenda** from one existing completed
+2–16-revision history workroom and the **actual last completed original
+HUMAN packet**:
+
+~~~sh
+python3 private-assessment-notes/notes.py agenda \
+  --history-kit /private/operator-lightup-work/PRIVATE-lightup-human-history-<id> \
+  --latest-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<last-id> \
+  --private-parent /private/operator-lightup-work
+~~~
+
+The native original reader admits the owner-only 0600 history JSON as **one
+exact byte snapshot**, rejecting duplicate object keys, unexpected authority
+claims or malformed source positions. It independently reopens the latest
+original completed HUMAN packet, comparing original manifest and complete
+HUMAN decisions SHA-256, exact original source count, ordinals and HUMAN stages,
+and ensuring false-authority fields are literal booleans. This unsigned chain
+is local byte binding, **not** source-owner authentication.
+
+A new exclusive 0700 folder contains `OPEN-PRIVATE.html`, the fully
+offline `PRIVATE-HUMAN-agenda-editor.html` with SHA-256 CSP-bound JavaScript,
+a complete source-bound `PRIVATE-HUMAN-agenda-template.csv`, and
+`PRIVATE-agenda-bindings.json`. The local editor shows only original
+ordinal and last declared HUMAN stage. All original source text, credentials,
+masked evidence and free-text notes are intentionally absent.
+
+For every original position, a human may propose **no action**, a private
+discussion, asking an original source owner, or withholding the topic from
+discussion. A proposed HUMAN team is a bounded suggestion only (Unassigned,
+Security, Privacy, Client operations, Platform); an optional calendar day is
+manually proposed, never scheduled; an optional short PRIVATE question is
+entered locally. There is no contact data, real identity verification or
+network activity. Nothing is inferred automatically as an actual task.
+
+The browser can save the **complete** original source-bound PRIVATE CSV,
+including all hidden/unchanged source rows, and later reopen an intact original
+browser-exported draft after validating **every** source ordinal, original
+HUMAN stage, unsigned history digest, allowed field and completeness. Any
+mismatch leaves all existing local choices intact. Restoring a draft never
+approves or schedules anything.
+
+**2. Finalize the HUMAN discussion proposal locally, not the assessment.**
+Put the completed CSV in the owner-private work area and set it to mode 0600;
+browser downloads alone do not guarantee private file permissions.
+
+~~~sh
+chmod 600 /private/operator-lightup-work/PRIVATE-HUMAN-agenda-completed.csv
+
+python3 private-assessment-notes/notes.py agenda-finalize \
+  --agenda-kit /private/operator-lightup-work/PRIVATE-lightup-human-agenda-<id> \
+  --history-kit /private/operator-lightup-work/PRIVATE-lightup-human-history-<id> \
+  --latest-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<last-id> \
+  --completed-csv /private/operator-lightup-work/PRIVATE-HUMAN-agenda-completed.csv \
+  --private-parent /private/operator-lightup-work
+~~~
+
+Native finalization independently re-admits the history and original final
+completed packet **again**, checks the unchanged original agenda template and
+all bound metadata, and validates the **entire** completed 1–12-source HUMAN
+CSV in exact original order. The selected HUMAN action, team, optional real
+ISO date format and short PRIVATE question cannot contradict the original
+identity, impersonate consent or turn a `NO_PROPOSAL` row into a hidden
+assignment. Formula-like note prefixes are refused. The native operation
+writes a **different** new 0700/0600 owner-private review packet with
+scriptless readable `OPEN-PRIVATE.html`, a completed all-original-rows
+PRIVATE CSV and source-bound JSON holding **only explicitly proposed**
+discussion rows.
+
+Only this new private output contains the manually written PRIVATE questions;
+neither web uploads, email, calendar, worker dispatch, source scanning, consent
+grants nor real client/operator interaction occur. All outputs remain local
+and confidential. The prepare stage returns REVIEW_ONLY (2), and the native
+finalization returns HOLD (3), **even when the local proposal was created
+successfully**. All original main-merge, CI, source-owner, security/privacy,
+current separately authenticated client/operator consent, action-time
+revocation and explicit HUMAN GO gates remain mandatory.
