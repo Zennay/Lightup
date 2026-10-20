@@ -45,8 +45,8 @@ def _safe_path(name: str) -> bool:
             and all(ord(ch) >= 32 for ch in name))
 
 
-def publish(archive: Path, destination: Path) -> dict:
-    evidence = inspect(archive)
+def publish(archive: Path, destination: Path, expected_sha256: str | None = None) -> dict:
+    evidence = inspect(archive, expected_sha256)
     parent = destination.absolute().parent
     if (not parent.is_dir() or parent.is_symlink()
             or (parent.stat().st_mode & 0o077)
@@ -121,9 +121,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Unpack ONLY fully admitted original offline scope files")
     parser.add_argument("outer_zip", type=Path)
     parser.add_argument("new_private_destination", type=Path)
+    parser.add_argument("--expected-sha256", help="Optional independently authenticated outer ZIP SHA-256")
     args = parser.parse_args()
     try:
-        print(json.dumps(publish(args.outer_zip, args.new_private_destination), sort_keys=True))
+        print(json.dumps(publish(args.outer_zip, args.new_private_destination, args.expected_sha256), sort_keys=True))
         return 0
     except (ValueError, OSError, KeyError, zipfile.BadZipFile, UnicodeError) as error:
         print("HOLD: " + str(error), file=sys.stderr)

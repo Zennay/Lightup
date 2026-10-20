@@ -24,6 +24,8 @@ Python 3.11+ stdlib; run from the cloned source workspace on a **clean, independ
 ```sh
 python3 scope-offline-delivery/package.py build
 python3 scope-offline-delivery/package.py inspect scope-offline-delivery/LightUp-PRIVATE-HUMAN-Transfer-DRAFT-HOLD.zip
+# If the sender gave a verified digest separately:
+python3 scope-offline-delivery/package.py inspect PRIVATE-RECEIVED.zip --expected-sha256 64_lowercase_hex_digits
 ```
 
 The delivery builder now enforces hardcoded SHA-256 byte locks for the **exact native original 483,223-byte ZIP, SOURCE-MANIFEST, and DIST-MANIFEST**, in addition to original source-parent and the two byte-identical current disclosure standalones. Re-issuing forged self-consistent receipt content cannot silently replace the known original product in this exact builder; independently authenticated code provenance remains a separate requirement.

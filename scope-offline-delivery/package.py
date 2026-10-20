@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -140,7 +141,17 @@ def receipt(blobs: dict[str, bytes]) -> bytes:
             "note": "Unsigned bytes / REVIEW_ONLY; no source owner authentication, consent, grant or release."}
     return (json.dumps(item, indent=2, sort_keys=True) + "\n").encode()
 
-def inspect(path: Path) -> dict:
+def verify_out_of_band(actual: str, expected: str | None) -> bool:
+    if expected is None:
+        return False
+    if re.fullmatch(r"[0-9a-f]{64}", expected, flags=re.ASCII) is None:
+        raise ValueError("Expected out-of-band SHA-256 must be exactly 64 lowercase hex characters")
+    if actual != expected:
+        raise ValueError("Separately supplied transfer SHA-256 does NOT match")
+    return True
+
+
+def inspect(path: Path, expected_sha256: str | None = None) -> dict:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_500_000:
         raise ValueError("Unsafe or oversized transfer")
     expected = set(FILES) | set(PRIVACY_FILES) | {"tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
@@ -169,7 +180,8 @@ def inspect(path: Path) -> dict:
     original_admission(data["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip"],
                        data["workspace/SOURCE-MANIFEST.json"],
                        data["workspace/DIST-MANIFEST.json"])
-    return {"status": "REVIEW_ONLY", "bytes": path.stat().st_size,
+    matched = verify_out_of_band(digest(path.read_bytes()), expected_sha256)
+    return {"status": "REVIEW_ONLY", "separate_expected_sha256_match": matched, "bytes": path.stat().st_size,
             "outer_sha256": digest(path.read_bytes()),
             "workspace_sha256": digest(data["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip"]),
             "courier_sha256": COURIER_SHA}
@@ -220,13 +232,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Offline private scope delivery; HOLD only")
     parser.add_argument("action", choices=("build", "inspect"))
     parser.add_argument("archive", nargs="?", type=Path)
+    parser.add_argument("--expected-sha256", help="Externally obtained trusted original outer ZIP SHA-256 (lowercase hex)")
     args = parser.parse_args()
     try:
-        if args.action == "build" and args.archive is None:
+        if args.action == "build" and args.archive is None and args.expected_sha256 is None:
             path = build()
             print(json.dumps({"built": str(path), **inspect(path)}, sort_keys=True))
         elif args.action == "inspect" and args.archive:
-            print(json.dumps(inspect(args.archive), sort_keys=True))
+            print(json.dumps(inspect(args.archive, args.expected_sha256), sort_keys=True))
         else:
             raise ValueError("build takes no archive; inspect requires an archive")
         return 0
