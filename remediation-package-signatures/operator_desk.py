@@ -14,6 +14,7 @@ import sys
 from offline_signatures import Hold
 from inbox import inbox
 from inbox_reopen import inspect
+from software_revision_desk import build as build_revision_desk
 from trust_registry import _owner_private, init, listing, register, require_two, revoke
 
 
@@ -81,10 +82,11 @@ def main() -> int:
             "\n5  Re-open inbox against CURRENT local trust and original source"
             "\n6  Permanently revoke local trust for one signer"
             "\n7  Irreversibly require two distinct locally trusted signers"
+            "\n8  Compare 2–12 original separately received PRIVATE software inboxes"
             "\n0  End foreground session"
         )
         try:
-            choice = _read("Choose 0–7: ")
+            choice = _read("Choose 0–8: ")
             if choice == "0":
                 print("REVIEW_ONLY desk ended; existing local private files remain.")
                 return 2
@@ -119,8 +121,21 @@ def main() -> int:
                 if not _confirm("Permanently require TWO non-revoked custody keys for every future intake and reopen?"):
                     raise Hold("local two-key minimum not confirmed")
                 require_two(registry)
+            elif choice == "8":
+                selection: list[Path] = []
+                for number in range(1, 13):
+                    selection.append(_path(f"Original independently received inbox #{number}: "))
+                    if number == 12 or (number >= 2 and not _confirm("Add another original offline inbox?")):
+                        break
+                destination = args.workdir / ("private-software-diff-" + secrets.token_hex(6))
+                build_revision_desk(
+                    registry,
+                    selection,
+                    destination,
+                    _confirm("Explicitly require two separately trusted signing keys?"),
+                )
             else:
-                print("Unknown choice; enter 0–7.")
+                print("Unknown choice; enter 0–8.")
         except (ValueError, OSError) as exc:
             print("HOLD:", exc, file=sys.stderr)
             print("Only this foreground operation was refused; no authority was granted.")
