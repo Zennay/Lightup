@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Four existing offline source-bound workflows in one accessible user menu.
+Six existing offline source-bound workflows in one accessible user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -13,6 +13,7 @@ import sys
 from curate import Hold, prepare, publish
 from revision import compare
 from history import history
+from response import prepare_reply, return_reply
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -23,6 +24,10 @@ WORKFLOWS = {
           "same source/receipt; old and new original-ordinal selections"),
     "4": ("Review 2–12 PRIVATE HUMAN selection versions",
           "same source/receipt; ordered previous selection files"),
+    "5": ("Prepare PRIVATE source-bound recipient question reply template",
+          "same original source/receipt; original selected HUMAN questions"),
+    "6": ("Reopen a returned PRIVATE recipient HUMAN answer package",
+          "same original selection and a source/selection-bound human reply"),
 }
 
 
@@ -66,6 +71,13 @@ def run_workflow(choice: str) -> None:
         after = ask_path("Current HUMAN selection CSV")
     elif choice == "4":
         series = ask_history()
+    elif choice in ("5", "6"):
+        selection = ask_path("EXISTING PRIVATE original HUMAN selection CSV")
+    response_binding = None
+    recipient_response = None
+    if choice == "6":
+        response_binding = ask_path("EXISTING original selection-bound PRIVATE recipient response binding JSON")
+        recipient_response = ask_path("Returned HUMAN recipient response CSV")
     output = ask_path("EXCLUSIVE NEW PRIVATE output directory (must not already exist)")
     print("\nPRIVATE disclosure profile:")
     if choice == "1":
@@ -74,8 +86,12 @@ def run_workflow(choice: str) -> None:
         print("  New printable dossier includes ORIGINAL private target, finding evidence and HUMAN notes.")
     elif choice == "3":
         print("  Report contains original ordinal/severity and HUMAN questions, potentially confidential.")
-    else:
+    elif choice == "4":
         print("  Timeline contains original ordinals and HUMAN questions, potentially confidential.")
+    elif choice == "5":
+        print("  PRIVATE template contains original HUMAN questions and source counts, no original target evidence.")
+    else:
+        print("  PRIVATE response report contains HUMAN replies, which may be client-identifying; identities not verified.")
     print("This is NOT a completed assessment, release, authorization or evidence authenticity check.")
     confirmation = input("Enter exactly REVIEW ONLY to create a NEW PRIVATE package: ")
     if confirmation != "REVIEW ONLY":
@@ -86,8 +102,13 @@ def run_workflow(choice: str) -> None:
         publish(source, manifest, worksheet, receipt, selection, output)
     elif choice == "3":
         compare(source, manifest, worksheet, receipt, before, after, output)
-    else:
+    elif choice == "4":
         history(source, manifest, worksheet, receipt, series, output)
+    elif choice == "5":
+        prepare_reply(source, manifest, worksheet, receipt, selection, output)
+    else:
+        return_reply(source, manifest, worksheet, receipt, selection,
+                     response_binding, recipient_response, output)
 
 
 def main() -> int:
@@ -99,7 +120,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–4]: ").strip()
+        choice = input("PRIVATE workflow [0–6]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
