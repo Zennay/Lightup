@@ -34,7 +34,7 @@ DISPOSITION = "REVIEW_ONLY_DRAFT_HOLD"
 WARNING = ("PRIVATE offline software-only, unsigned and non-authorizing. No "
            "authenticated producer, consent, finding, fix, security review, "
            "scan, grant or HUMAN GO. INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD.")
-COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py", "vault.py", "coordination.py")
+COMPANION = ("README.md", "reply.py", "reply.js", "distribution.py", "reconcile.py", "vault.py", "coordination.py", "worklist.py")
 FILES = frozenset("remediation-human-replies/" + n for n in COMPANION)
 PORTABLE = "LightUp-PRIVATE-HUMAN-Reply-Software-DRAFT-HOLD.zip"
 ORIGINAL_ZIP = "original-scheduler-software-only.zip"
@@ -132,7 +132,23 @@ The encrypted coordinator response omits previously submitted private
 answers and all original human-owner/source identifiers; keep the
 workroom private and authorize any subsequent disclosure independently.</p>
 </section>
-<section><h2>7 · Rotate recipient response encryption with no plaintext intermediate</h2>
+<section><h2>7 · PRIVATE HUMAN questions and follow-up action register</h2>
+<p>Use the exact original selected encrypted HUMAN handoff and a separately
+encrypted previously received reply to generate a source-bound, self-declared
+HUMAN-only review register: open clarification questions, awaiting responses,
+ongoing discussion, declined HUMAN requests, and previously answered-but-
+NOT-verified HUMAN requests. Original distinct case identity is not inferred.
+The static private HTML, structured private-human-followup.json and
+private-aggregate.json stay offline and PRIVATE.</p>
+<pre>python3 remediation-human-replies/worklist.py \
+  --handoff "$HOME/lightup-private/selected-human.luhq" \
+  --reply "$HOME/lightup-private/reply-one.luhr" \
+  --output-dir "$HOME/lightup-private/private-human-followup-01"</pre>
+<p>This action is not an automatic request to a client, evidence verifier
+or scanner. Human-only replies do not close findings. External disclosure,
+independent authentic scope/consent and any actual remediation remain separate.</p>
+</section>
+<section><h2>8 · Rotate recipient response encryption with no plaintext intermediate</h2>
 <p>The offline original-bound native <code>vault.py</code> independently
 reads the genuine original selected encrypted HUMAN handoff and already
 encrypted recipient reply, then prompts for a new, separately confirmed
