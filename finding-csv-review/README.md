@@ -38,6 +38,10 @@ Historical chains are bounded to **three transitions or 512 KiB** of PRIVATE arc
 
 The original exporter, source-owner permission checks, scope/authorization, durable remediation state, targets, models, scanner, CI and tests are not modified by this feature.
 
+## Explicit encrypted workroom file-storage acknowledgment
+
+When **Save encrypted complete workroom (.luew)** is selected, the app offers the portable encrypted file to the browser and shows a **SHA-256 of the exact newly encrypted file bytes and their byte count**. Download initiation by itself does **not** clear the unsaved-HUMAN-state warning. After the download actually finishes, verify that the file exists in an approved private location and independently compare its checksum; then use **Confirm complete private file saved**. The UI requires a second explicit HUMAN acknowledgment, bound to the unchanged current source digest, HUMAN journal and preserved source-revision archive. If any of those change after export, the acknowledgment is invalid and a new encrypted full export is required. This is a human-recorded local storage claim, not a browser-verified filesystem operation, signed provenance, cryptographic release approval or client/operator consent. Journal-only exports still do not preserve prior source revisions.
+
 ## Complete encrypted PRIVATE source + HUMAN workroom
 
 The **Save encrypted complete workroom (.luew)** action combines the *exact original admitted UTF-8 CSV bytes* with the exact SHA-256-bound current HUMAN journal **inside the authenticated AES-256-GCM ciphertext**. It keeps no plaintext intermediate file, sends no request and uses fresh PBKDF2 salt and AES nonce per new export. This contains original source findings and therefore requires stronger disclosure controls than the source-free counts-only JSON. The complete encrypted payload is bounded to 3 MiB unencrypted canonical JSON; files bigger than 5 MiB or invalidly shaped packets fail closed.
