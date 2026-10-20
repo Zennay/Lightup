@@ -179,6 +179,7 @@ small{display:block;line-height:1.5}</style>
   --output-dir "$HOME/lightup-private/decrypted-review-01"</pre>
 <p>Optional local Python <code>cryptography</code> dependency and an interactive private terminal are required. No plaintext ZIP intermediates; decrypted HUMAN counts remain private plaintext files on the recipient machine. No authenticated sender or consent is inferred.</p>
 <p>See <a href="remediation-integrated-workspace/README.md">the full private operator guide</a> and <a href="remediation-integrated-workspace/SINGLE_REVIEW.md">single-Cockpit journal/brief workflow</a> for separate HUMAN continuation and privacy conditions.</p></section>
+<section><h2>Encrypted HUMAN journal continuation</h2><p>Use the <a href="remediation-integrated-workspace/JOURNAL_VAULT.md">PRIVATE source-bound journal vault guide</a> to encrypt an explicitly downloaded local HUMAN journal, reopen the same original-source-bound review, publish a scriptless private follow-up brief, or rekey without a plaintext intermediate journal file. This never authenticates client consent, source owner or fixes.</p></section>
 <small>Software-only, pinned original source snapshots. Operator-selectable steps are HUMAN-only; downloaded plaintext artifacts can be sensitive. No network, browser storage, script, account login or target activity is added by this launcher.</small></main></html>
 """).encode("utf-8")
 
@@ -242,6 +243,8 @@ def build(dest: Path) -> None:
                      "remediation-integrated-workspace/SINGLE_REVIEW.md",
                      "remediation-integrated-workspace/archive_workflow.py",
                      "remediation-integrated-workspace/encrypted_cockpit.py",
+                     "remediation-integrated-workspace/journal_vault.py",
+                     "remediation-integrated-workspace/JOURNAL_VAULT.md",
                      "remediation-integrated-workspace/README.md"):
             data = (ROOT / name).read_bytes()
             require(len(data) <= MAX_SOURCE, "Installer asset oversized")
@@ -326,6 +329,8 @@ def verify(folder: Path) -> None:
                                              "remediation-integrated-workspace/SINGLE_REVIEW.md",
                                              "remediation-integrated-workspace/archive_workflow.py",
                      "remediation-integrated-workspace/encrypted_cockpit.py",
+                     "remediation-integrated-workspace/journal_vault.py",
+                     "remediation-integrated-workspace/JOURNAL_VAULT.md",
                                              "remediation-integrated-workspace/README.md"),
                 "Unexpected package name")
         require(type(descriptor) is dict and set(descriptor) == {"sha256", "bytes"}

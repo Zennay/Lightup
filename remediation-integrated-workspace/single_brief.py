@@ -67,18 +67,22 @@ and local acknowledgements do not identify a real owner or establish chronology.
 <p>Scriptless offline report. No source writeback, network, scanning or native Apply.</p>
 </main></html>\n""").encode("utf-8")
 
-def publish(cockpit: Path, journal: Path, output: Path) -> None:
+def publish(cockpit: Path, journal: Path | bytes, output: Path) -> None:
     single.require(output.is_absolute()
                    and output.parent == output.parent.resolve(strict=True)
                    and not output.exists() and not output.is_symlink()
                    and cockpit not in output.parents
                    and output not in cockpit.parents
                    and output.parent != cockpit
-                   and journal.parent != output and journal != output,
+                   and (type(journal) is bytes or
+                        (journal.parent != output and journal != output)),
                    "Follow-up brief cannot modify original PRIVATE inputs")
     single.install.owner_dir(output.parent)
     baseline, source_key, manifest, portfolio = single.original(cockpit)
-    saved = single.admit_journal(review.private_read(journal), baseline, source_key)
+    raw = journal if type(journal) is bytes else review.private_read(journal)
+    single.require(type(raw) is bytes and len(raw) <= 262144,
+                   "Private HUMAN journal source exceeds native bound")
+    saved = single.admit_journal(raw, baseline, source_key)
     rows = [{k: item[k] for k in ("slot", "reason", "count", "stage", "note")}
             for item in saved]
     open_rows = sum(row["stage"] != "answered_human_only" for row in rows)

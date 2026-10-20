@@ -168,20 +168,26 @@ private folder. Answered HUMAN does NOT mean fixed, retested or approved.</small
             """</script><script>""" + js.decode("utf-8") +
             """</script></main></html>\n""").encode("utf-8")
 
-def publish(cockpit: Path, dest: Path, journal: Path | None) -> None:
+def publish(cockpit: Path, dest: Path, journal: Path | None,
+            journal_bytes: bytes | None = None) -> None:
     require(dest.is_absolute() and dest.parent == dest.parent.resolve(strict=True)
             and not dest.exists() and not dest.is_symlink()
             and cockpit != dest and cockpit != dest.parent
             and cockpit not in dest.parents and dest not in cockpit.parents,
             "HUMAN reviewer must not alter its native received Cockpit")
     install.owner_dir(dest.parent)
+    require(journal is None or journal_bytes is None,
+            "Do not mix original file and unlocked private journal inputs")
     if journal is not None:
         require(journal.is_absolute() and journal.parent == journal.parent.resolve(strict=True)
                 and journal != dest and journal.parent != dest,
                 "HUMAN journal must be a separate original private input")
     entries, key, manifest, original_raw = original(cockpit)
-    if journal is not None:
-        entries = admit_journal(review.private_read(journal), entries, key)
+    if journal is not None or journal_bytes is not None:
+        raw = review.private_read(journal) if journal is not None else journal_bytes
+        require(type(raw) is bytes and len(raw) <= 262144,
+                "Unsealed PRIVATE HUMAN journal exceeds bounded native admission")
+        entries = admit_journal(raw, entries, key)
     rendered = report(entries, key)
     data = journal_payload(entries, key)
     payloads = {"index.html": rendered,
