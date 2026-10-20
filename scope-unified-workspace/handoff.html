@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jLf1ZUo1dJvvsuLiaMzkdQ7Fqu5Wa4Y7e1M2pO7PP7M='; script-src 'sha256-ngSxp9+IVQ8uRe4YFeM+3s4Hh6Fyv00k8N8shkHegWc=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jLf1ZUo1dJvvsuLiaMzkdQ7Fqu5Wa4Y7e1M2pO7PP7M='; script-src 'sha256-L2WE21l6y/qisDazgHc/wCMPADOhnGBZ5i7ZJSky8d4=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -350,6 +350,7 @@ const LightUpPrivateSourceInspector = (() => {
     }
 
     if (data.format === "lightup.scope_handoff_PRIVATE_inventory.v1" ||
+        data.format === "lightup.scope_handoff_PRIVATE_inventory.v2" ||
         data.format === "lightup.scope_handoff_anonymous_counts.v1") {
       return { kind: "SELF_REPORTED_INVENTORY", route: "none",
         label: "HUMAN inventaris; geen oorspronkelijke bron" };
@@ -567,6 +568,12 @@ const LightUpPrivateDrift = (() => {
   const message = el("shelf-status");
   const summary = el("shelf-summary");
   const sourceCopy = el("private-copy");
+  // Never carry an explicit disclosure opt-in into a different original source
+  // selection or a restored browser page (including bfcache restoration).
+  const resetPrivateDisclosure = () => {
+    el("shelf-all-private-notes").checked = false;
+    el("shelf-team-private-notes").checked = false;
+  };
   const anonymousCopy = el("counts-copy");
   const stageFilter = el("shelf-stage-filter");
   const teamFilter = el("shelf-team-filter");
@@ -814,6 +821,7 @@ const LightUpPrivateDrift = (() => {
       remove.textContent = "Verwijder";
       remove.addEventListener("click", () => {
         generation++;
+        resetPrivateDisclosure();
         clearReviewHistory();
         invalidateDrift();
         items.splice(items.indexOf(item), 1);
@@ -888,6 +896,7 @@ const LightUpPrivateDrift = (() => {
       }
       if (epoch !== generation) throw new Error("cancelled");
       generation++;
+      resetPrivateDisclosure();
       clearReviewHistory();
       invalidateDrift();
       items.push(...proposed);  // atomic admission
@@ -1488,6 +1497,7 @@ const LightUpPrivateDrift = (() => {
     if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
     generation++; // invalidate any asynchronous import in flight
+    resetPrivateDisclosure();
     clearReviewHistory();
     invalidateDrift();
     items.splice(0);
@@ -1678,12 +1688,17 @@ const LightUpPrivateDrift = (() => {
     });
     report("REVIEW_ONLY — privé broninventaris van alle teams gedownload, notitieteksten " + (includePrivateNotes ? "bewust opgenomen." : "veilig afgeschermd."));
   });
+  resetPrivateDisclosure(); // browser form restoration is not a privacy opt-in
   render();
   renderReturnJournal();
+  window.addEventListener("pageshow", event => {
+    if (event.persisted) resetPrivateDisclosure();
+  });
   window.addEventListener("pagehide", () => {
     returnJournal.length = 0;
     lastReturnReceipt = null;
     generation++;  // never repopulate a private tab after navigation / bfcache
+    resetPrivateDisclosure();
     clearReviewHistory();
     invalidateDrift();
     items.splice(0);
