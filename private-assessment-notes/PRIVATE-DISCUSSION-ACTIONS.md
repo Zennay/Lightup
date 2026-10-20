@@ -85,6 +85,39 @@ without writes. The manually ordered reviewer slots do **not** authenticate
 human reviewer identities; identical submitted content is not independent
 reviewer evidence. A byte hash is unsigned and not an authentic signature.
 
+## 4. Compare two to eight completed HUMAN action rounds privately
+
+After separately finalizing multiple completed HUMAN action rooms against the
+SAME received original review selection, a human operator can assemble an
+entirely offline, manually ordered action history without copy/pasting any
+original confidential question text:
+
+```sh
+python3 private-assessment-notes/notes.py sensitivity-discussion-actions-history \
+  --completed-packet /private/work/ORIGINAL-completed-packet \
+  --review /private/work/FIRST-completed-review \
+  --review /private/work/SECOND-completed-review \
+  --room /private/work/PRIVATE-lightup-human-discussion-ROOM \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-1 \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-2 \
+  --private-parent /private/work
+```
+
+The original completed packet, all reviewers, exact selected discussion
+receipt and each finalized action receipt/HTML/CSV are independently
+reopened BEFORE a new 0700/0600 history room is prepared. The order is
+manually chosen; it is **not** authenticated chronology. Duplicated
+directories are refused; exact duplicate action content is explicitly
+counted, not considered independent follow-up. Outputs include a printable
+scriptless HUMAN status trajectory, an ordinal-and-round CSV with
+PRIVATE-question-*changed* flags (no question text), and an unsigned
+source-bound private receipt.
+
+This is not a reduction-in-risk measurement or verified remediation
+certificate: statuses and questions may change for reasons unrelated to
+the actual security/privacy of an asset. Successful local creation
+still returns **HOLD (exit 3)**. Nothing is sent or granted.
+
 ## Fixed boundaries
 
 Preparation exits **REVIEW_ONLY (2)**. Finalization and reopening always

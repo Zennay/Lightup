@@ -494,6 +494,15 @@ def main() -> int:
     action_reopen.add_argument("--review", action="append", required=True)
     action_reopen.add_argument("--room", required=True)
     action_reopen.add_argument("--final-room", required=True)
+    action_history = commands.add_parser(
+        "sensitivity-discussion-actions-history",
+        help="2-8 completed ORIGINAL PRIVATE HUMAN action rounds, never a fix verdict")
+    action_history.add_argument("--completed-packet", required=True)
+    action_history.add_argument("--review", action="append", required=True)
+    action_history.add_argument("--room", required=True)
+    action_history.add_argument("--final-room", action="append", required=True,
+                                help="completed HUMAN action room in manually declared chronological order")
+    action_history.add_argument("--private-parent", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -591,6 +600,11 @@ def main() -> int:
             from privacy_triage_discussion_actions import reopen_actions
             return reopen_actions(args.completed_packet, args.review,
                                   args.room, args.final_room)
+        if args.action == "sensitivity-discussion-actions-history":
+            from privacy_triage_discussion_history import create as action_history
+            return action_history(args.completed_packet, args.review,
+                                  args.room, args.final_room,
+                                  args.private_parent)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(
