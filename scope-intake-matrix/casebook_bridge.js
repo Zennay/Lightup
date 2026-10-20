@@ -114,6 +114,8 @@
     Number.isSafeInteger(v) && v >= 0 && v <= max;
   const riskField = v => Number.isSafeInteger(v) && v >= 0 && v <= 5;
   const linkedId = v => v === null || textField(v);
+  const storedTimestamp = v => typeof v === "string" && v.length <= 80 &&
+    !/[\u0000-\u001f\u007f]/u.test(v);
   const safeArray = v => Array.isArray(v) && v.length <= ROW_LIMIT;
 
   function inspectOriginal(doc) {
@@ -145,7 +147,7 @@
     for (const r of doc.requests) {
       if (!sameKeys(r, ["request_id", "status", "requested_mode", "requested_risk", "created_at", "decision_recorded"]) ||
           !["submitted", "under_review", "approved", "rejected"].includes(r.status) ||
-          !textField(r.requested_mode, 80) || !textField(r.created_at, 80) ||
+          !(typeof r.requested_mode === "string" && r.requested_mode.length <= 80) || !textField(r.created_at, 80) ||
           !riskField(r.requested_risk) || typeof r.decision_recorded !== "boolean") {
         throw Error("HOLD: invalid original request fields.");
       }
@@ -172,7 +174,7 @@
         "request_link_observation", "max_risk", "valid_from", "valid_until", "validity_observation"]) ||
           !linkedId(r.engagement_id) || !linkedId(r.approved_request_id) ||
           !allowedLinks.has(r.request_link_observation) || !windows.has(r.validity_observation) ||
-          !riskField(r.max_risk) || !textField(r.valid_from, 80) || !textField(r.valid_until, 80)) {
+          !riskField(r.max_risk) || !storedTimestamp(r.valid_from) || !storedTimestamp(r.valid_until)) {
         throw Error("HOLD: malformed original grant source row.");
       }
       accept("grants", r.grant_id);
@@ -188,12 +190,16 @@
     for (const r of doc.risk_approvals) {
       if (!sameKeys(r, ["approval_id", "engagement_id", "status", "requested_risk",
         "source_tenant_matches", "decision_recorded", "decision_provenance_observation"]) ||
-          !linkedId(r.engagement_id) || !["pending", "approved", "denied"].includes(r.status) ||
+          !linkedId(r.engagement_id) || !textField(r.status, 80) ||
           !riskField(r.requested_risk) ||
           typeof r.source_tenant_matches !== "boolean" ||
           typeof r.decision_recorded !== "boolean" ||
           !allowedRiskObservations.has(r.decision_provenance_observation)) {
         throw Error("HOLD: malformed original risk review row.");
+      }
+      if (!["pending", "approved", "denied"].includes(r.status) &&
+          r.decision_provenance_observation !== "HOLD_RISK_SOURCE_IDENTITY_OR_STATUS") {
+        throw Error("HOLD: unknown risk status without original provenance HOLD.");
       }
       accept("risk_approvals", r.approval_id);
       if (r.engagement_id !== null && !ids.get("engagements").has(r.engagement_id)) {
