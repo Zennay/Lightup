@@ -293,3 +293,43 @@ original customer consent, or security verification.
 scanner, runtime, scope grants, active targets, CI configuration or QA suites.
 Native offline implementation and source syntax checks are not human/security
 review or CI acceptance. All original release and consent gates above apply.
+
+
+### Confidentiality-first alternative: fully encrypted final HUMAN handoff
+
+If the only intended follow-up is to pass the selected HUMAN decisions to a
+separately approved recipient, avoid creating the new plaintext reconciled CSV
+**and** the scriptless report. Use `--encrypt-result` on `finalize`:
+
+~~~sh
+mkdir -m 700 ./private-review-sealed-output
+python3 assessment-disclosure-preflight/reconcile.py finalize \
+  --receipt ./private-disclosure-desk/PRIVATE-receipt.json \
+  --a-bundle ./reviewer-A/PRIVATE-human-handoff.luhb \
+  --b-bundle ./reviewer-B/PRIVATE-human-handoff.luhb \
+  --decisions ./private-review-reconcile/PRIVATE-reconcile-decisions.csv \
+  --encrypt-result \
+  --private-output-dir ./private-review-sealed-output
+~~~
+
+This option uses the unchanged native AES-256-GCM authenticated
+`vault_native.encrypt_bundle` with a **new hidden interactive password
+and fresh random KDF salt/nonce** to seal the exact original unsigned
+receipt bytes plus human-selected reconciled CSV bytes directly from
+memory. Two exclusively created 0600 owner-PRIVATE outputs result:
+`PRIVATE-reconciled-human.luhb` and
+`PRIVATE-reconciled-counts.csv` (source/note-free stage counts with
+original small-cohort suppression). Neither a new plaintext completed
+CSV nor a plaintext reconciliation report is written by this mode;
+the *existing* reviewer input files, decision worksheet, original
+receipt, and unencrypted prior files are not erased. Passwords are
+not recoverable and cannot authenticate a reviewer or confer consent.
+
+The encrypted output opens with the ORIGINAL local review studio's
+receipt+HUMAN `.luhb` import or with the original
+`human_review.py render --bundle` after a separately authenticated
+local disclosure decision. The operator must still verify the actual
+recipient, provenance and consent independently. Unknown/cancelled
+passwords, changed receipt/review bytes or privacy/crypto admission
+fail closed (HOLD). The encryption does not prove original evidence,
+remediation, client permission, live scanning authority or a release.
