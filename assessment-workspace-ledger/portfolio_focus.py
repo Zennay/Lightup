@@ -26,6 +26,10 @@ from portfolio_dayboard import BUCKETS, HEADERS, PRIORITY, local_path, select
 SCHEMA = "lightup.private.workspace-ledger-human-focus.v1"
 MAX_ROWS = 2048
 MAX_TITLE = 100
+REVIEW_HEADERS = (
+    "local_case", "historical_transition", "original_kit", "meeting_sha256",
+    "human_meeting_stage", "human_decision_note",
+)
 
 
 def options(args):
@@ -59,6 +63,18 @@ def csv_rows(entries):
     writer.writerow(HEADERS)
     for row in entries:
         writer.writerow([row[column] for column in HEADERS])
+    return buffer.getvalue()
+
+
+def review_template(entries, meeting_sha):
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(REVIEW_HEADERS)
+    for row in entries:
+        writer.writerow([
+            row["local_case"], row["historical_transition"], row["original_kit"],
+            meeting_sha, "needs_discussion", "",
+        ])
     return buffer.getvalue()
 
 
@@ -199,9 +215,10 @@ def run(args):
     }
     manifest = canonical(payload)
     table = csv_rows(focus)
+    review = review_template(focus, digest(manifest))
     markdown = private_markdown(focus, args, sha, owner)
     if any(len(value if isinstance(value, bytes) else value.encode("utf-8")) > MAX_MANIFEST for value in (
-        manifest, table, markdown
+        manifest, table, markdown, review
     )):
         reject("PRIVATE HOLD: HUMAN meeting packet is too large")
     folder = new_private(args.private_parent)
@@ -210,6 +227,7 @@ def run(args):
         write_private(folder, "PRIVATE-HUMAN-meeting.html", detail_html(focus, args, owner))
         write_private(folder, "PRIVATE-HUMAN-meeting.md", markdown)
         write_private(folder, "PRIVATE-HUMAN-meeting.csv", table)
+        write_private(folder, "HUMAN-meeting-review-template.csv", review)
         write_private(folder, "PRIVATE-HUMAN-meeting.json", manifest)
     except BaseException:
         shutil.rmtree(folder)

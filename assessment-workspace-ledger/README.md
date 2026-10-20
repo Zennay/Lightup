@@ -924,3 +924,32 @@ recipients, real consent, verified remediation, scan permission, booking or
 HUMAN GO. No external communication, scheduling, network, worker, background
 task or original security scan is performed. The software-only ZIP v21 includes
 this module and continues inspecting legacy fixed v16–v20 software inventories.
+
+## Source-exact HUMAN meeting return · software v22
+
+The v21 focus packet now creates `HUMAN-meeting-review-template.csv` alongside
+the original PRIVATE-HUMAN-meeting.json. A human can fill only the exact
+original proposal slots with `needs_discussion`, `proposed_followup` or
+`hold` and an optional brief private note. The template embeds the unsigned
+SHA-256 of the **entire original meeting JSON** on every row.
+
+Copy the edited CSV to original owner-private 0600 storage without distributing
+it to other recipients. Then explicitly finalize the **human draft only**:
+
+    python3 assessment-workspace-ledger/portfolio_focus_review.py \
+      --portfolio /private/source/PRIVATE-HUMAN-portfolio.json \
+      --meeting /private/focus/PRIVATE-HUMAN-meeting.json \
+      --review /private/focus/HUMAN-meeting-review-template.csv \
+      --private-parent /private/owner-only
+
+The finalizer re-reads original owner-only source portfolio, validates its
+strict canonical original bytes, recomputes the meeting's original selected
+source slots, requires every submitted row in the original order, refuses
+different meeting SHA, duplicate or extra CSV fields, malformed HUMAN text,
+formula starts, owner-scope widening and changed source bytes. Only a NEW
+0700/0600 PRIVATE/HOLD return folder is created: source-minimal summary,
+scriptless original-bound detailed meeting return, native private JSON and
+unchanged human CSV. No scheduling, notification, authentic owner identity,
+approval, consent, scan, task completion or verified security outcome follows.
+Console option **29** performs the same foreground flow; software ZIP v22
+includes both original HUMAN meeting producer and native return finalizer.

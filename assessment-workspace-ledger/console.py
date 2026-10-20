@@ -25,6 +25,7 @@ import portfolio_delta
 import portfolio_owner_packets
 import portfolio_dayboard
 import portfolio_focus
+import portfolio_focus_review
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -59,6 +60,7 @@ MENU = (
     ("26", "Create owner-scoped PRIVATE HUMAN handoff workrooms from a previous portfolio"),
     ("27", "Open a PRIVATE date/priority HUMAN planning dayboard from an original portfolio"),
     ("28", "Prepare a filtered PRIVATE HUMAN meeting packet"),
+    ("29", "Import source-bound HUMAN meeting decisions as PRIVATE HOLD-only return"),
     ("0", "Exit"),
 )
 
@@ -207,6 +209,13 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "29":
+        return portfolio_focus_review.run(argparse.Namespace(
+            portfolio=prompt("ORIGINAL PRIVATE-HUMAN-portfolio.json"),
+            meeting=prompt("Original PRIVATE-HUMAN-meeting.json"),
+            review=prompt("0600 HUMAN-meeting-review-template.csv edited locally"),
+            private_parent=private_parent()
         ))
     if action == "28":
         print("Priorities: human_urgent,near_term,routine,unset")
