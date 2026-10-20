@@ -4,7 +4,7 @@
 
 ## Purpose: recover private human work without generating authority
 
-A human operator deliberately selects **1–32 individual ordinary local files** from their PRIVATE offline workroom. This CLI encrypts exact bytes, original basenames, sizes and SHA-256 digests into one owner-only `.lupb` archive. It supports authenticated PRIVATE inventory, atomically restoring the original selected files to **a new owner-only folder**, password rotation to a **distinct new archive** without producing plaintext files, and a **two-snapshot authenticated PRIVATE change desk** that reports file names added, removed, changed and unchanged without pretending that a changed file means a verified fix. Neither operation changes the original input files or existing archive.
+A human operator deliberately selects **1–32 individual ordinary local files** from their PRIVATE offline workroom. This CLI encrypts exact bytes, original basenames, sizes and SHA-256 digests into one owner-only `.lupb` archive. It supports authenticated PRIVATE inventory, atomically restoring all or only explicitly chosen original files to **a new owner-only folder**, password rotation to a **distinct new archive** without producing plaintext files, and a **two-snapshot authenticated PRIVATE change desk** that reports file names added, removed, changed and unchanged without pretending that a changed file means a verified fix. Neither operation changes the original input files or existing archive.
 
 The format binds complete canonical JSON via AES-256-GCM authenticated encryption, a random salt and nonce, and PBKDF2-HMAC-SHA256 with 600,000 rounds. No network, server, cloud key management, local browser storage, runner, scanner, target discovery, tenant authentication or consent request. Requires Python 3.10+ with `cryptography` available in the trusted offline environment.
 
@@ -30,6 +30,12 @@ python3 remediation-private-backup/vault.py restore \
   "$HOME/lightup-private/reviewer-backup-001.lupb" \
   "$HOME/lightup-private/reviewer-01-recovered"
 
+# Optional minimum-necessary recovery: only one original name
+python3 remediation-private-backup/vault.py restore \
+  "$HOME/lightup-private/reviewer-backup-001.lupb" \
+  "$HOME/lightup-private/reviewer-selective-recovery" \
+  --only human-decisions.csv
+
 python3 remediation-private-backup/vault.py rotate \
   "$HOME/lightup-private/reviewer-backup-001.lupb" \
   --output "$HOME/lightup-private/reviewer-backup-002.lupb"
@@ -44,7 +50,7 @@ The passwords are prompted interactively and **never accepted as CLI arguments o
 ## Immutable output & restore boundary
 
 - The backup contains at most 32 explicitly selected files, each ≤2 MiB and ≤16 MiB combined. Symlink or hardlinked input, files not owned by the current user or with group/other permissions, the reserved REVIEW-ONLY.txt name, unsafe names, duplicate names including case-insensitive collisions, mutation during read, malformed/duplicate JSON keys, unknown envelopes, wrong passwords, altered ciphertext, changed payload bytes, oversized content and noncanonical inner JSON are HOLD. No directory traversal, autodiscovery or recursive collection.
-- The archive is a single new 0600 file in an existing directory owned by this user with no group/other permission bits. A restored dataset is staged into a new sibling owner-only 0700 directory; each file is created 0600 and fsynced, and the directory is renamed to the final **unused** destination only after all files were admitted. Existing output paths are refused. The reserved REVIEW-ONLY.txt name cannot be supplied in an archive, so every restored folder always receives a PRIVATE literal HOLD warning.
+- The archive is a single new 0600 file in an existing directory owned by this user with no group/other permission bits. A fully authenticated archive can also restore only exact selected original basenames using repeatable --only options (unknown or duplicate names HOLD; no output). The selected dataset is staged into a new sibling owner-only 0700 directory; each file is created 0600 and fsynced, and the directory is renamed to the final **unused** destination only after all files were admitted. Existing output paths are refused. The reserved REVIEW-ONLY.txt name cannot be supplied in an archive, so every restored folder always receives a PRIVATE literal HOLD warning.
 - The inventory and two-snapshot comparison require successful decryption before printing PRIVATE source basenames, hashes or differences. Both backup passwords are prompted separately; neither file chronology nor actual remediation can be inferred from the resulting differences. Outer metadata asserts all four non-authority flags as literal false.
 - All operations return 0 only to mean local file operation completed, **not** a release authorization, accepted remediation or successful original evidence verification. Refused input returns **3/HOLD**.
 
