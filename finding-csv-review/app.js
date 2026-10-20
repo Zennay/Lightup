@@ -130,7 +130,7 @@
     $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveBrief", "saveCounts", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveBrief", "saveCounts", "saveCalendar", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
   }
@@ -150,14 +150,32 @@
     const query = $("search").value.trim().toLocaleLowerCase();
     const severity = $("severityFilter").value;
     const stage = $("stageFilter").value;
-    return state.rows.map((_, i) => i).filter((i) => {
-      const r = state.rows[i];
-      const j = state.journal[i];
+    const dueFilter = $("dueFilter").value;
+    const ownerFilter = $("ownerFilter").value;
+    const sortMode = $("orderBy").value;
+    const today = localDate();
+    const end = new Date(today + "T00:00:00Z");
+    end.setUTCDate(end.getUTCDate() + 7);
+    const weekEnd = end.toISOString().slice(0, 10);
+    const matched = state.rows.map((_, i) => i).filter(i => {
+      const r = state.rows[i], j = state.journal[i];
       return (!severity || severity === r.severity) &&
         (!stage || stage === j.stage) &&
-        (!query || [r.id, r.title, r.remediation].some(v => v.toLocaleLowerCase().includes(query)));
-    }).sort((a, b) => SEVERITIES.indexOf(state.rows[a].severity) - SEVERITIES.indexOf(state.rows[b].severity)
-      || state.rows[a].id.localeCompare(state.rows[b].id));
+        (!query || [r.id, r.title, r.remediation].some(v => v.toLocaleLowerCase().includes(query))) &&
+        (!ownerFilter || (ownerFilter === "assigned" ? j.owner.length > 0 : !j.owner)) &&
+        (!dueFilter || (dueFilter === "unscheduled" ? !j.due :
+          dueFilter === "overdue" ? !!j.due && j.due < today :
+          dueFilter === "today" ? j.due === today :
+          !!j.due && j.due >= today && j.due <= weekEnd));
+    });
+    const bySeverity = (a, b) => SEVERITIES.indexOf(state.rows[a].severity) -
+      SEVERITIES.indexOf(state.rows[b].severity);
+    return matched.sort((a, b) =>
+      (sortMode === "due" ? ((state.journal[a].due || "9999-12-31")
+        .localeCompare(state.journal[b].due || "9999-12-31")) :
+        sortMode === "id" ? state.rows[a].id.localeCompare(state.rows[b].id) :
+        bySeverity(a, b)) ||
+      bySeverity(a, b) || state.rows[a].id.localeCompare(state.rows[b].id));
   }
   function renderList() {
     const list = $("list");
@@ -244,6 +262,8 @@
       $("detail").hidden = true; $("noneSelected").hidden = false;
       $("sourceId").textContent = "Exact file SHA-256: " + sha + " (unsigned; NOT sender authentication)";
       $("summary").textContent = stagedRows.length + " original CSV finding(s), loaded into this local browser only.";
+      ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter"].forEach(id => { $(id).value = ""; });
+      $("orderBy").value = "severity";
       setEnabled(true); renderList();
       status("CSV admitted. Source claims are not proof of a finding, fix or consent.", false);
     } catch (error) {
@@ -411,6 +431,45 @@
     download(markup, "lightup-private-human-next-actions.html", "text/html");
     status("PRIVATE scriptless HUMAN brief offered; original source and local workroom remain unchanged.", false);
   }
+  function saveCalendar() {
+    if (state.pending) {
+      status("Apply or discard the current HUMAN form edits before PRIVATE calendar export.", true);
+      return;
+    }
+    const dated = selectedIndices().filter(i =>
+      state.journal[i].due && state.journal[i].stage !== "unreviewed");
+    if (!dated.length) {
+      status("No visible HUMAN-updated findings have a tentative date.", true);
+      return;
+    }
+    if (!confirm("Offer " + dated.length + " tentative all-day HUMAN follow-up event(s) as a PRIVATE .ics file? " +
+      "Calendar apps may synchronize it. This contains no original IDs, titles, targets, evidence or owner text. " +
+      "It is NOT a scheduled scan/retest, authenticated finding or actual calendar booking.")) return;
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0",
+      "PRODID:-//LightUp//PRIVATE HUMAN Offline Follow-up//EN",
+      "CALSCALE:GREGORIAN"];
+    for (const position of dated) {
+      const record = state.journal[position];
+      const start = record.due.replaceAll("-", "");
+      const end = new Date(record.due + "T00:00:00Z");
+      end.setUTCDate(end.getUTCDate() + 1);
+      const endValue = end.toISOString().slice(0, 10).replaceAll("-", "");
+      const random = new Uint8Array(16);
+      try { crypto.getRandomValues(random); }
+      catch (_) { status("Secure random UID generation unavailable; calendar not exported.", true); return; }
+      const uid = Array.from(random, byte => byte.toString(16).padStart(2, "0")).join("") + "@lightup.invalid";
+      lines.push("BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + stamp,
+        "DTSTART;VALUE=DATE:" + start, "DTEND;VALUE=DATE:" + endValue,
+        "CLASS:PRIVATE", "TRANSP:TRANSPARENT",
+        "SUMMARY:Tentative HUMAN follow-up (review only)",
+        "DESCRIPTION:Manually proposed PRIVATE follow-up; no verified finding or authorization.",
+        "END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download(lines.join("\r\n") + "\r\n", "lightup-tentative-human-calendar.ics", "text/calendar");
+    status("Tentative PRIVATE HUMAN calendar offered locally; not sent, booked or authorized.", false);
+  }
   function saveCounts() {
     if (!confirm("Counts may reveal sensitive cohort sizes. Have you separately approved this disclosure?")) return;
     const severity = Object.fromEntries(SEVERITIES.map(s => [s, state.rows.filter(r => r.severity === s).length]));
@@ -477,7 +536,7 @@
       if (e.target.files[0]) loadJournal(e.target.files[0]);
       e.target.value = "";
     });
-    ["search", "severityFilter", "stageFilter"].forEach(id =>
+    ["search", "severityFilter", "stageFilter", "dueFilter", "ownerFilter", "orderBy"].forEach(id =>
       $(id).addEventListener("input", renderList));
     ["humanStage", "humanOwner", "humanDue", "humanNote"].forEach(id => {
       $(id).addEventListener("input", () => { state.pending = true; status("Unapplied HUMAN form edits — click Apply before switching findings or exporting a PRIVATE draft.", true); });
@@ -488,6 +547,7 @@
     $("saveJournal").addEventListener("click", saveJournal);
     $("loadJournal").addEventListener("click", () => $("journalFile").click());
     $("saveCounts").addEventListener("click", saveCounts);
+    $("saveCalendar").addEventListener("click", saveCalendar);
     $("saveVault").addEventListener("click", saveVault);
     $("loadVault").addEventListener("click", () => $("vaultFile").click());
     $("vaultFile").addEventListener("change", e => {
