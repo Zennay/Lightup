@@ -26,7 +26,16 @@
 <section class="panel">
 <h2>2. Menselijke opvolging en beslissingen</h2>
 <p>De naam is een <strong>zelfgekozen lokaal alias</strong>, geen bewijs van herkomst. "Voorgesteld verwijderen" voert nooit een verwijdering uit. Elke rij blijft expliciet onbeoordeeld totdat een mens haar invult.</p>
-<div class="filters"><label>Zoeken <input type="search" id="query" placeholder="Alias of SHA-prefix"></label><label>Status <select id="status-filter"><option value="">Alle voorstellen</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden</option><option value="quarantine">Afzonderen</option><option value="propose_delete">Verwijdering voorstellen</option></select></label></div>
+<div class="filters"><label>Zoeken <input type="search" id="query" placeholder="Alias of SHA-prefix"></label><label>Status <select id="status-filter"><option value="">Alle voorstellen</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden</option><option value="quarantine">Afzonderen</option><option value="propose_delete">Verwijdering voorstellen</option></select></label>
+<label>HUMAN reviewdatum <select id="due-filter">
+<option value="">Alle reviewmomenten</option>
+<option value="overdue">Voorlopig verstreken</option>
+<option value="soon">Binnen 7 dagen inclusief vandaag</option>
+<option value="no_date">Geen reviewdatum</option>
+<option value="no_action">Geen vervolgactie</option>
+</select></label>
+<label>Weergavevolgorde <select id="sort-order"><option value="source">Oorspronkelijke invoer</option><option value="due">Reviewdatum eerst</option><option value="stage">HUMAN fase</option></select></label>
+</div>
 <div class="bulk panel-mini">
 <h3>Gefilterde HUMAN-planning (voorbeeld → bevestigen → één stap terug)</h3>
 <div class="actions">
