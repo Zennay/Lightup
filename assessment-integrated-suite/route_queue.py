@@ -100,8 +100,16 @@ def read_owner_csv(name: str) -> bytes:
 
 
 def admit_human_edits(base: list[dict], csv_source: str) -> list[dict]:
+    # Parse precisely the owner-private descriptor snapshot admitted by the
+    # original native reader; callers that retain the bytes can share it.
+    return admit_human_edits_bytes(base, read_owner_csv(csv_source))
+
+
+def admit_human_edits_bytes(base: list[dict], raw: bytes) -> list[dict]:
+    """Validate exactly one immutable original CSV byte snapshot."""
     try:
-        raw = read_owner_csv(csv_source)
+        if type(raw) is not bytes or not 0 < len(raw) <= MAX_CSV:
+            raise privacy.Hold("HOLD: bounded original HUMAN CSV bytes required")
         decoded = raw.decode("utf-8", "strict")
         reader = csv.reader(io.StringIO(decoded, newline=""), strict=True)
         header = next(reader)

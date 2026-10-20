@@ -111,10 +111,11 @@ def build(session, source_csv: str, parent_name: str, name: str,
         rows = base
         source_bytes = route_queue.csv_bytes(base)
     else:
-        rows = route_queue.admit_human_edits(base, source_csv)
-        # A competing writer may edit the original in the intake gap.
-        # A second owner-private read must yield identical HUMAN decisions.
+        # One admitted owner-only descriptor snapshot drives both the HUMAN
+        # decisions and the exact bytes pinned for every child producer.
+        # Never reopen a potentially changed original CSV after admission.
         source_bytes = route_queue.read_owner_csv(source_csv)
+        rows = route_queue.admit_human_edits_bytes(base, source_bytes)
     teams = [(team, sum(row["review_team"] == team and
                         row["human_stage"] != "UNASSESSED" for row in rows))
              for team in TEAM_FOLDERS]
