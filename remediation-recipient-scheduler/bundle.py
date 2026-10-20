@@ -75,6 +75,12 @@ def page() -> bytes:
   --cockpit "$HOME/lightup-private/current-original-01" \
   --output-dir "$HOME/lightup-private/human-carry-01"</pre>
 <p><a href="remediation-recipient-scheduler/README.md">Complete private recipient operator guide</a>. No network, scanner, grant or calendar API is invoked by these tools.</p></section>
+<section><h2>4 · Share selected HUMAN follow-up only</h2>
+<p>Within the PRIVATE scheduling board choose a filtered HUMAN subset and select <strong>Encrypt selected HUMAN-only handoff</strong>. Owner labels and human notes are independent opt-ins and both are omitted by default. The separate encrypted <code>.luhq</code> never includes original source SHA-256, packets, slot/counts, client IDs or evidence. Source authenticity cannot be reconstructed.</p>
+<pre>python3 remediation-recipient-scheduler/queue_handoff.py \
+  --handoff "$HOME/lightup-private/approved-selected-followup.luhq" \
+  --output-dir "$HOME/lightup-private/received-selected-human-01"</pre>
+<p>Recipients need their own legitimate disclosure permission and local password. The new PRIVATE output is a source-redacted, scriptless read-only HUMAN brief, not a finding, proof, consent, grant, scan or remediation.</p></section>
 <section><h2>Protect the original held release gates</h2><p>All original source-owner review, exact-head hosted and permanently named VPS CI, independent security/privacy/browser/crypto review, original #177/#182/#829, genuine current separately authenticated client and operator consent with action-time revocation and explicit HUMAN GO remain mandatory. The package is software-only. Local hashes are NOT source signatures or approvals.</p></section>
 </main></body></html>''').encode("utf-8")
 
