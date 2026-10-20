@@ -28,6 +28,7 @@ td,th { padding:12px; border-bottom:1px solid #34485e; vertical-align:top; }
 tbody tr:hover { background:#1a3046 }
 td small { display:block; color:#a8c0d2; font-size:.77rem; margin-top:2px; }
 .stats { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0 19px; }
+.stat.attention { border-color:#d4a15f; background:#47311f; }
 .stat { background:#20354b; border:1px solid #355672; border-radius:12px; padding:12px 15px; min-width:175px; flex:1; font-size:.87rem; }
 .vault { border:1px solid #468aa8; background:#112f3e; padding:16px 18px; border-radius:14px; margin:15px 0 20px; }
 .vault h3 { margin:0 0 7px; font-size:1.05rem; color:#b5e5ff; }
