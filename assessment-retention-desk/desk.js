@@ -15,6 +15,11 @@
   });
   let entries = [];
   let processing = false;
+  let lastBulk = null;
+  function invalidateUndo() {
+    lastBulk = null;
+    $("bulk-undo").disabled = true;
+  }
   const $ = id => document.getElementById(id);
   const status = (s, bad = false) => {
     $("message").textContent = s;
@@ -50,7 +55,7 @@
     e.type = "text"; e.value = value; e.maxLength = max;
     e.placeholder = placeholder; e.addEventListener("change", () => {
       if (!safeHuman(e.value, max)) { e.value = value; status("Ongeldige controle-/richtingskarakters geweigerd.", true); return; }
-      update(e.value); updateCounts();
+      update(e.value); invalidateUndo(); updateCounts();
     });
     return e;
   }
@@ -65,13 +70,16 @@
       target.append(card);
     }
   }
+  function visibleEntries() {
+    const q = $("query").value.trim().toLowerCase();
+    const filter = $("status-filter").value;
+    return entries.filter(e => (!filter || e.status === filter) &&
+      (!q || e.alias.toLowerCase().includes(q) || e.sha256.includes(q)));
+  }
   function render() {
     const body = $("rows");
     body.replaceChildren();
-    const q = $("query").value.trim().toLowerCase();
-    const filter = $("status-filter").value;
-    const shown = entries.filter(e => (!filter || e.status === filter) &&
-      (!q || e.alias.toLowerCase().includes(q) || e.sha256.includes(q)));
+    const shown = visibleEntries();
     for (const item of shown) {
       const row = document.createElement("tr");
       const identity = document.createElement("td");
@@ -86,7 +94,7 @@
       }
       select.value = item.status;
       select.addEventListener("change", () => {
-        item.status = select.value; updateCounts();
+        item.status = select.value; invalidateUndo(); updateCounts();
         if ($("status-filter").value) render();
       });
       stage.append(select);
@@ -96,7 +104,7 @@
       date.value = item.review_date;
       date.addEventListener("change", () => {
         if (!validDate(date.value)) { date.value = item.review_date; status("Geen geldige reviewdatum.", true); return; }
-        item.review_date = date.value;
+        item.review_date = date.value; invalidateUndo();
       });
       due.append(date);
       const action = document.createElement("td");
@@ -105,7 +113,7 @@
       const btn = document.createElement("button");
       btn.textContent = "Verwijder rij"; btn.className = "danger"; btn.type = "button";
       btn.addEventListener("click", () => {
-        entries = entries.filter(e => e.sha256 !== item.sha256);
+        entries = entries.filter(e => e.sha256 !== item.sha256); invalidateUndo();
         status("Alleen de bronrij is uit het browsergeheugen verwijderd; geen bronbestand gewist.");
         render();
       });
@@ -142,7 +150,7 @@
           status:"needs_review", review_date:"", action:""});
       }
       // Atomic: no selected source is installed before every new source has been admitted.
-      entries = entries.concat(staged);
+      entries = entries.concat(staged); invalidateUndo();
       $("query").value = ""; $("status-filter").value = "";
       render(); status(staged.length + " echte lokale bestandsidentiteiten gecontroleerd en toegevoegd. Geen bytes geüpload.");
     } catch (e) {
@@ -157,6 +165,9 @@
   }
   function exportReceipt() {
     if (!entries.length || processing) return status("Selecteer eerst privébronnen.", true);
+    if (entries.some(e => e.status === "propose_delete" && !e.action.trim())) {
+      return status("HOLD: bij elk voorstel tot verwijderen is een HUMAN reden/vervolgactie vereist. Dit is nooit toestemming tot wissen.", true);
+    }
     const obj = {
       kind:"lightup.private.assessment.retention.plan", version:1,
       authority:AUTHORITY,
@@ -207,7 +218,7 @@
       if (!window.confirm("Alle geselecteerde echte bestandsbytes komen overeen. De volledige bestaande HUMAN-planning lokaal overnemen? Dit verleent GEEN consent, toestemming tot wissen, bron-authenticatie of scanbevoegdheid.")) {
         status("Overname geannuleerd. De huidige werkruimte blijft intact."); return;
       }
-      entries = entries.map(e => ({...e, ...record(rows.get(e.sha256))}));
+      entries = entries.map(e => ({...e, ...record(rows.get(e.sha256))})); invalidateUndo();
       $("query").value = ""; $("status-filter").value = "";
       render(); status("Volledige exact-brongebonden PRIVATE HUMAN-planning heropend. Bronbestanden ongewijzigd.");
     } catch (e) {
@@ -226,6 +237,56 @@
       "\ufeff" + rows.join("\r\n") + "\r\n");
     status("Alleen conservatieve HUMAN-aantallen geëxporteerd; bij kleine groepen nog steeds PRIVATE.");
   }
+  function applyBulk() {
+    if (processing) return status("Broncontrole loopt nog.", true);
+    const candidates = visibleEntries();
+    if (!candidates.length) return status("Geen zichtbare rijen voor bulkplanning.", true);
+    const stage = $("bulk-status").value;
+    const due = $("bulk-date").value;
+    const action = $("bulk-action").value;
+    if (!Object.hasOwn(STATES, stage) || !validDate(due) || !safeHuman(action, 400)) {
+      return status("HOLD: ongeldige voorgestelde status, reviewdatum of menselijke actie.", true);
+    }
+    if (stage === "propose_delete" && !action.trim()) {
+      return status("HOLD: voor een nieuw verwijderingsvoorstel is een duidelijke HUMAN vervolgactie vereist; geen wisopdracht.", true);
+    }
+    if (!window.confirm("Je staat op het punt de HUMAN-planning van " + candidates.length +
+      " zichtbaar gefilterde bronrij(en) lokaal te wijzigen naar '" + STATES[stage] +
+      "'. Dit voert GEEN scan, retentie- of wisactie uit. Doorgaan?")) {
+      return status("Bulkvoorstel geannuleerd; oorspronkelijke rijen onveranderd.");
+    }
+    const before = candidates.map(e => record(e));
+    for (const e of candidates) {
+      e.status = stage;
+      if (due) e.review_date = due;
+      if (action) e.action = action;
+    }
+    lastBulk = {before, after: candidates.map(e => record(e))};
+    $("bulk-undo").disabled = false;
+    render();
+    status("HUMAN bulkvoorstel voor " + candidates.length + " rijen toegepast; één brongebonden ongedaanmaking beschikbaar.");
+  }
+  function undoBulk() {
+    if (!lastBulk || processing) return status("Geen geldige directe bulkstap om terug te draaien.", true);
+    const matches = lastBulk.after.every(saved => {
+      const current = entries.find(e => e.sha256 === saved.sha256);
+      return current && JSON.stringify(record(current)) === JSON.stringify(saved);
+    });
+    if (!matches) {
+      invalidateUndo();
+      return status("HOLD: rijen veranderden sinds de bulkstap; ongedaan maken is niet veilig.", true);
+    }
+    for (const original of lastBulk.before) {
+      const item = entries.find(e => e.sha256 === original.sha256);
+      Object.assign(item, original);
+    }
+    const count = lastBulk.before.length;
+    invalidateUndo();
+    render();
+    status("Laatste HUMAN bulkvoorstel voor " + count + " rijen volledig hersteld.");
+  }
+  $("bulk-apply").addEventListener("click", applyBulk);
+  $("bulk-undo").addEventListener("click", undoBulk);
   $("sources").addEventListener("change", ingest);
   $("receipt").addEventListener("change", importReceipt);
   $("export-plan").addEventListener("click", exportReceipt);
@@ -238,7 +299,7 @@
   });
   $("clear").addEventListener("click", () => {
     if (entries.length && !window.confirm("Alle niet-opgeslagen HUMAN-keuzes uit dit tabblad wissen? Eerder gedownloade privébestanden worden niet gewist.")) return;
-    entries = []; $("sources").value = ""; $("receipt").value = "";
+    entries = []; invalidateUndo(); $("sources").value = ""; $("receipt").value = "";
     $("query").value = ""; $("status-filter").value = "";
     render(); status("Lokale werkruimte leeggemaakt (geen garantie op veilig geheugenwissen).");
   });
