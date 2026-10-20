@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-HL8GPYZt4f4gwS8lABs8jkhbHbukDvHgST1Wy8SROf0='; script-src 'sha256-jZ6FeoB8OiloUAIDCwa9PScLeNbSe153zX6NGNfk3RA='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-E7VTzSEzv1NgQypq+UKBKDPViIlkTmkLpiFCxTZI6EE='; script-src 'sha256-jZ6FeoB8OiloUAIDCwa9PScLeNbSe153zX6NGNfk3RA='">
 <meta name="color-scheme" content="dark">
 <title>LightUp — Controleer je offline ZIP</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
@@ -85,6 +85,13 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-peer-draft-desk .action{justify-self:start}
 .shelf-peer-draft-desk input:focus-visible,.shelf-peer-draft-desk button:focus-visible{outline:3px solid #adf0df;outline-offset:2px}
 .shelf-peer-draft-desk :disabled{opacity:.5;cursor:not-allowed}
+
+/* PRIVATE source-scoped HUMAN agenda: recipient choice never authenticates the recipient. */
+.shelf-peer-team-agenda{display:grid;gap:9px;padding:13px;margin:12px 0;border:1px solid #688997;border-radius:9px;background:#203545}
+.shelf-peer-team-agenda label{display:grid;gap:6px;color:#d3ede7;font-size:12px;font-weight:700}
+.shelf-peer-team-agenda select{min-height:44px;max-width:350px;padding:8px;border:1px solid #769baa;border-radius:7px;background:#112431;color:#ebf6f5;font:inherit;font-size:13px}
+.shelf-peer-team-agenda select:focus-visible{outline:3px solid #b0f4e0;outline-offset:2px}
+.shelf-peer-team-agenda .action{justify-self:start}
 </style>
 </head>
 <body>

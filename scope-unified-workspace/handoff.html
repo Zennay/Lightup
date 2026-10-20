@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-HL8GPYZt4f4gwS8lABs8jkhbHbukDvHgST1Wy8SROf0='; script-src 'sha256-m0zMGBpQiZHMZMUF4NRKYILLcVwpRrsui4CRh8lO+Yc=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-E7VTzSEzv1NgQypq+UKBKDPViIlkTmkLpiFCxTZI6EE='; script-src 'sha256-iGLMiWUnQQRxxMKyzAs7kYHEjp1/7rVk/EVz7YEBZ70=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -84,6 +84,13 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-peer-draft-desk .action{justify-self:start}
 .shelf-peer-draft-desk input:focus-visible,.shelf-peer-draft-desk button:focus-visible{outline:3px solid #adf0df;outline-offset:2px}
 .shelf-peer-draft-desk :disabled{opacity:.5;cursor:not-allowed}
+
+/* PRIVATE source-scoped HUMAN agenda: recipient choice never authenticates the recipient. */
+.shelf-peer-team-agenda{display:grid;gap:9px;padding:13px;margin:12px 0;border:1px solid #688997;border-radius:9px;background:#203545}
+.shelf-peer-team-agenda label{display:grid;gap:6px;color:#d3ede7;font-size:12px;font-weight:700}
+.shelf-peer-team-agenda select{min-height:44px;max-width:350px;padding:8px;border:1px solid #769baa;border-radius:7px;background:#112431;color:#ebf6f5;font:inherit;font-size:13px}
+.shelf-peer-team-agenda select:focus-visible{outline:3px solid #b0f4e0;outline-offset:2px}
+.shelf-peer-team-agenda .action{justify-self:start}
 </style>
 </head>
 <body>
@@ -151,7 +158,17 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <input id="shelf-peer-draft-open" type="file" accept=".json,application/json" disabled aria-describedby="shelf-peer-draft-status">
 <p id="shelf-peer-draft-status" class="shelf-status" role="status" aria-live="polite">Geen concept heropend. Geen automatische HUMAN keuze, autorisatie of import.</p>
 </div>
-<button type="button" id="shelf-peer-agenda" class="action muted" disabled>Download PRIVATE HUMAN bespreekagenda (.md) — géén autorisatie</button>
+<button type="button" id="shelf-peer-agenda" class="action muted" disabled>Download volledige PRIVATE HUMAN bespreekagenda (.md) — intern</button>
+<div class="shelf-peer-team-agenda" role="group" aria-label="Minimum noodzakelijke PRIVATE HUMAN teamagenda">
+<label for="shelf-peer-agenda-team">Kies bewust het ontvangende HUMAN team voor uitsluitend de EIGEN oorspronkelijke bronnen
+<select id="shelf-peer-agenda-team">
+<option value="">Kies één HUMAN team</option>
+<option value="security">Security</option><option value="privacy">Privacy</option>
+<option value="client_ops">Client operations</option><option value="platform">Platform</option>
+</select></label>
+<button type="button" id="shelf-peer-team-agenda" class="action muted" disabled>Download alleen PRIVATE HUMAN dossiers voor dit team (.md)</button>
+<p class="shelf-status">De ontvangende persoon is NIET geauthenticeerd. Teamtoewijzingen zijn lokaal en handmatig; controleer de ontvanger onafhankelijk. De export toont geen dossiers of pakket-hashes die uitsluitend bij andere teams horen.</p>
+</div>
 <button type="button" id="shelf-peer-apply" class="action muted" disabled>Pas alleen apart gekozen bronexacte HUMAN voorstellen toe</button>
 <button type="button" id="shelf-peer-summary-export" class="action muted" disabled>Download bronvrije PRIVÉ consensus- en conflictaantallen (.json)</button>
 <button type="button" id="shelf-peer-receipt" class="action muted" disabled>Download brongebonden PRIVÉ HUMAN-returnbon (.json)</button>
@@ -1295,6 +1312,7 @@ const LightUpPrivateDrift = (() => {
     peerApply.disabled = true;
     peerSummaryExport.disabled = true;
     el("shelf-peer-agenda").disabled = true;
+    el("shelf-peer-team-agenda").disabled = true;
     el("shelf-peer-draft-save").disabled = true;
     el("shelf-peer-draft-open").disabled = true;
     el("shelf-peer-draft-status").textContent = "PRIVATE conceptkeuze vervallen door oorspronkelijke bron-/HUMAN-wijziging.";
@@ -1322,6 +1340,8 @@ const LightUpPrivateDrift = (() => {
   const peerFilter = el("shelf-peer-filter");
   const peerSearch = el("shelf-peer-search");
   const peerAgenda = el("shelf-peer-agenda");
+  const peerTeamAgenda = el("shelf-peer-team-agenda");
+  const peerAgendaTeam = el("shelf-peer-agenda-team");
   const peerDraftSave = el("shelf-peer-draft-save");
   const peerDraftOpen = el("shelf-peer-draft-open");
   const peerDraftStatus = el("shelf-peer-draft-status");
@@ -1387,13 +1407,20 @@ const LightUpPrivateDrift = (() => {
     }
     peerPreviewText.replaceChildren(container);
   };
+  const updateTeamAgenda = () => {
+    peerTeamAgenda.disabled = !peerPreview ||
+      !["security","privacy","client_ops","platform"].includes(peerAgendaTeam.value) ||
+      !peerPreview.decisions.some(d=>d.item.team===peerAgendaTeam.value);
+  };
   peerFilter.addEventListener("change", refreshPeerDesk);
   peerSearch.addEventListener("input", refreshPeerDesk);
+  peerAgendaTeam.addEventListener("change",updateTeamAgenda);
   peerInput.addEventListener("change", async () => {
     const files = Array.from(peerInput.files || []);
     peerInput.value = "";
     peerPreview = null; peerRows.replaceChildren();
     peerApply.disabled = true; peerSummaryExport.disabled = true; peerAgenda.disabled = true;
+    peerTeamAgenda.disabled = true;
     peerDraftSave.disabled = true; peerDraftOpen.disabled = true;
     peerDraftStatus.textContent = "Selecteer opnieuw dezelfde originele bron- en reviewerbestanden voor HUMAN conceptkeuzes.";
     peerPreviewText.textContent = "Geen actuele HUMAN-keuze.";
@@ -1474,6 +1501,7 @@ const LightUpPrivateDrift = (() => {
           }
         }
         const entry = {item,allowed,choice:-1,mismatch,state,
+          presentPacketSlots:originals.flatMap((row,index)=>row?[index+1]:[]),
           proposalCount:proposals.length,
           conflicting:state==="TEGENSTRIJDIGE HUMAN-KEUZES",
           noteUncertain:state==="PRIVATE NOTITIEDEKKING ONBEKEND"};
@@ -1525,6 +1553,7 @@ const LightUpPrivateDrift = (() => {
       peerPreview = {decisions,epoch,revision,counts,packetBytes};
       peerSummaryExport.disabled = false;
       peerAgenda.disabled = false;
+      updateTeamAgenda();
       peerDraftOpen.disabled = false;
       peerDraftStatus.textContent = "Pakketten bronexact geladen. HUMAN conceptkeuzes kunnen nu worden bewaard of opnieuw gebonden.";
       refreshPeerDesk();
@@ -1537,7 +1566,8 @@ const LightUpPrivateDrift = (() => {
     } catch (_) {
       peerPreview = null; peerRows.replaceChildren();
       peerSummaryExport.disabled = true; peerApply.disabled = true; peerAgenda.disabled = true;
-      peerDraftSave.disabled = true; peerDraftOpen.disabled = true;
+      peerTeamAgenda.disabled = true;
+    peerDraftSave.disabled = true; peerDraftOpen.disabled = true;
       peerDraftStatus.textContent = "Ongeldige PRIVATE reviewer-pakketten; geen concept heropend.";
       peerFilterCount.textContent = "Geen geldige reviewpakketten.";
       peerPreviewText.textContent = "Geen menselijke keuze mogelijk.";
@@ -1679,24 +1709,54 @@ const LightUpPrivateDrift = (() => {
     }
   });
 
-  peerAgenda.addEventListener("click", () => {
+  const exportPeerAgenda = teamOnly => {
     const plan = peerPreview;
     if (!plan || busy) return report("HOLD — er is geen actuele bronexacte HUMAN bespreeklijst.");
     if (plan.epoch !== generation || plan.revision !== humanRevision) {
       discardPeerPreview();
       return report("HOLD — HUMAN bron/reviewrevisie gewijzigd; agenda niet gemaakt.");
     }
-    const attention = plan.decisions.filter(d => d.mismatch || d.conflicting ||
+    const selectedTeam = peerAgendaTeam.value;
+    if (teamOnly && !["security","privacy","client_ops","platform"].includes(selectedTeam)) {
+      return report("HOLD — kies één concreet HUMAN ontvangend team.");
+    }
+    const scope = teamOnly ? plan.decisions.filter(d=>d.item.team===selectedTeam) : plan.decisions;
+    if (teamOnly && !scope.length) return report("HOLD — dit team heeft geen eigen brongebonden HUMAN dossiers.");
+    // Do not disclose any reviewer packet digest unrelated to this team's
+    // original source references. Never apply active UI table filters.
+    const packetSlots = teamOnly
+      ? new Set(scope.flatMap(d=>d.presentPacketSlots)) : null;
+    const includedPacketBytes = teamOnly
+      ? plan.packetBytes.filter(p=>packetSlots.has(p.local_packet_number))
+      : plan.packetBytes;
+    const counts = teamOnly
+      ? {
+          source_scope_count:scope.length, reviewer_packet_slots_total:plan.counts.packets,
+          referenced_packet_slots:includedPacketBytes.length,
+          source_mismatches:scope.filter(d=>d.mismatch).length,
+          human_conflicts:scope.filter(d=>d.conflicting).length,
+          redacted_note_uncertainty:scope.filter(d=>d.noteUncertain).length,
+          partial_participation:scope.filter(d=>d.proposalCount>0 &&
+            d.proposalCount<plan.counts.packets).length,
+          unreviewed_sources:scope.filter(d=>d.proposalCount===0).length
+        } : plan.counts;
+    const attention = scope.filter(d => d.mismatch || d.conflicting ||
       d.noteUncertain || d.proposalCount < plan.counts.packets);
-    if (!confirm("Download PRIVATE HUMAN bespreekagenda voor ALLE "+plan.decisions.length+
-      " oorspronkelijke bronnen, inclusief "+attention.length+" aandachtspunten, originele bestandsnamen, SHA-256 en alle packet-digests? "+
-      "Dit bevat geen originele bronbytes of PRIVATE notitietekst. Filters worden niet stilzwijgend toegepast. "+
-      "Verifieer de vertrouwelijke ontvanger en het kanaal zelf; nooit consent of grant.")) return;
+    if (!confirm("Download " + (teamOnly ? "ALLEEN de "+scope.length+
+      " oorspronkelijke PRIVATE HUMAN dossiers van team "+teams[selectedTeam] :
+      "de VOLLEDIGE PRIVATE HUMAN bespreekagenda voor "+scope.length+" oorspronkelijke bronnen")+
+      ", inclusief "+attention.length+" aandachtspunten? "+
+      (teamOnly ? "Alleen SHA-256 van de "+includedPacketBytes.length+
+        " reviewpakketten met voorstellen voor dit team worden opgenomen. " :
+        "Ook oorspronkelijke reviewer-pakketdigests voor de volledige selectie worden opgenomen. ")+
+      "De agenda bevat vertrouwelijke oorspronkelijke namen, hashes en HUMAN keuzes, "+
+      "geen bronbytes of PRIVATE notitieteksten. UI filters gelden NIET voor dit document. "+
+      "Controleer ontvangende mens en kanaal apart; geen echte toestemming of grant.")) return;
     // Unfiltered, source-bound private HUMAN meeting docket. All entries are
     // serialized via JSON inside Markdown code fences, not rendered as active HTML.
     const rank = d => d.mismatch ? 0 : d.conflicting ? 1 :
       d.noteUncertain ? 2 : d.proposalCount < plan.counts.packets ? 3 : 4;
-    const order = [...plan.decisions].sort((a,b) => rank(a)-rank(b));
+    const order = [...scope].sort((a,b) => rank(a)-rank(b));
     const humanRecord = row => row ? {
       human_team:row.human_team, human_stage:row.human_stage,
       human_route:row.human_route, private_note_included:row.private_note_included
@@ -1706,7 +1766,7 @@ const LightUpPrivateDrift = (() => {
     // JSON backslash-u0060 represents the original backtick character.
     const agendaJSON = value => JSON.stringify(value,null,2).replace(/\x60/gu,"\\u0060");
     const agenda = [
-      "# LightUp — PRIVATE HUMAN review-bespreekagenda",
+      teamOnly ? "# LightUp — PRIVATE HUMAN TEAM-reviewbespreekagenda" : "# LightUp — PRIVATE HUMAN review-bespreekagenda",
       "",
       "**REVIEW_ONLY · INCUBATE M3/M7 · DRAFT/HOLD · geen autorisatie of scannerrecht.**",
       "",
@@ -1716,21 +1776,21 @@ const LightUpPrivateDrift = (() => {
       "Deze export bevat vertrouwelijke oorspronkelijke namen, SHA-256 en menschlijke team/route/fase-keuzes.",
       "PRIVATE notitieteksten en oorspronkelijke bronbytes ontbreken. "+
         "Gelijke ongetekende voorstellen bewijzen geen onafhankelijke revieweridentiteit of consent.",
-      "Tabel- en zoekfilters zijn NIET op deze complete agenda toegepast.",
+      teamOnly ? "ALLEEN team "+teams[selectedTeam]+" en bijhorende originele bronnen. Andere teamdossiers en niet-gerelateerde reviewer-digests zijn uitgesloten." : "Tabel- en zoekfilters zijn NIET op deze complete agenda toegepast.",
       "",
       "## Ontvangen ongetekende HUMAN pakketten (lokale volgorde)",
       "",
       "```json",
-      agendaJSON(plan.packetBytes),
+      agendaJSON(includedPacketBytes),
       "```",
       "",
       "## Bronvrije triageaantallen",
       "",
       "```json",
-      agendaJSON(plan.counts),
+      agendaJSON(counts),
       "```",
       "",
-      "## Alle oorspronkelijke dossiers op bespreekprioriteit",
+      teamOnly ? "## Alleen oorspronkelijke dossiers van team "+teams[selectedTeam]+" op bespreekprioriteit" : "## Alle oorspronkelijke dossiers op bespreekprioriteit",
       ""
     ];
     for (const [idx,d] of order.entries()) {
@@ -1752,7 +1812,7 @@ const LightUpPrivateDrift = (() => {
         },
         human_packets:d.allowed.map((row,index) => ({
           local_packet_number:index+1,review:humanRecord(row)
-        })),
+        })).filter(p=>!teamOnly || d.presentPacketSlots.includes(p.local_packet_number)),
         explicit_choice:d.choice < 0 ? "NIETS OVERNEMEN" : "PAKKET "+(d.choice+1),
         chosen_human_after:humanRecord(originallySelected),
         no_execution_authority:true
@@ -1768,10 +1828,14 @@ const LightUpPrivateDrift = (() => {
       "5. Bestaande echte toestemming, grant, revocation, security review en CI blijven gescheiden.",
       "");
     download(new Blob([agenda.join("\n")],{type:"text/markdown;charset=utf-8"}),
-      "lightup-scope-PRIVATE-HUMAN-multi-peer-review-agenda.md");
-    report("REVIEW_ONLY — PRIVATE brongebonden HUMAN bespreekagenda met "+
+      teamOnly ? "lightup-scope-PRIVATE-HUMAN-"+selectedTeam+"-peer-review-agenda.md" :
+        "lightup-scope-PRIVATE-HUMAN-multi-peer-review-agenda.md");
+    report("REVIEW_ONLY — PRIVATE HUMAN bespreekagenda van "+
+      (teamOnly ? "uitsluitend team "+teams[selectedTeam]+" met " : "alle teams met ")+
       order.length+" oorspronkelijke dossiers lokaal gedownload. Geen bronbytes, notitietekst of toestemming.");
-  });
+  };
+  peerAgenda.addEventListener("click",()=>exportPeerAgenda(false));
+  peerTeamAgenda.addEventListener("click",()=>exportPeerAgenda(true));
 
   el("shelf-peer-summary-export").addEventListener("click", () => {
     const plan = peerPreview;
@@ -2162,6 +2226,7 @@ const LightUpPrivateDrift = (() => {
     peerApply.disabled = true;
     peerSummaryExport.disabled = true;
     peerAgenda.disabled = true;
+    peerTeamAgenda.disabled = true;
     peerDraftSave.disabled = true; peerDraftOpen.disabled = true;
     peerDraftStatus.textContent = "PRIVATE conceptkeuzes gewist bij verlaten van de lokale werkruimte.";
     peerSearch.value = "";
