@@ -97,7 +97,9 @@ def publish(archive: Path, destination: Path, expected_sha256: str | None = None
 
                 for name in sorted(set(FILES) | set(PRIVACY_FILES) | {
                     "tools/package.py", "tools/unpack.py", "README.txt",
-                    "START-HERE.html", "manifest.json"}):
+                    "START-HERE.html", "manifest.json",
+                    "PRIVATE-receive.html", "tools/recipient.js",
+                    "tools/recipient.css", "tools/recipient.template.html"}):
                     put(name, outside.read(name))
                 for entry in entries:
                     if not entry.is_dir():

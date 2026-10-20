@@ -2,6 +2,7 @@
 """Source-pinned PRIVATE HUMAN LightUp scope delivery; never authorizes execution."""
 from __future__ import annotations
 import argparse
+import base64
 import hashlib
 import io
 import json
@@ -71,7 +72,9 @@ a{color:#9addff}section{padding:1.2rem;margin:1rem 0;border:1px solid #64748b;bo
 <p><a href="privacy/disclosure-recipient-verify.html">Open pinned original recipient review desk</a></p>
 <p>After separately receiving and decrypting redacted HUMAN text, compare the literal bytes to its original receipt. Human review is still required even if fingerprints match.</p></section>
 <section><h2>5 · Bounded private unpack</h2><p>In a terminal with Python 3.11+, run <code>python3 tools/unpack.py /path/to/outer.zip /private-parent/new-workroom</code>. The parent folder must already be mode 0700, owned by you, and the destination must not exist. This command checks original bytes and opens source entries locally without scans or grants.</p></section>
-<section><h2>6 · Source byte records</h2><p><a href="workspace/verify.html">Open original offline ZIP-byte verifier</a> · <a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
+<section><h2>6 · Browser-only recipient byte verification</h2>
+<p><a href="PRIVATE-receive.html">Open local recipient SHA-256 comparator</a> to select a received file and paste a separately authenticated outer file digest. A BYTE MATCH is REVIEW ONLY, never proof of sender or consent.</p></section>
+<section><h2>7 · Source byte records</h2><p><a href="workspace/verify.html">Open original offline ZIP-byte verifier</a> · <a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
 <p>No scans, network requests, browser storage, client approval, grants, automatic execution or deployment. Original source-owner + security/privacy review, exact-head hosted and named-VPS CI, real separately authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory for any release.</p>
 </body></html>"""
 
@@ -100,6 +103,23 @@ def strict_json(data: bytes) -> dict:
 def no_authority(obj: dict) -> bool:
     a = obj.get("authority")
     return type(a) is dict and set(a) == set(AUTHORITY) and all(a[k] is False for k in AUTHORITY)
+
+def render_receiver() -> bytes:
+    template = read(HERE / "recipient.template.html", 10000).decode("utf-8")
+    js = read(HERE / "recipient.js", 10000).decode("utf-8")
+    css = read(HERE / "recipient.css", 10000).decode("utf-8")
+    for token in ("__SCRIPT_HASH__", "__STYLE_HASH__", "__SCRIPT__", "__STYLE__"):
+        if template.count(token) != 1:
+            raise ValueError("Portable receiver template ambiguity: " + token)
+    if "</script" in js.lower() or "</style" in css.lower():
+        raise ValueError("Unsafe inline receiver source")
+    def sri(data: str) -> str:
+        return base64.b64encode(hashlib.sha256(data.encode()).digest()).decode()
+    for token, value in (("__SCRIPT_HASH__", sri(js)), ("__STYLE_HASH__", sri(css)),
+                         ("__SCRIPT__", js), ("__STYLE__", css)):
+        template = template.replace(token, value)
+    return template.encode("utf-8")
+
 
 def original_admission(workspace: bytes, source: bytes, dist: bytes) -> None:
     if (digest(workspace) != ORIGINAL_ZIP_SHA or digest(source) != ORIGINAL_SOURCE_SHA
@@ -154,7 +174,7 @@ def verify_out_of_band(actual: str, expected: str | None) -> bool:
 def inspect(path: Path, expected_sha256: str | None = None) -> dict:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_500_000:
         raise ValueError("Unsafe or oversized transfer")
-    expected = set(FILES) | set(PRIVACY_FILES) | {"tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
+    expected = set(FILES) | set(PRIVACY_FILES) | {"PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css", "tools/recipient.template.html","tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
     with zipfile.ZipFile(path) as z:
         infos = z.infolist()
         if len(infos) != len(expected) or {x.filename for x in infos} != expected:
@@ -171,6 +191,11 @@ def inspect(path: Path, expected_sha256: str | None = None) -> dict:
         not no_authority(m) or m["files"] != [
             {"path": n, "bytes": len(v), "sha256": digest(v)} for n, v in sorted(data.items())]):
         raise ValueError("Original delivery file receipt / HOLD flags mismatch")
+    if (data["PRIVATE-receive.html"] != render_receiver() or
+        data["tools/recipient.js"] != read(HERE / "recipient.js") or
+        data["tools/recipient.css"] != read(HERE / "recipient.css") or
+        data["tools/recipient.template.html"] != read(HERE / "recipient.template.html")):
+        raise ValueError("Standalone recipient browser is not byte-identical to pinned source build")
     if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode() or data["tools/package.py"] != read(Path(__file__)) or data["tools/unpack.py"] != read(HERE / "unpack.py"):
         raise ValueError("Built-in operator instructions changed")
     if any(digest(data[name]) != pin for name, (_path, pin) in PRIVACY_FILES.items()):
@@ -200,7 +225,11 @@ def build() -> Path:
                        blobs["workspace/DIST-MANIFEST.json"])
     if digest(blobs["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
         raise ValueError("Original encrypted courier drift")
-    blobs.update({"START-HERE.html": HOME.encode(), "README.txt": README.encode(),
+    blobs.update({"PRIVATE-receive.html": render_receiver(),
+                  "tools/recipient.js": read(HERE / "recipient.js"),
+                  "tools/recipient.css": read(HERE / "recipient.css"),
+                  "tools/recipient.template.html": read(HERE / "recipient.template.html"),
+                  "START-HERE.html": HOME.encode(), "README.txt": README.encode(),
                   "tools/package.py": read(Path(__file__)),
                   "tools/unpack.py": read(HERE / "unpack.py")})
     blobs["manifest.json"] = receipt(blobs)

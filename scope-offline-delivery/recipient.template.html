@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<title>LightUp · PRIVATE recipient byte comparison</title>
+<style>__STYLE__</style>
+</head>
+<body>
+<main>
+<p class="tag">LIGHTUP / OFFLINE PRIVATE HANDOFF</p>
+<h1>Recipient byte comparison</h1>
+<p><strong>DRAFT / HOLD · REVIEW ONLY.</strong> This page hashes your selected local file in browser memory. It makes no network requests, opens no accounts, issues no grants and stores nothing.</p>
+<section>
+<h2>Compare an independently received digest</h2>
+<label for="selected">Choose one received local ZIP or encrypted HUMAN file</label>
+<input id="selected" type="file" aria-describedby="limit">
+<p id="limit">Maximum 2.5 MB per file. No file contents are displayed or uploaded.</p>
+<label for="expected">Expected SHA-256 from an independently authenticated sender channel</label>
+<input id="expected" type="text" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" placeholder="64 lowercase hexadecimal characters" aria-describedby="digest-help">
+<p id="digest-help">Do not copy the digest from the SAME untrusted archive and call that authenticated proof.</p>
+<button id="verify" type="button">Compare local bytes</button>
+<p id="status" role="status" aria-live="polite" data-state="idle">No comparison performed. Do not treat this as permission.</p>
+<p id="details" class="mono" aria-live="polite"></p>
+</section>
+<section>
+<h2>After a BYTE MATCH</h2>
+<p>Independently verify the sender, intended recipient and lawful scope. Open the original <a href="START-HERE.html">PRIVATE workflow home</a> for manual redaction, encrypted HUMAN courier and explicit receiver review. A matching SHA proves equal bytes only: <strong>not identity, consent, approval, content safety or remediation.</strong></p>
+<p>If this page cannot hash a local file, use the <code>tools/package.py inspect</code> command with <code>--expected-sha256</code> received separately.</p>
+</section>
+<footer>Incubate M3/M7 PLAN/LAB ONLY. No live target, scanning, deployment, active authorization, or release.</footer>
+</main>
+<script>__SCRIPT__</script>
+</body>
+</html>
