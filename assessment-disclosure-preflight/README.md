@@ -553,3 +553,56 @@ source inventory against an independently trusted source/commit:
 SHA-256 equality is not a digital signature, authorship proof, CI gate,
 consent or a release approval. Do not extract or send it on behalf of
 a client without the original separate authorization.
+
+
+### Sixth product: offline encrypted final HUMAN result directly from browser
+
+The **existing two-reviewer local browser** now completes an end-to-end
+**non-authorizing HUMAN handoff** without creating a new plaintext
+final HUMAN report or CSV file. It does not run an assessment, activate
+a target, authenticate a client or grant any release.
+
+1. Load the exact original unsigned PRIVATE receipt and both completed
+   HUMAN reviews (native CSV, encrypted .luhd, or encrypted .luhb). The
+   browser re-admits the receipt and each exact original plaintext HUMAN
+   CSV and their SHA-256 identities.
+2. Compare all original ordinals and explicitly assign A/B/HOLD, with a
+   nonblank bounded local reason for A/B. Every HOLD remains `unreviewed`,
+   even when both reviewers agree.
+3. First **export and protect the source-bound PRIVATE A/B decision CSV**;
+   it contains both reviewer plaintext-byte digests and all HUMAN
+   justifications. If any choice or reason subsequently changes, another
+   decision-CSV export is **mandatory** before the sealed result may be
+   generated. This prevents the browser from silently exporting an outcome
+   whose separately retained decision rationale is stale.
+4. Enter a NEW 14–256-character password twice and explicitly approve
+   local encryption. The original LightUp `LightUpHumanVault.sealBundle`
+   encrypts the identical unsigned receipt bytes plus selected HUMAN
+   rows, in their original six-column native HUMAN CSV format, using
+   AES-256-GCM, PBKDF2-SHA256 and a fresh salt/nonce. The result is a
+   **single `PRIVATE-browser-reconciled-human.luhb`**, without writing
+   a new plaintext final CSV or report. The browser verifies the
+   source/session/selection revision after asynchronous encryption before
+   allowing download; a subsequent change HOLDs the stale operation.
+   Password inputs are cleared on both success and refusal, without
+   a claim of secure erasure from browser or OS memory.
+5. Independently choose a **source-free counts-only export**, using
+   the existing native HUMAN stage names and minimum cohort floor of
+   five. The original small-cohort and any nonzero under-five stage
+   breakdown are suppressed. This is NOT guaranteed anonymity and
+   requires the actual recipient/privacy review before any disclosure.
+
+The encrypted bundle is compatible with the existing local
+`human_review.py render --bundle` and the original local HUMAN studio
+`.luhb` importer. It carries **the original unsigned receipt and
+selected stage/question/action data, not the original A/B decision
+justification**; keep the separate reviewer-bound decisions CSV for
+source-identity and accountable HUMAN choice review. Native
+`reconcile.py finalize` remains the stricter offline path that
+reopens the original two reviewers and the saved choices. Do not
+treat a browser-created encrypted file as proof of independent
+review, source authenticity, receipt provenance, approved assessment,
+cryptographic sender identity, authenticated current client/operator
+consent or permission to send anything externally. Original CI,
+review, named permanent runner, action-time revocation and HUMAN GO
+remain mandatory for release.
