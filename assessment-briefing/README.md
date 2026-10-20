@@ -84,3 +84,13 @@ python3 assessment-briefing/human_revision.py \
 ```
 
 Both human CSVs are independently admitted in full using the same strict original-ordinal/severity/evidence-count contract; all changes are then explicitly compared by HUMAN stage, group, proposed action and blocker. The new private scriptless `private-human-revisions.html` shows only changed human fields with PRIVATE original finding titles; `human-revision-counts.json` contains only numeric change / HUMAN stage-transition totals and unsigned fingerprints (still PRIVATE). Ambiguous membership or unmatched source HOLD the entire operation, leaving all prior source and review files untouched. Original finding text, actual evidence, target state, client consent, reviewer identity or source authenticity are never modified or verified.
+
+## One-menu private operations console
+
+For people who prefer not to assemble five different long commands, the companion offers a complete **foreground local menu**:
+
+```bash
+python3 assessment-briefing/console.py
+```
+
+Choose the detailed original briefing, two-source drift, privacy-minimal aggregate, original HUMAN return or original HUMAN revision comparison; enter only explicit local existing input paths and one NEW output directory. The console displays exactly the private disclosure profile of the chosen workflow and requires an explicit `REVIEW ONLY` confirmation. Invalid options, cancelled input, CTRL-C or declined disclosure do not run a source operation. Original execution/scan/grant/production routes are never touched and no existing output is overwritten. It intentionally returns 2 for a prepared private review packet, and 3 for cancellation/HOLD.
