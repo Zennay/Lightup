@@ -1,0 +1,207 @@
+/* LightUp original PRIVATE HUMAN proposed-change board — offline operator view.
+ * Read only an original native PRIVATE operator board from 0700/0600 custody.
+ * All source/admission and real authorization remain separate HUMAN gates.
+ */
+(() => {
+  "use strict";
+  const $=id=>document.getElementById(id);
+  const SCHEMA="lightup.private.workspace-ledger-human-owner-change-briefs.v1";
+  const KEYS=["schema","authority","historical_only","sources_reopened","recipient_authenticated","consent_assumed","actions_dispatched","appointments_booked","verified_remediation","original_history_sha256","original_owner_inbox_sha256","original_operator_followup_sha256","changed_only","human_only_proposed_owner_rows"];
+  const AUTH=["authorization","consent","verified_finding","release_approval"];
+  const GROUP=["original_proposed_human_owner_label","original_owner_slot_count","human_proposed_owner_rows"];
+  const ROW=["original_proposed_human_owner_label","local_case","historical_transition","original_kit","original_round_human_stage","original_owner_human_reply_stage","human_operator_followup_stage","private_human_followup_note"];
+  const STAGES=["needs_discussion","proposed_followup","hold"];
+  const MAX=1048576;
+  let full=null,rows=[],owners=[],hash="";
+  const exact=(o,k)=>!!o&&typeof o==="object"&&!Array.isArray(o)&&Object.keys(o).length===k.length&&k.every(x=>Object.hasOwn(o,x));
+  const hex=s=>typeof s==="string"&&/^[a-f0-9]{64}$/.test(s);
+  const label=s=>typeof s==="string"&&s.length>0&&s.length<=80&&s===s.trim()&&!/[\u0000-\u001f\u007f]/.test(s)&&!/^\s*[=+@-]/.test(s);
+  const note=s=>typeof s==="string"&&s.length<=240&&!/[\u0000-\u001f\u007f]/.test(s)&&!/^\s*[=+@-]/.test(s);
+  function parseUnique(source){
+    let pos=0;
+    const number=/-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
+    const literal=/(?:true|false|null)/y;
+    const space=()=>{while(pos<source.length&&/[\r\n\t ]/.test(source[pos]))pos++;};
+    function quoted(){
+      if(source[pos]!=='"')throw Error("Invalid PRIVATE JSON key");
+      const start=pos++;
+      while(pos<source.length){const c=source[pos++];
+        if(c==='"')return JSON.parse(source.slice(start,pos));
+        if(c==="\\"){if(pos===source.length)throw Error("Malformed JSON escape");pos++;}
+      }
+      throw Error("Incomplete source JSON string");
+    }
+    function value(depth){
+      if(depth>64)throw Error("PRIVATE JSON nesting limit");
+      space();
+      if(source[pos]==='{'){
+        pos++;space();const seen=new Set();
+        if(source[pos]==='}'){pos++;return;}
+        while(true){
+          space();const key=quoted();
+          if(seen.has(key))throw Error("Duplicate PRIVATE source JSON key");
+          seen.add(key);space();
+          if(source[pos++]!==':')throw Error("Malformed source JSON member");
+          value(depth+1);space();
+          const end=source[pos++];
+          if(end==='}')return;
+          if(end!==',')throw Error("Malformed source JSON object");
+        }
+      }
+      if(source[pos]==='['){
+        pos++;space();if(source[pos]===']'){pos++;return;}
+        while(true){
+          value(depth+1);space();const end=source[pos++];
+          if(end===']')return;
+          if(end!==',')throw Error("Malformed source JSON array");
+        }
+      }
+      if(source[pos]==='"'){quoted();return;}
+      number.lastIndex=pos;const n=number.exec(source);
+      if(n){pos=number.lastIndex;return;}
+      literal.lastIndex=pos;const l=literal.exec(source);
+      if(l){pos=literal.lastIndex;return;}
+      throw Error("Malformed PRIVATE source token");
+    }
+    value(0);space();
+    if(pos!==source.length)throw Error("Unexpected trailing source bytes");
+    return JSON.parse(source);
+  }
+  function admit(doc){
+    if(!exact(doc,KEYS)||doc.schema!==SCHEMA||!exact(doc.authority,AUTH)||
+      !AUTH.every(k=>doc.authority[k]===false)||doc.historical_only!==true||
+      !["sources_reopened","recipient_authenticated","consent_assumed","actions_dispatched","appointments_booked","verified_remediation"].every(k=>doc[k]===false)||
+      !hex(doc.original_history_sha256)||!hex(doc.original_owner_inbox_sha256)||
+      !hex(doc.original_operator_followup_sha256)||typeof doc.changed_only!=="boolean"||
+      !Array.isArray(doc.human_only_proposed_owner_rows)||doc.human_only_proposed_owner_rows.length<1||
+      doc.human_only_proposed_owner_rows.length>8)throw Error("Not a canonical native PRIVATE HUMAN change board");
+    const groups=[],all=[],ids=new Set(),labels=new Set();
+    for(const g of doc.human_only_proposed_owner_rows){
+      if(!exact(g,GROUP)||!label(g.original_proposed_human_owner_label)||
+        labels.has(g.original_proposed_human_owner_label)||
+        !Number.isInteger(g.original_owner_slot_count)||g.original_owner_slot_count<1||g.original_owner_slot_count>2048||
+        !Array.isArray(g.human_proposed_owner_rows)||
+        g.human_proposed_owner_rows.length>g.original_owner_slot_count)
+        throw Error("Invalid original proposed HUMAN owner group");
+      labels.add(g.original_proposed_human_owner_label);
+      groups.push(g.original_proposed_human_owner_label);
+      for(const r of g.human_proposed_owner_rows){
+        const id=r?.local_case+":"+r?.historical_transition+":"+r?.original_kit;
+        if(!exact(r,ROW)||r.original_proposed_human_owner_label!==g.original_proposed_human_owner_label||
+          !Number.isInteger(r.local_case)||r.local_case<1||r.local_case>8||
+          !Number.isInteger(r.historical_transition)||r.historical_transition<1||r.historical_transition>11||
+          !Number.isInteger(r.original_kit)||r.original_kit<1||r.original_kit>12||
+          ids.has(id)||!STAGES.includes(r.original_round_human_stage)||
+          !STAGES.includes(r.original_owner_human_reply_stage)||
+          !STAGES.includes(r.human_operator_followup_stage)||
+          !note(r.private_human_followup_note)||(
+            doc.changed_only &&
+            r.original_owner_human_reply_stage===r.human_operator_followup_stage &&
+            !r.private_human_followup_note
+          ))throw Error("Original HUMAN change row invalid");
+        ids.add(id);all.push(r);
+        if(all.length>2048)throw Error("PRIVATE HUMAN source slot limit");
+      }
+    }
+    return {groups,all};
+  }
+  const el=(tag,value,cls)=>{const n=document.createElement(tag);
+    if(value!==undefined)n.textContent=String(value);
+    if(cls)n.className=cls;return n;
+  };
+  const status=s=>{$("status").textContent=s;};
+  function clear(){
+    full=null;rows=[];owners=[];hash="";
+    $("source").value="";$("room").hidden=true;$("cards").replaceChildren();
+    $("owner").replaceChildren(el("option","All proposed HUMAN owners"));
+    $("owner").firstChild.value="";
+    $("stage").value="";$("change").value="all";$("search").value="";
+    status("PRIVATE HUMAN browser memory cleared. No source files modified.");
+  }
+  function selected(){
+    const target=$("owner").value,stage=$("stage").value,change=$("change").value;
+    const phrase=$("search").value.trim().toLocaleLowerCase();
+    return rows.filter(r=>{
+      if(target&&r.original_proposed_human_owner_label!==target)return false;
+      if(stage&&r.human_operator_followup_stage!==stage)return false;
+      if(change==="stage"&&r.original_owner_human_reply_stage===r.human_operator_followup_stage)return false;
+      if(change==="note"&&!r.private_human_followup_note)return false;
+      if(change==="both"&&!(r.private_human_followup_note&&r.original_owner_human_reply_stage!==r.human_operator_followup_stage))return false;
+      if(change==="stable"&&(r.original_owner_human_reply_stage!==r.human_operator_followup_stage||r.private_human_followup_note))return false;
+      return !phrase||(
+        r.original_proposed_human_owner_label+" "+r.local_case+" "+
+        r.historical_transition+" "+r.original_kit+" "+r.private_human_followup_note
+      ).toLocaleLowerCase().includes(phrase);
+    });
+  }
+  function render(){
+    if(!full)return;
+    const v=selected(), box=$("cards");box.replaceChildren();
+    $("summary").textContent=owners.length+" original proposed HUMAN owner groups • "+
+      rows.length+" original HUMAN rows in private operator board • "+
+      (full.changed_only?"changes-only native source":"full native HUMAN source");
+    $("visible").textContent=v.length+" visible HUMAN slots · "+
+      STAGES.map(s=>s.replaceAll("_"," ")+": "+v.filter(r=>r.human_operator_followup_stage===s).length).join(" · ");
+    for(const r of v){
+      const article=el("article",undefined,"card");
+      article.append(el("h3","Original HUMAN source "+r.local_case+"/"+r.historical_transition+"/"+r.original_kit));
+      const facts=el("div",undefined,"facts");
+      for(const [key,val] of [
+        ["Proposed original HUMAN owner (not authenticated)",r.original_proposed_human_owner_label],
+        ["Original received HUMAN proposal",r.original_owner_human_reply_stage],
+        ["Operator HUMAN-only follow-up proposal",r.human_operator_followup_stage],
+        ["PRIVATE follow-up note; not security evidence",r.private_human_followup_note||"—"]
+      ]){const row=el("div",undefined,"fact");row.append(el("strong",key),el("span",val));facts.append(row);}
+      article.append(facts);box.append(article);
+    }
+    if(!v.length)box.append(el("p","No matching historical HUMAN proposal. Not evidence of a fix."));
+  }
+  async function load(event){
+    const file=event.target.files?.[0];
+    if(!file||file.size<=0||file.size>MAX||!file.name.toLowerCase().endsWith(".json")){
+      status("PRIVATE HOLD: choose one complete original native board JSON ≤1 MiB");return;
+    }
+    try{
+      const bytes=await file.arrayBuffer();
+      if(bytes.byteLength!==file.size||!crypto.subtle)throw Error("Local unsigned digest unavailable");
+      const doc=parseUnique(new TextDecoder("utf-8",{fatal:true}).decode(bytes));
+      const result=admit(doc);
+      const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),
+        n=>n.toString(16).padStart(2,"0")).join("");
+      full=doc;hash=digest;rows=result.all;owners=result.groups;
+      const sel=$("owner");sel.replaceChildren(el("option","All original proposed HUMAN owners"));
+      sel.firstChild.value="";
+      for(const name of owners){const opt=el("option",name);opt.value=name;sel.append(opt);}
+      $("stage").value="";$("change").value="all";$("search").value="";
+      $("room").hidden=false;render();
+      status("Original PRIVATE HUMAN proposals opened locally. Unsigned source SHA-256: "+hash+". No actual authorization.");
+    }catch(err){
+      status("PRIVATE HOLD: original source rejected ("+(err?.message||"invalid")+"). Previous browser view retained.");
+    }
+  }
+  function counts(){
+    if(!full)return;
+    const data=selected();
+    const result={schema:"lightup.private.anonymous-owner-change-counts.v1",
+      authority:{authorization:false,consent:false,verified_finding:false,release_approval:false},
+      historical_only:true,visible_human_proposals:data.length,
+      proposed_human_statuses:Object.fromEntries(STAGES.map(k=>[
+        k,data.filter(r=>r.human_operator_followup_stage===k).length])),
+      human_stage_change_count:data.filter(r=>r.human_operator_followup_stage!==r.original_owner_human_reply_stage).length,
+      private_human_note_present_count:data.filter(r=>!!r.private_human_followup_note).length};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)+"\n"],
+      {type:"application/json"}));
+    const a=el("a");a.href=url;a.download="LightUp-anonymous-HUMAN-change-counts.json";
+    document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);
+    status("Only anonymous visible HUMAN counts exported. No labels, notes or original case IDs.");
+  }
+  $("source").addEventListener("change",load);
+  $("owner").addEventListener("change",render);
+  $("stage").addEventListener("change",render);
+  $("change").addEventListener("change",render);
+  $("search").addEventListener("input",render);
+  $("counts").addEventListener("click",counts);
+  $("clear").addEventListener("click",clear);
+  window.addEventListener("pagehide",clear);
+  status("Select locally generated PRIVATE-HUMAN-operator-change-board.json. No embedded HUMAN source data.");
+})();

@@ -44,6 +44,7 @@ import portfolio_owner_inbox_viewer
 import portfolio_owner_followup
 import portfolio_owner_followup_studio
 import portfolio_owner_change_briefs
+import portfolio_owner_change_board
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -104,6 +105,7 @@ MENU = (
     ("50", "Receive original-source PRIVATE HUMAN operator follow-up"),
     ("51", "Build standalone PRIVATE HUMAN operator follow-up Studio"),
     ("52", "Create source-bound per-owner PRIVATE HUMAN follow-up change briefs"),
+    ("53", "Build portable offline PRIVATE HUMAN operator change board"),
     ("0", "Exit"),
 )
 
@@ -252,6 +254,10 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "53":
+        return portfolio_owner_change_board.build(argparse.Namespace(
+            output=prompt("Absolute NEW PRIVATE HUMAN owner change-board .html in 0700 directory")
         ))
     if action == "52":
         return portfolio_owner_change_briefs.run(argparse.Namespace(

@@ -197,10 +197,32 @@ def run(args):
             "changed_only":args.changed_only,
             "owner_private_packets_in_explicit_order":records,
         }
-        if len(source_minimal.encode("utf-8"))>MAX_MANIFEST or len(canonical(manifest))>MAX_MANIFEST:
-            reject("PRIVATE HOLD: operator index exceeds size bound")
+        private_board={
+            "schema":SCHEMA,"authority":FLAGS,"historical_only":True,
+            "sources_reopened":False,"recipient_authenticated":False,
+            "consent_assumed":False,"actions_dispatched":False,
+            "appointments_booked":False,"verified_remediation":False,
+            "original_history_sha256":digest(history),
+            "original_owner_inbox_sha256":digest(inbox),
+            "original_operator_followup_sha256":digest(followup),
+            "changed_only":args.changed_only,
+            "human_only_proposed_owner_rows":[{
+                "original_proposed_human_owner_label":owner,
+                "original_owner_slot_count":len(raw_rows),
+                "human_proposed_owner_rows":selected(raw_rows,args.changed_only),
+            } for owner,raw_rows in groups.items()],
+        }
+        from portfolio_owner_change_board import render as render_board
+        private_browser=render_board()
+        if any(len(data if isinstance(data,bytes) else data.encode("utf-8"))>
+               MAX_MANIFEST for data in (
+            source_minimal,canonical(manifest),canonical(private_board),private_browser
+        )):
+            reject("PRIVATE HOLD: operator source-bound board exceeds private output limit")
         write_private(root,"OPEN-PRIVATE.html",source_minimal)
         write_private(root,"PRIVATE-HUMAN-operator-change-manifest.json",canonical(manifest))
+        write_private(root,"PRIVATE-HUMAN-operator-change-board.json",canonical(private_board))
+        write_private(root,"PRIVATE-HUMAN-operator-change-board.html",private_browser)
     except BaseException:
         shutil.rmtree(root)
         raise

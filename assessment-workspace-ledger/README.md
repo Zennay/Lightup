@@ -1863,3 +1863,39 @@ Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD and the existing hosted and named VPS
 CI, original owner/browser/security/privacy reviews, authenticated current
 operator/client consent with action-time revocation, and HUMAN GO still gate
 any real release.
+
+## v46 — source-free private operator HUMAN change-board explorer
+
+Every original owner-private HUMAN change-brief run (console 52) now generates
+two operator-only 0600 sibling artifacts under its fresh 0700 room:
+`PRIVATE-HUMAN-operator-change-board.json` and
+`PRIVATE-HUMAN-operator-change-board.html`. The JSON is source-bound to the
+same canonical original HUMAN history, original owner reply inbox and
+original HUMAN operator follow-up receipt. It includes only HUMAN proposals
+already admitted by the v45 native source pipeline; no original raw inputs.
+
+The source-free scriptless outer HTML with CSP/SHA-pinned local browser code
+requires an explicit local operator-selected original board JSON (≤ 1 MiB).
+Its strict duplicate-key-rejecting preview provides owner, proposed human
+stage, stage-changed, private-note-present, both/stable and local search
+filters. PRIVATE human text appears only in the loaded operator browser
+memory. The only export is anonymous VISIBLE counts JSON, omitting all owner
+labels, original source ordinals, SHA identities and note text. Browser
+previews are not native source authentication or real recipient approval.
+
+The portable source-free [owner change board](portfolio-owner-change-board.html)
+also ships standalone. Generate an additional copy in an existing 0700
+operator-only directory:
+
+    python3 assessment-workspace-ledger/portfolio_owner_change_board.py \
+      --output /private/software/NEW-private-HUMAN-change-board.html
+
+Console **53** builds software only; console 52 generates complete original
+native source-exact owner-private artifacts with the matching ready-to-open
+viewer. Historical source inputs are never embedded in the software bundle,
+modified, sent, authorized or activated. Fixed offline source-only v46 ZIP
+retains v16–v45 unsigned software inventory reading. Notion LightUp remains
+Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD: genuine current operator/client
+consent, named VPS and hosted exact-head CI, original source-owner and
+independent browser/security/privacy review and explicit HUMAN GO continue
+to gate any merge or live release.
