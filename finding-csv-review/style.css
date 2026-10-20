@@ -75,3 +75,10 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 @media(max-width:700px) { .revision-groups { grid-template-columns:1fr; } .revision { padding:16px; } }
 
 @media(min-width:701px) and (max-width:1050px) { .revision-groups { grid-template-columns:1fr 1fr; } }
+
+.revision-list details { border-bottom:1px solid var(--line); padding:9px 0; font-size:.8rem; }
+.revision-list details summary { cursor:pointer; font-weight:700; overflow-wrap:anywhere; }
+.revision-list details summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.revision-list details>div { border-left:2px solid var(--line); margin:12px 0 10px; padding-left:10px; }
+.revision-list details p { overflow-wrap:anywhere; white-space:pre-wrap; color:var(--muted); margin:6px 0; }
+.revision-list details strong { color:var(--accent); font-size:.76rem; }
