@@ -33,6 +33,7 @@
   const $ = id => document.getElementById(id);
   let source = null;
   let human = new Map();
+  let privateNotes = new Map();
   let digestHex = null;
   let rawPrivateSource = null;
 
@@ -260,6 +261,7 @@
     digestHex = null;
     rawPrivateSource = null;
     human.clear();
+    privateNotes.clear();
     $("casebook-selected").hidden = true;
     $("casebook-selected").textContent = "";
     renderCases();
@@ -354,6 +356,25 @@
     if (!grants.length && !risks.length) {
       line("No source-linked grants or risks in this case. This does NOT prove absent authorizations or permission.");
     }
+    const label = document.createElement("label");
+    label.textContent = "PRIVATE HUMAN follow-up note (up to 500 characters; never authority):";
+    const input = document.createElement("textarea");
+    input.maxLength = 500;
+    input.setAttribute("aria-label", "PRIVATE HUMAN follow-up note for selected original case");
+    input.autocomplete = "off";
+    input.value = privateNotes.get(id) || "";
+    input.addEventListener("input", event => {
+      const value = event.target.value;
+      if (value.length > 500 || /[\u0000-\u0008\u000b-\u001f\u007f]|\p{Cf}|\p{Cs}/u.test(value)) {
+        show("HOLD: control or invisible formatting in PRIVATE note.", true);
+        return;
+      }
+      if (value.trim()) privateNotes.set(id, value);
+      else privateNotes.delete(id);
+      show("HUMAN note held only in this private browser tab until an optional encrypted handoff.");
+    });
+    label.append(input);
+    box.append(label);
     box.hidden = false;
   }
 
@@ -465,7 +486,8 @@
       if (pwd === null) return;
       if (!confirm("Encrypt original PRIVATE source plus your own HUMAN follow-up labels locally? This file is confidential and does not authenticate the producer, client/operator consent or authority. Keep its password separately.")) return;
       const humanStages = source.case_overview.map(c => ({
-        engagement_id: c.engagement_id, stage: human.get(c.engagement_id) || "unreviewed"
+        engagement_id: c.engagement_id, stage: human.get(c.engagement_id) || "unreviewed",
+        note: privateNotes.get(c.engagement_id) || ""
       }));
       const payload = {
         schema: HANDOFF_SCHEMA, posture:"REVIEW_ONLY",
@@ -564,17 +586,23 @@
         throw Error("HOLD: incomplete HUMAN source-bound cases.");
       }
       const restored = new Map();
+      const restoredNotes = new Map();
       for (let i = 0; i < payload.human_stages.length; i++) {
         const record = payload.human_stages[i];
-        if (!sameKeys(record,["engagement_id","stage"]) ||
+        if (!(sameKeys(record,["engagement_id","stage","note"]) ||
+              sameKeys(record,["engagement_id","stage"])) ||
+            (record.note !== undefined && (typeof record.note !== "string" ||
+              record.note.length > 500 ||
+              /[\u0000-\u0008\u000b-\u001f\u007f]|\p{Cf}|\p{Cs}/u.test(record.note))) ||
             record.engagement_id !== original.case_overview[i].engagement_id ||
             !Object.hasOwn(VALID_HUMAN,record.stage) ||
             restored.has(record.engagement_id)) {
           throw Error("HOLD: HUMAN labels do not belong to the exact original source cases.");
         }
         restored.set(record.engagement_id,record.stage);
+        if (record.note?.trim()) restoredNotes.set(record.engagement_id,record.note);
       }
-      return {parsed:original,fingerprint:payload.source_sha256,raw:payload.source_raw,stages:restored};
+      return {parsed:original,fingerprint:payload.source_sha256,raw:payload.source_raw,stages:restored,notes:restoredNotes};
     } finally {
       salt.fill(0); iv.fill(0); ciphertext.fill(0); opened?.fill(0); encryptedBytes.fill(0);
     }
@@ -616,6 +644,7 @@
         digestHex = result.fingerprint;
         rawPrivateSource = result.raw;
         human = result.stages;
+        privateNotes = result.notes;
         $("casebook-filter").value = "";
         $("casebook-category").value = "all";
         $("casebook-selected").hidden = true;
@@ -640,6 +669,7 @@
         digestHex = result.fingerprint;
         rawPrivateSource = result.raw;
         human.clear();
+        privateNotes.clear();
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
         $("casebook-filter").value = "";
