@@ -76,6 +76,12 @@
 <div class="shelf-actions">
 <button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-team-counts" class="action">Alleen anonieme HUMAN team/fase-aantallen exporteren <span aria-hidden="true">↗</span></button>
+<div class="shelf-filter" role="group" aria-label="Minimum noodzakelijke PRIVATE HUMAN teamoverdracht">
+<label for="shelf-recipient-team">Welke HUMAN teamgroep krijgt uitsluitend de eigen dossiers?
+<select id="shelf-recipient-team"><option value="none">Kies bewust één team</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="client_ops">Client operations</option><option value="platform">Platform</option><option value="unassigned">Nog niet toegewezen — intern HOLD</option></select></label>
+<button id="shelf-minimum-handoff" type="button" class="action muted">PRIVATE minimum noodzakelijke teamoverdracht (.md)</button>
+</div>
+<p class="shelf-status">De selectie is uitsluitend een lokale HUMAN-routering, geen geauthenticeerde ontvanger. Deze export bevat alleen dossiers die aan het gekozen team zijn toegewezen, ongeacht de tabel-filters. Controleer het bestand en kanaal bewust; geen bronbytes, toestemming of release.</p>
 <button type="button" id="shelf-workplan" class="action muted">PRIVATE HUMAN team- en escalatiebrief (.md) <span aria-hidden="true">↗</span></button>
 <button type="button" id="private-copy" class="action muted">PRIVATE brongebonden HUMAN opvolgplan exporteren <span aria-hidden="true">↗</span></button>
 <button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>

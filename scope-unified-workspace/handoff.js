@@ -513,6 +513,52 @@
     report("REVIEW_ONLY — alleen aantallen gedownload, zonder namen, digests of inhoud.");
   });
 
+
+  el("shelf-minimum-handoff").addEventListener("click", () => {
+    const team = el("shelf-recipient-team").value;
+    if (!Object.hasOwn(teams, team)) return report("HOLD — kies expliciet precies één HUMAN team.");
+    const chosen = items.filter(e => e.team === team);
+    if (!chosen.length) return report("HOLD — voor het gekozen HUMAN team bestaan geen geselecteerde dossiers.");
+    if (!confirm("Maak een PRIVATE teambrief met ALLEEN " + chosen.length + " bronverwijzingen voor " +
+      teams[team] + "? Bevat mogelijk vertrouwelijke oorspronkelijke namen, SHA-256 en notities. Deze keuze authenticeert de ontvanger niet: controleer die apart en gebruik een passend privé-kanaal.")) return;
+    const order = ["escalated", "unreviewed", "preparing", "documented"];
+    const lines = [
+      "# LightUp — minimum noodzakelijke PRIVATE HUMAN teambrief",
+      "",
+      "REVIEW_ONLY · INCUBATE M3/M7 · DRAFT/HOLD",
+      "Deze ongetekende brief is uitsluitend een lokaal HUMAN routeringsvoorstel.",
+      "AUTHENTICATED=false · CLIENT_CONSENT=false · OPERATOR_CONSENT=false · GRANT=false · SCAN=false · DEPLOY=false · RELEASE=false",
+      "",
+      "## Geselecteerd HUMAN team",
+      teams[team],
+      "Aantal expliciet toegewezen PRIVATE bronverwijzingen: " + chosen.length,
+      "Geen dossiers van andere teams zijn opgenomen. Tabelweergavefilters zijn niet stilzwijgend toegepast.",
+      ""
+    ];
+    for (const stage of order) {
+      const group = chosen.filter(e => e.stage === stage);
+      if (!group.length) continue;
+      lines.push("## " + stages[stage] + " · " + group.length, "");
+      for (const e of group) {
+        lines.push("- PRIVÉ bestandsnaam: " + JSON.stringify(e.file.name),
+          "  - Bronbytes: " + e.file.size + ", ongetekende SHA-256: " + e.hash,
+          "  - Onbevestigde structurele hint: " + JSON.stringify(e.inspection.label),
+          "  - Handmatig voorgestelde HUMAN route: " + JSON.stringify(routes[e.route][0]),
+          "  - PRIVATE opvolgnotitie: " + JSON.stringify(e.note || "(geen)"),
+          "  - Actie: verifieer onafhankelijk authentieke bronhouder, echte scope, klant/operator en actuele intrekking voordat enige oorspronkelijke actie wordt overwogen.",
+          "");
+      }
+    }
+    lines.push("## Vertrouwelijkheid en onveranderde uitvoergrens", "",
+      "Geen originele broninhoud ingebed; bronbestanden niet gewijzigd, verwijderd of overgedragen.",
+      "Bestandsnamen, menselijke reviewkeuzes en ongetekende hashes zijn geen tenant-authenticatie, consent, grant, revocation, oplossing of findingvalidatie.",
+      "Ongewijzigd vereist: geauthenticeerde werkelijke client+operator, oorspronkelijke action-time revocation, actuele exacte scope en risico, bronhouder/security/privacy/browserreview, exacte hosted+named-VPS CI en expliciete HUMAN GO.",
+      "Deze PRIVATE brief kan identificeerbare bronmetadata bevatten: vertrouw uitsluitend apart geauthenticeerde ontvangers via een beschermd kanaal.", "");
+    download(new Blob([lines.join("\n")], {type:"text/markdown;charset=utf-8"}),
+      "lightup-scope-PRIVATE-HUMAN-team-" + team + ".md");
+    report("REVIEW_ONLY — precies " + chosen.length + " uitsluitend voor " + teams[team] +
+      " geselecteerde HUMAN dossiers lokaal in PRIVATE brief; andere teams uitgesloten.");
+  });
   el("shelf-workplan").addEventListener("click", () => {
     if (!items.length) return report("HOLD — selecteer eerst PRIVATE bronbestanden voor een HUMAN teambrief.");
     if (!confirm("PRIVATE HUMAN teambrief exporteren met originele bestandsnamen, hashes en mogelijk vertrouwelijke notities? Ontvanger en kanaal moeten afzonderlijk worden geauthenticeerd; dit verleent geen toestemming.")) return;
