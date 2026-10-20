@@ -36,16 +36,33 @@ RECONCILE_OUTPUTS = ("PRIVATE-reconcile-decisions.csv", "PRIVATE-reconcile-compa
 
 
 def source_bytes(name: str) -> bytes:
+    """Read one exact user-owned PRIVATE regular file, never an alias or pipe.
+
+    Input is still unsigned; UID/mode/inode checks provide local custody,
+    not genuine source identity, client/operator consent or release authority.
+    """
     fd = -1
     try:
+        listed = os.stat(name, follow_symlinks=False)
         fd = os.open(name, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) |
                      getattr(os, "O_NOFOLLOW", 0))
-        info = os.fstat(fd)
-        require(stat.S_ISREG(info.st_mode) and 0 < info.st_size <= MAX_BYTES)
+        opened = os.fstat(fd)
+        require(stat.S_ISREG(opened.st_mode) and 0 < opened.st_size <= MAX_BYTES
+                and opened.st_uid == os.getuid()
+                and opened.st_mode & 0o077 == 0
+                and opened.st_nlink == 1)
+        identity = lambda item: (
+            item.st_dev, item.st_ino, item.st_mode, item.st_uid,
+            item.st_nlink, item.st_size, item.st_mtime_ns, item.st_ctime_ns
+        )
+        require(identity(listed) == identity(opened))
         with os.fdopen(fd, "rb") as stream:
             fd = -1
             raw = stream.read(MAX_BYTES + 1)
-        require(0 < len(raw) <= MAX_BYTES)
+            after_read = os.fstat(stream.fileno())
+        require(0 < len(raw) <= MAX_BYTES
+                and identity(opened) == identity(after_read)
+                and identity(opened) == identity(os.stat(name, follow_symlinks=False)))
         return raw
     except OSError:
         raise Hold("HOLD: PRIVATE receipt or answer file not admitted") from None
