@@ -19,6 +19,7 @@ from curate import (Hold, MAX_CSV_BYTES, MAX_RECEIPT_BYTES, UNVERIFIED,
 from briefing import CSS, h, json_bytes, publish_new, require, strict_pairs
 from human_return import read_limited_file
 from revision import private_frame
+from recipient_studio import render_studio
 
 RESPONSE_SCHEMA = "lightup.private_human_curated_response_v1"
 HEADER = (
@@ -82,17 +83,20 @@ def prepare_reply(source_path: str, manifest_path: str, worksheet_path: str,
     source, source_sha, worksheet_sha, selection_raw, selected = accepted_original(
         source_path, manifest_path, worksheet_path, receipt_path, selection_path)
     template = csv_template(source, selected)
+    browser_studio = render_studio(source, selected)
     binding = {
         "schema": RESPONSE_SCHEMA, "status": "REVIEW_ONLY",
         "original_source_sha256_unsigned": source_sha,
         "original_human_worksheet_sha256_unsigned": worksheet_sha,
         "original_human_selection_sha256_unsigned": digest(selection_raw),
         "blank_recipient_response_template_sha256_unsigned": digest(template),
+        "private_recipient_studio_sha256_unsigned": digest(browser_studio),
         "human_selected_ordinal_count": len(selected),
         **UNVERIFIED,
     }
     publish_new(output, {
         "PRIVATE-recipient-response-template.csv": template,
+        "PRIVATE-recipient-browser-studio.html": browser_studio,
         "PRIVATE-recipient-response-binding.json": json_bytes(binding),
         "PRIVATE-recipient-response-instructions.html": instruction_html(len(selected)),
     })
@@ -100,7 +104,7 @@ def prepare_reply(source_path: str, manifest_path: str, worksheet_path: str,
 
 def admit_response_binding(raw: bytes, source_sha: str, worksheet_sha: str,
                            selection_sha: str, template_sha: str,
-                           count: int) -> None:
+                           studio_sha: str, count: int) -> None:
     try:
         x = json.loads(raw.decode("utf-8"), object_pairs_hook=strict_pairs,
                        parse_constant=lambda _: require(False))
@@ -111,7 +115,10 @@ def admit_response_binding(raw: bytes, source_sha: str, worksheet_sha: str,
             "blank_recipient_response_template_sha256_unsigned",
             "human_selected_ordinal_count", *UNVERIFIED,
         }
-        require(type(x) is dict and set(x) == needed)
+        # Original v1 binding remains admitted; new packages additionally bind
+        # the generated, source-minimized browser studio to exact source bytes.
+        require(type(x) is dict and set(x) in
+                (needed, needed | {"private_recipient_studio_sha256_unsigned"}))
         require(x["schema"] == RESPONSE_SCHEMA and x["status"] == "REVIEW_ONLY")
         require(all(x[k] is False for k in UNVERIFIED))
         require(all(literal_sha(x[k]) for k in (
@@ -124,6 +131,9 @@ def admit_response_binding(raw: bytes, source_sha: str, worksheet_sha: str,
         require(x["original_human_worksheet_sha256_unsigned"] == worksheet_sha)
         require(x["original_human_selection_sha256_unsigned"] == selection_sha)
         require(x["blank_recipient_response_template_sha256_unsigned"] == template_sha)
+        if "private_recipient_studio_sha256_unsigned" in x:
+            require(literal_sha(x["private_recipient_studio_sha256_unsigned"]) and
+                    x["private_recipient_studio_sha256_unsigned"] == studio_sha)
         require(type(x["human_selected_ordinal_count"]) is int and
                 x["human_selected_ordinal_count"] == count)
     except (ValueError, TypeError, UnicodeError, KeyError,
@@ -215,7 +225,8 @@ def return_reply(source_path: str, manifest_path: str, worksheet_path: str,
     admit_response_binding(
         read_limited_file(reply_binding_path, MAX_RECEIPT_BYTES),
         source_sha, worksheet_sha, digest(selection_raw),
-        digest(csv_template(source, selected)), len(selected)
+        digest(csv_template(source, selected)),
+        digest(render_studio(source, selected)), len(selected)
     )
     reply_raw = read_limited_file(reply_path, MAX_CSV_BYTES)
     notes = admit_returned_reply(reply_raw, source, selected)
