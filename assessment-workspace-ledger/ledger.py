@@ -274,7 +274,15 @@ def canonical(value):
     return (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
 
 
+def outside_checkout(path):
+    repo = Path(__file__).resolve().parent.parent
+    location = Path(path)
+    if location == repo or repo in location.parents:
+        reject("PRIVATE HOLD: customer/private data must stay outside source checkout")
+
+
 def private_parent(path):
+    outside_checkout(path)
     with open_dir(path) as folder:
         private_directory(folder.fd)
     return str(Path(path))
@@ -338,6 +346,13 @@ def capture(args):
         path = os.path.normpath(value)
         if path != value or path in paths or not os.path.isabs(path):
             reject("PRIVATE HOLD: duplicate or noncanonical kit path")
+        outside_checkout(path)
+        for earlier in paths:
+            if os.path.commonpath((path, earlier)) in (path, earlier):
+                reject("PRIVATE HOLD: overlapping kit roots")
+        parent = os.path.normpath(args.private_parent)
+        if os.path.commonpath((parent, path)) == path:
+            reject("PRIVATE HOLD: output parent cannot be nested inside source kit")
         paths.add(path)
         label = args.label[number - 1] if args.label else "PRIVATE kit " + str(number)
         if not 1 <= len(label) <= 96 or any(ord(c) < 32 for c in label):
@@ -376,6 +391,9 @@ def capture(args):
                     "</td><td>" + html.escape(delta_text) + "</td></tr>")
     rows.append("</tbody></table><p>No source files copied. Paths and SHA fingerprints remain only in "
                 "the PRIVATE ledger.json. Removed or changed paths never demonstrate remediation.</p>"
+                "<p><a href='REVIEW-IN-BROWSER.html'>Open PRIVATE HUMAN browser editor</a> "
+                "(local-only; choose adjacent ledger.json). Downloaded PRIVATE CSVs may be saved with public "
+                "default permissions: move them into a 0700 folder and chmod 0600 before native finalize.</p>"
                 "<p>Use the companion HUMAN-review.csv in a trusted editor, then run finalize. "
                 "Stages and notes are proposals, never source evidence.</p>")
     template = io.StringIO(newline="")
