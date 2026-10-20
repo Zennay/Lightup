@@ -16,7 +16,7 @@ import shutil
 import sys
 
 from ledger import (
-    CSV_HEADERS, FLAGS, Hold, MAX_CSV, MAX_KITS, MAX_MANIFEST, STAGES,
+    CSV_HEADERS, FLAGS, Hold, literal_false_authority, MAX_CSV, MAX_KITS, MAX_MANIFEST, STAGES,
     canonical, digest, hexhash, html_page, manifest_from_source, new_private,
     object_unique, read_owner_file, reject, safe_human, verify_snapshot,
     write_private,
@@ -39,7 +39,7 @@ def original_human(raw, old, ledger_digest):
         reject("PRIVATE HOLD: unknown HUMAN packet schema")
     if obj["schema"] != "lightup.private.workspace-ledger-human.v1":
         reject("PRIVATE HOLD: former HUMAN schema mismatch")
-    if obj["authority"] != FLAGS or obj["ledger_sha256"] != ledger_digest or not hexhash(obj["plan_sha256"]):
+    if not literal_false_authority(obj["authority"]) or obj["ledger_sha256"] != ledger_digest or not hexhash(obj["plan_sha256"]):
         reject("PRIVATE HOLD: HUMAN source binding/authority invalid")
     rows = obj["rows"]
     if not isinstance(rows, list) or len(rows) != len(old["kits"]) or len(rows) > MAX_KITS:
