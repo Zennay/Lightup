@@ -83,7 +83,9 @@
 <label>Previously saved suppressed PRIVATE counts<input id="receiveCounts" type="file" accept=".csv,text/csv"></label>
 <label>Previous result password (.luhb only)<input id="receivePassword" type="password" autocomplete="off" minlength="14" maxlength="256"></label>
 </div>
-<div class="actions"><button id="receiveSaved" type="button">Reopen complete PRIVATE handoff</button></div>
+<div class="actions"><button id="receiveSaved" type="button">Reopen complete PRIVATE handoff</button>
+<button id="exportReceiving" type="button" class="secondary" disabled>Export PRIVATE local receiving record (.html)</button></div>
+<p class="hint">The receiving record becomes available only after every previously saved result row and complete suppressed-counts file match the currently exported PRIVATE HUMAN choices. It records only source-byte SHA-256 identities and declared summary counts, never original reviewer question/action/reason text. Treat even this source-free record as PRIVATE. Every local edit invalidates the earlier receiving result.</p>
 <p id="receiveStatus" class="hint" role="status" aria-live="polite">No saved result re-admitted. Exact native Python reopen remains the final local custody check.</p>
 </div>
 <p class="hint">The output pins SHA-256 of the exact original receipt and both complete native HUMAN CSV byte streams. On the same trusted machine, run <code>reconcile.py finalize --decisions ...</code> with the unchanged source files. It rejects any changed source, reordered ordinal, invalid stage, CSV or decision. A SHA-256 digest proves byte equality only, never origin or authority. Local browser downloads may receive normal filesystem permissions: move the PRIVATE file into a trusted owner-only directory before finalization.</p>
