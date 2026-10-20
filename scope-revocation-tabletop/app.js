@@ -78,6 +78,7 @@
   let replayCursor = null; // null follows the current final fictitious step.
   const HISTORY_MAX=48;
   let undoFrames=[],redoFrames=[];
+  let workspaceVersion=0; // monotonic, including undo/redo: rejects import read-back ABA races.
   let activeDrill = null;
   let selectedDrill = 0;
   let drillAnswers = Array(DRILLS.length).fill(null);
@@ -578,6 +579,7 @@
       undoFrames.push(old);
       if(undoFrames.length>HISTORY_MAX)undoFrames.shift();
       redoFrames=[];
+      workspaceVersion++;
     }
     feedback(msg||"");
     render();
@@ -589,6 +591,7 @@
     other.push(current);
     if(other.length>HISTORY_MAX)other.shift();
     applyFrame(restore);
+    workspaceVersion++;
     selectDrill(selectedDrill);
     feedback(backward?"Laatste wijziging in de lokale fictieve werkruimte hersteld.":
       "Fictieve wijziging opnieuw toegepast.");
@@ -701,13 +704,13 @@
   $("import-file").addEventListener("change",async event=>{
     const file=event.target.files?.[0];event.target.value="";if (!file)return;
     if (file.size>32768){feedback("HOLD: scenario groter dan 32 KiB.");return;}
-    const oldSession=JSON.stringify(data());
+    const oldSession=JSON.stringify(data()),oldVersion=workspaceVersion;
     try {
       const text=await file.text();
       const next=validateImport(text);
       // A local file read may finish after a HUMAN has edited the current scenario.
       // Never silently overwrite those newer choices, including all saved slots.
-      if (JSON.stringify(data())!==oldSession) {
+      if (workspaceVersion!==oldVersion || JSON.stringify(data())!==oldSession) {
         feedback("HOLD: lokale werkruimte gewijzigd tijdens inlezen; bestand niet toegepast.");
         return;
       }
