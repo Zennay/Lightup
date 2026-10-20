@@ -2,10 +2,13 @@
 
 **CURRENT SOURCE DELIVERY — DRAFT/HOLD:** The up-to-date portable PRIVATE
 two-reviewer workroom is [reconcile-standalone.html](./reconcile-standalone.html)
-(commit `dee2994`). It supports original HUMAN selection, encrypted
-native-compatible continuation, and read-only receipt + complete counts
-reopening. [The Python native receiver](./reconcile.py) also accepts the
-browser-exported bundle with `reopen --received-bundle ... --received-counts ...`.
+(rebuilt source-only at commit `89c7f16`). It supports original
+HUMAN selection, encrypted native-compatible continuation, read-only receipt
+and complete counts reopening, plus explicit privacy-minimal PRIVATE local
+receiving records with unsigned byte identities. [The Python native receiver](./reconcile.py)
+accepts either `reopen --received-csv ... --received-counts ...` for a
+complete original-format PRIVATE HUMAN CSV, or `reopen --encrypt-result
+--received-bundle ... --received-counts ...` for an encrypted browser handoff.
 The tracked `LightUp-PRIVATE-Assessment-Offline-Kit.zip` was built
 **before** those commits and does **not** contain these latest sources.
 Do not use that old ZIP as evidence of the current product or call it a release.
