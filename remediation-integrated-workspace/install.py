@@ -158,6 +158,8 @@ small{display:block;line-height:1.5}</style>
  This software bundles two original source-pinned held workstreams. Original evidence, owner notes, private client IDs and plaintext workspaces are never added by this installer. An encrypted file cannot prove source authenticity or client consent. No scan, retest, grant, native Apply or verified fix.</aside>
 <section><h2>Start at the source owner</h2><p>Open the original Casework and Evidence Ledger locally for human review, then use the offline HUMAN Portfolio and the encrypted selective handoff when a private recipient actually needs it. Do not copy a full private workspace when only a selected human follow-up is appropriate.</p></section>
 """ + cards + """
+<section><h2>Guided offline operator studio</h2>
+<p><a href="operator.html">Open de PRIVATE operatorstudio</a> voor alle bestaande native HUMAN-workflows, originele bronpaden en een lokaal gegenereerd commandovoorbeeld. De browser voert niets uit, bewaart niets, verzendt niets en doet geen autorisatieclaim. Open alleen op een prive apparaat, en plak een voorbereid commando uitsluitend na eigen controle in een geautoriseerde private Linux terminal.</p></section>
 <section><h2>Private receiving desk and timeline</h2>
 <p>For independently delivered <em>source-free</em> Cockpit packets, use the bundled native <code>remediation-recipient-trend/receiver_desk.py</code> commands described in <a href="remediation-recipient-trend/README.md">the receiving guide</a>. Those outputs remain private and are not automatically linked or uploaded. Original evidence source admission and HUMAN revisions are explained in <a href="remediation-evidence-bundle-integrity/README.md">the Evidence Workroom guide</a>.</p>
 <p>Unkeyed package checksums establish local file consistency only. Owner permissions, current authenticated client/operator consent, revocation-at-use, exact-head CI, source-owner and independent privacy/security review, and explicit HUMAN GO remain independent requirements for any genuine release.</p></section>
@@ -239,6 +241,9 @@ def build(dest: Path) -> None:
         # authorized device: carry this CLI and its operator guide too.
         for name in ("remediation-integrated-workspace/install.py",
                      "remediation-integrated-workspace/private_desk.py",
+                     "remediation-integrated-workspace/operator_console.py",
+                     "remediation-integrated-workspace/operator_ui.js",
+                     "remediation-integrated-workspace/operator_ui.css",
                      "remediation-integrated-workspace/receiver.py",
                      "remediation-integrated-workspace/workflow.py",
                      "remediation-integrated-workspace/portable_cockpit.py",
@@ -262,10 +267,13 @@ def build(dest: Path) -> None:
             write_file(dest_file, data)
             written[name] = data
             entries[name] = {"sha256": digest(data), "bytes": len(data)}
+        import operator_console
+        operator_page = operator_console.render()
         landing = home()
+        written["operator.html"] = operator_page
         written["index.html"] = landing
         written["source-lock.json"] = lock_raw
-        for name in ("index.html", "source-lock.json"):
+        for name in ("index.html", "operator.html", "source-lock.json"):
             write_file(stage / name, written[name])
             entries[name] = {"sha256": digest(written[name]), "bytes": len(written[name])}
         archive = stage / "software-only.zip"
@@ -327,9 +335,12 @@ def verify(folder: Path) -> None:
     require(present == expected, "Package files missing or extra")
     verified = {}
     for name, descriptor in files.items():
-        require(safe_name(name) or name in ("index.html", "software-only.zip", "source-lock.json",
+        require(safe_name(name) or name in ("index.html", "operator.html", "software-only.zip", "source-lock.json",
                                              "remediation-integrated-workspace/install.py",
                      "remediation-integrated-workspace/private_desk.py",
+                     "remediation-integrated-workspace/operator_console.py",
+                     "remediation-integrated-workspace/operator_ui.js",
+                     "remediation-integrated-workspace/operator_ui.css",
                                              "remediation-integrated-workspace/receiver.py",
                                              "remediation-integrated-workspace/workflow.py",
                                              "remediation-integrated-workspace/portable_cockpit.py",
@@ -356,6 +367,9 @@ def verify(folder: Path) -> None:
                 "Package file bytes changed")
         verified[name] = raw
     require(verified["index.html"] == home(), "Launcher differs from pinned local renderer")
+    import operator_console
+    require(verified["operator.html"] == operator_console.render(),
+            "Operator studio differs from original native offline renderer")
     installed_lock = parse(verified["source-lock.json"])
     require(installed_lock == catalog()[1], "Source inventory changed")
     for name, descriptor in installed_lock["files"].items():

@@ -210,3 +210,31 @@ findings or revoke an older file. Nothing is automatically transmitted.
 Native failure after owner creation may leave the original private workroom.
 Keep passwords separate, and obtain genuine external disclosure permission
 before transfer. DRAFT/HOLD and all original release gates remain unchanged.
+
+## PRIVATE offline browser operatorstudio
+
+Once the native software-only suite is installed, open operator.html. Its
+launcher index.html also links to this entirely local operatorstudio. It
+provides grouped HUMAN-only original workflow navigation, searchable native
+actions, path fields, repeatable ORIGINAL packet inputs, command previews,
+and local clipboard copy with a manual fallback. No browser command is run,
+no source or HUMAN journal is read, and nothing is uploaded or stored.
+Only operators who separately check the originals and their genuine authority
+should paste commands into an authorized private Linux terminal.
+
+The native software-only installer and receiver now carry operator_console.py,
+operator_ui.js and operator_ui.css with byte-exact pinned source inventory.
+The HTML output is generated directly from the current native
+private_desk.OPERATIONS metadata. Inline browser script and CSS are protected
+with byte-exact CSP hashes, with no network, storage, active targets or
+unapproved resource access. The receiver and installed manifest inspector
+reject missing/modified operator UI bytes and altered generated operator.html.
+
+This is a strictly HUMAN-only browser preparation experience. It cannot
+authorize a grant, scan, retest, approve disclosure, authenticate source owners,
+verify a fix, prove current client/operator consent or bypass DRAFT/HOLD.
+Operator-supplied paths may be sensitive even when copied locally; clear
+local clipboard history after use. Original hosted and permanent VPS CI,
+source-owner and independent security/privacy/browser/crypto review,
+#177/#182/#829, real independent current client/operator consent with at-use
+revocation and explicit HUMAN GO remain mandatory before any release.

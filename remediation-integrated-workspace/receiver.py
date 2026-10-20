@@ -13,6 +13,9 @@ import install as suite
 TOOLS = frozenset((
     "remediation-integrated-workspace/install.py",
                      "remediation-integrated-workspace/private_desk.py",
+    "remediation-integrated-workspace/operator_console.py",
+    "remediation-integrated-workspace/operator_ui.js",
+    "remediation-integrated-workspace/operator_ui.css",
     "remediation-integrated-workspace/receiver.py",
     "remediation-integrated-workspace/workflow.py",
     "remediation-integrated-workspace/portable_cockpit.py",
@@ -36,7 +39,7 @@ def receive(archive: Path, destination: Path) -> None:
     raw = suite.read_owner_file(archive)
     suite.require(0 < len(raw) <= suite.MAX_TOTAL, "Oversized incoming software ZIP")
     lock_bytes, lock = suite.catalog()
-    expected = set(lock["files"]) | set(TOOLS) | {"source-lock.json", "index.html"}
+    expected = set(lock["files"]) | set(TOOLS) | {"source-lock.json", "index.html", "operator.html"}
     suite.require(destination.is_absolute() and not destination.exists()
                   and not destination.is_symlink()
                   and destination.parent == destination.parent.resolve(strict=True),
@@ -59,8 +62,11 @@ def receive(archive: Path, destination: Path) -> None:
                       and sum(f.file_size for f in members) <= suite.MAX_TOTAL,
                       "Unsafe ZIP path, mode or size")
         files = {member.filename: z.read(member) for member in members}
+    import operator_console
     suite.require(files["source-lock.json"] == lock_bytes
-                  and files["index.html"] == suite.home(), "Incoming source/portal mismatch")
+                  and files["index.html"] == suite.home()
+                  and files["operator.html"] == operator_console.render(),
+                  "Incoming source/portal/operator studio mismatch")
     for name, desc in lock["files"].items():
         suite.require(len(files[name]) == desc["bytes"]
                       and suite.digest(files[name]) == desc["sha256"],
