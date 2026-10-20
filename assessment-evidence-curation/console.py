@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Eight existing offline source-bound workflows in one accessible user menu.
+Nine existing offline source-bound workflows in one accessible user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -15,6 +15,7 @@ from revision import compare
 from history import history
 from response import prepare_reply, return_reply
 from response_triage import prepare as prepare_triage, finish as return_triage
+from next_round import propose as propose_next_round
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -33,6 +34,8 @@ WORKFLOWS = {
           "original source-bound recipient response and NEW private triage editor"),
     "8": ("Reopen a finished HUMAN sender triage response",
           "same source, response, triage binding and HUMAN routing worksheet"),
+    "9": ("Prepare PRIVATE next HUMAN questions from original sender triage",
+          "same original source, response, triage binding and explicit HUMAN proposed next question"),
 }
 
 
@@ -76,16 +79,16 @@ def run_workflow(choice: str) -> None:
         after = ask_path("Current HUMAN selection CSV")
     elif choice == "4":
         series = ask_history()
-    elif choice in ("5", "6", "7", "8"):
+    elif choice in ("5", "6", "7", "8", "9"):
         selection = ask_path("EXISTING PRIVATE original HUMAN selection CSV")
     response_binding = None
     recipient_response = None
-    if choice in ("6", "7", "8"):
+    if choice in ("6", "7", "8", "9"):
         response_binding = ask_path("EXISTING original selection-bound PRIVATE recipient response binding JSON")
         recipient_response = ask_path("Returned HUMAN recipient response CSV")
     triage_binding = None
     triage_csv = None
-    if choice == "8":
+    if choice in ("8", "9"):
         triage_binding = ask_path("EXISTING original reply-bound PRIVATE sender triage binding JSON")
         triage_csv = ask_path("Completed PRIVATE sender HUMAN triage CSV")
     output = ask_path("EXCLUSIVE NEW PRIVATE output directory (must not already exist)")
@@ -104,8 +107,10 @@ def run_workflow(choice: str) -> None:
         print("  PRIVATE response report contains HUMAN replies, which may be client-identifying; identities not verified.")
     elif choice == "7":
         print("  PRIVATE sender browser shows original HUMAN questions and recipient replies; potential client identifiers.")
-    else:
+    elif choice == "8":
         print("  PRIVATE HUMAN sender triage shows original recipient replies and owner-group follow-up proposals.")
+    else:
+        print("  Generates a new PRIVATE selection CSV with explicitly HUMAN proposed follow-up questions; NO dispatch.")
     print("This is NOT a completed assessment, release, authorization or evidence authenticity check.")
     confirmation = input("Enter exactly REVIEW ONLY to create a NEW PRIVATE package: ")
     if confirmation != "REVIEW ONLY":
@@ -126,10 +131,14 @@ def run_workflow(choice: str) -> None:
     elif choice == "7":
         prepare_triage(source, manifest, worksheet, receipt, selection,
                        response_binding, recipient_response, output)
-    else:
+    elif choice == "8":
         return_triage(source, manifest, worksheet, receipt, selection,
                       response_binding, recipient_response, triage_binding,
                       triage_csv, output)
+    else:
+        propose_next_round(source, manifest, worksheet, receipt, selection,
+                           response_binding, recipient_response, triage_binding,
+                           triage_csv, output)
 
 
 def main() -> int:
@@ -141,7 +150,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–8]: ").strip()
+        choice = input("PRIVATE workflow [0–9]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
