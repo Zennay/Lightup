@@ -49,3 +49,6 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 @media(max-width:860px) { .workroom,.import,.exports { grid-template-columns:1fr; } .provenance { border:0; border-top:1px solid var(--line); padding-top:10px; } .toolbar { grid-template-columns:1fr 1fr; } .toolbar-search { grid-column:1/-1; } .list { max-height:280px; } }
 @media(max-width:520px) { .toolbar,.formgrid { grid-template-columns:1fr; } .toolbar-search { grid-column:auto; } .top { padding:14px; } .identity-light { display:none; } main { padding:15px; } .detail-panel { padding:15px; } }
 @media(prefers-reduced-motion:no-preference) { button { transition:background-color .15s ease,border-color .15s ease; } }
+
+.bulk { margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:8px; } .bulk label { grid-column:1/-1; } .bulk select { grid-column:1/-1; } .bulk button { font-size:.78rem; min-height:38px; padding:8px; }
+@media(max-width:520px) { .bulk { grid-template-columns:1fr; } }
