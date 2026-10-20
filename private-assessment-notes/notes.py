@@ -471,6 +471,22 @@ def main() -> int:
     reopen_discussion.add_argument("--review", action="append", required=True)
     reopen_discussion.add_argument("--room", required=True,
                                    help="unchanged original owner-private received discussion room")
+    actions_plan = commands.add_parser(
+        "sensitivity-discussion-actions-prepare",
+        help="offline selected HUMAN conversation editor with new owner-private room")
+    actions_plan.add_argument("--completed-packet", required=True)
+    actions_plan.add_argument("--review", action="append", required=True)
+    actions_plan.add_argument("--room", required=True, help="original received selected discussion room")
+    actions_plan.add_argument("--private-parent", required=True)
+    actions_end = commands.add_parser(
+        "sensitivity-discussion-actions-finalize",
+        help="strictly finalize all selected PRIVATE HUMAN next actions; always HOLD")
+    actions_end.add_argument("--completed-packet", required=True)
+    actions_end.add_argument("--review", action="append", required=True)
+    actions_end.add_argument("--room", required=True)
+    actions_end.add_argument("--draft-room", required=True)
+    actions_end.add_argument("--completed-csv", required=True)
+    actions_end.add_argument("--private-parent", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -554,6 +570,16 @@ def main() -> int:
         if args.action == "sensitivity-discussion-reopen":
             from privacy_triage_selected_discussion import reopen as reopen_discussion
             return reopen_discussion(args.completed_packet, args.review, args.room)
+        if args.action in {
+            "sensitivity-discussion-actions-prepare",
+            "sensitivity-discussion-actions-finalize",
+        }:
+            from privacy_triage_discussion_actions import plan, close
+            if args.action == "sensitivity-discussion-actions-prepare":
+                return plan(args.completed_packet, args.review, args.room,
+                            args.private_parent)
+            return close(args.completed_packet, args.review, args.room,
+                         args.draft_room, args.completed_csv, args.private_parent)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(
