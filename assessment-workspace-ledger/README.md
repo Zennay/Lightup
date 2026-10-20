@@ -953,3 +953,37 @@ unchanged human CSV. No scheduling, notification, authentic owner identity,
 approval, consent, scan, task completion or verified security outcome follows.
 Console option **29** performs the same foreground flow; software ZIP v22
 includes both original HUMAN meeting producer and native return finalizer.
+
+## Complete PRIVATE HUMAN meeting browser Studio · software v23
+
+The original [portfolio-focus-studio.html](portfolio-focus-studio.html) is a
+ready-to-open **single-file, source-free** offline browser application. No
+customer/PRIVATE inputs are embedded in the shipped HTML. Open it from a
+trusted local folder, explicitly choose the original PRIVATE-HUMAN-meeting.json,
+filter the original proposed cases by human priority, proposed owner or
+locally chosen review stage, then annotate original historical proposals
+without altering the source. Native exact-source SHA-256 is computed from
+the selected local input bytes when the browser exposes Web Crypto. No
+network, cookies, localStorage, other persistent browser storage, worker,
+scan, model, actual scheduling, consent, grant, or automatic dispatch.
+
+The Studio visibly tracks all unsaved HUMAN edits, maintains each original
+slot across screen filtering, and exports *ALL* original rows as a native
+source-bound CSV that the strict `portfolio_focus_review.py` accepts after
+PRIVATE 0600 local custody. Filtering never silently drops source slots.
+The browser is only a human interface; native original JSON and unchanged
+source bytes are re-admitted and all duplicate keys, unknown source fields,
+CSV changes and permission claims are rejected by the original finalizer.
+
+The [portfolio_focus_studio.py](portfolio_focus_studio.py) renderer creates
+the same HTML with exact JavaScript and CSS SHA-256 pinned in CSP; the shipped
+HTML uses no remotely fetched assets. Generate a new private copy without
+overwriting a prior output with:
+
+    python3 assessment-workspace-ledger/portfolio_focus_studio.py \
+      --output /private/software/new-human-focus-studio.html
+
+Console option **30** offers this software-only foreground export. Original
+software package v23 includes standalone app, its immutable software sources,
+both HUMAN meeting steps, and backwards-compatible v16–v22 archive inspection.
+Original browser input is never authenticated consent or verified security.

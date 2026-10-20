@@ -25,21 +25,24 @@ NAMES = (
     "console.py", "human_revisions.py", "browser_intake.py", "history.py", "history_human.py", "history_studio.py",
     "history_team.py", "history_team_browser.py", "history_actions.py",
     "history_actions_browser.py", "history_owner_brief.py",
-    "history_progress.py", "portfolio.py", "portfolio_delta.py", "portfolio_owner_packets.py", "portfolio_dayboard.py", "portfolio_focus.py", "portfolio_focus_review.py", "package.py", "standalone.html",
+    "history_progress.py", "portfolio.py", "portfolio_delta.py", "portfolio_owner_packets.py", "portfolio_dayboard.py", "portfolio_focus.py", "portfolio_focus_review.py", "portfolio_focus_studio.py", "portfolio_focus_studio.js", "portfolio-focus-studio.html", "package.py", "standalone.html",
 )
-SCHEMA = "lightup.private.workspace-ledger-software.v22"
-PRIOR_SCHEMA = "lightup.private.workspace-ledger-software.v21"
-PRIOR_NAMES = tuple(name for name in NAMES if name != "portfolio_focus_review.py")
-RECENT_SCHEMA = "lightup.private.workspace-ledger-software.v20"
-RECENT_NAMES = tuple(name for name in PRIOR_NAMES if name != "portfolio_focus.py")
-PREVIOUS_SCHEMA = "lightup.private.workspace-ledger-software.v19"
-PREVIOUS_NAMES = tuple(name for name in RECENT_NAMES if name != "portfolio_dayboard.py")
-LEGACY_SCHEMA = "lightup.private.workspace-ledger-software.v18"
-LEGACY_NAMES = tuple(name for name in PREVIOUS_NAMES if name != "portfolio_owner_packets.py")
-OLDER_SCHEMA = "lightup.private.workspace-ledger-software.v17"
-OLDER_NAMES = tuple(name for name in LEGACY_NAMES if name != "portfolio_delta.py")
-OLDEST_SCHEMA = "lightup.private.workspace-ledger-software.v16"
-OLDEST_NAMES = tuple(name for name in OLDER_NAMES if name != "portfolio.py")
+SCHEMA = "lightup.private.workspace-ledger-software.v23"
+PRIOR_SCHEMA = "lightup.private.workspace-ledger-software.v22"
+PRIOR_NAMES = tuple(n for n in NAMES if n not in (
+    "portfolio_focus_studio.py", "portfolio_focus_studio.js", "portfolio-focus-studio.html"))
+RECENT_SCHEMA = "lightup.private.workspace-ledger-software.v21"
+RECENT_NAMES = tuple(n for n in PRIOR_NAMES if n != "portfolio_focus_review.py")
+PREVIOUS_SCHEMA = "lightup.private.workspace-ledger-software.v20"
+PREVIOUS_NAMES = tuple(n for n in RECENT_NAMES if n != "portfolio_focus.py")
+LEGACY_SCHEMA = "lightup.private.workspace-ledger-software.v19"
+LEGACY_NAMES = tuple(n for n in PREVIOUS_NAMES if n != "portfolio_dayboard.py")
+OLDER_SCHEMA = "lightup.private.workspace-ledger-software.v18"
+OLDER_NAMES = tuple(n for n in LEGACY_NAMES if n != "portfolio_owner_packets.py")
+OLDEST_SCHEMA = "lightup.private.workspace-ledger-software.v17"
+OLDEST_NAMES = tuple(n for n in OLDER_NAMES if n != "portfolio_delta.py")
+ANCIENT_SCHEMA = "lightup.private.workspace-ledger-software.v16"
+ANCIENT_NAMES = tuple(n for n in OLDEST_NAMES if n != "portfolio.py")
 FLAGS = {
     "authorization": False, "consent": False,
     "verified_finding": False, "release_approval": False,
@@ -155,7 +158,7 @@ def inspect(args):
     with zipfile.ZipFile(io.BytesIO(raw), "r") as src:
         entries = src.infolist()
         stored = [entry.filename for entry in entries]
-        profiles = ((NAMES, SCHEMA), (PRIOR_NAMES, PRIOR_SCHEMA), (RECENT_NAMES, RECENT_SCHEMA), (PREVIOUS_NAMES, PREVIOUS_SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA), (OLDER_NAMES, OLDER_SCHEMA), (OLDEST_NAMES, OLDEST_SCHEMA))
+        profiles = ((NAMES, SCHEMA), (PRIOR_NAMES, PRIOR_SCHEMA), (RECENT_NAMES, RECENT_SCHEMA), (PREVIOUS_NAMES, PREVIOUS_SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA), (OLDER_NAMES, OLDER_SCHEMA), (OLDEST_NAMES, OLDEST_SCHEMA), (ANCIENT_NAMES, ANCIENT_SCHEMA))
         selected = next((
             (names, schema) for names, schema in profiles
             if stored == [PREFIX + name for name in names] + [PREFIX + "manifest.json"]

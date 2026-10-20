@@ -26,6 +26,7 @@ import portfolio_owner_packets
 import portfolio_dayboard
 import portfolio_focus
 import portfolio_focus_review
+import portfolio_focus_studio
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -61,6 +62,7 @@ MENU = (
     ("27", "Open a PRIVATE date/priority HUMAN planning dayboard from an original portfolio"),
     ("28", "Prepare a filtered PRIVATE HUMAN meeting packet"),
     ("29", "Import source-bound HUMAN meeting decisions as PRIVATE HOLD-only return"),
+    ("30", "Create a source-free offline HUMAN focus browser editor"),
     ("0", "Exit"),
 )
 
@@ -209,6 +211,10 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "30":
+        return portfolio_focus_studio.build(argparse.Namespace(
+            output=prompt("Absolute NEW offline HTML path within existing PRIVATE 0700 parent")
         ))
     if action == "29":
         return portfolio_focus_review.run(argparse.Namespace(
