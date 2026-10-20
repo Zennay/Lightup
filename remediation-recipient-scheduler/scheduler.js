@@ -212,13 +212,64 @@
     rows=validate(lastBatch.before);dirty=lastBatch.wasDirty;lastBatch=null;
     el("undo").disabled=true;render();status("Last HUMAN-only batch undone completely; original source untouched.");
   }
+  // Passwords must never be echoed by a plain browser prompt or persisted in
+  // localStorage/cookies. A short-lived password type=password dialog is used
+  // for BOTH AES-GCM encryption and reopening/carry. No remote account exists.
+  async function askPrivatePassword(creating) {
+    if(typeof HTMLDialogElement==="undefined")fatal("Private masked password dialog unsupported by this offline browser");
+    return new Promise(resolve => {
+      const box=document.createElement("dialog"),form=document.createElement("form");
+      form.method="dialog";
+      const heading=document.createElement("h2");
+      heading.textContent=creating?"Protect new PRIVATE HUMAN plan":"Open PRIVATE encrypted HUMAN plan";
+      const info=document.createElement("p");
+      info.textContent="Local-only password (12–256 characters). No recovery, no sender authentication or actual client permission.";
+      const input=document.createElement("input");
+      input.type="password";input.required=true;input.minLength=12;input.maxLength=256;
+      input.autocomplete=creating?"new-password":"current-password";
+      const label=document.createElement("label");
+      const title=document.createElement("span");title.textContent="PRIVATE password";
+      label.append(title,input);
+      form.append(heading,info,label);
+      let confirmation=null;
+      if(creating){
+        confirmation=document.createElement("input");
+        confirmation.type="password";confirmation.required=true;
+        confirmation.minLength=12;confirmation.maxLength=256;
+        confirmation.autocomplete="new-password";
+        const cl=document.createElement("label"),ct=document.createElement("span");
+        ct.textContent="Confirm new PRIVATE password";cl.append(ct,confirmation);
+        form.append(cl);
+      }
+      const message=document.createElement("p");message.setAttribute("role","alert");
+      const cancel=document.createElement("button");cancel.type="button";cancel.textContent="Cancel";
+      cancel.addEventListener("click",()=>box.close("cancel"));
+      const approve=document.createElement("button");approve.type="submit";
+      approve.textContent=creating?"Encrypt private download":"Unlock in memory";
+      form.append(message,cancel,approve);
+      let answer=null;
+      form.addEventListener("submit",event=>{
+        event.preventDefault();
+        if(input.value.length<12||input.value.length>256) {
+          message.textContent="Password must contain 12–256 characters";return;
+        }
+        if(creating&&input.value!==confirmation.value) {
+          message.textContent="The two passwords do not match";return;
+        }
+        answer=input.value;box.close("accepted");
+      });
+      box.addEventListener("close",()=>{
+        input.value="";if(confirmation)confirmation.value="";
+        box.remove();resolve(box.returnValue==="accepted"?answer:null);
+      },{once:true});
+      box.append(form);document.body.append(box);box.showModal();input.focus();
+    });
+  }
+
   async function saveEncrypted() {
     if(!crypto?.subtle) fatal("Web Crypto unavailable in this offline browser");
-    const plan=snapshot(),phrase=prompt("Enter a NEW private plan password (at least 12 characters).");
+    const plan=snapshot(),phrase=await askPrivatePassword(true);
     if(phrase===null)return;
-    if(phrase.length<12 || phrase.length>256) fatal("Password must contain 12–256 characters");
-    const confirm=prompt("Repeat password to confirm.");
-    if(confirm!==phrase) fatal("Passwords differ; nothing downloaded");
     const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
     const cipher=new Uint8Array(await crypto.subtle.encrypt(
       {name:"AES-GCM",iv,additionalData:textEncoder.encode(AAD)},
@@ -229,8 +280,13 @@
       kdf:"PBKDF2-HMAC-SHA256",iterations:KDF,algorithm:"AES-256-GCM",
       salt_b64:b64(salt),nonce_b64:b64(iv),ciphertext_b64:b64(cipher),warning:model.warning};
     const bytes=utf8(envelope);if(bytes.length>LIMIT)fatal("Encrypted plan exceeds bound");
-    dl(bytes,"lightup-private-human-schedule.lurp","application/json");dirty=false;
-    status("Encrypted PRIVATE plan downloaded. Verify that it is stored in a protected location; source/consent not authenticated.");
+    dl(bytes,"lightup-private-human-schedule.lurp","application/json");
+    if(confirm("Did you independently verify the encrypted PRIVATE .lurp was downloaded and stored in a protected local location? This is only a HUMAN storage acknowledgment, not sender/source/client/consent authentication.")){
+      dirty=false;
+      status("HUMAN storage acknowledged for this encrypted plan. No authenticated source, consent or remediation claim.");
+    }else{
+      status("Encrypted download requested but protected storage NOT acknowledged. Unsaved warning remains; repeat saving if necessary.");
+    }
     renderStats();
   }
   async function decryptSealedPlan(file) {
@@ -248,7 +304,7 @@
         doc.algorithm!=="AES-256-GCM") fatal("Noncanonical encrypted HUMAN plan or elevated authority");
     const salt=unb64(doc.salt_b64),iv=unb64(doc.nonce_b64),cipher=unb64(doc.ciphertext_b64);
     if(salt.length!==16 || iv.length!==12 || cipher.length<17)fatal("Invalid encrypted HUMAN salt or nonce");
-    const password=prompt("Password for this PRIVATE HUMAN plan:");
+    const password=await askPrivatePassword(false);
     if(password===null)return null;
     const plaintext=await crypto.subtle.decrypt(
       {name:"AES-GCM",iv,additionalData:textEncoder.encode(AAD)},
