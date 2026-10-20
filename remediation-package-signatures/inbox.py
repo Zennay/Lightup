@@ -19,7 +19,7 @@ import shutil
 import sys
 
 from offline_signatures import (
-    Hold, _canonical, _fingerprint, _public_key,
+    Hold, _canonical, _fingerprint,
     _regular_file_bytes, _write_new_private,
 )
 from portable_handoff import (
@@ -98,13 +98,17 @@ def _admit_signers(keyring: Path, members: dict[str, bytes], two_required: bool)
     keys = [PUBLIC_NAME] + ([SECOND_PUBLIC_NAME] if has_second else [])
     result = []
     for name in keys:
-        import tempfile
-        # Original key decoder requires local path. Create the exact untrusted key
-        # inside a private, auto-removed directory; trust comes from the registry.
-        with tempfile.TemporaryDirectory(prefix=".lightup-public-") as folder:
-            temp_key = Path(folder) / "untrusted.pem"
-            _write_new_private(temp_key, members[name])
-            key = _public_key(temp_key)
+        # Decode the embedded key only in memory. It is never a trust anchor.
+        from cryptography.hazmat.primitives.serialization import load_pem_public_key
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        if len(members[name]) > 16384:
+            raise Hold("untrusted embedded public key too large")
+        try:
+            key = load_pem_public_key(members[name])
+        except (TypeError, ValueError) as exc:
+            raise Hold("untrusted embedded public key is malformed") from exc
+        if not isinstance(key, Ed25519PublicKey):
+            raise Hold("embedded signer must be Ed25519")
         fp = _fingerprint(key)
         rec = trusted(keyring, fp)
         registry_pem = base64.b64decode(rec["public_pem_b64"], validate=True)
