@@ -643,3 +643,44 @@ The combined PRIVATE `sensitivity-workbench --mode timeline|reviewers` also prod
 The offline multi-reviewer comparison now has an additional, local **selected-discussion CSV** button. HUMAN-only visibility filters can select note-content-only disagreements, declared WITHHOLD/REVIEW_REQUIRED, general disagreements or literal agreement and optionally original ordinals; that button saves only the *visible original ordinals plus bounded Boolean HUMAN disagreement/attention flags*. No source SHA, source note, HUMAN free-note text, filenames or recipient identity is included. This small **owner-private** conversation packet is not publishable and is **not accepted as a completed review**.
 
 The original full **PRIVATE HUMAN decisions** export remains a separate action: it deliberately includes every original source and source-binding SHA and must pass unchanged native `sensitivity-finalize` after the operator moves it into a 0600 owner-only location. Neither export authenticates HUMANS, grants client consent, validates masking or clears release. [Commands and private custody steps](PRIVATE-SENSITIVITY-TRIAGE.md).
+
+
+## Native PRIVATE selected HUMAN discussion receive (new)
+
+The source-minimal CSV exported from the reviewer Studio is now a usable **native
+PRIVATE HUMAN handoff** rather than a standalone, unbound download. The
+`sensitivity-discussion-receive` command reopens the original completed
+owner-private packet and **every original** 2–8 completed HUMAN sensitivity
+review, reads the browser-selected CSV as an ordinary 0600 owner file, and
+compares every selected Boolean against the ORIGINAL reviewer values. Invalid,
+reordered, duplicated, noncanonical, incomplete, outside-source or stale
+selections are rejected before creating a new room. No guess based on just a
+CSV row, and no interpretation of literal agreement as verified safety.
+
+~~~sh
+# FIRST: export PRIVATE-HUMAN-selected-discussion.csv from the offline
+# original reviewer Studio and move it into an owner-private 0700 folder.
+chmod 600 /private/operator-lightup-work/PRIVATE-HUMAN-selected-discussion.csv
+python3 private-assessment-notes/notes.py sensitivity-discussion-receive \
+  --completed-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<id> \
+  --review /private/operator-lightup-work/PRIVATE-sensitivity-review-<first> \
+  --review /private/operator-lightup-work/PRIVATE-sensitivity-review-<second> \
+  --selected-csv /private/operator-lightup-work/PRIVATE-HUMAN-selected-discussion.csv \
+  --private-parent /private/operator-lightup-work
+~~~
+
+The command makes a **fresh 0700 directory** with a local scriptless printable
+selected-only ordinal/Boolean conversation agenda, the exactly admitted 0600
+selected CSV, an **unsigned PRIVATE original-source and original-human-review
+receipt**, and a start page. It returns **HOLD (exit 3) even after writing**:
+the output is never a completed original sensitivity review, authenticated
+reviewer or recipient, consent, data minimisation certification, privacy
+clearance, grant, delivery, fix proof or permission to share. Neither original
+source bytes nor prior private HUMAN note contents are copied to the agenda.
+Original source/decisions/reviewer hashes only appear in the owner-private
+receipt; hashes are not cryptographic signatures or authentic identities.
+
+**Always use the exact original reviewer packets in the same manually chosen
+order as the Studio that made the CSV.** A selected-only CSV is deliberately
+not an alternative to the COMPLETE original source-bound CSV accepted by the
+unchanged native `sensitivity-finalize`. No network or real assessment is run.

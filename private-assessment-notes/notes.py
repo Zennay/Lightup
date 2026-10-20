@@ -455,6 +455,15 @@ def main() -> int:
     workbench.add_argument("--review", action="append", required=True,
                            help="two to eight completed source-bound HUMAN reviews")
     workbench.add_argument("--private-parent", required=True)
+    discussion = commands.add_parser(
+        "sensitivity-discussion-receive",
+        help="strictly receive original-bound selected HUMAN discussion CSV; always HOLD")
+    discussion.add_argument("--completed-packet", required=True)
+    discussion.add_argument("--review", action="append", required=True,
+                            help="two to eight original completed PRIVATE HUMAN reviewer packets")
+    discussion.add_argument("--selected-csv", required=True,
+                            help="owner-private exact browser selected-discussion CSV")
+    discussion.add_argument("--private-parent", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -530,6 +539,11 @@ def main() -> int:
             from privacy_triage_workbench import build as build_sensitivity_workbench
             return build_sensitivity_workbench(
                 args.completed_packet, args.mode, args.review, args.private_parent)
+        if args.action == "sensitivity-discussion-receive":
+            from privacy_triage_selected_discussion import create as receive_discussion
+            return receive_discussion(
+                args.completed_packet, args.review, args.selected_csv,
+                args.private_parent)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(

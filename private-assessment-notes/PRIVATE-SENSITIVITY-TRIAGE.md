@@ -206,3 +206,44 @@ No QA/regression/test suites, scanner targets, external requests, automatic send
 The original-bound reviewer Studio now has **two deliberately different local download actions**. The primary **Save COMPLETE PRIVATE original-bound HUMAN decisions CSV** always exports **every original source position** with its original unsigned SHA, the operator's independently chosen HUMAN stage, canonical selected categories and new private HUMAN free note text. It is the **only** browser-generated CSV appropriate for the separate original native `sensitivity-finalize`, after moving it to an owner-only 0600 location.
 
 The new **Save PRIVATE selected HUMAN discussion rows** button exports **only the source positions visible under the operator's current ordinal and attention filters**, with selected columns: original ordinal, stage disagreement, category disagreement, note-content disagreement (Boolean only), any declared WITHHOLD, any declared REVIEW_REQUIRED. It excludes original source SHA, filenames, source text, redacted source text, any previous/new free HUMAN note text, reviewer IDs and any authority/recipient token. It is for local, owner-private conversation **only**, never a source-bound final review or authorized external evidence handoff. An empty visible selection produces no download. The downloaded CSV still needs deliberate safe local handling: a browser download is not automatically a 0600 private file. Visual filtering, printing or selected-discussion downloads **never drop source rows** from the distinct full next-human-decision CSV or change existing source admission/release gates.
+
+
+## Native PRIVATE selected HUMAN discussion receive (new)
+
+The source-minimal CSV exported from the reviewer Studio is now a usable **native
+PRIVATE HUMAN handoff** rather than a standalone, unbound download. The
+`sensitivity-discussion-receive` command reopens the original completed
+owner-private packet and **every original** 2–8 completed HUMAN sensitivity
+review, reads the browser-selected CSV as an ordinary 0600 owner file, and
+compares every selected Boolean against the ORIGINAL reviewer values. Invalid,
+reordered, duplicated, noncanonical, incomplete, outside-source or stale
+selections are rejected before creating a new room. No guess based on just a
+CSV row, and no interpretation of literal agreement as verified safety.
+
+~~~sh
+# FIRST: export PRIVATE-HUMAN-selected-discussion.csv from the offline
+# original reviewer Studio and move it into an owner-private 0700 folder.
+chmod 600 /private/operator-lightup-work/PRIVATE-HUMAN-selected-discussion.csv
+python3 private-assessment-notes/notes.py sensitivity-discussion-receive \
+  --completed-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<id> \
+  --review /private/operator-lightup-work/PRIVATE-sensitivity-review-<first> \
+  --review /private/operator-lightup-work/PRIVATE-sensitivity-review-<second> \
+  --selected-csv /private/operator-lightup-work/PRIVATE-HUMAN-selected-discussion.csv \
+  --private-parent /private/operator-lightup-work
+~~~
+
+The command makes a **fresh 0700 directory** with a local scriptless printable
+selected-only ordinal/Boolean conversation agenda, the exactly admitted 0600
+selected CSV, an **unsigned PRIVATE original-source and original-human-review
+receipt**, and a start page. It returns **HOLD (exit 3) even after writing**:
+the output is never a completed original sensitivity review, authenticated
+reviewer or recipient, consent, data minimisation certification, privacy
+clearance, grant, delivery, fix proof or permission to share. Neither original
+source bytes nor prior private HUMAN note contents are copied to the agenda.
+Original source/decisions/reviewer hashes only appear in the owner-private
+receipt; hashes are not cryptographic signatures or authentic identities.
+
+**Always use the exact original reviewer packets in the same manually chosen
+order as the Studio that made the CSV.** A selected-only CSV is deliberately
+not an alternative to the COMPLETE original source-bound CSV accepted by the
+unchanged native `sensitivity-finalize`. No network or real assessment is run.
