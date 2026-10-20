@@ -606,3 +606,23 @@ cryptographic sender identity, authenticated current client/operator
 consent or permission to send anything externally. Original CI,
 review, named permanent runner, action-time revocation and HUMAN GO
 remain mandatory for release.
+
+
+### Human-visible final preview before sealing
+
+The original A/B standalone workroom now includes a **complete final
+selection preview** above its encrypted-result controls. All ordinals
+are represented, even if a search or unresolved/selected filter hides
+them in the comparison table. It shows exactly which operator-selectable
+review A/B stage would be included and which unselected rows become
+`unreviewed` without inherited question/action text. The operator's
+explicit selection reason is visible, while sensitive reviewer
+questions/actions are hidden in closed expandable sections until the
+local HUMAN operator chooses to view them. The preview uses only
+`textContent` for untrusted HUMAN material; it does not interpret
+markup or load remote resources. Changing A/B/HOLD immediately
+reconciles active filtered views and regenerates the full preview.
+The preview is **not** a new security verdict, disclosure, client
+consent, reviewer authentication or release; it makes the output the
+human is deciding to encrypt understandable before the irreversible
+local download.
