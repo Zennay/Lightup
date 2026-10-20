@@ -83,3 +83,45 @@ bytes are never overwritten, and old HUMAN recommendations are not silently
 carried into authorization or release. Manifest hashes are unsigned local
 integrity identifiers only; they are not trusted producer signatures. The
 reopen step always reports REVIEW_ONLY and finalization always remains HOLD.
+
+
+## New PRIVATE human review board and selected internal discussion packets
+
+The generated `PRIVATE-HUMAN-editor.html` now includes an in-page private
+pattern-masked original note viewer (collapsed by default), local source-position
+and note search, a stage filter, visible/all-source counters, and explicit
+confirmed bulk HUMAN discussion stages with one-step undo. For safety, only
+`NEEDS_HUMAN_REVIEW`, `SOURCE_OWNER_REQUIRED`, and `WITHHOLD` may be applied
+in bulk: `INTERNAL_REVIEW_ONLY` must always be chosen individually. Filtering
+never removes original source rows from the complete CSV; native finalize still
+reopens and checks the complete original source-bound packet.
+
+After completing and finalizing an original HUMAN packet, optionally assemble
+a strictly **local selected-only internal discussion copy**. This is not a
+customer/client handoff or permitted disclosure:
+
+~~~sh
+python3 private-assessment-notes/selective_handoff.py \
+  --completed-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<actual-id> \
+  --position 1 --position 3 \
+  --private-parent /private/operator-lightup-work
+~~~
+
+Only explicitly selected original positions currently marked
+`INTERNAL_REVIEW_ONLY` are admitted. Other stages (including `WITHHOLD`)
+cause a complete HOLD with no published output. The original complete HUMAN
+CSV and manifest are re-admitted with unsigned exact-byte SHA binding and stage
+counts before any selected output is created. A new owner-only 0700 directory
+contains only the selected **masked** note bytes, scriptless selected-only
+private summary HTML, a source-bound unsigned PRIVATE manifest, and a
+selected-only discussion CSV. HUMAN free-text notes are withheld entirely;
+no other source positions, original unmasked bytes or other HUMAN stages are
+included in the selected packet.
+
+The selected CSV is **not** a complete input for the native finalize stage.
+The packet is never encrypted, recipient-authenticated, delivered or released;
+its hash is not a signature. Masked text can retain secrets and personal
+information. Independently verify the intended real recipient, channel,
+actual consent, privacy, security and explicit HUMAN GO under the existing
+original release process. This CLI intentionally exits HOLD (3) even when it
+successfully wrote a private discussion copy.
