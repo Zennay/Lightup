@@ -97,3 +97,19 @@ python3 assessment-disclosure-preflight/human_review.py render \
 New private output filenames are exclusive and non-overwriting; previous HUMAN reports stay untouched. Opening and re-exporting under a **new** password performs memory-only re-encryption using new salt/nonce, without writing a plaintext export. Passwords, original lab source files and recipient authorization must be handled separately. The receipt hash binds to **unsigned count-only receipt bytes**, not the original source, tenant, owner, consenting actors or legal authority. Neither an encrypted file nor a HUMAN reviewed label is a signed, approved or source-authenticated assessment.
 
 **Release stays INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD**: original exact-head hosted and permanently registered VPS CI, original source owner, independent security/privacy/browser/crypto review, original #177/#182/#829, genuinely authenticated current separate client/operator consent including action-time revocation and explicit HUMAN GO remain mandatory. No QA/regression suites, scanner, grant, target interaction, merge or deployment have been added.
+
+
+## Source-free HUMAN-only aggregate handoff, without note text
+
+The existing native HUMAN CLI now also supports **summarize** against an exact existing PRIVATE receipt plus either a PRIVATE HUMAN CSV or an encrypted .luhd (non-echoed passphrase). It emits exclusively new owner-only 0600 **PRIVATE-human-summary.csv** with no human questions, next-action text, target, origin, evidence or source digest. If fewer than five records are present, source count is hidden. For five or more, the count of any rare nonzero HUMAN stage (<5) suppresses the **entire** stage breakdown rather than disclosing a potentially identifying rare category. The minimum threshold can be raised to 6–12 but cannot be lowered below five. Status remains REVIEW_ONLY with explicitly false origin/consent/release declarations and never confers approval.
+
+~~~sh
+mkdir -m 700 ./another-private-counts
+python3 assessment-disclosure-preflight/human_review.py summarize \
+  --receipt ./private-disclosure-desk/PRIVATE-receipt.json \
+  --vault ./private-disclosure-desk/PRIVATE-human-reviewed.luhd \
+  --minimum-cohort 5 \
+  --private-output-dir ./another-private-counts
+~~~
+
+The visual browser workspace also offers **Export suppressed PRIVATE HUMAN counts only**, using the same stage/category suppression logic and requiring a separate explicit confidentiality confirmation. Neither aggregate is automatically anonymous, a client deliverable, an approved report, consent, a grant or source-authenticated data. They are strictly PRIVATE HUMAN planning materials.
