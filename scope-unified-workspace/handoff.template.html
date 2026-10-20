@@ -40,6 +40,14 @@
 <label for="shelf-search">Zoek uitsluitend lokaal in PRIVATE bestandsnamen
 <input type="search" id="shelf-search" placeholder="Zoek bronbestand…" autocomplete="off" spellcheck="false" maxlength="120"></label>
 </div>
+<div class="shelf-filter" role="group" aria-label="Expliciete bulkactie op gefilterde HUMAN dossiers">
+<label for="shelf-bulk-team">Team voor zichtbare dossiers
+<select id="shelf-bulk-team"><option value="unchanged">Team niet wijzigen</option><option value="unassigned">Niet toegewezen</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="client_ops">Client operations</option><option value="platform">Platform</option></select></label>
+<label for="shelf-bulk-stage">Reviewfase voor zichtbare dossiers
+<select id="shelf-bulk-stage"><option value="unchanged">Fase niet wijzigen</option><option value="unreviewed">Nog niet beoordeeld</option><option value="preparing">Menselijk onderzoek</option><option value="escalated">Escalatie nodig</option><option value="documented">Gedocumenteerd, NIET opgelost</option></select></label>
+</div>
+<button type="button" id="shelf-bulk-apply" class="action muted">Pas HUMAN team/fase toe op uitsluitend gefilterde dossiers (na bevestiging)</button>
+<p class="shelf-status">Uitsluitend lokale menselijke routering. Bulkacties zijn geen bronverificatie, oplossing, grant of consent. Kies vooraf bewust het filter en controleer het aantal in het bevestigingsvenster.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <p id="shelf-workload" class="shelf-summary" aria-live="polite">Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">

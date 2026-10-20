@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jX8dS/pBXIwZA9ElqPttOxm/b9XJeUJtvzC766vojtI='; script-src 'sha256-FLDR86oiAb5WGT2lDjQNz9IQYh4oTWueta3tmN7ZocU=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jX8dS/pBXIwZA9ElqPttOxm/b9XJeUJtvzC766vojtI='; script-src 'sha256-4Psl/lgJQNcUnK+TIcjy5CoMgIt9dNfolprWvSXjiqM=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -62,6 +62,14 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <label for="shelf-search">Zoek uitsluitend lokaal in PRIVATE bestandsnamen
 <input type="search" id="shelf-search" placeholder="Zoek bronbestand…" autocomplete="off" spellcheck="false" maxlength="120"></label>
 </div>
+<div class="shelf-filter" role="group" aria-label="Expliciete bulkactie op gefilterde HUMAN dossiers">
+<label for="shelf-bulk-team">Team voor zichtbare dossiers
+<select id="shelf-bulk-team"><option value="unchanged">Team niet wijzigen</option><option value="unassigned">Niet toegewezen</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="client_ops">Client operations</option><option value="platform">Platform</option></select></label>
+<label for="shelf-bulk-stage">Reviewfase voor zichtbare dossiers
+<select id="shelf-bulk-stage"><option value="unchanged">Fase niet wijzigen</option><option value="unreviewed">Nog niet beoordeeld</option><option value="preparing">Menselijk onderzoek</option><option value="escalated">Escalatie nodig</option><option value="documented">Gedocumenteerd, NIET opgelost</option></select></label>
+</div>
+<button type="button" id="shelf-bulk-apply" class="action muted">Pas HUMAN team/fase toe op uitsluitend gefilterde dossiers (na bevestiging)</button>
+<p class="shelf-status">Uitsluitend lokale menselijke routering. Bulkacties zijn geen bronverificatie, oplossing, grant of consent. Kies vooraf bewust het filter en controleer het aantal in het bevestigingsvenster.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <p id="shelf-workload" class="shelf-summary" aria-live="polite">Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
@@ -471,6 +479,11 @@ const LightUpPrivateDrift = (() => {
       " bytes · " + items.filter((e) => e.stage === "escalated").length + " HUMAN escalaties · " +
       items.filter((e) => e.stage === "unreviewed").length + " onbeoordeeld · NOOIT GEAUTORISEERD"
     : "Nog geen PRIVATE bestanden ingeladen. Geen inhoud of bestandsnaam wordt opgeslagen.";
+  const visibleHumanRow = (item) =>
+    (stageFilter.value === "all" || item.stage === stageFilter.value) &&
+    (teamFilter.value === "all" || item.team === teamFilter.value) &&
+    (!searchFilter.value.trim() || item.file.name.normalize("NFC").toLowerCase().includes(
+      searchFilter.value.trim().normalize("NFC").toLowerCase()));
   function render() {
     rows.replaceChildren();
     summary.textContent = viewSummary();
@@ -478,9 +491,7 @@ const LightUpPrivateDrift = (() => {
     for (const item of items) teamCounts[item.team] += 1;
     workload.textContent = items.length ? "HUMAN teamlast · " + Object.entries(teamCounts).filter(([,n]) => n).map(([k,n]) => teams[k] + ": " + n).join(" · ") + " · Geen geverifieerde autoriteit" : "Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.";
     for (const item of items) {
-      if (stageFilter.value !== "all" && item.stage !== stageFilter.value) continue;
-      if (teamFilter.value !== "all" && item.team !== teamFilter.value) continue;
-      if (searchFilter.value.trim() && !item.file.name.normalize("NFC").toLowerCase().includes(searchFilter.value.trim().normalize("NFC").toLowerCase())) continue;
+      if (!visibleHumanRow(item)) continue;
       const tr = document.createElement("tr");
       cell(tr, item.file.name, "file-name");
       cell(tr, item.file.size.toLocaleString("nl-NL") + " B");
@@ -569,6 +580,25 @@ const LightUpPrivateDrift = (() => {
   }
   stageFilter.addEventListener("change", render);
   teamFilter.addEventListener("change", render);
+  el("shelf-bulk-apply").addEventListener("click", () => {
+    const team = el("shelf-bulk-team").value;
+    const stage = el("shelf-bulk-stage").value;
+    if (team !== "unchanged" && !Object.hasOwn(teams, team)) return report("HOLD — onbekend HUMAN team.");
+    if (stage !== "unchanged" && !Object.hasOwn(stages, stage)) return report("HOLD — onbekende HUMAN reviewfase.");
+    if (team === "unchanged" && stage === "unchanged") return report("HOLD — kies eerst een HUMAN team of reviewfase.");
+    const selected = items.filter(visibleHumanRow);
+    if (!selected.length) return report("HOLD — geen dossiers zichtbaar onder de huidige filters.");
+    const detail = (team === "unchanged" ? "ongewijzigd team" : teams[team]) + " / " +
+      (stage === "unchanged" ? "ongewijzigde fase" : stages[stage]);
+    if (!confirm("Wijzig uitsluitend " + selected.length + " zichtbare PRIVATE HUMAN dossiers naar " + detail +
+      "? De originele bronbestanden blijven ongewijzigd. Dit is geen toestemming, oplossing of geverifieerde revocatie.")) return;
+    for (const item of selected) {
+      if (team !== "unchanged") item.team = team;
+      if (stage !== "unchanged") item.stage = stage;
+    }
+    render();
+    report("REVIEW_ONLY — " + selected.length + " gefilterde HUMAN dossiers bewust gerouteerd; geen bron, grant of toestemming gewijzigd.");
+  });
   searchFilter.addEventListener("input", render);
   input.addEventListener("change", async () => {
     const chosen = Array.from(input.files || []);

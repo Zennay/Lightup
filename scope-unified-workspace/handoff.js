@@ -92,6 +92,11 @@
       " bytes · " + items.filter((e) => e.stage === "escalated").length + " HUMAN escalaties · " +
       items.filter((e) => e.stage === "unreviewed").length + " onbeoordeeld · NOOIT GEAUTORISEERD"
     : "Nog geen PRIVATE bestanden ingeladen. Geen inhoud of bestandsnaam wordt opgeslagen.";
+  const visibleHumanRow = (item) =>
+    (stageFilter.value === "all" || item.stage === stageFilter.value) &&
+    (teamFilter.value === "all" || item.team === teamFilter.value) &&
+    (!searchFilter.value.trim() || item.file.name.normalize("NFC").toLowerCase().includes(
+      searchFilter.value.trim().normalize("NFC").toLowerCase()));
   function render() {
     rows.replaceChildren();
     summary.textContent = viewSummary();
@@ -99,9 +104,7 @@
     for (const item of items) teamCounts[item.team] += 1;
     workload.textContent = items.length ? "HUMAN teamlast · " + Object.entries(teamCounts).filter(([,n]) => n).map(([k,n]) => teams[k] + ": " + n).join(" · ") + " · Geen geverifieerde autoriteit" : "Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.";
     for (const item of items) {
-      if (stageFilter.value !== "all" && item.stage !== stageFilter.value) continue;
-      if (teamFilter.value !== "all" && item.team !== teamFilter.value) continue;
-      if (searchFilter.value.trim() && !item.file.name.normalize("NFC").toLowerCase().includes(searchFilter.value.trim().normalize("NFC").toLowerCase())) continue;
+      if (!visibleHumanRow(item)) continue;
       const tr = document.createElement("tr");
       cell(tr, item.file.name, "file-name");
       cell(tr, item.file.size.toLocaleString("nl-NL") + " B");
@@ -190,6 +193,25 @@
   }
   stageFilter.addEventListener("change", render);
   teamFilter.addEventListener("change", render);
+  el("shelf-bulk-apply").addEventListener("click", () => {
+    const team = el("shelf-bulk-team").value;
+    const stage = el("shelf-bulk-stage").value;
+    if (team !== "unchanged" && !Object.hasOwn(teams, team)) return report("HOLD — onbekend HUMAN team.");
+    if (stage !== "unchanged" && !Object.hasOwn(stages, stage)) return report("HOLD — onbekende HUMAN reviewfase.");
+    if (team === "unchanged" && stage === "unchanged") return report("HOLD — kies eerst een HUMAN team of reviewfase.");
+    const selected = items.filter(visibleHumanRow);
+    if (!selected.length) return report("HOLD — geen dossiers zichtbaar onder de huidige filters.");
+    const detail = (team === "unchanged" ? "ongewijzigd team" : teams[team]) + " / " +
+      (stage === "unchanged" ? "ongewijzigde fase" : stages[stage]);
+    if (!confirm("Wijzig uitsluitend " + selected.length + " zichtbare PRIVATE HUMAN dossiers naar " + detail +
+      "? De originele bronbestanden blijven ongewijzigd. Dit is geen toestemming, oplossing of geverifieerde revocatie.")) return;
+    for (const item of selected) {
+      if (team !== "unchanged") item.team = team;
+      if (stage !== "unchanged") item.stage = stage;
+    }
+    render();
+    report("REVIEW_ONLY — " + selected.length + " gefilterde HUMAN dossiers bewust gerouteerd; geen bron, grant of toestemming gewijzigd.");
+  });
   searchFilter.addEventListener("input", render);
   input.addEventListener("change", async () => {
     const chosen = Array.from(input.files || []);
