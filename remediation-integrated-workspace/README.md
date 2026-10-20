@@ -43,3 +43,12 @@ Native exact CLI commands and encrypted file/password handling are in the origin
 Local SHA-256 source pins, manifests and zip checks are **unsigned and unkeyed**. They do not prove who authored source files, customer identity, legitimate consent, real evidence, fix, time order, security risk, verified retest or authority to act. Local encrypted browser files authenticate only their own ciphertext against the chosen passphrase and documented format; they do not authenticate real client/operator identity.
 
 This is a DRAFT/HOLD composition branch, not a production merge. Required original gates remain: **exact-head hosted and permanent named VPS CI, original source-owner and independent security/privacy/browser/crypto review, original issues #177/#182/#829, genuine separately authenticated current client and operator consent with action-time revocation, and explicit HUMAN GO**. Until then: no merge to main, no production deploy, no active targets or native Apply. No QA, regression or test suite is created or run by this change; direct build/package inspection is not CI or security proof.
+
+## Native safe receipt of the portable software-only ZIP
+
+On a **separately authorized** private machine, obtain the exact pinned current installer, receiver and source-lock files from this release branch through an independently trusted channel. Place the ZIP in an existing absolute owner-only 0700 directory as a 0600 one-link file. Never run code from an untrusted ZIP before admission. The packaged installer and receiver are included as an offline convenience, **not** independently authenticated code-signatures.
+
+    python3 remediation-integrated-workspace/install.py receive --archive "$HOME/lightup-private/software-only.zip" --output-dir "$HOME/lightup-private/received-suite"
+    python3 remediation-integrated-workspace/install.py inspect --workspace "$HOME/lightup-private/received-suite"
+
+Receiving rejects unexpected/duplicate member paths, unsafe archive types, inflated assets, changed original source bytes, mismatched launcher/installer contents, and destination overwrite. It atomically creates a fresh private 0700 folder with original 0600 software and fresh unsigned local manifest. REVIEW_ONLY=2; HOLD=3. This is **not** a signed sender, current consent or verification of findings and it never loads private evidence or contacts a service.

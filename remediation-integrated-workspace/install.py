@@ -190,6 +190,7 @@ def build(dest: Path) -> None:
         # Make the archive independently inspectable on a second offline
         # authorized device: carry this CLI and its operator guide too.
         for name in ("remediation-integrated-workspace/install.py",
+                     "remediation-integrated-workspace/receiver.py",
                      "remediation-integrated-workspace/README.md"):
             data = (ROOT / name).read_bytes()
             require(len(data) <= MAX_SOURCE, "Installer asset oversized")
@@ -265,6 +266,7 @@ def verify(folder: Path) -> None:
     for name, descriptor in files.items():
         require(safe_name(name) or name in ("index.html", "software-only.zip", "source-lock.json",
                                              "remediation-integrated-workspace/install.py",
+                                             "remediation-integrated-workspace/receiver.py",
                                              "remediation-integrated-workspace/README.md"),
                 "Unexpected package name")
         require(type(descriptor) is dict and set(descriptor) == {"sha256", "bytes"}
@@ -297,10 +299,16 @@ def main() -> int:
     p_build.add_argument("--output-dir", required=True, type=Path)
     p_verify = sub.add_parser("inspect", help="Inspect a locally installed PRIVATE suite without any network")
     p_verify.add_argument("--workspace", required=True, type=Path)
+    p_recv = sub.add_parser("receive", help="Safely reconstruct pinned software-only ZIP offline")
+    p_recv.add_argument("--archive", required=True, type=Path)
+    p_recv.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
     try:
         if args.action == "build":
             build(args.output_dir)
+        elif args.action == "receive":
+            from receiver import receive
+            receive(args.archive, args.output_dir)
         else:
             verify(args.workspace)
         return 2  # REVIEW_ONLY; not a release success signal.
