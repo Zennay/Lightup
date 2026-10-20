@@ -25,6 +25,11 @@ ZIP_EXTRA = "START-HERE-PRIVATE.txt"
 
 def unpack_exact(archive_bytes: bytes) -> tuple[dict[str, bytes], dict]:
     require(0 < len(archive_bytes) <= MAX_ZIP_BYTES)
+    # Canonical no-comment EOCD must be at the final byte. Do not accept
+    # appended extra data, a disguised polyglot or forged trailing records.
+    require(len(archive_bytes) >= 22 and
+            archive_bytes[-22:-18] == b"PK\\x05\\x06" and
+            archive_bytes[-2:] == b"\\x00\\x00")
     members: dict[str, bytes] = {}
     try:
         with zipfile.ZipFile(io.BytesIO(archive_bytes), mode="r",
