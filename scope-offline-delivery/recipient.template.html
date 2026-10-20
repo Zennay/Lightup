@@ -46,7 +46,11 @@
 <button id="build-role" type="button" disabled>Build source-only role ZIP locally</button>
 <p id="role-build-status" role="status" aria-live="polite"></p>
 <p id="role-build-digest" class="mono"></p>
+<details><summary>Review every original component included in this role</summary>
+<ol id="role-original-preview" class="mono"></ol></details>
 <button id="save-built-role" type="button" hidden>Save role ZIP (unsigned · not encrypted)</button>
+<button id="save-role-handoff" type="button" hidden>Save PRIVATE HUMAN sender digest and checklist</button>
+<p>The sender note lists only original file names/sizes/hashes and new/original ZIP checksums. It is UNSIGNED and must not be used as proof attached to the same untrusted file. Independently verify the recipient and use a separate authenticated channel.</p>
 <p>Verify the intended reviewer, approval and transfer channel independently. A matching original digest proves byte equality, not consent; encrypt any confidential transfer separately with the original HUMAN courier.</p>
 </section>
 <section>

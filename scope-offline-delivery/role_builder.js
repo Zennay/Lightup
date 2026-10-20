@@ -6,6 +6,7 @@
   const panel = el("role-builder-panel"), profile = el("role-profile");
   const buildButton = el("build-role"), saveButton = el("save-built-role");
   const status = el("role-build-status"), digestOutput = el("role-build-digest");
+  const originalPreview = el("role-original-preview"), saveHandoff = el("save-role-handoff");
   const profiles = Object.freeze({
     "privacy-recipient": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-recipient-verify.html"],
     "privacy-editor": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"],
@@ -32,7 +33,7 @@
   let currentSource = null, revision = 0, built = null;
   const clear = () => {
     revision++; currentSource = null; built = null;
-    buildButton.disabled = true; saveButton.hidden = true; panel.hidden = true;
+    buildButton.disabled = true; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren(); panel.hidden = true;
     status.textContent = ""; digestOutput.textContent = "";
   };
   document.addEventListener("lightup:selection-reset", clear);
@@ -47,7 +48,7 @@
     status.textContent = "FULL SOURCE MATCH / REVIEW ONLY. Choose a least-disclosure role; no person or permission is authenticated.";
   });
   profile.addEventListener("change", () => {
-    revision++; built = null; saveButton.hidden = true; digestOutput.textContent = "";
+    revision++; built = null; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren(); digestOutput.textContent = "";
     status.textContent = "Selection changed. Build a fresh PRIVATE role file.";
   });
   const note = role => [
@@ -161,7 +162,7 @@
   };
   buildButton.addEventListener("click", async () => {
     const current = ++revision;
-    built = null; saveButton.hidden = true;
+    built = null; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren();
     buildButton.disabled = true; digestOutput.textContent = "";
     try {
       if (!currentSource || !crypto?.subtle) throw Error("No verified local original kit");
@@ -210,12 +211,18 @@
         throw Error("Locally produced role ZIP did not pass original receiver admission");
       }
       if (current !== revision) return;
-      built = {bytes:archive,role,digest};
+      const originalRows = rows.filter(row => Object.hasOwn(pin,row.path));
+      built = {bytes:archive,role,digest,sourceSha256:outerSha,originalRows};
+      for (const row of originalRows) {
+        const li = document.createElement("li");
+        li.textContent = row.path + " · " + row.bytes.toLocaleString() + " bytes · SHA-256 " + row.sha256;
+        originalPreview.append(li);
+      }
       digestOutput.textContent = "NEW local " + role + " ZIP · " + archive.length +
         " bytes · SHA-256: " + digest +
         " · source-only / unsigned / REVIEW ONLY. Exchange the digest through a separately authenticated channel.";
       status.textContent = "Private role built in local memory. Save manually; encrypt confidential handoffs in the separate original courier.";
-      saveButton.hidden = false;
+      saveButton.hidden = false; saveHandoff.hidden = false;
     } catch (_) {
       if (current === revision) {
         status.textContent = "HOLD — original source identity or browser role packaging unavailable.";
@@ -224,6 +231,34 @@
       if (current === revision) buildButton.disabled = false;
     }
   });
+  // A HUMAN checksum handoff note for a separately authenticated channel.
+  // Never embed this unsigned note as self-authentication inside the ZIP.
+  saveHandoff.addEventListener("click", () => {
+    if (!built || !currentSource) return;
+    if (!window.confirm("Save an UNSIGNED HUMAN handoff note? Sender/recipient identity and consent are NOT verified.")) return;
+    const lines = [
+      "LIGHTUP PRIVATE HUMAN ROLE HANDOFF — REVIEW ONLY / DRAFT HOLD",
+      "format: lightup.scope_private_human_sender_note.v1",
+      "role: " + built.role,
+      "original-source-zip-sha256: " + built.sourceSha256,
+      "role-zip-sha256: " + built.digest,
+      "role-zip-bytes: " + built.bytes.length,
+      "original-source-components: " + built.originalRows.length,
+      "",
+      "Included unchanged original source components:"
+    ];
+    for (const row of built.originalRows) {
+      lines.push(row.path + " | " + row.bytes + " bytes | sha256=" + row.sha256);
+    }
+    lines.push("", "UNSIGNED. No consent, authorization, origin, grant, release or approval.",
+      "Independently authenticate the recipient and a SEPARATE trusted channel.",
+      "Share the expected ZIP digest through that channel, NOT as self-proof",
+      "attached to the same untrusted archive. Encrypt private material with",
+      "the separately sourced original HUMAN courier before transferring.",
+      "Manual review and original LightUp authorization/release gates remain.", "");
+    save(encode(lines.join("\n")), "LightUp-PRIVATE-" + built.role + "-HUMAN-HANDOFF.txt");
+  });
+
   saveButton.addEventListener("click", () => {
     if (!built || !currentSource) return;
     if (!window.confirm("SAVE a SOURCE-ONLY unsigned role ZIP? This does NOT grant consent, prove identity or encrypt confidential material.")) return;
