@@ -19,6 +19,7 @@ import tempfile
 
 from notes import ALLOWED, FALSE_FLAGS, Hold, file_new, private_directory, save_json
 from revision_changes import admit_completed
+from history_board import render as render_history_browser
 
 SCHEMA = "lightup.private_assessment_human_history.v1"
 MAX_PACKETS = 16
@@ -202,7 +203,8 @@ remediation evidence or permission to share. Nothing was sent.</p>
 <th>Current stage</th><th>Stage</th><th>Free-text note</th></tr></thead>
 <tbody>""" + (events_html or "<tr><td colspan='6'>No declared HUMAN changes</td></tr>") +
     """</tbody></table></section><section><h2>PRIVATE local exports</h2>
-<ul><li><a href="PRIVATE-HUMAN-history.json">Original-byte-bound unsigned PRIVATE history JSON</a></li>
+<ul><li><a href="PRIVATE-HUMAN-board.html">Interactive offline source-minimal HUMAN timeline explorer</a></li>
+<li><a href="PRIVATE-HUMAN-history.json">Original-byte-bound unsigned PRIVATE history JSON</a></li>
 <li><a href="PRIVATE-HUMAN-events.csv">Source-minimal declared change events CSV</a></li>
 <li><a href="PRIVATE-HUMAN-current-review.csv">Current HUMAN discussion desk CSV</a></li>
 </ul><small>Unsigned local hashes only bind bytes: they do not authenticate
@@ -218,6 +220,8 @@ No active assessment, network, model, scan, grant or deployment.</footer></html>
         file_new(destination / "PRIVATE-HUMAN-events.csv", csv_bytes(EVENT_FIELDS, events))
         file_new(destination / "PRIVATE-HUMAN-current-review.csv",
                  csv_bytes(LATEST_FIELDS, rows))
+        file_new(destination / "PRIVATE-HUMAN-board.html",
+                 render_history_browser(rows, events, len(snapshots)))
         file_new(destination / "OPEN-PRIVATE.html", page.encode("utf-8"))
         finished = True
         print("HOLD: PRIVATE original-bound multi-revision HUMAN history created locally.")
