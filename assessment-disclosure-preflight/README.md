@@ -446,3 +446,34 @@ or private HUMAN reviews embedded. All standalone code remains
 DRAFT/HOLD: it is not merged on main, deployed, independently
 security/privacy/browser approved, authenticated, a substitute for
 source-owner original `lightup.lab_inspect`, or a security clearance.
+
+
+### Original PRIVATE input custody is now enforced by the native importer
+
+The existing native `human_review.source_bytes` and the encrypted .luhd/.luhb
+`vault_native` readers now check the **actual opened regular file descriptor**
+for current user UID, owner-only mode (no group/other bits), exactly one
+hardlink, bounded size, no-follow admission, and pre/open/post read
+`device/inode/mode/UID/link-count/size/mtime/ctime` identity. A shared,
+world-readable, symlinked, hardlinked, replaced or mutated input yields HOLD
+before any HUMAN decision is applied or confidential file bytes are returned.
+The original source-owner `lightup.lab_inspect` and any scope, grant, scanner
+or CI gate are unchanged.
+
+If a trusted local browser writes a `PRIVATE-reconcile-browser-decisions.csv`
+or an encrypted HUMAN packet into a normal-permission Downloads folder,
+move it deliberately to a **trusted local owner-only** destination, inspect
+file ownership, then set owner-only permissions *before* native use.
+For example on Linux on your own trusted workstation:
+
+~~~sh
+mkdir -m 700 ./private-restricted
+mv ./Downloads/PRIVATE-reconcile-browser-decisions.csv ./private-restricted/
+chmod 600 ./private-restricted/PRIVATE-reconcile-browser-decisions.csv
+~~~
+
+Do not run these commands on shared/foreign-owned files, broaden permissions,
+force symlink traversal, bypass a refusal or imply that local UID/mode checks
+authenticate the sender, actual customer consent, original evidence, a fix
+or security release. The original browser downloads remain the user's
+responsibility. No automatic chmod, deletion or data disclosure is performed.
