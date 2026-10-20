@@ -199,7 +199,11 @@ def main() -> int:
     if args.inspect is not None:
         if args.output != ARCHIVE_NAME:
             parser.error("--output cannot be used with --inspect")
-        result = inspect_unsigned_software(args.inspect)
+        try:
+            result = inspect_unsigned_software(args.inspect)
+        except (OSError, ValueError, UnicodeError, MemoryError, zipfile.BadZipFile):
+            print("HOLD: software ZIP/manifest/content not admitted; no permission or release")
+            return 3
         print("REVIEW_ONLY: local unsigned software content matched deterministic manifest; "
               "NOT original identity, security approval, CI or release")
         print("Software entries:", result["software_files"], "ZIP SHA-256:", result["sha256"])
