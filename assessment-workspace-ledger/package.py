@@ -16,7 +16,7 @@ import stat
 import sys
 import zipfile
 
-from ledger import Hold, canonical, object_unique, private_parent, reject
+from ledger import Hold, canonical, object_unique, private_parent, reject, literal_false_authority
 
 ROOT = Path(__file__).resolve().parent
 PREFIX = "LightUp-Workspace-Ledger/"
@@ -167,7 +167,7 @@ def inspect(args):
         raise Hold("PRIVATE HOLD: invalid manifest") from exc
     if not isinstance(manifest, dict) or set(manifest) != {
         "schema", "authority", "includes_customer_data", "files"
-    } or manifest["schema"] != SCHEMA or manifest["authority"] != FLAGS or (
+    } or manifest["schema"] != SCHEMA or not literal_false_authority(manifest["authority"], FLAGS) or (
         manifest["includes_customer_data"] is not False
     ):
         reject("PRIVATE HOLD: source-only manifest schema/authority")
