@@ -1008,49 +1008,73 @@
           draft.sources.length !== plan.decisions.length) {
         throw Error("changed original set");
       }
-      const samePackets = draft.packets.every((p,i) => {
-        const src=plan.packetBytes[i];
-        return p.local_packet_number === src.local_packet_number &&
-          p.original_packet_byte_length === src.original_packet_byte_length &&
-          p.unsigned_original_packet_sha256 === src.unsigned_original_packet_sha256;
-      });
-      const sameSources = draft.sources.every((proposal,i) => {
-        const d=plan.decisions[i],item=d.item;
-        const idx=proposal.packet_choice-1;
-        return items.includes(item) && proposal.original_name === item.file.name &&
-          proposal.byte_length === item.file.size &&
-          proposal.unsigned_sha256 === item.hash &&
-          proposal.structural_kind_unverified === item.inspection.kind &&
-          (proposal.packet_choice === -1 ||
-            idx >= 0 && idx < d.allowed.length && !!d.allowed[idx] &&
-            sourceEqual(d.allowed[idx],item));
-      });
-      if (!samePackets || !sameSources) throw Error("source or reviewer packet drift");
-      const selected=draft.sources.filter(row=>row.packet_choice!==-1).length;
-      if (!confirm("Herstel ALLEEN "+selected+" brongebonden HUMAN conceptkeuze(n) "+
-          "in de huidige vergelijking? Oorspronkelijke bronbestanden en "+
-          draft.packets.length+" reviewer-pakketten zijn exact bytegebonden. "+
-          "De huidige lokale team/route/fase/notities veranderen NIET. "+
-          "Bestaande conceptselecties worden vervangen; toepassen vereist later alsnog "+
-          "een apart expliciet menselijk akkoord.")) {
-        peerDraftStatus.textContent = "Heropenen door gebruiker geannuleerd. Bestaande conceptselecties behouden.";
+      // Portable continuation: bind by exact ORIGINAL reviewer packet bytes
+      // rather than trusting positions from a reopened file-picker selection.
+      // The strict reader already rejects duplicate packet digests and names.
+      const remappedPackets = draft.packets.map(packet =>
+        plan.packetBytes.findIndex(current =>
+          packet.original_packet_byte_length === current.original_packet_byte_length &&
+          packet.unsigned_original_packet_sha256 === current.unsigned_original_packet_sha256));
+      if (remappedPackets.includes(-1) ||
+          new Set(remappedPackets).size !== plan.packetBytes.length) {
+        throw Error("missing, duplicate, or changed original reviewer packet");
+      }
+      const byOriginalName = new Map(plan.decisions.map(d=>[d.item.file.name,d]));
+      const restoredChoices = new Map();
+      for (const row of draft.sources) {
+        const d=byOriginalName.get(row.original_name);
+        if (!d || !items.includes(d.item) ||
+            row.byte_length !== d.item.file.size ||
+            row.unsigned_sha256 !== d.item.hash ||
+            row.structural_kind_unverified !== d.item.inspection.kind) {
+          throw Error("changed original source identity");
+        }
+        const currentSlot = row.packet_choice === -1
+          ? -1 : remappedPackets[row.packet_choice - 1];
+        if (currentSlot !== -1 &&
+            (!d.allowed[currentSlot] || !sourceEqual(d.allowed[currentSlot],d.item))) {
+          throw Error("source mismatch or missing reviewer choice");
+        }
+        restoredChoices.set(d.item.file.name,currentSlot);
+      }
+      if (restoredChoices.size !== plan.decisions.length) {
+        throw Error("incomplete original source coverage");
+      }
+      const selected=[...restoredChoices.values()].filter(slot=>slot>=0).length;
+      const reorderPackets=remappedPackets.some((slot,i)=>slot!==i);
+      const reorderSources=draft.sources.some((row,i)=>
+        row.original_name!==plan.decisions[i].item.file.name);
+      if (!confirm("Herstel UITSLUITEND " + selected +
+          " voorlopige HUMAN conceptkeuzes? Alle originele bronnen en " +
+          draft.packets.length + " originele reviewer-pakketten zijn exact dezelfde bytes. " +
+          (reorderPackets ? "REVIEWER PAKKETVOLGORDE IS ANDERS: pakketkeuzes worden veilig per exacte SHA-256 omgezet. " : "") +
+          (reorderSources ? "ORIGINELE BRONVOLGORDE IS ANDERS: bronnen worden exact op identiteit gekoppeld. " : "") +
+          "Geen oorspronkelijke bronbestanden, huidige HUMAN fase/team/route/notities, " +
+          "echte consent of grant veranderen. Een latere toepassing vereist een NIEUWE expliciete menselijke bevestiging.")) {
+        peerDraftStatus.textContent = "Heropenen door gebruiker geannuleerd. Bestaande conceptkeuzes blijven behouden.";
         return;
       }
       if (peerPreview!==plan || plan.epoch!==generation || plan.revision!==humanRevision ||
-          !draft.sources.every((row,i)=>row.packet_choice===-1 ||
-             sourceEqual(plan.decisions[i].allowed[row.packet_choice-1],plan.decisions[i].item))) {
+          !plan.decisions.every(d=>{
+            const currentSlot=restoredChoices.get(d.item.file.name);
+            return Number.isInteger(currentSlot) && items.includes(d.item) &&
+              (currentSlot===-1 || !!d.allowed[currentSlot] &&
+                sourceEqual(d.allowed[currentSlot],d.item));
+          })) {
         throw Error("stale confirmation");
       }
-      // Apply atomically only to pending select elements, not original HUMAN data.
-      for (let i=0;i<draft.sources.length;i++) {
-        const d=plan.decisions[i], choice=draft.sources[i].packet_choice;
-        d.choice=choice===-1 ? -1 : choice-1;
+      // Replace ONLY the unapplied HTML choices, never current HUMAN reviews.
+      for (const d of plan.decisions) {
+        d.choice=restoredChoices.get(d.item.file.name);
         if (d.select) d.select.value=String(d.choice);
       }
       peerApply.disabled = !peerPending();
       refreshPeerDesk();
       peerDraftStatus.textContent = "REVIEW_ONLY — "+selected+
-        " oorspronkelijke HUMAN conceptkeuze(n) hersteld; alle huidige lokale bron/HUMAN waarden intact.";
+        " oorspronkelijke HUMAN conceptkeuze(n) hersteld; "+
+        (reorderPackets ? "reviewer-pakketten bronexact hernummerd; " : "")+
+        (reorderSources ? "bronvolgorde veilig gekoppeld; " : "")+
+        "alle huidige lokale bron/HUMAN waarden intact.";
       report("REVIEW_ONLY — exact bron- en pakketgebonden concept heropend; GEEN voorstel toegepast of geautoriseerd.");
     } catch (_) {
       peerDraftStatus.textContent =
