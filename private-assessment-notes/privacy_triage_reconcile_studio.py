@@ -32,8 +32,16 @@ def render(sources: list[dict], packets: list[dict]) -> bytes:
             "reviewers": reviewers,
         })
     encoded = json.dumps(data, ensure_ascii=True, separators=(",", ":")).replace("<", r"\u003c")
+    identical_pairs = [
+        [i + 1, j + 1]
+        for i in range(len(packets))
+        for j in range(i + 1, len(packets))
+        if packets[i]["csv_sha256_unsigned"] == packets[j]["csv_sha256_unsigned"]
+    ]
+    pairs_json = json.dumps(identical_pairs, separators=(",", ":"))
     javascript = r"""'use strict';
 const originals = """ + encoded + r""";
+const exactSameHumanCSVSlots = """ + pairs_json + r""";
 const STAGES=['PENDING','REVIEW_REQUIRED','WITHHOLD'];
 const TOPICS=['CREDENTIALS','PERSONAL_DATA','CLIENT_DATA','OTHER','UNKNOWN'];
 const list=document.getElementById('sources');
@@ -67,7 +75,9 @@ function sync() {
   }
   status.textContent=shown+' of '+originals.length+' original positions shown · '+
     totalConflicts+' categorical HUMAN disagreements · '+
-    withhold+' originally declared WITHHOLD concerns.';
+    withhold+' originally declared WITHHOLD concerns.'+
+    (exactSameHumanCSVSlots.length ? ' '+exactSameHumanCSVSlots.length+
+    ' pairs of HUMAN review slots have byte-identical decisions; this is NOT independently authenticated reviewer agreement.' : '');
 }
 for(const record of originals) {
   const card=make('section',undefined,'source');
