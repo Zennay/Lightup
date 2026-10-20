@@ -45,6 +45,50 @@
   const driftRows = el("shelf-drift-rows");
   const driftExport = el("shelf-drift-export");
   let driftReview = null;
+
+  const reviewUndo = [];
+  const reviewRedo = [];
+  const HISTORY_LIMIT = 32;
+  const captureReview = () => items.map(e => ({
+    original_name: e.file.name, unsigned_sha256: e.hash,
+    route: e.route, stage: e.stage, team: e.team, note: e.note
+  }));
+  const sameReviewSources = snapshot => snapshot.length === items.length &&
+    snapshot.every((saved, i) => saved.original_name === items[i].file.name &&
+      saved.unsigned_sha256 === items[i].hash);
+  const clearReviewHistory = () => { reviewUndo.length = 0; reviewRedo.length = 0; humanRevision++; };
+  const recordReviewEdit = () => {
+    reviewUndo.push(captureReview());
+    if (reviewUndo.length > HISTORY_LIMIT) reviewUndo.shift();
+    reviewRedo.length = 0;
+  };
+  const restoreReview = (snapshot) => {
+    if (!sameReviewSources(snapshot)) return false;
+    for (let i = 0; i < items.length; i++) {
+      items[i].route = snapshot[i].route;
+      items[i].stage = snapshot[i].stage;
+      items[i].team = snapshot[i].team;
+      items[i].note = snapshot[i].note;
+    }
+    humanRevision++;
+    return true;
+  };
+  const moveReviewHistory = (previous, next, verb) => {
+    if (!previous.length) return;
+    const snapshot = previous[previous.length - 1];
+    if (!sameReviewSources(snapshot)) {
+      clearReviewHistory();
+      render();
+      return report("HOLD — bronselectie gewijzigd; oude HUMAN geschiedenis veilig verworpen.");
+    }
+    const current = captureReview();
+    previous.pop();
+    next.push(current);
+    if (next.length > HISTORY_LIMIT) next.shift();
+    restoreReview(snapshot);
+    render();
+    report("REVIEW_ONLY — PRIVATE HUMAN wijziging " + verb + ". Bronbestanden en werkelijke autorisatie niet veranderd.");
+  };
   const invalidateDrift = () => {
     driftReview = null;
     driftRows.replaceChildren();
@@ -101,6 +145,9 @@
       searchFilter.value.trim().normalize("NFC").toLowerCase()));
   function render() {
     rows.replaceChildren();
+    el("shelf-review-undo").disabled = reviewUndo.length === 0;
+    el("shelf-review-redo").disabled = reviewRedo.length === 0;
+    el("shelf-review-history-status").textContent = reviewUndo.length + " lokale HUMAN wijzigingen terug te draaien · " + reviewRedo.length + " opnieuw. Alleen tabgeheugen; nieuwe bronselectie wist deze geschiedenis.";
     summary.textContent = viewSummary();
     const teamCounts = Object.fromEntries(Object.keys(teams).map(k => [k, 0]));
     for (const item of items) teamCounts[item.team] += 1;
@@ -158,6 +205,8 @@
       select.value = item.route;
       select.addEventListener("change", () => {
         if (!Object.hasOwn(routes, select.value)) return;
+        if (item.route === select.value) return;
+        recordReviewEdit();
         item.route = select.value;
         humanRevision++;
         render();
@@ -179,6 +228,8 @@
         picker.value = value;
         picker.addEventListener("change", () => {
           if (!Object.hasOwn(options, picker.value)) return;
+          if (picker.value === value) return;
+          recordReviewEdit();
           update(picker.value);
           humanRevision++;
           render();
@@ -195,7 +246,10 @@
       note.rows = 2;
       note.value = item.note;
       note.setAttribute("aria-label", "PRIVATE opvolgnotitie voor " + item.file.name);
+      let noteStarted = false;
+      note.addEventListener("blur", () => { noteStarted = false; });
       note.addEventListener("input", () => {
+        if (!noteStarted) { recordReviewEdit(); noteStarted = true; }
         item.note = note.value;
         humanRevision++;
       });
@@ -219,6 +273,7 @@
       remove.textContent = "Verwijder";
       remove.addEventListener("click", () => {
         generation++;
+        clearReviewHistory();
         invalidateDrift();
         items.splice(items.indexOf(item), 1);
         render();
@@ -232,6 +287,8 @@
   }
   stageFilter.addEventListener("change", render);
   teamFilter.addEventListener("change", render);
+  el("shelf-review-undo").addEventListener("click", () => moveReviewHistory(reviewUndo, reviewRedo, "ongedaan gemaakt"));
+  el("shelf-review-redo").addEventListener("click", () => moveReviewHistory(reviewRedo, reviewUndo, "opnieuw toegepast"));
   el("shelf-bulk-apply").addEventListener("click", () => {
     const team = el("shelf-bulk-team").value;
     const stage = el("shelf-bulk-stage").value;
@@ -244,6 +301,7 @@
       (stage === "unchanged" ? "ongewijzigde fase" : stages[stage]);
     if (!confirm("Wijzig uitsluitend " + selected.length + " zichtbare PRIVATE HUMAN dossiers naar " + detail +
       "? De originele bronbestanden blijven ongewijzigd. Dit is geen toestemming, oplossing of geverifieerde revocatie.")) return;
+    recordReviewEdit();
     humanRevision++;
     for (const item of selected) {
       if (team !== "unchanged") item.team = team;
@@ -289,6 +347,7 @@
       }
       if (epoch !== generation) throw new Error("cancelled");
       generation++;
+      clearReviewHistory();
       invalidateDrift();
       items.push(...proposed);  // atomic admission
       render();
@@ -390,6 +449,7 @@
         return;
       }
       if (epoch !== generation || humanAtStart !== humanRevision) throw Error("source or HUMAN edits changed before replacement");
+      recordReviewEdit();
       humanRevision++;
       for (let i = 0; i < rows.length; i++) {
         items[i].route = rows[i].human_route;
@@ -411,6 +471,7 @@
     if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
     generation++; // invalidate any asynchronous import in flight
+    clearReviewHistory();
     invalidateDrift();
     items.splice(0);
     render();
@@ -515,6 +576,7 @@
   render();
   window.addEventListener("pagehide", () => {
     generation++;  // never repopulate a private tab after navigation / bfcache
+    clearReviewHistory();
     invalidateDrift();
     items.splice(0);
   });

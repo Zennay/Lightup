@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-WnV23+7pNggwghs59FUD2SbrDnWZh/o51ErVhpn+eys='; script-src 'sha256-GiCD77HeD0MMD3ctWmznjICg6TqYshrHhZNrAaM76zY=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-5OpNHz/yRsYsiAxBHxE5gLibINvQeNgv10CmlhmCnQY='; script-src 'sha256-8PdDg34MNfQDWHDgXHDGFYV7UOW4ZhCWSlwb/ESAbhE=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -39,6 +39,11 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-team-card button:focus-visible{outline:3px solid #a1e8d3;outline-offset:3px}
 .shelf-team-card button:disabled{cursor:not-allowed;opacity:.5}
 @media print{.shelf-board button{display:none}}
+
+.shelf-review-history{display:flex;flex-wrap:wrap;gap:12px;margin:13px 0}
+.shelf-review-history .action{flex:1 1 220px;cursor:pointer;border:1px solid #587788;font-size:12px;font-weight:700}
+.shelf-review-history .action:disabled{opacity:.45;cursor:not-allowed}
+.shelf-review-history .action:focus-visible{outline:3px solid #a9f0e3;outline-offset:3px}
 </style>
 </head>
 <body>
@@ -81,6 +86,12 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <select id="shelf-bulk-stage"><option value="unchanged">Fase niet wijzigen</option><option value="unreviewed">Nog niet beoordeeld</option><option value="preparing">Menselijk onderzoek</option><option value="escalated">Escalatie nodig</option><option value="documented">Gedocumenteerd, NIET opgelost</option></select></label>
 </div>
 <button type="button" id="shelf-bulk-apply" class="action muted">Pas HUMAN team/fase toe op uitsluitend gefilterde dossiers (na bevestiging)</button>
+<div class="shelf-review-history" role="group" aria-label="HUMAN bewerkingsgeschiedenis">
+<button type="button" id="shelf-review-undo" class="action muted" disabled>↶ HUMAN wijziging ongedaan maken</button>
+<button type="button" id="shelf-review-redo" class="action muted" disabled>↷ HUMAN wijziging opnieuw</button>
+</div>
+<p id="shelf-review-history-status" class="shelf-status">De laatste maximaal 32 lokale HUMAN wijzigingen zijn te herstellen. Bronselectie wissen, toevoegen of verwijderen begint bewust een nieuwe geschiedenis; de geschiedenis wordt niet geëxporteerd.</p>
+
 <p class="shelf-status">Uitsluitend lokale menselijke routering. Bulkacties zijn geen bronverificatie, oplossing, grant of consent. Kies vooraf bewust het filter en controleer het aantal in het bevestigingsvenster.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <p id="shelf-workload" class="shelf-summary" aria-live="polite">Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.</p>
@@ -450,6 +461,50 @@ const LightUpPrivateDrift = (() => {
   const driftRows = el("shelf-drift-rows");
   const driftExport = el("shelf-drift-export");
   let driftReview = null;
+
+  const reviewUndo = [];
+  const reviewRedo = [];
+  const HISTORY_LIMIT = 32;
+  const captureReview = () => items.map(e => ({
+    original_name: e.file.name, unsigned_sha256: e.hash,
+    route: e.route, stage: e.stage, team: e.team, note: e.note
+  }));
+  const sameReviewSources = snapshot => snapshot.length === items.length &&
+    snapshot.every((saved, i) => saved.original_name === items[i].file.name &&
+      saved.unsigned_sha256 === items[i].hash);
+  const clearReviewHistory = () => { reviewUndo.length = 0; reviewRedo.length = 0; humanRevision++; };
+  const recordReviewEdit = () => {
+    reviewUndo.push(captureReview());
+    if (reviewUndo.length > HISTORY_LIMIT) reviewUndo.shift();
+    reviewRedo.length = 0;
+  };
+  const restoreReview = (snapshot) => {
+    if (!sameReviewSources(snapshot)) return false;
+    for (let i = 0; i < items.length; i++) {
+      items[i].route = snapshot[i].route;
+      items[i].stage = snapshot[i].stage;
+      items[i].team = snapshot[i].team;
+      items[i].note = snapshot[i].note;
+    }
+    humanRevision++;
+    return true;
+  };
+  const moveReviewHistory = (previous, next, verb) => {
+    if (!previous.length) return;
+    const snapshot = previous[previous.length - 1];
+    if (!sameReviewSources(snapshot)) {
+      clearReviewHistory();
+      render();
+      return report("HOLD — bronselectie gewijzigd; oude HUMAN geschiedenis veilig verworpen.");
+    }
+    const current = captureReview();
+    previous.pop();
+    next.push(current);
+    if (next.length > HISTORY_LIMIT) next.shift();
+    restoreReview(snapshot);
+    render();
+    report("REVIEW_ONLY — PRIVATE HUMAN wijziging " + verb + ". Bronbestanden en werkelijke autorisatie niet veranderd.");
+  };
   const invalidateDrift = () => {
     driftReview = null;
     driftRows.replaceChildren();
@@ -506,6 +561,9 @@ const LightUpPrivateDrift = (() => {
       searchFilter.value.trim().normalize("NFC").toLowerCase()));
   function render() {
     rows.replaceChildren();
+    el("shelf-review-undo").disabled = reviewUndo.length === 0;
+    el("shelf-review-redo").disabled = reviewRedo.length === 0;
+    el("shelf-review-history-status").textContent = reviewUndo.length + " lokale HUMAN wijzigingen terug te draaien · " + reviewRedo.length + " opnieuw. Alleen tabgeheugen; nieuwe bronselectie wist deze geschiedenis.";
     summary.textContent = viewSummary();
     const teamCounts = Object.fromEntries(Object.keys(teams).map(k => [k, 0]));
     for (const item of items) teamCounts[item.team] += 1;
@@ -563,6 +621,8 @@ const LightUpPrivateDrift = (() => {
       select.value = item.route;
       select.addEventListener("change", () => {
         if (!Object.hasOwn(routes, select.value)) return;
+        if (item.route === select.value) return;
+        recordReviewEdit();
         item.route = select.value;
         humanRevision++;
         render();
@@ -584,6 +644,8 @@ const LightUpPrivateDrift = (() => {
         picker.value = value;
         picker.addEventListener("change", () => {
           if (!Object.hasOwn(options, picker.value)) return;
+          if (picker.value === value) return;
+          recordReviewEdit();
           update(picker.value);
           humanRevision++;
           render();
@@ -600,7 +662,10 @@ const LightUpPrivateDrift = (() => {
       note.rows = 2;
       note.value = item.note;
       note.setAttribute("aria-label", "PRIVATE opvolgnotitie voor " + item.file.name);
+      let noteStarted = false;
+      note.addEventListener("blur", () => { noteStarted = false; });
       note.addEventListener("input", () => {
+        if (!noteStarted) { recordReviewEdit(); noteStarted = true; }
         item.note = note.value;
         humanRevision++;
       });
@@ -624,6 +689,7 @@ const LightUpPrivateDrift = (() => {
       remove.textContent = "Verwijder";
       remove.addEventListener("click", () => {
         generation++;
+        clearReviewHistory();
         invalidateDrift();
         items.splice(items.indexOf(item), 1);
         render();
@@ -637,6 +703,8 @@ const LightUpPrivateDrift = (() => {
   }
   stageFilter.addEventListener("change", render);
   teamFilter.addEventListener("change", render);
+  el("shelf-review-undo").addEventListener("click", () => moveReviewHistory(reviewUndo, reviewRedo, "ongedaan gemaakt"));
+  el("shelf-review-redo").addEventListener("click", () => moveReviewHistory(reviewRedo, reviewUndo, "opnieuw toegepast"));
   el("shelf-bulk-apply").addEventListener("click", () => {
     const team = el("shelf-bulk-team").value;
     const stage = el("shelf-bulk-stage").value;
@@ -649,6 +717,7 @@ const LightUpPrivateDrift = (() => {
       (stage === "unchanged" ? "ongewijzigde fase" : stages[stage]);
     if (!confirm("Wijzig uitsluitend " + selected.length + " zichtbare PRIVATE HUMAN dossiers naar " + detail +
       "? De originele bronbestanden blijven ongewijzigd. Dit is geen toestemming, oplossing of geverifieerde revocatie.")) return;
+    recordReviewEdit();
     humanRevision++;
     for (const item of selected) {
       if (team !== "unchanged") item.team = team;
@@ -694,6 +763,7 @@ const LightUpPrivateDrift = (() => {
       }
       if (epoch !== generation) throw new Error("cancelled");
       generation++;
+      clearReviewHistory();
       invalidateDrift();
       items.push(...proposed);  // atomic admission
       render();
@@ -795,6 +865,7 @@ const LightUpPrivateDrift = (() => {
         return;
       }
       if (epoch !== generation || humanAtStart !== humanRevision) throw Error("source or HUMAN edits changed before replacement");
+      recordReviewEdit();
       humanRevision++;
       for (let i = 0; i < rows.length; i++) {
         items[i].route = rows[i].human_route;
@@ -816,6 +887,7 @@ const LightUpPrivateDrift = (() => {
     if (!items.length && !busy) return;
     if (!confirm("Alle PRIVATE bestandshandles uit dit tabblad wissen? Je oorspronkelijke bestanden blijven op schijf.")) return;
     generation++; // invalidate any asynchronous import in flight
+    clearReviewHistory();
     invalidateDrift();
     items.splice(0);
     render();
@@ -920,6 +992,7 @@ const LightUpPrivateDrift = (() => {
   render();
   window.addEventListener("pagehide", () => {
     generation++;  // never repopulate a private tab after navigation / bfcache
+    clearReviewHistory();
     invalidateDrift();
     items.splice(0);
   });

@@ -47,6 +47,12 @@
 <select id="shelf-bulk-stage"><option value="unchanged">Fase niet wijzigen</option><option value="unreviewed">Nog niet beoordeeld</option><option value="preparing">Menselijk onderzoek</option><option value="escalated">Escalatie nodig</option><option value="documented">Gedocumenteerd, NIET opgelost</option></select></label>
 </div>
 <button type="button" id="shelf-bulk-apply" class="action muted">Pas HUMAN team/fase toe op uitsluitend gefilterde dossiers (na bevestiging)</button>
+<div class="shelf-review-history" role="group" aria-label="HUMAN bewerkingsgeschiedenis">
+<button type="button" id="shelf-review-undo" class="action muted" disabled>↶ HUMAN wijziging ongedaan maken</button>
+<button type="button" id="shelf-review-redo" class="action muted" disabled>↷ HUMAN wijziging opnieuw</button>
+</div>
+<p id="shelf-review-history-status" class="shelf-status">De laatste maximaal 32 lokale HUMAN wijzigingen zijn te herstellen. Bronselectie wissen, toevoegen of verwijderen begint bewust een nieuwe geschiedenis; de geschiedenis wordt niet geëxporteerd.</p>
+
 <p class="shelf-status">Uitsluitend lokale menselijke routering. Bulkacties zijn geen bronverificatie, oplossing, grant of consent. Kies vooraf bewust het filter en controleer het aantal in het bevestigingsvenster.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <p id="shelf-workload" class="shelf-summary" aria-live="polite">Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.</p>

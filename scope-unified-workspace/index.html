@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; script-src 'none'; img-src 'none'; style-src 'sha256-WnV23+7pNggwghs59FUD2SbrDnWZh/o51ErVhpn+eys='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; script-src 'none'; img-src 'none'; style-src 'sha256-5OpNHz/yRsYsiAxBHxE5gLibINvQeNgv10CmlhmCnQY='">
 <meta name="color-scheme" content="dark">
 <title>LightUp — Private Scope Operations</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
@@ -40,6 +40,11 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-team-card button:focus-visible{outline:3px solid #a1e8d3;outline-offset:3px}
 .shelf-team-card button:disabled{cursor:not-allowed;opacity:.5}
 @media print{.shelf-board button{display:none}}
+
+.shelf-review-history{display:flex;flex-wrap:wrap;gap:12px;margin:13px 0}
+.shelf-review-history .action{flex:1 1 220px;cursor:pointer;border:1px solid #587788;font-size:12px;font-weight:700}
+.shelf-review-history .action:disabled{opacity:.45;cursor:not-allowed}
+.shelf-review-history .action:focus-visible{outline:3px solid #a9f0e3;outline-offset:3px}
 </style>
 </head>
 <body>
