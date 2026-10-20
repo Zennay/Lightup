@@ -130,3 +130,8 @@ python3 assessment-disclosure-preflight/human_review.py seal \
 Later the original browser may open that .luhd file against precisely the same original receipt bytes, or the native render/summarize commands may decrypt it with the non-echoed password. Passphrases do not authenticate the original producer, reviewer, owner, client or consent. Required optional dependency and HOLD handling are the same as for native decryption. Incorrect source, invalid CSV, password mismatch or missing TTY aborts without publishing new final ciphertext.
 
 Native and browser generate newly salted ciphertext for each deliberate export; neither changes the original receipt, creates an assessment, contacts a target, grants scope nor signals release readiness.
+
+
+## Private output directory binding
+
+Both original aggregate preflight and the HUMAN native publisher now open the output directory once with non-following directory flags, verify owner and group/other access on that **open descriptor**, then stage, fsync, hard-link exclusive final output names, roll back ordinary publication failures, and clean private staged files using descriptor-relative operations on that same directory inode. No path re-resolution is needed between permission check and publishing. Individual final filenames are atomic and never overwrite existing files/symlinks; the full three-file preflight set is **not** a single atomic transaction for readers observing it mid-publication. Interrupted processes may leave owner-only staging files that require private cleanup. This does not imply independent security certification.
