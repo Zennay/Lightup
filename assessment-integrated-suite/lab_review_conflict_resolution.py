@@ -219,6 +219,43 @@ def build(packets: list[str], final_room: str, handoff_room: str,
     initial = route_queue.read_owner_csv(str(room / "PRIVATE-HUMAN-CHOICES.csv"))
     if initial != _csv(public_rows):
         raise privacy.Hold("HOLD: original HUMAN choice template/source changed")
+    from workpack_progress import _private_receipt
+    stored = _private_receipt(room / "PRIVATE-HUMAN-DECISIONS-RECEIPT.json")
+    expected = {
+        "schema", "status", "authority", "verified_client_consent",
+        "verified_operator_consent", "verified_reviewer_identity",
+        "verified_source_identity", "human_go_recorded", "scan_or_release_allowed",
+        "automatic_finalization", "external_contact",
+        "private_question_text_included_in_overview",
+        "original_source_sha256_unsigned", "previous_candidate_sha256_unsigned",
+        "human_decisions_to_apply", "private_artifact_sha256_unsigned",
+    }
+    if (set(stored) != expected or stored["schema"] != SCHEMA
+            or stored["status"] != "REVIEW_ONLY"
+            or stored["original_source_sha256_unsigned"] != original
+            or stored["previous_candidate_sha256_unsigned"] != digest
+            or type(stored["human_decisions_to_apply"]) is not int
+            or stored["human_decisions_to_apply"] != 0
+            or type(stored["authority"]) is not dict
+            or set(stored["authority"]) != set(privacy.AUTHORITY)
+            or any(type(stored["authority"][key]) is not bool or
+                   stored["authority"][key] is not False
+                   for key in privacy.AUTHORITY)
+            or any(stored[key] is not False for key in (
+                "verified_client_consent", "verified_operator_consent",
+                "verified_reviewer_identity", "verified_source_identity",
+                "human_go_recorded", "scan_or_release_allowed",
+                "automatic_finalization", "external_contact",
+                "private_question_text_included_in_overview"))):
+        raise privacy.Hold("HOLD: original HUMAN choice room receipt invalid")
+    expected_files = ("OPEN-PRIVATE.html", "PRIVATE-HUMAN-CHOICES.csv")
+    inventory = stored["private_artifact_sha256_unsigned"]
+    if (type(inventory) is not dict or set(inventory) != set(expected_files)
+            or any(type(inventory[name]) is not str or
+                   inventory[name] != sha256(
+                       route_queue.read_owner_csv(str(room / name))).hexdigest()
+                   for name in expected_files)):
+        raise privacy.Hold("HOLD: original HUMAN choice workspace bytes changed")
     completed_raw = route_queue.read_owner_csv(completed)
     try:
         lines = list(csv.reader(io.StringIO(completed_raw.decode("utf-8", "strict"),
