@@ -24,9 +24,9 @@ NAMES = (
     "README.md", "ledger.py", "browser_studio.py", "compare.py", "continuity.py",
     "console.py", "human_revisions.py", "browser_intake.py", "history.py", "history_human.py", "history_studio.py",
     "history_team.py", "history_team_browser.py", "history_actions.py",
-    "history_actions_browser.py", "package.py", "standalone.html",
+    "history_actions_browser.py", "history_owner_brief.py", "package.py", "standalone.html",
 )
-SCHEMA = "lightup.private.workspace-ledger-software.v14"
+SCHEMA = "lightup.private.workspace-ledger-software.v15"
 FLAGS = {
     "authorization": False, "consent": False,
     "verified_finding": False, "release_approval": False,
