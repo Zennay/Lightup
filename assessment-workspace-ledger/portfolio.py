@@ -256,7 +256,8 @@ def run(args):
             "context_sha256": case["context_sha256"],
             "original_human_actions_sha256": case["actions_sha256"],
             "original_human_plan_sha256": case["plan_sha256"],
-        } for case in cases],
+        } for case in cases if owner is None or
+           any(item["case_ordinal"] == case["ordinal"] for item in entries)],
         "human_case_counts": stats,
         "human_proposals": entries,
     }
