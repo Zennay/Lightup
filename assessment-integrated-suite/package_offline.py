@@ -33,6 +33,10 @@ integrity references; they do not authenticate source provenance.
 Individual studios independently re-admit any PRIVATE local HUMAN/source data.
 Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
+Native checkout users can additionally prepare an original-source PRIVATE
+casebook and source-byte ledger with assessment-integrated-suite/console.py
+options 21/22. This ZIP is browser software only and intentionally does
+NOT embed or execute the native Python casebook or client sources.
 A missing required original input means HOLD; never fabricate findings.
 
 LightUp: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.

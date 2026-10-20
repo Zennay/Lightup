@@ -317,6 +317,8 @@ def main() -> int:
         "18": lambda x: remediation_team_console.prepare(x, path_prompt, ask),
         "19": lambda x: remediation_team_console.receive(x, path_prompt, ask),
         "20": lambda x: remediation_team_console.reconcile(x, path_prompt, ask),
+        "21": lambda x: remediation_console.prepare_casebook(x, path_prompt, ask),
+        "22": lambda x: remediation_console.prepare_casebook(x, path_prompt, ask, cohorts=True),
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
@@ -339,6 +341,8 @@ def main() -> int:
         print("18. Prepare bounded PRIVATE HUMAN team review handoff")
         print("19. Admit a returned PRIVATE HUMAN annotation against original team scope")
         print("20. Reconcile two to twelve non-overlapping PRIVATE HUMAN team returns")
+        print("21. One-command original PRIVATE comparison to HUMAN casebook and source ledger")
+        print("22. One-command two original cohorts to HUMAN casebook and source ledger")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -346,7 +350,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 20.")
+                print("Choose a number from 0 to 22.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
