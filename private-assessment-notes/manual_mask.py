@@ -89,20 +89,35 @@ def prepare(completed_packet: str, rules_file: str, parent: str) -> int:
     masked = []
     for slot, literals in sorted(selected.items()):
         row = rows[slot - 1]
-        # Reject overlapping literal fragments instead of silently turning a
-        # second requested rule into a no-op after masking the first phrase.
-        if any(a != b and (a in b or b in a)
-               for i, a in enumerate(literals) for b in literals[i+1:]):
-            raise Hold("HOLD: overlapping original HUMAN masking rules")
+        # Compute actual original occurrence spans before replacing anything.
+        # Partially intersecting different phrases must not silently lose an
+        # operator-requested mask even when neither phrase contains the other.
         before = row["redacted_text"]
-        if any(value not in before for value in literals):
-            raise Hold("HOLD: literal missing from original completed PRIVATE masked note")
-        replacement_count = sum(before.count(value) for value in literals)
-        after = before
-        for value in sorted(literals, key=len, reverse=True):
-            after = after.replace(value, REPLACEMENT)
-        if after == before:
-            raise Hold("HOLD: manual masking produced no difference")
+        spans = []
+        for value in literals:
+            offset = 0
+            found = 0
+            while True:
+                index = before.find(value, offset)
+                if index < 0:
+                    break
+                spans.append((index, index + len(value)))
+                found += 1
+                offset = index + len(value)
+            if found == 0:
+                raise Hold("HOLD: literal missing from original completed PRIVATE masked note")
+        spans.sort()
+        if any(left < prev_end
+               for (_, prev_end), (left, _) in zip(spans, spans[1:])):
+            raise Hold("HOLD: original HUMAN masking phrases have overlapping occurrences")
+        replacement_count = len(spans)
+        parts = []
+        start = 0
+        for left, right in spans:
+            parts.extend((before[start:left], REPLACEMENT))
+            start = right
+        parts.append(before[start:])
+        after = "".join(parts)
         output_bytes = after.encode("utf-8")
         masked.append({
             "original_ordinal": slot,
