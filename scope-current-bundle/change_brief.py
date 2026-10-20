@@ -104,7 +104,7 @@ def main(argv):
     write_private(output / "index.html", render_page(rows, old_hash, new_hash, old_heads != new_heads))
     # Fully source-byte-bound PRIVATE human assignment template, not permission.
     template = io.StringIO(newline="")
-    writer = csv.writer(template, lineterminator="\\n")
+    writer = csv.writer(template, lineterminator="\n")
     writer.writerow(("previous_manifest_sha256", "current_manifest_sha256",
                      "source_file_path", "change_status", "previous_sha256",
                      "current_sha256", "human_stage", "human_team", "human_notes"))
