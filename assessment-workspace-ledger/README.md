@@ -59,6 +59,45 @@ Native Python independently re-admits the bounded original ledger and re-hashes 
 
 Limits: 1–12 kits, <=256 files per kit, <=64 MiB each kit, <=32 MiB per individual file, <=256 MiB combined, max depth 5, <=1 MiB ledger JSON, <=64 KiB HUMAN CSV. Existing owner-private input folders, owner-only 0700 output parent, 0700 exclusive generated folders and 0600 output files. No implicit scans, no original source modification and no overwrites.
 
+## Native source-bound HUMAN continuity between private inventory snapshots
+
+The new [continuity.py](continuity.py) finishes the longitudinal HUMAN-only
+workflow without trusting historical decisions for changed source files.
+
+First generate a previous inventory using native capture, complete human
+review, and use native finalize to create its immutable original private
+HUMAN-only.json. When the same original kit paths have a fresh snapshot
+created with native capture --previous, run:
+
+    python3 assessment-workspace-ledger/continuity.py --previous /private/old-ledger/ledger.json --human /private/old-human/HUMAN-only.json --current /private/new-ledger/ledger.json --private-parent /private/private-ledgers
+
+This original-native stage re-admits the old exact-human JSON schema and
+ledger/hash/ordinal correspondence, requires the new original inventory's
+previous_sha256 to equal the SHA-256 of the supplied previous ledger, and
+re-opens **all CURRENT original source kit files** using the native bounded
+no-follow inventory reader. It carries human stage/owner/question only where
+the original and current kit's *entire* file list, file SHA-256, size, ordinal
+and private kit path are literally unchanged. A changed kit automatically
+starts at needs_review with empty owner/question; nothing implies clearance.
+A failure of any binding aborts the entire operation before publishing.
+
+The result is another private 0700 directory with native source-bound
+HUMAN-carry.json and HUMAN-review.csv, human-only printable OPEN-PRIVATE.html
+and complete RESTART-IN-BROWSER equivalent REVIEW-IN-BROWSER.html. Open the
+browser, first import the **current original ledger.json**, then optionally
+import **HUMAN-carry.json**. The browser requires WebCrypto SHA-256 of the
+exact original JSON file bytes and compares every kit ordinal/digest before
+prefilling any human rows; a bad carry leaves current decisions unchanged.
+A human must reconfirm every carried choice and explicitly save a NEW CSV.
+The unchanged native ledger.py finalize subsequently repeats original source
+byte admission before emitting any private HUMAN-only packet. Browser notes
+and statuses never create client/operator consent, security proof or PASS.
+
+Unchanged inventories yield review-only exit 2; changed original kit bytes
+lead to HOLD exit 3 even when a separate private continuity workroom is created.
+The previous original HUMAN packet remains unchanged. No historical source
+files are deleted, overwritten, shared or copied.
+
 ## Historical comparison when source kits are no longer present
 
 The self-contained companion command compares two previously stored original
