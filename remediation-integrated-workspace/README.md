@@ -373,3 +373,24 @@ bounded exact decimal byte lengths are accepted. The typed comparison is
 ephemeral browser memory and never approves a recipient, identity, consent,
 fix, release or transfer. Native packet_fingerprint.py compare remains the
 strict owner-private source-bound receipt comparison counterpart.
+
+### Optional complete PRIVATE source-free byte-comparison report
+
+When authentic original and received packet files are available to their
+separately authorized operator, the native comparison can now atomically
+publish a **new private scriptless human-readable HTML plus minimal JSON**
+without including original packet bytes, file paths or client evidence:
+
+    python3 remediation-integrated-workspace/private_desk.py fingerprint-compare --packet /absolute/private/received.luhx --receipt /absolute/private/authorized-original-unsigned-fingerprints.json --output-dir /absolute/private/NEW-byte-review
+
+Only when **every exact source-declared slot length AND SHA-256 matches**
+does the existing private 0700/0600 original native publisher create the
+new report. This report is HTML with CSP preventing script/network,
+per-slot digest and byte length, and a SHA-256 of the exact ORIGINAL
+unsigned receipt bytes. It is private, linkable and NOT a signature.
+Any mismatch is HOLD without a report. Neither successful comparison nor
+its report authenticates a client, source owner, separate recipient,
+actual permission, chronology, current scope, verified remediation or
+security release. The original ZIP/envelope admission remains a separate
+mandatory native step. Existing held original CI/review/consent/HUMAN GO
+requirements are unchanged.

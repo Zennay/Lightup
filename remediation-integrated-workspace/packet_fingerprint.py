@@ -159,6 +159,7 @@ def main() -> int:
     cmd = sub.add_parser("compare", help="Compare actually received packets against ORIGINAL unsigned receipt")
     cmd.add_argument("--packet", type=Path, action="append", required=True)
     cmd.add_argument("--receipt", type=Path, required=True)
+    cmd.add_argument("--output-dir", type=Path, default=None)
     args = p.parse_args()
     try:
         items = fresh(args.packet)
@@ -176,6 +177,12 @@ def main() -> int:
             require(args.receipt not in args.packet, "Expected separate original receipt")
             require(items == expected["files"],
                     "HOLD: actual received packet bytes differ from unsigned expected fingerprint slots")
+            if args.output_dir is not None:
+                import packet_brief
+                raw = receipt_bytes(args.receipt)
+                require(load_receipt(args.receipt) == expected,
+                        "Expected original unsigned receipt changed before report")
+                packet_brief.publish(items, raw, args.output_dir, WARNING)
             print("REVIEW_ONLY: identical lengths and SHA-256 against supplied UNSIGNED receipt.")
         print("SHA-256 does NOT prove real sender, source identity, consent, or authority.")
         return 2

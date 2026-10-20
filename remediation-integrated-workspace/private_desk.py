@@ -107,7 +107,8 @@ OPERATIONS = {
     "fingerprint-compare": ("packet_fingerprint.py", ("compare",), (
         ("--packet", "Actually received PRIVATE packet(s), SAME ordinal order", True, True),
         ("--receipt", "Separately authorized original unsigned PRIVATE JSON hashreceipt", False, True),
-    ), "Fail closed if exact original ordered byte fingerprints differ."),
+        ("--output-dir", "Optional NEW scriptless PRIVATE HUMAN review report directory", False, False),
+    ), "Fail closed on changed original bytes; optional local PRIVATE HTML report."),
     "install": ("install.py", ("build",), (
         ("--output-dir", "NEW owner-private software-only suite", False, True),
     ), "Copies original pinned software only; NEVER client data."),
