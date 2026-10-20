@@ -63,3 +63,7 @@ button.secondary:hover{background:#405a76}
 .preview-results details table{margin-top:12px}
 .preview-results tr.pending{background:#49321e}
 #preview-status.error{color:#ffbac1}
+
+.note-bulk{border:1px solid #6c89aa;background:#1b2e43;margin-top:18px}
+.note-bulk .toolbar button{margin-top:2px}
+#note-bulk-status.error{color:#ffbac1}

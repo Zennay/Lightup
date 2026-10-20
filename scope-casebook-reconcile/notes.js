@@ -34,6 +34,7 @@ function canonical(entry){
 function reset(length){
  if(!Number.isInteger(length)||length<0||length>MAX_ENTRIES)deny("Teveel HUMAN-aantekeningen.");
  notes=Array.from({length},()=>({reason:"not-recorded",note:""}));
+ window.LightUpCasebookNoteBulk?.reset();
 }
 function read(){
  return notes.map(x=>({...x}));
@@ -43,6 +44,7 @@ function restore(rows){
   deny("HOLD: HUMAN-notities komen niet overeen met de huidige oorspronkelijke dossiers.");
  const candidate=rows.map(canonical);
  notes=candidate;
+ window.LightUpCasebookNoteBulk?.reset();
 }
 function render(parent,index,caseInfo){
  const entry=notes[index];
@@ -64,6 +66,7 @@ function render(parent,index,caseInfo){
  select.value=entry.reason;
  select.addEventListener("change",()=>{
   notes[index]=canonical({reason:select.value,note:notes[index].note});
+  window.LightUpCasebookNoteBulk?.invalidateHistory();
  });
  label.append(select);section.append(label);
  const noteLabel=document.createElement("label");
@@ -88,5 +91,24 @@ function render(parent,index,caseInfo){
  noteLabel.append(textarea,feedback);section.append(noteLabel);
  parent.append(section);
 }
-window.LightUpCasebookNotes=Object.freeze({reset,read,restore,render,canonical});
+function applyReasons(changes){
+ if(!Array.isArray(changes)||changes.length<1||changes.length>MAX_ENTRIES)
+  deny("HOLD: te groot of ontbrekend PRIVATE HUMAN-redenenpakket.");
+ const seen=new Set();
+ for(const change of changes){
+  if(!change||typeof change!=="object"||
+    JSON.stringify(Object.keys(change))!==JSON.stringify(["i","from","to"])||
+    !Number.isInteger(change.i)||change.i<0||change.i>=notes.length||
+    seen.has(change.i)||!REASONS.includes(change.from)||
+    !REASONS.includes(change.to)||change.from===change.to||
+    notes[change.i].reason!==change.from)
+   deny("HOLD: ongeldige of intussen gewijzigde PRIVATE HUMAN-opvolgreden.");
+  seen.add(change.i);
+ }
+ for(const change of changes)notes[change.i]={
+  reason:change.to,note:notes[change.i].note};
+ return changes.length;
+}
+window.LightUpCasebookNotes=Object.freeze({reset,read,restore,render,canonical,applyReasons,
+ reasons:REASONS,labels:LABELS});
 })();

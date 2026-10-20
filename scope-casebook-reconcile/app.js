@@ -297,6 +297,7 @@ async function publish(){
  link.download="lightup-casebook-private-reconciled.lupt";
  document.body.append(link);link.click();link.remove();
  work.finalReceipt={bundle_sha256:offeredSha256,human_csv_sha256:newHuman.sha256};
+ window.LightUpCasebookOutputPreview?.comparePublished(newHuman.sha256);
  setTimeout(()=>URL.revokeObjectURL(url),2000);
  status("Nieuwe AES-256-GCM PRIVATE overdracht aangeboden: dezelfde originele bronbytes, expliciet gekozen HUMAN-velden; geen bronverificatie, grant of consent.");
 }
@@ -307,6 +308,7 @@ function setBusy(v){
  for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=v;
  window.LightUpCasebookBulk?.setBusy(v);
  window.LightUpCasebookPortfolio?.setBusy(v);
+ window.LightUpCasebookNoteBulk?.setBusy(v);
 }
 $("open").addEventListener("click",async()=>{
  if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
@@ -396,6 +398,7 @@ $("aggregate").addEventListener("click",()=>{
  try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
 });
 window.LightUpBulkBridge=Object.freeze({
+ refresh:()=>{if(!work||busy)deny("HOLD: PRIVATE HUMAN-werkruimte niet geopend.");show();},
  focus:index=>{
   if(!work||busy||!Number.isInteger(index)||index<0||index>=work.cases.length)
    deny("HOLD: ongeldig privébroncase voor lokale navigatie.");

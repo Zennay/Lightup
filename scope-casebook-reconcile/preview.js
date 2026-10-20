@@ -10,7 +10,7 @@ const allowed=[
  ["none","missing-source","missing-owner","needs-independent-consent",
   "requires-revocation-review","unresolved-tenant-lineage"]
 ];
-let generation=0,active=false;
+let generation=0,active=false,expectedSha=null;
 const deny=x=>{throw Error(x);};
 const el=(tag,s)=>{const e=document.createElement(tag);e.textContent=s;return e;};
 function setStatus(message,error=false){
@@ -78,7 +78,7 @@ function render(result){
  $("preview-visible").textContent=shown+" van "+result.total+" PRIVATE dossiers in de huidige voorvertoning.";
 }
 function invalidate(){
- generation++;active=false;
+ generation++;active=false;expectedSha=null;
  $("preview-sha").textContent="Geen actuele SHA-256 van een volledig menselijk besloten resultaat.";
  $("preview-result").replaceChildren();
  $("preview-visible").textContent="";
@@ -114,7 +114,7 @@ async function calculate(){
  if(!current||JSON.stringify(data.cases)!==JSON.stringify(current.cases)){
   invalidate();deny("Bron-/HUMAN-keuzes wijzigden tijdens de lokale preview. Kies opnieuw.");
  }
- active=true;
+ active=true;expectedSha=digest;
  render(review);
  $("preview-sha").textContent="Zelfberekende prospective HUMAN CSV SHA-256 (geen bronverificatie): "+digest;
  setStatus("Volledig besloten HUMAN-uitvoer lokaal vooraf bekeken. Het SHA-verwijzingsgetal authenticeert geen producent of toestemming; daadwerkelijke export blijft afzonderlijk expliciet.");
@@ -129,6 +129,15 @@ for(const [id,event] of [["preview-search","input"],["preview-different","change
   try{render(evaluate(data));}catch(e){invalidate();setStatus(e.message,true);}
  });
 }
-window.LightUpCasebookOutputPreview=Object.freeze({invalidate});
+window.LightUpCasebookOutputPreview=Object.freeze({invalidate,
+ comparePublished:actual=>{
+  if(!expectedSha){setStatus("PRIVATE .lupt aangeboden zonder eerdere optionele CSV-preview; geen hashvergelijking geclaimd.");return;}
+  if(typeof actual!=="string"||!/^[a-f0-9]{64}$/.test(actual)||actual!==expectedSha){
+   setStatus("HOLD: de actuele .lupt HUMAN CSV-hash is NIET identiek aan de voorgaande lokale preview; controleer de nieuwe overdracht opnieuw bij oorspronkelijke validator.",true);
+   return;
+  }
+  setStatus("LOKALE BYTEGELIJKHEID: nieuwe versleutelde HUMAN-CSV-hash en eerder bekeken voorlopige CSV-hash zijn gelijk. Dit authenticeert geen oorspronkelijke bronproducent, toestemming of grant.");
+ }
+});
 invalidate();
 })();

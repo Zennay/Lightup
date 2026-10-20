@@ -66,6 +66,20 @@
 <p id="bulk-history" class="muted"></p><div id="bulk-preview" class="bulk-preview" aria-live="polite"></div>
 <p id="bulk-status" role="status" aria-live="polite">Nog geen bulkkeuze toegepast.</p>
 </div>
+<div class="panel note-bulk" aria-labelledby="note-bulk-title">
+<h3 id="note-bulk-title">PRIVATE menselijke opvolgredenen voor meerdere dossiers</h3>
+<p>Verdeel een oorspronkelijke, al bestaande HUMAN-conflictenlijst sneller naar een vaste menselijke opvolgredencategorie. Alleen dossiers zonder eerder gekozen reden worden bijgewerkt; vrije privénotitieteksten, oorspronkelijke brondossiers en beslissingen blijven ongemoeid. Ook deze actie vereist een voorvertoning en aparte bevestiging.</p>
+<div class="grid"><label for="note-bulk-reason">Canonieke HUMAN-opvolgreden
+<select id="note-bulk-reason"><option value="source-clarification">Oorspronkelijke bron verduidelijken</option><option value="client-question">Vraag aan oorspronkelijke cliënt</option><option value="independent-review">Onafhankelijke menselijke review</option><option value="consent-to-verify">Actuele toestemming onafhankelijk controleren</option><option value="revocation-followup">Intrekking menselijk opvolgen</option><option value="conflicting-human-interpretation">Tegenstrijdige HUMAN-interpretaties</option><option value="manual-followup">Overige menselijke opvolging</option></select></label>
+<label for="note-bulk-scope">Welke nog onbehandelde PRIVÉ-redenen?
+<select id="note-bulk-scope"><option value="visible">Alleen nu zichtbare oorspronkelijke HUMAN-conflictdossiers</option><option value="all">Alle brongebonden conflictdossiers zonder eerdere reden</option></select></label></div>
+<div class="toolbar"><button id="note-bulk-preview-btn" type="button">Bekijk menselijke opvolgredenen-batch</button>
+<button id="note-bulk-apply" type="button" disabled>Bevestig PRIVÉ-redenenbatch</button>
+<button id="note-bulk-undo" type="button" class="secondary" disabled>Redenenbatch ongedaan</button>
+<button id="note-bulk-redo" type="button" class="secondary" disabled>Redenenbatch herstellen</button></div>
+<p id="note-bulk-history" class="muted"></p><div id="note-bulk-plan" class="bulk-preview"></div>
+<p id="note-bulk-status" role="status" aria-live="polite">Nog geen PRIVATE opvolgredenenbatch gekozen.</p>
+</div>
 <p id="shown"></p><div id="cases" class="cases"></div>
 </section>
 <div class="panel original-output-preview" aria-labelledby="preview-title">

@@ -24,7 +24,8 @@ def build() -> None:
     bulk = (ROOT / "bulk.js").read_text(encoding="utf-8")
     portfolio = (ROOT / "portfolio.js").read_text(encoding="utf-8")
     preview = (ROOT / "preview.js").read_text(encoding="utf-8")
-    js = adapter + "\n" + app + "\n" + notes + "\n" + draft + "\n" + receipt + "\n" + revision + "\n" + timeline + "\n" + bulk + "\n" + portfolio + "\n" + preview
+    note_bulk = (ROOT / "note-bulk.js").read_text(encoding="utf-8")
+    js = adapter + "\n" + app + "\n" + notes + "\n" + draft + "\n" + receipt + "\n" + revision + "\n" + timeline + "\n" + bulk + "\n" + portfolio + "\n" + preview + "\n" + note_bulk
     digest = lambda t: base64.b64encode(hashlib.sha256(t.encode("utf-8")).digest()).decode("ascii")
     policy = ("default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; "
               "form-action 'none'; connect-src 'none'; img-src 'none'; "
