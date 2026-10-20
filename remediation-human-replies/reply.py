@@ -167,6 +167,12 @@ def editable_page(packet: dict, digest: str, previous: list[dict] | None = None,
              '<option value="answered_human_only">Answered HUMAN (not fixed)</option>',
              '<option value="declined_human">Declined HUMAN</option>',
              '</select></label>',
+             ('<label>Filter earlier HUMAN reply file differences<select id="comparison-filter">'
+              '<option value="">All self-declared responses</option>'
+              '<option value="different">Any literal HUMAN reply difference</option>'
+              '<option value="followup">Any HUMAN clarification or unanswered follow-up</option>'
+              '<option value="identical">All local reply file text literally identical (NOT consensus)</option>'
+              '</select></label>' if comparisons is not None else ''),
              '<p id="summary" aria-live="polite"></p>',
              '<section aria-label="Filter-selected HUMAN status actions">',
              '<h2>Bulk HUMAN stage · only currently filtered tasks</h2>',
