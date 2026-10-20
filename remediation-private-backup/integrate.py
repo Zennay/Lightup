@@ -71,12 +71,23 @@ def private_directory(folder: Path):
 
 def read_asset(name):
     original = HERE / name
-    info = original.stat(follow_symlinks=False)
-    insist(stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and info.st_size <= MAX_ASSET
-           and not original.is_symlink(), "original companion source missing or unsafe")
-    raw = original.read_bytes()
-    insist(len(raw) == info.st_size, "companion source changed during copy")
-    return raw
+    # Read the file descriptor itself, not a pathname after a separate lstat:
+    # replacing a source between admission and copy must never silently succeed.
+    descriptor = os.open(original, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        before = os.fstat(descriptor)
+        insist(stat.S_ISREG(before.st_mode) and before.st_nlink == 1
+               and before.st_size <= MAX_ASSET,
+               "original companion source missing or unsafe")
+        with os.fdopen(descriptor, "rb", closefd=False) as stream:
+            raw = stream.read(MAX_ASSET + 1)
+        after = os.fstat(descriptor)
+        insist((before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) ==
+               (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+               and len(raw) == before.st_size, "companion source changed during copy")
+        return raw
+    finally:
+        os.close(descriptor)
 
 def private_file(destination: Path, data: bytes):
     descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
