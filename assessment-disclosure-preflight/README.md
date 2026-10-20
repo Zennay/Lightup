@@ -192,3 +192,17 @@ Load an original receipt with a matching HUMAN CSV or encrypted .luhd, edit loca
 LUHBP001 is a purpose-separated binary AES-256-GCM packet. Outer 36-byte header: eight-byte LUHBP001 marker, 16 random salt bytes, 12 random nonce bytes; the entire header is authenticated AES-GCM associated data. Key derivation: PBKDF2-HMAC-SHA256, 600,000 iterations, 256-bit key. Plaintext inside authenticated ciphertext: second LUHBP001 marker, big-endian 32-bit receipt length and CSV length, exact unsigned PRIVATE receipt bytes, exact HUMAN CSV bytes. Each source is strictly bounded to 256 KiB. Password mistakes, tag failure, unsupported version, inconsistent lengths, duplicate receipt keys and noncanonical HUMAN rows all refuse before any current HUMAN review is replaced.
 
 The ciphertext protects against passive disclosure/tampering while its password remains secret. It does NOT prove authentic original lab provenance, review authorship, client/operator consent, current revocation, fixes, approved assessment rights or HUMAN GO. Original receipt and HUMAN CSV are explicitly unsigned. No anonymity, secure memory erasure or password recovery is promised. Source/cryptography/browser CI reviews and action-time authorization/release gates remain mandatory. Keep PRIVATE, DRAFT/HOLD, without production target interaction, automatic transfer, merge or deployment.
+
+
+### Offline re-encryption / independent recipient passphrase rotation
+
+For an already received original PRIVATE-human-handoff.luhb packet, the native CLI can rotate its passphrase without ever writing an unencrypted receipt or HUMAN CSV to disk. This is not a new scan, authenticated sender signature or release approval; it is a new owner-only encrypted output after full readmission.
+
+~~~sh
+mkdir -m 700 ./rekeyed-private-handoff
+python3 assessment-disclosure-preflight/human_review.py rekey-bundle \
+  --bundle ./another-private-handoff/PRIVATE-human-handoff.luhb \
+  --private-output-dir ./rekeyed-private-handoff
+~~~
+
+First enter the existing password, then a NEW password twice. The original LUHBP001 packet is decrypted in memory, the exact embedded unsigned receipt and source-free HUMAN CSV are readmitted, a new random salt and nonce are used, and PRIVATE-human-handoff-rekeyed.luhb is published exclusively as a new 0600 file. The original encrypted source file is never overwritten or deleted, and output is never a completed security review. Password change cannot revoke copies distributed earlier with an old password; recipients must handle deletion/revocation using real independent policy and controls. Use a different private output directory for additional revisions.
