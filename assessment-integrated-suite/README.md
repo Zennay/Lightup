@@ -1644,3 +1644,96 @@ consent. The original M3/M7 DRAFT/HOLD, named permanent VPS + hosted exact-head
 CI, source-owner and independent security/privacy/browser reviews,
 #177/#182/#829, separately authenticated current client/operator consent
 with at-use revocation and explicit HUMAN GO remain mandatory.
+
+## NEW: source-bound PRIVATE per-original-ordinal HUMAN conflict Studio (console 68–71)
+
+When the existing source-bound HUMAN Lab continuation (option 65) withholds an
+entire team's new reply because any HUMAN stage or question conflicts with an
+earlier stored HUMAN decision, the owner can now **deliberately select individual
+original ordinal changes**. Nothing silently replaces a previous HUMAN choice.
+This is a local follow-up proposal, **not** a consent, source authentication,
+privileged security activity, approval or PASS.
+
+**68 — Prepare exact-original conflict choices.** Select 3–8 ORIGINAL
+owner-0700 Launchpad packets, the unchanged original FINAL HUMAN review,
+the original team handoff, one original PRIVATE batch, optionally up to six
+previous saved PRIVATE continuation rooms in order, and 1–4 complete
+owner-0600 returned team CSVs. Every original source, earlier HUMAN candidate,
+each assigned-team handoff and complete returned HUMAN CSV is freshly
+re-admitted before a new 0700 room is created. The room contains original
+owner-0600 `OPEN-PRIVATE.html` (scriptless overview),
+**`EDIT-PRIVATE.html` (a real keyboard-accessible source-bound browser
+choice editor)**, `PRIVATE-HUMAN-CHOICES.csv` and an unsigned
+`PRIVATE-HUMAN-DECISIONS-RECEIPT.json` with 0600 exact artifact digests.
+Every original ordinal defaults to **KEEP_PREVIOUS**.
+
+Open `EDIT-PRIVATE.html` locally on a trusted offline device. It provides
+independent per-ordinal checkboxes, previous/returned HUMAN stage, assigned
+team and whether the confidential HUMAN question differs. No source
+findings, client identities, original target URLs or private question text
+are embedded. **The PRIVATE HTML itself does include unsigned source and
+previous candidate SHA bindings within its data-only rows**, necessary
+to export the complete original-native source-bound CSV: keep the page
+confidential. The browser JavaScript is SHA-256 CSP-pinned, with
+`connect-src 'none'`; no remote calls, cookies, localStorage, IndexedDB,
+service workers, scanners, models or network action. The editor never
+automatically downloads or exports by merely opening the page: only
+an explicit operator click exports the *entire* original row set.
+Do not assume browser downloads are PRIVATE: deliberately save the completed
+CSV into an **existing trusted owner-only 0700 directory with exact 0600 file
+mode** before continuing. No other CSV column may be edited.
+
+**69 — Publish only explicitly selected HUMAN choices.** Supply the EXACT
+same original packet/FINAL/handoff/batch/continuation/team return sources,
+the 0700 original choice preparation room, the completed owner-0600 HUMAN
+choices CSV, and a NEW unused PRIVATE 0700 destination. The native producer
+recomputes original source/previous candidate SHA, requires the unchanged
+full original choice rows and strict duplicate-key-rejecting receipt with
+all authority flags false, rechecks source-bound original editor/CSV/HTML
+file hashes, exact original ordinal/team/previous/proposed stage and
+HUMAN question-changed Boolean, and accepts only
+`KEEP_PREVIOUS` or `APPLY_RETURN`. At least one deliberate APPLY is required.
+It creates a separate owner-0600 `OPEN-PRIVATE.html`,
+`PRIVATE-HUMAN-RESOLVED-CANDIDATE.csv` (complete original five-column
+HUMAN Lab Review rows, **not** a grant),
+`PRIVATE-HUMAN-FINAL-CHOICES.csv` and unsigned
+`PRIVATE-HUMAN-RESOLUTION-RECEIPT.json`. Original source and earlier
+PRIVATE HUMAN candidate bytes are untouched. No automatic FINALIZE.
+
+**70 — Reopen the published original-human resolution READ ONLY.**
+Reconstruct the complete result from unchanged original packets, original
+human FINAL, team handoff, previous HUMAN batches and full returned team CSVs,
+the original choice preparation room, and the separately saved resolution.
+It checks the complete exact-byte receipt inventory and recomputes
+the original source-bound full HUMAN result from only deliberate APPLY rows.
+Missing/modified source/receipt/CSV or ordinal decisions means **HOLD**, not
+PASS, not release, and does not modify any prior room.
+
+**71 — Open the resolved HUMAN draft in the unchanged ORIGINAL native Lab
+Review Studio.** After #70's full exact-source admission, explicitly supply
+the original owner-0700 Lab Review Studio source room (created by original
+option 56), and a new PRIVATE 0700 output parent/unused name. Native
+`lab_plan_review.prepare(..., prior_room=original_review,
+prior_csv=PRIVATE-HUMAN-RESOLVED-CANDIDATE.csv)` re-admits the ORIGINAL
+source-owned HUMAN Studio receipt and selected original-complete CSV.
+This creates a new editable source-bound HUMAN Studio, with original
+manual FINALIZE as a **separate later decision**. No original source owner
+files or security/authorization/CI contracts are modified.
+
+All four stages are discoverable in the foreground
+`python3 assessment-integrated-suite/console.py` via actions **68–71**
+and `?conflict` / `ALL`; the standalone native CLIs
+`lab_review_conflict_resolution.py prepare`,
+`lab_review_conflict_resolution.py publish`,
+`lab_review_conflict_reopen.py` and
+`lab_review_conflict_studio.py` remain available for an owner-operated
+offline machine. They return REVIEW_ONLY (code 2) and HOLD (code 3),
+never verified authority.
+
+**Release state remains INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD**:
+real independently current authenticated client/operator consent and
+revocation-at-use, original source-owner and independent privacy/security/
+browser review, #177/#182/#829, original exact-head hosted + permanently
+registered named VPS CI, explicit HUMAN GO remain mandatory for any main
+merge/deploy/real activity. No QA/regression/testsuites, real scans,
+grants, recipient transmission or customer evidence performed by this work.
