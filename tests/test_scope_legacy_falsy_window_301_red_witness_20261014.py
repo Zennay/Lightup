@@ -1,4 +1,4 @@
-"""Assert that #301 expected-RED tests are failing assertions, not masked crashes."""
+"""Keep #301's formerly-RED falsy-window canaries fixed (no expectedFailure)."""
 import os
 import sys
 import unittest
@@ -21,54 +21,40 @@ RED_METHODS = (
 )
 
 
-def _require_assertion_witnesses(testcase, result):
+def _assert_fixed(testcase, result):
+    """Formerly-RED canaries must now pass: no errors, failures or XFAILs."""
     testcase.assertEqual(result.testsRun, len(RED_METHODS))
     testcase.assertFalse(result.errors)
     testcase.assertFalse(result.failures)
+    testcase.assertFalse(result.expectedFailures)
     testcase.assertFalse(result.unexpectedSuccesses)
-    testcase.assertEqual(len(result.expectedFailures), len(RED_METHODS))
-    testcase.assertEqual(
-        {case._testMethodName for case, _ in result.expectedFailures},
-        set(RED_METHODS),
-    )
-    for _, trace in result.expectedFailures:
-        testcase.assertIn("AssertionError:", trace)
-        for forbidden in ("TypeError:", "ValueError:", "AttributeError:", "KeyError:"):
-            testcase.assertNotIn(forbidden, trace)
 
 
-class LegacyFalsyBoundaryWitnessTests(unittest.TestCase):
-    def test_all_ten_expected_red_witnesses_are_assertion_failures(self):
-        for name in RED_METHODS:
-            self.assertTrue(getattr(
-                red.LegacyFalsyBoundaryRedTests.__dict__[name],
-                "__unittest_expecting_failure__", False
-            ), name)
+class FixedRedWitnessTests(unittest.TestCase):
+    def test_formerly_red_canaries_pass_without_expected_failure(self):
+        for method in RED_METHODS:
+            self.assertFalse(
+                getattr(red.LegacyFalsyBoundaryRedTests.__dict__[method],
+                        "__unittest_expecting_failure__", False),
+                f"{method} is fixed and must not be re-marked RED",
+            )
         result = unittest.TestResult()
-        unittest.TestSuite([
-            red.LegacyFalsyBoundaryRedTests(name) for name in RED_METHODS
-        ]).run(result)
-        _require_assertion_witnesses(self, result)
+        unittest.TestSuite([red.LegacyFalsyBoundaryRedTests(m) for m in RED_METHODS]).run(result)
+        _assert_fixed(self, result)
 
-    def test_masked_crash_fails_witness_gate(self):
-        class Fake:
-            _testMethodName = RED_METHODS[0]
-
+    def test_gate_rejects_regression_back_to_expected_failure(self):
         result = unittest.TestResult()
         result.testsRun = len(RED_METHODS)
-        result.expectedFailures = [
-            (Fake(), "Traceback\nTypeError: intentionally unrelated")
-            for _ in RED_METHODS
-        ]
+        result.expectedFailures = [(object(), "AssertionError: regressed")]
         with self.assertRaises(AssertionError):
-            _require_assertion_witnesses(self, result)
+            _assert_fixed(self, result)
 
-    def test_unexpected_success_fails_witness_gate(self):
+    def test_gate_rejects_errors(self):
         result = unittest.TestResult()
         result.testsRun = len(RED_METHODS)
-        result.unexpectedSuccesses = [object()]
+        result.errors = [(object(), "TypeError: crash")]
         with self.assertRaises(AssertionError):
-            _require_assertion_witnesses(self, result)
+            _assert_fixed(self, result)
 
 
 if __name__ == "__main__":

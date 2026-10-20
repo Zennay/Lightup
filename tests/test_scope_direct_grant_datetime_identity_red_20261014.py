@@ -73,25 +73,21 @@ class DirectGrantDatetimeIdentityTests(unittest.TestCase):
         grant = _grant(distant, distant + timedelta(days=1))
         self.assertFalse(_target_decision(grant).allowed)
 
-    @unittest.expectedFailure
     def test_red_future_lower_bound_polymorphic_datetime_must_fail_closed(self):
         start = _ComparisonSplicingDatetime(2026, 10, 15, 12, tzinfo=timezone.utc)
         grant = _grant(start, NOW + timedelta(days=2))
         self.assertFalse(grant.is_current(NOW), "subclassed not-before boundary must not grant access")
 
-    @unittest.expectedFailure
     def test_red_expired_upper_bound_polymorphic_datetime_must_fail_closed(self):
         end = _ComparisonSplicingDatetime(2026, 10, 13, 12, tzinfo=timezone.utc)
         grant = _grant(NOW - timedelta(days=2), end)
         self.assertFalse(grant.is_current(NOW), "subclassed expiry must not grant access")
 
-    @unittest.expectedFailure
     def test_red_both_polymorphic_datetime_bounds_must_fail_closed(self):
         start = _ComparisonSplicingDatetime(2026, 10, 15, 12, tzinfo=timezone.utc)
         end = _ComparisonSplicingDatetime(2026, 10, 13, 12, tzinfo=timezone.utc)
         self.assertFalse(_grant(start, end).is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_future_subclass_is_rejected_by_live_execution_policy(self):
         future = datetime.now(timezone.utc) + timedelta(days=200)
         start = _ComparisonSplicingDatetime(
@@ -101,7 +97,6 @@ class DirectGrantDatetimeIdentityTests(unittest.TestCase):
         grant = _grant(start, future + timedelta(days=1))
         self.assertFalse(_target_decision(grant).allowed)
 
-    @unittest.expectedFailure
     def test_red_expired_subclass_is_rejected_by_live_execution_policy(self):
         past = datetime.now(timezone.utc) - timedelta(days=200)
         end = _ComparisonSplicingDatetime(

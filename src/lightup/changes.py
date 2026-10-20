@@ -18,6 +18,7 @@ from .twin import FactProvenance, SecurityTwin, TwinFact, TwinNode, TwinNodeKind
 class ChangeSourceKind(str, Enum):
     GITHUB_PULL_REQUEST = "github_pull_request"
     GITHUB_COMMIT = "github_commit"
+    LOCAL_GIT_RANGE = "local_git_range"
 
 
 class ChangeOperation(str, Enum):

@@ -34,6 +34,17 @@ The repository contains:
 - further lab-only capability workers: **TCP service inventory**
   (`lightup.workers.service_inventory`) and **TLS baseline**
   (`lightup.workers.tls_baseline`: protocol, cipher, chain trust);
+- a lab-only **web exposure** worker (`lightup.workers.web_exposure`):
+  signature-verified detection of readable `.git` metadata, `.env` files and
+  SQL dumps, directory listing, CORS origin reflection (with/without
+  credentials) and cookie flags, without retaining leaked file contents; the
+  `leaky-webapp` fixture profile plants all of them as ground truth;
+- an offline **pre-merge change review** (`lightup review-change`,
+  `docs/change-review.md`): git range -> ChangeSet -> deterministic change
+  rules -> future twin -> inferred PASS/WARN/REVIEW/BLOCK verdict with
+  Markdown, JSON and SARIF output and a GitHub Action (`action.yml`);
+- strict, fail-closed authorization time windows (`lightup.timewindow`):
+  falsy bounds and datetime subclasses can no longer widen a grant;
 - a **planner role** (`lightup.ai.planner`): the model proposes a typed
   multi-lane plan that is strictly parsed and then executed call-by-call
   behind the policy gate, with denials recorded as policy-violation metrics

@@ -1,10 +1,9 @@
-"""Guard against expectedFailure silently hiding crashes in #738's RED canaries.
+"""Keep #738's formerly-RED direct-grant canaries fixed (no expectedFailure).
 
 This is a synthetic unittest meta-check. No network, target, executor,
 filesystem write, credential, authorization, or production source modification.
 """
 import os
-import re
 import sys
 import unittest
 
@@ -21,55 +20,40 @@ RED_METHODS = (
 )
 
 
-def _assert_true_red(testcase, result):
-    """Refuse masked non-assertion exception or accidental green XPASS."""
+def _assert_fixed(testcase, result):
+    """Formerly-RED canaries must now pass: no errors, failures or XFAILs."""
     testcase.assertEqual(result.testsRun, len(RED_METHODS))
     testcase.assertFalse(result.errors)
     testcase.assertFalse(result.failures)
+    testcase.assertFalse(result.expectedFailures)
     testcase.assertFalse(result.unexpectedSuccesses)
-    testcase.assertEqual(len(result.expectedFailures), len(RED_METHODS))
-    testcase.assertEqual(
-        {test._testMethodName for test, _ in result.expectedFailures},
-        set(RED_METHODS),
-    )
-    for _, trace in result.expectedFailures:
-        testcase.assertRegex(trace, r"(?m)^AssertionError(?::|\\b)")
-        # Unexpected source/API crashes are not meaningful authorization witnesses.
-        testcase.assertNotRegex(trace, r"(?m)^(?:TypeError|ValueError|AttributeError|ImportError|KeyError):")
 
 
-class ExpectedRedWitnessIntegrityTests(unittest.TestCase):
-    def test_expected_red_canaries_are_actual_assertion_failures(self):
+class FixedRedWitnessTests(unittest.TestCase):
+    def test_formerly_red_canaries_pass_without_expected_failure(self):
         for method in RED_METHODS:
-            self.assertTrue(
+            self.assertFalse(
                 getattr(red.DirectGrantDatetimeIdentityTests.__dict__[method],
                         "__unittest_expecting_failure__", False),
-                f"{method} must stay explicitly marked RED until the source-owner fix",
+                f"{method} is fixed and must not be re-marked RED",
             )
-        cases = [red.DirectGrantDatetimeIdentityTests(method) for method in RED_METHODS]
         result = unittest.TestResult()
-        unittest.TestSuite(cases).run(result)
-        _assert_true_red(self, result)
+        unittest.TestSuite([red.DirectGrantDatetimeIdentityTests(m) for m in RED_METHODS]).run(result)
+        _assert_fixed(self, result)
 
-    def test_classifier_rejects_forged_runtime_error_evidence(self):
-        class FakeCase:
-            _testMethodName = RED_METHODS[0]
-
+    def test_gate_rejects_regression_back_to_expected_failure(self):
         result = unittest.TestResult()
         result.testsRun = len(RED_METHODS)
-        result.expectedFailures = [
-            (FakeCase(), "Traceback (most recent call last):\\nTypeError: crash")
-            for _ in RED_METHODS
-        ]
+        result.expectedFailures = [(object(), "AssertionError: regressed")]
         with self.assertRaises(AssertionError):
-            _assert_true_red(self, result)
+            _assert_fixed(self, result)
 
-    def test_classifier_rejects_unexpected_success(self):
+    def test_gate_rejects_errors(self):
         result = unittest.TestResult()
         result.testsRun = len(RED_METHODS)
-        result.unexpectedSuccesses = [object()]
+        result.errors = [(object(), "TypeError: crash")]
         with self.assertRaises(AssertionError):
-            _assert_true_red(self, result)
+            _assert_fixed(self, result)
 
 
 if __name__ == "__main__":

@@ -37,6 +37,7 @@ from .engagements import (
     ScopeDefinition,
 )
 from .models import RetestStatus, Severity
+from .timewindow import require_instant
 
 
 class Role(str, Enum):
@@ -241,6 +242,19 @@ CREATE TABLE IF NOT EXISTS login_failures (
     locked_until TEXT
 );
 
+CREATE TABLE IF NOT EXISTS change_reviews (
+    review_id TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL,
+    repository TEXT NOT NULL,
+    source_ref TEXT NOT NULL,
+    head_revision TEXT NOT NULL,
+    verdict TEXT NOT NULL,
+    basis TEXT NOT NULL,
+    report_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS coverage_entries (
     engagement_id TEXT NOT NULL,
     capability_id TEXT NOT NULL,
@@ -321,6 +335,22 @@ class FindingRecord:
     retest_status: RetestStatus
     evidence_ids: tuple[str, ...]
     created_at: str
+
+
+@dataclass(frozen=True)
+class ChangeReviewRecord:
+    review_id: str
+    client_id: str
+    repository: str
+    source_ref: str
+    head_revision: str
+    verdict: str
+    basis: str
+    report: dict
+    created_at: str
+
+
+_CHANGE_REVIEW_VERDICTS = {"PASS", "PASS_WITH_WARNING", "REVIEW_REQUIRED", "BLOCK"}
 
 
 @dataclass(frozen=True)
@@ -737,8 +767,8 @@ class DomainStore:
         recurring_retest_allowed: bool = False,
     ) -> AuthorizationGrant:
         ctx.require_operator("record_authorization_grant")
-        if valid_from.tzinfo is None or valid_until.tzinfo is None:
-            raise ValueError("grant validity must be timezone-aware")
+        valid_from = require_instant(valid_from, "grant valid_from")
+        valid_until = require_instant(valid_until, "grant valid_until")
         if valid_until <= valid_from:
             raise ValueError("grant validity window is empty")
         if not reference.strip() or not approved_by.strip():
@@ -1008,6 +1038,74 @@ class DomainStore:
         return self._finding_from_row(row)
 
     # -- coverage ----------------------------------------------------------------
+
+    # -- change reviews (Future Security, inferred) ------------------------------
+
+    def record_change_review(
+        self, ctx: AccessContext, client_id: str, report: dict,
+    ) -> ChangeReviewRecord:
+        """Persist a ``lightup.change_review`` report for one client.
+
+        Only inferred reports are accepted: a stored review can never be
+        mistaken for verified evidence or for authorization.
+        """
+        ctx.require_operator("record_change_review")
+        client = self.get_client(ctx, client_id)
+        if report.get("schema") != "lightup.change_review.v1":
+            raise ValueError("unsupported change review schema")
+        if report.get("basis") != "inferred" or report.get("not_authorization") is not True:
+            raise ValueError("change reviews must be inferred and non-authorizing")
+        verdict = report.get("verdict")
+        if verdict not in _CHANGE_REVIEW_VERDICTS:
+            raise ValueError(f"invalid change review verdict {verdict!r}")
+        change = report.get("change") or {}
+        record = ChangeReviewRecord(
+            review_id=str(uuid4()),
+            client_id=client.client_id,
+            repository=str(change.get("repository", "")),
+            source_ref=str(change.get("source_ref", "")),
+            head_revision=str(change.get("head_revision", "")),
+            verdict=verdict,
+            basis="inferred",
+            report=report,
+            created_at=utcnow().isoformat(),
+        )
+        if not record.repository or not record.head_revision:
+            raise ValueError("change review requires repository and head_revision")
+        with self._connect() as con:
+            con.execute(
+                "INSERT INTO change_reviews(review_id,client_id,repository,source_ref,"
+                "head_revision,verdict,basis,report_json,created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?)",
+                (record.review_id, record.client_id, record.repository,
+                 record.source_ref, record.head_revision, record.verdict,
+                 record.basis, json.dumps(report, sort_keys=True), record.created_at),
+            )
+        return record
+
+    def list_change_reviews(
+        self, ctx: AccessContext, client_id: str | None = None, limit: int = 50,
+    ) -> list[ChangeReviewRecord]:
+        with self._connect() as con:
+            if ctx.is_operator and client_id is None:
+                rows = con.execute(
+                    "SELECT * FROM change_reviews ORDER BY created_at DESC LIMIT ?",
+                    (limit,)).fetchall()
+            else:
+                scoped = ctx.resolve_client(client_id, "list_change_reviews")
+                rows = con.execute(
+                    "SELECT * FROM change_reviews WHERE client_id=? "
+                    "ORDER BY created_at DESC LIMIT ?", (scoped, limit)).fetchall()
+        return [
+            ChangeReviewRecord(
+                review_id=r["review_id"], client_id=r["client_id"],
+                repository=r["repository"], source_ref=r["source_ref"],
+                head_revision=r["head_revision"], verdict=r["verdict"],
+                basis=r["basis"], report=json.loads(r["report_json"]),
+                created_at=r["created_at"],
+            )
+            for r in rows
+        ]
 
     def set_coverage(
         self, ctx: AccessContext, engagement_id: str, capability_id: str, status: str
