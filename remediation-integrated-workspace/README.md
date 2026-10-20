@@ -413,3 +413,31 @@ Without --receipt, original 1-12 native packet workflow is unchanged; with
 it, comparison is bounded by the native 1-8 receipt contract. A matching
 unsigned hash is NEVER real sender/client identity, permission, verified
 remediation, a grant, active target authorization or HUMAN GO.
+
+### Single-action original-owner encrypted transfer + separate unsigned receipt
+
+The existing private_desk and offline operatorstudio now offer
+owner-encrypted-receipt as a full PRIVATE original-owner product flow:
+
+    python3 remediation-integrated-workspace/private_desk.py owner-encrypted-receipt --input-dir /absolute/private/original-ledger --output-dir /absolute/private/NEW-owner-workroom --output-file /absolute/private/NEW-sourcefree-packet.luhx --receipt-file /absolute/private/NEW-unsigned-byte-receipt.json
+
+The original native source owner admission and original source-free recipient
+Cockpit are reused as-is. The native cryptography/passphrase prompt encrypts
+only the source-free Cockpit to NEW .luhx; there is no plaintext ZIP step.
+After encryption, the original PRIVATE native fingerprint reader publishes
+an independent 0600 UNSIGNED receipt containing only exact ciphertext bytes,
+ordinal 1, byte length, SHA-256 and literal false authority fields. Neither
+product is sent or approved automatically. The two independent output parents
+must be owner-private, literal and existing, and original client evidence
+is never a permitted output destination. NEW packet and receipt paths are
+preflighted before original workroom publication. If later original source
+admission, encryption or byte receipt publication fails, earlier PRIVATE
+output may still remain and must be handled manually; no unsupported rollback
+or automatic disclosure is claimed.
+
+A recipient who has genuinely received both after external authorization can
+use the existing optional archives --receipt operation: source-free actual
+ciphertext bytes are compared BEFORE original decryption, and the original
+native source-free admission and HUMAN recipient workroom retain all their
+separate checks. A fingerprint is NOT a signature or authenticated sender,
+client consent, valid assessment scope, remediated finding or HUMAN GO.

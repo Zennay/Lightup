@@ -36,6 +36,13 @@ OPERATIONS = {
         ("--output-dir", "NEW private ORIGINAL owner workroom", False, True),
         ("--output-file", "NEW encrypted source-free .luhx (NOT sent)", False, True),
     ), "Build original owner workroom and locally encrypt source-free transfer in memory."),
+    "owner-encrypted-receipt": ("workflow.py", ("owner-start",), (
+        ("--input-dir", "Original PRIVATE ledger(s), repeatable", True, False),
+        ("--bundle", "Original PRIVATE bundle(s), repeatable", True, False),
+        ("--output-dir", "NEW PRIVATE original owner workroom", False, True),
+        ("--output-file", "NEW source-free encrypted .luhx (not sent)", False, True),
+        ("--receipt-file", "NEW separate PRIVATE unsigned .json fingerprint receipt", False, True),
+    ), "Create encrypted source-free packet AND separate unsigned local byte receipt in one owner action."),
     "recipient": ("workflow.py", ("recipient-start",), (
         ("--cockpit", "Received original source-free Cockpit (1–12)", True, True),
         ("--output-dir", "NEW private HUMAN review directory", False, True),
@@ -193,17 +200,17 @@ def dispatch(name: str, values: dict) -> None:
             if not path.is_absolute():
                 raise ValueError("Use a literal absolute path: " + flag)
             arguments.extend((flag, str(path)))
-    if name in ("owner", "owner-package", "owner-encrypted") and not (values.get("--input-dir") or values.get("--bundle")):
+    if name in ("owner", "owner-package", "owner-encrypted", "owner-encrypted-receipt") and not (values.get("--input-dir") or values.get("--bundle")):
         raise ValueError("Select actual original private evidence inputs")
     if name == "archives" and not (values.get("--archive") or values.get("--encrypted-archive")):
         raise ValueError("Select actual received original archive(s)")
     if name == "pack-review" and bool(values.get("--journal")) == bool(values.get("--journal-vault")):
         raise ValueError("Choose exactly one original source-bound HUMAN journal form")
-    if name in ("owner-package", "owner-encrypted"):
+    if name in ("owner-package", "owner-encrypted", "owner-encrypted-receipt"):
         # Explicit composition of two ORIGINAL bounded source admissions.
         from workflow import owner_start
         from portable_cockpit import pack as native_pack
-        if name == "owner-encrypted":
+        if name in ("owner-encrypted", "owner-encrypted-receipt"):
             if not sys.stdin.isatty():
                 raise ValueError("Encrypted HUMAN owner handoff requires a PRIVATE interactive terminal")
             try:
@@ -214,9 +221,17 @@ def dispatch(name: str, values: dict) -> None:
         packet_dest = Path(values["--output-file"])
         # Reject confusing plaintext/encrypted filename identities before any
         # private owner output is created. Existing native file gates remain.
-        expected_suffix = ".luhx" if name == "owner-encrypted" else ".luhz"
+        expected_suffix = ".luhx" if name in ("owner-encrypted", "owner-encrypted-receipt") else ".luhz"
         if packet_dest.suffix != expected_suffix:
             raise ValueError("Separate source-free packet must use " + expected_suffix)
+        if name == "owner-encrypted-receipt":
+            receipt_dest = Path(values["--receipt-file"])
+            if (receipt_dest.suffix != ".json" or receipt_dest == packet_dest
+                    or receipt_dest == owner_dest or owner_dest in receipt_dest.parents):
+                raise ValueError("Unsigned JSON fingerprint receipt must be NEW, separate and outside original owner workroom")
+            if (receipt_dest.exists() or receipt_dest.is_symlink()
+                    or receipt_dest.parent != receipt_dest.parent.resolve(strict=True)):
+                raise ValueError("Choose a NEW literal private receipt path, not a symlink")
         original_dirs = [Path(x) for x in values.get("--input-dir", [])]
         original_bundles = [Path(x) for x in values.get("--bundle", [])]
         original_sources = [*original_dirs, *original_bundles]
@@ -234,12 +249,25 @@ def dispatch(name: str, values: dict) -> None:
         if packet_dest.parent != packet_dest.parent.resolve(strict=True):
             raise ValueError("Recipient output parent must be literal, not a symlink")
         original_owner_dir(packet_dest.parent)
+        if name == "owner-encrypted-receipt":
+            if any(receipt_dest == source or source in receipt_dest.parents
+                   or receipt_dest in source.parents for source in original_sources):
+                raise ValueError("Unsigned byte receipt cannot enter or replace original PRIVATE evidence")
+            original_owner_dir(receipt_dest.parent)
         print("Preparing private ORIGINAL owner workroom. No packet transmitted.", flush=True)
         owner_start(original_dirs, original_bundles, owner_dest)
         print("Re-admitting the separate native SOURCE-FREE folder.", flush=True)
-        if name == "owner-encrypted":
+        if name in ("owner-encrypted", "owner-encrypted-receipt"):
             from encrypted_cockpit import encrypt as native_encrypt
             native_encrypt(owner_dest / "source-free-recipient", packet_dest)
+            if name == "owner-encrypted-receipt":
+                import packet_fingerprint
+                receipt_items = packet_fingerprint.fresh([packet_dest])
+                packet_fingerprint.single_review.review.private_publish(
+                    receipt_dest,
+                    packet_fingerprint.install.canonical(packet_fingerprint.document(receipt_items)))
+                print("REVIEW_ONLY: separate PRIVATE unsigned exact-byte SHA-256 receipt created.")
+                print("Both files require real separate operator/client disclosure consent before transfer.")
             print("REVIEW_ONLY: encrypted source-free packet created WITHOUT plaintext ZIP.")
         else:
             native_pack(owner_dest / "source-free-recipient", packet_dest)

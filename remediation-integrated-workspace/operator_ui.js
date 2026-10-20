@@ -75,15 +75,29 @@
         Boolean(vals("--journal").length) === Boolean(vals("--journal-vault").length)) {
       throw Error("Kies precies één oorspronkelijke HUMAN journalvorm.");
     }
-    if (chosen.name === "owner-package" || chosen.name === "owner-encrypted") {
+    if (chosen.name === "owner-package" || chosen.name === "owner-encrypted" || chosen.name === "owner-encrypted-receipt") {
       const destination = vals("--output-dir")[0];
       const packet = vals("--output-file")[0];
       if (packet === destination || packet.startsWith(destination + "/")) {
         throw Error("Bronvrij pakket moet BUITEN de originele owner-map blijven.");
       }
-      const extension = chosen.name === "owner-encrypted" ? ".luhx" : ".luhz";
+      const extension = chosen.name === "owner-package" ? ".luhz" : ".luhx";
       if (!packet.endsWith(extension)) throw Error("Gebruik uitsluitend " + extension + " voor deze overdracht.");
+      if (chosen.name === "owner-encrypted-receipt") {
+        const receipt = vals("--receipt-file")[0];
+        if (!receipt.endsWith(".json") || receipt === packet || receipt === destination ||
+            receipt.startsWith(destination + "/") || packet.startsWith(receipt + "/") ||
+            receipt.startsWith(packet + "/")) {
+          throw Error("Gebruik een afzonderlijk nieuw privé .json ontvangstbewijs BUITEN de originele eigenaarmap.");
+        }
+      }
       const originalInputs = [...vals("--input-dir"), ...vals("--bundle")];
+      if (chosen.name === "owner-encrypted-receipt") {
+        const receipt = vals("--receipt-file")[0];
+        if (originalInputs.some(source => receipt === source || receipt.startsWith(source + "/") || source.startsWith(receipt + "/"))) {
+          throw Error("Privé hashbewijs mag de originele bronbestanden niet overschrijven of binnen hun map vallen.");
+        }
+      }
       if (originalInputs.some(source => packet === source ||
           packet.startsWith(source + "/") || source.startsWith(packet + "/"))) {
         throw Error("Nieuwe bronvrije output mag NOOIT in oorspronkelijke PRIVATE evidence staan.");
@@ -167,7 +181,9 @@
                      : "Letterlijk absoluut pad. Laat originele bestanden ongewijzigd."));
       fields.append(wrapper);
     }
-    special.textContent = chosen.name === "owner-encrypted"
+    special.textContent = chosen.name === "owner-encrypted-receipt"
+      ? "Volledige oorspronkelijke PRIVATE bronhouderactie: versleutel een bronvrij .luhx pakket, schrijf afzonderlijk PRIVATE unsigned JSON-fingerprintbewijs. Niets wordt verzonden; ontvanger vergelijkt vóór decryptie met zijn werkelijk ontvangen pakket."
+      : chosen.name === "owner-encrypted"
       ? "Voorkeursroute: origineel owner-evidence blijft lokaal, bronvrij .luhx wordt rechtstreeks in geheugen versleuteld. Wachtwoord alleen in privéterminal."
       : chosen.name === "owner-package"
       ? "Bronvrij .luhz blijft ONVERSLEUTELD en ONDERTEKEND: nee. Niet automatisch verzenden."

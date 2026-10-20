@@ -18,6 +18,7 @@ CATEGORIES = {
     "owner": "Source owner",
     "owner-package": "Source owner",
     "owner-encrypted": "Source owner",
+    "owner-encrypted-receipt": "Source owner",
     "recipient": "Recipient",
     "archives": "Recipient",
     "pack": "Recipient",
@@ -87,10 +88,10 @@ Versleuteling en checksums bewijzen geen identiteit, echte toestemming of fix.</
 <p>Drie onafhankelijke lokale HUMAN-stappen. De pakketoverdracht tussen machines
 gebeurt uitsluitend na afzonderlijke echte toestemming, nooit automatisch.</p>
 <div class="journey-grid">
-<article><span>01 · ORIGINAL OWNER</span><h3>Maak versleutelde bronvrije overdracht</h3>
+<article><span>01 · ORIGINAL OWNER</span><h3>Maak versleuteld pakket en eigen fingerprintbewijs</h3>
 <p>Oorspronkelijke privé-evidence blijft bij de bronhouder; alleen de afzonderlijke native
-bronvrije Cockpit wordt lokaal versleuteld naar een nieuw .luhx-bestand.</p>
-<button type="button" data-workflow="owner-encrypted">Bereid originele eigenaarsoverdracht voor</button></article>
+bronvrije Cockpit wordt lokaal versleuteld naar een nieuw .luhx-bestand plus apart privé, niet-ondertekend JSON-fingerprintbewijs.</p>
+<button type="button" data-workflow="owner-encrypted-receipt">Bereid originele eigenaarsoverdracht voor</button></article>
 <article><span>02 · PRIVATE RECIPIENT</span><h3>Open de werkelijk ontvangen overdracht</h3>
 <p>Gebruik uitsluitend een afzonderlijk en rechtmatig ontvangen oorspronkelijk .luhx-bestand.
 De ontvanger maakt lokaal een PRIVATE HUMAN-werkruimte, geen scan of fix.</p>
