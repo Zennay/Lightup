@@ -10,6 +10,7 @@ import argparse
 import csv
 import html
 import io
+import os
 import sys
 import shutil
 from pathlib import Path
@@ -109,7 +110,10 @@ def render(sources, transitions, hotspots):
                 ("HOLD: HUMAN attention" if row["human_attention"] else
                  "REVIEW_ONLY: historical files unchanged") + "</td></tr>"
             )
-    body.append("</tbody></table><p>Original relative filenames and any hashes are "
+    body.append("</tbody></table><p><a href='PRIVATE-hotspots.html'>"
+                "Open PRIVATE per-file churn review</a> for source-relative "
+                "filenames and repeat changes. This separate HTML is sensitive.</p>"
+                "<p>Original relative filenames and any hashes are "
                 "omitted from this overview; they are PRIVATE in "
                 "PRIVATE-relative-file-hotspots.json. Never publish that file or "
                 "treat file churn as a remediation verdict.</p>"
@@ -121,9 +125,43 @@ def render(sources, transitions, hotspots):
     return html_page("LightUp PRIVATE chained historical inventory", "".join(body))
 
 
+def render_hotspots(hotspots):
+    body = [
+        "<p><strong>PRIVATE ORIGINAL SOURCE-RELATIVE FILENAMES.</strong> "
+        "These are historical file-list differences, not validated security "
+        "findings or remediations. HUMAN selected order is NOT signed chronology. "
+        "Source kits were not reopened and no current existence is implied.</p>",
+        "<p>" + str(len(hotspots)) + " historical path changes; showing " +
+        str(min(len(hotspots), 500)) + " by highest repeated churn. "
+        "The separately private JSON contains all bounded original paths.</p>",
+        "<table><thead><tr><th>Kit</th><th>Original relative path</th>"
+        "<th>Added</th><th>Removed</th><th>Changed bytes</th>"
+        "<th>First step</th><th>Last step</th></tr></thead><tbody>",
+    ]
+    for row in hotspots[:500]:
+        body.append(
+            "<tr><td>" + str(row["kit_ordinal"]) + "</td><td><code>" +
+            html.escape(row["relative_path"]) + "</code></td><td>" +
+            str(row["added"]) + "</td><td>" + str(row["removed"]) +
+            "</td><td>" + str(row["changed"]) + "</td><td>" +
+            str(row["first_transition"]) + "</td><td>" +
+            str(row["last_transition"]) + "</td></tr>"
+        )
+    body.append("</tbody></table><p>Missing sources or lower churn never "
+                "establish a fix, consent, trusted producer, PASS or permission. "
+                "<a href='OPEN-PRIVATE.html'>Back to PRIVATE source-minimal overview</a>.</p>")
+    return html_page("LightUp PRIVATE repeated original-file changes", "".join(body))
+
+
 def run(args):
     sources = load_history(args.ledger)
     transitions, hotspots, changed = summarize(sources)
+    parent = os.path.normpath(args.private_parent)
+    if parent != args.private_parent or not os.path.isabs(parent):
+        reject("PRIVATE HOLD: private output parent must be absolute and canonical")
+    for kit in sources[0]["doc"]["kits"]:
+        if os.path.commonpath((kit["path"], parent)) == kit["path"]:
+            reject("PRIVATE HOLD: private history output cannot be inside original source kit")
     overview = {
         "schema": "lightup.private.workspace-ledger-history.v1",
         "authority": FLAGS,
@@ -158,6 +196,7 @@ def run(args):
         write_private(private, "PRIVATE-relative-file-hotspots.json", canonical(hot))
         write_private(private, "PRIVATE-HUMAN-history-template.csv", output.getvalue())
         write_private(private, "OPEN-PRIVATE.html", render(sources, transitions, hotspots))
+        write_private(private, "PRIVATE-hotspots.html", render_hotspots(hotspots))
     except BaseException:
         shutil.rmtree(private)
         raise
