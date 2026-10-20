@@ -13,6 +13,7 @@ from paged_review import make_paged_package
 from human_matrix import create as create_human_matrix
 from private_paged_zip import create as create_private_paged_zip
 from private_paged_restore import restore as restore_private_paged_zip
+from human_source_continuity import create as create_human_source_continuity
 
 MENU = (
     ("Create PRIVATE full source briefing + editable HUMAN worksheet",
@@ -42,6 +43,11 @@ MENU = (
      ("Original PRIVATE lab result JSON", "Original briefing manifest.json",
       "Filled original HUMAN CSV", "NEW PRIVATE output directory"),
      create_human_matrix),
+    ("Draft NEXT-RUN HUMAN notes with strict source continuity and reset stages",
+     ("Earlier original PRIVATE lab JSON", "Earlier PRIVATE briefing manifest",
+      "Earlier human-filled original CSV", "Newer original PRIVATE lab JSON",
+      "NEW PRIVATE proposal output directory"),
+     create_human_source_continuity),
     ("Compare two source-bound original HUMAN worksheet revisions",
      ("Original PRIVATE lab result JSON", "Original briefing manifest.json",
       "Older human-followup.csv", "Newer human-followup.csv",
