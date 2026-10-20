@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Eighteen console actions provide original kit capture, exact-byte reopen, original-bound
+Twenty-one console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -490,3 +490,75 @@ The new multi-reviewer native packet/context reader separately enforces the
 same exact JSON literal requirement. This is an offline record-integrity
 admission fix, never evidence of actual authorization, independent review,
 correctness of an original source producer or a security release.
+
+ 
+## NEW v14 — complete offline PRIVATE HUMAN follow-up action board
+
+The source-exact original HUMAN reviewer selection now has a real next step.
+[history_actions.py](history_actions.py) opens the **ORIGINAL** native team
+context, original finalized PRIVATE HUMAN team choices **and their original
+native HUMAN-team-review.csv**, not copied claims from an unreviewed document.
+It reopens all linked original stored ledger files and all 2–8 native original
+HUMAN reviewer packets using the unchanged native admission code. Every
+selected team decision must match an actual unchanged source-bound original
+packet and the archived original review CSV. It rejects unknown native source
+records, changed archived bytes, forged team choice rows, numeric permission
+flags, noncanonical file paths and duplicate JSON keys. The workflow does
+**NOT** reopen current customer kit contents; it is an *historical manual
+planning aid*, not a completed assessment or true authenticated ownership.
+
+**1. Make a new owner-private offline planning workspace:**
+
+    python3 assessment-workspace-ledger/history_actions.py prepare --context /private/team-workroom/PRIVATE-team-context.json --team-choice /private/team-result/PRIVATE-HUMAN-team-choice.json --team-csv /private/team-result/HUMAN-team-review.csv --private-parent /private/private-ledgers
+
+A **new** 0700/0600 workroom contains a native identity-bound initial
+`HUMAN-action-plan-template.csv`, `PRIVATE-action-context.json`,
+`OPEN-PRIVATE.html` and an actually rendered
+`REVIEW-ACTIONS-IN-BROWSER.html`. The CSP-SHA256-pinned standalone browser
+has no network, fetch, storage, external libraries or background workers.
+It shows the original archived HUMAN review question and stage per source
+kit/transition (never an authenticated finding), supports manual case search,
+status filtering, draft-only suggested HUMAN work priority, accountable human,
+optional proposed day and next HUMAN step, a protected unsaved edit warning,
+and safe exact-original CSV draft resume. No action is assigned automatically.
+Every action defaults to `unassigned`. A HUMAN proposal requires an explicit
+accountable human and next step. A proposed day is optional, an unbooked HUMAN
+date **not** a real calendar meeting, deadline or schedule.
+
+Browser-local download `HUMAN-action-plan.csv` may be public-readable in
+Downloads. Keep it owner-private if possible, or use the original explicit
+browser admission route below. Do not send source paths or personal text via
+email/Notion/GitHub.
+
+**2. Explicitly finalize an existing owner-only PRIVATE CSV:**
+
+    python3 assessment-workspace-ledger/history_actions.py finalize --action-context /private/new-action-room/PRIVATE-action-context.json --plan /private/HUMAN-action-plan.csv --private-parent /private/private-ledgers
+
+**Alternatively import a user-selected original browser download:**
+
+    python3 assessment-workspace-ledger/history_actions.py finalize --action-context /private/new-action-room/PRIVATE-action-context.json --browser-csv /home/operator/Downloads/HUMAN-action-plan.csv --private-parent /private/private-ledgers
+
+On finalization the native tool reopens the ORIGINAL ledger files, reviewer
+packets, team choice JSON and HUMAN team CSV, verifies their exact SHA256
+against the initial owner-private context **again before writing**, then
+admits only native action fields bound to exact original ledger/kit/reviewer
+SHA and immutable HUMAN stage. Unassigned status cannot pretend to have an
+owner, priority, day or task. Proposed HUMAN action needs both a specific
+accountable HUMAN and an explicit manual next step. It rejects invalid
+dates, unknown values, nonliteral original authority, formula-prefixed text,
+multiline notes, hardlinks/symlinks or mutated downloads.
+
+The result is a NEW 0700 directory with exclusive 0600
+`PRIVATE-HUMAN-actions.json`, `PRIVATE-HUMAN-actions.html`,
+`HUMAN-action-plan.csv` and source-minimal `OPEN-PRIVATE.html`.
+**Every result is PRIVATE HOLD (3), never a dispatched task, schedule,
+grant, client approval, verified security finding or remediation proof.**
+The selected original browser file is unchanged; prior potential
+exposure is not reversed.
+
+Original foreground console options **19–21** guide the same complete
+HUMAN-only workflow. Fixed source-only ZIP manifest v14 includes actual native
+history_actions.py and history_actions_browser.py. The ZIP contains NO
+human data, customer material, generated private HTML, client kit, consent
+or active-target software invocation. It is not a security-reviewed release
+or live operator authorization. No QA/test suites were authored or run.
