@@ -220,24 +220,56 @@ def reopen_published(args: argparse.Namespace, original_bytes: bytes, digest: st
     decisions = read_decisions(args.decisions, digest, originals, a_sha, b_sha)
     expected_csv, final_rows = resulting_csv(digest, originals, a, b, decisions)
     expected_counts = human_counts(final_rows, args.minimum_cohort)
-    expected = [(COUNTS, expected_counts)]
+    if args.received_bundle is not None:
+        require(args.encrypt_result and args.received_counts is not None)
+    else:
+        require(args.received_counts is None)
     if args.encrypt_result:
         try:
             from vault_native import VaultHold, decrypt_bundle
             received_receipt, received_human_csv = decrypt_bundle(
-                os.path.join(args.private_output_dir, SEALED_RESULT))
+                args.received_bundle or os.path.join(args.private_output_dir, SEALED_RESULT))
         except (ImportError, VaultHold):
             raise Hold("HOLD: encrypted PRIVATE HUMAN handoff cannot be reopened") from None
-        require(hmac.compare_digest(original_bytes, received_receipt) and
-                hmac.compare_digest(expected_csv.encode("utf-8"), received_human_csv))
+        require(hmac.compare_digest(original_bytes, received_receipt))
+        if args.received_bundle:
+            # The original standalone browser legitimately quotes EVERY CSV
+            # field. Python's csv.writer quotes only fields that require it.
+            # Check the original *full logical CSV rows* against the exact
+            # original receipt and selected HUMAN source, without weakening
+            # the strict native byte comparison for default native outputs.
+            admitted = admitted_answers(received_human_csv, digest, originals)
+            require(admitted == final_rows)
+        else:
+            require(hmac.compare_digest(expected_csv.encode("utf-8"), received_human_csv))
     else:
-        expected.extend((
+        for name, content in (
             (RECONCILED, expected_csv),
             (OUTCOME, comparison_html(originals, a, b, decisions)),
-        ))
-    for name, content in expected:
-        received = source_bytes(os.path.join(args.private_output_dir, name))
-        require(hmac.compare_digest(received, content.encode("utf-8")))
+        ):
+            received = source_bytes(os.path.join(args.private_output_dir, name))
+            require(hmac.compare_digest(received, content.encode("utf-8")))
+    received_counts = source_bytes(args.received_counts or
+                                   os.path.join(args.private_output_dir, COUNTS))
+    if args.received_bundle:
+        # The browser's counts exporter also quotes all values. Admit only
+        # the complete literal field/value table, with no reordered, missing,
+        # extra, duplicate or modified categories, including false authority.
+        def literal_pairs(raw: bytes) -> list[list[str]]:
+            try:
+                reader = csv.reader(io.StringIO(raw.decode("utf-8-sig"), newline=""),
+                                    strict=True)
+                items = list(reader)
+            except (UnicodeError, csv.Error, ValueError):
+                raise Hold("HOLD: PRIVATE counts handoff rejected") from None
+            require(10 <= len(items) <= 20 and
+                    all(len(pair) == 2 and all(isinstance(v, str) for v in pair)
+                        for pair in items))
+            return items
+        require(literal_pairs(received_counts) ==
+                literal_pairs(expected_counts.encode("utf-8")))
+    else:
+        require(hmac.compare_digest(received_counts, expected_counts.encode("utf-8")))
 
 
 
@@ -254,6 +286,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--decisions", help="human-edited exact receipt + reviewer-bound decision CSV")
     parser.add_argument("--encrypt-result", action="store_true",
                         help="finalize or reopen: encrypted original receipt + chosen HUMAN CSV, without plaintext output")
+    parser.add_argument("--received-bundle",
+                        help="reopen only: saved native-compatible browser .luhb PRIVATE handoff")
+    parser.add_argument("--received-counts",
+                        help="reopen only: saved original suppressed browser counts CSV")
     parser.add_argument("--minimum-cohort", type=int, default=5,
                         help="privacy floor 5-12 for separate source-free aggregate HUMAN counts")
     args = parser.parse_args(argv)
@@ -261,6 +297,9 @@ def main(argv: list[str] | None = None) -> int:
         require((args.action in ("prepare", "decide") and args.decisions is None) or
                 (args.action in ("finalize", "reopen") and args.decisions is not None))
         require(not args.encrypt_result or args.action in ("finalize", "reopen"))
+        require((args.received_bundle is None and args.received_counts is None) or
+                (args.action == "reopen" and args.encrypt_result and
+                 args.received_bundle is not None and args.received_counts is not None))
         original_bytes, digest, originals, a_sha, a, b_sha, b = load_context(args)
         if args.action == "reopen":
             reopen_published(args, original_bytes, digest, originals, a_sha, a, b_sha, b)
