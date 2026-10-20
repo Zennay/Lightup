@@ -40,6 +40,7 @@ CATEGORIES = {
 def render() -> bytes:
     css = (HERE / "operator_ui.css").read_bytes()
     js = (HERE / "operator_ui.js").read_bytes()
+    fingerprint_js = (HERE / "fingerprint_ui.js").read_bytes()
     operations = [{
         "name": name,
         "purpose": purpose,
@@ -53,10 +54,12 @@ def render() -> bytes:
     source = source.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     css_text = css.decode("utf-8")
     js_text = js.decode("utf-8")
+    fingerprint_text = fingerprint_js.decode("utf-8")
     css_hash = "sha256-" + __import__("base64").b64encode(hashlib.sha256(css).digest()).decode("ascii")
     js_hash = "sha256-" + __import__("base64").b64encode(hashlib.sha256(js).digest()).decode("ascii")
+    fingerprint_hash = "sha256-" + __import__("base64").b64encode(hashlib.sha256(fingerprint_js).digest()).decode("ascii")
     policy = ("default-src 'none'; script-src '" + js_hash +
-              "'; style-src '" + css_hash +
+              "' '" + fingerprint_hash + "'; style-src '" + css_hash +
               "'; connect-src 'none'; img-src 'none'; font-src 'none'; "
               "object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'")
     return ("""<!doctype html>
@@ -95,6 +98,26 @@ De ontvanger maakt lokaal een PRIVATE HUMAN-werkruimte, geen scan of fix.</p>
 lokaal worden verzegeld. Bronidentiteit, toestemming en retest blijven extern.</p>
 <button type="button" data-workflow="seal-journal">Bereid versleuteld HUMAN-journal voor</button></article>
 </div></section>
+<section class="fingerprint" aria-label="Offline bytefingerprint zonder upload">
+<h2>PRIVATE ontvangen pakket lokaal vergelijken</h2>
+<p>Bereken SHA-256 van de <strong>exacte lokale bytes</strong> van bronvrije
+overdrachtspakketten. Gelijke fingerprints tonen uitsluitend byte-identiteit,
+NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
+<label for="packet-files">Kies lokale bronvrije .luhx / .luhz / .luhp bestanden en eventuele ontvangen kopieën</label>
+<input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp,application/json,application/zip">
+<div class="tools">
+<button type="button" id="packet-analyze">Bereken lokaal SHA-256</button>
+<button type="button" id="packet-export" disabled>Download PRIVATE unsigned hashreceipt</button>
+<button type="button" id="packet-clear" class="secondary">Wis fingerprints</button>
+</div>
+<p id="packet-message" role="status" aria-live="polite">Alle bytes blijven lokaal;
+maximaal acht bestanden, 20 MiB per bestand en 64 MiB samen.</p>
+<div id="packet-result" class="fingerprint-result"></div>
+<p id="packet-comparison" class="fingerprint-comparison" aria-live="polite"></p>
+<small>Een PRIVATE checksum is niet ondertekend; wie het bronpakket en
+de fingerprint beheerst, kan beide vervangen. Native ontvangst, afzonderlijke
+actuele toestemming en onafhankelijke securityreview blijven verplicht.</small>
+</section>
 <div class="layout">
 <aside class="nav"><h2>Werkstappen</h2>
 <p>Kies een opdracht. Alles blijft in browsergeheugen; er is geen netwerk,
@@ -137,7 +160,7 @@ retestbewijs, herstelbewijs of vrijgave naar productie.</p></div>
 van bronbestanden, geen netwerk, geen accountlogin, geen client-authority.
 De originele offline startpagina blijft beschikbaar via de vorige browserpagina.</footer>
 <script type="application/json" id="operations">""" + source + """</script>
-<script>""" + js_text + """</script></main></body></html>
+<script>""" + js_text + """</script><script>""" + fingerprint_text + """</script></main></body></html>
 """).encode("utf-8")
 
 if __name__ == "__main__":

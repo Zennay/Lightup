@@ -54,3 +54,18 @@ a{color:#146578}button:focus-visible,a:focus-visible{outline:3px solid #8ad6d7;o
 .journey button{background:#1b6972;color:white;border:0;border-radius:8px;font-weight:750;padding:10px 12px;text-align:left}
 .journey button:hover,.journey button:focus-visible{background:#11535d}
 @media(max-width:1000px){.journey-grid{grid-template-columns:1fr}}
+.fingerprint{margin:22px 0;padding:23px;border:1px solid #cddde5;border-radius:16px;background:#fff}
+.fingerprint h2{font-size:1.42rem;letter-spacing:-.02em;margin:0 0 8px}
+.fingerprint>p{line-height:1.55;color:#526579;max-width:970px}
+.fingerprint label{display:block;font-weight:750;margin:15px 0 8px}
+.fingerprint input{font:inherit;max-width:100%;border:1px solid #a9bdc9;border-radius:8px;padding:12px}
+.fingerprint .tools button{background:#176b70;color:white;border-radius:9px;border:0;padding:11px 15px}
+.fingerprint .tools button.secondary{background:#edf1f4;color:#1c4651}
+.fingerprint .tools button:disabled{opacity:.45}
+.fingerprint-result{overflow-x:auto;max-width:100%}
+.fingerprint-result table{width:100%;border-collapse:collapse;font-size:.84rem;margin:12px 0}
+.fingerprint-result caption{text-align:left;color:#4f6477;font-size:.79rem;padding:6px 0}
+.fingerprint-result th,.fingerprint-result td{padding:11px 9px;text-align:left;border-bottom:1px solid #dee6ed}
+.fingerprint-result td:last-child{font:12px/1.5 ui-monospace,monospace;overflow-wrap:anywhere;min-width:240px}
+.fingerprint-comparison{font-weight:750;color:#244d59}
+.fingerprint small{color:#677b8d;line-height:1.5}

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-mMh4Md8hRdAH4qhk5B7UugBaZi0MegbqBl8pXEmEMwE=&#x27;; style-src &#x27;sha256-tP9pehvYve+ndaS+GjOQxfKDML508RT9A4fp/B6DE9o=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-mMh4Md8hRdAH4qhk5B7UugBaZi0MegbqBl8pXEmEMwE=&#x27; &#x27;sha256-QErTfp0LVsAtx4Mx3qW8ho277v+4rAbWDZ8AZ7VHdzg=&#x27;; style-src &#x27;sha256-tjQctlnjDmgzlzi3jpcYDV8fFUzzd1YBkS9ek5J6ZKY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -59,6 +59,21 @@ a{color:#146578}button:focus-visible,a:focus-visible{outline:3px solid #8ad6d7;o
 .journey button{background:#1b6972;color:white;border:0;border-radius:8px;font-weight:750;padding:10px 12px;text-align:left}
 .journey button:hover,.journey button:focus-visible{background:#11535d}
 @media(max-width:1000px){.journey-grid{grid-template-columns:1fr}}
+.fingerprint{margin:22px 0;padding:23px;border:1px solid #cddde5;border-radius:16px;background:#fff}
+.fingerprint h2{font-size:1.42rem;letter-spacing:-.02em;margin:0 0 8px}
+.fingerprint>p{line-height:1.55;color:#526579;max-width:970px}
+.fingerprint label{display:block;font-weight:750;margin:15px 0 8px}
+.fingerprint input{font:inherit;max-width:100%;border:1px solid #a9bdc9;border-radius:8px;padding:12px}
+.fingerprint .tools button{background:#176b70;color:white;border-radius:9px;border:0;padding:11px 15px}
+.fingerprint .tools button.secondary{background:#edf1f4;color:#1c4651}
+.fingerprint .tools button:disabled{opacity:.45}
+.fingerprint-result{overflow-x:auto;max-width:100%}
+.fingerprint-result table{width:100%;border-collapse:collapse;font-size:.84rem;margin:12px 0}
+.fingerprint-result caption{text-align:left;color:#4f6477;font-size:.79rem;padding:6px 0}
+.fingerprint-result th,.fingerprint-result td{padding:11px 9px;text-align:left;border-bottom:1px solid #dee6ed}
+.fingerprint-result td:last-child{font:12px/1.5 ui-monospace,monospace;overflow-wrap:anywhere;min-width:240px}
+.fingerprint-comparison{font-weight:750;color:#244d59}
+.fingerprint small{color:#677b8d;line-height:1.5}
 </style></head>
 <body><main class="shell">
 <header><div class="eyebrow">LIGHTUP / PRIVATE OPERATOR DESK</div>
@@ -90,6 +105,26 @@ De ontvanger maakt lokaal een PRIVATE HUMAN-werkruimte, geen scan of fix.</p>
 lokaal worden verzegeld. Bronidentiteit, toestemming en retest blijven extern.</p>
 <button type="button" data-workflow="seal-journal">Bereid versleuteld HUMAN-journal voor</button></article>
 </div></section>
+<section class="fingerprint" aria-label="Offline bytefingerprint zonder upload">
+<h2>PRIVATE ontvangen pakket lokaal vergelijken</h2>
+<p>Bereken SHA-256 van de <strong>exacte lokale bytes</strong> van bronvrije
+overdrachtspakketten. Gelijke fingerprints tonen uitsluitend byte-identiteit,
+NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
+<label for="packet-files">Kies lokale bronvrije .luhx / .luhz / .luhp bestanden en eventuele ontvangen kopieën</label>
+<input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp,application/json,application/zip">
+<div class="tools">
+<button type="button" id="packet-analyze">Bereken lokaal SHA-256</button>
+<button type="button" id="packet-export" disabled>Download PRIVATE unsigned hashreceipt</button>
+<button type="button" id="packet-clear" class="secondary">Wis fingerprints</button>
+</div>
+<p id="packet-message" role="status" aria-live="polite">Alle bytes blijven lokaal;
+maximaal acht bestanden, 20 MiB per bestand en 64 MiB samen.</p>
+<div id="packet-result" class="fingerprint-result"></div>
+<p id="packet-comparison" class="fingerprint-comparison" aria-live="polite"></p>
+<small>Een PRIVATE checksum is niet ondertekend; wie het bronpakket en
+de fingerprint beheerst, kan beide vervangen. Native ontvangst, afzonderlijke
+actuele toestemming en onafhankelijke securityreview blijven verplicht.</small>
+</section>
 <div class="layout">
 <aside class="nav"><h2>Werkstappen</h2>
 <p>Kies een opdracht. Alles blijft in browsergeheugen; er is geen netwerk,
@@ -351,5 +386,156 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     }
   });
   select(chosen.name);
+})();
+</script><script>"use strict";
+(() => {
+  const picker = document.getElementById("packet-files");
+  const analyze = document.getElementById("packet-analyze");
+  const clear = document.getElementById("packet-clear");
+  const exportButton = document.getElementById("packet-export");
+  const output = document.getElementById("packet-result");
+  const notice = document.getElementById("packet-message");
+  const comparison = document.getElementById("packet-comparison");
+  const limitCount = 8;
+  const limitItem = 20 * 1024 * 1024;
+  const limitTotal = 64 * 1024 * 1024;
+  let inventory = [];
+
+  function forget() {
+    inventory = [];
+    output.replaceChildren();
+    comparison.textContent = "";
+    exportButton.disabled = true;
+  }
+  function message(s) {
+    notice.textContent = s;
+  }
+  function hex(bytes) {
+    return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, "0")).join("");
+  }
+  function table(results) {
+    const tab = document.createElement("table");
+    const cap = document.createElement("caption");
+    cap.textContent = "PRIVATE lokale bytes, geen geauthenticeerde bron of goedkeuring";
+    tab.append(cap);
+    const head = document.createElement("thead");
+    const row = document.createElement("tr");
+    for (const title of ["Lokaal bestand", "Grootte", "SHA-256 van exacte bytes"]) {
+      const th = document.createElement("th");
+      th.textContent = title;
+      row.append(th);
+    }
+    head.append(row);
+    tab.append(head);
+    const body = document.createElement("tbody");
+    for (const item of results) {
+      const tr = document.createElement("tr");
+      for (const text of [item.label, item.size.toLocaleString("nl-NL") + " bytes", item.sha256]) {
+        const td = document.createElement("td");
+        td.textContent = text;
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+    tab.append(body);
+    output.replaceChildren(tab);
+  }
+
+  analyze.addEventListener("click", async () => {
+    forget();
+    const files = Array.from(picker.files || []);
+    if (!files.length) {
+      message("Kies eerst 1 tot 8 oorspronkelijke lokale bestanden.");
+      return;
+    }
+    if (files.length > limitCount ||
+        files.some(f => !Number.isSafeInteger(f.size) || f.size <= 0 || f.size > limitItem) ||
+        files.reduce((sum, f) => sum + f.size, 0) > limitTotal) {
+      picker.value = "";
+      message("HOLD: maximaal 8 bestanden, 20 MiB per stuk, 64 MiB samen; lege bestanden niet toegestaan.");
+      return;
+    }
+    if (!window.crypto || !crypto.subtle || typeof crypto.subtle.digest !== "function") {
+      message("HOLD: veilige lokale WebCrypto SHA-256 is hier niet beschikbaar. Geen upload/fallback.");
+      return;
+    }
+    analyze.disabled = true;
+    const candidate = [];
+    message("Exacte bytes worden alleen in dit browservenster gelezen en lokaal gehasht.");
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const raw = await f.arrayBuffer();
+        if (raw.byteLength !== f.size || raw.byteLength > limitItem) {
+          throw Error("De geselecteerde bronbytes veranderden tijdens het lezen.");
+        }
+        const sha256 = hex(await crypto.subtle.digest("SHA-256", raw));
+        candidate.push({
+          slot: i + 1,
+          label: "Lokaal bestand " + (i + 1),
+          size: f.size,
+          sha256
+        });
+      }
+      inventory = candidate;
+      table(candidate);
+      if (candidate.length === 2) {
+        const same = candidate[0].size === candidate[1].size &&
+                     candidate[0].sha256 === candidate[1].sha256;
+        comparison.textContent = same
+          ? "De twee geselecteerde bestanden hebben dezelfde SHA-256 en lengte. Dit bewijst GEEN oorsprong, onafhankelijke beoordelaars, handtekening of toestemming."
+          : "De twee geselecteerde bestanden verschillen in lengte of SHA-256. Stop en vraag de oorspronkelijke bronhouder naar de bedoelde pakketversie; niet automatisch vervangen of vertrouwen.";
+      } else if (candidate.length > 2) {
+        const distinct = new Set(candidate.map(x => x.size + ":" + x.sha256)).size;
+        comparison.textContent = distinct + " van " + candidate.length +
+          " verschillende lokale byte-identiteiten. Volgorde, identiteit, echte tijdlijn en autorisatie blijven ONBEKEND.";
+      } else {
+        comparison.textContent = "Deze fingerprint kan later op een afzonderlijk geautoriseerd apparaat worden vergeleken; er is geen geauthenticeerde afzender of inhoudstoelating.";
+      }
+      exportButton.disabled = false;
+      message("PRIVATE fingerprint-overzicht klaar. Geen bestanden verzonden of bewaard. Verwijder lokaal na gebruik.");
+    } catch (_) {
+      forget();
+      message("HOLD: lokaal lezen of SHA-256 mislukt. Geen gedeeltelijke resultaten behouden.");
+    } finally {
+      analyze.disabled = false;
+      picker.value = "";
+    }
+  });
+  clear.addEventListener("click", () => {
+    picker.value = "";
+    forget();
+    message("Resultaten uit het browsergeheugen gewist; er zijn geen bronbestanden aangepast.");
+  });
+  exportButton.addEventListener("click", () => {
+    if (!inventory.length) return;
+    if (!window.confirm("Dit maakt een PRIVATE JSON-bestand met SHA-256-digests en lengtes. Zelfs zonder bestandsnamen kunnen fingerprints gevoelig of koppelbaar zijn. Alleen voor afzonderlijk geautoriseerde offline overdracht. Doorgaan?")) return;
+    const receipt = {
+      kind: "lightup.private_unsigned_local_byte_fingerprints",
+      schema_version: 1,
+      disposition: "HUMAN_REVIEW_ONLY_DRAFT_HOLD",
+      authority_granted: false,
+      sender_authenticated: false,
+      consent_verified: false,
+      remediation_verified: false,
+      chronology_verified: false,
+      files: inventory.map(({slot, size, sha256}) => ({slot, bytes: size, sha256})),
+      warning: "Unkeyed SHA-256 is local byte consistency only, not original provenance, client consent, verified fix, scan, grant, security clearance or HUMAN GO."
+    };
+    const payload = JSON.stringify(receipt, null, 2) + "\n";
+    const url = URL.createObjectURL(new Blob([payload], {type: "application/json"}));
+    try {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "private-unsigned-byte-fingerprints.json";
+      link.rel = "noopener";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      message("PRIVATE hashreceipt lokaal aangeboden. Behandel dit bestand als gevoelig en ONDERTEKEND: nee.");
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  });
 })();
 </script></main></body></html>

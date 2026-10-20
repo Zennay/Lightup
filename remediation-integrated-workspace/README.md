@@ -293,3 +293,33 @@ trusting an HTML artifact received without its original source-lock.
 The standalone file can be opened for UI use independently, but it does not
 authenticate a source or replace the mandatory hosted/VPS CI and independent
 security/privacy/browser/crypto approvals.
+
+## Offline source-free byte-fingerprint desk (unsigned)
+
+The integrated browser operatorstudio and the standalone operator.html now
+include a PRIVATE **local WebCrypto SHA-256 byte comparison** for actually
+selected source-free .luhx/.luhz/.luhp handoff packets. This does not open ZIP
+members, interpret source claims, read client records into a report, invoke
+Python, contact a URL, or store files in browser storage. Up to eight files,
+20 MiB each and 64 MiB combined are read in-memory only. The browser shows
+generic local slot ordinals, exact byte lengths and exact SHA-256. When two
+packets are selected it explicitly reports matching/differing bytes; for
+multiple packets it reports only distinct local byte identities, NEVER
+independent original owners, real chronology or authenticated cohorts.
+
+Operators may *separately confirm* before downloading an optional PRIVATE
+unsigned JSON receipt with only ordinals, original byte lengths, SHA-256
+and explicit literal false authorization/consent/remediation flags.
+Original file names and raw bytes are NEVER written into the receipt.
+Digests can still be identifying or linkable: treat the receipt as sensitive,
+store it owner-private and never transfer it without genuine independent
+authorization. Clearing the workroom drops the results and file picker.
+A private browser with WebCrypto unavailable HOLDs, with no noncryptographic
+fallback or upload.
+
+These are unkeyed self-consistency fingerprints, **not** signatures,
+authenticity checks, valid source/tenant admission, compliance clearance,
+security fixes or user/operator permission. Original native validators,
+exact-head hosted/named VPS CI, independent privacy/security/crypto/browser
+reviews, existing #177/#182/#829, authenticated separate action-time
+revocable consent and explicit HUMAN GO remain mandatory.
