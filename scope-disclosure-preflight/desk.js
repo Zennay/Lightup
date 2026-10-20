@@ -285,6 +285,7 @@
          reply.redacted_sha256!==current.sha ||
          reply.redacted_bytes!==current.bytes ||
          reply.all_pages_displayed!==true ||
+         (current.highRisk && reply.human_followup!=="needs_more_masking") ||
          !["needs_more_masking","needs_context","read_only_notes"].includes(reply.human_followup) ||
          typeof reply.human_note!=="string" || reply.human_note.length>800 ||
          /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(reply.human_note) ||
