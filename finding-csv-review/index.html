@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>LightUp · PRIVATE finding follow-up</title>
+<link rel="stylesheet" href="./style.css">
+<script defer src="./app.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="identity"><span class="mark" aria-hidden="true">◆</span> LIGHTUP <span class="identity-light">/ PRIVATE HUMAN DESK</span></div>
+  <div class="pill">OFFLINE · REVIEW ONLY</div>
+</header>
+<main>
+  <section class="intro" aria-labelledby="title">
+    <p class="eyebrow">SOURCE-BOUND FOLLOW-UP / M3·M7 INCUBATE</p>
+    <h1 id="title">Evidence to <em>human action.</em></h1>
+    <p>Open an <strong>already authorized and exported</strong> LightUp finding-summary CSV. Prioritize proposed work, annotate HUMAN ownership and dates, and keep private draft notes bound to the exact source file.</p>
+    <p class="warning"><strong>Not a security decision.</strong> Imported severity, remediation and retest values are source claims. No verified finding, verified fix, consent, tenant identity, permission to scan or remediation authority is established here. This tool never contacts a service.</p>
+  </section>
+
+  <section class="import" aria-label="Private source">
+    <div class="file-widget">
+      <label for="sourceFile" class="label">1 · LOAD SOURCE CSV</label>
+      <input type="file" id="sourceFile" accept=".csv,text/csv">
+      <small>Existing five-column, canonical all-quoted LightUp CSV only · UTF-8 · max 128 findings / 2 MiB. Do not upload actual client records into a shared device.</small>
+    </div>
+    <div class="provenance" aria-live="polite">
+      <p id="summary">No source CSV loaded.</p>
+      <p id="sourceId" class="mono"></p>
+    </div>
+  </section>
+  <div id="status" class="status" role="status" aria-live="polite">Local-only. No data loaded.</div>
+
+  <div class="toolbar" aria-label="Offline review controls">
+    <div class="toolbar-search">
+      <label for="search">Search source findings</label>
+      <input id="search" type="search" placeholder="Search ID, title or remediation" disabled>
+    </div>
+    <div class="toolbar-select">
+      <label for="severityFilter">Severity</label>
+      <select id="severityFilter" disabled><option value="">All severities</option></select>
+    </div>
+    <div class="toolbar-select">
+      <label for="stageFilter">HUMAN status</label>
+      <select id="stageFilter" disabled><option value="">All statuses</option></select>
+    </div>
+  </div>
+
+  <div class="workroom">
+    <section class="queue" aria-labelledby="queueTitle">
+      <div class="panel-head"><h2 id="queueTitle">Review queue</h2><p id="counts" aria-live="polite">Open a source CSV to begin.</p></div>
+      <div id="list" class="list"></div>
+    </section>
+    <section class="detail-panel" aria-labelledby="detailTitle">
+      <div id="noneSelected" class="empty-state">
+        <span aria-hidden="true">↗</span><h2>Choose a finding</h2><p>The queue is ordered by source-declared severity. HUMAN decisions never change the source CSV.</p>
+      </div>
+      <div id="detail" hidden>
+        <p class="eyebrow">LOCAL PRIVATE HUMAN ANNOTATION</p>
+        <div class="detail-header"><h2 id="detailTitle"><span id="findingTitle"></span></h2><span id="findingId" class="mono"></span></div>
+        <p id="findingMeta" class="meta"></p>
+        <div class="remediation">
+          <strong>Original suggested remediation — unverified</strong>
+          <p id="remediation"></p>
+        </div>
+        <div class="formgrid">
+          <div><label for="humanStage">Human follow-up stage</label><select id="humanStage"></select></div>
+          <div><label for="humanDue">Tentative follow-up date</label><input id="humanDue" type="date"></div>
+        </div>
+        <label for="humanOwner">HUMAN contact / owner (PRIVATE)</label>
+        <input id="humanOwner" maxlength="160" autocomplete="off" placeholder="Only if a person has actually agreed">
+        <label for="humanNote">HUMAN note (PRIVATE; do not paste secrets)</label>
+        <textarea id="humanNote" rows="5" maxlength="2048" placeholder="Next question, dependency or operator-supplied context. No automated evidence or fix claims."></textarea>
+        <button id="applyHuman" class="primary" type="button">Apply HUMAN note in memory</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="exports" aria-label="Private local exports">
+    <div><p class="eyebrow">2 · HUMAN CONTINUITY</p><h2>Save your private work.</h2><p>Export a PRIVATE JSON with finding IDs, HUMAN owner, stage, date and notes. Resume it only against <strong>exactly the same CSV bytes</strong>. Your browser does not autosave.</p><div class="actions"><button id="saveJournal" disabled>Download PRIVATE draft</button><button id="loadJournal" disabled>Open PRIVATE draft</button><input type="file" id="journalFile" accept=".json,application/json" hidden></div></div>
+    <div><p class="eyebrow">3 · SEPARATE DISCLOSURE</p><h2>Counts only, if authorized.</h2><p>The optional anonymous aggregate contains totals by original severity and HUMAN stage, without finding IDs, titles, notes, source hash or target. Even small counts can be sensitive.</p><div class="actions"><button id="saveCounts" disabled>Download counts-only JSON</button><button id="clearAll" disabled class="subtle">Clear local workspace</button></div></div>
+  </section>
+</main>
+<footer>LightUp / PRIVATE HUMAN DESK · No network · No cookies · No persistent browser storage · No active target · No release approval. <a href="./README.md">Local operator instructions</a></footer>
+</body>
+</html>
