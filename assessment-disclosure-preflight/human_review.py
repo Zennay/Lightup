@@ -29,6 +29,8 @@ SUMMARY = "PRIVATE-human-summary.csv"
 VAULT = "PRIVATE-human-reviewed.luhd"
 BUNDLE = "PRIVATE-human-handoff.luhb"
 REKEYED_BUNDLE = "PRIVATE-human-handoff-rekeyed.luhb"
+RECONCILE_OUTPUTS = ("PRIVATE-reconcile-decisions.csv", "PRIVATE-reconcile-comparison.html",
+                     "PRIVATE-reconciled-human.csv", "PRIVATE-reconciled-report.html")
 
 
 def source_bytes(name: str) -> bytes:
@@ -201,7 +203,7 @@ def publish(output_dir: str, filename: str, content: str | bytes) -> None:
         info = os.fstat(dirfd)
         require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
                 and info.st_mode & 0o077 == 0)
-        require(filename in (TEMPLATE, REPORT, SUMMARY, VAULT, BUNDLE, REKEYED_BUNDLE))
+        require(filename in (TEMPLATE, REPORT, SUMMARY, VAULT, BUNDLE, REKEYED_BUNDLE) + RECONCILE_OUTPUTS)
         stage = ".lightup-human-private-" + os.urandom(16).hex()
         fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
                      getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=dirfd)
