@@ -175,32 +175,55 @@
         plan.stats.changed + " source-edited · " + plan.stats.added +
         " new · " + plan.stats.absent + " absent (NOT fixed)";
       const previous = new Map(state.rows.map(row => [row.id, row]));
+      const nextById = new Map(plan.incomingRows.map(row => [row.id, row]));
+      const textSnippet = value => value.length > 1600 ?
+        value.slice(0, 1600) + "\n[DISPLAY TRUNCATED; accepted source remains byte-exact]" : value;
+      const makeDifference = (label, a, b) => {
+        const box = document.createElement("div");
+        const name = document.createElement("strong");
+        name.textContent = label + " · old → selected incoming";
+        const previousText = document.createElement("p");
+        previousText.textContent = "OLD: " + textSnippet(a);
+        const nextText = document.createElement("p");
+        nextText.textContent = "NEW (source-declared): " + textSnippet(b);
+        box.append(name, previousText, nextText);
+        return box;
+      };
       for (const item of plan.affected) {
-        const entry = document.createElement("p");
-        const current = plan.incomingRows.find(row => row.id === item.id);
-        let change = "";
-        if (item.type === "changed" && current) {
-          const original = previous.get(item.id);
-          const columns = ["title", "severity", "retest", "remediation"]
-            .filter(name => original[name] !== current[name]);
-          change = " · source fields changed: " + columns.join(", ");
-          if (columns.includes("severity")) change +=
-            " · severity " + original.severity + " → " + current.severity;
-          if (columns.includes("retest")) change +=
-            " · retest " + original.retest + " → " + current.retest;
+        const entry = document.createElement("details");
+        const heading = document.createElement("summary");
+        const current = nextById.get(item.id);
+        const original = previous.get(item.id);
+        const columns = item.type === "changed" && current ?
+          ["title","severity","retest","remediation"].filter(name => original[name] !== current[name]) : [];
+        heading.textContent = item.id + " · PRIOR " + item.source_severity.toUpperCase() +
+          " · " + item.source_title.slice(0, 160) +
+          (item.source_title.length > 160 ? "…" : "") +
+          (columns.length ? " · CHANGED: " + columns.join(", ") : "") +
+          (item.type === "absent" ? " · MISSING IS NOT FIXED" : " · NEEDS HUMAN REVIEW");
+        entry.append(heading);
+        if (columns.length) {
+          for (const field of columns) {
+            entry.append(makeDifference(field, original[field], current[field]));
+          }
+        } else {
+          const previousStage = document.createElement("p");
+          previousStage.textContent = "Prior HUMAN stage: " + stageText(item.human.stage) +
+            " · original absence is not closure/retest/revocation. Retained in PRIVATE archive.";
+          entry.append(previousStage);
         }
-        entry.textContent = item.id + " · PRIOR " + item.source_severity.toUpperCase() +
-          " · " + item.source_title + change +
-          (item.human.stage !== "unreviewed" ? " · PRIVATE HUMAN: " + stageText(item.human.stage) : "") +
-          (item.type === "absent" ? " · MISSING IS NOT FIXED" : " · NEW REVIEW REQUIRED");
         (item.type === "changed" ? $("revisionChangedList") : $("revisionAbsentList")).append(entry);
       }
       for (let i = 0; i < plan.incomingRows.length; i++) {
         if (plan.kinds[i] !== "added") continue;
         const row = plan.incomingRows[i];
-        const entry = document.createElement("p");
-        entry.textContent = row.id + " · source-declared " + row.severity.toUpperCase() +
-          " · " + row.title + " · NEW HUMAN REVIEW";
+        const entry = document.createElement("details");
+        const heading = document.createElement("summary");
+        heading.textContent = row.id + " · source-declared " + row.severity.toUpperCase() +
+          " · " + row.title.slice(0,160) + " · NEW HUMAN REVIEW";
+        const details = document.createElement("p");
+        details.textContent = "Source remediation proposal (unverified): " + textSnippet(row.remediation);
+        entry.append(heading, details);
         $("revisionAddedList").append(entry);
       }
       status("New source fully admitted for local comparison. Current source and HUMAN choices remain intact.", false);
