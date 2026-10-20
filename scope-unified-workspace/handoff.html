@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kmqAcMTIRRi/9LZerTbMpPVJR1xIS1sDERjWT4GkvWI='; script-src 'sha256-+teVitT7+3FCnYezwpkQ0kz450IT5XmKBmfeGavnTU4=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kmqAcMTIRRi/9LZerTbMpPVJR1xIS1sDERjWT4GkvWI='; script-src 'sha256-IE94IVzU9vY5MocyIcBfsYdeJimJzAQvd7tdgMToPjY=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -82,6 +82,19 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <p id="shelf-selective-status" aria-live="polite">Geen voortzetting geïmporteerd. De originele bestanden moeten eerst expliciet opnieuw geselecteerd zijn. Alleen exact gelijke oorspronkelijke namen, inhoudshashes, groottes en structurele typen mogen na afzonderlijke bevestiging HUMAN-keuzes overnemen. Bij verschil: geen automatisch besluit.</p>
 <div class="table-scroller"><table class="shelf-table" aria-label="Bronexact voorstel HUMAN voortzetting"><thead><tr><th scope="col">PRIVATE bronverwijzing</th><th scope="col">Vergelijking oorspronkelijke bytes</th><th scope="col">Gevolg voor HUMAN review</th><th scope="col">Overnemen?</th></tr></thead><tbody id="shelf-selective-rows"></tbody></table></div>
 <button id="shelf-selective-apply" type="button" class="action muted" disabled>Pas alleen exact ongewijzigde HUMAN-keuzes toe (na bevestiging)</button>
+<section class="shelf-board" aria-labelledby="shelf-peer-heading">
+<h3 id="shelf-peer-heading">Vergelijk twee PRIVATE HUMAN teampakketten · bronexact</h3>
+<p>Voor twee onafhankelijk ontvangen lokale HUMAN-inventarissen (v1/v2). Dezelfde originele bestanden hierboven moeten vooraf zijn gekozen. Controleer per bron de twee voorstellen en mogelijke conflicten. Beide bestanden zijn <strong>ONGETEKEND</strong> en bewijzen geen identiteit, toestemming, intrekking of uitvoerrecht. Standaard wordt niets overgenomen.</p>
+<label for="shelf-peer-files">Kies precies twee PRIVATE HUMAN-teampakketten om lokaal te vergelijken (max. 96 KiB per bestand)</label>
+<input id="shelf-peer-files" type="file" accept=".json,application/json" multiple aria-describedby="shelf-peer-status">
+<p id="shelf-peer-status" class="shelf-status" role="status" aria-live="polite">Nog geen twee PRIVÉ HUMAN-reviewpakketten vergeleken. Een afwijkende oorspronkelijke SHA, bestandsnaam, grootte of structureel type blokkeert overname.</p>
+<div class="table-scroller"><table class="shelf-table" aria-label="Bronexacte privé reviewvoorstellen van twee reviewers">
+<thead><tr><th scope="col">Originele PRIVATE bron</th><th scope="col">Verschil / status</th><th scope="col">HUMAN voorstel 1</th><th scope="col">HUMAN voorstel 2</th><th scope="col">Bewust kiezen</th></tr></thead>
+<tbody id="shelf-peer-rows"></tbody></table></div>
+<button type="button" id="shelf-peer-apply" class="action muted" disabled>Pas uitsluitend expliciet gekozen bronexacte HUMAN-reviewvoorstellen toe</button>
+<button type="button" id="shelf-peer-summary-export" class="action muted" disabled>Download bronvrije PRIVATE HUMAN conflict- en reviewtellingen (.json)</button>
+<p>PRIVATE notities worden nooit weergegeven in dit vergelijkingsoverzicht. Bij een afgeschermde notitie blijft de lokale notitie behouden; alleen een expliciet aangeleverde notitie kan worden overgenomen. Bestaande lokale HUMAN-geschiedenis ondersteunt undo. Bewaar en verstuur vertrouwelijke bestanden alleen via een apart vertrouwd kanaal.</p>
+</section>
 <button id="shelf-return-receipt" type="button" class="action muted" disabled>Download PRIVATE HUMAN retourontvangstbon (.json)</button>
 <p id="shelf-return-receipt-note" class="shelf-status">Een ontvangstbon wordt pas na bewuste bronexacte HUMAN-statusovername beschikbaar. De bon is privé, ongetekend en geen bron-/toestemmings- of revocatiebewijs.</p>
 <section class="shelf-board" aria-labelledby="shelf-journal-heading">
@@ -525,6 +538,7 @@ const LightUpPrivateDrift = (() => {
   };
 
   const invalidateReturnReceipt = () => {
+    if (typeof discardPeerPreview === "function" && peerPreview) discardPeerPreview();
     if (lastReturnReceipt === null) return;
     lastReturnReceipt = null;
     el("shelf-return-receipt").disabled = true;
@@ -1105,6 +1119,179 @@ const LightUpPrivateDrift = (() => {
       " niet opnieuw geselecteerd bleven zonder overname. Ongedaan maken is beschikbaar.";
     report("REVIEW_ONLY — " + chosen.length + " expliciet geselecteerde PRIVATE HUMAN-rijen overgenomen; lokale conflicten niet stilzwijgend vervangen.");
   });
+
+  // Two independent PRIVATE HUMAN reviewers: reconcile proposals without elevating
+  // either packet to source, identity or execution authority.
+  const peerInput = el("shelf-peer-files");
+  const peerRows = el("shelf-peer-rows");
+  const peerStatus = el("shelf-peer-status");
+  const peerApply = el("shelf-peer-apply");
+  let peerPreview = null;
+  const discardPeerPreview = () => {
+    peerPreview = null;
+    peerApply.disabled = true;
+    el("shelf-peer-summary-export").disabled = true;
+    peerRows.replaceChildren();
+    peerStatus.textContent = "PRIVATE bron-/HUMAN-state gewijzigd. Kies beide teampakketten opnieuw voor een actuele vergelijking.";
+  };
+  const sourceEqual = (row, item) => !!row &&
+    row.original_name === item.file.name &&
+    row.byte_length === item.file.size &&
+    row.unsigned_sha256 === item.hash &&
+    row.structural_kind_unverified === item.inspection.kind;
+  const humanRouteEqual = (a, b) => a.human_route === b.human_route &&
+    a.human_stage === b.human_stage && a.human_team === b.human_team;
+  const humanEqual = (a, b) => humanRouteEqual(a, b) &&
+    a.private_note_included === b.private_note_included &&
+    (!a.private_note_included || a.private_human_note === b.private_human_note);
+  const peerLabel = (entry) => entry
+    ? teams[entry.human_team] + " / " + stages[entry.human_stage] +
+      " / " + routes[entry.human_route][0] +
+      (entry.private_note_included ? " / PRIVATE notitie aangeleverd" : " / notitie afgeschermd")
+    : "Geen HUMAN voorstel in dit pakket";
+  peerInput.addEventListener("change", async () => {
+    const files = Array.from(peerInput.files || []);
+    peerInput.value = "";
+    peerPreview = null; peerRows.replaceChildren(); peerApply.disabled = true;
+    el("shelf-peer-summary-export").disabled = true;
+    if (busy || !items.length || files.length !== 2 ||
+        files.some(f => f.size < 10 || f.size > 96 * 1024)) {
+      peerStatus.textContent = "HOLD — kies eerst originele bronbestanden en precies twee begrensde PRIVATE HUMAN-inventarissen.";
+      return;
+    }
+    const epoch = generation, revision = humanRevision;
+    busy = true; peerInput.disabled = true; input.disabled = true;
+    try {
+      // Existing strict v1/v2 reader rejects duplicate keys, false authority
+      // violations, noncanonical source identifiers and ambiguous inventories.
+      const first = await LightUpPrivateSourceInspector.readHumanInventory(files[0]);
+      const second = await LightUpPrivateSourceInspector.readHumanInventory(files[1]);
+      if (generation !== epoch || humanRevision !== revision) throw Error("stale import");
+      const lookup = entries => new Map(entries.map(entry =>
+        [entry.original_name.normalize("NFC").toLowerCase(), entry]));
+      const a = lookup(first), b = lookup(second);
+      // Never use case-folding to override the literal source identity.
+      const current = new Set(items.map(item => item.file.name.normalize("NFC").toLowerCase()));
+      const absent = [...a.keys(),...b.keys()].filter((key,i,all) =>
+        !current.has(key) && all.indexOf(key) === i).length;
+      const decisions = [];
+      let conflicts = 0, partialNotes = 0, changed = 0, agreed = 0, single = 0;
+      for (const item of items) {
+        const key = item.file.name.normalize("NFC").toLowerCase();
+        const rawA = a.get(key), rawB = b.get(key);
+        const x = sourceEqual(rawA,item) ? rawA : null;
+        const y = sourceEqual(rawB,item) ? rawB : null;
+        if ((rawA && !x) || (rawB && !y)) changed++;
+        const partialNote = !!(x && y && humanRouteEqual(x,y) &&
+          x.private_note_included !== y.private_note_included);
+        const conflicting = !!(x && y && !partialNote && !humanEqual(x,y));
+        if (conflicting) conflicts++;
+        else if (partialNote) partialNotes++;
+        else if (x && y) agreed++;
+        else if (x || y) single++;
+        const entry = {item, x, y, choice: "none", conflicting, partialNote};
+        decisions.push(entry);
+        const tr = document.createElement("tr");
+        cell(tr,item.file.name,"file-name");
+        cell(tr,(rawA&&!x)||(rawB&&!y) ? "CHANGED / NO COPY" :
+          conflicting ? "CONFLICT / HUMAN KEUZE" :
+          partialNote ? "NOTITIE-DEKKING ONBEKEND / HUMAN KEUZE" :
+          x&&y ? "EENSGEZIND / ONGETEKEND" :
+          x||y ? "ENKEL VOORSTEL" : "NEW / GEEN VOORSTEL");
+        cell(tr,peerLabel(x));
+        cell(tr,peerLabel(y));
+        const td = document.createElement("td");
+        if (x || y) {
+          const select = document.createElement("select");
+          select.setAttribute("aria-label","Kies PRIVATE HUMAN voorstel voor "+item.file.name);
+          const choices = [["none","Niets overnemen"]];
+          if (x) choices.push(["a","Reviewerbestand 1 expliciet overnemen"]);
+          if (y) choices.push(["b","Reviewerbestand 2 expliciet overnemen"]);
+          for (const [id,label] of choices) {
+            const option = document.createElement("option");
+            option.value = id; option.textContent = label; select.append(option);
+          }
+          select.addEventListener("change",()=>{
+            if (!peerPreview || peerPreview.decisions !== decisions) return;
+            entry.choice = select.value;
+            peerApply.disabled = !decisions.some(d=>d.choice!=="none");
+          });
+          td.append(select);
+        } else td.textContent = "Geen bronexacte HUMAN-keuze";
+        tr.append(td); peerRows.append(tr);
+      }
+      if (generation !== epoch || humanRevision !== revision) throw Error("stale selection");
+      peerPreview = {decisions, epoch, revision, counts: {agreed, conflicts,
+        partial_note_disclosure:partialNotes, single_source:single,
+        changed_source:changed, absent_from_local_selection:absent,
+        local_source_count:items.length}};
+      el("shelf-peer-summary-export").disabled = false;
+      peerStatus.textContent = "ALLEEN VOORSTEL: " + agreed + " gelijke voorstellen, " +
+        conflicts + " HUMAN-conflicten, " + partialNotes + " onbekende notitiedekkingen, " +
+        single + " enkelzijdig, " +
+        changed + " afwijkende oorspronkelijke bronverwijzingen, " +
+        absent + " niet lokaal geselecteerd. Standaard wordt NIETS overgenomen. " +
+        "Zelfs gelijke ongetekende voorstellen zijn geen echte autorisatie.";
+    } catch (_) {
+      peerPreview = null; peerRows.replaceChildren();
+      el("shelf-peer-summary-export").disabled = true;
+      peerStatus.textContent = "HOLD — ongeldig of veranderd PRIVATE teampakket; geen HUMAN review of originele bron gewijzigd.";
+    } finally {
+      busy = false; peerInput.disabled = false; input.disabled = false;
+    }
+  });
+  el("shelf-peer-summary-export").addEventListener("click", () => {
+    if (!peerPreview) return report("HOLD — maak eerst een actuele vergelijking.");
+    if (peerPreview.epoch !== generation || peerPreview.revision !== humanRevision) {
+      discardPeerPreview();
+      return report("HOLD — bron/HUMAN gegevens veranderd; maak eerst een nieuwe vergelijking.");
+    }
+    if (!confirm("Alleen bronvrije, ongetekende HUMAN vergelijkingsaantallen delen? Kleine aantallen kunnen alsnog gevoelig zijn. Geen namen, notitieteksten, bestands-hashes, routes of bronbytes exporteren.")) return;
+    exportJSON("lightup-scope-PRIVATE-HUMAN-peer-counts.json", {
+      format:"lightup.scope_PRIVATE_human_peer_counts.v1",
+      status:"REVIEW_ONLY", posture:"INCUBATE_M3_M7_DRAFT_HOLD",
+      authority:{client_consent:false,operator_consent:false,grant:false,
+        scan:false,deploy:false,release:false},
+      comparison_counts:peerPreview.counts,
+      warning:"Unsigned private reviewer counts only; never source authenticity, identity, current consent, revocation, scan, grant or release. Small counts can remain identifying."
+    });
+    report("REVIEW_ONLY — uitsluitend anonieme HUMAN vergelijktellingen lokaal gedownload.");
+  });
+  peerApply.addEventListener("click", () => {
+    if (!peerPreview || busy) return;
+    const plan = peerPreview;
+    const chosen = plan.decisions.filter(d=>d.choice!=="none");
+    if (!chosen.length) return;
+    if (plan.epoch!==generation || plan.revision!==humanRevision ||
+        !chosen.every(d=>items.includes(d.item) &&
+          sourceEqual(d.choice==="a"?d.x:d.y,d.item))) {
+      discardPeerPreview();
+      return report("HOLD — bron of HUMAN review gewijzigd sinds peer-preview; niets toegepast.");
+    }
+    const replacing = chosen.filter(({item})=>item.stage!=="unreviewed" ||
+      item.team!=="unassigned" || item.note!=="").length;
+    const conflicts = chosen.filter(d=>d.conflicting).length;
+    if (!confirm("Pas "+chosen.length+" expliciet gekozen PRIVATE HUMAN voorstellen toe, inclusief "+
+        conflicts+" tegenstrijdige reviewers en "+replacing+
+        " bestaande lokale HUMAN reviews? Alle overige bronnen blijven ongemoeid. " +
+        "Geen originele toestemming, grant, authenticatie of uitvoering. Undo blijft beschikbaar.")) return;
+    if (plan.epoch!==generation || plan.revision!==humanRevision) return;
+    recordReviewEdit(); // invalidates both preview and any old return receipt
+    for (const d of chosen) {
+      const src = d.choice==="a" ? d.x : d.y;
+      d.item.route=src.human_route;
+      d.item.stage=src.human_stage;
+      d.item.team=src.human_team;
+      if (src.private_note_included) d.item.note=src.private_human_note;
+    }
+    humanRevision++;
+    render();
+    peerStatus.textContent="REVIEW_ONLY — "+chosen.length+
+      " expliciete bronexacte HUMAN-reviewkeuzes toegepast; "+conflicts+
+      " reviewerconflicten bewust geselecteerd. Niet-geselecteerde oorspronkelijke en lokale HUMAN gegevens behouden.";
+    report("REVIEW_ONLY — twee privé-teampakketten bronexact vergeleken en alleen bewuste HUMAN-keuzes overgenomen.");
+  });
+
   el("shelf-return-receipt").addEventListener("click", () => {
     if (!lastReturnReceipt) return report("HOLD — geen actuele PRIVATE HUMAN ontvangstbon. Importeer eerst bewust bronexacte HUMAN-keuzes.");
     if (!confirm("Download PRIVATE ontvangstbon met oorspronkelijke bestandsnamen, ongetekende SHA-256 en oude/nieuwe HUMAN team/fase (zonder oorspronkelijke bronbytes of notitieteksten)? Deze informatie kan vertrouwelijk zijn. Ontvanger en kanaal afzonderlijk verifiëren. Geen echte toestemming, bewijs of security-vrijgave.")) return;
