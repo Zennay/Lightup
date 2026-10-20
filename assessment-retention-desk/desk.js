@@ -210,10 +210,35 @@
     $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
     render(); status("Gehele brongebonden PRIVATE HUMAN-planning overgenomen zonder autorisatieclaim.");
   }
+  function compareVaultPlan(raw) {
+    const earlier = validateReceipt(raw,true);
+    const target = $("source-drift");
+    const changed = [];
+    const stageCounts = Object.fromEntries(Object.keys(STATES).map(k=>[k,0]));
+    for (const e of entries) {
+      const before = earlier.get(e.sha256);
+      stageCounts[before.status] += 1;
+      const fields = ["alias","status","review_date","action"].filter(k=>e[k]!==before[k]);
+      if (fields.length) changed.push({sha:e.sha256.slice(0,16),fields});
+    }
+    target.replaceChildren(text("strong","PRIVATE AES-GCM HUMAN-planning vergelijking — zelfde originele bytes"));
+    target.append(text("p","Gelijke SHA-256/bestandsgrootte set: " + entries.length +
+      " · HUMAN rijen met verschillen: " + changed.length +
+      " · bronidentiteiten ongewijzigd; geen enkel veld overgenomen."));
+    const oldStages = Object.entries(stageCounts).map(([k,n])=>STATES[k]+": "+n).join(" · ");
+    target.append(text("p","Eerder door mens opgegeven: "+oldStages));
+    const ul=document.createElement("ul");
+    for (const diff of changed) {
+      ul.append(text("li",diff.sha+"… · eerdere versus huidige HUMAN: "+diff.fields.join(", ")));
+    }
+    if (!changed.length) ul.append(text("li","Geen wijzigingen in HUMAN-alias/status/datum/actie."));
+    target.append(ul);
+    status("Brongebonden versleutelde HUMAN-planning alleen vergeleken. Geen statusovername, autorisatie of bronverandering.");
+  }
   // Same-origin, offline-only bridge, not a consent or authorization API.
   Object.defineProperty(window, "LightUpPrivateVaultBridge", {
     value:Object.freeze({
-      snapshot:sourcePlan, restore:restoreOriginal,
+      snapshot:sourcePlan, restore:restoreOriginal, compare:compareVaultPlan,
       busy:()=>processing, setBusy:value=>{processing=value;},
       notify:status
     }), writable:false, configurable:false
