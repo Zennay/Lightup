@@ -28,7 +28,7 @@ WARNING = ("PRIVATE software-only, no real evidence/client/source authentication
            "release approval or HUMAN GO. INCUBATE M3/M7 DRAFT/HOLD.")
 SCHEDULER_FILES = (
     "README.md", "schedule.py", "scheduler.js", "archive_schedule.py",
-    "schedule_vault.py", "complete_handoff.py", "bundle.py", "bundle_receive.py",
+    "schedule_vault.py", "complete_handoff.py", "carry_native.py", "bundle.py", "bundle_receive.py",
 )
 MAX_MEMBER = 4_000_000
 MAX_TOTAL = 20_000_000
