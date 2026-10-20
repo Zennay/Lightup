@@ -708,7 +708,7 @@ verified vulnerabilities, release clearance, source re-opening, consent,
 authorization, scan output, dispatch, or remediation. Do not share original
 customer data or these PRIVATE files without a separate authorized disclosure
 process. The **source checkout** includes `portfolio.py`; the native
-`package.py build` now produces a complete v18 offline software ZIP with
+`package.py build` now produces a complete v19 offline software ZIP with
 this module included, using only installed original trusted software bytes.
 The branch's [published source-only v19 offline ZIP](LightUp-Workspace-Ledger-Offline.zip)
 contains all original and newly added software files, including both portfolio
@@ -716,7 +716,7 @@ modules. It is an **UNSIGNED** offline toolkit: source hashes are byte
 identities, not software publisher authentication, security review or permission.
 The native inspector retains read-only compatibility with prior v16/v17
 archive layouts; those historical layouts are not the current branch download.
-The v18 software package contains no original customer data.
+The v19 software package contains no original customer data.
 
 For minimum-necessary casework, specify an optional exact proposed owner:
 
@@ -772,7 +772,7 @@ The original customer kits are NOT reopened, real consent is NOT revalidated,
 and a removed proposal is NEVER proof that a vulnerability was fixed.
 Neither output auto-dispatches actions, launches assessments, creates deadlines
 or authenticates the proposed human recipient. Privacy depends on explicit
-operator control of owner-only outputs. The committed current v18 offline source-only ZIP includes both portfolio
+operator control of owner-only outputs. The committed current v19 offline source-only ZIP includes both portfolio
 modules and the original complete software. SHA-256 hashes authenticate only
 local byte equality, NOT the publisher or an approved real security action.
 No QA/regression/test suites are created or run.
@@ -821,9 +821,23 @@ scan, security remediation, task dispatch, booking or notification. Private
 separately shares anything, real recipient identity and specific disclosure
 authority must be authenticated outside this offline workroom.
 
-The updated v19 software builder includes the original 21 software files
-plus `portfolio_owner_packets.py`; older v16/v17/v18 layouts remain
+The committed v19 package contains 22 original and additive software files,
+including `portfolio_owner_packets.py`; older v16/v17/v18 layouts remain
 recognizable *only* as historical unsigned software packages during
 read-only inspection. GitHub's packaged ZIP must be identified by its
 actual current commit and manifest; no previous release becomes authorized.
 No QA, regression or test suite has been created or executed.
+
+### Historical per-owner case visibility (source-context guard)
+
+The original v1 HUMAN portfolio deliberately omits unselected case identities
+from an owner-filtered workroom. As a consequence, when a new human proposal
+appears or disappears for that owner, that **case slot** may appear or
+vanish. The native `portfolio_delta.py` now reports newly/no-longer visible
+owner-filtered case slots as HUMAN proposal membership changes, **only if
+at least one shared original case context SHA and ordinal anchors the two
+portfolios**. All common original case identities must match; two unrelated
+collections with no shared case are rejected. Full, unfiltered portfolio
+comparison still demands exactly identical source-case rosters. No removed
+HUMAN proposal, slot or worklist row is evidence of a fixed vulnerability,
+revoked grant, completed action or successful retest.
