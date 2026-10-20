@@ -115,10 +115,8 @@ def render_matrix(data: dict, source_sha: str) -> str:
         "finding titles, evidence or HUMAN notes. Small aggregates can still be " +
         "confidential. All sorting is for HUMAN attention, not verified risk.</p></header>")
     table=("<section class='card'><h2>HUMAN stage × declared severity</h2>" +
-           "<div style='overflow-x:auto'><table><thead>"+headrow+"</thead><tbody>"+
+           "<div class='scroll-table'><table><thead>"+headrow+"</thead><tbody>"+
            "".join(rows)+"</tbody></table></div></section>")
-    # Avoid inline style attribute: CSP permits only the hash-pinned stylesheet.
-    table=table.replace(" style='overflow-x:auto'","")
     guidance=("<section class='card'><h2>HUMAN questions to resolve separately</h2>" +
               "<ol><li>Confirm original producer, context and engagement with actual " +
               "separate authenticated client/operator actors.</li>" +
