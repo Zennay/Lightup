@@ -121,9 +121,13 @@
     }
     return {id, stage: entry.stage, owner: entry.owner, due: entry.due, note: entry.note};
   }
+  function localDate() {
+    const d = new Date();
+    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+  }
   function status(message, error) {
     $("status").textContent = message;
-    $("status").className = error ? "error" : "ok";
+    $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
     ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveCounts", "clearAll"].forEach((id) => {
@@ -161,7 +165,7 @@
     const indices = selectedIndices();
     $("counts").textContent = indices.length + " visible / " + state.rows.length + " total; " +
       state.journal.filter(j => j.stage !== "unreviewed").length + " human-updated; " +
-      state.journal.filter(j => j.due && j.due < new Date().toISOString().slice(0,10)).length +
+      state.journal.filter(j => j.due && j.due < localDate()).length +
       " tentative overdue.";
     for (const index of indices) {
       const row = state.rows[index], journal = state.journal[index];
@@ -302,7 +306,7 @@
     const counts = {
       schema: AGGREGATE, classification: "ANONYMOUS_COUNTS_ONLY",
       authority: NO_AUTHORITY, total: state.rows.length, severity, human_stage,
-      human_overdue_proposed: state.journal.filter(j => j.due && j.due < new Date().toISOString().slice(0,10)).length
+      human_overdue_proposed: state.journal.filter(j => j.due && j.due < localDate()).length
     };
     download(JSON.stringify(counts, null, 2) + "\n", "lightup-anonymous-review-counts.json", "application/json");
     status("Counts-only file offered; no original IDs, title, source digest or HUMAN notes exported.", false);
