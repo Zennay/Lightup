@@ -36,11 +36,16 @@
     "privacy-editor": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"],
     "scope-reviewer": ["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json", "workspace/verify.html"],
   };
-  let accepted = null, generation = 0, extracted = new Map();
+  let accepted = null, acceptedSha = null, generation = 0, extracted = new Map();
+  const saveInspection = el("save-inspection-receipt");
+  let localInspection = null;
 
   function clear() {
     generation++;
     accepted = null;
+    acceptedSha = null;
+    localInspection = null;
+    saveInspection.hidden = true;
     extracted.clear();
     inventory.replaceChildren();
     saveRow.replaceChildren();
@@ -56,6 +61,7 @@
         detail.bytes.byteLength > 2500000 || !detail.name ||
         !/\.zip$/i.test(detail.name)) return;
     accepted = detail.bytes;
+    acceptedSha = detail.sha256;
     panel.hidden = false;
     examine.disabled = false;
     sourceInfo.textContent = "Source bytes matched an independently supplied SHA-256. Inspect the local ZIP directory before saving files; this remains REVIEW ONLY.";
@@ -194,7 +200,7 @@
         throw Error("Unrecognized role inspector source bytes");
       }
     }
-    return true; // Receipt coherence ONLY; never sender identity or consent.
+    return receipt.files; // Receipt coherence ONLY; never sender identity or consent.
   }
 
   const sha = async bytes => Array.from(new Uint8Array(
@@ -209,9 +215,29 @@
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
+  saveInspection.addEventListener("click", () => {
+    if (!localInspection || !accepted || !acceptedSha || localInspection.generation !== generation) return;
+    // Private byte receipt, never proof of identity, legal consent or disclosure clearance.
+    const payload = {
+      format: "lightup.scope_private_local_inspection.v1",
+      posture: "INCUBATE_M3_M7_DRAFT_HOLD",
+      decision: "REVIEW_ONLY",
+      authenticated_sender: false,
+      consent_granted: false,
+      release_approved: false,
+      profile: localInspection.profile,
+      received_zip_sha256: acceptedSha,
+      received_zip_bytes: accepted.byteLength,
+      files: localInspection.files,
+      note: "UNSIGNED PRIVATE source-byte inspection only; independently verify recipient and channel."
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
+    save(bytes, "LightUp-PRIVATE-role-inspection-REVIEW-ONLY.json");
+  });
   examine.addEventListener("click", async () => {
     const current = ++generation;
     inventory.replaceChildren(); saveRow.replaceChildren(); extracted.clear();
+    localInspection = null; saveInspection.hidden = true;
     examine.disabled = true;
     sourceInfo.textContent = "Inspecting ZIP member layout and pinned original artifact SHA-256 locally...";
     try {
@@ -240,7 +266,7 @@
         if (hash !== descriptor.sha) throw Error("Original source-pinned byte mismatch: " + descriptor.path);
         admissible.push({descriptor, candidate});
       }
-      if (role) await validateRoleReceipt(entries, role);
+      const roleFiles = role ? await validateRoleReceipt(entries, role) : null;
       if (current !== generation) return;
       for (const name of Array.from(entries.keys()).sort()) {
         const item = document.createElement("li");
@@ -259,6 +285,10 @@
         });
         saveRow.append(button);
       }
+      if (role && roleFiles && acceptedSha) {
+        localInspection = {generation: current, profile: role, files: roleFiles};
+        saveInspection.hidden = false;
+      }
       sourceInfo.textContent = "REVIEW ONLY · " + (role ? "private role " + role : "full original scope kit") +
         " · " + entries.size + " canonical members; " + admissible.length +
         " original component file(s) match pinned SHA-256. Role receipts remain unsigned; " +
@@ -266,6 +296,7 @@
     } catch (_) {
       if (current !== generation) return;
       inventory.replaceChildren(); saveRow.replaceChildren();
+      localInspection = null; saveInspection.hidden = true;
       sourceInfo.textContent = "HOLD — ZIP structure, role membership, size or original source identity not admitted. " +
         "Nothing can be extracted from this browser tool. Use the Python source inspector on an independently authenticated copy.";
     } finally {

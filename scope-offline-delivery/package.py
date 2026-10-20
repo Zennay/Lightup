@@ -117,7 +117,7 @@ def no_authority(obj: dict) -> bool:
 
 def render_receiver() -> bytes:
     template = read(HERE / "recipient.template.html", 10000).decode("utf-8")
-    js = read(HERE / "recipient.js", 10000).decode("utf-8") + "\n" + read(HERE / "recipient_zip.js", 16000).decode("utf-8")
+    js = read(HERE / "recipient.js", 10000).decode("utf-8") + "\n" + read(HERE / "recipient_zip.js", 22000).decode("utf-8")
     css = read(HERE / "recipient.css", 10000).decode("utf-8")
     for token in ("__SCRIPT_HASH__", "__STYLE_HASH__", "__SCRIPT__", "__STYLE__"):
         if template.count(token) != 1:

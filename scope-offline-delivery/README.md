@@ -69,11 +69,11 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `7468808b7d693fbc27dd9bd4efd2400b868bcd504ba49d858b9697aa535f2f8d`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `56ebc620709a42e6c1582662dff48978557506276eafecc6d67cd5330acb3a61`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `f4ac53cf2616fba2c6f871f3bb14de19897ee3cac000c89342fe1e7d3a75f459`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `f8415e792f5129b4150f515d80179b24844b5487fa2dec91fc8aac446843ba97`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `daeae8937c14680c48573516a9f5e4f92972bf00fb7263cdcf60b4c7dbe2d59c`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `a715eacd3511447d665d6a1aa452459db3ef53065513c6c071f36424644c105e`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `ab8834a845fd4b0fc51e067b3dd6a402501d50487ae3a9458405f85a43167883`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `d7db12210c4d3643a14cb44e65fa92d8f64e37c2fb236210b31e82f99524939d`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
 
@@ -86,6 +86,10 @@ The same [single-file local browser receiver](PRIVATE-receive.html) now recogniz
 After an independently supplied **whole-ZIP SHA-256** matches, the standalone offline browser now also checks an exact, deterministic Python-produced `PRIVATE-ROLE-RECEIPT.json` before offering original downloads. It rejects ambiguous/noncanonical JSON (including duplicate keys), wrong role/posture/original-head values, altered file sets and per-file digests, unsupported authority keys, non-boolean or affirmative consent/grant/release values, and an unfamiliar pinned `tools/role_pack.py` source. All role members — not just the original HTML tools — must agree with the byte-bound receipt. Original components are additionally pinned to immutable LightUp source digests. This closes the previous browser-only receipt verification gap; the native Python inspector remains available.
 
 **Important:** All checks verify structure, deterministic source equality and local bytes **only**. The receipt is unsigned; even an exact match does not authenticate a person, protect confidential material in transit, check real client/operator permission or replace independent security review. Files stay local until a separate HUMAN chooses an explicit download; no content is automatically executed.
+
+### PRIVATE local inspection receipt (one-click browser workflow)
+
+For a separately matched, structurally admitted and original-source-pinned **role ZIP**, the browser now offers **Save PRIVATE role inspection receipt**. This manually downloads a small source-only `lightup.scope_private_local_inspection.v1` JSON with the selected exact role, SHA-256 and byte size of the entire received ZIP, plus every original role member's name, length and SHA-256 as admitted by the byte-canonical original receipt. No original source material, passwords, reviewer notes or contact details are included. The in-memory receipt is cleared on any file, digest or selection change and is unavailable for unknown ZIPs, malformed receipts or unmatched sources. It is **unsigned, locally produced, and REVIEW_ONLY**: human recipients and transfer channels must still be authenticated independently, and the receipt cannot assert consent, grant, release, client authority or confidentiality.
 
 ### Role unpack stability under local file replacement
 

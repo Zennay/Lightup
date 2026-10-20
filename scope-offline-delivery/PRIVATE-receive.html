@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kO4XDMjtYo2nROP+crMFbP+ok4GQuOyXlmeyCHQOCLs='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-AGCB7QhwGAkuJUDKKOWJWpqWFAxlm0H+iQi/4BCPKSM='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE recipient byte comparison</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:2.5rem 1rem;background:#0b1422;color:#ebf1fa;font:1rem/1.65 system-ui,sans-serif}main{max-width:750px;margin:auto}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15}h2{font-size:1.15rem}.tag{font-size:.76rem;letter-spacing:.12em;color:#9ec6ff;font-weight:750}section{padding:1.4rem;margin:1.25rem 0;border:1px solid #52647f;border-radius:14px;background:#16243a}label{display:block;font-weight:650;margin:1rem 0 .3rem}input{width:100%;border-radius:7px;border:1px solid #a5bad4;padding:.75rem;background:#0b1422;color:#fff;font:inherit}input:focus,button:focus{outline:3px solid #95d6fa;outline-offset:2px}button{margin-top:.85rem;cursor:pointer;border:0;border-radius:8px;padding:.8rem 1.25rem;font:inherit;font-weight:750;background:#93dbfd;color:#082235}button:disabled{opacity:.6;cursor:wait}p{overflow-wrap:anywhere}strong{color:#ffdb9a}#status{font-weight:750;padding:.8rem;border-left:4px solid #9ec6ff}#status[data-state="hold"]{border-color:#f2a0a8;color:#ffc4c9}#status[data-state="match"]{border-color:#97edbc;color:#b2ffce}a{color:#92d9ff}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.89rem;overflow-wrap:anywhere}footer{font-size:.82rem;color:#b6c6db;margin:2.5rem 0}
 .download-choices{display:flex;flex-wrap:wrap;gap:.6rem}.download-choices button{margin:.35rem 0}details{border:1px solid #64748b;border-radius:8px;padding:.75rem}summary{cursor:pointer}ol{max-height:14rem;overflow:auto;padding-left:1.6rem}li{margin:.35rem 0}section[hidden]{display:none}
@@ -33,6 +33,8 @@
 <p id="archive-summary" role="status" aria-live="polite"></p>
 <details><summary>Original ZIP member inventory (paths and sizes only)</summary><ol id="archive-inventory" class="mono"></ol></details>
 <div id="safe-downloads" class="download-choices"></div>
+<button id="save-inspection-receipt" type="button" hidden>Save PRIVATE role inspection receipt (unsigned JSON)</button>
+<p>A saved receipt contains original source filenames, byte digests and the received whole-ZIP digest. Treat it as PRIVATE metadata. It proves no sender identity, consent or permission, and cannot replace independent human disclosure review.</p>
 </section>
 <section>
 <h2>After a BYTE MATCH</h2>
@@ -151,11 +153,16 @@ button.addEventListener("click", async () => {
     "privacy-editor": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"],
     "scope-reviewer": ["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json", "workspace/verify.html"],
   };
-  let accepted = null, generation = 0, extracted = new Map();
+  let accepted = null, acceptedSha = null, generation = 0, extracted = new Map();
+  const saveInspection = el("save-inspection-receipt");
+  let localInspection = null;
 
   function clear() {
     generation++;
     accepted = null;
+    acceptedSha = null;
+    localInspection = null;
+    saveInspection.hidden = true;
     extracted.clear();
     inventory.replaceChildren();
     saveRow.replaceChildren();
@@ -171,6 +178,7 @@ button.addEventListener("click", async () => {
         detail.bytes.byteLength > 2500000 || !detail.name ||
         !/\.zip$/i.test(detail.name)) return;
     accepted = detail.bytes;
+    acceptedSha = detail.sha256;
     panel.hidden = false;
     examine.disabled = false;
     sourceInfo.textContent = "Source bytes matched an independently supplied SHA-256. Inspect the local ZIP directory before saving files; this remains REVIEW ONLY.";
@@ -309,7 +317,7 @@ button.addEventListener("click", async () => {
         throw Error("Unrecognized role inspector source bytes");
       }
     }
-    return true; // Receipt coherence ONLY; never sender identity or consent.
+    return receipt.files; // Receipt coherence ONLY; never sender identity or consent.
   }
 
   const sha = async bytes => Array.from(new Uint8Array(
@@ -324,9 +332,29 @@ button.addEventListener("click", async () => {
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
+  saveInspection.addEventListener("click", () => {
+    if (!localInspection || !accepted || !acceptedSha || localInspection.generation !== generation) return;
+    // Private byte receipt, never proof of identity, legal consent or disclosure clearance.
+    const payload = {
+      format: "lightup.scope_private_local_inspection.v1",
+      posture: "INCUBATE_M3_M7_DRAFT_HOLD",
+      decision: "REVIEW_ONLY",
+      authenticated_sender: false,
+      consent_granted: false,
+      release_approved: false,
+      profile: localInspection.profile,
+      received_zip_sha256: acceptedSha,
+      received_zip_bytes: accepted.byteLength,
+      files: localInspection.files,
+      note: "UNSIGNED PRIVATE source-byte inspection only; independently verify recipient and channel."
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
+    save(bytes, "LightUp-PRIVATE-role-inspection-REVIEW-ONLY.json");
+  });
   examine.addEventListener("click", async () => {
     const current = ++generation;
     inventory.replaceChildren(); saveRow.replaceChildren(); extracted.clear();
+    localInspection = null; saveInspection.hidden = true;
     examine.disabled = true;
     sourceInfo.textContent = "Inspecting ZIP member layout and pinned original artifact SHA-256 locally...";
     try {
@@ -355,7 +383,7 @@ button.addEventListener("click", async () => {
         if (hash !== descriptor.sha) throw Error("Original source-pinned byte mismatch: " + descriptor.path);
         admissible.push({descriptor, candidate});
       }
-      if (role) await validateRoleReceipt(entries, role);
+      const roleFiles = role ? await validateRoleReceipt(entries, role) : null;
       if (current !== generation) return;
       for (const name of Array.from(entries.keys()).sort()) {
         const item = document.createElement("li");
@@ -374,6 +402,10 @@ button.addEventListener("click", async () => {
         });
         saveRow.append(button);
       }
+      if (role && roleFiles && acceptedSha) {
+        localInspection = {generation: current, profile: role, files: roleFiles};
+        saveInspection.hidden = false;
+      }
       sourceInfo.textContent = "REVIEW ONLY · " + (role ? "private role " + role : "full original scope kit") +
         " · " + entries.size + " canonical members; " + admissible.length +
         " original component file(s) match pinned SHA-256. Role receipts remain unsigned; " +
@@ -381,6 +413,7 @@ button.addEventListener("click", async () => {
     } catch (_) {
       if (current !== generation) return;
       inventory.replaceChildren(); saveRow.replaceChildren();
+      localInspection = null; saveInspection.hidden = true;
       sourceInfo.textContent = "HOLD — ZIP structure, role membership, size or original source identity not admitted. " +
         "Nothing can be extracted from this browser tool. Use the Python source inspector on an independently authenticated copy.";
     } finally {
