@@ -23,3 +23,10 @@ td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{pa
 @media(max-width:750px){.grid{grid-template-columns:1fr}section{padding:18px}.case{overflow-x:auto}table{min-width:610px}.mark span{display:inline-block;margin:9px 0}}
 
 [hidden]{display:none!important}
+
+.human-notes{margin-top:16px;padding:17px;border-radius:10px;border:1px solid #455b78;background:#142235}
+.human-notes h4{font-size:1rem;margin:0 0 9px;color:#c7ddfa}
+.human-notes textarea{display:block;width:100%;min-height:92px;resize:vertical;
+  font:inherit;color:#f0f7ff;background:#0d1828;border:1px solid #657796;border-radius:9px;padding:11px}
+.human-notes textarea:focus-visible{outline:3px solid #6cb8ff;outline-offset:2px}
+.human-notes small{display:block;margin-top:8px}.human-notes small.error{color:#ffacb1}

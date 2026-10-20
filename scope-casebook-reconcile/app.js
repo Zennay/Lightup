@@ -231,7 +231,9 @@ function show(){
    }
    row.append(td);body.append(row);
   });
-  table.append(body);card.append(table);$("cases").append(card);
+  table.append(body);card.append(table);
+  if(diff)window.LightUpCasebookNotes?.render(card,i,c);
+  $("cases").append(card);
  });
  $("shown").textContent="Zichtbaar: "+shown+" van "+work.cases.length;
  tally();
@@ -301,6 +303,7 @@ $("open").addEventListener("click",async()=>{
   work={a,b,cases:a.cases,choices:a.rows.map((r,i)=>[0,1,2].map(j=>
    r[j+3]===b.rows[i][j+3]?"same":""))};
   a=null;b=null;
+  window.LightUpCasebookNotes?.reset(work.cases.length);
   zero(old?.a);zero(old?.b);
   show();status("Beide exacte originele bronsets en opgeslagen HUMAN-keuzes lokaal geaccepteerd. Verschillen vereisen expliciete menselijke beslissingen.");
  }catch(e){status("HOLD: "+(e instanceof Error?e.message:"Ongeldige overdracht"),true);}
@@ -375,7 +378,8 @@ window.LightUpCasebookDraftAPI=Object.freeze({
  snapshot:()=>work?{
   sources:work.a.records.slice(0,-1).map(r=>({name:r.name,size:r.size,sha256:r.sha256})),
   human:[work.a.records.at(-1).sha256,work.b.records.at(-1).sha256],
-  choices:work.choices.map(r=>[...r])}:null,
+  choices:work.choices.map(r=>[...r]),
+  notes:window.LightUpCasebookNotes?.read()||[]}:null,
  restore:body=>{
   if(!work)deny("HOLD: oorspronkelijke PRIVATE bronnen ontbreken.");
   const actual=window.LightUpCasebookDraftAPI.snapshot();
@@ -394,8 +398,14 @@ window.LightUpCasebookDraftAPI=Object.freeze({
     return v;
    });
   });
-  if(!window.confirm("Verander uitsluitend de huidige HUMAN-keuzevelden volgens dit versleutelde exact-brongebonden checkpoint? Oorspronkelijke bronbytes blijven intact."))
+  const existing=window.LightUpCasebookNotes?.read()||[];
+  const incoming=body.version===2?body.notes:existing;
+  if(!Array.isArray(incoming)||incoming.length!==work.cases.length)
+   deny("HOLD: PRIVATE HUMAN-motivering heeft onjuist bronaantal.");
+  const bound=incoming.map(window.LightUpCasebookNotes.canonical);
+  if(!window.confirm("Herstel alleen HUMAN-keuzes en optionele PRIVATE notities op exact dezelfde oorspronkelijke bronnen? Originele Casebook bytes blijven onveranderd."))
    return false;
+  window.LightUpCasebookNotes.restore(bound);
   work.choices=candidate;show();return true;
  }
 });

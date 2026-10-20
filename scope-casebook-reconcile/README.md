@@ -17,6 +17,12 @@ After every HUMAN field is resolved, an optional **source-free, count-only HUMAN
 
 Private original case IDs, action text and HUMAN choices remain entirely in browser memory, never in exported aggregate logs or servers. New ciphertext has a fresh random salt and nonce, PBKDF2-SHA256 310,000 iterations and AES-256-GCM. No account, localStorage, remote network, grant, API, scan or active-target support is present. Incorrect input does not replace the previous workset. A compromised browser can reveal locally displayed PRIVATE information; choose a trusted computer and exchange the new secret separately.
 
+## PRIVATE HUMAN decision rationale
+
+Each original Casebook case that has conflicting HUMAN fields now has an **optional PRIVATE human review-reason and freeform note** (maximum 800 UTF-16 characters and 1,200 UTF-8 bytes, explicitly bounded). Notes are shown locally only and **never inserted into the original immutable Casebook JSON, the current original HUMAN CSV, or the source-free aggregate**. They are not evidence of genuine client, source, consent, grant, or verified security outcome. Values are DOM text, never HTML. Reasons are a fixed human-only follow-up taxonomy, not automated approvals.
+
+The encrypted local `.lurd` draft format has been versioned to v2 so the new notepad and choices restore together, **only** after exact original source and both original current HUMAN CSV SHA bindings match. Original v1 encrypted drafts remain readable; they only restore their own choices, without replacing later private notes. A malformed or source-mismatched import refuses atomic replacement. No automatic network, consent, grant or storage is added.
+
 ## Encrypted HUMAN draft continuity (optional)
 
 For long workrooms, **Save PRIVATE HUMAN draft** produces a separate `.lurd` AES-256-GCM / PBKDF2-SHA256 310000 file under a fresh operator-chosen password. It contains **only encrypted** original file name/size/SHA-256 references, the two distinct original current HUMAN CSV SHA-256 references and current per-field A/B/reset/manual-canonical-enum/unresolved selections — **no original Casebook source JSON or current source HUMAN CSV bodies**. It is still PRIVATE because it can reveal operator decisions after decryption.

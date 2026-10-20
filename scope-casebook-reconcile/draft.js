@@ -3,7 +3,8 @@
 "use strict";
 const $=id=>document.getElementById(id),api=window.LightUpCasebookDraftAPI;
 const enc=new TextEncoder(),dec=new TextDecoder("utf-8",{fatal:true});
-const SCHEMA="lightup.casebook.private_human_reconciliation_draft.v1";
+const LEGACY_SCHEMA="lightup.casebook.private_human_reconciliation_draft.v1";
+const SCHEMA="lightup.casebook.private_human_reconciliation_draft.v2";
 const ITER=310000,MAX_FILE=256*1024,MAX_BODY=128*1024;
 const fail=msg=>{throw Error(msg);};
 const exact=(o,k)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&
@@ -51,8 +52,9 @@ function authBody(snapshot){
  if(!snapshot)fail("Open eerst beide oorspronkelijke PRIVATE Casebook-bronnen.");
  if(!snapshot.sources||!snapshot.human||!snapshot.choices)
   fail("Originele bron en HUMAN binding ontbreken.");
- return {schema:SCHEMA,version:1,sources:snapshot.sources,human:snapshot.human,
-  choices:snapshot.choices,source_authenticated:false,client_consent_verified:false,
+ return {schema:SCHEMA,version:2,sources:snapshot.sources,human:snapshot.human,
+  choices:snapshot.choices,notes:snapshot.notes,
+  source_authenticated:false,client_consent_verified:false,
   operator_consent_verified:false,authorization_granted:false,
   execution_allowed:false,release_approved:false};
 }
@@ -74,7 +76,7 @@ $("draft-save").addEventListener("click",async()=>{
   const cipher=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
    await keyFor(pass,salt,"encrypt"),body));
   body.fill(0);
-  const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",
+  const envelope={schema:SCHEMA,version:2,kdf:"PBKDF2-SHA256",
    iterations:ITER,cipher:"AES-256-GCM",salt_b64:to64(salt),
    iv_b64:to64(iv),ciphertext_b64:to64(cipher)};
   const bytes=enc.encode(JSON.stringify(envelope));
@@ -97,7 +99,8 @@ $("draft-open").addEventListener("click",async()=>{
   if(!api.snapshot())fail("Open eerst de twee oorspronkelijke PRIVATE bronsets.");
   const env=parse(await file.text());
   if(!exact(env,["schema","version","kdf","iterations","cipher","salt_b64",
-   "iv_b64","ciphertext_b64"])||env.schema!==SCHEMA||env.version!==1||
+   "iv_b64","ciphertext_b64"])||!((env.schema===SCHEMA&&env.version===2)||
+    (env.schema===LEGACY_SCHEMA&&env.version===1))||
    env.kdf!=="PBKDF2-SHA256"||env.iterations!==ITER||env.cipher!=="AES-256-GCM")
    fail("Checkpoint-envelope niet oorspronkelijk canoniek.");
   const salt=from64(env.salt_b64,16),iv=from64(env.iv_b64,12),
@@ -110,10 +113,12 @@ $("draft-open").addEventListener("click",async()=>{
   catch{fail("Wachtwoord of checkpoint-ciphertext onjuist.");}
   if(bytes.length>MAX_BODY)fail("Checkpoint-plaintext te groot.");
   const body=parse(dec.decode(bytes));bytes.fill(0);
-  if(!exact(body,["schema","version","sources","human","choices",
-    "source_authenticated","client_consent_verified","operator_consent_verified",
-    "authorization_granted","execution_allowed","release_approved"])||
-    body.schema!==SCHEMA||body.version!==1||
+  const mandatory=["schema","version","sources","human","choices"];
+  const authority=["source_authenticated","client_consent_verified","operator_consent_verified",
+    "authorization_granted","execution_allowed","release_approved"];
+  const isV2=env.schema===SCHEMA;
+  if(!exact(body,[...mandatory,...(isV2?["notes"]:[]),...authority])||
+    body.schema!==env.schema||body.version!==env.version||
     ["source_authenticated","client_consent_verified","operator_consent_verified",
      "authorization_granted","execution_allowed","release_approved"].some(k=>body[k]!==false))
    fail("Onjuiste checkpoint-bron of autoriteitsflags.");

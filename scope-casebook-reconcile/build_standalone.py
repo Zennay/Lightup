@@ -17,7 +17,8 @@ def build() -> None:
     app = (ROOT / "app.js").read_text(encoding="utf-8")
     css = (ROOT / "style.css").read_text(encoding="utf-8")
     draft = (ROOT / "draft.js").read_text(encoding="utf-8")
-    js = adapter + "\n" + app + "\n" + draft
+    notes = (ROOT / "notes.js").read_text(encoding="utf-8")
+    js = adapter + "\n" + app + "\n" + notes + "\n" + draft
     digest = lambda t: base64.b64encode(hashlib.sha256(t.encode("utf-8")).digest()).decode("ascii")
     policy = ("default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; "
               "form-action 'none'; connect-src 'none'; img-src 'none'; "
