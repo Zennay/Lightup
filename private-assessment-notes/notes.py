@@ -442,6 +442,12 @@ def main() -> int:
     sensitivity_end.add_argument("--triage-kit", required=True)
     sensitivity_end.add_argument("--completed-csv", required=True)
     sensitivity_end.add_argument("--private-parent", required=True)
+    sensitivity_history = commands.add_parser(
+        "sensitivity-history", help="2-8 completed original-bound HUMAN sensitivity rounds and next blank review")
+    sensitivity_history.add_argument("--completed-packet", required=True)
+    sensitivity_history.add_argument("--review", action="append", required=True,
+                                     help="completed PRIVATE sensitivity review, earliest first")
+    sensitivity_history.add_argument("--private-parent", required=True)
     sensitivity_focus = commands.add_parser(
         "sensitivity-focus", help="minimum-necessary PRIVATE HUMAN concern agenda; always HOLD")
     sensitivity_focus.add_argument("--completed-packet", required=True)
@@ -493,6 +499,10 @@ def main() -> int:
             from privacy_triage import finalize as finalize_sensitivity
             return finalize_sensitivity(args.completed_packet, args.triage_kit,
                                         args.completed_csv, args.private_parent)
+        if args.action == "sensitivity-history":
+            from privacy_triage_history import build as build_sensitivity_history
+            return build_sensitivity_history(
+                args.completed_packet, args.review, args.private_parent)
         if args.action == "sensitivity-focus":
             from privacy_triage_focus import focus as sensitivity_focus_workroom
             return sensitivity_focus_workroom(
