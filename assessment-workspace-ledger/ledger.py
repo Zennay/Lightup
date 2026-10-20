@@ -14,6 +14,7 @@ import io
 import json
 import os
 from pathlib import Path
+from browser_studio import render_studio
 import shutil
 import stat
 import sys
@@ -386,6 +387,7 @@ def capture(args):
     try:
         write_private(output, "ledger.json", encoded)
         write_private(output, "HUMAN-review.csv", template.getvalue())
+        write_private(output, "REVIEW-IN-BROWSER.html", render_studio())
         write_private(output, "OPEN-PRIVATE.html", html_page("LightUp PRIVATE workspace inventory", "".join(rows)))
     except BaseException:
         shutil.rmtree(output)
