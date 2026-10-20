@@ -58,6 +58,21 @@ python3 scope-current-bundle/human_followup.py \
 
 Output is a fresh owner-only directory containing a **scriptless printable private HUMAN follow-up report** (`human-review.html`) and separate **anonymous HUMAN stage/source change counts** (`anonymous-counts.json`) with no paths, hashes, team names or freeform notes. No form executes a scan or changes original grants.
 
+## PRIVATE multi-revision HUMAN attention and progress history
+
+For the **same two original source manifests**, the operator may preserve earlier and latest separately downloaded *complete* HUMAN CSV assignments and compare purely HUMAN decisions. The new `review_history.py` requires both originals, both source-byte-bound complete worksheets and a NEW private directory:
+
+```sh
+python3 scope-current-bundle/review_history.py \
+  PREVIOUS/SOURCE-MANIFEST.json \
+  CURRENT/SOURCE-MANIFEST.json \
+  PRIVATE/earlier-human.csv \
+  PRIVATE/latest-human.csv \
+  NEW-PRIVATE-HISTORY-DIRECTORY
+```
+
+It produces a scriptless PRIVATE HTML comparison of human review stage/team/notes changes, plus a prioritised **HUMAN attention** table for any latest human stage not documented OR any original source file that changed, was added or is absent from local selection. A separate file contains only unsigned stage-transition and attention counts; original paths, human team names, source hashes and notes stay in the PRIVATE report. The same source-byte identity and row order is rechecked separately for **both** human worksheets before any output. No stage can become `fixed`, `authorized`, `revoked`, or a verified security verdict.
+
 ## Fail-closed build and immutability
 
 `build.py` checks the **exact four original source byte digests** of the original packager, HUMAN handoff and JSON inspector, copies eight original app directories without symlinks, reruns original **60-file pinned source verification**, validates the original DRAFT/HOLD manifest and its six literal false authority flags, and checks every output destination for collisions before writing. Output uses no-follow exclusive create, 0600 file mode, and fsync. If existing distributed files differ, the build **refuses replacement**; publish a newly named revision after legitimate source review instead.
