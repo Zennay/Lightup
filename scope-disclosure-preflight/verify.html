@@ -10,4 +10,13 @@
 <div id="result" class="status" role="status" aria-live="polite">No comparison made.</div></section>
 <section class="card"><h2><span>02</span> Human recipient decision</h2><p>The comparison is never an approval, consent receipt, original provenance, privacy guarantee or security finding.</p>
 <div class="grid three"><div class="metric"><b id="status">HOLD</b><small>Non-authorizing state</small></div><div class="metric"><b id="bytes">—</b><small>Received redacted bytes</small></div><div class="metric"><b id="hash">—</b><small>SHA-256 prefix</small></div></div>
-<p id="details">Separate authentic client/operator consent and actual human review remain mandatory.</p></section></main><footer>Offline local-only verification · no network, accounts, source inspection, grants, targets or deployment.</footer></body></html>
+<p id="details">Separate authentic client/operator consent and actual human review remain mandatory.</p>
+<div class="recipient-review">
+<h3>PRIVATE received-content review</h3>
+<p>Content is shown only after the receipt has matched, and only on this local page. It may still contain confidential information. No changes, grants, copies or transmissions are made. You must review it yourself.</p>
+<div id="recipientHints" class="warnings" aria-live="polite">No readable matched content.</div>
+<label for="receivedPreview">Complete received text, presented in 8,000-character pages</label>
+<textarea id="receivedPreview" readonly spellcheck="false" rows="12" aria-label="Matched received text"></textarea>
+<div class="actions"><button id="receivedPrev" type="button" class="secondary" disabled>Previous page</button><span id="receivedPage" role="status">No pages</span><button id="receivedNext" type="button" class="secondary" disabled>Next page</button></div>
+</div>
+</section></main><footer>Offline local-only verification · no network, accounts, source inspection, grants, targets or deployment.</footer></body></html>
