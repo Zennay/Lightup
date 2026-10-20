@@ -11,6 +11,7 @@ import disclosure_console
 import retention_console
 import session_console
 import route_console
+import private_session
 import os
 from pathlib import Path
 import subprocess
@@ -82,6 +83,38 @@ def path_prompt(label: str, default: str = "") -> str:
     return text
 
 
+
+def admit_original_native_entry(path_text: str, flags: list[str]) -> Path | None:
+    """Require an actual 0600 original entry in a direct 0700 output kit.
+
+    Native stdout is a private local *claim*, not authority. Verify the
+    promised file cannot redirect an operator outside the explicitly selected
+    private parent, or via a symlink/unowned/public HTML path.
+    """
+    if not path_text or len(path_text) > 4096:
+        return None
+    try:
+        parent_flag = flags.index("--private-parent")
+        chosen = Path(flags[parent_flag + 1]).absolute()
+        entry = Path(path_text)
+        if (not entry.is_absolute() or entry.name != "OPEN-PRIVATE.html"
+                or chosen == private_session.ROOT
+                or private_session.ROOT in chosen.parents
+                or not private_session.private(chosen, True)
+                or entry.parent.parent != chosen
+                or not private_session.private(entry.parent, True)):
+            return None
+        # Existing original PRIVATE page admission rejects symlink, public
+        # mode, hardlink, wrong owner, empty or oversized HTML.
+        checked = private_session.original_page(str(entry.parent),
+                                                ("OPEN-PRIVATE.html",))
+        if checked != entry or entry.resolve(strict=True) != entry:
+            return None
+        return entry
+    except (OSError, ValueError, IndexError):
+        return None
+
+
 def run_native(script: str, flags: list[str]) -> tuple[bool, str]:
     path = SCRIPTS[script]
     if not path.is_file():
@@ -113,13 +146,15 @@ def run_native(script: str, flags: list[str]) -> tuple[bool, str]:
     marker = "OPEN LOCALLY: "
     path_text = next((line[len(marker):].strip() for line in answer.splitlines()
                       if line.startswith(marker)), "")
-    if not path_text or len(path_text) > 4096 or not Path(path_text).is_file():
-        print("HOLD: original stage returned no usable local PRIVATE entry page.")
+    admitted = admit_original_native_entry(path_text, flags)
+    if admitted is None:
+        print("HOLD: original stage did not return an owner-private,")
+        print("direct-child 0600 offline entry under the selected 0700 parent.")
         return False, ""
     print("HOLD — source-declared adverse benchmark requires HUMAN review."
           if adverse else "REVIEW_ONLY: PRIVATE local package prepared.")
-    print("Open on a trusted offline device: " + path_text)
-    return True, str(Path(path_text).parent)
+    print("Open on a trusted offline device: " + str(admitted))
+    return True, str(admitted.parent)
 
 
 def prepare(session: Session) -> None:

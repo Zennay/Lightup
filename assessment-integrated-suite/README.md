@@ -93,6 +93,19 @@ For select-only dossiers, use the physically integrated original `assessment-evi
 - An incomplete normal preparation removes only its newly created package. Unexpected process termination can leave a PRIVATE incomplete 0700 directory, which must be reviewed and securely handled by its custodian. The package does **not** delete or modify original source.
 - No browser is opened automatically, no external handoff/publish is performed, no model or tool execution, scanning, grant creation, assessment request, retest or deletions.
 
+## Native original entry-page path admission
+
+The integrated console now refuses to advertise a native `OPEN LOCALLY:`
+path unless it is the original `OPEN-PRIVATE.html` **directly inside one**
+owner-only 0700 kit folder under the exact manually chosen existing owner-only
+0700 `--private-parent`. The original page must be a regular single-linked
+owner-owned 0600 file of bounded size, never a symbolic link, outside the
+checkout. A native producer claiming an unrelated, public, missing or redirected
+HTML file becomes HOLD **without updating current session package references**.
+No stdout paths are treated as proof of source authenticity, client consent,
+original code trust, authorization, remediation or release. Existing outputs
+remain untouched on HOLD; only a direct valid original return is bookmarked.
+
 ## Release and authority gates
 
 No merge to `main`, runtime deployment or real target activity. Original exact-head GitHub-hosted and **permanently registered named VPS CI**, source-owner approval, independent security/privacy/browser review, #177/#182/#829 remediation, separate **current authenticated client and operator consent**, action-time revocation, and explicit **HUMAN GO** remain prerequisites. This integration branch is DRAFT/HOLD even if it has no source conflicts. Original PR branches may continue advancing; this candidate refers to the frozen source heads recorded in its merge commits, not their future work. No QA/regression suites were written or executed for this integration.
