@@ -163,6 +163,32 @@
     return {sha256:e.sha256, bytes:e.bytes, alias:e.alias,
       status:e.status, review_date:e.review_date, action:e.action};
   }
+  function sourcePlan() {
+    if (!entries.length || processing) throw Error("Selecteer eerst privébronnen.");
+    if (entries.some(e => e.status === "propose_delete" && !e.action.trim()))
+      throw Error("Verwijderingsvoorstel heeft een HUMAN vervolgactie nodig.");
+    return {kind:"lightup.private.assessment.retention.plan",version:1,authority:AUTHORITY,
+      rows:entries.map(record).sort((a,b)=>a.sha256.localeCompare(b.sha256))};
+  }
+  function restoreOriginal(raw, label) {
+    const rows = validateReceipt(raw, true);
+    if (!window.confirm("Volledige bron-SHA/size match: alle HUMAN voorstellen overnemen uit " + label +
+      "? Dit bewijst GEEN echte herkomst, toestemming, intrekking, herstel of verwijderingsbevoegdheid.")) {
+      return status("Overname geannuleerd. Huidige planning blijft intact.");
+    }
+    entries = entries.map(e=>({...e,...record(rows.get(e.sha256))}));
+    invalidateUndo(); resetDrift();
+    $("query").value = ""; $("status-filter").value = "";
+    render(); status("Gehele brongebonden PRIVATE HUMAN-planning overgenomen zonder autorisatieclaim.");
+  }
+  // Same-origin, offline-only bridge, not a consent or authorization API.
+  Object.defineProperty(window, "LightUpPrivateVaultBridge", {
+    value:Object.freeze({
+      snapshot:sourcePlan, restore:restoreOriginal,
+      busy:()=>processing, setBusy:value=>{processing=value;},
+      notify:status
+    }), writable:false, configurable:false
+  });
   function exportReceipt() {
     if (!entries.length || processing) return status("Selecteer eerst privébronnen.", true);
     if (entries.some(e => e.status === "propose_delete" && !e.action.trim())) {
