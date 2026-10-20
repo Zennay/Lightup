@@ -846,6 +846,11 @@
         const mismatch = originals.some(row => row && !sourceEqual(row,item));
         const allowed = mismatch ? originals.map(() => null) : originals;
         const proposals = allowed.filter(Boolean);
+        // Count incomplete participation for EVERY non-mismatched source, even
+        // when only one reviewer supplied a HUMAN proposal.
+        if (!mismatch && proposals.length > 0 && proposals.length < files.length) {
+          counts.partial_reviewer_coverage++;
+        }
         let state;
         if (mismatch) { state = "BRONVERSCHIL / NIETS OVERNEMEN"; counts.original_source_mismatch++; }
         else if (!proposals.length) { state = "GEEN PAKKETVOORSTEL"; counts.no_proposal++; }
@@ -865,7 +870,6 @@
           } else {
             state = "GELIJKE HUMAN-VOORSTELLEN (ONGEATTESTEERD)"; counts.consensus++;
           }
-          if (proposals.length < files.length) counts.partial_reviewer_coverage++;
         }
         const entry = {item,allowed,choice:-1,mismatch,state,
           proposalCount:proposals.length,
