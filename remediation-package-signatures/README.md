@@ -115,6 +115,45 @@ the SAME key is refused. A second signer does **not** grant independent
 security approval, customer authorization or HUMAN GO. It only provides two
 cryptographic possession proofs over matching bytes.
 
+## Portable single-file handoff (original software bytes ONLY)
+
+When the recipient should not juggle three separate untrusted files, wrap the
+already signed software ZIP, sidecar receipt and public key in one bounded
+software-only transport ZIP. The package **cannot carry client evidence, notes,
+credentials or authority** under this exact three-member format.
+
+First, the sender independently verifies the original signature and creates a
+new 0600 archive without overwrite:
+
+    python3 remediation-package-signatures/portable_handoff.py pack \
+      --archive /ABSOLUTE/PRIVATE/PATH/software-only.zip \
+      --receipt /ABSOLUTE/PRIVATE/PATH/software-only.lusig.json \
+      --trusted-public-key /ABSOLUTE/PRIVATE/PATH/signing-public.pem \
+      --trusted-fingerprint 64-lowercase-hex-trusted-out-of-band \
+      --output-bundle /ABSOLUTE/PRIVATE/PATH/software-only.portable.zip
+
+The receiver provides the expected public-key fingerprint **from a separate
+trusted channel**, NEVER from the portable ZIP itself, and admits the original
+source-only suite into a fresh owner-private directory:
+
+    python3 remediation-package-signatures/portable_handoff.py receive \
+      --bundle /ABSOLUTE/PRIVATE/PATH/software-only.portable.zip \
+      --trusted-fingerprint 64-lowercase-hex-trusted-out-of-band \
+      --output-dir /ABSOLUTE/PRIVATE/PATH/new-portable-receiver
+
+Portable admission allows exactly three named regular ZIP_STORED files, one ZIP
+and one small receipt and Ed25519 public key, with strict member/type/size/mode
+and duplicate-member constraints. The transport is read into bounded memory;
+contained files are written only into a fresh private temporary directory.
+The existing signature verifier, race-free private byte snapshot, original native
+receiver and source-lock inspector then run; the temporary directory is cleaned
+up. Untrusted embedded public-key bytes are never treated as self-authorizing:
+they must match the out-of-band trusted fingerprint and prove the signature.
+
+All CLI successes intentionally exit 2 (**REVIEW_ONLY**), not 0. Run the pack
+and receive commands separately; a shell chain with && will stop at the pack's
+2 even though the handoff file was created. Failures HOLD with exit 3.
+
 ## Limits and operational risks
 
 - Password/key loss cannot be recovered; do not store the private PEM in Git.
