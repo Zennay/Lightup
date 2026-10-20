@@ -150,6 +150,27 @@ receiver and source-lock inspector then run; the temporary directory is cleaned
 up. Untrusted embedded public-key bytes are never treated as self-authorizing:
 they must match the out-of-band trusted fingerprint and prove the signature.
 
+### Portable two-key custody — no silent quorum downgrade
+
+For a portable bundle that must preserve the previously required two distinct
+signatures, add the following three arguments to portable_handoff.py pack:
+
+    --second-receipt /ABSOLUTE/PRIVATE/PATH/second.lusig.json
+    --second-trusted-public-key /ABSOLUTE/PRIVATE/PATH/second-public.pem
+    --second-trusted-fingerprint SECOND-64-HEX-TRUSTED-INDEPENDENTLY
+
+The outer ZIP then has exactly five fixed members: original source-only ZIP,
+two small signed receipts and two public keys, with neither private key inside.
+The receiving operator MUST pass --second-trusted-fingerprint with a value
+received independently out of band. Supplying a second-key fingerprint for
+a one-signature package, or omitting it for a co-signed package, is a HOLD,
+not a fallback to one signer. The two keys must differ and their receipts must
+verify over the same exact software bytes.
+
+This provides byte-custody quorum, NOT source identity, approval, release
+authorization or any client consent. The original native source inventory,
+security, consent and HUMAN gates remain unchanged.
+
 All CLI successes intentionally exit 2 (**REVIEW_ONLY**), not 0. Run the pack
 and receive commands separately; a shell chain with && will stop at the pack's
 2 even though the handoff file was created. Failures HOLD with exit 3.
