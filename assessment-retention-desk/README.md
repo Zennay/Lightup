@@ -22,6 +22,27 @@ python3 assessment-retention-desk/history.py --output /private/operator/history.
 python3 assessment-retention-desk/drift.py --output /private/operator/source-diff.html /private/operator/plan-01.json /private/operator/plan-02.json
 ```
 
+## Native encrypted HUMAN history with original-byte revalidation
+
+The existing browser `.lurt` AES-256-GCM HUMAN vaults can now be compared without exporting decrypted JSON to disk. `vault_history.py` opens each vault in memory via an independently entered non-echoed password, validates the original unchanged browser HUMAN receipt, and **re-hashes every separately selected genuine source file**. Missing/changed/duplicate original bytes HOLD before publishing any report. The operator-declared vault order never proves a real chronology or authenticated source provenance.
+
+This optional native product uses the established Python **cryptography** library for AES-256-GCM. It fails closed if that package is unavailable; no weakened crypto or remote-decryption fallback is used. Install the dependency separately in a trusted prepared environment, not from a browser or through the assessment tool itself.
+
+```sh
+python3 assessment-retention-desk/vault_history.py \
+  --output /private/operator/private-encrypted-history.html \
+  --source-file /private/original-lab-1.json \
+  --source-file /private/original-lab-2.json \
+  /private/operator/first-review.lurt \
+  /private/operator/next-review.lurt
+```
+
+All outputs are new, source-bound 0600 scriptless PRIVATE HUMAN history inside a pre-existing private 0700 directory. No decrypted receipt, source body, entire SHA, password, grant or verified finding is published. A crypto envelope authenticates only its own bytes, never their real source/client.
+
+## Opt-in private tentative review calendar
+
+The browser can export an all-day `.ics` calendar grouped by operator-entered HUMAN review date and count. It contains **no aliases, original SHA, source path, notes, targets, evidence or HUMAN actions**. Every event is PRIVATE, TENTATIVE and nonblocking; calendar applications may still sync imported calendars to the cloud. Review-date/count combinations can identify small groups; export requires separate explicit privacy confirmation. No calendar API, automatic import, recipient dispatch or authorization is performed.
+
 ## Boundaries and tradeoffs
 
 - All input files may contain client secrets. Only use assets that you may lawfully possess and review. This tool performs **no scanning, model calls, network requests, subprocess dispatch, source modification, deletion or remote sync**. Browser CSP prohibits network connections and externally hosted scripts; no tracking, localStorage, IndexedDB or service workers.
