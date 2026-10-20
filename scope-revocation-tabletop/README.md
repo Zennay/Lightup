@@ -4,11 +4,11 @@
 
 ## Run
 
-Open `index.html` locally in a current browser with `app.js` and `style.css` in the same directory. Nothing is installed. Browser Content-Security-Policy denies network connections, frames, objects, remote fonts and external images. The app uses memory only: no cookies, storage, analytics, fetch, worker, third-party script, API or URL routing. If a browser's file-origin policy blocks the same-folder script, serve **only to yourself** from a local offline environment; do not share access or open this directory on a public interface. Do not import real operator exports.
+**Recommended:** open [`standalone.html`](standalone.html) directly as a local file (one portable, completely bundled HTML with exact SHA-256 CSP pins over the JS and CSS). To modify source, open `index.html` locally in a current browser with `app.js` and `style.css` in the same directory. Run `python3 build.py` to regenerate `standalone.html` deterministically from those three sources. Nothing is installed. Browser Content-Security-Policy denies network connections, frames, objects, remote fonts and external images. The app uses memory only: no cookies, storage, analytics, fetch, worker, third-party script, API or URL routing. If a browser's file-origin policy blocks the same-folder script, serve **only to yourself** from a local offline environment; do not share access or open this directory on a public interface. Do not import real operator exports.
 
 1. Start from one of four fictional examples or compose up to 64 named events. The fixed event vocabulary has no asset/target/tenant names or free-text field.
 2. Review each event's outcome and the five current fictional conditions. Press a simulated execution attempt to see whether **within this exercise only** a requirement is missing.
-3. Add an expiration, withdrawal, scope or risk change, fresh scenario attestation or emergency STOP. Earlier fictional attestations never silently carry across scope/risk/window changes; STOP remains active in that scenario.
+3. Add an expiration, withdrawal, scope or risk change, fresh scenario attestation or emergency STOP. Move individual events up/down or remove any step; the full simulated timeline is recomputed immediately. Earlier fictional attestations never silently carry across scope/risk/window changes; STOP remains active in that scenario.
 4. Export the fixed-vocabulary JSON for private offline resume or Markdown for a HUMAN exercise conversation. Only exact byte-canonical JSON that this app emitted is admitted on import. A failed import does not replace the running scenario.
 5. Print a local summary. Start a new scenario to clear an emergency STOP; this does **not** reset or change any real LightUp state.
 
@@ -27,4 +27,4 @@ This is **not an interpreter, acceptance gate or simulator of LightUp's real pol
 
 ## Current implementation limits
 
-No user-provided names/text in the workspace; no real timestamp, actor identity, source signatures or legal permissions; no trusted parser of outside exports. Files may still require appropriate private handling. CSS/JS are currently local companion assets; the UI and canonical JSON are bounded and never persist automatically. This is a tabletop aid, not a production release.
+No user-provided names/text in the workspace; no real timestamp, actor identity, source signatures or legal permissions; no trusted parser of outside exports. Files may still require appropriate private handling. Use the shipped one-file `standalone.html` offline artifact or the three-source-file developer build; the UI and canonical JSON are bounded and never persist automatically. This is a tabletop aid, not a production release.
