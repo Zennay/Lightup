@@ -4,7 +4,7 @@
 
 ## Purpose: recover private human work without generating authority
 
-A human operator deliberately selects **1–32 individual ordinary local files** from their PRIVATE offline workroom. This CLI encrypts exact bytes, original basenames, sizes and SHA-256 digests into one owner-only `.lupb` archive. It supports authenticated PRIVATE inventory, atomically restoring the original selected files to **a new owner-only folder**, and password rotation to a **distinct new archive** without producing plaintext files. Neither operation changes the original input files or existing archive.
+A human operator deliberately selects **1–32 individual ordinary local files** from their PRIVATE offline workroom. This CLI encrypts exact bytes, original basenames, sizes and SHA-256 digests into one owner-only `.lupb` archive. It supports authenticated PRIVATE inventory, atomically restoring the original selected files to **a new owner-only folder**, password rotation to a **distinct new archive** without producing plaintext files, and a **two-snapshot authenticated PRIVATE change desk** that reports file names added, removed, changed and unchanged without pretending that a changed file means a verified fix. Neither operation changes the original input files or existing archive.
 
 The format binds complete canonical JSON via AES-256-GCM authenticated encryption, a random salt and nonce, and PBKDF2-HMAC-SHA256 with 600,000 rounds. No network, server, cloud key management, local browser storage, runner, scanner, target discovery, tenant authentication or consent request. Requires Python 3.10+ with `cryptography` available in the trusted offline environment.
 
@@ -33,6 +33,10 @@ python3 remediation-private-backup/vault.py restore \
 python3 remediation-private-backup/vault.py rotate \
   "$HOME/lightup-private/reviewer-backup-001.lupb" \
   --output "$HOME/lightup-private/reviewer-backup-002.lupb"
+
+python3 remediation-private-backup/vault.py compare \
+  "$HOME/lightup-private/reviewer-backup-001.lupb" \
+  "$HOME/lightup-private/reviewer-backup-002.lupb"
 ```
 
 The passwords are prompted interactively and **never accepted as CLI arguments or environment variables**; create and rotate require a confirmation. Use distinct strong passwords and a secured device. Losing the password loses access; this program does not offer a recovery backdoor or password logging. Old archives are never overwritten/deleted, including after re-encryption.
@@ -40,8 +44,8 @@ The passwords are prompted interactively and **never accepted as CLI arguments o
 ## Immutable output & restore boundary
 
 - The backup contains at most 32 explicitly selected files, each ≤2 MiB and ≤16 MiB combined. Symlink input, unsafe names, duplicate names including case-insensitive collisions, mutation during read, malformed/duplicate JSON keys, unknown envelopes, wrong passwords, altered ciphertext, changed payload bytes, oversized content and noncanonical inner JSON are HOLD. No directory traversal, autodiscovery or recursive collection.
-- The archive is a single new 0600 file. A restored dataset is staged into a new sibling owner-only 0700 directory; each file is created 0600 and fsynced, and the directory is renamed to the final **unused** destination only after all files were admitted. Existing output paths are refused. The optional text marker is PRIVATE and is not produced if an original file already uses its name.
-- The inventory command requires successful decryption before it prints any original names or SHA-256 values. Outer metadata asserts all four non-authority flags as literal false.
+- The archive is a single new 0600 file in an existing directory owned by this user with no group/other permission bits. A restored dataset is staged into a new sibling owner-only 0700 directory; each file is created 0600 and fsynced, and the directory is renamed to the final **unused** destination only after all files were admitted. Existing output paths are refused. The optional text marker is PRIVATE and is not produced if an original file already uses its name.
+- The inventory and two-snapshot comparison require successful decryption before printing PRIVATE source basenames, hashes or differences. Both backup passwords are prompted separately; neither file chronology nor actual remediation can be inferred from the resulting differences. Outer metadata asserts all four non-authority flags as literal false.
 - All operations return 0 only to mean local file operation completed, **not** a release authorization, accepted remediation or successful original evidence verification. Refused input returns **3/HOLD**.
 
 ## Release gates (unchanged)
