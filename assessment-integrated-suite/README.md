@@ -43,6 +43,38 @@ bytes/authorization afresh. Presence of a page is **not** correctness,
 readiness, approval or proof of identity. Existing review/CI/consent HOLD
 still applies; never send or publish this board.
 
+## NEW: owner-private manual assessment HUMAN work queue (options 42 and 43)
+
+The native foreground console now generates a complete **manual** queue for
+all original review-stage workrooms without touching any original sources.
+Option **42** writes an exclusive 0700 folder under an existing owner-only
+parent outside the repository. The 0600 `OPEN-PRIVATE.html` groups workflows
+by original phase, shows local page availability and specific HUMAN next
+actions. The 0600 `PRIVATE-HUMAN-QUEUE.csv` provides an editable five-field
+workflow row: exact source-PATH snapshot digest, fixed workflow key, HUMAN
+stage, HUMAN team, follow-up date and optional short question. Its 0600
+`PRIVATE-HUMAN-QUEUE.json` is a source-free machine-readable status list.
+
+HUMAN stages are **UNASSESSED**, **HOLD**, **NEEDS_INPUT**,
+**HUMAN_REVIEW** and **HUMAN_FOLLOWUP** — none are permission, PASS or
+completed security evidence. Optional team is Security, Privacy, Client
+operations or Platform, follow-up date is real ISO YYYY-MM-DD and question is
+240 characters maximum. HUMAN questions must not begin with CSV spreadsheet
+formula prefixes, and no original source data, passwords, assessor identities
+or real consent should be entered. Keep this CSV 0600 in an owner-only 0700
+directory, never email/share it.
+
+Option **43** admits a manually edited ORIGINAL queue CSV only against the
+**same unchanged console PATH reference snapshot** (SHA-256 is an unsigned
+local equality marker, NOT proof of source-byte identity or authentication).
+It rejects reordered/deleted/duplicate keys, digest drift, unknown stages,
+unknown teams, invalid dates, formula-like questions, size and privacy mode
+violations *before* allocating a replacement; success creates a NEW PRIVATE
+folder, leaving the old CSV and session unchanged. Existing original source
+admission, authenticated consent/revocation-at-use, independent review and
+HUMAN GO gates are never bypassed. No schedule is actually booked and no
+contact, scan, retest or notification is sent.
+
 ## Portable 15-original-studio software kit v9
 
 [Portable source-only LightUp Assessment Offline Toolkit v9](LightUp-Assessment-Offline-Toolkit-v9.zip)
