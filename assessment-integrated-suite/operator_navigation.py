@@ -70,6 +70,7 @@ ACTIONS: dict[str, str] = {
     '60': 'Prepare minimum-necessary PRIVATE HUMAN Lab team workrooms',
     '61': 'Admit exact team-only HUMAN Lab feedback into full PRIVATE draft',
     '62': 'Combine 1–4 original HUMAN lab team replies into one complete PRIVATE candidate',
+    '63': 'Reopen original source-bound saved PRIVATE HUMAN multi-team batch read-only',
 }
 
 CATEGORIES = (
@@ -91,7 +92,7 @@ def overview() -> None:
     for name, ids in CATEGORIES:
         print("  " + ids[0] + "–" + ids[-1] + "   " + name)
     print("Suggested safe HUMAN-only workflow: 37 → 49 → manual editor →")
-    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60 → 61.")
+    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60 → 61 → 62 → 63.")
     print("Enter an action number, ALL for full catalog, ?keyword to search,")
     print("HELP for a HUMAN walkthrough or 0 to exit. No action is automatic.")
 
@@ -145,6 +146,8 @@ def help_flow() -> None:
     print("59. Compare 2-8 exact original finalized HUMAN Lab review snapshots.")
     print("60. Build separate PRIVATE minimal team workrooms from FINAL HUMAN review.")
     print("61. Admit strict team response and produce full PRIVATE HUMAN candidate.")
+    print("62. Combine multiple HUMAN teams; optionally withhold returns from draft.")
+    print("63. Reopen original-source-bound saved HUMAN team batch read-only.")
     print("Every step remains PRIVATE and REVIEW_ONLY. No scan, grant, report")
     print("verification, real scheduling, recipient dispatch or consent.")
     print("Original current authenticated client+operator consent, revocation")
