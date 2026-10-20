@@ -18,6 +18,7 @@ import tempfile
 
 from notes import Hold, file_new, private_directory, private_input, save_json
 from privacy_triage import FALSE_FLAGS
+from privacy_triage_discussion_history_studio import render as history_studio
 from privacy_triage_discussion_actions import (
     STEPS, admit_room, read_actions, reopen_actions,
 )
@@ -155,6 +156,8 @@ def create(original: str, reviews: list[str], received_room: str,
         file_new(output / "PRIVATE-HUMAN-action-history.csv", csv_history(export))
         file_new(output / "PRIVATE-HUMAN-action-history.html",
                  overview(summaries, len(selected), copies))
+        file_new(output / "PRIVATE-HUMAN-action-history-studio.html",
+                 history_studio(summaries, len(selected), len(action_rounds)))
         finished = True
         print("HOLD: PRIVATE source-bound HUMAN action chronology written; NO review clearance")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-HUMAN-action-history.html"))

@@ -113,6 +113,14 @@ scriptless HUMAN status trajectory, an ordinal-and-round CSV with
 PRIVATE-question-*changed* flags (no question text), and an unsigned
 source-bound private receipt.
 
+The same owner-private history room also includes the offline
+`PRIVATE-HUMAN-action-history-studio.html` browser navigator: filter by
+declared HUMAN round, selected original ordinal, literal status changes,
+private question-*changed* flags or WITHHOLD. A local selected-only CSV
+download contains only filtered original positions and Boolean human changes.
+The original complete source-bound history and receipt stay unchanged.
+This is a private discussion convenience, **never** a full review or release.
+
 This is not a reduction-in-risk measurement or verified remediation
 certificate: statuses and questions may change for reasons unrelated to
 the actual security/privacy of an asset. Successful local creation
