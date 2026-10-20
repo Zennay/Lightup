@@ -20,6 +20,7 @@ import history_team
 import history_actions
 import history_owner_brief
 import history_progress
+import portfolio
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -49,6 +50,7 @@ MENU = (
     ("21", "Finalize explicit browser-downloaded PRIVATE HUMAN action CSV"),
     ("22", "Build source-exact PRIVATE single-HUMAN-owner minimum-necessary briefing"),
     ("23", "Compare 2-8 ORIGINAL HUMAN action versions + PRIVATE changes and worklist"),
+    ("24", "Combine 2-8 DIFFERENT source-bound HUMAN cases in one private portfolio desk"),
     ("0", "Exit"),
 )
 
@@ -197,6 +199,24 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "24":
+        print("Choose 2–8 DIFFERENT original private HUMAN action cases.")
+        print("Each case needs its exact original source context + native action JSON/CSV.")
+        contexts, actions, plans = [], [], []
+        while len(contexts) < 8:
+            context = prompt("Original case context " + str(len(contexts) + 1),
+                             required=len(contexts) < 2)
+            if not context:
+                break
+            selected_actions = prompt("Corresponding ORIGINAL HUMAN actions JSON")
+            selected_plan = prompt("Corresponding ORIGINAL HUMAN action-plan CSV")
+            contexts.append(context)
+            actions.append(selected_actions)
+            plans.append(selected_plan)
+        return portfolio.run(argparse.Namespace(
+            context=contexts, actions=actions, plan=plans,
+            private_parent=private_parent()
         ))
     if action == "5":
         return continuity.run(argparse.Namespace(
