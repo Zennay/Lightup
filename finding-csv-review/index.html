@@ -117,9 +117,11 @@
       <div class="revision-groups">
         <div><h4>Changed source records</h4><div id="revisionChangedList" class="revision-list"></div></div>
         <div><h4>No longer present (NOT fixed)</h4><div id="revisionAbsentList" class="revision-list"></div></div>
+        <div><h4>New in selected source (UNREVIEWED)</h4><div id="revisionAddedList" class="revision-list"></div></div>
       </div>
       <p class="warning"><strong>Migration is not a source merge or verification.</strong> Unchanged means literal five-field equality only. Changed source labels are never a confirmed fix; absent means missing in the selected next CSV, never resolved. HUMAN notes from changed or absent rows remain in the PRIVATE revision archive inside the encrypted workroom if saved.</p>
       <div class="actions">
+        <button id="revisionCountsExport" type="button">Download source-free delta totals</button>
         <button id="revisionCommit" type="button" class="primary">Review &amp; move to incoming snapshot</button>
         <button id="revisionCancel" type="button" class="subtle">Discard candidate</button>
       </div>
