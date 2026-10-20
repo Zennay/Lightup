@@ -178,3 +178,61 @@ publication until a human separately supplies the original completed selection
 CSV and unmodified original source, briefing, and selection-kit files. A menu
 success means only locally prepared REVIEW_ONLY private files. This is *not*
 current customer consent, review signoff, or permission to deploy.
+
+## Original PRIVATE multi-artifact archive, fully integrated without runtime-source conflict
+
+The original source owner [#1625](https://github.com/Zennay/Lightup/pull/1625)
+has a 14-file independent `assessment-archive/` and its exact immutable source
+was added verbatim at SHA `880d59e0a996005dce174516358ca04a48d4633d`.
+An attempt to merge its *entire* branch had overlapping original
+`src/lightup/labrun.py` and lab CLI documentation; that merge was cleanly
+aborted, and no already-owned runtime source changed.
+
+The independent original code is now exposed by a new operator command:
+
+~~~sh
+python3 assessment-integrated-suite/archive_room.py \
+  --source /private/original-a.json --source /private/original-b.json \
+  --private-parent /private/owner-only-0700
+~~~
+
+Calls original `assessment-archive/archive.py capture`, then original `view`
+PRIVATE and aggregate-only, then `share` PRIVATE aggregate counts. All input
+files must be explicit original already-produced regular files (2–64); no
+directory enumeration, implicit source scans or model invocation. The output
+is a unique 0700 kit containing original byte-bound unsigned manifest, source
+type summary, original PRIVATE exact-fingerprint HTML, and separate source-
+minimized PRIVATE count HTML/JSON, plus offline scriptless entry page. Even
+hash-free aggregates can reveal confidential cohorts: no automatic sharing.
+
+## Original multi-agenda HUMAN collaboration portfolio
+
+Original [#1630](https://github.com/Zennay/Lightup/pull/1630) complete independent
+55-file `assessment-portfolio/` workroom was added verbatim at original
+SHA `dea6c90cb7b42cdb718fa440efd04a09c5b5be37`, together with the
+unchanged original archive dependency. Its entire parent branch also conflicts
+with original held runtime source; no conflict-prone source code was merged.
+
+~~~sh
+python3 assessment-integrated-suite/portfolio_room.py \
+  --agenda /private/original-human-agenda-a.json \
+  --agenda /private/original-human-agenda-b.json \
+  --as-of 2026-10-20 \
+  --private-parent /private/owner-only-0700
+~~~
+
+Uses unchanged original `assessment-portfolio/portfolio.py`: validates 1–12
+complete original PRIVATE HUMAN agenda JSON records against **the same declared
+reference date**, then generates an original private ZIP containing the
+existing HUMAN workload and capacity browser workrooms, plus separate strictly
+aggregate HUMAN HTML and JSON views. Human capacity, stage and date are
+**planning proposals**: no email, calendar automation, job dispatch,
+authorization, customer notification or SLA certification. No raw original
+agenda bytes are copied into the kit. A private counts-only output is *not*
+a publishable public resource without current authentic owner/privacy approval.
+
+The foreground `console.py` also offers these as options 6 and 7, shares only
+in-process ephemeral paths, and still performs no scheduled/remote action.
+
+All source-owner CI, scope/consent, independent review and explicit HUMAN GO
+requirements remain mandatory; no main merge or production deployment.

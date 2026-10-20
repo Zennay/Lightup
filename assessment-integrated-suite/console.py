@@ -13,6 +13,8 @@ SCRIPTS = {
     "curation": ROOT / "curation.py",
     "dossier": ROOT / "publish.py",
     "drift": ROOT / "drift.py",
+    "archive": ROOT / "archive_room.py",
+    "portfolio": ROOT / "portfolio_room.py",
 }
 MAX_REPLY = 8192
 
@@ -25,6 +27,8 @@ class Session:
     curation_kit: str = ""
     selected_kit: str = ""
     drift_kit: str = ""
+    archive_kit: str = ""
+    portfolio_kit: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -146,12 +150,52 @@ def drift(session: Session) -> None:
         print("Only literal source-declared changes are shown, never proven fixes.")
 
 
+def archive(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    sources = [path_prompt("Original already-produced PRIVATE artifact A"),
+               path_prompt("Original already-produced PRIVATE artifact B")]
+    while len(sources) < 64:
+        next_file = ask("Further original PRIVATE artifact (empty to finish)")
+        if not next_file:
+            break
+        if len(next_file) > 4096:
+            raise ValueError("HOLD: artifact path too long")
+        sources.append(next_file)
+    args = sum((["--source", item] for item in sources), [])
+    ok, kit = run_native("archive", [*args, "--private-parent", parent])
+    if ok:
+        session.parent, session.archive_kit = parent, kit
+        print("Original PRIVATE archive identity is an unsigned source claim, not verification.")
+
+
+def portfolio(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    agendas = [path_prompt("Original already-produced PRIVATE HUMAN agenda")]
+    while len(agendas) < 12:
+        next_agenda = ask("Further original PRIVATE HUMAN agenda (empty to finish)")
+        if not next_agenda:
+            break
+        if len(next_agenda) > 4096:
+            raise ValueError("HOLD: agenda path too long")
+        agendas.append(next_agenda)
+    day = path_prompt("Human-declared shared planning date YYYY-MM-DD")
+    args = sum((["--agenda", item] for item in agendas), [])
+    ok, kit = run_native("portfolio", [
+        *args, "--as-of", day, "--private-parent", parent,
+    ])
+    if ok:
+        session.parent, session.portfolio_kit = parent, kit
+        print("Original HUMAN proposals are not scheduled events or customer instructions.")
+
+
 def last_packages(session: Session) -> None:
     for label, value in (
         ("PRIVATE full briefing", session.initial_kit),
         ("Original HUMAN selection", session.curation_kit),
         ("Selected PRIVATE dossier", session.selected_kit),
         ("Original PRIVATE source A/B drift", session.drift_kit),
+        ("Original PRIVATE source archive", session.archive_kit),
+        ("Original HUMAN agenda portfolio", session.portfolio_kit),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -167,6 +211,7 @@ def main() -> int:
     print("No scan, model, network, grant, deletion, retest, source verification or release.")
     menu = {
         "1": prepare, "2": curate, "3": dossier, "4": drift, "5": last_packages,
+        "6": archive, "7": portfolio,
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 10 offline HUMAN workrooms")
@@ -174,6 +219,8 @@ def main() -> int:
         print("3. Build source-selected PRIVATE HUMAN finding dossier")
         print("4. Review two original PRIVATE lab source revisions")
         print("5. Show local package paths (current session only)")
+        print("6. Prepare original multi-artifact PRIVATE source archive")
+        print("7. Prepare original PRIVATE HUMAN agenda portfolio")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -181,7 +228,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose 0, 1, 2, 3, 4, or 5.")
+                print("Choose a number from 0 to 7.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
