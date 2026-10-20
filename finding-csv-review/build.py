@@ -53,6 +53,8 @@ def build() -> bytes:
             raise ValueError("Source HTML marker changed")
     page = page.replace(css_ref, "<style>" + css + "</style>")
     page = page.replace(js_ref, "<script>" + script + "</script>")
+    page = page.replace('<a href="./README.md">Local operator instructions</a>',
+        "Standalone local PRIVATE software · see source README for operator guidance")
     page = page.replace(csp_ref,
         "script-src 'sha256-" + source_hash(script) +
         "'; style-src 'sha256-" + source_hash(css) + "'")
