@@ -38,6 +38,11 @@
 </div>
 <p id="visible" role="status" aria-live="polite"></p>
 <p class="hint">Filters only affect visibility. Every original ordinal is exported, including hidden rows. Changing the underlying original files requires a new load. Choosing A or B requires an explicit HUMAN reason. A selection is not approval.</p>
+<div class="resume"><h3>Resume a previous PRIVATE HUMAN choice draft</h3>
+<p>Choose a completed or unfinished native 7-column PRIVATE reconciliation decision CSV. The entire file must match the <strong>current exact receipt SHA-256, reviewer A and B original CSV byte SHA-256, source ordinal and kind</strong>. Every field is admitted before any selection changes. Human confirmation is mandatory; importing never finalizes or approves anything.</p>
+<div class="actions"><label>Previously exported PRIVATE decisions CSV<input id="resume" type="file" accept=".csv,text/csv"></label>
+<button id="restore" type="button">Validate &amp; restore decisions</button></div>
+</div>
 <div id="entries" class="entries" aria-label="PRIVATE reviewer comparisons"></div>
 <div class="sticky"><span id="saveState" role="status" aria-live="polite">No decisions saved.</span>
 <button id="save" type="button" disabled>Export PRIVATE decision CSV</button></div>
