@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-yTwBpOp3vUpaRTaYKJOeN9R596/mbXDXiK12ZdjfG8U=' 'sha256-Jy852yurFXWrtSh50aol1DvQ4ooyvbgJH3noO0R4ymk=' 'sha256-ZJzVvwKHoFQ5Hlhmr0UrefGgjPup4TAZMDIO4TnEU48='; style-src 'sha256-cbWVl21qEQMBHs9G12NNDK3Ul0ODOtgWC2Hbv3oJyNo='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Mud0IjpnjwfIwDm/l47R7VI4C4cTOs32FAYAq6TJ5sQ=' 'sha256-Jy852yurFXWrtSh50aol1DvQ4ooyvbgJH3noO0R4ymk=' 'sha256-ZJzVvwKHoFQ5Hlhmr0UrefGgjPup4TAZMDIO4TnEU48='; style-src 'sha256-mGMtz8pHKCVtqYFCpG23nrfGvgrIcD3cyvjaZsj9Blc='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>LightUp · PRIVATE finding follow-up</title>
 <style>:root { color-scheme: dark; --ink:#edf5f3; --muted:#91aca9; --bg:#091513; --panel:#102421; --panel2:#142d29; --line:#28504a; --accent:#80e5c0; --danger:#ffd1ba; font: 15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
@@ -121,6 +121,9 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 #bulkPreview,#bulkApply,#bulkUndo { grid-column:1/-1; }
 #bulkSummary { white-space:pre-wrap; overflow-wrap:anywhere; }
 @media(max-width:780px) { .owner-board-heading { flex-direction:column; } .owner-picker { width:100%; max-width:none; } }
+
+#saveReceipt { grid-column:1/-1; white-space:pre-wrap; overflow-wrap:anywhere; margin:5px 0 12px; padding:9px 10px; background:var(--panel2); border-left:2px solid var(--line); }
+#ackWorkroom { border-color:#6dba91; }
 </style>
 <script>"use strict";
 /* PRIVATE encrypted HUMAN journal transport, memory-only decrypted source.
@@ -397,7 +400,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
   });
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
-  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, bulkProposal: null, sourceText: "", revisionCandidate: null, revisionHistory: []};
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null, bulkProposal: null, pendingWorkroomReceipt: null, sourceText: "", revisionCandidate: null, revisionHistory: []};
 
   function fail(message) { throw new Error(message); }
   function exactObject(obj, keys) {
@@ -704,6 +707,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     state.rows = plan.incomingRows;
     state.digest = plan.toDigest;
     state.journal = staged.journal;
+    clearWorkroomReceipt();
     invalidateBulkPreview();
     state.revisionHistory = staged.history;
     state.selected = -1; state.bulkUndo = null; state.pending = false;
@@ -739,9 +743,35 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     download(JSON.stringify(output, null, 2) + "\n", "lightup-private-prior-human-revisions.json", "application/json");
     status("PRIVATE prior-human source archive offered. Original or absent finding not verified or fixed.", false);
   }
+  function workroomFingerprint() {
+    return JSON.stringify([state.digest, state.journal, state.revisionHistory]);
+  }
+  function clearWorkroomReceipt() {
+    state.pendingWorkroomReceipt = null;
+    $("ackWorkroom").disabled = true;
+    $("saveReceipt").textContent = "No confirmed local complete-workroom download for the current HUMAN state.";
+  }
+  function acknowledgeWorkroom() {
+    if (state.pending) {
+      status("Apply or discard pending HUMAN form edits before confirming storage.", true);
+      return;
+    }
+    const receipt = state.pendingWorkroomReceipt;
+    if (!receipt || receipt.fingerprint !== workroomFingerprint()) {
+      clearWorkroomReceipt();
+      status("Workroom changed since download. Encrypt and save the complete current workroom again.", true);
+      return;
+    }
+    if (!confirm("Confirm HUMAN-only storage: have you checked the complete encrypted .luew file exists in a protected folder and SHA-256 equals " +
+      receipt.sha256 + " (" + receipt.bytes + " UTF-8 bytes)? This acknowledgment is not independent source, consent, client or security proof.")) return;
+    state.dirty = false;
+    clearWorkroomReceipt();
+    $("saveReceipt").textContent = "Operator acknowledged a protected local .luew file; this is HUMAN-only storage confirmation, never an authenticated source or release approval.";
+    status("Human operator acknowledged private storage; no original finding, client grant or active work changed.", false);
+  }
   function wipe() {
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
-    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.bulkProposal = null; state.sourceText = ""; state.revisionHistory = [];
+    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null; state.bulkProposal = null; state.pendingWorkroomReceipt = null; state.sourceText = ""; state.revisionHistory = [];
     clearRevisionCandidate(); refreshRevisionArchive();
     $("revisionArchiveDesk").hidden = true; $("revisionHistorySearch").value = "";
     $("sourceFile").value = ""; $("journalFile").value = ""; $("workroomFile").value = ""; $("vaultPass").value = "";
@@ -751,6 +781,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     $("detail").hidden = true;
     $("noneSelected").hidden = false;
     setEnabled(false);
+    clearWorkroomReceipt();
     renderOwnerBoard();
   }
   function selectedIndices() {
@@ -896,6 +927,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     } catch (error) { status(error.message, true); return; }
     if (JSON.stringify(entry) !== JSON.stringify(state.journal[state.selected])) {
       state.journal[state.selected] = entry;
+      clearWorkroomReceipt();
       invalidateBulkPreview();
       clearRevisionCandidate();
       state.dirty = true;
@@ -921,6 +953,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       state.rows = stagedRows;
       state.digest = sha;
       state.sourceText = value;
+      clearWorkroomReceipt();
       state.revisionHistory = [];
       clearRevisionCandidate(); refreshRevisionArchive();
       state.journal = stagedRows.map(r => blankEntry(r.id));
@@ -986,7 +1019,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       }
       const staged = admitJournalDocument(parsed);
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
-      state.journal = staged; invalidateBulkPreview(); clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
+      state.journal = staged; clearWorkroomReceipt(); invalidateBulkPreview(); clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
@@ -1055,9 +1088,17 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
         revision_history: state.revisionHistory
       };
       const sealed = await LightUpEncryptedJournal.sealWorkroom(doc, pass);
+      const packed = enc.encode(sealed);
+      const receiptHash = await digest(packed);
       download(sealed, "lightup-private-entire-workroom.luew", "application/json");
-      state.dirty = false;
-      status("Encrypted complete source+HUMAN workroom offered for local PRIVATE save; no external transfer.", false);
+      state.pendingWorkroomReceipt = {
+        fingerprint: workroomFingerprint(), sha256: receiptHash, bytes: packed.length
+      };
+      $("ackWorkroom").disabled = false;
+      $("saveReceipt").textContent = "Encrypted PRIVATE .luew offered for local save: " +
+        packed.length + " UTF-8 bytes · SHA-256 " + receiptHash +
+        ". Your unsaved-changes warning remains until you independently check the local protected file and acknowledge storage.";
+      status("Encrypted complete workroom offered. Verify local file and SHA-256 before acknowledging save.", false);
     } catch (error) {
       status("Complete PRIVATE workroom encryption HOLD: " + error.message, true);
     } finally {
@@ -1094,6 +1135,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
           "Replace this browser's current workspace? This does not establish authenticated tenant lineage.")) return;
       state.rows = admittedRows; state.digest = candidateSha; state.sourceText = doc.csv_utf8;
       state.journal = admittedJournal; state.revisionHistory = admittedHistory;
+      clearWorkroomReceipt();
       invalidateBulkPreview(); clearRevisionCandidate(); refreshRevisionArchive();
       state.filename = "[PRIVATE ENCRYPTED WORKROOM]";
       state.selected = -1; state.dirty = false; state.pending = false; state.bulkUndo = null;
@@ -1311,6 +1353,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
         "The source CSV, actual retest and remediation are NOT changed. Only this browser's private HUMAN journal changes. " +
         "Keep an encrypted complete workroom for source-history continuity.")) return;
     clearRevisionCandidate();
+    clearWorkroomReceipt();
     for (const item of now.changes) {
       state.journal[item.index] = {...item.next};
     }
@@ -1333,6 +1376,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     const previous = state.bulkUndo;
     if (!previous || !previous.length) return;
     clearRevisionCandidate();
+    clearWorkroomReceipt();
     for (const item of previous) {
       state.journal[item.index] = {...item.original};
     }
@@ -1385,6 +1429,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     $("saveCalendar").addEventListener("click", saveCalendar);
     $("saveVault").addEventListener("click", saveVault);
     $("saveWorkroom").addEventListener("click", saveWorkroom);
+    $("ackWorkroom").addEventListener("click", acknowledgeWorkroom);
     $("loadWorkroom").addEventListener("click", () => $("workroomFile").click());
     $("workroomFile").addEventListener("change", e => {
       if (e.target.files[0]) loadWorkroom(e.target.files[0]);
@@ -1581,7 +1626,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
   </section>
 
   <section class="exports" aria-label="Private local exports">
-    <div><p class="eyebrow">2 · HUMAN CONTINUITY</p><h2>Save your private work.</h2><p>Export a PRIVATE JSON with finding IDs, HUMAN owner, stage, date and notes. Resume it only against <strong>exactly the same CSV bytes</strong>. Your browser does not autosave.</p><div class="actions"><button id="saveJournal" disabled>Download PRIVATE draft</button><button id="loadJournal" disabled>Open PRIVATE draft</button><input type="file" id="journalFile" accept=".json,application/json" hidden></div><div class="vault-controls"><p class="eyebrow">ENCRYPTED PRIVATE JOURNAL</p><label for="vaultPass">Private local passphrase (minimum 12 characters; not a login or client authentication)</label><input id="vaultPass" type="password" autocomplete="new-password" maxlength="1024" placeholder="Unique strong passphrase; never sent anywhere"><div class="actions"><button id="saveVault" disabled>Save encrypted PRIVATE journal (.luej)</button><button id="loadVault" disabled>Open encrypted PRIVATE journal</button><input type="file" id="vaultFile" accept=".luej,.json" hidden><button id="saveWorkroom" disabled>Save encrypted complete workroom (.luew)</button><button id="loadWorkroom">Open encrypted complete workroom</button><input type="file" id="workroomFile" accept=".luew,.json" hidden></div><p class="minor">Journal format encrypts only HUMAN details and requires the original CSV at resume; complete workroom format encrypts original CSV and HUMAN details together for single-file PRIVATE resume. WebCrypto AES-256-GCM / PBKDF2-SHA256 600k; random salt and nonce. A correct passphrase decrypts a private file but proves nothing about consent or source authenticity. Forgetting it prevents recovery.</p></div><div class="brief-actions"><label class="brief-toggle" for="briefFollowups"><input id="briefFollowups" type="checkbox" checked> Only HUMAN-updated findings in visible queue</label><button id="saveBrief" disabled>Download printable PRIVATE HUMAN brief</button><p class="minor">Local scriptless HTML for a trusted private recipient. Includes IDs, source-declared remediation, owners and HUMAN notes; NEVER an anonymous handoff.</p></div></div>
+    <div><p class="eyebrow">2 · HUMAN CONTINUITY</p><h2>Save your private work.</h2><p>Export a PRIVATE JSON with finding IDs, HUMAN owner, stage, date and notes. Resume it only against <strong>exactly the same CSV bytes</strong>. Your browser does not autosave.</p><div class="actions"><button id="saveJournal" disabled>Download PRIVATE draft</button><button id="loadJournal" disabled>Open PRIVATE draft</button><input type="file" id="journalFile" accept=".json,application/json" hidden></div><div class="vault-controls"><p class="eyebrow">ENCRYPTED PRIVATE JOURNAL</p><label for="vaultPass">Private local passphrase (minimum 12 characters; not a login or client authentication)</label><input id="vaultPass" type="password" autocomplete="new-password" maxlength="1024" placeholder="Unique strong passphrase; never sent anywhere"><div class="actions"><button id="saveVault" disabled>Save encrypted PRIVATE journal (.luej)</button><button id="loadVault" disabled>Open encrypted PRIVATE journal</button><input type="file" id="vaultFile" accept=".luej,.json" hidden><button id="saveWorkroom" disabled>Save encrypted complete workroom (.luew)</button><button id="ackWorkroom" disabled>Confirm complete private file saved</button><p id="saveReceipt" class="minor" role="status" aria-live="polite">The complete PRIVATE workroom has not been offered for local download in this session.</p><button id="loadWorkroom">Open encrypted complete workroom</button><input type="file" id="workroomFile" accept=".luew,.json" hidden></div><p class="minor">Journal format encrypts only HUMAN details and requires the original CSV at resume; complete workroom format encrypts original CSV and HUMAN details together for single-file PRIVATE resume. WebCrypto AES-256-GCM / PBKDF2-SHA256 600k; random salt and nonce. A correct passphrase decrypts a private file but proves nothing about consent or source authenticity. Forgetting it prevents recovery.</p></div><div class="brief-actions"><label class="brief-toggle" for="briefFollowups"><input id="briefFollowups" type="checkbox" checked> Only HUMAN-updated findings in visible queue</label><button id="saveBrief" disabled>Download printable PRIVATE HUMAN brief</button><p class="minor">Local scriptless HTML for a trusted private recipient. Includes IDs, source-declared remediation, owners and HUMAN notes; NEVER an anonymous handoff.</p></div></div>
     <div><p class="eyebrow">3 · SEPARATE DISCLOSURE</p><h2>Counts only, if authorized.</h2><p>The optional anonymous aggregate contains totals by original severity and HUMAN stage, without finding IDs, titles, notes, source hash or target. Even small counts can be sensitive. Calendar download is an explicit PRIVATE local all-day tentative appointment export for dated visible HUMAN actions, with anonymous local ordinals only; calendar software may sync it. No attendees or calendar APIs are used.</p><div class="actions"><button id="saveCounts" disabled>Download counts-only JSON</button><button id="saveCalendar" disabled>Download tentative HUMAN calendar (.ics)</button><button id="clearAll" disabled class="subtle">Clear local workspace</button></div></div>
   </section>
 </main>
