@@ -83,3 +83,40 @@ def decrypt_vault(path: str, expected_receipt_sha256: str) -> bytes:
         raise VaultHold("HOLD: PRIVATE HUMAN vault decryption refused") from None
     finally:
         secret = ""  # Best effort: immutable Python strings cannot be securely wiped.
+
+
+def encrypt_vault(plain: bytes, receipt_sha256: str) -> bytes:
+    """Create interoperable original-receipt-bound encrypted HUMAN CSV in memory."""
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    except ImportError:
+        raise VaultHold("HOLD: installed cryptography dependency required") from None
+    require(type(plain) is bytes and 0 < len(plain) <= MAX_CSV)
+    require(type(receipt_sha256) is str and len(receipt_sha256) == 64)
+    try:
+        receipt_digest = bytes.fromhex(receipt_sha256)
+    except ValueError:
+        raise VaultHold("HOLD: invalid PRIVATE receipt digest") from None
+    require(len(receipt_digest) == 32)
+    require(sys.stdin.isatty())
+    try:
+        first = getpass.getpass("New PRIVATE HUMAN vault password (not client consent): ")
+        second = getpass.getpass("Repeat PRIVATE HUMAN vault password: ")
+    except (EOFError, KeyboardInterrupt):
+        raise VaultHold("HOLD: PRIVATE password entry cancelled") from None
+    try:
+        require(14 <= len(first) <= 256 and first == second)
+        require(all(" " <= c < "\x7f" or ord(c) >= 128 for c in first))
+        salt = os.urandom(16)
+        nonce = os.urandom(12)
+        header = MAGIC + salt + nonce + receipt_digest
+        require(len(header) == HEADER_BYTES)
+        key = hashlib.pbkdf2_hmac("sha256", first.encode("utf-8"), salt, KDF_ROUNDS, 32)
+        ciphertext = AESGCM(key).encrypt(nonce, plain, header)
+        require(len(ciphertext) == len(plain) + 16)
+        return header + ciphertext
+    except (ValueError, UnicodeError, TypeError, OverflowError, MemoryError):
+        raise VaultHold("HOLD: encrypted PRIVATE HUMAN packet not produced") from None
+    finally:
+        first = ""
+        second = ""  # Immutable Python strings cannot be securely erased.
