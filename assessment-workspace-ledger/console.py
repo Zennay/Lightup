@@ -15,6 +15,7 @@ import compare
 import continuity
 import human_revisions
 import history
+import history_human
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -34,6 +35,8 @@ MENU = (
     ("11", "Import browser-downloaded HUMAN CSV safely into PRIVATE native custody"),
     ("12", "Import PRIVATE browser CSV and immediately prepare original HUMAN follow-up packet"),
     ("13", "Review 2-12 ORIGINAL capture-linked inventory snapshots as PRIVATE HUMAN history"),
+    ("14", "Native-finalize ORIGINAL chain-bound HUMAN historical review CSV"),
+    ("15", "Native-finalize explicit browser-downloaded HUMAN historical CSV in PRIVATE custody"),
     ("0", "Exit"),
 )
 
@@ -69,6 +72,18 @@ def private_parent():
     return prompt("Existing owner-private 0700 directory OUTSIDE checkout")
 
 
+def history_paths():
+    print("Choose 2-12 ORIGINAL 0600 ledgers in exact capture --previous order.")
+    paths = []
+    while len(paths) < 12:
+        entry = prompt("Original ledger snapshot " + str(len(paths) + 1),
+                       required=len(paths) < 2)
+        if not entry:
+            break
+        paths.append(entry)
+    return paths
+
+
 def handle_action(action):
     if action == "1":
         paths = source_paths()
@@ -95,16 +110,18 @@ def handle_action(action):
             private_parent=private_parent()
         ))
     if action == "13":
-        print("Enter 2-12 original 0600 ledger.json files in explicit capture --previous order.")
-        paths = []
-        while len(paths) < 12:
-            entry = prompt("Original ledger snapshot " + str(len(paths) + 1),
-                           required=len(paths) < 2)
-            if not entry:
-                break
-            paths.append(entry)
         return history.run(argparse.Namespace(
-            ledger=paths, private_parent=private_parent()
+            ledger=history_paths(), private_parent=private_parent()
+        ))
+    if action in ("14", "15"):
+        originals = history_paths()
+        csv_path = prompt("Original PRIVATE HUMAN timeline CSV" if action == "14"
+                          else "Explicit original browser-downloaded HUMAN-history-review.csv")
+        return history_human.finalize(argparse.Namespace(
+            ledger=originals,
+            plan=csv_path if action == "14" else None,
+            browser_csv=csv_path if action == "15" else None,
+            private_parent=private_parent()
         ))
     if action == "5":
         return continuity.run(argparse.Namespace(
