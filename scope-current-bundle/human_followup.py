@@ -30,6 +30,8 @@ def human_text(s: str, limit: int) -> str:
     if any(ord(c) < 32 or ord(c) == 127 or 0x202A <= ord(c) <= 0x202E
            or 0x2066 <= ord(c) <= 0x2069 for c in s):
         raise ValueError("Control or bidi formatting in HUMAN entry")
+    if s.lstrip().startswith(("=", "+", "-", "@")):
+        raise ValueError("HUMAN freeform spreadsheet formula prefix rejected")
     return s
 
 
