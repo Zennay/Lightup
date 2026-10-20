@@ -50,3 +50,25 @@ For select-only dossiers, use the physically integrated original `assessment-evi
 ## Release and authority gates
 
 No merge to `main`, runtime deployment or real target activity. Original exact-head GitHub-hosted and **permanently registered named VPS CI**, source-owner approval, independent security/privacy/browser review, #177/#182/#829 remediation, separate **current authenticated client and operator consent**, action-time revocation, and explicit **HUMAN GO** remain prerequisites. This integration branch is DRAFT/HOLD even if it has no source conflicts. Original PR branches may continue advancing; this candidate refers to the frozen source heads recorded in its merge commits, not their future work. No QA/regression suites were written or executed for this integration.
+
+## Continue directly into ORIGINAL select-only HUMAN evidence curation
+
+Once `suite.py prepare --brief` produced a private kit, you can prepare the original
+#1679 select-only HUMAN source-ordinal editor directly without assembling the
+source, manifest and worksheet arguments manually:
+
+~~~sh
+python3 assessment-integrated-suite/curation.py \
+  --source /private/original-lab-a.json \
+  --original-kit /path/to/PRIVATE-only-parent/PRIVATE-lightup-kit-EXAMPLE \
+  --private-parent /path/to/PRIVATE-only-parent
+~~~
+
+This foreground action invokes the **unchanged original**
+`assessment-evidence-curation/curate.py prepare` to check the source, exact
+original native manifest and worksheet. It produces an exclusive 0700 PRIVATE
+folder with an offline entry page linking the original source-free selection
+studio, complete HUMAN selection CSV, unsigned selection receipt and instructions.
+It refuses a different source or unmatched original manifest/worksheet. No
+findings are selected, published or disclosed automatically. Exit code 2 is
+REVIEW_ONLY, 3 is HOLD, never authority to scan or release.
