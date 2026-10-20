@@ -12,6 +12,7 @@ import hmac
 import hashlib
 import os
 import stat
+import struct
 import sys
 
 MAGIC = b"LUHUM001"
@@ -120,3 +121,93 @@ def encrypt_vault(plain: bytes, receipt_sha256: str) -> bytes:
     finally:
         first = ""
         second = ""  # Immutable Python strings cannot be securely erased.
+
+
+# LUHBP001 encrypts *both* the unsigned source-free receipt and HUMAN CSV.
+BUNDLE_MAGIC = b"LUHBP001"
+BUNDLE_HEADER = 36  # purpose 8 | salt 16 | nonce 12
+BUNDLE_CONTENT_HEADER = 16  # purpose 8 | receipt size u32be | csv size u32be
+MAX_RECEIPT = 256 * 1024
+MAX_BUNDLE = BUNDLE_HEADER + BUNDLE_CONTENT_HEADER + MAX_RECEIPT + MAX_CSV + 16
+
+
+def _bundle_password(confirm: bool) -> str:
+    require(sys.stdin.isatty())
+    try:
+        password = getpass.getpass("PRIVATE HUMAN handoff password (no assessment authority): ")
+        if confirm:
+            duplicate = getpass.getpass("Repeat PRIVATE HUMAN handoff password: ")
+            require(password == duplicate)
+    except (EOFError, KeyboardInterrupt):
+        raise VaultHold("HOLD: HUMAN passphrase was not provided") from None
+    require(14 <= len(password) <= 256 and
+            all(" " <= char < "\x7f" or ord(char) >= 128 for char in password))
+    return password
+
+
+def encrypt_bundle(receipt: bytes, csv: bytes) -> bytes:
+    """Seal original unsigned receipt bytes + exact HUMAN CSV into one private file."""
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    except ImportError:
+        raise VaultHold("HOLD: cryptography dependency unavailable") from None
+    require(type(receipt) is bytes and 0 < len(receipt) <= MAX_RECEIPT)
+    require(type(csv) is bytes and 0 < len(csv) <= MAX_CSV)
+    password = _bundle_password(confirm=True)
+    try:
+        salt, nonce = os.urandom(16), os.urandom(12)
+        header = BUNDLE_MAGIC + salt + nonce
+        clear = (BUNDLE_MAGIC + struct.pack(">II", len(receipt), len(csv)) +
+                 receipt + csv)
+        key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"),
+                                  salt, KDF_ROUNDS, 32)
+        sealed = AESGCM(key).encrypt(nonce, clear, header)
+        require(len(sealed) == len(clear) + 16)
+        return header + sealed
+    except (ValueError, TypeError, OverflowError, MemoryError):
+        raise VaultHold("HOLD: HUMAN bundle could not be encrypted") from None
+    finally:
+        password = ""  # Python strings cannot be forcibly zeroized.
+
+
+def decrypt_bundle(path: str) -> tuple[bytes, bytes]:
+    """Decrypt bounded authenticated bundle without writing the receipt or CSV."""
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        from cryptography.exceptions import InvalidTag
+    except ImportError:
+        raise VaultHold("HOLD: cryptography dependency unavailable") from None
+    fd = -1
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) |
+                     getattr(os, "O_NOFOLLOW", 0))
+        info = os.fstat(fd)
+        require(stat.S_ISREG(info.st_mode) and
+                BUNDLE_HEADER + BUNDLE_CONTENT_HEADER + 16 < info.st_size <= MAX_BUNDLE)
+        with os.fdopen(fd, "rb") as stream:
+            fd = -1
+            data = stream.read(MAX_BUNDLE + 1)
+        require(BUNDLE_HEADER + BUNDLE_CONTENT_HEADER + 16 < len(data) <= MAX_BUNDLE)
+    except (OSError, ValueError, MemoryError):
+        raise VaultHold("HOLD: encrypted HUMAN file not admitted") from None
+    finally:
+        if fd >= 0:
+            os.close(fd)
+    header = data[:BUNDLE_HEADER]
+    require(header[:8] == BUNDLE_MAGIC)
+    password = _bundle_password(confirm=False)
+    try:
+        key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"),
+                                  header[8:24], KDF_ROUNDS, 32)
+        clear = AESGCM(key).decrypt(header[24:36], data[BUNDLE_HEADER:], header)
+        require(len(clear) >= BUNDLE_CONTENT_HEADER + 2)
+        require(clear[:8] == BUNDLE_MAGIC)
+        receipt_len, csv_len = struct.unpack(">II", clear[8:16])
+        require(0 < receipt_len <= MAX_RECEIPT and 0 < csv_len <= MAX_CSV)
+        require(len(clear) == BUNDLE_CONTENT_HEADER + receipt_len + csv_len)
+        return (clear[BUNDLE_CONTENT_HEADER:BUNDLE_CONTENT_HEADER + receipt_len],
+                clear[BUNDLE_CONTENT_HEADER + receipt_len:])
+    except (ValueError, InvalidTag, TypeError, OverflowError, MemoryError):
+        raise VaultHold("HOLD: encrypted HUMAN bundle not admitted") from None
+    finally:
+        password = ""
