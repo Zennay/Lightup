@@ -220,8 +220,8 @@
     },
     {
       "path": "scope-unified-workspace/README.md",
-      "sha256": "888712f705feed918c452fb692d67792b77738aa85da7512e6f96905079dca6a",
-      "size": 42091
+      "sha256": "f0cedb0e70a87d2bb143e4ab7636d73c664990e1529d35752b8ac61f68315ae8",
+      "size": 43131
     },
     {
       "path": "scope-unified-workspace/build.py",
@@ -240,18 +240,18 @@
     },
     {
       "path": "scope-unified-workspace/handoff.html",
-      "sha256": "c1109bfbcca074a1cf3faec798207b66b2d44061576c8b0ae2d6b48ad7d1c86f",
-      "size": 143872
+      "sha256": "585cd685352f53ffbb769dcfc3173acf02cc13e8de614954c7412f6aca938603",
+      "size": 145668
     },
     {
       "path": "scope-unified-workspace/handoff.js",
-      "sha256": "07ea268f25655f8ee8092378e73c46cc76238e154f6aa56373806eca23260f85",
-      "size": 88732
+      "sha256": "2061189faa300bd1a1fd21aeed7ed348d4c594354f03cbe8d6f3b96d5ff56542",
+      "size": 90393
     },
     {
       "path": "scope-unified-workspace/handoff.template.html",
-      "sha256": "d2b9644d9b36a78cea9fbb976c273c277a64031cb50dbb6561b19caec0676cc8",
-      "size": 20847
+      "sha256": "307714aaa2c70636e68a35934cc25775e0b8a199a99c6ec05ed1d0cc8b644142",
+      "size": 20982
     },
     {
       "path": "scope-unified-workspace/hub.template.html",
