@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""Compose original, unmodified offline remediation suite + PRIVATE recovery companion."""
+from __future__ import annotations
+
+import argparse
+import ctypes
+import errno
+import hashlib
+import html
+import json
+import os
+from pathlib import Path
+import secrets
+import shutil
+import stat
+import subprocess
+import sys
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+NATIVE_INSTALLER = ROOT / "remediation-integrated-workspace" / "install.py"
+COMPANION_FILES = (
+    "vault.py", "browser.js", "index.html", "standalone.html",
+    "build_browser.py", "README.md",
+)
+MAX_ASSET = 512_000
+FLAGS = {"consent_verified": False, "authorized": False,
+         "remediation_verified": False, "release_approved": False}
+WARNING = ("PRIVATE HUMAN-only original LightUp offline remediation + recovery software. "
+           "INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD. No verified evidence, "
+           "client/operator consent, grant, remediation, release or HUMAN GO.")
+
+class Hold(Exception):
+    pass
+
+def insist(value, message):
+    if not value:
+        raise Hold(message)
+
+def sha(data: bytes):
+    return hashlib.sha256(data).hexdigest()
+
+def canonical(value):
+    return (json.dumps(value, sort_keys=True, ensure_ascii=True,
+                       separators=(",", ":"), allow_nan=False) + "\n").encode("ascii")
+
+def private_directory(folder: Path):
+    insist(folder.is_absolute() and not folder.is_symlink() and folder.is_dir(),
+           "parent must be existing absolute ordinary directory")
+    info = folder.stat(follow_symlinks=False)
+    insist(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid() and not info.st_mode & 0o077,
+           "parent must be owner-private 0700")
+    insist(folder == folder.resolve(strict=True), "parent symlinks are not accepted")
+
+def read_asset(name):
+    original = HERE / name
+    info = original.stat(follow_symlinks=False)
+    insist(stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and info.st_size <= MAX_ASSET
+           and not original.is_symlink(), "original companion source missing or unsafe")
+    raw = original.read_bytes()
+    insist(len(raw) == info.st_size, "companion source changed during copy")
+    return raw
+
+def private_file(destination: Path, data: bytes):
+    descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                         getattr(os, "O_NOFOLLOW", 0), 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "wb", closefd=False) as file:
+            file.write(data)
+            file.flush()
+            os.fsync(file.fileno())
+    finally:
+        os.close(descriptor)
+
+def publish_new(source: Path, destination: Path):
+    try:
+        function = ctypes.CDLL(None, use_errno=True).renameat2
+    except (OSError, AttributeError) as error:
+        raise Hold("Linux atomic no-replace publication not supported") from error
+    function.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                         ctypes.c_char_p, ctypes.c_uint]
+    function.restype = ctypes.c_int
+    if function(-100, os.fsencode(source), -100, os.fsencode(destination), 1):
+        issue = ctypes.get_errno()
+        if issue in (errno.EEXIST, errno.ENOTEMPTY):
+            raise Hold("output appeared concurrently; never overwrite")
+        raise Hold("atomic private suite publication rejected")
+
+def portal():
+    return ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE offline HUMAN launch · DRAFT/HOLD</title>
+<style>body{background:#101d2c;color:#f1f6fd;font:1rem system-ui;max-width:760px;margin:3rem auto;padding:1rem}
+a{color:#a0ddff}section{border:1px solid #50637b;border-radius:10px;padding:1.3rem;margin:1rem 0}
+h1{font-size:1.6rem}p{line-height:1.55}.hold{color:#ffd99e;font-weight:bold}</style></head><body>
+<h1>LightUp · PRIVATE offline HUMAN suite</h1>
+<p class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Neither application authenticates source authority, consent, permissions, release or verified remediation.</p>
+<section><h2>Original integrated evidence-remediation workroom</h2>
+<p>Source-owned offline evidence and HUMAN-only workspaces, installed unmodified with the original native LightUp source-lock.</p>
+<p><a href="./original-suite/index.html">Open original integrated PRIVATE suite</a></p></section>
+<section><h2>PRIVATE encrypted recovery desk</h2>
+<p>Independently decrypt and compare selected local HUMAN backups, preview and explicitly recover minimum-necessary files or encrypt a fresh selected subset.</p>
+<p><a href="./private-recovery/standalone.html">Open private recovery desk</a></p></section>
+<p>Both apps are local only. Select PRIVATELY owned file material on a trusted device; no network and no automated transfers. Do not copy original evidence to recipients without separate valid disclosure authorization.</p>
+</body></html>""").encode("utf-8")
+
+def create(dest: Path):
+    insist(dest.is_absolute() and not dest.exists() and not dest.is_symlink(),
+           "choose a new absolute suite destination")
+    private_directory(dest.parent)
+    insist(ROOT not in dest.parents and dest != ROOT,
+           "suite destination must be outside the checkout")
+    insist(NATIVE_INSTALLER.is_file(), "original source-owned installer unavailable")
+    stage = dest.parent / (".lightup-composed-" + secrets.token_hex(12))
+    os.mkdir(stage, 0o700)
+    try:
+        native_destination = stage / "original-suite"
+        run = subprocess.run([sys.executable, str(NATIVE_INSTALLER), "build",
+                              "--output-dir", str(native_destination)],
+                             cwd=str(ROOT), shell=False, timeout=180,
+                             stdin=subprocess.DEVNULL, capture_output=True, text=True)
+        insist(run.returncode == 2 and native_destination.is_dir(),
+               "original pinned native source-only installation HOLD; no fallback or bypass")
+        recovery = stage / "private-recovery"
+        recovery.mkdir(mode=0o700)
+        inventory = {}
+        for name in COMPANION_FILES:
+            source = read_asset(name)
+            private_file(recovery / name, source)
+            inventory["private-recovery/" + name] = {"bytes": len(source), "sha256": sha(source)}
+        for relative in ("source-lock.json", "manifest.json"):
+            native = native_destination / relative
+            if native.exists() and native.is_file():
+                raw = native.read_bytes()
+                inventory["original-suite/" + relative] = {
+                    "bytes": len(raw), "sha256": sha(raw)}
+        home = portal()
+        private_file(stage / "START-HERE.html", home)
+        inventory["START-HERE.html"] = {"bytes": len(home), "sha256": sha(home)}
+        receipt = canonical({"kind": "lightup.private_human_recovery_companion_v1",
+                             "authority": FLAGS, "warning": WARNING, "files": inventory})
+        private_file(stage / "HOLD-SOURCE-INVENTORY.json", receipt)
+        publish_new(stage, dest)
+    except BaseException:
+        shutil.rmtree(stage, ignore_errors=True)
+        raise
+    print(f"REVIEW_ONLY: complete original + PRIVATE recovery portal built in {dest}")
+    print(f"Open locally: {dest / 'START-HERE.html'}")
+    print("Original native source-owner workroom untouched. No permission, source proof or release.")
+    return 2
+
+def main():
+    parser = argparse.ArgumentParser(description="Compose a NEW offline ORIGINAL remediation and PRIVATE recovery suite; DRAFT/HOLD")
+    parser.add_argument("--output-dir", type=Path, required=True)
+    args = parser.parse_args()
+    try:
+        return create(args.output_dir)
+    except (Hold, OSError, ValueError, subprocess.TimeoutExpired) as err:
+        print("HOLD:", str(err), file=sys.stderr)
+        return 3
+
+if __name__ == "__main__":
+    sys.exit(main())
