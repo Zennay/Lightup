@@ -188,7 +188,7 @@ remediation evidence or permission to share. Nothing was sent.</p>
     " completed consecutive PRIVATE HUMAN revisions · " + str(len(events)) +
     " declared HUMAN change events · " +
     str(manifest["human_discussion_needed_count"]) +
-    " latest positions for HUMAN follow-up.</p><p>Only ordinals and declared review stages
+    """ latest positions for HUMAN follow-up.</p><p>Only ordinals and declared review stages
     appear here. PRIVATE free-text notes, masked source content and all original
     source names are excluded from this report.</p></header>
 <section><h2>Recorded original revision sequence</h2><ol>""" + timeline +
