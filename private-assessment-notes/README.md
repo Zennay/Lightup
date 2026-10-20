@@ -455,3 +455,92 @@ approval, separate live client/operator consent, action-time revocation and
 explicit HUMAN GO. No network, email, notification, task dispatch, scan or
 authorization action occurs. The operation returns HOLD (3), including on a
 successfully created local private packet.
+
+## PRIVATE credential-masking improvements and manual second pass
+
+Original source admission in this self-contained notes workroom now **layers**
+\`private_masking.mask_private_notes()\` over the existing unchanged original
+\`lightup.redaction.redact_text()\` producer. The additional **bounded local
+heuristics** mask commonly missed literal credential **shapes**: URL user-info
+(\`protocol://user:password@\`), token-bearing URL query/fragment values,
+Cookie/Set-Cookie and common authorization/custom auth headers, JSON-quoted
+password/client-secret/access-token members, upper-case environment secrets,
+common private-key PEM blocks, JWT-shaped values and selected known provider
+token shapes. This is only extra local pattern masking: **never a promise of
+complete credential removal, PII anonymization, safe publication, or privacy
+clearance**. Previously created packets are not silently rewritten; new
+\`notes.py prepare\` operations use the enhanced masking.
+
+### Manually mask remaining sensitive text without changing original packets
+
+The operator can also request a **second, explicitly HUMAN-directed literal
+masking pass** on a source-bound, *completed* original PRIVATE HUMAN packet.
+This is useful when remaining names, private identifiers or unknown credential
+formats survive first-pass heuristic masking, and the original packet must
+remain immutable for review provenance.
+
+**1. Prepare an original-bound editable PRIVATE rule template.**
+
+~~~sh
+python3 private-assessment-notes/notes.py mask-template \
+  --completed-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<id> \
+  --private-parent /private/operator-lightup-work
+~~~
+
+The command independently reopens the full native completed original packet,
+with its original masked notes, COMPLETE original HUMAN CSV and unsigned
+manifest SHA bindings. It creates a fresh owner-only 0700 folder containing
+\`OPEN-PRIVATE.html\` and owner-only 0600
+\`PRIVATE-manual-mask-rules.json\`. The JSON initially contains a blank
+\`literal_to_mask\` for each real original source position plus exact original
+SHA identities. No secret text is included in the blank template.
+
+**2. Fill in chosen literals and remove unwanted original entries.**
+
+Edit the template locally. For every selected original note, replace the
+empty \`literal_to_mask\` value with the exact UTF-8 phrase (3–256 characters)
+to redact; delete unused entries. To mask multiple separate phrases in the
+same original source, duplicate that source's JSON rule entry and set its
+\`literal_to_mask\` accordingly. Do NOT alter the original source ordinal,
+SHA identities, false-authority fields, or completed HUMAN manifest/CSV
+digests. The edited JSON **contains the actual sensitive literals**;
+keep it owner-only mode 0600, out of git, Notion, public systems, emails,
+screenshots and other shared services. The rules file is deliberately never
+copied to the output.
+
+**3. Create a NEW selected-only extra-masked PRIVATE packet.**
+
+~~~sh
+python3 private-assessment-notes/notes.py mask-copy \
+  --completed-packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<id> \
+  --rules-json /private/operator-lightup-work/PRIVATE-lightup-mask-plan-<id>/PRIVATE-manual-mask-rules.json \
+  --private-parent /private/operator-lightup-work
+~~~
+
+\`mask-copy\` admits only owner-private original files, one complete already
+finalized original HUMAN packet, its exact original manifest + complete HUMAN
+CSV and 1–24 bounded original-source-matched HUMAN literal rules. Every
+original selected phrase must be present in the ALREADY masked note and every
+requested occurrence must be masked without intersecting another rule.
+Invalid original SHA, unmatched phrase, duplicate JSON key, overlapping match
+or fabricated authority field returns HOLD without creating an output packet.
+Rule text is never printed, persisted in the output, or sent.
+
+The output is a **separate** exclusive owner-private 0700 directory containing
+only explicitly selected additional masked originals, each in owner-only 0600
+files, a readable local scriptless \`OPEN-PRIVATE.html\` and
+\`PRIVATE-extra-mask-bindings.json\` with original source/decisions SHA
+references, replaced-occurrence counts and unsigned output digests.
+Original PRIVATE HUMAN free-text notes, raw literal rules, and unselected
+source notes are withheld. Neither previously completed HUMAN decisions nor
+original source files are modified. This selected derivative is NOT a new
+valid native original completed packet and cannot be substituted as one to
+bypass lineage or release checks.
+
+**Always HOLD:** no model, network, scan, actual client/customer evidence,
+authentication, grant, communication, signature, implicit team assignment,
+recipient verification, or public sharing. New manual template returns
+REVIEW_ONLY (2); \`mask-copy\` returns HOLD (3) even after correctly writing
+the selected-only private local result. All original independent source-owner,
+security/privacy reviews, CI, client/operator separate active consent,
+action-time revocation and explicit HUMAN GO remain mandatory.
