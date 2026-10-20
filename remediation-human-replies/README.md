@@ -74,6 +74,18 @@ Saving from this private offline browser uses the unchanged password-encrypted *
       --reply "$HOME/lightup-private/selected-reply-B.luhr" \
       --output-dir "$HOME/lightup-private/human-coordination-01"
 
+### Connect earlier multi-reply disagreements to the HUMAN follow-up register
+
+If the same original selected HUMAN packet was previously analyzed through reconcile.py, the worklist can optionally consume its **PRIVATE private-comparison.json** along with one encrypted current human/coordinator reply. The worklist refuses any differing original selection digest, incomplete/reordered anonymous reasons, missing/extra prior file slots, unsafe native HUMAN values, raised authority flags or noncanonical/duplicate-key matrix. This does not authenticate any respondent or infer a real distinct case.
+
+    python3 remediation-human-replies/worklist.py \
+      --handoff "$HOME/lightup-private/selected-private-human.luhq" \
+      --reply "$HOME/lightup-private/my-encrypted-coordinator.luhr" \
+      --comparison "$HOME/lightup-private/multi-replies/private-comparison.json" \
+      --output-dir "$HOME/lightup-private/human-followup-prior-disagreement-01"
+
+Alongside each new self-declared HUMAN next step, the PRIVATE scriptless report now distinguishes whether earlier source-bound HUMAN file slots differed literally on answer, stage or question; no previous answer text, owner names, evidence or original source case IDs are copied into the action register. The structured PRIVATE follow-up JSON has the same nullable prior-literal-difference label per selected original ordinal; the separate PRIVATE aggregate records the number of previously differing HUMAN reason groups. When no comparison is supplied, prior agreement is UNKNOWN (never silently assumed). Both source/reply ciphertexts and the PRIVATE comparison input are rechecked unchanged before a new exclusive private folder publishes.
+
 The new index.html and handling instructions are owner-only PRIVATE plaintext in a fresh 0700/0600 workroom. A bounded anonymous count receipt makes no reviewer identity, verified finding or source provenance claims. Free-form private response text may be sensitive and only a real separately authorized operator can choose its disclosure or eventual action. No automatic adjudication, approval, closure, cryptographic identity, consent, verified fix or secure deletion. No original source-owner or other worker source files changed.
 
 ## Encrypted PRIVATE coordinator continuation with real stored decisions
