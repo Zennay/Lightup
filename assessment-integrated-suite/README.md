@@ -652,3 +652,42 @@ native or source-specific generated selection/recipient studios: those are
 created privately from the actual original source by the native workflow.
 The portable software ZIP does NOT contain client records, any generated
 source-bound HUMAN selection UI, or a native executable.
+
+## Source-native PRIVATE disclosure + retention HUMAN desk (20 October)
+
+The original held `assessment-disclosure-preflight/` and
+`assessment-retention-desk/` are already present, unchanged. New native
+[disclosure_handoff.py](disclosure_handoff.py) and
+[retention_handoff.py](retention_handoff.py) exclusively delegate admission
+and output publication to these original owner components.
+
+**Console actions 32–34** complete an offline private disclosure workflow.
+32 accepts 1–12 previously recorded original PRIVATE lab JSON sources and
+creates a new 0700 workroom containing original source-free PRIVATE preflight,
+original small-cohort-suppressed counts, unsigned source-free HUMAN receipt,
+original HUMAN CSV template, and unchanged offline browser review editor.
+`OPEN-PRIVATE.html` links these owner-private 0600 products without embedding
+client names, targets, evidence, or source paths. 33 uses the exact unchanged
+original receipt plus HUMAN-edited CSV to generate an original private
+scriptless HUMAN report in a different new workroom. 34 instead prepares a
+PRIVATE HUMAN-stage counts CSV using original minimum-cohort suppression,
+with a strict selectable floor of 5–12. Counts remain PRIVATE and never
+certify anonymity or permission to disclose. Browser encrypted continuity
+remains available independently; the native wrapper never asks for passwords.
+
+**Console actions 35–36** compare original saved PRIVATE HUMAN retention
+plans. Original `history.py` renders a 2–12-plan ordered HUMAN history and
+original `drift.py` compares two source sets with human custodian, sensitivity,
+and hold proposal changes. They neither apply a proposal nor delete a file.
+An absent record cannot prove actual deletion, remediation, consent, or
+verified source ownership. Original native report exit 0 is mapped to the
+operator-only REVIEW_ONLY exit 2 only after exact source receipt + 0600 file.
+
+All operations use original local source validation, exclusive outputs inside
+new owner-private 0700 folders, and user-confirmed `REVIEW ONLY`. No scanner,
+model, grant, active target, send, real fix, retest, deletion, or external
+release. Existing required original hosted/named-VPS CI, owner acceptance,
+independent privacy/security/browser reviews, #177/#182/#829, current
+separately authenticated client/operator consent with action-time revocation,
+and explicit HUMAN GO are unchanged. Project remains Incubate M3/M7 PLAN/LAB
+ONLY DRAFT/HOLD. No QA/regression/test suites written or executed.
