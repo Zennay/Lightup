@@ -177,8 +177,20 @@ def require_two(directory: Path) -> None:
     _subdirs(directory)
     if minimum_signers(directory) == 2:
         raise Hold("local two-signer policy already exists; it cannot be relaxed")
-    if len(list((directory / "keys").glob("*.json"))) < 2:
-        raise Hold("register at least two independently confirmed custody keys first")
+    candidates = sorted((directory / "keys").glob("*.json"))
+    active = 0
+    for candidate in candidates:
+        if not candidate.is_file() or HEX.fullmatch(candidate.name[:-5]) is None:
+            raise Hold("invalid private registry entry before raising local signer floor")
+        try:
+            trusted(directory, candidate.name[:-5])
+        except Hold as exc:
+            if "revoked" not in str(exc).lower():
+                raise
+        else:
+            active += 1
+    if active < 2:
+        raise Hold("register at least TWO currently non-revoked independently trusted keys first")
     marker = {
         "format": VERSION,
         "policy": "TWO_DISTINCT_LOCALLY_TRUSTED_SIGNERS_REQUIRED",
@@ -201,6 +213,7 @@ def listing(directory: Path) -> None:
         print(("REVOKED" if revoked else "LOCAL_REVIEW_TRUST"), rec["fingerprint"], rec["label"])
     if not found:
         print("EMPTY: no locally registered custody keys")
+    print("LOCAL CUSTODY MINIMUM SIGNERS:", minimum_signers(directory))
 
 
 def main() -> int:
@@ -222,6 +235,8 @@ def main() -> int:
             register(options.directory, options.public_key, options.trusted_fingerprint, options.label)
         elif options.command == "revoke":
             revoke(options.directory, options.trusted_fingerprint)
+        elif options.command == "require-two":
+            require_two(options.directory)
         else:
             listing(options.directory)
     except (OSError, ValueError) as exc:
