@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-HGJ2s0z52ziV8eyem5HpEQGu1zHNhKYJMFmjq+2UiIc='; style-src 'sha256-HUlm6aqEChCFyhlqqnwAML8DEcKWrxeYmb62wHptVvw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-fGfFO+Q7Mv4MTJo3LnKDrVEfUwxS3gKI7W9gVHdka20='; style-src 'sha256-HUlm6aqEChCFyhlqqnwAML8DEcKWrxeYmb62wHptVvw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -553,16 +553,15 @@
       inform("Encrypted PRIVATE source-bound plan downloaded. Password cleared from input fields.");
     }finally{plain.fill(0);clearPasswords();}
   }
-  async function restoreEncryptedFile(file){
-    hold(active && crypto.subtle);
-    const password=$("handoffPassword").value;
-    hold(password.length>=16 && password.length<=256);
-    let plaintext=null;
+  async function decryptPrivatePlan(file,password){
+    hold(active && crypto.subtle && password.length>=16 && password.length<=256);
+    let raw=null,cipher=null,plaintext=null;
     try{
-      const encrypted=await bytes(file);
-      hold(encrypted.length>ENC_MAGIC.length+16+12+16);
-      hold(ENC_MAGIC.every((v,i)=>encrypted[i]===v));
-      const salt=encrypted.slice(6,22),iv=encrypted.slice(22,34),cipher=encrypted.slice(34);
+      raw=await bytes(file);
+      hold(raw.length>ENC_MAGIC.length+16+12+16);
+      hold(ENC_MAGIC.every((v,i)=>raw[i]===v));
+      const salt=raw.slice(6,22),iv=raw.slice(22,34);
+      cipher=raw.slice(34);
       const key=await handoffKey(password,salt);
       try{
         plaintext=new Uint8Array(await crypto.subtle.decrypt(
@@ -570,15 +569,42 @@
       }catch(_){hold(false);}
       const admitted=admitPlanText(decoder.decode(plaintext));
       hold(!admitted.legacy);
+      return admitted;
+    }finally{
+      if(plaintext)plaintext.fill(0);
+      if(cipher)cipher.fill(0);
+      if(raw)raw.fill(0);
+    }
+  }
+  async function restoreEncryptedFile(file){
+    hold(active && crypto.subtle);
+    const originHash=hash,originSeries=seriesId,oldPlan=plan;
+    const password=$("handoffPassword").value;
+    try{
+      const admitted=await decryptPrivatePlan(file,password);
+      hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
       if(changed && !confirm("Replace current unsaved PRIVATE HUMAN reminder dates with the authenticated encrypted plan? This does not prove original-source authenticity."))return;
+      hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
       publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
       plan=admitted.schedule;seriesId=admitted.series;
       changed=false;exportedPlan=true;page=0;agendaPage=0;render();
       inform("Encrypted PRIVATE calendar plan opened and exact original worksheet / timezone readmitted. No assessment authority.");
-    }finally{
-      if(plaintext)plaintext.fill(0);
-      clearPasswords();
-    }
+    }finally{clearPasswords();}
+  }
+  async function readEncryptedBaseline(file){
+    hold(active && crypto.subtle);
+    const originHash=hash,originSeries=seriesId,oldPlan=plan;
+    const password=$("baselinePassword").value;
+    try{
+      const admitted=await decryptPrivatePlan(file,password);
+      hold(active && hash===originHash && seriesId===originSeries &&
+        plan===oldPlan && admitted.series===originSeries);
+      if(!confirm("Compare against this separate encrypted PRIVATE historical HUMAN plan? Its decrypted proposed dates remain solely in browser memory. Current HUMAN plan remains unchanged; no calendar is contacted."))return;
+      hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
+      publicationBaseline=admitted.schedule;changesPage=0;
+      $("baselineStatus").textContent="Encrypted historical PRIVATE plan admitted for local comparison; source SHA, series and timezone matched. Not independently authenticated producer.";
+      renderChanges();inform("Encrypted prior HUMAN schedule opened for PRIVATE comparison, no current appointments changed.");
+    }finally{$("baselinePassword").value="";}
   }
   async function onOriginal(file){
     const buffer=await bytes(file);
@@ -592,7 +618,7 @@
     $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
-    $("restore").value="";clearPasswords();$("tz").textContent=zone;
+    $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
     $("agendaHorizon").value="7";$("agendaQuery").value="";$("workloadQuery").value="";
     render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
@@ -662,6 +688,11 @@
   function hook(id,event,fn){$(id).addEventListener(event,fn);}
   hook("worksheet","change",async e=>{try{if(e.target.files[0])await onOriginal(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
+  hook("encryptedBaseline","change",async e=>{
+    try{if(e.target.files[0])await readEncryptedBaseline(e.target.files[0]);}
+    catch(_){$("baselinePassword").value="";inform("Encrypted historical PRIVATE plan denied (HOLD); existing planning and comparison remain unchanged.",true);}
+    finally{e.target.value="";}
+  });
   hook("baselinePlan","change",async e=>{
     try{if(e.target.files[0])await readPublishedBaseline(e.target.files[0]);}
     catch(_){inform("Previous PRIVATE schedule did not match exact worksheet, timezone or series (HOLD).",true);}
@@ -697,7 +728,7 @@
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
     $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("out").hidden=true;$("reset").disabled=true;
-    clearPasswords();$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
+    clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
@@ -840,6 +871,9 @@
 <strong>PRIVATE calendar change desk · comparing two exact-sheet HUMAN plans</strong>
 <p>To reconcile a calendar previously imported by a HUMAN, load a separate copy of that previously published <strong>v2 PRIVATE plan CSV</strong>. It must match this exact worksheet byte digest, timezone and private calendar series ID. No network, attendee, grant or source authentication. Compare before export; changed plan dates never prove any target's risk changed.</p>
 <div class="row"><label class="file">Previously published PRIVATE v2 plan <input id="baselinePlan" type="file" accept=".csv,text/csv"></label><span id="baselineStatus" class="subtle">No previous publication loaded.</span><button type="button" id="clearBaseline" class="ghost" disabled>Clear previous snapshot</button></div>
+<div class="row"><label>Previous encrypted-plan passphrase <input id="baselinePassword" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+<label class="file">OR previous encrypted PRIVATE plan (.luhc) <input id="encryptedBaseline" type="file" accept=".luhc,application/octet-stream"></label></div>
+<p class="subtle">The encrypted comparison baseline decrypts only into local memory. The currently open HUMAN schedule is never replaced by this separate input. Clear the passphrase input after admission or failure.</p>
 <p id="changesSummary" role="status" aria-live="polite">Load a previous PRIVATE plan to see what changed.</p>
 <div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Change</th><th>Previously planned</th><th>Current HUMAN plan</th></tr></thead><tbody id="changesRows"></tbody></table></div>
 <div class="row"><button id="changePrev" type="button" class="ghost">Previous</button><button id="changeNext" type="button" class="ghost">Next</button></div>
