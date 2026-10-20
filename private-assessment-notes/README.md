@@ -636,3 +636,10 @@ The source-bound offline reviewer comparison Studio now highlights **note-only d
 The combined PRIVATE `sensitivity-workbench --mode timeline|reviewers` also produces a scriptless, selected-original-only `PRIVATE-HUMAN-attention.html` human discussion agenda in both modes. Reviewer mode additionally limits `PRIVATE-HUMAN-compact.csv` to source positions needing review, with explicit boolean WITHHOLD/REVIEW_REQUIRED and confidential-note-difference indicators. Complete original matrices/receipts and the unmodified original native finalizer remain distinct and strict. No prior free-text human notes, raw originals or scanned target content are included in the attention-only view. These remain owner-private HUMAN prompts, not recipient-authorized releases, scope grants, consent, independently verified remediation or a security PASS.
 
 [Full instructions and artifact custody caveats](PRIVATE-SENSITIVITY-TRIAGE.md).
+
+
+### PRIVATE reviewer Studio: two explicit output purposes
+
+The offline multi-reviewer comparison now has an additional, local **selected-discussion CSV** button. HUMAN-only visibility filters can select note-content-only disagreements, declared WITHHOLD/REVIEW_REQUIRED, general disagreements or literal agreement and optionally original ordinals; that button saves only the *visible original ordinals plus bounded Boolean HUMAN disagreement/attention flags*. No source SHA, source note, HUMAN free-note text, filenames or recipient identity is included. This small **owner-private** conversation packet is not publishable and is **not accepted as a completed review**.
+
+The original full **PRIVATE HUMAN decisions** export remains a separate action: it deliberately includes every original source and source-binding SHA and must pass unchanged native `sensitivity-finalize` after the operator moves it into a 0600 owner-only location. Neither export authenticates HUMANS, grants client consent, validates masking or clears release. [Commands and private custody steps](PRIVATE-SENSITIVITY-TRIAGE.md).
