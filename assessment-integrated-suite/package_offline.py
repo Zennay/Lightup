@@ -57,11 +57,19 @@ The complete native PRIVATE workpack (48) now composes the original
 source-bound interactive HUMAN queue, declared-date priorities, and
 assigned-team-only task decks in one new 0700 local folder, using ONE
 pinned owner-only 0600 HUMAN CSV snapshot for consistent child views.
-An original strict saved session and matching original HUMAN CSV can
+For a FIRST workpack, options 48/49 accept an intentionally EMPTY CSV
+selector and seed all 21 source-PATH-referenced workflow entries as
+UNASSESSED (no HUMAN decision, owner, approval or authorization).
+Provided existing original CSV files still require exact strict
+source-PATH/session binding. An original strict saved session can
 recreate this full workpack without modifying live console paths (49).
 The browser can preview proposed imported HUMAN field changes without
 revealing question text and bulk-assign staged visible tasks to a HUMAN
 team without contacting recipients or granting any assessment authority.
+Its browser-only HUMAN attention dashboard live-updates local HOLD,
+unavailable originals, manually selected review date, upcoming declared
+dates and team workloads, and can filter the workflow rows without hiding
+any rows from full original CSV export. No real calendar is queried or set.
 The original queue editor supports a CSP SHA256-pinned source-bound
 interactive PRIVATE browser UI, HUMAN bulk HOLD/NEEDS INPUT, undo/redo and
 explicit custody acknowledgement after a requested browser CSV download.
