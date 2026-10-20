@@ -404,7 +404,7 @@
       select.value=groups[0];capacityLoadEditor();
     }
     $("capacityFirst").value=nowToday();
-    $("capacityHorizon").value="30";
+    $("capacityHorizon").value="30";$("capacityMode").value="unscheduled";
     capacityMessage("Original HUMAN group availability defaults loaded into local memory; no calendar or operator has been contacted.");
     renderCapacity();
   }
@@ -429,7 +429,7 @@
     return JSON.stringify([hash,seriesId,zone,
       Array.from(plan.entries()).sort((a,b)=>a[0]-b[0]),
       Array.from(capacityRules.entries()).sort((a,b)=>a[0].localeCompare(b[0])),
-      $("capacityFirst").value,$("capacityHorizon").value]);
+      $("capacityFirst").value,$("capacityHorizon").value,$("capacityMode").value]);
   }
   function renderCapacityProposal(){
     const tbody=$("capacityPreviewRows");
@@ -515,15 +515,31 @@
     hold([14,30,60,90].includes(horizon));
     const rules=capacityGroups().map(group=>({group,rule:capacityRules.get(group)||capacityDefaultRule()}));
     const ranks={critical:0,high:1,medium:2,low:3,info:4};
-    const candidates=items.filter(row=>!plan.has(row.ordinal) && row.stage!=="blocked")
-      .sort((a,b)=>ranks[a.severity]-ranks[b.severity] || a.ordinal-b.ordinal);
+    const mode=$("capacityMode").value;
+    hold(["unscheduled","overdue","combined"].includes(mode));
+    const now=Date.now();
+    const candidates=items.filter(row=>{
+      if(row.stage==="blocked")return false;
+      const existing=plan.get(row.ordinal);
+      const hasOverdue=existing && eventDate(existing.day,existing.time).getTime()<now;
+      return (mode!=="overdue" && !existing)||(mode!=="unscheduled" && hasOverdue);
+    }).sort((a,b)=>{
+      // Human date order, not a finding/urgency inference, when moving past HUMAN appointments.
+      const ap=plan.get(a.ordinal),bp=plan.get(b.ordinal);
+      const ao=ap?eventDate(ap.day,ap.time).getTime():Infinity;
+      const bo=bp?eventDate(bp.day,bp.time).getTime():Infinity;
+      if(ao!==bo)return ao-bo;
+      return ranks[a.severity]-ranks[b.severity] || a.ordinal-b.ordinal;
+    });
     const byGroup=new Map();
     for(const row of candidates){
       if(!byGroup.has(row.group))byGroup.set(row.group,[]);
       byGroup.get(row.group).push(row);
     }
     const taken=new Map(),daily=new Map();
-    for(const event of eventIntervals()){
+    const eligibleOld=new Set(candidates.filter(row=>plan.has(row.ordinal)).map(row=>row.ordinal));
+    // The past-due HUMAN proposals are being moved, not double-booked into a new date.
+    for(const event of eventIntervals().filter(event=>!eligibleOld.has(event.ordinal))){
       const date=plan.get(event.ordinal).day;
       if(!taken.has(date))taken.set(date,[]);
       taken.get(date).push(event);
@@ -556,13 +572,13 @@
         }
       }
     }
-    capacityProposal={slots:proposed,snapshot:capacitySnapshot()};
+    capacityProposal={slots:proposed,snapshot:capacitySnapshot(),mode,previous:new Map(Array.from(proposed.keys()).map(ordinal=>[ordinal,plan.get(ordinal)||null]))};
     $("capacityApply").disabled=proposed.size===0;
     renderCapacityProposal();
     $("capacityProposalDetails").open=proposed.size>0;
     const pending=candidates.length-proposed.size;
     capacityMessage("Proposed "+proposed.size+" source-ordinal HUMAN reminders, "+
-      pending+" remain without new dates in this 14–90-day bounded preview. "+
+      pending+" eligible original HUMAN reminders remain without new dates in this bounded preview. "+
       "No existing appointments changed; 128 proposed changes maximum per confirmation. "+
       (pending?"Extend horizon/availability or repeat after saving this batch.":"Review dates before applying."));
   }
@@ -570,15 +586,27 @@
     hold(active && capacityProposal && capacityProposal.snapshot===capacitySnapshot());
     const preview=capacityProposal.slots;
     hold(preview.size>0 && preview.size<=128);
-    hold(Array.from(preview).every(([ordinal])=>!plan.has(ordinal) &&
-      items[ordinal-1] && items[ordinal-1].stage!=="blocked"));
-    if(!confirm("Apply "+preview.size+" proposed HUMAN-only dates in local memory? Original lab assessment, current source worksheet, already scheduled ordinals and any external calendars are NOT modified. Group hours and blackout dates are only self-reported planning hints."))return;
+    const now=Date.now(),mode=capacityProposal.mode;
+    hold(Array.from(preview).every(([ordinal])=>{
+      const old=plan.get(ordinal),source=items[ordinal-1];
+      if(!source || source.stage==="blocked")return false;
+      if(old && mode==="unscheduled")return false;
+      if(!old && mode==="overdue")return false;
+      if(old && eventDate(old.day,old.time).getTime()>=now)return false;
+      return capacityProposal.previous.get(ordinal)===old ||
+        (!old && capacityProposal.previous.get(ordinal)===null);
+    }));
+    const replaced=Array.from(preview.keys()).filter(ordinal=>plan.has(ordinal)).length;
+    if(!confirm("Apply "+preview.size+" proposed HUMAN-only dates in local memory? "+
+      (replaced?replaced+" previously scheduled but PAST-DUE HUMAN reminder dates will be replaced (after this confirmation). ":"")+
+      "No future-dated HUMAN reminder, original lab assessment, source worksheet or external calendar will be changed. "+
+      "PAST DUE does not mean a verified unresolved vulnerability or authorization to execute."))return;
     hold(capacityProposal.snapshot===capacitySnapshot());
     for(const [ordinal,slot] of preview)plan.set(ordinal,slot);
     changed=true;exportedPlan=false;
     capacityProposal=null;$("capacityApply").disabled=true;
     page=0;render();
-    capacityMessage("Applied PRIVATE HUMAN capacity proposals locally. Save the full v2 plan before calendar export.");
+    capacityMessage("Applied "+preview.size+" PRIVATE HUMAN capacity proposals locally; "+replaced+" past-due reminder dates replaced. Save the full v2 plan before calendar export.");
   }
   function slotEquals(a,b){
     return !!a && !!b && a.day===b.day && a.time===b.time &&
@@ -1025,7 +1053,7 @@
     catch(_){capacityMessage("PRIVATE rules source binding or content invalid (HOLD). Original capacity rules and current plan unchanged.",true);}
     finally{e.target.value="";}
   });
-  ["capacityFirst","capacityHorizon"].forEach(id=>hook(id,"change",()=>{
+  ["capacityFirst","capacityHorizon","capacityMode"].forEach(id=>hook(id,"change",()=>{
     capacityProposal=null;$("capacityApply").disabled=true;
     capacityMessage("HUMAN availability preview cleared after date/horizon change.");
   }));
