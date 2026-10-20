@@ -177,6 +177,7 @@
       byId("editor").hidden = false;
       byId("export").disabled = false;
       byId("exportEncrypted").disabled = false;
+      byId("compare").disabled = false;
       refresh();
       notice("REVIEW_ONLY: exact receipt bytes and matching HUMAN CSV admitted locally. No authority.");
     } catch (_) {
