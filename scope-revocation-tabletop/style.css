@@ -23,3 +23,12 @@
 .bank-button{min-width:0;height:33px;padding:4px 7px;font-size:.72rem;white-space:nowrap}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media print{.bank-actions,.bank-buttons{display:none}.bank-table{color:black;min-width:0}.bank-table th,.bank-table td{color:black;background:white;border:1px solid #aaa}}
+
+.bank-comparison{margin:14px 0 17px;padding:13px;border:1px solid #436077;background:#182b3c;border-radius:10px}
+.bank-comparison h4{margin:0 0 8px;font-size:.92rem}
+.bank-choose{display:flex;flex-wrap:wrap;gap:12px}
+.bank-choose label{font-size:.8rem;font-weight:650;margin:0;flex:1;min-width:120px}
+.bank-choose select{display:block;width:100%;margin-top:5px}
+.bank-comparison .needs{margin:8px 0 0;display:grid;grid-template-columns:1fr 1fr;column-gap:20px;padding-left:22px}
+@media(max-width:560px){.bank-comparison .needs{grid-template-columns:1fr}}
+@media print{.bank-comparison{background:white;color:black;border:1px solid #888}.bank-choose{display:none}.bank-comparison .needs li{color:black}}
