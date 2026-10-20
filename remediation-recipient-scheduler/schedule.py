@@ -126,6 +126,11 @@ def render(sources: list[dict], tasks: list[dict]) -> bytes:
 <div class="controls"><input id="search" type="search" placeholder="Search HUMAN reason, owner, action" aria-label="Search tasks">
 <select id="filter"><option value="all">All tasks</option><option value="overdue">Overdue</option><option value="unscheduled">Not scheduled</option><option value="unowned">No owner</option><option value="pending">Still pending</option></select>
 <select id="source"><option value="all">All source-free packets</option></select></div>
+<div class="controls"><label><span>Batch owner (blank means clear)</span><input id="batchOwner" type="text" maxlength="64"></label>
+<label><span>Batch due (blank means clear)</span><input id="batchDue" type="date"></label>
+<label><span>Batch stage</span><select id="batchStage"><option value="keep">Keep stage</option><option value="open_human">Open HUMAN</option><option value="ask_source_owner">Ask source owner</option><option value="in_discussion_human">In discussion</option><option value="answered_human_only">Answered HUMAN-only</option></select></label>
+<label><span>Fields to change</span><label><input id="batchUseOwner" type="checkbox"> Owner</label><label><input id="batchUseDue" type="checkbox"> Due date</label></label>
+<button id="bulk">Preview and apply to currently visible tasks</button><button id="undo" disabled>Undo previous batch</button></div>
 <div class="controls"><button id="save">Save encrypted PRIVATE plan</button>
 <button id="open">Open encrypted plan</button><input id="openfile" type="file" accept=".lurp,application/json" hidden>
 <button id="calendar">Export tentative PRIVATE calendar (.ics)</button>
