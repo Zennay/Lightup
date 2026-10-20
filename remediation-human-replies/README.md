@@ -60,6 +60,22 @@ It publishes only after **all** returned files and the original redacted handoff
 
 Repeat --reply for 2–8 different locally received encrypted response files. It rejects duplicate file paths, identical ciphertext packages, missing or changed original, malformed passwords or any replied claim of authority without partial publication. Exit 2=REVIEW_ONLY; 3=HOLD. There is no automatic selection of a winning opinion or assertion of consensus.
 
+## Source-bound offline HUMAN coordination desk
+
+The new standalone coordination.py closes the existing multi-recipient HUMAN return workflow. Given the **same exact original selected encrypted .luhq** and 2–8 distinct already encrypted HUMAN .luhr files, it invokes the unchanged original native handoff admission and the existing shared strict .luhr admission, with an interactive password for every file. Every original selected task ordinal/reason must be identical, duplicate source ciphertext is refused, and all original encrypted files are re-read before exclusive private publication. This is not a human consensus engine or authenticated multiple-person proof.
+
+It creates a new PRIVATE index.html with each original redacted HUMAN request, earlier returned self-declared reply statuses, HUMAN answers and follow-up questions in expandable local file-slot panels. The HUMAN coordinator can filter/search, manually enter a **new** stage, answer and clarification and use the existing guarded bulk neutral-status action. Critically, prior respondent answers are **read-only**, and new coordinator statements always start at received_human with BLANK answer/question; no accidental adoption of another person's claims or forged resolved findings.
+
+Saving from this private offline browser uses the unchanged password-encrypted **native .luhr** format, AES-256-GCM/PBKDF2-SHA256 and unique purpose-bound AAD. The returned .luhr deliberately excludes the displayed earlier HUMAN statements and original private owner/deadline/next-action fields; only original selected redacted source-binding, selected ordinal/reason and *newly entered* human stage/answer/question are included. The resulting .luhr is directly consumable by existing reply.py open/resume, reconcile.py and another later coordination.py round without schema conversion, mutation of source records, network or new backend.
+
+    python3 remediation-human-replies/coordination.py \
+      --handoff "$HOME/lightup-private/selected-private-human.luhq" \
+      --reply "$HOME/lightup-private/selected-reply-A.luhr" \
+      --reply "$HOME/lightup-private/selected-reply-B.luhr" \
+      --output-dir "$HOME/lightup-private/human-coordination-01"
+
+The new index.html and handling instructions are owner-only PRIVATE plaintext in a fresh 0700/0600 workroom. A bounded anonymous count receipt makes no reviewer identity, verified finding or source provenance claims. Free-form private response text may be sensitive and only a real separately authorized operator can choose its disclosure or eventual action. No automatic adjudication, approval, closure, cryptographic identity, consent, verified fix or secure deletion. No original source-owner or other worker source files changed.
+
 ## Offline encrypted HUMAN reply password rotation without plaintext disk intermediary
 
 The independent native vault.py consumes the exact original selected private .luhq and existing encrypted selected .luhr, invoking the same unchanged original .luhq source-admission and new strict original-bound reply decoder. Both existing passwords must be provided in the private terminal; a third, NEW unique 14–256-character NFC non-control password is independently confirmed via the unchanged original native password policy. Source and encrypted reply files are re-read to reject changes before publishing.
@@ -92,7 +108,7 @@ A recipient with separately trusted matching source code and the four separately
       --parent-manifest "$HOME/lightup-private/software-human-replies-01/original-scheduler-manifest.json" \
       --output-dir "$HOME/lightup-private/software-received-01"
 
-The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all six additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
+The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all seven additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
 
 The optional distribution.py inspect --workspace ABSOLUTE_PATH operation is for a *complete locally built* distribution directory, not the smaller received runnable subset. All operations exit 2=REVIEW_ONLY or 3=HOLD, never grant security authority. Syntax/manifest checks are not client authorization, independent security/crypto review, actual owner acceptance or real release.
 
