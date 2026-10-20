@@ -42,3 +42,29 @@ Exit **2 = REVIEW_ONLY** on completed private software build, **3 = HOLD**. A su
 Notion posture remains **Incubate / M3–M7 PLAN/LAB ONLY, DRAFT/HOLD**. Source hash checks and passwords do not establish source identity, approved recipient, actual consent, authentic risk, verified findings, remediation or retest. Do not use actual targets. No changes to the original Casework, recipient-trend, authorization/consent, scope, scanner, webapp, runner, CI or QA source. Before any main merge, deployment or active release the original exact-head hosted **and** permanent registered named VPS CI, original owner and independent security/privacy/browser/crypto reviews, original #177/#182/#829, separately authenticated current client+operator consent with revocation-at-use and explicit HUMAN GO remain mandatory.
 
 No QA, regression or test suites are added or run by this work package. Lightweight production syntax/build inspection does not establish security approval.
+
+## Full original native archive → scheduler + recipient reviewer (new)
+
+Run `archive_schedule.py` from a complete clone of this stacked branch after genuine separate recipient/disclosure authorization. It invokes the **unchanged original native** `portable_cockpit.unpack` or `encrypted_cockpit.decrypt`, re-admits each unchanged original source-free packet, creates the existing original `workflow.recipient_start` reviewer and our new private scheduler, then atomically publishes a **single** private portal. An encrypted `.luhx` packet is decrypted directly into the native original private recipient directory through memory, **without writing a plaintext intermediate ZIP**. Do not send the resulting folder to unauthorized recipients; it contains native source-free material and may contain HUMAN notes.
+
+For native original unencrypted `.luhz` transfer packets, each already stored as a regular 0600 file in a trusted original-private 0700 directory:
+
+```bash
+python3 remediation-recipient-scheduler/archive_schedule.py \
+  --archive "$HOME/lightup-private/handoff-01.luhz" \
+  --archive "$HOME/lightup-private/handoff-02.luhz" \
+  --output-dir "$HOME/lightup-private/recipient-with-schedule-01"
+```
+
+For **encrypted** native source-free Cockpit `.luhx` and corresponding native **encrypted original single-Cockpit HUMAN journal vault `.luhj`**, the CLI interactively asks the original native passphrase(s) and does not write a plaintext journal intermediate:
+
+```bash
+python3 remediation-recipient-scheduler/archive_schedule.py \
+  --encrypted-archive "$HOME/lightup-private/handoff-01.luhx" \
+  --journal-vault "$HOME/lightup-private/human-01.luhj" \
+  --output-dir "$HOME/lightup-private/recipient-with-schedule-02"
+```
+
+Alternatively use `--journal` for the original canonical source-bound `single_review.py` plain JSON journal. For multiple archives, supply **exactly one** `--journal` or `--journal-vault` per archive in the same order; use literal `-` for a packet without corresponding journal. Do not mix encrypted/plain archive selectors or journal types in the same command. Original native admission checks the exact source-bound packet before adopting HUMAN notes. Wrong passphrases, changed bytes, mismatched original records and duplicate real packets reject the complete new output. Existing prior outputs and the input archives/vaults stay unchanged.
+
+Private resulting product: `index.html` links to `human-scheduler/index.html` (editable HUMAN planning and encrypted `.lurp` checkpoints), `original-human-review/index.html` (unchanged native original recipient reviewer), and `original-sourcefree-01/index.html` (unchanged native original source-free Cockpit). A separate `private-summary.json` contains **only** generic counts, false authority flags and a warning; no original packet source hashes/IDs or HUMAN notes. The original browser may still separately offer other operator workflows. This native integration is strictly **local-only, plan/lab, PRIVATE and non-authorizing**, never CI signoff, client consent, release, or proof of a fix.
