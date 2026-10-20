@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   const $ = id => document.getElementById(id);
-  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus"];
+  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus","humanReplyFile","importHuman","humanReturnStatus","humanReturnOutcome","humanReturnNote"];
   const e = Object.fromEntries(ids.map(id => [id,$(id)]));
   const encoder = new TextEncoder();
   let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0;
@@ -36,6 +36,10 @@
     e.prevPage.disabled=e.nextPage.disabled=true;
     e.review.disabled = !source || rules.length===0;
     e.stageSuggestions.disabled = !source;
+    e.importHuman.disabled = true;
+    e.humanReplyFile.value="";
+    e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
+    message("humanReturnStatus","Prepare the exact current redacted preview before importing feedback.");
     lock();
   }
   function clear() {
@@ -195,6 +199,7 @@
       const remaining=hints(text);
       const highRisk=remaining.some(([kind])=>["private key","Bearer","credential-like"].includes(kind));
       prepared={text,sha,bytes:bytes.length,count,remaining,highRisk,originalHash:source.hash};
+      e.importHuman.disabled=false;
       message("matches",String(count));
       message("residual",String(remaining.reduce((n,r)=>n+r[1],0)));
       message("outputHash",sha.slice(0,12)+"…");
@@ -246,6 +251,53 @@
       finish("PRIVATE receipt");
     }catch(err){message("exportStatus","HOLD: review and reconfirm before exporting.");}
   };
+
+  const returnKeys=[
+    "schema","redacted_sha256","redacted_bytes","human_followup","human_note",
+    "all_pages_displayed","sender_authenticated","client_consent","operator_consent",
+    "revocation_at_use_verified","scanning_permitted","release_approved"
+  ];
+  e.humanReplyFile.addEventListener("change",()=>{
+    e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
+    message("humanReturnStatus","PRIVATE feedback file selection changed. Read it against the current redacted preview.");
+  });
+  e.importHuman.addEventListener("click",async()=>{
+    e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
+    const file=e.humanReplyFile.files?.[0], current=prepared;
+    if(!current || !file || !/^[^/\x00-\x1f]{1,120}\.json$/i.test(file.name) ||
+       file.size<1 || file.size>4096){
+      message("humanReturnStatus","HOLD: prepare the current redacted preview and choose one bounded PRIVATE JSON reply.");
+      return;
+    }
+    try{
+      const bytes=new Uint8Array(await file.arrayBuffer());
+      const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      const reply=JSON.parse(raw);
+      if(!reply || Array.isArray(reply) || typeof reply!=="object" ||
+         JSON.stringify(reply,null,2)+"\n"!==raw ||
+         Object.keys(reply).join("|")!==returnKeys.join("|") ||
+         reply.schema!=="lightup-private-disclosure-return-v1" ||
+         reply.redacted_sha256!==current.sha ||
+         reply.redacted_bytes!==current.bytes ||
+         reply.all_pages_displayed!==true ||
+         !["needs_more_masking","needs_context","read_only_notes"].includes(reply.human_followup) ||
+         typeof reply.human_note!=="string" || reply.human_note.length>800 ||
+         /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(reply.human_note) ||
+         !["sender_authenticated","client_consent","operator_consent",
+           "revocation_at_use_verified","scanning_permitted","release_approved"].every(k=>reply[k]===false)){
+        throw Error("invalid recipient response");
+      }
+      if(prepared!==current || !source || source.hash!==current.originalHash)
+        throw Error("source changed while reading");
+      e.humanReturnOutcome.textContent="HUMAN follow-up: "+reply.human_followup.replaceAll("_"," ")+
+        " · sender identity and consent UNVERIFIED";
+      e.humanReturnNote.value=reply.human_note;
+      message("humanReturnStatus","Source-bound PRIVATE HUMAN feedback opened. Nothing has been applied to masks, source, grant or authorization.");
+    }catch(_){
+      e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
+      message("humanReturnStatus","HOLD: feedback invalid, noncanonical, source-mismatched, unauthenticated or unreadable. No prior HUMAN state carried over.");
+    }
+  });
   e.clear.onclick=clear;
   invalidate();
 })();
