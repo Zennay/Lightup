@@ -66,3 +66,13 @@ python3 tools/role_pack.py unpack RECEIVED-ROLE.zip /private/parent/NEW-REVIEWER
 `privacy-recipient` includes only original encrypted HUMAN courier and redacted-text recipient review. `privacy-editor` also includes the original HUMAN manual-redaction editor. `scope-reviewer` includes the original scope offline ZIP, original source/dist manifests and original byte-verifier, but not unrelated HUMAN courier or privacy editors. New outputs require a pre-existing operator-owned private parent (0700), and are created privately (0600) without replacing any file. Each package carries its own scriptless start page, an unsigned literal-false-authority receipt and a copy of its standalone recipient inspector. The recipient must authenticate the sender, intended recipient, approved access and any real consent separately; role filenames and hashes never supply those facts. Encrypt confidential packages before sharing; the included HUMAN courier does not automatically encrypt the new role ZIP.
 
 After separately authenticated receiver byte comparison, the optional standalone `role_pack.py unpack` safely publishes the complete selected role ZIP as a new private 0700 folder with 0600 original files. It refuses all existing destinations and uses Linux atomic RENAME_NOREPLACE (no fallback or writes to another worker). Original selected HTML files are **not executed automatically**; any intentional opening and separate consent remain up to the human reviewer.
+
+### Directly available role ZIPs (original source-only; no real client data)
+
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `60e2e3c821c9fc09713c613712e4c64515d9425bac9207e77ee02c91c956049a`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 54,522 bytes; SHA256 `c0ddbca2e5173db39531f3cbb1bff875ffd5011dfa4ce509dfe43f7da4b17c89`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 90,170 bytes; SHA256 `ac80727952904dfb0be17e3f4f805d69099b58edea0180bc41250a0fdda8003e`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 537,072 bytes; SHA256 `fec0b8153fbacb56e69d6d49445a0270b1e8b088928c4f4c21719963cc400354`.
+
+SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
