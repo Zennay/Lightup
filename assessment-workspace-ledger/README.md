@@ -79,6 +79,30 @@ Native Python independently re-admits the bounded original ledger and re-hashes 
 
 Limits: 1–12 kits, <=256 files per kit, <=64 MiB each kit, <=32 MiB per individual file, <=256 MiB combined, max depth 5, <=1 MiB ledger JSON, <=64 KiB HUMAN CSV. Existing owner-private input folders, owner-only 0700 output parent, 0700 exclusive generated folders and 0600 output files. No implicit scans, no original source modification and no overwrites.
 
+## Complete resuming, triage and offline HUMAN browser usability
+
+The actual software-only standalone.html and native browser_studio.py now
+support reopening a previously saved PRIVATE HUMAN-review.csv directly
+against the loaded original ledger's exact kit order and SHA-256 digests. A
+strict bounded CSV parser rejects malformed quoting, unexpected rows/columns,
+formulas, unrecognized HUMAN status, multiline values and changed original
+kit identities BEFORE applying any edits. A previously finalized original
+PRIVATE HUMAN-only.json can also be reopened into the editor only when its
+ledger_sha256 exactly matches the SHA-256 of the operator-selected current
+ledger.json file, all row ordinals/kit digests match and literal authority flags
+are all false. Imports are HUMAN proposals and do NOT revalidate the
+physical original source kit; native ledger.py finalize still reopens it.
+
+The browser separately admits genuine HUMAN-carry.json for old-to-new
+source continuity. It offers local search by kit label/ordinal/proposed owner/
+next question, a HUMAN stage filter, live stage totals and visible unsaved
+state. Changing source or applying a restored packet over unsaved work requires
+explicit discard confirmation. Leaving a page with unexported local edits
+prompts a browser warning. The original current ledger and exported HUMAN CSV
+are always separate and never sent anywhere. CSV exported from the browser
+still needs owner-only 0600 custody and a human native finalize;
+a download request is not evidence of persistence or independent approval.
+
 ## Native source-bound HUMAN continuity between private inventory snapshots
 
 The new [continuity.py](continuity.py) finishes the longitudinal HUMAN-only
