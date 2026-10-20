@@ -66,6 +66,7 @@ def prepare(session, path_prompt, ask, cohorts=False):
         session.parent = parent
         session.findings_csv = findings
         session.remediation_kit = folder
+        session.remediation_links = str(Path(folder) / (prefix + "-links.json"))
         if not cohorts:
             session.original_comparison = source_flags[1]
         print("Manual mapping does not prove the sources belong to the same client or engagement.")

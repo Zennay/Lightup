@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import human_console
 import remediation_console
+import remediation_team_console
 import os
 from pathlib import Path
 import subprocess
@@ -42,6 +43,8 @@ class Session:
     remediation_kit: str = ""
     original_comparison: str = ""
     findings_csv: str = ""
+    remediation_links: str = ""
+    team_kit: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -286,6 +289,7 @@ def last_packages(session: Session) -> None:
         ("Original PRIVATE workspace ledger", session.ledger_kit),
         ("Original PRIVATE credential-masked HUMAN notes", session.notes_kit),
         ("Original canonical lab-to-client HUMAN follow-up", session.remediation_kit),
+        ("Original source-bound PRIVATE team collaboration", session.team_kit),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -310,6 +314,9 @@ def main() -> int:
         "15": lambda x: human_console.notes_finalize(x, path_prompt, ask),
         "16": lambda x: remediation_console.prepare(x, path_prompt, ask),
         "17": lambda x: remediation_console.prepare(x, path_prompt, ask, cohorts=True),
+        "18": lambda x: remediation_team_console.prepare(x, path_prompt, ask),
+        "19": lambda x: remediation_team_console.receive(x, path_prompt, ask),
+        "20": lambda x: remediation_team_console.reconcile(x, path_prompt, ask),
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
@@ -329,6 +336,9 @@ def main() -> int:
         print("15. Finalize source-bound PRIVATE HUMAN note decisions")
         print("16. Map original completed benchmark + authenticated client findings into HUMAN follow-up")
         print("17. Generate canonical original cohort comparison and private HUMAN client finding follow-up")
+        print("18. Prepare bounded PRIVATE HUMAN team review handoff")
+        print("19. Admit a returned PRIVATE HUMAN annotation against original team scope")
+        print("20. Reconcile two to twelve non-overlapping PRIVATE HUMAN team returns")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -336,7 +346,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 17.")
+                print("Choose a number from 0 to 20.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
