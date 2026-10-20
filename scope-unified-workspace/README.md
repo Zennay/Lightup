@@ -35,6 +35,10 @@ python3 scope-unified-workspace/build.py
 
 This deterministic Python-stdlib build generates `index.html`, `SOURCE-MANIFEST.json` and `LightUp-Scope-Offline-DRAFT-HOLD.zip`. The manifest lists file sizes, SHA-256 digests and original parent commits for **transport comparison only**. It is **unsigned**, not an independent proof of original authorship, authorized source, tenant identity, runtime behavior or security correctness. The ZIP has fixed metadata and is assembled atomically. It contains no data provided by an operator, browser session, account, customer or database.
 
+## Browser-only package digest (no Python required)
+
+Open **scope-unified-workspace/verify.html** locally, select the received ZIP, and optionally paste its expected SHA-256 from a **separately authenticated, independent source**. The browser calculates SHA-256 with Web Crypto in memory, never uploads any bytes, and never saves data. A digest match is **REVIEW_ONLY**, not the original source, consent or authorization proof. For an actual per-file inventory check use the separate offline Python checker below. The browser falls back to a HOLD notice when Web Crypto is unavailable.
+
 ## Inspect a received package without extracting it
 
 On a trusted local machine with Python 3, the independent non-authorizing read-only tool checks the complete ZIP or a **freshly extracted** bundle against its unsigned inventory and exact pinned source-head declarations:

@@ -23,7 +23,7 @@ SOURCES = (
     ("scope-casebook-transfer", "f40b0d2cf626e49bbd8f764968df132ba9d4365a", True),
     ("scope-casebook-reconcile", "7de3f5a5549c738eeb90f81c687c9a7d9c7cab3a", True),
 )
-HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py")
+HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py", "verify-local.js", "verify.template.html")
 ARCHIVE = HUB / "LightUp-Scope-Offline-DRAFT-HOLD.zip"
 MAX_FILE = 8 * 1024 * 1024
 MAX_ALL = 30 * 1024 * 1024
@@ -52,6 +52,19 @@ def package():
     )
     result = html.encode("utf-8")
     (HUB / "index.html").write_bytes(result)
+    verifier_js = raw(HUB / "verify-local.js")
+    verifier_template = raw(HUB / "verify.template.html").decode("utf-8", "strict")
+    if any(verifier_template.count(marker) != 1 for marker in (
+        "CSP_STYLE_HASH", "CSP_SCRIPT_HASH", "<!-- EMBED_STYLE -->", "<!-- EMBED_SCRIPT -->"
+    )):
+        raise ValueError("Ambiguous browser verifier source template")
+    script_digest = base64.b64encode(hashlib.sha256(verifier_js).digest()).decode("ascii")
+    verifier_html = (verifier_template
+        .replace("CSP_STYLE_HASH", style_digest)
+        .replace("CSP_SCRIPT_HASH", script_digest)
+        .replace("<!-- EMBED_STYLE -->", "<style>" + css.decode("utf-8", "strict") + "</style>")
+        .replace("<!-- EMBED_SCRIPT -->", "<script>" + verifier_js.decode("utf-8", "strict") + "</script>"))
+    (HUB / "verify.html").write_bytes(verifier_html.encode("utf-8"))
 
     candidates = []
     for dirname, _, standalone in SOURCES:
@@ -68,6 +81,7 @@ def package():
     for name in HUB_INPUTS:
         candidates.append(HUB / name)
     candidates.append(HUB / "index.html")
+    candidates.append(HUB / "verify.html")
 
     files = {}
     for path in candidates:

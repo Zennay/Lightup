@@ -185,33 +185,48 @@
     },
     {
       "path": "scope-unified-workspace/README.md",
-      "sha256": "d837cc8303c6d3c1b0fce1f22d77b06b75e399df13366671c430301b820c326c",
-      "size": 6000
+      "sha256": "7173afb3c2c75e1ceaf9c9ccf789cdec035303e5ab54d1f8a2d574c48a6928f3",
+      "size": 6587
     },
     {
       "path": "scope-unified-workspace/build.py",
-      "sha256": "dd8304eddaecbbfcaf910a00ea7e188bf1894a8d938cb5c683961c934f4da4f4",
-      "size": 5098
+      "sha256": "fcf65e7a5359fc7dd0fe607769a1a0cbaa8007ec679093079cd5986cba6cdc4a",
+      "size": 6056
     },
     {
       "path": "scope-unified-workspace/check_bundle.py",
-      "sha256": "71b16e33cee3e5bf2e6cd7d295a737f19eee2c3836c4c5357dc73de930110493",
-      "size": 9174
+      "sha256": "f886dd0782c687741ebfb4bf1f10dd23657c709252f47823b80c66039bd88f56",
+      "size": 9217
     },
     {
       "path": "scope-unified-workspace/hub.template.html",
-      "sha256": "acfdb3b31e7f445e47a540f0657fec27ded8c0300fc12f17dc91e96f8e1644b2",
-      "size": 6999
+      "sha256": "c5ceb262c664bc31ae11002571b3b1670e7999d193a5406935758c647cfd4e58",
+      "size": 7138
     },
     {
       "path": "scope-unified-workspace/index.html",
-      "sha256": "c070a5d95d074158b6ea5586277b8c2592922cf65c2d36570a372225230fc339",
-      "size": 11963
+      "sha256": "ec1cb8e7208e09a6ccc9ea553c3438000d5970558a4a62f8c5726c0c5fd50745",
+      "size": 13600
     },
     {
       "path": "scope-unified-workspace/style.css",
-      "sha256": "cb233153b0a4d131511ea24a88a61a096ef1626d5f39309c182a6b032e89bcf4",
-      "size": 4939
+      "sha256": "6a2decd43f69d87e5a54299f58b411625f1472c5e215de9eac884bb11d3f3f65",
+      "size": 6437
+    },
+    {
+      "path": "scope-unified-workspace/verify-local.js",
+      "sha256": "8d9e857a807c3a29685002030b06bd3d270b78d6d27b5e77cd7e8d18d7e4dd10",
+      "size": 2508
+    },
+    {
+      "path": "scope-unified-workspace/verify.html",
+      "sha256": "0d9c7db562dea3e0c02dd809e299c4da5c46028513cc8ee0e5e35592135713b7",
+      "size": 13004
+    },
+    {
+      "path": "scope-unified-workspace/verify.template.html",
+      "sha256": "3f8707ac434f078569ac33cbacc47699f964a9a173e05765017b6ad39c6cb81f",
+      "size": 4009
     }
   ],
   "format": "lightup.scope_offline_bundle.v1",
