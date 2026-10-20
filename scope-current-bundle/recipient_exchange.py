@@ -20,7 +20,7 @@ import secrets
 import sys
 
 from change_brief import AUTHORITY, no_duplicates, require_fresh_private_directory, source, write_private
-from human_followup import FIELDS, STAGES, human_text, worksheet
+from human_followup import FIELDS, STAGES, human_text, worksheet_bytes
 from review_history import admit_human
 from recipient_browser import render_recipient
 from owner_decision import original_owner_desk
@@ -84,7 +84,7 @@ def read_originals(argv: list[str]):
     new, new_heads, new_hash = source(Path(argv[1]))
     original_path = Path(argv[2])
     original_bytes = bytes_regular(original_path, 400_000)
-    original_rows = admit_human(old, new, old_hash, new_hash, worksheet(original_path))
+    original_rows = admit_human(old, new, old_hash, new_hash, worksheet_bytes(original_bytes))
     return old_hash, new_hash, checksum(original_bytes), original_rows
 
 
