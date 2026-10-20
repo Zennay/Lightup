@@ -307,7 +307,7 @@
     // JSON.stringify roundtrip rejects duplicate-key JSON, alternative/ambiguous encodings and noncanonical input.
     if (JSON.stringify(obj) !== raw.trim()) throw new Error("Niet-canonieke of mogelijk ambigue JSON.");
     if (!keysAre(obj, ["kind","version","authority","rows"]) ||
-        obj.kind !== "lightup.private.assessment.retention.plan" || obj.version !== 1 ||
+        obj.kind !== "lightup.private.assessment.retention.plan" || ![1,2].includes(obj.version) ||
         !keysAre(obj.authority, Object.keys(AUTHORITY)) ||
         Object.keys(AUTHORITY).some(key => obj.authority[key] !== false) ||
         !Array.isArray(obj.rows) || !obj.rows.length || obj.rows.length > MAX_FILES) {
@@ -315,15 +315,22 @@
     }
     const proposed = new Map();
     for (const row of obj.rows) {
-      if (!keysAre(row, ["sha256","bytes","alias","status","review_date","action"]) ||
+      if (!keysAre(row, obj.version === 2 ? V2_COLUMNS : ["sha256","bytes","alias","status","review_date","action"]) ||
           !/^[a-f0-9]{64}$/.test(row.sha256) || !Number.isSafeInteger(row.bytes) ||
           row.bytes < 1 || row.bytes > MAX_FILE_BYTES || !safeHuman(row.alias, 80) ||
           !Object.hasOwn(STATES, row.status) || !validDate(row.review_date) ||
           !safeHuman(row.action, 400) ||
-          (row.status === "propose_delete" && !row.action.trim()) || proposed.has(row.sha256)) {
+          (row.status === "propose_delete" && !row.action.trim()) ||
+          (obj.version === 2 && (!safeHuman(row.custodian,80) ||
+            !Object.hasOwn(CLASSIFICATIONS,row.classification) ||
+            !Object.hasOwn(HOLD_FLAGS,row.hold_flag) ||
+            (row.status === "propose_delete" && !removalProposalReady(row)))) ||
+          proposed.has(row.sha256)) {
         throw new Error("Onbekende, herhaalde of ambigue oorspronkelijke bron/HUMAN-rij.");
       }
-      proposed.set(row.sha256, row);
+      // Older v1 has no custody assertions. Missing fields are UNKNOWN, not cleared.
+      proposed.set(row.sha256, obj.version===1 ?
+        {...row,custodian:"",classification:"unknown",hold_flag:"unknown"} : row);
     }
     if (requireExactMembership && (proposed.size !== entries.length ||
         entries.some(e => !proposed.has(e.sha256) || proposed.get(e.sha256).bytes !== e.bytes))) {
