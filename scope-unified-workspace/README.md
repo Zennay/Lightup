@@ -53,6 +53,8 @@ The original standalone products' file contracts remain independent; the hub is 
 
 Open `scope-unified-workspace/handoff.html` on a trusted offline browser. Import up to 16 local files (max 8 MiB/file, 32 MiB total), calculate SHA-256 in memory, choose a destination workroom and optionally download the unchanged original bytes. Filename-based route suggestions are never source or consent verification. The destination app receives no automatic transfer: the HUMAN operator must explicitly select the original file again in that app. No network, cookies or persistent browser storage.
 
+Any collision of normalized (NFC/case-insensitive) original filenames now HOLDs the **whole** incoming batch, even when different bytes claim the same name; manually remove a prior version before introducing its replacement, so a case never silently switches between source revisions.
+
 Two separately confirmed exports are available: an anonymous route-counts JSON without source identifiers; and a PRIVATE original filename+size+unsigned-digest handoff containing potentially sensitive filenames, to be transferred only to authenticated recipients. Browser memory wiping is not guaranteed. No grants, dispatch or revocation are performed.
 
 ## Browser-only package digest (no Python required)

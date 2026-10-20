@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kkN2UFDTwx7VRX/7RTLml3HcboDhfSErMuTtKf09+8I='; script-src 'sha256-FEp92bgRcBi4S9m4sW/YdzyN83L0god8R/6/gznEvTo=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kkN2UFDTwx7VRX/7RTLml3HcboDhfSErMuTtKf09+8I='; script-src 'sha256-8KUAr7ST+5+LkHLPQO2EsVwQA2MaS8A1t1v7WrAsAXQ=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -211,8 +211,12 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
     try {
       const proposed = [];
       const existing = new Set(items.map((e) => e.hash));
+      const names = new Set(items.map((e) => e.file.name.normalize("NFC").toLowerCase()));
       for (const file of chosen) {
         if (epoch !== generation) throw new Error("cancelled");
+        const key = file.name.normalize("NFC").toLowerCase();
+        if (names.has(key)) throw new Error("name-conflict");
+        names.add(key);
         const hash = await SHA(await file.arrayBuffer());
         if (existing.has(hash)) throw new Error("duplicate");
         existing.add(hash);
@@ -222,8 +226,10 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
       items.push(...proposed);  // atomic admission
       render();
       report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Bestandsnaamhints zijn géén bronvalidatie.");
-    } catch (_) {
-      report("HOLD — import onvolledig of identieke inhoud al aanwezig. Hele nieuwe batch geweigerd; vorige werkset behouden.");
+    } catch (error) {
+      report(error && error.message === "name-conflict"
+        ? "HOLD — dubbele of tegenstrijdige oorspronkelijke bestandsnaam. Bestaande bron blijft intact; verwijder bewust eerst een oude versie en selecteer opnieuw."
+        : "HOLD — import onvolledig, geannuleerd of identieke bytes al aanwezig. Hele nieuwe batch geweigerd; vorige werkset behouden.");
     } finally {
       busy = false;
       input.disabled = false;

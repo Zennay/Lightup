@@ -144,8 +144,12 @@
     try {
       const proposed = [];
       const existing = new Set(items.map((e) => e.hash));
+      const names = new Set(items.map((e) => e.file.name.normalize("NFC").toLowerCase()));
       for (const file of chosen) {
         if (epoch !== generation) throw new Error("cancelled");
+        const key = file.name.normalize("NFC").toLowerCase();
+        if (names.has(key)) throw new Error("name-conflict");
+        names.add(key);
         const hash = await SHA(await file.arrayBuffer());
         if (existing.has(hash)) throw new Error("duplicate");
         existing.add(hash);
@@ -155,8 +159,10 @@
       items.push(...proposed);  // atomic admission
       render();
       report("REVIEW_ONLY — nieuwe PRIVATE bestanden en SHA-256 lokaal geladen. Bestandsnaamhints zijn géén bronvalidatie.");
-    } catch (_) {
-      report("HOLD — import onvolledig of identieke inhoud al aanwezig. Hele nieuwe batch geweigerd; vorige werkset behouden.");
+    } catch (error) {
+      report(error && error.message === "name-conflict"
+        ? "HOLD — dubbele of tegenstrijdige oorspronkelijke bestandsnaam. Bestaande bron blijft intact; verwijder bewust eerst een oude versie en selecteer opnieuw."
+        : "HOLD — import onvolledig, geannuleerd of identieke bytes al aanwezig. Hele nieuwe batch geweigerd; vorige werkset behouden.");
     } finally {
       busy = false;
       input.disabled = false;
