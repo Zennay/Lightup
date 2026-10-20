@@ -15,6 +15,7 @@ from offline_signatures import Hold
 from inbox import inbox
 from inbox_reopen import inspect
 from software_revision_desk import build as build_revision_desk
+from revocation_impact import impact as build_revocation_impact
 from trust_registry import _owner_private, init, listing, register, require_two, revoke
 
 
@@ -83,10 +84,11 @@ def main() -> int:
             "\n6  Permanently revoke local trust for one signer"
             "\n7  Irreversibly require two distinct locally trusted signers"
             "\n8  Compare 2–12 original separately received PRIVATE software inboxes"
+            "\n9  Show LOCAL revoked-key impact across earlier PRIVATE software inboxes"
             "\n0  End foreground session"
         )
         try:
-            choice = _read("Choose 0–8: ")
+            choice = _read("Choose 0–9: ")
             if choice == "0":
                 print("REVIEW_ONLY desk ended; existing local private files remain.")
                 return 2
@@ -134,8 +136,16 @@ def main() -> int:
                     destination,
                     _confirm("Explicitly require two separately trusted signing keys?"),
                 )
+            elif choice == "9":
+                affected: list[Path] = []
+                for number in range(1, 13):
+                    affected.append(_path(f"Original PRIVATE inbox #{number} for local key impact: "))
+                    if number == 12 or not _confirm("Add another earlier private inbox?"):
+                        break
+                dest = args.workdir / ("private-key-impact-" + secrets.token_hex(6))
+                build_revocation_impact(registry, affected, dest)
             else:
-                print("Unknown choice; enter 0–8.")
+                print("Unknown choice; enter 0–9.")
         except (ValueError, OSError) as exc:
             print("HOLD:", exc, file=sys.stderr)
             print("Only this foreground operation was refused; no authority was granted.")
