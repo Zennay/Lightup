@@ -7,10 +7,19 @@
 1. Open \`index.html\` locally from this folder in a current browser on a trusted device. Keep \`desk.js\` and \`desk.css\` alongside it. No web server, backend, extensions or dependencies.
 2. Select between 1 and 12 *already-produced* private assessment artifacts, each 1 byte–8 MiB, maximum 64 MiB total. Source bytes are hashed with browser WebCrypto SHA-256 and are **never put into the export**. No file content or filename is rendered by this tool; the file chooser itself naturally knows the selected filenames.
 3. Give each sha-bound source an operator-selected alias, HUMAN-only proposal (review / retain / quarantine / propose delete), tentative review date and HUMAN action. Filter, adjust, remove in-memory rows.
-4. Export a canonical, **unsigned PRIVATE** \`lightup-private-assessment-retention.json\` for subsequent human work. Includes SHA-256 digest and byte length of each original source plus HUMAN metadata and six literal false authority flags. It is sensitive even without source bytes.
-5. Select the exact same original source files again; open the previous plan. The browser rejects the whole import on any changed/missing/extra/duplicated original SHA/size, malformed field or authority assertion. No status, date, action or alias carries unless the complete source set matches **and** the human confirms.
-6. Separately export conservative HUMAN proposal totals as CSV or print a PRIVATE tentative overview on a trusted device. Small groups may still be identifiable, so the counts file is not certified anonymous.
-7. For a source-bound *multi-plan history*, run the separate standalone \`history.py\` CLI with two to twelve existing private plans, in the user's intentionally ordered sequence; it creates a no-network, scriptless PRIVATE HUMAN change report. No source contents, active target work, proof of historical timestamps or deletion.
+4. For many sources, use the **filtered HUMAN bulk planner** to select a tentative stage, optional review date and human action for visible rows; the browser previews scope and requires explicit confirmation. One-step undo is available only while the same rows remain unchanged. Proposals to delete require a written HUMAN follow-up reason and still never trigger deletion.
+5. Export a canonical, **unsigned PRIVATE** \`lightup-private-assessment-retention.json\` for subsequent human work. Includes SHA-256 digest and byte length of each original source plus HUMAN metadata and six literal false authority flags. It is sensitive even without source bytes.
+6. Select the exact same original source files again; open the previous plan. The browser rejects the whole import on any changed/missing/extra/duplicated original SHA/size, malformed field or authority assertion. No status, date, action or alias carries unless the complete source set matches **and** the human confirms.
+7. Use **Compare other private plan** to see added/absent original bytes and changed HUMAN suggestions without carrying any earlier choices. An absent source is NOT proof it was deleted, remediated or revoked. Separately export conservative HUMAN proposal totals as CSV or print a PRIVATE tentative overview on a trusted device. Small groups may still be identifiable, so the counts file is not certified anonymous.
+8. For a source-bound *multi-plan history*, run the separate standalone \`history.py\` CLI with two to twelve existing private plans, in the user's intentionally ordered sequence; it creates a no-network, scriptless PRIVATE HUMAN change report. No source contents, active target work, proof of historical timestamps or deletion.
+
+9. For *changed* source sets, produce a separate non-authorizing read-only PRIVATE delta:
+
+```sh
+python3 assessment-retention-desk/drift.py --output /private/operator/source-diff.html /private/operator/plan-01.json /private/operator/plan-02.json
+```
+
+This native comparison shows added/absent byte identities and changes to HUMAN-only metadata for unchanged original bytes. It never auto-carries a status or interprets absence as resolved.
 
 ## Boundaries and tradeoffs
 
