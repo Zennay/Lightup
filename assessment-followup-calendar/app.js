@@ -604,7 +604,7 @@
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
-    $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
@@ -662,6 +662,81 @@
     download(lines.map(fold).join("\r\n")+"\r\n","lightup-private-human-followups.ics","text/calendar;charset=utf-8");
     inform("PRIVATE local tentative events downloaded. Nothing sent or scheduled by LightUp.");
   }
+  const htmlEsc=value=>String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  function exportWeeklyBrief(){
+    hold(active);
+    const inputDate=$("briefDate").value;
+    const anchorDate=eventDate(inputDate,"12:00");
+    const monday=new Date(anchorDate.getTime());
+    monday.setHours(0,0,0,0);
+    monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+    const sundayEnd=new Date(monday.getTime());
+    sundayEnd.setDate(monday.getDate()+7);
+    const dateLabel=date=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),
+      String(date.getDate()).padStart(2,"0")].join("-");
+    const onlyFocused=$("briefScope").value==="focused";
+    hold(!onlyFocused||selectedGroup!==null);
+    const selected=items.filter(row=>!onlyFocused||row.group===selectedGroup);
+    const events=selected.filter(row=>{
+      const slot=plan.get(row.ordinal);
+      if(!slot)return false;
+      const when=eventDate(slot.day,slot.time);
+      return when>=monday&&when<sundayEnd;
+    }).sort((a,b)=>{
+      const aSlot=plan.get(a.ordinal),bSlot=plan.get(b.ordinal);
+      return (aSlot.day+"T"+aSlot.time).localeCompare(bSlot.day+"T"+bSlot.time)||a.ordinal-b.ordinal;
+    });
+    const includeNotes=$("briefNotes").checked;
+    const notScheduled=selected.filter(row=>!plan.has(row.ordinal)).length;
+    const blocked=selected.filter(row=>row.stage==="blocked").length;
+    const earlier=selected.filter(row=>{
+      const p=plan.get(row.ordinal);
+      return p&&eventDate(p.day,p.time)<monday;
+    }).length;
+    if(!confirm("Download PRIVATE HUMAN weekly coordinator briefing for "+dateLabel(monday)+" – "+
+      dateLabel(new Date(sundayEnd.getTime()-1))+"? "+events.length+" proposed appointments, "+
+      notScheduled+" unscheduled, "+blocked+" HUMAN-blocked. "+
+      (includeNotes?"Your HUMAN action/blocker notes WILL appear (they may include sensitive targets/client data). ":
+        "HUMAN action and blocker text WILL NOT appear. ")+
+      "Use only a trusted PRIVATE printer/device. No assessed target or grant is authenticated."))return;
+    const status=[["Total HUMAN ordinals in selected workroom",selected.length],
+      ["Proposed reminders during this week",events.length],
+      ["No HUMAN appointment date",notScheduled],
+      ["HUMAN stage marked blocked",blocked],
+      ["Proposed appointments before this week",earlier]];
+    const rows=events.map(row=>{
+      const p=plan.get(row.ordinal);
+      const main=["#"+row.ordinal,p.day+" "+p.time,p.duration+" min",
+        row.severity,row.stage||"(unset)",row.group||"(unassigned)",
+        includeNotes?row.action||"—":"(not included)",
+        includeNotes?row.blocker||"—":"(not included)"];
+      return "<tr>"+main.map(x=>"<td>"+htmlEsc(x)+"</td>").join("")+"</tr>";
+    }).join("\n");
+    const label=onlyFocused?(selectedGroup||"(unassigned)"):"all HUMAN groups";
+    const doc=[
+      "<!doctype html>","<html lang=\"en\"><head><meta charset=\"utf-8\">",
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'none'; style-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'\">",
+      "<title>LightUp PRIVATE HUMAN weekly briefing</title></head><body>",
+      "<header><h1>PRIVATE HUMAN follow-up briefing</h1>",
+      "<p>REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD · HUMAN proposals, NOT authorization or verified security findings.</p>",
+      "<p>Original source, client/operator authentication, consent, risk and work completion are NOT proven by this file.</p></header>",
+      "<h2>Local week and disclosure</h2><p>"+htmlEsc(dateLabel(monday))+" to "+
+        htmlEsc(dateLabel(new Date(sundayEnd.getTime()-1)))+" · "+htmlEsc(zone)+
+        " · selected "+htmlEsc(label)+" · HUMAN note detail "+(includeNotes?"INCLUDED":"OMITTED")+"</p>",
+      "<h2>PRIVATE schedule overview (self-reported)</h2><ul>",
+      ...status.map(([label,count])=>"<li>"+htmlEsc(label)+": "+count+"</li>"),"</ul>",
+      "<h2>Proposed HUMAN reminders</h2><table border=\"1\" cellpadding=\"4\">",
+      "<thead><tr><th>Original ordinal</th><th>Local date and time</th><th>Duration</th><th>Source-reported severity</th><th>HUMAN stage</th><th>HUMAN group</th><th>HUMAN next action</th><th>HUMAN blocker</th></tr></thead>",
+      "<tbody>"+rows+"</tbody></table>",
+      "<footer><p>PRIVATE offline print-only worksheet. No source target identifiers imported by LightUp; original HUMAN text may itself contain confidential details. No automatic sharing, network call or calendar import. Small counts may be sensitive.</p></footer>",
+      "</body></html>"
+    ].join("\n");
+    hold(new TextEncoder().encode(doc).length<=2*MAX_BYTES);
+    download(doc,"lightup-private-human-weekly-brief.html","text/html;charset=utf-8");
+    inform("PRIVATE scriptless weekly HUMAN coordinator briefing downloaded. Nothing transmitted by LightUp.");
+  }
   function countsExport(){
     const stageCounts={blank:0,needs_review:0,discussing:0,blocked:0,documented:0};
     const sevCounts={critical:0,high:0,medium:0,low:0,info:0};
@@ -716,7 +791,7 @@
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
@@ -790,6 +865,8 @@
   }
   hook("suggest","click",()=>{try{suggestDates();}catch(err){inform(err.message,true);}});
   $("suggestDate").value=nowToday();
+  $("briefDate").value=nowToday();
+  hook("exportBrief","click",()=>{try{exportWeeklyBrief();}catch(_){inform("PRIVATE weekly HUMAN briefing not admitted (HOLD).",true);}});
   hook("bulkApply","click",()=>bulk(false));hook("bulkClear","click",()=>bulk(true));
   hook("savePlan","click",()=>{try{hold(active);planExport();}catch(err){inform(err.message,true);}});
   hook("calendar","click",()=>{try{calendarExport();}catch(err){inform(err.message,true);}});
