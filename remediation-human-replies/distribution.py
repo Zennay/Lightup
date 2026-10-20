@@ -115,7 +115,22 @@ def source_files() -> dict[str, bytes]:
         require(stat.S_ISREG(stat_info.st_mode) and stat_info.st_nlink == 1
                 and 0 < stat_info.st_size <= MAX_PER_FILE,
                 "HUMAN recipient software source must be bounded regular original file")
-        originals[name] = p.read_bytes()
+        fd = os.open(p, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            before = os.fstat(fd)
+            require(before.st_dev == stat_info.st_dev and
+                    before.st_ino == stat_info.st_ino and
+                    before.st_size == stat_info.st_size,
+                    "Trusted HUMAN software source changed before read")
+            raw = os.read(fd, MAX_PER_FILE + 1)
+            after = os.fstat(fd)
+            require(len(raw) == before.st_size and
+                    after.st_size == before.st_size and
+                    after.st_mtime_ns == before.st_mtime_ns,
+                    "Trusted HUMAN software source changed during read")
+            originals[name] = raw
+        finally:
+            os.close(fd)
     return originals
 
 def zipped(files: dict[str, bytes]) -> bytes:
@@ -274,7 +289,7 @@ def inspect_staging(folder: Path) -> None:
             "Original trusted scheduler build drifted")
     data = admit_archives(source_manifest, source_zip,
                           install.read_owner_file(folder / "bundle-manifest.json"),
-                          install.read_owner_file(folder / PORTABLE))
+                          parent_receiver.read_private(folder / PORTABLE, MAX_ZIP))
     software = folder / "software"
     existing = set()
     for path in software.rglob("*"):
@@ -302,10 +317,12 @@ def receive(archive: Path, manifest: Path, parent_archive: Path,
         require(inp != destination and destination not in inp.parents
                 and inp not in destination.parents and inp.parent != destination,
                 "PRIVATE software inputs may not overlap output")
-    data = admit_archives(private_input(parent_manifest, 350_000),
-                          private_input(parent_archive, parent_receiver.MAX_ARCHIVE),
-                          private_input(manifest, 350_000),
-                          private_input(archive, MAX_ZIP))
+    held_original_manifest = private_input(parent_manifest, 350_000)
+    held_original_zip = private_input(parent_archive, parent_receiver.MAX_ARCHIVE)
+    held_manifest = private_input(manifest, 350_000)
+    held_archive = private_input(archive, MAX_ZIP)
+    data = admit_archives(held_original_manifest, held_original_zip,
+                          held_manifest, held_archive)
     stage = destination.parent / (".lightup-human-reply-receive-" + secrets.token_hex(12))
     os.mkdir(stage, 0o700)
     try:
@@ -313,6 +330,11 @@ def receive(archive: Path, manifest: Path, parent_archive: Path,
             target = stage / name
             target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             install.write_file(target, raw)
+        require(private_input(parent_manifest, 350_000) == held_original_manifest
+                and private_input(parent_archive, parent_receiver.MAX_ARCHIVE) == held_original_zip
+                and private_input(manifest, 350_000) == held_manifest
+                and private_input(archive, MAX_ZIP) == held_archive,
+                "PRIVATE original software or receipt changed during reception")
         require(not destination.exists(), "PRIVATE recipient folder appeared before publication")
         release_root(destination, stage)
     finally:
