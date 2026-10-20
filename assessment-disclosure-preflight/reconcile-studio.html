@@ -69,6 +69,7 @@
 <div class="actions">
 <button id="seal" type="button" disabled>Seal PRIVATE selected HUMAN result (.luhb)</button>
 <button id="counts" type="button" class="secondary" disabled>Export suppressed counts only</button>
+<button id="cover" type="button" class="secondary" disabled>Export PRIVATE no-notes HUMAN handoff cover (.html)</button>
 </div>
 <p id="sealStatus" role="status" aria-live="polite">No HUMAN result sealed. Neither encryption nor SHA-256 authenticates the reviewers, verifies source evidence, authorizes a disclosure or confers release.</p>
 <p class="hint">The encrypted file uses the original LightUp AES-256-GCM/PBKDF2 implementation and can be opened locally with the existing HUMAN studio or native <code>human_review.py render --bundle</code>. It contains the unsigned receipt and selected HUMAN stage/question/next-action text, not the A/B justification; retain the separately exported exact decision CSV. The source-free counts download suppresses small cohorts/groups and is not automatically anonymous. Browser download files may initially have default filesystem permissions. No automatic recipient dispatch, scan, grant, deployment or network access.</p>
