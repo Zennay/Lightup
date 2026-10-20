@@ -14,6 +14,7 @@ from pathlib import Path
 import sys
 
 import reply
+import install
 
 KIND = "lightup.private_selected_human_followup_register.v1"
 WARNING = (
@@ -69,7 +70,7 @@ def source_bound_differences(matrix_file: Path, original: dict, key: str) -> tup
     require(100 <= len(raw) <= 3_000_000,
             "PRIVATE earlier HUMAN comparison outside bounded size")
     try:
-        doc = json.loads(raw.decode("utf-8"), object_pairs_hook=reply.install.pairs,
+        doc = json.loads(raw.decode("utf-8"), object_pairs_hook=install.pairs,
                          parse_constant=lambda x: (_ for _ in ()).throw(
                              ValueError("Nonfinite PRIVATE HUMAN matrix field")))
     except (ValueError, UnicodeError, RecursionError) as exc:
@@ -130,7 +131,6 @@ def grouped(original: dict, rows: list[dict], key: str,
         selected.append({
             "ordinal": ordinal,
             "source_redacted_reason": base["reason"],
-            "source_redacted_original_sha256": key,
             "human_followup_category": kind,
             "human_category_warning": heading,
             "original_human_requested_action": base["next_action"],
