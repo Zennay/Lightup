@@ -27,6 +27,7 @@ let opened=null,working=false;
 window.LightUpCasebookReceiptClear=()=>{
  opened=null;$("receipt-view").replaceChildren();
  window.LightUpCasebookRevisionClear?.();
+ window.LightUpCasebookTimelineClear?.();
  status("PRIVATE lokaal ontvangen memo uit weergave verwijderd.");
 };
 function status(message,error=false){
@@ -206,7 +207,8 @@ $("receipt-open").addEventListener("click",async()=>{
   if(!$("ack").checked)fail("PRIVATE HUMAN-only erkenning vereist.");
   const candidate=await decodeMemo($("receipt-file").files[0],$("receipt-open-pass").value);
   if(opened&&!window.confirm("Vorige gelezen PRIVATE memo vervangen?"))return;
-  opened=candidate;window.LightUpCasebookRevisionClear?.();render(opened);
+  opened=candidate;window.LightUpCasebookRevisionClear?.();
+  window.LightUpCasebookTimelineClear?.();render(opened);
   status("PRIVATE HUMAN-memo lokaal heropend, intern consistent maar zonder echte oorspronkelijke producent-, consent- of grant-verificatie.");
  }catch(e){status(e instanceof Error?e.message:"Ongeldig memo.",true);}
  finally{$("receipt-open-pass").value="";$("receipt-file").value="";setWorking(false);}

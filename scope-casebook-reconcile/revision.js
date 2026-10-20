@@ -121,6 +121,7 @@ $("revision-export").addEventListener("click",()=>{
   status("Bronvrije HUMAN-revisietelling lokaal aangeboden; geen bron of toestemming geverifieerd.");
  }catch(e){status(e instanceof Error?e.message:"Revisietelling geweigerd.",true);}
 });
+window.LightUpCasebookRevisionLibrary=Object.freeze({compare});
 window.LightUpCasebookRevisionClear=()=>{
  summary=null;$("revision-view").replaceChildren();
  $("revision-export").disabled=true;
