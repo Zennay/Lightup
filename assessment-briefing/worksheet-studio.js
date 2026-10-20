@@ -215,15 +215,15 @@
     const stage=$("bulkStage").value, group=$("bulkGroup").value;
     const selected=visibleRows();
     if (!selected.length) {message("No filtered rows to update.",true);return;}
-    if (stage==="unchanged"&&group==="unchanged") {message("Select a HUMAN change first.",true);return;}
-    if (group!=="unchanged"&&(group.length>120||control.test(group)||!safeHuman(group))) {
+    if (stage==="unchanged"&&group==="") {message("Select a HUMAN change first.",true);return;}
+    if (group!==""&&group!=="__CLEAR__"&&(group.length>120||control.test(group)||!safeHuman(group))) {
       message("Unsafe HUMAN group name (HOLD).",true);return;
     }
     if (!confirm("Apply HUMAN-only proposals to "+selected.length+" visible rows? Original source, evidence and permissions remain untouched."))return;
     const snapshot=selected.map(r=>({ordinal:r.ordinal,stage:r.stage,group:r.group}));
     selected.forEach(r=>{
       if (stage!=="unchanged")r.stage=stage;
-      if (group!=="unchanged")r.group=group;
+      if (group!=="")r.group=group==="__CLEAR__"?"":group;
     });
     lastBulk=snapshot;dirty=true;page=0;render();
     message("Batch HUMAN change applied locally to "+selected.length+" filtered original ordinals. Single-step Undo available.");
