@@ -26,6 +26,14 @@ STAGES = {
     "quarantine": "Afzonderen (voorstel)",
     "propose_delete": "Verwijdering voorstellen, nooit automatisch",
 }
+CLASSIFICATIONS = {"unknown":"Onbekend HUMAN", "internal":"Intern HUMAN",
+                   "confidential":"Vertrouwelijk HUMAN", "restricted":"Beperkt gevoelig HUMAN"}
+HOLD_FLAGS = {"unknown":"Niet beoordeeld HUMAN",
+              "human_claim_active":"HUMAN meldt actieve bewaarbeperking",
+              "human_declared_clear":"HUMAN meldt geen bekende beperking (NIET onafhankelijk geverifieerd)"}
+HUMAN_FIELDS = ("alias","status","review_date","action","custodian","classification","hold_flag")
+V2_FIELDS = ("sha256","bytes","alias","status","review_date","action",
+             "custodian","classification","hold_flag")
 AUTHORITY = {
     "authorizes_scan": False,
     "authorizes_delete": False,
@@ -109,7 +117,7 @@ def parse_receipt_bytes(raw):
     if (
         not exact_dict(document, ("kind", "version", "authority", "rows"))
         or document["kind"] != "lightup.private.assessment.retention.plan"
-        or type(document["version"]) is not int or document["version"] != 1
+        or type(document["version"]) is not int or document["version"] not in (1, 2)
         or not exact_dict(document["authority"], AUTHORITY)
         or any(document["authority"][field] is not False for field in AUTHORITY)
     ):
@@ -120,7 +128,8 @@ def parse_receipt_bytes(raw):
     result = {}
     for item in rows:
         if (
-            not exact_dict(item, ("sha256", "bytes", "alias", "status", "review_date", "action"))
+            not exact_dict(item, V2_FIELDS if document["version"] == 2
+                           else ("sha256", "bytes", "alias", "status", "review_date", "action"))
             or type(item["sha256"]) is not str or not SHA.fullmatch(item["sha256"])
             or type(item["bytes"]) is not int or not 1 <= item["bytes"] <= 8 * 1024 * 1024
             or not human(item["alias"], 80)
@@ -131,7 +140,23 @@ def parse_receipt_bytes(raw):
             or item["sha256"] in result
         ):
             raise Hold("invalid, ambiguous or repeated source/HUMAN row")
-        result[item["sha256"]] = item
+        if document["version"] == 2:
+            if (
+                not human(item["custodian"], 80)
+                or type(item["classification"]) is not str
+                or item["classification"] not in CLASSIFICATIONS
+                or type(item["hold_flag"]) is not str
+                or item["hold_flag"] not in HOLD_FLAGS
+                or (item["status"] == "propose_delete" and (
+                    not item["custodian"].strip()
+                    or item["hold_flag"] != "human_declared_clear"))
+            ):
+                raise Hold("missing HUMAN custodian, classification or hold declaration")
+            result[item["sha256"]] = item
+        else:
+            # v1 had no field for custody; unknown can never mean cleared.
+            result[item["sha256"]] = {**item,"custodian":"",
+                                     "classification":"unknown","hold_flag":"unknown"}
     if sum(row["bytes"] for row in result.values()) > 64 * 1024 * 1024:
         raise Hold("receipt total exceeds original 64 MiB admission cap")
     return result
@@ -158,7 +183,7 @@ def private_html(sequence):
             if index:
                 prior = sequence[index - 1][key]
                 changed = any(row[field] != prior[field]
-                              for field in ("alias", "status", "review_date", "action"))
+                              for field in HUMAN_FIELDS)
                 if changed:
                     changed_by_pair[index - 1] += 1
             else:
@@ -170,6 +195,9 @@ def private_html(sequence):
                 shown += "<span class='note'>" + escape(row["action"]) + "</span>"
             if row["alias"] != start["alias"]:
                 shown += "<small>HUMAN alias: " + escape(row["alias"]) + "</small>"
+            shown += "<small>Dossierhouder HUMAN: " + escape(row["custodian"] or "NIET TOEGEWEZEN") + "</small>"
+            shown += "<small>Gevoeligheid HUMAN: " + escape(CLASSIFICATIONS[row["classification"]]) + "</small>"
+            shown += "<small>Bewaarbeperking HUMAN: " + escape(HOLD_FLAGS[row["hold_flag"]]) + "</small>"
             cols.append("<td class='" + ("changed" if changed else "") + "'>" + shown + "</td>")
         bodies.append("<tr>" + "".join(cols) + "</tr>")
     diffs = "".join("<li>Plan " + str(i + 1) + " → " + str(i + 2)
