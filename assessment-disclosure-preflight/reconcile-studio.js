@@ -16,6 +16,7 @@
   const byId = name => document.getElementById(name);
   let source = null, decisions = [], dirty = false, epoch = 0;
   let decisionRevision = 0, exportedRevision = -1;
+  let receivingRecord = null;
   let undoStack = [], redoStack = [], noteEditTimer = null;
   const HISTORY_LIMIT = 40;
   const urls = new Set();
@@ -230,6 +231,9 @@
       // All inputs admitted BEFORE replacing a previous HUMAN workroom.
       if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
       source = {digest, rows, receipt: receiptRaw.slice(0)};
+      receivingRecord = null;
+      byId("exportReceiving").disabled = true;
+      byId("receiveStatus").textContent = "No saved result re-admitted for this source.";
       decisions = rows.map(() => ({choice: "HOLD", reason: ""}));
       discardHistory();
       dirty = false;
@@ -468,6 +472,9 @@
     byId("seal").disabled = !ready;
     byId("counts").disabled = !ready;
     byId("cover").disabled = !ready;
+    byId("exportReceiving").disabled = !(ready && receivingRecord &&
+      receivingRecord.source === source && receivingRecord.epoch === epoch &&
+      receivingRecord.revision === decisionRevision);
   }
   async function restoreDecisions() {
     const sequence = epoch;
@@ -643,6 +650,8 @@
   async function receiveSaved() {
     const current = source, capturedEpoch = epoch, revision = decisionRevision;
     const password = byId("receivePassword");
+    receivingRecord = null;
+    byId("exportReceiving").disabled = true;
     try {
       admitted(current && exportedRevision === revision && globalThis.LightUpHumanVault &&
                crypto?.subtle && window.isSecureContext);
@@ -670,6 +679,13 @@
           pair[0] === expectedCounts[i][0] && pair[1] === expectedCounts[i][1]));
       admitted(source === current && capturedEpoch === epoch &&
                decisionRevision === revision && exportedRevision === revision);
+      const resultHash = hex(await crypto.subtle.digest("SHA-256", result));
+      const countsHash = hex(await crypto.subtle.digest("SHA-256", counts));
+      admitted(source === current && capturedEpoch === epoch &&
+               decisionRevision === revision && exportedRevision === revision);
+      receivingRecord = {source: current, epoch: capturedEpoch, revision,
+                         format, resultHash, countsHash};
+      byId("exportReceiving").disabled = false;
       byId("receiveStatus").textContent =
         "REVIEW_ONLY: original PRIVATE receipt, every HUMAN selected row and complete suppressed-count handoff match the current unsigned originals. This does NOT verify source identity, reviewer independence, recipient rights, consent or release.";
       notice("REVIEW_ONLY: saved complete PRIVATE HUMAN handoff re-admitted locally. No approval or active assessment.");
@@ -680,6 +696,67 @@
       password.value = "";
       byId("receiveResult").value = "";
       byId("receiveCounts").value = "";
+    }
+  }
+  function exportReceiving() {
+    try {
+      const record = receivingRecord;
+      admitted(record && source && record.source === source &&
+               record.epoch === epoch && record.revision === decisionRevision &&
+               exportedRevision === decisionRevision &&
+               byId("exportReceiving").disabled === false);
+      admitted(confirm("Export a PRIVATE local receiving record containing only UNSIGNED exact-byte SHA-256 identities? No recipient identity, authentication, consent, security verification or release is established."));
+      const fields = [
+        ["Status", "REVIEW_ONLY / HOLD FOR RELEASE"],
+        ["Original PRIVATE source-free receipt SHA-256", source.digest[0]],
+        ["Reviewer A native HUMAN CSV SHA-256", source.digest[1]],
+        ["Reviewer B native HUMAN CSV SHA-256", source.digest[2]],
+        ["Local received result format", record.format === "bundle" ? "ENCRYPTED_LUHBP001" : "PRIVATE_NATIVE_CSV"],
+        ["Received PRIVATE HUMAN result SHA-256", record.resultHash],
+        ["Received suppressed PRIVATE counts SHA-256", record.countsHash],
+        ["Original declaration cohort size", source.rows.length >= 5 ?
+          String(source.rows.length) : "SUPPRESSED_SMALL_COHORT"],
+        ["Source authenticated", "FALSE"],
+        ["Independent reviewers authenticated", "FALSE"],
+        ["Client/operator consent verified", "FALSE"],
+        ["Original finding or remediation verified", "FALSE"],
+        ["Dispatch permitted", "FALSE"],
+        ["Release permitted", "FALSE"],
+        ["Signature present", "FALSE"]
+      ];
+      const rows = fields.map(([name, value]) =>
+        "<tr><th scope='row'>" + escapeMarkup(name) + "</th><td><code>" +
+        escapeMarkup(value) + "</code></td></tr>").join("");
+      const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src 'none'; object-src 'none'; connect-src 'none'; frame-src 'none'; form-action 'none'">
+<title>PRIVATE offline HUMAN receiving record · REVIEW_ONLY</title>
+<style>body{font:16px/1.5 system-ui;max-width:950px;margin:2rem auto;padding:1rem;color:#213140}
+h1{font-size:1.6rem}.warn{padding:1rem;border:2px solid #a36534;background:#fff6ee}
+table{border-collapse:collapse;width:100%;overflow-wrap:anywhere}
+th,td{border:1px solid #a5b5c5;padding:.7rem;text-align:left;vertical-align:top}
+th{width:40%;background:#f3f6f9}code{overflow-wrap:anywhere}
+@media print{body{margin:0}}</style></head><body>
+<h1>PRIVATE local HUMAN receiving record</h1>
+<p class="warn"><strong>REVIEW ONLY. HOLD FOR RELEASE.</strong>
+The previously selected local PRIVATE HUMAN result and its complete suppressed
+counts matched the currently loaded unsigned receipt, original submitted
+reviewer CSV bytes and manually chosen original A/B/HOLD row set at the moment
+of local inspection. This document is <strong>UNSIGNED</strong> and contains
+ONLY cryptographic file-byte identities, declarations and false authority flags.
+Hashes may permit private dataset correlation. It authenticates no sender,
+reviewer, source evidence, client, operator or recipient. It is NOT a scan,
+remediation result, consent, security approval, recipient release or
+independent validation. Keep PRIVATE and re-admit original files when needed.</p>
+<table><tbody>${rows}</tbody></table>
+<p>Only manual offline owner-controlled receiving occurred; no network,
+automatic disclosure, verification, authorization or active assessment.</p>
+</body></html>`;
+      localDownload(html, "PRIVATE-local-HUMAN-receiving-record.html",
+                    "text/html;charset=utf-8");
+      notice("REVIEW_ONLY: a separate unsigned, source-bound PRIVATE local receiving record was exported. No recipient approval or disclosure.");
+    } catch (_) {
+      notice("HOLD: saved receiving record is stale, incomplete or operator cancelled. No record issued.", true);
     }
   }
   function escapeMarkup(value) {
@@ -747,6 +824,8 @@ evidence, successful scan, verified finding or disclosure approval.</p>
     epoch++;
     if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
     source = null; decisions = []; dirty = false;
+    receivingRecord = null;
+    byId("exportReceiving").disabled = true;
     discardHistory();
     decisionRevision++;
     exportedRevision = -1;
@@ -765,6 +844,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
   byId("cover").addEventListener("click", exportCover);
   byId("restore").addEventListener("click", restoreDecisions);
   byId("receiveSaved").addEventListener("click", receiveSaved);
+  byId("exportReceiving").addEventListener("click", exportReceiving);
   byId("undo").addEventListener("click", () => navigateHistory("undo"));
   byId("redo").addEventListener("click", () => navigateHistory("redo"));
   byId("holdFiltered").addEventListener("click", holdVisibleSelections);
