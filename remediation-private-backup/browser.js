@@ -1,0 +1,232 @@
+/* LightUp PRIVATE HUMAN backup recovery — local-only WebCrypto, no transport or storage. */
+"use strict";
+(() => {
+  const VERSION = "lightup-private-human-backup/v1";
+  const AAD = new TextEncoder().encode("LightUp PRIVATE HUMAN archive v1 - DRAFT HOLD no authority");
+  const ROUNDS = 600000, MAX_ARCHIVE = 38 * 1024 * 1024;
+  const MAX_FILES = 32, MAX_FILE = 2 * 1024 * 1024, MAX_TOTAL = 16 * 1024 * 1024;
+  const FLAGS = Object.freeze({ consent_verified: false, authorized: false,
+    remediation_verified: false, release_approved: false });
+  const slots = [null, null];
+  const el = id => document.getElementById(id);
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const expectedKeys = (value, keys) =>
+    value && typeof value === "object" && !Array.isArray(value) &&
+    Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
+  function demand(ok, message) { if (!ok) throw new Error(message); }
+  function asJsonAscii(value) {
+    if (Array.isArray(value)) return "[" + value.map(asJsonAscii).join(",") + "]";
+    if (value && typeof value === "object") {
+      return "{" + Object.keys(value).sort().map(key =>
+        asJsonAscii(key) + ":" + asJsonAscii(value[key])).join(",") + "}";
+    }
+    if (typeof value === "string") return JSON.stringify(value).replace(
+      /[\u007f-\uffff]/g, letter => "\\u" + letter.charCodeAt(0).toString(16).padStart(4, "0"));
+    return JSON.stringify(value);
+  }
+  function strictJson(content, newline = false) {
+    const parsed = JSON.parse(content);
+    const canonical = asJsonAscii(parsed) + (newline ? "\n" : "");
+    demand(content === canonical, "Noncanonical JSON or duplicate keys; HOLD");
+    return parsed;
+  }
+  function fromBase64(value, max) {
+    demand(typeof value === "string" && value.length <= Math.ceil(max / 3) * 4 + 8,
+      "Encoded field outside budget");
+    demand(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value),
+      "Noncanonical or invalid base64");
+    const binary = atob(value);
+    demand(binary.length <= max && btoa(binary) === value, "Decoded size or encoding rejected");
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+  function eqFlags(value) {
+    return expectedKeys(value, Object.keys(FLAGS)) &&
+      Object.keys(FLAGS).every(key => value[key] === false);
+  }
+  function safeName(value) {
+    if (typeof value !== "string" || value === "." || value === ".." ||
+        value.toLowerCase() === "review-only.txt" || /[/\\\x00-\x1f\x7f-\x9f]/.test(value)) return false;
+    const size = encoder.encode(value).byteLength;
+    return size >= 1 && size <= 160;
+  }
+  function hex(array) {
+    return [...new Uint8Array(array)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+  async function admit(source, password) {
+    demand(globalThis.isSecureContext && globalThis.crypto?.subtle,
+      "WebCrypto unavailable for this local page. Open this file directly in a modern secure-context browser.");
+    demand(source && source.size > 0 && source.size <= MAX_ARCHIVE, "Archive outside local size limit");
+    demand(typeof password === "string" && encoder.encode(password).length >= 12 &&
+      encoder.encode(password).length <= 1024, "Password length invalid");
+    const envelope = strictJson(decoder.decode(await source.arrayBuffer()), true);
+    demand(expectedKeys(envelope, ["version", "kdf", "iterations", "salt", "nonce",
+      "ciphertext", "authority"]), "Unsupported outer archive structure");
+    demand(envelope.version === VERSION && envelope.kdf === "PBKDF2-HMAC-SHA256" &&
+      envelope.iterations === ROUNDS && eqFlags(envelope.authority),
+      "Unexpected version, PBKDF2 settings or authority assertion");
+    const salt = fromBase64(envelope.salt, 16), nonce = fromBase64(envelope.nonce, 12),
+      ciphertext = fromBase64(envelope.ciphertext, MAX_ARCHIVE);
+    demand(salt.length === 16 && nonce.length === 12 && ciphertext.length >= 16,
+      "Invalid encryption parameter lengths");
+    const passwordBytes = encoder.encode(password);
+    const imported = await crypto.subtle.importKey("raw", passwordBytes, "PBKDF2", false, ["deriveKey"]);
+    passwordBytes.fill(0);
+    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256",
+      iterations: ROUNDS, salt }, imported, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    let decoded;
+    try {
+      decoded = await crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce,
+        additionalData: AAD, tagLength: 128 }, key, ciphertext);
+    } catch (_) { throw new Error("Password or encrypted content invalid. Nothing was opened."); }
+    const inner = strictJson(decoder.decode(decoded));
+    demand(expectedKeys(inner, ["version", "authority", "files"]) &&
+      inner.version === VERSION && eqFlags(inner.authority),
+      "Unexpected authenticated source or release claims");
+    demand(Array.isArray(inner.files) && inner.files.length >= 1 &&
+      inner.files.length <= MAX_FILES, "Invalid file count");
+    let total = 0;
+    const names = new Set(), files = [];
+    for (const record of inner.files) {
+      demand(expectedKeys(record, ["name", "size", "sha256", "bytes"]), "Unexpected source file schema");
+      demand(safeName(record.name), "Unsafe or reserved original filename");
+      const folded = record.name.normalize("NFC").toLowerCase();
+      demand(!names.has(folded), "Duplicate source filename");
+      names.add(folded);
+      demand(Number.isSafeInteger(record.size) && record.size >= 0 &&
+        record.size <= MAX_FILE, "Invalid file size");
+      const bytes = fromBase64(record.bytes, MAX_FILE);
+      total += bytes.length;
+      demand(bytes.length === record.size && total <= MAX_TOTAL, "Source size or total budget violated");
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      demand(typeof record.sha256 === "string" && record.sha256 === hex(digest),
+        "Source byte digest mismatch");
+      files.push({ name: record.name, size: bytes.length, sha256: record.sha256, bytes });
+    }
+    return { filename: source.name, files, byName: new Map(files.map(file => [file.name, file])) };
+  }
+  function status(id, message) { el(id).textContent = message; }
+  function clear(index) {
+    slots[index] = null;
+    const label = index === 0 ? "a" : "b";
+    el(label + "-file").value = "";
+    el(label + "-pass").value = "";
+    status(label + "-status", "No decrypted source retained.");
+    render();
+  }
+  async function open(index) {
+    const label = index === 0 ? "a" : "b";
+    const input = el(label + "-file"), pass = el(label + "-pass");
+    // Failure never leaves old state or a partially authenticated replacement.
+    const source = input.files && input.files[0];
+    const secret = pass.value;
+    pass.value = "";
+    el(label + "-open").disabled = true;
+    status(label + "-status", "Authenticating selected encrypted bytes locally…");
+    try {
+      const item = await admit(source, secret);
+      slots[index] = item;
+      status(label + "-status", "PRIVATE DRAFT/HOLD: " + item.files.length +
+        " authenticated local files; original selected archive untouched.");
+    } catch (error) {
+      status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive"));
+    } finally {
+      el(label + "-open").disabled = false;
+      render();
+    }
+  }
+  function node(tag, value) {
+    const element = document.createElement(tag);
+    element.textContent = value;
+    return element;
+  }
+  function cell(row, value) { row.append(node("td", String(value))); }
+  function button(label, handler) {
+    const element = document.createElement("button");
+    element.type = "button";
+    element.textContent = label;
+    element.addEventListener("click", handler);
+    return element;
+  }
+  function download(file) {
+    if (!confirm("Export this original PRIVATE file as unencrypted plaintext? No authorization or sanitization is implied.")) return;
+    const blob = new Blob([file.bytes], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = file.name; a.rel = "noopener"; a.hidden = true;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  function preview(file) {
+    const area = el("preview");
+    area.textContent = "";
+    area.classList.add("hide");
+    if (!/\.(txt|csv|json|md|log)$/i.test(file.name)) {
+      status("file-meta", "PRIVATE original " + file.name + " is not a text preview type.");
+      return;
+    }
+    try {
+      const text = decoder.decode(file.bytes.subarray(0, Math.min(file.size, 8192)));
+      area.textContent = text + (file.size > 8192 ? "\n… [PRIVATE preview truncated]" : "");
+      area.classList.remove("hide");
+      status("file-meta", "PRIVATE original " + file.name + " · content shown locally (not sanitized).");
+    } catch (_) { status("file-meta", "Non-UTF-8 source bytes: preview withheld."); }
+  }
+  function renderInventory() {
+    const selected = Number(el("source-select").value), archive = slots[selected];
+    const root = el("file-rows");
+    root.replaceChildren();
+    el("preview").textContent = "";
+    el("preview").classList.add("hide");
+    status("file-meta", "");
+    if (!archive) {
+      status("inventory-status", "Unlock archive " + (selected === 0 ? "A" : "B") + " to inspect.");
+      return;
+    }
+    status("inventory-status", archive.files.length + " private files · " +
+      archive.files.reduce((sum, f) => sum + f.size, 0) +
+      " bytes · password-authenticated local source. NO grant, release or verified fix.");
+    for (const f of archive.files) {
+      const row = document.createElement("tr");
+      cell(row, f.name); cell(row, f.size); cell(row, f.sha256);
+      const controls = document.createElement("td");
+      controls.append(button("Preview", () => preview(f)));
+      controls.append(button("Download plaintext", () => download(f)));
+      row.append(controls);
+      root.append(row);
+    }
+  }
+  function renderComparison() {
+    const root = el("compare-rows");
+    root.replaceChildren();
+    if (!slots[0] || !slots[1]) {
+      status("compare-status", "Unlock both independent encrypted archives to compare.");
+      return;
+    }
+    const left = slots[0].byName, right = slots[1].byName;
+    const names = [...new Set([...left.keys(), ...right.keys()])].sort();
+    const totals = { ADDED: 0, REMOVED: 0, CHANGED: 0, UNCHANGED: 0 };
+    for (const name of names) {
+      const a = left.get(name), b = right.get(name);
+      const kind = !a ? "ADDED" : !b ? "REMOVED" :
+        a.sha256 !== b.sha256 || a.size !== b.size ? "CHANGED" : "UNCHANGED";
+      totals[kind]++;
+      const tr = document.createElement("tr");
+      cell(tr, kind); cell(tr, name); cell(tr, a?.size ?? "—"); cell(tr, b?.size ?? "—");
+      root.append(tr);
+    }
+    status("compare-status", Object.entries(totals).map(([key, value]) => key + ": " + value).join(" · ") +
+      ". Source byte differences are NOT remediation proof or chronology.");
+  }
+  function render() { renderInventory(); renderComparison(); }
+  el("a-open").addEventListener("click", () => open(0));
+  el("b-open").addEventListener("click", () => open(1));
+  el("a-clear").addEventListener("click", () => clear(0));
+  el("b-clear").addEventListener("click", () => clear(1));
+  el("source-select").addEventListener("change", renderInventory);
+  el("clear-all").addEventListener("click", () => { clear(0); clear(1); });
+  window.addEventListener("pagehide", () => { slots[0] = null; slots[1] = null; });
+  render();
+})();
