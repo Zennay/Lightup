@@ -1509,3 +1509,97 @@ This is a self-contained useful offline HUMAN workflow, **not** a release,
 security attestation, activity timeline, automatic notification, client
 approval, asset ownership proof or authority to scan. Existing Incubate
 M3/M7 DRAFT/HOLD remains; no QA/regression/test suites authored or run.
+
+## New original HUMAN Lab team **continuation** (console 65)
+
+The previously shipped team batch (option 62) creates a private unfinalized
+candidate from an unchanged ORIGINAL FINAL HUMAN review. Later arriving team
+replies must **not** accidentally discard already saved decisions. The new
+[original source-bound continuation](lab_review_team_continue.py) (operator
+console **65**) uses the *complete previously saved private candidate* as
+the starting point. It re-admits **the original packet source, FINAL HUMAN
+result, original team handoff, original batch and every new returned team CSV**
+before creating anything.
+
+For each returned team, a HUMAN operator decides yes/no whether its entire
+reply may enter a new unfinalized candidate (default **NO**). A reply that
+would alter **any HUMAN stage or private question already changed in a previous
+round** is **automatically withheld for its whole team**, even when marked yes.
+Earlier decisions survive; no partial team adoption. Original team ordinals
+and the complete seven-column HUMAN CSV order remain unchanged. Teams without
+a fresh response also keep their previously saved decisions; **none is treated
+as consent or implicit resolution**.
+
+The continuation emits a **new** exclusive 0700 output room containing exactly
+five new owner-0600 artifacts:
+
+- `OPEN-PRIVATE.html`: original-ordinal/stage-only and team outcome/withheld
+  conflict summary, CSP scriptless, no private question text.
+- `PRIVATE-HUMAN-CONTINUED-CANDIDATE.csv`: complete original source-ordinal
+  HUMAN candidate with earlier non-conflicting decisions preserved.
+- `PRIVATE-HUMAN-CONTINUED-CHANGES.csv`: accepted new stage/ordinal changes
+  plus private-question-changed Boolean, **no free text**.
+- `PRIVATE-HUMAN-PROTECTED-CONFLICTS.csv`: deliberately withheld overlaps,
+  again private-question Boolean only.
+- `PRIVATE-HUMAN-CONTINUATION-RECEIPT.json`: all authority flags false,
+  explicit source SHA **unsigned**, exact previous receipt and previous
+  candidate SHA (unsigned local continuity checks), team disposition counts,
+  mandatory manual finalize flag, and hashes of all private output bytes.
+
+Standalone foreground CLI for the **first** continuation:
+
+```bash
+python3 assessment-integrated-suite/lab_review_team_continue.py \
+  --packet ORIGINAL_PRIVATE_LAUNCHPAD_0700 \
+  --final-room ORIGINAL_FINAL_HUMAN_0700 \
+  --handoff-room ORIGINAL_TEAM_HANDOFF_0700 \
+  --prior-batch EXISTING_SOURCE_BOUND_TEAM_BATCH_0700 \
+  --team-return 'Security=/OWNER_PRIVATE/security-return.csv' \
+  --private-parent EXISTING_OWNER_0700_PARENT \
+  --folder NEW-PRIVATE-LAB-HUMAN-CONTINUATION \
+  --human-confirm 'CONTINUE PRIVATE LAB HUMAN BATCH'
+```
+
+Repeat `--team-return TEAM=PRIVATE_CSV` for at most four separate original teams.
+Optional repeatable `--withhold-team 'Security'` excludes selected sources
+after admitting them, instead of silently omitting source validation. The
+console asks per team and defaults to NO.
+
+For later HUMAN rounds, pass 1–6 prior PRIVATE continuation rooms *in exact
+operator-declared order* with `--prior-continuation PRIOR_0700_ROOM`. The entire
+unchanged original root batch and complete ordered prior chain are re-admitted;
+the newest admitted candidate becomes the starting point. Maximum chain depth
+is intentionally bounded. **Operator order is not verified calendar time**.
+
+## Reopen chained HUMAN Lab decisions read-only (console 66)
+
+```bash
+python3 assessment-integrated-suite/lab_review_team_continue_reopen.py \
+  --packet ORIGINAL_PRIVATE_LAUNCHPAD_0700 \
+  --final-room ORIGINAL_FINAL_HUMAN_0700 \
+  --handoff-room ORIGINAL_TEAM_HANDOFF_0700 \
+  --prior-batch ORIGINAL_PRIVATE_TEAM_BATCH_0700 \
+  --prior-continuation OPTIONAL_EARLIER_CONTINUATION_0700 \
+  --continued-room CURRENT_CONTINUATION_0700 \
+  --human-confirm 'REOPEN PRIVATE LAB HUMAN CONTINUATION'
+```
+
+The `--prior-continuation` parameter is omitted for the first round.
+For later rounds repeat it for all earlier saved private continuation rooms,
+oldest first. The read-only native reopener checks every original source,
+team assignment and 0600 original/private descriptor; re-admits the entire
+ordered previous chain and candidate; verifies original source-bound HUMAN
+stage/ordinal/team continuity, complete candidate and accepted change CSV,
+withheld conflict ordinals, every file's unsigned exact-byte digest and the
+previous candidate/receipt SHA. Existing files remain unchanged; any missing
+or different source returns **HOLD** rather than creating a new report.
+
+These tools handle only **original offline HUMAN Lab proposals**, not real
+assessments, verified incident remediation, authenticated recipient consent,
+security approvals, scanning, grants, scheduling, network transfer or releases.
+Notion LightUp is **INCUBATE M3/M7 PLAN/LAB ONLY, DRAFT/HOLD**. Original
+hosted + permanently named VPS exact-head CI, source-owner, independent
+security/privacy/browser review, #177/#182/#829, separately authenticated
+current client+operator consent with at-use revocation and explicit HUMAN GO
+remain prerequisites for any `main` merge or live deployment. No QA suites
+were added or run.
