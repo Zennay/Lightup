@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""One-command local source-free archive intake -> HUMAN recipient workroom.
+
+Only canonical original source-free .luhz software handoffs, NOT original
+client evidence; original native receivers and human products are reused.
+No upload/network, target, scanner, grant, consent claim, auto-remediation or
+source-owner writeback. This command never authorizes cross-tenant disclosure.
+"""
+from __future__ import annotations
+import argparse
+import hashlib
+import os
+from pathlib import Path
+import secrets
+import shutil
+import sys
+import zipfile
+
+import install
+import portable_cockpit
+import workflow
+
+review = workflow.review
+workspace = workflow.workspace
+
+WARNING = (
+    "Private source-free HUMAN counts only. No sender signature, original client "
+    "identity, matched cohort, authenticated time, consent, verified finding, "
+    "fix, retest, grant, scanner or HUMAN GO. INCUBATE M3/M7 DRAFT/HOLD."
+)
+
+def require(condition: bool, explanation: str) -> None:
+    review.require(condition, explanation)
+
+def build(archives: list[Path], dest: Path) -> None:
+    require(1 <= len(archives) <= 12 and len(set(archives)) == len(archives),
+            "Select 1 to 12 distinct original source-free archive files")
+    require(dest.is_absolute() and dest.parent == dest.parent.resolve(strict=True)
+            and not dest.exists() and not dest.is_symlink(),
+            "New output must be a literal absolute PRIVATE directory")
+    install.owner_dir(dest.parent)
+    seen = set()
+    original_bytes = []
+    for archive in archives:
+        require(archive.is_absolute()
+                and archive.parent == archive.parent.resolve(strict=True)
+                and archive != dest and dest not in archive.parents
+                and archive.parent != dest,
+                "Archive cannot be inside recipient folder or an alias")
+        install.owner_dir(archive.parent)
+        raw = install.read_owner_file(archive)
+        require(0 < len(raw) <= portable_cockpit.MAX_ZIP,
+                "Private source-free archive exceeds original transport limit")
+        signature = hashlib.sha256(raw).digest()
+        require(signature not in seen,
+                "The same exact source-free archive cannot be two HUMAN revisions")
+        seen.add(signature)
+        original_bytes.append(raw)
+    stage = dest.parent / (".lightup-sourcefree-intake-" + secrets.token_hex(12))
+    os.mkdir(stage, 0o700)
+    try:
+        received = []
+        for ordinal, archive in enumerate(archives, 1):
+            target = stage / f"received-{ordinal:02d}"
+            portable_cockpit.unpack(archive, target)
+            received.append(target)
+        # Use the existing complete native original recipient product.
+        # Its own privately staged publication occurs only inside our stage.
+        workflow.recipient_start(received, stage / "human-review")
+        for archive, old in zip(archives, original_bytes):
+            require(install.read_owner_file(archive) == old,
+                    "Original transferred source-free package changed during intake")
+        portal = workflow.page(
+            "PRIVATE source-free HUMAN archive intake",
+            [
+                ("Open native source-free HUMAN reviewer",
+                 "human-review/index.html",
+                 "Exactly the admitted original anonymous packets; one => single HUMAN reviewer, "
+                 "two => original comparison, three to twelve => source-free ordinal series."),
+                ("Read the first received canonical Cockpit",
+                 "received-01/index.html",
+                 "Full original PRIVATE source-free native Cockpit. No original client records."),
+            ],
+            "PRIVATE operator-only transfer bundle. Its original source-free counts and "
+            "local HUMAN notes can still be sensitive. Entire source folder MUST NOT "
+            "be shared without independent recipient authorization. Unsigned ZIP "
+            "checksums are not actual sender signatures or consent."
+        )
+        install.write_file(stage / "index.html", portal)
+        stats = {
+            "kind": "lightup.private_sourcefree_archive_human_intake",
+            "schema_version": 1,
+            "disposition": "HUMAN_REVIEW_ONLY_DRAFT_HOLD",
+            "authority_granted": False,
+            "consent_verified": False,
+            "remediation_verified": False,
+            "authenticated_sender": False,
+            "selected_archives": len(received),
+            "original_cohort_identity": "UNKNOWN_NOT_MATCHED",
+            "archive_order": "OPERATOR_SELECTED_NOT_AUTHENTICATED_TIME",
+            "warning": WARNING,
+        }
+        install.write_file(stage / "private-summary.json", install.canonical(stats))
+        require(not dest.exists(), "Recipient output appeared before final private publication")
+        workspace.exclusive_dir_publish(stage, dest)
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+    print("REVIEW_ONLY: native PRIVATE source-free archive intake:", dest)
+    print("Original source-free Cockpit packets:", len(archives))
+    print("Open offline:", dest / "index.html")
+    print("No actual sender authentication, client consent or remediation authority.")
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Receive 1-12 original native private source-free Cockpit ZIPs into HUMAN reviewer"
+    )
+    parser.add_argument("--archive", required=True, action="append", type=Path,
+                        help="Canonical .luhz 0600 source-free archive (repeat 1-12)")
+    parser.add_argument("--output-dir", required=True, type=Path,
+                        help="NEW absolute original owner-private 0700 recipient folder")
+    args = parser.parse_args()
+    try:
+        build(args.archive, args.output_dir)
+        return 2
+    except (review.Hold, OSError, ValueError, TypeError, KeyError,
+            RuntimeError, EOFError, zipfile.BadZipFile) as exc:
+        print("HOLD: PRIVATE source-free HUMAN intake refused: " + str(exc),
+              file=sys.stderr)
+        return 3
+
+if __name__ == "__main__":
+    sys.exit(main())
