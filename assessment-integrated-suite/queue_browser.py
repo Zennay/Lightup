@@ -135,6 +135,9 @@ Never share, upload, email, paste into public cloud tools, or run HTTP server.</
 <option value="NEEDS_INPUT">NEEDS INPUT</option>
 </select></label>
 <button class="secondary" type="button" id="bulk">Apply HUMAN stage to visible rows</button>
+<label>Assign staged visible workflows to one HUMAN team
+<select id="bulk-team-select"></select></label>
+<button class="secondary" type="button" id="bulk-team">Assign visible staged HUMAN rows</button>
 </div>
 <p id="visible" class="hint" aria-live="polite"></p>
 <main id="list"></main>

@@ -156,6 +156,25 @@ confidential HUMAN question text**, original source bytes, saved machine paths
 and snapshot path digest. Unmodified original input CSVs remain untouched.
 This is HUMAN planning continuity only, not a security or privacy approval.
 
+## NEW: review imported CSV changes and route multiple HUMAN tasks
+
+The original interactive HUMAN browser Studio now presents a **per-field
+change preview** before replacing an existing HUMAN draft with another
+exact-session-bound CSV. The prompt lists changed workflow titles (at most
+eight), counts changed stage/team/due-date fields, and only **counts**
+changed PRIVATE question fields (never question text). A rejected preview
+changes no local HUMAN decision or original on-disk file, and an overlapping
+local edit or newer import invalidates any earlier pending import.
+
+A second bulk option assigns one explicitly selected team (Security,
+Privacy, Client operations or Platform) to **only visible, already-staged**
+HUMAN queue rows. Visible `UNASSESSED` and all hidden workflows remain
+unchanged. The assignment requires an additional HUMAN confirmation,
+can be undone locally and never creates an authenticated HUMAN identity,
+recipient notification, real responsibility transfer or assessment grant.
+Both actions preserve exact original CSV row order and source-PATH binding;
+native owner-only admission is still required on the resulting download.
+
 ## NEW: restart HUMAN Queue Studio from an ORIGINAL saved session (46)
 
 Native foreground menu **46** admits an ORIGINAL owner-only 0600

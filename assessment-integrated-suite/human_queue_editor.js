@@ -12,6 +12,7 @@
   let dirty = false;
   let updateGeneration = 0;
   let exportedRevision = -1;
+  let importAttempt = 0;
   const undoStack = [];
   const redoStack = [];
   const MAX_HISTORY = 25;
@@ -248,15 +249,34 @@
       return;
     }
     const revision = updateGeneration;
+    const attempt = ++importAttempt;
     try {
       const decoder = new TextDecoder("utf-8", { fatal: true });
       const source = decoder.decode(await file.arrayBuffer());
       const admitted = readRows(source);
-      if (revision !== updateGeneration) throw new Error("Local edits changed during import.");
-      if (dirty && !window.confirm("Replace all unexported HUMAN edits with selected local CSV?")) {
-        setMessage("Import cancelled: previous HUMAN edits preserved.");
+      if (revision !== updateGeneration || attempt !== importAttempt)
+        throw new Error("A newer import or HUMAN edit superseded this file.");
+      const fields = ["human_stage", "review_team", "followup_date", "human_question"];
+      const changed = admitted.filter((row, i) =>
+        fields.some((field) => row[field] !== draft[i][field]));
+      const fieldChanges = Object.fromEntries(fields.map((field) => [
+        field, admitted.filter((row, i) => row[field] !== draft[i][field]).length
+      ]));
+      const brief = changed.slice(0, 8).map((row) => row.title).join("; ");
+      const proposal = "Source-PATH-bound local HUMAN CSV accepted for review. " +
+        changed.length + " of " + admitted.length + " workflows differ. " +
+        "Changes: " + fieldChanges.human_stage + " stages, " +
+        fieldChanges.review_team + " team assignments, " +
+        fieldChanges.followup_date + " follow-up dates, " +
+        fieldChanges.human_question + " PRIVATE questions (texts hidden)." +
+        (brief ? "\nAffected workflows: " + brief : "") +
+        "\nReplace the entire in-memory draft? Original disk files stay unchanged.";
+      if (!window.confirm(proposal)) {
+        setMessage("CSV change preview declined. All current HUMAN edits preserved.");
         return;
       }
+      if (revision !== updateGeneration || attempt !== importAttempt)
+        throw new Error("Another HUMAN change intervened before confirmation.");
       checkpoint();
       draft = admitted;
       dirty = false;
@@ -343,6 +363,32 @@
       ". Undo is available. Original files are unchanged.");
     render();
   });
+  q("bulk-team").addEventListener("click", () => {
+    const team = q("bulk-team-select").value;
+    if (!TEAMS.slice(1).includes(team)) {
+      setMessage("HOLD: one explicit HUMAN team selection is required.", true);
+      return;
+    }
+    const visible = visibleIndices();
+    const eligible = visible.filter((i) => draft[i].human_stage !== "UNASSESSED");
+    const changed = eligible.filter((i) => draft[i].review_team !== team);
+    if (!changed.length) {
+      setMessage("No visible already-staged HUMAN workflow needs reassignment.");
+      return;
+    }
+    if (!window.confirm("Assign " + changed.length + " already-staged HUMAN items to " +
+      team + "? " + (visible.length - eligible.length) +
+      " visible UNASSESSED workflows and all hidden rows stay unchanged. " +
+      "This is an unauthenticated task proposal, not permission or dispatch.")) return;
+    checkpoint();
+    changed.forEach((i) => { draft[i] = { ...draft[i], review_team: team }; });
+    dirty = true;
+    exportedRevision = -1;
+    updateGeneration += 1;
+    setMessage("Only " + changed.length + " eligible visible HUMAN rows assigned to " +
+      team + ". Use undo or export as needed. No recipient was contacted.");
+    render();
+  });
   q("reset").addEventListener("click", () => {
     if (!dirty || window.confirm("Discard unexported HUMAN edits and return to original, source-bound draft?")) {
       checkpoint();
@@ -367,6 +413,11 @@
   TEAMS.slice(1).forEach((team) => {
     const option = el("option", "", team);
     option.value = team; q("team-filter").append(option);
+  });
+  TEAMS.slice(1).forEach((team) => {
+    const option = el("option", "", team);
+    option.value = team;
+    q("bulk-team-select").append(option);
   });
   setMessage("Owner-private, source-PATH-bound HUMAN queue loaded in memory. No external requests.");
   render();
