@@ -66,8 +66,8 @@ def compose(assets: dict[str, str]) -> str:
     old = 'content="' + CSP + '"'
     new_policy = (
         "default-src 'none'; "
-        f"script-src '{_pin(vault)}' '{_pin(studio)}'; "
-        f"style-src '{_pin(css)}'; "
+        f"script-src '{_pin(chr(10) + vault)}' '{_pin(chr(10) + studio)}'; "
+        f"style-src '{_pin(chr(10) + css)}'; "
         "connect-src 'none'; img-src 'none'; object-src 'none'; "
         "frame-src 'none'; base-uri 'none'; form-action 'none'"
     )
@@ -79,9 +79,8 @@ def compose(assets: dict[str, str]) -> str:
     html = html.replace(CSS_REF, "<style>\n" + css + "</style>")
     html = html.replace(JS_REFS[0], "<script>\n" + vault + "</script>")
     html = html.replace(JS_REFS[1], "<script>\n" + studio + "</script>")
-    # SHA-256 CSP hashes include the exact whitespace inside the inline tags.
-    # Deliberately no inline indentation except a leading newline.
-    # Hashes therefore must include the leading newline in their byte input.
+    # SHA-256 CSP hashes above cover the exact leading newline plus source
+    # inside each inline element, matching the literal markup inserted here.
     return html
 
 
