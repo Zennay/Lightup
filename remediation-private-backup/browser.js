@@ -131,7 +131,11 @@
       status(label + "-status", "PRIVATE DRAFT/HOLD: " + item.files.length +
         " authenticated local files; original selected archive untouched.");
     } catch (error) {
-      status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive"));
+      // A rejected new archive must not leave the previous decrypted archive visible
+      // under the same A/B label: fail closed, no accidental recovery of stale bytes.
+      slots[index] = null;
+      status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive") +
+        " · old decrypted state was cleared.");
     } finally {
       el(label + "-open").disabled = false;
       render();
