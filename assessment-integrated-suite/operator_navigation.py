@@ -69,6 +69,7 @@ ACTIONS: dict[str, str] = {
     '59': 'Compare 2–8 source-bound finalized PRIVATE HUMAN Lab review rounds',
     '60': 'Prepare minimum-necessary PRIVATE HUMAN Lab team workrooms',
     '61': 'Admit exact team-only HUMAN Lab feedback into full PRIVATE draft',
+    '62': 'Combine 1–4 original HUMAN lab team replies into one complete PRIVATE candidate',
 }
 
 CATEGORIES = (
