@@ -6,6 +6,7 @@ import human_console
 import remediation_console
 import remediation_team_console
 import evidence_console
+import evidence_dialogue_console
 import os
 from pathlib import Path
 import subprocess
@@ -52,6 +53,10 @@ class Session:
     evidence_preparation: str = ""
     evidence_selection: str = ""
     evidence_dossier: str = ""
+    recipient_preparation: str = ""
+    recipient_reply: str = ""
+    sender_preparation: str = ""
+    sender_triage: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -332,6 +337,11 @@ def main() -> int:
         "24": lambda x: evidence_console.prepare(x, path_prompt, ask, "publish"),
         "25": lambda x: evidence_console.prepare(x, path_prompt, ask, "history"),
         "26": lambda x: evidence_console.prepare(x, path_prompt, ask, "overview"),
+        "27": lambda x: evidence_dialogue_console.execute(x, path_prompt, ask, "recipient-prepare"),
+        "28": lambda x: evidence_dialogue_console.execute(x, path_prompt, ask, "recipient-return"),
+        "29": lambda x: evidence_dialogue_console.execute(x, path_prompt, ask, "sender-prepare"),
+        "30": lambda x: evidence_dialogue_console.execute(x, path_prompt, ask, "sender-return"),
+        "31": lambda x: evidence_dialogue_console.execute(x, path_prompt, ask, "next-round"),
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
@@ -360,6 +370,11 @@ def main() -> int:
         print("24. Publish only original HUMAN-selected PRIVATE evidence and recipient questions")
         print("25. Review 2-12 source-bound PRIVATE HUMAN evidence-selection revisions")
         print("26. Create PRIVATE original human-curated evidence and recipient overview")
+        print("27. Prepare original PRIVATE HUMAN recipient question studio")
+        print("28. Admit source-bound PRIVATE HUMAN recipient responses")
+        print("29. Prepare original PRIVATE HUMAN sender triage workroom")
+        print("30. Admit original PRIVATE HUMAN sender triage and follow-up")
+        print("31. Prepare exact-source PRIVATE next HUMAN question proposal (no sending)")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -367,7 +382,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 26.")
+                print("Choose a number from 0 to 31.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
