@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-wbDVyK0BPVM/gVLovk4WMBFJs/3kKLr6cdGvK+4MLVo='; style-src 'sha256-Kqp35AP3Gb+KbftL02rkaa85hCAUL1c0yDApkLjHoaY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogsundefinedme2VAKCqc6T4pySFiundefinedN+6LoKlOMwOhMoYLe1meY=' 'sha256-wbDVyK0BPVMundefinedgVLovk4WMBFJsundefined3kKLr6cdGvK+4MLVo='; style-src 'sha256-Kqp35AP3Gb+KbftL02rkaa85hCAUL1c0yDApkLjHoaY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN reconciliation desk</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#192735;background:#f3f5f9;color-scheme:light}
@@ -118,10 +118,10 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 <div class="sticky"><span id="saveState" role="status" aria-live="polite">No decisions saved.</span>
 <button id="save" type="button" disabled>Export PRIVATE decision CSV</button></div>
 <div class="finalize" aria-labelledby="finalizeTitle">
-<h3 id="finalizeTitle">3 · Seal selected HUMAN continuation without plaintext</h3>
+<h3 id="finalizeTitle">3 · Export your selected PRIVATE HUMAN result</h3>
 <p>Review the complete final result below, including rows hidden by search/filter. Questions and actions are collapsed by default so a passer-by does not automatically see PRIVATE detail. Expanding them is a local HUMAN operator choice. This is still neither source identity, independent verification nor consent.</p>
 <div id="finalPreview" class="final-preview" aria-label="Tentative selected HUMAN result for every ordinal"></div>
-<p>First export the exact reviewer-bound decision CSV above: it records your explicit A/B/HOLD choices and private reasons. Keep that PRIVATE audit file safely alongside the separately stored originals. This optional second step creates only a new encrypted <code>.luhb</code> containing the identical unsigned PRIVATE receipt bytes and the original-format HUMAN CSV selected row by row. A HOLD row always becomes <code>unreviewed</code> with empty notes; even matching reviewers are never silently selected. No new plaintext final report or intermediate reviewer file is downloaded.</p>
+<p>First export the exact reviewer-bound decision CSV above: it records your explicit A/B/HOLD choices and private reasons. Keep that PRIVATE audit file safely alongside the separately stored originals. This optional next step offers either a native-compatible encrypted <code>.luhb</code> containing the exact original PRIVATE receipt bytes and original-format HUMAN CSV, or a deliberately requested unencrypted original-format complete PRIVATE HUMAN CSV. A HOLD row always becomes <code>unreviewed</code> with empty notes; matching reviewers are never automatically selected. Neither format authenticates source, reviewers or consent. The plaintext option contains HUMAN questions and actions and requires separate owner-only custody.</p>
 <div class="grid">
 <label>New local-only encrypted result passphrase (14–256 characters)<input id="sealPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
 <label>Repeat passphrase<input id="sealConfirm" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
