@@ -155,6 +155,41 @@ risk ranking, remediation proof or client authorization. Follow up
 through the original native finalizer, never directly through a
 receipt or dashboard.
 
+### Source-bound selected HUMAN history handoff (native)
+
+The offline action history Studio can export only the currently visible,
+source-minimal original-ordinal HUMAN rows as
+`PRIVATE-HUMAN-selected-action-history.csv`. This file is not a full
+original HUMAN review. To receive that file as a separate confidential
+discussion packet, place the downloaded CSV in a 0600 owner-private file
+and invoke the ORIGINAL native receiver using exactly the original
+completed source packet, original 2–8 reviewer packets, the original
+selected discussion, the original chronological final HUMAN action rooms,
+and the exact generated history room:
+
+```sh
+python3 private-assessment-notes/notes.py sensitivity-discussion-actions-history-receive \
+  --completed-packet /private/work/ORIGINAL-completed-packet \
+  --review /private/work/FIRST-completed-review \
+  --review /private/work/SECOND-completed-review \
+  --room /private/work/PRIVATE-lightup-human-discussion-ROOM \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-1 \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-2 \
+  --history-room /private/work/PRIVATE-lightup-human-action-history-ROOM \
+  --selected-csv /private/work/PRIVATE-HUMAN-selected-action-history.csv \
+  --private-parent /private/work
+```
+
+The native receiver independently reopens the exact original history
+against all original completed reviews and rounds, then demands the original
+browser's exact selected CSV header, quoting, order, fields and original
+HUMAN stage/question Boolean values. Stale, altered, duplicate, foreign,
+reordered or empty selections refuse BEFORE any output directory is created.
+A fresh PRIVATE 0700 room contains a 0600 canonical selected CSV, unsigned
+original-source/custody receipt and scriptless source-minimal printable
+human discussion. No original free HUMAN question text is copied into HTML.
+This is not permission to share; even successful local work returns HOLD (3).
+
 ### Prepare the next independent HUMAN round directly from the history room
 
 Each new history room contains a **fresh blank** source-bound
