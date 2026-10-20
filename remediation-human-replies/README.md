@@ -114,6 +114,19 @@ The new worklist.py uses the same unchanged original encrypted source-free HUMAN
 
 Produces a new source-bound PRIVATE 0700 folder with offline scriptless index.html, structured private-human-followup.json (selected reason ordinal, original self-declared request text, new HUMAN clarification question, HUMAN self-declared stage/answer), separate private-aggregate.json (category-only self-declared counts) and human custody README; all 0600. Original encrypted inputs remain unchanged. No machine networking, client notification, auto-fix, grant, retest, evidence or real closure. Even the aggregate may reveal small cohorts and stays PRIVATE. No original source IDs are reconstructed from a source-redacted selection.
 
+## PRIVATE original-bound HUMAN agenda and optional manual local calendar
+
+The new standalone agenda.py opens the exact original encrypted selected source-redacted HUMAN .luhq and an independently sealed .luhr through the unchanged original native admission and exact response binding. It uses **only existing human-declared original due dates**, never invented dates, provider schedules, automated remediation, server APIs or email. A printable PRIVATE scriptless agenda sorts the original dated selected HUMAN reason groups by due date, while displaying genuinely undated groups separately. The report is HUMAN-only; no security severity or technical remediation is inferred.
+
+    python3 remediation-human-replies/agenda.py \
+      --handoff "$HOME/lightup-private/selected-private-human.luhq" \
+      --reply "$HOME/lightup-private/my-encrypted-coordinator.luhr" \
+      --output-dir "$HOME/lightup-private/human-date-agenda-01"
+
+The result is a new 0700 PRIVATE offline directory containing scriptless index.html, private-human-agenda.json (source-redacted HUMAN text, original self-declared dates and current human status/answers), private-human-calendar.ics and README, all owner-only 0600 via unchanged original atomic exclusive publisher. The .ics includes **only** generic PRIVATE tentative ALL-DAY HUMAN follow-up labels plus original declared due dates, with random non-linkable event UIDs, never owners, original reasons, case/client/target IDs, answers, request notes, external URLs or automatic notifications. No calendar account is contacted or synced; events are not assigned when the source had no date. Already self-declared HUMAN answered or declined groups remain visibly present in the report but are omitted from the .ics, **not** classified as verified fixed or authorized.
+
+The .ics file is PRIVATE even without person identifiers because dates and task presence may expose operational information. Manually importing into Google/Apple/Outlook calendars can transmit it outside the local trust boundary; the operator needs independent actual disclosure permission. No hidden autosync/reminder, review certification, finding update or sender consent is implied. The native original .luhq and .luhr must remain intact; before new publication both encrypted source bytes are checked unchanged. Exit 2=REVIEW_ONLY or 3=HOLD.
+
 ## Offline encrypted HUMAN reply password rotation without plaintext disk intermediary
 
 The independent native vault.py consumes the exact original selected private .luhq and existing encrypted selected .luhr, invoking the same unchanged original .luhq source-admission and new strict original-bound reply decoder. Both existing passwords must be provided in the private terminal; a third, NEW unique 14–256-character NFC non-control password is independently confirmed via the unchanged original native password policy. Source and encrypted reply files are re-read to reject changes before publishing.
@@ -146,7 +159,7 @@ A recipient with separately trusted matching source code and the four separately
       --parent-manifest "$HOME/lightup-private/software-human-replies-01/original-scheduler-manifest.json" \
       --output-dir "$HOME/lightup-private/software-received-01"
 
-The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all eight additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
+The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all nine additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
 
 The optional distribution.py inspect --workspace ABSOLUTE_PATH operation is for a *complete locally built* distribution directory, not the smaller received runnable subset. All operations exit 2=REVIEW_ONLY or 3=HOLD, never grant security authority. Syntax/manifest checks are not client authorization, independent security/crypto review, actual owner acceptance or real release.
 
