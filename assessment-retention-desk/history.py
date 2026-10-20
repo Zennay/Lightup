@@ -118,6 +118,7 @@ def read_receipt(path):
             or type(item["status"]) is not str or item["status"] not in STAGES
             or not review_date(item["review_date"])
             or not human(item["action"], 400)
+            or (item["status"] == "propose_delete" and not item["action"].strip())
             or item["sha256"] in result
         ):
             raise Hold("invalid, ambiguous or repeated source/HUMAN row")
