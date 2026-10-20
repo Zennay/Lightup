@@ -82,7 +82,7 @@ def interactive_decisions(digest: str, originals: list[dict],
     """HUMAN-only trusted terminal decision entry; never select automatically."""
     require(sys.stdin.isatty() and sys.stdout.isatty())
     stream = io.StringIO(newline="")
-    writer = csv.writer(stream, lineterminator="\\n")
+    writer = csv.writer(stream, lineterminator="\n")
     writer.writerow(DECISION_FIELDS)
     print("PRIVATE HUMAN review only. Use a trusted terminal without recording.")
     print("Open the PRIVATE comparison HTML locally before selecting. No grant/GO.")
