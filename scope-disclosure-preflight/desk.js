@@ -4,7 +4,7 @@
   const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","maskPrivateBlocks","pemStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus","humanReplyFile","importHuman","humanReturnStatus","humanReturnOutcome","humanReturnNote"];
   const e = Object.fromEntries(ids.map(id => [id,$(id)]));
   const encoder = new TextEncoder();
-  let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0;
+  let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0, revision = 0;
   const message = (id,text) => { e[id].textContent = text; };
   const chars = text => [...text].length;
   const hash = async bytes => {
@@ -28,6 +28,7 @@
     e.exportText.disabled = e.exportReceipt.disabled = !ok;
   }
   function invalidate() {
+    revision++; // invalidate async preview calculations when the human changes masks or source
     prepared = null; seen = new Set(); page = 0; e.preview.value = "";
     ["matches","residual","outputHash"].forEach(id=>message(id,"—"));
     message("warnings","No preview prepared.");
@@ -224,7 +225,7 @@
   e.review.onclick=async()=>{
     if(!source || (!rules.length && !e.maskPrivateBlocks.checked))return;
     const current=++ticket;
-    invalidate();e.review.disabled=true;
+    invalidate();const snapshotRevision=revision;e.review.disabled=true;
     try{
       // Full PEM/PGP block masking happens first, preventing short literals from
       // breaking the key-block structural integrity check.
@@ -242,7 +243,7 @@
       const bytes=encoder.encode(text);
       if(bytes.length>8*1024*1024)throw Error("Output too large");
       const sha=await hash(bytes);
-      if(current!==ticket || !source)return;
+      if(current!==ticket || snapshotRevision!==revision || !source)return;
       const remaining=hints(text);
       const highRisk=remaining.some(([kind])=>["private key","Bearer","credential-like","JWT-like","GitHub token","AWS access key","API token prefix"].includes(kind));
       prepared={text,sha,bytes:bytes.length,count,remaining,highRisk,originalHash:source.hash};
