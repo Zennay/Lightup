@@ -127,3 +127,27 @@ A/B comparison, HUMAN follow-up CSV and unsigned source manifests with a local
 CSP-restricted PRIVATE index. A removed finding is a declaration, **not** proof
 that it was repaired, retested, or even correctly observed. Never distribute
 source findings outside independently approved PRIVATE scope.
+
+## Expanded native integration: complete offline learning, planning and HUMAN decisions
+
+Five more original, separately held PRIVATE/isolated-lab source snapshots are physically
+integrated without modifying their original owner branches. The suite's owner-private
+offline kit now includes **ten self-contained original browser workrooms**:
+
+- Original PRIVATE finding review, HUMAN worksheet, disclosure, retention and calendar;
+- Original #1634 **lab launchpad** to prepare source-local isolated-lab endpoint plans
+  without initiating any assessment or contacting targets;
+- Original #1595 **scenario studio** to author hypothetical bounded lab scenarios;
+- Original #1597 **benchmark lineage** to review source-declared scenario membership
+  against existing completed benchmark reports without running evaluation;
+- Original #1592 **candidate matrix** for HUMAN-only comparison of existing
+  separately produced canonical lab comparison files;
+- Original #1669 **multi-reviewer consensus**, including local PRIVATE encrypted
+  reviewer workspace, explicit conflict handling and refusal to infer permission.
+
+Each original one-file app is copied unchanged into the new owner-controlled kit,
+with no external resource loading and no automatic source import. The package links
+to every app from the same private scriptless landing page. All original rules for
+source admission, original plan identity, HUMAN status and cryptographic data remain
+the responsibility of the original owner module, not the suite wrapper. A launcher
+link is not permission, verification, a PASS finding, or a production approval.

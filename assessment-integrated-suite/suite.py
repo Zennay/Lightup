@@ -21,6 +21,11 @@ APPS = {
     "human-disclosure.html": ROOT / "assessment-disclosure-preflight/standalone.html",
     "human-lab-review.html": ROOT / "assessment-lab-review/standalone.html",
     "human-followup-calendar.html": ROOT / "assessment-followup-calendar/standalone.html",
+    "lab-launchpad.html": ROOT / "assessment-launchpad/standalone.html",
+    "lab-scenario-studio.html": ROOT / "lab-design/standalone.html",
+    "benchmark-lineage.html": ROOT / "assessment-lineage/standalone.html",
+    "benchmark-candidates.html": ROOT / "assessment-candidates/standalone.html",
+    "multi-reviewer-consensus.html": ROOT / "assessment-reviewer-consensus/reviewer-studio.html",
 }
 
 class Hold(Exception):
@@ -82,6 +87,11 @@ def write_html(destination: Path, detail: bool, count: int) -> None:
         ("Offline retention HUMAN studio", "workrooms/human-retention.html"),
         ("Offline original lab finding HUMAN review", "workrooms/human-lab-review.html"),
         ("Offline PRIVATE HUMAN follow-up calendar", "workrooms/human-followup-calendar.html"),
+        ("Prepare offline isolated lab manifest (never dispatch)", "workrooms/lab-launchpad.html"),
+        ("Author offline hypothetical lab scenarios", "workrooms/lab-scenario-studio.html"),
+        ("Compare original lab benchmark lineage", "workrooms/benchmark-lineage.html"),
+        ("Explore original candidate tradeoffs", "workrooms/benchmark-candidates.html"),
+        ("Reconcile separate HUMAN reviewer plans", "workrooms/multi-reviewer-consensus.html"),
     ]
     if detail:
         links = [
