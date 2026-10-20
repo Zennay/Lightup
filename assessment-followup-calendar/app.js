@@ -7,6 +7,7 @@
     "human_stage","human_owner_group","human_next_action","human_blocker"];
   const PLAN_HEAD = ["worksheet_sha256_unsigned","original_ordinal","local_date",
     "local_time","duration_minutes","reminder_minutes","time_zone"];
+  const PLAN_HEAD_V2 = [...PLAN_HEAD, "private_calendar_series_id"];
   const SEVERITY = new Set(["critical","high","medium","low","info"]);
   const STAGE = new Set(["","needs_review","discussing","blocked","documented"]);
   const DURATION = new Set(["15","30","60","90"]);
@@ -15,6 +16,7 @@
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
+  let seriesId = "", exportedPlan = false;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -94,9 +96,10 @@
     hold(Number.isFinite(date.getTime()+Number(duration)*60000));
     return {day,time,duration,reminder};
   }
+  function newSeriesId(){const raw=new Uint8Array(16);crypto.getRandomValues(raw);return Array.from(raw,x=>x.toString(16).padStart(2,"0")).join("");}
   function applySlot(ordinal,slot){
     if(slot)plan.set(ordinal,slot);else plan.delete(ordinal);
-    changed=true;render();
+    changed=true;exportedPlan=false;render();
   }
   function filtered(){
     const severity=$("severity").value,stage=$("stage").value,status=$("status").value;
@@ -199,15 +202,22 @@
     }
   }
   function restore(parsed){
-    hold(JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD));
+    const v2=JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD_V2);
+    hold(v2 || JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD));
     hold(parsed.length===items.length+1);
     const next=new Map();
+    let restoredSeries="";
     parsed.slice(1).forEach((r,i)=>{
-      hold(r.length===7 && r[0]===hash && r[1]===String(i+1) && r[6]===zone);
+      hold(r.length===(v2?8:7) && r[0]===hash && r[1]===String(i+1) && r[6]===zone);
+      if(v2){
+        hold(/^[0-9a-f]{32}$/.test(r[7]));
+        if(i===0)restoredSeries=r[7];
+        hold(r[7]===restoredSeries);
+      }
       const slot=admitSlot(r[2],r[3],r[4],r[5]);
       if(slot)next.set(i+1,slot);
     });
-    return next;
+    return {schedule:next,series:v2?(restoredSeries||newSeriesId()):newSeriesId(),legacy:!v2};
   }
   async function onOriginal(file){
     const buffer=await bytes(file);
@@ -216,7 +226,7 @@
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
-    items=parsed;hash=h;plan=new Map();active=true;changed=false;page=0;agendaPage=0;
+    items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;
     $("desk").hidden=false;$("agenda").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
@@ -228,19 +238,19 @@
     hold(active);
     const raw=decoder.decode(await bytes(file));
     hold(!raw.startsWith("\uFEFF"));
-    const imported=restore(csv(raw,PLAN_HEAD.length));
+    const imported=restore(csv(raw,8));
     if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
-    plan=imported;page=0;agendaPage=0;changed=false;render();
-    inform(`Restored ${plan.size} HUMAN-only reminders matched to the exact original worksheet and timezone.`);
+    plan=imported.schedule;seriesId=imported.series;exportedPlan=!imported.legacy;page=0;agendaPage=0;changed=false;render();
+    inform(`Restored ${plan.size} HUMAN reminders. ${imported.legacy?"Legacy plan: save the new v2 plan before repeatable calendar export.":"Stable private calendar identities restored."}`);
   }
   function planExport(){
-    const rows=[PLAN_HEAD,...items.map(r=>{
+    const rows=[PLAN_HEAD_V2,...items.map(r=>{
       const p=plan.get(r.ordinal);
       return [hash,String(r.ordinal),p?.day||"",p?.time||"",
-        p?.duration||"",p?.reminder||"",zone];
+        p?.duration||"",p?.reminder||"",zone,seriesId];
     })];
     download(makeCsv(rows),"lightup-private-human-followups.csv","text/csv;charset=utf-8");
-    changed=false;render();inform("PRIVATE exact-worksheet-bound plan downloaded; original worksheet unchanged.");
+    changed=false;exportedPlan=true;render();inform("PRIVATE v2 plan downloaded with stable opaque calendar identities; original worksheet unchanged.");
   }
   const icsText=s=>String(s).replaceAll("\\","\\\\").replace(/\r\n|\r|\n/g,"\\n").replaceAll(";","\\;").replaceAll(",","\\,");
   const icsTime=date=>[date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,"0"),
@@ -258,14 +268,14 @@
   }
   function calendarExport(){
     hold(active && plan.size>0);
+    if(!exportedPlan){inform("Save or restore the PRIVATE v2 plan before exporting. It preserves stable calendar event IDs on future reopen.",true);return;}
     const include=$("includeAction").checked;
     if(!confirm(`Export ${plan.size} PRIVATE tentative HUMAN calendar events? ${include?"Your HUMAN next-action texts WILL be included.":"No HUMAN next-action texts will be included."} Only import into an authorized private calendar; cloud calendars may synchronize.`))return;
     const now=icsTime(new Date()),lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Follow-ups"];
     for(const r of items){
       const p=plan.get(r.ordinal);if(!p)continue;
       const start=eventDate(p.day,p.time),end=new Date(start.getTime()+Number(p.duration)*60000);
-      const random=new Uint8Array(16);crypto.getRandomValues(random);
-      const uid=Array.from(random,b=>b.toString(16).padStart(2,"0")).join("")+"@lightup-private.invalid";
+      const uid=seriesId+"-"+r.ordinal+"@lightup-private.invalid";
       lines.push("BEGIN:VEVENT","UID:"+uid,"DTSTAMP:"+now,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
         "STATUS:TENTATIVE","TRANSP:TRANSPARENT",
         "SUMMARY:"+icsText("PRIVATE HUMAN follow-up #"+r.ordinal),
@@ -296,7 +306,7 @@
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
-    items=[];plan=new Map();hash="";active=false;changed=false;agendaPage=0;
+    items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;
     $("desk").hidden=true;$("agenda").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     $("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
@@ -315,7 +325,7 @@
     }catch(err){inform(err.message,true);return;}
     if(!confirm(`${clear?"Clear dates on":"Schedule"} exactly ${candidates.length} filtered HUMAN rows? Existing dates in this selection will be ${clear?"removed":"replaced"}. This does not change source worksheets.`))return;
     for(const row of candidates){if(clear)plan.delete(row.ordinal);else plan.set(row.ordinal,{...slot});}
-    changed=true;render();inform(candidates.length+" HUMAN reminder dates changed in local memory only.");
+    changed=true;exportedPlan=false;render();inform(candidates.length+" HUMAN reminder dates changed in local memory only.");
   }
   function suggestDates(){
     hold(active);
@@ -355,7 +365,7 @@
     hold(index===unscheduled.length);
     if(!confirm("Propose "+proposal.size+" PRIVATE HUMAN-only weekday reminders? This sorts solely by UNVERIFIED source-reported severity, skips HUMAN blocked rows, respects existing plans, and never changes the original worksheet. No verified urgency or permission is implied."))return;
     for(const [ordinal,slot] of proposal)plan.set(ordinal,slot);
-    changed=true;page=0;render();
+    changed=true;exportedPlan=false;page=0;render();
     inform("Proposed "+proposal.size+" LOCAL HUMAN follow-ups. Review each date before exporting; no calendar was updated.");
   }
   hook("suggest","click",()=>{try{suggestDates();}catch(err){inform(err.message,true);}});
