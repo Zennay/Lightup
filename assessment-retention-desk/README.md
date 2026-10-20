@@ -2,6 +2,21 @@
 
 **INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** Add-only, fully offline HUMAN operations companion. This is *not* part of an approved active assessment, release, authorization grant, consent workflow, delete automation or evidence verification.
 
+## Direct usable offline application
+
+**[Save the complete standalone HTML file](standalone.html)** from the branch to
+a trusted local computer and then **open the saved file locally** in a browser
+with WebCrypto support. GitHub's normal file preview is source code, not a
+running application; do not upload client source materials to a web viewer.
+The standalone app bundles all browser JS and CSS with SHA-256-pinned CSP,
+with no other browser assets required. No live site or production deployment.
+
+Original PRIVATE assessment files are admitted only from the local file chooser
+after a separate operator selection. Existing real authorization and consent
+requirements are **not** satisfied by opening the app or by encrypted receipt
+passwords. Build yourself with `package.py` only if you need to change the
+source; the committed standalone HTML is already produced.
+
 ## What the operator can actually do
 
 1. Open `index.html` on a trusted device and keep `desk.js`, `vault.js` and `desk.css` alongside it. No backend, browser extension, network permission, model calls or service workers.
