@@ -21,6 +21,7 @@ import sys
 import lab_plans
 import lab_plan_review
 import lab_review_history
+import lab_team_reply_browser
 import private_session as privacy
 import route_queue
 
@@ -147,6 +148,8 @@ def build(packets: list[str], final_room: str, parent: str,
                 _page("HUMAN Lab · "+team,"Only HUMAN tasks assigned to "+team+
                       " from original source-bound finalized review.",entries)))
             docs.append(("TEAM-"+SLUGS[team]+"-DRAFT.csv",_team_csv(entries)))
+            docs.append(("TEAM-"+SLUGS[team]+"-EDITOR.html",
+                         lab_team_reply_browser.render(team,entries)))
     if unassigned:
         docs.append(("TEAM-unassigned-operator-only-DRAFT.csv",_team_csv(unassigned)))
         docs.append(("TEAM-unassigned-operator-only.html",
