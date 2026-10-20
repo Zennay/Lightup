@@ -180,7 +180,7 @@ Native source-bound admission and final external consent/review remain separate.
 <p id="feedback" role="status" aria-live="polite"></p>
 <p class="warning">This offline editor cannot verify that the selected phrases
 are complete, actually contain secrets, or are safe to share. The native
-\`notes.py mask-copy\` must check all exact original source identities and
+`notes.py mask-copy` must check all exact original source identities and
 apply every requested phrase. No task, network, scanning, approval, consent,
 recipient authentication or disclosure. INCUBATE M3/M7 PLAN/LAB ONLY.</p>
 </footer><script>""" + JS + """</script></body></html>""")
