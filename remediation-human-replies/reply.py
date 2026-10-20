@@ -44,7 +44,7 @@ MAX_ENCRYPTED = 400000
 FIELDS = frozenset(("kind", "version", "disposition", "authority_granted",
                     "consent_verified", "source_authenticated",
                     "remediation_verified", "warning", "source_redacted_sha256",
-                    "original_items", "responses"))
+                    "responses"))
 RESPONSE_FIELDS = frozenset(("ordinal", "reason", "status", "answer", "question"))
 ENVELOPE_FIELDS = frozenset(("kind", "version", "disposition",
     "authority_granted", "consent_verified", "source_authenticated",
@@ -100,8 +100,7 @@ def admit_reply(obj: dict, packet: dict, digest: str) -> list[dict]:
             and obj["version"] == 1 and obj.get("disposition") == DISPOSITION
             and obj.get("warning") == WARNING
             and original.exactly_false(obj)
-            and obj.get("source_redacted_sha256") == digest
-            and obj.get("original_items") == packet["items"],
+            and obj.get("source_redacted_sha256") == digest,
             "HUMAN reply is not bound to exactly this original redacted handoff")
     rows = obj["responses"]
     require(type(rows) is list and len(rows) == len(packet["items"])
