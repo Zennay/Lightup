@@ -1316,3 +1316,44 @@ export still retains **all** original source rows in exact original order,
 regardless of filtering or mass HUMAN draft edits. Changes are still unsigned
 local concepts; the native original-inbox-bound finalizer remains mandatory.
 No real task assignment, authenticated receiver, consent or scan is created.
+
+## v32 — exact original PRIVATE HUMAN inbox discussion history · console 39
+
+The source-bound inbox reviewer already permits more than one independently
+completed HUMAN-only discussion, but earlier operators could not compare their
+proposed changes without manually inspecting separate PRIVATE HTML packets.
+New [portfolio_inbox_history.py](portfolio_inbox_history.py) reads **2–8
+explicitly ordered ORIGINAL finalized inbox review JSONs**, each with its exact
+original HUMAN review CSV, alongside a single original 0600
+`PRIVATE-HUMAN-owner-inbox.json`. All original inputs must be separate absolute
+paths. Every version is admitted by the **existing native**
+`portfolio_owner_attention.read_discussion`, including original exact-inbox
+byte SHA, corresponding CSV byte SHA, canonical schema, all required false
+authority flags, all original HUMAN row identity/order, and all HUMAN stage/note
+values. Repeated byte-identical finalized rounds are rejected.
+
+    python3 assessment-workspace-ledger/portfolio_inbox_history.py \
+      --inbox /private/inbox/PRIVATE-HUMAN-owner-inbox.json \
+      --discussion /private/review1/PRIVATE-HUMAN-inbox-review.json \
+      --review-csv /private/review1/HUMAN-inbox-review-template.csv \
+      --discussion /private/review2/PRIVATE-HUMAN-inbox-review.json \
+      --review-csv /private/review2/HUMAN-inbox-review-template.csv \
+      --private-parent /private/operator-only
+
+The original source is re-admitted and all exact original HUMAN review CSV/JSON
+bytes are re-opened before any derived PRIVATE output is allocated. One new
+0700 output room contains a minimal anonymous `OPEN-PRIVATE.html` with
+human-stage/changed-note counts only; owner-private 0600 detailed scriptless
+HTML, CSV and canonical JSON report original source slot and owner label, all
+HUMAN proposed stages and transition round numbers. **Derived history never
+includes private free-text note contents**, only whether those changed between
+adjacent manually ordered rounds. Source identities, packet digests and labels
+stay inside 0600 outputs. Original input files remain unchanged. No dates or
+meeting attendance are inferred from round positions.
+
+Console **39** provides the foreground flow. Fixed source-only software bundle
+**v32** includes the module and retains **v16–v31 read-only package inventory**
+compatibility. No scanner, actual client, network, auth, grant, notification,
+worker, recipient transfer, scheduling, real remediation proof or security PASS.
+The original stage stays **INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD**; release
+gates remain unchanged.

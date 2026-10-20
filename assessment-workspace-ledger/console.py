@@ -33,6 +33,7 @@ import portfolio_owner_inbox
 import portfolio_owner_inbox_review
 import portfolio_inbox_studio
 import portfolio_owner_attention
+import portfolio_inbox_history
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -79,6 +80,7 @@ MENU = (
     ("36", "Record original-inbox-bound PRIVATE HUMAN team discussion"),
     ("37", "Build source-free offline multi-owner HUMAN Inbox Studio"),
     ("38", "Export source-bound one-owner PRIVATE HUMAN discussion brief"),
+    ("39", "Compare 2–8 original source-exact PRIVATE HUMAN inbox discussions"),
     ("0", "Exit"),
 )
 
@@ -227,6 +229,21 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "39":
+        print("Choose 2–8 original inbox HUMAN discussions and their matching CSVs.")
+        rounds, original_csvs = [], []
+        while len(rounds) < 8:
+            path = prompt("Original finalized HUMAN discussion " + str(len(rounds) + 1),
+                          required=len(rounds) < 2)
+            if not path:
+                break
+            csv_path = prompt("Corresponding original complete HUMAN-inbox-review-template.csv")
+            rounds.append(path)
+            original_csvs.append(csv_path)
+        return portfolio_inbox_history.run(argparse.Namespace(
+            inbox=prompt("ORIGINAL PRIVATE-HUMAN-owner-inbox.json"),
+            discussion=rounds, review_csv=original_csvs, private_parent=private_parent()
         ))
     if action == "38":
         return portfolio_owner_attention.run(argparse.Namespace(
