@@ -18,7 +18,7 @@ import stat
 import sys
 import unicodedata
 
-from .finding_export_review import _admit_export, _render, _summary
+from .finding_export_review import _RETESTS, _admit_export, _render, _summary
 from .finding_export_review_publish import (
     _HOLD_NOTICE, _SAFE_NAME, _file, _private_parent, _publish_noreplace,
 )
@@ -26,6 +26,7 @@ from .finding_export_unicode_integrity import _checked_text
 
 _NAMES = ("findings.csv", "review.html", "summary.json", "REVIEW_ONLY.txt")
 _LIMITS = (300_000, 900_000, 40_000, 2_000)
+_STAGES = ("not_in_selection", *_RETESTS)
 _HISTORY_HOLD = (
     "PRIVATE HUMAN COMPARISON · DRAFT/HOLD · PLAN/LAB ONLY. These are "
     "operator-selected, unsigned and unauthenticated files. A finding absent "
@@ -179,6 +180,15 @@ def _html(payload: dict) -> str:
                        '</p><p>Absence does not mean fixed or closed. ',
                        'Changed only means source-selected presentation fields ',
                        'differ. Priority uses reported severity, not a risk verdict.</p>'))
+        blocks.append("<h3>Reported stage movement (NOT independently verified)</h3><ul>")
+        for prior in _STAGES:
+            for later in _STAGES:
+                number = transition["reported_stage_movements"][prior][later]
+                if number:
+                    blocks.extend(("<li>", escape(prior), " → ",
+                                   escape(later), ": ", str(number),
+                                   " selected presentations</li>"))
+        blocks.append("</ul>")
         for kind, heading in (
             ("changed", "Changed reported fields"),
             ("added", "Only in later selected packet"),
@@ -268,10 +278,18 @@ def publish_private_review_history(
                for key in previous_ids.keys() & current_ids.keys()):
             raise ValueError("cross-packet compatibility identity drift: HUMAN HOLD")
         items, counts = _difference(originals[index - 1], originals[index])
+        # Count source-reported labels only; no verified remediation inference.
+        movements = {before: {after: 0 for after in _STAGES}
+                     for before in _STAGES}
+        for item in items:
+            before = item["earlier_reported_retest_stage"] or "not_in_selection"
+            after = item["later_reported_retest_stage"] or "not_in_selection"
+            movements[before][after] += 1
         transitions.append({
             "from_ordinal": index,
             "to_ordinal": index + 1,
             "counts": counts,
+            "reported_stage_movements": movements,
             "items": items,
         })
     payload = {
