@@ -52,7 +52,7 @@
 
   <div class="workroom">
     <section class="queue" aria-labelledby="queueTitle">
-      <div class="panel-head"><h2 id="queueTitle">Review queue</h2><p id="counts" aria-live="polite">Open a source CSV to begin.</p></div>
+      <div class="panel-head"><h2 id="queueTitle">Review queue</h2><p id="counts" aria-live="polite">Open a source CSV to begin.</p><div class="bulk"><label for="bulkStage">HUMAN stage for visible queue only</label><select id="bulkStage" disabled></select><button type="button" id="bulkApply" disabled>Preview &amp; apply to visible</button><button type="button" id="bulkUndo" disabled>Undo last bulk edit</button></div></div>
       <div id="list" class="list"></div>
     </section>
     <section class="detail-panel" aria-labelledby="detailTitle">
