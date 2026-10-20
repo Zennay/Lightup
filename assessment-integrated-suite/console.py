@@ -20,6 +20,7 @@ import human_workpack_console
 import saved_workpack_console
 import workpack_progress_console
 import workpack_continue_console
+import operator_navigation
 import private_session
 import os
 from pathlib import Path
@@ -423,60 +424,27 @@ def main() -> int:
         "51": lambda x: workpack_continue_console.prepare(x, path_prompt, ask),
     }
     while True:
-        print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
-        print("2. Prepare exact-source PRIVATE HUMAN selection studio")
-        print("3. Build source-selected PRIVATE HUMAN finding dossier")
-        print("4. Review two original PRIVATE lab source revisions")
-        print("5. Show local package paths (current session only)")
-        print("6. Prepare original multi-artifact PRIVATE source archive")
-        print("7. Prepare original PRIVATE HUMAN agenda portfolio")
-        print("8. Compare already-recorded lab benchmark originals (single/cohort/scored)")
-        print("9. Generate 3-12 original benchmark cohorts for native offline trends")
-        print("10. Reconcile exact-source PRIVATE HUMAN reviewer plans")
-        print("11. Snapshot 1-12 original PRIVATE packages with byte-bound HUMAN ledger")
-        print("12. Reopen and verify original PRIVATE ledger without making a new one")
-        print("13. Finalize source-bound PRIVATE HUMAN ledger suggestions")
-        print("14. Prepare original credential-masked PRIVATE assessment notes")
-        print("15. Finalize source-bound PRIVATE HUMAN note decisions")
-        print("16. Map original completed benchmark + authenticated client findings into HUMAN follow-up")
-        print("17. Generate canonical original cohort comparison and private HUMAN client finding follow-up")
-        print("18. Prepare bounded PRIVATE HUMAN team review handoff")
-        print("19. Admit a returned PRIVATE HUMAN annotation against original team scope")
-        print("20. Reconcile two to twelve non-overlapping PRIVATE HUMAN team returns")
-        print("21. One-command original PRIVATE comparison to HUMAN casebook and source ledger")
-        print("22. One-command two original cohorts to HUMAN casebook and source ledger")
-        print("23. Prepare PRIVATE original selective evidence HUMAN Studio")
-        print("24. Publish only original HUMAN-selected PRIVATE evidence and recipient questions")
-        print("25. Review 2-12 source-bound PRIVATE HUMAN evidence-selection revisions")
-        print("26. Create PRIVATE original human-curated evidence and recipient overview")
-        print("27. Prepare original PRIVATE HUMAN recipient question studio")
-        print("28. Admit source-bound PRIVATE HUMAN recipient responses")
-        print("29. Prepare original PRIVATE HUMAN sender triage workroom")
-        print("30. Admit original PRIVATE HUMAN sender triage and follow-up")
-        print("31. Prepare exact-source PRIVATE next HUMAN question proposal (no sending)")
-        print("32. Prepare original PRIVATE disclosure preflight + source-free HUMAN workroom")
-        print("33. Admit exact-receipt PRIVATE HUMAN disclosure decisions locally")
-        print("34. Generate original small-cohort-suppressed HUMAN stage counts (PRIVATE)")
-        print("35. Review 2-12 original PRIVATE HUMAN retention plan snapshots")
-        print("36. Show original PRIVATE HUMAN retention source-drift (no deletion)")
-        print("37. Save owner-private PATH-ONLY session + offline workroom bookmarks")
-        print("38. Resume PRIVATE operator paths manually (no source execution)")
-        print("39. Compare 2-8 original PRIVATE operator snapshots (HUMAN-only)")
-        print("40. Build one owner-private assessment route board from current original workrooms")
-        print("41. Build PRIVATE route board from a saved 0600 session WITHOUT restoring paths")
-        print("42. Build PRIVATE HUMAN action queue + original editable CSV")
-        print("43. Reopen HUMAN-updated CSV against exact current session paths")
-        print("44. Create PRIVATE minimal HUMAN team deck from original queue")
-        print("45. Compare 2-8 original PRIVATE HUMAN work queues without notes")
-        print("46. Resume saved PRIVATE HUMAN queue without replacing current session")
-        print("47. Create PRIVATE HUMAN follow-up priorities and team workload desk")
-        print("48. Build complete PRIVATE HUMAN assessment workpack from original queue")
-        print("49. Resume complete PRIVATE HUMAN workpack from ORIGINAL saved session")
-        print("50. Review 2-8 original PRIVATE HUMAN workpack snapshots (saved session)")
-        print("51. Continue an original PRIVATE HUMAN workpack with a new declared date")
-        print("0. Exit without scheduling or executing anything")
+        operator_navigation.overview()
         try:
             choice = ask("Choice", "0")
+            if choice.casefold() == "all":
+                operator_navigation.all_actions()
+                choice = ask("Listed action number (blank returns to overview)")
+                if not choice:
+                    continue
+            elif choice.startswith("?"):
+                matching = operator_navigation.search(choice[1:])
+                if not matching:
+                    continue
+                choice = ask("Matching action number (blank returns)")
+                if not choice:
+                    continue
+                if choice not in matching:
+                    print("HOLD: choose only one of the matching action numbers.")
+                    continue
+            elif choice.casefold() == "help":
+                operator_navigation.help_flow()
+                continue
             if choice == "0":
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0

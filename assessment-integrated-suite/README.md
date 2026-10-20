@@ -403,6 +403,21 @@ The existing original owner/private read guards and 0700/0600 write guards
 are reused; no tests/QA or actual scans, grants, scheduling, dispatch or
 deployment are part of this workflow.
 
+## NEW: searchable original assessment console without scrolling 51 actions
+
+The original interactive `console.py` has 51 native original workflows.
+It now opens with a compact eight-category HUMAN navigator instead of
+printing an overwhelming 51-line action list on every screen. All **original
+numeric IDs and source owner handlers remain exactly unchanged**. Operators
+can type a number directly, `ALL` to inspect every exact original action,
+`?benchmark`, `?workpack`, `?private` or other bounded local substring
+search and choose an exact matching action number, or `HELP` for an original
+HUMAN workpack 37 → 49 → 50 → 51 walkthrough. None of these navigation
+commands open original evidence or call an action: execution still requires
+selecting one original numeric action and satisfying all its existing
+confirmation, local owner-private source admission and review gates.
+A blank prompt keeps the original no-action exit behavior.
+
 ## NEW: offline interactive HUMAN Progress Cockpit
 
 The original native `workpack-progress` and console 50 now produce a real
