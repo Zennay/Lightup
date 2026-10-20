@@ -372,21 +372,29 @@ unverified HUMAN work, not a consent or approval authority.
 
 Open the committed [**one-file PRIVATE reconciliation application**](reconcile-standalone.html)
 locally from a trusted workstation (or open [reconcile-studio.html](reconcile-studio.html)
-alongside its exact `reconcile-studio.css` and `reconcile-studio.js` source files).
+alongside its exact `reconcile-studio.css`, original `review-vault.js` and `reconcile-studio.js` source files).
 This is **actual self-contained software already committed** to the same
 existing DRAFT/HOLD PR, not an illustration or a future plan.
 
 The browser guides a complete HUMAN-only workflow:
 
 1. Load the existing exact unsigned `PRIVATE-receipt.json` and TWO completed
-   independently supplied native HUMAN CSVs, up to 12 source-free ordinals.
+   independently supplied native HUMAN reviews, up to 12 source-free ordinals.
+   Independently select plaintext CSV, original encrypted `.luhd` or
+   exact-receipt-containing encrypted `.luhb` for reviewer A and B. The
+   existing LightUp WebCrypto PBKDF2-SHA256/AES-256-GCM opens encrypted
+   data only in memory and clears both password input fields. A bundle
+   must contain the EXACT original receipt bytes, not just a similar digest.
    A strict bounded browser parser refuses nested duplicate JSON keys,
    invalid authority flags, missing/reordered/duplicate source ordinals,
    unsupported source kinds, malformed spreadsheet CSV, changed receipt
    SHA-256, wrong reviewer CSV columns/stages/notes and risky formula prefixes.
-   The browser hashes the actual original bytes of **all three inputs** using
-   local WebCrypto; even identical reviewer files do not prove independent
-   reviewers.
+   The browser hashes the exact original unsigned receipt bytes and the
+   native-completed HUMAN **plaintext CSV bytes of BOTH reviewers** using
+   local WebCrypto (not the randomized encrypted ciphertext). An optional
+   original UTF-8 BOM is deliberately preserved through decryption so
+   the native finalizer sees identical CSV bytes. Different ciphertext
+   is not proof of distinct reviewer content or reviewer identity.
 2. Compare A/B stages, PRIVATE questions and proposed next actions
    side by side in an accessible responsive interface. Filter literally
    different vs equal HUMAN text, unresolved vs explicitly selected rows, or
@@ -422,9 +430,13 @@ python3 assessment-disclosure-preflight/reconcile.py finalize \
   --private-output-dir ./private-browser-finalized
 ~~~
 
-The browser only accepts **plaintext source-free native HUMAN CSV**. To
-avoid creating a plaintext browser file from encrypted .luhd/.luhb, use
-the existing native `reconcile.py prepare/decide/finalize` directly.
+The browser accepts existing native HUMAN CSV, encrypted receipt-bound `.luhd`,
+and encrypted complete original receipt+HUMAN `.luhb` **separately for A and B**,
+without saving additional plaintext HUMAN reviewer files. The existing native
+`reconcile.py prepare/decide/finalize` remains the preferred terminal-only
+workflow. Finalizing a browser decision against encrypted original files uses
+`--a-vault` / `--a-bundle` and/or `--b-vault` / `--b-bundle` instead of CSV;
+both routes digest the identical decrypted original native CSV bytes.
 The standalone browser's downloaded decision CSV is confidential and
 may initially be in a normal-permission Downloads folder; a HUMAN
 operator must move it to a trusted owner-PRIVATE destination before
@@ -440,7 +452,8 @@ rebuilds the exact self-contained HTML with SHA-256-pinned inline CSP
 from the THREE original committed source files, rejects unexpected
 markup/inventory, reads bounded local regular files without following
 symlinks and publishes only a new file. The **already committed**
-[reconcile-standalone.html](reconcile-standalone.html) has no external
+[reconcile-standalone.html](reconcile-standalone.html) includes the original
+pinned native-compatible LightUp browser cryptography source, but no external
 imports, fetches, scans, models, credentials, original customer source
 or private HUMAN reviews embedded. All standalone code remains
 DRAFT/HOLD: it is not merged on main, deployed, independently
