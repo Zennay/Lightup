@@ -65,6 +65,57 @@ JS = r"""
     message.textContent="Last group stage change undone. HUMAN notes remain unchanged.";
     refresh();
   });
+  // Exact original-row-bound resumption of a browser-exported PRIVATE HUMAN CSV.
+  // No partial application: all rows, ordinals, hashes, values and byte size
+  // are admitted before one explicit local HUMAN confirmation.
+  const resume = document.getElementById("resume");
+  resume.addEventListener("change", async () => {
+    const file=resume.files && resume.files[0];
+    resume.value="";
+    if (!file) return;
+    try {
+      if (file.size === 0 || file.size > 65536)
+        throw Error("PRIVATE decision draft exceeds the original size budget.");
+      const data=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      if (data.includes("\uFEFF"))
+        throw Error("Unexpected byte-order mark in PRIVATE draft.");
+      const lines=data.split("\r\n");
+      if (lines.pop() !== "" || lines.length !== nodes.length + 1 ||
+          lines[0] !== "source_ordinal,source_sha256_unsigned,human_stage,human_note")
+        throw Error("Draft must contain every original source in exact canonical order.");
+      const fields=/^"((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)"$/u;
+      const proposed=[];
+      for (let i=0;i<nodes.length;i++) {
+        const match=fields.exec(lines[i+1]);
+        if (!match) throw Error("Draft row does not match the original browser CSV.");
+        const [ordinal,sha,stage,human]=match.slice(1).map(x=>x.replaceAll('""','"'));
+        const node=nodes[i];
+        if (ordinal !== node.dataset.ordinal || sha !== node.dataset.sha256 ||
+            !permitted.has(stage) || human.length > 500 ||
+            /[\r\n\x00-\x08\x0B\x0C\x0E-\x1F]/.test(human) ||
+            /^[\s]*[=+@-]/.test(human))
+          throw Error("Draft original byte identity or HUMAN stage does not match.");
+        proposed.push({stage,human});
+      }
+      if (!window.confirm("Restore all "+nodes.length+
+          " original PRIVATE HUMAN draft rows? This replaces current unsaved local choices " +
+          "but never authorizes sharing or edits any original file.")) {
+        message.textContent="PRIVATE draft was not restored. Current choices are unchanged.";
+        return;
+      }
+      nodes.forEach((node,i)=>{
+        node.querySelector("select").value=proposed[i].stage;
+        node.querySelector("textarea").value=proposed[i].human;
+      });
+      beforeBulk=null;
+      message.textContent="All original source-bound HUMAN choices restored locally. " +
+        "Inspect them before native finalize; unsigned SHA does not authenticate an author.";
+      refresh();
+    } catch (error) {
+      message.textContent="HOLD: PRIVATE draft not restored; current choices unchanged. "+
+        (error instanceof Error ? error.message : "Invalid local file.");
+    }
+  });
   document.getElementById("save").addEventListener("click", () => {
     const rows=["source_ordinal,source_sha256_unsigned,human_stage,human_note"];
     for (const node of nodes) {
@@ -184,7 +235,13 @@ content stays hidden until explicitly expanded; masking does not prove privacy.<
 <option value="SOURCE_OWNER_REQUIRED">Source owner required</option>
 <option value="WITHHOLD">Withhold</option>
 <option value="INTERNAL_REVIEW_ONLY">Internal review only</option></select></label>
-</div><p id="count" role="status" aria-live="polite"></p>
+</div>
+<label>Resume previously browser-exported PRIVATE HUMAN decisions (complete original CSV, no upload)
+<input id="resume" type="file" accept=".csv,text/csv"></label>
+<p>Imports are bounded to 64 KiB; every original position and unsigned source SHA
+must match in order before explicit human confirmation. On mismatch, no choices
+are changed. This only restores HUMAN suggestions, never release permission.</p>
+<p id="count" role="status" aria-live="polite"></p>
 <div class="grid"><label>Bulk proposal for VISIBLE rows only
 <select id="bulk-stage"><option value="">Choose HUMAN stage</option>
 <option value="NEEDS_HUMAN_REVIEW">Needs review</option>
