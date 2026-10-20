@@ -36,6 +36,11 @@
   }
   const today = () => {const d=new Date(), offset=d.getTimezoneOffset()*60000;return new Date(d.getTime()-offset).toISOString().slice(0,10);};
   const overdue = x => x.due && x.due < today() && x.stage !== "answered_human_only";
+  const dueSoon = x => {
+    if (!x.due || x.stage==="answered_human_only" || x.due<today()) return false;
+    const d=new Date(today()+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+7);
+    return x.due<=d.toISOString().slice(0,10);
+  };
   const status = msg => { el("notify").textContent = msg; };
   const change = () => {dirty = true;renderStats();};
   const dl = (bytes,name,mime) => {
@@ -84,22 +89,52 @@
     ctl.value=value;ctl.maxLength=max;ctl.addEventListener("change",()=>onchange(ctl.value));
     wrap.append(ctl);return wrap;
   }
+  function renderOwnerBoard() {
+    const board=el("ownerBoard"),select=el("ownerFilter"),previous=select.value;
+    const grouped=new Map();
+    for(const x of rows) {
+      const owner=x.owner.trim(),key=owner||"";
+      if(!grouped.has(key))grouped.set(key,{total:0,open:0,overdue:0,soon:0});
+      const g=grouped.get(key);g.total++;
+      if(x.stage!=="answered_human_only")g.open++;
+      if(overdue(x))g.overdue++;
+      if(dueSoon(x))g.soon++;
+    }
+    select.replaceChildren();
+    const all=document.createElement("option");all.value="all";all.textContent="All HUMAN owners";select.append(all);
+    const names=[...grouped.keys()].sort((a,b)=>a.localeCompare(b));
+    if(names.length>32) {
+      const note=document.createElement("p");note.textContent="Many locally declared HUMAN owners. Search by owner to narrow tasks.";
+      board.replaceChildren(note);
+    }else{
+      board.replaceChildren();
+    }
+    for(const owner of names){
+      const key=owner?"owner:"+owner:"unassigned",g=grouped.get(owner);
+      const opt=document.createElement("option");opt.value=key;opt.textContent=owner||"(No HUMAN owner)";select.append(opt);
+      if(names.length>32)continue;
+      const card=document.createElement("button");card.type="button";card.className="owner-card";card.value=key;
+      const label=document.createElement("strong");label.textContent=owner||"Unassigned HUMAN tasks";
+      const metric=document.createElement("small");metric.textContent=`${g.open} pending · ${g.overdue} overdue · ${g.soon} due soon · ${g.total} groups`;
+      card.append(label,metric);card.addEventListener("click",()=>{select.value=key;render();});
+      board.append(card);
+    }
+    select.value=[...select.options].some(o=>o.value===previous)?previous:"all";
+  }
   function renderStats() {
     const total=rows.length, unscheduled=rows.filter(x=>!x.due).length,
       unowned=rows.filter(x=>!x.owner.trim()).length,
-      late=rows.filter(overdue).length,
+      late=rows.filter(overdue).length, soon=rows.filter(dueSoon).length,
       done=rows.filter(x=>x.stage==="answered_human_only").length;
-    el("stats").textContent=`${total} HUMAN-only reason groups · ${done} answered (self-reported) · ${late} overdue · ${unscheduled} unscheduled · ${unowned} unowned ${dirty?"· UNSAVED":""}`;
+    el("stats").textContent=`${total} HUMAN-only reason groups · ${done} answered (self-reported) · ${late} overdue · ${soon} due within 7 days · ${unscheduled} unscheduled · ${unowned} unowned ${dirty?"· UNSAVED":""}`;
+    renderOwnerBoard();
   }
   function render() {
-    const query=el("search").value.trim().toLocaleLowerCase(), f=el("filter").value, p=el("source").value;
+    const shown=new Set(visibleIndices());
     const host=el("tasks");host.replaceChildren();let visible=0;
     for(let i=0;i<rows.length;i++) {
       const x=rows[i];
-      if((p!=="all" && String(x.packet)!==p) ||
-          (query && ![x.reason,x.owner,x.next_action,x.human_note,String(x.packet)].join(" ").toLocaleLowerCase().includes(query)) ||
-          (f==="overdue"&&!overdue(x)) || (f==="unscheduled"&&x.due) ||
-          (f==="unowned"&&x.owner.trim()) || (f==="pending"&&x.stage==="answered_human_only")) continue;
+      if(!shown.has(i))continue;
       visible++;
       const card=document.createElement("article"),title=document.createElement("p");
       title.className="task-title";title.textContent=`Packet ${x.packet} · group ${i+1} · ${x.reason.replaceAll("_"," ")}`;
@@ -124,13 +159,17 @@
   // Bulk actions apply only to the presently visible, source-bound HUMAN rows.
   // Never rewrite source-free packet identity/counts, notes, or trusted chronology.
   function visibleIndices() {
-    const q=el("search").value.trim().toLocaleLowerCase(), f=el("filter").value, p=el("source").value;
+    const q=el("search").value.trim().toLocaleLowerCase(), f=el("filter").value,
+      p=el("source").value, own=el("ownerFilter").value;
     const result=[];
     for(let i=0;i<rows.length;i++){
       const x=rows[i];
       if(p!=="all"&&String(x.packet)!==p)continue;
+      if(own==="unassigned"&&x.owner.trim())continue;
+      if(own.startsWith("owner:")&&x.owner!==own.slice(6))continue;
       if(q&&![x.reason,x.owner,x.next_action,x.human_note,String(x.packet)].join(" ").toLocaleLowerCase().includes(q))continue;
       if(f==="overdue"&&!overdue(x))continue;
+      if(f==="soon"&&!dueSoon(x))continue;
       if(f==="unscheduled"&&x.due)continue;
       if(f==="unowned"&&x.owner.trim())continue;
       if(f==="pending"&&x.stage==="answered_human_only")continue;
@@ -246,6 +285,7 @@
   el("search").addEventListener("input",render);
   el("filter").addEventListener("change",render);
   el("source").addEventListener("change",render);
+  el("ownerFilter").addEventListener("change",render);
   el("bulk").addEventListener("click",()=>{try{applyBulk();}catch(e){status("HOLD: "+e.message);}});
   el("undo").addEventListener("click",()=>{try{undoBatch();}catch(e){status("HOLD: "+e.message);}});
   el("save").addEventListener("click",()=>saveEncrypted().catch(e=>status("HOLD: "+e.message)));
