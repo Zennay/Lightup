@@ -21,6 +21,10 @@ from notes import Hold, file_new, private_directory, private_input, save_json
 from privacy_triage import FALSE_FLAGS
 from privacy_triage_discussion_history_studio import render as history_studio
 from privacy_triage_discussion_actions import (
+    studio as action_editor, rows_csv as action_csv, blank_rows,
+    receipt as action_receipt,
+)
+from privacy_triage_discussion_actions import (
     STEPS, admit_room, read_actions, reopen_actions,
 )
 
@@ -173,9 +177,21 @@ def create(original: str, reviews: list[str], received_room: str,
                  overview(summaries, len(selected), copies))
         file_new(output / "PRIVATE-HUMAN-action-history-studio.html",
                  history_studio(summaries, len(selected), len(action_rounds)))
+        # Next round starts explicitly EMPTY/PENDING, not adopted from
+        # earlier HUMAN submissions. Original action-finalize independently
+        # checks these native source bytes when this room is used as draft.
+        save_json(output / "PRIVATE-HUMAN-action-source.json",
+                  action_receipt(sources, manifest, decisions, packets,
+                                 selected_raw, selected))
+        file_new(output / "PRIVATE-HUMAN-action-template.csv",
+                 action_csv(blank_rows(selected)))
+        file_new(output / "PRIVATE-HUMAN-action-editor.html",
+                 action_editor(selected))
         finished = True
         print("HOLD: PRIVATE source-bound HUMAN action chronology written; NO review clearance")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-HUMAN-action-history.html"))
+        print("NEXT HUMAN ROUND (blank): " +
+              str(output / "PRIVATE-HUMAN-action-editor.html"))
         return 3
     finally:
         if not finished:
@@ -196,8 +212,16 @@ def reopen_history(original: str, reviews: list[str], received_room: str,
     original_receipt = (
         json.dumps(binding, indent=2, sort_keys=True, ensure_ascii=False)
         + "\n").encode("utf-8")
+    action_binding = action_receipt(
+        sources, manifest, decisions, packets, selected_raw, selected)
+    next_original_receipt = (
+        json.dumps(action_binding, indent=2, sort_keys=True,
+                   ensure_ascii=False) + "\n").encode("utf-8")
     required = (
         ("PRIVATE-HUMAN-action-history-receipt.json", original_receipt),
+        ("PRIVATE-HUMAN-action-source.json", next_original_receipt),
+        ("PRIVATE-HUMAN-action-template.csv", action_csv(blank_rows(selected))),
+        ("PRIVATE-HUMAN-action-editor.html", action_editor(selected)),
         ("PRIVATE-HUMAN-action-history.csv", csv_history(export)),
         ("PRIVATE-HUMAN-action-history.html",
          overview(summaries, len(selected), copies)),

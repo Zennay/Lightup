@@ -126,6 +126,28 @@ certificate: statuses and questions may change for reasons unrelated to
 the actual security/privacy of an asset. Successful local creation
 still returns **HOLD (exit 3)**. Nothing is sent or granted.
 
+### Prepare the next independent HUMAN round directly from the history room
+
+Each new history room contains a **fresh blank** source-bound
+`PRIVATE-HUMAN-action-editor.html`, unchanged native
+`PRIVATE-HUMAN-action-template.csv` and exact
+`PRIVATE-HUMAN-action-source.json`, in addition to its read-only chronology.
+All original selected positions start PENDING with EMPTY questions: previous
+WITHHOLD, discussion choices, follow-up notes, consent, identity or apparent
+progress are NEVER adopted automatically. Open the blank Studio offline,
+make NEW explicit HUMAN choices, save its complete original-position CSV in
+an owner-only 0600 file, and use the **unchanged native original**
+`sensitivity-discussion-actions-finalize` with
+`--draft-room /private/work/PRIVATE-lightup-human-action-history-ROOM`.
+The original completed source packet, original reviewers and received
+selected discussion room must be the same ones used for the history.
+
+The native finalizer independently verifies the new history-room draft against
+original source binding; it writes a separate 0700/0600 PRIVATE action record
+and still returns HOLD (3). The chronology itself is not mutated, and it does
+not become an authorization or a verified fix. Read-only history reopening
+also validates the complete blank next-round editor/template/binding bytes.
+
 ### Read-only original HUMAN chronology reopening
 
 Use the same manually ordered **original** finalized rounds as the previous
