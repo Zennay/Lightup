@@ -9,7 +9,28 @@
     remediation_verified: false, release_approved: false });
   const slots = [null, null];
   const generations = [0, 0];
+  const temporaryDownloads = new Set();
   const el = id => document.getElementById(id);
+  function expireDownloads() {
+    for (const url of temporaryDownloads) URL.revokeObjectURL(url);
+    temporaryDownloads.clear();
+  }
+  function localDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    temporaryDownloads.add(url);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.rel = "noopener";
+    anchor.hidden = true;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      temporaryDownloads.delete(url);
+    }, 60000);
+  }
   function release(index) {
     const prior = slots[index];
     slots[index] = null;
@@ -118,6 +139,7 @@
     // Every explicit clear or changed file invalidates pending async decrypts.
     generations[index]++;
     release(index);
+    expireDownloads(); // Explicit clear cancels any still-live private Blob URLs.
     const label = index === 0 ? "a" : "b";
     if (resetInput) el(label + "-file").value = "";
     el(label + "-pass").value = "";
@@ -216,11 +238,7 @@
       demand(generations[activeIndex] === originalGeneration && slots[activeIndex] === active,
         "Original PRIVATE source was cleared or changed during encryption; no export");
       const blob = new Blob([output], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob), anchor = document.createElement("a");
-      anchor.href = url; anchor.download = "LightUp-PRIVATE-HUMAN-selected-DRAFT-HOLD.lupb";
-      anchor.rel = "noopener"; anchor.hidden = true;
-      document.body.append(anchor); anchor.click(); anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      localDownload(blob, "LightUp-PRIVATE-HUMAN-selected-DRAFT-HOLD.lupb");
       status("subset-status", "PRIVATE HOLD: encrypted " + selected.length +
         " exact original files into a newly downloaded .lupb. Browser download location may be unsafe; " +
         "move to owner-private storage. No approval/disclosure implied.");
@@ -231,11 +249,7 @@
   function download(file) {
     if (!confirm("Export this original PRIVATE file as unencrypted plaintext? No authorization or sanitization is implied.")) return;
     const blob = new Blob([file.bytes], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = file.name; a.rel = "noopener"; a.hidden = true;
-    document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    localDownload(blob, file.name);
   }
   function preview(file) {
     const area = el("preview");
@@ -317,6 +331,14 @@
   window.addEventListener("pagehide", () => {
     generations[0]++; generations[1]++;
     release(0); release(1);
+    expireDownloads();
+    el("a-pass").value = ""; el("b-pass").value = "";
+    el("subset-pass").value = ""; el("subset-confirm").value = "";
+    el("a-file").value = ""; el("b-file").value = "";
+    render(); // Do not leave filenames, digests or preview in bfcache DOM.
+  });
+  window.addEventListener("pageshow", event => {
+    if (event.persisted) render();
   });
   render();
 })();
