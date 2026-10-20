@@ -150,9 +150,11 @@
         {name: "PBKDF2", salt: salt, iterations: 600000, hash: "SHA-256"},
         input, {name: "AES-GCM", length: 256}, false, ["encrypt"]
       );
-      const clear = encoder.encode(JSON.stringify(Object.assign({}, seed, {
+      const response = Object.assign({}, seed, {
         responses: rows.map(r => Object.assign({}, r))
-      })));
+      });
+      delete response.original_items; // Never echo original selected private actions/notes in returned .luhr.
+      const clear = encoder.encode(JSON.stringify(response));
       if (clear.length > 262144) throw new Error("PRIVATE HUMAN reply payload exceeds bound");
       const cipher = new Uint8Array(await crypto.subtle.encrypt({
         name: "AES-GCM", iv: nonce,
