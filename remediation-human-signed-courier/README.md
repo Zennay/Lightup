@@ -87,6 +87,33 @@ signatures, public keys, ciphertext or file slots do NOT prove different people
 or independent reviewers. Duplicate ciphertext, source mismatch, invalid
 signature or original source admission means HOLD and no partial inbox output.
 
+
+## Optional original editable HUMAN coordination after signed admission
+
+The 2–8-courier inbox defaults to an original **read-only** HUMAN comparison.
+For an actually usable new **editable coordinator workroom** instead, add
+--editable-coordination to the exact same signed_inbox.py command. The independent
+Ed25519/signature/key/source/ciphertext checks are unchanged; after successful
+admission the suite calls the ORIGINAL unchanged coordination.compile_workroom,
+rather than the ORIGINAL read-only reconcile.compare. The human coordinator
+then sees previous source-redacted original HUMAN answers as read-only and must
+create their own new statement; existing original native offline browser crypto
+can save a distinct encrypted reply. No original reply or prior answer is
+silently accepted as the coordinator's own opinion. The resulting private
+index.html links to the original native editable coordination page.
+
+    python3 remediation-human-signed-courier/signed_inbox.py \
+      --signed-courier /ABSOLUTE/PRIVATE/first-answer.luhs \
+      --trusted-fingerprint FIRST-EXTERNALLY-CONFIRMED-64-HEX \
+      --signed-courier /ABSOLUTE/PRIVATE/second-answer.luhs \
+      --trusted-fingerprint SECOND-EXTERNALLY-CONFIRMED-64-HEX \
+      --output-dir /ABSOLUTE/PRIVATE/new-editable-coordination \
+      --editable-coordination
+
+The signed inbox only asserts encrypted file custody and source equality.
+Even with two different signatures it does not authenticate two independent
+humans or verify a fix, actual remediation, client consent or HUMAN GO.
+
 ## Explicit privacy and release boundaries
 
 - All private inputs must be absolute, regular, owner-only 0600,
