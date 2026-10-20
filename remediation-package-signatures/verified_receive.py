@@ -34,7 +34,7 @@ def receive(
     import install  # original source-owner's source-lock / receipt inspector
 
     receiver.receive(archive, fresh_output_dir)
-    install.inspect(fresh_output_dir)
+    install.verify(fresh_output_dir)
     print("SIGNED-CUSTODY + SOURCE-LOCK REVIEW_ONLY: PRIVATE local suite received.")
     print("This is NOT release approval, identity proof, consent, or permission to run scans.")
 
