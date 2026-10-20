@@ -3,3 +3,6 @@
 
 /* Direct step correction without recreating an entire fictional timeline. */
 .timeline li{flex-wrap:wrap}.timeline li>span:nth-child(2){flex:1;min-width:160px}.event-actions{display:flex;gap:5px;margin-left:auto}.small-button{min-width:32px;height:32px;border:1px solid #627c91;border-radius:7px;background:#243b50;color:#f3f7fc;font-weight:900;cursor:pointer}.small-button:focus-visible{outline:3px solid var(--aqua);outline-offset:2px}.small-button:disabled{opacity:.38;cursor:not-allowed}.remove-button{background:#4b2b39;border-color:#985b6c}@media print{.event-actions{display:none}}
+
+/* Side-by-side hypothetical timeline changes. No real authority state is represented. */
+.baseline-controls{border-top:1px solid var(--border);padding:15px 0 4px;margin-top:10px}.baseline-controls h3,.comparison h3{margin:0 0 6px;font-size:1rem}.baseline-controls p{margin:5px 0 13px}.baseline-controls .buttons{margin-top:10px}.comparison{margin-top:22px;padding:15px;border:1px solid #385970;background:#182b3a;border-radius:12px}.comparison .needs{margin-bottom:0}.comparison .needs li{margin-bottom:4px}@media print{.baseline-controls .buttons{display:none}.comparison{border:1px solid #bbb;background:white;color:black}}
