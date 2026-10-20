@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-TFBySHsRfIY83XDNwzq1lBAsaDb9LwWOKwuSM10+yvM='; style-src 'sha256-e7GWUIamnMfoPKCgxgnWzkxFbTdWikcuAmjBdIsso+E='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-z+hjb2UbsEWR/YKmum6G7xbsgcwFjkxLuy+rJbUGtxM='; style-src 'sha256-P4ZjodYqJPTVp5OaY9XImXuQEFiMZHqusrXLEfufhJs='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN reconciliation desk</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#192735;background:#f3f5f9;color-scheme:light}
@@ -41,6 +41,17 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 .finalize .grid{margin-top:1rem}
 .resume{border-top:1px solid #cad6df;margin-top:1rem;padding-top:1rem}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* HUMAN final-result preview: every ordinal shown, notes collapsed by default. */
+.final-preview{display:grid;gap:.65rem;max-height:28rem;overflow:auto;padding:.3rem;margin-top:1rem;border:1px solid #b4c6d5;border-radius:.45rem;background:#fff}
+.outcome{padding:.75rem 1rem;background:#fff;border:1px solid #d0dce6;border-radius:.38rem;overflow-wrap:anywhere}
+.outcomeTitle{font-weight:750;margin:.2rem 0}.outcomeTitle[data-mode=hold]{color:#8a4f21}
+.outcomeTitle[data-mode=selected]{color:#246153}
+.outcomeKind{font-size:.82rem;color:#607286}
+.outcome details{margin:.65rem 0 0;padding:.65rem;border:1px solid #dce3ed;background:#f6f8fa;border-radius:.4rem}
+.outcome summary{cursor:pointer;font-weight:700}
+.outcome details .notes{margin:.45rem 0;white-space:pre-wrap;overflow-wrap:anywhere}
+@media print{.final-preview{max-height:none;overflow:visible}.outcome details:not([open]) .notes{display:none}}
 </style>
 
 
@@ -89,6 +100,8 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 <button id="save" type="button" disabled>Export PRIVATE decision CSV</button></div>
 <div class="finalize" aria-labelledby="finalizeTitle">
 <h3 id="finalizeTitle">3 · Seal selected HUMAN continuation without plaintext</h3>
+<p>Review the complete final result below, including rows hidden by search/filter. Questions and actions are collapsed by default so a passer-by does not automatically see PRIVATE detail. Expanding them is a local HUMAN operator choice. This is still neither source identity, independent verification nor consent.</p>
+<div id="finalPreview" class="final-preview" aria-label="Tentative selected HUMAN result for every ordinal"></div>
 <p>First export the exact reviewer-bound decision CSV above: it records your explicit A/B/HOLD choices and private reasons. Keep that PRIVATE audit file safely alongside the separately stored originals. This optional second step creates only a new encrypted <code>.luhb</code> containing the identical unsigned PRIVATE receipt bytes and the original-format HUMAN CSV selected row by row. A HOLD row always becomes <code>unreviewed</code> with empty notes; even matching reviewers are never silently selected. No new plaintext final report or intermediate reviewer file is downloaded.</p>
 <div class="grid">
 <label>New local-only encrypted result passphrase (14–256 characters)<input id="sealPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
@@ -569,7 +582,8 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
         dirty = true;
         decisionRevision++;
         exportedRevision = -1;
-        updateCounts();
+        if (byId("view").value !== "all" || byId("query").value.trim()) refresh();
+        else updateCounts();
       });
       input.addEventListener("input", () => {
         choice.reason = input.value;
@@ -581,6 +595,33 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
     });
     byId("visible").textContent = shown + " displayed / " + source.rows.length + " original ordinals";
     updateCounts();
+  }
+  function renderFinalPreview() {
+    const parent = byId("finalPreview");
+    parent.replaceChildren();
+    if (!source) return;
+    // PRIVATE notes are shown only after a local operator expands the row.
+    source.rows.forEach((row, index) => {
+      const choice = decisions[index];
+      const selected = choice.choice === "A" ? row.a :
+                       choice.choice === "B" ? row.b : null;
+      const wrapper = node("article", undefined, parent, "outcome");
+      const summary = node("p", "Ordinal " + row.original.ordinal + " · " +
+        (selected ? "HUMAN reviewer " + choice.choice + " tentatively selected" :
+                    "HOLD — no HUMAN reviewer selected"), wrapper, "outcomeTitle");
+      summary.dataset.mode = selected ? "selected" : "hold";
+      node("span", row.original.kind.replaceAll("_", " "), wrapper, "outcomeKind");
+      node("p", "Final HUMAN stage: " + (selected ? selected.stage : "unreviewed"), wrapper);
+      if (selected) {
+        node("p", "Operator's PRIVATE reason: " + choice.reason, wrapper);
+        const disclosure = node("details", undefined, wrapper);
+        node("summary", "Show original PRIVATE selected question and action", disclosure);
+        node("p", "Question: " + (selected.question || "—"), disclosure, "notes");
+        node("p", "Next action: " + (selected.next_action || "—"), disclosure, "notes");
+      } else {
+        node("p", "No prior HUMAN note or next action is inherited.", wrapper);
+      }
+    });
   }
   function updateCounts() {
     if (!source) return;
@@ -594,6 +635,7 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
     byId("saveState").textContent = invalid ? invalid + " selections missing safe reason · HOLD" :
       dirty ? "Unsaved PRIVATE HUMAN choices · no release" : "All decisions HOLD by default";
     byId("save").disabled = Boolean(invalid);
+    renderFinalPreview();
     const ready = !invalid && exportedRevision === decisionRevision &&
                   Boolean(source.receipt) && globalThis.LightUpHumanVault;
     byId("seal").disabled = !ready;
