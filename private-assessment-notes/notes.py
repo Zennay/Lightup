@@ -442,6 +442,12 @@ def main() -> int:
     sensitivity_end.add_argument("--triage-kit", required=True)
     sensitivity_end.add_argument("--completed-csv", required=True)
     sensitivity_end.add_argument("--private-parent", required=True)
+    reconcile = commands.add_parser(
+        "sensitivity-reconcile", help="original-bound 2-8 HUMAN reviewers and new blank PRIVATE review")
+    reconcile.add_argument("--completed-packet", required=True)
+    reconcile.add_argument("--review", action="append", required=True,
+                           help="separately completed owner-private HUMAN sensitivity packet")
+    reconcile.add_argument("--private-parent", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -509,6 +515,10 @@ def main() -> int:
             from privacy_triage import finalize as finalize_sensitivity
             return finalize_sensitivity(args.completed_packet, args.triage_kit,
                                         args.completed_csv, args.private_parent)
+        if args.action == "sensitivity-reconcile":
+            from privacy_triage_reconcile import build as build_sensitivity_reconcile
+            return build_sensitivity_reconcile(
+                args.completed_packet, args.review, args.private_parent)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(
