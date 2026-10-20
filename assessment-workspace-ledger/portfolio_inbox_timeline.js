@@ -112,16 +112,20 @@
    }
    if(!list.length)box.append(element("p","No original HUMAN proposal matches these filters; no remediation is implied."));
  }
- function csv(rows,mode){
+ function csv(rows){
    // CSV is PRIVATE. Original source slot and owner are explicit; note contents excluded.
-   const head=["local_case","historical_transition","original_kit","original_proposed_human_owner","first_human_triage_stage","latest_human_triage_stage","stage_changed_rounds","private_note_changed_rounds"];
+   const head=["original_history_sha256","selected_human_round","local_case","historical_transition","original_kit","original_proposed_human_owner","first_human_triage_stage","latest_human_triage_stage","stage_changed_rounds","private_note_changed_rounds"];
    const guarded=value=>{
       const s=String(value);
       if (/^\s*[=+@-]/.test(s))return "'"+s;
       return s;
    };
    const escape=value=>'"'+guarded(value).replaceAll('"','""')+'"';
-   return [head.join(","),...rows.map(r=>head.map(k=>escape(Array.isArray(r[k])?r[k].join(";"):r[k])).join(","))].join("\r\n")+"\r\n";
+   const selected=$("round").value==="latest"?rounds:Number($("round").value);
+   return [head.join(","),...rows.map(r=>head.map(k=>escape(
+       k==="original_history_sha256"?rawDigest:
+       k==="selected_human_round"?selected:
+       Array.isArray(r[k])?r[k].join(";"):r[k])).join(","))].join("\r\n")+"\r\n";
  }
  function download(name,type,data){
    const url=URL.createObjectURL(new Blob([data],{type}));const a=element("a");

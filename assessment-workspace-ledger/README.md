@@ -1452,3 +1452,51 @@ Original exact-head hosted and permanent named VPS CI, original source-holder
 and independent security/privacy/browser review, #177/#182/#829, authenticated
 separate current client/operator consent with action-time revocation, and
 explicit HUMAN GO continue to gate main merge/deployment.
+
+## v36 — complete source-exact PRIVATE HUMAN owner selection round-trip
+
+The offline v35 history explorer now exports an explicitly owner-scoped HUMAN
+selection CSV containing the **exact full SHA-256 of the loaded original native
+PRIVATE-HUMAN-inbox-history.json** and the manually selected original HUMAN
+round. The browser never exports other HUMAN owners, private free-text notes
+or original input bytes. The CSV is for trusted PRIVATE re-admission, not
+authorization; it is unsigned and could have been locally edited.
+
+New [portfolio_inbox_timeline_selection.py](portfolio_inbox_timeline_selection.py)
+and console **42** implement the critical native receiving step. They read
+one original canonical 0600 native history JSON with duplicate-key refusal,
+strict no-follow descriptor bounds, every false authority flag, original owner
+scope, all exact human source slot identities, 2–8 ordered original round
+digests, stage sequences and note-changed flags. They read the complete exact
+CSV, require its source SHA to match original canonical history **bytes**,
+require identical chosen HUMAN round on every original selected row,
+reject duplicate/extra/edited/foreign/other-owner/out-of-order rows, and
+require the explicit original proposed HUMAN owner filter. A prior
+owner-scoped source cannot widen to additional owners.
+
+    python3 assessment-workspace-ledger/portfolio_inbox_timeline_selection.py \
+      --history /private/history/PRIVATE-HUMAN-inbox-history.json \
+      --selection-csv /private/downloads/LightUp-PRIVATE-HUMAN-owner-visible.csv \
+      --owner 'EXACT original proposed HUMAN owner' \
+      --private-parent /private/operator-only
+
+Before writing, both original PRIVATE inputs are re-read byte-exactly. The
+native tool creates an exclusively new 0700/0600 owner-private room with
+an anonymous counts-only scriptless OPEN-PRIVATE.html and source-bound
+`PRIVATE-HUMAN-history-selection.html`, canonical JSON and the exact
+original CSV. Free-text original HUMAN notes are not included. Only one
+original selected owner and selected human-only source slots appear in
+the private detail. No original packets or files are overwritten.
+
+**Important:** Re-admitting an unsigned native-derived history + unsigned
+browser CSV checks byte identity and local structure, not independent
+provenance of earlier source kits or authenticity of client/operator consent.
+The original native upstream workflow must remain separately trusted;
+manual recipient verification and privacy/authorization review remain
+mandatory before sharing. This is **never** an assignment, security finding,
+client authorization, grant, scan, communication or release decision.
+
+New source-only **v36** ZIP includes the full browser → private native
+receiving workflow and the fixed unsigned v16–v35 inventory reader. Notion
+Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD and all original CI/review/consent/
+HUMAN GO gates remain unchanged.
