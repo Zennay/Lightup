@@ -403,6 +403,57 @@ The existing original owner/private read guards and 0700/0600 write guards
 are reused; no tests/QA or actual scans, grants, scheduling, dispatch or
 deployment are part of this workflow.
 
+## NEW: original-policy Lab Launchpad integrated into the foreground console
+
+**Original source-owner feature issue #1633 / PR #1634, without duplicating
+or modifying its source files.** Original `assessment-launchpad/build.py`,
+`reopen.py` and `compare.py` are directly available in the integrated
+assessment operator console:
+
+- **52 — PREPARE PRIVATE LAB PLAN**: choose an already exported original
+  owner-only 0600 `targets.txt` with explicit literal isolated HTTP(S)
+  addresses, optionally an original 0600 Studio catalog/selected scenario;
+  select an existing 0700 PRIVATE parent and an unused folder. The wrapper
+  delegates to the ORIGINAL `LabScenario` and `_admit_explicit_lab_url`
+  checks before publishing exact original 0700/0600 source-bound Lab Launchpad
+  artifacts and local scriptless HTML.
+- **53 — REOPEN PRIVATE LAB PLAN**: original source owner reopens its packet
+  with strict exact file/manifest hashes, original Studio source and original
+  scope; only returns an owner-private original local preview. An unchanged
+  hash is never proof of original customer permission.
+- **54 — COMPARE PRIVATE LAB PLANS**: use the original source owner to
+  re-admit both original offline proposals before creating its own separate
+  PRIVATE human-only revision brief. A missing proposed URL is NOT proof of
+  remediation, deletion, revocation or a changed client engagement.
+- **55 — BUILD PRIVATE LAB PORTFOLIO**: new additive
+  `lab_plan_portfolio.py` composes **3–8 original** original-owner-admitted
+  packets in HUMAN-declared order. Every original packet's source files,
+  Studio binding and scope policy are independently re-opened through
+  the installed source owner reader; exact duplicate declared packet identities
+  fail closed. The new independent 0700/0600 PRIVATE room offers a
+  **scriptless interactive-details** HTML portfolio with every source
+  proposal and adjacent added/absent/retained literal URL sets, plus
+  `PRIVATE-LAB-PROPOSALS.json` and source-free
+  `PRIVATE-ANONYMOUS-COUNTS.json`.
+
+Native noninteractive entry points use
+`python3 assessment-integrated-suite/lab_plans.py prepare|reopen|compare|portfolio`
+and exact explicit `--human-confirm` strings. All original packet paths,
+input files, output destinations and private Studio files must be owner-controlled
+0700/0600 outside the repository; outputs cannot overwrite any prior room.
+The original no-work preview command is merely TEXT in the original
+Launchpad file; **never executed** by this integration. The original
+source owner routines return review-only status 2, and admission/HOLD is 3;
+the wrappers do not reinterpret that as authorized execution.
+
+No DNS resolution, live targets, scans, model, provider requests, action-time
+grants, permissions, real deployment, authenticated actor, risk ranking,
+security findings or client-to-client identity join. Before anything active,
+all original CI/independent source-owner/privacy/security/browser review,
+#177/#182/#829, separate authenticated client and operator consent,
+action-time revocation and explicit HUMAN GO still apply. DRAFT/HOLD,
+INCUBATE M3/M7 PLAN/LAB ONLY.
+
 ## NEW: searchable original assessment console without scrolling 51 actions
 
 The original interactive `console.py` has 51 native original workflows.

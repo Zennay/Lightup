@@ -148,7 +148,7 @@ def compare(before: str, after: str, parent: str, folder: str) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="PRIVATE original lab plan preparation/reopen/compare; NEVER scan")
+        description= "PRIVATE original lab plan preparation/reopen/compare/portfolio; NEVER scan")
     commands = parser.add_subparsers(dest="operation", required=True)
     a = commands.add_parser("prepare")
     a.add_argument("--targets-file", required=True)
@@ -163,7 +163,13 @@ def main() -> int:
     c.add_argument("--after", required=True)
     c.add_argument("--private-parent", required=True)
     c.add_argument("--folder", required=True)
-    for sub in (a, b, c):
+    d = commands.add_parser(
+        "portfolio", help="PRIVATE original 3–8 lab proposal source-bound portfolio")
+    d.add_argument("--packet", action="append", required=True,
+                   help="repeat 3–8 existing 0700 owner-private proposal packets")
+    d.add_argument("--private-parent", required=True)
+    d.add_argument("--folder", required=True)
+    for sub in (a, b, c, d):
         sub.add_argument("--human-confirm", required=True,
                          help="exactly PREPARE PRIVATE LAB PLAN / REOPEN PRIVATE LAB PLAN / COMPARE PRIVATE LAB PLANS")
     options = parser.parse_args()
@@ -171,6 +177,7 @@ def main() -> int:
         "prepare": "PREPARE PRIVATE LAB PLAN",
         "reopen": "REOPEN PRIVATE LAB PLAN",
         "compare": "COMPARE PRIVATE LAB PLANS",
+        "portfolio": "BUILD PRIVATE LAB PORTFOLIO",
     }
     try:
         if options.human_confirm != expected[options.operation]:
@@ -180,8 +187,12 @@ def main() -> int:
                            options.catalog_file, options.scenario_id)
         elif options.operation == "reopen":
             page = reopen(options.packet)
-        else:
+        elif options.operation == "compare":
             page = compare(options.before, options.after, options.private_parent, options.folder)
+        else:
+            import lab_plan_portfolio
+            page = lab_plan_portfolio.build(options.packet, options.private_parent,
+                                            options.folder)
         print("PRIVATE REVIEW_ONLY: original Lab Launchpad plan admitted. No scan.")
         print("OPEN LOCALLY: " + str(page))
         return 2

@@ -62,6 +62,7 @@ ACTIONS: dict[str, str] = {
     '52': 'Prepare original isolated-lab numeric URL proposal (NO SCAN)',
     '53': 'Reopen original owner-private isolated lab proposal (NO SCAN)',
     '54': 'Compare two original owner-private isolated lab proposals (NO SCAN)',
+    '55': 'Review 3–8 original PRIVATE isolated-lab proposals in one portfolio (NO SCAN)',
 }
 
 CATEGORIES = (
@@ -73,7 +74,7 @@ CATEGORIES = (
     ("Owner-private session continuity", tuple(str(x) for x in range(37, 42))),
     ("HUMAN task queues", tuple(str(x) for x in range(42, 48))),
     ("Integrated HUMAN workpacks", tuple(str(x) for x in range(48, 52))),
-    ("Isolated lab offline planning", tuple(str(x) for x in range(52, 55))),
+    ("Isolated lab offline planning", tuple(str(x) for x in range(52, 56))),
 )
 
 
@@ -83,7 +84,7 @@ def overview() -> None:
     for name, ids in CATEGORIES:
         print("  " + ids[0] + "–" + ids[-1] + "   " + name)
     print("Suggested safe HUMAN-only workflow: 37 → 49 → manual editor →")
-    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54.")
+    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55.")
     print("Enter an action number, ALL for full catalog, ?keyword to search,")
     print("HELP for a HUMAN walkthrough or 0 to exit. No action is automatic.")
 
@@ -130,6 +131,7 @@ def help_flow() -> None:
     print("52. Prepare original numeric isolated-lab proposal (not target execution).")
     print("53. Reopen the original source-bound owner-private proposal.")
     print("54. Compare two original private proposals; missing URL is NOT a fix.")
+    print("55. Review 3-8 PRIVATE original proposals in a source-bound portfolio.")
     print("Every step remains PRIVATE and REVIEW_ONLY. No scan, grant, report")
     print("verification, real scheduling, recipient dispatch or consent.")
     print("Original current authenticated client+operator consent, revocation")
