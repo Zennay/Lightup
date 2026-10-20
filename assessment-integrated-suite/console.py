@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import human_console
 import remediation_console
 import remediation_team_console
+import evidence_console
 import os
 from pathlib import Path
 import subprocess
@@ -45,6 +46,12 @@ class Session:
     findings_csv: str = ""
     remediation_links: str = ""
     team_kit: str = ""
+    evidence_source: str = ""
+    evidence_manifest: str = ""
+    evidence_worksheet: str = ""
+    evidence_preparation: str = ""
+    evidence_selection: str = ""
+    evidence_dossier: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -290,6 +297,8 @@ def last_packages(session: Session) -> None:
         ("Original PRIVATE credential-masked HUMAN notes", session.notes_kit),
         ("Original canonical lab-to-client HUMAN follow-up", session.remediation_kit),
         ("Original source-bound PRIVATE team collaboration", session.team_kit),
+        ("Original PRIVATE evidence selection", session.evidence_preparation),
+        ("Original PRIVATE evidence selected-only HUMAN dossier", session.evidence_dossier),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -319,6 +328,10 @@ def main() -> int:
         "20": lambda x: remediation_team_console.reconcile(x, path_prompt, ask),
         "21": lambda x: remediation_console.prepare_casebook(x, path_prompt, ask),
         "22": lambda x: remediation_console.prepare_casebook(x, path_prompt, ask, cohorts=True),
+        "23": lambda x: evidence_console.prepare(x, path_prompt, ask, "prepare"),
+        "24": lambda x: evidence_console.prepare(x, path_prompt, ask, "publish"),
+        "25": lambda x: evidence_console.prepare(x, path_prompt, ask, "history"),
+        "26": lambda x: evidence_console.prepare(x, path_prompt, ask, "overview"),
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
@@ -343,6 +356,10 @@ def main() -> int:
         print("20. Reconcile two to twelve non-overlapping PRIVATE HUMAN team returns")
         print("21. One-command original PRIVATE comparison to HUMAN casebook and source ledger")
         print("22. One-command two original cohorts to HUMAN casebook and source ledger")
+        print("23. Prepare PRIVATE original selective evidence HUMAN Studio")
+        print("24. Publish only original HUMAN-selected PRIVATE evidence and recipient questions")
+        print("25. Review 2-12 source-bound PRIVATE HUMAN evidence-selection revisions")
+        print("26. Create PRIVATE original human-curated evidence and recipient overview")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -350,7 +367,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 22.")
+                print("Choose a number from 0 to 26.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
