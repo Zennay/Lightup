@@ -407,6 +407,17 @@ def main() -> int:
     history.add_argument("--packet", action="append", required=True,
                          help="completed original HUMAN packet, earliest to latest")
     history.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
+    agenda = commands.add_parser("agenda", help="source-bound local HUMAN discussion agenda editor")
+    agenda.add_argument("--history-kit", required=True, help="original PRIVATE completed history workroom")
+    agenda.add_argument("--latest-packet", required=True, help="actual final completed original HUMAN packet")
+    agenda.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
+    agenda_end = commands.add_parser(
+        "agenda-finalize", help="strict original-bound HUMAN CSV discussion proposal packet only")
+    agenda_end.add_argument("--agenda-kit", required=True, help="original PRIVATE agenda workroom")
+    agenda_end.add_argument("--history-kit", required=True, help="original PRIVATE history workroom")
+    agenda_end.add_argument("--latest-packet", required=True, help="actual final original HUMAN packet")
+    agenda_end.add_argument("--completed-csv", required=True, help="complete PRIVATE original HUMAN proposal CSV")
+    agenda_end.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
     args = p.parse_args()
     try:
         if args.action == "prepare":
@@ -420,6 +431,12 @@ def main() -> int:
         if args.action == "history":
             from revision_history import build_history
             return build_history(args.packet, args.private_parent)
+        if args.action in {"agenda", "agenda-finalize"}:
+            from history_agenda import prepare as prepare_agenda, finalize as finalize_agenda
+            if args.action == "agenda":
+                return prepare_agenda(args.history_kit, args.latest_packet, args.private_parent)
+            return finalize_agenda(args.agenda_kit, args.history_kit, args.latest_packet,
+                                   args.completed_csv, args.private_parent)
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
