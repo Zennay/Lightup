@@ -616,7 +616,7 @@
     if (state.pending) { status("Apply or discard the current HUMAN form before exporting a journal.", true); return; }
     if (!confirm("PRIVATE export includes finding IDs, HUMAN owners and notes. Save only into a protected location. Continue?")) return;
     download(JSON.stringify(journalDocument(), null, 2) + "\n", "lightup-private-human-review.json", "application/json");
-    state.dirty = state.revisionHistory.length > 0;
+    state.dirty = state.revisionHistory.length > 0 || Boolean(state.pendingWorkroomReceipt);
     status(state.dirty ? "PRIVATE active journal offered, but PRIOR SOURCE HUMAN HISTORY is not included. Save the encrypted COMPLETE workroom to preserve that history." :
       "PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", state.dirty);
   }
@@ -641,7 +641,7 @@
       }
       const staged = admitJournalDocument(parsed);
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
-      state.journal = staged; clearWorkroomReceipt(); invalidateBulkPreview(); clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0; state.pending = false; state.selected = -1;
+      state.journal = staged; clearWorkroomReceipt(); invalidateBulkPreview(); clearRevisionCandidate(); state.dirty = state.revisionHistory.length > 0 || Boolean(state.pendingWorkroomReceipt); state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
