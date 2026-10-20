@@ -406,6 +406,7 @@
     $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
     $("blocked-count").textContent = state.rows.filter(row => row.status === "blocked").length;
     const issues = validate(state);
+    renderCoverage();
     renderAgenda();
     announce(issues.length ? "DRAFT INCOMPLETE (" + issues.length + "): " +
       issues.slice(0, 5).join(" ") + (issues.length > 5 ? " …" : "") :
@@ -637,6 +638,134 @@
     download("lightup-scope-intake-COUNTS.json", JSON.stringify(receipt, null, 2) + "\n");
     announce("Counts-only receipt prepared. No target, client, identity or scope evidence included; still not an authorization.");
   }
+
+  // Strictly literal local arithmetic: never DNS-resolve, infer owner, issue policy or fetch.
+  function parseIpv4Literal(asset) {
+    if (!validAsset(asset)) return null;
+    const match = /^(\d{1,3}(?:\.\d{1,3}){3})(?:\/(\d{1,2}))?$/.exec(asset);
+    if (!match) return null;
+    const prefix = match[2] === undefined ? 32 : Number(match[2]);
+    const octets = match[1].split(".").map(Number);
+    const ip = octets.reduce((a, b) => a * 256 + b, 0);
+    const span = 2 ** (32 - prefix);
+    return {start: Math.floor(ip / span) * span, end: Math.floor(ip / span) * span + span - 1,
+      prefix, asset};
+  }
+
+  function groupOfIpv4(range) {
+    if (!range) return null;
+    const groups = [
+      ["Loopback / lab-facing address family", "127.0.0.0", 8],
+      ["RFC1918 private address family", "10.0.0.0", 8],
+      ["RFC1918 private address family", "172.16.0.0", 12],
+      ["RFC1918 private address family", "192.168.0.0", 16],
+      ["Link-local / special-use address family", "169.254.0.0", 16],
+      ["Documentation / special-use address family", "192.0.2.0", 24],
+      ["Documentation / special-use address family", "198.51.100.0", 24],
+      ["Documentation / special-use address family", "203.0.113.0", 24],
+      ["CGNAT / special-use address family", "100.64.0.0", 10],
+      ["Benchmark / special-use address family", "198.18.0.0", 15],
+      ["Unspecified / special-use address family", "0.0.0.0", 8],
+      ["Multicast / special-use address family", "224.0.0.0", 4],
+      ["Reserved / special-use address family", "240.0.0.0", 4]
+    ];
+    for (const [description, ip, mask] of groups) {
+      const octets = ip.split(".").map(Number);
+      const start = octets.reduce((a, b) => a * 256 + b, 0);
+      const span = 2 ** (32 - mask);
+      if (range.start >= start && range.end < start + span) return description;
+    }
+    return "Other IPv4 literal; ownership/routability UNVERIFIED";
+  }
+
+  function computeCoverage(rows = state.rows) {
+    const numeric = rows.map(row => ({row, range: parseIpv4Literal(row.asset)}))
+      .filter(item => item.range);
+    const pairs = [];
+    for (let i = 0; i < numeric.length; i++) {
+      for (let j = i + 1; j < numeric.length; j++) {
+        const a = numeric[i], b = numeric[j];
+        if (a.range.start > b.range.end || b.range.start > a.range.end) continue;
+        const cross = a.row.excluded !== b.row.excluded;
+        const relation = cross ? "Inclusion with explicit exception" :
+          a.row.excluded ? "Overlapping exclusions" : "Overlapping proposed inclusions";
+        const advice = cross
+          ? "HUMAN HOLD: explicit exception must not be flattened into broad grant or forgotten."
+          : a.row.excluded
+            ? "HUMAN follow-up: repeated exclusions are declarations, not verified restrictions."
+            : "HUMAN HOLD: overlapping proposed capabilities/ownership must not be silently widened.";
+        pairs.push({
+          a: a.row.asset, b: b.row.asset, relation, advice, cross,
+          includes: !a.row.excluded && !b.row.excluded
+        });
+      }
+    }
+    const classifications = numeric.map(item => ({
+      asset: item.row.asset,
+      excluded: item.row.excluded,
+      description: groupOfIpv4(item.range),
+      start: item.range.start,
+      end: item.range.end
+    }));
+    return {pairs, classifications};
+  }
+
+  function renderCoverage() {
+    const coverage = computeCoverage();
+    const cross = coverage.pairs.filter(pair => pair.cross).length;
+    const included = coverage.pairs.filter(pair => pair.includes).length;
+    const nonordinary = coverage.classifications.filter(item =>
+      item.description !== "Other IPv4 literal; ownership/routability UNVERIFIED").length;
+    $("overlap-count").textContent = coverage.pairs.length;
+    $("cross-boundary-count").textContent = cross;
+    $("overlap-include-count").textContent = included;
+    $("special-address-count").textContent = nonordinary;
+    $("overlap-notice").textContent = coverage.pairs.length ?
+      coverage.pairs.length + " pairs overlap numerically; " + cross +
+      " inclusion/exclusion exception(s). HUMAN REVIEW ONLY: not a scope verdict." :
+      "No overlapping IPv4 literals detected in currently valid rows. DNS literals were NOT resolved; no authority has been established.";
+    const tbody = $("overlap-rows"); tbody.replaceChildren();
+    for (const pair of coverage.pairs) {
+      const tr = document.createElement("tr");
+      for (const value of [pair.a, pair.b, pair.relation, pair.advice]) {
+        const td = document.createElement("td"); td.textContent = value; tr.append(td);
+      }
+      tbody.append(tr);
+    }
+    const labels = coverage.classifications.map(item =>
+      (item.excluded ? "EXCLUDED " : "PROPOSED ") + item.asset + " — " + item.description);
+    $("address-classification").textContent = labels.join("\n") ||
+      "No canonical numeric IPv4 literals. DNS proposals are never automatically resolved.";
+  }
+
+  function exportCoverageBrief() {
+    const errors = validate(state);
+    if (errors.length) { announce("Complete the draft before private coverage briefing: " + errors[0], true); return; }
+    const {pairs, classifications} = computeCoverage();
+    if (!confirm("Download an UNENCRYPTED PRIVATE human-only IPv4 scope exception brief? It contains literal proposed targets; share only through a separately approved channel. It is NOT authority.")) return;
+    const bullets = (title, array) => "<h2>" + escapeHtml(title) + "</h2><ul>" +
+      (array.length ? array.map(x => "<li>" + escapeHtml(x) + "</li>").join("") :
+        "<li>No literal items identified. No authorization implied.</li>") + "</ul>";
+    const pairLines = pairs.map(p => p.a + " / " + p.b + " — " + p.relation + ": " + p.advice);
+    const classificationLines = classifications.map(c =>
+      c.asset + ": " + c.description + (c.excluded ? " (human excluded)" : " (human included)"));
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<title>LightUp PRIVATE proposed IPv4 boundary review</title>' +
+      '<style>body{font:15px/1.55 system-ui,sans-serif;max-width:940px;margin:40px auto;padding:0 20px;color:#192a34}li{margin:9px 0}aside{padding:14px;border-left:4px solid #9e4444;background:#fff3f3}footer{margin-top:35px;color:#566}</style>' +
+      '</head><body><h1>PRIVATE proposed IPv4 boundary review</h1>' +
+      '<aside>PREPARATION ONLY. Human-declared scope, arithmetic overlap and static address-family labels DO NOT prove reachable targets, approved boundaries, consent, revocation or security assurance.</aside>' +
+      '<p>Self-declared PRIVATE client label: ' + escapeHtml(state.client) + '</p>' +
+      bullets("Literal IPv4/CIDR overlapping proposals", pairLines) +
+      bullets("Static address family notes", classificationLines) +
+      '<footer>LightUp INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD. Original authenticated and at-use-revoked scope/consent validation, owner approval, CI and HUMAN GO must occur separately before any action.</footer>' +
+      '</body></html>';
+    if (textBytes(html) > MAX_ENCRYPTED) { announce("PRIVATE boundary brief exceeds 100 KiB.", true); return; }
+    download("lightup-proposed-boundaries-PRIVATE.html", html, "text/html");
+    announce("PRIVATE IPv4/CIDR human exception brief exported; no permission asserted.");
+  }
+
   function humanAgenda() {
     const items = [];
     items.push("Confirm the authentic current client and independently authenticated operator outside this offline draft.");
@@ -661,6 +790,12 @@
       if (row.status === "blocked") items.push(name + ": BLOCKED — clear only through external independent human review.");
       if (row.status === "needs-client-review") items.push(name + ": explicitly pending client review.");
       if (row.question) items.push(name + ": PRIVATE human question — " + row.question);
+    }
+    for (const pair of computeCoverage().pairs) {
+      if (pair.cross || pair.includes) {
+        items.push("IPv4 boundary HUMAN review: " + pair.a + " overlaps " + pair.b +
+          " — " + pair.relation + "; never infer consent.");
+      }
     }
     items.push("Before any real work: original owner/security/privacy approvals, #177/#182/#829, exact-head hosted and named VPS CI, authentic consent plus action-time revocation and explicit HUMAN GO remain mandatory.");
     return items;
@@ -885,6 +1020,7 @@
     $("export").addEventListener("click", exportDraft);
     $("receipt").addEventListener("click", exportCounts);
     $("export-agenda").addEventListener("click", exportAgenda);
+    $("export-overlap").addEventListener("click", exportCoverageBrief);
     $("print").addEventListener("click", () => {
       const problems = validate(state);
       if (problems.length) { announce("Complete draft before printing: " + problems[0], true); return; }
