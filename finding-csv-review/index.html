@@ -66,7 +66,23 @@
 
   <div class="workroom">
     <section class="queue" aria-labelledby="queueTitle">
-      <div class="panel-head"><h2 id="queueTitle">Review queue</h2><p id="counts" aria-live="polite">Open a source CSV to begin.</p><div class="bulk"><label for="bulkStage">HUMAN stage for visible queue only</label><select id="bulkStage" disabled></select><button type="button" id="bulkApply" disabled>Preview &amp; apply to visible</button><button type="button" id="bulkUndo" disabled>Undo last bulk edit</button></div></div>
+      <div class="panel-head"><h2 id="queueTitle">Review queue</h2><p id="counts" aria-live="polite">Open a source CSV to begin.</p><div class="bulk" aria-label="HUMAN bulk owner and follow-up planner">
+  <p class="eyebrow">PRIVATE · BATCH HUMAN ACTIONS</p>
+  <label for="bulkStageMode">Follow-up stage</label>
+  <select id="bulkStageMode" disabled><option value="keep">Keep existing stage</option><option value="set">Set HUMAN stage</option></select>
+  <select id="bulkStage" aria-label="Selected HUMAN stage" disabled></select>
+  <label for="bulkOwnerMode">Responsible HUMAN contact</label>
+  <select id="bulkOwnerMode" disabled><option value="keep">Keep existing owner</option><option value="set">Assign HUMAN contact</option><option value="clear">Clear HUMAN owner</option></select>
+  <input id="bulkOwner" maxlength="160" autocomplete="off" placeholder="HUMAN contact, only if actually agreed" aria-label="Contact for selected findings" disabled>
+  <label for="bulkDueMode">Tentative follow-up date</label>
+  <select id="bulkDueMode" disabled><option value="keep">Keep existing due date</option><option value="set">Propose tentative date</option><option value="clear">Clear tentative date</option></select>
+  <input id="bulkDue" type="date" aria-label="Tentative follow-up date for selected findings" disabled>
+  <p class="minor">Only currently visible findings are considered. Existing HUMAN notes are never replaced; source records and actual retest status are never modified.</p>
+  <button type="button" id="bulkPreview" disabled>Preview visible HUMAN changes</button>
+  <button type="button" id="bulkApply" disabled>Apply reviewed HUMAN batch</button>
+  <button type="button" id="bulkUndo" disabled>Undo last HUMAN batch</button>
+  <p id="bulkSummary" class="minor" aria-live="polite">Preview before applying any batch.</p>
+</div></div>
       <div id="list" class="list"></div>
     </section>
     <section class="detail-panel" aria-labelledby="detailTitle">
