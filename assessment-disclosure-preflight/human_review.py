@@ -27,6 +27,7 @@ TEMPLATE = "PRIVATE-human-template.csv"
 REPORT = "PRIVATE-human-followup.html"
 SUMMARY = "PRIVATE-human-summary.csv"
 VAULT = "PRIVATE-human-reviewed.luhd"
+BUNDLE = "PRIVATE-human-handoff.luhb"
 
 
 def source_bytes(name: str) -> bytes:
@@ -56,8 +57,8 @@ def no_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
     return output
 
 
-def receipt(name: str) -> tuple[str, list[dict]]:
-    raw = source_bytes(name)
+def receipt_content(raw: bytes) -> tuple[str, list[dict]]:
+    require(type(raw) is bytes and 0 < len(raw) <= MAX_BYTES)
     try:
         doc = json.loads(raw.decode("utf-8"), object_pairs_hook=no_duplicate_keys,
                          parse_constant=lambda _: (_ for _ in ()).throw(Hold()))
@@ -75,6 +76,10 @@ def receipt(name: str) -> tuple[str, list[dict]]:
         require(type(row) is dict and type(row.get("ordinal")) is int and row["ordinal"] == n)
         require(type(row.get("kind")) is str and row["kind"] in KINDS)
     return hashlib.sha256(raw).hexdigest(), rows
+
+
+def receipt(name: str) -> tuple[str, list[dict]]:
+    return receipt_content(source_bytes(name))
 
 
 def safe_note(text: object) -> str:
@@ -195,7 +200,7 @@ def publish(output_dir: str, filename: str, content: str | bytes) -> None:
         info = os.fstat(dirfd)
         require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
                 and info.st_mode & 0o077 == 0)
-        require(filename in (TEMPLATE, REPORT, SUMMARY, VAULT))
+        require(filename in (TEMPLATE, REPORT, SUMMARY, VAULT, BUNDLE))
         stage = ".lightup-human-private-" + os.urandom(16).hex()
         fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
                      getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=dirfd)
@@ -225,44 +230,61 @@ def publish(output_dir: str, filename: str, content: str | bytes) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="PRIVATE receipt-bound HUMAN disclosure notes, never release")
+    parser = argparse.ArgumentParser(description="PRIVATE source-free HUMAN follow-up, never authority")
     commands = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "render", "summarize", "seal"):
+    for name in ("prepare", "render", "summarize", "seal", "seal-bundle"):
         sub = commands.add_parser(name)
-        sub.add_argument("--receipt", required=True, help="preflight PRIVATE-receipt.json")
+        sub.add_argument("--receipt", required=name in ("prepare", "seal", "seal-bundle"),
+                         help="unsigned PRIVATE preflight receipt (not needed for --bundle)")
         sub.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
-        if name == "seal":
-            sub.add_argument("--answers", required=True, help="source-free PRIVATE HUMAN CSV to seal in memory")
+        if name in ("seal", "seal-bundle"):
+            sub.add_argument("--answers", required=True, help="source-free admitted PRIVATE HUMAN CSV")
         elif name != "prepare":
             inputs = sub.add_mutually_exclusive_group(required=True)
-            inputs.add_argument("--answers", help="completed PRIVATE HUMAN plaintext CSV")
-            inputs.add_argument("--vault", help="sealed PRIVATE HUMAN .luhd; prompt for password")
+            inputs.add_argument("--answers", help="plaintext PRIVATE HUMAN CSV")
+            inputs.add_argument("--vault", help="sealed PRIVATE HUMAN .luhd (separate receipt)")
+            inputs.add_argument("--bundle", help="encrypted PRIVATE receipt+HUMAN .luhb, password only")
         if name == "summarize":
             sub.add_argument("--minimum-cohort", type=int, default=5,
-                             help="privacy floor for aggregate HUMAN stage counts (5-12)")
+                             help="HUMAN stage privacy floor, 5-12")
     args = parser.parse_args(argv)
     try:
-        digest, rows = receipt(args.receipt)
+        source = None
+        raw_receipt = None
+        if args.action in ("render", "summarize") and args.bundle:
+            require(args.receipt is None)
+            try:
+                from vault_native import VaultHold, decrypt_bundle
+                raw_receipt, source = decrypt_bundle(args.bundle)
+            except (ImportError, VaultHold):
+                raise Hold("HOLD: complete encrypted HUMAN package refused") from None
+            digest, rows = receipt_content(raw_receipt)
+        else:
+            require(args.receipt is not None)
+            raw_receipt = source_bytes(args.receipt)
+            digest, rows = receipt_content(raw_receipt)
         if args.action == "prepare":
             publish(args.private_output_dir, TEMPLATE, template(digest, rows))
-        elif args.action == "seal":
-            original = source_bytes(args.answers)
-            admitted_answers(original, digest, rows)
+        elif args.action in ("seal", "seal-bundle"):
+            source = source_bytes(args.answers)
+            admitted_answers(source, digest, rows)
             try:
-                from vault_native import VaultHold, encrypt_vault
-                packet = encrypt_vault(original, digest)
+                from vault_native import VaultHold, encrypt_vault, encrypt_bundle
+                sealed = (encrypt_bundle(raw_receipt, source) if args.action == "seal-bundle"
+                          else encrypt_vault(source, digest))
             except (ImportError, VaultHold):
-                raise Hold("HOLD: PRIVATE HUMAN vault encryption refused") from None
-            publish(args.private_output_dir, VAULT, packet)
+                raise Hold("HOLD: encrypted HUMAN export refused") from None
+            publish(args.private_output_dir, BUNDLE if args.action == "seal-bundle" else VAULT, sealed)
         else:
-            if args.vault:
-                try:
-                    from vault_native import VaultHold, decrypt_vault
-                    source = decrypt_vault(args.vault, digest)
-                except (ImportError, VaultHold):
-                    raise Hold("HOLD: encrypted HUMAN packet refused") from None
-            else:
-                source = source_bytes(args.answers)
+            if source is None:
+                if args.vault:
+                    try:
+                        from vault_native import VaultHold, decrypt_vault
+                        source = decrypt_vault(args.vault, digest)
+                    except (ImportError, VaultHold):
+                        raise Hold("HOLD: encrypted HUMAN vault refused") from None
+                else:
+                    source = source_bytes(args.answers)
             answers = admitted_answers(source, digest, rows)
             if args.action == "summarize":
                 publish(args.private_output_dir, SUMMARY,
@@ -270,9 +292,9 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 publish(args.private_output_dir, REPORT, render(answers))
     except Hold:
-        print("HOLD: PRIVATE HUMAN follow-up refused; no authority or release", file=sys.stderr)
+        print("HOLD: PRIVATE HUMAN workflow refused; no permission or release", file=sys.stderr)
         return 3
-    print("REVIEW_ONLY: HUMAN-only PRIVATE output created, no authority or release")
+    print("REVIEW_ONLY: new PRIVATE HUMAN output created; no assessment authority")
     return 2
 
 
