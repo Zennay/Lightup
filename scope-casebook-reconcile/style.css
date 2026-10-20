@@ -37,3 +37,13 @@ td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{pa
 
 button.secondary{background:#334962;color:#eff7ff;border:1px solid #7a8da6;margin-left:12px}
 button.secondary:hover{background:#405a76}
+
+.bulk-triage{border:1px solid #6183ac;margin:20px 0;background:#1b2d43}
+.bulk-triage .grid{gap:10px 20px}
+.bulk-triage .grid label{font-size:.9rem}
+.bulk-triage .toolbar button{margin-top:2px}
+.bulk-preview{border:1px solid #536b89;background:#0d1a2a;padding:14px 18px;
+  margin:13px 0;border-radius:10px;overflow-wrap:anywhere}
+.bulk-preview p{margin:5px 0 9px}
+#bulk-status{color:#cce3fc;overflow-wrap:anywhere}
+#bulk-status.error{color:#ffbac1}

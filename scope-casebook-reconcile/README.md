@@ -17,6 +17,12 @@ After every HUMAN field is resolved, an optional **source-free, count-only HUMAN
 
 Private original case IDs, action text and HUMAN choices remain entirely in browser memory, never in exported aggregate logs or servers. New ciphertext has a fresh random salt and nonce, PBKDF2-SHA256 310,000 iterations and AES-256-GCM. No account, localStorage, remote network, grant, API, scan or active-target support is present. Incorrect input does not replace the previous workset. A compromised browser can reveal locally displayed PRIVATE information; choose a trusted computer and exchange the new secret separately.
 
+## Bulk HUMAN reviewer workflow and reversible choices
+
+To make an original Casebook of up to 200 current cases usable, the **same source-bound local offline operator desk** now has a bulk triage section for conflicting HUMAN stage, route or blocker fields. The operator can choose original A, original B, source-safe HUMAN reset, or another original **field-specific canonical HUMAN enumeration**; select **only currently visible and unreviewed fields** (the safe default) or all unreviewed original cases; and see a PRIVATE preview of the **exact affected field count and a bounded sample of original case IDs**. The actual application only changes in-memory HUMAN selections **after explicit confirmation**, with a new full current-source/selection comparison immediately before application. Already explicitly decided HUMAN fields, identical source-HUMAN values, original immutable Casebook JSON, original incoming HUMAN CSV bytes and all security, grants or consent are strictly untouched. 
+
+Each resulting batch (and every individual HUMAN selection) participates in bounded **30-step local reversible undo/redo**; an atomic change bridge verifies exact previous per-field values, canonical enums, distinct field keys and the unchanged selected original scope before applying or undoing. New source selection, draft restoration, explicit private session disposal and closing the tab invalidate transient history. Altering decisions invalidates an older issued memorandum's result byte binding. No bulk selections or undo history are automatically interpreted as review proof, source authentication, new consent or permission to scan; only original offline encrypted drafts preserve current human choices between sessions.
+
 ## PRIVATE HUMAN decision rationale
 
 Each original Casebook case that has conflicting HUMAN fields now has an **optional PRIVATE human review-reason and freeform note** (maximum 800 UTF-16 characters and 1,200 UTF-8 bytes, explicitly bounded). Notes are shown locally only and **never inserted into the original immutable Casebook JSON, the current original HUMAN CSV, or the source-free aggregate**. They are not evidence of genuine client, source, consent, grant, or verified security outcome. Values are DOM text, never HTML. Reasons are a fixed human-only follow-up taxonomy, not automated approvals.
@@ -69,6 +75,7 @@ Build without running QA/regression suites (the builder includes the source-pinn
 ```sh
 python3 scope-casebook-reconcile/build_standalone.py
 node --check scope-casebook-reconcile/app.js
+node --check scope-casebook-reconcile/bulk.js
 node --check scope-casebook-reconcile/draft.js
 ```
 

@@ -220,15 +220,20 @@ function show(){
     extra.value=customChoice(saved,j)?saved.slice(7):"";
     extra.hidden=select.value!=="custom";
     extra.addEventListener("change",()=>{
+      const before=work.choices[i][j];
       work.finalReceipt=null;
-      work.choices[i][j]="custom:"+extra.value;tally();
+      work.choices[i][j]="custom:"+extra.value;
+      window.LightUpCasebookBulk?.recordManual(i,j,before,work.choices[i][j]);
+      tally();
       if(unresolvedOnly&&resolved(work.choices[i][j],j))show();
     });
     select.addEventListener("change",()=>{
       extra.hidden=select.value!=="custom";
       extra.value="";
+      const before=work.choices[i][j];
       work.finalReceipt=null;
       work.choices[i][j]=select.value==="custom"?"custom:":select.value;
+      window.LightUpCasebookBulk?.recordManual(i,j,before,work.choices[i][j]);
       tally();if(unresolvedOnly&&resolved(work.choices[i][j],j))show();
     });
     td.append(select,extra);
@@ -298,6 +303,7 @@ function setBusy(v){
  $("aggregate").disabled=v||!work;
  $("clear-session").disabled=v;
  for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=v;
+ window.LightUpCasebookBulk?.setBusy(v);
 }
 $("open").addEventListener("click",async()=>{
  if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
@@ -315,6 +321,7 @@ $("open").addEventListener("click",async()=>{
    r[j+3]===b.rows[i][j+3]?"same":"")),finalReceipt:null};
   a=null;b=null;
   window.LightUpCasebookNotes?.reset(work.cases.length);
+  window.LightUpCasebookBulk?.reset();
   zero(old?.a);zero(old?.b);
   show();status("Beide exacte originele bronsets en opgeslagen HUMAN-keuzes lokaal geaccepteerd. Verschillen vereisen expliciete menselijke beslissingen.");
  }catch(e){status("HOLD: "+(e instanceof Error?e.message:"Ongeldige overdracht"),true);}
@@ -385,6 +392,38 @@ function anonymousReport(){
 $("aggregate").addEventListener("click",()=>{
  try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
 });
+window.LightUpBulkBridge=Object.freeze({
+ read:()=>{
+  if(!work||busy)return null;
+  const visible=Array.from($("cases").querySelectorAll("[data-case-index]"))
+   .map(e=>Number(e.dataset.caseIndex));
+  return {cases:work.cases.map((c,i)=>({
+   id:c.id,attention:c.attention,action:c.action,
+   a:work.a.rows[i].slice(3),b:work.b.rows[i].slice(3),
+   choices:[...work.choices[i]]})),visible};
+ },
+ apply:changes=>{
+  if(!work||busy||!Array.isArray(changes)||!changes.length||changes.length>600)
+   deny("HOLD: geen geldige PRIVATE HUMAN-keuzewerkset.");
+  const touched=new Set();
+  for(const {i,j,from,to} of changes){
+   if(!Number.isInteger(i)||i<0||i>=work.cases.length||
+    !Number.isInteger(j)||j<0||j>2||
+    ![from,to].every(v=>typeof v==="string")||touched.has(i+":"+j))
+    deny("HOLD: ongeldige of dubbele bulk-aanpassing.");
+   touched.add(i+":"+j);
+   const same=work.a.rows[i][j+3]===work.b.rows[i][j+3];
+   if(work.choices[i][j]!==from||from===to||
+    (same&&(to!=="same"||from!=="same"))||
+    (!same&&!["","custom:","A","B","reset"].includes(to)&&!customChoice(to,j)))
+    deny("HOLD: verlopen of niet-canonieke HUMAN-keuzewijziging; bron opnieuw bekijken.");
+  }
+  for(const {i,j,to} of changes)work.choices[i][j]=to;
+  work.finalReceipt=null;
+  show();
+  return changes.length;
+ }
+});
 window.LightUpCasebookDraftAPI=Object.freeze({
  snapshot:()=>work?{
   sources:work.a.records.slice(0,-1).map(r=>({name:r.name,size:r.size,sha256:r.sha256})),
@@ -418,7 +457,9 @@ window.LightUpCasebookDraftAPI=Object.freeze({
    return false;
   window.LightUpCasebookNotes.restore(bound);
   work.finalReceipt=null;
-  work.choices=candidate;show();return true;
+  work.choices=candidate;
+  window.LightUpCasebookBulk?.reset();
+  show();return true;
  }
 });
 window.LightUpCasebookReceiptAPI=Object.freeze({
@@ -445,6 +486,7 @@ $("clear-session").addEventListener("click",()=>{
  if(!window.confirm("Wis alle lokale PRIVATE Casebook-werksetbytes, HUMAN-keuzes, notities, ingelezen reviewmemo en formulierselecties uit dit browsertabblad? Opgeslagen originele bestanden op schijf blijven onaangeroerd."))return;
  if(work){zero(work.a);zero(work.b);}
  work=null;
+ window.LightUpCasebookBulk?.reset();
  window.LightUpCasebookNotes?.reset(0);
  window.LightUpCasebookReceiptClear?.();
  $("cases").replaceChildren();$("shown").textContent="";

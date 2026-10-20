@@ -29,6 +29,24 @@
 <label class="consent"><input id="conflicts" type="checkbox"> Alleen dossiers met verschillen</label>
 <label class="consent"><input id="unresolved-only" type="checkbox"> Alleen nog onbesliste HUMAN-conflicten</label>
 <button type="button" id="next-unresolved">Spring naar eerste onbesliste dossier</button></div>
+<div class="panel bulk-triage" aria-labelledby="bulk-title">
+<h3 id="bulk-title">Brongebonden bulkafhandeling — alleen onbesliste HUMAN-velden</h3>
+<p>Maak eerst een actuele voorvertoning. Bulk wijzigt geen reeds beoordeelde velden, originele Casebook-bronnen, grants of toestemming. Bevestiging is per actie verplicht; ongedaan maken en opnieuw toepassen werken alleen zolang dit tabblad en de oorspronkelijke bronnen open zijn.</p>
+<div class="grid"><label for="bulk-field">Soort HUMAN-veld
+<select id="bulk-field"><option value="0">Fase</option><option value="1">Opvolgroute</option><option value="2">Blokkade</option></select></label>
+<label for="bulk-value">Keuze voor alleen conflicterende, onbesliste velden
+<select id="bulk-value"><option value="A">Behoud van ontvanger A</option><option value="B">Behoud van ontvanger B</option><option value="reset">Heropen naar veilige HUMAN-standaardwaarde</option><option value="custom">Een andere canonieke HUMAN-waarde</option></select></label>
+<label for="bulk-custom">Alternatieve expliciete HUMAN-waarde
+<select id="bulk-custom" hidden></select></label>
+<label for="bulk-scope">Welke nog onbesliste dossiers?
+<select id="bulk-scope"><option value="visible-unresolved">Alleen momenteel zichtbare dossiers</option><option value="all-unresolved">Alle oorspronkelijke onbesliste dossiers</option></select></label></div>
+<div class="toolbar"><button id="bulk-plan" type="button">Bekijk getroffen HUMAN-velden</button>
+<button id="bulk-apply" type="button" disabled>Bevestig HUMAN-bulkkeuze</button>
+<button id="bulk-undo" type="button" class="secondary" disabled>Maak keuze ongedaan</button>
+<button id="bulk-redo" type="button" class="secondary" disabled>Pas keuze opnieuw toe</button></div>
+<p id="bulk-history" class="muted"></p><div id="bulk-preview" class="bulk-preview" aria-live="polite"></div>
+<p id="bulk-status" role="status" aria-live="polite">Nog geen bulkkeuze toegepast.</p>
+</div>
 <p id="shown"></p><div id="cases" class="cases"></div>
 </section>
 <section aria-labelledby="draft-title"><h2 id="draft-title">3 · Versleuteld HUMAN-concept bewaren en hervatten</h2>
