@@ -35,6 +35,12 @@
 <div class="actions"><button id="stageSuggestions" type="button" disabled>Add all selected suggestions as masks</button></div>
 <div id="suggestStatus" class="status" role="status" aria-live="polite">Suggestions have not been requested.</div>
 </div>
+<div class="pem-control">
+<h3>Complete multiline private-key removal</h3>
+<p>When enabled by a human, replace an entire recognized PEM or PGP private-key block, from its exact BEGIN through matching END marker, with a non-secret placeholder. Incomplete, nested, oversized or ambiguous blocks cause <strong>HOLD</strong> instead of partial masking. Never use this as proof of safe disclosure.</p>
+<label class="tick"><input id="maskPrivateBlocks" type="checkbox" disabled> I explicitly choose to mask all recognized complete private-key blocks in this PRIVATE source</label>
+<div id="pemStatus" class="status" role="status" aria-live="polite">Open a PRIVATE source before enabling block removal.</div>
+</div>
 <div class="actions"><button id="review" type="button" disabled>Prepare redacted preview</button><button id="clear" type="button" class="secondary">Clear local session</button></div>
 </section>
 <section class="card" aria-labelledby="review-title">
