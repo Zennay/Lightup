@@ -25,6 +25,25 @@ import install
 
 MAX_ARCHIVE = 5_000_000
 MAX_MEMBERS = 180
+ORIGINAL_RUNTIME = frozenset((
+    "remediation-integrated-workspace/install.py",
+    "remediation-integrated-workspace/receiver.py",
+    "remediation-integrated-workspace/workflow.py",
+    "remediation-integrated-workspace/portable_cockpit.py",
+    "remediation-integrated-workspace/single_review.py",
+    "remediation-integrated-workspace/single_review.js",
+    "remediation-integrated-workspace/single_brief.py",
+    "remediation-integrated-workspace/SINGLE_REVIEW.md",
+    "remediation-integrated-workspace/archive_workflow.py",
+    "remediation-integrated-workspace/encrypted_cockpit.py",
+    "remediation-integrated-workspace/journal_vault.py",
+    "remediation-integrated-workspace/journal_encrypt.js",
+    "remediation-integrated-workspace/journal_open.js",
+    "remediation-integrated-workspace/review_package.py",
+    "remediation-integrated-workspace/REVIEW_PACKAGE.md",
+    "remediation-integrated-workspace/JOURNAL_VAULT.md",
+    "remediation-integrated-workspace/README.md",
+))
 
 
 def require(condition: bool, explanation: str) -> None:
@@ -82,10 +101,11 @@ def admission(receipt: bytes, archive: bytes) -> dict[str, bytes]:
             "Incomplete or modified offline HUMAN software ZIP")
     native_files = set(native["files"])
     companion = {"remediation-recipient-scheduler/" + p for p in bundle.SCHEDULER_FILES}
-    require(companion <= set(table)
-            and {"index.html", "original-home.html", "source-lock.json"} <= set(table)
-            and native_files <= set(table),
-            "Native original or additive HUMAN recipient software missing")
+    expected_names = native_files | companion | ORIGINAL_RUNTIME | {
+        "index.html", "original-home.html", "source-lock.json"
+    }
+    require(set(table) == expected_names,
+            "Native original or additive HUMAN recipient source inventory changed")
     admitted: dict[str, bytes] = {}
     total = 0
     with zipfile.ZipFile(io.BytesIO(archive)) as z:
@@ -97,10 +117,7 @@ def admission(receipt: bytes, archive: bytes) -> dict[str, bytes]:
             name = info.filename
             descriptor = table[name]
             require(type(name) is str and
-                    (install.safe_name(name) or name in (
-                        "index.html","original-home.html","source-lock.json")
-                     or name in companion or
-                     name.startswith("remediation-integrated-workspace/"))
+                    name in expected_names
                     and not info.is_dir() and not name.startswith("/")
                     and ".." not in name.split("/")
                     and (info.external_attr >> 16) == 0o100600
@@ -124,11 +141,12 @@ def admission(receipt: bytes, archive: bytes) -> dict[str, bytes]:
                         "Original owner source SHA-256 pin changed")
             admitted[name] = raw
     require(admitted["source-lock.json"] == install.LOCK.read_bytes()
-            and admitted["index.html"] == bundle.page(),
-            "Source lock or package launch page mismatched locally trusted original renderer")
-    for name in companion:
+            and admitted["index.html"] == bundle.page()
+            and admitted["original-home.html"] == install.home(),
+            "Original source lock or scriptless source-only portal changed")
+    for name in companion | ORIGINAL_RUNTIME:
         require(admitted[name] == (schedule.PARENT / name).read_bytes(),
-                "Received scheduler companion differs from locally trusted product source")
+                "Received original native or scheduler companion differs from trusted local source")
     return admitted
 
 
