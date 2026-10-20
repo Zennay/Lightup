@@ -70,6 +70,24 @@
           <option value="all">Alle gebeurtenissen</option><option value="attempts">Alleen fictieve uitvoerpogingen</option>
           <option value="holds">Alleen uitvoerpogingen met oefen-HOLD</option><option value="revisions">Alleen scope-, risico- en intrekkingswijzigingen</option>
         </select>
+        <section class="replay-panel" aria-labelledby="replay-title">
+          <h3 id="replay-title">Tijdreis door het oefenscenario</h3>
+          <p class="muted">Bekijk de fictieve toestand na een gekozen gebeurtenis, zonder de bestaande stappen te veranderen. Maak vanaf dat moment een alternatieve vertakking in een vrij scenario-slot.</p>
+          <label for="replay-step">Bekijk tot en met stap <output id="replay-step-count" for="replay-step">0</output></label>
+          <input id="replay-step" type="range" min="0" max="0" step="1" value="0" aria-describedby="replay-description">
+          <div class="replay-buttons"><button type="button" id="replay-prev" class="button minor">← Vorige</button><button type="button" id="replay-next" class="button minor">Volgende →</button>
+            <button type="button" id="replay-end" class="button minor">Laatste toestand</button></div>
+          <p id="replay-description" class="muted">Geen scenario geladen.</p>
+          <dl class="replay-facts"><div><dt>Fictieve client</dt><dd id="replay-client">Ontbreekt</dd></div>
+            <div><dt>Fictieve operator</dt><dd id="replay-operator">Ontbreekt</dd></div>
+            <div><dt>Fictief venster</dt><dd id="replay-window">Open</dd></div>
+            <div><dt>Noodstop</dt><dd id="replay-stop">Niet actief</dd></div>
+            <div><dt>Scope / risico</dt><dd id="replay-version">v1 / v1</dd></div>
+            <div><dt>Oefen-HOLD-redenen</dt><dd id="replay-holds">2</dd></div></dl>
+          <div class="replay-buttons"><button type="button" id="replay-fork" class="button primary">Maak scenariovertakking</button>
+            <button type="button" id="replay-brief" class="button minor">Stapbeslisbrief (.md)</button></div>
+          <p id="replay-hint" class="muted">Vertakkingen worden alleen in een vrij lokaal geheugen-slot geplaatst. Geen toestemming, bronbewijs, grant of echte uitvoer.</p>
+        </section>
         <ol id="timeline" class="timeline" aria-live="polite"></ol>
         <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
       </section>
