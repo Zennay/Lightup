@@ -44,3 +44,10 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 .outcome summary{cursor:pointer;font-weight:700}
 .outcome details .notes{margin:.45rem 0;white-space:pre-wrap;overflow-wrap:anywhere}
 @media print{.final-preview{max-height:none;overflow:visible}.outcome details:not([open]) .notes{display:none}}
+
+
+/* Session-local reversible HUMAN choices. No change can bypass A/B export gate. */
+.historybar{display:flex;flex-wrap:wrap;gap:.65rem;margin:1rem 0 .45rem}
+.historybar button{flex:1 1 220px}
+#historyStatus{padding:.65rem .8rem;background:#ecf2f7;border-left:3px solid #59849b;border-radius:.25rem;margin:.5rem 0}
+@media(max-width:720px){.historybar{flex-direction:column}.historybar button{width:100%}}
