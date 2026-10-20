@@ -265,41 +265,49 @@ async function publish(){
   }
   return row;
  });
- const csv=enc.encode(h.serialize(combined));
- if(csv.length>131072)deny("Nieuwe HUMAN-CSV te groot.");
  const password=$("new-password").value;
  if([...password].length<12||enc.encode(password).length>1024)
   deny("Nieuw wachtwoord moet 12–1024 UTF-8-tekens/bytes bevatten.");
  if(!$("ack").checked)deny("PRIVATE HUMAN-only bevestiging ontbreekt.");
  if(!window.confirm("Maak uitsluitend NIEUW lokaal AES-256-GCM bron+HUMAN pakket? Niets autoriseert een scan."))
   return;
- const orig=work.a.records.slice(0,-1);
- const newHuman={name:"workroom-current-template.csv",size:csv.length,
-  sha256:await sha(csv),bytes:csv};
- const items=[...orig,newHuman].map(x=>({
-  name:x.name,size:x.size,sha256:x.sha256,content_b64:b64(x.bytes)}));
- const content=enc.encode(JSON.stringify({schema:SCHEMA,version:1,files:items}));
- let ciphertext,salt,iv;
+ const csv=enc.encode(h.serialize(combined));
  try{
-  if(content.length>20*1024*1024)deny("Nieuwe PRIVATE bundel te groot.");
-  salt=crypto.getRandomValues(new Uint8Array(16));
-  iv=crypto.getRandomValues(new Uint8Array(12));
-  ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
-   await keyFor(password,salt,"encrypt"),content));
- }finally{content.fill(0);csv.fill(0);}
- const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",iterations:ITER,
-  cipher:"AES-256-GCM",salt_b64:b64(salt),iv_b64:b64(iv),ciphertext_b64:b64(ciphertext)};
- const bytes=enc.encode(JSON.stringify(envelope));
- if(bytes.length>MAX_VAULT)deny("Nieuwe versleutelde bundel te groot.");
- const offeredSha256=await sha(bytes);
- const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
- const link=document.createElement("a");link.href=url;
- link.download="lightup-casebook-private-reconciled.lupt";
- document.body.append(link);link.click();link.remove();
- work.finalReceipt={bundle_sha256:offeredSha256,human_csv_sha256:newHuman.sha256};
- window.LightUpCasebookOutputPreview?.comparePublished(newHuman.sha256);
- setTimeout(()=>URL.revokeObjectURL(url),2000);
- status("Nieuwe AES-256-GCM PRIVATE overdracht aangeboden: dezelfde originele bronbytes, expliciet gekozen HUMAN-velden; geen bronverificatie, grant of consent.");
+  if(csv.length>131072)deny("Nieuwe HUMAN-CSV te groot.");
+  const orig=work.a.records.slice(0,-1);
+  const newHuman={name:"workroom-current-template.csv",size:csv.length,
+   sha256:await sha(csv),bytes:csv};
+  // Read the exact outgoing current HUMAN CSV with the original source-owner
+  // admission code before producing a protected transfer. This is the existing
+  // source contract, not a new authorization or release gate.
+  const native=h.admit([...orig,newHuman]);
+  if(!native.hasCSV||JSON.stringify(native.rows)!==JSON.stringify(combined))
+   deny("HOLD: oorspronkelijke brongebonden HUMAN-validator weigert de beoogde uitgang.");
+  const items=[...orig,newHuman].map(x=>({
+   name:x.name,size:x.size,sha256:x.sha256,content_b64:b64(x.bytes)}));
+  const plaintext=enc.encode(JSON.stringify({schema:SCHEMA,version:1,files:items}));
+  let ciphertext,salt,iv;
+  try{
+   if(plaintext.length>20*1024*1024)deny("Nieuwe PRIVATE bundel te groot.");
+   salt=crypto.getRandomValues(new Uint8Array(16));
+   iv=crypto.getRandomValues(new Uint8Array(12));
+   ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+    await keyFor(password,salt,"encrypt"),plaintext));
+  }finally{plaintext.fill(0);}
+  const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",iterations:ITER,
+   cipher:"AES-256-GCM",salt_b64:b64(salt),iv_b64:b64(iv),ciphertext_b64:b64(ciphertext)};
+  const bytes=enc.encode(JSON.stringify(envelope));
+  if(bytes.length>MAX_VAULT)deny("Nieuwe versleutelde bundel te groot.");
+  const offeredSha256=await sha(bytes);
+  const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+  const link=document.createElement("a");link.href=url;
+  link.download="lightup-casebook-private-reconciled.lupt";
+  document.body.append(link);link.click();link.remove();
+  work.finalReceipt={bundle_sha256:offeredSha256,human_csv_sha256:newHuman.sha256};
+  window.LightUpCasebookOutputPreview?.comparePublished(newHuman.sha256);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  status("Nieuwe AES-256-GCM PRIVATE brongebonden overdracht aangeboden. Oorspronkelijke HUMAN-validator accepteert exacte uitvoerbytes; dit verleent geen consent, grant of bronproducent-authenticatie.");
+ }finally{csv.fill(0);}
 }
 function setBusy(v){
  busy=v;$("open").disabled=v;$("publish").disabled=v||!work;
