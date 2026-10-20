@@ -216,6 +216,7 @@ def handle_action(action):
             plans.append(selected_plan)
         return portfolio.run(argparse.Namespace(
             context=contexts, actions=actions, plan=plans,
+            owner=prompt("EXACT proposed HUMAN owner filter (blank for all)", False) or None,
             private_parent=private_parent()
         ))
     if action == "5":
