@@ -237,7 +237,7 @@
     if (raw.length > 4096 || !raw.trim()) {
       announce("HOLD: paste 1–32 bounded literal proposal lines.", true); return;
     }
-    const lines = raw.split(/\r?\n/);
+    const lines = raw.trim().split(/\r?\n/);
     const distinct = new Set(state.rows.map(row => row.asset));
     const staging = [];
     for (let i = 0; i < lines.length; i++) {
