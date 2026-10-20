@@ -337,6 +337,164 @@
     download("lightup-scope-intake-PRIVATE.json", serialized);
     announce("PRIVATE draft prepared for local download. Still PREPARATION ONLY / DRAFT.");
   }
+
+  const ENCRYPTED_SCHEMA = "lightup.scope_intake.encrypted_private.v1";
+  const PURPOSE = "lightup.scope_intake.encrypted_private.v1;PREPARATION_ONLY";
+  const KDF_ROUNDS = 600000;
+  const MAX_ENCRYPTED = 100000;
+  const ENCRYPTED_KEYS = [
+    "schema", "posture", "cipher", "kdf", "iterations", "salt_b64", "nonce_b64", "sealed_b64"
+  ];
+
+  function requireCrypto() {
+    if (!globalThis.isSecureContext || !globalThis.crypto?.subtle ||
+        typeof globalThis.crypto.getRandomValues !== "function") {
+      throw Error("Secure offline WebCrypto unavailable. Use a browser that supports secure local file contexts. Plaintext fallback is never automatic.");
+    }
+  }
+
+  function strictBase64(bytes) {
+    let encoded = "";
+    for (let at = 0; at < bytes.length; at += 4096) {
+      encoded += String.fromCharCode(...bytes.subarray(at, at + 4096));
+    }
+    return btoa(encoded);
+  }
+
+  function readCanonicalBase64(value, expectedSize = null) {
+    if (typeof value !== "string" || value.length > MAX_ENCRYPTED ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+      throw Error("Invalid canonical encrypted package.");
+    }
+    let bytes;
+    try { bytes = Uint8Array.from(atob(value), c => c.charCodeAt(0)); }
+    catch (_) { throw Error("Invalid canonical encrypted package."); }
+    if (strictBase64(bytes) !== value || (expectedSize !== null && bytes.length !== expectedSize)) {
+      bytes.fill(0); throw Error("Invalid canonical encrypted package.");
+    }
+    return bytes;
+  }
+
+  function passphraseInput(confirmNew) {
+    const first = prompt(confirmNew ?
+      "New PRIVATE encryption password (14–256 characters). Keep it safe: it cannot be recovered." :
+      "Password for this PRIVATE encrypted workroom:");
+    if (first === null) return null;
+    const length = textBytes(first);
+    if (length < 14 || length > 256 || !first.trim() ||
+        /[\u0000-\u001f\u007f]/u.test(first)) {
+      throw Error("Password must contain 14–256 safe UTF-8 bytes.");
+    }
+    if (confirmNew) {
+      const second = prompt("Confirm new PRIVATE encryption password:");
+      if (second === null) return null;
+      if (first !== second) throw Error("Password confirmation does not match.");
+    }
+    return first;
+  }
+
+  async function derivePrivateKey(password, salt) {
+    const material = new TextEncoder().encode(password);
+    try {
+      const parent = await globalThis.crypto.subtle.importKey("raw", material, "PBKDF2", false, ["deriveKey"]);
+      return await globalThis.crypto.subtle.deriveKey(
+        {name: "PBKDF2", salt, iterations: KDF_ROUNDS, hash: "SHA-256"},
+        parent,
+        {name: "AES-GCM", length: 256},
+        false,
+        ["encrypt", "decrypt"]
+      );
+    } finally {
+      material.fill(0); // Strings and browser internals cannot be reliably zeroized.
+    }
+  }
+
+  async function encryptWorkroom() {
+    try {
+      const problems = validate(state);
+      if (problems.length) throw Error("Complete the PRIVATE draft first: " + problems[0]);
+      requireCrypto();
+      const pwd = passphraseInput(true);
+      if (pwd === null) { announce("Encryption canceled; existing draft unchanged."); return; }
+      if (!confirm("Encrypt this PRIVATE draft locally? This is NOT client/operator authentication, consent, a grant or permission. Keep the password separately.")) return;
+      const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
+      const nonce = globalThis.crypto.getRandomValues(new Uint8Array(12));
+      const aad = new TextEncoder().encode(PURPOSE);
+      const key = await derivePrivateKey(pwd, salt);
+      const plain = new TextEncoder().encode(JSON.stringify(snapshot(), null, 2) + "\n");
+      try {
+        if (plain.length > MAX_BYTES) throw Error("Draft exceeds original 64 KiB source limit.");
+        const bytes = new Uint8Array(await globalThis.crypto.subtle.encrypt(
+          {name: "AES-GCM", iv: nonce, additionalData: aad, tagLength: 128}, key, plain
+        ));
+        try {
+          const envelope = {
+            schema: ENCRYPTED_SCHEMA, posture: "PREPARATION_ONLY", cipher: "AES-256-GCM",
+            kdf: "PBKDF2-SHA256", iterations: KDF_ROUNDS,
+            salt_b64: strictBase64(salt), nonce_b64: strictBase64(nonce), sealed_b64: strictBase64(bytes)
+          };
+          const raw = JSON.stringify(envelope, null, 2) + "\n";
+          if (textBytes(raw) > MAX_ENCRYPTED) throw Error("Encrypted envelope exceeds size cap.");
+          download("lightup-scope-PRIVATE-encrypted.luie", raw);
+          announce("AES-256-GCM PRIVATE workroom downloaded. Preserve the password; this file is not an authorization.");
+        } finally { bytes.fill(0); }
+      } finally {
+        plain.fill(0); salt.fill(0); nonce.fill(0); aad.fill(0);
+      }
+    } catch (error) {
+      announce("ENCRYPTED SAVE FAILED: " + error.message + " Existing draft was retained.", true);
+    }
+  }
+
+  async function decryptWorkroom(file) {
+    requireCrypto();
+    if (!file || file.size > MAX_ENCRYPTED) throw Error("Encrypted PRIVATE file is over 100 KiB.");
+    const original = new Uint8Array(await file.arrayBuffer());
+    let raw;
+    try { raw = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(original); }
+    catch (_) { throw Error("Encrypted file is not UTF-8."); }
+    if (textBytes(raw) !== original.length || raw.length > MAX_ENCRYPTED) {
+      throw Error("Encrypted file is not canonical UTF-8.");
+    }
+    let obj;
+    try { obj = JSON.parse(raw); } catch (_) { throw Error("Invalid encrypted envelope."); }
+    if (raw !== JSON.stringify(obj, null, 2) + "\n" ||
+        !exactKeys(obj, ENCRYPTED_KEYS) || obj.schema !== ENCRYPTED_SCHEMA ||
+        obj.posture !== "PREPARATION_ONLY" || obj.cipher !== "AES-256-GCM" ||
+        obj.kdf !== "PBKDF2-SHA256" || obj.iterations !== KDF_ROUNDS) {
+      throw Error("Unsupported, ambiguous or noncanonical encrypted envelope.");
+    }
+    const salt = readCanonicalBase64(obj.salt_b64, 16);
+    const nonce = readCanonicalBase64(obj.nonce_b64, 12);
+    const sealed = readCanonicalBase64(obj.sealed_b64);
+    if (sealed.length < 18 || sealed.length > MAX_BYTES + 16) {
+      salt.fill(0); nonce.fill(0); sealed.fill(0);
+      throw Error("Encrypted payload size is invalid.");
+    }
+    try {
+      const pwd = passphraseInput(false);
+      if (pwd === null) throw Error("Password entry canceled.");
+      const key = await derivePrivateKey(pwd, salt);
+      let opened;
+      try {
+        opened = new Uint8Array(await globalThis.crypto.subtle.decrypt(
+          {name: "AES-GCM", iv: nonce, additionalData: new TextEncoder().encode(PURPOSE), tagLength: 128},
+          key, sealed
+        ));
+      } catch (_) { throw Error("Password incorrect, content altered or envelope authentication failed."); }
+      try {
+        if (opened.length > MAX_BYTES) throw Error("Decrypted draft exceeds 64 KiB.");
+        let plaintext;
+        try { plaintext = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(opened); }
+        catch (_) { throw Error("Decrypted draft is not valid UTF-8."); }
+        if (textBytes(plaintext) !== opened.length) throw Error("Decrypted UTF-8 is not canonical.");
+        // Original source validator enforces all false authority claims, strict fields
+        // and correct original canonical bytes before the current draft can be replaced.
+        return decodeOwnExport(plaintext);
+      } finally { opened.fill(0); }
+    } finally { salt.fill(0); nonce.fill(0); sealed.fill(0); original.fill(0); }
+  }
+
   function exportCounts() {
     const problems = validate(state);
     if (problems.length) { announce("Complete the draft before generating aggregate counts.", true); return; }
@@ -437,9 +595,9 @@
     if (textBytes(raw) !== bytes.byteLength) throw Error("Noncanonical UTF-8 bytes refused.");
     return decodeOwnExport(raw);
   }
-  async function importDraft(file) {
+  async function importDraft(file, encrypted = false) {
     try {
-      const next = await readFile(file);
+      const next = encrypted ? await decryptWorkroom(file) : await readFile(file);
       if (!confirm("Replace all current unsaved PRIVATE draft data with the selected validated file?")) return;
       state = next;
       rowNumber = Math.max(0, ...state.rows.map(row => Number(row.id.slice(1))));
@@ -449,9 +607,9 @@
       announce("PRIVATE draft opened locally after full strict admission. Still DRAFT/HOLD.");
     } catch (error) { announce("OPEN REJECTED: " + error.message + " Existing draft was retained.", true); }
   }
-  async function compareDraft(file) {
+  async function compareDraft(file, encrypted = false) {
     try {
-      const before = await readFile(file);
+      const before = encrypted ? await decryptWorkroom(file) : await readFile(file);
       const problems = validate(state);
       if (problems.length) throw Error("Complete current draft before comparing: " + problems[0]);
       const oldAssets = new Map(before.rows.map(row => [row.asset, row]));
@@ -489,6 +647,7 @@
     $("bulk-add").addEventListener("click", bulkAdd);
     $("filter").addEventListener("input", renderRows);
     $("status-filter").addEventListener("change", renderRows);
+    $("export-encrypted").addEventListener("click", encryptWorkroom);
     $("export").addEventListener("click", exportDraft);
     $("receipt").addEventListener("click", exportCounts);
     $("export-agenda").addEventListener("click", exportAgenda);
@@ -499,11 +658,20 @@
     });
     $("choose-import").addEventListener("click", () => $("file-import").click());
     $("choose-compare").addEventListener("click", () => $("file-compare").click());
+    $("choose-import-encrypted").addEventListener("click", () => $("file-import-encrypted").click());
+    $("choose-compare-encrypted").addEventListener("click", () => $("file-compare-encrypted").click());
     $("file-import").addEventListener("change", async event => {
       const file = event.target.files[0]; event.target.value = ""; if (file) await importDraft(file);
     });
     $("file-compare").addEventListener("change", async event => {
       const file = event.target.files[0]; event.target.value = ""; if (file) await compareDraft(file);
+    });
+
+    $("file-import-encrypted").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = ""; if (file) await importDraft(file, true);
+    });
+    $("file-compare-encrypted").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = ""; if (file) await compareDraft(file, true);
     });
     $("close-compare").addEventListener("click", () => $("compare-section").hidden = true);
     $("clear").addEventListener("click", () => {
