@@ -27,6 +27,7 @@ from response_triage import (
 )
 from triage_studio import render_studio as render_triage_studio
 from revision import private_frame
+from hub_browser import render_browser
 
 PHASES = ("awaiting_human_recipient", "recipient_self_reported",
           "sender_human_followup_recorded")
@@ -250,6 +251,10 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                       else "HUMAN_RECIPIENT_REPLY_AVAILABLE" if recipient_notes is not None
                       else "HUMAN_SELECTION_ONLY")
     master = render_hub(records, len(source["findings"]), document_stage)
+    interactive = render_browser(
+        [dict(row, human_action=human_action(row)) for row in records],
+        len(source["findings"]), document_stage
+    )
     action_queue = human_review_queue(records)
     priorities = {
         priority: render_hub(records, len(source["findings"]), document_stage,
@@ -283,6 +288,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "sender_human_triage_sha256_unsigned":
             None if triage_bytes is None else digest(triage_bytes),
         "private_master_overview_sha256_unsigned": digest(master),
+        "private_interactive_workroom_sha256_unsigned": digest(interactive),
         "private_human_review_queue_sha256_unsigned": digest(action_queue),
         "private_priority_overview_sha256_unsigned": {
             priority: digest(contents) for priority, contents in priorities.items()
@@ -292,6 +298,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     }
     publish_new(destination, {
         "PRIVATE-HUMAN-assessment-overview.html": master,
+        "PRIVATE-HUMAN-interactive-workroom.html": interactive,
         "PRIVATE-HUMAN-review-candidates-NOT-DISPATCHED.csv": action_queue,
         "PRIVATE-HUMAN-assessment-overview-receipt.json": json_bytes(receipt),
         "PRIVATE-HUMAN-assessment-overview-counts.json": json_bytes(aggregate),
