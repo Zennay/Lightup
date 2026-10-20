@@ -35,6 +35,7 @@ STYLES = """
 h1{margin:0 0 6px;font-size:1.6rem}h2{font-size:1.1rem;margin:0 0 12px}p{line-height:1.5}
 .warning{background:#433023;color:#fff1d5;border:1px solid #a67840;padding:12px;border-radius:10px}
 main{max-width:1200px;margin:25px auto;padding:0 20px}
+.ownerboard{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 20px}.owner-card{padding:12px;border:1px solid #506787;border-radius:10px;background:#233652;min-width:180px;text-align:left}.owner-card strong{display:block}.owner-card small{color:#d5e4f5}
 .controls,.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
 article{background:#17263a;border:1px solid #3b5067;border-radius:12px;padding:17px;margin:12px 0}
 input,select,textarea,button{font:inherit;background:#102036;color:#f2f7ff;border:1px solid #657990;border-radius:7px;padding:9px}
@@ -123,9 +124,10 @@ def render(sources: list[dict], tasks: list[dict]) -> bytes:
 <p>Source-free remediation follow-ups across {len(sources)} separate admitted packet(s). No inferred chronology or client joins.</p>
 <div class="warning">{html.escape(WARNING)}</div></header>
 <main><section class="stats" id="stats" aria-live="polite"></section>
+<section aria-label="HUMAN owner workload"><h2>Local HUMAN owner workload</h2><div class="ownerboard" id="ownerBoard"></div></section>
 <div class="controls"><input id="search" type="search" placeholder="Search HUMAN reason, owner, action" aria-label="Search tasks">
-<select id="filter"><option value="all">All tasks</option><option value="overdue">Overdue</option><option value="unscheduled">Not scheduled</option><option value="unowned">No owner</option><option value="pending">Still pending</option></select>
-<select id="source"><option value="all">All source-free packets</option></select></div>
+<select id="filter"><option value="all">All tasks</option><option value="soon">Due within 7 days</option><option value="overdue">Overdue</option><option value="unscheduled">Not scheduled</option><option value="unowned">No owner</option><option value="pending">Still pending</option></select>
+<select id="source"><option value="all">All source-free packets</option></select><select id="ownerFilter"><option value="all">All HUMAN owners</option></select></div>
 <div class="controls"><label><span>Batch owner (blank means clear)</span><input id="batchOwner" type="text" maxlength="64"></label>
 <label><span>Batch due (blank means clear)</span><input id="batchDue" type="date"></label>
 <label><span>Batch stage</span><select id="batchStage"><option value="keep">Keep stage</option><option value="open_human">Open HUMAN</option><option value="ask_source_owner">Ask source owner</option><option value="in_discussion_human">In discussion</option><option value="answered_human_only">Answered HUMAN-only</option></select></label>
