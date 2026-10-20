@@ -160,6 +160,24 @@ small{display:block;line-height:1.5}</style>
 <section><h2>Private receiving desk and timeline</h2>
 <p>For independently delivered <em>source-free</em> Cockpit packets, use the bundled native <code>remediation-recipient-trend/receiver_desk.py</code> commands described in <a href="remediation-recipient-trend/README.md">the receiving guide</a>. Those outputs remain private and are not automatically linked or uploaded. Original evidence source admission and HUMAN revisions are explained in <a href="remediation-evidence-bundle-integrity/README.md">the Evidence Workroom guide</a>.</p>
 <p>Unkeyed package checksums establish local file consistency only. Owner permissions, current authenticated client/operator consent, revocation-at-use, exact-head CI, source-owner and independent privacy/security review, and explicit HUMAN GO remain independent requirements for any genuine release.</p></section>
+<section><h2>Operator quick-start · HUMAN only</h2>
+<p>Run these locally on an authorized private Linux machine with existing 0700 folders. Enter secret passphrases interactively: never in commands, URLs or logs. These examples <strong>do not</strong> create a grant, scan, verified fix or consent.</p>
+<h3>Original evidence owner → separated source-free packet</h3>
+<pre>python3 remediation-integrated-workspace/workflow.py owner-start \
+  --input-dir "$HOME/lightup-private/original-ledger" \
+  --output-dir "$HOME/lightup-private/owner-review-001"</pre>
+<p>Original private source remains in <code>owner-review-001/original/</code>. Only the separately native-approved <code>source-free-recipient/</code> can be considered for separately authorized HUMAN disclosure.</p>
+<h3>Single or multiple source-free archives → private reviewer</h3>
+<pre>python3 remediation-integrated-workspace/archive_workflow.py \
+  --archive "$HOME/lightup-private/human-counts-01.luhz" \
+  --output-dir "$HOME/lightup-private/received-human-01"</pre>
+<p>A single source-free packet opens the one-Cockpit HUMAN journal; two create a native comparison, three to twelve a native ordinal series. Repeated exact input packets never prove another chronology.</p>
+<h3>Password-encrypted counts archive → private reviewer</h3>
+<pre>python3 remediation-integrated-workspace/archive_workflow.py \
+  --encrypted-archive "$HOME/lightup-private/approved-human-01.luhx" \
+  --output-dir "$HOME/lightup-private/decrypted-review-01"</pre>
+<p>Optional local Python <code>cryptography</code> dependency and an interactive private terminal are required. No plaintext ZIP intermediates; decrypted HUMAN counts remain private plaintext files on the recipient machine. No authenticated sender or consent is inferred.</p>
+<p>See <a href="remediation-integrated-workspace/README.md">the full private operator guide</a> and <a href="remediation-integrated-workspace/SINGLE_REVIEW.md">single-Cockpit journal/brief workflow</a> for separate HUMAN continuation and privacy conditions.</p></section>
 <small>Software-only, pinned original source snapshots. Operator-selectable steps are HUMAN-only; downloaded plaintext artifacts can be sensitive. No network, browser storage, script, account login or target activity is added by this launcher.</small></main></html>
 """).encode("utf-8")
 
