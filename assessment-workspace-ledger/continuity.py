@@ -121,7 +121,7 @@ def run(args):
                      ("Eligible for HUMAN reconfirmation" if row["carried"] else
                       "CHANGED: prior HUMAN decisions discarded") + "</td><td>" +
                      html.escape(row["stage"]) + "</td></tr>")
-        writer.writerow((row["ordinal"], row["kit_digest"], row["stage"], row["owner"], row["question"]))
+        writer.writerow((row["ordinal"], digest(current_raw), row["kit_digest"], row["stage"], row["owner"], row["question"]))
     table.append("</tbody></table><p>Next: open REVIEW-IN-BROWSER.html, load the ORIGINAL current "
                  "ledger.json separately, optionally import HUMAN-carry.json to prefill. "
                  "Review every HUMAN decision and save a NEW HUMAN-review.csv. "
