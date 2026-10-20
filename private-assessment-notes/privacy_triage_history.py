@@ -103,6 +103,37 @@ def changes_csv(rows: list[dict]) -> bytes:
     return stream.getvalue().encode("utf-8")
 
 
+def counts_csv(rounds: list[dict], changes: list[dict]) -> bytes:
+    """PRIVATE category and stage counts. No original identities or human text."""
+    columns = ("round", "originals", "pending", "review_required", "withhold",
+               "credentials", "personal_data", "client_data", "other", "unknown",
+               "literal_changed_since_previous", "note_changed_since_previous")
+    out = io.StringIO(newline="")
+    writer = csv.DictWriter(out, fieldnames=columns, lineterminator="\r\n")
+    writer.writeheader()
+    for ridx, packet in enumerate(rounds, start=1):
+        counts = packet["status_counts"]
+        topics = packet["topic_counts"]
+        shifted = [row for row in changes if row["to_round"] == ridx]
+        writer.writerow({
+            "round": ridx, "originals": len(packet["rows"]),
+            "pending": counts["PENDING"],
+            "review_required": counts["REVIEW_REQUIRED"],
+            "withhold": counts["WITHHOLD"],
+            "credentials": topics["CREDENTIALS"],
+            "personal_data": topics["PERSONAL_DATA"],
+            "client_data": topics["CLIENT_DATA"],
+            "other": topics["OTHER"], "unknown": topics["UNKNOWN"],
+            "literal_changed_since_previous": sum(
+                row["from_status"] != row["to_status"]
+                or row["from_topics"] != row["to_topics"]
+                or row["human_note_changed"] for row in shifted),
+            "note_changed_since_previous": sum(row["human_note_changed"]
+                                               for row in shifted),
+        })
+    return out.getvalue().encode("utf-8")
+
+
 def history_html(rounds: list[dict], changes: list[dict]) -> bytes:
     cards = []
     for index, round_data in enumerate(rounds, start=1):
@@ -178,6 +209,7 @@ PRIVATE completed review rounds: """ + str(n) + """</p>
 <ul><li><a href="PRIVATE-HUMAN-timeline.html">Explore interactive offline HUMAN timeline</a></li>
 <li><a href="PRIVATE-HUMAN-history.html">Read printable HUMAN history</a></li>
 <li><a href="PRIVATE-HUMAN-transitions.csv">Read full PRIVATE change table</a></li>
+<li><a href="PRIVATE-HUMAN-round-counts.csv">PRIVATE counts-only per-round overview</a></li>
 <li><a href="PRIVATE-HUMAN-history-bindings.json">Read PRIVATE unsigned history receipt</a></li>
 <li><a href="PRIVATE-HUMAN-last-round.csv">Review previous full PRIVATE HUMAN draft</a></li>
 <li><a href="PRIVATE-HUMAN-sensitivity-editor.html">Open next blank HUMAN review editor</a></li>
@@ -252,6 +284,8 @@ def build(original: str, review_paths: list[str], parent_string: str) -> int:
                  interactive_timeline(rounds))
         file_new(destination / "PRIVATE-HUMAN-transitions.csv",
                  changes_csv(transitions))
+        file_new(destination / "PRIVATE-HUMAN-round-counts.csv",
+                 counts_csv(rounds, transitions))
         file_new(destination / "PRIVATE-HUMAN-last-round.csv",
                  rounds[-1]["csv_raw"])
         # This genuinely is a fresh, strictly original-source-bound triage
