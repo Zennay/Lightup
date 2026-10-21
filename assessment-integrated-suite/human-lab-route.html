@@ -22,6 +22,15 @@ button:hover,.file-label:hover{background:#355574}button:focus-visible,select:fo
 .compare summary{cursor:pointer;font-weight:700}.comparison-scroll{overflow-x:auto}
 .compare table{width:100%;border-collapse:collapse}.compare td,.compare th{text-align:left;padding:9px;border-bottom:1px solid #3c5b72}
 button:disabled{cursor:not-allowed;opacity:.45}
+.history-scroll{overflow-x:auto;max-width:100%}
+.history-table{width:100%;border-collapse:collapse;min-width:700px}
+.history-table th,.history-table td{border-bottom:1px solid #3c5b72;padding:8px 11px;text-align:left;white-space:nowrap}
+.history-table th{color:#b8dcf8}
+.history-table tr.changed{background:#243d50}
+.history-detail{margin-top:14px}
+.history-stage{display:flex;gap:15px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #3c5b72}
+.history-stage strong{min-width:220px}
+.history-view[hidden]{display:none}
 .filterbar{display:flex;gap:16px;flex-wrap:wrap}
 .filterbar label{flex:1;min-width:230px;color:#cce2f2}
 .filterbar input,.filterbar select{display:block;margin-top:7px;width:100%;font:inherit;color:#eef7ff;background:#243b51;border:1px solid #8c9fb1;border-radius:8px;padding:9px}
@@ -62,6 +71,24 @@ header,.intro,.phase,.summary,footer{background:#fff;color:#000;border-color:#77
 <p><small>Comparison reveals only the twenty fixed status labels, never customer
 source or assessment results. It does not import, verify or approve anything.</small></p>
 </details>
+<section class="history-detail" aria-labelledby="history-title">
+<h2 id="history-title">Compare 2–8 separate HUMAN discussion rounds</h2>
+<p>Select two to eight previously exported <em>local self-report JSON</em> files, in the explicit order you want them displayed. The chooser order is an operator assumption, not authenticated chronology. Each file must match all twenty original action slots and all false authority flags. No original source files are opened, no active local markers are modified, and nothing is sent anywhere.</p>
+<div class="controls">
+<label class="file-label">Open 2–8 private HUMAN reports (JSON)
+<input id="history-json" type="file" multiple accept=".json,application/json"></label>
+<button id="history-export" type="button" disabled>Export local round comparison (CSV)</button>
+<button id="history-clear" type="button" disabled>Clear compared reports</button>
+</div>
+<p id="history-result" role="status" aria-live="polite">No prior HUMAN rounds selected.</p>
+<div id="history-view" class="history-view" hidden>
+<div id="history-stage-summary" aria-label="Per-stage local marker changes"></div>
+<div class="history-scroll"><table class="history-table">
+<thead id="history-columns"></thead><tbody id="history-rows"></tbody>
+</table></div>
+<p><small>Only source-free fixed action numbers and self-reported status tokens are displayed/exported; this is not evidence of improvement, finding remediation, approval, consent, or release. Repeated identical reports are rejected to prevent accidental duplicate rounds. No time or actor identity is inferred.</small></p>
+</div>
+</section>
 </section>
 <section class="summary" aria-label="Human discussion summary">
 <h2>Human discussion overview</h2><p id="progress" aria-live="polite">Local script unavailable; no status was loaded.</p>
