@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Fifteen offline source-bound and local packet workflows in one user menu.
+Sixteen offline source-bound and local packet workflows in one user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -21,6 +21,7 @@ from packet_open import reopen as reopen_curated_packet
 from packet_handoff import prepare as prepare_priority_handoff, reopen as reopen_priority_handoff
 from priority_reply import receive as receive_priority_reply
 from priority_return_open import reopen as reopen_priority_return
+from priority_reconcile import reconcile as reconcile_original_priority
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -53,6 +54,8 @@ WORKFLOWS = {
            "complete original priority handoff and edited full recipient HUMAN reply CSV"),
     "15": ("Reopen PRIVATE HUMAN priority reply packet by local unsigned bytes",
            "already-produced full PRIVATE recipient HUMAN response folder"),
+    "16": ("Reconcile one HUMAN priority reply with full current ORIGINAL PRIVATE source",
+           "original lab/manifest/worksheet/selection, full curated package and HUMAN handoff"),
 }
 
 
@@ -128,6 +131,26 @@ def run_workflow(choice: str) -> None:
             raise Hold("HUMAN declined local return packet reopen")
         count = reopen_priority_return(folder)
         print("PRIVATE HUMAN return rows: " + str(count) + "; NOT verified findings")
+        return
+    if choice == "16":
+        source = ask_path("EXISTING full original lab source JSON")
+        manifest = ask_path("EXISTING original briefing manifest")
+        worksheet = ask_path("EXISTING original full HUMAN worksheet")
+        receipt = ask_path("EXISTING original selection receipt")
+        selection = ask_path("EXISTING original full HUMAN selection CSV")
+        curated = ask_path("EXISTING published full PRIVATE curated packet")
+        handoff = ask_path("EXISTING detached PRIVATE priority HUMAN handoff")
+        returned = ask_path("EXISTING complete HUMAN recipient response CSV")
+        output = ask_path("EXCLUSIVE NEW PRIVATE reconciliation folder")
+        print("Original all-source bytes and current source membership will be "
+              "checked; signed identity, authorization and recipient still UNVERIFIED.")
+        if input("Enter exactly REVIEW ONLY for local HUMAN reconciliation: ") != "REVIEW ONLY":
+            raise Hold("HUMAN did not confirm source-bound private review")
+        count = reconcile_original_priority(source, manifest, worksheet,
+                                            receipt, selection, curated, handoff,
+                                            returned, output)
+        print("Original-source HUMAN priority rows checked: " + str(count) +
+              "; NO verified remediation, recipient or consent")
         return
     source = ask_path("EXISTING original lab source JSON")
     manifest = ask_path("EXISTING original PRIVATE source briefing manifest JSON")
@@ -233,7 +256,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–15]: ").strip()
+        choice = input("PRIVATE workflow [0–16]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
