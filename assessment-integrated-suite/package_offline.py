@@ -32,7 +32,7 @@ authority to scan, vulnerability verification, release or deployment.
 
 These source files are unsigned. manifest.json hashes are only local file-byte
 integrity references; they do not authenticate source provenance.
-The current v27 manifest uses schema v2 and lists exact byte lengths and
+The portable manifest uses schema v2 and lists exact byte lengths and
 SHA-256 digests for every studio, support asset, START-HERE.html, this
 README.txt and the operator guide. It does not hash itself. Use verify_offline.py from the original native checkout
 to check the archive inventory without extracting any files. A successful
@@ -41,6 +41,12 @@ trusted origin, consent, security findings, permission or release.
 Individual studios independently re-admit any PRIVATE local HUMAN/source data.
 Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
+The benchmark-candidates studio includes aggregate-only selected-pair metric
+deltas and original adverse-flag crossover. When compatible original source
+bytes and private unsigned HUMAN drafts are locally admitted, its scriptless
+brief and JSON include the anonymous 2–8-round proposal timeline, and its
+changed-only CSV carries every manually selected round. No source identifiers,
+reviewer identity, chronology, consent, remediation or release are inferred.
 A local HUMAN Lab Route Desk with 20 original review options (52–71) now\nships as human-lab-route.html plus adjacent human-lab-route.js, with memory-only\ndiscussion states, private JSON/CSV export and bounded JSON reimport. The\nportable browser app never opens original assessment sources, validates\ncompletion, accesses a network or grants authority. It is NOT an executor.
 For devices where the adjacent JS asset could be lost, the same original UI
 also ships as studios/human-lab-route-standalone.html: ONE file with the
