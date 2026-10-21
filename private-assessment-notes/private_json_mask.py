@@ -9,7 +9,10 @@ from __future__ import annotations
 import json
 import re
 from json.decoder import scanstring
-from private_har_payload import MAX_BODY, contains_named_form_secret, mime_family
+from private_har_payload import (
+    MAX_BODY, contains_named_form_secret, contains_named_multipart_secret,
+    mime_family,
+)
 
 MAX_FRAGMENT = 128 * 1024
 MAX_ATTEMPTS = 96
@@ -38,6 +41,7 @@ _HEADER_MARKER = "[REDACTED_HAR_HEADER_VALUE]"
 _PARAM_MARKER = "[REDACTED_HAR_PARAM_VALUE]"
 _HAR_FORM_MARKER = "[REDACTED_HAR_FORM_TEXT]"
 _HAR_JSON_MARKER = "[REDACTED_HAR_EMBEDDED_JSON]"
+_HAR_MULTIPART_MARKER = "[REDACTED_HAR_MULTIPART_TEXT]"
 _DECODER = json.JSONDecoder(parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
 
 
@@ -138,6 +142,10 @@ class _Reader:
                     # avoids leaking its other query/body members and preserves
                     # the parent original JSON object layout.
                     self.spans.append((body[2], body[3], _HAR_FORM_MARKER))
+                elif (family == "multipart"
+                      and contains_named_multipart_secret(body[1],
+                                                          _SECRET_FIELD)):
+                    self.spans.append((body[2], body[3], _HAR_MULTIPART_MARKER))
                 elif family == "json":
                     try:
                         nested = _Reader(body[1], 0, allow_embedded=False)
