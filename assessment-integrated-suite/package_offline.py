@@ -94,9 +94,20 @@ Both operate only in owner-private 0700/0600 directories OUTSIDE source
 checkout. They never contact targets, recipients or services.
 The original native attention_receipt.py code, HUMAN input and generated
 private outputs are deliberately NOT bundled in this browser-only ZIP.
+The original native console additionally exposes actions 78/79,
+which create/reopen an original receipt-bound, local-only HUMAN
+Attention proposal revision portfolio from 2–8 saved original native
+76/77 attention receipts. They require 1–8 existing original 72/73
+Route receipt rooms; all originals and output bytes are admitted.
+The new PRIVATE review cockpit includes a full 20-action multi-revision
+matrix, role/follow-up change-only CSV, 5-stage overview, original latest
+source-free proposal and unsigned source/destination file receipt.
+This native-only Python and PRIVATE output are NOT in this ZIP.
+Original HUMAN revision order does NOT prove chronology or real work.
+
 \nNative checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 77 actions, including original
+options 21/22. The same console now has 79 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
