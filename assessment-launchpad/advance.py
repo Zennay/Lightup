@@ -82,7 +82,7 @@ def render_home(source_count, changed, history_count, handoff_role=None, handoff
         "Open source-free HUMAN briefing</a>"
         "<p><small>Fixed-vocabulary HUMAN counts without endpoint values or "
         "private note text; small cohorts can still be identifiable. "
-        "This is not authorization or verified security evidence.</small></p></section>"
+        "This is not authorization or verified security evidence.</small></p></section>" +
         ("<section><h2>Selected PRIVATE role handoff</h2>"
          "<a href='human-selected-role/lightup-lab-role-handoff-private.html'>"
          "Open voluntarily filtered HUMAN role packet</a><p><small>"
@@ -117,7 +117,7 @@ def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL')
         "human-changes: source-free HUMAN ordinal change HTML and counts.\n"
         "human-history: PRIVATE manually ordered 2–8 HUMAN rounds and source-free counts.\n"
         "   Open human-history/lightup-lab-human-history-brief.html for a "
-        "PRIVATE by default, counts-only management overview.\n"
+        "PRIVATE by default, counts-only management overview.\n" +
         ("human-selected-role: PRIVATE selected role-specific notes and local URL subset; "
          "other-role HUMAN notes withheld.\n"
          "Selected HUMAN role: " + handoff_role +
