@@ -27,6 +27,12 @@ forms frequently present in assessment writeups:
   Authorization, Cookie, session and common camelCase token values;
   owner-private YAML/config scalars with known sensitive field names;
   existing uppercase/suffixed environment-style credentials.
+- **HAR/JSON HTTP header objects:** adjacent quoted
+  `"name": "Authorization", "value": "…"` and reversed
+  `"value": "…", "name": "Authorization"`; also Cookie,
+  Set-Cookie and known API-token headers. The quoted header value
+  is masked, not the header name. Unusual HAR layouts still require
+  independent HUMAN inspection.
 - **Network locations:** HTTP/FTP/SSH/WS/WSS/LDAP/SMTP and known DB
   protocol URL user-info; common sensitive URL query or fragment fields,
   including bearer/session identifiers, and semicolon-prefixed
@@ -80,6 +86,12 @@ by **original source ordinal** only. No masked note text, free HUMAN notes,
 source filenames or source hashes enter the HTML/CSV. The original
 manifest and masked note hashes appear only in a separate PRIVATE unsigned
 receipt; they do NOT authenticate a producer.
+
+The current PRIVATE cue receipt uses source-bound **v2** markers,
+including the HAR JSON-header marker in HTTP/shell. The original PRIVATE
+v1 cue packets remain read-only reopenable with their exact historical
+literal-marker schema. No older packet is overwritten, upgraded or
+used to assert newly detected secrets.
 
 **This is NOT a count of detected secrets or completeness score.** Literal
 placeholder strings can already exist in source text, and unknown secrets

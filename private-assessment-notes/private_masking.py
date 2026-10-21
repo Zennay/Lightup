@@ -74,6 +74,33 @@ _JSON_SECRET = re.compile(
     secretKey|bearerToken|jwt)["'][ \t]*:[ \t]*)(["'])(?:\\.|(?!\2)[^\r\n\\])*\2''',
     re.VERBOSE,
 )
+# Browser/HAR-style header objects often encode name and value as TWO
+# fields rather than a literal HTTP header. Match only sensitive header
+# names paired with an adjacent JSON-style value (quoted strings), and
+# redact the complete value without parsing or executing unrelated input.
+# Arbitrary HAR blobs/unknown fields still require independent HUMAN review.
+_HAR_HEADER_VALUE = re.compile(
+    r"""(?i)(?P<prefix>["']name["'][ \t]*:[ \t]*
+    (?P<name_quote>["'])(?:proxy-authorization|authorization|
+    x-api-key|x-auth-token|x-access-token|x-amz-security-token|
+    x-goog-api-key|cookie|set-cookie)(?P=name_quote)
+    [ \t\r\n]*,[ \t\r\n]*["']value["'][ \t]*:[ \t]*)
+    (?P<value_quote>["'])(?:\\.|(?! (?P=value_quote) )[^\\\r\n]){0,4096}
+    (?P=value_quote)""",
+    re.VERBOSE,
+)
+# HAR/JSON objects do not require key order. Also handle the common
+# inverse serialization where the sensitive value precedes name.
+_HAR_HEADER_REVERSE = re.compile(
+    r"""(?i)(?P<prefix>["']value["'][ \t]*:[ \t]*)
+    (?P<value_quote>["'])(?:\\.|(?! (?P=value_quote) )[^\\\r\n]){0,4096}
+    (?P=value_quote)(?P<suffix>[ \t\r\n]*,[ \t\r\n]*
+    ["']name["'][ \t]*:[ \t]*(?P<name_quote>["'])
+    (?:proxy-authorization|authorization|x-api-key|x-auth-token|
+    x-access-token|x-amz-security-token|x-goog-api-key|
+    cookie|set-cookie)(?P=name_quote))""",
+    re.VERBOSE,
+)
 # E.g. DB_PASSWORD="long password" and INTERNAL_API_TOKEN=abc (not merely a
 # word-boundary 'token' or 'password' in the original producer regex).
 _ENV_SECRET = re.compile(
@@ -132,6 +159,13 @@ def mask_private_notes(original: str) -> str:
     value = _PATH_SESSION.sub(r"\1[REDACTED_SESSION_VALUE]", value)
     value = _JSON_SECRET.sub(lambda m: m.group(1) + m.group(2)
                              + "[REDACTED_JSON_VALUE]" + m.group(2), value)
+    value = _HAR_HEADER_VALUE.sub(
+        lambda m: m.group("prefix") + m.group("value_quote")
+        + "[REDACTED_HAR_HEADER_VALUE]" + m.group("value_quote"), value)
+    value = _HAR_HEADER_REVERSE.sub(
+        lambda m: m.group("prefix") + m.group("value_quote")
+        + "[REDACTED_HAR_HEADER_VALUE]" + m.group("value_quote")
+        + m.group("suffix"), value)
     value = _ENV_SECRET.sub(r"\1[REDACTED_ENV_VALUE]", value)
     value = _YAML_CREDENTIAL.sub(r"\1[REDACTED_CONFIG_VALUE]", value)
     value = _JWT.sub("[REDACTED_JWT_SHAPE]", value)

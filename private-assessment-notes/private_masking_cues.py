@@ -19,7 +19,8 @@ import tempfile
 
 from notes import FALSE_FLAGS, Hold, file_new, load_workroom, private_directory, private_input, save_json
 
-SCHEMA = "lightup.private_assessment_masking_cues.v1"
+LEGACY_SCHEMA = "lightup.private_assessment_masking_cues.v1"
+SCHEMA = "lightup.private_assessment_masking_cues.v2"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -31,12 +32,17 @@ GROUPS = (
                               "[REDACTED_JWT_SHAPE]", "[REDACTED_PROVIDER_TOKEN_SHAPE]",
                               "[REDACTED_AWS_ACCESS_KEY]", "[REDACTED]")),
 )
+LEGACY_GROUPS = GROUPS
+# V2 receives a newly recognized HAR exported HTTP credential placeholder.
+# Original V1 cue room source bytes remain stable and read-only reopenable.
+GROUPS = (("HTTP_OR_SHELL", LEGACY_GROUPS[0][1] +
+           ("[REDACTED_HAR_HEADER_VALUE]",)), *LEGACY_GROUPS[1:])
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
 
 
-def cues(sources: list[dict]) -> list[dict]:
+def cues(sources: list[dict], groups=GROUPS) -> list[dict]:
     output = []
     for record in sources:
         # IMPORTANT: these are plain STRING OCCURRENCES. The source may
@@ -44,7 +50,7 @@ def cues(sources: list[dict]) -> list[dict]:
         # survive all patterns. Never use as proof or risk classification.
         message = record["redacted_text"]
         by_type = [sum(message.count(marker) for marker in markers)
-                   for _, markers in GROUPS]
+                   for _, markers in groups]
         output.append({
             "original_ordinal": record["ordinal"],
             "literal_http_or_shell_markers": by_type[0],
@@ -108,9 +114,10 @@ separate and mandatory. No active tool, network, model or dispatch.</p>
 </html>""").encode("utf-8")
 
 
-def cue_receipt(manifest_raw: bytes, sources: list[dict]) -> dict:
+def cue_receipt(manifest_raw: bytes, sources: list[dict],
+                schema: str = SCHEMA) -> dict:
     return {
-        "schema": SCHEMA, "claimed_status": "HOLD",
+        "schema": schema, "claimed_status": "HOLD",
         "source_count": len(sources),
         "original_manifest_sha256_unsigned": sha256(manifest_raw).hexdigest(),
         "original_masked_sha256_unsigned": [
@@ -152,11 +159,21 @@ def reopen(original: str, cue_room: str) -> int:
     kit = private_directory(original)
     _binding, sources, rows = load_workroom(kit)
     manifest_raw = private_input(str(kit / "PRIVATE-source-bindings.json"), 128 * 1024)
-    derived = cues(rows)
     folder = private_directory(cue_room)
-    expected_receipt = (json.dumps(
-        cue_receipt(manifest_raw, sources), indent=2, sort_keys=True,
-        ensure_ascii=False) + "\n").encode("utf-8")
+    stored_receipt = private_input(
+        str(folder / "PRIVATE-masking-cues-receipt.json"), 65536)
+    def serialized_receipt(schema):
+        return (json.dumps(cue_receipt(manifest_raw, sources, schema=schema),
+                           indent=2, sort_keys=True,
+                           ensure_ascii=False) + "\n").encode("utf-8")
+    if stored_receipt == serialized_receipt(SCHEMA):
+        derived = cues(rows)
+    elif stored_receipt == serialized_receipt(LEGACY_SCHEMA):
+        # Pre-HAR cue workrooms are not silently upgraded or overwritten.
+        derived = cues(rows, groups=LEGACY_GROUPS)
+    else:
+        raise Hold("HOLD: original-bound PRIVATE masking-cue receipt changed")
+    expected_receipt = stored_receipt
     expected_files = (
         ("PRIVATE-masking-cues-receipt.json", expected_receipt),
         ("PRIVATE-masking-cues.csv", cue_csv(derived)),
