@@ -2,6 +2,19 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Complete local, non-authorizing HUMAN review product on the original Basic/Bearer/API-key credential redaction boundary. No target interaction, scan, model invocation, upload, customer notification, approval, deployment, retest, or release.
 
+### New: pasted command, HTTP exchange and structured credential masking
+
+The original local PRIVATE note masker now withholds more credential-bearing
+fields in pasted cURL shell flags and quoted HTTP headers, request/response
+Cookie and token headers, structured JSON/YAML secrets, URL user-info,
+path-session IDs and common session/token query fields. This only affects
+**new owner-private `notes.py prepare` workrooms**; original old HUMAN packets
+are never silently rewritten. The result is still **pattern-based,
+incomplete, confidential and not approved for external sharing**.
+
+[Supported original PRIVATE source shapes, operator usage and explicit privacy
+limits](PRIVATE-CREDENTIAL-MASKING.md).
+
 ## What this does
 
 The existing central `lightup.redaction.redact_text()` now includes the **unchanged original producer patch** from draft [PR #672](https://github.com/Zennay/Lightup/pull/672) for `Authorization: Basic ...` and `Proxy-Authorization: Basic ...`, alongside existing Bearer, AWS access key and generic token/password patterns. Original source-owner branch untouched. The utility **does not claim to detect all secrets, anonymize data, erase personal information, or make material safe to share**.
