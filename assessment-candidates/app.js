@@ -1032,18 +1032,27 @@
     if(!reviewRounds||demo||reports.length<2||
       sourceHashes.length!==reports.length||
       !sourceHashes.every((h,i)=>h===reviewRounds.hashes[i]))return;
-    const header=["case_ordinal","first_local_stage","second_local_stage",
-      "first_proposed_group","last_proposed_group","human_rounds","proposal_transitions",
-      "reverted_to_first","local_human_discussion_only",
-      "source_identity_authenticated","authorized","consent_verified",
-      "dispatch_allowed","release_allowed","status"];
-    const lines=reviewRounds.diff.map(d=>[
-      d.ordinal,d.before.stage,d.after.stage,d.before.route,d.after.route,
-      reviewRounds.rounds,d.transitions,
-      d.before.route===d.after.route&&d.before.stage===d.after.stage?"true":"false",
-      "true","false","false","false","false","false","REVIEW_ONLY"].join(","));
-    download("lightup-PRIVATE-HUMAN-review-round-changes.csv",
-      header.join(",")+"\n"+lines.join("\n")+(lines.length?"\n":""),
+    const header=["case_ordinal","manually_selected_round_slot","round_count",
+      "proposed_group","discussion_stage","changed_from_previous_round",
+      "returned_to_first_proposal","case_transition_count","local_human_discussion_only",
+      "source_identity_authenticated","round_order_authenticated","authorized",
+      "consent_verified","dispatch_allowed","release_allowed","status"];
+    const lines=[];
+    for(const item of reviewRounds.diff){
+      const snapshots=reviewRounds.snapshots.map(rows=>rows[item.ordinal-1]);
+      snapshots.forEach((row,i)=>{
+        const previous=i?snapshots[i-1]:null;
+        const changed=!!previous&&(row.route!==previous.route||row.stage!==previous.stage);
+        const returned=!!previous&&changed&&row.route===snapshots[0].route&&
+          row.stage===snapshots[0].stage;
+        lines.push([item.ordinal,i+1,reviewRounds.rounds,row.route,row.stage,
+          changed?"true":"false",returned?"true":"false",item.transitions,
+          "true","false","false","false","false","false","false","REVIEW_ONLY"]);
+      });
+    }
+    const csvField=value=>'"'+String(value).replace(/"/g,'""')+'"';
+    download("lightup-PRIVATE-HUMAN-review-round-history.csv",
+      [header,...lines].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n",
       "text/csv");
     $("roundsMessage").textContent="PRIVATE changed-only HUMAN proposals saved locally. "+
       "Missing changes never imply a security fix or approval.";
