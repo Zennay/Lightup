@@ -57,6 +57,17 @@ forms frequently present in assessment writeups:
   Authorization, Cookie, session and common camelCase token values;
   owner-private YAML/config scalars with known sensitive field names;
   existing uppercase/suffixed environment-style credentials.
+- **Nested, valid JSON/HAR records:** an additional, bounded inert JSON
+  parser locates credential-bearing named fields in original JSON fragments,
+  including `headers`, `cookies`, `queryString` and `postData.params`
+  arrays where `"name"` and `"value"` are separated by other harmless
+  members or appear in reverse order. Recognized direct JSON credential
+  properties are masked even when they use escaped Unicode key spelling.
+  Original JSON whitespace, non-sensitive fields and ordering are preserved.
+  Each parsed fragment is capped at 128 KiB, 24 nesting levels and 4096
+  nodes, with a maximum of 96 candidate parses per note. Invalid JSON,
+  duplicate keys, unknown secret names, non-string values and oversized
+  inputs are **NOT** certified clean. The original redactor still runs.
 - **HAR/JSON HTTP header objects:** adjacent quoted
   `"name": "Authorization", "value": "…"` and reversed
   `"value": "…", "name": "Authorization"`; also Cookie,
@@ -132,6 +143,26 @@ omitted, `notes.py prepare` retains its original product behavior;
 previously generated packets are not changed or reinterpreted.
 Neither presence nor absence of masking placeholders is evidence
 that secrets or personal data are absent.
+
+## NEW: navigable original-ordinal masking-cue desk (v6)
+
+The native `notes.py masking-cues` and optional
+`notes.py prepare --with-mask-cues` now render a fully offline
+**script-free HUMAN navigator**, preserving the complete original ordinal
+roster and providing expandable category-focused links that jump to source
+positions with literal known masking markers. Links are ordered by literal
+placeholder appearance count **only**, never security severity. These
+groups show no original text, customer names, source digests, freeform
+HUMAN notes, credentials or authority claims. Zero counts are *not* clearance.
+
+New independent native cue receipts use
+`lightup.private_assessment_masking_cues.v6`, with the exact original
+source-bound 0700/0600 custody. The read-only
+`notes.py masking-cues-reopen` still preserves **v1 through v5**
+receipts and their original HTML/CSV bytes; existing historical packets
+are never rewritten, auto-upgraded or silently normalized. In particular,
+new cue navigation does not change the canonical original source manifest,
+the original HUMAN editor/finalizer, or older completed review packets.
 
 ## NEW: offline PRIVATE original-by-original HUMAN masking-cue desk
 
