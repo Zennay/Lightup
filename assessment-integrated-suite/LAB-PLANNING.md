@@ -1,5 +1,17 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
+## Current HUMAN Route follow-up exports
+
+The local browser Route Desk can export a pending HUMAN discussion queue (CSV)
+and a scriptless current-plan brief (HTML). The queue includes only local
+NEEDS_INPUT, IN_PROGRESS and NOT_REVIEWED markers, sorted by marker
+category and original stage/action order. This order is not severity, urgency
+or an assessment verdict. The HTML brief includes all twenty original actions,
+five stage summaries and the same discussion-only queue. Neither export
+contains original source evidence, targets, private notes, actors, filenames
+or timestamps. DISCUSSED is never proof of completion. Both remain unsigned
+and non-authorizing, and no source, consent, grant, scan or release is created.
+
 ## Explicit new source-free HUMAN role/follow-up continuation (native 80–81)
 
 After native 78 creates a PRIVATE twenty-action Attention revision
