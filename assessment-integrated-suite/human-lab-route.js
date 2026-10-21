@@ -155,6 +155,102 @@
     "LightUp-PRIVATE-HUMAN-Lab-Route.csv",
     "action,self_reported_state,authority\r\n" +
     ALL.map(id => id+","+state[id]+",REVIEW_ONLY").join("\r\n")+"\r\n","text/csv"));
+
+  // Source-free HUMAN follow-up queue: marker category is only a discussion
+  // ordering hint, never a security severity, urgency, task completion or GO.
+  const ACTION_STAGE = Object.create(null);
+  const ACTION_STAGE_ORDER = Object.create(null);
+  STAGES.forEach((stage, index) => stage.steps.forEach(([number]) => {
+    ACTION_STAGE[String(number)] = stage.title;
+    ACTION_STAGE_ORDER[String(number)] = index;
+  }));
+  const FOLLOWUP_ORDER = Object.freeze({NEEDS_INPUT:0, IN_PROGRESS:1, NOT_REVIEWED:2});
+  const FOLLOWUP_NEXT = Object.freeze({
+    NOT_REVIEWED:"Start HUMAN discussion",
+    IN_PROGRESS:"Continue HUMAN discussion",
+    NEEDS_INPUT:"Request the missing original input",
+    DISCUSSED:"No discussion follow-up marker; not verified"
+  });
+  function followupQueue() {
+    return ALL.filter(id => state[id] !== "DISCUSSED").map(id => ({
+      action:id, stage:ACTION_STAGE[id], status:state[id], next:FOLLOWUP_NEXT[state[id]],
+      stageOrder:ACTION_STAGE_ORDER[id], order:FOLLOWUP_ORDER[state[id]]
+    })).sort((a,b) => a.order-b.order || a.stageOrder-b.stageOrder ||
+      Number(a.action)-Number(b.action));
+  }
+  function csvCell(value) {
+    return "\"" + String(value).replace(/"/g, "\"\"") + "\"";
+  }
+  function htmlEscape(value) {
+    return String(value).replace(/[&<>"']/g, char =>
+      ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
+  }
+  $("export-followup").addEventListener("click", () => {
+    const queue = followupQueue();
+    const rows = [[
+      "priority_order","stage","action","action_label","self_reported_state",
+      "suggested_human_next_step","authority"
+    ], ...queue.map((item,index) => [
+      String(index+1), item.stage, item.action, actionLabel[item.action],
+      item.status, item.next, "REVIEW_ONLY"
+    ])];
+    download("LightUp-PRIVATE-HUMAN-Lab-Follow-up-Queue.csv",
+      rows.map(row => row.map(csvCell).join(",")).join("\r\n") + "\r\n", "text/csv");
+    $("result").textContent = queue.length + " HUMAN discussion follow-up markers exported locally. " +
+      "Ordering reflects marker category only; no urgency, completion, verification or authority is inferred.";
+  });
+  $("export-brief").addEventListener("click", () => {
+    const queue = followupQueue();
+    const stageRows = STAGES.map(stage => {
+      const ids = stage.steps.map(([number]) => String(number));
+      const count = status => ids.filter(id => state[id] === status).length;
+      return "<tr><th>" + htmlEscape(stage.title) + "</th><td>" + ids.length +
+        "</td><td>" + count("NEEDS_INPUT") + "</td><td>" + count("IN_PROGRESS") +
+        "</td><td>" + count("NOT_REVIEWED") + "</td><td>" + count("DISCUSSED") + "</td></tr>";
+    }).join("");
+    const queueBody = queue.length ? queue.map((item,index) =>
+      "<tr><td>" + (index+1) + "</td><td>" + htmlEscape(item.stage) +
+      "</td><td>" + htmlEscape(item.action) + "</td><td>" +
+      htmlEscape(actionLabel[item.action]) + "</td><td>" +
+      htmlEscape(LABELS[item.status]) + "</td><td>" + htmlEscape(item.next) + "</td></tr>"
+    ).join("") : "<tr><td colspan=\"6\">No non-DISCUSSED markers in the current local plan. " +
+      "This does not mean any assessment action was completed or verified.</td></tr>";
+    const allRows = ALL.map(id => "<tr><td>" + htmlEscape(ACTION_STAGE[id]) +
+      "</td><td>" + htmlEscape(id) + "</td><td>" + htmlEscape(actionLabel[id]) +
+      "</td><td>" + htmlEscape(LABELS[state[id]]) + "</td><td>" +
+      htmlEscape(FOLLOWUP_NEXT[state[id]]) + "</td></tr>").join("");
+    const doc = [
+      "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+      "<meta name=\"referrer\" content=\"no-referrer\">",
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'\">",
+      "<title>LightUp · PRIVATE HUMAN Current Plan Brief · REVIEW_ONLY</title>",
+      "<style>body{margin:24px auto;max-width:1200px;padding:0 18px;font:15px/1.5 system-ui,sans-serif;color:#192330}",
+      "h1{font-size:1.8rem}table{border-collapse:collapse;width:100%;margin:14px 0 26px}",
+      "td,th{padding:8px 9px;border:1px solid #bec8d1;text-align:left;vertical-align:top}",
+      "th{background:#eaf0f5}.wrap{overflow-x:auto}.flag{font-weight:bold;color:#7a3500}",
+      "p{max-width:95ch}@page{size:landscape;margin:12mm}",
+      "@media print{body{margin:0;padding:0}table{font-size:10px;break-inside:auto}tr{break-inside:avoid}}</style>",
+      "</head><body><h1>LightUp · PRIVATE HUMAN Current Plan Brief</h1>",
+      "<p class=\"flag\">REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</p>",
+      "<p>Unsigned local self-report of discussion markers only. This brief contains no original source, target, finding, private note, identity, timestamp or consent. \"Discussed only\" is not evidence of execution, verification, remediation, authorization or release.</p>",
+      "<h2>Stage summary</h2><div class=\"wrap\"><table><thead><tr><th>Stage</th><th>Actions</th><th>Need input</th><th>Discussing</th><th>Not reviewed</th><th>Discussed only</th></tr></thead><tbody>",
+      stageRows,"</tbody></table></div>",
+      "<h2>Current HUMAN discussion follow-up queue</h2>",
+      "<p>Sorted by self-reported marker category (needs input, discussing, not reviewed), then original stage/action order. This is not a severity or urgency ranking. Only fixed labels are included.</p>",
+      "<div class=\"wrap\"><table><thead><tr><th>Queue order</th><th>Stage</th><th>Action</th><th>Original action</th><th>Self-reported status</th><th>Suggested HUMAN next step</th></tr></thead><tbody>",
+      queueBody,"</tbody></table></div>",
+      "<h2>Complete original twenty-action plan</h2>",
+      "<div class=\"wrap\"><table><thead><tr><th>Stage</th><th>Action</th><th>Original action</th><th>Self-reported status</th><th>Discussion-only next step</th></tr></thead><tbody>",
+      allRows,"</tbody></table></div>",
+      "<p>No source or actor was authenticated. Native original-source admission, separate security/privacy review, current client/operator consent with action-time revocation, and explicit HUMAN GO remain independent gates. No network, script, storage, scan, grant, task dispatch or release is performed by this file.</p>",
+      "</body></html>"
+    ].join("");
+    download("LightUp-PRIVATE-HUMAN-Lab-Current-Plan-Brief.html", doc, "text/html");
+    $("result").textContent = "A scriptless source-free current-plan brief was requested as a local download. " +
+      "It is unsigned discussion material, not evidence, authorization or release approval.";
+  });
+
   $("print").addEventListener("click", () => window.print());
   $("reset").addEventListener("click", () => {
     if (!window.confirm("Discard all local unsaved HUMAN discussion markers?")) return;
