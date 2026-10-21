@@ -2,6 +2,51 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Complete local, non-authorizing HUMAN review product on the original Basic/Bearer/API-key credential redaction boundary. No target interaction, scan, model invocation, upload, customer notification, approval, deployment, retest, or release.
 
+### Original-bound PRIVATE HAR HUMAN operations desk
+
+After the first full manual status import, `har-review-progress`
+**automatically** generates both a fresh original-bound 0600 HUMAN
+progress packet and a separate scriptless **`OPEN-PRIVATE-HAR-DESK.html`**.
+The desk is saved as a new 0700 owner-private sibling folder; it never
+mutates the source, v19 cue workroom or earlier review packets. Creation
+is all-or-nothing: incomplete fresh status/desk folders are rolled back.
+
+The desktop view offers original-position manual next-action navigation,
+links to the original masked HUMAN notes, status Studio, original
+workflow, all admitted earlier status packets and the latest editable
+CSV. It groups original actions, shows latest and prior operator-typed
+statuses, changed rounds, reopened HUMAN-review labels and an explicitly
+**non-security-severity** manual work order. Its two source-minimal exports
+are `PRIVATE-HAR-NEXT-ACTIONS.csv` (per action) and
+`PRIVATE-HAR-SOURCE-QUEUE.csv` (per original ordinal); an unsigned
+`PRIVATE-HAR-DESK-receipt.json` binds all outputs and progress receipts.
+No source contents, filenames, client identities, source hashes or HUMAN
+free text are embedded. Statuses do not certify anything.
+
+To include earlier HUMAN reports in the next desk, supply up to seven
+`--previous-round /private/owner-room/PRIVATE-lightup-har-human-status-...`
+arguments on `har-review-progress`. Each progress room must be an
+unchanged, original-bound, owner-only **sibling** directory, and the
+output `--private-parent` must be the workflow parent (same local
+relative-link scope). The new review packet is last; prior order is
+operator-supplied, not verified chronology.
+
+Existing earlier rounds can instead be viewed without a new status
+import:
+
+~~~sh
+python3 private-assessment-notes/notes.py har-review-desk \
+  --workflow-room /private/owner-room/PRIVATE-lightup-har-workflow-... \
+  --progress-room /private/owner-room/PRIVATE-lightup-har-human-status-... \
+  --private-parent /private/owner-room
+~~~
+
+A previously built private desk can be independently reopened byte-for-
+byte via `har-review-desk-reopen --workflow-room ... --progress-room ...
+--desk-room ...`, preserving identical operator round order. Both desk
+commands return HOLD (3); no standalone browser status, risk score,
+client consent or release right is ever inferred.
+
 ### Single-command PRIVATE HAR HUMAN workflow
 
 A new `notes.py har-review-start` produces **three owner-only local
