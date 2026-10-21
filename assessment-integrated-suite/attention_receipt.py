@@ -152,13 +152,14 @@ def _html(rows: list[dict[str, object]], count: int) -> bytes:
 body{max-width:1180px;margin:auto;padding:24px}header,footer{padding:23px;background:#23374b;border:1px solid #61798e}
 table{width:100%;border-collapse:collapse;margin:25px 0}
 td,th{text-align:left;padding:11px;border-bottom:1px solid #56718a}
-.warning{color:#fbdcad;font-weight:700}@media print{body{background:#fff;color:#000}}
+.warning{color:#fbdcad;font-weight:700}a{color:#c5ebff}@media print{body{background:#fff;color:#000}}
 </style><header><h1>PRIVATE HUMAN attention · original marker-bound receipt</h1>
 <p class="warning">REVIEW_ONLY · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</p>
 <p>""" + str(count) + """ manually ordered original PRIVATE HUMAN self-report receipt rooms
 were re-admitted. This does NOT prove true chronology, operator identity,
 source provenance, task completion, remediation, findings, consent or authority.
-The role/follow-up fields are only locally written HUMAN proposals.</p></header>
+The role/follow-up fields are only locally written HUMAN proposals.</p>
+<p><a href='PRIVATE-HUMAN-ROLES.html'>Open grouped HUMAN proposed-role workboard</a> (same PRIVATE room; no network)</p></header>
 <table><thead><tr><th>Original action</th><th>Last human self-report</th>
 <th>Changed markers*</th><th>Proposed role</th><th>Proposed follow-up</th></tr>
 </thead><tbody>""" + "".join(parts) + """</tbody></table><footer>
@@ -231,7 +232,7 @@ body{max-width:1100px;margin:auto;padding:24px}
 section,header{border:1px solid #637f95;padding:22px;background:#1b354b;margin:16px 0}
 table{border-collapse:collapse;width:100%}
 th,td{text-align:left;padding:10px;border-bottom:1px solid #60788c}
-.warn{color:#f9d9a0;font-weight:700}
+.warn{color:#f9d9a0;font-weight:700}a{color:#c5ebff}
 @media print{body{background:#fff;color:#000}section,header{background:#fff}}
 </style><header><h1>PRIVATE HUMAN proposed-role workboard</h1>
 <p class="warn">REVIEW_ONLY · DRAFT/HOLD · PLAN/LAB ONLY</p>
@@ -239,6 +240,7 @@ th,td{text-align:left;padding:10px;border-bottom:1px solid #60788c}
 an exact native-received, source-free HUMAN marker/role proposal.
 These are NOT real people, assigned tasks, messages, authorization,
 verified remediation, original source authenticity, consent or releases.</p>
+<p><a href='OPEN-PRIVATE.html'>Return to complete twenty-action HUMAN receipt</a> (same PRIVATE room; no network)</p>
 </header>""" + "".join(sections) + """
 <footer><p>No original client source, target, recipient address,
 real action time or protected data included. Original HUMAN ordering
