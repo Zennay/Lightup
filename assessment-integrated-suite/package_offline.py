@@ -255,24 +255,17 @@ def build(destination: Path) -> int:
             "filename": destination_name, "source_path": str(source.relative_to(ROOT)),
             "bytes": len(raw), "sha256_unsigned": hashlib.sha256(raw).hexdigest(),
         })
-    # Include the one-file HUMAN route desk as a genuine self-contained tool.
-    # Refuse drift between the original two-file sources and checked-in output.
-    standalone_path = ROOT / "assessment-integrated-suite/human-lab-route-standalone.html"
-    read_safe(standalone_path, MAX_APP)
-    standalone_bytes = standalone_path.read_bytes()
-    if standalone_bytes != build_standalone_route():
+    # APPS is the single canonical source for both the private native kit
+    # and this portable package. Re-admit the independently derived one-file
+    # browser app before writing ANY package bytes (never include duplicates).
+    standalone_name = "human-lab-route-standalone.html"
+    if standalone_name not in APPS:
+        raise Hold("HOLD: missing one-file HUMAN route from native workspace")
+    standalone_path = APPS[standalone_name]
+    if standalone_path != ROOT / "assessment-integrated-suite/human-lab-route-standalone.html":
+        raise Hold("HOLD: unrecognised standalone HUMAN route source")
+    if standalone_path.read_bytes() != build_standalone_route():
         raise Hold("HOLD: standalone HUMAN route software does not match original sources")
-    total += len(standalone_bytes)
-    if total > 20 * 1024 * 1024:
-        raise Hold("HOLD: bundled product source is over size limit")
-    standalone_name = "studios/human-lab-route-standalone.html"
-    originals.append(("human-lab-route-standalone.html", standalone_name, standalone_bytes))
-    manifest.append({
-        "filename": standalone_name,
-        "source_path": str(standalone_path.relative_to(ROOT)),
-        "bytes": len(standalone_bytes),
-        "sha256_unsigned": hashlib.sha256(standalone_bytes).hexdigest(),
-    })
     guide_path = ROOT / "assessment-integrated-suite/LAB-PLANNING.md"
     read_safe(guide_path, 262_144)
     guide = guide_path.read_bytes()
