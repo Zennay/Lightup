@@ -15,13 +15,14 @@ import shutil
 import tempfile
 
 from notes import (FALSE_FLAGS, Hold, file_new, load_workroom,
-                   private_directory, private_input, save_json)
+                   private_directory, private_input, read_json, save_json)
 from private_har_workflow import admit as admit_workflow, MANIFEST
 from private_har_progress import _edited, reopen_progress, STATES
 from private_har_worklist import entries
 from private_har_history import _longitudinal
 
 SCHEMA = "lightup.private_har_review_desk.v1"
+SCHEMA_V2 = "lightup.private_har_review_desk.v2"
 MAX_ROUNDS = 8
 MAX_SIZE = 256 * 1024
 PAGE = "OPEN-PRIVATE-HAR-DESK.html"
@@ -306,7 +307,8 @@ revocation-at-use and explicit HUMAN GO remain separate release requirements.
 No local status is a shortcut.</footer></html>""").encode("utf-8")
 
 
-def _build(workflow_room: str, progress_rooms: list[str], output_parent: str):
+def _build(workflow_room: str, progress_rooms: list[str], output_parent: str,
+           legacy: bool = False):
     parent = private_directory(output_parent)
     room, original, cues, progress, roster, history, receipt_hashes = _admit(
         workflow_room, progress_rooms)
@@ -316,11 +318,22 @@ def _build(workflow_room: str, progress_rooms: list[str], output_parent: str):
     csv_bytes = _export_csv(rows)
     source_queue = _source_queue(rows)
     page = _page(room, original, cues, progress, rows)
-    if not all(0 < len(value) <= MAX_SIZE for value in
-               (page, csv_bytes, source_queue)):
+    from private_har_print_agenda import NAME as AGENDA, build as print_agenda
+    agenda = b"" if legacy else print_agenda(source_queue, len(progress))
+    if not legacy:
+        link = ("<section><h2>Printable original-position HUMAN agenda</h2>"
+                "<p><a href='" + AGENDA + "'>Open print-only manual checklist</a> "
+                "for ALL original source slots. It is source-minimal, unsigned, "
+                "not consent, privacy clearance, a verified finding or PASS.</p></section>")
+        page = page.replace(
+            b"<section><h2>Continue original owner-private review</h2>",
+            link.encode("utf-8") +
+            b"<section><h2>Continue original owner-private review</h2>")
+    payloads = (page, csv_bytes, source_queue) if legacy else (page, csv_bytes, source_queue, agenda)
+    if not all(0 < len(value) <= MAX_SIZE for value in payloads):
         raise Hold("HOLD: PRIVATE HAR desk output exceeds bound")
     metadata = {
-        "schema": SCHEMA,
+        "schema": SCHEMA if legacy else SCHEMA_V2,
         "claimed_status": "HOLD",
         "unverified_manual_status_only": True,
         "round_order_declared_not_attested": True,
@@ -335,15 +348,17 @@ def _build(workflow_room: str, progress_rooms: list[str], output_parent: str):
         "source_queue_sha256_unsigned": sha256(source_queue).hexdigest(),
         **{name: False for name in FALSE_FLAGS},
     }
+    if not legacy:
+        metadata["print_agenda_sha256_unsigned"] = sha256(agenda).hexdigest()
     receipt = (json.dumps(metadata, indent=2, sort_keys=True,
                           ensure_ascii=False) + "\n").encode("utf-8")
-    return page, csv_bytes, source_queue, receipt
+    return page, csv_bytes, source_queue, agenda, receipt
 
 
 def create(workflow_room: str, progress_rooms: list[str],
            private_parent: str, created_room: list[Path] | None = None) -> int:
     parent = private_directory(private_parent)
-    page, csv_bytes, source_queue, receipt = _build(
+    page, csv_bytes, source_queue, agenda, receipt = _build(
         workflow_room, progress_rooms, str(parent))
     result = Path(tempfile.mkdtemp(
         prefix="PRIVATE-lightup-har-desk-", dir=parent))
@@ -353,6 +368,8 @@ def create(workflow_room: str, progress_rooms: list[str],
         file_new(result / PAGE, page)
         file_new(result / CSV, csv_bytes)
         file_new(result / SOURCE_CSV, source_queue)
+        from private_har_print_agenda import NAME as AGENDA
+        file_new(result / AGENDA, agenda)
         file_new(result / RECEIPT, receipt)
         finished = True
         if created_room is not None:
@@ -371,12 +388,18 @@ def reopen(workflow_room: str, progress_rooms: list[str],
     if not re.fullmatch(r"PRIVATE-lightup-har-desk-[a-zA-Z0-9_-]{8,32}",
                         room.name):
         raise Hold("HOLD: invalid owner-private HAR desk folder")
-    page, csv_bytes, source_queue, receipt = _build(
-        workflow_room, progress_rooms, str(room.parent))
-    for name, expected in (
-        (PAGE, page), (CSV, csv_bytes),
-        (SOURCE_CSV, source_queue), (RECEIPT, receipt)
-    ):
+    recorded = read_json(room / RECEIPT, MAX_SIZE)
+    if type(recorded) is not dict or recorded.get("schema") not in (SCHEMA, SCHEMA_V2):
+        raise Hold("HOLD: unsupported original HAR HUMAN desk receipt")
+    legacy = recorded["schema"] == SCHEMA
+    page, csv_bytes, source_queue, agenda, receipt = _build(
+        workflow_room, progress_rooms, str(room.parent), legacy=legacy)
+    from private_har_print_agenda import NAME as AGENDA
+    expected_files = [(PAGE, page), (CSV, csv_bytes),
+                      (SOURCE_CSV, source_queue), (RECEIPT, receipt)]
+    if not legacy:
+        expected_files.append((AGENDA, agenda))
+    for name, expected in expected_files:
         if private_input(str(room / name), MAX_SIZE) != expected:
             raise Hold("HOLD: original-bound PRIVATE HAR desk bytes changed")
     print("HOLD: original-bound PRIVATE HAR HUMAN desk reopened read-only")
