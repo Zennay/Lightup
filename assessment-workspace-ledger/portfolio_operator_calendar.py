@@ -258,8 +258,12 @@ def run(args):
     if args.mode == "receive" and read_owner_file(args.proposed_csv, MAX_MANIFEST) != payload:
         reject("PRIVATE HOLD: HUMAN proposed CSV changed during native intake")
 
+    # Source-free browser software accompanies both local HUMAN flows.
+    from portfolio_operator_calendar_studio import render as calendar_studio
+    software = calendar_studio()
     output = new_private(args.private_parent)
     try:
+        write_private(output, "PRIVATE-HUMAN-calendar-studio.html", software)
         if args.mode == "receive":
             folders = []
             for owner, _ in owners.items():

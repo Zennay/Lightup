@@ -48,6 +48,7 @@ import portfolio_owner_change_board
 import portfolio_owner_change_history
 import portfolio_owner_change_history_studio
 import portfolio_operator_calendar
+import portfolio_operator_calendar_studio
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -114,6 +115,7 @@ MENU = (
     ("56", "Prepare full original-bound PRIVATE HUMAN proposed review calendar CSV"),
     ("57", "Receive complete original-bound HUMAN calendar into PRIVATE owner workrooms"),
     ("58", "Read-only reopen original HUMAN calendar CSV and private receipt"),
+    ("59", "Build source-free portable PRIVATE HUMAN proposed-calendar browser Studio"),
     ("0", "Exit"),
 )
 
@@ -262,6 +264,10 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "59":
+        return portfolio_operator_calendar_studio.build(argparse.Namespace(
+            output=prompt("Absolute NEW source-free HUMAN calendar Studio .html in owner-private folder")
         ))
     if action in ("56", "57", "58"):
         return portfolio_operator_calendar.run(argparse.Namespace(
