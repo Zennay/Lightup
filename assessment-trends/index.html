@@ -147,8 +147,25 @@
   </div>
   <p class="footnote">Both source-bound bundles are fully re-admitted, including exact input byte digests and event scope, before comparison. No original IDs, source hashes, filenames or saved note text appear in the comparison exports. Changed or absent HUMAN declarations are not evidence of a resolved issue. The current working review remains untouched.</p>
 </section>
+
+<section class="panel no-print" id="humanRounds">
+  <div class="section-head"><h2>09 / PRIVATE HUMAN review rounds</h2><span class="tag">2–8 source-bound revisions</span></div>
+  <p>Inspect a manually ordered sequence of 2–8 previously saved PRIVATE HUMAN review sessions. Every session must match the exact original source bytes and original snapshot order. Compare HUMAN stage workloads and how many note contents changed between selected rounds without loading notes into reports. These round numbers are <strong>display ordinals, not proven timestamps or verified remediation</strong>. Nothing is merged into the current HUMAN work.</p>
+  <label class="file-picker">Choose 2–8 PRIVATE source-bound HUMAN session JSON files, in display order
+    <input id="timelineFiles" type="file" accept=".json,application/json" multiple disabled>
+  </label>
+  <button id="timelineImport" type="button" disabled>Compare local HUMAN rounds · read-only</button>
+  <p id="timelineSummary" class="message" role="status" aria-live="polite">Select 2–8 source-bound PRIVATE HUMAN revisions to compare manual slots.</p>
+  <div id="timelineTable" class="tablewrap" role="region" aria-label="Anonymous HUMAN review round counts" tabindex="0"></div>
+  <div class="controls">
+    <button id="timelineExportJson" class="secondary" type="button" disabled>Export PRIVATE rounds JSON</button>
+    <button id="timelineExportCsv" class="secondary" type="button" disabled>Export PRIVATE rounds CSV</button>
+    <button id="timelineExportBrief" class="ghost" type="button" disabled>Export PRIVATE script-free rounds brief</button>
+  </div>
+  <p class="footnote">Only aggregate HUMAN self-report counts are retained for this view; original source identities, digests, filenames and HUMAN note text are never in these exports. A missing note, changed HUMAN stage or absent source flag does not establish a verified fix. Previous comparison remains visible when any new file fails atomic admission.</p>
+</section>
 <section class="panel no-print">
-  <div class="section-head"><h2>09 / Explicit local handoff</h2><span class="tag">No authority</span></div>
+  <div class="section-head"><h2>10 / Explicit local handoff</h2><span class="tag">No authority</span></div>
   <div class="controls">
     <button id="exportJson" type="button" disabled>Export aggregate JSON</button>
     <button id="exportCsv" type="button" disabled>Export anonymous trajectory CSV</button>

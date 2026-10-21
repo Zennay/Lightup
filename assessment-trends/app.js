@@ -520,7 +520,7 @@
       $("reviewHumanSummary").textContent="No local HUMAN stages.";}
     renderNotePanel();
     renderSessionControls();
-    for(const id of ["revisionEarlierFile","revisionLaterFile","revisionCompare"])
+    for(const id of ["revisionEarlierFile","revisionLaterFile","revisionCompare","timelineFiles","timelineImport"])
       $(id).disabled=!canResume();
   }
   async function importFiles(list){
@@ -541,7 +541,7 @@
       sourceFingerprints=nextFingerprints.every(v=>v!==null)?nextFingerprints:[];
       $("privateSessionFile").value="";
       reviewOffset=0;humanReviewStages.clear();resetReviewFilters();
-      notes.clear();scratch.clear();fictional=false;resetRevisionComparison();
+      notes.clear();scratch.clear();fictional=false;resetRevisionComparison();resetHumanTimeline();
       render();$("sessionMessage").textContent="New snapshot batch admitted; previous HUMAN session cannot be carried across datasets.";
       $("message").textContent="Accepted "+snapshots.length+
         " compatible source snapshots with "+scenarioIds.length+
@@ -578,13 +578,13 @@
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();render();
+    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();
+    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";
     $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();
   }
@@ -928,6 +928,118 @@
       " comparison downloaded. No HUMAN note text or original source ID included.";
   }
 
+
+  let privateTimeline=null;
+  function timelineStageCounts(stages){
+    const all=[...stages.values()];
+    return {needs_input:all.filter(x=>x==="NEEDS_INPUT").length,
+      follow_up:all.filter(x=>x==="FOLLOW_UP").length,
+      human_noted:all.filter(x=>x==="HUMAN_NOTED").length};
+  }
+  function resetHumanTimeline(){
+    privateTimeline=null;
+    $("timelineFiles").value="";
+    $("timelineSummary").textContent="Select 2–8 source-bound PRIVATE HUMAN revisions to compare manual slots.";
+    $("timelineTable").replaceChildren();
+    for(const id of ["timelineExportJson","timelineExportCsv","timelineExportBrief"])
+      $(id).disabled=true;
+  }
+  async function importHumanTimeline(){
+    const files=[...$("timelineFiles").files];
+    if(!canResume()||files.length<2||files.length>8){
+      $("timelineSummary").textContent="HOLD: 2–8 PRIVATE session JSON files plus original source snapshots required.";return;
+    }
+    try{
+      const revisions=[];
+      for(const file of files)revisions.push(await admitPrivateSessionFile(file));
+      const summary=[];
+      revisions.forEach((r,i)=>{
+        const stageCounts=timelineStageCounts(r.newStages);
+        const changes=i?revisionChanges(revisions[i-1],r):[];
+        summary.push({human_round_slot:i+1,saved_stage_count:r.newStages.size,
+          ...stageCounts,saved_human_note_count:r.newNotes.size,
+          changed_stage_count:changes.filter(x=>x.kind==="HUMAN_STAGE").length,
+          changed_note_count:changes.filter(x=>x.kind==="HUMAN_NOTE_CHANGE").length});
+      });
+      // Only aggregate counters survive; do not retain source digests, ids or note text.
+      privateTimeline={summary};
+      drawTable("timelineTable",["Manually selected HUMAN round","Saved HUMAN stages",
+        "NEEDS_INPUT","FOLLOW_UP","HUMAN_NOTED","Saved notes",
+        "Changed stages vs previous","Changed note presence/content vs previous"],
+        summary.map(v=>[v.human_round_slot,v.saved_stage_count,v.needs_input,
+          v.follow_up,v.human_noted,v.saved_human_note_count,
+          v.human_round_slot===1?"—":v.changed_stage_count,
+          v.human_round_slot===1?"—":v.changed_note_count]));
+      for(const id of ["timelineExportJson","timelineExportCsv","timelineExportBrief"])
+        $(id).disabled=false;
+      $("timelineSummary").textContent=summary.length+
+        " manually selected PRIVATE HUMAN revision files admitted for identical original cohort bytes/order. Unauthenticated selection order, no current HUMAN work modified.";
+      $("timelineFiles").value="";
+    }catch(_){
+      $("timelineSummary").textContent="HOLD: a PRIVATE HUMAN revision is invalid or not byte-bound to the exact original selected sources. Previous comparison and current HUMAN work unchanged.";
+    }
+  }
+  function humanTimelinePayload(){
+    admit(!!privateTimeline);
+    return {schema:"lightup.assessment_trends_private_human_rounds.v1",
+      status:"PRIVATE_UNSIGNED",private_unsigned:true,fictional_demo_only:false,
+      manually_selected_order:true,chronology_authenticated:false,source_identity_authenticated:false,
+      summary:privateTimeline.summary.map(v=>({...v})),
+      disclaimer:"Human-chosen round order is unauthenticated. Counts only: no original source IDs, file names, hashes, private note text or proof of remediation. Source byte equality was verified only at local admission, not authenticated origin.",
+      ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+  }
+  function exportHumanTimeline(format){
+    if(!privateTimeline)return;
+    if(!window.confirm("Export PRIVATE unsigned HUMAN round counts only? Source identity and chronology are not authenticated; no original file names, hashes, notes or findings are included."))return;
+    const data=humanTimelinePayload();
+    if(format==="json"){
+      download("assessment-trends-PRIVATE-human-rounds.json",
+        JSON.stringify(data,null,2)+"\n","application/json");
+    }else if(format==="csv"){
+      const columns=["human_round_slot","saved_stage_count","needs_input","follow_up",
+        "human_noted","saved_human_note_count","changed_stage_count_vs_previous",
+        "changed_note_count_vs_previous","private_unsigned","authorized",
+        "consent_verified","dispatch_allowed","release_allowed"];
+      const rows=[columns,...data.summary.map(v=>[v.human_round_slot,v.saved_stage_count,
+        v.needs_input,v.follow_up,v.human_noted,v.saved_human_note_count,
+        v.human_round_slot===1?"":v.changed_stage_count,
+        v.human_round_slot===1?"":v.changed_note_count,true,false,false,false,false])];
+      download("assessment-trends-PRIVATE-human-rounds.csv",
+        rows.map(line=>line.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    }else if(format==="html"){
+      const cols=["Human round · manual","Saved stages","NEEDS_INPUT","FOLLOW_UP",
+        "HUMAN_NOTED","Saved notes","Stage changes vs prior","Note changes vs prior"];
+      const values=data.summary.map(v=>[v.human_round_slot,v.saved_stage_count,
+        v.needs_input,v.follow_up,v.human_noted,v.saved_human_note_count,
+        v.human_round_slot===1?"—":v.changed_stage_count,
+        v.human_round_slot===1?"—":v.changed_note_count]);
+      const table="<table><thead><tr>"+cols.map(x=>"<th scope='col'>"+esc(x)+"</th>").join("")+
+        "</tr></thead><tbody>"+values.map(row=>"<tr>"+row.map(x=>"<td>"+esc(x)+"</td>").join("")+
+        "</tr>").join("")+"</tbody></table>";
+      const style="body{margin:2rem auto;padding:0 1rem;max-width:1100px;font:16px/1.5 system-ui,sans-serif;color:#182333}"+
+        "table{width:100%;border-collapse:collapse}th,td{border:1px solid #b5c0cf;padding:.5rem;text-align:left}"+
+        "th{background:#eaf0f6}.hold{border:2px solid #9a5b18;background:#fff7ed;padding:1rem}"+
+        "@media print{body{margin:0}.hold{background:white}thead{display:table-header-group}}";
+      const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"+
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; connect-src 'none';"+
+        " script-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none';"+
+        " form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'\">"+
+        "<title>LightUp PRIVATE HUMAN rounds</title><style>"+style+"</style></head><body>"+
+        "<h1>LightUp · PRIVATE HUMAN round overview</h1>"+
+        "<div class='hold'><strong>PRIVATE / UNSIGNED / REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY</strong>"+
+        "<p>"+data.summary.length+" human-selected rounds. Order is not authenticated chronology."+
+        " Changed HUMAN declarations do not establish actual remediation, consent, scan or release approval.</p>"+
+        "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+        table+"<p>Only local HUMAN aggregate counts. No original source ID, file name,"+
+        " SHA-256, HUMAN note text or verified security findings are disclosed."+
+        " Original source byte equality is not independent provenance.</p></body></html>";
+      download("assessment-trends-PRIVATE-human-rounds-REVIEW-ONLY.html",html,"text/html");
+    }
+    $("timelineSummary").textContent="PRIVATE HUMAN rounds "+format.toUpperCase()+
+      " exported. No note text or original hashes included.";
+  }
+
   function resetReviewFilters(){
     $("reviewKind").value="all";$("reviewStage").value="all";
     const group=$("reviewGroup");group.replaceChildren();
@@ -952,6 +1064,10 @@
   $("reviewExportStageCsv").addEventListener("click",()=>exportHumanStages("csv"));
   $("reviewExportStageBrief").addEventListener("click",()=>exportHumanStages("html"));
   resetReviewFilters();
+  $("timelineImport").addEventListener("click",()=>{void importHumanTimeline();});
+  $("timelineExportJson").addEventListener("click",()=>exportHumanTimeline("json"));
+  $("timelineExportCsv").addEventListener("click",()=>exportHumanTimeline("csv"));
+  $("timelineExportBrief").addEventListener("click",()=>exportHumanTimeline("html"));
   $("revisionCompare").addEventListener("click",()=>{void comparePrivateRevisions();});
   $("revisionExportJson").addEventListener("click",()=>exportRevision("json"));
   $("revisionExportCsv").addEventListener("click",()=>exportRevision("csv"));
