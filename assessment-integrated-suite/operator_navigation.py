@@ -6,7 +6,7 @@ remain the single entry point. This module only prints documentation.
 """
 from __future__ import annotations
 
-# Companion labels mirror original console options 1–77; no actions execute here.
+# Companion labels mirror original console options 1–79; no actions execute here.
 ACTIONS: dict[str, str] = {
     '1': 'Prepare PRIVATE original briefing + 15 offline HUMAN workrooms',
     '2': 'Prepare exact-source PRIVATE HUMAN selection studio',
@@ -85,6 +85,8 @@ ACTIONS: dict[str, str] = {
     '75': 'Reopen exact original PRIVATE HUMAN Lab discussion history bytes',
     '76': 'Receive source-free HUMAN attention proposal against original PRIVATE route receipts',
     '77': 'Reopen PRIVATE HUMAN attention with exact original receipt bytes',
+    '78': 'Create PRIVATE HUMAN attention proposal revision portfolio from 2–8 original receipts',
+    '79': 'Reopen exact original source-bound HUMAN attention revision portfolio',
 }
 
 CATEGORIES = (
@@ -102,6 +104,7 @@ CATEGORIES = (
     ("PRIVATE HUMAN conflict resolution", tuple(str(x) for x in range(68, 72))),
     ("PRIVATE HUMAN Lab discussion custody", tuple(str(x) for x in range(72, 76))),
     ("PRIVATE HUMAN Lab attention custody", ("76", "77")),
+    ("PRIVATE HUMAN Attention revisions", ("78", "79")),
 )
 
 
@@ -142,6 +145,8 @@ def lab_guide() -> None:
     print("  75 · re-admit original rounds and exact saved HUMAN history output")
     print("  76 · receive one saved HUMAN attention v2 proposal against 1–8 native rooms")
     print("  77 · reopen private attention and all original receipt bytes")
+    print("  78 · compare 2–8 original saved PRIVATE attention proposals in manual order")
+    print("  79 · reopen every original input receipt and complete revision output")
     print("Mandatory original CI, reviews, current authenticated consent and HUMAN GO remain HOLD.")
 
 def overview() -> None:
@@ -153,6 +158,7 @@ def overview() -> None:
     print("  50 (compare) → 51 (continue). Original LAB: 52–71.")
     print("  Local LAB discussion custody: 72 (receive) → 73 (reopen) → 74 (history).")
     print("  HUMAN attention: 76 (private receive) → 77 (exact native reopen).")
+    print("  Revisions: 78 (source-bound HUMAN portfolio) → 79 (reopen original bytes).")
     print("Enter an action number, ALL for full catalog, LAB for source-bound lab route, ?keyword to search,")
     print("HELP for a HUMAN walkthrough or 0 to exit. No action is automatic.")
 
@@ -222,6 +228,8 @@ def help_flow() -> None:
     print("75. Re-admit original HUMAN round inputs and exact output history bytes.")
     print("76. Receive saved HUMAN attention v2 against exact original PRIVATE route receipts.")
     print("77. Reopen original HUMAN Attention + all saved native receipt/output bytes.")
+    print("78. Compare 2–8 independently reopened PRIVATE HUMAN attention proposals.")
+    print("79. Reopen complete original attention revision history and output bytes.")
     print("Every step remains PRIVATE and REVIEW_ONLY. No scan, grant, report")
     print("verification, real scheduling, recipient dispatch or consent.")
     print("Original current authenticated client+operator consent, revocation")
