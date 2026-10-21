@@ -184,3 +184,21 @@ Read-only reopen, against the EXACT same original bundle and original HUMAN roun
       --verify-routing-dir ~/private-lab-role-inbox
 
 The one-command workspace.py now creates a default ALL-role/ALL-stage private routing desk as its fourth workspace stage, in human-routing, and includes it on the scriptless local HTML landing page. Changed HUMAN rounds require an independent NEW routing export. Missing/changed source material, reviewer self-reports and stage changes never constitute remediation, clearance, original consent or permission. No active assessments, scans, network interactions, targets or execution are performed.
+
+
+## Direct guided terminal creation — no browser download required
+
+A private interactive TTY can now compose the original lab endpoints directly into a 0600 local file and then build the entire offline private workroom. The source is admitted through the pinned original URL and LabScenario lab-only policy **before** private publication. Neither the wizard nor later workroom generation performs DNS, target I/O, subprocesses, scans or any active operation.
+
+Create TWO distinct empty owner-only mode-0700 directories — one for original local source input, and one for the complete product workspace:
+
+    mkdir -m 700 ~/private-lab-guided-input
+    mkdir -m 700 ~/private-lab-guided-workspace
+    python3 assessment-launchpad/workspace.py \
+      --interactive-manifest \
+      --input-dir ~/private-lab-guided-input \
+      --workspace-dir ~/private-lab-guided-workspace
+
+The CLI prompts for 1–16 literal HTTP(S) private isolated-lab URLs, with an empty line ending input. Text typed into the terminal is visible locally (do not paste credentials). The complete batch must pass exact pinned original lab gates. It then publishes lightup-lab-input-manifest.txt in the separate private source folder, followed by the entire original five-file preview bundle, HUMAN workroom, local editor, role routing inbox, source-bound guide and start screen.
+
+No browser Downloads file or manual chmod is needed; all native writes use exclusive mode-0600 files. Empty input/output directories are required to prevent replacing old source or review work. Any error remains HOLD, with possible partial PRIVATE artifacts explicitly invalid for release; there is no silent cleanup that could remove previously existing user data. Use --verify-workspace-dir to reopen a complete source-bound packet without execution. Interactive mode cannot be used when verifying.
