@@ -442,6 +442,26 @@ def main() -> int:
     prepared.add_argument(
         "--with-mask-cues", action="store_true",
         help="embed additional PRIVATE source-minimal HUMAN masking-cue preview in NEW original kit")
+    har_workflow_0 = commands.add_parser("har-review-start", help="offline PRIVATE source-bound HAR HUMAN workflow; HOLD")
+    har_workflow_0.add_argument("--source", action="append", required=True)
+    har_workflow_0.add_argument("--private-parent", required=True)
+    har_workflow_1 = commands.add_parser("har-review-reopen", help="offline PRIVATE source-bound HAR HUMAN workflow; HOLD")
+    har_workflow_1.add_argument("--workflow-room", required=True)
+    har_workflow_2 = commands.add_parser("har-review-progress", help="offline PRIVATE source-bound HAR HUMAN workflow; HOLD")
+    har_workflow_2.add_argument("--workflow-room", required=True)
+    har_workflow_2.add_argument("--edited-actions", required=True)
+    har_workflow_2.add_argument("--private-parent", required=True)
+    har_workflow_3 = commands.add_parser("har-review-progress-reopen", help="offline PRIVATE source-bound HAR HUMAN workflow; HOLD")
+    har_workflow_3.add_argument("--workflow-room", required=True)
+    har_workflow_3.add_argument("--progress-room", required=True)
+    har_workflow_4 = commands.add_parser("har-review-history", help="offline PRIVATE source-bound HAR HUMAN workflow; HOLD")
+    har_workflow_4.add_argument("--workflow-room", required=True)
+    har_workflow_4.add_argument("--round", action="append", required=True)
+    har_workflow_4.add_argument("--private-parent", required=True)
+    har_workflow_5 = commands.add_parser("har-review-history-reopen", help="offline PRIVATE source-bound HAR HUMAN workflow; HOLD")
+    har_workflow_5.add_argument("--workflow-room", required=True)
+    har_workflow_5.add_argument("--round", action="append", required=True)
+    har_workflow_5.add_argument("--history-room", required=True)
     cues_command = commands.add_parser(
         "masking-cues",
         help="original-bound PRIVATE HUMAN literal masking-marker navigation; REVIEW_ONLY")
@@ -700,6 +720,29 @@ def main() -> int:
         if args.action == "prepare":
             return prepare(args.source, args.private_parent,
                            include_masking_cues=args.with_mask_cues)
+        if args.action.startswith("har-review-"):
+            from private_har_workflow import (
+                prepare as start_review, reopen as reopen_review,
+                progress as import_review, admit as admit_review,
+            )
+            if args.action == "har-review-start":
+                return start_review(args.source, args.private_parent)
+            if args.action == "har-review-reopen":
+                return reopen_review(args.workflow_room)
+            if args.action == "har-review-progress":
+                return import_review(args.workflow_room, args.edited_actions,
+                                     args.private_parent)
+            original, cue_room = admit_review(args.workflow_room)
+            if args.action == "har-review-progress-reopen":
+                from private_har_progress import reopen_progress
+                return reopen_progress(str(original), str(cue_room),
+                                       args.progress_room)
+            from private_har_history import create as start_history, reopen as reopen_history
+            if args.action == "har-review-history":
+                return start_history(str(original), str(cue_room),
+                                     args.round, args.private_parent)
+            return reopen_history(str(original), str(cue_room),
+                                  args.round, args.history_room)
         if args.action == "masking-cues":
             from private_masking_cues import create as create_masking_cues
             return create_masking_cues(args.original_kit, args.private_parent)
