@@ -70,7 +70,18 @@ def descriptor(value, expected_names: set[str], *, with_source: bool):
             raise Hold("HOLD: unsafe original source path in inventory")
     return name, size, sha
 
-def verify(path: Path) -> int:
+def file_digest(path: Path) -> str:
+    digestor = hashlib.sha256()
+    with path.open("rb") as source:
+        while True:
+            chunk = source.read(1024 * 1024)
+            if not chunk:
+                break
+            digestor.update(chunk)
+    return digestor.hexdigest()
+
+
+def verify(path: Path, expected_sha256: str = "") -> int:
     try:
         st = path.lstat()
     except OSError:
@@ -78,6 +89,11 @@ def verify(path: Path) -> int:
     if (not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode) or
             not 0 < st.st_size <= MAX_ARCHIVE):
         raise Hold("HOLD: package must be a bounded ordinary regular file")
+    if expected_sha256:
+        if not isinstance(expected_sha256, str) or not HASH.fullmatch(expected_sha256):
+            raise Hold("HOLD: expected SHA-256 must be 64 lowercase hexadecimal characters")
+        if file_digest(path) != expected_sha256:
+            raise Hold("HOLD: package bytes do not match the supplied expected SHA-256")
     try:
         with ZipFile(path, "r") as archive:
             infos = archive.infolist()
@@ -165,6 +181,9 @@ def verify(path: Path) -> int:
         raise Hold("HOLD: invalid archive or malformed manifest") from None
     print("VERIFIED LOCAL INTEGRITY ONLY: exact ZIP inventory and " +
           str(verified) + " unsigned byte-length/SHA-256 entries match.")
+    if expected_sha256:
+        print("SUPPLIED EXPECTED SHA-256 MATCHES: package bytes match the supplied reference.")
+        print("The reference proves no provenance unless obtained independently from a trusted channel.")
     print("REVIEW_ONLY: no source authenticity, trusted origin, consent, permission, " +
           "finding verification, remediation or release is established.")
     return 0

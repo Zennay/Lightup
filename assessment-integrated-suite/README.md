@@ -1,6 +1,7 @@
 ## Latest portable software bundle — v26
 
-[Download the source-only offline toolkit v26](LightUp-Assessment-Offline-Toolkit-v26.zip)
+[Download the source-only offline toolkit v26](LightUp-Assessment-Offline-Toolkit-v26.zip) ·
+[Detached SHA-256 reference](LightUp-Assessment-Offline-Toolkit-v26.zip.sha256)
 
 Unsigned ZIP SHA-256: 69144a5f751af3090b6371fc3270a4c636730a7ee80a48d668328aa94d4d31bd.
 
@@ -14,16 +15,19 @@ The ZIP's unsigned manifest.json now binds exact byte lengths and SHA-256
 digests for every studio/support asset, the launcher, README.txt and the
 operator guide. It explicitly excludes its own hash. To verify a locally
 downloaded package without extracting files, use the native checkout tool:
-python3 assessment-integrated-suite/verify_offline.py --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v26.zip
+python3 assessment-integrated-suite/verify_offline.py --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v26.zip --expected-sha256 69144a5f751af3090b6371fc3270a4c636730a7ee80a48d668328aa94d4d31bd
 
 The same verifier is available from the native suite command:
-python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v26.zip
+python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v26.zip --expected-sha256 69144a5f751af3090b6371fc3270a4c636730a7ee80a48d668328aa94d4d31bd
 
 VERIFIED LOCAL INTEGRITY ONLY confirms the archive inventory and bytes match
 the unsigned manifest. It does not authenticate author, origin, source truth,
 consent, authorization, findings, remediation or release. The verifier is a
 native companion and is intentionally not included in the browser-only ZIP.
-The package is private, unsigned and not a deployment artifact.
+The detached SHA file is published beside the ZIP for convenient byte comparison.
+Because both are in the same repository, the sidecar is not an independent trust
+anchor. Obtain the expected digest through a separately trusted channel when
+that distinction matters. The package is private, unsigned and not a deployment artifact.
 
 # LightUp integrated PRIVATE assessment handoff
 

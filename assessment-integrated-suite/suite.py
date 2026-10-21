@@ -291,7 +291,9 @@ def main() -> int:
     verify = commands.add_parser(
         "verify-kit", help="verify a v26+ software-only ZIP inventory without extracting")
     verify.add_argument("--package", required=True,
-                        help="existing offline ZIP; byte integrity only, never authenticity")
+                        help="existing v26+ offline ZIP; byte integrity only, never authenticity")
+    verify.add_argument("--expected-sha256", default="",
+                        help="optional expected ZIP digest from a trusted separate channel")
     args = cli.parse_args()
     if args.command == "catalog":
         for label, component in (("source inspector", INSPECTOR), ("PRIVATE briefing", BRIEF),
@@ -304,7 +306,7 @@ def main() -> int:
         return 0
     try:
         if args.command == "verify-kit":
-            return verify_package(Path(args.package).absolute())
+            return verify_package(Path(args.package).absolute(), args.expected_sha256)
         if args.command == "human-workpack":
             return private_human_workpack(args)
         if args.command == "workpack-progress":
