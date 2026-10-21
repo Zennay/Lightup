@@ -28,6 +28,8 @@ from priority_inbox_action_queue import publish_queue as publish_human_action_qu
 from priority_inbox_action_queue_open import reopen as reopen_human_action_queue
 from priority_inbox_stage_brief import publish as publish_stage_priority_brief
 from priority_inbox_stage_brief_open import reopen as reopen_stage_priority_brief
+from priority_inbox_stage_brief_diff import compare as compare_stage_priority_delta
+from priority_inbox_stage_brief_diff_open import reopen as reopen_stage_priority_delta
 from priority_inbox_diff import compare as compare_priority_inbox
 from priority_inbox_diff_open import reopen as reopen_priority_inbox_diff
 
@@ -80,6 +82,10 @@ WORKFLOWS = {
            "original full inbox and one explicit PRIVATE review group"),
     "24": ("Reopen selected PRIVATE stage/priority brief against full original source lineage",
            "original source, every priority handoff/reply, exact inbox and saved three-file brief"),
+    "25": ("Compare source-bound inbox revisions for one PRIVATE HUMAN stage and priority",
+           "original source, all handoffs/returns, both inboxes and selected stage/priority"),
+    "26": ("Reopen selected stage/priority delta against both original inbox revisions",
+           "same original source, before/after replies/inboxes and saved exact delta"),
 }
 
 
@@ -175,6 +181,42 @@ def run_workflow(choice: str) -> None:
                                             returned, output)
         print("Original-source HUMAN priority rows checked: " + str(count) +
               "; NO verified remediation, recipient or consent")
+        return
+    if choice in ("25", "26"):
+        source = ask_path("EXISTING original lab source JSON")
+        manifest = ask_path("EXISTING original briefing manifest")
+        worksheet = ask_path("EXISTING original HUMAN worksheet")
+        receipt = ask_path("EXISTING original selection receipt")
+        selection = ask_path("EXISTING complete HUMAN selection CSV")
+        curated = ask_path("EXISTING complete PRIVATE curated packet")
+        n = input("Original nonempty priority groups [1/2/3]: ").strip()
+        if n not in ("1", "2", "3"):
+            raise Hold("Invalid original priority count")
+        handoffs, before_replies, after_replies = [], [], []
+        for i in range(int(n)):
+            handoffs.append(ask_path("Original priority handoff " + str(i+1)))
+            before_replies.append(ask_path("Prior complete HUMAN return CSV " + str(i+1)))
+            after_replies.append(ask_path("Current complete HUMAN return CSV " + str(i+1)))
+        before_inbox = ask_path("EXISTING prior PRIVATE HUMAN inbox")
+        after_inbox = ask_path("EXISTING current PRIVATE HUMAN inbox")
+        stage = ask_path("Exact HUMAN stage")
+        priority = ask_path("Exact original HUMAN priority")
+        saved = ask_path("EXCLUSIVE NEW PRIVATE delta folder" if choice == "25" else
+                         "EXISTING saved PRIVATE stage/priority delta folder")
+        print("Selected HUMAN text may identify clients; no remediation is inferred.")
+        if input("Enter exactly REVIEW ONLY for this source-bound operation: ") != "REVIEW ONLY":
+            raise Hold("Human declined PRIVATE stage/priority delta")
+        args = (source, manifest, worksheet, receipt, selection, curated,
+                handoffs, before_replies, before_inbox, after_replies,
+                after_inbox, stage, priority)
+        if choice == "25":
+            count = compare_stage_priority_delta(*args, saved)
+            print("PRIVATE selected stage/priority delta published: " + str(count) +
+                  " changed rows; nothing sent or authorized")
+        else:
+            count = reopen_stage_priority_delta(*args, saved)
+            print("PRIVATE selected stage/priority delta reopened: " + str(count) +
+                  " changed rows; original bytes match, no authorization")
         return
     if choice == "24":
         source = ask_path("EXISTING original lab source JSON")
@@ -478,7 +520,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–24]: ").strip()
+        choice = input("PRIVATE workflow [0–26]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
@@ -496,7 +538,7 @@ def main() -> int:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18", "20", "22", "24") else
+    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18", "20", "22", "24", "26") else
           "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 

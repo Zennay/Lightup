@@ -419,3 +419,31 @@ saved selected brief is matched to the current original source, every HUMAN
 return and the complete inbox, not just to its own unsigned hashes. It still
 does not authenticate a HUMAN identity, prove original-source authenticity,
 consent, disclosure authority, remediation or release.
+
+### Compare one HUMAN stage/priority across two source-bound inbox revisions
+
+Console option **25** (read-only exact-source reopen: **26**) or
+`priority_inbox_stage_brief_diff.py` creates a separate PRIVATE, printable
+three-file delta for one explicit original HUMAN priority and one HUMAN stage.
+It re-admits both complete inboxes against the same current original source,
+manifest, worksheet, selection, curated packet, every original priority
+handoff and each corresponding complete before/after HUMAN return CSV.
+No old inbox is rewritten and no new source is trusted just because it has a
+matching filename.
+
+The delta includes only selected-priority rows that were in the selected
+stage **before or after**; this allows an operator to see rows entering or
+leaving that stage without exposing other priority groups or unrelated stage
+notes. It shows only changed fields (stage, reply, follow-up), the original
+ordinal/question and source-reported severity/reference count. It explicitly
+counts stage entries/exits and unchanged rows in the limited scope without
+treating them as fixes.
+
+Output is owner-private 0700 with script-free HTML, minimal counts JSON and
+an unsigned receipt bound to both complete inbox receipts and unified HUMAN
+CSV bytes, original source/worksheet/selection and generated outputs. The
+read-only reopen regenerates this exact limited delta from both original
+inbox lineages and compares the exact three-file inventory, owner/modes and
+every byte. Any source drift, incomplete return, changed room, missing/extra
+file or modified output HOLDs without repair. Human text remains confidential;
+no delivery, assignment, remediation, authorization or consent is inferred.
