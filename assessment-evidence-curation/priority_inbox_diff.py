@@ -31,16 +31,14 @@ def require(condition: bool) -> None:
         raise Hold("HOLD: PRIVATE HUMAN response revision comparison refused")
 
 
-def compare(source_path: str, manifest_path: str, worksheet_path: str,
-            selection_receipt: str, selection_path: str, curated_dir: str,
-            handoff_paths: list[str], before_reply_paths: list[str],
-            before_dir: str, after_reply_paths: list[str], after_dir: str,
-            output_dir: str) -> int:
+def build(source_path: str, manifest_path: str, worksheet_path: str,
+          selection_receipt: str, selection_path: str, curated_dir: str,
+          handoff_paths: list[str], before_reply_paths: list[str],
+          before_dir: str, after_reply_paths: list[str],
+          after_dir: str) -> tuple[dict[str, bytes], int]:
     require(1 <= len(handoff_paths) <= 3 and
             len(handoff_paths) == len(before_reply_paths) ==
             len(after_reply_paths))
-    ensure_output_outside_inputs(
-        output_dir, [curated_dir, *handoff_paths, before_dir, after_dir])
     before_files, before_count = reopen_expected(
         source_path, manifest_path, worksheet_path, selection_receipt,
         selection_path, curated_dir, handoff_paths, before_reply_paths, before_dir)
@@ -196,11 +194,25 @@ def compare(source_path: str, manifest_path: str, worksheet_path: str,
         "changed_original_ordinals": [row["ordinal"] for row in changed],
         **UNTRUSTED_FLAGS,
     }
-    publish_new(output_dir, {
+    return ({
         REPORT: report, COUNTS: json_bytes(counts),
         RECEIPT_OUT_DELTA: json_bytes(receipt),
-    })
-    return len(changed)
+    }, len(changed))
+
+
+def compare(source_path: str, manifest_path: str, worksheet_path: str,
+            selection_receipt: str, selection_path: str, curated_dir: str,
+            handoff_paths: list[str], before_reply_paths: list[str],
+            before_dir: str, after_reply_paths: list[str], after_dir: str,
+            output_dir: str) -> int:
+    ensure_output_outside_inputs(
+        output_dir, [curated_dir, *handoff_paths, before_dir, after_dir])
+    files, count = build(source_path, manifest_path, worksheet_path,
+                         selection_receipt, selection_path, curated_dir,
+                         handoff_paths, before_reply_paths, before_dir,
+                         after_reply_paths, after_dir)
+    publish_new(output_dir, files)
+    return count
 
 
 def main() -> int:

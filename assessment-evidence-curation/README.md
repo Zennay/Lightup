@@ -118,6 +118,12 @@ Use `priority_inbox_diff.py` to compare two independently completed response inb
 
 Repeat `--private-handoff`, `--before-returned-csv` and `--after-returned-csv` once per original nonempty priority, in the same order. It publishes a NEW owner-private delta HTML (only changed original ordinals, escaped prior/current HUMAN fields), numeric per-priority change counts and an UNSIGNED source/handoff/before/after receipt. It never edits either inbox, never marks a recipient claim as fixed and never authenticates a person or grants disclosure authority. The report contains HUMAN question/response text and is PRIVATE. The output is guarded from nesting inside the original curated, handoff or either inbox directory, preserving their exact member inventories. Console action **19** provides the same foreground operation.
 
+Reopen the finished delta with the same complete original source inputs, all priority handoffs, both reply-CSV sets and both source-bound inbox directories. This read-only command rebuilds the expected delta in memory and checks every exact output member; missing, extra, wrongly permissioned or drifted files HOLD without repair:
+
+    python3 assessment-evidence-curation/priority_inbox_diff_open.py --source ORIGINAL-LAB.json --manifest ORIGINAL-manifest.json --worksheet ORIGINAL-human.csv --selection-receipt ORIGINAL-selection-receipt.json --selection ORIGINAL-selection.csv --curated-packet ORIGINAL-FULL-PRIVATE-DOSSIER --private-handoff PRIVATE-URGENT-HANDOFF --before-returned-csv PRIOR-urgent-HUMAN-response.csv --after-returned-csv CURRENT-urgent-HUMAN-response.csv --before-private-dir PRIOR-PRIVATE-UNIFIED-INBOX --after-private-dir CURRENT-PRIVATE-UNIFIED-INBOX --delta-private-dir EXISTING-PRIVATE-RESPONSE-DELTA
+
+Repeat each priority flag for every nonempty original priority in matching order. Console action **20** performs the same review-only reopen.
+
 ## Step 3 — Compare PRIVATE HUMAN selection revisions (without target work)
 
 Use two complete separately saved original-ordinal HUMAN selection CSVs, **both against the same exact original PRIVATE lab source, original manifest, seven-column HUMAN worksheet and selection-preparation receipt**:
