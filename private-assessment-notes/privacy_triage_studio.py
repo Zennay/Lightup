@@ -37,6 +37,8 @@ const count = document.getElementById('count');
 const notice = document.getElementById('notice');
 const button = document.getElementById('save');
 const cueFilter = document.getElementById('cue-filter');
+const cueCategory = document.getElementById('cue-category');
+const cueReview = document.getElementById('cue-review');
 const csvCell = text => '"' + String(text).replaceAll('"','""') + '"';
 const banned = value => /^[\\s]*[=+@-]/.test(value) || /[\\x00-\\x08\\x0b-\\x1f\\x7f]/.test(value);
 function td(tr, child) {
@@ -53,7 +55,10 @@ function sync() {
     let visible = 0;
     for (const item of stage.values()) {
       const marked = item.source.cues.some(value => value > 0);
-      item.tr.hidden = cueFilter.checked && !marked;
+      const idx = cueCategory ? ['HTTP','URL','CONFIG','TOKEN']
+        .indexOf(cueCategory.value) : -1;
+      const categoryMatch = idx < 0 || item.source.cues[idx] > 0;
+      item.tr.hidden = (cueFilter.checked && !marked) || !categoryMatch;
       if (!item.tr.hidden) visible++;
     }
     count.textContent += ' · ' + visible + ' visible in local cue view';
@@ -109,6 +114,24 @@ for (const source of sources) {
   stage.set(source.ordinal, {source, tr, status:select, checks, note});
 }
 if (cueFilter) cueFilter.addEventListener('change', sync);
+if (cueCategory) cueCategory.addEventListener('change', sync);
+if (cueReview) cueReview.addEventListener('click', () => {
+  const visible = [...stage.values()].filter(item => !item.tr.hidden);
+  if (!visible.length) {
+    notice.textContent = 'No visible originals to mark for HUMAN review.';
+    return;
+  }
+  if (!window.confirm('Mark exactly ' + visible.length +
+      ' VISIBLE original sources REVIEW_REQUIRED for private HUMAN discussion? ' +
+      'Nothing is cleared, verified, exported or sent.')) {
+    notice.textContent = 'Cancelled: all current HUMAN choices remain unchanged.';
+    return;
+  }
+  for (const item of visible) item.status.value = 'REVIEW_REQUIRED';
+  sync();
+  notice.textContent = 'Visible HUMAN review proposals updated locally only. ' +
+    'Export STILL includes all source positions; finalize is separate.';
+});
 sync();
 button.addEventListener('click', () => {
   try {
@@ -235,7 +258,19 @@ packet and unchanged triage kit. Native re-admission is still required.</p></hea
     Counts are only literal placeholder appearances; zero is NOT clean.
     <label><input type="checkbox" id="cue-filter">
     Show only source positions with known literal marker appearances
-    (the complete roster is ALWAYS exported)</label></p>"""
+    (the complete roster is ALWAYS exported)</label>
+    <label for="cue-category">Optional literal marker category</label>
+    <select id="cue-category" aria-label="Filter local ORIGINAL cue category">
+      <option value="ALL">All categories</option>
+      <option value="HTTP">HTTP / shell</option>
+      <option value="URL">URL / session</option>
+      <option value="CONFIG">Structured config / HAR</option>
+      <option value="TOKEN">Tokens / keys</option>
+    </select>
+    <button type="button" id="cue-review">
+      Mark VISIBLE originals REVIEW_REQUIRED (confirm)</button>
+    <small>Changes only local HUMAN proposals; no authorization or privacy PASS.
+    Hidden/unchanged originals stay in the complete final CSV.</small></p>"""
     if cue_rows is not None else "") + """<table><thead><tr><th>Original</th>""" + (
     "<th>Literal PRIVATE masking cues · NOT a verdict</th>" if cue_rows is not None
     else "") + """<th>HUMAN status</th>
