@@ -462,6 +462,14 @@ def main() -> int:
     har_workflow_5.add_argument("--workflow-room", required=True)
     har_workflow_5.add_argument("--round", action="append", required=True)
     har_workflow_5.add_argument("--history-room", required=True)
+    har_desk = commands.add_parser("har-review-desk", help="owner-private original-bound offline HUMAN next-action desk; HOLD")
+    har_desk.add_argument("--workflow-room", required=True)
+    har_desk.add_argument("--progress-room", action="append", required=True)
+    har_desk.add_argument("--private-parent", required=True)
+    har_desk_read = commands.add_parser("har-review-desk-reopen", help="immutable PRIVATE HUMAN next-action desk; HOLD")
+    har_desk_read.add_argument("--workflow-room", required=True)
+    har_desk_read.add_argument("--progress-room", action="append", required=True)
+    har_desk_read.add_argument("--desk-room", required=True)
     cues_command = commands.add_parser(
         "masking-cues",
         help="original-bound PRIVATE HUMAN literal masking-marker navigation; REVIEW_ONLY")
@@ -725,6 +733,13 @@ def main() -> int:
                 prepare as start_review, reopen as reopen_review,
                 progress as import_review, admit as admit_review,
             )
+            if args.action in {"har-review-desk", "har-review-desk-reopen"}:
+                from private_har_review_desk import create as create_desk, reopen as reopen_desk
+                if args.action == "har-review-desk":
+                    return create_desk(args.workflow_room, args.progress_room,
+                                       args.private_parent)
+                return reopen_desk(args.workflow_room, args.progress_room,
+                                   args.desk_room)
             if args.action == "har-review-start":
                 return start_review(args.source, args.private_parent)
             if args.action == "har-review-reopen":
