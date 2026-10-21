@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-GVtOdaFBmm0EZOe8c2ECUggbZ+fvv3YHPi1CgK74c5E='; style-src 'sha256-TJ+MIBzMAbZUMvmL1ivKQEConxVhwGVt92e85Eth3FQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gKKjsRJ0wkKqZOJ4/nBqNntu0/HRriQqpiSHe4+czQ0='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -41,6 +41,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 .month-day strong{font-size:14px}.month-day span,.month-day small{font-size:10px}
 .month-weekday{font-size:10px;padding:4px}.month-empty{min-height:80px}}
 
+#backlogRows td:nth-child(5){max-width:370px;overflow-wrap:anywhere}
+#backlogRows td button{font-size:12px}
+
 </style>
 <script>
 "use strict";
@@ -66,6 +69,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   let publicationBaseline = null, changesPage = 0;
   let weekAnchor = "", monthAnchor = "";
+  let backlogPage=0;
   let capacityRules = new Map(), capacityProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
@@ -211,6 +215,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     renderAgenda();
     renderWeek();
     renderMonth();
+    renderBacklog();
     renderWorkload();
     renderChanges();
     renderCapacity();
@@ -586,6 +591,111 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
         weekAnchor=key;renderWeek();$("week").scrollIntoView({behavior:"smooth",block:"start"});
       });
       grid.append(button);
+    }
+  }
+  function backlogFiltered(){
+    const groups=capacityGroups(),selector=$("backlogGroup");
+    const group=selector.value?groups[Number(selector.value)-1]:null;
+    const q=$("backlogQuery").value.trim().toLocaleLowerCase();
+    const view=$("backlogView").value;
+    return items.filter(row=>{
+      if(plan.has(row.ordinal))return false;
+      if(group!==null && row.group!==group)return false;
+      if(view==="open" && row.stage==="blocked")return false;
+      if(view==="blocked" && row.stage!=="blocked")return false;
+      if(q && ![String(row.ordinal),row.group,row.action,row.blocker].some(v=>
+        v.toLocaleLowerCase().includes(q)))return false;
+      return true;
+    });
+  }
+  function proposalForUnscheduled(ordinal,fromDay){
+    hold(active && Number.isSafeInteger(ordinal) && ordinal>=1&&ordinal<=items.length);
+    const row=items[ordinal-1];
+    hold(row.ordinal===ordinal && !plan.has(ordinal) && row.stage!=="blocked");
+    eventDate(fromDay,"12:00");
+    hold(fromDay>=nowToday());
+    const rule=capacityRules.get(row.group)||capacityDefaultRule();
+    const existing=eventIntervals(),daily=new Map();
+    for(const other of items){
+      const p=plan.get(other.ordinal);
+      if(!p || other.group!==row.group)continue;
+      daily.set(p.day,(daily.get(p.day)||0)+1);
+    }
+    const timeMin=time=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
+    const firstMinute=Math.ceil(timeMin(rule.start)/15)*15;
+    const lastMinute=timeMin(rule.end)-30;
+    const start=eventDate(fromDay,"12:00"),now=Date.now();
+    for(let days=0;days<31;days++){
+      const date=new Date(start.getTime());date.setDate(start.getDate()+days);
+      const day=dayString(date);
+      if(!day.startsWith("20"))break;
+      if(!rule.days.includes(date.getDay())||rule.blackouts.includes(day)||
+        (daily.get(day)||0)>=rule.maximum)continue;
+      for(let minute=firstMinute;minute<=lastMinute;minute+=15){
+        const time=String(Math.floor(minute/60)).padStart(2,"0")+":"+
+          String(minute%60).padStart(2,"0");
+        let candidate;
+        try{candidate=eventDate(day,time).getTime();}catch(_){continue;}
+        if(candidate<=now || existing.some(e=>candidate<e.end && e.start<candidate+30*60000))continue;
+        return admitSlot(day,time,"30","15");
+      }
+    }
+    return null;
+  }
+  function proposeBacklog(ordinal){
+    const from=$("backlogStart").value;
+    const slot=proposalForUnscheduled(ordinal,from);
+    if(!slot){
+      inform("No free tentative HUMAN slot under declared group rules within 31 local days. Original review row unchanged.",true);
+      return;
+    }
+    const row=items[ordinal-1];
+    if(!confirm("Add an UNSIGNED tentative HUMAN reminder for original #"+ordinal+
+      " ("+(row.group||"unassigned")+") on "+slot.day+" "+slot.time+
+      "? This is a local 30-minute HUMAN proposal only. Real availability, security status, consent and scope have not been verified. No external calendars will be modified."))return;
+    hold(active && !plan.has(ordinal) && row.stage!=="blocked");
+    plan.set(ordinal,slot);changed=true;exportedPlan=false;backlogPage=0;render();
+    inform("Added PRIVATE HUMAN draft reminder for #"+ordinal+
+      ". Save the original source-bound v2 plan before leaving the workroom.");
+  }
+  function renderBacklog(){
+    if(!active)return;
+    const selector=$("backlogGroup"),groups=capacityGroups(),old=selector.value;
+    if(selector.options.length!==groups.length+1 ||
+      groups.some((group,i)=>selector.options[i+1]?.textContent!==(group||"(unassigned)"))){
+      selector.replaceChildren();
+      const all=dom("option","All HUMAN groups");all.value="";selector.append(all);
+      groups.forEach((group,i)=>{
+        const option=dom("option",group||"(unassigned)");option.value=String(i+1);
+        selector.append(option);
+      });
+      selector.value=old;if(selector.selectedIndex<0)selector.value="";
+    }
+    const list=backlogFiltered(),pages=Math.max(1,Math.ceil(list.length/30));
+    backlogPage=Math.min(Math.max(0,backlogPage),pages-1);
+    const blocked=list.filter(row=>row.stage==="blocked").length;
+    $("backlogSummary").textContent=list.length+" unscheduled HUMAN rows matching · "+
+      blocked+" blocked stages in this view · page "+(backlogPage+1)+" of "+pages+
+      " · source severity is unverified, no auto-dispatch.";
+    $("backlogPrev").disabled=backlogPage===0;
+    $("backlogNext").disabled=backlogPage>=pages-1;
+    const body=$("backlogRows");body.replaceChildren();
+    for(const row of list.slice(backlogPage*30,(backlogPage+1)*30)){
+      const tr=dom("tr"),action=dom("button","Propose next HUMAN slot"),
+        edit=dom("button","Open #"+row.ordinal,"ghost");
+      action.type="button";edit.type="button";
+      action.disabled=row.stage==="blocked";
+      action.setAttribute("aria-label","Propose local review time for original HUMAN ordinal "+row.ordinal);
+      action.addEventListener("click",()=>{
+        try{proposeBacklog(row.ordinal);}catch(_){inform("HUMAN proposal refused; original source and plan unchanged.",true);}
+      });
+      edit.addEventListener("click",()=>focusOrdinal(row.ordinal));
+      const actionCell=dom("td"),editCell=dom("td");
+      actionCell.append(action);editCell.append(edit);
+      tr.append(dom("td","#"+row.ordinal),dom("td",row.severity),
+        dom("td",row.group||"(unassigned)"),
+        dom("td",row.stage||"unset"),dom("td",row.action||"(none)"),actionCell,editCell);
+      body.append(tr);
     }
   }
   function renderWorkload(){
@@ -1178,9 +1288,10 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
+    backlogPage=0;$("backlogView").value="open";$("backlogGroup").value="";$("backlogQuery").value="";$("backlogStart").value=nowToday();
     weekAnchor=nowToday();$("weekGroup").value="";
     $("weekConflicts").checked=false;$("weekConstraints").checked=false;
-    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("month").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("month").hidden=false;$("backlog").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
@@ -1411,8 +1522,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    weekAnchor="";monthAnchor="";
-    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    weekAnchor="";monthAnchor="";backlogPage=0;
+    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("backlog").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
@@ -1431,6 +1542,12 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     catch(_){inform("Month range unavailable, no local changes made.",true);}});
   hook("monthToday","click",()=>{monthAnchor=nowToday().slice(0,7);renderMonth();});
   hook("monthGroup","change",renderMonth);
+  hook("backlogView","change",()=>{backlogPage=0;renderBacklog();});
+  hook("backlogGroup","change",()=>{backlogPage=0;renderBacklog();});
+  hook("backlogQuery","input",()=>{backlogPage=0;renderBacklog();});
+  hook("backlogPrev","click",()=>{backlogPage--;renderBacklog();});
+  hook("backlogNext","click",()=>{backlogPage++;renderBacklog();});
+
   hook("monthSelect","change",()=>{
     const candidate=$("monthSelect").value;
     if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(candidate)){
@@ -1602,6 +1719,28 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 <p id="workloadSummary" class="subtle"></p><div class="tablebox">
 <table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th><th>Private calendar handoff</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
 <div class="row"><button type="button" id="workloadPrev" class="ghost">Previous</button><button type="button" id="workloadNext" class="ghost">Next</button></div>
+</section>
+<section id="backlog" class="panel" hidden aria-labelledby="backlogHeading">
+<h2 id="backlogHeading">4a · Unscheduled HUMAN review queue</h2>
+<p>Source-reported HUMAN rows not yet given a tentative reminder. Blocked HUMAN stages remain visible but cannot receive automatic proposed dates. Owner/group labels and source severity are unverified.</p>
+<div class="toolbar">
+<label>Queue view <select id="backlogView">
+<option value="open">Open HUMAN unblocked</option>
+<option value="blocked">Blocked HUMAN rows</option>
+<option value="all">All unscheduled</option>
+</select></label>
+<label>Group <select id="backlogGroup"><option value="">All groups</option></select></label>
+<label>Search ordinal, HUMAN action or blocker <input type="search" id="backlogQuery" maxlength="120" placeholder="Local only"></label>
+<label>Earliest proposed date <input type="date" id="backlogStart"></label>
+</div>
+<p id="backlogSummary" role="status" class="subtle"></p>
+<div class="tablebox"><table>
+<thead><tr><th>Original ordinal</th><th>Unverified severity</th><th>HUMAN group</th>
+<th>Original HUMAN stage</th><th>HUMAN next action</th><th>Propose time</th><th>Open in planner</th></tr></thead>
+<tbody id="backlogRows"></tbody></table></div>
+<div class="row"><button id="backlogPrev" class="ghost" type="button">Previous</button>
+<button id="backlogNext" class="ghost" type="button">Next</button></div>
+<p class="subtle">Single-time proposals use only your declared group weekdays, time window, blackout dates, daily cap and this local workroom's existing appointments. They cannot check real availability, identity, consent, verified security status or external calendars. Every schedule proposal requires HUMAN confirmation.</p>
 </section>
 <section id="capacity" class="panel" hidden aria-labelledby="capacityHeading">
 <h2 id="capacityHeading">5 · PRIVATE HUMAN capacity and blackout planner</h2>

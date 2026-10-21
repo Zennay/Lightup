@@ -85,6 +85,28 @@
 <table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th><th>Private calendar handoff</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
 <div class="row"><button type="button" id="workloadPrev" class="ghost">Previous</button><button type="button" id="workloadNext" class="ghost">Next</button></div>
 </section>
+<section id="backlog" class="panel" hidden aria-labelledby="backlogHeading">
+<h2 id="backlogHeading">4a · Unscheduled HUMAN review queue</h2>
+<p>Source-reported HUMAN rows not yet given a tentative reminder. Blocked HUMAN stages remain visible but cannot receive automatic proposed dates. Owner/group labels and source severity are unverified.</p>
+<div class="toolbar">
+<label>Queue view <select id="backlogView">
+<option value="open">Open HUMAN unblocked</option>
+<option value="blocked">Blocked HUMAN rows</option>
+<option value="all">All unscheduled</option>
+</select></label>
+<label>Group <select id="backlogGroup"><option value="">All groups</option></select></label>
+<label>Search ordinal, HUMAN action or blocker <input type="search" id="backlogQuery" maxlength="120" placeholder="Local only"></label>
+<label>Earliest proposed date <input type="date" id="backlogStart"></label>
+</div>
+<p id="backlogSummary" role="status" class="subtle"></p>
+<div class="tablebox"><table>
+<thead><tr><th>Original ordinal</th><th>Unverified severity</th><th>HUMAN group</th>
+<th>Original HUMAN stage</th><th>HUMAN next action</th><th>Propose time</th><th>Open in planner</th></tr></thead>
+<tbody id="backlogRows"></tbody></table></div>
+<div class="row"><button id="backlogPrev" class="ghost" type="button">Previous</button>
+<button id="backlogNext" class="ghost" type="button">Next</button></div>
+<p class="subtle">Single-time proposals use only your declared group weekdays, time window, blackout dates, daily cap and this local workroom's existing appointments. They cannot check real availability, identity, consent, verified security status or external calendars. Every schedule proposal requires HUMAN confirmation.</p>
+</section>
 <section id="capacity" class="panel" hidden aria-labelledby="capacityHeading">
 <h2 id="capacityHeading">5 · PRIVATE HUMAN capacity and blackout planner</h2>
 <p>Set source-free operational availability for each self-reported HUMAN owner group. A group is <strong>not</strong> an authenticated person or authorization role. Rules determine suggested HUMAN appointments only; no workload, risk or availability is independently verified.</p>

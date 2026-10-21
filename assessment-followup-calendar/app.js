@@ -21,6 +21,7 @@
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   let publicationBaseline = null, changesPage = 0;
   let weekAnchor = "", monthAnchor = "";
+  let backlogPage=0;
   let capacityRules = new Map(), capacityProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
@@ -166,6 +167,7 @@
     renderAgenda();
     renderWeek();
     renderMonth();
+    renderBacklog();
     renderWorkload();
     renderChanges();
     renderCapacity();
@@ -541,6 +543,111 @@
         weekAnchor=key;renderWeek();$("week").scrollIntoView({behavior:"smooth",block:"start"});
       });
       grid.append(button);
+    }
+  }
+  function backlogFiltered(){
+    const groups=capacityGroups(),selector=$("backlogGroup");
+    const group=selector.value?groups[Number(selector.value)-1]:null;
+    const q=$("backlogQuery").value.trim().toLocaleLowerCase();
+    const view=$("backlogView").value;
+    return items.filter(row=>{
+      if(plan.has(row.ordinal))return false;
+      if(group!==null && row.group!==group)return false;
+      if(view==="open" && row.stage==="blocked")return false;
+      if(view==="blocked" && row.stage!=="blocked")return false;
+      if(q && ![String(row.ordinal),row.group,row.action,row.blocker].some(v=>
+        v.toLocaleLowerCase().includes(q)))return false;
+      return true;
+    });
+  }
+  function proposalForUnscheduled(ordinal,fromDay){
+    hold(active && Number.isSafeInteger(ordinal) && ordinal>=1&&ordinal<=items.length);
+    const row=items[ordinal-1];
+    hold(row.ordinal===ordinal && !plan.has(ordinal) && row.stage!=="blocked");
+    eventDate(fromDay,"12:00");
+    hold(fromDay>=nowToday());
+    const rule=capacityRules.get(row.group)||capacityDefaultRule();
+    const existing=eventIntervals(),daily=new Map();
+    for(const other of items){
+      const p=plan.get(other.ordinal);
+      if(!p || other.group!==row.group)continue;
+      daily.set(p.day,(daily.get(p.day)||0)+1);
+    }
+    const timeMin=time=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
+    const firstMinute=Math.ceil(timeMin(rule.start)/15)*15;
+    const lastMinute=timeMin(rule.end)-30;
+    const start=eventDate(fromDay,"12:00"),now=Date.now();
+    for(let days=0;days<31;days++){
+      const date=new Date(start.getTime());date.setDate(start.getDate()+days);
+      const day=dayString(date);
+      if(!day.startsWith("20"))break;
+      if(!rule.days.includes(date.getDay())||rule.blackouts.includes(day)||
+        (daily.get(day)||0)>=rule.maximum)continue;
+      for(let minute=firstMinute;minute<=lastMinute;minute+=15){
+        const time=String(Math.floor(minute/60)).padStart(2,"0")+":"+
+          String(minute%60).padStart(2,"0");
+        let candidate;
+        try{candidate=eventDate(day,time).getTime();}catch(_){continue;}
+        if(candidate<=now || existing.some(e=>candidate<e.end && e.start<candidate+30*60000))continue;
+        return admitSlot(day,time,"30","15");
+      }
+    }
+    return null;
+  }
+  function proposeBacklog(ordinal){
+    const from=$("backlogStart").value;
+    const slot=proposalForUnscheduled(ordinal,from);
+    if(!slot){
+      inform("No free tentative HUMAN slot under declared group rules within 31 local days. Original review row unchanged.",true);
+      return;
+    }
+    const row=items[ordinal-1];
+    if(!confirm("Add an UNSIGNED tentative HUMAN reminder for original #"+ordinal+
+      " ("+(row.group||"unassigned")+") on "+slot.day+" "+slot.time+
+      "? This is a local 30-minute HUMAN proposal only. Real availability, security status, consent and scope have not been verified. No external calendars will be modified."))return;
+    hold(active && !plan.has(ordinal) && row.stage!=="blocked");
+    plan.set(ordinal,slot);changed=true;exportedPlan=false;backlogPage=0;render();
+    inform("Added PRIVATE HUMAN draft reminder for #"+ordinal+
+      ". Save the original source-bound v2 plan before leaving the workroom.");
+  }
+  function renderBacklog(){
+    if(!active)return;
+    const selector=$("backlogGroup"),groups=capacityGroups(),old=selector.value;
+    if(selector.options.length!==groups.length+1 ||
+      groups.some((group,i)=>selector.options[i+1]?.textContent!==(group||"(unassigned)"))){
+      selector.replaceChildren();
+      const all=dom("option","All HUMAN groups");all.value="";selector.append(all);
+      groups.forEach((group,i)=>{
+        const option=dom("option",group||"(unassigned)");option.value=String(i+1);
+        selector.append(option);
+      });
+      selector.value=old;if(selector.selectedIndex<0)selector.value="";
+    }
+    const list=backlogFiltered(),pages=Math.max(1,Math.ceil(list.length/30));
+    backlogPage=Math.min(Math.max(0,backlogPage),pages-1);
+    const blocked=list.filter(row=>row.stage==="blocked").length;
+    $("backlogSummary").textContent=list.length+" unscheduled HUMAN rows matching · "+
+      blocked+" blocked stages in this view · page "+(backlogPage+1)+" of "+pages+
+      " · source severity is unverified, no auto-dispatch.";
+    $("backlogPrev").disabled=backlogPage===0;
+    $("backlogNext").disabled=backlogPage>=pages-1;
+    const body=$("backlogRows");body.replaceChildren();
+    for(const row of list.slice(backlogPage*30,(backlogPage+1)*30)){
+      const tr=dom("tr"),action=dom("button","Propose next HUMAN slot"),
+        edit=dom("button","Open #"+row.ordinal,"ghost");
+      action.type="button";edit.type="button";
+      action.disabled=row.stage==="blocked";
+      action.setAttribute("aria-label","Propose local review time for original HUMAN ordinal "+row.ordinal);
+      action.addEventListener("click",()=>{
+        try{proposeBacklog(row.ordinal);}catch(_){inform("HUMAN proposal refused; original source and plan unchanged.",true);}
+      });
+      edit.addEventListener("click",()=>focusOrdinal(row.ordinal));
+      const actionCell=dom("td"),editCell=dom("td");
+      actionCell.append(action);editCell.append(edit);
+      tr.append(dom("td","#"+row.ordinal),dom("td",row.severity),
+        dom("td",row.group||"(unassigned)"),
+        dom("td",row.stage||"unset"),dom("td",row.action||"(none)"),actionCell,editCell);
+      body.append(tr);
     }
   }
   function renderWorkload(){
@@ -1133,9 +1240,10 @@
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
+    backlogPage=0;$("backlogView").value="open";$("backlogGroup").value="";$("backlogQuery").value="";$("backlogStart").value=nowToday();
     weekAnchor=nowToday();$("weekGroup").value="";
     $("weekConflicts").checked=false;$("weekConstraints").checked=false;
-    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("month").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("month").hidden=false;$("backlog").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
@@ -1366,8 +1474,8 @@
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    weekAnchor="";monthAnchor="";
-    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    weekAnchor="";monthAnchor="";backlogPage=0;
+    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("backlog").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
@@ -1386,6 +1494,12 @@
     catch(_){inform("Month range unavailable, no local changes made.",true);}});
   hook("monthToday","click",()=>{monthAnchor=nowToday().slice(0,7);renderMonth();});
   hook("monthGroup","change",renderMonth);
+  hook("backlogView","change",()=>{backlogPage=0;renderBacklog();});
+  hook("backlogGroup","change",()=>{backlogPage=0;renderBacklog();});
+  hook("backlogQuery","input",()=>{backlogPage=0;renderBacklog();});
+  hook("backlogPrev","click",()=>{backlogPage--;renderBacklog();});
+  hook("backlogNext","click",()=>{backlogPage++;renderBacklog();});
+
   hook("monthSelect","change",()=>{
     const candidate=$("monthSelect").value;
     if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(candidate)){

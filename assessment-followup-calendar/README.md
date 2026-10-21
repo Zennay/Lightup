@@ -113,3 +113,17 @@ counts and local time-overlap indicators per day. Navigate months, focus a decla
 HUMAN owner group and click a date to open the corresponding seven-day planning
 desk. This is only a tentative scheduling overview; no external calendar, client,
 security result, authority or real-world staff capacity has been verified.
+
+
+### Offline unscheduled HUMAN queue
+
+All original worksheet ordinals without a locally proposed reminder appear in a
+searchable, paginated PRIVATE HUMAN backlog. The HUMAN-blocked stage has its own
+visible queue and is never eligible for a one-click time proposal. For each
+eligible ordinal, the operator may preview and explicitly confirm a 30-minute
+local review suggestion within the next 31 days. The proposer respects declared
+group weekdays, time windows, blackouts, appointment cap and every existing
+workroom event. Suggestions never contact real calendars, scan targets, send
+messages, assert actual human ownership, or claim verified security risk/consent.
+Original worksheet and HUMAN fields are immutable. Changes remain unsaved
+until the operator explicitly saves the complete source-bound PRIVATE v2 plan.

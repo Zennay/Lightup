@@ -32,3 +32,6 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 @media(max-width:700px){.month-grid{gap:3px}.month-day{min-height:85px;padding:3px}
 .month-day strong{font-size:14px}.month-day span,.month-day small{font-size:10px}
 .month-weekday{font-size:10px;padding:4px}.month-empty{min-height:80px}}
+
+#backlogRows td:nth-child(5){max-width:370px;overflow-wrap:anywhere}
+#backlogRows td button{font-size:12px}
