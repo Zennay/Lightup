@@ -2,6 +2,39 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Complete local, non-authorizing HUMAN review product on the original Basic/Bearer/API-key credential redaction boundary. No target interaction, scan, model invocation, upload, customer notification, approval, deployment, retest, or release.
 
+### New: fully offline PRIVATE HAR HUMAN Status Studio (v19)
+
+The original owner-private workroom and independently source-bound masking
+cue packet now also generate **`PRIVATE-HAR-STUDIO.html`**, a self-contained
+HUMAN task editor. Open it locally; it embeds only original ordinals, fixed
+review questions and literal marker counters (no original source bytes,
+filenames, URLs, digests, client names or HUMAN notes).
+
+- Filter by task text/original position or manual status; **all** originals
+  remain in every complete CSV export, including currently hidden rows.
+- Propose a HUMAN status per task, bulk-apply **only non-reviewed states**
+  to visible rows, and undo the previous bulk change. `HUMAN_REVIEWED`
+  can only be selected individually, and is never an approval or verdict.
+- Save a complete `PRIVATE-HAR-ACTIONS-edited.csv`. The output is
+  compatible with the existing native `notes.py har-action-progress`.
+  Download permissions are browser-dependent: move it into owner-private
+  0700 storage and **chmod 0600 before any native import**.
+- Resume a previous original-bound PRIVATE edited action CSV locally.
+  Admission is all-or-nothing: exact original roster, task order, question,
+  counts and permitted status fields are required. No source, API,
+  scanner, model, browser storage, network, recipient or grant is accessed.
+
+The browser cannot run native `har-action-progress`; this still must be
+called separately by an explicitly responsible HUMAN operator. Native
+source-bound admission, workroom permissions, no-free-text constraint,
+read-only reopening and **HOLD** results are unchanged.
+
+The new **v19** masking-cue receipt additionally binds the exact generated
+offline studio HTML bytes. Prior v1–v18 packets are opened with their
+unchanged historical receipt and generated file expectations. New HTML
+source pins its own inline JavaScript with an exact SHA-256 CSP hash, has no
+remote scripts and offers no release or execution mechanism.
+
 ### New: source-bound original HAR HUMAN action worksheets (v18)
 
 The original PRIVATE source-owner workroom now emits
@@ -98,7 +131,7 @@ An ambiguous, embedded, malformed or over-limit HAR-like JSON note is
 withheld in full from newly derived PRIVATE workrooms, rather than
 partially interpreted without the original request/response context.
 The original privately retained source is never modified. New masking-cue
-receipts are v18, with exact historical v1-v17 reopen support.
+receipts are v19, with exact historical v1-v18 reopen support.
 A source-free, printable PRIVATE-HAR-HOLD.html board identifies whole-copy
 withheld markers by original ordinal inside a new separate masking-cue room
 or the optional initial HUMAN preview. PRIVATE-HAR-INVENTORY.html and

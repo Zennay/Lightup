@@ -446,3 +446,17 @@ HUMAN progress packet and regenerates the exact original-bound HTML/CSV
 and unsigned v2 HOLD receipt from the admitted private edited CSV.
 It does not inspect/approve real sources, modify prior HUMAN decisions or
 authorize any operation; altered packets remain HOLD.
+
+### v19 offline HAR HUMAN status editor
+
+`PRIVATE-HAR-STUDIO.html` is generated inside new owner-private kits
+and immutable masking-cue rooms. The browser is local-only and CSP
+SHA-256 pinned; source-minimal task rows allow HUMAN status filter,
+individual choice, restricted bulk proposals/undo, strict full-row
+CSV resume and full private edited CSV download. It never embeds original
+HAR data, credential content, source name, URL, hash, client identity or
+HUMAN note. Downloads must be separately kept under owner-only 0600
+permissions for native `har-action-progress` admission. The source-bound
+masking receipt is now v19; v1–v18 remain immutable and reopenable.
+No browser status can authenticate reviewer identity, privacy review,
+consent, permission to disclose, scan authority or security conclusions.
