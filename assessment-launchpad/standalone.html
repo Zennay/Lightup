@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7LxlFPqAZizYFAPilCag/byMzNwbxU0SEMZ6VcmfS0E='; style-src 'sha256-Gtwruba7TdWXHQwpJdVhTjBMksvSM9Jetv3LYFiVPOA='; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L4kDN4k0wMV4XmL2yNjdc0wioGwHtGdgcgf2K5s3ey8='; style-src 'sha256-Gtwruba7TdWXHQwpJdVhTjBMksvSM9Jetv3LYFiVPOA='; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
   <title>LightUp · Lab Launchpad</title>
   <style>:root{font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1522;color:#e5f0fa;color-scheme:dark}
 *{box-sizing:border-box}
@@ -383,8 +383,11 @@ details[open] summary{margin-bottom:14px}
     let candidate;
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      if (bytes.length !== file.size) throw new Error("Source changed while reading.");
-      const decoded = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+      if (bytes.length !== file.size ||
+          (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)) {
+        throw new Error("Source changed or uses a noncanonical UTF-8 BOM.");
+      }
+      const decoded = new TextDecoder("utf-8", {fatal: true, ignoreBOM:true}).decode(bytes);
       const catalogDoc = JSON.parse(decoded);
       const flags = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
       if (!catalogDoc || Array.isArray(catalogDoc) || typeof catalogDoc !== "object" ||
