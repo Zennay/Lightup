@@ -176,6 +176,7 @@ def render_handoff(endpoint_count, source_digest, normalized_digest, manifest_pa
         " The original URL syntax and LabScenario scope policy were applied locally without DNS or network access."
         " This handoff does not create a plan, call a model, interact with a target, grant consent or authorize a scan.</p>"
         "<p class='note'>This private HTML omits endpoint values and does not embed the source manifest. Keep the separate manifest, receipt and command in a private directory.</p>"
+        "<p class='note'>Not authenticated: source content or identity, client identity, scope approval, operator consent and HUMAN GO. Authorization, consent, dispatch and release flags remain false.</p>"
         "</body></html>"
     )
     return html.encode("utf-8")
@@ -213,6 +214,12 @@ def run(args):
             "original_url_validator_applied": True,
             "original_lab_scenario_scope_policy_applied": True,
             "endpoint_values_in_receipt": False,
+            "source_content_authenticated": False,
+            "source_identity_authenticated": False,
+            "client_identity_authenticated": False,
+            "scope_approval_authenticated": False,
+            "operator_consent_authenticated": False,
+            "human_go_received": False,
             "preview_command_executed": False,
             "plan_created": False,
             "model_called": False,
