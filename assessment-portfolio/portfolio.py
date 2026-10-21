@@ -248,6 +248,11 @@ def aggregate(documents, rows, reference_day):
         "human_stage_counts": {key: stage_counts[key] for key in STAGES},
         "neutral_role_counts": {key: role_counts[key] for key in ROLES},
         "date_bucket_counts": {key: date_counts[key] for key in DATE_BUCKETS},
+        "role_date_bucket_counts": {
+            role: {bucket: sum(1 for row in rows if row["next_role"] == role and row["date_bucket"] == bucket)
+                   for bucket in DATE_BUCKETS}
+            for role in ROLES
+        },
         "planning_not_permission": True,
         **{key: False for key in FLAGS},
     }
@@ -284,6 +289,19 @@ def render_private_html(summary, rows):
             "<div class='tablewrap'><table>" + table_head + "<tbody>" + body + "</tbody></table></div></section>"
         )
     status = "HOLD" if summary["status"] == "HOLD" else "REVIEW_ONLY"
+    matrix_rows = []
+    for role in ROLES:
+        counts = summary["role_date_bucket_counts"][role]
+        values = [role] + [counts[bucket] for bucket in DATE_BUCKETS] + [sum(counts.values())]
+        matrix_rows.append("<tr>" + "".join("<td>" + escape(str(value)) + "</td>" for value in values) + "</tr>")
+    matrix = (
+        "<section><h2>Workload by neutral role and proposed date</h2>"
+        "<p class=\"note\">Aggregate planning counts only; roles are not identities or assignments.</p>"
+        "<div class=\"tablewrap\"><table><thead><tr><th>Neutral role</th>"
+        "<th>Past proposed date</th><th>Reference day</th><th>Future proposed date</th>"
+        "<th>Unscheduled</th><th>Total</th></tr></thead><tbody>" + "".join(matrix_rows) +
+        "</tbody></table></div></section>"
+    )
     cards = "".join(
         "<div class='card'><span class='value'>" + str(summary["date_bucket_counts"][key]) +
         "</span><span class='label'>" + escape(label) + "</span></div>"
@@ -311,7 +329,7 @@ def render_private_html(summary, rows):
         "<main><div class='cards'>" + cards + "</div>"
         "<p class='note'>" + str(summary["agenda_count"]) + " selected agendas · " +
         str(summary["item_count"]) + " human-planning items. Input order is a local ordinal only, not authenticated chronology.</p></main>"
-        + "".join(sections) +
+        + matrix + "".join(sections) +
         "<section><h2>Boundary and interpretation</h2><p class='note'>Past proposed dates are discussion prompts, not legal deadlines,"
         " verified finding age, security severity, authorization expiry or proof of a missed action. Missing sources are not treated as fixed."
         " No original paths, filenames, hashes, target labels, client identities or HUMAN notes are shown. The source claims and suggested questions remain unverified."
@@ -332,6 +350,9 @@ def render_counts_csv(summary):
         writer.writerow(("human_stage", key, count))
     for key, count in summary["neutral_role_counts"].items():
         writer.writerow(("neutral_role", key, count))
+    for role in ROLES:
+        for bucket in DATE_BUCKETS:
+            writer.writerow(("role_date_bucket", role + "|" + bucket, summary["role_date_bucket_counts"][role][bucket]))
     for key, count in summary["date_bucket_counts"].items():
         writer.writerow(("date_bucket", key, count))
     return stream.getvalue().encode("utf-8")

@@ -4,7 +4,7 @@
 
 ## Product behavior
 
-Combine **2–12 already-created original private agenda JSON exports** from the unchanged `assessment-archive/agenda.py` against one explicit human planning reference day. The portfolio groups follow-up rows by neutral role and proposed-date bucket, preserves separate agenda/source slot ordinals, and never merges original source identifiers or bytes.
+Combine **2–12 already-created original private agenda JSON exports** from the unchanged `assessment-archive/agenda.py` against one explicit human planning reference day. The portfolio groups follow-up rows by neutral role and proposed-date bucket, includes a role-by-date workload matrix, preserves separate agenda/source slot ordinals, and never merges original source identifiers or bytes.
 
 The output bundle contains three separate, no-overwrite artifacts in an existing directory owned by the current user with mode `0700`:
 
