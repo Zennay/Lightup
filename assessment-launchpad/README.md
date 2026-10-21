@@ -88,3 +88,25 @@ Use an interactive terminal instead of manually editing the worksheet:
 The interactive mode shows ONLY source ordinals (never the endpoint URLs), a fixed menu for stage and reviewer role, and the length—not the content—of any previous note. Enter a free-text note through a non-echoing terminal prompt. Enter retains the current value and a single hyphen clears an old note. Nothing is stored in shell history. A refused value or interrupted session cannot publish a partial new round.
 
 To continue an older round interactively, add the --responses argument pointing at that old round's private worksheet and choose another distinct empty output folder. All exact-source and worksheet-validation protections still apply before and after editing. The HTML and JSON artifacts remain **private unencrypted files on disk**, regardless of the non-echoing terminal input. The absence of actual authority/consent/HUMAN GO still applies.
+
+
+## Original-source-bound HUMAN round comparison
+
+Compare two manually selected, already-created PRIVATE HUMAN review rounds without revealing their original endpoint URLs or private notes in the resulting handoffs:
+
+    mkdir -m 700 ~/private-lab-human-changes
+    python3 assessment-launchpad/compare_review.py --bundle-dir ~/private-lab-launchpad-output --before-dir ~/private-lab-human-round-1 --after-dir ~/private-lab-human-round-2 --output-dir ~/private-lab-human-changes
+
+The comparator first reopens the original five-file packet through the frozen original validators, admits both complete four-file HUMAN rounds by private no-follow reads, checks each JSON against the exact original source bytes and regenerates the rest of the original HUMAN packet to detect drift. It requires two distinct source directories and does not mutate their contents.
+
+The new exclusive mode-0600 artifacts inside the owner-only mode-0700 output directory are:
+
+- lightup-lab-human-delta-private.html — scriptless CSP-pinned ordinal-by-ordinal follow-up history (stage and reviewer-role transition and whether a private note changed), without original endpoint values, notes, hashes or paths.
+- lightup-lab-human-delta-counts.json — totals of changed slots, stage/role/note changes, plus stage and role distributions before and after. No per-slot identifiers or original source values.
+- lightup-lab-human-delta-counts.csv — the equivalent counts for HUMAN workload reporting.
+
+Read-only reopen against the SAME original packet and two original HUMAN rounds:
+
+    python3 assessment-launchpad/compare_review.py --bundle-dir ~/private-lab-launchpad-output --before-dir ~/private-lab-human-round-1 --after-dir ~/private-lab-human-round-2 --verify-delta-dir ~/private-lab-human-changes
+
+The ordering of the two supplied rounds is manually selected, not authenticated chronology. These changes do not prove finding resolution, client scope, completion, consent, verified identity, a scan, release or HUMAN GO. Any locally consistent data remains UNSIGNED. Never expose the PRIVATE outputs to a web server; continue to apply the original release gates.
