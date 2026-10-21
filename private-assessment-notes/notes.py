@@ -458,6 +458,12 @@ def main() -> int:
                               help="separate owner-only manually edited actions CSV")
     har_progress.add_argument("--private-parent", required=True,
                               help="owner-only 0700 destination parent")
+    har_progress_reopen = commands.add_parser(
+        "har-action-progress-reopen",
+        help="read-only source-bound PRIVATE HUMAN HAR progress packet; HOLD")
+    har_progress_reopen.add_argument("--original-kit", required=True)
+    har_progress_reopen.add_argument("--cue-room", required=True)
+    har_progress_reopen.add_argument("--progress-room", required=True)
     finished = commands.add_parser("finalize", help="source-bound local PRIVATE HUMAN handoff only")
     finished.add_argument("--original-kit", required=True, help="unchanged PRIVATE workroom")
     finished.add_argument("--decisions", required=True, help="locally completed PRIVATE HUMAN CSV")
@@ -681,6 +687,10 @@ def main() -> int:
             from private_har_progress import import_progress
             return import_progress(args.original_kit, args.cue_room,
                                    args.edited_actions, args.private_parent)
+        if args.action == "har-action-progress-reopen":
+            from private_har_progress import reopen_progress
+            return reopen_progress(args.original_kit, args.cue_room,
+                                   args.progress_room)
         if args.action == "finalize":
             return finalize(args.original_kit, args.decisions, args.private_parent)
         # Offline local PRIVATE operations only, never a scan/target dispatch.

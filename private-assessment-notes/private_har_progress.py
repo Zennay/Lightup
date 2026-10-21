@@ -4,6 +4,7 @@ import csv
 from hashlib import sha256
 from html import escape
 import io
+import json
 import os
 from pathlib import Path
 import shutil
@@ -15,6 +16,7 @@ from private_masking_cues import reopen as reopen_cues
 STATES = frozenset(("PENDING_HUMAN", "IN_PROGRESS", "HUMAN_REVIEWED",
                     "SOURCE_OWNER_NEEDED", "WITHHOLD"))
 REPORT_FIELDS = ("original_ordinal", "review_area", "human_status")
+SCHEMA = "lightup.private_har_manual_progress.v2"
 
 
 def _edited(raw: bytes, expected: list[dict]) -> list[dict]:
@@ -77,6 +79,14 @@ This report never modifies the original decision/receipt packet.</p></html>"""
             ).encode("utf-8")
 
 
+def _status_csv(rows: list[dict]) -> bytes:
+    stream = io.StringIO(newline="")
+    writer = csv.DictWriter(stream, fieldnames=REPORT_FIELDS, lineterminator="\r\n")
+    writer.writeheader()
+    writer.writerows({field: row[field] for field in REPORT_FIELDS} for row in rows)
+    return stream.getvalue().encode("utf-8")
+
+
 def import_progress(original_kit: str, cue_room: str, edited_actions: str,
                     private_parent: str) -> int:
     original = private_directory(original_kit)
@@ -97,19 +107,18 @@ def import_progress(original_kit: str, cue_room: str, edited_actions: str,
     complete = False
     try:
         save_json(output / "PRIVATE-HAR-status-receipt.json", {
-            "schema": "lightup.private_har_manual_progress.v1",
+            "schema": SCHEMA,
             "claimed_status": "HOLD", "status_is_unverified_human_report": True,
             "original_worksheet_sha256_unsigned": sha256(baseline).hexdigest(),
             "edited_input_sha256_unsigned": sha256(edited).hexdigest(),
             "action_count": len(parsed),
             **{key: False for key in FALSE_FLAGS},
         })
+        # Retain *only validated* human status fields, never arbitrary notes,
+        # as source-bound bytes for a later entirely offline read-only reopen.
+        file_new(output / "PRIVATE-HAR-HUMAN-edited-actions.csv", edited)
         file_new(output / "PRIVATE-HAR-HUMAN-status.html", _dashboard(parsed))
-        stream = io.StringIO(newline="")
-        writer = csv.DictWriter(stream, fieldnames=REPORT_FIELDS, lineterminator="\r\n")
-        writer.writeheader()
-        writer.writerows({field: row[field] for field in REPORT_FIELDS} for row in parsed)
-        file_new(output / "PRIVATE-HAR-HUMAN-status.csv", stream.getvalue().encode())
+        file_new(output / "PRIVATE-HAR-HUMAN-status.csv", _status_csv(parsed))
         complete = True
         print("HOLD: local PRIVATE HUMAN status imported; NOT verified or authorised")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-HAR-HUMAN-status.html"))
@@ -117,3 +126,43 @@ def import_progress(original_kit: str, cue_room: str, edited_actions: str,
     finally:
         if not complete:
             shutil.rmtree(output)
+
+
+def reopen_progress(original_kit: str, cue_room: str,
+                    progress_room: str) -> int:
+    """Reconstruct every immutable report byte; do not trust typed statuses."""
+    original = private_directory(original_kit)
+    cues = private_directory(cue_room)
+    report = private_directory(progress_room)
+    _bindings, _sources, originals = load_workroom(original)
+    if reopen_cues(str(original), str(cues)) != 3:
+        raise Hold("HOLD: original cue admission failed")
+    baseline = worksheet_csv(originals)
+    # Only the original v18 generated worksheet is an admitted template.
+    if private_input(str(cues / "PRIVATE-HAR-ACTIONS.csv"), 65536) != baseline:
+        raise Hold("HOLD: original HAR actions template changed")
+    edited = private_input(str(report / "PRIVATE-HAR-HUMAN-edited-actions.csv"),
+                           65536)
+    parsed = _edited(edited, entries(originals))
+    expected_receipt = {
+        "schema": SCHEMA, "claimed_status": "HOLD",
+        "status_is_unverified_human_report": True,
+        "original_worksheet_sha256_unsigned": sha256(baseline).hexdigest(),
+        "edited_input_sha256_unsigned": sha256(edited).hexdigest(),
+        "action_count": len(parsed),
+        **{key: False for key in FALSE_FLAGS},
+    }
+    expected_receipt_bytes = (json.dumps(expected_receipt, indent=2,
+                                         sort_keys=True, ensure_ascii=False)
+                              + "\n").encode("utf-8")
+    expected_files = (
+        ("PRIVATE-HAR-status-receipt.json", expected_receipt_bytes),
+        ("PRIVATE-HAR-HUMAN-status.html", _dashboard(parsed)),
+        ("PRIVATE-HAR-HUMAN-status.csv", _status_csv(parsed)),
+    )
+    for name, expected in expected_files:
+        if private_input(str(report / name), 65536) != expected:
+            raise Hold("HOLD: immutable PRIVATE HAR manual progress packet changed")
+    print("HOLD: original-bound PRIVATE HAR HUMAN status reopened read-only")
+    print("OPEN LOCALLY: " + str(report / "PRIVATE-HAR-HUMAN-status.html"))
+    return 3
