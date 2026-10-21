@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Eleven offline source-bound and local packet workflows in one user menu.
+Thirteen offline source-bound and local packet workflows in one user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -18,6 +18,7 @@ from response_triage import prepare as prepare_triage, finish as return_triage
 from next_round import propose as propose_next_round
 from review_hub import build as build_human_overview
 from packet_open import reopen as reopen_curated_packet
+from packet_handoff import prepare as prepare_priority_handoff, reopen as reopen_priority_handoff
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -42,6 +43,10 @@ WORKFLOWS = {
            "original selection and optionally source-bound recipient response and sender HUMAN triage"),
     "11": ("Reopen existing PRIVATE selected-evidence packet by local byte integrity",
            "already-produced original 0700 PRIVATE curation packet directory only"),
+    "12": ("Prepare minimum-necessary single-priority PRIVATE HUMAN handoff",
+           "already-published complete source-bound curated packet; one priority; NEW private output"),
+    "13": ("Reopen existing single-priority PRIVATE HUMAN handoff",
+           "existing 0700 HUMAN question-only handoff; no original source required"),
 }
 
 
@@ -77,6 +82,26 @@ def run_workflow(choice: str) -> None:
         count = reopen_curated_packet(private_directory)
         print("PRIVATE local packet bytes consistent; " + str(count) +
               " HUMAN-selected entries; UNSIGNED / NO permission / REVIEW_ONLY")
+        return
+    if choice in ("12", "13"):
+        directory = ask_path("EXISTING 0700 PRIVATE packet directory")
+        if choice == "12":
+            priority = input("One HUMAN priority [routine / soon / urgent]: ").strip()
+            if priority not in ("routine", "soon", "urgent"):
+                raise Hold("Unsupported HUMAN priority")
+            output = ask_path("EXCLUSIVE NEW 0700 PRIVATE handoff directory")
+            print("Only one priority-specific HUMAN sheet will be copied. "
+                  "It may STILL identify the client.")
+            if input("Enter exactly REVIEW ONLY to prepare (NOT send): ") != "REVIEW ONLY":
+                raise Hold("Human declined private handoff preparation")
+            count = prepare_priority_handoff(directory, priority, output)
+        else:
+            print("Reopen verifies local UNSIGNED bytes, not identity/consent.")
+            if input("Enter exactly REVIEW ONLY to reopen: ") != "REVIEW ONLY":
+                raise Hold("Human declined private handoff reopening")
+            count = reopen_priority_handoff(directory)
+        print("PRIVATE HUMAN single-priority question count: " + str(count) +
+              "; NO dispatch or authorization.")
         return
     source = ask_path("EXISTING original lab source JSON")
     manifest = ask_path("EXISTING original PRIVATE source briefing manifest JSON")
@@ -182,7 +207,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–11]: ").strip()
+        choice = input("PRIVATE workflow [0–13]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
@@ -196,7 +221,7 @@ def main() -> int:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nEXISTING PRIVATE packet reopened; no new output" if choice == "11" else
+    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13") else
           "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 
