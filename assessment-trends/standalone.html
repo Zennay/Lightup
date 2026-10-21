@@ -3,10 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; script-src 'sha256-q+BWC9+MVhbFWGrWiU4AH5A3bdD2hcISPi0gpqOEUqQ='; style-src 'sha256-nssgvV8G+peo0fS/iY/Ztdso/vXkEruxBMLIZg79ErA='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; script-src 'sha256-C9vRQAbx7BpIDpyRZc2XI62pGF/iCY4DwE2PfUf9F+w='; style-src 'sha256-SVZSmMR6m28zDbpz2ArtyNyuwnlINcFONrgiH7bk5So='">
 <title>LightUp · Assessment Trends</title>
 <style>*{box-sizing:border-box}html{color-scheme:light}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:1240px;margin:0 auto;padding:1.2rem}.hero{padding-top:2.4rem}.hero h1{font-size:clamp(2rem,4vw,3.2rem);line-height:1.05;margin:.25rem 0 .8rem}.eyebrow,.tag{font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}.status{border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;padding:.8rem 1rem;margin:1rem 0;background:#fff7ed;font-weight:650}.status.review{border-left-color:#426a87;background:#eff6fb}.status.demo{border-left-color:#7953a6;background:#f7f1ff}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.25rem;margin:1rem 0;box-shadow:0 1px 3px #0f172a0a}.section-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}.section-head h2{font-size:1.15rem;margin:0}.tag{border:1px solid #dbe1e8;border-radius:99px;padding:.2rem .6rem;white-space:nowrap}h3{font-size:1rem;margin:1.4rem 0 .6rem}p{margin:.6rem 0 1rem}label{display:block;font-weight:650;margin:.75rem 0}.file-picker{display:block;border:1px dashed #94a3b8;border-radius:.5rem;padding:1rem;background:#f8fafc}input[type=file]{display:block;margin-top:.65rem;max-width:100%}select,textarea{display:block;width:100%;max-width:100%;font:inherit;padding:.6rem;border:1px solid #aab6c5;border-radius:.4rem;background:white;color:#17212f}textarea{resize:vertical}.controls{display:flex;gap:.55rem;flex-wrap:wrap;margin:.8rem 0}button{font:inherit;font-weight:700;padding:.58rem .85rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button.ghost{background:#f8fafc;color:#475569;border-color:#cbd5e1}button:disabled,input:disabled,select:disabled,textarea:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:650;color:#334155}.footnote{font-size:.88rem;color:#536174}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem}.card{border:1px solid #dbe1e8;border-radius:.6rem;padding:.9rem;background:#fbfcfe}.card .value{font-size:1.65rem;font-weight:800;line-height:1.15;display:block;margin:.2rem 0}.card .label{font-size:.83rem;color:#536174}.tablewrap{overflow:auto;border:1px solid #e0e5eb;border-radius:.45rem;margin:.75rem 0;max-width:100%}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:660px}th,td{border-bottom:1px solid #e0e5eb;border-right:1px solid #edf0f4;padding:.5rem .6rem;text-align:left;vertical-align:top;white-space:nowrap}th{background:#eef2f6;font-weight:750;position:sticky;top:0;z-index:1}tbody tr:nth-child(even){background:#fafbfd}.cell-adverse{background:#fee2e2!important;color:#991b1b;font-weight:750}.cell-neutral{background:#f0fdf4;color:#166534}.cell-info{background:#f1f5f9;color:#334155}.cell-persistent{outline:2px solid #b45309;outline-offset:-3px}.empty{padding:1rem;color:#64748b}.footnote strong{color:#334155}footer{font-size:.85rem;color:#64748b;padding-bottom:2rem}.print-only{display:none}@media(max-width:650px){.hero,main,footer{padding:.8rem}.panel{padding:.9rem}.section-head{align-items:flex-start}button{width:100%}.controls{display:grid;grid-template-columns:1fr}}@media print{body{background:white;color:#111;font-size:11pt}.hero,main,footer{max-width:none;padding:0}.no-print,main>.panel{display:none!important}.print-only{display:block!important}.hero{margin-bottom:1rem}.status{background:white!important;color:#111;border:1px solid #555}.print-only table{min-width:0;font-size:9pt}.print-only th,.print-only td{position:static;white-space:normal;padding:.3rem;border:1px solid #aaa}.print-only h1,.print-only h2{page-break-after:avoid}.print-only table{page-break-inside:avoid}a{color:#111;text-decoration:none}}
 .queue-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.7rem}.queue-controls label{margin:.25rem 0}.queue-controls select{margin-top:.35rem}#reviewTable{max-height:30rem}#reviewTable button{font-size:.8rem;padding:.35rem .5rem;white-space:nowrap}@media(max-width:650px){.queue-controls{grid-template-columns:1fr}}
+
+input[type=password]{display:block;width:100%;max-width:100%;font:inherit;padding:.6rem;border:1px solid #aab6c5;border-radius:.4rem;background:white;color:#17212f}
 </style>
 <script>"use strict";
 /* LightUp Assessment Trends: offline, source-only, non-authorizing. */
@@ -23,6 +25,11 @@
   const LOW=new Set(["invalid_findings","missed_findings","scope_violations","policy_violations"]);
   const FLAGS=["authorized","consent_verified","dispatch_allowed","release_allowed"];
   const MAX_FILE=262144,MAX_PRIVATE_BUNDLE=2097152;
+  const MAX_ENCRYPTED_BUNDLE=2809856;
+  const ENVELOPE_SCHEMA="lightup.assessment_trends_encrypted_private_session.v1";
+  const CRYPTO_ITERATIONS=310000;
+  const PRIVATE_AAD=new TextEncoder().encode(ENVELOPE_SCHEMA);
+
   // Digests compare local imported bytes only. Never export to anonymous outputs.
   let sourceFingerprints=[];
   async function sourceDigest(bytes){
@@ -38,7 +45,7 @@
   }
   function renderSessionControls(){
     const ready=canResume();
-    $("exportPrivateSession").disabled=!ready;
+    $("exportPrivateSession").disabled=!ready||!hasSessionCrypto();
     $("importPrivateSession").disabled=!ready;
     $("privateSessionFile").disabled=!ready;
     $("sessionAvailability").textContent=ready?
@@ -94,6 +101,82 @@
     }
     const result=value(0);ws();admit(pos===raw.length);return result;
   }
+
+  function toBase64(bytes){
+    let binary="";
+    for(let i=0;i<bytes.length;i+=16384)
+      binary+=String.fromCharCode(...bytes.subarray(i,i+16384));
+    return btoa(binary);
+  }
+  function fromBase64(value,limit){
+    admit(typeof value==="string"&&value.length>=4&&value.length<=Math.ceil(limit/3)*4+4&&
+      value.length%4===0&&/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value));
+    const decoded=atob(value);admit(decoded.length>0&&decoded.length<=limit);
+    const out=new Uint8Array(decoded.length);
+    for(let i=0;i<decoded.length;i++)out[i]=decoded.charCodeAt(i);
+    admit(toBase64(out)===value);return out;
+  }
+  function hasSessionCrypto(){
+    return !!(globalThis.crypto&&crypto.subtle&&crypto.getRandomValues&&
+      typeof crypto.subtle.importKey==="function"&&
+      typeof crypto.subtle.deriveKey==="function"&&
+      typeof crypto.subtle.encrypt==="function"&&typeof crypto.subtle.decrypt==="function");
+  }
+  async function sessionKey(passphrase,salt,usages){
+    admit(hasSessionCrypto()&&typeof passphrase==="string"&&passphrase.length>=14&&passphrase.length<=256);
+    const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(passphrase),
+      "PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      {name:"PBKDF2",hash:"SHA-256",iterations:CRYPTO_ITERATIONS,salt},
+      material,{name:"AES-GCM",length:256},false,usages);
+  }
+  async function encryptPrivatePayload(cleartext,passphrase){
+    admit(hasSessionCrypto()&&typeof cleartext==="string");
+    const bytes=new TextEncoder().encode(cleartext);
+    admit(bytes.length>0&&bytes.length<=MAX_PRIVATE_BUNDLE);
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await sessionKey(passphrase,salt,["encrypt"]);
+    const encrypted=new Uint8Array(await crypto.subtle.encrypt(
+      {name:"AES-GCM",iv,additionalData:PRIVATE_AAD,tagLength:128},key,bytes));
+    admit(encrypted.length===bytes.length+16);
+    return {schema:ENVELOPE_SCHEMA,private_encrypted:true,
+      cipher:"AES-256-GCM",kdf:"PBKDF2-HMAC-SHA256",
+      iterations:CRYPTO_ITERATIONS,salt_b64:toBase64(salt),
+      iv_b64:toBase64(iv),ciphertext_b64:toBase64(encrypted)};
+  }
+  async function decryptPrivatePayload(envelope,passphrase){
+    admit(exact(envelope,["schema","private_encrypted","cipher","kdf","iterations",
+      "salt_b64","iv_b64","ciphertext_b64"])&&
+      envelope.schema===ENVELOPE_SCHEMA&&envelope.private_encrypted===true&&
+      envelope.cipher==="AES-256-GCM"&&envelope.kdf==="PBKDF2-HMAC-SHA256"&&
+      envelope.iterations===CRYPTO_ITERATIONS);
+    const salt=fromBase64(envelope.salt_b64,16),iv=fromBase64(envelope.iv_b64,12),
+      encrypted=fromBase64(envelope.ciphertext_b64,MAX_PRIVATE_BUNDLE+16);
+    admit(salt.length===16&&iv.length===12&&encrypted.length>16);
+    const key=await sessionKey(passphrase,salt,["decrypt"]);
+    const bytes=await crypto.subtle.decrypt(
+      {name:"AES-GCM",iv,additionalData:PRIVATE_AAD,tagLength:128},key,encrypted);
+    admit(bytes.byteLength>0&&bytes.byteLength<=MAX_PRIVATE_BUNDLE);
+    return new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+  }
+  async function openPrivateSessionJson(file,passphrase){
+    admit(file&&file.size>0&&file.size<=MAX_ENCRYPTED_BUNDLE);
+    const bytes=await file.arrayBuffer();
+    admit(bytes.byteLength>0&&bytes.byteLength<=MAX_ENCRYPTED_BUNDLE);
+    const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    admit(!raw.startsWith("\uFEFF"));
+    const parsed=strictJSON(raw);
+    if(parsed&&parsed.schema===ENVELOPE_SCHEMA){
+      const cleartext=await decryptPrivatePayload(parsed,passphrase);
+      admit(!cleartext.startsWith("\uFEFF"));
+      return strictJSON(cleartext);
+    }
+    // Older v1 PRIVATE plaintext files are read-only compatible; new exports are encrypted.
+    admit(bytes.byteLength<=MAX_PRIVATE_BUNDLE);
+    return parsed;
+  }
+
   function change(v){
     admit(exact(v,["name","baseline","candidate","delta","regression"])&&
       METRICS.includes(v.name)&&finite(v.baseline)&&finite(v.candidate)&&finite(v.delta)&&
@@ -701,24 +784,30 @@
       disclaimer:"Byte equality against the SAME manually ordered source files only. This unsigned local recovery file may disclose HUMAN notes and source fingerprints. Digests do NOT prove source authenticity, finding accuracy, remediation, identity, consent or release.",
       ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
   }
-  function savePrivateSession(){
-    if(!canResume())return;
-    if(!window.confirm("Download a PRIVATE UNSIGNED recovery file with HUMAN notes, local stages and SHA-256 fingerprints of each original source file? Treat it as confidential. It is NOT encrypted and does not authenticate the source."))return;
-    const content=JSON.stringify(privateSessionData(),null,2)+"\n";
-    if(new Blob([content]).size>MAX_PRIVATE_BUNDLE){
-      $("sessionMessage").textContent="HOLD: recovery bundle would exceed the 2 MiB private admission limit.";return;
+  async function savePrivateSession(){
+    const passphrase=$("sessionSavePassphrase").value;
+    const confirm=$("sessionSaveConfirm").value;
+    try{
+      if(!canResume()||!hasSessionCrypto())throw Error("crypto unavailable");
+      if(passphrase.length<14||passphrase.length>256||passphrase!==confirm){
+        $("sessionMessage").textContent="HOLD: enter and confirm the same recovery passphrase (14–256 characters).";return;
+      }
+      if(!window.confirm("Download an ENCRYPTED, PRIVATE, UNSIGNED HUMAN review session? AES-256-GCM with a random salt and nonce protects local source fingerprints, self-reported stages and saved HUMAN notes. Losing your passphrase makes recovery unavailable. No source authentication or consent is established."))return;
+      const contents=JSON.stringify(privateSessionData())+"\n";
+      const envelope=await encryptPrivatePayload(contents,passphrase);
+      const output=JSON.stringify(envelope,null,2)+"\n";
+      admit(new Blob([output]).size<=MAX_ENCRYPTED_BUNDLE);
+      download("assessment-trends-PRIVATE-ENCRYPTED-review-session.json",output,"application/json");
+      $("sessionMessage").textContent="Encrypted PRIVATE session downloaded. Keep the passphrase separately and retain the original source snapshots in the same manual order. No password recovery or source authentication.";
+    }catch(_){
+      $("sessionMessage").textContent="HOLD: encrypted PRIVATE export unavailable. Existing HUMAN notes and stages remain in memory. No plaintext file downloaded.";
+    }finally{
+      $("sessionSavePassphrase").value="";$("sessionSaveConfirm").value="";
     }
-    download("assessment-trends-PRIVATE-source-bound-review-session.json",content,"application/json");
-    $("sessionMessage").textContent="PRIVATE recovery bundle downloaded. Keep exact original snapshot files and manual order for future reopening.";
   }
-  async function admitPrivateSessionFile(file){
+  async function admitPrivateSessionFile(file,passphrase){
     admit(canResume());
-      admit(file.size>0&&file.size<=MAX_PRIVATE_BUNDLE);
-      const bytes=await file.arrayBuffer();
-      admit(bytes.byteLength>0&&bytes.byteLength<=MAX_PRIVATE_BUNDLE);
-      const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
-      admit(!raw.startsWith("\uFEFF"));
-      const data=strictJSON(raw);
+      const data=await openPrivateSessionJson(file,passphrase);
       admit(exact(data,["schema","status","private_unsigned","fictional_demo_only",
         "manually_selected_order","chronology_authenticated","source_identity_authenticated",
         "snapshot_sha256_by_manual_slot","scenario_count","stages","notes","disclaimer",...FLAGS]));
@@ -766,7 +855,7 @@
       $("sessionMessage").textContent="HOLD: admit the original source cohort first, then choose one PRIVATE recovery file.";return;
     }
     try{
-      const {newStages,newNotes}=await admitPrivateSessionFile(file);
+      const {newStages,newNotes}=await admitPrivateSessionFile(file,$("sessionUnlockPassphrase").value);
       // Never mutate existing work on failure. Consent to replace comes AFTER full validation.
       if(!window.confirm("Exact ordered source bytes matched. Replace the CURRENT local HUMAN marks and saved notes with this PRIVATE unsigned file? Unsaved scratch text will be discarded. Matching bytes are not proof of source authenticity.")){
         $("sessionMessage").textContent="PRIVATE restore cancelled. Existing HUMAN work left unchanged.";return;
@@ -780,6 +869,7 @@
       $("sessionMessage").textContent="HOLD: PRIVATE recovery rejected (invalid, tampered, duplicate, oversized, or not bound to the exact currently admitted original files/order). Existing HUMAN stages and notes untouched.";
     }finally{
       $("privateSessionFile").value="";
+      $("sessionUnlockPassphrase").value="";
     }
   }
 
@@ -850,16 +940,16 @@
     }
     try{
       // Admit both complete files before changing the displayed comparison.
-      const before=await admitPrivateSessionFile(earlier);
-      const after=await admitPrivateSessionFile(later);
+      const before=await admitPrivateSessionFile(earlier,$("revisionUnlockPassphrase").value);
+      const after=await admitPrivateSessionFile(later,$("revisionUnlockPassphrase").value);
       const changes=revisionChanges(before,after);
       privateRevisionComparison={changes,beforeCount:before.newStages.size,
         afterCount:after.newStages.size,earlierNotes:before.newNotes.size,
         laterNotes:after.newNotes.size};
       revisionTable();
     }catch(_){
-      $("revisionCompareSummary").textContent="HOLD: one or both PRIVATE sessions did not match exact sources, schema, source order or HUMAN stage membership. Existing comparison and current HUMAN work left unchanged.";
-    }
+      $("revisionCompareSummary").textContent="HOLD: one or both PRIVATE sessions failed decryption or did not match exact sources, schema, order or HUMAN event scope. Existing comparison and current HUMAN work left unchanged.";
+    }finally{$("revisionUnlockPassphrase").value="";}
   }
   function revisionPayload(){
     admit(!!privateRevisionComparison);
@@ -992,7 +1082,7 @@
     }
     try{
       const revisions=[];
-      for(const file of files)revisions.push(await admitPrivateSessionFile(file));
+      for(const file of files)revisions.push(await admitPrivateSessionFile(file,$("timelineUnlockPassphrase").value));
       const summary=[];
       revisions.forEach((r,i)=>{
         const stageCounts=timelineStageCounts(r.newStages);
@@ -1018,8 +1108,8 @@
         " manually selected PRIVATE HUMAN revision files admitted for identical original cohort bytes/order. Unauthenticated selection order, no current HUMAN work modified.";
       $("timelineFiles").value="";
     }catch(_){
-      $("timelineSummary").textContent="HOLD: a PRIVATE HUMAN revision is invalid or not byte-bound to the exact original selected sources. Previous comparison and current HUMAN work unchanged.";
-    }
+      $("timelineSummary").textContent="HOLD: PRIVATE HUMAN session could not be decrypted or did not match the exact original source bytes/order. Previous comparison and current HUMAN work unchanged.";
+    }finally{$("timelineUnlockPassphrase").value="";}
   }
   function humanTimelinePayload(){
     admit(!!privateTimeline);
@@ -1143,7 +1233,7 @@
   $("revisionExportJson").addEventListener("click",()=>exportRevision("json"));
   $("revisionExportCsv").addEventListener("click",()=>exportRevision("csv"));
   $("revisionExportBrief").addEventListener("click",()=>exportRevision("html"));
-  $("exportPrivateSession").addEventListener("click",savePrivateSession);
+  $("exportPrivateSession").addEventListener("click",()=>{void savePrivateSession();});
   $("importPrivateSession").addEventListener("click",()=>{void restorePrivateSession();});
   $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
   $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});
@@ -1270,19 +1360,30 @@
 
 <section class="panel no-print" id="resume">
   <div class="section-head"><h2>07 / PRIVATE human work recovery</h2><span class="tag">Exact source bytes · offline</span></div>
-  <p>Keep HUMAN work between browser sessions without creating an account, network request or browser storage. First import the <strong>same 3–12 original JSON snapshots in exactly the same manually selected order</strong>, then restore your PRIVATE work. This separately confirmed, <strong>UNENCRYPTED</strong>, unsigned JSON bundle contains all saved HUMAN notes and self-reported review stages, plus SHA-256 fingerprints of original source bytes. Treat it as confidential.</p>
+  <p>Keep HUMAN work between browser sessions without creating an account, network request or browser storage. First import the <strong>same 3–12 original JSON snapshots in exactly the same manually selected order</strong>, then restore your PRIVATE work. Newly saved sessions are <strong>passphrase-encrypted locally</strong> with AES-256-GCM and PBKDF2-SHA256 (310,000 iterations, random salt and nonce). This separately confirmed PRIVATE unsigned JSON envelope contains all saved HUMAN notes and self-reported review stages, plus SHA-256 fingerprints of original source bytes. Treat it as confidential.</p>
   <p id="sessionAvailability" class="footnote">Import original snapshots to enable source-byte-bound PRIVATE save and resume.</p>
+  <div class="queue-controls">
+    <label>New recovery passphrase (14–256 characters)
+      <input id="sessionSavePassphrase" type="password" minlength="14" maxlength="256" autocomplete="new-password" placeholder="Stored nowhere; losing it prevents recovery">
+    </label>
+    <label>Confirm recovery passphrase
+      <input id="sessionSaveConfirm" type="password" minlength="14" maxlength="256" autocomplete="new-password">
+    </label>
+  </div>
   <div class="controls">
-    <button id="exportPrivateSession" type="button" disabled>Save PRIVATE source-bound HUMAN session</button>
+    <button id="exportPrivateSession" type="button" disabled>Save ENCRYPTED PRIVATE HUMAN session</button>
   </div>
   <label class="file-picker">Choose PRIVATE HUMAN recovery JSON
     <input id="privateSessionFile" type="file" accept=".json,application/json" disabled>
   </label>
+  <label>Passphrase for encrypted recovery (leave blank for older unencrypted v1 files)
+    <input id="sessionUnlockPassphrase" type="password" maxlength="256" autocomplete="off">
+  </label>
   <div class="controls">
-    <button id="importPrivateSession" class="secondary" type="button" disabled>Restore only against identical source bytes</button>
+    <button id="importPrivateSession" class="secondary" type="button" disabled>Decrypt and restore only against identical source bytes</button>
   </div>
   <p id="sessionMessage" class="message" role="status" aria-live="polite">No recovery file loaded.</p>
-  <p class="footnote">Recovery is atomic: invalid, duplicate, oversized (over 2 MiB), out-of-scope, altered or differently ordered inputs are rejected before replacing work. A successful restore requires separate confirmation; forgotten or newly imported source data clears prior local HUMAN work. Browser SHA-256 capability is required only for this optional recovery feature. Source hashes establish local byte equality, <strong>not authentic provenance or security clearance</strong>. Private files are never included in anonymous exports.</p>
+  <p class="footnote">Recovery is atomic: invalid, duplicate, incorrectly encrypted, oversized (decrypted contents over 2 MiB), out-of-scope, altered or differently ordered inputs are rejected before replacing work. A successful restore requires separate confirmation; forgotten or newly imported source data clears prior local HUMAN work. Browser Web Crypto is required for encrypted export/decryption and local source-byte digest matching. New recovery sessions are encrypted by default; older plaintext PRIVATE v1 files remain importable but are never newly exported. Passphrases are cleared from input fields after each operation and are not sent over the network. Source hashes establish local byte equality, <strong>not authentic provenance or security clearance</strong>. Private files are never included in anonymous exports.</p>
 </section>
 
 <section class="panel no-print" id="revision">
@@ -1296,7 +1397,10 @@
       <input id="revisionLaterFile" type="file" accept=".json,application/json" disabled>
     </label>
   </div>
-  <button id="revisionCompare" type="button" disabled>Compare PRIVATE revisions · no mutation</button>
+  <label>Passphrase shared by encrypted PRIVATE revisions (leave blank for older plaintext v1)
+    <input id="revisionUnlockPassphrase" type="password" maxlength="256" autocomplete="off">
+  </label>
+  <button id="revisionCompare" type="button" disabled>Decrypt and compare PRIVATE revisions · no mutation</button>
   <p id="revisionCompareSummary" class="message" role="status" aria-live="polite">Choose two source-bound PRIVATE sessions after admitting their original snapshots.</p>
   <div id="revisionCompareTable" class="tablewrap" role="region" tabindex="0" aria-label="Private source-bound HUMAN revision differences"></div>
   <p id="revisionCompareCount" class="footnote"></p>
@@ -1314,7 +1418,10 @@
   <label class="file-picker">Choose 2–8 PRIVATE source-bound HUMAN session JSON files, in display order
     <input id="timelineFiles" type="file" accept=".json,application/json" multiple disabled>
   </label>
-  <button id="timelineImport" type="button" disabled>Compare local HUMAN rounds · read-only</button>
+  <label>Passphrase shared by encrypted PRIVATE rounds (leave blank for older plaintext v1)
+    <input id="timelineUnlockPassphrase" type="password" maxlength="256" autocomplete="off">
+  </label>
+  <button id="timelineImport" type="button" disabled>Decrypt and compare HUMAN rounds · read-only</button>
   <p id="timelineSummary" class="message" role="status" aria-live="polite">Select 2–8 source-bound PRIVATE HUMAN revisions to compare manual slots.</p>
   <div id="timelineTable" class="tablewrap" role="region" aria-label="Anonymous HUMAN review round counts" tabindex="0"></div>
   <h3>HUMAN review workload by metric and manual round</h3>
