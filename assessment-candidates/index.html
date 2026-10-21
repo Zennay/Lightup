@@ -78,14 +78,19 @@
 <p>After loading the exact original lab reports, choose 2–8 separately saved v2/v3 PRIVATE HUMAN preference drafts in the intended order. Compare all adjacent local generic discussion group/stage changes by anonymous case ordinal, including proposals later reverted. This is neither authenticated chronology nor evidence of a fix, grant or consent. No network, persistent storage or recipient dispatch.</p>
 <div class="controls"><label class="filelabel">Compare 2–8 PRIVATE HUMAN drafts<input id="draftRounds" type="file" accept=".json,application/json" multiple disabled></label>
 <button id="exportRoundsCSV" type="button" class="secondary" disabled>Export PRIVATE changed-only CSV</button>
-<button id="adoptRound" type="button" class="ghost" disabled>Use last round's HUMAN suggestions</button></div>
+<button id="adoptRound" type="button" class="ghost" disabled>Use ALL last-round HUMAN suggestions</button>
+<button id="selectVisibleRounds" type="button" class="secondary" disabled>Select visible changes</button>
+<button id="clearSelectedRounds" type="button" class="ghost" disabled>Clear selection</button>
+<button id="adoptSelected" type="button" disabled>Apply SELECTED last-round HUMAN changes</button></div>
+<p id="selectedRoundsCount" aria-live="polite"></p>
 <label>Visible HUMAN changes<select id="roundFilter">
 <option value="all">All changed case suggestions</option>
 <option value="repeated">Two or more round transitions</option>
 <option value="reverted">Returned to first suggestion</option></select></label>
 <p id="roundsMessage" role="status" aria-live="polite"></p>
 <div id="roundsSummary" class="statline"></div>
-<div id="roundsTable" class="tablewrap"></div></div>
+<div id="roundsTable" class="tablewrap"></div>
+<div id="roundDetail" class="tablewrap" aria-live="polite"></div></div>
 <p class="footnote">Matching original snapshots is not cryptographic provenance. Separate client and operator consent, action-time revocation, source-owner security repairs, independent security/privacy review, exact-HEAD hosted and permanent registered VPS CI and explicit HUMAN GO are mandatory before any real release.</p></section>
 </main><footer>LightUp · local human discussion only · no production authorization · <a href="https://github.com/Zennay/Lightup/issues/1591">Work item #1591</a></footer>
 <script src="app.js" defer></script></body></html>
