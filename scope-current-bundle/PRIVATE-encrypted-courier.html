@@ -1,0 +1,153 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='referrer' content='no-referrer'><meta http-equiv='Content-Security-Policy' content="default-src &#x27;none&#x27;; script-src &#x27;sha256-0sER/7WAawhhjHPKAuFABNb+aipwizcwNlK1LzhsY2A=&#x27;; style-src &#x27;sha256-KDWbvwf4oUlmiiF6hZ7HJV4qX3qoU/x5XP+7Kesono4=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;"><title>LightUp PRIVATE encrypted HUMAN courier · DRAFT/HOLD</title><style>*{box-sizing:border-box}:root{color-scheme:dark}body{font:16px/1.55 system-ui,sans-serif;max-width:940px;margin:0 auto;padding:28px;background:#0f192a;color:#eff6ff}h1{font-size:clamp(1.7rem,4vw,2.5rem)}section{background:#1b3049;border-radius:12px;padding:20px;margin:20px 0}p{line-height:1.6}.hold{border:1px solid #ab8652;background:#342817;padding:16px;border-radius:9px;color:#ffdfae}label{display:block;margin:12px 0}label span{display:block;margin:4px 0}input,button{font:inherit;background:#2a4869;color:#fff;border:1px solid #8295b5;border-radius:7px;padding:10px;max-width:100%}input[type=password]{width:100%;max-width:480px}button{cursor:pointer;background:#376999;font-weight:700;margin:10px 0}button:hover{background:#4981b3}button:disabled{opacity:.55;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #85d4ff}output{display:block;margin:18px 0;padding:12px;border:1px solid #55708f;border-radius:8px;white-space:pre-wrap}small{color:#c0d3ea}</style></head><body><main><h1>LightUp · PRIVATE encrypted HUMAN courier</h1><p class='hold'><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> This local utility encrypts/decrypts one PRIVATE review HTML/CSV/JSON or pinned offline ZIP file only. It does not sign the original record, authenticate an actor, authorize an assessment, grant permission, revoke authority, contact a target or launch an active scan. Encrypted content is not automatically displayed or executed.</p><p>Use a locally trusted modern browser with offline WebCrypto. Transfer the recipient's own encrypted packet through an authorized channel; give its unique strong passphrase separately to the authenticated intended recipient. Do not share the private owner receipt or files belonging to another team. The password is not stored on disk or in browser localStorage by this tool.</p><section><h2>1. Lock a local HUMAN file</h2><label><span>One original PRIVATE .html / .csv / .json / .zip (max 2 MiB)</span><input id='plainInput' type='file' accept='.html,.csv,.json,.zip'></label><label><span>Unique strong private passphrase, at least 12 UTF-8 bytes</span><input id='entryA' type='password' autocomplete='off' maxlength='1024'></label><label><span>Confirm passphrase</span><input id='entryB' type='password' autocomplete='off' maxlength='1024'></label><button type='button' id='seal'>Encrypt as PRIVATE .luhr</button><small>Uses PBKDF2-SHA-256 (310,000 iterations) and AES-256-GCM with a new random 16-byte salt and 12-byte nonce for each envelope. The exact binary envelope header is authenticated. Original file bytes are not changed.</small></section><section><h2>2. Unlock an encrypted PRIVATE handoff</h2><label><span>One encrypted .luhr file</span><input id='vaultInput' type='file' accept='.luhr'></label><label><span>Optional independently obtained original encrypted file SHA-256 (64 hex characters)</span><input id='expectedDigest' type='text' maxlength='64' autocapitalize='off' autocomplete='off' spellcheck='false'></label><p>The SHA-256 fingerprint is shown after encrypting and after opening a packet. The recipient may enter the independently communicated ciphertext fingerprint; a mismatch refuses decryption. A hash alone is only byte matching, not sender identity or authorization.</p><p>Enter the matching passphrase above and click decrypt. The original contained filename and bytes are recovered locally without auto-opening them. Do not trust or execute unknown HTML, even if decryption succeeds.</p><button type='button' id='open'>Decrypt to local original file</button></section><output id='message' role='status' aria-live='polite'>No files have been selected or transmitted. PRIVATE bytes stay in this browser.</output><p>Confidentiality does NOT establish sender trust, source provenance, tenant membership, client consent, operator consent, grant, revocation or security clearance. All original LightUp authorization/release gates remain mandatory.</p></main><script>"use strict";
+/*
+ * LightUp PRIVATE offline courier, non-authorizing transport only.
+ * AES-256-GCM with fresh per-envelope nonce and salt; PBKDF2-SHA-256 310k.
+ * No network, cookies, storage, auto-execution, tenant/auth/grant/scan logic.
+ * A passphrase is NOT proof of actual reviewer or source-producer identity.
+ */
+(() => {
+  const MAX_BYTES = 2 * 1024 * 1024;
+  const MAX_ENVELOPE = MAX_BYTES + 4096;
+  const MAGIC = new Uint8Array([76, 85, 72, 82, 0, 1, 0, 0]); // LUHR v1
+  const HEADER = 40;
+  const sealInput = document.getElementById("plainInput");
+  const openInput = document.getElementById("vaultInput");
+  const pwBox = document.getElementById("entryA");
+  const confirmBox = document.getElementById("entryB");
+  const digestExpected = document.getElementById("expectedDigest");
+  const message = document.getElementById("message");
+  const lockBtn = document.getElementById("seal");
+  const unlockBtn = document.getElementById("open");
+  let busy = false;
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder("utf-8", {fatal: true});
+  const validName = name => typeof name === "string" &&
+    /^[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/.test(name) &&
+    !name.includes("..") && /\.(?:html|csv|json|zip)$/i.test(name);
+  function say(value) { message.textContent = value; }
+  async function sha256(bytes) {
+    const raw = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    return Array.from(raw, x => x.toString(16).padStart(2, "0")).join("");
+  }
+  function exclusive(f) {
+    return async () => {
+      if (busy) return;
+      busy = true; lockBtn.disabled = true; unlockBtn.disabled = true;
+      try { await f(); }
+      catch (_) {
+        say("HOLD: invalid or untrusted private file, wrong password or unsupported browser. Existing files and source data were not changed.");
+      } finally {
+        busy = false; lockBtn.disabled = false; unlockBtn.disabled = false;
+      }
+    };
+  }
+  function acceptPass(pass) {
+    const size = encoder.encode(pass).byteLength;
+    if (size < 12 || size > 1024) throw Error("weak or oversized passphrase");
+    return pass;
+  }
+  async function derive(pass, salt) {
+    const base = await crypto.subtle.importKey("raw", encoder.encode(acceptPass(pass)),
+      "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({
+      name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256"
+    }, base, {name: "AES-GCM", length: 256}, false, ["encrypt", "decrypt"]);
+  }
+  function choose(file, sizeLimit) {
+    if (!file || !Number.isSafeInteger(file.size) || file.size < 1 ||
+      file.size > sizeLimit) throw Error("missing, empty or oversized private file");
+    return file;
+  }
+  function save(filename, bytes, mime) {
+    if (!validName(filename) && !filename.endsWith(".luhr")) {
+      throw Error("invalid PRIVATE output filename");
+    }
+    const url = URL.createObjectURL(new Blob([bytes], {type: mime}));
+    const link = document.createElement("a");
+    link.href = url; link.download = filename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  function bytesForFile(file) {
+    if (!validName(file.name)) throw Error("unsafe original private filename");
+    return file.arrayBuffer().then(data => new Uint8Array(data));
+  }
+  async function seal() {
+    if (!crypto?.subtle || !crypto.getRandomValues) throw Error("WebCrypto unavailable");
+    const file = choose(sealInput.files?.[0], MAX_BYTES);
+    const pass = acceptPass(pwBox.value);
+    if (pass !== confirmBox.value) throw Error("password confirmation mismatch");
+    const name = encoder.encode(file.name);
+    if (!validName(file.name) || name.length > 120) throw Error("unsafe private filename");
+    const sourceBytes = await bytesForFile(file);
+    const plain = new Uint8Array(2 + name.length + sourceBytes.length);
+    new DataView(plain.buffer).setUint16(0, name.length, false);
+    plain.set(name, 2); plain.set(sourceBytes, 2 + name.length);
+    const header = new Uint8Array(HEADER);
+    header.set(MAGIC);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    header.set(salt, 8); header.set(nonce, 24);
+    new DataView(header.buffer).setUint32(36, plain.length, false);
+    const key = await derive(pass, salt);
+    const encrypted = new Uint8Array(await crypto.subtle.encrypt({
+      name: "AES-GCM", iv: nonce, additionalData: header, tagLength: 128
+    }, key, plain));
+    const out = new Uint8Array(HEADER + encrypted.length);
+    out.set(header); out.set(encrypted, HEADER);
+    plain.fill(0); sourceBytes.fill(0);
+    const fingerprint = await sha256(out);
+    // No customer source, grants, consent or reviewer role is authenticated here.
+    if (!confirm("Save an encrypted PRIVATE handoff? Share the passphrase through a different authenticated channel. Encryption alone is NOT client/operator authorization.")) return;
+    save("LightUp-PRIVATE-HUMAN-handoff.luhr", out, "application/octet-stream");
+    say("Encrypted PRIVATE courier file prepared. Envelope SHA-256: " + fingerprint + "\nShare this digest separately through an independently authenticated channel, if desired. This is not sender verification or authorization.");
+    pwBox.value = ""; confirmBox.value = "";
+    sealInput.value = "";
+  }
+  async function open() {
+    if (!crypto?.subtle) throw Error("WebCrypto unavailable");
+    const file = choose(openInput.files?.[0], MAX_ENVELOPE);
+    if (!file.name.toLowerCase().endsWith(".luhr")) throw Error("not a courier envelope");
+    const pass = acceptPass(pwBox.value);
+    const blob = new Uint8Array(await file.arrayBuffer());
+    const actualDigest = await sha256(blob);
+    const expected = digestExpected.value.trim().toLowerCase();
+    if (expected && (!/^[0-9a-f]{64}$/.test(expected) || expected !== actualDigest)) {
+      throw Error("unauthenticated envelope fingerprint mismatch");
+    }
+    if (blob.length < HEADER + 16) throw Error("short envelope");
+    if (!MAGIC.every((v, i) => v === blob[i])) throw Error("wrong envelope version");
+    const header = blob.subarray(0, HEADER);
+    const declared = new DataView(blob.buffer, blob.byteOffset, blob.byteLength).getUint32(36, false);
+    if (declared < 4 || declared > MAX_BYTES + 122 || blob.length !== HEADER + declared + 16) {
+      throw Error("invalid authenticated plaintext length");
+    }
+    const key = await derive(pass, header.subarray(8, 24));
+    const plain = new Uint8Array(await crypto.subtle.decrypt({
+      name: "AES-GCM", iv: header.subarray(24, 36), additionalData: header,
+      tagLength: 128
+    }, key, blob.subarray(HEADER)));
+    if (plain.length !== declared) throw Error("plaintext length drift");
+    const nameLen = new DataView(plain.buffer, plain.byteOffset, plain.byteLength).getUint16(0, false);
+    if (nameLen < 1 || nameLen > 120 || 2 + nameLen >= plain.length) {
+      throw Error("invalid encrypted filename");
+    }
+    const originalName = decoder.decode(plain.subarray(2, 2 + nameLen));
+    if (!validName(originalName)) throw Error("unsafe decrypted filename");
+    const data = plain.subarray(2 + nameLen);
+    if (data.length > MAX_BYTES) throw Error("oversized decrypted file");
+    if (!confirm("Decrypt this locally authenticated AES-GCM payload? The content and sender are NOT independently trusted. Save privately; do not open HTML from unknown people.")) { plain.fill(0); return; }
+    save(originalName, data, "application/octet-stream");
+    say("PRIVATE original file downloaded without automatic execution. Envelope SHA-256: " + actualDigest + "\nAn independently supplied matching digest is only a byte-comparison, not an authenticated sender or scope grant.");
+    pwBox.value = ""; confirmBox.value = ""; openInput.value = "";
+    plain.fill(0);
+  }
+  lockBtn.addEventListener("click", exclusive(seal));
+  unlockBtn.addEventListener("click", exclusive(open));
+  if (!globalThis.isSecureContext || !globalThis.crypto?.subtle) {
+    say("HOLD: WebCrypto secure context unavailable in this browser. Open the file locally in a supported browser; no remote hosting is required.");
+    lockBtn.disabled = true; unlockBtn.disabled = true;
+  }
+})();</script></body></html>
