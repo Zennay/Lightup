@@ -2011,3 +2011,42 @@ exact-head hosted + permanent named VPS CI, separately authenticated
 current client/operator consent with action-time revocation, and explicit
 HUMAN GO remain gating; Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD. No scans,
 real tasks, grant, verified finding, communication or deployment.
+
+
+## PRIVATE HUMAN proposed-review calendar (new owner collaboration workflow)
+
+After a **native original** owner HUMAN inbox, separately completed native
+operator follow-up and the **matching full original** operator CSV exist,
+the offline calendar lets the local HUMAN operator propose review days,
+discussion priority and a private next question for **every original slot**.
+It does NOT book appointments, send reminders, assign real staff, schedule
+assessments, authenticate owners, or establish consent or remediation.
+
+Open **foreground console action 56** to prepare a full source-byte-bound
+10-column CSV template and a source-minimal private counts view; edit the
+template only in private operator custody. Action **57** receives the entire
+edited CSV only after native re-admission of all original inputs, owner groups,
+source-slot order, owner HUMAN stages and exact source receipt hashes.
+Missing, reordered, duplicate or altered original slots fail closed.
+Only explicit ISO dates in 2000–2099, or blank dates, are permitted.
+Priority is a HUMAN proposal: `unset`, `human_urgent`, `near_term`, or
+`routine`. Questions are local HUMAN text, formula-safe and limited to
+240 characters, not verified findings.
+
+CLI, for manually selected original owner-only paths outside the checkout:
+
+    python3 assessment-workspace-ledger/portfolio_operator_calendar.py prepare       --history /private/original-history.json       --inbox /private/original-inbox.json       --followup /private/original-operator-followup.json       --operator-csv /private/original-operator-followup.csv       --reference-day 2026-10-21 --private-parent /private/output
+
+    python3 assessment-workspace-ledger/portfolio_operator_calendar.py receive       --history /private/original-history.json       --inbox /private/original-inbox.json       --followup /private/original-operator-followup.json       --operator-csv /private/original-operator-followup.csv       --proposed-csv /private/HUMAN-proposed-calendar-template.csv       --reference-day 2026-10-21 --private-parent /private/output
+
+Each invocation creates a **new** owner-private 0700 directory and writes
+0600 data; nothing is overwritten, transmitted, deleted or dispatched.
+Receive creates a complete source-bound HUMAN-only JSON receipt and CSV,
+a **source-minimal** count/index page with no owners/case IDs/notes/hashes,
+and individual owner-private HTML agenda rooms with local proposed days
+and HUMAN questions. The operator selects a reference day explicitly; the
+earlier/same/later categories describe only *proposed* days, not overdue
+real tasks. All generated files remain PRIVATE; the index is not public
+or client-safe. Every receipt explicitly records that authorization,
+real appointments, verified remediation, actual dispatch, real recipient
+identity and consent remain **false**. This held product is not on main/live.
