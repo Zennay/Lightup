@@ -322,3 +322,37 @@ service, does not assert source authenticity, and requires an explicit
 passphrase supplied only inside the local browser. Legacy backups remain
 fully supported. A portable vault should be kept on authorized PRIVATE media:
 even HUMAN worksheets and group policies can reveal sensitive operations.
+
+
+### Portable original HUMAN vault export (.luhv)
+
+The original HUMAN-only CSV bytes are now sealed together with the complete
+exact-source-bound v2 appointment plan and declared HUMAN-group availability
+under a new, disjoint authenticated AES-256-GCM context (PBKDF2-SHA256, fresh
+salt/nonce, 310,000 derivation iterations), not interchangeable with old
+.luhc plan-only or .luhw no-original backup envelopes. The 1 MiB encrypted
+file limit covers **all** bundled content; oversized original worksheet or
+plan is refused, never truncated. Source SHA-256 is recomputed over the
+byte-exact original in memory before encryption. Export is explicitly
+confirmed and creates only a locally downloaded PRIVATE file; it clears
+unsaved indicators only after handoff. Neither SHA nor ciphertext constitutes
+authenticated producer identity or permission to assess an asset.
+
+
+### Self-contained .luhv reopen without separate source CSV
+
+Portable encrypted HUMAN vault import is available even when no original
+worksheet has been opened yet. It uses a separate authenticated envelope
+magic and AES-GCM AAD from both older encrypted backup types. After
+decryption, the complete byte-delimited ORIGINAL HUMAN CSV is strictly
+parsed, its unsigned SHA-256 independently recomputed, every v2 local
+appointment checked against the newly admitted original ordinals,
+timestamp/timezone and common private calendar series, and each
+original self-declared owner-group policy fully validated. Source,
+appointment and policy data are held in temporary state until all three
+are admitted, the prior workroom remains unchanged on any error, and
+the user explicitly confirms a single atomic replacement. Reopening
+restores the source's original HUMAN rows, the entire schedule, all
+group policies and private calendar event series without browser
+storage or servers. The browser does not authenticate the original
+CSV producer, true reviewer identity, actual consent or findings.

@@ -1436,6 +1436,192 @@
       inform("Encrypted PRIVATE source-bound plan downloaded. Password cleared from input fields.");
     }finally{plain.fill(0);clearPasswords();}
   }
+  const VAULT_MAGIC=new Uint8Array([76,85,72,86,49,10]); // LUHV1 + LF
+  const VAULT_AAD=new TextEncoder().encode(
+    "lightup.human_calendar.portable_original_workroom.v1|REVIEW_ONLY|NO_AUTHORITY");
+  function clearVaultPasswords(){
+    $("vaultPassword").value="";$("vaultConfirm").value="";
+  }
+  function vaultPack(source,planCSV,capacityCSV){
+    hold(source instanceof Uint8Array && source.length>0 && source.length<=MAX_BYTES);
+    const encoder=new TextEncoder(),p=encoder.encode(planCSV),c=encoder.encode(capacityCSV);
+    const prefix=encoder.encode("LUHV-PRIVATE-1\n"+source.length+"\n"+p.length+"\n"+c.length+"\n");
+    hold(p.length>0 && c.length>0 && prefix.length+source.length+p.length+c.length <= MAX_BYTES-80);
+    const data=new Uint8Array(prefix.length+source.length+p.length+c.length);
+    data.set(prefix,0);data.set(source,prefix.length);
+    data.set(p,prefix.length+source.length);data.set(c,prefix.length+source.length+p.length);
+    p.fill(0);c.fill(0);return data;
+  }
+  async function vaultUnpack(plaintext){
+    hold(plaintext.length>0 && plaintext.length<=MAX_BYTES);
+    let cursor=0;
+    const line=()=>{
+      const end=plaintext.indexOf(10,cursor);
+      hold(end>cursor && end-cursor<=32 && end<110);
+      const result=decoder.decode(plaintext.subarray(cursor,end));
+      cursor=end+1;return result;
+    };
+    hold(line()==="LUHV-PRIVATE-1");
+    const lengths=[line(),line(),line()];
+    hold(lengths.every(v=>/^[1-9]\d{0,6}$/.test(v)));
+    const [a,b,c]=lengths.map(Number);
+    hold(a+b+c+cursor===plaintext.length && a>0 && b>0 && c>0);
+    const source=plaintext.slice(cursor,cursor+a);
+    cursor+=a;
+    const planText=decoder.decode(plaintext.subarray(cursor,cursor+b));
+    cursor+=b;
+    const policyText=decoder.decode(plaintext.subarray(cursor,cursor+c));
+    const raw=decoder.decode(source);
+    hold(!raw.startsWith("\uFEFF"));
+    const sourceRows=original(csv(raw,HEAD.length));
+    hold(sourceRows.length>0 && sourceRows.length<=MAX_ROWS);
+    const sourceHash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",source)),
+      v=>v.toString(16).padStart(2,"0")).join("");
+    const head=csv(planText,PLAN_HEAD_V2.length);
+    hold(JSON.stringify(head[0])===JSON.stringify(PLAN_HEAD_V2) &&
+      head.length===sourceRows.length+1);
+    const schedule=new Map();let recoveredSeries="";
+    head.slice(1).forEach((r,i)=>{
+      hold(r[0]===sourceHash && r[1]===String(i+1) && r[6]===zone &&
+        /^[0-9a-f]{32}$/.test(r[7]));
+      if(i===0)recoveredSeries=r[7];
+      hold(r[7]===recoveredSeries);
+      const slot=admitSlot(r[2],r[3],r[4],r[5]);
+      if(slot)schedule.set(i+1,slot);
+    });
+    const groups=Array.from(new Set(sourceRows.map(r=>r.group))).sort((a,b)=>a.localeCompare(b));
+    hold(groups.length<=256);
+    const policyRows=csv(policyText,CAP_HEAD.length);
+    hold(JSON.stringify(policyRows[0])===JSON.stringify(CAP_HEAD) &&
+      policyRows.length===groups.length+1);
+    const policies=new Map();
+    policyRows.slice(1).forEach((r,i)=>{
+      hold(r[0]===sourceHash && r[1]===recoveredSeries &&
+        r[2]===zone && r[3]===groups[i]);
+      const days=r[4].split(";").map(v=>Number(v));
+      hold(days.join(";")===r[4] && /^([1-9]|1[0-2])$/.test(r[7]));
+      policies.set(r[3],admitCapacityRule({days,start:r[5],end:r[6],
+        maximum:Number(r[7]),blackouts:r[8]?r[8].split(";"):[]}));
+    });
+    return {source,sourceRows,sourceHash,series:recoveredSeries,schedule,policies};
+  }
+  async function readPortableVault(file,password){
+    hold(crypto.subtle && password.length>=16 && password.length<=256);
+    let raw=null,cipher=null,plaintext=null;
+    try{
+      raw=await bytes(file);
+      hold(raw.length>VAULT_MAGIC.length+16+12+16 &&
+        VAULT_MAGIC.every((v,i)=>v===raw[i]));
+      const salt=raw.slice(6,22),iv=raw.slice(22,34);cipher=raw.slice(34);
+      const key=await handoffKey(password,salt);
+      try{
+        plaintext=new Uint8Array(await crypto.subtle.decrypt(
+          {name:"AES-GCM",iv,additionalData:VAULT_AAD,tagLength:128},key,cipher));
+      }catch(_){hold(false);}
+      return await vaultUnpack(plaintext);
+    }finally{
+      if(plaintext)plaintext.fill(0);
+      if(cipher)cipher.fill(0);
+      if(raw)raw.fill(0);
+    }
+  }
+  async function restorePortableVault(file){
+    hold(crypto.subtle);
+    const wasActive=active,priorSource=originalBytes;
+    const snapshot=active?workroomFingerprint():null;
+    const previousUnsaved=wasActive&&(changed||capacityDirty||capacityEditorDirty);
+    const password=$("vaultPassword").value;
+    let admitted=null;
+    try{
+      admitted=await readPortableVault(file,password);
+      hold(active===wasActive && originalBytes===priorSource &&
+        (!active || snapshot===workroomFingerprint()));
+      if(!confirm("Open encrypted PRIVATE ORIGINAL HUMAN worksheet ("+
+        admitted.sourceRows.length+" rows), "+admitted.schedule.size+" proposed reminders and "+
+        admitted.policies.size+" declared HUMAN group rules? "+
+        (previousUnsaved?"WARNING: your current browser workroom has unsaved changes that will be LOST. ":"")+
+        "This REPLACES the current browser workroom after full validation."+
+        " All plaintext stays in browser memory. Original source is UNSIGNED;"+
+        " possession of this vault does NOT verify its producer, client/operator consent,"+
+        " security findings, scope or real calendar access. Continue?"))return;
+      hold(active===wasActive && originalBytes===priorSource &&
+        (!active || snapshot===workroomFingerprint()));
+      if(originalBytes)originalBytes.fill(0);
+      originalBytes=admitted.source;
+      items=admitted.sourceRows;hash=admitted.sourceHash;
+      seriesId=admitted.series;plan=admitted.schedule;
+      capacityRules=admitted.policies;
+      active=true;changed=false;capacityDirty=false;capacityEditorDirty=false;
+      exportedPlan=true;page=0;agendaPage=0;workloadPage=0;changesPage=0;
+      selectedGroup=null;backlogPage=0;backlogProposal=null;
+      capacityProposal=null;workroomComparison=null;workroomComparePage=0;
+      reconcileSelection.clear();reconcileGroupSelection.clear();reconcileProposal=null;
+      conflictProposal=null;publicationBaseline=null;
+      $("baselineStatus").textContent="No previous publication loaded.";
+      $("workroomCompareRows").replaceChildren();
+      monthAnchor=nowToday().slice(0,7);weekAnchor=nowToday();
+      $("monthGroup").value="";$("weekGroup").value="";
+      $("weekConflicts").checked=false;$("weekConstraints").checked=false;
+      $("backlogView").value="open";$("backlogGroup").value="";
+      $("backlogQuery").value="";$("backlogStart").value=nowToday();
+      $("severity").value="";$("stage").value="";$("status").value="";
+      $("query").value="";$("agendaQuery").value="";
+      $("agendaHorizon").value="7";$("workloadQuery").value="";
+      $("identity").textContent=items.length+
+        " HUMAN rows · private unsigned original digest "+hash.slice(0,12)+"…";
+      $("tz").textContent=zone;
+      for(const id of ["desk","agenda","week","month","backlog","workload",
+        "capacity","brief","out"])$(id).hidden=false;
+      $("reset").disabled=false;$("capacityApply").disabled=true;
+      const select=$("capacityGroup");select.replaceChildren();
+      capacityGroups().forEach(group=>{
+        const option=dom("option",group||"(unassigned)");
+        option.value=group;select.append(option);
+      });
+      if(select.options.length){select.value=capacityGroups()[0];capacityLoadEditor();}
+      $("capacityFirst").value=nowToday();
+      $("capacityMode").value="unscheduled";$("capacityHorizon").value="30";
+      render();
+      inform("One self-contained encrypted PRIVATE original HUMAN worksheet, all local reminders "+
+        "and declared availability successfully reopened from an authenticated ciphertext."+
+        " Original producer, consent and security claims remain UNVERIFIED. No external calendar changed.");
+    }finally{
+      if(admitted && originalBytes!==admitted.source)admitted.source.fill(0);
+      clearVaultPasswords();
+    }
+  }
+  async function savePortableVault(){
+    hold(active && originalBytes && items.length>0 && !capacityEditorDirty && crypto.subtle &&
+      /^[0-9a-f]{64}$/.test(hash));
+    const passphrase=$("vaultPassword").value,confirmation=$("vaultConfirm").value;
+    hold(passphrase.length>=16 && passphrase.length<=256 && passphrase===confirmation);
+    const source=originalBytes,snapshot=workroomFingerprint();
+    const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",source)),
+      b=>b.toString(16).padStart(2,"0")).join("");
+    hold(active && originalBytes===source && snapshot===workroomFingerprint() && digest===hash);
+    const plaintext=vaultPack(source,privatePlanCSV(),privateCapacityCSV());
+    const salt=new Uint8Array(16),iv=new Uint8Array(12);
+    crypto.getRandomValues(salt);crypto.getRandomValues(iv);
+    try{
+      const key=await handoffKey(passphrase,salt);
+      const cipher=new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv,additionalData:VAULT_AAD,tagLength:128},key,plaintext));
+      const output=new Uint8Array(VAULT_MAGIC.length+16+12+cipher.length);
+      output.set(VAULT_MAGIC,0);output.set(salt,VAULT_MAGIC.length);
+      output.set(iv,VAULT_MAGIC.length+16);output.set(cipher,VAULT_MAGIC.length+28);
+      hold(output.length<=MAX_BYTES && active && originalBytes===source &&
+        snapshot===workroomFingerprint() && !capacityEditorDirty);
+      if(!confirm("Download ONE PORTABLE encrypted PRIVATE HUMAN file with ORIGINAL worksheet bytes, "+
+        "all proposed appointments AND complete declared group rules? Even the original HUMAN text can "+
+        "contain private operations; use only authorized storage and a separate passphrase. "+
+        "Original producer, identity, scope, consent and findings are NOT authenticated."))return;
+      hold(active && originalBytes===source && snapshot===workroomFingerprint() && !capacityEditorDirty);
+      download(output,"lightup-private-original-human-vault.luhv","application/octet-stream");
+      changed=false;capacityDirty=false;exportedPlan=true;render();
+      inform("Portable PRIVATE original HUMAN worksheet, all reminders and all declared group rules encrypted "+
+        "into one locally downloaded file. Store passphrase separately; no server or security target contacted.");
+    }finally{plaintext.fill(0);clearVaultPasswords();}
+  }
   const WORK_MAGIC=new Uint8Array([76,85,72,87,49,10]); // LUHW1 + LF
   const WORK_AAD=new TextEncoder().encode(
     "lightup.human_calendar.private_workroom.v1|REVIEW_ONLY|NO_AUTHORITY");
@@ -2135,6 +2321,19 @@
     workroomComparison=null;workroomComparePage=0;
     $("workroomCompareRows").replaceChildren();
     $("workroomCompareStatus").textContent="Compared HUMAN workroom forgotten from browser memory.";
+  });
+  hook("restorePortableVault","change",async e=>{
+    try{if(e.target.files[0])await restorePortableVault(e.target.files[0]);}
+    catch(_){inform("Portable PRIVATE ORIGINAL HUMAN vault rejected (HOLD)."+
+      " Wrong password, corrupt/oversized data, unsupported version or invalid HUMAN"+
+      " source/policy bindings. Prior browser workroom unchanged.",true);}
+    finally{e.target.value="";clearVaultPasswords();}
+  });
+  hook("savePortableVault","click",async()=>{
+    try{await savePortableVault();}
+    catch(_){inform("Portable PRIVATE original HUMAN workroom could not be encrypted (HOLD). "+
+      "Check passphrase, current source, unsaved group editor fields and file size.",true);}
+    finally{clearVaultPasswords();}
   });
   hook("encryptWorkroom","click",async()=>{
     try{await saveEncryptedWorkroom();}
