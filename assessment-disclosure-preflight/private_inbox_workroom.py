@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import hmac
 import os
 import sys
 
@@ -16,7 +15,7 @@ import private_inbox_actions as actions
 import private_inbox_board as board
 import private_intake as inbox
 import private_reopen as original
-from human_review import Hold, source_bytes
+from human_review import Hold
 
 
 def main() -> int:
@@ -75,17 +74,10 @@ def main() -> int:
             # Reconstruct every expected byte from the currently re-admitted
             # original rooms. A saved workroom is accepted only as a complete,
             # owner-private, exact four-file match; it is never rewritten.
-            saved_fd, saved_path = inbox.user_private_parent(args.saved_workroom_dir)
-            try:
-                expected_names = {name for name, _ in artifacts}
-                if set(os.listdir(saved_fd)) != expected_names:
-                    raise ValueError("saved PRIVATE workroom has missing or unexpected files")
-                for name, expected_bytes in artifacts:
-                    actual_bytes = source_bytes(os.path.join(saved_path, name))
-                    if not hmac.compare_digest(actual_bytes, expected_bytes):
-                        raise ValueError("saved PRIVATE workroom differs from current original inputs")
-            finally:
-                os.close(saved_fd)
+            # Use the same strict owner-owned 0700 directory, full inventory,
+            # regular unlinked 0600 file and exact-byte custody boundary as
+            # standalone HUMAN template, finalized-plan and revision reopen.
+            actions.reopen_private_artifacts(args.saved_workroom_dir, artifacts)
             print("REVIEW_ONLY: saved PRIVATE HUMAN workroom reopened read-only; all four output files match.")
             print("Original rooms and saved outputs were not changed; no authority or release was created.")
             return 2
