@@ -30,6 +30,8 @@
     evidence:["evidence_quality","reproducibility","remediation_quality","retest_correctness"],
     operations:["human_interventions","tool_calls","runtime_seconds","compute_cost_usd"]};
   let discussions=new Map(),queueFocus=0,batchUndo=null;
+  let reviewRounds=null; // Two explicit PRIVATE HUMAN drafts; no data leaves the browser.
+
 
   // Unlike JSON.parse, reject repeated JSON keys (including escaped aliases) at every depth.
   function strictJSON(raw) {
@@ -415,6 +417,7 @@
     }
   }
   function render(){
+    displayReviewRounds();
     const active=reports.length>0,stats=reports.map(aggregates);
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
@@ -495,7 +498,7 @@
         meta.push({bytes:bytes.byteLength,sha,alias:""});
         next.push(decodeReport(strictJSON(source)));
       }
-      compatible(next);discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
+      compatible(next);clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
       reports=next;sourceMeta=meta;sourceHashes=hashes.every(h=>typeof h==="string")?hashes:[];demo=false;selectedCase="";
       $("draftMessage").textContent=sourceHashes.length?"Private restore available only for identical source bytes.":"WebCrypto unavailable: private draft save/restore disabled.";
       setStatus("Accepted "+next.length+" compatible, unverified lab comparison files. All remain non-authorizing.");
@@ -515,7 +518,7 @@
       const hash=await hashBytes(bytes);
       const newHashes=sourceHashes.length===reports.length&&hash?
         [...sourceHashes,hash]:[];
-      reports=newReports;sourceHashes=newHashes;
+      clearReviewRounds();reports=newReports;sourceHashes=newHashes;
       sourceMeta=[...sourceMeta,{bytes:bytes.byteLength,sha:hash,alias:""}];batchUndo=null;
       $("draftMessage").textContent=sourceHashes.length?
         "Source set changed: earlier private drafts no longer bind; save new preferences.":
@@ -553,7 +556,7 @@
     });
   }
   function demoLoad(){
-    try{const next=fictional().map(decodeReport);compatible(next);discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
+    try{const next=fictional().map(decodeReport);compatible(next);clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
       reports=next;sourceMeta=[];sourceHashes=[];demo=true;
       $("draftMessage").textContent="Private source-bound drafts are unavailable for fictional demo.";
       selectedCase="";setStatus("FICTIONAL DEMO ONLY: four invented candidates; no real assessments or permissions.");render();
@@ -811,7 +814,7 @@
       const ids=queueIds(),next=new Map();
       for(const row of x.discussions||[])next.set(ids[row.ordinal-1],
         {route:row.route,stage:row.stage});
-      discussions=next;batchUndo=null;queueFocus=x.focus.caseIndex;
+      clearReviewRounds();discussions=next;batchUndo=null;queueFocus=x.focus.caseIndex;
       sourceMeta.forEach((entry,i)=>entry.alias=x.source_aliases?.[i]||"");
       PREF_KEYS.forEach(k=>$(k).value=String(x.thresholds[k]));
       DIM_KEYS.forEach(k=>$(k).checked=x.dimensions[k]);
@@ -823,7 +826,126 @@
       $("draftMessage").textContent="PRIVATE source-bound settings and discussion state restored. No grant, consent or permission created.";
     }catch(_){$("draftMessage").textContent="HOLD: changed, malformed or incompatible PRIVATE draft. Workspace unchanged.";}
   }
+
+  // Offline, separately chosen, unsigned HUMAN discussion rounds from identical
+  // original source bytes. No timestamp, reviewer identity or order is inferred.
+  function clearReviewRounds(){
+    reviewRounds=null;
+    $("draftRounds").value="";
+    $("roundsMessage").textContent="";
+    $("roundsSummary").textContent="";
+    $("roundsTable").textContent="";
+    $("exportRoundsCSV").disabled=true;
+    $("adoptRound").disabled=true;
+  }
+  function roundRows(draft){
+    const n=queueIds().length,rows=Array.from({length:n},()=>({
+      route:"unrouted",stage:"needs_review"
+    }));
+    for(const row of draft.discussions||[])
+      rows[row.ordinal-1]={route:row.route,stage:row.stage};
+    return rows;
+  }
+  function roundSettingsDiff(first,second){
+    let changed=0;
+    for(const key of PREF_KEYS)if(first.thresholds[key]!==second.thresholds[key])changed++;
+    for(const key of DIM_KEYS)if(first.dimensions[key]!==second.dimensions[key])changed++;
+    for(const key of ["pairA","pairB","caseIndex","metric"])
+      if(first.focus[key]!==second.focus[key])changed++;
+    return changed;
+  }
+  function displayReviewRounds(){
+    const valid=!!reviewRounds&&reports.length>=2&&!demo&&
+      sourceHashes.length===reports.length&&
+      sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]);
+    $("draftRounds").disabled=!(reports.length>=2&&!demo&&sourceHashes.length===reports.length);
+    $("exportRoundsCSV").disabled=!valid;
+    $("adoptRound").disabled=!valid;
+    if(!valid){
+      $("roundsSummary").textContent="";
+      $("roundsTable").textContent="";
+      return;
+    }
+    const diffs=reviewRounds.diff;
+    $("roundsSummary").textContent=diffs.length+" of "+queueIds().length+
+      " anonymous cases have changed local HUMAN group or discussion stage. "+
+      reviewRounds.settingChanges+" separate hypothetical setting/focus choices differ. "+
+      "File order is a manual selection, not verified chronology. Zero changes cannot prove remediation.";
+    $("roundsTable").innerHTML=table(
+      ["Anonymous case","First HUMAN stage","Second HUMAN stage",
+       "First proposed group","Second proposed group"],
+      diffs.map(d=>["Lab case "+String(d.ordinal).padStart(2,"0"),
+        nice(d.before.stage),nice(d.after.stage),nice(d.before.route),nice(d.after.route)])
+    );
+    if(!diffs.length)$("roundsTable").textContent="No different local HUMAN case suggestions; source findings remain unverified.";
+  }
+  async function compareReviewRounds(files){
+    try{
+      assert(files.length===2&&!demo&&reports.length>=2&&
+        sourceHashes.length===reports.length);
+      const drafts=[];
+      for(const file of files){
+        assert(file&&file.size>0&&file.size<=32768);
+        const bytes=await file.arrayBuffer();
+        assert(bytes.byteLength>0&&bytes.byteLength<=32768);
+        const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+        const draft=checkDraft(strictJSON(raw));
+        // Earlier settings-only v1 drafts have no HUMAN queue to compare.
+        assert(draft.schema===DRAFT_SCHEMA_V2||draft.schema===DRAFT_SCHEMA);
+        drafts.push(draft);
+      }
+      const [before,after]=drafts.map(roundRows),diff=[];
+      for(let i=0;i<before.length;i++){
+        if(before[i].route!==after[i].route||before[i].stage!==after[i].stage)
+          diff.push({ordinal:i+1,before:before[i],after:after[i]});
+      }
+      // All admission and source binding above must succeed before replacing view.
+      reviewRounds={hashes:[...sourceHashes],before,after,diff,
+        settingChanges:roundSettingsDiff(drafts[0],drafts[1])};
+      $("roundsMessage").textContent="Two PRIVATE source-byte-bound HUMAN drafts admitted. "+
+        "Only ordinal discussion changes shown. No identity, consent or reviewer chronology verified.";
+      displayReviewRounds();
+    }catch(_){
+      $("roundsMessage").textContent="HOLD: original source bytes, HUMAN schema or size mismatch. "+
+        "Prior local comparison and workspace are unchanged.";
+    }
+  }
+  function exportReviewRoundsCSV(){
+    if(!reviewRounds||demo||reports.length<2||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((h,i)=>h===reviewRounds.hashes[i]))return;
+    const header=["case_ordinal","first_local_stage","second_local_stage",
+      "first_proposed_group","second_proposed_group","local_human_discussion_only",
+      "source_identity_authenticated","authorized","consent_verified",
+      "dispatch_allowed","release_allowed","status"];
+    const lines=reviewRounds.diff.map(d=>[
+      d.ordinal,d.before.stage,d.after.stage,d.before.route,d.after.route,
+      "true","false","false","false","false","false","REVIEW_ONLY"].join(","));
+    download("lightup-PRIVATE-HUMAN-review-round-changes.csv",
+      header.join(",")+"\n"+lines.join("\n")+(lines.length?"\n":""),
+      "text/csv");
+    $("roundsMessage").textContent="PRIVATE changed-only HUMAN proposals saved locally. "+
+      "Missing changes never imply a security fix or approval.";
+  }
+  function adoptReviewRound(){
+    if(!reviewRounds||demo||reports.length<2||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((h,i)=>h===reviewRounds.hashes[i]))return;
+    if(!window.confirm("Replace current LOCAL anonymous HUMAN discussion suggestions "+
+      "with all suggestions from the second manually selected PRIVATE draft? "+
+      "This does not alter original lab data, evidence, consent or security findings."))return;
+    const ids=queueIds(),next=new Map();
+    reviewRounds.after.forEach((row,i)=>{
+      if(row.route!=="unrouted"||row.stage!=="needs_review")
+        next.set(ids[i],{route:row.route,stage:row.stage});
+    });
+    discussions=next;batchUndo=null;
+    $("roundsMessage").textContent="Second PRIVATE HUMAN discussion round copied "+
+      "to local queue. Hypothetical thresholds and original findings unchanged.";
+    render();
+  }
   function forget(){
+    clearReviewRounds();
     reports=[];sourceMeta=[];sourceHashes=[];demo=false;selectedCase="";settings=null;
     discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
     $("draftFile").value="";$("draftMessage").textContent="";
@@ -930,7 +1052,13 @@
     discussions.clear();batchUndo=null;$("queueMessage").textContent="Local human discussion suggestions forgotten.";
     drawQueue();
   });
+  $("exportRoundsCSV").addEventListener("click",exportReviewRoundsCSV);
+  $("adoptRound").addEventListener("click",adoptReviewRound);
   $("saveDraft").addEventListener("click",saveDraft);
+  $("draftRounds").addEventListener("change",e=>{
+    if(e.target.files.length)void compareReviewRounds([...e.target.files]);
+    e.target.value="";
+  });
   $("draftFile").addEventListener("change",e=>{
     if(e.target.files.length)void restoreDraft(e.target.files[0]);
     e.target.value="";
