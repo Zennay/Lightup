@@ -6,8 +6,8 @@
 Unsigned ZIP SHA-256: dc012bed8d0e58d9bd8bbb33320de327f0db859848ed8c8e5f68d799318028f3.
 
 **Source/package distinction (21 Oct):** the integrated source now carries the
-current candidate-matrix round-history feature in the scriptless HTML/JSON
-brief and long-form CSV. The committed v27 ZIP is an earlier packaged snapshot
+current candidate-matrix round-history feature in the scriptless HTML brief,
+aggregate JSON schema v5 and long-form CSV. The committed v27 ZIP is an earlier packaged snapshot
 and does not include this latest candidate-matrix integration. To rebuild a
 current local v28 package from this branch, run:
 python3 assessment-integrated-suite/package_offline.py --output assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip
