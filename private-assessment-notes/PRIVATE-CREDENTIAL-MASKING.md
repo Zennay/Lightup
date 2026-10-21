@@ -116,6 +116,18 @@ forms frequently present in assessment writeups:
   surrounding original metadata remain for HUMAN inspection; the source
   itself is unchanged. \`[REDACTED_HAR_COOKIE_VALUE]\` is a local
   navigation marker, not proof of complete privacy or permission to send.
+- **Fail-closed incomplete HAR admission (original source preserved):**
+  if a copied HAR-like JSON note cannot be admitted as one complete
+  bounded strict JSON document, or is embedded in free prose, the new
+  PRIVATE workroom substitutes the **entire derived note** with
+  [WITHHELD_PRIVATE_HAR_UNREVIEWED]. Oversized standalone structured
+  JSON (>128 KiB of decoded text) is also withheld as a whole rather
+  than accepting disconnected nested objects without their HAR paths.
+  The original privately owned source file remains unchanged and must be
+  examined separately by the source owner under HUMAN/HOLD. This prevents
+  partial heuristic review snippets from being mistaken for a complete
+  redacted HAR. It is intentionally conservative, including possible
+  ordinary JSON false positives; no clearance or safe export is implied.
 - **HAR request URL, redirect, header and upload-path minimisation:**
   new PRIVATE derivatives now withhold the entire original bounded HAR
   \`request.url\` string (including path/query/fragment), the
@@ -238,7 +250,7 @@ previously generated packets are not changed or reinterpreted.
 Neither presence nor absence of masking placeholders is evidence
 that secrets or personal data are absent.
 
-## NEW: navigable original-ordinal masking-cue desk (v12)
+## NEW: navigable original-ordinal masking-cue desk (v13)
 
 The native `notes.py masking-cues` and optional
 `notes.py prepare --with-mask-cues` now render a fully offline
@@ -250,15 +262,16 @@ groups show no original text, customer names, source digests, freeform
 HUMAN notes, credentials or authority claims. Zero counts are *not* clearance.
 
 New independent native cue receipts use
-`lightup.private_assessment_masking_cues.v12`, including new
+`lightup.private_assessment_masking_cues.v13`, including new
 opaque original HAR request/response body, WebSocket message, cookie,
 queryString, form-parameter, URL/redirect, arbitrary header and file-reference
-markers in their literal-count families. The original v11 query/form,
+markers plus a whole-source HAR REVIEW/HOLD marker in their
+literal-count families. The original v12 URL/header, v11 query/form,
 v10 cookie, v9 body/frame, v8 HAR form/JSON/multipart and v1-v7 families
-remain exactly reopenable under their historical marker algorithms,
+remain exactly reopenable with their original historical marker algorithms,
 without silent upgrade.
 The original source-bound 0700/0600 custody is unchanged. The read-only
-`notes.py masking-cues-reopen` accepts **v1 through v11** historical
+`notes.py masking-cues-reopen` accepts **v1 through v12** historical
 receipts and their original HTML/CSV bytes; existing historical packets
 are never rewritten, auto-upgraded or silently normalized. In particular,
 new cue navigation does not change the canonical original source manifest,

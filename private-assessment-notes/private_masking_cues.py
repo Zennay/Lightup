@@ -30,7 +30,8 @@ V8_SCHEMA = "lightup.private_assessment_masking_cues.v8"
 V9_SCHEMA = "lightup.private_assessment_masking_cues.v9"
 V10_SCHEMA = "lightup.private_assessment_masking_cues.v10"
 V11_SCHEMA = "lightup.private_assessment_masking_cues.v11"
-SCHEMA = "lightup.private_assessment_masking_cues.v12"
+V12_SCHEMA = "lightup.private_assessment_masking_cues.v12"
+SCHEMA = "lightup.private_assessment_masking_cues.v13"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -113,6 +114,13 @@ GROUPS = ((V11_GROUPS[0][0],
           (V11_GROUPS[2][0],
            V11_GROUPS[2][1] + ("[REDACTED_HAR_FILE_REFERENCE]",)),
           V11_GROUPS[3])
+V12_GROUPS = GROUPS
+# V13 flags wholly withheld ambiguous HAR source copies, without leaking
+# original text, absolute paths, metadata, or source identity.
+GROUPS = (*V12_GROUPS[:2],
+          (V12_GROUPS[2][0],
+           V12_GROUPS[2][1] + ("[WITHHELD_PRIVATE_HAR_UNREVIEWED]",)),
+          V12_GROUPS[3])
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
@@ -249,6 +257,9 @@ def reopen(original: str, cue_room: str) -> int:
                            ensure_ascii=False) + "\n").encode("utf-8")
     if stored_receipt == serialized_receipt(SCHEMA):
         derived = cues(rows)
+        render_page = cue_page
+    elif stored_receipt == serialized_receipt(V12_SCHEMA):
+        derived = cues(rows, groups=V12_GROUPS)
         render_page = cue_page
     elif stored_receipt == serialized_receipt(V11_SCHEMA):
         derived = cues(rows, groups=V11_GROUPS)
