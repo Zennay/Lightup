@@ -1,6 +1,6 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
-## Original local HUMAN discussion handoff: console 72–74
+## Original local HUMAN discussion handoff: console 72–75
 
 After offline `human-lab-route.html` + adjacent JavaScript exports a
 source-free JSON, a trusted owner may explicitly copy it into 0700/0600
@@ -12,6 +12,10 @@ input, canonical JSON/CSV and a scriptless 0600 viewer alongside an
 read-only against every exact output byte and rejects altered files.
 **74** compares 2–8 completely re-admitted source-free HUMAN discussion
 rooms in a user-declared order to create a new PRIVATE summary.
+**75** re-admits every original HUMAN round and recreates the
+prior stage attention board, timeline and unsigned history receipt
+byte-for-byte; altered or missing originals and changed history HOLD.
+Original HUMAN rooms cannot contain the generated history output.
 Neither SHA matching nor claimed marker changes establish true
 original lab source, chronology, remediation, permission, user identity,
 current consent or any verified finding. No native action is run
