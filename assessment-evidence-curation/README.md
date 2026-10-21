@@ -56,6 +56,16 @@ Result, NEW 0700 directory / private 0600 artifacts:
 
 Exit code 2 = REVIEW_ONLY product generated, 3 = HOLD; neither is a valid security verdict. All source and existing source-owner files remain unchanged.
 
+## Reopen a saved PRIVATE packet without re-running an assessment
+
+The **new read-only private-packet consistency command** works on a previously created owner-only output directory. This does NOT need to contact the original client, source, model, recipient or target:
+
+    python3 assessment-evidence-curation/packet_open.py --private-dir ./EXISTING-PRIVATE-EVIDENCE-DOSSIER
+
+Or choose **11** in the foreground PRIVATE operator console. Use an existing original 0700 owner-only folder with only the generated 0600 files, no symlinks/hardlinks, no additional files. The reopen operation rejects missing/modified original report, local directory, priority packet, source-minimized report or numerical-count summary, invalid/duplicate-key receipts, suspicious paths, owner/mode drift and unexpected extra files. The receipt now binds the directory and anonymous-counts file as unsigned bytes, as well as the existing report/priority packet bytes. Existing previously published receipt versions lack the new fields and intentionally HOLD on this newer reopen; do not rewrite old receipts or claim recovered integrity. Publish a new packet using the original source/worksheet/selection inputs when appropriate and authorized. No customer data or output is created or changed by reopen.
+
+**Exit 2** means only that recorded **UNSIGNED local bytes** in the existing packet agree. **Exit 3** means HOLD, not proof of alteration or fault. The original lab findings, source producer, recipient, privacy classification, client/operator consent, live revocation and security impact are not independently checked, and original source files could have changed since publication. This operation cannot authorize or release a packet. The directory's clickable local paths do not bypass independent disclosure and HUMAN reviews.
+
 ## Step 3 — Compare PRIVATE HUMAN selection revisions (without target work)
 
 Use two complete separately saved original-ordinal HUMAN selection CSVs, **both against the same exact original PRIVATE lab source, original manifest, seven-column HUMAN worksheet and selection-preparation receipt**:
@@ -99,7 +109,7 @@ Use the menu instead of assembling long paths or shell commands:
 
     python3 assessment-evidence-curation/console.py
 
-It offers **all eight complete offline workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
+It offers **eleven offline HUMAN/local-packet workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
 
 ## Step 5 — PRIVATE recipient HUMAN question/reply exchange (without assessment execution)
 
