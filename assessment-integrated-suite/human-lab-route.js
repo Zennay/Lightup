@@ -342,5 +342,110 @@
       $("result").textContent = "HOLD: untrusted route file refused (shape, size, sequence or authority claim). No changes applied.";
     }
   });
+
+  // Separate HUMAN reports form a local, ordered discussion comparison only.
+  // There is deliberately no timestamp, identity inference, source ingestion,
+  // stored session, network request, or application to active discussion markers.
+  let roundHistory = null;
+  function clearHistory() {
+    roundHistory = null;
+    $("history-view").hidden = true;
+    $("history-columns").replaceChildren();
+    $("history-rows").replaceChildren();
+    $("history-stage-summary").replaceChildren();
+    $("history-export").disabled = true;
+    $("history-clear").disabled = true;
+    $("history-result").textContent = "No prior HUMAN rounds selected.";
+  }
+  function transitionCount(id, rounds) {
+    let changes = 0;
+    for (let index = 1; index < rounds.length; index++) {
+      if (rounds[index][id] !== rounds[index - 1][id]) changes++;
+    }
+    return changes;
+  }
+  function renderHistory(rounds) {
+    roundHistory = rounds;
+    const header = node("tr");
+    header.append(node("th", "Original action"));
+    rounds.forEach((_, index) => header.append(node("th", "Selected round " + (index + 1))));
+    header.append(node("th", "Marker transitions"));
+    $("history-columns").replaceChildren(header);
+    const tbody = $("history-rows");
+    tbody.replaceChildren();
+    for (const id of ALL) {
+      const tr = node("tr");
+      const transitions = transitionCount(id, rounds);
+      if (transitions) tr.className = "changed";
+      tr.append(node("td", id + " · " + actionLabel[id]));
+      for (const report of rounds) tr.append(node("td", LABELS[report[id]]));
+      tr.append(node("td", String(transitions)));
+      tbody.append(tr);
+    }
+    const stages = $("history-stage-summary");
+    stages.replaceChildren();
+    for (const stage of STAGES) {
+      const ids = stage.steps.map(step => String(step[0]));
+      const changed = ids.filter(id => transitionCount(id, rounds) > 0).length;
+      const waiting = ids.filter(id => rounds[rounds.length - 1][id] === "NEEDS_INPUT").length;
+      const line = node("p", null, "history-stage");
+      line.append(node("strong", stage.title));
+      line.append(node("span", changed + "/" + ids.length + " actions with marker changes"));
+      line.append(node("span", waiting + " last-round needs-input markers"));
+      stages.append(line);
+    }
+    const changed = ALL.filter(id => transitionCount(id, rounds) > 0).length;
+    const transitions = ALL.reduce((n, id) => n + transitionCount(id, rounds), 0);
+    $("history-result").textContent = rounds.length + " explicitly ordered local HUMAN reports; " +
+      changed + "/20 original actions changed at least once, " + transitions +
+      " marker transitions. This is not authenticated chronology or assessment progress.";
+    $("history-view").hidden = false;
+    $("history-export").disabled = false;
+    $("history-clear").disabled = false;
+  }
+  $("history-json").addEventListener("change", async ev => {
+    const files = Array.from(ev.target.files || []);
+    ev.target.value = "";
+    // Never leave an old source-free comparison on screen after an invalid
+    // replacement selection; no partial imports or round order inference.
+    clearHistory();
+    if (!files.length) return;
+    if (files.length < 2 || files.length > 8) {
+      $("history-result").textContent = "HOLD: select 2–8 exact HUMAN discussion reports.";
+      return;
+    }
+    try {
+      const reports = [];
+      const signatures = new Set();
+      for (const file of files) {
+        const report = await readReport(file);
+        const signature = ALL.map(id => report[id]).join("|");
+        if (signatures.has(signature)) throw Error("Repeated identical HUMAN markers");
+        signatures.add(signature);
+        reports.push(report);
+      }
+      renderHistory(reports);
+    } catch (_) {
+      clearHistory();
+      $("history-result").textContent =
+        "HOLD: one or more original HUMAN self-reports were rejected. Nothing imported or changed.";
+    }
+  });
+  $("history-clear").addEventListener("click", () => {
+    clearHistory();
+    $("history-result").textContent = "Compared HUMAN reports cleared from memory.";
+  });
+  $("history-export").addEventListener("click", () => {
+    if (!roundHistory) return;
+    const heading = ["action", ...roundHistory.map((_, index) =>
+      "self_report_round_" + (index + 1)), "marker_transitions", "authority"];
+    const rows = [heading.join(",")];
+    for (const id of ALL) {
+      rows.push([id, ...roundHistory.map(report => report[id]),
+        String(transitionCount(id, roundHistory)), "REVIEW_ONLY"].join(","));
+    }
+    download("LightUp-PRIVATE-HUMAN-Lab-Rounds.csv",
+      rows.join("\r\n") + "\r\n", "text/csv");
+  });
   render();
 })();
