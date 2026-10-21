@@ -96,3 +96,11 @@ calendar, sends a recipient message, changes source data or verifies real-world
 availability. Nothing is changed if there is no match or confirmation is declined.
 The new local draft is marked unsaved; previously imported events require manual,
 separately reviewed PRIVATE calendar update/cancellation handoff.
+
+### Navigating sparse HUMAN calendars
+
+**Next matching scheduled week** and **Previous matching week** skip calendar weeks
+without HUMAN reminders rather than requiring dozens of clicks. They respect the
+selected HUMAN group and the optional overlap/availability-mismatch filters, and
+never change any planned date or export state. If nothing matches, the current
+week stays selected. All navigation remains local, in memory and source-free.

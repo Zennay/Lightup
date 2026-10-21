@@ -358,6 +358,38 @@
     inform("New HUMAN-only local time proposed for #"+ordinal+
       ". Previous calendar entry is not cancelled. Save the new plan and use explicit PRIVATE calendar change handoff if previously published.");
   }
+  function jumpScheduledWeek(direction){
+    hold(active && [1,-1].includes(direction));
+    const groupSelector=$("weekGroup");
+    const groups=capacityGroups();
+    const group=groupSelector.value?groups[Number(groupSelector.value)-1]:null;
+    const focusOverlap=$("weekConflicts").checked,focusRules=$("weekConstraints").checked;
+    const overlaps=focusOverlap?collisionIds():null;
+    const dailyCounts=new Map();
+    for(const row of items){
+      const slot=plan.get(row.ordinal);
+      if(!slot)continue;
+      const key=JSON.stringify([row.group,slot.day]);
+      dailyCounts.set(key,(dailyCounts.get(key)||0)+1);
+    }
+    const current=startWeek(weekAnchor||nowToday());
+    const matchingDays=items.flatMap(row=>{
+      const slot=plan.get(row.ordinal);
+      if(!slot||(group!==null&&row.group!==group)||
+        (focusOverlap&&!overlaps.has(row.ordinal))||
+        (focusRules&&!weekAvailabilityFlags(row,slot,dailyCounts).length))return [];
+      const day=startWeek(slot.day);
+      return [day];
+    }).filter(day=>direction>0?day>current:day<current).sort();
+    if(!matchingDays.length){
+      inform("No "+(direction>0?"later":"earlier")+
+        " HUMAN week matches the current group and warning filters. Current week unchanged.");
+      return;
+    }
+    weekAnchor=direction>0?matchingDays[0]:matchingDays[matchingDays.length-1];
+    renderWeek();
+    $("week").scrollIntoView({behavior:"smooth",block:"start"});
+  }
   function renderWeek(){
     if(!active)return;
     if(!weekAnchor)weekAnchor=nowToday();
@@ -1282,6 +1314,11 @@
   hook("weekForward","click",()=>{try{weekAnchor=moveDay(weekAnchor,7);renderWeek();}
     catch(_){inform("Cannot navigate beyond valid local dates.",true);}});
   hook("weekToday","click",()=>{weekAnchor=nowToday();renderWeek();});
+  hook("weekNextDue","click",()=>{try{jumpScheduledWeek(1);}
+    catch(_){inform("Could not locate a later HUMAN week under current filters.",true);}});
+  hook("weekPrevDue","click",()=>{try{jumpScheduledWeek(-1);}
+    catch(_){inform("Could not locate an earlier HUMAN week under current filters.",true);}});
+
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
