@@ -395,3 +395,27 @@ HUMAN groups and their notes stay out of this separate product. Still
 **PRIVATE**: human text may reveal client identities. No sharing, messaging,
 calendar event, permission, authorization, scanning or verified fix is
 performed. Original source, inbox and action queue remain untouched.
+
+### Reopen a selected stage/priority briefing against its full original lineage
+
+Console option **24**, or
+`priority_inbox_stage_brief_open.py`, reopens a saved option-23 briefing
+without writing or repairing anything. Supply the exact original source,
+manifest, worksheet, selection receipt, full selection CSV, complete curated
+packet, **every** original nonempty priority handoff and matching full HUMAN
+return CSV, the original complete PRIVATE inbox, and the saved briefing
+directory with the same explicit stage and priority.
+
+The native original inbox builder re-admits every source and response and
+reconstructs the full expected inbox. The selected brief is then regenerated
+in memory from those exact current bytes and compared with the saved folder:
+owner-owned 0700 directory, exactly three expected ordinary owner-owned
+0600 single-link files, and byte-for-byte HTML/counts/receipt match. Missing,
+extra, reordered, modified, unsafe or stale inputs HOLD without any repair or
+overwrite. An empty selected stage/priority remains a HOLD.
+
+This is stronger than the action queue's local custody convenience: the
+saved selected brief is matched to the current original source, every HUMAN
+return and the complete inbox, not just to its own unsigned hashes. It still
+does not authenticate a HUMAN identity, prove original-source authenticity,
+consent, disclosure authority, remediation or release.
