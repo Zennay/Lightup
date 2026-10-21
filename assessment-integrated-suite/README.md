@@ -2323,6 +2323,15 @@ load data. Changing current markers never endorses or imports a prior round.
 All data remains self-reported, unsigned and non-authorizing. The original
 release controls and explicit HUMAN GO remain separate and mandatory.
 
+## Current HUMAN Route plan: follow-up queue and scriptless brief
+
+The local HUMAN Lab Route Desk now offers two additional source-free exports:
+
+- **Export pending HUMAN follow-up queue (CSV)** lists only current markers that are NEEDS_INPUT, IN_PROGRESS or NOT_REVIEWED, sorted by marker category and then original stage/action order. The order is a discussion aid, not a risk or urgency score.
+- **Save scriptless current-plan brief (HTML)** produces a portable no-script/no-network report with five stage counts, the pending discussion queue, and every one of the original twenty action rows.
+
+Both outputs contain only fixed action captions, the four allowed self-reported marker labels and fixed HUMAN next-step prompts. They contain no source findings, targets, private notes, identity, filenames, timestamps or consent. DISCUSSED still means only that a discussion marker was selected; it never means executed, verified, remediated, authorized or released. The HTML is scriptless and CSP-restricted. Keep both exports private; they are unsigned and non-authorizing.
+
 ## Explicit all-action HUMAN continuation proposal
 
 The same browser-only local [HUMAN Lab Route Desk](human-lab-route.html)
