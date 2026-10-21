@@ -155,3 +155,32 @@ Reopen the entire original packet using the original five-file and source gates,
     python3 assessment-launchpad/workspace.py --verify-workspace-dir ~/private-lab-whole-workspace
 
 For changed HUMAN responses, download from human-editor/lightup-lab-human-editor.html, move the download to a separate owner-only mode-0700 input directory, chmod 600 the JSON, then use review_desk.py --responses with a NEW private output directory. Compare separately admitted HUMAN rounds via compare_review.py. No claim of authorship, identity, consent, valid scope, completed review, cleared risk, remediation or HUMAN GO is possible from this workflow.
+
+
+## Source-bound PRIVATE HUMAN role inbox
+
+The separate native routing.py turns one already-produced, exactly admitted original PRIVATE HUMAN round into a role-specific human follow-up queue. Original source bundle and HUMAN round are re-opened and revalidated before publication. This is not a scan or assignment of verified consent.
+
+    mkdir -m 700 ~/private-lab-role-inbox
+    python3 assessment-launchpad/routing.py \
+      --bundle-dir ~/private-lab-launchpad-output \
+      --round-dir ~/private-lab-human-round-2 \
+      --role SECURITY_REVIEWER \
+      --stage FOLLOW_UP \
+      --output-dir ~/private-lab-role-inbox
+
+Filter options: --role ALL or one admitted HUMAN role; --stage ALL or NEEDS_INPUT, HUMAN_REVIEW or FOLLOW_UP. All outputs are no-overwrite, mode 0600 files in a distinct owner-only mode-0700 directory:
+- lightup-lab-human-routing-private.html: private scriptless role-specific HUMAN inbox, sorted by role/stage/original slot, including original local endpoint URLs and HUMAN notes. NEVER share/host.
+- lightup-lab-human-routing-private.csv: PRIVATE fixed-vocabulary slot, stage, role and note-length rows. It does not include endpoint values or note text. It is explicitly not anonymous.
+- lightup-lab-human-routing-counts.json: separate low-detail role/stage counts excluding source values, paths, digest and HUMAN note text. Counts may still reveal information in small engagements.
+
+Read-only reopen, against the EXACT same original bundle and original HUMAN round:
+
+    python3 assessment-launchpad/routing.py \
+      --bundle-dir ~/private-lab-launchpad-output \
+      --round-dir ~/private-lab-human-round-2 \
+      --role SECURITY_REVIEWER \
+      --stage FOLLOW_UP \
+      --verify-routing-dir ~/private-lab-role-inbox
+
+The one-command workspace.py now creates a default ALL-role/ALL-stage private routing desk as its fourth workspace stage, in human-routing, and includes it on the scriptless local HTML landing page. Changed HUMAN rounds require an independent NEW routing export. Missing/changed source material, reviewer self-reports and stage changes never constitute remediation, clearance, original consent or permission. No active assessments, scans, network interactions, targets or execution are performed.
