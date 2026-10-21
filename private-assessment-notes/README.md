@@ -53,7 +53,25 @@ This command read-only re-admits the exact original source-bound masking
 receipt, checks all original v18 files and every unchanged CSV task before
 accepting a manually typed status. It produces a fresh owner-only PRIVATE
 0600 `PRIVATE-HAR-HUMAN-status.html`, source-minimal
-`PRIVATE-HAR-HUMAN-status.csv`, and unsigned input-hash receipt.
+`PRIVATE-HAR-HUMAN-status.csv`, and unsigned input-hash receipt. It also retains the admitted exact
+owner-private edited actions CSV (with **no free-text notes**) so the
+original immutable report can be reopened without replacing any old
+review or source packet.
+
+~~~sh
+python3 private-assessment-notes/notes.py har-action-progress-reopen \
+  --original-kit /private/original-prepared-kit \
+  --cue-room /private/original-independent-v18-cue-room \
+  --progress-room /private/PRIVATE-lightup-har-human-status-<actual-id>
+~~~
+
+The read-only reopen reconstructs each status HTML/CSV byte, checks
+the edited-input SHA, original template SHA, complete action identities,
+unsigned HOLD receipt and all original cue bytes. Missing or changed
+rows, edited report bytes or replaced original files refuse with HOLD.
+All v18 progress outputs are separate owner-only 0700/0600 workrooms;
+this receipt is an integrity binding, **not** a signature or human identity
+attestation. Never infer real client/operator approval from a typed status.
 Free-text notes cannot enter the derived status page. The original
 decision workroom, original notes, original cue packet and edited input
 remain unchanged. Missing/extra/moved tasks, replaced source, changed

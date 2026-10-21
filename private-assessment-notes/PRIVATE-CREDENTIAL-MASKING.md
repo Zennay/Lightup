@@ -440,3 +440,9 @@ read-only progress HTML/CSV plus unsigned input-hash receipt. The CSV
 `HUMAN_REVIEWED` value is merely a self-reported coordinator status.
 The CLI exits HOLD even on local success, never produces a privacy verdict,
 authorization, consent, grant, dispatch or release.
+
+`notes.py har-action-progress-reopen` read-only reopens the original
+HUMAN progress packet and regenerates the exact original-bound HTML/CSV
+and unsigned v2 HOLD receipt from the admitted private edited CSV.
+It does not inspect/approve real sources, modify prior HUMAN decisions or
+authorize any operation; altered packets remain HOLD.
