@@ -16,7 +16,7 @@ import sys
 
 from launchpad import (
     FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item,
-    run as run_launchpad, verify_existing,
+    run as run_launchpad, verify_existing, validate_endpoints, MAX_MANIFEST_BYTES,
 )
 from review_desk import (
     FILE_NAMES as REVIEW_FILES, blank_worksheet, load_json, make_artifacts,
@@ -33,6 +33,7 @@ GUIDE_FILE = "START-HERE-PRIVATE.txt"
 HOME_FILE = "OPEN-WORKSPACE-PRIVATE.html"
 SUBDIRS = (BUNDLE_DIR, REVIEW_DIR, EDITOR_DIR, ROUTING_DIR)
 LAB_ONLY = "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED"
+INPUT_FILE = "lightup-lab-input-manifest.txt"
 
 def private_child(root_fd, dirname):
     """Reserve a new owned mode-0700 directory with no symlink redirection."""
@@ -207,6 +208,41 @@ def check_workspace(root_fd, root_dir):
         raise Hold("private workspace guide no longer matches original source")
     return len(endpoints), digest
 
+
+def guided_manifest(input_directory, root_dir):
+    """Human-entered literal endpoints; pinned original lab validation, local private file only."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        raise Hold("guided manifest requires a private interactive terminal")
+    input_fd, input_dir = open_output_directory(input_directory)
+    try:
+        if os.path.commonpath((input_dir, root_dir)) in (input_dir, root_dir):
+            raise Hold("private guided input and workspace must be separate directories")
+        if os.listdir(input_fd):
+            raise Hold("guided source directory must be empty and exclusive")
+        endpoints = []
+        print("PRIVATE LAB MANIFEST COMPOSER · NO TARGET ACTIVITY")
+        print("Enter 1–16 literal isolated-lab HTTP(S) URLs. Blank line ends.")
+        print("The original pinned URL + LabScenario source gate will admit the whole batch.")
+        print("Terminal input is visible to your local operator, never sent over network.")
+        while len(endpoints) < 16:
+            entry = input("Lab endpoint " + str(len(endpoints) + 1).zfill(2) + " (blank=end): ")
+            if entry == "":
+                break
+            if entry != entry.strip() or len(entry) > 2048 or any(
+                    ord(character) < 33 or ord(character) == 127 for character in entry):
+                raise Hold("guided endpoint contains unsupported whitespace/control data")
+            endpoints.append(entry)
+        if not endpoints or len(set(endpoints)) != len(endpoints):
+            raise Hold("enter 1–16 distinct literal lab endpoints")
+        admitted = validate_endpoints(endpoints)
+        data = ("\n".join(admitted) + "\n").encode("utf-8")
+        if not 0 < len(data) <= MAX_MANIFEST_BYTES:
+            raise Hold("guided manifest exceeds original native input limit")
+        publish_bundle(input_fd, [(INPUT_FILE, data)])
+        return os.path.join(input_dir, INPUT_FILE)
+    finally:
+        os.close(input_fd)
+
 def create_workspace(manifest, root_fd, root_dir):
     if os.listdir(root_fd):
         raise Hold("workspace directory must start empty; no overwrite permitted")
@@ -255,14 +291,25 @@ def main(argv=None):
     group.add_argument("--workspace-dir", help="an existing EMPTY owner-only mode-0700 directory")
     group.add_argument("--verify-workspace-dir", help="read-only reopen an existing private workspace")
     parser.add_argument("--manifest", help="existing private mode-0600 isolated-lab manifest")
+    parser.add_argument("--interactive-manifest", action="store_true",
+                        help="create private source input by guided original-validator terminal admission")
+    parser.add_argument("--input-dir",
+                        help="an existing EMPTY owner-only mode-0700 source directory for guided input")
     args = parser.parse_args(argv)
     try:
-        if bool(args.workspace_dir) != bool(args.manifest):
-            raise Hold("creation requires a private manifest and a private workspace directory")
+        if args.verify_workspace_dir:
+            if args.manifest or args.interactive_manifest or args.input_dir:
+                raise Hold("workspace reopen cannot create or import sources")
+        else:
+            if (bool(args.manifest) == bool(args.interactive_manifest)
+                    or bool(args.input_dir) != args.interactive_manifest):
+                raise Hold("creation requires either one private manifest OR a guided input directory")
         root_fd, root_dir = open_output_directory(args.workspace_dir or args.verify_workspace_dir)
         try:
             if args.workspace_dir:
-                count, digest = create_workspace(args.manifest, root_fd, root_dir)
+                manifest = (guided_manifest(args.input_dir, root_dir)
+                            if args.interactive_manifest else args.manifest)
+                count, digest = create_workspace(manifest, root_fd, root_dir)
             else:
                 count, digest = check_workspace(root_fd, root_dir)
         finally:
@@ -273,7 +320,8 @@ def main(argv=None):
               " — UNSIGNED LOCAL CONSISTENCY; NO AUTHORIZATION, "
               "TARGET ACTIVITY OR COMMAND EXECUTION")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
+    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError,
+            OverflowError, EOFError, KeyboardInterrupt):
         print("PRIVATE_HUMAN_WORKSPACE_HOLD — private packet not admitted; "
               "do not use any partial output as valid", file=sys.stderr)
         return 3
