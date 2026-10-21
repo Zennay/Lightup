@@ -176,10 +176,14 @@ def main(argv=None):
                     raise Hold("PRIVATE editor output must be separate from source files")
             content = render_editor(work)
             if args.verify_editor_dir:
+                if set(os.listdir(fd)) != {NAME}:
+                    raise Hold("PRIVATE HUMAN editor directory has missing or unexpected files")
                 existing = read_private_bundle_item(fd, NAME, 131072)
                 if existing != content:
                     raise Hold("PRIVATE editor changed or no longer source-bound")
             else:
+                if os.listdir(fd):
+                    raise Hold("new PRIVATE HUMAN editor directory must be empty")
                 # Re-admit source and worksheet before publication, without network.
                 later_original, later_endpoints, later_digest = read_original_bundle(args.bundle_dir)
                 later_work = load_json(require_private_file(worksheet))
