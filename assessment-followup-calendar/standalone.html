@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+lbH54tU7g/BtS77U1PkgYEGTI8DlI/bbAgBAKiBbqg='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-09ZuCtLAQgEh2znxtH1xrdaqCjdnY53vV5RFXB0ykFc='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -71,6 +71,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let weekAnchor = "", monthAnchor = "";
   let backlogPage=0, backlogProposal=null;
   let capacityRules = new Map(), capacityProposal = null, capacityDirty = false;
+  let capacityEditorDirty = false, capacityEditingGroup = "";
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -219,10 +220,15 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     renderWorkload();
     renderChanges();
     renderCapacity();
-    $("workspaceSaveStatus").textContent=
-      (changed?"UNSAVED HUMAN appointments. ":"Appointments currently saved or unchanged. ")+
-      (capacityDirty?"UNSAVED HUMAN availability. ":"Availability currently saved or unchanged. ")+
-      "Use complete encrypted workroom to preserve both.";
+    renderWorkspaceSaveStatus();
+  }
+  function renderWorkspaceSaveStatus(){
+    const label=$("workspaceSaveStatus");
+    if(!label)return;
+    label.textContent=(changed?"UNSAVED HUMAN appointments. ":"Appointments unchanged or saved. ")+
+      (capacityDirty?"UNSAVED declared HUMAN availability. ":"Declared availability unchanged or saved. ")+
+      (capacityEditorDirty?"GROUP EDITOR has unsaved field changes: save this group before exporting a full workroom. ":"")+
+      "Complete encrypted .luhw saves both committed planning and group settings.";
   }
   function eventIntervals(from=plan){
     return items.filter(r=>from.has(r.ordinal)).map(r=>{
@@ -943,7 +949,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       blackouts:[...seen].sort()};
   }
   function resetCapacity(){
-    capacityRules=new Map();capacityDirty=false;
+    capacityRules=new Map();capacityDirty=false;capacityEditorDirty=false;
     capacityProposal=null;
     $("capacityApply").disabled=true;
     const select=$("capacityGroup");
@@ -962,7 +968,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     renderCapacity();
   }
   function capacityLoadEditor(){
-    const rule=capacityRules.get($("capacityGroup").value)||capacityDefaultRule();
+    capacityEditingGroup=$("capacityGroup").value;
+    capacityEditorDirty=false;
+    const rule=capacityRules.get(capacityEditingGroup)||capacityDefaultRule();
     $("capacityDaily").value=String(rule.maximum);
     $("capacityStart").value=rule.start;$("capacityEnd").value=rule.end;
     document.querySelectorAll('#capacityDays input[type="checkbox"]').forEach(box=>{
@@ -977,6 +985,13 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const blackouts=unavailable?unavailable.split(",").map(day=>day.trim()):[];
     return admitCapacityRule({days,start:$("capacityStart").value,
       end:$("capacityEnd").value,maximum:Number($("capacityDaily").value),blackouts});
+  }
+  function noteCapacityEditorChange(){
+    if(!active)return;
+    capacityEditorDirty=true;
+    capacityProposal=null;$("capacityApply").disabled=true;
+    renderWorkspaceSaveStatus();
+    capacityMessage("Uncommitted HUMAN availability fields: click Save local HUMAN group availability before whole-workroom export. Original appointments unchanged.");
   }
   function capacitySnapshot(){
     return JSON.stringify([hash,seriesId,zone,
@@ -1053,6 +1068,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     return next;
   }
   function capacityExport(){
+    hold(!capacityEditorDirty);
     const snapshot=privateCapacityCSV();
     if(!confirm("Download the complete source-bound PRIVATE HUMAN group availability policy? This contains HUMAN group labels, time windows and holiday dates. It is UNSIGNED and authorizes no assessment or external calendar access."))return;
     hold(snapshot===privateCapacityCSV());
@@ -1069,9 +1085,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     if(!confirm("Replace current local HUMAN group availability rules with this exact-worksheet/series/timezone PRIVATE policy? Existing HUMAN appointments and the original worksheet will not change."))return;
     hold(active && hash===currentHash && seriesId===currentSeries &&
       plan===currentPlan && initialRules===privateCapacityCSV());
-    capacityRules=next;capacityDirty=true;
+    capacityRules=next;capacityDirty=true;capacityEditorDirty=false;
     capacityProposal=null;$("capacityApply").disabled=true;
-    capacityLoadEditor();renderCapacity();renderWeek();
+    capacityLoadEditor();render();
     capacityMessage("PRIVATE group availability reloaded with unsaved changes. Download policy or encrypted whole workroom to preserve it.");
   }
   function capacityPreview(){
@@ -1398,7 +1414,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     return {schedule:admitted.schedule,series:admitted.series,rules};
   }
   async function saveEncryptedWorkroom(){
-    hold(active && crypto.subtle);
+    hold(active && crypto.subtle && !capacityEditorDirty);
     const password=$("handoffPassword").value,confirmation=$("handoffConfirm").value;
     hold(password.length>=16 && password.length<=256 && password===confirmation);
     const snapshot=workroomFingerprint(),plain=packWorkroom(privatePlanCSV(),privateCapacityCSV());
@@ -1450,7 +1466,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       publicationBaseline=null;changesPage=0;
       $("baselineStatus").textContent="No previous publication loaded.";
       plan=admitted.schedule;seriesId=admitted.series;capacityRules=admitted.rules;
-      capacityProposal=null;backlogProposal=null;$("capacityApply").disabled=true;
+      capacityEditorDirty=false;capacityProposal=null;backlogProposal=null;$("capacityApply").disabled=true;
       changed=false;capacityDirty=false;exportedPlan=true;
       page=0;agendaPage=0;backlogPage=0;
       capacityLoadEditor();render();
@@ -1523,8 +1539,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     hold(!raw.startsWith("\uFEFF"));
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
-    if(active && (changed||capacityDirty) &&
-      !confirm("Discard all unsaved PRIVATE HUMAN plan and availability changes?"))return;
+    if(active && (changed||capacityDirty||capacityEditorDirty) &&
+      !confirm("Discard all unsaved PRIVATE HUMAN plan, group availability and group-editor changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
@@ -1695,21 +1711,31 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     catch(_){$("baselinePassword").value="";inform("Encrypted historical PRIVATE plan denied (HOLD); existing planning and comparison remain unchanged.",true);}
     finally{e.target.value="";}
   });
-  hook("capacityGroup","change",capacityLoadEditor);
+  hook("capacityGroup","change",()=>{
+    if(capacityEditorDirty && !confirm("Discard the unsaved HUMAN group editor fields without saving this group?")){
+      $("capacityGroup").value=capacityEditingGroup;return;
+    }
+    capacityLoadEditor();renderWorkspaceSaveStatus();
+  });
+  ["capacityDaily","capacityStart","capacityEnd"].forEach(id=>
+    hook(id,"change",noteCapacityEditorChange));
+  hook("capacityBlackout","input",noteCapacityEditorChange);
+  document.querySelectorAll('#capacityDays input[type="checkbox"]').forEach(el=>
+    el.addEventListener("change",noteCapacityEditorChange));
   hook("capacityStore","click",()=>{
     try{
       const group=$("capacityGroup").value;
       hold(active && capacityGroups().includes(group));
-      capacityRules.set(group,capacityEditorRule());capacityDirty=true;
+      capacityRules.set(group,capacityEditorRule());capacityDirty=true;capacityEditorDirty=false;
       capacityProposal=null;$("capacityApply").disabled=true;
-      renderCapacity();renderWeek();capacityMessage("PRIVATE HUMAN group availability changed locally. Download the policy to preserve it.");
+      render();capacityMessage("PRIVATE HUMAN group availability changed locally. Download the policy or encrypted complete workroom to preserve it.");
     }catch(_){capacityMessage("Human group availability rejected (HOLD). Existing group policy unchanged.",true);}
   });
   hook("capacityDefault","click",()=>{
     if(!active)return;
     capacityRules.delete($("capacityGroup").value);capacityDirty=true;
     capacityProposal=null;$("capacityApply").disabled=true;
-    capacityLoadEditor();renderCapacity();renderWeek();
+    capacityLoadEditor();render();
     capacityMessage("Selected HUMAN group returned to private default weekdays; original appointments unchanged.");
   });
   hook("capacityPreview","click",()=>{
@@ -1774,9 +1800,10 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     finally{e.target.value="";}
   });
   hook("reset","click",()=>{
-    if((changed||capacityDirty)&&!confirm("Discard unsaved PRIVATE plan and availability changes?"))return;
+    if((changed||capacityDirty||capacityEditorDirty)&&
+      !confirm("Discard unsaved PRIVATE plan, group availability and editor field changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
-    capacityRules=new Map();capacityDirty=false;capacityProposal=null;$("capacityApply").disabled=true;
+    capacityRules=new Map();capacityDirty=false;capacityEditorDirty=false;capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
     weekAnchor="";monthAnchor="";backlogPage=0;backlogProposal=null;
     $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("backlog").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
@@ -1916,7 +1943,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("savePlan","click",()=>{try{hold(active);planExport();}catch(err){inform(err.message,true);}});
   hook("calendar","click",()=>{try{calendarExport();}catch(err){inform(err.message,true);}});
   hook("summaryExport","click",()=>{try{hold(active);countsExport();}catch(err){inform(err.message,true);}});
-  window.addEventListener("beforeunload",e=>{if(changed||capacityDirty){e.preventDefault();e.returnValue="";}});
+  window.addEventListener("beforeunload",e=>{if(changed||capacityDirty||capacityEditorDirty){e.preventDefault();e.returnValue="";}});
   $("tz").textContent=zone;
 })();
 </script>

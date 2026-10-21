@@ -185,3 +185,15 @@ advises saving the complete encrypted .luhw workroom first. The original
 worksheet, current local plan and availability cannot be partially changed
 by malformed inputs; source and policy state are rechecked after reading
 the file and after the user's confirmation.
+
+
+### Uncommitted HUMAN group editor protection
+
+Editing a group rule input marks the *form* separately from committed
+group settings and the appointment plan. An unload warning covers all
+three states; switching groups asks before discarding the uncommitted
+form. The complete workroom encrypted export and the separate group-policy
+CSV export reject uncommitted group form fields rather than silently
+exporting old group hours. The operator explicitly saves the current
+HUMAN group rule first. This does not imply real staff acceptance or
+verified availability.
