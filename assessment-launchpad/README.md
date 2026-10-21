@@ -4,7 +4,7 @@
 
 ## Browser composer
 
-Open `composer.html` locally. It is one standalone file with a restrictive network-denying CSP and no external assets, APIs, storage, DNS or network access. Compose 1–16 distinct literal HTTP(S) URLs and click **Download private text manifest**. Browser checks are convenience-only and do not prove an endpoint is isolated.
+Open `composer.html` locally. It is one standalone file with a strict hash-pinned CSP (no unsafe-inline script/style) and no external assets, APIs, storage, DNS or network access. Compose 1–16 distinct literal HTTP(S) URLs within the native CLI's 16 KiB manifest limit and click **Download private text manifest**. Browser checks are convenience-only and do not prove an endpoint is isolated.
 
 Browser downloads cannot set file permissions. Before using the native CLI, move the downloaded file to a private directory and set mode `0600`.
 
