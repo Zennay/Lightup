@@ -32,6 +32,12 @@ authority to scan, vulnerability verification, release or deployment.
 
 These source files are unsigned. manifest.json hashes are only local file-byte
 integrity references; they do not authenticate source provenance.
+The manifest lists exact byte lengths and SHA-256 digests for every studio,
+support asset, START-HERE.html, this README.txt and the operator guide. It
+does not hash itself. Use verify_offline.py from the original native checkout
+to check the archive inventory without extracting any files. A successful
+verification establishes local archive byte integrity only, not authenticity,
+trusted origin, consent, security findings, permission or release.
 Individual studios independently re-admit any PRIVATE local HUMAN/source data.
 Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
@@ -333,11 +339,22 @@ def build(destination: Path) -> int:
     guide = guide_path.read_bytes()
     files = [(name, target) for name, target, _ in originals if name.endswith(".html")]
     opening = front_page(files)
+    readme = README.encode("utf-8")
+    package_assets = [
+        {"filename": "START-HERE.html", "bytes": len(opening),
+         "sha256_unsigned": hashlib.sha256(opening).hexdigest()},
+        {"filename": "README.txt", "bytes": len(readme),
+         "sha256_unsigned": hashlib.sha256(readme).hexdigest()},
+        {"filename": "GUIDE-LAB-PLANNING.md", "bytes": len(guide),
+         "sha256_unsigned": hashlib.sha256(guide).hexdigest()},
+    ]
     inventory = json.dumps({
         "schema": "lightup.assessment_offline_software_kit.v1",
         "status": "REVIEW_ONLY",
         "software_only": True, "sources_or_client_data_included": False,
-        "original_app_count": len(files), "support_asset_count": len(originals) - len(files), "files": manifest,
+        "original_app_count": len(files), "support_asset_count": len(originals) - len(files),
+        "files": manifest, "package_assets": package_assets,
+        "manifest_self_hash_excluded": True,
         "operator_guide": {
             "filename": "GUIDE-LAB-PLANNING.md", "bytes": len(guide),
             "sha256_unsigned": hashlib.sha256(guide).hexdigest(),
@@ -350,7 +367,7 @@ def build(destination: Path) -> int:
         with os.fdopen(fd, "wb") as output:
             with ZipFile(output, mode="w", compression=ZIP_DEFLATED, compresslevel=9) as package:
                 package.writestr(zip_info("START-HERE.html"), opening)
-                package.writestr(zip_info("README.txt"), README.encode("utf-8"))
+                package.writestr(zip_info("README.txt"), readme)
                 package.writestr(zip_info("GUIDE-LAB-PLANNING.md"), guide)
                 package.writestr(zip_info("manifest.json"), inventory)
                 for _, name, raw in originals:
