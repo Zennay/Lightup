@@ -95,8 +95,24 @@
   <p class="footnote">HUMAN stages are only local, unsigned self-reports; they reset when another snapshot batch is admitted, demo is loaded or data are forgotten. HUMAN stages and note text are never included in anonymous reports. The separately confirmed PRIVATE JSON, CSV and script-free HTML exports record only manual ordinals and stages; it cannot authenticate the original source and must not be imported against a different cohort.</p>
   <p class="footnote">Export contains only manually ordered anonymous slots, fixed metric/group labels, numeric candidate/delta, source flags and literal false authority fields. No original IDs, uploaded content, filenames, hashes or HUMAN notes. The order is neither independently authenticated chronology nor a verified security result.</p>
 </section>
+
+<section class="panel no-print" id="humanPlan">
+  <div class="section-head"><h2>06 / PRIVATE HUMAN follow-up work plan</h2><span class="tag">Non-authorizing HUMAN self-reports</span></div>
+  <p>Collect the source-flag events manually marked <strong>NEEDS_INPUT</strong> or <strong>FOLLOW_UP</strong> into one action desk. Fixed P1–P4/Info grouping prioritizes readability only; it is <strong>not measured severity</strong> or a security verdict. Proposed next steps are generic HUMAN questions. Review the currently loaded source or open a note without triggering a scan, grant or external request.</p>
+  <p id="workPlanSummary" class="message" role="status" aria-live="polite">Import snapshots and mark HUMAN stages to assemble a local follow-up plan.</p>
+  <div id="workPlanTable" class="tablewrap" role="region" aria-label="Sorted private HUMAN next-action plan" tabindex="0"></div>
+  <p id="workPlanRange" class="footnote">No outstanding HUMAN follow-up actions.</p>
+  <div class="controls">
+    <button id="workPlanPrev" type="button" class="secondary" disabled>Previous 100</button>
+    <button id="workPlanNext" type="button" class="secondary" disabled>Next 100</button>
+    <button id="workPlanExportJson" type="button" class="ghost" disabled>Export PRIVATE HUMAN plan JSON</button>
+    <button id="workPlanExportCsv" type="button" class="ghost" disabled>Export PRIVATE HUMAN plan CSV</button>
+    <button id="workPlanExportBrief" type="button" class="ghost" disabled>Export PRIVATE printable HUMAN plan</button>
+  </div>
+  <p class="footnote">PRIVATE outputs contain manually ordered anonymous scenario slots, static metric labels, HUMAN-only stages and generic follow-up suggestions. They exclude original source IDs, filenames, hashes, HUMAN note text and original evidence. A HUMAN assignment is not authorization or independent verification.</p>
+</section>
 <section class="panel no-print" id="commentary">
-  <div class="section-head"><h2>06 / Private human commentary</h2><span class="tag">In-memory only</span></div>
+  <div class="section-head"><h2>07 / Private human commentary</h2><span class="tag">In-memory only</span></div>
   <p>Notes are never part of the anonymous aggregate brief, JSON or CSV. Save a note explicitly to retain it in this tab; navigate between scenarios without losing scratch text. Exporting notes creates a separate clearly marked PRIVATE file.</p>
   <label>Metric for commentary
     <select id="noteMetric" disabled></select>
@@ -113,7 +129,7 @@
 </section>
 
 <section class="panel no-print" id="resume">
-  <div class="section-head"><h2>07 / PRIVATE human work recovery</h2><span class="tag">Exact source bytes · offline</span></div>
+  <div class="section-head"><h2>08 / PRIVATE human work recovery</h2><span class="tag">Exact source bytes · offline</span></div>
   <p>Keep HUMAN work between browser sessions without creating an account, network request or browser storage. First import the <strong>same 3–12 original JSON snapshots in exactly the same manually selected order</strong>, then restore your PRIVATE work. Newly saved sessions are <strong>passphrase-encrypted locally</strong> with AES-256-GCM and PBKDF2-SHA256 (310,000 iterations, random salt and nonce). This separately confirmed PRIVATE unsigned JSON envelope contains all saved HUMAN notes and self-reported review stages, plus SHA-256 fingerprints of original source bytes. Treat it as confidential.</p>
   <p id="sessionAvailability" class="footnote">Import original snapshots to enable source-byte-bound PRIVATE save and resume.</p>
   <div class="queue-controls">
@@ -141,7 +157,7 @@
 </section>
 
 <section class="panel no-print" id="revision">
-  <div class="section-head"><h2>08 / PRIVATE human review revision comparison</h2><span class="tag">Read-only · offline</span></div>
+  <div class="section-head"><h2>09 / PRIVATE human review revision comparison</h2><span class="tag">Read-only · offline</span></div>
   <p>Compare two separately saved, source-byte-bound PRIVATE HUMAN sessions against the exact same already-admitted original cohort. This view <strong>does not restore, merge or rewrite either session</strong>. It shows changes to HUMAN stage choices and indicates whether saved HUMAN notes were added, removed or edited, <strong>without displaying or exporting note text</strong>. File order is a human comparison preference, not authenticated chronology.</p>
   <div class="queue-controls">
     <label class="file-picker">Earlier PRIVATE HUMAN session
@@ -167,7 +183,7 @@
 </section>
 
 <section class="panel no-print" id="humanRounds">
-  <div class="section-head"><h2>09 / PRIVATE HUMAN review rounds</h2><span class="tag">2–8 source-bound revisions</span></div>
+  <div class="section-head"><h2>10 / PRIVATE HUMAN review rounds</h2><span class="tag">2–8 source-bound revisions</span></div>
   <p>Inspect a manually ordered sequence of 2–8 previously saved PRIVATE HUMAN review sessions. Every session must match the exact original source bytes and original snapshot order. Compare HUMAN stage workloads and how many note contents changed between selected rounds without loading notes into reports. These round numbers are <strong>display ordinals, not proven timestamps or verified remediation</strong>. Nothing is merged into the current HUMAN work.</p>
   <label class="file-picker">Choose 2–8 PRIVATE source-bound HUMAN session JSON files, in display order
     <input id="timelineFiles" type="file" accept=".json,application/json" multiple disabled>
@@ -190,7 +206,7 @@
   <p class="footnote">Only aggregate HUMAN self-report counts are retained for this view; original source identities, digests, filenames and HUMAN note text are never in these exports. A missing note, changed HUMAN stage or absent source flag does not establish a verified fix. Previous comparison remains visible when any new file fails atomic admission.</p>
 </section>
 <section class="panel no-print">
-  <div class="section-head"><h2>10 / Explicit local handoff</h2><span class="tag">No authority</span></div>
+  <div class="section-head"><h2>11 / Explicit local handoff</h2><span class="tag">No authority</span></div>
   <div class="controls">
     <button id="exportJson" type="button" disabled>Export aggregate JSON</button>
     <button id="exportCsv" type="button" disabled>Export anonymous trajectory CSV</button>

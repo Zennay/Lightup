@@ -448,7 +448,7 @@
         const key=humanStageKey(event);
         if(stageSelect.value==="UNREVIEWED")humanReviewStages.delete(key);
         else humanReviewStages.set(key,stageSelect.value);
-        renderReviewQueue();
+        renderReviewQueue();renderHumanWorkPlan();
       });
       stageCell.append(stageSelect);line.append(stageCell);
       const action=document.createElement("td"),button=document.createElement("button");
@@ -544,6 +544,117 @@
       " filtered anonymous flag events. No source IDs, filenames, hashes or HUMAN notes.";
   }
 
+
+  // HUMAN-only follow-up organizer. It never creates a finding, grant, due date,
+  // review approval or security severity; group order is a fixed UI convention.
+  let workPlanOffset=0;
+  const WORK_PLAN_PAGE=100;
+  function humanPlanAction(stage){
+    return stage==="NEEDS_INPUT"?
+      "Ask a HUMAN reviewer for missing context (not verified evidence).":
+      "HUMAN follow-up needed; check the source with an authorized owner.";
+  }
+  function actionableRows(){
+    const rank=group=>group.startsWith("P1")?1:group.startsWith("P2")?2:
+      group.startsWith("P3")?3:group.startsWith("P4")?4:5;
+    const rankFlag=kind=>kind==="reappeared"?0:kind==="consecutive"?1:
+      kind==="first"?2:kind==="initial"?3:4;
+    return buildReviewEvents().filter(event=>
+      ["NEEDS_INPUT","FOLLOW_UP"].includes(humanStage(event))).sort((a,b)=>{
+      const stageRank=e=>humanStage(e)==="NEEDS_INPUT"?0:1;
+      return stageRank(a)-stageRank(b)||rank(a.group)-rank(b.group)||
+        rankFlag(a.kind)-rankFlag(b.kind)||a.snapshotSlot-b.snapshotSlot||
+        a.scenarioSlot-b.scenarioSlot||METRICS.indexOf(a.metric)-METRICS.indexOf(b.metric);
+    });
+  }
+  function openHumanCommentary(event){
+    selectedScenario=event.id;selectedMetric=event.metric;
+    $("scenarioSelect").value=selectedScenario;$("noteMetric").value=selectedMetric;
+    renderScenarioDetail();renderNotePanel();$("noteInput").focus();
+    $("commentary").scrollIntoView({block:"start",behavior:"smooth"});
+  }
+  function renderHumanWorkPlan(){
+    const actions=snapshots.length?actionableRows():[];
+    workPlanOffset=Math.min(workPlanOffset,
+      Math.max(0,Math.floor((actions.length-1)/WORK_PLAN_PAGE)*WORK_PLAN_PAGE));
+    const awaiting=actions.filter(e=>humanStage(e)==="NEEDS_INPUT").length,
+      following=actions.length-awaiting;
+    $("workPlanSummary").textContent=snapshots.length?
+      awaiting+" HUMAN NEEDS_INPUT · "+following+" HUMAN FOLLOW_UP · "+
+      actions.length+" HUMAN self-reported next actions. Ordered by fixed display grouping, not authenticated severity or chronology.":
+      "Import snapshots and mark HUMAN stages to assemble a local follow-up plan.";
+    for(const id of ["workPlanExportCsv","workPlanExportJson","workPlanExportBrief"])
+      $(id).disabled=actions.length===0;
+    $("workPlanPrev").disabled=workPlanOffset===0;
+    $("workPlanNext").disabled=workPlanOffset+WORK_PLAN_PAGE>=actions.length;
+    $("workPlanRange").textContent=actions.length?
+      "Displaying "+(workPlanOffset+1)+"–"+
+        Math.min(actions.length,workPlanOffset+WORK_PLAN_PAGE)+
+        " of "+actions.length+" local proposed HUMAN actions.":
+      "No outstanding self-reported NEEDS_INPUT or FOLLOW_UP stages.";
+    const root=$("workPlanTable");root.replaceChildren();
+    if(!actions.length)return;
+    const table=document.createElement("table"),head=document.createElement("thead"),
+      header=document.createElement("tr"),body=document.createElement("tbody");
+    for(const label of ["HUMAN stage","Static review grouping","Manual source slot",
+      "Anonymous scenario","Fixed metric","Unverified source event","Proposed HUMAN action","Open local note"]){
+      const th=document.createElement("th");th.scope="col";th.textContent=label;header.append(th);
+    }
+    head.append(header);table.append(head);
+    for(const event of actions.slice(workPlanOffset,workPlanOffset+WORK_PLAN_PAGE)){
+      const row=document.createElement("tr");
+      for(const value of [humanStage(event),event.group,event.snapshotSlot,
+        "Scenario "+String(event.scenarioSlot).padStart(2,"0"),event.metric,
+        REVIEW_KINDS[event.kind],humanPlanAction(humanStage(event))]){
+        const td=document.createElement("td");td.textContent=String(value);row.append(td);
+      }
+      const td=document.createElement("td"),btn=document.createElement("button");
+      btn.type="button";btn.className="secondary";btn.textContent="Open";
+      btn.setAttribute("aria-label","Open HUMAN note for scenario "+event.scenarioSlot+
+        " metric "+event.metric);
+      btn.addEventListener("click",()=>openHumanCommentary(event));
+      td.append(btn);row.append(td);body.append(row);
+    }
+    table.append(body);root.append(table);
+  }
+  function humanPlanPayload(){
+    const actions=actionableRows();
+    return {schema:"lightup.assessment_trends_private_human_plan.v1",
+      status:"PRIVATE_UNSIGNED",private_unsigned:true,fictional_demo_only:fictional,
+      manually_selected_order:true,chronology_authenticated:false,
+      source_identity_authenticated:false,action_count:actions.length,
+      proposed_human_actions:actions.map(e=>({
+        human_self_report_stage:humanStage(e),static_review_group:e.group,
+        snapshot_slot:e.snapshotSlot,scenario_slot:e.scenarioSlot,
+        metric:e.metric,unverified_source_flag_event:e.kind,
+        human_next_step:humanPlanAction(humanStage(e))})),
+      disclaimer:"HUMAN-only proposed review workload. Not authenticated severity, source validity, chronology, identity, verified remediation, consent, scan authorization or release. No original identifiers, hashes, filenames or note text.",
+      ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+  }
+  function exportHumanPlan(format){
+    if(!snapshots.length||!actionableRows().length)return;
+    if(!window.confirm("Export a PRIVATE UNSIGNED HUMAN follow-up plan? Contains anonymous scenario and metric ordinals, self-reported stages and generic questions, but NO original IDs, source hashes or note text."))return;
+    const payload=humanPlanPayload();
+    if(format==="json"){
+      download("assessment-trends-PRIVATE-human-plan.json",
+        JSON.stringify(payload,null,2)+"\n","application/json");
+    }else if(format==="csv"){
+      const header=["human_self_report_stage","static_review_group",
+        "manual_snapshot_slot","anonymous_scenario_slot","metric",
+        "unverified_source_flag_event","proposed_human_action","private_unsigned",
+        "chronology_authenticated","source_identity_authenticated",...FLAGS];
+      const rows=[header,...payload.proposed_human_actions.map(e=>[
+        e.human_self_report_stage,e.static_review_group,e.snapshot_slot,
+        e.scenario_slot,e.metric,e.unverified_source_flag_event,e.human_next_step,
+        true,false,false,false,false,false,false
+      ])];
+      download("assessment-trends-PRIVATE-human-plan.csv",
+        rows.map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    }
+    $("workPlanRange").textContent="Downloaded PRIVATE unsigned "+format.toUpperCase()+
+      " with "+payload.action_count+" generic HUMAN follow-up actions and no note text.";
+  }
+
   function renderNotePanel(){
     const id=currentId(),metric=$("noteMetric").value||METRICS[0];
     const key=id?noteKey(id,metric):"";
@@ -587,12 +698,14 @@
     scenarioIds.forEach((id,i)=>{const option=document.createElement("option");option.value=id;
       option.textContent="Scenario "+String(i+1).padStart(2,"0");$("scenarioSelect").append(option);});
     if(active){selectedScenario=scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];$("scenarioSelect").value=selectedScenario;
-      renderSummary();renderMetricBoard();renderScenarioBoard();renderScenarioDetail();renderReviewQueue();renderPrintBrief();}
+      renderSummary();renderMetricBoard();renderScenarioBoard();renderScenarioDetail();
+      renderReviewQueue();renderHumanWorkPlan();renderPrintBrief();}
     else{
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      renderHumanWorkPlan();
     }
     if(!active){$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
       $("reviewPrev").disabled=true;$("reviewNext").disabled=true;
@@ -672,7 +785,7 @@
       snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
       sourceFingerprints=nextFingerprints.every(v=>v!==null)?nextFingerprints:[];
       $("privateSessionFile").value="";
-      reviewOffset=0;humanReviewStages.clear();resetReviewFilters();
+      reviewOffset=0;workPlanOffset=0;humanReviewStages.clear();resetReviewFilters();
       notes.clear();scratch.clear();fictional=false;resetRevisionComparison();resetHumanTimeline();
       render();$("sessionMessage").textContent="New snapshot batch admitted; previous HUMAN session cannot be carried across datasets.";
       $("message").textContent="Accepted "+snapshots.length+
@@ -714,7 +827,7 @@
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();renderPendingSources();
+    reviewOffset=0;workPlanOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();renderPendingSources();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
@@ -722,7 +835,7 @@
     pendingSources=[];$("files").value="";
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();
+    reviewOffset=0;workPlanOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";
     $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();renderPendingSources();
   }
@@ -1265,6 +1378,14 @@
   $("reviewNext").addEventListener("click",()=>{reviewOffset+=REVIEW_PAGE;renderReviewQueue();});
   $("reviewExportCsv").addEventListener("click",()=>exportReviewQueue("csv"));
   $("reviewExportJson").addEventListener("click",()=>exportReviewQueue("json"));
+  $("workPlanPrev").addEventListener("click",()=>{
+    workPlanOffset=Math.max(0,workPlanOffset-WORK_PLAN_PAGE);renderHumanWorkPlan();
+  });
+  $("workPlanNext").addEventListener("click",()=>{
+    workPlanOffset+=WORK_PLAN_PAGE;renderHumanWorkPlan();
+  });
+  $("workPlanExportJson").addEventListener("click",()=>exportHumanPlan("json"));
+  $("workPlanExportCsv").addEventListener("click",()=>exportHumanPlan("csv"));
   $("reviewExportStages").addEventListener("click",()=>exportHumanStages("json"));
   $("reviewExportStageCsv").addEventListener("click",()=>exportHumanStages("csv"));
   $("reviewExportStageBrief").addEventListener("click",()=>exportHumanStages("html"));
