@@ -49,6 +49,8 @@ _HAR_REQUEST_BODY_MARKER = "[REDACTED_HAR_REQUEST_BODY]"
 _HAR_RESPONSE_BODY_MARKER = "[REDACTED_HAR_RESPONSE_BODY]"
 _HAR_WEBSOCKET_MARKER = "[REDACTED_HAR_WEBSOCKET_FRAME]"
 _HAR_COOKIE_MARKER = "[REDACTED_HAR_COOKIE_VALUE]"
+_HAR_QUERY_MARKER = "[REDACTED_HAR_QUERY_VALUE]"
+_HAR_FORM_PARAM_MARKER = "[REDACTED_HAR_FORM_PARAM_VALUE]"
 _DECODER = json.JSONDecoder(parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
 
 
@@ -151,6 +153,13 @@ class _Reader:
                 if path[-2:] in (("request", "cookies"),
                                  ("response", "cookies")):
                     marker = _HAR_COOKIE_MARKER
+                elif path[-2:] == ("request", "queryString"):
+                    # Even unknown names can hold private searches or IDs.
+                    marker = _HAR_QUERY_MARKER
+                elif path[-3:] == ("request", "postData", "params"):
+                    # postData.params often duplicates the opaque request
+                    # body; minimise EVERY string parameter value locally.
+                    marker = _HAR_FORM_PARAM_MARKER
                 elif _SECRET_FIELD.fullmatch(name_node[1]):
                     marker = (_HEADER_MARKER
                               if _HEADER_FIELD.fullmatch(name_node[1])

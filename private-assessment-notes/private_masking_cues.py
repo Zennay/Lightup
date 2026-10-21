@@ -28,7 +28,8 @@ V6_SCHEMA = "lightup.private_assessment_masking_cues.v6"
 V7_SCHEMA = "lightup.private_assessment_masking_cues.v7"
 V8_SCHEMA = "lightup.private_assessment_masking_cues.v8"
 V9_SCHEMA = "lightup.private_assessment_masking_cues.v9"
-SCHEMA = "lightup.private_assessment_masking_cues.v10"
+V10_SCHEMA = "lightup.private_assessment_masking_cues.v10"
+SCHEMA = "lightup.private_assessment_masking_cues.v11"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -91,6 +92,14 @@ GROUPS = (*V9_GROUPS[:2],
           ("STRUCTURED_CONFIG", V9_GROUPS[2][1] +
            ("[REDACTED_HAR_COOKIE_VALUE]",)),
           V9_GROUPS[3])
+V10_GROUPS = GROUPS
+# V11 further minimises all original HAR query/form parameter values;
+# preserve V10 exact ordinal marker counts on historical receipt reopening.
+GROUPS = (*V10_GROUPS[:2],
+          ("STRUCTURED_CONFIG", V10_GROUPS[2][1] +
+           ("[REDACTED_HAR_QUERY_VALUE]",
+            "[REDACTED_HAR_FORM_PARAM_VALUE]")),
+          V10_GROUPS[3])
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
@@ -227,6 +236,9 @@ def reopen(original: str, cue_room: str) -> int:
                            ensure_ascii=False) + "\n").encode("utf-8")
     if stored_receipt == serialized_receipt(SCHEMA):
         derived = cues(rows)
+        render_page = cue_page
+    elif stored_receipt == serialized_receipt(V10_SCHEMA):
+        derived = cues(rows, groups=V10_GROUPS)
         render_page = cue_page
     elif stored_receipt == serialized_receipt(V9_SCHEMA):
         derived = cues(rows, groups=V9_GROUPS)
