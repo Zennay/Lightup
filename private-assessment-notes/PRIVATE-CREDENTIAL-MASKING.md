@@ -26,6 +26,25 @@ forms frequently present in assessment writeups:
   `--api-key`, `--access-token`, `--refresh-token`,
   `--client-secret` and `--auth-token` credential options.
   This treats pasted commands as **inert text**; it never runs them.
+- **Multi-field cURL payloads:** bounded quoted `--data`, `--data-raw`,
+  `--data-binary`, `--data-urlencode`, `--form`, `--form-string`, `-d` and
+  `-F` source text can now withhold **each separately named known credential
+  field** in `field=value&session_id=...&foo=...` or semicolon-separated
+  fragments. Quoted `token@/private/path` is masked as a file-source value;
+  common `%5F` and `%2D` encoding of field-name separators is recognized.
+  A single unquoted `name=value` or `name@source` argument is also recognized
+  within a bounded shell word. Other field values are retained only inside
+  the PRIVATE original notes; **their retention is not a privacy guarantee**.
+  Embedded shell expressions, complicated escaping, non-form payloads,
+  arbitrary field names and noncanonical encodings remain HUMAN/HOLD.
+- **Additional cURL credential switches:** OAuth2 bearer, proxy password,
+  TLS username/password, client key and certificate argument values are also
+  withheld as inert copied text; raw originals are never executed.
+- **SOAP/XML snippets:** bounded named secret elements (for example
+  `<clientSecret>...</clientSecret>`) and matching quoted secret attributes
+  receive a local `[REDACTED_XML_VALUE]` placeholder where their shape
+  survives earlier core redaction. Nested/mixed-content XML, unknown names,
+  comments and arbitrary encodings still require original HUMAN review.
 - **Copied HTTP exchanges:** direction-marked `>`, `<` or `*`
   Cookie, Authorization and token-bearing header lines, as well as
   the existing plain header-at-start-of-line handling.
