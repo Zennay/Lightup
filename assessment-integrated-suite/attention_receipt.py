@@ -171,12 +171,91 @@ remain mandatory before release. An unsigned digest is not a signature.</p>
 </footer></html>""").encode("utf-8")
 
 
+ROLE_BOARD = "PRIVATE-HUMAN-ROLES.html"
+ROLE_SUMMARY = "PRIVATE-HUMAN-ROLE-SUMMARY.json"
+
+
+def _role_board(rows: list[dict[str, object]]) -> tuple[bytes, bytes]:
+    """One strictly source-free, original twenty-action HUMAN attention cockpit."""
+    groups = []
+    sections = []
+    for proposed_role in sorted(ROLES):
+        items = [row for row in rows if row["proposed_role"] == proposed_role]
+        needs = sum(item["self_reported_state"] == "NEEDS_INPUT" for item in items)
+        open_rows = sum(item["self_reported_state"] != "DISCUSSED" for item in items)
+        followups = {
+            name: sum(item["proposed_human_followup"] == name for item in items)
+            for name in sorted(FOLLOWUPS)
+        }
+        groups.append({
+            "proposed_role": proposed_role,
+            "human_proposals": len(items),
+            "needs_original_input": needs,
+            "not_marked_discussed": open_rows,
+            "followup_category_counts": followups,
+            "original_actions": [item["action"] for item in items],
+        })
+        lines = "".join(
+            "<tr><td>" + str(item["action"]) + "</td><td>" +
+            html.escape(ACTIONS[str(item["action"])]) + "</td><td>" +
+            html.escape(item["self_reported_state"]) + "</td><td>" +
+            html.escape(item["proposed_human_followup"]) +
+            "</td></tr>" for item in items
+        )
+        sections.append(
+            "<section><h2>" + html.escape(proposed_role) +
+            " · " + str(len(items)) + " HUMAN proposals</h2>" +
+            "<p>" + str(needs) + " self-reported needs original input; " +
+            str(open_rows) + " not marked discussed. None assigned or verified.</p>" +
+            "<table><thead><tr><th>Original action</th><th>Caption</th>" +
+            "<th>Self-report</th><th>Proposed HUMAN follow-up</th></tr>" +
+            "</thead><tbody>" + (lines or "<tr><td colspan='4'>No local proposals.</td></tr>") +
+            "</tbody></table></section>"
+        )
+    data = original._json({
+        "schema": "lightup.private.human-lab-attention.role-summary.v1",
+        "mode": "REVIEW_ONLY", "authority": dict(FLAGS),
+        "original_source_verified": False,
+        "actor_authenticated": False, "role_assigned": False,
+        "task_sent": False, "consent_verified": False,
+        "real_work_completed": False,
+        "groups": groups,
+        "all_original_actions_included": len(rows) == len(original.ORDER),
+    })
+    page = ("""<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none';script-src 'none';style-src 'unsafe-inline';connect-src 'none';base-uri 'none';form-action 'none'">
+<title>PRIVATE HUMAN role discussion board</title>
+<style>:root{color-scheme:dark;background:#0b1e30;color:#f3f8fe;font:16px/1.5 system-ui}
+body{max-width:1100px;margin:auto;padding:24px}
+section,header{border:1px solid #637f95;padding:22px;background:#1b354b;margin:16px 0}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:10px;border-bottom:1px solid #60788c}
+.warn{color:#f9d9a0;font-weight:700}
+@media print{body{background:#fff;color:#000}section,header{background:#fff}}
+</style><header><h1>PRIVATE HUMAN proposed-role workboard</h1>
+<p class="warn">REVIEW_ONLY · DRAFT/HOLD · PLAN/LAB ONLY</p>
+<p>Five fixed role categories, including UNASSIGNED, derived only from
+an exact native-received, source-free HUMAN marker/role proposal.
+These are NOT real people, assigned tasks, messages, authorization,
+verified remediation, original source authenticity, consent or releases.</p>
+</header>""" + "".join(sections) + """
+<footer><p>No original client source, target, recipient address,
+real action time or protected data included. Original HUMAN ordering
+is not proven chronology. Security, original CI and explicit HUMAN GO
+gates remain intact.</p></footer></html>""").encode("utf-8")
+    return data, page
+
+
 def _files(raw: bytes, rows: list[dict[str, object]], count: int) -> dict[str, bytes]:
+    role_summary, role_board = _role_board(rows)
     return {
         SOURCE: raw,
         NORMALIZED: _normalized(rows, count),
         CSV: _csv(rows),
         HTML: _html(rows, count),
+        ROLE_SUMMARY: role_summary,
+        ROLE_BOARD: role_board,
     }
 
 
