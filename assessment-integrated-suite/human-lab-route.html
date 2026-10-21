@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none';">
+<title>LightUp · Original HUMAN Lab Workflow Desk</title>
+<style>
+:root { color-scheme:dark; font:16px/1.55 system-ui, sans-serif; background:#0a1625; color:#e9f1f8 }
+*{box-sizing:border-box}body{max-width:1140px;margin:auto;padding:28px 20px 60px}
+header,.intro,.phase,.summary,footer{border:1px solid #354b62;border-radius:18px;background:#152638;padding:26px;margin-bottom:20px}
+h1{font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.15;margin:.5rem 0}h2{font-size:1.3rem;margin:0 0 10px}
+p{margin:10px 0}.eyebrow{font-size:.82rem;letter-spacing:.13em;text-transform:uppercase;color:#9bc9ea}
+.hint{color:#b6cbe0}.warning{color:#ffddb1;font-weight:650}strong{color:#fff}
+.controls{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}
+button,.file-label{background:#243f58;color:#eef9ff;border:1px solid #698fad;border-radius:10px;padding:11px 16px;font:inherit;cursor:pointer}
+button:hover,.file-label:hover{background:#355574}button:focus-visible,select:focus-visible,.file-label:focus-visible{outline:3px solid #8fcaec;outline-offset:3px}
+.file-label input{position:absolute;opacity:0;width:1px;height:1px}
+.file-label:focus-within{outline:3px solid #8fcaec;outline-offset:3px}
+.actions{display:grid;gap:10px}.action{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 15px;border-radius:10px;background:#0d1c2d;border:1px solid #28445e}
+.caption{flex:1}select{font:inherit;min-width:220px;max-width:100%;color:#f3faff;background:#243b51;border:1px solid #8c9fb1;border-radius:8px;padding:9px}
+.stage-metric{color:#add7f3;font-weight:700}
+ol{padding-left:24px;columns:2;column-gap:38px}li{break-inside:avoid;margin:6px 0}
+code{font-size:.95em}small{color:#c1d1e1}#result{min-height:1.5em}
+@media(max-width:650px){.action{display:block}select{margin-top:10px;width:100%}ol{columns:1}}
+@media print{body{background:#fff;color:#000;max-width:100%;padding:0}
+header,.intro,.phase,.summary,footer{background:#fff;color:#000;border-color:#777;break-inside:avoid}
+.controls{display:none}select{color:#000;background:#fff}.hint,.warning,.stage-metric,small{color:#222}}
+</style>
+<script defer src="human-lab-route.js"></script></head><body>
+<header>
+<div class="eyebrow">LightUp / assessment-runtime / PRIVATE / human-only</div>
+<h1>Original Lab → HUMAN review route</h1>
+<p class="warning">REVIEW_ONLY · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</p>
+<p>Twenty existing console actions, organized into five human review stages. This is an offline <strong>discussion tracker</strong>, not an executor or an assessment outcome.</p>
+</header>
+<section class="intro" aria-labelledby="how"><h2 id="how">How this room works</h2>
+<p>In the trusted local checkout, start <code>python3 assessment-integrated-suite/console.py</code> and enter <code>LAB</code> to display these original actions. Choose a numeric action there to run its separate native stage. Keep source-private outputs in owner-controlled directories (0700/0600) and manually re-admit originals at every actual stage.</p>
+<p>Here, mark <em>discussion progress only</em>. A “Discussed only” choice does not prove that code ran, input was validated, evidence was reviewed, a vulnerability was repaired, a source was authenticated, or anybody consented.</p>
+<p>Nothing is saved automatically. Export a local self-report JSON (for reimport), minimal CSV, or printable sheet. This page and its adjacent local JavaScript require no network, cookies, localStorage, IndexedDB, server or permissions. Do not attach real private source files, credentials or client identifiers.</p>
+<div class="controls" role="group" aria-label="Local-only workplan controls">
+<button id="export-json" type="button">Save PRIVATE discussion plan (JSON)</button>
+<button id="export-csv" type="button">Export status rows (CSV)</button>
+<label class="file-label">Open prior local plan (JSON)<input id="import-json" type="file" accept=".json,application/json"></label>
+<button id="print" type="button">Print / save as PDF</button>
+<button id="reset" type="button">Clear local markers</button>
+</div>
+<p id="result" role="status" aria-live="polite"></p>
+</section>
+<section class="summary" aria-label="Human discussion summary">
+<h2>Human discussion overview</h2><p id="progress" aria-live="polite">Local script unavailable; no status was loaded.</p>
+<details><summary>Outstanding or waiting-for-input actions</summary><ol id="pending"></ol></details>
+</section>
+<main id="stages"><p>Enable this local JavaScript file to use the HUMAN discussion checklist. The original CLI remains fully available without this browser page.</p></main>
+<footer><h2>Release conditions are separate</h2>
+<p class="warning">Not authorized: active scan, target contact, grant, consent, model execution, recipient dispatch, release or deploy.</p>
+<p>Each original action remains protected by its own native source admission and human controls. This optional browser plan does not open or authenticate originals, does not validate command outcomes, and its unsigned JSON cannot establish identity, custody, integrity or permission.</p>
+<p>Original exact-head hosted + permanently named VPS CI, source-owner signoff, independent browser/security/privacy review, existing scope authorization issues, separately authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory before any release.</p>
+<small>Store this source-only offline software on a trusted device. Keep generated review plans PRIVATE. Status export is a HUMAN declaration, never evidence.</small></footer>
+</body></html>
