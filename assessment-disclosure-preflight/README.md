@@ -9,10 +9,14 @@ receiving records with unsigned byte identities. [The Python native receiver](./
 accepts either `reopen --received-csv ... --received-counts ...` for a
 complete original-format PRIVATE HUMAN CSV, or `reopen --encrypt-result
 --received-bundle ... --received-counts ...` for an encrypted browser handoff.
-The tracked `LightUp-PRIVATE-Assessment-Offline-Kit.zip` was built
-**before** those commits and does **not** contain these latest sources.
-Do not use that old ZIP as evidence of the current product or call it a release.
-Existing gates remain mandatory; nothing here authorizes real assessment.
+The bundled `LightUp-PRIVATE-Assessment-Offline-Kit.zip` now contains the current
+complete two-reviewer browser sources, native original receiving commands and
+a new [PRIVATE offline start page](./kit-home.html). Open `kit-home.html`
+after extracting into trusted owner-only storage. The unsigned
+`software_bundle.py --verify-current` command compares the complete ZIP
+with these **exact installed source bytes** and refuses stale copies.
+This confirms neither genuine provenance nor security, release or consent;
+all original gates remain mandatory.
 
 
 **INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** Independent add-only operator companion, not a scanner, grant, source authenticator, security verdict or release.
@@ -169,11 +173,11 @@ This step reads original files but does not create new outputs, run a scanner,
 interpret finding validity, authenticate the sender, grant consent, approve a
 recipient or release anything. Exit 2 remains **REVIEW_ONLY**, exit 3 **HOLD**.
 It is not a browser crypto security audit or an independent proof of original
-client authority. The old existing software ZIP is **stale** relative to the
-latest source and standalone browser HTML; install from the current held PR
-source only in a trusted PRIVATE lab, or build a *fresh* software-only ZIP with
-the original builder after authorized infrastructure capacity returns. Do not
-describe the tracked old ZIP as the current product release.
+client authority. The current tracked source-only ZIP is freshly generated
+from this branch, with an offline start page and two complete browser workrooms.
+Verify that it matches your local source tree using
+`software_bundle.py --verify-current`; unsigned matching bytes do not
+authorize publication, external sharing, assessments or a live release.
 
 ## Read-only complete HUMAN handoff reopening
 
@@ -716,7 +720,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 18
+store, scan workflow, credential grant or signed release. The 20
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -727,6 +731,29 @@ run without the separately installed legitimate original inspector.
 Nothing in this bundle can bypass authenticated current client/operator
 consent, action-time revocation, independent owner/security/privacy/
 browser/crypto review or HUMAN GO.
+
+### Open the actual offline kit
+
+Extract into owner-controlled private storage, then open
+[kit-home.html](./kit-home.html) locally for two direct, functional offline
+workroom links. The page is a script-free static navigation guide with a
+network-denying CSP; `kit-home.css` remains a separate allowlisted source
+asset. The original lab inspector is **not** in this kit and must be provided
+separately by its actual owner before any native original-artifact preflight.
+
+To verify that the complete currently installed ZIP is not a stale prior
+software build **without** extracting or running any embedded source:
+
+~~~sh
+python3 assessment-disclosure-preflight/software_bundle.py --verify-current
+~~~
+
+An exact canonical unsigned ZIP/source match returns **2 (REVIEW_ONLY)**,
+printing the local ZIP SHA-256; an out-of-date, altered, missing or otherwise
+noncanonical archive returns **3 (HOLD)**. The comparison includes this
+README, the offline start page and both complete portable browser workrooms.
+This does not establish genuine sender, ownership, identity, permission,
+confidentiality, security approval or human GO.
 
 To rebuild from exact downloaded source code in a trusted
 offline Python environment:
@@ -747,7 +774,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 18
+noncanonical, reordered, oversized or changed members, compares all 20
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no

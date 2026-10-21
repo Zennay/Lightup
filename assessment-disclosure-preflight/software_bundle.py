@@ -22,7 +22,7 @@ SOFTWARE_FILES = (
     "review-studio.css", "review-studio.js", "review-vault.js", "package.py",
     "standalone.html", "reconcile-studio.html", "reconcile-studio.css",
     "reconcile-studio.js", "reconcile_package.py", "reconcile-standalone.html",
-    "software_bundle.py",
+    "kit-home.html", "kit-home.css", "software_bundle.py",
 )
 MAX_ASSET = 512 * 1024
 ARCHIVE_NAME = "LightUp-PRIVATE-Assessment-Offline-Kit.zip"
@@ -193,9 +193,28 @@ def inspect_unsigned_software(path: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build deterministic unsigned PRIVATE offline software kit")
     parser.add_argument("--output", default=ARCHIVE_NAME)
-    parser.add_argument("--inspect", metavar="EXISTING_ZIP",
-                        help="read-only inspect exact original unsigned software ZIP; no extraction")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--inspect", metavar="EXISTING_ZIP",
+                       help="read-only inspect exact unsigned ZIP; no extraction")
+    group.add_argument("--verify-current", action="store_true",
+                       help="compare bundled ZIP with every exact current source file; REVIEW_ONLY or HOLD")
     args = parser.parse_args()
+    if args.verify_current:
+        if args.output != ARCHIVE_NAME:
+            parser.error("--output cannot be used with --verify-current")
+        root = Path(__file__).resolve().parent
+        try:
+            original = inspect_unsigned_software(str(root / ARCHIVE_NAME))
+            current = compose({name: admit_asset(root / name) for name in SOFTWARE_FILES})
+            if hashlib.sha256(current).hexdigest() != original["sha256"]:
+                raise ValueError("bundled software differs from current source")
+        except (OSError, ValueError, UnicodeError, MemoryError, zipfile.BadZipFile):
+            print("HOLD: bundled ZIP is stale, altered, or differs from local source; no release")
+            return 3
+        print("REVIEW_ONLY: unsigned ZIP equals all exact local software source bytes")
+        print("Software entries:", original["software_files"], "ZIP SHA-256:", original["sha256"])
+        print("No sender authentication, customer authority, consent, CI approval or release")
+        return 2
     if args.inspect is not None:
         if args.output != ARCHIVE_NAME:
             parser.error("--output cannot be used with --inspect")
