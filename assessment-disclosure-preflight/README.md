@@ -1220,3 +1220,22 @@ and publishes the canonical four-file owner-only 0700/0600 native workroom.
 Use the exact command examples in [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md).
 No client/reviewer/source authentication, consent, assessment or release is
 created by a browser/native equality comparison.
+
+### PRIVATE HUMAN arbitrary-round comparison and complete session clear
+
+The [offline HUMAN History Desk](./private-inbox-history-standalone.html)
+can compare *any earlier and later* manually ordered rounds, not only
+adjacent snapshots. It distinguishes endpoint stage/role differences from
+intermediate edits and reversals; private question/next-action flags mean
+at least one edit occurred, not a different final text. The optional
+unsigned source-free CSV always includes all original slots regardless
+of display filters and explicitly denies source/chronology/authorization/
+release authority.
+
+The single action **Clear ALL private inputs and history** now discards the
+native/browsed preview and the separate original HUMAN CSV/board file
+selections together. Composed previews are invalidated when original
+source-file choices change, and stale asynchronous native imports cannot
+overwrite newer histories. No remote deletion, browser-memory wiping
+guarantee, saved-download deletion or actual consent is asserted. Read
+[PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md) for privacy boundaries.

@@ -171,3 +171,35 @@ four-file folder is not altered. Browser-original source bytes remain
 unchanged, and a different browser report/source/slot order is rejected.
 A normal native `reopen` without `--browser-history` can also open an
 identical saved four-file packet from the same original source CSVs.
+
+### Compare any two HUMAN rounds and export a source-free interval
+
+The offline History Desk now has a separate **manual interval comparator**.
+Select an earlier and a later round (not necessarily adjacent). It displays
+the exact original-ordinal HUMAN status and proposed discussion-role at
+both endpoints and independently indicates whether those two fields were
+edited *at any intermediate round*. A change and subsequent reversal
+therefore remains visible without being mislabeled as a different final
+value. Private question/next-action strings are never displayed or restored;
+their flags indicate **at least one edit in the chosen interval**, NOT
+that the final text is different. Manual chronology is not authenticated.
+
+The optional PRIVATE interval CSV always preserves all original slots in
+original order even if the browser has the changed-only view selected.
+It contains no board hash, original filenames, private notes, target names
+or actual reviewer identities, and explicitly marks all authority flags false.
+Treat downloaded CSV as **sensitive and unsigned**: browser Downloads
+permissions and confidentiality are outside LightUp's native custody.
+
+### Clearing the *entire* PRIVATE session
+
+**Clear ALL private inputs and history** removes the displayed native or
+browser-composed history, both original file-picker selections, in-memory
+pending JSON and any active round interval. Switching to an imported native
+history also clears any previously selected original board/HUMAN files.
+When the source file or revision order changes after composing, the old
+browser-built history preview disappears rather than pretending it still
+belongs to the new originals. In-flight older file imports are rejected
+rather than overwriting a newer session. The browser cannot securely wipe
+its process memory or an already downloaded file; close the trusted browser
+after private work and protect local downloads separately.
