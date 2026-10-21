@@ -287,6 +287,7 @@
   Object.defineProperty(window, "LightUpPrivateVaultBridge", {
     value:Object.freeze({
       snapshot:sourcePlan, restore:restoreOriginal, compare:compareVaultPlan,
+      admit:raw=>{validateReceipt(raw,true);return true;},
       busy:()=>processing, setBusy:value=>{processing=value;},
       notify:status
     }), writable:false, configurable:false

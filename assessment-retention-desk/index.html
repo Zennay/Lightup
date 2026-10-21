@@ -80,6 +80,13 @@
 <button id="export-vault" type="button">Versleuteld plan exporteren (.lurt)</button>
 <label for="vault-import" class="filelabel secondary">Versleuteld plan openen (.lurt)</label><input id="vault-import" type="file" accept=".lurt,application/json">
 <label for="vault-compare" class="filelabel secondary">Oud versleuteld plan vergelijken (zonder overname)</label><input id="vault-compare" type="file" accept=".lurt,application/json">
+<hr>
+<h4>Wachtwoord roteren voor een bestaand versleuteld plan</h4>
+<p class="muted">Vereist opnieuw geselecteerde, exact overeenkomende originele bronbestanden. Het bestaande plan wordt opnieuw versleuteld naar een nieuw bestand; huidige HUMAN-keuzes en het oude bestand blijven intact.</p>
+<label for="vault-new-password">Nieuw privéwachtwoord (12–128 tekens) <input id="vault-new-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Niet opgeslagen"></label>
+<label for="vault-confirm-password">Bevestig nieuw privéwachtwoord <input id="vault-confirm-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Niet opgeslagen"></label>
+<label for="vault-rotate" class="filelabel secondary">Bestaand .lurt-plan voor rotatie kiezen</label><input id="vault-rotate" type="file" accept=".lurt,application/json">
+<button id="rotate-vault" type="button">Bestaand .lurt-plan opnieuw versleutelen</button>
 </div>
 <p class="muted">Wachtwoordverlies betekent geen herstel van versleutelde HUMAN-keuzes. De actuele originele bronbestanden moeten opnieuw zijn geselecteerd; bij mismatch wordt geen enkele HUMAN-rij overgenomen.</p>
 </div>

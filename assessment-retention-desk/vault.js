@@ -41,8 +41,8 @@
       throw Error("Onveilige grootte van versleuteld plan.");
     return bytes;
   }
-  function takePassword() {
-    const input = $("vault-password");
+  function takePasswordFrom(id) {
+    const input = $(id);
     const password = input.value;
     input.value = "";
     const encoded = new TextEncoder().encode(password);
@@ -53,11 +53,46 @@
       throw Error("WebCrypto niet beschikbaar op deze vertrouwde browsercontext.");
     return encoded;
   }
+  function takePassword() { return takePasswordFrom("vault-password"); }
+  function sameBytes(left,right) {
+    if (!left || !right || left.length !== right.length) return false;
+    let difference = 0;
+    for (let i=0;i<left.length;i++) difference |= left[i] ^ right[i];
+    return difference === 0;
+  }
   async function derive(pass, salt) {
     const imported = await crypto.subtle.importKey("raw", pass, "PBKDF2", false, ["deriveKey"]);
     return crypto.subtle.deriveKey(
       {name:"PBKDF2", hash:"SHA-256", salt, iterations:ITERATIONS},
       imported, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+  }
+  async function encryptEnvelope(raw, pass) {
+    const plain = new TextEncoder().encode(raw);
+    if (!plain.length || plain.length > MAX_ORIGINAL_BYTES)
+      throw Error("HUMAN-plan te groot.");
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    let payload;
+    try {
+      const key = await derive(pass, salt);
+      payload = new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:PURPOSE,tagLength:128},key,plain));
+    } finally {
+      plain.fill(0);
+    }
+    const envelope = {
+      kind:KIND, version:1, algorithm:"PBKDF2-SHA256/AES-256-GCM",
+      iterations:ITERATIONS, salt:hex(salt), nonce:hex(nonce),
+      ciphertext:base64(payload), authority:AUTHORITY
+    };
+    const encoded = JSON.stringify(envelope);
+    if (new TextEncoder().encode(encoded).length > MAX_ENVELOPE_BYTES)
+      throw Error("Versleutelde envelope overschrijdt 256 KiB.");
+    return encoded;
+  }
+  function clearPasswords() {
+    for (const id of ["vault-password","vault-new-password","vault-confirm-password"])
+      $(id).value = "";
   }
   function download(name, json) {
     const url = URL.createObjectURL(new Blob([json],{type:"application/json"}));
@@ -71,37 +106,28 @@
     bridge.setBusy(true);
   }
   function leave() {
-    $("vault-password").value = "";
+    clearPasswords();
     $("vault-import").value = "";
     $("vault-compare").value = "";
+    $("vault-rotate").value = "";
     bridge.setBusy(false);
   }
   async function exportVault() {
-    let payload;
-    let acquired = false;
+    let pass = null, acquired = false;
     try {
       // Verify source and HUMAN records before setting busy.
       const original = bridge.snapshot();
-      const pass = takePassword();
+      pass = takePassword();
       enter(); acquired = true;
-      const plain = new TextEncoder().encode(JSON.stringify(original));
-      if (!plain.length || plain.length > MAX_ORIGINAL_BYTES) throw Error("HUMAN-plan te groot.");
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const nonce = crypto.getRandomValues(new Uint8Array(12));
-      const key = await derive(pass, salt);
-      payload = new Uint8Array(await crypto.subtle.encrypt(
-        {name:"AES-GCM",iv:nonce,additionalData:PURPOSE,tagLength:128},key,plain));
-      const envelope = {
-        kind:KIND, version:1, algorithm:"PBKDF2-SHA256/AES-256-GCM",
-        iterations:ITERATIONS, salt:hex(salt), nonce:hex(nonce),
-        ciphertext:base64(payload), authority:AUTHORITY
-      };
-      download("lightup-private-human-retention.lurt",JSON.stringify(envelope));
+      const encoded = await encryptEnvelope(JSON.stringify(original),pass);
+      download("lightup-private-human-retention.lurt",encoded);
       bridge.notify("Volledige PRIVATE HUMAN-planning AES-256-GCM versleuteld opgeslagen. Geen bron- of consentauthenticatie.");
     } catch(e) {
       bridge.notify("HOLD: PRIVATE versleuteling geweigerd: " + e.message, true);
     } finally {
-      if (acquired) leave(); else $("vault-password").value = "";
+      if (pass) pass.fill(0);
+      if (acquired) leave();
+      else clearPasswords();
     }
   }
   async function decryptEnvelope(file, pass) {
@@ -143,18 +169,21 @@
     try {
       decoded = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}).decode(decrypted);
     } catch {
+      new Uint8Array(decrypted).fill(0);
       throw Error("Ontsleutelde HUMAN-planning bevat ongeldige UTF-8; niets hersteld.");
     }
-    if (decoded.charCodeAt(0) === 0xfeff)
+    const hasBom = decoded.charCodeAt(0) === 0xfeff;
+    new Uint8Array(decrypted).fill(0);
+    if (hasBom)
       throw Error("UTF-8-BOM in de ontsleutelde HUMAN-planning wordt niet toegelaten.");
     return decoded;
   }
   async function importVault(event) {
-    let acquired = false;
+    let pass = null, acquired = false;
     try {
       const file = event.target.files?.[0];
       if (!file) return;
-      const pass = takePassword();
+      pass = takePassword();
       enter(); acquired = true;
       const original = await decryptEnvelope(file, pass);
       // Exact original source SHA/size admission and separate HUMAN confirmation
@@ -164,19 +193,21 @@
       bridge.notify("HOLD: versleutelde HUMAN-heropening geweigerd: " + e.message +
         " Bestaande PRIVATE keuzes blijven intact.",true);
     } finally {
-      if (acquired) leave(); else { $("vault-password").value = ""; $("vault-import").value = ""; }
+      if (pass) pass.fill(0);
+      if (acquired) leave();
+      else { clearPasswords(); $("vault-import").value = ""; }
     }
   }
   $("export-vault").addEventListener("click",exportVault);
   $("vault-import").addEventListener("change",importVault);
   async function compareVault(event) {
-    let acquired = false;
+    let pass = null, acquired = false;
     try {
       const file = event.target.files?.[0];
       if (!file) return;
       // Current genuine original source files must already be selected.
       bridge.snapshot();
-      const pass = takePassword();
+      pass = takePassword();
       enter(); acquired = true;
       const original = await decryptEnvelope(file, pass);
       bridge.compare(original);  // validates exact entire current original source set, no change.
@@ -184,8 +215,46 @@
       bridge.notify("HOLD: versleutelde PRIVATE vergelijking geweigerd: " + e.message +
         " Geen HUMAN-velden gewijzigd.",true);
     } finally {
-      if (acquired) leave(); else { $("vault-password").value = ""; $("vault-compare").value = ""; }
+      if (pass) pass.fill(0);
+      if (acquired) leave();
+      else { clearPasswords(); $("vault-compare").value = ""; }
+    }
+  }
+  async function rotateVault() {
+    let oldPass = null, newPass = null, confirmPass = null, acquired = false;
+    try {
+      const file = $("vault-rotate").files?.[0];
+      if (!file) throw Error("Selecteer het bestaande versleutelde .lurt-plan.");
+      oldPass = takePassword();
+      newPass = takePasswordFrom("vault-new-password");
+      confirmPass = takePasswordFrom("vault-confirm-password");
+      if (!sameBytes(newPass,confirmPass))
+        throw Error("Nieuw wachtwoord en bevestiging verschillen.");
+      if (sameBytes(oldPass,newPass))
+        throw Error("Kies voor rotatie een ander nieuw wachtwoord.");
+      enter(); acquired = true;
+      const original = await decryptEnvelope(file,oldPass);
+      // Pure source admission: validates the exact currently selected source set
+      // without importing the old plan or replacing any current HUMAN choice.
+      bridge.admit(original);
+      if (!window.confirm("Versleutel uitsluitend dit bestaande .lurt-plan opnieuw met het nieuwe wachtwoord? De huidige HUMAN-werkruimte blijft ongewijzigd en het oude bestand wordt niet verwijderd. Verifieer de nieuwe export met de nieuwe sleutel voordat je het oude bestand eventueel apart opruimt.")) {
+        bridge.notify("Wachtwoordrotatie geannuleerd; huidige planning en oud bestand blijven intact.");
+        return;
+      }
+      const encoded = await encryptEnvelope(original,newPass);
+      download("lightup-private-human-retention-rekeyed.lurt",encoded);
+      bridge.notify("PRIVATE .lurt opnieuw versleuteld met verse salt/nonce en nieuw wachtwoord. Huidige HUMAN-keuzes en oud bestand zijn niet gewijzigd; verifieer de nieuwe export voor gebruik.");
+    } catch(e) {
+      bridge.notify("HOLD: PRIVATE wachtwoordrotatie geweigerd: " + e.message +
+        " Huidige HUMAN-keuzes en oud bestand blijven intact.",true);
+    } finally {
+      if (oldPass) oldPass.fill(0);
+      if (newPass) newPass.fill(0);
+      if (confirmPass) confirmPass.fill(0);
+      if (acquired) leave();
+      else { clearPasswords(); $("vault-rotate").value = ""; }
     }
   }
   $("vault-compare").addEventListener("change",compareVault);
+  $("rotate-vault").addEventListener("click",rotateVault);
 })();
