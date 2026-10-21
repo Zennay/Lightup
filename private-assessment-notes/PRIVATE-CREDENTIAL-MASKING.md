@@ -48,6 +48,11 @@ forms frequently present in assessment writeups:
 - **Copied HTTP exchanges:** direction-marked `>`, `<` or `*`
   Cookie, Authorization and token-bearing header lines, as well as
   the existing plain header-at-start-of-line handling.
+- **Quoted standalone HTTP header values:** known credential-bearing
+  `Authorization: ...`, `Cookie: ...`, `Set-Cookie: ...` and selected token
+  headers inside a single or double-quoted Python/JS/config string are now
+  withheld even when not at the start of a line or attached to cURL `-H`.
+  This never certifies that other literal strings lack secrets.
 - **Structured snippets:** JSON quote-delimited password, key,
   Authorization, Cookie, session and common camelCase token values;
   owner-private YAML/config scalars with known sensitive field names;

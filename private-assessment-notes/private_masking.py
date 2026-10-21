@@ -35,6 +35,18 @@ _SHELL_HEADER = re.compile(
     (?:\\.|(?! (?P=quote) ).)*?(?P=quote)""",
     re.VERBOSE,
 )
+# Header lines sometimes appear as quoted *values* in copied Python/JS
+# arrays and sample configuration, not as command --header arguments or
+# beginning-of-line HTTP text. Withhold a known sensitive header's entire
+# quoted value; this is still heuristic and only for PRIVATE/HOLD output.
+_QUOTED_HTTP_HEADER = re.compile(
+    r"""(?ix)(?P<quote>["'])
+    (?P<header>(?:proxy-authorization|authorization|x-api-key|
+    x-auth-token|x-access-token|x-amz-security-token|x-goog-api-key|
+    x-csrf-token|x-xsrf-token|cookie|set-cookie)[ \t]*:[ \t]*)
+    (?:\\.|(?! (?P=quote) )[^\\\r\n]){0,4096}(?P=quote)""",
+    re.VERBOSE,
+)
 # Credential-bearing command switches are not HTTP headers:
 # curl -u user:pass, curl --proxy-user='u:p', --api-key=secret.
 # No untrusted command is ever executed; mask text only.
@@ -226,6 +238,9 @@ def mask_private_notes(original: str) -> str:
     value = _RAW_HTTP_HEADER.sub(r"\1[REDACTED_HTTP_VALUE]", value)
     value = _SHELL_HEADER.sub(
         lambda m: m.group("prefix") + m.group("quote") + m.group("header")
+        + "[REDACTED_HTTP_VALUE]" + m.group("quote"), value)
+    value = _QUOTED_HTTP_HEADER.sub(
+        lambda m: m.group("quote") + m.group("header")
         + "[REDACTED_HTTP_VALUE]" + m.group("quote"), value)
     value = _SHELL_CREDENTIAL.sub(
         lambda m: m.group("prefix") + "[REDACTED_COMMAND_CREDENTIAL]", value)
