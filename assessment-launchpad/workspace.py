@@ -23,13 +23,15 @@ from review_desk import (
     read_original_bundle, validate_worksheet,
 )
 from editor import NAME as EDITOR_FILE, render_editor
+from routing import FILES as ROUTING_FILES, create_artifacts as routing_artifacts
 
 BUNDLE_DIR = "launchpad"
 REVIEW_DIR = "human-round-01"
 EDITOR_DIR = "human-editor"
+ROUTING_DIR = "human-routing"
 GUIDE_FILE = "START-HERE-PRIVATE.txt"
 HOME_FILE = "OPEN-WORKSPACE-PRIVATE.html"
-SUBDIRS = (BUNDLE_DIR, REVIEW_DIR, EDITOR_DIR)
+SUBDIRS = (BUNDLE_DIR, REVIEW_DIR, EDITOR_DIR, ROUTING_DIR)
 LAB_ONLY = "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED"
 
 def private_child(root_fd, dirname):
@@ -90,7 +92,12 @@ def render_home(count, digest):
         "<p><small>Edited JSON must be privately downloaded and independently "
         "re-admitted by the native --responses option into a NEW private round."
         "</small></p></section>"
-        "<section><h2>4 · Source-free HUMAN counts</h2>"
+        "<section><h2>4 · Role-specific PRIVATE HUMAN queue</h2>"
+        "<a href='human-routing/lightup-lab-human-routing-private.html'>"
+        "Open role-ordered HUMAN routing desk</a>"
+        "<p><small>Contains PRIVATE endpoint URLs and HUMAN notes. "
+        "Create later filtered exports through routing.py after updated HUMAN rounds."</small></p></section>"
+        "<section><h2>5 · Source-free HUMAN counts</h2>"
         "<a href='human-round-01/lightup-lab-human-counts.json'>"
         "Open low-detail counts JSON</a>"
         "<p><small>No endpoint values or HUMAN text. Counts can still be "
@@ -122,7 +129,11 @@ def guide(root_dir, source_count, digest):
         "Never publish or host.\n"
         "   It downloads a revised JSON file only; native --responses "
         "must independently re-admit that file.\n"
-        "4. Human counts-only exports are in human-round-01; do not assume "
+        "4. Role-ordered HUMAN inbox: human-routing/" + ROUTING_FILES[0] + "\n"
+        "   Private CSV: human-routing/" + ROUTING_FILES[1] + "\n"
+        "   Anonymous-looking source-free counts: human-routing/" + ROUTING_FILES[2] + "\n"
+        "   To filter a later round by HUMAN role/stage, use assessment-launchpad/routing.py.\n"
+        "5. Human counts-only exports are in human-round-01; do not assume "
         "statistical anonymity for small populations.\n\n"
         "To update HUMAN stages, reviewer roles or notes, download the "
         "edited JSON, move it into a current-user-owned 0700 directory, "
@@ -183,6 +194,14 @@ def check_workspace(root_fd, root_dir):
     dashboard_bytes = read_private_bundle_item(root_fd, HOME_FILE, 32768)
     if dashboard_bytes != render_home(len(endpoints), digest):
         raise Hold("private workspace start screen changed or became noncanonical")
+    routing_fd, _ = open_output_directory(os.path.join(root_dir, ROUTING_DIR))
+    try:
+        recorded_routing = {name: read_private_bundle_item(routing_fd, name, 65536)
+                            for name in ROUTING_FILES}
+    finally:
+        os.close(routing_fd)
+    if recorded_routing != dict(routing_artifacts(work, endpoints, "ALL", "ALL")):
+        raise Hold("private HUMAN routing packet changed or no longer matches source")
     guide_bytes = read_private_bundle_item(root_fd, GUIDE_FILE, 16384)
     if guide_bytes != guide(root_dir, len(endpoints), digest):
         raise Hold("private workspace guide no longer matches original source")
@@ -216,6 +235,11 @@ def create_workspace(manifest, root_fd, root_dir):
         publish_bundle(editor_fd, [(EDITOR_FILE, render_editor(work))])
     finally:
         os.close(editor_fd)
+    routing_fd, _ = open_output_directory(os.path.join(root_dir, ROUTING_DIR))
+    try:
+        publish_bundle(routing_fd, routing_artifacts(work, endpoints, "ALL", "ALL"))
+    finally:
+        os.close(routing_fd)
     publish_bundle(root_fd, [
         (GUIDE_FILE, guide(root_dir, len(endpoints), digest)),
         (HOME_FILE, render_home(len(endpoints), digest)),
