@@ -46,6 +46,23 @@ python3 assessment-disclosure-preflight/preflight.py \
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
 
+## Native original PRIVATE HUMAN inbox follow-up actions
+
+The [source-bound PRIVATE HUMAN action guide](./PRIVATE-INBOX-ACTIONS.md)
+and bundled `private_inbox_actions.py` complete the review workflow after
+`private_inbox_board.py` generates the original source-free board JSON:
+native `prepare` exports a fresh original slot-ordered HUMAN action template,
+`finalize` requires all original slots and explicit human notes/statuses and
+writes a separate PRIVATE owner-only HTML/CSV/JSON discussion pack, and
+`reopen` verifies exact original source-bound HUMAN private bytes read-only.
+Human role labels are **proposals**, not actual assignments. A completed
+discussion is expressly **NO RELEASE**: it is not a verified finding,
+client/operator consent, original source identity or any activation approval.
+
+~~~sh
+python3 assessment-disclosure-preflight/private_inbox_actions.py --help
+~~~
+
 ## Source-free multi-room HUMAN inbox board
 
 New native [PRIVATE multi-room inbox board](./PRIVATE-INBOX-PORTFOLIO.md)
@@ -781,7 +798,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 27
+store, scan workflow, credential grant or signed release. The 29
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -854,7 +871,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 27
+noncanonical, reordered, oversized or changed members, compares all 29
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no
