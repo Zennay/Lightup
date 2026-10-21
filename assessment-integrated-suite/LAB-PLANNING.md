@@ -1,5 +1,24 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
+## Browser-only HUMAN Lab Route Desk companion
+
+The portable, source-free `human-lab-route.html` together with its
+adjacent `human-lab-route.js` provides a five-stage, twenty-action
+**self-reported HUMAN discussion desk** for native original actions
+52–71. It is bundled into the native kit and software-only ZIP.
+It does not execute or authenticate native actions, import private
+assessment evidence, preserve browser state, contact any endpoint, or
+grant/verify consent. Markers are never PASS/approved/complete; the
+four available self-report markers are Not reviewed, Discussing, Needs
+original input and Discussed only. A local JSON/CSV report never
+establishes provenance. Source-bound original native workflows and
+the mandatory reviewed exact-head CI and HUMAN release gate remain
+independent. To display the native handoff guide enter `LAB` in
+`console.py` and explicitly invoke each original action by its
+unchanged number. Every real original stays in 0700/0600 private
+custody; never include those originals in this software-only kit.
+
+
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This is an offline review workflow, not an active assessment, authorized asset, verified finding, client report, scanning schedule or release.
 
 ## One complete local product workflow
