@@ -23,8 +23,10 @@ from private_har_workflow import admit as admit_workflow, MANIFEST
 from private_har_progress import _edited, reopen_progress
 from private_har_worklist import FIELDS, entries
 
-SCHEMA = "lightup.private_har_original_revision_handoff.v1"
+SCHEMA = "lightup.private_har_original_revision_handoff.v2"
 CSV_NAME = "PRIVATE-HAR-REVISION-edited-actions.csv"
+DECISIONS_NAME = "PRIVATE-HAR-REVISION-decision-guide.csv"
+MAX_HTML_SIZE = 256 * 1024
 PAGE_NAME = "OPEN-PRIVATE-HAR-REVISION.html"
 RECEIPT_NAME = "PRIVATE-HAR-REVISION-receipt.json"
 MAX_SIZE = 65536
@@ -81,6 +83,7 @@ def _proposal(old_sources: list[dict], new_sources: list[dict],
     counts = Counter()
     old_reviewed_reset = 0
     kept_withhold = 0
+    instructions = []
     for action in entries(new_rows):
         record = dict(action)
         slot = int(record["original_ordinal"])
@@ -114,10 +117,20 @@ def _proposal(old_sources: list[dict], new_sources: list[dict],
         record["human_status"] = next_state
         record["human_notes"] = ""
         proposed.append(record)
+        instructions.append({
+            "original_ordinal": slot,
+            "review_area": record["review_area"],
+            "original_byte_relation": source_labels[slot],
+            "prior_manual_status": old_state,
+            "proposed_manual_status": next_state,
+            "new_manual_decision_reason": reason,
+            "original_review_required": "YES",
+        })
         counts[reason] += 1
 
     removed = sorted(set(old_by_slot) - {row["ordinal"] for row in new_sources})
-    return proposed, source_labels, removed, counts, old_reviewed_reset, kept_withhold
+    return (proposed, source_labels, removed, counts,
+            old_reviewed_reset, kept_withhold, instructions)
 
 
 def _csv(rows: list[dict]) -> bytes:
@@ -128,9 +141,21 @@ def _csv(rows: list[dict]) -> bytes:
     return handle.getvalue().encode("utf-8")
 
 
+def _decision_guide(instructions: list[dict]) -> bytes:
+    fields = ("original_ordinal", "review_area", "original_byte_relation",
+              "prior_manual_status", "proposed_manual_status",
+              "new_manual_decision_reason", "original_review_required")
+    stream = io.StringIO(newline="")
+    writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\r\n")
+    writer.writeheader()
+    writer.writerows(instructions)
+    return stream.getvalue().encode("utf-8")
+
+
 def _page(new_workflow: Path, source_labels: dict[int, str],
           removed: list[int], actions: list[dict], reasons: Counter,
-          reviewed_reset: int, withheld: int) -> bytes:
+          reviewed_reset: int, withheld: int,
+          instructions: list[dict]) -> bytes:
     lines = []
     for ordinal, label in sorted(source_labels.items()):
         affected = [row for row in actions if
@@ -144,6 +169,15 @@ def _page(new_workflow: Path, source_labels: dict[int, str],
             str(stat["IN_PROGRESS"] + stat["SOURCE_OWNER_NEEDED"]) +
             "</td></tr>"
         )
+    action_lines = "".join(
+        "<tr><th scope='row'>Original #" + str(item["original_ordinal"]) +
+        "</th><td>" + escape(item["review_area"].replace("_", " ")) +
+        "</td><td>" + escape(item["prior_manual_status"]) +
+        "</td><td>" + escape(item["proposed_manual_status"]) +
+        "</td><td>" +
+        escape(item["new_manual_decision_reason"].replace("_", " ")) +
+        "</td></tr>" for item in instructions
+    )
     reason_list = "".join("<li>" + escape(label.replace("_", " ")) +
                           ": " + str(reasons[label]) + "</li>"
                           for label in sorted(reasons))
@@ -190,7 +224,13 @@ reason_list + """</ul>
 <p><b>Human-reviewed is ALWAYS reset to pending</b> even when the original
 input bytes and task are unchanged. Only nonfinal stages may carry over
 when both original source bytes and task identity remain unchanged.
-These are private HUMAN planning hints, not findings or clearance.</p></section>
+These are private HUMAN planning hints, not findings or clearance.</p>
+<h3>Action-by-action decisions requiring HUMAN attention</h3>
+<p><a href='PRIVATE-HAR-REVISION-decision-guide.csv'>Open PRIVATE
+decision guide CSV</a>. This is a source-minimal human planning hint.</p>
+<table><thead><tr><th>Original</th><th>Task area</th><th>Prior
+self-report</th><th>New proposed stage</th><th>Why</th></tr>
+</thead><tbody>""" + action_lines + """</tbody></table></section>
 <section><h2>Continue in newer owner-private workflow</h2>
 <ol><li><a href='""" + wf_link + """/OPEN-PRIVATE-HAR-WORKFLOW.html'>Open
 the newer original-bound PRIVATE HAR workflow</a> and independently
@@ -221,9 +261,11 @@ def _make(older_workflow: str, newer_workflow: str,
         older_workflow, newer_workflow, older_progress_room)
     if parent != new_wf.parent:
         raise Hold("HOLD: revision CSV must be linked to newer private workflow")
-    proposal, labels, removed, reasons, reviewed_reset, withheld = _proposal(
+    (proposal, labels, removed, reasons, reviewed_reset,
+     withheld, instructions) = _proposal(
         old_sources, new_sources, past, newer_rows)
     csv_bytes = _csv(proposal)
+    guide = _decision_guide(instructions)
     # The revised CSV must already be a valid immutable *new* native
     # action template. This is product admission, never a release gate.
     if _edited(csv_bytes, entries(newer_rows)) != [
@@ -231,8 +273,10 @@ def _make(older_workflow: str, newer_workflow: str,
     ]:
         raise Hold("HOLD: invalid new PRIVATE HUMAN action proposal")
     html = _page(new_wf, labels, removed, proposal,
-                 reasons, reviewed_reset, withheld)
-    if not 0 < len(csv_bytes) <= MAX_SIZE or not 0 < len(html) <= MAX_SIZE:
+                 reasons, reviewed_reset, withheld, instructions)
+    if not (0 < len(csv_bytes) <= MAX_SIZE
+            and 0 < len(guide) <= MAX_SIZE
+            and 0 < len(html) <= MAX_HTML_SIZE):
         raise Hold("HOLD: revised PRIVATE HUMAN packet exceeded size limit")
     receipt = {
         "schema": SCHEMA, "claimed_status": "HOLD",
@@ -255,18 +299,19 @@ def _make(older_workflow: str, newer_workflow: str,
         "reviewed_statuses_reset": reviewed_reset,
         "conservative_withholds_retained": withheld,
         "revised_csv_sha256_unsigned": sha256(csv_bytes).hexdigest(),
+        "decision_guide_sha256_unsigned": sha256(guide).hexdigest(),
         "revised_html_sha256_unsigned": sha256(html).hexdigest(),
         **{flag: False for flag in FALSE_FLAGS},
     }
     raw_receipt = (json.dumps(receipt, indent=2, sort_keys=True,
                               ensure_ascii=False) + "\n").encode("utf-8")
-    return csv_bytes, html, raw_receipt
+    return csv_bytes, guide, html, raw_receipt
 
 
 def create(older_workflow: str, newer_workflow: str,
            older_progress_room: str, private_parent: str) -> int:
     parent = private_directory(private_parent)
-    csv_bytes, html, receipt = _make(
+    csv_bytes, guide, html, receipt = _make(
         older_workflow, newer_workflow, older_progress_room, str(parent))
     output = Path(tempfile.mkdtemp(
         prefix="PRIVATE-lightup-har-revision-", dir=parent))
@@ -274,6 +319,7 @@ def create(older_workflow: str, newer_workflow: str,
     completed = False
     try:
         file_new(output / CSV_NAME, csv_bytes)
+        file_new(output / DECISIONS_NAME, guide)
         file_new(output / PAGE_NAME, html)
         file_new(output / RECEIPT_NAME, receipt)
         completed = True
@@ -291,15 +337,17 @@ def reopen(older_workflow: str, newer_workflow: str,
     output = private_directory(revision_room)
     if output.parent != private_directory(newer_workflow).parent:
         raise Hold("HOLD: revised proposal must remain beside newer original")
-    csv_bytes, html, receipt = _make(
+    csv_bytes, guide, html, receipt = _make(
         older_workflow, newer_workflow, older_progress_room,
         str(output.parent))
     for name, expected in (
         (CSV_NAME, csv_bytes),
+        (DECISIONS_NAME, guide),
         (PAGE_NAME, html),
         (RECEIPT_NAME, receipt),
     ):
-        if private_input(str(output / name), MAX_SIZE) != expected:
+        if private_input(str(output / name),
+                         MAX_HTML_SIZE if name == PAGE_NAME else MAX_SIZE) != expected:
             raise Hold("HOLD: original-bound HAR revision packet changed")
     print("HOLD: immutable original-source revision proposal reopened")
     print("OPEN LOCALLY: " + str(output / PAGE_NAME))
