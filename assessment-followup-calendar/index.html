@@ -186,12 +186,22 @@ worksheet and timezone are accepted. Comparison is invalidated if this workroom 
 <label class="file">Compare encrypted .luhw <input type="file" id="compareWorkroom" accept=".luhw,application/octet-stream"></label>
 <button id="clearWorkroomComparison" class="ghost" type="button">Forget compared workroom</button>
 </div>
+<div class="toolbar">
+<label>Review type <select id="workroomCompareKind">
+<option value="all">All HUMAN proposal changes</option>
+<option value="appointment">Appointment time changes</option>
+<option value="group">Declared group rule changes</option></select></label>
+<label>Search original ordinal or HUMAN group <input id="workroomCompareQuery" type="search" maxlength="120" placeholder="Local browser only"></label>
+<button id="exportWorkroomDiff" type="button" class="ghost">Export PRIVATE changed-only CSV</button>
+</div>
 <p id="workroomCompareStatus" class="subtle" role="status" aria-live="polite">No compared PRIVATE workroom loaded.</p>
 <div class="tablebox"><table><thead><tr>
 <th>HUMAN change type</th><th>Original ordinal / unverified group label</th>
 <th>Current local proposal</th><th>Compared local proposal</th></tr></thead>
 <tbody id="workroomCompareRows"></tbody></table></div>
-<p class="subtle">At most 80 changed entries are shown here. Zero differences do not prove a
+<div class="row"><button id="comparePrev" class="ghost" type="button">Previous differences</button>
+<button id="compareNext" class="ghost" type="button">Next differences</button></div>
+<p class="subtle">Up to 50 changed entries per page; all matching changes can be navigated. Zero differences do not prove a
 fixed finding, consent, real availability, security review or an authenticated human source.</p>
 </details>
 </div>

@@ -214,3 +214,14 @@ previous comparison. The operator can explicitly forget it sooner.
 Neither a zero-difference count nor a matching unsigned SHA authorizes
 execution, proves consent, verifies findings, establishes owner identity or
 synchronizes an external calendar.
+
+
+### Reviewable whole-workroom differences at scale
+
+The encrypted comparison now offers change-type selection, local ordinal/group
+search, and paging over **every** changed appointment or declared HUMAN group
+policy (50 per page). Explicit PRIVATE changed-only CSV export is restricted to
+the currently filtered entries, with original ordinals and self-reported group
+labels, no source findings, targets, evidence or source digest. Spreadsheet-like
+formula cells are escaped. Nothing is automatically sent, merged, approved,
+authenticated, synchronized with a real calendar or treated as remediation.

@@ -24,7 +24,7 @@
   let backlogPage=0, backlogProposal=null;
   let capacityRules = new Map(), capacityProposal = null, capacityDirty = false;
   let capacityEditorDirty = false, capacityEditingGroup = "";
-  let workroomComparison = null;
+  let workroomComparison = null, workroomComparePage = 0;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -1398,37 +1398,70 @@
     return "Days "+v.days.join("/")+" · "+v.start+"–"+v.end+
       " · max "+v.maximum+"/day · "+v.blackouts.length+" blackout dates";
   }
+  function changedWorkroomRows(){
+    hold(workroomComparison && !capacityEditorDirty &&
+      workroomComparison.fingerprint===workroomFingerprint());
+    const other=workroomComparison.admitted,rows=[];
+    for(const row of items){
+      const here=plan.get(row.ordinal),there=other.schedule.get(row.ordinal);
+      if(!slotEquals(here,there) && (here||there))
+        rows.push(["appointment","HUMAN proposed appointment","#"+row.ordinal,
+          reviewSlotSummary(here),reviewSlotSummary(there)]);
+    }
+    for(const group of capacityGroups()){
+      const a=reviewCapacitySummary(capacityRules.get(group));
+      const z=reviewCapacitySummary(other.rules.get(group));
+      if(a!==z)rows.push(["group","HUMAN declared availability",group||"(unassigned)",a,z]);
+    }
+    return rows;
+  }
+  function filteredWorkroomRows(){
+    const kind=$("workroomCompareKind").value;
+    const q=$("workroomCompareQuery").value.trim().toLocaleLowerCase();
+    return changedWorkroomRows().filter(row=>
+      (kind==="all"||row[0]===kind) &&
+      (!q || row[2].toLocaleLowerCase().includes(q)));
+  }
   function renderWorkroomComparison(){
     const output=$("workroomCompareRows");if(!output)return;
     output.replaceChildren();
     if(workroomComparison && (capacityEditorDirty ||
       workroomComparison.fingerprint!==workroomFingerprint())){
-      workroomComparison=null;
+      workroomComparison=null;workroomComparePage=0;
       $("workroomCompareStatus").textContent=
-        "Previous comparison cleared: original private schedule, declared availability or group editor changed.";
+        "Previous comparison cleared: PRIVATE schedule, declared group policy or editor changed.";
     }
-    if(!workroomComparison)return;
-    const other=workroomComparison.admitted,rows=[];
-    for(const row of items){
-      const here=plan.get(row.ordinal),there=other.schedule.get(row.ordinal);
-      if(!slotEquals(here,there) && (here||there)){
-        rows.push(["HUMAN proposed appointment","#"+row.ordinal,
-          reviewSlotSummary(here),reviewSlotSummary(there)]);
-      }
+    if(!workroomComparison){
+      $("comparePrev").disabled=true;$("compareNext").disabled=true;
+      $("exportWorkroomDiff").disabled=true;
+      return;
     }
-    for(const group of capacityGroups()){
-      const a=reviewCapacitySummary(capacityRules.get(group));
-      const z=reviewCapacitySummary(other.rules.get(group));
-      if(a!==z)rows.push(["HUMAN declared availability",group||"(unassigned)",a,z]);
-    }
-    $("workroomCompareStatus").textContent=rows.length+
-      " PRIVATE HUMAN scheduling or group-policy differences across matching original worksheet and timezone. "+
-      Math.min(80,rows.length)+" shown; no automatic changes. Same source digest is UNSIGNED.";
-    for(const data of rows.slice(0,80)){
+    const all=changedWorkroomRows(),visible=filteredWorkroomRows();
+    const pages=Math.max(1,Math.ceil(visible.length/50));
+    workroomComparePage=Math.max(0,Math.min(workroomComparePage,pages-1));
+    $("comparePrev").disabled=workroomComparePage===0;
+    $("compareNext").disabled=workroomComparePage>=pages-1;
+    $("exportWorkroomDiff").disabled=visible.length===0;
+    $("workroomCompareStatus").textContent=all.length+" overall PRIVATE HUMAN differences · "+
+      visible.length+" match filter · page "+(workroomComparePage+1)+" of "+pages+
+      " · matching original worksheet bytes are UNSIGNED · no automatic changes.";
+    for(const row of visible.slice(workroomComparePage*50,(workroomComparePage+1)*50)){
       const tr=dom("tr");
-      data.forEach(value=>tr.append(dom("td",value)));
+      row.slice(1).forEach(value=>tr.append(dom("td",value)));
       output.append(tr);
     }
+  }
+  function exportWorkroomComparisonCsv(){
+    const rows=filteredWorkroomRows();
+    hold(rows.length>0 && rows.length<=items.length+capacityGroups().length);
+    if(!confirm("Export "+rows.length+" filtered PRIVATE HUMAN workroom differences? The CSV contains source-ordinal identifiers and proposed group labels, dates and capacity policy. Even these can be confidential. This is an UNSIGNED HUMAN-only comparison, not independent risk, consent, remediation or source verification."))return;
+    hold(rows.length===filteredWorkroomRows().length);
+    const safeCell=v=>unsafeText(String(v))?"'"+String(v):String(v);
+    const output=[["change_type","original_ordinal_or_unverified_group",
+      "current_private_human_proposal","compared_private_human_proposal"],
+      ...rows.map(row=>row.slice(1).map(safeCell))];
+    download(makeCsv(output),"lightup-private-human-workroom-differences.csv","text/csv;charset=utf-8");
+    inform("PRIVATE HUMAN changed-only comparison CSV downloaded locally; no file sent or live assessment performed.");
   }
   async function compareEncryptedWorkroom(file){
     hold(active && crypto.subtle && !capacityEditorDirty);
@@ -1438,7 +1471,8 @@
       hold(active && initial===workroomFingerprint() && !capacityEditorDirty);
       if(!confirm("Compare an encrypted PRIVATE HUMAN workroom without changing original appointments or group policies? Matched source fingerprints are unsigned. The local differences may reveal private scheduling information."))return;
       hold(active && initial===workroomFingerprint() && !capacityEditorDirty);
-      workroomComparison={fingerprint:initial,admitted};
+      workroomComparison={fingerprint:initial,admitted};workroomComparePage=0;
+      $("workroomCompareKind").value="all";$("workroomCompareQuery").value="";
       renderWorkroomComparison();
       $("compareWorkroomDetails").open=true;
       inform("Encrypted comparison loaded in browser memory only. No current HUMAN plan, group rules or external calendar changed.");
@@ -1798,8 +1832,16 @@
     catch(_){clearPasswords();inform("Encrypted comparison refused (HOLD); current HUMAN schedule and group rules untouched.",true);}
     finally{e.target.value="";}
   });
+  hook("workroomCompareKind","change",()=>{workroomComparePage=0;renderWorkroomComparison();});
+  hook("workroomCompareQuery","input",()=>{workroomComparePage=0;renderWorkroomComparison();});
+  hook("comparePrev","click",()=>{workroomComparePage--;renderWorkroomComparison();});
+  hook("compareNext","click",()=>{workroomComparePage++;renderWorkroomComparison();});
+  hook("exportWorkroomDiff","click",()=>{
+    try{exportWorkroomComparisonCsv();}
+    catch(_){inform("PRIVATE source-bound HUMAN workroom difference export refused (HOLD).",true);}
+  });
   hook("clearWorkroomComparison","click",()=>{
-    workroomComparison=null;
+    workroomComparison=null;workroomComparePage=0;
     $("workroomCompareRows").replaceChildren();
     $("workroomCompareStatus").textContent="Compared HUMAN workroom forgotten from browser memory.";
   });
