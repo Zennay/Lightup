@@ -35,6 +35,37 @@ unchanged historical receipt and generated file expectations. New HTML
 source pins its own inline JavaScript with an exact SHA-256 CSP hash, has no
 remote scripts and offers no release or execution mechanism.
 
+### New: source-bound PRIVATE HAR multi-round history
+
+After creating 2–8 separate original-bound `har-action-progress` packets
+from the same original kit and immutable v18/v19 masking-cue room, the source
+owner can view literal HUMAN status transitions without copying evidence:
+
+~~~sh
+python3 private-assessment-notes/notes.py har-action-history \
+  --original-kit /private/original-kit \
+  --cue-room /private/immutable-cues \
+  --round /private/human-status-first \
+  --round /private/human-status-second \
+  --private-parent /private/owner-work
+~~~
+
+The CLI read-only re-admits every original packet and task row before
+writing a new 0700 room containing `PRIVATE-HAR-HISTORY.html` (scriptless),
+`PRIVATE-HAR-HISTORY.csv` and a byte-bound unsigned HOLD receipt.
+The overview shows original position, task area, literal cue counts, each
+manual status, changed rounds and reopened-after-HUMAN_REVIEWED indicators.
+No source names/paths/URLs/hashes, raw data, reviewer identity or free-text
+notes appear in HTML/CSV. Round order is declared by the operator, not
+authenticated chronology; all HUMAN statuses remain unverified.
+
+Reopen the exact immutable receipt with the same ordered `--round`
+arguments and `notes.py har-action-history-reopen --original-kit ...
+--cue-room ... --history-room /private/PRIVATE-lightup-har-review-history-<id>`.
+It checks unchanged original source, all input rounds, and all report bytes.
+Both native actions always return HOLD (exit 3). No status transition means
+consent, privacy review, permission to scan, grant or release.
+
 ### New: source-bound original HAR HUMAN action worksheets (v18)
 
 The original PRIVATE source-owner workroom now emits

@@ -460,3 +460,12 @@ permissions for native `har-action-progress` admission. The source-bound
 masking receipt is now v19; v1–v18 remain immutable and reopenable.
 No browser status can authenticate reviewer identity, privacy review,
 consent, permission to disclose, scan authority or security conclusions.
+
+### Offline HUMAN HAR status history
+
+`notes.py har-action-history` reopens 2–8 original-private human status
+packets, preserves every original task, and produces source-minimal HTML/CSV
+status transitions and a source-bound unsigned HOLD receipt. Its read-only
+`har-action-history-reopen` verifies all original receipts and output bytes.
+Round order and statuses are manual, never verified findings, consent,
+privacy certification or release. No targets, scans, client data or uploads.
