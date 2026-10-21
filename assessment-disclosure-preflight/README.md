@@ -1148,3 +1148,23 @@ inventory, mode 0600, regular unlinked file identity and byte equality
 without writing anything. It does not change the active HUMAN plan.
 The full operator route, examples and security warnings are in
 [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md).
+
+
+### Local interactive history browser (source-free and read-only)
+
+The [PRIVATE History Desk](./private-inbox-history-studio.html) opens a
+previously produced `PRIVATE-inbox-HUMAN-history.json` in the browser and
+provides an interactive manual-round selector, source-order slot cards,
+status/role filters, adjacent changed-field indicators, per-round counters,
+latest human attention table and private printing. It reads no source
+evidence or complete HUMAN notes and cannot write/import to the native
+HUMAN plan. This is a **viewer**, not a replacement for native original
+four-file custody reopening, release approval or human consent.
+
+This standalone set consists of the HTML entry page, one adjacent JavaScript
+file and one local CSS file. CSP allows only same-folder JS/CSS and denies all
+network, storage/service and frame connections. It refuses ambiguous duplicate
+JSON keys and unexpected schema/authority fields, incomplete stage histories,
+falsely claimed no-release flags and inconsistent latest attention entries.
+It retains the source-free report only in browser memory; use **Clear private
+session** on shared devices. See the [history guide](./PRIVATE-INBOX-HISTORY.md).

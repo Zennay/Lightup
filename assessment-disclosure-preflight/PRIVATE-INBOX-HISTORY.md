@@ -58,6 +58,23 @@ the exact original board, and input bytes are reread immediately before
 the exclusive publish. All four outputs are created as owner-only 0600.
 The source files and already active HUMAN plan are never modified.
 
+## Open and explore saved history in an offline browser
+
+Open [private-inbox-history-studio.html](./private-inbox-history-studio.html)
+from the owner-controlled offline kit folder alongside its local JS/CSS, then
+choose the native `PRIVATE-inbox-HUMAN-history.json` file. The PRIVATE History
+Desk provides a manual-round selector, complete source-ordinal cards,
+HUMAN stage/role filters, changed-only filtering, per-round stage summaries,
+latest manually proposed HUMAN follow-up, adjacent changed-field views and
+private printing. No source bytes, real customer identifiers or private note
+contents can be recovered from this source-free JSON.
+
+The browser refuses oversized, invalid, ambiguous (including duplicate decoded
+JSON keys) and internally inconsistent history records. It never writes back
+to source files, sets localStorage, uploads data or verifies genuine reviewer
+identity. A browser 'loaded' message is not proof of trusted source or
+filesystem custody: always use the **original native reopen** below.
+
 ## Reopen an existing private history without writing
 
 Use the *same* original board and complete ordered revision files.
