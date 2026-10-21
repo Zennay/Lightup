@@ -2050,3 +2050,16 @@ real tasks. All generated files remain PRIVATE; the index is not public
 or client-safe. Every receipt explicitly records that authorization,
 real appointments, verified remediation, actual dispatch, real recipient
 identity and consent remain **false**. This held product is not on main/live.
+
+### Source-exact read-only reopening
+
+Foreground console **58** reopens the **original PRIVATE proposed-calendar.json**
+and matching complete original PRIVATE calendar CSV, then independently reads
+the original owner inbox, history, operator follow-up and its full original
+CSV. Both private files and all original provenance must exactly match the
+canonical native HUMAN receipt (including the explicitly selected reference
+day), else the read returns HOLD. Success is PRIVATE REVIEW_ONLY and writes
+**no** files. It authenticates no recipient and does not validate the
+previously rendered HTML's physical bytes. CLI:
+
+    python3 assessment-workspace-ledger/portfolio_operator_calendar.py reopen       --history /private/original-history.json       --inbox /private/original-inbox.json       --followup /private/original-operator-followup.json       --operator-csv /private/original-operator-followup.csv       --proposed-csv /private/PRIVATE-HUMAN-proposed-calendar.csv       --receipt /private/PRIVATE-HUMAN-proposed-calendar.json       --reference-day 2026-10-21 --private-parent /private/output

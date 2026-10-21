@@ -113,6 +113,7 @@ MENU = (
     ("55", "Build portable offline ORIGINAL HUMAN operator version explorer"),
     ("56", "Prepare full original-bound PRIVATE HUMAN proposed review calendar CSV"),
     ("57", "Receive complete original-bound HUMAN calendar into PRIVATE owner workrooms"),
+    ("58", "Read-only reopen original HUMAN calendar CSV and private receipt"),
     ("0", "Exit"),
 )
 
@@ -262,15 +263,17 @@ def handle_action(action):
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
         ))
-    if action in ("56", "57"):
+    if action in ("56", "57", "58"):
         return portfolio_operator_calendar.run(argparse.Namespace(
-            mode="prepare" if action == "56" else "receive",
+            mode="prepare" if action == "56" else ("receive" if action == "57" else "reopen"),
             inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
             history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
             followup=prompt("Original native PRIVATE-HUMAN-operator-followup.json"),
             operator_csv=prompt("Matching original complete HUMAN operator follow-up CSV"),
             proposed_csv=prompt("Edited complete HUMAN-proposed-calendar-template.csv")
-            if action == "57" else None,
+            if action in ("57", "58") else None,
+            receipt=prompt("Original PRIVATE-HUMAN-proposed-calendar.json")
+            if action == "58" else None,
             reference_day=prompt("Explicit HUMAN reference day 20xx-mm-dd (not real booking)"),
             private_parent=private_parent(),
         ))
