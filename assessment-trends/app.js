@@ -712,11 +712,120 @@
     const id=currentId(),metric=$("noteMetric").value||METRICS[0];
     const key=id?noteKey(id,metric):"";
     $("noteInput").disabled=!id;$("saveNote").disabled=!id;$("clearNote").disabled=!id;
-    $("exportNotes").disabled=notes.size===0;
+    $("exportNotes").disabled=notes.size===0||!fictional;
     $("noteInput").value=key?(scratch.has(key)?scratch.get(key):(notes.get(key)||"")):"";
     $("noteMessage").textContent=id?"Scenario "+String(slot(id)).padStart(2,"0")+" · "+metric+
       ". Notes are local to this tab and are never included in anonymous exports.":"";
   }
+
+  // Minimum-necessary encrypted HUMAN note handoff; no HUMAN stage or source
+  // evidence is included. Imported self-reports are never approvals or findings.
+  const PRIVATE_NOTES_SCHEMA="lightup.assessment_trends_source_bound_private_notes.v1";
+  const PRIVATE_NOTES_DISCLAIMER="PRIVATE unsigned HUMAN commentary only. Original source byte fingerprints compare identical local inputs but do not authenticate provenance, reviewer identity, finding validity, consent, remediation or release. Notes never authorize an assessment.";
+  function notePacketEntries(){
+    const onlySelected=$("notePacketScope").value==="current",
+      selectedKey=noteKey(currentId(),$("noteMetric").value||METRICS[0]);
+    const entries=[...notes].filter(([key])=>!onlySelected||key===selectedKey);
+    return entries.map(([key,value])=>{
+      const [id,metric]=JSON.parse(key);
+      return [slot(id),metric,value];
+    }).filter(row=>row[0]>0).sort((a,b)=>
+      a[0]-b[0]||METRICS.indexOf(a[1])-METRICS.indexOf(b[1]));
+  }
+  function renderNotePacketControls(){
+    const capable=canResume()&&hasSessionCrypto();
+    $("notePacketFile").disabled=!capable;
+    $("notePacketImport").disabled=!capable;
+    $("notePacketExport").disabled=!capable||notePacketEntries().length===0;
+    $("notePacketCount").textContent=capable?
+      notePacketEntries().length+" saved HUMAN note(s) selected for a PRIVATE, source-bound encrypted handoff.":
+      "Import 3–12 original source snapshots with browser Web Crypto to use encrypted HUMAN note handoffs.";
+  }
+  async function exportEncryptedNotes(){
+    const sourceTicket=sourceAdmissionTicket;
+    const password=$("notePacketSecret").value,
+      confirmed=$("notePacketConfirm").value;
+    try{
+      if(!canResume()||!hasSessionCrypto()||password.length<14||password.length>256||password!==confirmed){
+        $("notePacketMessage").textContent="HOLD: original source cohort, available browser crypto and matching 14–256-character note passphrase required.";return;
+      }
+      const entries=notePacketEntries();
+      admit(entries.length>=1&&entries.length<=960);
+      if(!window.confirm("Create a PRIVATE ENCRYPTED, UNSIGNED note-only handoff? Only explicitly selected saved HUMAN notes, anonymous slot numbers and exact original source byte fingerprints will be inside the AES-GCM ciphertext. No other HUMAN stages, targets, client identity or original findings will be shared."))return;
+      const packet={schema:PRIVATE_NOTES_SCHEMA,status:"PRIVATE_UNSIGNED",
+        private_unsigned:true,fictional_demo_only:false,manually_selected_order:true,
+        chronology_authenticated:false,source_identity_authenticated:false,
+        snapshot_sha256_by_manual_slot:[...sourceFingerprints],
+        scenario_count:scenarioIds.length,notes:entries,disclaimer:PRIVATE_NOTES_DISCLAIMER,
+        ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+      const envelope=await encryptPrivatePayload(JSON.stringify(packet)+"\n",password);
+      admit(sourceTicket===sourceAdmissionTicket&&canResume());
+      const output=JSON.stringify(envelope,null,2)+"\n";
+      admit(new Blob([output]).size<=MAX_ENCRYPTED_BUNDLE);
+      download("assessment-trends-PRIVATE-ENCRYPTED-human-notes.json",output,"application/json");
+      $("notePacketMessage").textContent="PRIVATE encrypted note-only handoff downloaded. No HUMAN stages or original source identifiers included.";
+    }catch(_){
+      $("notePacketMessage").textContent="HOLD: note-only encryption could not finish. No plaintext notes were downloaded and current HUMAN work is unchanged.";
+    }finally{
+      $("notePacketSecret").value="";$("notePacketConfirm").value="";
+    }
+  }
+  async function importEncryptedNotes(){
+    const sourceTicket=sourceAdmissionTicket;
+    const file=$("notePacketFile").files[0],
+      password=$("notePacketUnlock").value;
+    try{
+      admit(file&&canResume()&&hasSessionCrypto()&&
+        file.size>0&&file.size<=MAX_ENCRYPTED_BUNDLE);
+      const content=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      admit(!content.startsWith("\uFEFF"));
+      const envelope=strictJSON(content);
+      admit(envelope&&envelope.schema===ENVELOPE_SCHEMA);
+      const decrypted=await decryptPrivatePayload(envelope,password);
+      admit(!decrypted.startsWith("\uFEFF"));
+      const data=strictJSON(decrypted);
+      admit(exact(data,["schema","status","private_unsigned","fictional_demo_only",
+        "manually_selected_order","chronology_authenticated","source_identity_authenticated",
+        "snapshot_sha256_by_manual_slot","scenario_count","notes","disclaimer",...FLAGS])&&
+        data.schema===PRIVATE_NOTES_SCHEMA&&data.status==="PRIVATE_UNSIGNED"&&
+        data.private_unsigned===true&&data.fictional_demo_only===false&&
+        data.manually_selected_order===true&&data.chronology_authenticated===false&&
+        data.source_identity_authenticated===false&&
+        data.disclaimer===PRIVATE_NOTES_DISCLAIMER&&flags(data)&&
+        data.scenario_count===scenarioIds.length);
+      admit(Array.isArray(data.snapshot_sha256_by_manual_slot)&&
+        data.snapshot_sha256_by_manual_slot.length===sourceFingerprints.length&&
+        data.snapshot_sha256_by_manual_slot.every((digest,i)=>
+          typeof digest==="string"&&digest===sourceFingerprints[i]));
+      admit(Array.isArray(data.notes)&&data.notes.length>=1&&data.notes.length<=960);
+      const additions=new Map();
+      for(const row of data.notes){
+        admit(Array.isArray(row)&&row.length===3);
+        const [scenarioSlot,metric,note]=row;
+        admit(Number.isSafeInteger(scenarioSlot)&&scenarioSlot>=1&&
+          scenarioSlot<=scenarioIds.length&&METRICS.includes(metric)&&
+          typeof note==="string"&&note.length>=1&&note.length<=500&&note.trim().length>0);
+        const key=noteKey(scenarioIds[scenarioSlot-1],metric);
+        admit(!additions.has(key));additions.set(key,note);
+      }
+      admit(sourceTicket===sourceAdmissionTicket&&canResume());
+      const replacing=[...additions.keys()].filter(key=>notes.has(key)&&notes.get(key)!==additions.get(key)).length;
+      if(!window.confirm("The encrypted PRIVATE note packet matches exact local source bytes and manual order. Merge "+additions.size+" HUMAN note(s) into THIS local review, replacing "+replacing+" existing saved note(s) after explicit confirmation? No HUMAN stages, original source files or other notes are changed. Self-reports are not verified.")){
+        $("notePacketMessage").textContent="PRIVATE note merge cancelled. Current HUMAN work remains unchanged.";return;
+      }
+      for(const [key,note] of additions){
+        notes.set(key,note);scratch.delete(key);
+      }
+      renderNotePanel();renderNotePacketControls();
+      $("notePacketMessage").textContent="Merged "+additions.size+
+        " PRIVATE HUMAN note(s), including "+replacing+" changed saved notes, for the exact original byte-bound cohort. Current stages unchanged.";
+    }catch(_){
+      $("notePacketMessage").textContent="HOLD: encrypted note packet rejected (password, schema, source bytes/order, size or HUMAN note membership). Current HUMAN notes and stages unchanged.";
+    }finally{
+      $("notePacketFile").value="";$("notePacketUnlock").value="";
+    }
+  }
+
   function renderPrintBrief(){
     const s=summary(),root=$("printBrief");root.replaceChildren();
     const h=document.createElement("h1");h.textContent="LightUp Assessment Trends · anonymous aggregate brief";root.append(h);
@@ -765,7 +874,7 @@
       for(const id of ["reviewExportStages","reviewExportStageCsv","reviewExportStageBrief"])
         $(id).disabled=true;
       $("reviewHumanSummary").textContent="No local HUMAN stages.";}
-    renderNotePanel();
+    renderNotePanel();renderNotePacketControls();
     renderSessionControls();
     for(const id of ["revisionEarlierFile","revisionLaterFile","revisionCompare","timelineFiles","timelineImport"])
       $(id).disabled=!canResume();
@@ -971,8 +1080,8 @@
     download("assessment-trends-anonymous-brief-REVIEW-ONLY.html",html,"text/html");
   }
   function exportPrivateNotes(){
-    if(!notes.size||!snapshots.length)return;
-    if(!window.confirm("Export saved human commentary to a separate PRIVATE file? It contains your notes, but no original IDs, filenames or hashes."))return;
+    if(!notes.size||!snapshots.length||!fictional)return;
+    if(!window.confirm("FICTIONAL DEMO ONLY: export saved invented commentary to a separate PRIVATE file? It contains your notes, but no original IDs, filenames or hashes."))return;
     const out={schema:"lightup.assessment_trends_private_commentary.v1",status:"PRIVATE_UNSIGNED",
       private_unsigned:true,fictional_demo_only:fictional,manually_selected_order:true,
       chronology_authenticated:false,source_identity_authenticated:false,
@@ -1526,15 +1635,24 @@
       void importFiles(pendingSources);
     else $("message").textContent="Choose and order 3–12 original cohort JSON files before import.";
   });
-  $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});
-  $("noteMetric").addEventListener("change",()=>{selectedMetric=$("noteMetric").value;renderNotePanel();});
+  $("scenarioSelect").addEventListener("change",()=>{
+    selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();
+    renderNotePacketControls();
+  });
+  $("noteMetric").addEventListener("change",()=>{
+    selectedMetric=$("noteMetric").value;renderNotePanel();renderNotePacketControls();
+  });
   $("noteInput").addEventListener("input",()=>{const id=currentId();if(id)scratch.set(noteKey(id,$("noteMetric").value),$("noteInput").value);});
   $("saveNote").addEventListener("click",()=>{const id=currentId();if(!id)return;const key=noteKey(id,$("noteMetric").value),value=scratch.get(key)||"";
     if(value.length>500){$("noteMessage").textContent="HOLD: commentary exceeds 500 characters.";return;}
     if(value.trim())notes.set(key,value);else notes.delete(key);
-    renderNotePanel();$("noteMessage").textContent="Commentary saved in memory only. It is not included in anonymous exports.";});
+    renderNotePanel();renderNotePacketControls();$("noteMessage").textContent="Commentary saved in memory only. It is not included in anonymous exports.";});
   $("clearNote").addEventListener("click",()=>{const id=currentId();if(!id)return;const key=noteKey(id,$("noteMetric").value);
-    notes.delete(key);scratch.delete(key);renderNotePanel();$("noteMessage").textContent="Selected commentary cleared from this tab.";});
+    notes.delete(key);scratch.delete(key);renderNotePanel();renderNotePacketControls();
+    $("noteMessage").textContent="Selected commentary cleared from this tab.";});
+  $("notePacketScope").addEventListener("change",renderNotePacketControls);
+  $("notePacketExport").addEventListener("click",()=>{void exportEncryptedNotes();});
+  $("notePacketImport").addEventListener("click",()=>{void importEncryptedNotes();});
   $("exportNotes").addEventListener("click",exportPrivateNotes);
   $("exportJson").addEventListener("click",exportJson);
   $("exportCsv").addEventListener("click",exportCsv);

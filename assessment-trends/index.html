@@ -126,7 +126,7 @@
 </section>
 <section class="panel no-print" id="commentary">
   <div class="section-head"><h2>07 / Private human commentary</h2><span class="tag">In-memory only</span></div>
-  <p>Notes are never part of the anonymous aggregate brief, JSON or CSV. Save a note explicitly to retain it in this tab; navigate between scenarios without losing scratch text. Exporting notes creates a separate clearly marked PRIVATE file.</p>
+  <p>Notes are never part of the anonymous aggregate brief, JSON or CSV. Save explicitly to retain commentary in this tab. For original source cohorts, sharing HUMAN notes uses only the encrypted, source-byte-bound note handoff below. Plaintext note export is limited to fictional demo data.</p>
   <label>Metric for commentary
     <select id="noteMetric" disabled></select>
   </label>
@@ -136,13 +136,43 @@
   <div class="controls">
     <button id="saveNote" type="button" disabled>Save commentary in memory</button>
     <button id="clearNote" type="button" class="secondary" disabled>Clear commentary</button>
-    <button id="exportNotes" type="button" class="ghost" disabled>Export PRIVATE commentary JSON</button>
+    <button id="exportNotes" type="button" class="ghost" disabled>Export fictional demo notes only (plaintext JSON)</button>
   </div>
   <p id="noteMessage" class="message" role="status" aria-live="polite"></p>
 </section>
 
+
+<section class="panel no-print" id="noteHandoff">
+  <div class="section-head"><h2>08 / Encrypted PRIVATE HUMAN note-only handoff</h2><span class="tag">Source-bound · minimum necessary</span></div>
+  <p>Exchange saved HUMAN commentary independently of your complete review session. Select the current anonymous scenario/metric note only, or explicitly choose all saved notes. The downloaded packet is <strong>locally encrypted</strong> with a password and bound to the exact original source-file bytes and manual ordering. It carries no HUMAN stages, original IDs, filenames, targets or raw findings. This is confidential self-reported commentary, not verified evidence or approval.</p>
+  <label>Notes to include in the encrypted packet
+    <select id="notePacketScope">
+      <option value="current">Only selected scenario + metric note (minimum necessary)</option>
+      <option value="all">All explicitly saved HUMAN notes</option>
+    </select>
+  </label>
+  <p id="notePacketCount" class="footnote">Import original source snapshots to exchange HUMAN notes securely.</p>
+  <div class="queue-controls">
+    <label>New note-only packet passphrase (14–256 characters)
+      <input id="notePacketSecret" type="password" minlength="14" maxlength="256" autocomplete="new-password">
+    </label>
+    <label>Confirm note-only packet passphrase
+      <input id="notePacketConfirm" type="password" minlength="14" maxlength="256" autocomplete="new-password">
+    </label>
+  </div>
+  <button id="notePacketExport" type="button" disabled>Export encrypted PRIVATE HUMAN notes</button>
+  <label class="file-picker">Import an encrypted PRIVATE note-only packet (original sources must already be admitted)
+    <input id="notePacketFile" type="file" accept=".json,application/json" disabled>
+  </label>
+  <label>Passphrase for selected encrypted note-only packet
+    <input id="notePacketUnlock" type="password" maxlength="256" autocomplete="off">
+  </label>
+  <button id="notePacketImport" type="button" class="secondary" disabled>Decrypt, validate and merge HUMAN notes locally</button>
+  <p id="notePacketMessage" class="message" role="status" aria-live="polite">No PRIVATE note packet loaded.</p>
+  <p class="footnote">Decryption uses Web Crypto AES-256-GCM and PBKDF2-SHA256. Import refuses plaintext note packets, wrong passwords, duplicate or unexpected fields, source drift and mismatched original membership. It confirms possible overwrites before changing saved HUMAN notes. Current source data, HUMAN review stages and unrelated notes remain intact. No server, account, scan, grant, verification or password recovery.</p>
+</section>
 <section class="panel no-print" id="resume">
-  <div class="section-head"><h2>08 / PRIVATE human work recovery</h2><span class="tag">Exact source bytes · offline</span></div>
+  <div class="section-head"><h2>09 / PRIVATE human work recovery</h2><span class="tag">Exact source bytes · offline</span></div>
   <p>Keep HUMAN work between browser sessions without creating an account, network request or browser storage. First import the <strong>same 3–12 original JSON snapshots in exactly the same manually selected order</strong>, then restore your PRIVATE work. Newly saved sessions are <strong>passphrase-encrypted locally</strong> with AES-256-GCM and PBKDF2-SHA256 (310,000 iterations, random salt and nonce). This separately confirmed PRIVATE unsigned JSON envelope contains all saved HUMAN notes and self-reported review stages, plus SHA-256 fingerprints of original source bytes. Treat it as confidential.</p>
   <p id="sessionAvailability" class="footnote">Import original snapshots to enable source-byte-bound PRIVATE save and resume.</p>
   <div class="queue-controls">
@@ -171,7 +201,7 @@
 
 
 <section class="panel no-print" id="rotateSession">
-  <div class="section-head"><h2>09 / PRIVATE encrypted recovery migration</h2><span class="tag">No data mutation · original-source bound</span></div>
+  <div class="section-head"><h2>10 / PRIVATE encrypted recovery migration</h2><span class="tag">No data mutation · original-source bound</span></div>
   <p>Convert an older unencrypted PRIVATE review file into an encrypted recovery file, or change the password on an existing encrypted file. First admit the exact same original source snapshots and manual order. The original file is only read; current HUMAN stages and notes are <strong>never modified</strong>. The newly downloaded file uses a fresh random salt and nonce. Older plaintext copies remain on your device until you manage them yourself.</p>
   <label class="file-picker">Choose one PRIVATE source-bound HUMAN session (legacy v1 JSON or encrypted envelope)
     <input id="rotateSourceFile" type="file" accept=".json,application/json" disabled>
@@ -192,7 +222,7 @@
   <p class="footnote">Strict byte-hash, event, metric and stage admission happens before creating a new encrypted envelope. Failed or cancelled migrations do not change the original file or current local review. Encryption protects the downloaded content under the passphrase; it does not authenticate source provenance, authorization or verified findings. There is no password recovery.</p>
 </section>
 <section class="panel no-print" id="revision">
-  <div class="section-head"><h2>10 / PRIVATE human review revision comparison</h2><span class="tag">Read-only · offline</span></div>
+  <div class="section-head"><h2>11 / PRIVATE human review revision comparison</h2><span class="tag">Read-only · offline</span></div>
   <p>Compare two separately saved, source-byte-bound PRIVATE HUMAN sessions against the exact same already-admitted original cohort. This view <strong>does not restore, merge or rewrite either session</strong>. It shows changes to HUMAN stage choices and indicates whether saved HUMAN notes were added, removed or edited, <strong>without displaying or exporting note text</strong>. File order is a human comparison preference, not authenticated chronology.</p>
   <div class="queue-controls">
     <label class="file-picker">Earlier PRIVATE HUMAN session
@@ -218,7 +248,7 @@
 </section>
 
 <section class="panel no-print" id="humanRounds">
-  <div class="section-head"><h2>11 / PRIVATE HUMAN review rounds</h2><span class="tag">2–8 source-bound revisions</span></div>
+  <div class="section-head"><h2>12 / PRIVATE HUMAN review rounds</h2><span class="tag">2–8 source-bound revisions</span></div>
   <p>Inspect a manually ordered sequence of 2–8 previously saved PRIVATE HUMAN review sessions. Every session must match the exact original source bytes and original snapshot order. Compare HUMAN stage workloads and how many note contents changed between selected rounds without loading notes into reports. These round numbers are <strong>display ordinals, not proven timestamps or verified remediation</strong>. Nothing is merged into the current HUMAN work.</p>
   <label class="file-picker">Choose 2–8 PRIVATE source-bound HUMAN session JSON files, in display order
     <input id="timelineFiles" type="file" accept=".json,application/json" multiple disabled>
@@ -241,7 +271,7 @@
   <p class="footnote">Only aggregate HUMAN self-report counts are retained for this view; original source identities, digests, filenames and HUMAN note text are never in these exports. A missing note, changed HUMAN stage or absent source flag does not establish a verified fix. Previous comparison remains visible when any new file fails atomic admission.</p>
 </section>
 <section class="panel no-print">
-  <div class="section-head"><h2>12 / Explicit local handoff</h2><span class="tag">No authority</span></div>
+  <div class="section-head"><h2>13 / Explicit local handoff</h2><span class="tag">No authority</span></div>
   <div class="controls">
     <button id="exportJson" type="button" disabled>Export aggregate JSON</button>
     <button id="exportCsv" type="button" disabled>Export anonymous trajectory CSV</button>
