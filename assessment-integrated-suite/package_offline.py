@@ -44,8 +44,10 @@ Some studios need previously generated original LightUp artifacts.
 The benchmark-candidates studio includes aggregate-only selected-pair metric
 deltas and original adverse-flag crossover. When compatible original source
 bytes and private unsigned HUMAN drafts are locally admitted, its scriptless
-brief and JSON include the anonymous 2–8-round proposal timeline, and its
-changed-only CSV carries every manually selected round. No source identifiers,
+brief and aggregate JSON schema v5 include the anonymous 2–8-round proposal
+ timeline, and its changed-only CSV carries every manually selected round. The
+human_review_round_history JSON field is null unless compatible source-byte-bound
+PRIVATE HUMAN drafts are loaded. No source identifiers,
 reviewer identity, chronology, consent, remediation or release are inferred.
 A local HUMAN Lab Route Desk with 20 original review options (52–71) now\nships as human-lab-route.html plus adjacent human-lab-route.js, with memory-only\ndiscussion states, private JSON/CSV export and bounded JSON reimport. The\nportable browser app never opens original assessment sources, validates\ncompletion, accesses a network or grants authority. It is NOT an executor.
 For devices where the adjacent JS asset could be lost, the same original UI
