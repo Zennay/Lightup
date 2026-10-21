@@ -11,6 +11,7 @@ import csv
 from hashlib import sha256
 import html
 import io
+import json
 import os
 from pathlib import Path
 import shutil
@@ -107,6 +108,19 @@ separate and mandatory. No active tool, network, model or dispatch.</p>
 </html>""").encode("utf-8")
 
 
+def cue_receipt(manifest_raw: bytes, sources: list[dict]) -> dict:
+    return {
+        "schema": SCHEMA, "claimed_status": "HOLD",
+        "source_count": len(sources),
+        "original_manifest_sha256_unsigned": sha256(manifest_raw).hexdigest(),
+        "original_masked_sha256_unsigned": [
+            source["output_sha256_unsigned"] for source in sources],
+        "counts_are_literal_marker_occurrences_not_verified_masks": True,
+        "not_authorized_or_safe_to_share": True,
+        **{flag: False for flag in FALSE_FLAGS},
+    }
+
+
 def create(original: str, private_parent: str) -> int:
     kit = private_directory(original)
     # Original notes.py admission checks complete canonical source-bound
@@ -119,16 +133,8 @@ def create(original: str, private_parent: str) -> int:
     os.chmod(output, 0o700)
     ready = False
     try:
-        save_json(output / "PRIVATE-masking-cues-receipt.json", {
-            "schema": SCHEMA, "claimed_status": "HOLD",
-            "source_count": len(sources),
-            "original_manifest_sha256_unsigned": sha256(manifest_raw).hexdigest(),
-            "original_masked_sha256_unsigned": [
-                source["output_sha256_unsigned"] for source in sources],
-            "counts_are_literal_marker_occurrences_not_verified_masks": True,
-            "not_authorized_or_safe_to_share": True,
-            **{flag: False for flag in FALSE_FLAGS},
-        })
+        save_json(output / "PRIVATE-masking-cues-receipt.json",
+                  cue_receipt(manifest_raw, sources))
         file_new(output / "PRIVATE-masking-cues.csv", cue_csv(marker_rows))
         file_new(output / "PRIVATE-masking-cues.html", cue_page(marker_rows))
         ready = True
@@ -138,3 +144,27 @@ def create(original: str, private_parent: str) -> int:
     finally:
         if not ready:
             shutil.rmtree(output)
+
+
+
+def reopen(original: str, cue_room: str) -> int:
+    """Read-only original private masked-source and cue receipt re-admission."""
+    kit = private_directory(original)
+    _binding, sources, rows = load_workroom(kit)
+    manifest_raw = private_input(str(kit / "PRIVATE-source-bindings.json"), 128 * 1024)
+    derived = cues(rows)
+    folder = private_directory(cue_room)
+    expected_receipt = (json.dumps(
+        cue_receipt(manifest_raw, sources), indent=2, sort_keys=True,
+        ensure_ascii=False) + "\n").encode("utf-8")
+    expected_files = (
+        ("PRIVATE-masking-cues-receipt.json", expected_receipt),
+        ("PRIVATE-masking-cues.csv", cue_csv(derived)),
+        ("PRIVATE-masking-cues.html", cue_page(derived)),
+    )
+    for name, original_bytes in expected_files:
+        if private_input(str(folder / name), 65536) != original_bytes:
+            raise Hold("HOLD: original-bound PRIVATE HUMAN masking-cue packet changed")
+    print("HOLD: original PRIVATE masking-cue packet reopened read-only; no safety claim")
+    print("OPEN LOCALLY: " + str(folder / "PRIVATE-masking-cues.html"))
+    return 3

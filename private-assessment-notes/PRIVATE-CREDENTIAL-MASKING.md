@@ -89,6 +89,28 @@ automated decision-making or a merge. The original independent HUMAN
 review remains mandatory. The command creates no model/network/target
 work and exits REVIEW_ONLY (2).
 
+### Reopen the original PRIVATE masking-cue receipt without writes
+
+After preserving that new cue room as owner-private 0700 (and every
+artifact 0600), a human may inspect it again against the **unchanged
+original prepared source workroom**:
+
+```sh
+python3 private-assessment-notes/notes.py masking-cues-reopen \
+  --original-kit /private/operator-lightup-work/PRIVATE-lightup-notes-<actual-id> \
+  --room /private/operator-lightup-work/PRIVATE-lightup-masking-cues-<actual-id>
+```
+
+This reopens the original owner-private per-source masked note SHA/size
+manifest and source bytes; it recomputes the literal marker summary,
+private unsigned source-bound receipt, 0600 CSV and scriptless HTML
+and requires their exact bytes. Missing or changed originals, receipts,
+CSV or HTML refuse before any effect. The command **never modifies
+the earlier original note source, its review kit or cue room** and
+always returns HOLD (3) even on a successful local re-open.
+Neither an unsigned digest nor an unchanged redacted marker can prove
+source-owner identity, safe masking, authenticity or client consent.
+
 ## Operator behavior and original source custody
 
 Use the existing `notes.py prepare --source ... --private-parent ...`

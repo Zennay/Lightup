@@ -391,6 +391,12 @@ def main() -> int:
                               help="unchanged PRIVATE original prepared notes workroom")
     cues_command.add_argument("--private-parent", required=True,
                               help="owner-private output folder")
+    cues_reopen = commands.add_parser(
+        "masking-cues-reopen",
+        help="read-only exact-original PRIVATE HUMAN masking cue receipt; always HOLD")
+    cues_reopen.add_argument("--original-kit", required=True)
+    cues_reopen.add_argument("--room", required=True,
+                             help="unchanged original PRIVATE masking cue room")
     finished = commands.add_parser("finalize", help="source-bound local PRIVATE HUMAN handoff only")
     finished.add_argument("--original-kit", required=True, help="unchanged PRIVATE workroom")
     finished.add_argument("--decisions", required=True, help="locally completed PRIVATE HUMAN CSV")
@@ -604,6 +610,9 @@ def main() -> int:
         if args.action == "masking-cues":
             from private_masking_cues import create as create_masking_cues
             return create_masking_cues(args.original_kit, args.private_parent)
+        if args.action == "masking-cues-reopen":
+            from private_masking_cues import reopen as reopen_masking_cues
+            return reopen_masking_cues(args.original_kit, args.room)
         if args.action == "finalize":
             return finalize(args.original_kit, args.decisions, args.private_parent)
         # Offline local PRIVATE operations only, never a scan/target dispatch.
