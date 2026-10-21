@@ -468,6 +468,22 @@ def main() -> int:
     har_progress_reopen.add_argument("--original-kit", required=True)
     har_progress_reopen.add_argument("--cue-room", required=True)
     har_progress_reopen.add_argument("--progress-room", required=True)
+    har_history = commands.add_parser(
+        "har-action-history",
+        help="source-bound 2–8 PRIVATE HUMAN task-status rounds; always HOLD")
+    har_history.add_argument("--original-kit", required=True)
+    har_history.add_argument("--cue-room", required=True)
+    har_history.add_argument("--round", action="append", required=True,
+                             help="2–8 existing PRIVATE source-bound status packets, oldest first")
+    har_history.add_argument("--private-parent", required=True)
+    har_history_reopen = commands.add_parser(
+        "har-action-history-reopen",
+        help="read-only original-source PRIVATE HUMAN round history admission")
+    har_history_reopen.add_argument("--original-kit", required=True)
+    har_history_reopen.add_argument("--cue-room", required=True)
+    har_history_reopen.add_argument("--round", action="append", required=True,
+                                    help="the same original human-supplied ordered rounds")
+    har_history_reopen.add_argument("--history-room", required=True)
     finished = commands.add_parser("finalize", help="source-bound local PRIVATE HUMAN handoff only")
     finished.add_argument("--original-kit", required=True, help="unchanged PRIVATE workroom")
     finished.add_argument("--decisions", required=True, help="locally completed PRIVATE HUMAN CSV")
@@ -695,6 +711,14 @@ def main() -> int:
             from private_har_progress import reopen_progress
             return reopen_progress(args.original_kit, args.cue_room,
                                    args.progress_room)
+        if args.action in {"har-action-history",
+                            "har-action-history-reopen"}:
+            from private_har_history import create as create_har_history, reopen as reopen_har_history
+            if args.action == "har-action-history":
+                return create_har_history(args.original_kit, args.cue_room,
+                                          args.round, args.private_parent)
+            return reopen_har_history(args.original_kit, args.cue_room,
+                                      args.round, args.history_room)
         if args.action == "finalize":
             return finalize(args.original_kit, args.decisions, args.private_parent)
         # Offline local PRIVATE operations only, never a scan/target dispatch.
