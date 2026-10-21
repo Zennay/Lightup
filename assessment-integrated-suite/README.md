@@ -38,7 +38,13 @@ real actor authentication or external source authenticity.
 explicit MANUAL order; each is fully re-admitted. In a NEW
 owner-private room obtain a scriptless HUMAN change timeline,
 counts-per-self-reported-round JSON and complete CSV of changed
-option markers. The chosen order is NOT a proven timeline and a
+option markers. It also produces a current **HUMAN attention board**,
+per-stage NEEDS_INPUT / Discussing / Not reviewed / Discussed-only counts,
+and a separate complete `PRIVATE-HUMAN-ATTENTION.csv` with original
+fixed action captions and the number of consecutive OPERATOR-ORDERED
+rounds holding the same declared status. These are human discussion
+prompts, not verified task age, ownership, deadlines or actual fixes.
+The chosen order is NOT a proven timeline and a
 status change is NOT an assessment or verified remediation.
 
 For direct opt-in use outside the operator menu:
