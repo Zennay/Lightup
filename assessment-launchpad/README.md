@@ -286,3 +286,22 @@ The full PRIVATE history now starts with a HUMAN-only per-round workload matrix 
 The native output enforces a consistent 512-KiB ceiling for each saved history item, including a full eight-round, sixteen-slot discussion whose private HUMAN notes may contain HTML-escaped characters. The standalone history reopener and integrated next-round reopener use the same bound, reject missing/extra artifacts, require owner-only mode 0600 regular files and re-admit original source and all selected previous HUMAN rounds. If a legitimate input exceeds that fixed product bound, generation refuses publication rather than issuing a saved packet it cannot later reopen.
 
 No QA suites, scans, real target or model actions are required or performed. The user-selected sequence is NOT authenticated time and changed HUMAN notes are not evidence that work was performed or a vulnerability fixed.
+
+
+## Compare any manually selected HUMAN interval, including return-to-prior status
+
+The 2–8-round private history supports an explicit operator-selected interval. This is useful when HUMAN planning passed through intermediate revisions and the latest state alone hides temporary stage/role changes. For example, with four rounds in an already established PRIVATE history input order:
+
+    python3 assessment-launchpad/history.py \
+      --bundle-dir ~/private-lab-guided-workspace/launchpad \
+      --round-dir ~/private-lab-guided-workspace/human-round-01 \
+      --round-dir ~/private-lab-round-02/human-round \
+      --round-dir ~/private-lab-round-03/human-round \
+      --round-dir ~/private-lab-round-04/human-round \
+      --compare-from-round 1 \
+      --compare-to-round 4 \
+      --output-dir ~/private-history-interval-01-to-04
+
+Any two different original round ordinals within 1..N are allowed as long as from < to. By default the first and last rounds are compared. The PRIVATE scriptless HTML shows an ordinal-level net stage/role change, note-change indicator and separate markers for a HUMAN stage or reviewer role that returned to its original value after differing in one of the manually inserted rounds. The source-free counts JSON/CSV include the total net changed slots, HUMAN stage/role/note changes and stage/role returns, but no original endpoint, source path/hash or note text. The ordinary next-round workroom uses the default first-to-latest HUMAN interval and includes the comparison automatically.
+
+This is **not** a status change on an actual system, not verified remediation or regression, not authenticated real-world chronology, not identity attestation, not consent and not release. A HUMAN status returning to its previous value has no security meaning by itself. To reopen the custom interval artifact, use --verify-history-dir instead of --output-dir with the SAME repeated --round-dir list and the SAME --compare-from-round/--compare-to-round values.
