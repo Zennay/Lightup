@@ -1,20 +1,30 @@
-## Latest committed portable software bundle — v27
+## Latest portable software bundle — v28
+
+[Download the integrated offline toolkit v28](LightUp-Assessment-Offline-Toolkit-v28.zip) ·
+[Detached SHA-256 reference](LightUp-Assessment-Offline-Toolkit-v28.zip.sha256)
+
+Unsigned ZIP SHA-256: 4695daed6f5809dabfc3c73894e7ba3d0228453d8761834001328363c6708d86.
+
+The v28 manifest uses schema v2 and binds byte lengths and SHA-256 for all 19
+browser studio HTML pages, two local support JS assets, launcher, README and
+operator guide. It integrates the current candidate-matrix scriptless HTML,
+aggregate JSON schema v5 and long-form PRIVATE HUMAN round-history CSV.
+
+Verify without extracting files:
+python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip --sha256-file assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip.sha256
+
+The detached sidecar is published in the same repository and is not an
+independent trust anchor. The package is unsigned, REVIEW_ONLY and not a
+deployment artifact.
+
+## Previous portable software bundle — v27
 
 [Download the source-only offline toolkit v27](LightUp-Assessment-Offline-Toolkit-v27.zip) ·
 [Detached SHA-256 reference](LightUp-Assessment-Offline-Toolkit-v27.zip.sha256)
 
 Unsigned ZIP SHA-256: dc012bed8d0e58d9bd8bbb33320de327f0db859848ed8c8e5f68d799318028f3.
 
-**Source/package distinction (21 Oct):** the integrated source now carries the
-current candidate-matrix round-history feature in the scriptless HTML brief,
-aggregate JSON schema v5 and long-form CSV. The committed v27 ZIP is an earlier packaged snapshot
-and does not include this latest candidate-matrix integration. To rebuild a
-current local v28 package from this branch, run:
-python3 assessment-integrated-suite/package_offline.py --output assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip
-
-The regenerated ZIP remains unsigned and REVIEW_ONLY; do not treat a local
-build or its embedded manifest as proof of source authenticity, consent,
-authorization or release.
+**Snapshot note:** v27 is the previous packaged snapshot. The current v28 archive above integrates the current candidate-matrix source and aggregate JSON schema v5. Both bundles remain unsigned and REVIEW_ONLY.
 
 The v27 manifest is explicitly versioned as schema v2 and includes the complete
 unsigned byte inventory for all studio/support files, launcher, README and
