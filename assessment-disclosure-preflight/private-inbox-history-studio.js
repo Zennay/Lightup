@@ -23,6 +23,8 @@
     ...FLAGS,"slot_count","round_count","round_summaries","slot_paths",
     "changed_transitions","latest_human_attention"];
   let history = null;
+  let loadGeneration = 0;
+  let intervalRows = [];
 
   function admit(condition) {
     if (!condition) throw Error("HOLD: invalid or ambiguous PRIVATE HUMAN history");
@@ -207,11 +209,101 @@
     container.append(tr);
     return tr;
   }
+  function renderRange() {
+    intervalRows=[];
+    $("range-rows").replaceChildren();
+    const from=Number($("range-from").value),to=Number($("range-to").value);
+    if(!history || !Number.isSafeInteger(from) || !Number.isSafeInteger(to) ||
+       from<1 || to>history.round_count || from>=to) {
+      $("range-summary").textContent="HOLD: select an earlier starting round.";
+      $("range-export").disabled=true;
+      return;
+    }
+    for(const item of history.slot_paths) {
+      const before=item.rounds[from-1],after=item.rounds[to-1];
+      const changes=history.changed_transitions.filter(change=>
+        change.slot===item.slot && change.to_round>from && change.to_round<=to);
+      const fields=new Set(changes.flatMap(change=>change.changed_fields));
+      intervalRows.push({
+        slot:item.slot,from_round:from,to_round:to,
+        from_status:before.human_status,to_status:after.human_status,
+        status_endpoint_changed:before.human_status!==after.human_status,
+        status_edited_within_interval:fields.has("human_status"),
+        from_role:before.proposed_role,to_role:after.proposed_role,
+        role_endpoint_changed:before.proposed_role!==after.proposed_role,
+        role_edited_within_interval:fields.has("proposed_role"),
+        question_edited_within_interval:fields.has("question_text_changed"),
+        next_action_edited_within_interval:fields.has("next_action_text_changed")
+      });
+    }
+    const activity=item=>item.status_edited_within_interval ||
+      item.role_edited_within_interval ||
+      item.question_edited_within_interval ||
+      item.next_action_edited_within_interval;
+    const displayed=intervalRows.filter(item=>!$("range-changes").checked||activity(item));
+    displayed.forEach(item=>row($("range-rows"),[
+      item.slot,item.from_status+" → "+item.to_status,
+      item.from_role+" → "+item.to_role,
+      item.status_endpoint_changed?"Yes":"No",
+      item.status_edited_within_interval?"Yes":"No",
+      item.role_endpoint_changed?"Yes":"No",
+      item.role_edited_within_interval?"Yes":"No",
+      item.question_edited_within_interval?"Yes":"No",
+      item.next_action_edited_within_interval?"Yes":"No"
+    ]));
+    if(!displayed.length)row($("range-rows"),[
+       "—","No reported HUMAN activity","—","—","—","—","—","—","—"]);
+    $("range-summary").textContent="Manual R"+from+" → R"+to+
+      ": "+intervalRows.filter(activity).length+" of "+history.slot_count+
+      " slots have reported HUMAN field activity; "+displayed.length+
+       " shown. PRIVATE CSV preserves all "+history.slot_count+
+      " slots. Original note text and verified chronology are unavailable.";
+    $("range-export").disabled=false;
+  }
+
+  function downloadRange() {
+    if(!history || $("range-export").disabled || !intervalRows.length) return;
+    const fields=[
+      "slot","from_manual_round","to_manual_round",
+      "from_status","to_status","status_endpoint_changed",
+      "status_edited_within_interval","from_proposed_role","to_proposed_role",
+      "role_endpoint_changed","role_edited_within_interval",
+      "question_edited_within_interval","next_action_edited_within_interval",
+      "source_authenticated","chronology_authenticated","authorization_granted",
+      "release_allowed"];
+    const csvCell=value=>'"'+String(value).replaceAll('"','""')+'"';
+    const lines=[fields.map(csvCell).join(",")];
+    intervalRows.forEach(item=>lines.push([
+      item.slot,item.from_round,item.to_round,
+      item.from_status,item.to_status,item.status_endpoint_changed,
+      item.status_edited_within_interval,item.from_role,item.to_role,
+      item.role_endpoint_changed,item.role_edited_within_interval,
+      item.question_edited_within_interval,item.next_action_edited_within_interval,
+      false,false,false,false
+    ].map(csvCell).join(",")));
+    const blob=new Blob([lines.join("\n")+"\n"],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    try {
+      const link=node("a");
+      link.href=url;
+      link.download="PRIVATE-HUMAN-manual-round-interval-unsigned.csv";
+      document.body.append(link);link.click();link.remove();
+    } finally {
+      setTimeout(()=>URL.revokeObjectURL(url),0);
+    }
+  }
+
   function reset(message="No private HUMAN history loaded.",failed=false) {
+    // Invalidate any previous asynchronous File.arrayBuffer() import.
+    loadGeneration++;
     history=null;
     $("workspace").hidden=true;
     $("history-file").value="";
-    ["metrics","cards","round-rows","attention-rows","change-rows","round"].forEach(id=>$(id).replaceChildren());
+    ["metrics","cards","round-rows","attention-rows","change-rows","round",
+      "range-from","range-to","range-rows"].forEach(id=>$(id).replaceChildren());
+    intervalRows=[];
+    $("range-summary").textContent="Select two different manually ordered rounds.";
+    $("range-export").disabled=true;
     $("stage").value="ALL";$("role").value="ALL";$("changes").checked=false;
     $("notice").textContent=message;$("notice").dataset.failed=String(failed);
     $("filter-count").textContent="";
@@ -280,6 +372,15 @@
       ]);
     });
     rounds.value=String(history.round_count);
+    for(let index=1;index<=history.round_count;index++) {
+      for (const id of ["range-from","range-to"]) {
+        const option=node("option","Round "+index);
+        option.value=String(index);
+        $(id).append(option);
+      }
+    }
+    $("range-from").value="1";
+    $("range-to").value=String(history.round_count);
     history.latest_human_attention.forEach(item=>row($("attention-rows"),[
       item.slot,item.discussion_group,item.human_status,item.suggested_role,
       item.original_unselected_holds
@@ -292,7 +393,7 @@
       item.changed_fields.join(", "),item.current_status,item.current_role
     ]));
     $("workspace").hidden=false;
-    summary();renderCards();
+    summary();renderCards();renderRange();
     $("notice").textContent="PRIVATE HUMAN history admitted for local viewing only. "+
       "The original native 4-file reopener remains authoritative for local custody.";
     $("notice").dataset.failed="false";
@@ -300,16 +401,22 @@
   async function onImport() {
     const file=$("history-file").files[0];
     reset();
+    // A new native import replaces any sensitive original CSV selection and
+    // pending composed browser report in the other source file form.
+    window.dispatchEvent(new Event("lightup:history-clear-original-inputs"));
+    const active=loadGeneration;
     try {
       admit(file && file.size>0 && file.size<=MAX_BYTES);
       const bytes=await file.arrayBuffer();
-      admit(bytes.byteLength===file.size);
+      admit(active===loadGeneration && bytes.byteLength===file.size);
       const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const next=validate(strictJSON(text));
+      admit(active===loadGeneration);
       history=next;
       renderStatic();
     } catch(_error) {
-      reset("HOLD: PRIVATE history rejected. Confirm an unchanged original native source-free history JSON (no duplicate fields, missing slots or authority claims).",true);
+      if(active===loadGeneration)
+        reset("HOLD: PRIVATE history rejected. Confirm an unchanged original native source-free history JSON (no duplicate fields, missing slots or authority claims).",true);
     }
   }
   // The adjacent PRIVATE composer uses the exact same strict source-free
@@ -317,6 +424,11 @@
   // This is a local browser-generated preview, not native output custody.
   window.LightUpPrivateHistory = Object.freeze({
     parseJSON: strictJSON,
+    discardComposedPreview() { reset(); },
+    clearPrivateSession() {
+      reset();
+      window.dispatchEvent(new Event("lightup:history-clear-original-inputs"));
+    },
     openComposed(sourceFreeJSON) {
       try {
         const original = validate(strictJSON(sourceFreeJSON));
@@ -333,11 +445,14 @@
     }
   });
   $("history-file").addEventListener("change",onImport);
-  $("clear").addEventListener("click",()=>reset());
+  $("clear").addEventListener("click",()=>window.LightUpPrivateHistory.clearPrivateSession());
   ["round","stage","role"].forEach(id=>$(id).addEventListener("change",()=>{
     if(history){summary();renderCards();}
   }));
   $("changes").addEventListener("change",()=>{if(history)renderCards();});
+  ["range-from","range-to","range-changes"].forEach(id=>
+    $(id).addEventListener("change",()=>{if(history)renderRange();}));
+  $("range-export").addEventListener("click",downloadRange);
   $("print").addEventListener("click",()=>{if(history)window.print();});
   reset();
 })();

@@ -38,7 +38,7 @@
 <p id="compose-status" role="status" aria-live="polite">No original private inputs processed. Native source custody remains separate.</p>
 </section>
 <section class="panel" id="workspace" hidden aria-labelledby="workspace-heading">
-<div class="topline"><h2 id="workspace-heading">2 · Review your manually ordered snapshots</h2><button type="button" id="clear" class="secondary">Clear private session</button></div>
+<div class="topline"><h2 id="workspace-heading">2 · Review your manually ordered snapshots</h2><button type="button" id="clear" class="secondary">Clear ALL private inputs and history</button></div>
 <div class="metrics" id="metrics" aria-label="Private HUMAN summary"></div>
 <div class="controls">
 <label for="round">Selected manual round
@@ -55,6 +55,29 @@
 <h3 id="timeline-heading">Manual round overview</h3>
 <p>All slots remain in the native history; filters only change what you see here.</p>
 <div class="table-scroll"><table><thead><tr><th>Round</th><th>Unreviewed</th><th>Needs input</th><th>In progress</th><th>Discussion complete · no release</th></tr></thead><tbody id="round-rows"></tbody></table></div>
+</section>
+<section class="inner" aria-labelledby="range-heading">
+<h3 id="range-heading">Compare any two manually ordered HUMAN rounds</h3>
+<p>Compare early and late discussion snapshots without changing original files.
+The report shows exact status and proposed-role endpoints. For private note
+fields it records only whether an edit was reported <em>at least once</em>
+between selected rounds; it cannot establish whether final text differs.</p>
+<div class="controls">
+<label for="range-from">From manual round<select id="range-from"></select></label>
+<label for="range-to">Through manual round<select id="range-to"></select></label>
+<label for="range-changes" class="checkbox"><input id="range-changes" type="checkbox" checked> Changed HUMAN slots only</label>
+</div>
+<p id="range-summary" role="status" aria-live="polite">Select two different manually ordered rounds.</p>
+<div class="table-scroll"><table><thead><tr>
+<th>Slot</th><th>Status: from → through</th><th>Suggested role: from → through</th>
+<th>Status different at endpoints</th><th>Status edited at least once</th>
+<th>Proposed role different at endpoints</th><th>Role edited at least once</th>
+<th>Question edited at least once</th><th>Next action edited at least once</th>
+</tr></thead><tbody id="range-rows"></tbody></table></div>
+<div class="topline">
+<button type="button" id="range-export">Download complete PRIVATE interval CSV (all original slots)</button>
+<p class="muted">Source-free, unsigned and local. A note edited and reverted still counts as edited in the interval, not a different final note. Chronology, source, role assignment, client/operator consent and release remain unverified.</p>
+</div>
 </section>
 <section class="inner" aria-labelledby="followup-heading">
 <h3 id="followup-heading">Latest round · HUMAN-only follow-up</h3>

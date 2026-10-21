@@ -25,7 +25,7 @@
   const FALSE_FLAGS = ["source_authenticated","reviewers_authenticated",
     "chronology_authenticated","client_consent_verified","operator_consent_verified",
     "authorization_granted","release_allowed","signed"];
-  let saved = null, generation = 0;
+  let saved = null, generation = 0, showingComposed = false;
 
   function requireValid(ok) {
     if (!ok) throw Error("HOLD: original HUMAN source data not admitted");
@@ -40,6 +40,12 @@
   function invalidate(message = "Private inputs changed. Compose again; no saved history.") {
     generation++;
     saved = null;
+    // Never leave a stale preview visible as if it corresponded to revised
+    // original input selections. Native imports stay independent.
+    if (showingComposed) {
+      showingComposed = false;
+      window.LightUpPrivateHistory?.discardComposedPreview();
+    }
     $("compose-download").disabled = true;
     $("compose-status").textContent = message;
     $("compose-status").dataset.failed = "false";
@@ -261,6 +267,7 @@
       const json=JSON.stringify(outcome);
       const admission=window.LightUpPrivateHistory.openComposed(json);
       requireValid(admission===true && current===generation);
+      showingComposed = true;
       // The source snapshots contain only browser File handles and hashes:
       // complete question/next-action notes never enter saved output.
       saved={json,files:[board,...worksheets],hashes:[digest,...revHash],limits:
@@ -310,6 +317,16 @@
       $("compose-download").disabled=!saved;
     }
   }
+  // The viewer owns the global PRIVATE session Clear action. It empties
+  // both source File inputs and generated source-free output; crucially,
+  // the original CSV files can no longer be reprocessed without reselection.
+  window.addEventListener("lightup:history-clear-original-inputs", () => {
+    // Avoid resetting a newly imported native history on the same signal.
+    showingComposed = false;
+    $("compose-board").value = "";
+    $("compose-confirm").checked = false;
+    buildFileFields();
+  });
   $("compose-count").addEventListener("change",buildFileFields);
   $("compose-board").addEventListener("change",()=>invalidate());
   $("compose-confirm").addEventListener("change",()=>invalidate());

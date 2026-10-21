@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-p+yXQb1q1gqJ6taPCPN0XaFOtF8zxkvs6NW9lLNO4qg=' 'sha256-vzA38q4aBOCEhPDOybDcgC/+TjGF9BGI2ccc2i6iTz8='; script-src-attr 'none'; style-src 'sha256-ZIRkulPTW4uMQmaeFPf/W/oWBrb2WZ7yFTILVTmGzVw='; style-src-attr 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JCBEUvpfkHIm26fmvlmg7wg9J8iEGPHznAsY8w8JdXc=' 'sha256-j35WXA2ThdyR/zSvu4fzRlU90zfYw3+C0a01C4AYEeo='; script-src-attr 'none'; style-src 'sha256-5TurPp412kx/oKAViAWuc4hI5IA9rBmJKHecsgTU/zk='; style-src-attr 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN History Desk</title>
 <style>:root{color-scheme:light;font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f2f6fb;color:#18283d}*{box-sizing:border-box}
 body{max-width:1300px;margin:0 auto;padding:clamp(1rem,3.5vw,3rem)}
@@ -33,6 +33,9 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
 @media print{body{background:#fff;max-width:none;padding:0;font-size:12px}.warning{background:#fff;border:1px solid #333}.panel,.card{break-inside:avoid}.metrics{display:flex;flex-wrap:wrap}.metric{min-width:130px}button,input[type=file],.controls,#filter-count{display:none!important}.panel{border:0;padding:.4rem 0}.table-scroll{overflow:visible}th,td{padding:.25rem}#workspace[hidden]{display:none}}
 
 .compose-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:.75rem;margin:1rem 0}.compose-grid label{background:#f5f9fe;border:1px solid #d0deed;padding:.8rem;border-radius:.5rem}.confirm{display:flex;align-items:flex-start;gap:.7rem;font-weight:600;margin:1.2rem 0}.confirm input{width:20px;height:20px;flex:none;margin-top:.25rem}#compose-status[data-failed=true]{color:#922520;font-weight:700}@media print{#compose-board,#compose-revisions,#compose-count,#compose-build,#compose-download,#compose-reset,#compose-confirm{display:none!important}}
+
+#range-summary{font-weight:650;color:#2f4c6b}#range-export{margin:.3rem 0 1rem}
+@media print{#range-export,.controls{display:none!important}}
 </style>
 
 
@@ -66,7 +69,7 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
 <p id="compose-status" role="status" aria-live="polite">No original private inputs processed. Native source custody remains separate.</p>
 </section>
 <section class="panel" id="workspace" hidden aria-labelledby="workspace-heading">
-<div class="topline"><h2 id="workspace-heading">2 · Review your manually ordered snapshots</h2><button type="button" id="clear" class="secondary">Clear private session</button></div>
+<div class="topline"><h2 id="workspace-heading">2 · Review your manually ordered snapshots</h2><button type="button" id="clear" class="secondary">Clear ALL private inputs and history</button></div>
 <div class="metrics" id="metrics" aria-label="Private HUMAN summary"></div>
 <div class="controls">
 <label for="round">Selected manual round
@@ -83,6 +86,29 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
 <h3 id="timeline-heading">Manual round overview</h3>
 <p>All slots remain in the native history; filters only change what you see here.</p>
 <div class="table-scroll"><table><thead><tr><th>Round</th><th>Unreviewed</th><th>Needs input</th><th>In progress</th><th>Discussion complete · no release</th></tr></thead><tbody id="round-rows"></tbody></table></div>
+</section>
+<section class="inner" aria-labelledby="range-heading">
+<h3 id="range-heading">Compare any two manually ordered HUMAN rounds</h3>
+<p>Compare early and late discussion snapshots without changing original files.
+The report shows exact status and proposed-role endpoints. For private note
+fields it records only whether an edit was reported <em>at least once</em>
+between selected rounds; it cannot establish whether final text differs.</p>
+<div class="controls">
+<label for="range-from">From manual round<select id="range-from"></select></label>
+<label for="range-to">Through manual round<select id="range-to"></select></label>
+<label for="range-changes" class="checkbox"><input id="range-changes" type="checkbox" checked> Changed HUMAN slots only</label>
+</div>
+<p id="range-summary" role="status" aria-live="polite">Select two different manually ordered rounds.</p>
+<div class="table-scroll"><table><thead><tr>
+<th>Slot</th><th>Status: from → through</th><th>Suggested role: from → through</th>
+<th>Status different at endpoints</th><th>Status edited at least once</th>
+<th>Proposed role different at endpoints</th><th>Role edited at least once</th>
+<th>Question edited at least once</th><th>Next action edited at least once</th>
+</tr></thead><tbody id="range-rows"></tbody></table></div>
+<div class="topline">
+<button type="button" id="range-export">Download complete PRIVATE interval CSV (all original slots)</button>
+<p class="muted">Source-free, unsigned and local. A note edited and reverted still counts as edited in the interval, not a different final note. Chronology, source, role assignment, client/operator consent and release remain unverified.</p>
+</div>
 </section>
 <section class="inner" aria-labelledby="followup-heading">
 <h3 id="followup-heading">Latest round · HUMAN-only follow-up</h3>
@@ -128,6 +154,8 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
     ...FLAGS,"slot_count","round_count","round_summaries","slot_paths",
     "changed_transitions","latest_human_attention"];
   let history = null;
+  let loadGeneration = 0;
+  let intervalRows = [];
 
   function admit(condition) {
     if (!condition) throw Error("HOLD: invalid or ambiguous PRIVATE HUMAN history");
@@ -312,11 +340,101 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
     container.append(tr);
     return tr;
   }
+  function renderRange() {
+    intervalRows=[];
+    $("range-rows").replaceChildren();
+    const from=Number($("range-from").value),to=Number($("range-to").value);
+    if(!history || !Number.isSafeInteger(from) || !Number.isSafeInteger(to) ||
+       from<1 || to>history.round_count || from>=to) {
+      $("range-summary").textContent="HOLD: select an earlier starting round.";
+      $("range-export").disabled=true;
+      return;
+    }
+    for(const item of history.slot_paths) {
+      const before=item.rounds[from-1],after=item.rounds[to-1];
+      const changes=history.changed_transitions.filter(change=>
+        change.slot===item.slot && change.to_round>from && change.to_round<=to);
+      const fields=new Set(changes.flatMap(change=>change.changed_fields));
+      intervalRows.push({
+        slot:item.slot,from_round:from,to_round:to,
+        from_status:before.human_status,to_status:after.human_status,
+        status_endpoint_changed:before.human_status!==after.human_status,
+        status_edited_within_interval:fields.has("human_status"),
+        from_role:before.proposed_role,to_role:after.proposed_role,
+        role_endpoint_changed:before.proposed_role!==after.proposed_role,
+        role_edited_within_interval:fields.has("proposed_role"),
+        question_edited_within_interval:fields.has("question_text_changed"),
+        next_action_edited_within_interval:fields.has("next_action_text_changed")
+      });
+    }
+    const activity=item=>item.status_edited_within_interval ||
+      item.role_edited_within_interval ||
+      item.question_edited_within_interval ||
+      item.next_action_edited_within_interval;
+    const displayed=intervalRows.filter(item=>!$("range-changes").checked||activity(item));
+    displayed.forEach(item=>row($("range-rows"),[
+      item.slot,item.from_status+" → "+item.to_status,
+      item.from_role+" → "+item.to_role,
+      item.status_endpoint_changed?"Yes":"No",
+      item.status_edited_within_interval?"Yes":"No",
+      item.role_endpoint_changed?"Yes":"No",
+      item.role_edited_within_interval?"Yes":"No",
+      item.question_edited_within_interval?"Yes":"No",
+      item.next_action_edited_within_interval?"Yes":"No"
+    ]));
+    if(!displayed.length)row($("range-rows"),[
+       "—","No reported HUMAN activity","—","—","—","—","—","—","—"]);
+    $("range-summary").textContent="Manual R"+from+" → R"+to+
+      ": "+intervalRows.filter(activity).length+" of "+history.slot_count+
+      " slots have reported HUMAN field activity; "+displayed.length+
+       " shown. PRIVATE CSV preserves all "+history.slot_count+
+      " slots. Original note text and verified chronology are unavailable.";
+    $("range-export").disabled=false;
+  }
+
+  function downloadRange() {
+    if(!history || $("range-export").disabled || !intervalRows.length) return;
+    const fields=[
+      "slot","from_manual_round","to_manual_round",
+      "from_status","to_status","status_endpoint_changed",
+      "status_edited_within_interval","from_proposed_role","to_proposed_role",
+      "role_endpoint_changed","role_edited_within_interval",
+      "question_edited_within_interval","next_action_edited_within_interval",
+      "source_authenticated","chronology_authenticated","authorization_granted",
+      "release_allowed"];
+    const csvCell=value=>'"'+String(value).replaceAll('"','""')+'"';
+    const lines=[fields.map(csvCell).join(",")];
+    intervalRows.forEach(item=>lines.push([
+      item.slot,item.from_round,item.to_round,
+      item.from_status,item.to_status,item.status_endpoint_changed,
+      item.status_edited_within_interval,item.from_role,item.to_role,
+      item.role_endpoint_changed,item.role_edited_within_interval,
+      item.question_edited_within_interval,item.next_action_edited_within_interval,
+      false,false,false,false
+    ].map(csvCell).join(",")));
+    const blob=new Blob([lines.join("\n")+"\n"],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    try {
+      const link=node("a");
+      link.href=url;
+      link.download="PRIVATE-HUMAN-manual-round-interval-unsigned.csv";
+      document.body.append(link);link.click();link.remove();
+    } finally {
+      setTimeout(()=>URL.revokeObjectURL(url),0);
+    }
+  }
+
   function reset(message="No private HUMAN history loaded.",failed=false) {
+    // Invalidate any previous asynchronous File.arrayBuffer() import.
+    loadGeneration++;
     history=null;
     $("workspace").hidden=true;
     $("history-file").value="";
-    ["metrics","cards","round-rows","attention-rows","change-rows","round"].forEach(id=>$(id).replaceChildren());
+    ["metrics","cards","round-rows","attention-rows","change-rows","round",
+      "range-from","range-to","range-rows"].forEach(id=>$(id).replaceChildren());
+    intervalRows=[];
+    $("range-summary").textContent="Select two different manually ordered rounds.";
+    $("range-export").disabled=true;
     $("stage").value="ALL";$("role").value="ALL";$("changes").checked=false;
     $("notice").textContent=message;$("notice").dataset.failed=String(failed);
     $("filter-count").textContent="";
@@ -385,6 +503,15 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
       ]);
     });
     rounds.value=String(history.round_count);
+    for(let index=1;index<=history.round_count;index++) {
+      for (const id of ["range-from","range-to"]) {
+        const option=node("option","Round "+index);
+        option.value=String(index);
+        $(id).append(option);
+      }
+    }
+    $("range-from").value="1";
+    $("range-to").value=String(history.round_count);
     history.latest_human_attention.forEach(item=>row($("attention-rows"),[
       item.slot,item.discussion_group,item.human_status,item.suggested_role,
       item.original_unselected_holds
@@ -397,7 +524,7 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
       item.changed_fields.join(", "),item.current_status,item.current_role
     ]));
     $("workspace").hidden=false;
-    summary();renderCards();
+    summary();renderCards();renderRange();
     $("notice").textContent="PRIVATE HUMAN history admitted for local viewing only. "+
       "The original native 4-file reopener remains authoritative for local custody.";
     $("notice").dataset.failed="false";
@@ -405,16 +532,22 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
   async function onImport() {
     const file=$("history-file").files[0];
     reset();
+    // A new native import replaces any sensitive original CSV selection and
+    // pending composed browser report in the other source file form.
+    window.dispatchEvent(new Event("lightup:history-clear-original-inputs"));
+    const active=loadGeneration;
     try {
       admit(file && file.size>0 && file.size<=MAX_BYTES);
       const bytes=await file.arrayBuffer();
-      admit(bytes.byteLength===file.size);
+      admit(active===loadGeneration && bytes.byteLength===file.size);
       const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const next=validate(strictJSON(text));
+      admit(active===loadGeneration);
       history=next;
       renderStatic();
     } catch(_error) {
-      reset("HOLD: PRIVATE history rejected. Confirm an unchanged original native source-free history JSON (no duplicate fields, missing slots or authority claims).",true);
+      if(active===loadGeneration)
+        reset("HOLD: PRIVATE history rejected. Confirm an unchanged original native source-free history JSON (no duplicate fields, missing slots or authority claims).",true);
     }
   }
   // The adjacent PRIVATE composer uses the exact same strict source-free
@@ -422,6 +555,11 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
   // This is a local browser-generated preview, not native output custody.
   window.LightUpPrivateHistory = Object.freeze({
     parseJSON: strictJSON,
+    discardComposedPreview() { reset(); },
+    clearPrivateSession() {
+      reset();
+      window.dispatchEvent(new Event("lightup:history-clear-original-inputs"));
+    },
     openComposed(sourceFreeJSON) {
       try {
         const original = validate(strictJSON(sourceFreeJSON));
@@ -438,11 +576,14 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
     }
   });
   $("history-file").addEventListener("change",onImport);
-  $("clear").addEventListener("click",()=>reset());
+  $("clear").addEventListener("click",()=>window.LightUpPrivateHistory.clearPrivateSession());
   ["round","stage","role"].forEach(id=>$(id).addEventListener("change",()=>{
     if(history){summary();renderCards();}
   }));
   $("changes").addEventListener("change",()=>{if(history)renderCards();});
+  ["range-from","range-to","range-changes"].forEach(id=>
+    $(id).addEventListener("change",()=>{if(history)renderRange();}));
+  $("range-export").addEventListener("click",downloadRange);
   $("print").addEventListener("click",()=>{if(history)window.print();});
   reset();
 })();
@@ -474,7 +615,7 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
   const FALSE_FLAGS = ["source_authenticated","reviewers_authenticated",
     "chronology_authenticated","client_consent_verified","operator_consent_verified",
     "authorization_granted","release_allowed","signed"];
-  let saved = null, generation = 0;
+  let saved = null, generation = 0, showingComposed = false;
 
   function requireValid(ok) {
     if (!ok) throw Error("HOLD: original HUMAN source data not admitted");
@@ -489,6 +630,12 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
   function invalidate(message = "Private inputs changed. Compose again; no saved history.") {
     generation++;
     saved = null;
+    // Never leave a stale preview visible as if it corresponded to revised
+    // original input selections. Native imports stay independent.
+    if (showingComposed) {
+      showingComposed = false;
+      window.LightUpPrivateHistory?.discardComposedPreview();
+    }
     $("compose-download").disabled = true;
     $("compose-status").textContent = message;
     $("compose-status").dataset.failed = "false";
@@ -710,6 +857,7 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
       const json=JSON.stringify(outcome);
       const admission=window.LightUpPrivateHistory.openComposed(json);
       requireValid(admission===true && current===generation);
+      showingComposed = true;
       // The source snapshots contain only browser File handles and hashes:
       // complete question/next-action notes never enter saved output.
       saved={json,files:[board,...worksheets],hashes:[digest,...revHash],limits:
@@ -759,6 +907,16 @@ a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{fon
       $("compose-download").disabled=!saved;
     }
   }
+  // The viewer owns the global PRIVATE session Clear action. It empties
+  // both source File inputs and generated source-free output; crucially,
+  // the original CSV files can no longer be reprocessed without reselection.
+  window.addEventListener("lightup:history-clear-original-inputs", () => {
+    // Avoid resetting a newly imported native history on the same signal.
+    showingComposed = false;
+    $("compose-board").value = "";
+    $("compose-confirm").checked = false;
+    buildFileFields();
+  });
   $("compose-count").addEventListener("change",buildFileFields);
   $("compose-board").addEventListener("change",()=>invalidate());
   $("compose-confirm").addEventListener("change",()=>invalidate());
