@@ -396,7 +396,7 @@ def main() -> int:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18") else
+    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18", "20") else
           "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 
