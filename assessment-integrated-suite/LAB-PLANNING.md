@@ -1,5 +1,25 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
+## Better offline HUMAN plan comparison and discussion filters
+
+The source-free Lab Route Desk now accepts a second *strictly
+schema-admitted* local JSON purely to compare with current memory,
+without replacing any steps. The comparison table and optional
+changed-only CSV show only action numbers and enum status tokens.
+Import always previews old→proposed HUMAN markers before
+confirmation, rejecting duplicate JSON names, including escaped
+and nested collisions, as well as unexpected authority assertions.
+Browser state is memory-only; no source/actor identity is
+authenticated.
+
+Reviewers can filter original action number/title or HUMAN status,
+then explicitly bulk-mark only VISIBLE steps as NEEDS_INPUT or
+IN_PROGRESS. Hidden steps remain unchanged and included in all full
+exports. No bulk DISCUSSED/approval state exists. Using these
+features does not prove any original lab stage executed, any review
+completed, a vulnerability was fixed or anyone consented.
+
+
 ## Original local HUMAN discussion handoff: console 72–75
 
 After offline `human-lab-route.html` + adjacent JavaScript exports a
