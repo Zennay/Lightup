@@ -1,5 +1,59 @@
 # LightUp integrated PRIVATE assessment handoff
 
+## NEW · Native HUMAN Lab self-report custody, exact receipt and history (options 72–74)
+
+**Actual original installed code:** [`lab_route_handoff.py`](lab_route_handoff.py)
+and [`lab_route_handoff_console.py`](lab_route_handoff_console.py).
+Existing actions **1–71 remain unchanged**; the integrated foreground
+`console.py` now also offers **72 receive**, **73 reopen**, and
+**74 compare HUMAN discussion rounds**. These are an isolated completion
+of the previously delivered source-free browser plan, **not**
+original lab-source verification, an assessment executor, or a release.
+
+**Browser-to-native workflow:** save
+[`human-lab-route.html`](human-lab-route.html) with adjacent
+[`human-lab-route.js`](human-lab-route.js), mark local HUMAN
+discussion statuses, then explicitly request JSON export. Copy the
+downloaded file into an existing **0700 owner-only directory**, with
+**0600 file** permissions, OUTSIDE any source checkout. Start
+`python3 assessment-integrated-suite/console.py` on the approved
+local system and choose **72**; provide the absolute private JSON
+path, a separate owner-only 0700 destination and a new unique
+folder name. Confirm with exactly `RECEIVE HUMAN SELF REPORT`.
+The original source-free twenty-option self-report must match
+the strict original schema, order, fixed stage tokens, literal
+boolean false authority fields, and size at most 24576 bytes.
+Duplicate JSON properties at ANY depth are refused. No partial
+artifacts are emitted on preflight failure. The output is a
+new **0700 PRIVATE** room with an original **0600** self-report,
+a canonical full JSON copy, complete CSV, script-free HTML
+and a distinct unsigned SHA-256 byte receipt.
+
+**73:** Read-only exact re-admission of all previously written
+original private bytes, regenerated from the saved original
+browser self-report; missing, changed or unexpected files HOLD.
+A matching unsigned receipt is only byte continuity, NEVER
+real actor authentication or external source authenticity.
+**74:** choose 2–8 saved original HUMAN receipt room paths in
+explicit MANUAL order; each is fully re-admitted. In a NEW
+owner-private room obtain a scriptless HUMAN change timeline,
+counts-per-self-reported-round JSON and complete CSV of changed
+option markers. The chosen order is NOT a proven timeline and a
+status change is NOT an assessment or verified remediation.
+
+For direct opt-in use outside the operator menu:
+`python3 assessment-integrated-suite/lab_route_handoff.py receive --self-report /PRIVATE/input.json --private-parent /PRIVATE --folder receipt-1`;
+`python3 assessment-integrated-suite/lab_route_handoff.py reopen --room /PRIVATE/receipt-1`;
+`python3 assessment-integrated-suite/lab_route_handoff.py history --rooms /PRIVATE/receipt-1 /PRIVATE/receipt-2 --private-parent /PRIVATE --folder history-1`.
+Paths are examples ONLY, and must already be owner-private on the
+operator's local filesystem. No original customer record or true
+scan, consent, grant, release or HUMAN GO is created or inferred.
+These native-only features are deliberately excluded from the
+source-only portable HTML/JS ZIP; they require an approved
+original checkout and manual private custody. No QA/test suites
+were added or invoked.
+
+
 ## NEW · Source-free offline HUMAN Lab Route Desk (20 original actions)
 
 [Open the portable HUMAN Lab Route Desk](human-lab-route.html) beside
