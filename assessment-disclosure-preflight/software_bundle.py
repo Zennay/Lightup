@@ -24,7 +24,7 @@ SOFTWARE_FILES = (
     "reconcile-studio.js", "reconcile_package.py", "reconcile-standalone.html",
     "kit-home.html", "kit-home.css", "private_install.py", "private_intake.py", "private_intake_wizard.py",
     "private_reopen.py", "private_inbox_board.py", "PRIVATE-INBOX-PORTFOLIO.md",
-    "private_inbox_actions.py", "PRIVATE-INBOX-ACTIONS.md",
+    "private_inbox_actions.py", "PRIVATE-INBOX-ACTIONS.md", "private_inbox_workroom.py",
     "private-inbox-action-studio.html", "private-inbox-action-studio.css",
     "private-inbox-action-studio.js",
     "PRIVATE-BROWSER-INBOX.md", "software_bundle.py",

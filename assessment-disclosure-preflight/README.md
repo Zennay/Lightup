@@ -46,6 +46,30 @@ python3 assessment-disclosure-preflight/preflight.py \
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
 
+## One-command PRIVATE inbox + HUMAN worksheet workroom
+
+The native [private_inbox_workroom.py](./private_inbox_workroom.py) publishes
+the source-free dashboard and its exact matching SHA-bound HUMAN worksheet
+together, through one exclusive private publication. All original rooms are
+admitted first; if any input fails, none of the four output names is published.
+
+~~~sh
+mkdir -m 700 ./owner-private-workroom
+python3 assessment-disclosure-preflight/private_inbox_workroom.py \
+  --private-parent ./owner-private-inbox \
+  --room review-001 --room review-002 \
+  --private-output-dir ./owner-private-workroom
+~~~
+
+The output directory receives the portfolio HTML/CSV/JSON and
+`PRIVATE-inbox-actions-template.csv`. It must be an existing separate
+owner-only 0700 directory outside the original inbox tree. Optional `--full-reopen` requires a trusted
+interactive terminal and exact `REOPEN` confirmation; it performs the
+unchanged original HUMAN reopener for every selected room before publishing.
+Exit 2 is REVIEW_ONLY; exit 3 is HOLD. This does not authenticate a source,
+grant consent or authorize scanning/release. Edit the template in the offline
+Studio and continue with native `private_inbox_actions.py finalize`.
+
 ## Native original PRIVATE HUMAN inbox follow-up actions
 
 A new [fully offline PRIVATE HUMAN action browser Studio](./private-inbox-action-studio.html)
@@ -809,7 +833,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 32
+store, scan workflow, credential grant or signed release. The 33
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -882,7 +906,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 32
+noncanonical, reordered, oversized or changed members, compares all 33
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no

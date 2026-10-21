@@ -8,6 +8,29 @@ release reports, scan targets or contact a network.
 
 ## Workflow
 
+## Recommended: create the complete board and bound HUMAN template together
+
+The native `private_inbox_workroom.py` publishes the source-free board and
+its exact-byte-SHA-bound HUMAN template in a single exclusive operation:
+
+~~~sh
+mkdir -m 700 ./owner-private-workroom
+python3 assessment-disclosure-preflight/private_inbox_workroom.py \
+  --private-parent ./owner-private-inbox \
+  --room review-001 --room review-002 \
+  --private-output-dir ./owner-private-workroom
+~~~
+
+The existing separate owner-only 0700 output directory outside the original inbox tree receives the original
+board HTML/CSV/JSON and `PRIVATE-inbox-actions-template.csv`. It checks all
+selected original rooms before exposing any output filename; all four new
+files are published together and none overwrite existing output. This is the
+preferred operator entry point; the original board-only and prepare-only
+commands remain available when separate outputs are intentionally wanted.
+An explicit `--full-reopen` adds the original interactive native HUMAN
+re-admission for every selected room, but never confers authorization.
+
+
 The original [PRIVATE multi-room portfolio](./PRIVATE-INBOX-PORTFOLIO.md)
 generates owner-private `PRIVATE-inbox-portfolio.json`, containing only
 ephemeral input-order slots, A/B/HOLD counts and literal false authority flags.

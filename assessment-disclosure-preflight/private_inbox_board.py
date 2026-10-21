@@ -92,6 +92,24 @@ def read_one(parent_fd: int, parent_path: str, name: str, slot: int, full_reopen
     }
 
 
+def manifest_bytes(rows: list[dict], full_reopened: bool) -> bytes:
+    manifest = {
+        "schema": "lightup.private_human_inbox_board.v1",
+        "status": "REVIEW_ONLY",
+        "source_free": True,
+        "source_authenticated": False,
+        "reviewers_authenticated": False,
+        "client_consent_verified": False,
+        "operator_consent_verified": False,
+        "authorization_granted": False,
+        "release_allowed": False,
+        "original_human_reopening_performed": bool(full_reopened),
+        "signed": False,
+        "rooms": rows,
+    }
+    return (json.dumps(manifest, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8")
+
+
 def source_free_csv(rows: list[dict]) -> str:
     out = io.StringIO(newline="")
     writer = csv.DictWriter(out, fieldnames=FIELDS, lineterminator="\n")
@@ -221,24 +239,10 @@ def main() -> int:
                 raise ValueError("source changed during original HUMAN readmission")
             rows = after
         # All inputs admitted before any output name becomes visible.
-        manifest = {
-            "schema": "lightup.private_human_inbox_board.v1",
-            "status": "REVIEW_ONLY",
-            "source_free": True,
-            "source_authenticated": False,
-            "reviewers_authenticated": False,
-            "client_consent_verified": False,
-            "operator_consent_verified": False,
-            "authorization_granted": False,
-            "release_allowed": False,
-            "original_human_reopening_performed": bool(args.full_reopen),
-            "signed": False,
-            "rooms": rows,
-        }
         outputs = [
             (HTML, render(rows).encode("utf-8")),
             (CSV, source_free_csv(rows).encode("utf-8")),
-            (JSON, (json.dumps(manifest, separators=(",", ":"), sort_keys=True)+"\n").encode("utf-8"))
+            (JSON, manifest_bytes(rows, args.full_reopen))
         ]
         atomic_private_publish(args.private_output_dir, outputs)
     except (OSError, TypeError, ValueError, UnicodeError, MemoryError, Hold, csv.Error):
