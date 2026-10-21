@@ -148,6 +148,9 @@ def main(argv=None):
                 if os.path.commonpath((source, root_path)) in (source, root_path):
                     raise Hold("next-round output must be separate from original inputs")
             if args.output_dir:
+                response_parent = os.path.dirname(os.path.abspath(os.fspath(args.responses)))
+                if os.path.commonpath((response_parent, root_path)) in (response_parent, root_path):
+                    raise Hold("new HUMAN response source must be in a separate private directory")
                 after = load_json(require_private_file(args.responses))
                 validate_worksheet(after, digest, len(endpoints))
                 if os.listdir(root_fd):
