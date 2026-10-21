@@ -261,3 +261,19 @@ The file integrity reopen is source-bound and read-only:
 The existing next-round builder assessment-launchpad/advance.py **now creates this 2-round HUMAN history automatically**, along with the current HUMAN desk/editor/routing/delta. To include more old rounds when advancing, add --earlier-round-dir for each earlier round, oldest first, up to **six earlier** rounds, then --previous-round-dir for the immediate prior round. The edited response worksheet becomes the final round (up to 8 total). The same --earlier-round-dir values in the same order must be provided to --verify-workroom-dir so it can reopen the original source, earlier HUMAN rounds, current HUMAN state and every new history artifact. The local HTML landing page includes a direct history link.
 
 All work remains offline PRIVATE, LAB-ONLY DRAFT/HOLD. A HUMAN stage transition cannot mean CLEAR, APPROVE, consent, verified repair or end-user permission, and a missing source round is never evidence of a fixed vulnerability.
+
+
+## Guided, no-intermediary HUMAN next-round creation
+
+The next-round builder now also has a **PRIVATE TTY-only interactive mode**, reusing the existing admitted source-bound HUMAN editor in memory. This completes the native workflow without editing JSON manually or moving a browser download. It starts from a copy of the immediately prior original-source-bound HUMAN worksheet; earlier rounds and original packet stay unchanged.
+
+    mkdir -m 700 ~/private-lab-interactive-next
+    python3 assessment-launchpad/advance.py \
+      --bundle-dir ~/private-lab-guided-workspace/launchpad \
+      --previous-round-dir ~/private-lab-guided-workspace/human-round-01 \
+      --interactive \
+      --output-dir ~/private-lab-interactive-next
+
+For 3–8 rounds, provide up to six --earlier-round-dir values (oldest first) as documented above. The TTY menu displays **only original slot ordinals**, stages, neutral roles and note lengths; source endpoint values are not printed. Notes are entered without terminal echo through getpass. Blank stage/role/note inputs preserve the previous HUMAN value; entering a hyphen for a note clears it. An invalid entry or interruption aborts without publishing a new complete packet. The new workroom includes HUMAN updated notes, browser editor, private routing and 2–8 round chronological-*proposal* history, with all original source/rounds re-admitted immediately before publication. Its multi-round order is user-chosen, never authenticated chronology.
+
+Interactive creation is mutually exclusive with --responses and with read-only --verify-workroom-dir. No browser, external service, model, scan, target operation, authorization, consent or HUMAN GO is involved. The resulting HTML/JSON includes sensitive PRIVATE notes and endpoint URLs, remains unencrypted local 0600 and must not be shared or hosted.
