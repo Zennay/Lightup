@@ -19,8 +19,11 @@ Route receipts**, instead of accepting an unsigned browser JSON alone:
    browser v2 JSON, the distinct output private parent/folder and
    the exact confirmation \`RECEIVE HUMAN ATTENTION ONLY\`.
    The new separate 0700 output holds original proposal bytes,
-   canonical 20-row JSON, complete CSV, readable scriptless CSP HTML
-   and an UNSIGNED original byte receipt (all files 0600).
+   canonical 20-row JSON, complete CSV, readable scriptless CSP HTML,
+   a grouped fixed-role HUMAN workboard, source-free role summary JSON
+   and an UNSIGNED original byte receipt (all seven files 0600).
+   All twenty actions remain represented, including UNASSIGNED;
+   no actual owner or recipient is assigned.
 4. Console **77** reopens the original 1–8 saved native route receipts
    AND the complete original attention output room. A changed,
    missing, extra, unprivate or source-incompatible file becomes HOLD.
