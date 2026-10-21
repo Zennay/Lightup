@@ -23,6 +23,7 @@ from compare_review import read_round
 
 MIN_ROUNDS = 2
 MAX_ROUNDS = 8
+MAX_OUTPUT_ITEM_BYTES = 524_288
 NAMES = (
     "lightup-lab-human-history-private.html",
     "lightup-lab-human-history-routing-private.csv",
@@ -298,8 +299,13 @@ def main(argv=None):
                 if os.path.commonpath((source, dest_dir)) in (source, dest_dir):
                     raise Hold("history destination must be separate from source and rounds")
             expected = dict(output_artifacts(rounds, endpoints))
+            if any(not 0 < len(data) <= MAX_OUTPUT_ITEM_BYTES
+                   for data in expected.values()):
+                raise Hold("bounded HUMAN history output capacity exceeded")
             if args.verify_history_dir:
-                stored = {name: read_private_bundle_item(dest_fd, name, 196608)
+                if set(os.listdir(dest_fd)) != set(NAMES):
+                    raise Hold("PRIVATE history has missing or unexpected files")
+                stored = {name: read_private_bundle_item(dest_fd, name, MAX_OUTPUT_ITEM_BYTES)
                           for name in NAMES}
                 if stored != expected:
                     raise Hold("PRIVATE history files changed or source no longer matches")
