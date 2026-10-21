@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-TkC4hwx60JGSQtQd11gk5G/MuXxEQcUcFCcIGxB1L4g=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-DT+qjySrnf/rTAmPqFfus8FWhItzlyPqU2RKqcyBt0k='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-tnijxYNfu0Oe9kaHOwj65lZB2bk/hlui+7FeiGUF2wM=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-cOrKOcXW3AiRr1cTv4YTwBzu5HfNys5/d6V8ZS1XxGg='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -29,6 +29,17 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 #findings tr.peer-focus{outline:3px solid #8ed8f3;outline-offset:-3px;background:#1c3a47}#findings tr:focus{outline:3px solid #fdce67;outline-offset:-3px}.peer-jump{font-size:.78rem;white-space:normal;min-width:9rem}
 
 #search{font:inherit;background:#101b2d;color:#fff;border:1px solid #7087a3;border-radius:6px;padding:.65rem;min-width:220px;max-width:100%}#search:focus-visible{outline:3px solid #ffcb67;outline-offset:2px}
+
+
+/* Source-reported run overview: compact, responsive and visibly unverified. */
+.run-context{margin:1.2rem 0 1.8rem;padding:1rem;border:1px solid #567086;border-radius:12px;background:#101f2e}
+.run-context h3{margin:.2rem 0 .6rem}
+.run-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:.65rem;margin:1rem 0}
+.run-metric{min-width:0;padding:.8rem;border:1px solid #3e5b71;border-radius:9px;background:#182b3d}
+.run-metric span{display:block;color:#b9cede;font-size:.82rem;line-height:1.35}
+.run-metric strong{display:block;margin-top:.35rem;font-size:1.2rem;overflow-wrap:anywhere}
+#coverage-domains td:last-child{font-weight:650}
+@media(max-width:600px){.run-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.run-context{padding:.7rem}}
 </style></head><body>
 <header><div class="eyebrow">LIGHTUP / ISOLATED LAB / HUMAN REVIEW ONLY</div>
 <h1>Private Lab Review Desk</h1><p>Explore an <strong>already-created</strong> isolated-lab assessment JSON. Review individual source-declared findings, track human follow-up and prepare a private handoff. Nothing scans, calls a model, contacts an asset, verifies consent or grants permission.</p>
@@ -39,6 +50,15 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 <label class="upload" for="source">Open original PRIVATE.json <input id="source" type="file" accept=".json,application/json"></label>
 <p id="message" role="status" aria-live="polite"></p></section>
 <section id="workspace" hidden aria-labelledby="desk"><h2 id="desk">2. Triage source-declared findings</h2>
+<div class="run-context" aria-labelledby="run-context-title">
+<h3 id="run-context-title">Source-reported run context</h3>
+<p class="note">The figures below are declarations from the selected PRIVATE artifact, not verified assessment results. No target URLs, run IDs, model bindings or raw denial reasons are shown here.</p>
+<div id="run-summary" class="run-metrics" aria-live="polite"></div>
+<div class="table-wrap"><table><caption>Declared capability coverage (not verified)</caption>
+<thead><tr><th scope="col">Capability domain</th><th scope="col">Source status</th></tr></thead>
+<tbody id="coverage-domains"></tbody></table></div>
+<p id="run-caution" class="note" role="status" aria-live="polite"></p>
+</div>
 <p id="stats" class="stats"></p><p id="progress"></p>
 <div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><label for="search">Find source title/check or HUMAN note
 <input id="search" type="search" maxlength="180" autocomplete="off" placeholder="Local private text search"></label>
@@ -109,6 +129,7 @@ const FLAGS=["authorized","consent_verified","dispatch_allowed","release_allowed
 const STAGES=["needs_review","discussing","documented","blocked"];
 const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
+const COVERAGE_STATUSES=["assessed","partially_assessed","not_applicable","not_authorized","unknown"];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",searchTerm="",sortMode="source",lastBulkUndo=null;
 const selectedForHandoff=new Set();
@@ -181,6 +202,39 @@ function admitEvaluation(record,runId,scenarioId){
  require_(Math.abs(m.false_positive_rate-expected)<=1e-8);
 }
 
+
+function boundedPlanValue(value,depth=0,budget={nodes:0}){
+ if(++budget.nodes>2048||depth>6)return false;
+ if(value===null||typeof value==="boolean")return true;
+ if(typeof value==="number")return Number.isFinite(value)&&Math.abs(value)<=1e12;
+ if(typeof value==="string")return validText(value,2048);
+ if(Array.isArray(value))return value.length<=64&&value.every(v=>boundedPlanValue(v,depth+1,budget));
+ if(obj(value)){
+  const keys=Object.keys(value);
+  return keys.length<=64&&keys.every(k=>validText(k,256)&&boundedPlanValue(value[k],depth+1,budget));
+ }
+ return false;
+}
+function admitCoverage(value){
+ require_(exact(value,["domains","counts","clean_bill_of_health","note"])&&obj(value.domains));
+ const entries=Object.entries(value.domains);
+ require_(entries.length<=256);
+ const derived=Object.fromEntries(COVERAGE_STATUSES.map(s=>[s,0]));
+ for(const [domain,status] of entries){
+  require_(validText(domain,256)&&domain.length>0&&COVERAGE_STATUSES.includes(status));
+  derived[status]++;
+ }
+ require_(exact(value.counts,COVERAGE_STATUSES));
+ for(const status of COVERAGE_STATUSES){
+  require_(Number.isSafeInteger(value.counts[status])&&value.counts[status]===derived[status]);
+ }
+ const materiallyUnknown=derived.unknown>derived.assessed+derived.partially_assessed;
+ const expectedNote=materiallyUnknown?
+  "coverage is materially unknown; zero findings must not be read as a clean bill of health":"";
+ require_(value.clean_bill_of_health===(materiallyUnknown?false:null)&&value.note===expectedNote);
+ return derived;
+}
+
 function admit(x){
  require_(obj(x) && !Object.hasOwn(x,"mode") &&
   (Object.keys(x).sort().join(",")===[
@@ -195,21 +249,31 @@ function admit(x){
  require_(Array.isArray(x.findings)&&x.findings.length<=MAX_ROWS);
  require_(Array.isArray(x.plan)&&x.plan.length<=512 && Array.isArray(x.denied)&&x.denied.length<=512 &&
   Array.isArray(x.elevation_requests)&&x.elevation_requests.length<=512);
- require_(obj(x.coverage)&&obj(x.evaluation)&&validText(x.report_markdown,MAX_BYTES));
+ require_(obj(x.evaluation)&&validText(x.report_markdown,MAX_BYTES));
+ const coverageCounts=admitCoverage(x.coverage);
  admitEvaluation(x.evaluation,x.run_id,x.scenario_id);
+ require_(x.evaluation.metrics.coverage_assessed===coverageCounts.assessed&&
+  x.evaluation.metrics.coverage_unknown===coverageCounts.unknown);
+ require_(Array.isArray(x.elevation_requests)&&x.elevation_requests.length<=512&&
+  x.elevation_requests.every(item=>validText(item,8192)));
  for(const call of x.plan){
   require_(exact(call,["tool_id","asset","arguments"])&&
-   validText(call.tool_id,256)&&validText(call.asset,2048)&&obj(call.arguments)&&
-   Object.keys(call.arguments).length<=64);
+   validText(call.tool_id,256)&&validText(call.asset,2048)&&x.targets.includes(call.asset)&&
+   obj(call.arguments)&&Object.keys(call.arguments).length<=64&&boundedPlanValue(call.arguments));
  }
  for(const denial of x.denied){
   require_(exact(denial,["tool_id","reason"])&&validText(denial.tool_id,256)&&
-   validText(denial.reason,8192));
+   validText(denial.reason,8192)&&x.plan.some(call=>call.tool_id===denial.tool_id));
  }
  if(Object.hasOwn(x,"benchmark_case")){
-  require_(exact(x.benchmark_case,["record","context"])&&obj(x.benchmark_case.record)&&obj(x.benchmark_case.context));
-  require_(x.benchmark_case.context.is_lab===true&&x.benchmark_case.context.authorization===null&&
-   x.benchmark_case.context.run_id===x.run_id);
+  require_(exact(x.benchmark_case,["record","context"])&&obj(x.benchmark_case.record)&&
+   exact(x.benchmark_case.context,["run_id","client_id","engagement_id","mode","approved_risk","authorization","is_lab","created_at"]));
+  const context=x.benchmark_case.context;
+  require_(context.is_lab===true&&context.authorization===null&&context.run_id===x.run_id&&
+   validText(context.run_id,256)&&validText(context.mode,128)&&validText(context.approved_risk,128)&&
+   validText(context.created_at,128)&&
+   (context.client_id===null||validText(context.client_id,256))&&
+   (context.engagement_id===null||validText(context.engagement_id,256)));
   admitEvaluation(x.benchmark_case.record,x.run_id,x.scenario_id);
   require_(JSON.stringify(x.benchmark_case.record)===JSON.stringify(x.evaluation));
  }
@@ -275,6 +339,33 @@ function buildEndpointFilter(){
  const unmatched=el("option","Unmatched source-reported assets");
  unmatched.value="endpoint:0";group.append(unmatched);select.append(group);
 }
+
+function renderRunContext(){
+ const m=source.evaluation.metrics,c=source.coverage;
+ const cards=[
+  ["Tool calls (source-reported)",m.tool_calls],
+  ["Policy denials (source-reported)",source.denied.length],
+  ["Elevation requests (source-reported)",source.elevation_requests.length],
+  ["Coverage assessed (declared)",c.counts.assessed],
+  ["Coverage unknown (declared)",c.counts.unknown],
+  ["Valid / invalid / missed",m.valid_findings+" / "+m.invalid_findings+" / "+m.missed_findings],
+  ["Runtime (source-reported)",m.runtime_seconds+" s"],
+  ["Human interventions (declared)",m.human_interventions]
+ ];
+ const host=$("run-summary");host.replaceChildren();
+ for(const [label,value] of cards){
+  const card=el("div",undefined,"run-metric");
+  card.append(el("span",label),el("strong",String(value)));host.append(card);
+ }
+ const body=$("coverage-domains");body.replaceChildren();
+ for(const [domain,status] of Object.entries(c.domains).sort((a,b)=>a[0].localeCompare(b[0]))){
+  const tr=document.createElement("tr");cell(tr,domain);cell(tr,status);body.append(tr);
+ }
+ $("run-caution").textContent=c.clean_bill_of_health===false?
+  "Source coverage note: "+c.note+" This remains an unverified source claim; this desk does not produce a clean bill of health.":
+  "The source reports no materially unknown coverage. This desk still does not verify coverage, findings, remediation or authorization.";
+}
+
 function updateSummary(){
  const sev=Object.fromEntries(SEVERITIES.map(s=>[s,0]));
  source.findings.forEach(f=>sev[f.severity]++);
@@ -373,7 +464,7 @@ async function importSource(file){
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
- source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();
+ source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();renderRunContext();
  filter="";searchTerm="";sortMode="source";$("filter").value="";
  $("search").value="";$("sort").value="source";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
@@ -485,7 +576,7 @@ $("aggregate").addEventListener("click",()=>{if(!source)return;
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
  source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();
- $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
+ $("workspace").hidden=true;$("run-summary").replaceChildren();$("coverage-domains").replaceChildren();$("stats").textContent="";$("progress").textContent="";$("shown").textContent="";status("All in-memory private workspace data discarded.");});
 $("collab-select-visible").addEventListener("click",()=>{
  if(!source)return;
  const ids=visibleOrdinals().map(i=>i+1);
