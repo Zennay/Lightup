@@ -70,6 +70,22 @@ Or choose **11** in the foreground PRIVATE operator console. Use an existing ori
 
 After publishing a curated packet, use `python3 assessment-evidence-curation/packet_handoff.py prepare --private-dir ./EXISTING-PRIVATE-EVIDENCE-DOSSIER --priority urgent --output-dir ./NEW-PRIVATE-PRIORITY-HANDOFF` (or priority routine/soon). The whole original owner-only packet is locally re-admitted, but only ONE priority-specific HUMAN question HTML is copied into a newly exclusive 0700/0600 directory with a scriptless local guide and UNSIGNED digest receipt. The full evidence dossier, original target data, other priorities and source files are NEVER copied. Questions may still identify a client. This operation is NOT approved disclosure, recipient authentication, finding verification, client/operator consent or actual delivery. The original packet remains intact. To check the detached packet local bytes, use `python3 assessment-evidence-curation/packet_handoff.py reopen --private-dir ./NEW-PRIVATE-PRIORITY-HANDOFF`; this cannot revalidate original sources or current authorization. Both commands are HUMAN REVIEW_ONLY or HOLD. Offline console actions 12 and 13 provide the same explicit local flow.
 
+## PRIVATE HUMAN one-priority answer round-trip
+
+Current NEW curated dossiers additionally include a canonical original-source-bound blank recipient CSV for each nonempty HUMAN priority and hashes for those templates in the unsigned receipt. New strict reopen expects them; old previously produced packets remain historical and will HOLD under this new reader. Never alter or silently migrate old source receipts.
+
+Run the existing `packet_handoff.py prepare --private-dir ORIGINAL-PRIVATE-DOSSIER --priority urgent --output-dir NEW-HANDOFF` (choose `soon` or `routine` when needed). The NEW private 0700/0600 handoff includes only that selected priority's source-minimized question HTML, exact full response CSV template, and **PRIVATE-HUMAN-reply-studio.html**, plus a local guide and unsigned receipt. No full original findings, targets, other priority question text, network action, grant, or message. Questions may still identify confidential clients. Open the Studio completely offline, edit recipient HUMAN stages/replies, optionally resume a full source-matched prior CSV with confirmation, then export **ALL original rows** as `PRIVATE-priority-human-reply.csv`. Filters never drop hidden rows. Browser downloads may not be owner-private; their cleanup is a separate manual responsibility.
+
+Native source-bound import and PRIVATE report:
+
+    python3 assessment-evidence-curation/priority_reply.py --private-handoff NEW-HANDOFF --returned-csv PRIVATE-priority-human-reply.csv --output-dir NEW-PRIVATE-HUMAN-RETURN
+
+The native receiver re-admits the entire original handoff, exact template source-ordinal/priority/question columns and all self-reported fields, before publishing a new owner-private 0700 folder with 0600 scriptless HUMAN report, counts-only stage summary and UNSIGNED return receipt. Recipient identity, verification, remediation, actual consent and disclosure permission are never inferred; no communication is sent. To reopen the completed response report strictly by local bytes (not producer/auth/consent):
+
+    python3 assessment-evidence-curation/priority_return_open.py --private-dir NEW-PRIVATE-HUMAN-RETURN
+
+Use console choices **14** (receive) and **15** (reopen). Outputs remain HOLD / REVIEW_ONLY, not main/live.
+
 ## Step 3 — Compare PRIVATE HUMAN selection revisions (without target work)
 
 Use two complete separately saved original-ordinal HUMAN selection CSVs, **both against the same exact original PRIVATE lab source, original manifest, seven-column HUMAN worksheet and selection-preparation receipt**:
@@ -113,7 +129,7 @@ Use the menu instead of assembling long paths or shell commands:
 
     python3 assessment-evidence-curation/console.py
 
-It offers **thirteen offline HUMAN/local-packet workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
+It offers **fifteen offline HUMAN/local-packet workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
 
 ## Step 5 — PRIVATE recipient HUMAN question/reply exchange (without assessment execution)
 
