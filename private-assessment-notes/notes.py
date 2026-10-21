@@ -472,6 +472,19 @@ def main() -> int:
     har_desk_read.add_argument("--workflow-room", required=True)
     har_desk_read.add_argument("--progress-room", action="append", required=True)
     har_desk_read.add_argument("--desk-room", required=True)
+    har_revision = commands.add_parser(
+        "har-review-revision", help="source-bound earlier-to-new PRIVATE HAR HUMAN handoff; HOLD")
+    har_revision.add_argument("--older-workflow", required=True)
+    har_revision.add_argument("--newer-workflow", required=True)
+    har_revision.add_argument("--older-progress-room", required=True)
+    har_revision.add_argument("--private-parent", required=True)
+    har_revision_reopen = commands.add_parser(
+        "har-review-revision-reopen",
+        help="read-only original-bound PRIVATE HAR revision handoff; HOLD")
+    har_revision_reopen.add_argument("--older-workflow", required=True)
+    har_revision_reopen.add_argument("--newer-workflow", required=True)
+    har_revision_reopen.add_argument("--older-progress-room", required=True)
+    har_revision_reopen.add_argument("--revision-room", required=True)
     cues_command = commands.add_parser(
         "masking-cues",
         help="original-bound PRIVATE HUMAN literal masking-marker navigation; REVIEW_ONLY")
@@ -730,6 +743,18 @@ def main() -> int:
         if args.action == "prepare":
             return prepare(args.source, args.private_parent,
                            include_masking_cues=args.with_mask_cues)
+        if args.action in {"har-review-revision",
+                            "har-review-revision-reopen"}:
+            from private_har_revision import create as create_revision, reopen as reopen_revision
+            if args.action == "har-review-revision":
+                return create_revision(args.older_workflow,
+                                       args.newer_workflow,
+                                       args.older_progress_room,
+                                       args.private_parent)
+            return reopen_revision(args.older_workflow,
+                                   args.newer_workflow,
+                                   args.older_progress_room,
+                                   args.revision_room)
         if args.action.startswith("har-review-"):
             from private_har_workflow import (
                 prepare as start_review, reopen as reopen_review,
