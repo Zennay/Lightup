@@ -6,7 +6,7 @@ remain the single entry point. This module only prints documentation.
 """
 from __future__ import annotations
 
-# Generated from the original 51 action captions in console.py.
+# Companion labels mirror original console options 1–74; no actions execute here.
 ACTIONS: dict[str, str] = {
     '1': 'Prepare PRIVATE original briefing + 15 offline HUMAN workrooms',
     '2': 'Prepare exact-source PRIVATE HUMAN selection studio',
@@ -130,6 +130,11 @@ def lab_guide() -> None:
     print("Retain 0700 owner rooms / 0600 originals, and re-admit exact source bytes.")
     print("No source validation here, no automatic scan, grants, consent, finalization,")
     print("recipient dispatch, security verdict or production release.")
+    print("Self-report browser export is NOT source admission or execution proof.")
+    print("After copying JSON into 0700/0600 owner custody OUTSIDE the checkout:")
+    print("  72 · receive exact browser self-report into PRIVATE HUMAN receipt")
+    print("  73 · reopen every original saved report and output byte")
+    print("  74 · compare 2–8 complete manually ordered HUMAN review rounds")
     print("Mandatory original CI, reviews, current authenticated consent and HUMAN GO remain HOLD.")
 
 def overview() -> None:
