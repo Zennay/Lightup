@@ -836,6 +836,7 @@
     $("roundsSummary").textContent="";
     $("roundsTable").textContent="";
     $("exportRoundsCSV").disabled=true;
+    $("exportRoundsHTML").disabled=true;
     $("adoptRound").disabled=true;
     $("adoptSelected").disabled=true;
     $("selectVisibleRounds").disabled=true;
@@ -865,6 +866,7 @@
       sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]);
     $("draftRounds").disabled=!(reports.length>=2&&!demo&&sourceHashes.length===reports.length);
     $("exportRoundsCSV").disabled=!valid;
+    $("exportRoundsHTML").disabled=!valid;
     $("adoptRound").disabled=!valid;
     $("selectVisibleRounds").disabled=!valid;
     $("clearSelectedRounds").disabled=!valid;
@@ -986,6 +988,54 @@
       "text/csv");
     $("roundsMessage").textContent="PRIVATE changed-only HUMAN proposals saved locally. "+
       "Missing changes never imply a security fix or approval.";
+  }
+  function exportReviewRoundsHTML(){
+    if(!reviewRounds||demo||reports.length<2||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]))return;
+    // Values entering HTML are constrained to bounded integer ordinals or
+    // hard-coded enum stage/group labels by original private draft admission.
+    const css="body{font:15px system-ui,sans-serif;max-width:1000px;margin:2rem auto;"+
+      "padding:0 1rem;color:#182336}table{border-collapse:collapse;width:100%;"+
+      "margin:1rem 0 2rem}th,td{border:1px solid #9da9b6;padding:.45rem;text-align:left}"+
+      "th{background:#e9edf2}.hold{border:2px solid #a54a22;padding:1rem}"+
+      "h2{page-break-after:avoid}table{break-inside:avoid}"+
+      "@media print{body{margin:0;max-width:none}}";
+    const header="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "+
+      "script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; "+
+      "frame-src 'none'; base-uri 'none'; form-action 'none'; style-src 'unsafe-inline'\">"+
+      "<title>LightUp PRIVATE HUMAN lab review history · REVIEW ONLY</title><style>"+css+
+      "</style></head><body><h1>LightUp · PRIVATE HUMAN lab review history</h1>"+
+      "<div class='hold'><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong>"+
+      "<p>Unauthenticated local HUMAN proposals from separately chosen unsigned source-byte-matched drafts. "+
+      "No established file chronology, reviewer identity, client consent, remediation, authorization, "+
+      "release, scanner instruction, security finding verification or dispatch. "+
+      "authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>";
+    const summary="<h2>Source-free discussion summary</h2><p>"+
+      reviewRounds.rounds+" manually ordered private drafts; "+queueIds().length+
+      " anonymous lab cases; "+reviewRounds.diff.length+
+      " case suggestions changed at least once; "+reviewRounds.totalTransitions+
+      " local proposal changes. "+reviewRounds.settingChanges+
+      " hypothetical setting/focus changes are counted separately and never treated as policy.</p>";
+    let body="";
+    for(const item of reviewRounds.diff){
+      body+="<h2>Anonymous lab case "+String(item.ordinal).padStart(2,"0")+
+        " · "+item.transitions+" HUMAN proposal transition(s)</h2>"+
+        table(["Manually supplied round","Generic HUMAN review group","Local discussion stage"],
+          reviewRounds.snapshots.map((rows,i)=>["Round "+(i+1),
+            nice(rows[item.ordinal-1].route),nice(rows[item.ordinal-1].stage)]));
+    }
+    if(!reviewRounds.diff.length)body="<p>No changes in the local HUMAN proposals; "+
+      "this cannot verify a finding, resolution or release.</p>";
+    const footer="<p>Source case IDs, source fingerprints, aliases, filenames, "+
+      "targets, raw original metrics, human identities and notes are intentionally absent. "+
+      "Separate original security/privacy reviews, authentic current client and operator consent, "+
+      "action-time revocation, exact-head CI and HUMAN GO remain mandatory.</p></body></html>";
+    download("lightup-PRIVATE-HUMAN-review-history-REVIEW-ONLY.html",
+      header+summary+body+footer,"text/html");
+    $("roundsMessage").textContent="PRIVATE script-free HUMAN timeline briefing saved locally. "+
+      "No source IDs, people, findings or permission claims included.";
   }
   function adoptReviewRound(){
     if(!reviewRounds||demo||reports.length<2||
@@ -1133,6 +1183,7 @@
     drawQueue();
   });
   $("exportRoundsCSV").addEventListener("click",exportReviewRoundsCSV);
+  $("exportRoundsHTML").addEventListener("click",exportReviewRoundsHTML);
   $("adoptRound").addEventListener("click",adoptReviewRound);
   $("saveDraft").addEventListener("click",saveDraft);
   $("roundFilter").addEventListener("change",displayReviewRounds);
