@@ -44,3 +44,27 @@ The standard-library builder creates the standalone from the three local sources
 ## Release HOLD
 
 Do not merge this draft into production without original exact-head hosted + permanently registered VPS CI, source-owner integration, independent security/privacy review, genuine separately authenticated client and operator consent with revocation-at-use, and explicit human GO. No production deploy, targets, scans, real grants or dispatch from this product.
+
+## Compare saved HUMAN planning revisions
+
+After loading the exact original report, use **Compare saved review plans** to
+select two prior HUMAN planning JSON exports and compare their stage, workstream
+and follow-up-date fields without mutating the current workspace. Each file
+must independently match the loaded report's exact SHA-256, source kind/status,
+case count/order, ordinal, priority, metric-regression categories and false-only
+authority fields. Both legacy v1 and current v2 exports are accepted; v1 has no
+workstream field and is shown as unassigned.
+
+The output is changed-only, ordinal-based and contains no raw scenario IDs,
+filenames, source evidence or private notes. A separate CSV records the changed
+planning fields and four explicit false authority flags. A malformed, oversized,
+duplicate-key, stale-source or partial plan is rejected as a whole. The compare
+does not restore either plan or edit the active review state. The operator's
+"prior/current" labels are not authenticated chronology; status, date and
+workstream are unsigned HUMAN planning proposals, never proof of remediation,
+approval, consent or release.
+
+All local JSON intake now rejects duplicate object keys (including escaped
+spellings that decode to the same key) before canonical schema admission. This
+prevents ambiguous source or saved-plan fields from being silently resolved by
+the browser's ordinary last-key-wins JSON parser.

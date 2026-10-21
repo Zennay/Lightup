@@ -22,7 +22,7 @@
   const CASE_KEYS = ["scenario_id", "status", "regressions", "changes"];
   const CHANGE_KEYS = ["name", "baseline", "candidate", "delta", "regression"];
   const $ = id => document.getElementById(id);
-  let report = null, selected = -1, digest = null, sourceKind = null, trend = null, metricFocus = null;
+  let report = null, selected = -1, digest = null, sourceKind = null, trend = null, metricFocus = null, planDelta = null;
   const exactKeys = (x, keys) => !!x && Object.getPrototypeOf(x) === Object.prototype &&
     Object.keys(x).length === keys.length && keys.every(k => Object.hasOwn(x, k));
   const fail = () => { throw new Error("Source structure or values do not match canonical lab CLI output."); };
@@ -32,6 +32,86 @@
   const duplicates = list => new Set(list).size !== list.length;
   const boolFalseAuthority = doc => AUTH.every(key => doc[key] === false);
   const ensure = condition => { if (!condition) fail(); };
+  // Strict JSON admission: JSON.parse silently accepts duplicate object keys.
+  // Decode each key before checking duplicates, including escaped spellings.
+  function parseStrictJson(raw, maxBytes = 524288) {
+    ensure(typeof raw === "string" && new TextEncoder().encode(raw).length <= maxBytes);
+    let pos = 0;
+    const ws = () => { while (pos < raw.length && [0x20,0x09,0x0a,0x0d].includes(raw.charCodeAt(pos))) pos++; };
+    const string = () => {
+      const start = pos;
+      ensure(raw[pos] === '"');
+      pos++;
+      while (pos < raw.length) {
+        const ch = raw[pos];
+        if (ch === '"') { pos++; return JSON.parse(raw.slice(start, pos)); }
+        if (ch === "\\") {
+          pos++;
+          ensure(pos < raw.length);
+          if (raw[pos] === "u") {
+            ensure(/^[0-9a-fA-F]{4}$/.test(raw.slice(pos + 1, pos + 5)));
+            pos += 5;
+          } else {
+            ensure('"\\/bfnrt'.includes(raw[pos]));
+            pos++;
+          }
+        } else {
+          ensure(raw.charCodeAt(pos) >= 0x20);
+          pos++;
+        }
+      }
+      fail();
+    };
+    const value = () => {
+      ws();
+      const ch = raw[pos];
+      if (ch === '"') return string();
+      if (ch === '{') {
+        pos++;
+        ws();
+        const out = {}, keys = new Set();
+        if (raw[pos] === '}') { pos++; return out; }
+        while (true) {
+          ws();
+          const key = string();
+          ensure(!keys.has(key));
+          keys.add(key);
+          ws();
+          ensure(raw[pos++] === ':');
+          const item = value();
+          Object.defineProperty(out, key, {value:item, enumerable:true, writable:true, configurable:true});
+          ws();
+          if (raw[pos] === '}') { pos++; return out; }
+          ensure(raw[pos++] === ',');
+        }
+      }
+      if (ch === '[') {
+        pos++;
+        ws();
+        const out = [];
+        if (raw[pos] === ']') { pos++; return out; }
+        while (true) {
+          out.push(value());
+          ws();
+          if (raw[pos] === ']') { pos++; return out; }
+          ensure(raw[pos++] === ',');
+        }
+      }
+      for (const [literal, result] of [['true',true],['false',false],['null',null]]) {
+        if (raw.startsWith(literal, pos)) { pos += literal.length; return result; }
+      }
+      const match = raw.slice(pos).match(/^-?(?:0|[1-9][0-9]*)(?:[.][0-9]+)?(?:[eE][+-]?[0-9]+)?/);
+      ensure(match);
+      pos += match[0].length;
+      const number = Number(match[0]);
+      ensure(Number.isFinite(number));
+      return number;
+    };
+    const result = value();
+    ws();
+    ensure(pos === raw.length);
+    return result;
+  }
   const closeNumber = (a, b) => Math.abs(a - b) <= 1e-8 * Math.max(1, Math.abs(a), Math.abs(b));
 
   function parseChange(change) {
@@ -283,7 +363,7 @@
         file.name.toLowerCase().endsWith(".json"));
       const raw = await file.text();
       ensure(new TextEncoder().encode(raw).length <= 524288);
-      const next = readReport(JSON.parse(raw));
+      const next = readReport(parseStrictJson(raw));
       trend = compareHistorical(next);
       $("trend-status").textContent = "Informational comparison only. Original source " +
         report.verdict + ", follow-up source " + next.verdict +
@@ -361,7 +441,7 @@
   function render() { renderOverview(); renderLandscape(); renderQueue(); renderDetails(); renderPrintBrief(); }
   function reset() {
     report = null; selected = -1; digest = null; sourceKind = null;
-    clearHistorical(); metricFocus = null;
+    clearHistorical(); clearPlanComparison(); metricFocus = null;
     $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all";
     $("cases").replaceChildren(); $("metrics").replaceChildren();
     alert("Local workspace cleared. No browser storage was used.");
@@ -372,7 +452,7 @@
       ensure(file && file.size > 0 && file.size <= 524288 && file.name.toLowerCase().endsWith(".json"));
       const raw = await file.text();
       ensure(new TextEncoder().encode(raw).length <= 524288);
-      const parsed = JSON.parse(raw);
+      const parsed = parseStrictJson(raw);
       const candidate = readReport(parsed);
       // The SHA identifies only the bytes just read. It does NOT authenticate the source.
       if (globalThis.crypto && crypto.subtle) {
@@ -425,7 +505,7 @@
     try {
       ensure(file && file.name.toLowerCase().endsWith(".json") &&
         file.size > 0 && file.size <= 131072);
-      const saved = JSON.parse(await file.text());
+      const saved = parseStrictJson(await file.text(), 131072);
       ensure(exactKeys(saved, ["schema","source_sha256","source_kind","source_status",
         ...AUTH,"release_approved","scan_allowed","review_only","cases","warning"]));
       const v2 = saved.schema === "lightup-offline-human-triage-v2";
@@ -465,6 +545,135 @@
       $("restore-file").value = "";
     }
   }
+  // A saved plan is admitted only against the exact currently loaded source.
+  // Its HUMAN labels remain proposals; neither plan is merged into live state.
+  function readSavedPlan(raw) {
+    ensure(report && digest && typeof raw === "string");
+    const saved = parseStrictJson(raw, 131072);
+    ensure(exactKeys(saved, ["schema","source_sha256","source_kind","source_status",
+      ...AUTH,"release_approved","scan_allowed","review_only","cases","warning"]));
+    const v2 = saved.schema === "lightup-offline-human-triage-v2";
+    ensure((v2 || saved.schema === "lightup-offline-human-triage-v1") &&
+      saved.source_sha256 === digest && saved.source_kind === sourceKind &&
+      saved.source_status === report.verdict && saved.release_approved === false &&
+      saved.scan_allowed === false && saved.review_only === true &&
+      boolFalseAuthority(saved) && Array.isArray(saved.cases) &&
+      saved.cases.length === report.cases.length);
+    const cases = saved.cases.map((row,i) => {
+      const current = report.cases[i];
+      ensure(exactKeys(row, ["case","priority","source_status","metric_regressions",
+        "human_stage","follow_up_date", ...(v2 ? ["routing_group"] : [])]));
+      ensure(row.case === label(i) && row.priority === priority(current) &&
+        row.source_status === current.status && Array.isArray(row.metric_regressions) &&
+        row.metric_regressions.length === current.regressions.length &&
+        row.metric_regressions.every((name,j) => name === current.regressions.slice().sort()[j]) &&
+        STAGES.has(row.human_stage) && (!v2 || ROUTES.has(row.routing_group)));
+      const due = row.follow_up_date;
+      ensure(due === null || (typeof due === "string" &&
+        /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(due) &&
+        !Number.isNaN(Date.parse(due + "T00:00:00Z")) &&
+        new Date(due + "T00:00:00Z").toISOString().startsWith(due)));
+      return {case:row.case, priority:row.priority, source_status:row.source_status,
+        metric_regressions:row.metric_regressions.slice(),
+        stage:row.human_stage, route:v2 ? row.routing_group : "unassigned", due:due || ""};
+    });
+    return cases;
+  }
+  function renderPlanComparison() {
+    const box = $("plan-results"), body = $("plan-rows");
+    body.replaceChildren();
+    box.hidden = !planDelta;
+    if (!planDelta) return;
+    const {rows, stageChanges, routeChanges, dateChanges} = planDelta;
+    $("plan-changed").textContent = rows.length + " changed case(s)";
+    $("plan-stage-changes").textContent = stageChanges + " stage change(s)";
+    $("plan-route-changes").textContent = routeChanges + " workstream change(s)";
+    $("plan-date-changes").textContent = dateChanges + " date change(s)";
+    rows.forEach(row => {
+      const tr = child(body,"tr");
+      [row.case,row.changed.join("; "),row.before.stage,row.after.stage,
+       row.before.route,row.after.route,row.before.due || "-",row.after.due || "-"]
+        .forEach(value => child(tr,"td",value));
+    });
+    if (!rows.length) {
+      const tr = child(body,"tr");
+      const td = child(tr,"td","No HUMAN planning-field changes between these snapshots.");
+      td.colSpan = 8;
+    }
+  }
+  async function compareSavedPlans() {
+    planDelta = null;
+    renderPlanComparison();
+    try {
+      const beforeFile = $("plan-before-file").files[0];
+      const afterFile = $("plan-after-file").files[0];
+      ensure(report && digest && beforeFile && afterFile &&
+        beforeFile.name.toLowerCase().endsWith(".json") &&
+        afterFile.name.toLowerCase().endsWith(".json") &&
+        beforeFile.size > 0 && beforeFile.size <= 131072 &&
+        afterFile.size > 0 && afterFile.size <= 131072);
+      const [beforeRaw, afterRaw] = await Promise.all([beforeFile.text(),afterFile.text()]);
+      const before = readSavedPlan(beforeRaw), after = readSavedPlan(afterRaw);
+      ensure(before.length === after.length && before.length === report.cases.length);
+      const rows = [], fields = ["stage","route","due"];
+      let stageChanges = 0, routeChanges = 0, dateChanges = 0;
+      for (let i=0; i<before.length; i++) {
+        const left = before[i], right = after[i];
+        ensure(left.case === right.case && left.priority === right.priority &&
+          left.source_status === right.source_status &&
+          JSON.stringify(left.metric_regressions) === JSON.stringify(right.metric_regressions));
+        const changed = fields.filter(key => left[key] !== right[key]);
+        if (!changed.length) continue;
+        stageChanges += Number(left.stage !== right.stage);
+        routeChanges += Number(left.route !== right.route);
+        dateChanges += Number(left.due !== right.due);
+        rows.push({case:left.case, changed, before:left, after:right});
+      }
+      planDelta = {rows,stageChanges,routeChanges,dateChanges};
+      renderPlanComparison();
+      $("plan-status").textContent = rows.length ?
+        "Comparison complete. Only HUMAN planning-field differences are shown; order and labels are unverified." :
+        "No HUMAN planning-field differences. Both saved plans match the same current original source.";
+    } catch (_) {
+      planDelta = null;
+      renderPlanComparison();
+      $("plan-status").textContent = "HOLD: one saved plan is malformed, has duplicate JSON keys, or is not bound to this exact original source. No partial comparison retained.";
+    }
+  }
+  function clearPlanComparison(clearFiles = true) {
+    planDelta = null;
+    if (clearFiles) {
+      $("plan-before-file").value = "";
+      $("plan-after-file").value = "";
+    }
+    renderPlanComparison();
+    $("plan-status").textContent = "No saved plan comparison. Load the original report and select two source-bound review exports.";
+  }
+
+  $("plan-compare").addEventListener("click", compareSavedPlans);
+  $("plan-clear").addEventListener("click", () => clearPlanComparison());
+  ["plan-before-file","plan-after-file"].forEach(id => $(id).addEventListener("change", () => {
+    planDelta = null;
+    renderPlanComparison();
+    $("plan-status").textContent = "A selected file changed. Compare again to replace the previous result.";
+  }));
+  $("plan-csv").addEventListener("click", () => {
+    if (!planDelta) return;
+    const cols = ["case","changed_fields","prior_stage","current_stage","prior_workstream",
+      "current_workstream","prior_due_date","current_due_date","authorized",
+      "consent_verified","dispatch_allowed","release_allowed"];
+    const rows = [cols.map(csvCell).join(",")];
+    if (!planDelta.rows.length) {
+      rows.push(["NO_CHANGES","","","","","","","","false","false","false","false"].map(csvCell).join(","));
+    } else {
+      planDelta.rows.forEach(row => rows.push([
+        row.case,row.changed.join(";"),row.before.stage,row.after.stage,
+        row.before.route,row.after.route,row.before.due,row.after.due,
+        "false","false","false","false"
+      ].map(csvCell).join(",")));
+    }
+    download("lightup-human-review-plan-delta.csv",rows.join("\r\n")+"\r\n","text/csv;charset=utf-8");
+  });
   $("restore-button").addEventListener("click", () => {
     if (!report) return;
     $("restore-file").click();
