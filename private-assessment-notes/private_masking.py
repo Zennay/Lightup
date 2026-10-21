@@ -40,11 +40,28 @@ _SHELL_HEADER = re.compile(
 _SHELL_CREDENTIAL = re.compile(
     r"""(?i)(?<![A-Za-z0-9_-])
     (?P<prefix>--(?:proxy-user|user|password|passwd|api-key|
-    access-token|refresh-token|client-secret|auth-token)
-    (?:[ \t]+|=)|-u[ \t]+)
+    access-token|refresh-token|client-secret|auth-token|cookie)
+    (?:[ \t]+|=)|-u[ \t]+|-b(?:[ \t]+|=)?)
     (?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s\r\n]+)""",
     re.VERBOSE,
 )
+# Pasted cURL form/data examples can carry secrets even when they do not
+# use an HTTP header or a dedicated --password flag. Match known sensitive
+# name=value parameters in quoted --data*, --form* and -d/-F arguments.
+# Preserve the parameter name for local HUMAN review, not its raw value.
+# Arbitrary encodings, unnamed fields and other shapes remain PRIVATE/HOLD.
+_SHELL_FORM_SECRET = re.compile(
+    r"""(?i)(?<![A-Za-z0-9_-])
+    (?P<prefix>(?:--(?:data(?:-raw|-binary|-urlencode)?|form(?:-string)?)
+    (?:[ \t]+|=)|-[dF][ \t]+)
+    (?P<quote>["'])
+    (?P<key>(?:password|passwd|api[_-]?key|secret|client[_-]?secret|
+    (?:access|refresh|auth|id)[_-]?token|session[_-]?(?:id|token)|
+    csrf(?:[_-]?token)?|xsrf(?:[_-]?token)?|jwt|signature|sig))
+    =)(?:\\.|(?! (?P=quote) )[^\\\r\n]){0,4096}(?P=quote)""",
+    re.VERBOSE,
+)
+
 # Raw HTTP exchange excerpts may start with a direction marker:
 # > Cookie: session=... / < Set-Cookie: session=...
 _RAW_HTTP_HEADER = re.compile(
@@ -191,6 +208,9 @@ def mask_private_notes(original: str) -> str:
         + "[REDACTED_HTTP_VALUE]" + m.group("quote"), value)
     value = _SHELL_CREDENTIAL.sub(
         lambda m: m.group("prefix") + "[REDACTED_COMMAND_CREDENTIAL]", value)
+    value = _SHELL_FORM_SECRET.sub(
+        lambda m: m.group("prefix") + m.group("key")
+        + "[REDACTED_FORM_VALUE]" + m.group("quote"), value)
     value = _URL_USERINFO.sub(r"\1[REDACTED_USERINFO]@", value)
     value = _URL_PARAMETER.sub(r"\1[REDACTED_URL_VALUE]", value)
     value = _PATH_SESSION.sub(r"\1[REDACTED_SESSION_VALUE]", value)
