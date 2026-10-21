@@ -33,6 +33,17 @@ forms frequently present in assessment writeups:
   Set-Cookie and known API-token headers. The quoted header value
   is masked, not the header name. Unusual HAR layouts still require
   independent HUMAN inspection.
+- **HAR cookie/query/form parameters:** common HTTP Archive exports can
+  encode sensitive fields in adjacent JSON \`"name"\` and \`"value"\`
+  members inside \`cookies\`, \`queryString\` or \`postData.params\`, rather
+  than as JSON object keys. Known session ID, CSRF/XSRF, bearer/auth
+  token, API key, password, signature and other credential-like names
+  now mask the paired *value* in either member order, including escaped
+  quoted values. The ordinary human-readable name is kept for local
+  review. HAR field names that do **not** match the known list, unusual
+  key order/extra members, multiline values and overlong fields are not
+  guaranteed masked. This is **not** general HAR sanitization; never
+  upload or disclose an output on the strength of this feature.
 - **Network locations:** HTTP/FTP/SSH/WS/WSS/LDAP/SMTP and known DB
   protocol URL user-info; common sensitive URL query or fragment fields,
   including bearer/session identifiers, and semicolon-prefixed
@@ -51,6 +62,8 @@ curl -u example_user:example_password \
   'https://example.invalid/api;jsessionid=example_session?token=example_token'
 {"accessToken": "example_key", "sessionId": "example_session"}
 client_secret: "example confidential value"
+{"cookies":[{"name":"sessionId","value":"example_cookie"}]}
+{"postData":{"params":[{"value":"example_key","name":"api_key"}]}}
 ```
 
 This is a description of recognition, **not an executable command,
@@ -117,11 +130,14 @@ source filenames or source hashes enter the HTML/CSV. The original
 manifest and masked note hashes appear only in a separate PRIVATE unsigned
 receipt; they do NOT authenticate a producer.
 
-The current PRIVATE cue receipt uses source-bound **v2** markers,
-including the HAR JSON-header marker in HTTP/shell. The original PRIVATE
-v1 cue packets remain read-only reopenable with their exact historical
-literal-marker schema. No older packet is overwritten, upgraded or
-used to assert newly detected secrets.
+The current PRIVATE cue receipt is source-bound **v3**. Known HAR
+cookie, query and form credential placeholders appear in the
+**Structured config** category; prior HAR HTTP-header placeholders remain
+under **HTTP/shell**. Cue counts are literal placeholder occurrences,
+not claims that a value was safely removed. Previously issued **v1 and
+v2 receipts remain exactly reopenable without reinterpretation**; the
+native reopen command applies their historical marker lists and leaves
+older workrooms unchanged.
 
 **This is NOT a count of detected secrets or completeness score.** Literal
 placeholder strings can already exist in source text, and unknown secrets
