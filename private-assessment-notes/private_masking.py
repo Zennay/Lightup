@@ -9,7 +9,8 @@ import re
 
 from lightup.redaction import redact_text
 from curl_payload_mask import FIELD_BOUNDARY_GUARD, mask_curl_form_payloads
-from private_json_mask import mask_json_fields
+from private_json_mask import mask_json_fields, _SECRET_FIELD
+from private_query_mask import mask_url_query_names
 
 # Entire credential-bearing HTTP header values are withheld. In particular,
 # Cookie may contain several sensitive fields with punctuation and spaces.
@@ -236,7 +237,8 @@ def mask_private_notes(original: str) -> str:
     # JSON-aware masking first identifies separate HAR name/value fields even
     # when harmless metadata appears between them. The original canonical
     # redact_text producer still runs; no authorization boundary is changed.
-    value = redact_text(mask_curl_form_payloads(mask_json_fields(original)))
+    value = redact_text(mask_curl_form_payloads(mask_json_fields(
+        mask_url_query_names(original, _SECRET_FIELD))))
     value = _PRIVATE_KEY.sub("[REDACTED_PRIVATE_KEY_BLOCK]", value)
     value = _HEADER.sub(r"\1[REDACTED_HEADER_VALUE]", value)
     value = _RAW_HTTP_HEADER.sub(r"\1[REDACTED_HTTP_VALUE]", value)

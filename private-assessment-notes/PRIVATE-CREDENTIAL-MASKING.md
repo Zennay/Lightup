@@ -125,6 +125,16 @@ forms frequently present in assessment writeups:
   key order/extra members, multiline values and overlong fields are not
   guaranteed masked. This is **not** general HAR sanitization; never
   upload or disclose an output on the strength of this feature.
+- **Percent-encoded URL parameter names:** original copied URL
+  query/fragment names such as \`api%5Fkey\`, \`access%5Ftoken\` and
+  percent-escaped variants of known session/secret field names now
+  receive bounded UTF-8 name-decoding before the local credential value
+  is withheld as \`[REDACTED_URL_VALUE]\`. The original parameter-name
+  spelling and non-secret URL context are retained for PRIVATE HUMAN
+  review. Limits: 96 URL candidates / 8192 characters each; malformed
+  percent-escapes, deeply nested encodings, JavaScript-generated URLs,
+  unrecognized names and non-URL text are not certified safe. This
+  uses no HTTP request, browser, DNS or execution.
 - **Network locations:** HTTP/FTP/SSH/WS/WSS/LDAP/SMTP and known DB
   protocol URL user-info; common sensitive URL query or fragment fields,
   including bearer/session identifiers, and semicolon-prefixed

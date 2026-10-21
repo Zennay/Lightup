@@ -19,7 +19,8 @@ independent HUMAN review; this is not safe-sharing certification.
 The original local PRIVATE note masker now withholds more credential-bearing
 fields in pasted cURL shell flags and quoted HTTP headers, request/response
 Cookie and token headers, structured JSON/YAML secrets, URL user-info,
-path-session IDs and common session/token query fields. This only affects
+path-session IDs and common session/token query fields, including
+strictly percent-decoded known parameter names in copied URLs. This only affects
 **new owner-private `notes.py prepare` workrooms**; original old HUMAN packets
 are never silently rewritten. The result is still **pattern-based,
 incomplete, confidential and not approved for external sharing**.
