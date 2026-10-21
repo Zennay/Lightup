@@ -7,6 +7,8 @@ No original source, model, network, scanning, delivery or background actions.
 """
 from __future__ import annotations
 
+from private_csv_formula import unsafe_private_csv_note
+
 import csv
 from hashlib import sha256
 import html
@@ -64,7 +66,8 @@ def read_actions(raw: bytes, selected) -> list[dict]:
             question = line[2]
             if (len(question) > MAX_QUESTION or
                     any(ord(char) < 32 or ord(char) == 127 for char in question) or
-                    question.lstrip().startswith(("=", "+", "-", "@"))):
+                    question.lstrip().startswith(("=", "+", "-", "@")) or
+                    unsafe_private_csv_note(question, MAX_QUESTION)):
                 raise ValueError("unsafe private HUMAN question")
             parsed.append({
                 "original_ordinal": str(ordinal),

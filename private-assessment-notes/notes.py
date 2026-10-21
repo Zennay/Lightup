@@ -20,6 +20,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+from private_csv_formula import unsafe_private_csv_note
 from private_masking import mask_private_notes  # Core original producer + local defence-in-depth.
 from browser_studio import render as render_browser_studio
 
@@ -306,6 +307,7 @@ def load_decisions(raw: bytes, bindings: list[dict]) -> list[dict]:
         note = decision["human_note"]
         if (type(note) is not str or len(note) > 500
                 or note.lstrip().startswith(("=", "+", "-", "@"))
+                or unsafe_private_csv_note(note, 500)
                 or any(ord(ch) < 32 and ch not in "\t" for ch in note)):
             raise Hold("HOLD: HUMAN note must be short plain text")
         out.append({"human_stage": decision["human_stage"], "human_note": note,

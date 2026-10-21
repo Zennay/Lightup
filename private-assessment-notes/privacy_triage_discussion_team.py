@@ -7,6 +7,8 @@ is no authenticated team member, sender, broker, consent or scope grant.
 """
 from __future__ import annotations
 
+from private_csv_formula import unsafe_private_csv_note
+
 from base64 import b64encode
 import csv
 from hashlib import sha256
@@ -62,6 +64,7 @@ def read_complete(raw: bytes, original_ordinals: list[int]) -> list[dict]:
                 raise ValueError("original ordinal/team mismatch")
             note = raw_row[2]
             if (len(note) > 160 or note.lstrip().startswith(("=", "-", "+", "@"))
+                    or unsafe_private_csv_note(note, 160)
                     or any(ord(c) < 32 or ord(c) == 127 for c in note)):
                 raise ValueError("invalid private routing note")
             rows.append({"original_ordinal": str(ordinal),

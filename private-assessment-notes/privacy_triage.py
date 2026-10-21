@@ -17,6 +17,7 @@ import sys
 import tempfile
 import os
 
+from private_csv_formula import unsafe_private_csv_note
 from notes import (ALLOWED, Hold, csv_document, file_new, load_decisions,
                    load_workroom, private_directory, private_input, read_json,
                    save_json)
@@ -92,6 +93,7 @@ def read_completed_csv(raw: bytes, sources: list[dict]) -> list[dict]:
             raise Hold("HOLD: privacy topics must be canonical and bounded")
         note = row["human_followup"]
         if (len(note) > 300 or note.lstrip().startswith(("=", "+", "-", "@"))
+                or unsafe_private_csv_note(note, 300)
                 or any(ord(ch) < 32 and ch != "\t" for ch in note)):
             raise Hold("HOLD: unsafe PRIVATE HUMAN follow-up text")
     return rows

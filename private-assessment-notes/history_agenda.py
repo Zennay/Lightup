@@ -6,6 +6,8 @@ A verified source roster is required for every conversion to a new packet.
 """
 from __future__ import annotations
 
+from private_csv_formula import unsafe_private_csv_note
+
 import argparse
 import csv
 from datetime import date
@@ -271,6 +273,7 @@ def admit_completed_csv(raw: bytes, positions: list[dict], digest: str) -> list[
         question = item["private_human_question"]
         if (type(question) is not str or len(question) > 300
                 or question.lstrip().startswith(("=", "+", "-", "@"))
+                or unsafe_private_csv_note(question, 300)
                 or any(ord(ch) < 32 and ch not in "\t" for ch in question)):
             raise Hold("HOLD: PRIVATE HUMAN discussion question must be short literal text")
         if item["human_proposal"] == "NO_PROPOSAL" and (
