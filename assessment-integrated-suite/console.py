@@ -476,6 +476,9 @@ def main() -> int:
                 if choice not in matching:
                     print("HOLD: choose only one of the matching action numbers.")
                     continue
+            elif choice.casefold() == "lab":
+                operator_navigation.lab_guide()
+                continue
             elif choice.casefold() == "help":
                 operator_navigation.help_flow()
                 continue
