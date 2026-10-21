@@ -76,3 +76,15 @@ Strict JSON duplicate-key rejection, source fingerprint binding, exact original 
     python3 assessment-launchpad/review_desk.py --bundle-dir ~/private-lab-launchpad-output --verify-review-dir ~/private-lab-human-round-2
 
 This checks the four output artifacts against the canonical worksheet and original-source manifest bytes; hashes here are UNSIGNED LOCAL CONSISTENCY ONLY. The aggregate handoffs are low-detail, not a promise of statistical anonymity in small engagements. HUMAN notes never become security findings, client approval, remediation proof or a scan permit. All existing source-owner, hosted/permanent named VPS CI, independent security/privacy review, distinct authenticated client/operator consent with action-time revocation, and HUMAN GO gates remain mandatory.
+
+
+### Guided local HUMAN review (no JSON editing required)
+
+Use an interactive terminal instead of manually editing the worksheet:
+
+    mkdir -m 700 ~/private-lab-human-guided
+    python3 assessment-launchpad/review_desk.py --bundle-dir ~/private-lab-launchpad-output --interactive --output-dir ~/private-lab-human-guided
+
+The interactive mode shows ONLY source ordinals (never the endpoint URLs), a fixed menu for stage and reviewer role, and the length—not the content—of any previous note. Enter a free-text note through a non-echoing terminal prompt. Enter retains the current value and a single hyphen clears an old note. Nothing is stored in shell history. A refused value or interrupted session cannot publish a partial new round.
+
+To continue an older round interactively, add the --responses argument pointing at that old round's private worksheet and choose another distinct empty output folder. All exact-source and worksheet-validation protections still apply before and after editing. The HTML and JSON artifacts remain **private unencrypted files on disk**, regardless of the non-echoing terminal input. The absence of actual authority/consent/HUMAN GO still applies.
