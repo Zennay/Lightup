@@ -356,6 +356,9 @@
     $("history-export").disabled = true;
     $("history-clear").disabled = true;
     $("history-result").textContent = "No prior HUMAN rounds selected.";
+    $("history-focus").value = "";
+    $("history-stage").value = "";
+    $("history-visible").textContent = "";
   }
   function transitionCount(id, rounds) {
     let changes = 0;
@@ -364,6 +367,30 @@
     }
     return changes;
   }
+  function applyHistoryFilter() {
+    if (!roundHistory) return;
+    const focus = $("history-focus").value;
+    const stageIndex = $("history-stage").value;
+    let visible = 0;
+    for (const row of $("history-rows").children) {
+      const id = row.dataset.historyAction;
+      const transitions = transitionCount(id, roundHistory);
+      const last = roundHistory[roundHistory.length - 1][id];
+      const matchStage = !stageIndex || STAGES[Number(stageIndex)].steps
+        .some(([action]) => String(action) === id);
+      const matchFocus = !focus ||
+        (focus === "changed" && transitions > 0) ||
+        (focus === "repeat" && transitions > 1) ||
+        (focus === "needs" && last === "NEEDS_INPUT") ||
+        (focus === "pending" && last !== "DISCUSSED");
+      row.hidden = !(matchStage && matchFocus);
+      if (!row.hidden) visible++;
+    }
+    $("history-visible").textContent = visible +
+      " of 20 original HUMAN actions shown. All 20 remain in complete CSV export.";
+  }
+  $("history-focus").addEventListener("change", applyHistoryFilter);
+  $("history-stage").addEventListener("change", applyHistoryFilter);
   function renderHistory(rounds) {
     roundHistory = rounds;
     const header = node("tr");
@@ -375,6 +402,7 @@
     tbody.replaceChildren();
     for (const id of ALL) {
       const tr = node("tr");
+      tr.dataset.historyAction = id;
       const transitions = transitionCount(id, rounds);
       if (transitions) tr.className = "changed";
       tr.append(node("td", id + " · " + actionLabel[id]));
@@ -402,6 +430,7 @@
     $("history-view").hidden = false;
     $("history-export").disabled = false;
     $("history-clear").disabled = false;
+    applyHistoryFilter();
   }
   $("history-json").addEventListener("change", async ev => {
     const files = Array.from(ev.target.files || []);
