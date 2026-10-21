@@ -32,6 +32,8 @@ STYLE = ("body{font:15px/1.5 system-ui,sans-serif;color:#17212f;max-width:1000px
 def read_round(path, digest, endpoints):
     directory_fd, absolute = open_output_directory(path)
     try:
+        if set(os.listdir(directory_fd)) != set(FILE_NAMES):
+            raise Hold("PRIVATE HUMAN round has missing or unexpected artifacts")
         received = {name: read_private_bundle_item(directory_fd, name, 65536)
                     for name in FILE_NAMES}
     finally:
@@ -157,11 +159,15 @@ def main(argv=None):
                     raise Hold("delta output must be separate from all source directories")
             desired = dict(make_artifacts(first, second))
             if args.verify_delta_dir:
+                if set(os.listdir(fd)) != set(NAMES):
+                    raise Hold("PRIVATE HUMAN comparison contains unknown or missing files")
                 actual = {name: read_private_bundle_item(fd, name, 65536)
                           for name in NAMES}
                 if actual != desired:
                     raise Hold("stored HUMAN delta changed or no longer matches exact rounds")
             else:
+                if os.listdir(fd):
+                    raise Hold("new PRIVATE HUMAN comparison directory must be empty")
                 # In a long-running operator handoff, source rounds may change
                 # between initial admission and output publication.
                 fresh_original, fresh_endpoints, fresh_digest = read_original_bundle(args.bundle_dir)
