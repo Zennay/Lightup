@@ -2193,3 +2193,46 @@ CSV, a separate unsigned 0600 HUMAN draft metadata receipt, and a count-only
 question texts. Previously completed HUMAN inputs remain intact. This is
 DRAFT/HOLD, NOT a signed chain of custody, actual assessment execution,
 approved security finding, consent, recipient identity or scheduled task.
+
+### Original HUMAN calendar conflict-resolution workroom (offline v54)
+
+Native console **62** prepares a new source-bound HUMAN decision CSV from
+2–8 original complete calendar receipt/CSV pairs, the original owner inbox
+and history and the original completed operator follow-up + full CSV. It
+compares every original case slot and flags differences in proposed dates,
+priorities or PRIVATE question content without publishing earlier questions.
+There is **no automatic winner, reviewer authentication or approval vote**.
+
+[Open the source-free HUMAN Decision Studio](portfolio-operator-calendar-decision-studio.html)
+offline. Select the native 13-column `HUMAN-calendar-decision-template.csv`,
+filter by original owner/proposal conflict/stage, manually enter a HUMAN-only
+date, priority, private question and `needs_discussion`, `hold`, or
+`human_alignment_proposed`. Export the COMPLETE original-bound CSV.
+Existing drafts reopen only with the entire original hash, source order,
+owner and conflict flags unchanged. Browser filters never omit original
+rows and browser exports cannot authenticate original private sources.
+
+**Console 63** receives that complete CSV after re-admitting all original
+files, case identities, stage provenance and 2–8 full receipts. It creates
+a NEW 0700/0600 PRIVATE operator workroom: counts-only root, unsigned
+canonical decision receipt, full original decision CSV and separate
+proposed-owner HTML views. Earlier free HUMAN questions are never repeated
+in those comparisons. **Console 65** reopens the complete receipt and CSV
+read-only against every original source again. **Console 64** independently
+builds the CSP-SHA-pinned source-only offline editor.
+
+Native CLI: `python3 assessment-workspace-ledger/portfolio_operator_calendar_decisions.py
+prepare --history /private/history.json --inbox /private/inbox.json
+--followup /private/followup.json --operator-csv /private/operator.csv
+--calendar-receipt /private/round1.json --proposed-csv /private/round1.csv
+--calendar-receipt /private/round2.json --proposed-csv /private/round2.csv
+--private-parent /private/output`. Use identical original paths with
+`receive --decisions-csv /private/decisions.csv` or
+`reopen --decisions-csv /private/decisions.csv
+--decision-receipt /private/decision-receipt.json`.
+
+This is owner-private HUMAN discussion, not a real booked appointment,
+assigned task, authenticated recipient, consent, scan, verified security
+finding, remediation or release approval. Browser Downloads CSV may be
+non-private and must be copied into actual owner-only custody before native
+receive. None of this removes the existing CI/review/authorization gates.

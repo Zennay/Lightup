@@ -51,6 +51,8 @@ import portfolio_operator_calendar
 import portfolio_operator_calendar_studio
 import portfolio_operator_calendar_history
 import portfolio_operator_calendar_continuity
+import portfolio_operator_calendar_decisions
+import portfolio_operator_calendar_decision_studio
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -120,6 +122,10 @@ MENU = (
     ("59", "Build source-free portable PRIVATE HUMAN proposed-calendar browser Studio"),
     ("60", "Compare 2–8 original PRIVATE HUMAN proposed-calendar versions"),
     ("61", "Start new original-bound HUMAN calendar round blank or explicitly carry proposals"),
+    ("62", "Prepare original-bound HUMAN calendar disagreement and decision workroom"),
+    ("63", "Native-receive complete original-bound HUMAN calendar decision CSV"),
+    ("64", "Build portable offline PRIVATE HUMAN calendar decision browser Studio"),
+    ("65", "Read-only reopen complete original HUMAN calendar decision receipt"),
     ("0", "Exit"),
 )
 
@@ -268,6 +274,34 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "64":
+        return portfolio_operator_calendar_decision_studio.build(argparse.Namespace(
+            output=prompt("Absolute NEW owner-private HUMAN decision Studio .html")
+        ))
+    if action in ("62", "63", "65"):
+        receipts, plans = [], []
+        print("Choose 2–8 ORIGINAL full native HUMAN calendar receipt/CSV pairs.")
+        while len(receipts) < 8:
+            receipt = prompt("Original PRIVATE-HUMAN-proposed-calendar.json " +
+                             str(len(receipts) + 1), required=len(receipts) < 2)
+            if not receipt:
+                break
+            receipts.append(receipt)
+            plans.append(prompt("Matching ORIGINAL full HUMAN calendar CSV"))
+        return portfolio_operator_calendar_decisions.run(argparse.Namespace(
+            mode="prepare" if action == "62" else ("receive" if action == "63" else "reopen"),
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
+            followup=prompt("Original PRIVATE-HUMAN-operator-followup.json"),
+            operator_csv=prompt("Matching original full HUMAN operator CSV"),
+            calendar_receipts=receipts,
+            proposed_csvs=plans,
+            decisions_csv=prompt("Complete HUMAN-calendar-decision-template.csv")
+            if action in ("63", "65") else None,
+            decision_receipt=prompt("Original PRIVATE-HUMAN-decision-receipt.json")
+            if action == "65" else None,
+            private_parent=private_parent(),
         ))
     if action == "61":
         selected = prompt("Start next HUMAN-only calendar BLANK or CARRY prior proposals? blank/carry").lower()
