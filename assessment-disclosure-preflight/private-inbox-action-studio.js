@@ -459,6 +459,50 @@
     }
   });
 
+  $("revision-print").addEventListener("click", () => {
+    try {
+      if (!pendingDelta) throw Error("No admitted revision comparison");
+      if (currentCsv() !== pendingDelta.currentBytes)
+        throw Error("Current HUMAN draft changed after comparison");
+      const esc = value => String(value).replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+      const table = pendingDelta.changes.length ?
+        "<table><thead><tr>" + ["Slot","Changed fields","Prior stage","Current stage",
+          "Prior role","Current role","Question text changed","Next-action text changed"]
+          .map(value=>"<th>"+esc(value)+"</th>").join("") + "</tr></thead><tbody>" +
+          pendingDelta.changes.map(row=>"<tr><td>"+esc(row.slot)+"</td><td>"+
+            esc(row.changed.join("; "))+"</td><td>"+esc(row.prior.status)+"</td><td>"+
+            esc(row.current.status)+"</td><td>"+esc(row.prior.role)+"</td><td>"+
+            esc(row.current.role)+"</td><td>"+(row.questionChanged?"YES":"NO")+
+            "</td><td>"+(row.nextChanged?"YES":"NO")+"</td></tr>").join("")+
+          "</tbody></table>" : "<p>No HUMAN planning-field differences between these two source-bound revisions.</p>";
+      const doc = [
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'none\'; style-src \'unsafe-inline\'; connect-src \'none\'; img-src \'none\'; object-src \'none\'; frame-src \'none\'; base-uri \'none\'; form-action \'none\'">',
+        '<meta name="viewport" content="width=device-width,initial-scale=1">',
+        '<title>PRIVATE HUMAN revision delta</title><style>body{font:16px/1.5 system-ui;max-width:1100px;margin:2rem auto;padding:1rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #9aa9bc;padding:.5rem;text-align:left;overflow-wrap:anywhere}th{background:#edf3fa}.notice{background:#fff0dd;padding:1rem;border-left:5px solid #965400}</style></head><body>',
+        '<h1>PRIVATE HUMAN revision delta</h1><p class="notice">REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY. This is an unsigned local planning comparison, not authenticated chronology, source identity, consent, remediation or authorization.</p>',
+        '<p>Changed slots: ',esc(pendingDelta.changes.length),' / ',esc(pendingDelta.slotCount),
+        '. Stage changes: ',esc(pendingDelta.counts.stage),'; proposed-role changes: ',
+        esc(pendingDelta.counts.role),'; question-text changes: ',esc(pendingDelta.counts.question),
+        '; next-action-text changes: ',esc(pendingDelta.counts.next),'.</p>',
+        '<p>Question and next-action text is omitted; only whether it changed is shown. Source authenticated: NO. Chronology authenticated: NO. Client/operator consent verified: NO. Authorization granted: NO. Release allowed: NO.</p>',
+        table,'<p>Prior/current ordering is operator-supplied, not authenticated chronology. Keep this report private. No original input or active HUMAN plan was changed.</p></body></html>'
+      ].join("");
+      const url = URL.createObjectURL(new Blob([doc],{type:"text/html;charset=utf-8"}));
+      try {
+        const a = document.createElement("a");
+        a.href=url; a.download="PRIVATE-inbox-HUMAN-revision-delta.html";
+        document.body.append(a); a.click(); a.remove();
+      } finally { setTimeout(()=>URL.revokeObjectURL(url),1000); }
+      $("revision-status").textContent = "REVIEW_ONLY: scriptless privacy-minimal HTML delta download requested. No private note text or source identifiers are included.";
+    } catch (err) {
+      clearRevisionComparison();
+      $("revision-status").textContent = "HOLD: private HTML delta export refused (" +
+        String(err.message || "comparison changed") + "). Re-admit and compare again.";
+    }
+  });
+
   $("export").addEventListener("click", () => {
     invalidateExportPreview();
     $("export-message").textContent = "";

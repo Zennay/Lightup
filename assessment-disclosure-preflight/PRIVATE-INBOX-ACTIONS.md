@@ -113,9 +113,9 @@ bulk proposal or Undo invalidates the displayed delta; the export rechecks the
 exact current worksheet bytes before downloading.
 
 The changed-only table shows stage/role values and whether the question or next
-action changed, but never displays the text itself. The optional delta CSV
-omits all question/action contents, source hashes, source filenames and
-identities; it includes only slot ordinals, changed-field names, stage/role
+action changed, but never displays the text itself. Optional delta CSV and
+scriptless HTML omit all question/action contents, source hashes, source filenames
+and identities; it includes only slot ordinals, changed-field names, stage/role
 values, boolean text-change flags and explicit false chronology/source/consent/
 authorization/release fields. “Prior/current” is operator-supplied ordering,
 not authenticated chronology or a signed audit trail. Keep this output private
