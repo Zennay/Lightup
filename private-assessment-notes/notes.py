@@ -451,6 +451,8 @@ def main() -> int:
     har_workflow_2.add_argument("--workflow-room", required=True)
     har_workflow_2.add_argument("--edited-actions", required=True)
     har_workflow_2.add_argument("--private-parent", required=True)
+    har_workflow_2.add_argument("--previous-round", action="append", default=[],
+                                help="0–7 existing original-bound HUMAN status packets")
     har_workflow_3 = commands.add_parser("har-review-progress-reopen", help="offline PRIVATE source-bound HAR HUMAN workflow; HOLD")
     har_workflow_3.add_argument("--workflow-room", required=True)
     har_workflow_3.add_argument("--progress-room", required=True)
@@ -746,7 +748,7 @@ def main() -> int:
                 return reopen_review(args.workflow_room)
             if args.action == "har-review-progress":
                 return import_review(args.workflow_room, args.edited_actions,
-                                     args.private_parent)
+                                     args.private_parent, args.previous_round)
             original, cue_room = admit_review(args.workflow_room)
             if args.action == "har-review-progress-reopen":
                 from private_har_progress import reopen_progress

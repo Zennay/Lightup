@@ -204,8 +204,47 @@ def reopen(workflow_room: str) -> int:
 
 
 def progress(workflow_room: str, edited_actions: str,
-             private_parent: str) -> int:
+             private_parent: str,
+             previous_rounds: list[str] | None = None) -> int:
+    """Import a fresh manual round and hand back a usable linked PRIVATE desk.
+
+    This mutates only new owner-private output directories; never the
+    immutable original, cue receipt or earlier HUMAN status packets.
+    """
     original, cues = admit(workflow_room)
+    parent = private_directory(private_parent)
+    workflow = private_directory(workflow_room)
+    if parent != workflow.parent:
+        raise Hold("HOLD: linked PRIVATE HAR round must use workflow parent")
+    previous_rounds = previous_rounds or []
+    if len(previous_rounds) > 7:
+        raise Hold("HOLD: maximum seven previous HUMAN rounds plus current")
     from private_har_progress import import_progress
-    return import_progress(str(original), str(cues), edited_actions,
-                           private_parent)
+    from private_har_review_desk import create as create_desk
+    new_status: list[Path] = []
+    new_desk: list[Path] = []
+    completed = False
+    try:
+        # The original native importer does ALL identity/status admission.
+        # Keep its partial output hidden until both linked packets exist.
+        with redirect_stdout(io.StringIO()):
+            if import_progress(str(original), str(cues), edited_actions,
+                               str(parent), created_room=new_status) != 3:
+                raise Hold("HOLD: native PRIVATE HAR HUMAN status import refused")
+        with redirect_stdout(io.StringIO()):
+            if create_desk(str(workflow), previous_rounds +
+                           [str(new_status[0])], str(parent),
+                           created_room=new_desk) != 3:
+                raise Hold("HOLD: original-bound PRIVATE HAR review desk refused")
+        completed = True
+        print("HOLD: original-bound PRIVATE HAR manual status + next-action desk")
+        print("STATUS LOCALLY: " + str(
+            new_status[0] / "PRIVATE-HAR-HUMAN-status.html"))
+        print("OPEN LOCALLY: " + str(
+            new_desk[0] / "OPEN-PRIVATE-HAR-DESK.html"))
+        print("Human statuses are unverified; no consent, scan or release.")
+        return 3
+    finally:
+        if not completed:
+            for folder in reversed(new_desk + new_status):
+                shutil.rmtree(folder)
