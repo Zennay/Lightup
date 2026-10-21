@@ -2011,3 +2011,23 @@ changing a saved review round.
 
 Never interpret the round-specific status selection as verified remediation,
 execution, identity, client/operator approval, grant, release or HUMAN GO.
+
+## Source-free scriptless printable HUMAN round brief
+
+In the **2–8 separate HUMAN discussion rounds** panel, the operator can
+save **PRIVATE HUMAN Lab Round Brief (HTML)**. The browser produces a portable
+self-contained **scriptless**, CSP-pinned HTML file with the five fixed
+original stage summaries, all twenty original action/status histories and
+per-action count of self-reported marker transitions. It can be opened from
+disk or printed without JavaScript, network, external assets, browser
+storage or any native assessment service.
+
+The downloaded file is **unsigned, source-free and private**. It includes
+only fixed original action captions, four allowed local self-report status
+labels and the manually selected round positions; it never includes imported
+file names, paths, hashes, credentials, original customer evidence, targets,
+reviewer notes, actors, actual tasks or consent. The visible table filters
+do not drop any of the twenty actions from this full briefing. Operator
+file-picker order is not proof of a real time series. It is neither a client
+report nor a remediation/authorization receipt. No sending/assignment,
+scan, grant, source approval, release or verification occurs.
