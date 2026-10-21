@@ -1065,3 +1065,13 @@ a choice, or applying a filtered bulk HOLD invalidates the previous
 decision CSV and **also blocks** the cover download until the updated
 current A/B decisions are explicitly exported again. No persistent
 browser storage or automatic sending is added.
+
+
+## Read-only reopen of the complete combined PRIVATE inbox workroom
+
+The one-command native workroom can now re-admit a previously published four-file output without rewriting it. Supply the same original PRIVATE parent and exact room names in the same manual slot order, then set --saved-workroom-dir to the existing owner-only 0700 workroom directory. The command rebuilds the expected board HTML, source-free CSV, exact JSON manifest and matching HUMAN action template from the current original room bytes; missing/extra files, changed source/decisions, a different room order, or any changed output byte returns HOLD. Files must remain owner-only 0600 and the saved directory owner-only 0700.
+
+Example (the same --full-reopen choice must be used as when the workroom was created):
+python3 assessment-disclosure-preflight/private_inbox_workroom.py --private-parent ./private-received --room owner-room-01 --room owner-room-02 --saved-workroom-dir ./private-workroom --full-reopen
+
+Omit --full-reopen only if the original workroom was created without it. When enabled, the command requires a trusted interactive terminal and explicit REOPEN confirmation, then reopens each original room through the unchanged native source-bound receiver before comparing the saved bytes. This is read-only custody/re-admission, not source authenticity, identity, consent, a security verdict, authorization or release. No original files or workroom outputs are modified.
