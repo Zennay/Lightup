@@ -127,3 +127,36 @@ The new `combine.py` admits **2–12 separate** existing original packets using 
 On success the existing original builder publishes one **new** 0700 directory with original-private 0600 files, a scriptless `private-launchpad.html`, exact combined `targets.txt`, a source-hash-bound `private-plan.json` and `START-HERE.txt`. The **private HTML briefing** now also shows every original source slot, its precise range of combined endpoint ordinals, and its original unsigned manifest SHA-256. The final private START-HERE note separately retains those source hashes for human provenance discussion. Both files are bound by the original private-plan.json artifact-hash map; neither authenticates a producer. Original sources are not edited or removed. `reopen.py --packet ./NEW-PRIVATE-COMBINED-PLAN` can re-open the combined packet through its unchanged original admission rules.
 
 A successfully composed packet is **REVIEW_ONLY (exit 2)**, invalid or changed source is **HOLD (exit 3)**. The source digests and selected order do not authenticate a producer, relate different customer engagements, prove ownership/current consent, or authorize a scan. The software itself does no execution, DNS, network, model, grant or active assessment. Keep every source and output owner-private and seek separate current client and operator consent, source owner/security/privacy review, canonical CI and HUMAN GO before any possible active usage.
+
+## Compare 2–8 original launch packets as a private HUMAN timeline
+
+When an operator needs to follow multiple saved proposal rounds, the native
+timeline command can re-open and compare 2–8 complete original packets in an
+explicitly selected order, without treating that order as authenticated
+chronology:
+
+~~~sh
+PYTHONPATH=src python3 assessment-launchpad/timeline.py \
+  --packet ./PRIVATE-PACKET-ROUND-1 \
+  --packet ./PRIVATE-PACKET-ROUND-2 \
+  --packet ./PRIVATE-PACKET-ROUND-3 \
+  --output-dir ./NEW-PRIVATE-LAUNCH-TIMELINE
+~~~
+
+Every input is admitted through the existing original packet reopener before
+comparison and again immediately before output publication. The timeline
+records per-round endpoint additions/absences, unchanged exact URL text,
+source-order changes, and changed Studio source/scenario declarations. Absence
+does not prove a fix, revocation, decommissioning or clearance; an unchanged
+URL is not proof that the scope, owner or consent remains valid. The order is
+operator-selected, not an authenticated audit trail or same-engagement claim.
+
+The new exclusive owner-private 0700 directory contains a private scriptless
+HTML timeline, a full private source-bound JSON record, a separate counts-only
+JSON and CSV, and START-HERE guidance; files are owner-only 0600. Full private
+URLs and source fingerprints are limited to the private brief/source JSON.
+The aggregate exports omit URLs, hashes and scenario IDs. The report is unsigned
+and non-authorizing. The output must be outside every original packet directory;
+all originals remain unchanged. Success returns 2 for HUMAN REVIEW_ONLY, while
+changed/incompatible inputs or output refusal return 3 HOLD. No targets, network,
+scanner, model, grants or original source-owner files are touched.
