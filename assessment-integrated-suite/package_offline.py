@@ -14,6 +14,7 @@ from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from suite import APPS, Hold, ROOT, read_safe
 from build_route_standalone import build as build_standalone_route
+from build_attention_standalone import build as build_standalone_attention
 
 MAX_APP = 4 * 1024 * 1024
 FALSE_FLAGS = ("authorization_granted", "consent_verified", "source_authenticated",
@@ -53,6 +54,9 @@ No real task assignment, reviewer identity, original evidence, client
 contact, scan, consent, grant, verification or recipient dispatch exists.
 The source-free exported workboard is UNSIGNED, not a source receipt.
 Both local files must stay adjacent; no network or storage is used.
+Alternatively open studios/human-lab-attention-standalone.html without
+an adjacent JS file; it embeds the same original script with a SHA-256
+pinned CSP. The packager refuses mismatch with native original files.
 Imported 24 KiB-bounded JSON rejects duplicate object properties even
 when escaped or nested, unexpected fields and authority claims.
 Local search/status filters and confirmation-only bulk NEEDS_INPUT
@@ -188,7 +192,8 @@ def front_page(files: list[tuple[str, str]]) -> bytes:
         if not name.endswith(".html"):
             continue  # Local support scripts are packaged, not offered as standalone pages.
         if name in ("lab-launchpad.html", "lab-scenario-studio.html", "human-lab-route.html",
-                    "human-lab-route-standalone.html", "human-lab-attention.html"):
+                    "human-lab-route-standalone.html", "human-lab-attention.html",
+                    "human-lab-attention-standalone.html"):
             key = "02  Prepare isolated, fictional lab work"
         elif name in ("benchmark-lineage.html", "benchmark-candidates.html",
                       "lab-longitudinal-trends.html"):
@@ -277,6 +282,12 @@ def build(destination: Path) -> int:
         raise Hold("HOLD: unrecognised standalone HUMAN route source")
     if standalone_path.read_bytes() != build_standalone_route():
         raise Hold("HOLD: standalone HUMAN route software does not match original sources")
+    attention_name = "human-lab-attention-standalone.html"
+    attention_path = ROOT / "assessment-integrated-suite/human-lab-attention-standalone.html"
+    if APPS.get(attention_name) != attention_path:
+        raise Hold("HOLD: missing original standalone HUMAN attention source")
+    if attention_path.read_bytes() != build_standalone_attention():
+        raise Hold("HOLD: HUMAN attention standalone differs from original browser sources")
     guide_path = ROOT / "assessment-integrated-suite/LAB-PLANNING.md"
     read_safe(guide_path, 262_144)
     guide = guide_path.read_bytes()
