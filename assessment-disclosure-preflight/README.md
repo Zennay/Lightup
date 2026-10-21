@@ -50,7 +50,12 @@ Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** a
 
 The new [offline PRIVATE HUMAN inbox](./PRIVATE-BROWSER-INBOX.md) provides a
 complete receiving operation instead of asking the operator to trust permissive
-browser Downloads storage. Native `private_intake.py` imports the original
+browser Downloads storage. For a guided source-only offline operator flow, run
+`private_intake_wizard.py` in a trusted local interactive terminal: no path
+echo, one original input role per prompt, original encryption mode choices,
+and explicit RECEIVE confirmation. The wizard calls exactly the same underlying
+source-bound PRIVATE intake and never grants any review status beyond
+REVIEW_ONLY/HOLD. Native `private_intake.py` imports the original
 PRIVATE unsigned receipt, both reviewer CSV/encrypted source files, complete
 HUMAN decision CSV, one original full final plaintext/encrypted result and its
 separate suppressed counts CSV, into a new owner-only 0700 room with 0600 files.
@@ -752,7 +757,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 24
+store, scan workflow, credential grant or signed release. The 25
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -825,7 +830,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 24
+noncanonical, reordered, oversized or changed members, compares all 25
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no

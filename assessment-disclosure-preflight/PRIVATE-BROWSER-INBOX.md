@@ -41,6 +41,25 @@ targets, client IDs, original download basenames, reviewer note content or
 external destinations are written into the inventory. Hashes are correlatable
 and never constitute a trusted signature or evidence authenticity.
 
+## Faster interactive PRIVATE terminal receiving (no long command)
+
+On a trusted offline owner workstation open the **native PRIVATE operator
+wizard**. It gathers the exact source roles and explicit input-format choices
+one at a time, obtains file paths through terminal prompts with disabled echo,
+and requires an explicit `RECEIVE` confirmation before creating a room.
+The wizard invokes the SAME `private_intake.stage` and the original unchanged
+`reconcile.py reopen`; no alternate weaker validator, external service,
+scan, upload or unapproved approval exists. It refuses non-interactive sessions.
+
+~~~sh
+python3 assessment-disclosure-preflight/private_intake_wizard.py
+~~~
+
+The original encrypted reviewer/final bundle passphrases, if needed, remain
+handled by the genuine native original cryptography receiver in memory; do not
+enter them as file paths or shell arguments. A cancelled/invalid wizard produces
+HOLD (3), never an automatic consent or a grant.
+
 ## Receiving an already downloaded plaintext handoff
 
 Use a trusted local terminal. Create an **existing private parent** before the
