@@ -11,6 +11,7 @@ import base64
 import hashlib
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -53,8 +54,18 @@ def build() -> bytes:
 
 
 def publish(output: Path, data: bytes) -> None:
-    # Require an EXISTING explicitly chosen directory; no overwrite, symlink
-    # traversal at the final component, temp world-readable output, or fetch.
+    # Never put private HUMAN discussion software in a shared or unowned
+    # parent, nor inside the source checkout. No symlink target or overwrite.
+    parent = output.parent.absolute()
+    parent_stat = parent.lstat()
+    if not stat.S_ISDIR(parent_stat.st_mode) or stat.S_ISLNK(parent_stat.st_mode):
+        raise ValueError("HOLD: output parent is not an ordinary directory")
+    if parent_stat.st_uid != os.geteuid() or stat.S_IMODE(parent_stat.st_mode) & 0o077:
+        raise ValueError("HOLD: choose an owner-only 0700 parent directory")
+    if parent == BASE.parent or BASE.parent in parent.parents:
+        raise ValueError("HOLD: output must remain outside source checkout")
+    if output.exists() or output.is_symlink():
+        raise ValueError("HOLD: output already exists; never overwrite a HUMAN file")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     flags |= getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(output, flags, 0o600)
@@ -75,7 +86,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output", type=Path, required=True,
-        help="New .html path in an existing owner-controlled directory (never overwritten)",
+        help="New .html path in a private 0700 owner-controlled directory outside the checkout (never overwritten)",
     )
     args = parser.parse_args()
     try:
