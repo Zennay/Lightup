@@ -11,6 +11,17 @@ flags and unique decoded JSON keys. The user-chosen report order does not
 establish time, provenance or authentic reviewers. Unknown claims HOLD
 before existing local state is replaced.
 
+The complete `v2` HUMAN proposal JSON also holds a source-free fixed-marker
+signature for every manually ordered round. To **resume** a saved HUMAN
+role/follow-up proposal, the operator explicitly reloads the same 1–8
+source-free discussion rounds in the same order, then chooses the saved
+proposal via **Reopen source-matched HUMAN proposal (JSON)**. Strict bounded
+source-free schema, duplicate-key rejection, all 20 original actions,
+original marker transitions, literal false authority and fixed category
+selectors must match atomically. Refused import changes no local proposals,
+and successful import requires HUMAN confirmation. This is NOT a
+cryptographic source, recipient, timeline, or consent attestation.
+
 A human may review phase-level needs-input/undiscussed/changed counts,
 filter particular original actions, and explicitly propose one of four
 fixed HUMAN follow-up categories and one of five fixed reviewer role
