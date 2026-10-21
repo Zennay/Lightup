@@ -49,6 +49,7 @@ import portfolio_owner_change_history
 import portfolio_owner_change_history_studio
 import portfolio_operator_calendar
 import portfolio_operator_calendar_studio
+import portfolio_operator_calendar_history
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -116,6 +117,7 @@ MENU = (
     ("57", "Receive complete original-bound HUMAN calendar into PRIVATE owner workrooms"),
     ("58", "Read-only reopen original HUMAN calendar CSV and private receipt"),
     ("59", "Build source-free portable PRIVATE HUMAN proposed-calendar browser Studio"),
+    ("60", "Compare 2–8 original PRIVATE HUMAN proposed-calendar versions"),
     ("0", "Exit"),
 )
 
@@ -264,6 +266,26 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "60":
+        receipts, plans = [], []
+        print("Choose 2–8 ORIGINAL complete HUMAN calendar receipt/CSV pairs.")
+        while len(receipts) < 8:
+            receipt = prompt("Original PRIVATE-HUMAN-proposed-calendar.json " +
+                             str(len(receipts) + 1), required=len(receipts) < 2)
+            if not receipt:
+                break
+            receipts.append(receipt)
+            plans.append(prompt("Matching ORIGINAL complete HUMAN calendar CSV"))
+        return portfolio_operator_calendar_history.run(argparse.Namespace(
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
+            followup=prompt("Original PRIVATE-HUMAN-operator-followup.json"),
+            operator_csv=prompt("Original complete HUMAN operator follow-up CSV"),
+            calendar_receipts=receipts,
+            proposed_csvs=plans,
+            changed_only=prompt("Only changed HUMAN proposals? y/n").lower() == "y",
+            private_parent=private_parent(),
         ))
     if action == "59":
         return portfolio_operator_calendar_studio.build(argparse.Namespace(
