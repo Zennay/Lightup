@@ -117,11 +117,11 @@
     return ids;
   }
   function family(name){
-    if(name==="scope_violations"||name==="policy_violations")return "Scope / policy";
-    if(["valid_findings","invalid_findings","missed_findings","coverage_assessed","coverage_unknown"].includes(name))
-      return "Findings / coverage";
-    if(SCORES.has(name))return "Evidence / scoring";
-    return "Operations / informational";
+    if(name==="scope_violations"||name==="policy_violations")return "P1 · Scope / policy";
+    if(["valid_findings","invalid_findings","missed_findings"].includes(name))return "P2 · Findings";
+    if(["coverage_assessed","coverage_unknown"].includes(name))return "P3 · Coverage";
+    if(SCORES.has(name))return "P4 · Evidence / scoring";
+    return "Info · Operations";
   }
   function noteKey(id,metric){return JSON.stringify([id,metric]);}
   function currentId(){return scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];}
@@ -192,7 +192,7 @@
       " · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Selected order is not authenticated chronology.";
   }
   function renderMetricBoard(){
-    const headers=["Metric","Display group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
+    const headers=["Metric","Review-priority group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
       "Ever flagged cases","Persistent cases","Longest consecutive slots"];
     const rows=METRICS.map(name=>{const s=metricStats(name);return [name,family(name),
       ...s.counts.map(n=>cell(n,n?"cell-adverse":"cell-neutral")),
@@ -211,7 +211,7 @@
   function renderScenarioDetail(){
     const id=currentId();if(!id){drawTable("trajectoryTable",["Metric"],[]);return;}
     const baseline=snapshots[0].cases.get(id).metrics;
-    const headers=["Metric","Display group","Original baseline",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")+" · candidate / Δ / flag")];
+    const headers=["Metric","Review-priority group","Original baseline",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")+" · candidate / Δ / flag")];
     const rows=METRICS.map(name=>[name,family(name),fmt(baseline.get(name).baseline),
       ...snapshots.map(report=>{const v=report.cases.get(id).metrics.get(name);
         return cell(fmt(v.candidate)+" / "+fmt(v.delta)+" / "+(v.regression?"HOLD":"—"),
@@ -236,7 +236,7 @@
       ". Order is not authenticated chronology. REVIEW_ONLY is not approval.";root.append(p);
     const flags=document.createElement("p");flags.textContent="authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false";root.append(flags);
     const wrap=document.createElement("div");wrap.className="tablewrap";root.append(wrap);
-    const headers=["Metric","Display group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
+    const headers=["Metric","Review-priority group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
       "Ever flagged cases","Persistent cases","Longest run"];
     const rows=METRICS.map(name=>{const st=metricStats(name);return [name,family(name),...st.counts,st.ever,st.persistent,st.maxStreak];});
     const table=document.createElement("table"),head=document.createElement("thead"),tr=document.createElement("tr");
@@ -329,7 +329,7 @@
       source_status_by_snapshot:snapshots.map((r,i)=>({snapshot_slot:i+1,status:r.status,
         regressed_scenario_count:r.regressedScenarios.length,regression_instance_count:r.regressionInstances})),
       metric_persistence:METRICS.map(name=>{const st=metricStats(name);return {metric:name,
-        display_group:family(name),regressed_scenario_count_by_snapshot:st.counts,
+        review_priority_group:family(name),regressed_scenario_count_by_snapshot:st.counts,
         ever_flagged_cases:st.ever,persistent_cases:st.persistent,longest_consecutive_slots:st.maxStreak};}),
       scenario_trajectories:scenarioIds.map((id,i)=>{const st=scenarioStats(id);return {
         scenario_slot:i+1,source_reported_regressed_metric_count_by_snapshot:st.counts,
@@ -341,7 +341,7 @@
   }
   function exportCsv(){
     if(!snapshots.length)return;
-    const header=["snapshot_slot","scenario_slot","metric","display_group","baseline","candidate",
+    const header=["snapshot_slot","scenario_slot","metric","review_priority_group","baseline","candidate",
       "delta","source_reported_regression","source_snapshot_status","fictional_demo_only",
       "source_identity_authenticated","chronology_authenticated","authorized","consent_verified",
       "dispatch_allowed","release_allowed","status"];
@@ -363,7 +363,7 @@
       "table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}th,td{border:1px solid #aab6c5;padding:.4rem;text-align:left}"+
       "th{background:#eef2f6}.hold{border:2px solid #9a5b18;padding:1rem}";
     const rows=METRICS.map(name=>{const st=metricStats(name);return [name,family(name),...st.counts,st.ever,st.persistent,st.maxStreak];});
-    const headers=["Metric","Display group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
+    const headers=["Metric","Review-priority group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
       "Ever flagged cases","Persistent cases","Longest run"];
     const table="<table><thead><tr>"+headers.map(v=>"<th>"+esc(v)+"</th>").join("")+
       "</tr></thead><tbody>"+rows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
