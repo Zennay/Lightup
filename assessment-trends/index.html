@@ -28,7 +28,7 @@
     <button id="forget" type="button" class="ghost" disabled>Forget all local data</button>
   </div>
   <p id="message" class="message" role="status" aria-live="polite">No source files have been admitted.</p>
-  <p class="footnote">Malformed, duplicate-key, mismatched or baseline-inconsistent batches are rejected as a whole. A failed import leaves the previously admitted workspace untouched. No file names, source hashes or source identifiers are retained for export.</p>
+  <p class="footnote">Malformed, duplicate-key, mismatched or baseline-inconsistent batches are rejected as a whole. A failed import leaves the previously admitted workspace untouched. Original source-byte fingerprints are retained only in tab memory for optional PRIVATE recovery; they are never in anonymous exports.</p>
 </section>
 <section class="panel">
   <div class="section-head"><h2>02 / Snapshot summary</h2><span class="tag">REVIEW_ONLY / HOLD</span></div>
@@ -107,8 +107,25 @@
   </div>
   <p id="noteMessage" class="message" role="status" aria-live="polite"></p>
 </section>
+
+<section class="panel no-print" id="resume">
+  <div class="section-head"><h2>07 / PRIVATE human work recovery</h2><span class="tag">Exact source bytes · offline</span></div>
+  <p>Keep HUMAN work between browser sessions without creating an account, network request or browser storage. First import the <strong>same 3–12 original JSON snapshots in exactly the same manually selected order</strong>, then restore your PRIVATE work. This separately confirmed, <strong>UNENCRYPTED</strong>, unsigned JSON bundle contains all saved HUMAN notes and self-reported review stages, plus SHA-256 fingerprints of original source bytes. Treat it as confidential.</p>
+  <p id="sessionAvailability" class="footnote">Import original snapshots to enable source-byte-bound PRIVATE save and resume.</p>
+  <div class="controls">
+    <button id="exportPrivateSession" type="button" disabled>Save PRIVATE source-bound HUMAN session</button>
+  </div>
+  <label class="file-picker">Choose PRIVATE HUMAN recovery JSON
+    <input id="privateSessionFile" type="file" accept=".json,application/json" disabled>
+  </label>
+  <div class="controls">
+    <button id="importPrivateSession" class="secondary" type="button" disabled>Restore only against identical source bytes</button>
+  </div>
+  <p id="sessionMessage" class="message" role="status" aria-live="polite">No recovery file loaded.</p>
+  <p class="footnote">Recovery is atomic: invalid, duplicate, oversized (over 2 MiB), out-of-scope, altered or differently ordered inputs are rejected before replacing work. A successful restore requires separate confirmation; forgotten or newly imported source data clears prior local HUMAN work. Browser SHA-256 capability is required only for this optional recovery feature. Source hashes establish local byte equality, <strong>not authentic provenance or security clearance</strong>. Private files are never included in anonymous exports.</p>
+</section>
 <section class="panel no-print">
-  <div class="section-head"><h2>07 / Explicit local handoff</h2><span class="tag">No authority</span></div>
+  <div class="section-head"><h2>08 / Explicit local handoff</h2><span class="tag">No authority</span></div>
   <div class="controls">
     <button id="exportJson" type="button" disabled>Export aggregate JSON</button>
     <button id="exportCsv" type="button" disabled>Export anonymous trajectory CSV</button>

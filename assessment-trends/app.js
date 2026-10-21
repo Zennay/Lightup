@@ -12,7 +12,32 @@
     "reproducibility","remediation_quality","retest_correctness"]);
   const LOW=new Set(["invalid_findings","missed_findings","scope_violations","policy_violations"]);
   const FLAGS=["authorized","consent_verified","dispatch_allowed","release_allowed"];
-  const MAX_FILE=262144;
+  const MAX_FILE=262144,MAX_PRIVATE_BUNDLE=2097152;
+  // Digests compare local imported bytes only. Never export to anonymous outputs.
+  let sourceFingerprints=[];
+  async function sourceDigest(bytes){
+    if(!globalThis.crypto||!crypto.subtle||typeof crypto.subtle.digest!=="function")return null;
+    try{
+      const hash=new Uint8Array(await crypto.subtle.digest("SHA-256",bytes));
+      return [...hash].map(n=>n.toString(16).padStart(2,"0")).join("");
+    }catch(_){return null;}
+  }
+  function canResume(){
+    return snapshots.length>=3&&!fictional&&sourceFingerprints.length===snapshots.length&&
+      sourceFingerprints.every(v=>typeof v==="string"&&/^[0-9a-f]{64}$/.test(v));
+  }
+  function renderSessionControls(){
+    const ready=canResume();
+    $("exportPrivateSession").disabled=!ready;
+    $("importPrivateSession").disabled=!ready;
+    $("privateSessionFile").disabled=!ready;
+    $("sessionAvailability").textContent=ready?
+      "Exact source-byte comparison available for this local cohort. Digest values are PRIVATE, not source authentication.":
+      snapshots.length?
+        "PRIVATE restore requires 3–12 original imported snapshots and browser SHA-256 support; fictional demo or unsupported browser cannot restore.":
+        "Import original snapshots to enable source-byte-bound PRIVATE save and resume.";
+  }
+
   let snapshots=[],scenarioIds=[],selectedScenario="",selectedMetric=METRICS[0],notes=new Map(),scratch=new Map(),fictional=false;
 
   function admit(ok){if(!ok)throw Error("Invalid or incompatible source");}
@@ -494,24 +519,29 @@
         $(id).disabled=true;
       $("reviewHumanSummary").textContent="No local HUMAN stages.";}
     renderNotePanel();
+    renderSessionControls();
   }
   async function importFiles(list){
     const files=[...list];
     try{
       admit(files.length>=3&&files.length<=12);
-      const next=[];
+      const next=[],nextFingerprints=[];
       for(const file of files){
         admit(file&&file.size>0&&file.size<=MAX_FILE);
         const bytes=await file.arrayBuffer();admit(bytes.byteLength>0&&bytes.byteLength<=MAX_FILE);
         const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
         admit(!raw.startsWith("\uFEFF"));
         next.push(parseReport(strictJSON(raw)));
+        nextFingerprints.push(await sourceDigest(bytes));
       }
       const ids=harmonize(next);
       snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
+      sourceFingerprints=nextFingerprints.every(v=>v!==null)?nextFingerprints:[];
+      $("privateSessionFile").value="";
       reviewOffset=0;humanReviewStages.clear();resetReviewFilters();
       notes.clear();scratch.clear();fictional=false;
-      render();$("message").textContent="Accepted "+snapshots.length+
+      render();$("sessionMessage").textContent="New snapshot batch admitted; previous HUMAN session cannot be carried across datasets.";
+      $("message").textContent="Accepted "+snapshots.length+
         " compatible source snapshots with "+scenarioIds.length+
         " matching anonymous scenarios and identical original baselines. No chronology authenticated.";
     }catch(_){
@@ -545,13 +575,16 @@
     snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
+    sourceFingerprints=[];$("privateSessionFile").value="";
     reviewOffset=0;humanReviewStages.clear();resetReviewFilters();render();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
+    sourceFingerprints=[];$("privateSessionFile").value="";
     reviewOffset=0;humanReviewStages.clear();resetReviewFilters();
-    $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";render();
+    $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";
+    $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();
   }
   function exportJson(){
     if(!snapshots.length)return;
@@ -639,6 +672,99 @@
     $("noteMessage").textContent="Saved commentary exported as a separate PRIVATE file; aggregate exports remain note-free.";
   }
 
+
+  function privateSessionData(){
+    const events=buildReviewEvents();
+    const stages=events.filter(e=>humanStage(e)!=="UNREVIEWED")
+      .map(e=>[e.snapshotSlot,e.scenarioSlot,e.metric,humanStage(e)]);
+    const savedNotes=[...notes].map(([key,value])=>{
+      const [id,metric]=JSON.parse(key);return [slot(id),metric,value];
+    }).filter(e=>e[0]>0).sort((a,b)=>a[0]-b[0]||METRICS.indexOf(a[1])-METRICS.indexOf(b[1]));
+    return {schema:"lightup.assessment_trends_source_bound_private_session.v1",
+      status:"PRIVATE_UNSIGNED",private_unsigned:true,
+      fictional_demo_only:false,manually_selected_order:true,
+      chronology_authenticated:false,source_identity_authenticated:false,
+      snapshot_sha256_by_manual_slot:[...sourceFingerprints],
+      scenario_count:scenarioIds.length,stages,notes:savedNotes,
+      disclaimer:"Byte equality against the SAME manually ordered source files only. This unsigned local recovery file may disclose HUMAN notes and source fingerprints. Digests do NOT prove source authenticity, finding accuracy, remediation, identity, consent or release.",
+      ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+  }
+  function savePrivateSession(){
+    if(!canResume())return;
+    if(!window.confirm("Download a PRIVATE UNSIGNED recovery file with HUMAN notes, local stages and SHA-256 fingerprints of each original source file? Treat it as confidential. It is NOT encrypted and does not authenticate the source."))return;
+    const content=JSON.stringify(privateSessionData(),null,2)+"\n";
+    if(new Blob([content]).size>MAX_PRIVATE_BUNDLE){
+      $("sessionMessage").textContent="HOLD: recovery bundle would exceed the 2 MiB private admission limit.";return;
+    }
+    download("assessment-trends-PRIVATE-source-bound-review-session.json",content,"application/json");
+    $("sessionMessage").textContent="PRIVATE recovery bundle downloaded. Keep exact original snapshot files and manual order for future reopening.";
+  }
+  async function restorePrivateSession(){
+    const file=$("privateSessionFile").files[0];
+    if(!file||!canResume()){
+      $("sessionMessage").textContent="HOLD: admit the original source cohort first, then choose one PRIVATE recovery file.";return;
+    }
+    try{
+      admit(file.size>0&&file.size<=MAX_PRIVATE_BUNDLE);
+      const bytes=await file.arrayBuffer();
+      admit(bytes.byteLength>0&&bytes.byteLength<=MAX_PRIVATE_BUNDLE);
+      const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      admit(!raw.startsWith("\uFEFF"));
+      const data=strictJSON(raw);
+      admit(exact(data,["schema","status","private_unsigned","fictional_demo_only",
+        "manually_selected_order","chronology_authenticated","source_identity_authenticated",
+        "snapshot_sha256_by_manual_slot","scenario_count","stages","notes","disclaimer",...FLAGS]));
+      admit(data.schema==="lightup.assessment_trends_source_bound_private_session.v1"&&
+        data.status==="PRIVATE_UNSIGNED"&&data.private_unsigned===true&&
+        data.fictional_demo_only===false&&data.manually_selected_order===true&&
+        data.chronology_authenticated===false&&data.source_identity_authenticated===false&&
+        data.disclaimer===privateSessionData().disclaimer&&flags(data)&&
+        Number.isSafeInteger(data.scenario_count)&&data.scenario_count===scenarioIds.length);
+      admit(Array.isArray(data.snapshot_sha256_by_manual_slot)&&
+        data.snapshot_sha256_by_manual_slot.length===sourceFingerprints.length&&
+        data.snapshot_sha256_by_manual_slot.every((digest,i)=>
+          typeof digest==="string"&&/^[0-9a-f]{64}$/.test(digest)&&digest===sourceFingerprints[i]));
+      admit(Array.isArray(data.stages)&&data.stages.length<=11520&&
+        Array.isArray(data.notes)&&data.notes.length<=960);
+      const eventSet=new Set(buildReviewEvents().map(e=>
+        JSON.stringify([e.snapshotSlot,e.scenarioSlot,e.metric])));
+      const newStages=new Map(),newNotes=new Map(),seenStages=new Set(),seenNotes=new Set();
+      for(const row of data.stages){
+        admit(Array.isArray(row)&&row.length===4);
+        const [snapshotSlot,scenarioSlot,metric,stage]=row;
+        admit(Number.isSafeInteger(snapshotSlot)&&snapshotSlot>=1&&snapshotSlot<=snapshots.length&&
+          Number.isSafeInteger(scenarioSlot)&&scenarioSlot>=1&&scenarioSlot<=scenarioIds.length&&
+          METRICS.includes(metric)&&HUMAN_STAGES.includes(stage)&&stage!=="UNREVIEWED");
+        const idKey=JSON.stringify([snapshotSlot,scenarioSlot,metric]);
+        admit(eventSet.has(idKey)&&!seenStages.has(idKey));seenStages.add(idKey);
+        newStages.set(JSON.stringify([scenarioIds[scenarioSlot-1],metric,snapshotSlot]),stage);
+      }
+      for(const row of data.notes){
+        admit(Array.isArray(row)&&row.length===3);
+        const [scenarioSlot,metric,note]=row;
+        admit(Number.isSafeInteger(scenarioSlot)&&scenarioSlot>=1&&scenarioSlot<=scenarioIds.length&&
+          METRICS.includes(metric)&&typeof note==="string"&&
+          note.length>=1&&note.length<=500&&note.trim().length>0);
+        const idKey=JSON.stringify([scenarioSlot,metric]);
+        admit(!seenNotes.has(idKey));seenNotes.add(idKey);
+        newNotes.set(noteKey(scenarioIds[scenarioSlot-1],metric),note);
+      }
+      // Never mutate existing work on failure. Consent to replace comes AFTER full validation.
+      if(!window.confirm("Exact ordered source bytes matched. Replace the CURRENT local HUMAN marks and saved notes with this PRIVATE unsigned file? Unsaved scratch text will be discarded. Matching bytes are not proof of source authenticity.")){
+        $("sessionMessage").textContent="PRIVATE restore cancelled. Existing HUMAN work left unchanged.";return;
+      }
+      humanReviewStages.clear();for(const [key,value] of newStages)humanReviewStages.set(key,value);
+      notes.clear();for(const [key,value] of newNotes)notes.set(key,value);
+      scratch.clear();reviewOffset=0;render();
+      $("sessionMessage").textContent="PRIVATE HUMAN session restored for identical local source bytes and manual order: "+
+        newStages.size+" stages, "+newNotes.size+" saved notes. UNSIGNED and non-authorizing.";
+    }catch(_){
+      $("sessionMessage").textContent="HOLD: PRIVATE recovery rejected (invalid, tampered, duplicate, oversized, or not bound to the exact currently admitted original files/order). Existing HUMAN stages and notes untouched.";
+    }finally{
+      $("privateSessionFile").value="";
+    }
+  }
+
   function resetReviewFilters(){
     $("reviewKind").value="all";$("reviewStage").value="all";
     const group=$("reviewGroup");group.replaceChildren();
@@ -663,6 +789,8 @@
   $("reviewExportStageCsv").addEventListener("click",()=>exportHumanStages("csv"));
   $("reviewExportStageBrief").addEventListener("click",()=>exportHumanStages("html"));
   resetReviewFilters();
+  $("exportPrivateSession").addEventListener("click",savePrivateSession);
+  $("importPrivateSession").addEventListener("click",()=>{void restorePrivateSession();});
   $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
   $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});
   $("noteMetric").addEventListener("change",()=>{selectedMetric=$("noteMetric").value;renderNotePanel();});
