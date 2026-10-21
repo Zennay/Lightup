@@ -125,7 +125,10 @@ def inspect_root(fd, root_path, before, endpoints, after, earlier):
     for dirname in SUBDIRS:
         folder_fd, _ = open_output_directory(os.path.join(root_path, dirname))
         try:
-            actual = {name: read_private_bundle_item(folder_fd, name, 196608)
+            if set(os.listdir(folder_fd)) != set(expected[dirname]):
+                raise Hold("PRIVATE follow-up subfolder has unknown or missing files")
+            bound = 524288 if dirname == HISTORY else 196608
+            actual = {name: read_private_bundle_item(folder_fd, name, bound)
                       for name in expected[dirname]}
         finally:
             os.close(folder_fd)
