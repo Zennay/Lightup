@@ -22,7 +22,9 @@
 proposed HUMAN reminder and each declared group-availability rule. Unlike a plan-only backup,
 this reopens on a different private device <strong>without locating the original worksheet separately</strong>.
 The encrypted source may itself contain confidential HUMAN text; keep the file/password separate
-and never publish. This is not authentication of the producer, consent or security findings.</p>
+and never publish. This is not authentication of the producer, consent or security findings.
+<strong>The original local IANA timezone must match when reopening.</strong> Different device timezones are
+intentionally refused rather than silently converting tentative appointments through DST.</p>
 <div class="row">
 <label>Portable vault passphrase <input id="vaultPassword" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
 <label>Confirm new vault password <input id="vaultConfirm" type="password" minlength="16" maxlength="256" autocomplete="off"></label>

@@ -390,3 +390,14 @@ The worksheet is recovered from original encrypted bytes, not
 regenerated text, to preserve its exact SHA-256 binding; original
 HUMAN action/blocker text can be sensitive and belongs only on
 authorized PRIVATE storage.
+
+### PRIVATE vault timezone and passphrase lifetime
+
+The original exact worksheet, private calendar series and browser IANA
+timezone are preserved together. Opening a portable vault on a device with
+a different local zone is deliberately refused; this prevents silent
+changes to HUMAN appointment times around daylight-saving transitions.
+Resetting the browser workroom and loading a different original worksheet
+clear the portable old/new password fields as well as plan handoff inputs.
+Encrypted file possession does not establish actual client or operator
+consent, and cryptographic review remains an original release prerequisite.

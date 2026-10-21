@@ -2145,7 +2145,8 @@
     $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("month").hidden=false;$("backlog").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
-    $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
+    $("restore").value="";clearPasswords();clearVaultPasswords();clearVaultRekeyFields();
+    $("baselinePassword").value="";$("tz").textContent=zone;
     $("agendaHorizon").value="7";$("agendaQuery").value="";$("workloadQuery").value="";
     resetCapacity();render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
@@ -2461,7 +2462,8 @@
     weekAnchor="";monthAnchor="";backlogPage=0;backlogProposal=null;workroomComparison=null;
     $("workroomCompareRows").replaceChildren();
     $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("backlog").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
-    clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
+    clearPasswords();clearVaultPasswords();clearVaultRekeyFields();
+    $("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
