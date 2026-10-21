@@ -218,8 +218,10 @@
       } else selector.value=old;
     }
     const a=Number($("pairA").value),b=Number($("pairB").value);
-    if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<0||b<0||
-      a>=stats.length||b>=stats.length||a===b){
+    const validPair=Number.isSafeInteger(a)&&Number.isSafeInteger(b)&&a>=0&&b>=0&&
+      a<stats.length&&b<stats.length&&a!==b;
+    $("exportPairCSV").disabled=!validPair;
+    if(!validPair){
       $("pairMetrics").textContent="Select two distinct candidates for a descriptive comparison.";
       $("pairChurn").textContent="";$("pairChurnSummary").textContent="";return;
     }
@@ -417,7 +419,7 @@
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
-    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","print"])$(id).disabled=!active;
+    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","print"])$(id).disabled=!active;
     $("appendFile").disabled=!(active&&!demo&&reports.length<12);
     $("saveDraft").disabled=!(active&&!demo&&sourceHashes.length===reports.length);
     $("draftFile").disabled=$("saveDraft").disabled;
@@ -614,6 +616,41 @@
     download("lightup-candidate-aggregate-REVIEW-ONLY.csv",
       head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
   }
+  function exportSelectedPairCSV(){
+    if(!reports.length||!settings)return;
+    const a=Number($("pairA").value),b=Number($("pairB").value);
+    if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<0||b<0||
+      a>=reports.length||b>=reports.length||a===b){
+      setStatus("Choose two distinct original candidates before exporting pair metrics.",true);
+      return;
+    }
+    const first=aggregates(reports[a]),second=aggregates(reports[b]),churn=pairChurn(a,b);
+    const crossover=new Map(churn.metrics.map(row=>[row.name,row]));
+    const head=[
+      "first_candidate_slot","second_candidate_slot","shared_case_count","metric",
+      "first_baseline_aggregate","second_baseline_aggregate","baseline_delta_second_minus_first",
+      "first_candidate_aggregate","second_candidate_aggregate","candidate_delta_second_minus_first",
+      "first_original_adverse_cases","second_original_adverse_cases",
+      "only_first_original_flags","only_second_original_flags","both_original_flags","neither_original_flags",
+      "shared_baseline_matches","fictional_demo_only","report_status",
+      "source_order_authenticated","source_identity_authenticated",
+      "authorized","consent_verified","dispatch_allowed","release_allowed"
+    ];
+    const rows=NAMES.map(name=>{
+      const x=first.total[name],y=second.total[name],flags=crossover.get(name);
+      return [
+        a+1,b+1,churn.case_count,name,x.baseline,y.baseline,y.baseline-x.baseline,
+        x.candidate,y.candidate,y.candidate-x.candidate,x.adverse,y.adverse,
+        flags.only_first,flags.only_second,flags.both,flags.neither,
+        String(close(x.baseline,y.baseline)),String(demo),"REVIEW_ONLY",
+        "false","false","false","false","false","false"
+      ];
+    });
+    const csvField=value=>"\""+String(value).replace(/"/g,"\"\"")+"\"";
+    const csv=[head,...rows].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n";
+    download("lightup-candidate-pair-metrics-REVIEW-ONLY.csv",csv,"text/csv");
+  }
+
   function exportPrivateCaseCSV(){
     if(!reports.length||!settings)return;
     const a=Number($("pairA").value),b=Number($("pairB").value);
@@ -909,6 +946,7 @@
   $("exportJSON").addEventListener("click",exportJSON);
   $("exportHTML").addEventListener("click",exportHTML);
   $("exportCaseCSV").addEventListener("click",exportPrivateCaseCSV);
+  $("exportPairCSV").addEventListener("click",exportSelectedPairCSV);
   $("print").addEventListener("click",()=>{if(reports.length&&settings)window.print();});
   render();
 })();
