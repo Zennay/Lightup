@@ -429,3 +429,14 @@ are embedded in either generated file. Original source-bound independent cue
 packets admit the exact template bytes under v18; earlier v1–v17 packages
 retain their original immutable verification behavior. Do not edit a
 receipt-bound file: make a separate owner-private copy of the CSV if needed.
+
+### Private manual HAR status import
+
+`notes.py har-action-progress` accepts a separate owner-only edited
+v18 action CSV after unchanged original and masking-cue receipt re-admission.
+It admits exact original ordinal/action identities and bounded manual
+statuses only, never free-text notes, and prepares a new owner-only
+read-only progress HTML/CSV plus unsigned input-hash receipt. The CSV
+`HUMAN_REVIEWED` value is merely a self-reported coordinator status.
+The CLI exits HOLD even on local success, never produces a privacy verdict,
+authorization, consent, grant, dispatch or release.

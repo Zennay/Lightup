@@ -31,6 +31,38 @@ reopen using their exact original historical algorithms. **Do not edit
 receipt-bound originals.** Copy the editable CSV elsewhere, keep owner-only
 permissions, and treat all copies as PRIVATE/HOLD.
 
+### New: original-bound manual HAR progress import (offline)
+
+After creating an **independent** immutable v18 masking-cue packet,
+copy its `PRIVATE-HAR-ACTIONS.csv` to a *different*, owner-private 0600
+file. Edit only the `human_status` column for individual task rows,
+choosing `PENDING_HUMAN`, `IN_PROGRESS`, `HUMAN_REVIEWED`,
+`SOURCE_OWNER_NEEDED` or `WITHHOLD`. Leave `human_notes` blank.
+Never edit the original cue packet or change action identity, order,
+ordinal, count or task name.
+
+~~~sh
+python3 private-assessment-notes/notes.py har-action-progress \
+  --original-kit /private/original-prepared-kit \
+  --cue-room /private/original-independent-v18-cue-room \
+  --edited-actions /private/edited-HAR-ACTIONS.csv \
+  --private-parent /private/operator-lightup-work
+~~~
+
+This command read-only re-admits the exact original source-bound masking
+receipt, checks all original v18 files and every unchanged CSV task before
+accepting a manually typed status. It produces a fresh owner-only PRIVATE
+0600 `PRIVATE-HAR-HUMAN-status.html`, source-minimal
+`PRIVATE-HAR-HUMAN-status.csv`, and unsigned input-hash receipt.
+Free-text notes cannot enter the derived status page. The original
+decision workroom, original notes, original cue packet and edited input
+remain unchanged. Missing/extra/moved tasks, replaced source, changed
+receipt, unexpected statuses and nonempty free-text notes refuse.
+A successful PRIVATE report **still returns HOLD (exit code 3)**.
+`HUMAN_REVIEWED` is only an unverified typed status — never identity
+attestation, external sharing permission, consent, finding, risk decision,
+authorisation, scan, release or automatic approval.
+
 ### New: conservative HAR source-content withholding
 
 For newly generated **owner-private** workrooms, the original source-bound
