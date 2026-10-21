@@ -41,6 +41,14 @@ when escaped or nested, unexpected fields and authority claims.
 Local search/status filters and confirmation-only bulk NEEDS_INPUT
 or IN_PROGRESS affect matching HUMAN markers; a bulk approval action
 does not exist. Hidden status rows remain in complete JSON/CSV export.
+The source-free HUMAN Lab Route Desk now also provides a multi-round
+comparison view for 2-8 operator-ordered local self-report JSON files,
+per-stage marker transition summaries, local changed/repeated/needs-input
+filters, and a fixed-status-only private CSV covering all 20 original
+actions. The browser never infers actor identity or chronological truth
+from chooser order, and invalid files clear stale comparisons.
+This is separate from original native receipt verification and does not
+edit active local markers or authenticate a review.
 None of these browser-only conveniences proves that any native lab step
 executed or that a review, consent, finding or release is authentic.\nThe native-only companion console options 72/73/74/75 RECEIVE, REOPEN,\nCOMPARE 2–8 and EXACTLY REOPEN the resulting PRIVATE HUMAN history from\nstrict local self-report receipts exported by this source-free editor. The operator MUST manually move downloaded self-report JSON into\nan existing owner-only 0700 directory with a 0600 input outside any Git\ncheckout; browser storage is never restored automatically. Signed identity,\ntrue originals, actual review, consent and release are NOT inferred.\nThis native Python receiver is deliberately NOT included in this ZIP.\nNative checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
