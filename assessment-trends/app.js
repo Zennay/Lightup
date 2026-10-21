@@ -604,20 +604,71 @@
     for(const id of ["revisionEarlierFile","revisionLaterFile","revisionCompare","timelineFiles","timelineImport"])
       $(id).disabled=!canResume();
   }
+
+  // The browser's FileList order is not an operator-selected chronology. Keep an
+  // explicit local reorderable selection; none of these filenames enter exports.
+  let pendingSources=[],sourceAdmissionTicket=0,sourceAdmissionBusy=false;
+  function renderPendingSources(){
+    const root=$("pendingSourceList");root.replaceChildren();
+    const valid=pendingSources.length>=3&&pendingSources.length<=12;
+    $("import").disabled=!valid||sourceAdmissionBusy;
+    $("pendingSourceStatus").textContent=pendingSources.length?
+      pendingSources.length+" local input file(s) in your explicit display order. "+
+        (valid?"Use Up/Down to set manual order before admitting.":"Choose between 3 and 12 files.")+
+        " Filenames are shown only on this local screen and never exported.":
+      "No pending input files. Choose 3–12 source reports.";
+    pendingSources.forEach((file,i)=>{
+      const item=document.createElement("li"),label=document.createElement("span"),
+        controls=document.createElement("span");
+      label.textContent="Slot "+String(i+1).padStart(2,"0")+" · "+file.name+
+        " · "+file.size.toLocaleString("en-US")+" bytes";
+      label.className="pending-file-name";
+      for(const [direction,textLabel] of [[-1,"Move up"],[1,"Move down"]]){
+        const button=document.createElement("button");
+        button.type="button";button.className="secondary";button.textContent=textLabel;
+        button.disabled=i+direction<0||i+direction>=pendingSources.length;
+        button.setAttribute("aria-label",textLabel+" source slot "+(i+1)+" (not chronology)");
+        button.addEventListener("click",()=>{
+          ++sourceAdmissionTicket;sourceAdmissionBusy=false;
+          [pendingSources[i],pendingSources[i+direction]]=
+            [pendingSources[i+direction],pendingSources[i]];
+          renderPendingSources();
+          $("message").textContent="Pending local display order changed. Import atomically to apply. Current admitted HUMAN work is unchanged.";
+        });
+        controls.append(button);
+      }
+      controls.className="controls pending-file-actions";
+      item.append(label,controls);root.append(item);
+    });
+  }
+  function setPendingSources(files){
+    ++sourceAdmissionTicket;sourceAdmissionBusy=false;
+    pendingSources=[...files];renderPendingSources();
+    $("message").textContent=pendingSources.length?
+      "Pending batch ready for explicit manual slot ordering; current admitted sources and HUMAN work remain unchanged.":
+      "No pending sources selected. Current admitted workspace remains unchanged.";
+  }
+
   async function importFiles(list){
-    const files=[...list];
+    const files=[...list],ticket=++sourceAdmissionTicket;
+    sourceAdmissionBusy=true;renderPendingSources();
+    $("message").textContent="Reading local source files. No network or assessment execution.";
     try{
       admit(files.length>=3&&files.length<=12);
       const next=[],nextFingerprints=[];
       for(const file of files){
         admit(file&&file.size>0&&file.size<=MAX_FILE);
-        const bytes=await file.arrayBuffer();admit(bytes.byteLength>0&&bytes.byteLength<=MAX_FILE);
+        const bytes=await file.arrayBuffer();
+        if(ticket!==sourceAdmissionTicket)return;
+        admit(bytes.byteLength>0&&bytes.byteLength<=MAX_FILE);
         const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
         admit(!raw.startsWith("\uFEFF"));
         next.push(parseReport(strictJSON(raw)));
         nextFingerprints.push(await sourceDigest(bytes));
+        if(ticket!==sourceAdmissionTicket)return;
       }
       const ids=harmonize(next);
+      if(ticket!==sourceAdmissionTicket)return;
       snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
       sourceFingerprints=nextFingerprints.every(v=>v!==null)?nextFingerprints:[];
       $("privateSessionFile").value="";
@@ -628,7 +679,10 @@
         " compatible source snapshots with "+scenarioIds.length+
         " matching anonymous scenarios and identical original baselines. No chronology authenticated.";
     }catch(_){
-      $("message").textContent="HOLD: invalid, duplicated, oversized, mismatched or baseline-inconsistent batch. Previous workspace unchanged.";
+      if(ticket===sourceAdmissionTicket)
+        $("message").textContent="HOLD: invalid, duplicated, oversized, mismatched or baseline-inconsistent batch. Previous workspace unchanged.";
+    }finally{
+      if(ticket===sourceAdmissionTicket){sourceAdmissionBusy=false;renderPendingSources();}
     }
   }
   function buildDemoReport(slotNo){
@@ -655,19 +709,22 @@
       regressionInstances};
   }
   function demoLoad(){
+    ++sourceAdmissionTicket;sourceAdmissionBusy=false;
     snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();
+    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();renderPendingSources();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
+    ++sourceAdmissionTicket;sourceAdmissionBusy=false;
+    pendingSources=[];$("files").value="";
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
     sourceFingerprints=[];$("privateSessionFile").value="";
     reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";
-    $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();
+    $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();renderPendingSources();
   }
   function exportJson(){
     if(!snapshots.length)return;
@@ -1223,7 +1280,12 @@
   $("revisionExportBrief").addEventListener("click",()=>exportRevision("html"));
   $("exportPrivateSession").addEventListener("click",()=>{void savePrivateSession();});
   $("importPrivateSession").addEventListener("click",()=>{void restorePrivateSession();});
-  $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
+  $("files").addEventListener("change",()=>setPendingSources($("files").files));
+  $("import").addEventListener("click",()=>{
+    if(pendingSources.length>=3&&pendingSources.length<=12&&!sourceAdmissionBusy)
+      void importFiles(pendingSources);
+    else $("message").textContent="Choose and order 3–12 original cohort JSON files before import.";
+  });
   $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});
   $("noteMetric").addEventListener("change",()=>{selectedMetric=$("noteMetric").value;renderNotePanel();});
   $("noteInput").addEventListener("input",()=>{const id=currentId();if(id)scratch.set(noteKey(id,$("noteMetric").value),$("noteInput").value);});
@@ -1242,5 +1304,6 @@
   $("demo").addEventListener("click",()=>{if(snapshots.length&&!window.confirm("Replace current sources with fictional demo data?"))return;demoLoad();});
   $("noteMetric").replaceChildren();
   METRICS.forEach(name=>{const o=document.createElement("option");o.value=name;o.textContent=name;$("noteMetric").append(o);});
+  renderPendingSources();
   render();
 })();

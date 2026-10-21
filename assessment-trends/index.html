@@ -22,8 +22,12 @@
   <label class="file-picker">Choose 3–12 cohort JSON files
     <input id="files" type="file" accept=".json,application/json" multiple>
   </label>
+  <h3>Selected local display order (not authenticated chronology)</h3>
+  <p class="footnote">Browsers do not guarantee your intended file order. Use the controls below to explicitly set the manual comparison order. Filenames are shown here for orientation only and never included in exports.</p>
+  <p id="pendingSourceStatus" class="message" role="status" aria-live="polite">No pending input files.</p>
+  <ol id="pendingSourceList" class="pending-source-list" aria-label="Manually ordered source slots"></ol>
   <div class="controls">
-    <button id="import" type="button">Import atomically</button>
+    <button id="import" type="button" disabled>Import selected manual order atomically</button>
     <button id="demo" type="button" class="secondary">Load fictional demo</button>
     <button id="forget" type="button" class="ghost" disabled>Forget all local data</button>
   </div>

@@ -2,3 +2,9 @@
 .queue-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.7rem}.queue-controls label{margin:.25rem 0}.queue-controls select{margin-top:.35rem}#reviewTable{max-height:30rem}#reviewTable button{font-size:.8rem;padding:.35rem .5rem;white-space:nowrap}@media(max-width:650px){.queue-controls{grid-template-columns:1fr}}
 
 input[type=password]{display:block;width:100%;max-width:100%;font:inherit;padding:.6rem;border:1px solid #aab6c5;border-radius:.4rem;background:white;color:#17212f}
+
+.pending-source-list{list-style:none;padding:0;margin:.4rem 0 1rem;border:1px solid #dbe1e8;border-radius:.45rem}
+.pending-source-list>li{padding:.55rem .8rem;border-bottom:1px solid #e0e5eb;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.45rem}
+.pending-source-list>li:last-child{border-bottom:0}.pending-file-name{font:inherit;overflow-wrap:anywhere}
+.pending-file-actions{margin:0}.pending-file-actions button{padding:.3rem .55rem;font-size:.84rem}
+@media(max-width:650px){.pending-source-list>li{display:block}.pending-file-actions{grid-template-columns:1fr 1fr}}

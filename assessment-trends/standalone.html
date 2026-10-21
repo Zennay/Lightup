@@ -3,12 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; script-src 'sha256-C9vRQAbx7BpIDpyRZc2XI62pGF/iCY4DwE2PfUf9F+w='; style-src 'sha256-SVZSmMR6m28zDbpz2ArtyNyuwnlINcFONrgiH7bk5So='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; script-src 'sha256-iq8KT/WnLAN4XSIg3mEjL414r3ZkqcJslT7zamUw0gM='; style-src 'sha256-toM1qANftEQ5Zs31bnVWmYmL3VBiKDfpRIvzgIppvAw='">
 <title>LightUp · Assessment Trends</title>
 <style>*{box-sizing:border-box}html{color-scheme:light}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:1240px;margin:0 auto;padding:1.2rem}.hero{padding-top:2.4rem}.hero h1{font-size:clamp(2rem,4vw,3.2rem);line-height:1.05;margin:.25rem 0 .8rem}.eyebrow,.tag{font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}.status{border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;padding:.8rem 1rem;margin:1rem 0;background:#fff7ed;font-weight:650}.status.review{border-left-color:#426a87;background:#eff6fb}.status.demo{border-left-color:#7953a6;background:#f7f1ff}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.25rem;margin:1rem 0;box-shadow:0 1px 3px #0f172a0a}.section-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}.section-head h2{font-size:1.15rem;margin:0}.tag{border:1px solid #dbe1e8;border-radius:99px;padding:.2rem .6rem;white-space:nowrap}h3{font-size:1rem;margin:1.4rem 0 .6rem}p{margin:.6rem 0 1rem}label{display:block;font-weight:650;margin:.75rem 0}.file-picker{display:block;border:1px dashed #94a3b8;border-radius:.5rem;padding:1rem;background:#f8fafc}input[type=file]{display:block;margin-top:.65rem;max-width:100%}select,textarea{display:block;width:100%;max-width:100%;font:inherit;padding:.6rem;border:1px solid #aab6c5;border-radius:.4rem;background:white;color:#17212f}textarea{resize:vertical}.controls{display:flex;gap:.55rem;flex-wrap:wrap;margin:.8rem 0}button{font:inherit;font-weight:700;padding:.58rem .85rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button.ghost{background:#f8fafc;color:#475569;border-color:#cbd5e1}button:disabled,input:disabled,select:disabled,textarea:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:650;color:#334155}.footnote{font-size:.88rem;color:#536174}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem}.card{border:1px solid #dbe1e8;border-radius:.6rem;padding:.9rem;background:#fbfcfe}.card .value{font-size:1.65rem;font-weight:800;line-height:1.15;display:block;margin:.2rem 0}.card .label{font-size:.83rem;color:#536174}.tablewrap{overflow:auto;border:1px solid #e0e5eb;border-radius:.45rem;margin:.75rem 0;max-width:100%}table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:660px}th,td{border-bottom:1px solid #e0e5eb;border-right:1px solid #edf0f4;padding:.5rem .6rem;text-align:left;vertical-align:top;white-space:nowrap}th{background:#eef2f6;font-weight:750;position:sticky;top:0;z-index:1}tbody tr:nth-child(even){background:#fafbfd}.cell-adverse{background:#fee2e2!important;color:#991b1b;font-weight:750}.cell-neutral{background:#f0fdf4;color:#166534}.cell-info{background:#f1f5f9;color:#334155}.cell-persistent{outline:2px solid #b45309;outline-offset:-3px}.empty{padding:1rem;color:#64748b}.footnote strong{color:#334155}footer{font-size:.85rem;color:#64748b;padding-bottom:2rem}.print-only{display:none}@media(max-width:650px){.hero,main,footer{padding:.8rem}.panel{padding:.9rem}.section-head{align-items:flex-start}button{width:100%}.controls{display:grid;grid-template-columns:1fr}}@media print{body{background:white;color:#111;font-size:11pt}.hero,main,footer{max-width:none;padding:0}.no-print,main>.panel{display:none!important}.print-only{display:block!important}.hero{margin-bottom:1rem}.status{background:white!important;color:#111;border:1px solid #555}.print-only table{min-width:0;font-size:9pt}.print-only th,.print-only td{position:static;white-space:normal;padding:.3rem;border:1px solid #aaa}.print-only h1,.print-only h2{page-break-after:avoid}.print-only table{page-break-inside:avoid}a{color:#111;text-decoration:none}}
 .queue-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.7rem}.queue-controls label{margin:.25rem 0}.queue-controls select{margin-top:.35rem}#reviewTable{max-height:30rem}#reviewTable button{font-size:.8rem;padding:.35rem .5rem;white-space:nowrap}@media(max-width:650px){.queue-controls{grid-template-columns:1fr}}
 
 input[type=password]{display:block;width:100%;max-width:100%;font:inherit;padding:.6rem;border:1px solid #aab6c5;border-radius:.4rem;background:white;color:#17212f}
+
+.pending-source-list{list-style:none;padding:0;margin:.4rem 0 1rem;border:1px solid #dbe1e8;border-radius:.45rem}
+.pending-source-list>li{padding:.55rem .8rem;border-bottom:1px solid #e0e5eb;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.45rem}
+.pending-source-list>li:last-child{border-bottom:0}.pending-file-name{font:inherit;overflow-wrap:anywhere}
+.pending-file-actions{margin:0}.pending-file-actions button{padding:.3rem .55rem;font-size:.84rem}
+@media(max-width:650px){.pending-source-list>li{display:block}.pending-file-actions{grid-template-columns:1fr 1fr}}
 </style>
 <script>"use strict";
 /* LightUp Assessment Trends: offline, source-only, non-authorizing. */
@@ -616,20 +622,71 @@ input[type=password]{display:block;width:100%;max-width:100%;font:inherit;paddin
     for(const id of ["revisionEarlierFile","revisionLaterFile","revisionCompare","timelineFiles","timelineImport"])
       $(id).disabled=!canResume();
   }
+
+  // The browser's FileList order is not an operator-selected chronology. Keep an
+  // explicit local reorderable selection; none of these filenames enter exports.
+  let pendingSources=[],sourceAdmissionTicket=0,sourceAdmissionBusy=false;
+  function renderPendingSources(){
+    const root=$("pendingSourceList");root.replaceChildren();
+    const valid=pendingSources.length>=3&&pendingSources.length<=12;
+    $("import").disabled=!valid||sourceAdmissionBusy;
+    $("pendingSourceStatus").textContent=pendingSources.length?
+      pendingSources.length+" local input file(s) in your explicit display order. "+
+        (valid?"Use Up/Down to set manual order before admitting.":"Choose between 3 and 12 files.")+
+        " Filenames are shown only on this local screen and never exported.":
+      "No pending input files. Choose 3–12 source reports.";
+    pendingSources.forEach((file,i)=>{
+      const item=document.createElement("li"),label=document.createElement("span"),
+        controls=document.createElement("span");
+      label.textContent="Slot "+String(i+1).padStart(2,"0")+" · "+file.name+
+        " · "+file.size.toLocaleString("en-US")+" bytes";
+      label.className="pending-file-name";
+      for(const [direction,textLabel] of [[-1,"Move up"],[1,"Move down"]]){
+        const button=document.createElement("button");
+        button.type="button";button.className="secondary";button.textContent=textLabel;
+        button.disabled=i+direction<0||i+direction>=pendingSources.length;
+        button.setAttribute("aria-label",textLabel+" source slot "+(i+1)+" (not chronology)");
+        button.addEventListener("click",()=>{
+          ++sourceAdmissionTicket;sourceAdmissionBusy=false;
+          [pendingSources[i],pendingSources[i+direction]]=
+            [pendingSources[i+direction],pendingSources[i]];
+          renderPendingSources();
+          $("message").textContent="Pending local display order changed. Import atomically to apply. Current admitted HUMAN work is unchanged.";
+        });
+        controls.append(button);
+      }
+      controls.className="controls pending-file-actions";
+      item.append(label,controls);root.append(item);
+    });
+  }
+  function setPendingSources(files){
+    ++sourceAdmissionTicket;sourceAdmissionBusy=false;
+    pendingSources=[...files];renderPendingSources();
+    $("message").textContent=pendingSources.length?
+      "Pending batch ready for explicit manual slot ordering; current admitted sources and HUMAN work remain unchanged.":
+      "No pending sources selected. Current admitted workspace remains unchanged.";
+  }
+
   async function importFiles(list){
-    const files=[...list];
+    const files=[...list],ticket=++sourceAdmissionTicket;
+    sourceAdmissionBusy=true;renderPendingSources();
+    $("message").textContent="Reading local source files. No network or assessment execution.";
     try{
       admit(files.length>=3&&files.length<=12);
       const next=[],nextFingerprints=[];
       for(const file of files){
         admit(file&&file.size>0&&file.size<=MAX_FILE);
-        const bytes=await file.arrayBuffer();admit(bytes.byteLength>0&&bytes.byteLength<=MAX_FILE);
+        const bytes=await file.arrayBuffer();
+        if(ticket!==sourceAdmissionTicket)return;
+        admit(bytes.byteLength>0&&bytes.byteLength<=MAX_FILE);
         const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
         admit(!raw.startsWith("\uFEFF"));
         next.push(parseReport(strictJSON(raw)));
         nextFingerprints.push(await sourceDigest(bytes));
+        if(ticket!==sourceAdmissionTicket)return;
       }
       const ids=harmonize(next);
+      if(ticket!==sourceAdmissionTicket)return;
       snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
       sourceFingerprints=nextFingerprints.every(v=>v!==null)?nextFingerprints:[];
       $("privateSessionFile").value="";
@@ -640,7 +697,10 @@ input[type=password]{display:block;width:100%;max-width:100%;font:inherit;paddin
         " compatible source snapshots with "+scenarioIds.length+
         " matching anonymous scenarios and identical original baselines. No chronology authenticated.";
     }catch(_){
-      $("message").textContent="HOLD: invalid, duplicated, oversized, mismatched or baseline-inconsistent batch. Previous workspace unchanged.";
+      if(ticket===sourceAdmissionTicket)
+        $("message").textContent="HOLD: invalid, duplicated, oversized, mismatched or baseline-inconsistent batch. Previous workspace unchanged.";
+    }finally{
+      if(ticket===sourceAdmissionTicket){sourceAdmissionBusy=false;renderPendingSources();}
     }
   }
   function buildDemoReport(slotNo){
@@ -667,19 +727,22 @@ input[type=password]{display:block;width:100%;max-width:100%;font:inherit;paddin
       regressionInstances};
   }
   function demoLoad(){
+    ++sourceAdmissionTicket;sourceAdmissionBusy=false;
     snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();
+    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();renderPendingSources();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
+    ++sourceAdmissionTicket;sourceAdmissionBusy=false;
+    pendingSources=[];$("files").value="";
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
     sourceFingerprints=[];$("privateSessionFile").value="";
     reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";
-    $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();
+    $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();renderPendingSources();
   }
   function exportJson(){
     if(!snapshots.length)return;
@@ -1235,7 +1298,12 @@ input[type=password]{display:block;width:100%;max-width:100%;font:inherit;paddin
   $("revisionExportBrief").addEventListener("click",()=>exportRevision("html"));
   $("exportPrivateSession").addEventListener("click",()=>{void savePrivateSession();});
   $("importPrivateSession").addEventListener("click",()=>{void restorePrivateSession();});
-  $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
+  $("files").addEventListener("change",()=>setPendingSources($("files").files));
+  $("import").addEventListener("click",()=>{
+    if(pendingSources.length>=3&&pendingSources.length<=12&&!sourceAdmissionBusy)
+      void importFiles(pendingSources);
+    else $("message").textContent="Choose and order 3–12 original cohort JSON files before import.";
+  });
   $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});
   $("noteMetric").addEventListener("change",()=>{selectedMetric=$("noteMetric").value;renderNotePanel();});
   $("noteInput").addEventListener("input",()=>{const id=currentId();if(id)scratch.set(noteKey(id,$("noteMetric").value),$("noteInput").value);});
@@ -1254,6 +1322,7 @@ input[type=password]{display:block;width:100%;max-width:100%;font:inherit;paddin
   $("demo").addEventListener("click",()=>{if(snapshots.length&&!window.confirm("Replace current sources with fictional demo data?"))return;demoLoad();});
   $("noteMetric").replaceChildren();
   METRICS.forEach(name=>{const o=document.createElement("option");o.value=name;o.textContent=name;$("noteMetric").append(o);});
+  renderPendingSources();
   render();
 })();
 </script>
@@ -1272,8 +1341,12 @@ input[type=password]{display:block;width:100%;max-width:100%;font:inherit;paddin
   <label class="file-picker">Choose 3–12 cohort JSON files
     <input id="files" type="file" accept=".json,application/json" multiple>
   </label>
+  <h3>Selected local display order (not authenticated chronology)</h3>
+  <p class="footnote">Browsers do not guarantee your intended file order. Use the controls below to explicitly set the manual comparison order. Filenames are shown here for orientation only and never included in exports.</p>
+  <p id="pendingSourceStatus" class="message" role="status" aria-live="polite">No pending input files.</p>
+  <ol id="pendingSourceList" class="pending-source-list" aria-label="Manually ordered source slots"></ol>
   <div class="controls">
-    <button id="import" type="button">Import atomically</button>
+    <button id="import" type="button" disabled>Import selected manual order atomically</button>
     <button id="demo" type="button" class="secondary">Load fictional demo</button>
     <button id="forget" type="button" class="ghost" disabled>Forget all local data</button>
   </div>
