@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 
 from lightup.redaction import redact_text
-from curl_payload_mask import mask_curl_form_payloads
+from curl_payload_mask import FIELD_BOUNDARY_GUARD, mask_curl_form_payloads
 
 # Entire credential-bearing HTTP header values are withheld. In particular,
 # Cookie may contain several sensitive fields with punctuation and spaces.
@@ -276,4 +276,6 @@ def mask_private_notes(original: str) -> str:
     value = _YAML_CREDENTIAL.sub(r"\1[REDACTED_CONFIG_VALUE]", value)
     value = _JWT.sub("[REDACTED_JWT_SHAPE]", value)
     value = _PROVIDER.sub("[REDACTED_PROVIDER_TOKEN_SHAPE]", value)
-    return value
+    # Restore the actual original field-name syntax after BOTH masking layers;
+    # no protected marker or original credential value may leave this method.
+    return value.replace(FIELD_BOUNDARY_GUARD, "")

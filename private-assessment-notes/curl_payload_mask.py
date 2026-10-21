@@ -39,6 +39,10 @@ _FIELD_DELIMITER = re.compile(r"([&;])")
 _PERCENT_UNDERSCORE = re.compile(r"(?i)%5f")
 _PERCENT_HYPHEN = re.compile(r"(?i)%2d")
 _PRIVATE_MARKER = "[REDACTED_FORM_VALUE]"
+# Protect a named field delimiter only while the original generic redactor
+# runs; otherwise its broad key=value matcher can consume the next &field.
+# It is always stripped before any PRIVATE note is returned or written.
+FIELD_BOUNDARY_GUARD = "_LIGHTUP_PRIVATE_CURL_FIELD_BOUNDARY_"
 
 
 def _field_key(name: str) -> str:
@@ -65,7 +69,8 @@ def _mask_field(fragment: str, *, urlencoded: bool) -> str:
     # The @source form of --data-urlencode and --form is also private.
     # Retain the original delimiter/key as a cue for HUMAN review.
     separator = fragment[split_at]
-    return fragment[:split_at + 1] + _PRIVATE_MARKER
+    return (fragment[:split_at] + FIELD_BOUNDARY_GUARD
+            + fragment[split_at:split_at + 1] + _PRIVATE_MARKER)
 
 
 def _mask_payload(match: re.Match[str]) -> str:
