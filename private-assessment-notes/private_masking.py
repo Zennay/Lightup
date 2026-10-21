@@ -13,7 +13,8 @@ from lightup.redaction import redact_text
 # Cookie may contain several sensitive fields with punctuation and spaces.
 _HEADER = re.compile(
     r"(?im)^([ \t]*(?:proxy-authorization|authorization|x-api-key|"
-    r"x-auth-token|x-access-token|cookie|set-cookie)[ \t]*:[ \t]*)[^\r\n]*"
+    r"x-auth-token|x-access-token|x-amz-security-token|x-goog-api-key|"
+    r"x-csrf-token|x-xsrf-token|cookie|set-cookie)[ \t]*:[ \t]*)[^\r\n]*"
 )
 # Preserve only scheme, not the credentials or user identity embedded in it.
 _URL_USERINFO = re.compile(
@@ -26,10 +27,10 @@ _URL_USERINFO = re.compile(
 # token within it (Cookie can contain multiple semicolon-delimited fields).
 # This handles both -H and --header and preserves the quote used by the shell.
 _SHELL_HEADER = re.compile(
-    r"""(?i)(?P<prefix>(?<![A-Za-z0-9_-])(?:-H|--(?:proxy-)?header)
-    (?:[ \t]+|=))(?P<quote>["'])(?P<header>
+    r"""(?i)(?P<prefix>(?<![A-Za-z0-9_-])(?:-H(?:[ \t]+|=)?|--(?:proxy-)?header(?:[ \t]+|=)))(?P<quote>["'])(?P<header>
     (?:proxy-authorization|authorization|x-api-key|x-auth-token|
-    x-access-token|cookie|set-cookie)[ \t]*:[ \t]*)
+    x-access-token|x-amz-security-token|x-goog-api-key|
+    x-csrf-token|x-xsrf-token|cookie|set-cookie)[ \t]*:[ \t]*)
     (?:\\.|(?! (?P=quote) ).)*?(?P=quote)""",
     re.VERBOSE,
 )
@@ -48,7 +49,8 @@ _SHELL_CREDENTIAL = re.compile(
 # > Cookie: session=... / < Set-Cookie: session=...
 _RAW_HTTP_HEADER = re.compile(
     r"(?im)^([ \t]*[><*][ \t]+(?:proxy-authorization|authorization|"
-    r"x-api-key|x-auth-token|x-access-token|cookie|set-cookie)[ \t]*:[ \t]*)[^\r\n]*"
+    r"x-api-key|x-auth-token|x-access-token|x-amz-security-token|"
+    r"x-goog-api-key|x-csrf-token|x-xsrf-token|cookie|set-cookie)[ \t]*:[ \t]*)[^\r\n]*"
 )
 # Servlet / app path parameters also commonly contain bearer session IDs.
 _PATH_SESSION = re.compile(
@@ -83,7 +85,7 @@ _HAR_HEADER_VALUE = re.compile(
     r"""(?i)(?P<prefix>["']name["'][ \t]*:[ \t]*
     (?P<name_quote>["'])(?:proxy-authorization|authorization|
     x-api-key|x-auth-token|x-access-token|x-amz-security-token|
-    x-goog-api-key|cookie|set-cookie)(?P=name_quote)
+    x-goog-api-key|x-csrf-token|x-xsrf-token|cookie|set-cookie)(?P=name_quote)
     [ \t\r\n]*,[ \t\r\n]*["']value["'][ \t]*:[ \t]*)
     (?P<value_quote>["'])(?:\\.|(?! (?P=value_quote) )[^\\\r\n]){0,4096}
     (?P=value_quote)""",
@@ -98,7 +100,7 @@ _HAR_HEADER_REVERSE = re.compile(
     ["']name["'][ \t]*:[ \t]*(?P<name_quote>["'])
     (?:proxy-authorization|authorization|x-api-key|x-auth-token|
     x-access-token|x-amz-security-token|x-goog-api-key|
-    cookie|set-cookie)(?P=name_quote))""",
+    x-csrf-token|x-xsrf-token|cookie|set-cookie)(?P=name_quote))""",
     re.VERBOSE,
 )
 # HAR cookies, queryString and form postData.params commonly serialize a
@@ -150,6 +152,7 @@ _ENV_SECRET = re.compile(
 _YAML_CREDENTIAL = re.compile(
     r"""(?im)^([ \t]*(?:authorization|proxy-authorization|cookie|
     set-cookie|x-api-key|x-auth-token|x-access-token|
+    x-amz-security-token|x-goog-api-key|x-csrf-token|x-xsrf-token|
     password|passwd|api[_-]?key|client[_-]?secret|private[_-]?key|
     access[_-]?token|refresh[_-]?token|auth[_-]?token|
     session[_-]?id|session[_-]?token|jwt)[ \t]*:[ \t]*)
