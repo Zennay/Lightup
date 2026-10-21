@@ -150,6 +150,12 @@ python3 assessment-retention-desk/package.py --output /private/operator/retentio
 
 The native packager requires a pre-existing 0700 directory. It refuses overwrite, unsafe inline element terminators or product-template drift. Do not move its output to a public web host or use a browser that blocks WebCrypto without acknowledging the limitation.
 
+To re-open an existing artifact read-only against the current source bundle, use:
+
+    python3 assessment-retention-desk/package.py --reopen /private/operator/retention-offline.html
+
+The reopen mode requires the existing file to be a regular owner-only 0600 file in an owner-only 0700 directory, rejects links and metadata changes during reading, and compares the complete bytes against a freshly assembled current-source bundle. It never overwrites the artifact. Source drift returns HOLD; this is a local package-integrity check, not source authenticity, consent, authorization or release approval.
+
 ## Offline native multi-plan history
 
 ```sh
