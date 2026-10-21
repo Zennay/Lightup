@@ -1,6 +1,82 @@
 # LightUp integrated PRIVATE assessment handoff
 
 
+## 21 October · Complete native HUMAN Attention revision portfolio (console 78–79)
+
+**New operator-facing product**: [attention_history.py](attention_history.py)
+and [interactive console companion](attention_history_console.py) let an
+original local owner compare **2–8 independently saved PRIVATE HUMAN
+Attention proposal receipts** with a common 1–8 original native HUMAN
+Route source-free receipts. Each revision is separately reopened with
+the existing \`attention_receipt.reopen\`, which reopens every original
+\`lab_route_handoff\` receipt and verifies its exact saved original
+self-report bytes and 0600 outputs. A source-free role/follow-up revision
+cannot be imported on its own.
+
+**Run native console options:**
+
+- **78** — enter 1–8 original 72/73 HUMAN Route receipt room paths,
+  then 2–8 **distinct saved 76/77 HUMAN Attention receipt rooms**
+  in the chosen comparison order. Select a **new** output room in an
+  existing owner-only 0700 PRIVATE parent outside the checkout; type
+  \`CREATE HUMAN REVISION PORTFOLIO\` to publish a PRIVATE all-source-bound
+  product (all generated files 0600).
+- **79** — enter the same original Route rooms and same original Attention
+  rooms in the same order, plus that saved portfolio output room. It
+  strictly reopens **every original PRIVATE receipt and every output
+  byte**; missing or additional files or changed source become HOLD.
+- Optional directly through local CLI:
+
+\`\`\`bash
+python3 assessment-integrated-suite/attention_history.py create \
+  --route-rooms /PRIVATE/original-route-1 /PRIVATE/original-route-2 \
+  --attention-rooms /PRIVATE/attention-receipt-1 /PRIVATE/attention-receipt-2 \
+  --private-parent /PRIVATE --folder attention-revision-portfolio-1
+
+python3 assessment-integrated-suite/attention_history.py reopen \
+  --route-rooms /PRIVATE/original-route-1 /PRIVATE/original-route-2 \
+  --attention-rooms /PRIVATE/attention-receipt-1 /PRIVATE/attention-receipt-2 \
+  --saved-room /PRIVATE/attention-revision-portfolio-1
+\`\`\`
+
+**Six new directly usable output files** in one PRIVATE 0700 room:
+
+1. \`OPEN-PRIVATE.html\`: scriptless, local interactive-free readable
+   portfolio showing all original five HUMAN stages, the last
+   operator-chosen twenty-action proposal, and every cell that changed.
+2. \`PRIVATE-HUMAN-ATTENTION-MATRIX.csv\`: **all original twenty actions
+   and every selected revision's fixed role/follow-up choices**.
+3. \`PRIVATE-HUMAN-ATTENTION-CHANGES.csv\`: the changed role/follow-up
+   proposal cells with from/to fixed categories and manual revision number.
+4. \`PRIVATE-HUMAN-ATTENTION-HISTORY.json\`: complete source-free
+   fixed-schema revision digests, five-stage NEEDS_INPUT / unassigned /
+   untriaged summary and exact changed proposal markers.
+5. \`PRIVATE-LATEST-HUMAN-ATTENTION.json\`: unchanged original source-free
+   v2 proposal bytes from the **last manually selected** attention receipt.
+   This can be re-opened in the existing [offline Attention Workboard](human-lab-attention-standalone.html)
+   after selecting the same original 1–8 source-free HUMAN discussion reports.
+6. \`PRIVATE-RECEIPT.json\`: unsigned exact-file SHA-256/length inventory,
+   preserving source-free upstream original attention receipt digests.
+
+**Meaning:** the file order is chosen by a HUMAN operator and never
+establishes actual dates, identity or chronology. Fixed role categories
+are **proposals only**, never assignment, responsibility transfer,
+recipient dispatch or security findings. Source-free inputs contain no
+customer targets, secrets, original audit data or reviewer personal names.
+There is NO original assessment execution, real scan, consent, privilege
+grant, scheduling, external request or deployment.
+
+Native features 76–79 are deliberately **NOT** packaged as executable
+Python inside the browser-only software ZIP. Both original and new
+source paths stay owned by this existing integrated PR, not by other
+held companion PR owners. LightUp remains Incubate M3/M7 PLAN/LAB ONLY
+DRAFT/HOLD; all original CI, independent owner/security/privacy/browser
+reviews, #177/#182/#829 and separate authenticated current client and
+operator consent with revocation-at-use plus explicit HUMAN GO remain
+gates before main merge or any real assessment.
+
+
+
 ## 21 October · Native PRIVATE HUMAN Attention custody (console 76–77)
 
 **Delivered integration** of the existing [source-free HUMAN Attention browser](human-lab-attention-standalone.html)
