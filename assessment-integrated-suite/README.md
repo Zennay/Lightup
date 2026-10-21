@@ -1,6 +1,80 @@
 # LightUp integrated PRIVATE assessment handoff
 
 
+## 21 October · Native PRIVATE HUMAN Attention custody (console 76–77)
+
+**Delivered integration** of the existing [source-free HUMAN Attention browser](human-lab-attention-standalone.html)
+with the **original** saved, owner-private HUMAN Lab Route receipts from
+native console options 72–73. The product is [attention_receipt.py](attention_receipt.py)
+and its [interactive console companion](attention_receipt_console.py), both
+native-only, NOT included in the browser-software-only ZIP.
+
+Unlike a browser-only proposal, the native receiver opens **all original
+1–8 PRIVATE Lab Route receipt rooms** in the deliberate order selected by
+the operator. Each saved room is reopened by the existing original
+\`lab_route_handoff.reopen()\` function, including its strict original
+20-action schema and exact original input / generated output bytes.
+The 0600 \`LightUp-PRIVATE-HUMAN-Attention.json\` browser proposal is then
+admitted using duplicate-key-safe native JSON parsing and complete
+v2 exact-field admission:
+
+- It must match every native original source-free marker profile in the
+  same manually selected order, all 20 original action ordinals, every
+  last status and actual declared transition count.
+- It may contain only fixed role and follow-up enum values, bounded
+  original 0600 bytes and all literal false authority fields.
+- All input and output must live under owner-only 0700 directories,
+  outside the original checkout; the native output is a new exclusive
+  0700 PRIVATE room with five 0600 files including unchanged original
+  proposal bytes, canonical received JSON, complete CSV, scriptless
+  CSP-restricted original action HTML and an unsigned receipt.
+  No original source room is mutated.
+- Native **77** re-admits the same browser proposal, every original
+  native self-report receipt room and **every** saved output byte.
+  A missing, changed or unexpected file is HOLD. Neither successful
+  replay nor SHA-256 proves real actor identity, a genuine review,
+  security improvement or release permission.
+
+**Console use on an approved, local original checkout:** run
+\`python3 assessment-integrated-suite/console.py\` and select
+**76 (receive)** or **77 (reopen)**. Both prompt for manually ordered
+original 0700 receipt rooms, the original owner-private 0600 browser
+attention JSON, and output destination. Option 76 additionally
+requires the exact HUMAN confirmation
+\`RECEIVE HUMAN ATTENTION ONLY\`.
+
+For non-interactive, foreground local usage:
+
+\`\`\`bash
+python3 assessment-integrated-suite/attention_receipt.py receive \
+  --attention /PRIVATE/input/LightUp-PRIVATE-HUMAN-Attention.json \
+  --rooms /PRIVATE/original-route-receipt-1 /PRIVATE/original-route-receipt-2 \
+  --private-parent /PRIVATE --folder attention-receipt-1
+
+python3 assessment-integrated-suite/attention_receipt.py reopen \
+  --attention /PRIVATE/input/LightUp-PRIVATE-HUMAN-Attention.json \
+  --rooms /PRIVATE/original-route-receipt-1 /PRIVATE/original-route-receipt-2 \
+  --saved-room /PRIVATE/attention-receipt-1
+\`\`\`
+
+These commands are **illustrative local paths** and require actual
+previously completed 72/73 native receipt rooms. They do NOT execute
+network calls, targets, models, scanners, grants, assessments or dispatch.
+Return code 2 is deliberately the original REVIEW_ONLY acceptance,
+**not** PASS or approval; HOLD returns 3. The unsigned source-byte
+receipts establish only byte consistency of *untrusted HUMAN
+self-report* inputs, not authentic client/operator consent. The order
+of receipt rooms remains a HUMAN assumption, never proven chronology.
+
+**Release remains DRAFT/HOLD:** Notion Incubate M3/M7 PLAN/LAB ONLY;
+original exact-head hosted + permanent named VPS CI, source-owner and
+independent security/privacy/browser reviews, open #177/#182/#829,
+actually separately authenticated current client and operator
+consent with revocation at use, and explicit HUMAN GO are mandatory.
+No main merge or live work has been authorized.
+
+
+
 ## NEW · Source-free HUMAN Lab Attention Workboard (21 October 2026)
 
 **Complete offline product:** [one-file HUMAN Attention Workboard](human-lab-attention-standalone.html)
