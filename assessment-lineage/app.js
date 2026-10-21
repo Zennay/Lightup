@@ -214,7 +214,8 @@
   }
   async function read(file,max){
     admit(file instanceof File&&file.size>0&&file.size<=max);
-    const bytes=await file.arrayBuffer(),str=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    const bytes=await file.arrayBuffer(),str=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes);
+    if(str.charCodeAt(0)===0xfeff)throw Error("A leading UTF-8 BOM is not canonical for original source JSON.");
     admit(str.length>0&&str.length<=max);
     const result=parse(str),digest=await hashOriginal(bytes);
     return {result,digest};
