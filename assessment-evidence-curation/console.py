@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Sixteen offline source-bound and local packet workflows in one user menu.
+Seventeen offline source-bound and local packet workflows in one user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -22,6 +22,7 @@ from packet_handoff import prepare as prepare_priority_handoff, reopen as reopen
 from priority_reply import receive as receive_priority_reply
 from priority_return_open import reopen as reopen_priority_return
 from priority_reconcile import reconcile as reconcile_original_priority
+from priority_inbox import join as join_priority_inbox
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -56,6 +57,8 @@ WORKFLOWS = {
            "already-produced full PRIVATE recipient HUMAN response folder"),
     "16": ("Reconcile one HUMAN priority reply with full current ORIGINAL PRIVATE source",
            "original lab/manifest/worksheet/selection, full curated package and HUMAN handoff"),
+    "17": ("Combine all detached PRIVATE HUMAN priority replies into one ORIGINAL CSV",
+           "full original lab and every separate priority/HUMAN reply pair, all-or-nothing"),
 }
 
 
@@ -151,6 +154,31 @@ def run_workflow(choice: str) -> None:
                                             returned, output)
         print("Original-source HUMAN priority rows checked: " + str(count) +
               "; NO verified remediation, recipient or consent")
+        return
+    if choice == "17":
+        source = ask_path("EXISTING full original lab source JSON")
+        manifest = ask_path("EXISTING original briefing manifest")
+        worksheet = ask_path("EXISTING original full HUMAN worksheet")
+        receipt = ask_path("EXISTING original selection receipt")
+        selection = ask_path("EXISTING complete HUMAN selection CSV")
+        curated = ask_path("EXISTING complete original PRIVATE curated packet")
+        n = input("Original nonempty HUMAN priority groups [1 / 2 / 3]: ").strip()
+        if n not in ("1", "2", "3"):
+            raise Hold("HOLD: invalid HUMAN priority group count")
+        handoffs = []
+        replies = []
+        for i in range(int(n)):
+            handoffs.append(ask_path("Original PRIVATE priority handoff " + str(i+1)))
+            replies.append(ask_path("Corresponding complete recipient HUMAN CSV " + str(i+1)))
+        output = ask_path("EXCLUSIVE NEW PRIVATE unified HUMAN inbox directory")
+        print("Requires ALL original nonempty priority groups, each ONCE, "
+              "and keeps EVERY original source selection row, even unanswered.")
+        if input("Enter exactly REVIEW ONLY to prepare PRIVATE CSV (NOT send): ") != "REVIEW ONLY":
+            raise Hold("Human declined original source HUMAN inbox")
+        count = join_priority_inbox(source, manifest, worksheet, receipt,
+                                    selection, curated, handoffs, replies, output)
+        print("PRIVATE original source HUMAN selected rows preserved: " + str(count) +
+              "; nothing authenticated, sent, tested or granted")
         return
     source = ask_path("EXISTING original lab source JSON")
     manifest = ask_path("EXISTING original PRIVATE source briefing manifest JSON")
@@ -256,7 +284,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–16]: ").strip()
+        choice = input("PRIVATE workflow [0–17]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
