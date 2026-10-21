@@ -24,7 +24,8 @@ V2_SCHEMA = "lightup.private_assessment_masking_cues.v2"
 V3_SCHEMA = "lightup.private_assessment_masking_cues.v3"
 V4_SCHEMA = "lightup.private_assessment_masking_cues.v4"
 V5_SCHEMA = "lightup.private_assessment_masking_cues.v5"
-SCHEMA = "lightup.private_assessment_masking_cues.v6"
+V6_SCHEMA = "lightup.private_assessment_masking_cues.v6"
+SCHEMA = "lightup.private_assessment_masking_cues.v7"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -56,6 +57,14 @@ V4_GROUPS = (("HTTP_OR_SHELL", V3_GROUPS[0][1] +
 GROUPS = (*V4_GROUPS[:2],
           ("STRUCTURED_CONFIG", V4_GROUPS[2][1] + ("[REDACTED_XML_VALUE]",)),
           V4_GROUPS[3])
+V6_GROUPS = GROUPS
+# V7 only extends the structured-count family; preserved originals v1-v6
+# always render and reopen with their historically fixed marker sets.
+GROUPS = (*V6_GROUPS[:2],
+          ("STRUCTURED_CONFIG", V6_GROUPS[2][1] +
+           ("[REDACTED_HAR_FORM_TEXT]",
+            "[REDACTED_HAR_EMBEDDED_JSON]")),
+          V6_GROUPS[3])
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
@@ -193,8 +202,11 @@ def reopen(original: str, cue_room: str) -> int:
     if stored_receipt == serialized_receipt(SCHEMA):
         derived = cues(rows)
         render_page = cue_page
+    elif stored_receipt == serialized_receipt(V6_SCHEMA):
+        derived = cues(rows, groups=V6_GROUPS)
+        render_page = cue_page
     elif stored_receipt == serialized_receipt(V5_SCHEMA):
-        derived = cues(rows, groups=GROUPS)
+        derived = cues(rows, groups=V6_GROUPS)
         render_page = cue_page_v5
     elif stored_receipt == serialized_receipt(V4_SCHEMA):
         render_page = cue_page_v5
