@@ -212,7 +212,9 @@ booleans and explicit false chronology/source/consent/authorization/release
 fields. The actual question and next-action contents, board SHA and filenames
 are omitted. "Prior/current" is manually supplied order, not authenticated
 chronology. Inputs are read-only; this report is unsigned and non-authorizing.
-The directory must be a new/existing owner-only 0700 location and the three
+The destination must be an **empty existing owner-owned 0700 directory**.
+Mixed existing files are rejected before publication, ensuring the new report
+can later pass the full-inventory read-only reopening contract. The three
 report names must not already exist.
 
 
