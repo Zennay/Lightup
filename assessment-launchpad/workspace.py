@@ -96,7 +96,7 @@ def render_home(count, digest):
         "<a href='human-routing/lightup-lab-human-routing-private.html'>"
         "Open role-ordered HUMAN routing desk</a>"
         "<p><small>Contains PRIVATE endpoint URLs and HUMAN notes. "
-        "Create later filtered exports through routing.py after updated HUMAN rounds."</small></p></section>"
+        "Create later filtered exports through routing.py after updated HUMAN rounds.</small></p></section>"
         "<section><h2>5 · Source-free HUMAN counts</h2>"
         "<a href='human-round-01/lightup-lab-human-counts.json'>"
         "Open low-detail counts JSON</a>"
