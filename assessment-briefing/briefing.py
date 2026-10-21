@@ -298,6 +298,7 @@ def publish_new(directory: str, artifacts: dict[str, bytes]) -> None:
     require(directory_name not in ("", ".", ".."))
     parent_fd = output_fd = -1
     created_directory = False
+    directory_identity: tuple[int, int] | None = None
     created_files: list[tuple[str, int | None, int | None]] = []
     try:
         parent_fd, _ = open_directory_nofollow(parent_path)
@@ -306,6 +307,7 @@ def publish_new(directory: str, artifacts: dict[str, bytes]) -> None:
         output_fd = os.open(directory_name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW |
                             getattr(os, "O_CLOEXEC", 0), dir_fd=parent_fd)
         folder = os.fstat(output_fd)
+        directory_identity = (folder.st_dev, folder.st_ino)
         require(stat.S_ISDIR(folder.st_mode) and folder.st_uid == os.getuid())
         require(stat.S_IMODE(folder.st_mode) == 0o700)
         for name, data in artifacts.items():
@@ -342,10 +344,13 @@ def publish_new(directory: str, artifacts: dict[str, bytes]) -> None:
                 os.fsync(output_fd)
             except OSError:
                 pass
-        if created_directory and parent_fd >= 0:
+        if created_directory and parent_fd >= 0 and directory_identity is not None:
             try:
-                os.rmdir(directory_name, dir_fd=parent_fd)
-                os.fsync(parent_fd)
+                current = os.stat(directory_name, dir_fd=parent_fd, follow_symlinks=False)
+                if (stat.S_ISDIR(current.st_mode) and
+                        (current.st_dev, current.st_ino) == directory_identity):
+                    os.rmdir(directory_name, dir_fd=parent_fd)
+                    os.fsync(parent_fd)
             except OSError:
                 pass
         if isinstance(error, (OSError, Hold, ValueError, TypeError, OverflowError, MemoryError)):
