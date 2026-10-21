@@ -38,6 +38,7 @@ CSV = "PRIVATE-ROUTE.csv"
 HTML = "OPEN-PRIVATE.html"
 RECEIPT_FILE = "PRIVATE-RECEIPT.json"
 MAX_INPUT = 24576
+SOURCE_CHECKOUT = Path(__file__).resolve().parent.parent
 
 class Hold(Exception):
     """Reject entire owner-private operation; never issue a partial receipt."""
@@ -65,6 +66,12 @@ def _private_dir(path: Path) -> Path:
     if not path.is_absolute():
         raise Hold("HOLD: choose an absolute owner-private directory")
     try:
+        # Never admit through an ancestor symlink, or store private material
+        # inside the checked-out source tree where it might be committed.
+        resolved = path.resolve(strict=True)
+        if (resolved != path or resolved == SOURCE_CHECKOUT
+                or SOURCE_CHECKOUT in resolved.parents):
+            raise Hold("HOLD: owner-private room cannot be in checkout or via link")
         meta = path.lstat()
     except OSError:
         raise Hold("HOLD: owner-private directory is absent") from None
