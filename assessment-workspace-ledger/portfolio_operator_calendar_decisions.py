@@ -293,7 +293,20 @@ def run(args):
         write_private(root, "PRIVATE-HUMAN-calendar-decision-studio.html", browser)
         if args.mode == "prepare":
             write_private(root, "HUMAN-calendar-decision-template.csv", chosen_csv)
-            write_private(root, "OPEN-PRIVATE.html", counts_html(items, versions))
+            # Review original HUMAN alternatives BEFORE entering any decisions.
+            # Original private questions are reduced to disagreement Booleans.
+            local_defaults = receive_csv(chosen_csv, items, sha)
+            folders = []
+            for owner in owners:
+                positions = [i for i, row in enumerate(items)
+                             if row["original_proposed_human_owner_label"] == owner]
+                room = new_private(root)
+                write_private(room, "PRIVATE-HUMAN-owner-calendar-decisions.html",
+                              owner_html(owner, [items[i] for i in positions],
+                                         [local_defaults[i] for i in positions], len(versions)))
+                folders.append(Path(room).name)
+            write_private(root, "OPEN-PRIVATE.html",
+                          counts_html(items, versions, local_defaults, folders))
         else:
             write_private(root, "PRIVATE-HUMAN-decision-original.csv", chosen_csv)
             write_private(root, "PRIVATE-HUMAN-decision-receipt.json", canonical(

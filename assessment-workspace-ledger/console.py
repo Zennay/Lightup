@@ -53,6 +53,7 @@ import portfolio_operator_calendar_history
 import portfolio_operator_calendar_continuity
 import portfolio_operator_calendar_decisions
 import portfolio_operator_calendar_decision_studio
+import portfolio_operator_calendar_decision_handoff
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -126,6 +127,7 @@ MENU = (
     ("63", "Native-receive complete original-bound HUMAN calendar decision CSV"),
     ("64", "Build portable offline PRIVATE HUMAN calendar decision browser Studio"),
     ("65", "Read-only reopen complete original HUMAN calendar decision receipt"),
+    ("66", "Convert exact completed HUMAN decisions to a new unreviewed calendar DRAFT"),
     ("0", "Exit"),
 )
 
@@ -274,6 +276,27 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "66":
+        receipts, plans = [], []
+        print("Choose the EXACT original calendar receipt/CSV rounds used in the HUMAN decision.")
+        while len(receipts) < 8:
+            packet = prompt("Original PRIVATE-HUMAN-proposed-calendar.json " +
+                            str(len(receipts) + 1), required=len(receipts) < 2)
+            if not packet:
+                break
+            receipts.append(packet)
+            plans.append(prompt("Matching ORIGINAL complete HUMAN calendar CSV"))
+        return portfolio_operator_calendar_decision_handoff.run(argparse.Namespace(
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
+            followup=prompt("Original PRIVATE-HUMAN-operator-followup.json"),
+            operator_csv=prompt("Matching original complete HUMAN operator follow-up CSV"),
+            calendar_receipts=receipts,
+            proposed_csvs=plans,
+            decisions_csv=prompt("Original complete PRIVATE-HUMAN-decision-original.csv"),
+            decision_receipt=prompt("Matching original PRIVATE-HUMAN-decision-receipt.json"),
+            private_parent=private_parent(),
         ))
     if action == "64":
         return portfolio_operator_calendar_decision_studio.build(argparse.Namespace(
