@@ -74,5 +74,8 @@ candidate aggregate metrics, the selected pair numeric deltas and original
 adverse-flag crossover. It never exports source case IDs, source hashes,
 filenames, aliases, notes, targets or reviewer identities. A changed status,
 zero difference or proposed group is not proof of remediation, chronology,
-authorization, consent or release. If no compatible round comparison is
+authorization, consent or release. The changed-only round CSV is long-form:
+one row per changed anonymous case and manually selected round, including
+intermediate and reverted proposals, transition markers and false authority
+flags. If no compatible round comparison is
 loaded, the existing aggregate-only report is unchanged.
