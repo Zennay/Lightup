@@ -25,7 +25,8 @@ V3_SCHEMA = "lightup.private_assessment_masking_cues.v3"
 V4_SCHEMA = "lightup.private_assessment_masking_cues.v4"
 V5_SCHEMA = "lightup.private_assessment_masking_cues.v5"
 V6_SCHEMA = "lightup.private_assessment_masking_cues.v6"
-SCHEMA = "lightup.private_assessment_masking_cues.v7"
+V7_SCHEMA = "lightup.private_assessment_masking_cues.v7"
+SCHEMA = "lightup.private_assessment_masking_cues.v8"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -65,6 +66,13 @@ GROUPS = (*V6_GROUPS[:2],
            ("[REDACTED_HAR_FORM_TEXT]",
             "[REDACTED_HAR_EMBEDDED_JSON]")),
           V6_GROUPS[3])
+V7_GROUPS = GROUPS
+# V8 admits the new named multipart HAR form-data body marker only. Earlier
+# original reviewer receipts rederive their own exact historical cue set.
+GROUPS = (*V7_GROUPS[:2],
+          ("STRUCTURED_CONFIG", V7_GROUPS[2][1] +
+           ("[REDACTED_HAR_MULTIPART_TEXT]",)),
+          V7_GROUPS[3])
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
@@ -201,6 +209,9 @@ def reopen(original: str, cue_room: str) -> int:
                            ensure_ascii=False) + "\n").encode("utf-8")
     if stored_receipt == serialized_receipt(SCHEMA):
         derived = cues(rows)
+        render_page = cue_page
+    elif stored_receipt == serialized_receipt(V7_SCHEMA):
+        derived = cues(rows, groups=V7_GROUPS)
         render_page = cue_page
     elif stored_receipt == serialized_receipt(V6_SCHEMA):
         derived = cues(rows, groups=V6_GROUPS)
