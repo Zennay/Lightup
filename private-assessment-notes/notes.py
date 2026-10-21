@@ -227,7 +227,8 @@ def csv_document(rows: list[dict]) -> bytes:
 
 
 def prepare(inputs: list[str], parent_string: str,
-            include_masking_cues: bool = False) -> int:
+            include_masking_cues: bool = False,
+            created_room: list[Path] | None = None) -> int:
     if not 1 <= len(inputs) <= MAX_FILES:
         raise Hold("HOLD: choose 1-12 existing original PRIVATE text notes")
     parent = private_directory(parent_string)
@@ -313,6 +314,8 @@ def prepare(inputs: list[str], parent_string: str,
                  landing(len(rows), False,
                          include_masking_cues=include_masking_cues))
         ready = True
+        if created_room is not None:
+            created_room.append(kit)
         print("REVIEW_ONLY: local PRIVATE notes workroom created; credential masking is incomplete.")
         print("OPEN LOCALLY: " + str(kit / "OPEN-PRIVATE.html"))
         return 2

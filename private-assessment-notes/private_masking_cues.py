@@ -242,7 +242,8 @@ def cue_receipt(manifest_raw: bytes, sources: list[dict],
     }
 
 
-def create(original: str, private_parent: str) -> int:
+def create(original: str, private_parent: str,
+           created_room: list[Path] | None = None) -> int:
     kit = private_directory(original)
     # Original notes.py admission checks complete canonical source-bound
     # original slot identities and the actual masked content bytes.
@@ -274,6 +275,8 @@ def create(original: str, private_parent: str) -> int:
         from private_har_studio import render as render_har_studio
         file_new(output / "PRIVATE-HAR-STUDIO.html", render_har_studio(rows))
         ready = True
+        if created_room is not None:
+            created_room.append(output)
         print("REVIEW_ONLY: PRIVATE original masking-cue navigation created; NOT privacy proof")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-masking-cues.html"))
         return 2
