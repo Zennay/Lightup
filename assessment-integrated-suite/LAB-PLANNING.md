@@ -1,5 +1,48 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
+## One-file HUMAN Attention Workboard — no originals or task dispatch
+
+The new [portable offline attention workboard](human-lab-attention-standalone.html)
+accepts **1–8 self-reported HUMAN route JSONs** from the existing
+[standalone route desk](human-lab-route-standalone.html) or the original
+paired route editor. Inputs must be source-free, ≤24 KiB each, exactly
+the original 20 actions (52–71), strict marker enums, false authority
+flags and unique decoded JSON keys. The user-chosen report order does not
+establish time, provenance or authentic reviewers. Unknown claims HOLD
+before existing local state is replaced.
+
+A human may review phase-level needs-input/undiscussed/changed counts,
+filter particular original actions, and explicitly propose one of four
+fixed HUMAN follow-up categories and one of five fixed reviewer role
+categories for every original step. All proposals begin unclassified
+and unassigned. One confirmed bulk operation can propose requests
+for original input for only currently visible NEEDS_INPUT markers;
+**it never actually contacts anyone or changes native originals**.
+
+The app can save a complete local JSON, CSV or scriptless HTML
+containing all 20 original status/role/follow-up rows, even when filtered.
+No free-form customer data, target, source file, evidence, reviewer name,
+private path, network action, task assignment, approval, scan, consent,
+grant or dispatch enters the app. The bundled paired editor needs its
+adjacent JS; the standalone contains the same current original
+JavaScript protected by SHA-256-pinned CSP, and requires no adjacent
+asset. Original signed source authentication is not supplied.
+
+Native PRIVATE kit `suite.py` and portable `package_offline.py`
+expose both alternatives. The packager refuses the standalone source
+if it differs from the original HTML/JS before releasing any ZIP bytes.
+No signed software release or main/live approval is implied.
+
+The current phase remains **INCUBATE M3/M7 / PLAN-LAB ONLY /
+DRAFT-HOLD**. Original source-owner, independent security/privacy/browser
+review, exact-head hosted and registered named VPS CI,
+separate authenticated current client and operator consent with
+revocation-at-use, #177/#182/#829 and explicit HUMAN GO remain required.
+Do not infer native execution, completed remediation or authority from
+source-free discussion markers.
+
+
+
 ## Better offline HUMAN plan comparison and discussion filters
 
 The source-free Lab Route Desk now accepts a second *strictly
