@@ -113,16 +113,16 @@ LAB_STAGES: tuple[tuple[str, str, tuple[str, ...], str], ...] = (
 
 def lab_guide() -> None:
     """Explain original lab-to-HUMAN action sequence; never execute any of it."""
-    print("\\n=== Original LightUp LAB -> PRIVATE HUMAN review route ===")
+    print("\n=== Original LightUp LAB -> PRIVATE HUMAN review route ===")
     print("INCUBATE M3/M7 / REVIEW_ONLY / DRAFT/HOLD")
     print("This guide neither reads source nor implies that a stage is completed.")
     for title, prerequisite, ids, guidance in LAB_STAGES:
-        print("\\n" + title + " [" + " -> ".join(ids) + "]")
+        print("\n" + title + " [" + " -> ".join(ids) + "]")
         print("  Prerequisite: " + prerequisite)
         print("  " + guidance)
         for option in ids:
             print("  " + option + " · " + ACTIONS[option])
-    print("\\nChoose an explicit NUMBER from the console to run ONE local stage.")
+    print("\nChoose an explicit NUMBER from the console to run ONE local stage.")
     print("Retain 0700 owner rooms / 0600 originals, and re-admit exact source bytes.")
     print("No source validation here, no automatic scan, grants, consent, finalization,")
     print("recipient dispatch, security verdict or production release.")
