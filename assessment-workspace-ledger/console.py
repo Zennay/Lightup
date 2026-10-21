@@ -50,6 +50,7 @@ import portfolio_owner_change_history_studio
 import portfolio_operator_calendar
 import portfolio_operator_calendar_studio
 import portfolio_operator_calendar_history
+import portfolio_operator_calendar_continuity
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -118,6 +119,7 @@ MENU = (
     ("58", "Read-only reopen original HUMAN calendar CSV and private receipt"),
     ("59", "Build source-free portable PRIVATE HUMAN proposed-calendar browser Studio"),
     ("60", "Compare 2–8 original PRIVATE HUMAN proposed-calendar versions"),
+    ("61", "Start new original-bound HUMAN calendar round blank or explicitly carry proposals"),
     ("0", "Exit"),
 )
 
@@ -266,6 +268,21 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "61":
+        selected = prompt("Start next HUMAN-only calendar BLANK or CARRY prior proposals? blank/carry").lower()
+        if selected not in ("blank", "carry"):
+            ledger.reject("PRIVATE HOLD: explicit blank or carry required")
+        return portfolio_operator_calendar_continuity.run(argparse.Namespace(
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
+            followup=prompt("Original completed PRIVATE-HUMAN-operator-followup.json"),
+            operator_csv=prompt("Matching original operator HUMAN follow-up CSV"),
+            previous_csv=prompt("Original completed PRIVATE-HUMAN-proposed-calendar.csv"),
+            previous_receipt=prompt("Matching native original PRIVATE-HUMAN-proposed-calendar.json"),
+            reference_day=prompt("NEW explicit HUMAN reference day 20xx-mm-dd"),
+            mode=selected,
+            private_parent=private_parent(),
         ))
     if action == "60":
         receipts, plans = [], []

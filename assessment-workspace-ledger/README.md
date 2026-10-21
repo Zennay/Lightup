@@ -2157,3 +2157,39 @@ recipient identity, and repeated unchanged content does not prove
 independent authenticated HUMAN reviews. No actual schedule, consent,
 grant, scan, remediation, authorization, independent security review or
 release is created by this historical desk.
+
+### Exact original HUMAN next-round continuity (offline v53)
+
+Foreground **console 61** starts a new local HUMAN calendar draft from one
+**completed** original native calendar receipt and matching complete CSV,
+against the unchanged exact original owner inbox, history, completed operator
+follow-up and complete operator CSV. It never carries real work authorization,
+actual appointments, owner authentication, task state or verified remediation.
+
+The operator explicitly chooses **blank** (clear all proposed days, priorities
+to `unset`, questions empty) or **carry** (copy previous HUMAN proposals
+solely as an **unreviewed new draft**). Both options always preserve every
+original source slot, owner label and native original HUMAN stages unchanged.
+The user also selects a new comparison/reference day explicitly. No next
+round is automatically finalized or registered. The generated complete
+`HUMAN-proposed-calendar-NEXT-DRAFT.csv` must be opened, deliberately
+reviewed and received again via native console **57** to create any new
+completed original-source HUMAN calendar receipt.
+
+The native command, selecting paths manually:
+
+    python3 assessment-workspace-ledger/portfolio_operator_calendar_continuity.py \
+      --history /private/original-history.json \
+      --inbox /private/original-inbox.json \
+      --followup /private/original-operator-followup.json \
+      --operator-csv /private/original-operator-followup.csv \
+      --previous-csv /private/previous/PRIVATE-HUMAN-proposed-calendar.csv \
+      --previous-receipt /private/previous/PRIVATE-HUMAN-proposed-calendar.json \
+      --reference-day 2026-10-22 --mode blank --private-parent /private/output
+
+The resulting new 0700 private workroom contains only a full 0600 draft
+CSV, a separate unsigned 0600 HUMAN draft metadata receipt, and a count-only
+0600 HTML landing page with no owner names, source case IDs, input hashes or
+question texts. Previously completed HUMAN inputs remain intact. This is
+DRAFT/HOLD, NOT a signed chain of custody, actual assessment execution,
+approved security finding, consent, recipient identity or scheduled task.
