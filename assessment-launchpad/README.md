@@ -24,12 +24,13 @@ The CLI checks the Git blob hashes of the pinned original `cli.py`, `labrun.py`,
 
 The command requires an owner-owned input regular file with mode `0600`, no symlink/hard-link alias, bounded stable contents (16 KiB), and 1–16 distinct endpoints. The output directory must already exist, be owned by the current user and have mode `0700`. Outputs are exclusive no-overwrite files with mode `0600`; failed bundle publication removes newly created outputs.
 
-The output directory receives four private artifacts:
+The output directory receives five private artifacts:
 
 - `lightup-lab-targets.txt` — canonical one-URL-per-line manifest, suitable for the original CLI's `--targets-file` argument.
-- `lightup-lab-plan-receipt.json` — source-bound anonymous receipt with input/canonical manifest SHA-256, endpoint count, pinned original CLI/validator sources, and SHA-256 of the generated HTML/command; no endpoint values.
+- `lightup-lab-plan-receipt.json` — PRIVATE source-bound receipt with input/canonical manifest SHA-256, endpoint count, pinned original CLI/validator sources, and SHA-256 of the generated HTML/command; no endpoint values.
 - `lightup-lab-plan-handoff.html` — scriptless, CSP-pinned handoff showing the exact preview command, counts and private paths; endpoint values are not embedded.
 - `lightup-lab-preview-command.txt` — exact shell-quoted display-only command using `--preview-only`.
+- `lightup-lab-minimal-summary.json` — separate privacy-minimal, counts-only `REVIEW_ONLY` stakeholder handoff with no endpoint literals, source paths, source hashes or identifying records; local validator checks are not permission.
 
 The command is generated but **never executed**. A human may inspect it and, separately, run the existing CLI with `--preview-only`; that original mode validates the same input without running an assessment. The future preview output path is intentionally not created by the launchpad.
 
@@ -45,4 +46,6 @@ On the same verified PR checkout (and Python interpreter), re-open the generated
 python3 assessment-launchpad/launchpad.py --verify-output-dir ~/private-lab-launchpad-output
 ```
 
-Reopen demands the original four owner-owned single-link mode-0600 regular files in an owner-owned mode-0700 directory. It checks bounded stable bytes, the canonical manifest and ordinals, exact known receipt schema and literal-false authority flags, the pinned original CLI/scope sources, the stored HTML/command content hashes, and exact expected `--preview-only` command. It does not fetch outside the local workspace, run a subprocess, create an output file, authenticate the original source producer, verify client scope authority or prove that a target was assessed. The digest hashes are **unsigned consistency checks only**: an attacker controlling both payload and receipt could rewrite both. Mismatch fails closed with HOLD and no output.
+Reopen demands the original five owner-owned single-link mode-0600 regular files in an owner-owned mode-0700 directory. It checks bounded stable bytes, the canonical manifest and ordinals, exact known receipt schema and literal-false authority flags, the pinned original CLI/scope sources, the stored HTML/command content hashes, and exact expected `--preview-only` command. It does not fetch outside the local workspace, run a subprocess, create an output file, authenticate the original source producer, verify client scope authority or prove that a target was assessed. The digest hashes are **unsigned consistency checks only**: an attacker controlling both payload and receipt could rewrite both. Mismatch fails closed with HOLD and no output.
+
+The separate minimal summary is deterministically reconstructed during reopen; any extra source identifiers, paths, hashes, or edited authority statements make the bundle fail closed. It is a low-detail planning artifact, **not proof of confidentiality, anonymous identity, validated scope or assessment**. Its endpoint count may still be sensitive in a small engagement.

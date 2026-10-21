@@ -234,6 +234,7 @@ def verify_existing(directory):
             ("lightup-lab-plan-receipt.json", 16_384),
             ("lightup-lab-plan-handoff.html", 65_536),
             ("lightup-lab-preview-command.txt", 16_384),
+            ("lightup-lab-minimal-summary.json", 4096),
         )
         items = {name: read_private_bundle_item(output_fd, name, limit)
                  for name, limit in names}
@@ -297,6 +298,12 @@ def verify_existing(directory):
         raise Hold("stored endpoint count or slot inventory changed")
     if validate_endpoints(endpoints) != endpoints:
         raise Hold("pinned original source admission changed")
+    if any(type(slot) is not int for slot in receipt["endpoint_slots"]):
+        raise Hold("stored slot inventory contains non-integer identifiers")
+    expected_summary = (json.dumps(privacy_minimal_summary(len(endpoints)),
+                                   indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    if items["lightup-lab-minimal-summary.json"] != expected_summary:
+        raise Hold("privacy-minimal handoff was modified or extended with source fields")
     command = exact_preview_command(absolute) + "\n"
     if items["lightup-lab-preview-command.txt"] != command.encode("utf-8"):
         raise Hold("private display-only preview command changed")
@@ -305,6 +312,24 @@ def verify_existing(directory):
     print("LAB_LAUNCHPAD_RECEIPT_REOPENED endpoint_count=" + str(len(endpoints)) +
           " — UNSIGNED LOCAL BYTE CONSISTENCY ONLY; NOT AUTHORIZED; COMMAND NOT EXECUTED")
     return 0
+
+def privacy_minimal_summary(count):
+    """Separate source-free planning counts for explicit low-detail handoff."""
+    return {
+        "schema": "lightup.assessment_launchpad_minimal_summary.v1",
+        "status": "REVIEW_ONLY",
+        "source_reported_endpoint_count": count,
+        "endpoint_values_embedded": False,
+        "source_path_embedded": False,
+        "source_hash_embedded": False,
+        "customer_or_operator_identity_authenticated": False,
+        "original_scope_validator_applied_locally": True,
+        "preview_command_executed": False,
+        "preview_result_available": False,
+        "planning_not_permission": True,
+        **{key: False for key in FLAGS},
+    }
+
 
 def run(args):
     source_path, source_raw, endpoints = open_private_input(args.manifest)
@@ -361,6 +386,9 @@ def run(args):
              (json.dumps(receipt, ensure_ascii=False, indent=2) + "\n").encode("utf-8")),
             ("lightup-lab-plan-handoff.html", html_bytes),
             ("lightup-lab-preview-command.txt", (command + "\n").encode("utf-8")),
+            ("lightup-lab-minimal-summary.json",
+             (json.dumps(privacy_minimal_summary(len(admitted)), indent=2, ensure_ascii=False) +
+              "\n").encode("utf-8")),
         ]
         publish_bundle(output_fd, artifacts)
     finally:
