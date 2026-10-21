@@ -12,6 +12,15 @@
 <label class="upload" for="source">Open original PRIVATE.json <input id="source" type="file" accept=".json,application/json"></label>
 <p id="message" role="status" aria-live="polite"></p></section>
 <section id="workspace" hidden aria-labelledby="desk"><h2 id="desk">2. Triage source-declared findings</h2>
+<div class="run-context" aria-labelledby="run-context-title">
+<h3 id="run-context-title">Source-reported run context</h3>
+<p class="note">The figures below are declarations from the selected PRIVATE artifact, not verified assessment results. No target URLs, run IDs, model bindings or raw denial reasons are shown here.</p>
+<div id="run-summary" class="run-metrics" aria-live="polite"></div>
+<div class="table-wrap"><table><caption>Declared capability coverage (not verified)</caption>
+<thead><tr><th scope="col">Capability domain</th><th scope="col">Source status</th></tr></thead>
+<tbody id="coverage-domains"></tbody></table></div>
+<p id="run-caution" class="note" role="status" aria-live="polite"></p>
+</div>
 <p id="stats" class="stats"></p><p id="progress"></p>
 <div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><label for="search">Find source title/check or HUMAN note
 <input id="search" type="search" maxlength="180" autocomplete="off" placeholder="Local private text search"></label>

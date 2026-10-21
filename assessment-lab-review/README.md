@@ -2,6 +2,10 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Isolated browser-only companion to the **unchanged** original multi-endpoint lab assessment in [draft #1610](https://github.com/Zennay/Lightup/pull/1610), pinned source 74e865201c8a4270e404046ef3447eb7f190edfb. Tracks [#1637](https://github.com/Zennay/Lightup/issues/1637).
 
+## Source-reported run overview
+
+The Operator Review Desk now shows a compact local run-context panel after admission: declared tool calls, denials and elevation requests, selected evaluation counts, and capability coverage. The import boundary checks the original coverage schema, recomputes status counts, binds the coverage metrics to those counts, and validates bounded plan arguments and elevation records before the panel renders. These are still untrusted source declarations; no target, run identity, finding, coverage or remediation is authenticated. Raw denial reasons and target URLs are deliberately not copied into the overview.
+
 ## Open immediately
 
 Open **[standalone.html](standalone.html)** as a local file. The [complete two-app offline ZIP](LightUp-Private-Lab-Review-Kit.zip) includes Operator Review, a separate Recipient Reply Desk, START-HERE and an unsigned file-integrity manifest. It is one complete HTML file with inline JavaScript/CSS and SHA-256 Content Security Policy (connect-src 'none'). The operator source is index.html + app.js + collaboration.js + style.css; the separate recipient source is team-reply.html + team-reply.js + style.css. Rebuild the portable file with the standard-library command: **python3 assessment-lab-review/build_standalone.py**.

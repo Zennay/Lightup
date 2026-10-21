@@ -6,6 +6,7 @@ const FLAGS=["authorized","consent_verified","dispatch_allowed","release_allowed
 const STAGES=["needs_review","discussing","documented","blocked"];
 const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
+const COVERAGE_STATUSES=["assessed","partially_assessed","not_applicable","not_authorized","unknown"];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",searchTerm="",sortMode="source",lastBulkUndo=null;
 const selectedForHandoff=new Set();
@@ -78,6 +79,39 @@ function admitEvaluation(record,runId,scenarioId){
  require_(Math.abs(m.false_positive_rate-expected)<=1e-8);
 }
 
+
+function boundedPlanValue(value,depth=0,budget={nodes:0}){
+ if(++budget.nodes>2048||depth>6)return false;
+ if(value===null||typeof value==="boolean")return true;
+ if(typeof value==="number")return Number.isFinite(value)&&Math.abs(value)<=1e12;
+ if(typeof value==="string")return validText(value,2048);
+ if(Array.isArray(value))return value.length<=64&&value.every(v=>boundedPlanValue(v,depth+1,budget));
+ if(obj(value)){
+  const keys=Object.keys(value);
+  return keys.length<=64&&keys.every(k=>validText(k,256)&&boundedPlanValue(value[k],depth+1,budget));
+ }
+ return false;
+}
+function admitCoverage(value){
+ require_(exact(value,["domains","counts","clean_bill_of_health","note"])&&obj(value.domains));
+ const entries=Object.entries(value.domains);
+ require_(entries.length<=256);
+ const derived=Object.fromEntries(COVERAGE_STATUSES.map(s=>[s,0]));
+ for(const [domain,status] of entries){
+  require_(validText(domain,256)&&domain.length>0&&COVERAGE_STATUSES.includes(status));
+  derived[status]++;
+ }
+ require_(exact(value.counts,COVERAGE_STATUSES));
+ for(const status of COVERAGE_STATUSES){
+  require_(Number.isSafeInteger(value.counts[status])&&value.counts[status]===derived[status]);
+ }
+ const materiallyUnknown=derived.unknown>derived.assessed+derived.partially_assessed;
+ const expectedNote=materiallyUnknown?
+  "coverage is materially unknown; zero findings must not be read as a clean bill of health":"";
+ require_(value.clean_bill_of_health===(materiallyUnknown?false:null)&&value.note===expectedNote);
+ return derived;
+}
+
 function admit(x){
  require_(obj(x) && !Object.hasOwn(x,"mode") &&
   (Object.keys(x).sort().join(",")===[
@@ -92,21 +126,31 @@ function admit(x){
  require_(Array.isArray(x.findings)&&x.findings.length<=MAX_ROWS);
  require_(Array.isArray(x.plan)&&x.plan.length<=512 && Array.isArray(x.denied)&&x.denied.length<=512 &&
   Array.isArray(x.elevation_requests)&&x.elevation_requests.length<=512);
- require_(obj(x.coverage)&&obj(x.evaluation)&&validText(x.report_markdown,MAX_BYTES));
+ require_(obj(x.evaluation)&&validText(x.report_markdown,MAX_BYTES));
+ const coverageCounts=admitCoverage(x.coverage);
  admitEvaluation(x.evaluation,x.run_id,x.scenario_id);
+ require_(x.evaluation.metrics.coverage_assessed===coverageCounts.assessed&&
+  x.evaluation.metrics.coverage_unknown===coverageCounts.unknown);
+ require_(Array.isArray(x.elevation_requests)&&x.elevation_requests.length<=512&&
+  x.elevation_requests.every(item=>validText(item,8192)));
  for(const call of x.plan){
   require_(exact(call,["tool_id","asset","arguments"])&&
-   validText(call.tool_id,256)&&validText(call.asset,2048)&&obj(call.arguments)&&
-   Object.keys(call.arguments).length<=64);
+   validText(call.tool_id,256)&&validText(call.asset,2048)&&x.targets.includes(call.asset)&&
+   obj(call.arguments)&&Object.keys(call.arguments).length<=64&&boundedPlanValue(call.arguments));
  }
  for(const denial of x.denied){
   require_(exact(denial,["tool_id","reason"])&&validText(denial.tool_id,256)&&
-   validText(denial.reason,8192));
+   validText(denial.reason,8192)&&x.plan.some(call=>call.tool_id===denial.tool_id));
  }
  if(Object.hasOwn(x,"benchmark_case")){
-  require_(exact(x.benchmark_case,["record","context"])&&obj(x.benchmark_case.record)&&obj(x.benchmark_case.context));
-  require_(x.benchmark_case.context.is_lab===true&&x.benchmark_case.context.authorization===null&&
-   x.benchmark_case.context.run_id===x.run_id);
+  require_(exact(x.benchmark_case,["record","context"])&&obj(x.benchmark_case.record)&&
+   exact(x.benchmark_case.context,["run_id","client_id","engagement_id","mode","approved_risk","authorization","is_lab","created_at"]));
+  const context=x.benchmark_case.context;
+  require_(context.is_lab===true&&context.authorization===null&&context.run_id===x.run_id&&
+   validText(context.run_id,256)&&validText(context.mode,128)&&validText(context.approved_risk,128)&&
+   validText(context.created_at,128)&&
+   (context.client_id===null||validText(context.client_id,256))&&
+   (context.engagement_id===null||validText(context.engagement_id,256)));
   admitEvaluation(x.benchmark_case.record,x.run_id,x.scenario_id);
   require_(JSON.stringify(x.benchmark_case.record)===JSON.stringify(x.evaluation));
  }
@@ -172,6 +216,33 @@ function buildEndpointFilter(){
  const unmatched=el("option","Unmatched source-reported assets");
  unmatched.value="endpoint:0";group.append(unmatched);select.append(group);
 }
+
+function renderRunContext(){
+ const m=source.evaluation.metrics,c=source.coverage;
+ const cards=[
+  ["Tool calls (source-reported)",m.tool_calls],
+  ["Policy denials (source-reported)",source.denied.length],
+  ["Elevation requests (source-reported)",source.elevation_requests.length],
+  ["Coverage assessed (declared)",c.counts.assessed],
+  ["Coverage unknown (declared)",c.counts.unknown],
+  ["Valid / invalid / missed",m.valid_findings+" / "+m.invalid_findings+" / "+m.missed_findings],
+  ["Runtime (source-reported)",m.runtime_seconds+" s"],
+  ["Human interventions (declared)",m.human_interventions]
+ ];
+ const host=$("run-summary");host.replaceChildren();
+ for(const [label,value] of cards){
+  const card=el("div",undefined,"run-metric");
+  card.append(el("span",label),el("strong",String(value)));host.append(card);
+ }
+ const body=$("coverage-domains");body.replaceChildren();
+ for(const [domain,status] of Object.entries(c.domains).sort((a,b)=>a[0].localeCompare(b[0]))){
+  const tr=document.createElement("tr");cell(tr,domain);cell(tr,status);body.append(tr);
+ }
+ $("run-caution").textContent=c.clean_bill_of_health===false?
+  "Source coverage note: "+c.note+" This remains an unverified source claim; this desk does not produce a clean bill of health.":
+  "The source reports no materially unknown coverage. This desk still does not verify coverage, findings, remediation or authorization.";
+}
+
 function updateSummary(){
  const sev=Object.fromEntries(SEVERITIES.map(s=>[s,0]));
  source.findings.forEach(f=>sev[f.severity]++);
@@ -270,7 +341,7 @@ async function importSource(file){
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
- source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();
+ source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();renderRunContext();
  filter="";searchTerm="";sortMode="source";$("filter").value="";
  $("search").value="";$("sort").value="source";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
@@ -382,7 +453,7 @@ $("aggregate").addEventListener("click",()=>{if(!source)return;
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
  source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();
- $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
+ $("workspace").hidden=true;$("run-summary").replaceChildren();$("coverage-domains").replaceChildren();$("stats").textContent="";$("progress").textContent="";$("shown").textContent="";status("All in-memory private workspace data discarded.");});
 $("collab-select-visible").addEventListener("click",()=>{
  if(!source)return;
  const ids=visibleOrdinals().map(i=>i+1);
