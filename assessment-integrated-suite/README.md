@@ -1,5 +1,62 @@
 # LightUp integrated PRIVATE assessment handoff
 
+## 21 October · Explicit HUMAN continuation from original Attention revisions (80–81)
+
+The complete new original-source-bound product is [attention_decision.py](attention_decision.py),
+with interactive console companion [attention_decision_console.py](attention_decision_console.py).
+It lets an operator explicitly select the proposed role and proposed HUMAN follow-up
+for every one of the twenty original actions from **independently reopened** original
+HUMAN Attention revision receipts (not from unauthenticated browser-only drafts).
+
+**Procedure:** First prepare a full original PRIVATE revision portfolio with native
+action **78**. Copy its `PRIVATE-EDITABLE-HUMAN-CHOICES.csv` to a separate NEW owner-private
+0600 input file, outside the saved portfolio, and edit the two selection-number
+columns (role_from_revision and followup_from_revision). Both fields start at
+**0 = WITHHOLD**, producing UNASSIGNED / UNCLASSIFIED; an explicit selected
+number 1–8 copies ONLY the corresponding fixed HUMAN proposal category
+from that declared revision. Native **80** reopens the original 1–8
+72/73 Lab Route receipts, 2–8 original 76/77 HUMAN Attention receipts,
+and the original 78 portfolio. It then re-admits the strict edited
+twenty-row original-action CSV and creates a separate 0700 PRIVATE output
+room with six 0600 files: original edited choices, new browser-compatible
+full v2 source-free HUMAN draft, selected-choice CSV, scriptless offline
+HTML summary, anonymous decision counts JSON and unsigned SHA file receipt.
+
+Native **81** reopens the same original source receipts and exact saved
+HUMAN output bytes. The new source-free v2 proposal can be opened
+in the existing [HUMAN Attention Workboard](human-lab-attention-standalone.html)
+after the user reloads the same original source-free discussion rounds
+in the same selected order and confirms the import.
+
+Example foreground native CLI for an approved offline local checkout:
+
+```bash
+python3 assessment-integrated-suite/attention_decision.py create \
+  --route-rooms /PRIVATE/original-route-1 /PRIVATE/original-route-2 \
+  --attention-rooms /PRIVATE/attention-receipt-1 /PRIVATE/attention-receipt-2 \
+  --history-room /PRIVATE/attention-revision-portfolio-1 \
+  --edited-choices /PRIVATE/new-input/HUMAN-choices.csv \
+  --private-parent /PRIVATE --folder human-continuation-1
+
+python3 assessment-integrated-suite/attention_decision.py reopen \
+  --route-rooms /PRIVATE/original-route-1 /PRIVATE/original-route-2 \
+  --attention-rooms /PRIVATE/attention-receipt-1 /PRIVATE/attention-receipt-2 \
+  --history-room /PRIVATE/attention-revision-portfolio-1 \
+  --edited-choices /PRIVATE/new-input/HUMAN-choices.csv \
+  --saved-room /PRIVATE/human-continuation-1
+```
+
+This operation creates only local HUMAN *proposals*. No actual recipient,
+role assignment, execution, scanning, grant, client approval, finding,
+verified identity, transmission or deployment is created. The original
+M3/M7 Incubate / PLAN-LAB ONLY / DRAFT-HOLD, source-owner and independent
+security/privacy/browser review, permanent named VPS and hosted exact-head
+CI, #177/#182/#829, separately current authenticated client and operator
+consent with revocation-at-use, and explicit HUMAN GO remain mandatory
+before any main merge or live use. Native 80/81 are not shipped in the
+browser-only software ZIP.
+
+
 
 ## 21 October · Complete native HUMAN Attention revision portfolio (console 78–79)
 
@@ -39,7 +96,7 @@ python3 assessment-integrated-suite/attention_history.py reopen \
   --saved-room /PRIVATE/attention-revision-portfolio-1
 \`\`\`
 
-**Six new directly usable output files** in one PRIVATE 0700 room:
+**Seven new directly usable output files** in one PRIVATE 0700 room:
 
 1. \`OPEN-PRIVATE.html\`: scriptless, local interactive-free readable
    portfolio showing all original five HUMAN stages, the last
@@ -55,7 +112,11 @@ python3 assessment-integrated-suite/attention_history.py reopen \
    v2 proposal bytes from the **last manually selected** attention receipt.
    This can be re-opened in the existing [offline Attention Workboard](human-lab-attention-standalone.html)
    after selecting the same original 1–8 source-free HUMAN discussion reports.
-6. \`PRIVATE-RECEIPT.json\`: unsigned exact-file SHA-256/length inventory,
+6. \`PRIVATE-EDITABLE-HUMAN-CHOICES.csv\`: a 20-row, withhold-by-default
+   selection worksheet for explicit role/follow-up choices (both initially
+   0). Copy it into NEW 0600 private input OUTSIDE the saved original
+   receipt before editing.
+7. \`PRIVATE-RECEIPT.json\`: unsigned exact-file SHA-256/length inventory,
    preserving source-free upstream original attention receipt digests.
 
 **Meaning:** the file order is chosen by a HUMAN operator and never
@@ -66,7 +127,7 @@ customer targets, secrets, original audit data or reviewer personal names.
 There is NO original assessment execution, real scan, consent, privilege
 grant, scheduling, external request or deployment.
 
-Native features 76–79 are deliberately **NOT** packaged as executable
+Native features 76–81 are deliberately **NOT** packaged as executable
 Python inside the browser-only software ZIP. Both original and new
 source paths stay owned by this existing integrated PR, not by other
 held companion PR owners. LightUp remains Incubate M3/M7 PLAN/LAB ONLY
