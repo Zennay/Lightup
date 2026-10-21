@@ -292,3 +292,19 @@ self-reported group name that says '(unassigned)'. The private comparison
 table and changed-only CSV include only the four intended visible fields;
 the exact opaque group key is used solely within memory for unambiguous
 selection and never added as an accidental extra export column.
+
+
+### Review-only conflict proposal handoff
+
+The group-aware conflict desk can export its exact currently prepared
+32-row-or-fewer original HUMAN ordinal remapping as a **PRIVATE local
+CSV**. It includes only anonymous source ordinal, self-reported HUMAN
+group, old/new local reminder dates and times, duration and explicit
+REVIEW_ONLY_NOT_APPLIED status. The export requires HUMAN confirmation,
+does not apply or dispatch an appointment, and refuses stale input.
+Group quota lookups and local occupancy are also cached per original
+appointment search; each day within the 90-day proposal horizon no
+longer recomputes the entire workroom's original event intervals.
+Original blocked-stage conflicts display the precise ordinal instead
+of attempting any automatic rescheduling. No original source, risk,
+consent or live-calendar verification is inferred.

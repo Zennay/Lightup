@@ -206,6 +206,7 @@
     if(conflictProposal && (capacityEditorDirty ||
       conflictProposal.fingerprint!==workroomFingerprint()))conflictProposal=null;
     $("applyConflictResolution").disabled=!conflictProposal;
+    $("exportConflictProposal").disabled=!conflictProposal;
     if(!conflictProposal){
       $("conflictPreviewSummary").textContent="No valid source-bound group-aware HUMAN conflict proposal prepared.";
       return;
@@ -239,13 +240,26 @@
         reserved.push(event);continue;
       }
       if(proposed.size>=32)break;
-      hold(row && row.stage!=="blocked");
+      hold(row && row.ordinal===event.ordinal);
+      if(row.stage==="blocked"){
+        conflictProposal=null;renderConflictPreview();
+        inform("No automated local HUMAN conflict change for original #"+event.ordinal+
+          ": its original HUMAN stage is blocked. Escalate this appointment to a human reviewer; all other reminders remain unchanged.",true);
+        return;
+      }
       const rule=capacityRules.get(row.group)||capacityDefaultRule();
       const start=eventDate(previous.day<today?today:previous.day,"12:00");
       const startMinute=Math.ceil((Number(rule.start.slice(0,2))*60+
         Number(rule.start.slice(3,5)))/15)*15;
       const endMinute=Number(rule.end.slice(0,2))*60+
         Number(rule.end.slice(3,5))-Number(previous.duration);
+      const groupCounts=new Map();
+      for(const candidate of items){
+        const slot=projected.get(candidate.ordinal);
+        if(candidate.ordinal===event.ordinal || candidate.group!==row.group || !slot)continue;
+        groupCounts.set(slot.day,(groupCounts.get(slot.day)||0)+1);
+      }
+      const busy=eventIntervals(projected).filter(e=>e.ordinal!==event.ordinal);
       let found=null;
       for(let offset=0;offset<90&&!found;offset++){
         const calendarDay=new Date(start.getTime());
@@ -253,10 +267,7 @@
         const day=dayString(calendarDay);
         if(!day.startsWith("20"))break;
         if(!rule.days.includes(calendarDay.getDay())||rule.blackouts.includes(day))continue;
-        const groupCount=items.filter(r=>r.ordinal!==event.ordinal && r.group===row.group &&
-          projected.get(r.ordinal)?.day===day).length;
-        if(groupCount>=rule.maximum)continue;
-        const busy=eventIntervals(projected).filter(e=>e.ordinal!==event.ordinal);
+        if((groupCounts.get(day)||0)>=rule.maximum)continue;
         for(let minute=startMinute;minute<=endMinute;minute+=15){
           const time=String(Math.floor(minute/60)).padStart(2,"0")+":"+
             String(minute%60).padStart(2,"0");
@@ -297,6 +308,26 @@
     $("conflictPreviewDetails").open=true;renderConflictPreview();
     inform("Prepared "+proposed.size+
       " complete group-aware HUMAN collision adjustments. Review ALL proposed ordinals and confirm to apply. No changes have been made.");
+  }
+  function exportConflictProposalCsv(){
+    hold(active && conflictProposal && !capacityEditorDirty &&
+      conflictProposal.fingerprint===workroomFingerprint());
+    const entries=Array.from(conflictProposal.slots);
+    hold(entries.length>0 && entries.length<=32);
+    if(!confirm("Download "+entries.length+" locally proposed PRIVATE HUMAN conflict changes? "+
+      "It contains ordinal identifiers, unverified group labels and proposed old/new times. "+
+      "Such information may be sensitive. No original security evidence, targets, authenticated consent "+
+      "or real external calendar states are included."))return;
+    hold(conflictProposal && conflictProposal.fingerprint===workroomFingerprint());
+    const safe=v=>unsafeText(String(v))?"'"+String(v):String(v);
+    const data=[["original_ordinal","human_group_unverified","previous_day","previous_time",
+      "proposed_day","proposed_time","duration_minutes","review_status"],...entries.map(([ordinal,slot])=>{
+      const old=plan.get(ordinal),row=items[ordinal-1];
+      return [String(ordinal),safe(row.group),old.day,old.time,slot.day,slot.time,
+        slot.duration,"REVIEW_ONLY_NOT_APPLIED"];
+    })];
+    download(makeCsv(data),"lightup-private-human-conflict-proposal.csv","text/csv;charset=utf-8");
+    inform("PRIVATE HUMAN proposed conflict changes downloaded; current appointment plan remains unchanged.");
   }
   function applyConflictResolution(){
     hold(active && conflictProposal && !capacityEditorDirty &&
@@ -2203,6 +2234,10 @@
   hook("applyConflictResolution","click",()=>{
     try{applyConflictResolution();}
     catch(_){conflictProposal=null;renderConflictPreview();inform("Conflict proposal is stale or invalid; no partial HUMAN edits applied.",true);}
+  });
+  hook("exportConflictProposal","click",()=>{
+    try{exportConflictProposalCsv();}
+    catch(_){inform("PRIVATE original source-bound conflict proposal CSV refused (HOLD).",true);}
   });
   hook("discardConflictResolution","click",()=>{
     conflictProposal=null;renderConflictPreview();$("conflictPreviewDetails").open=false;
