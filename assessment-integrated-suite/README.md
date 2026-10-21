@@ -52,6 +52,20 @@ A refused import leaves any previous in-memory workboard intact.
    original steps remain in every complete export, and no freeform
    client/source data is ever loaded.
 
+**New: exact-marker-bound resume.** Complete JSON proposal exports now use
+`lightup.private.human-lab-attention.v2` and include source-free
+fixed-enum marker signatures of each operator-selected round. Open the
+**same 1–8 original source-free HUMAN route files in the same manually
+chosen order**, then use **Reopen source-matched HUMAN proposal (JSON)**.
+The browser strictly rejects unknown schema, duplicate decoded JSON keys,
+wrong original 20-row sequence, unknown reviewer/follow-up category,
+authority claims, changed round markers/transition counts or wrong
+source-free round count before applying any selections. Only after a
+HUMAN confirmation will all twenty role/follow-up proposals be restored
+as one in-memory operation. Legacy unsigned v1 proposals without these
+profiles are not silently promoted. This only checks fixed HUMAN marker
+continuity, not source file authenticity, actor identity or chronology.
+
 The role and follow-up selectors are **proposal annotations only**:
 unassigned/unclassified by default; no identity, real recipient,
 deadline, priority claim, assignment, notification, external request
