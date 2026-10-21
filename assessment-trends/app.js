@@ -1,0 +1,420 @@
+"use strict";
+/* LightUp Assessment Trends: offline, source-only, non-authorizing. */
+(() => {
+  const $=id=>document.getElementById(id);
+  const METRICS=["valid_findings","invalid_findings","missed_findings","coverage_assessed",
+    "coverage_unknown","scope_violations","policy_violations","human_interventions",
+    "tool_calls","evidence_quality","reproducibility","remediation_quality",
+    "retest_correctness","runtime_seconds","compute_cost_usd"];
+  const COUNTS=new Set(METRICS.slice(0,9));
+  const SCORES=new Set(METRICS.slice(9,13));
+  const HIGH=new Set(["valid_findings","coverage_assessed","evidence_quality",
+    "reproducibility","remediation_quality","retest_correctness"]);
+  const LOW=new Set(["invalid_findings","missed_findings","scope_violations","policy_violations"]);
+  const FLAGS=["authorized","consent_verified","dispatch_allowed","release_allowed"];
+  const MAX_FILE=262144;
+  let snapshots=[],scenarioIds=[],selectedScenario="",notes=new Map(),scratch=new Map(),fictional=false;
+
+  function admit(ok){if(!ok)throw Error("Invalid or incompatible source");}
+  function exact(v,keys){return v!==null&&typeof v==="object"&&!Array.isArray(v)&&
+    Object.keys(v).length===keys.length&&keys.every(k=>Object.prototype.hasOwnProperty.call(v,k));}
+  function finite(v){return typeof v==="number"&&Number.isFinite(v)&&!Object.is(v,-0);}
+  function approx(a,b){return Math.abs(a-b)<=Math.max(1,Math.abs(a),Math.abs(b))*1e-8;}
+  function ascii(v,min,max){return typeof v==="string"&&v.length>=min&&v.length<=max&&
+    v===v.trim()&&/^[\x20-\x7e]*$/.test(v);}
+  function sourceId(v){return ascii(v,1,256);}
+  function flags(v){return FLAGS.every(k=>v[k]===false);}
+  function strictJSON(raw){
+    let pos=0,nodes=0;
+    const ws=()=>{while(pos<raw.length&&[" ","\t","\r","\n"].includes(raw[pos]))pos++;};
+    function quoted(){
+      admit(raw[pos]==='"');const start=pos++;let escaped=false;
+      while(pos<raw.length){const c=raw[pos++];
+        if(c==='"'&&!escaped)return JSON.parse(raw.slice(start,pos));
+        if(c==="\\"&&!escaped)escaped=true;else escaped=false;
+      }admit(false);
+    }
+    function value(depth){
+      admit(depth<=28&&++nodes<=70000);ws();const c=raw[pos];
+      if(c==='"')return quoted();
+      if(c==="{"){
+        pos++;ws();const out=Object.create(null),seen=new Set();
+        if(raw[pos]==="}"){pos++;return out;}
+        for(;;){ws();const key=quoted();admit(!seen.has(key));seen.add(key);
+          ws();admit(raw[pos++]===":");out[key]=value(depth+1);ws();
+          if(raw[pos]==="}"){pos++;return out;}admit(raw[pos++]===",");
+        }
+      }
+      if(c==="["){
+        pos++;ws();const out=[];
+        if(raw[pos]==="]"){pos++;return out;}
+        for(;;){out.push(value(depth+1));admit(out.length<=70000);ws();
+          if(raw[pos]==="]"){pos++;return out;}admit(raw[pos++]===",");
+        }
+      }
+      for(const [token,val] of [["true",true],["false",false],["null",null]])
+        if(raw.startsWith(token,pos)){pos+=token.length;return val;}
+      const m=raw.slice(pos).match(/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/);
+      admit(!!m);pos+=m[0].length;const n=Number(m[0]);admit(finite(n));return n;
+    }
+    const result=value(0);ws();admit(pos===raw.length);return result;
+  }
+  function change(v){
+    admit(exact(v,["name","baseline","candidate","delta","regression"])&&
+      METRICS.includes(v.name)&&finite(v.baseline)&&finite(v.candidate)&&finite(v.delta)&&
+      v.baseline>=0&&v.candidate>=0&&typeof v.regression==="boolean"&&
+      approx(v.candidate-v.baseline,v.delta));
+    if(COUNTS.has(v.name))admit([v.baseline,v.candidate,v.delta].every(Number.isSafeInteger)&&
+      v.baseline<=1e9&&v.candidate<=1e9&&v.candidate-v.baseline===v.delta);
+    if(SCORES.has(v.name))admit(v.baseline<=1&&v.candidate<=1);
+    if(v.name==="runtime_seconds"||v.name==="compute_cost_usd")
+      admit(v.baseline<=1e12&&v.candidate<=1e12);
+    admit(v.regression===((HIGH.has(v.name)&&v.candidate<v.baseline)||
+      (LOW.has(v.name)&&v.candidate>v.baseline)));
+    return {baseline:v.baseline,candidate:v.candidate,delta:v.delta,regression:v.regression};
+  }
+  function parseReport(v){
+    admit(exact(v,["status","regressed_scenarios","comparisons",...FLAGS])&&flags(v)&&
+      (v.status==="HOLD"||v.status==="REVIEW_ONLY")&&Array.isArray(v.comparisons)&&
+      v.comparisons.length>=1&&v.comparisons.length<=64&&
+      Array.isArray(v.regressed_scenarios)&&v.regressed_scenarios.length<=64);
+    const cases=new Map(),ids=[];
+    for(const c of v.comparisons){
+      admit(exact(c,["scenario_id","status","regressions","changes"])&&
+        sourceId(c.scenario_id)&&!cases.has(c.scenario_id)&&
+        Array.isArray(c.regressions)&&Array.isArray(c.changes)&&
+        c.changes.length===METRICS.length&&c.regressions.length<=METRICS.length);
+      const metrics=new Map();
+      c.changes.forEach((item,i)=>{
+        admit(item!==null&&typeof item==="object"&&item.name===METRICS[i]&&!metrics.has(item.name));
+        metrics.set(item.name,change(item));
+      });
+      const adverse=METRICS.filter(name=>metrics.get(name).regression);
+      admit(c.regressions.length===adverse.length&&c.regressions.every((name,i)=>name===adverse[i])&&
+        c.status===(adverse.length?"HOLD":"REVIEW_ONLY"));
+      cases.set(c.scenario_id,{metrics,adverse});ids.push(c.scenario_id);
+    }
+    admit(ids.every((id,i)=>i===0||ids[i-1]<id));
+    const flagged=[...cases].filter(([,row])=>row.adverse.length).map(([id])=>id);
+    admit(v.regressed_scenarios.length===flagged.length&&
+      v.regressed_scenarios.every((id,i)=>id===flagged[i])&&
+      v.status===(flagged.length?"HOLD":"REVIEW_ONLY"));
+    return {status:v.status,cases,regressedScenarios:flagged,
+      regressionInstances:[...cases.values()].reduce((n,row)=>n+row.adverse.length,0)};
+  }
+  function harmonize(items){
+    admit(items.length>=3&&items.length<=12);
+    const ids=[...items[0].cases.keys()].sort();
+    const baseline=new Map();
+    for(const report of items){
+      const keys=[...report.cases.keys()].sort();
+      admit(keys.length===ids.length&&keys.every((id,i)=>id===ids[i]));
+      for(const id of ids)for(const name of METRICS){
+        const key=JSON.stringify([id,name]),value=report.cases.get(id).metrics.get(name).baseline;
+        if(baseline.has(key))admit(baseline.get(key)===value);else baseline.set(key,value);
+      }
+    }
+    return ids;
+  }
+  function family(name){
+    if(name==="scope_violations"||name==="policy_violations")return "Scope / policy";
+    if(["valid_findings","invalid_findings","missed_findings","coverage_assessed","coverage_unknown"].includes(name))
+      return "Findings / coverage";
+    if(SCORES.has(name))return "Evidence / scoring";
+    return "Operations / informational";
+  }
+  function noteKey(id,metric){return JSON.stringify([id,metric]);}
+  function currentId(){return scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];}
+  function slot(id){return scenarioIds.indexOf(id)+1;}
+  function fmt(n){return Number(n).toLocaleString("en-US",{maximumFractionDigits:6});}
+  function csvField(v){return '"'+String(v).replace(/"/g,'""')+'"';}
+  function download(name,content,type){
+    const url=URL.createObjectURL(new Blob([content],{type}));
+    const a=document.createElement("a");a.href=url;a.download=name;
+    document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function drawTable(target,headers,rows){
+    const root=$(target);root.replaceChildren();
+    if(!rows.length){const p=document.createElement("p");p.className="empty";p.textContent="No rows to display.";root.append(p);return;}
+    const table=document.createElement("table"),thead=document.createElement("thead"),hr=document.createElement("tr");
+    headers.forEach(label=>{const th=document.createElement("th");th.scope="col";th.textContent=label;hr.append(th);});
+    thead.append(hr);table.append(thead);
+    const body=document.createElement("tbody");
+    rows.forEach(row=>{const tr=document.createElement("tr");row.forEach(value=>{
+      const td=document.createElement("td");
+      if(value&&typeof value==="object"&&Object.prototype.hasOwnProperty.call(value,"text")){
+        td.textContent=String(value.text);if(value.cls)td.className=value.cls;
+      }else td.textContent=String(value);
+      tr.append(td);
+    });body.append(tr);});
+    table.append(body);root.append(table);
+  }
+  function cell(text,cls){return {text,cls};}
+  function streak(values){let best=0,run=0;for(const value of values){if(value){run++;best=Math.max(best,run);}else run=0;}return best;}
+  function metricStats(name){
+    const counts=snapshots.map(report=>scenarioIds.filter(id=>report.cases.get(id).metrics.get(name).regression).length);
+    let ever=0,persistent=0,maxStreak=0;
+    for(const id of scenarioIds){
+      const values=snapshots.map(report=>report.cases.get(id).metrics.get(name).regression);
+      if(values.some(Boolean))ever++;
+      const best=streak(values);if(best>=2)persistent++;maxStreak=Math.max(maxStreak,best);
+    }
+    return {counts,ever,persistent,maxStreak};
+  }
+  function scenarioStats(id){
+    const counts=snapshots.map(report=>report.cases.get(id).adverse.length);
+    let persistent=0;
+    for(const name of METRICS)if(streak(snapshots.map(report=>report.cases.get(id).metrics.get(name).regression))>=2)persistent++;
+    return {counts,persistent,status:counts.some(Boolean)?"HOLD":"REVIEW_ONLY"};
+  }
+  function summary(){
+    const instances=snapshots.reduce((n,report)=>n+report.regressionInstances,0);
+    const held=snapshots.filter(report=>report.status==="HOLD").length;
+    const persistent=METRICS.reduce((n,name)=>n+metricStats(name).persistent,0);
+    return {instances,held,persistent,status:held||instances?"HOLD":"REVIEW_ONLY"};
+  }
+  function renderSummary(){
+    const s=summary(),cards=[
+      ["Selected snapshots",snapshots.length],
+      ["Anonymous scenarios",scenarioIds.length],
+      ["Source-reported regression instances",s.instances],
+      ["Persistent scenario/metric trajectories",s.persistent]
+    ];
+    const root=$("summaryCards");root.replaceChildren();
+    cards.forEach(([label,value])=>{const card=document.createElement("div");card.className="card";
+      const val=document.createElement("span");val.className="value";val.textContent=String(value);
+      const txt=document.createElement("span");txt.className="label";txt.textContent=label;
+      card.append(val,txt);root.append(card);});
+    $("summaryText").textContent=s.held+" of "+snapshots.length+
+      " selected slots report HOLD. REVIEW_ONLY is not a pass, remediation finding or release approval.";
+    const banner=$("statusBanner");banner.className="status"+(fictional?" demo":s.status==="REVIEW_ONLY"?" review":" hold");
+    banner.textContent=(fictional?"FICTIONAL DEMO ONLY · ":"")+s.status+
+      " · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Selected order is not authenticated chronology.";
+  }
+  function renderMetricBoard(){
+    const headers=["Metric","Display group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
+      "Ever flagged cases","Persistent cases","Longest consecutive slots"];
+    const rows=METRICS.map(name=>{const s=metricStats(name);return [name,family(name),
+      ...s.counts.map(n=>cell(n,n?"cell-adverse":"cell-neutral")),
+      s.ever,s.persistent,s.maxStreak];});
+    drawTable("metricHeatmap",headers,rows);
+  }
+  function renderScenarioBoard(){
+    const headers=["Anonymous scenario",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")+" flagged metrics"),
+      "Persistent metrics","Overall source status"];
+    const rows=scenarioIds.map((id,i)=>{const s=scenarioStats(id);return [
+      "Scenario "+String(i+1).padStart(2,"0"),
+      ...s.counts.map(n=>cell(n,n?"cell-adverse":"cell-neutral")),s.persistent,s.status
+    ];});
+    drawTable("scenarioHeatmap",headers,rows);
+  }
+  function renderScenarioDetail(){
+    const id=currentId();if(!id){drawTable("trajectoryTable",["Metric"],[]);return;}
+    const baseline=snapshots[0].cases.get(id).metrics;
+    const headers=["Metric","Display group","Original baseline",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")+" · candidate / Δ / flag")];
+    const rows=METRICS.map(name=>[name,family(name),fmt(baseline.get(name).baseline),
+      ...snapshots.map(report=>{const v=report.cases.get(id).metrics.get(name);
+        return cell(fmt(v.candidate)+" / "+fmt(v.delta)+" / "+(v.regression?"HOLD":"—"),
+          v.regression?"cell-adverse":"cell-neutral");})]);
+    drawTable("trajectoryTable",headers,rows);
+  }
+  function renderNotePanel(){
+    const id=currentId(),metric=$("noteMetric").value||METRICS[0];
+    const key=id?noteKey(id,metric):"";
+    $("noteInput").disabled=!id;$("saveNote").disabled=!id;$("clearNote").disabled=!id;
+    $("exportNotes").disabled=notes.size===0;
+    $("noteInput").value=key?(scratch.has(key)?scratch.get(key):(notes.get(key)||"")):"";
+    $("noteMessage").textContent=id?"Scenario "+String(slot(id)).padStart(2,"0")+" · "+metric+
+      ". Notes are local to this tab and are never included in anonymous exports.":"";
+  }
+  function renderPrintBrief(){
+    const s=summary(),root=$("printBrief");root.replaceChildren();
+    const h=document.createElement("h1");h.textContent="LightUp Assessment Trends · anonymous aggregate brief";root.append(h);
+    const p=document.createElement("p");p.textContent=(fictional?"FICTIONAL DEMO ONLY · ":"")+
+      snapshots.length+" manually ordered snapshots · "+scenarioIds.length+
+      " anonymous scenarios · "+s.instances+" source-reported regression instances · "+s.status+
+      ". Order is not authenticated chronology. REVIEW_ONLY is not approval.";root.append(p);
+    const flags=document.createElement("p");flags.textContent="authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false";root.append(flags);
+    const wrap=document.createElement("div");wrap.className="tablewrap";root.append(wrap);
+    const headers=["Metric","Display group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
+      "Ever flagged cases","Persistent cases","Longest run"];
+    const rows=METRICS.map(name=>{const st=metricStats(name);return [name,family(name),...st.counts,st.ever,st.persistent,st.maxStreak];});
+    const table=document.createElement("table"),head=document.createElement("thead"),tr=document.createElement("tr");
+    headers.forEach(t=>{const th=document.createElement("th");th.textContent=t;tr.append(th);});head.append(tr);table.append(head);
+    const body=document.createElement("tbody");
+    rows.forEach(row=>{const tr=document.createElement("tr");row.forEach(v=>{const td=document.createElement("td");td.textContent=String(v);tr.append(td);});body.append(tr);});
+    table.append(body);wrap.append(table);
+  }
+  function render(){
+    const active=snapshots.length>0;
+    for(const id of ["forget","exportJson","exportCsv","exportBrief","print"])$(id).disabled=!active;
+    $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
+    $("noteMetric").replaceChildren();
+    METRICS.forEach(name=>{const option=document.createElement("option");option.value=name;option.textContent=name;$("noteMetric").append(option);});
+    $("noteMetric").value=selectedMetric;
+    $("scenarioSelect").replaceChildren();
+    scenarioIds.forEach((id,i)=>{const option=document.createElement("option");option.value=id;
+      option.textContent="Scenario "+String(i+1).padStart(2,"0");$("scenarioSelect").append(option);});
+    if(active){selectedScenario=scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];$("scenarioSelect").value=selectedScenario;
+      renderSummary();renderMetricBoard();renderScenarioBoard();renderScenarioDetail();renderPrintBrief();}
+    else{
+      $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
+      $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
+      $("summaryText").textContent="";
+      ["metricHeatmap","scenarioHeatmap","trajectoryTable","printBrief"].forEach(id=>$(id).replaceChildren());
+    }
+    renderNotePanel();
+  }
+  async function importFiles(list){
+    const files=[...list];
+    try{
+      admit(files.length>=3&&files.length<=12);
+      const next=[];
+      for(const file of files){
+        admit(file&&file.size>0&&file.size<=MAX_FILE);
+        const bytes=await file.arrayBuffer();admit(bytes.byteLength>0&&bytes.byteLength<=MAX_FILE);
+        const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+        admit(!raw.startsWith("\uFEFF"));
+        next.push(parseReport(strictJSON(raw)));
+      }
+      const ids=harmonize(next);
+      snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
+      notes.clear();scratch.clear();fictional=false;
+      render();$("message").textContent="Accepted "+snapshots.length+
+        " compatible source snapshots with "+scenarioIds.length+
+        " matching anonymous scenarios and identical original baselines. No chronology authenticated.";
+    }catch(_){
+      $("message").textContent="HOLD: invalid, duplicated, oversized, mismatched or baseline-inconsistent batch. Previous workspace unchanged.";
+    }
+  }
+  function buildDemoReport(slotNo){
+    const ids=["fictional-alpha","fictional-beta","fictional-gamma"];
+    const base={valid_findings:8,invalid_findings:1,missed_findings:0,coverage_assessed:10,
+      coverage_unknown:0,scope_violations:0,policy_violations:0,human_interventions:2,tool_calls:4,
+      evidence_quality:.85,reproducibility:.9,remediation_quality:.8,retest_correctness:.9,
+      runtime_seconds:4.2,compute_cost_usd:.12};
+    const cases=new Map();let regressionInstances=0;const regressed=[];
+    ids.forEach((id)=>{
+      const metrics=new Map(),adverse=[];
+      METRICS.forEach(name=>{
+        let candidate=base[name];
+        if(id==="fictional-beta"&&slotNo>=2&&name==="missed_findings")candidate=1;
+        if(id==="fictional-gamma"&&slotNo===2&&name==="evidence_quality")candidate=.62;
+        if(id==="fictional-alpha"&&slotNo>=3&&name==="scope_violations")candidate=1;
+        const regression=(HIGH.has(name)&&candidate<base[name])||(LOW.has(name)&&candidate>base[name]);
+        const row={baseline:base[name],candidate,delta:candidate-base[name],regression};
+        metrics.set(name,row);if(regression)adverse.push(name);
+      });
+      cases.set(id,{metrics,adverse});if(adverse.length){regressed.push(id);regressionInstances+=adverse.length;}
+    });
+    return {status:regressed.length?"HOLD":"REVIEW_ONLY",cases,regressedScenarios:regressed,
+      regressionInstances};
+  }
+  function demoLoad(){
+    snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
+    scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
+    selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;render();
+    $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
+  }
+  function forget(){
+    snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
+    $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";render();
+  }
+  function exportJson(){
+    if(!snapshots.length)return;
+    const s=summary();
+    const out={schema:"lightup.assessment_trends_review.v1",status:s.status,
+      fictional_demo_only:fictional,snapshot_count:snapshots.length,scenario_count:scenarioIds.length,
+      manually_selected_order:true,chronology_authenticated:false,source_identity_authenticated:false,
+      source_status_by_snapshot:snapshots.map((r,i)=>({snapshot_slot:i+1,status:r.status,
+        regressed_scenario_count:r.regressedScenarios.length,regression_instance_count:r.regressionInstances})),
+      metric_persistence:METRICS.map(name=>{const st=metricStats(name);return {metric:name,
+        display_group:family(name),regressed_scenario_count_by_snapshot:st.counts,
+        ever_flagged_cases:st.ever,persistent_cases:st.persistent,longest_consecutive_slots:st.maxStreak};}),
+      scenario_trajectories:scenarioIds.map((id,i)=>{const st=scenarioStats(id);return {
+        scenario_slot:i+1,source_reported_regressed_metric_count_by_snapshot:st.counts,
+        persistent_metric_count:st.persistent,overall_source_status:st.status};}),
+      disclaimer:"Already-completed untrusted source comparisons only. Snapshot order is a human display preference, not authenticated chronology. No remediation, ground truth, consent, authorization, dispatch or release is established.",
+      ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+    download("assessment-trends-anonymous-aggregate.json",JSON.stringify(out,null,2)+"\n","application/json");
+    $("message").textContent="Anonymous aggregate JSON downloaded. No source IDs, filenames, hashes or commentary.";
+  }
+  function exportCsv(){
+    if(!snapshots.length)return;
+    const header=["snapshot_slot","scenario_slot","metric","display_group","baseline","candidate",
+      "delta","source_reported_regression","source_snapshot_status","fictional_demo_only",
+      "source_identity_authenticated","chronology_authenticated","authorized","consent_verified",
+      "dispatch_allowed","release_allowed","status"];
+    const rows=[header];
+    snapshots.forEach((report,i)=>scenarioIds.forEach((id,j)=>METRICS.forEach(name=>{
+      const m=report.cases.get(id).metrics.get(name);
+      rows.push([i+1,j+1,name,family(name),m.baseline,m.candidate,m.delta,m.regression,
+        report.status,fictional?"true":"false","false","false","false","false","false","false","REVIEW_ONLY"]);
+    })));
+    download("assessment-trends-anonymous-trajectories.csv",
+      rows.map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    $("message").textContent="Anonymous trajectory CSV downloaded. Only ordinals, metric names and source-reported numbers/flags.";
+  }
+  function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+  function exportBrief(){
+    if(!snapshots.length)return;
+    const s=summary();
+    const css="body{font:15px system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#182336}"+
+      "table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}th,td{border:1px solid #aab6c5;padding:.4rem;text-align:left}"+
+      "th{background:#eef2f6}.hold{border:2px solid #9a5b18;padding:1rem}";
+    const rows=METRICS.map(name=>{const st=metricStats(name);return [name,family(name),...st.counts,st.ever,st.persistent,st.maxStreak];});
+    const headers=["Metric","Display group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
+      "Ever flagged cases","Persistent cases","Longest run"];
+    const table="<table><thead><tr>"+headers.map(v=>"<th>"+esc(v)+"</th>").join("")+
+      "</tr></thead><tbody>"+rows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
+    const sourceTable="<table><thead><tr><th>Snapshot slot</th><th>Source status</th><th>Regressed scenarios</th><th>Regression instances</th></tr></thead><tbody>"+
+      snapshots.map((r,i)=>"<tr><td>"+(i+1)+"</td><td>"+esc(r.status)+"</td><td>"+r.regressedScenarios.length+"</td><td>"+r.regressionInstances+"</td></tr>").join("")+"</tbody></table>";
+    const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'\">"+
+      "<title>Assessment Trends · anonymous aggregate brief</title><style>"+css+"</style></head><body>"+
+      "<h1>LightUp Assessment Trends · anonymous aggregate brief</h1><div class='hold'><strong>"+
+      (fictional?"FICTIONAL DEMO ONLY · ":"")+s.status+" · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong>"+
+      "<p>"+snapshots.length+" manually ordered snapshots · "+scenarioIds.length+
+      " anonymous scenarios · "+s.instances+" source-reported regression instances. Order is not authenticated chronology.</p>"+
+      "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+      "<h2>Source status by manual snapshot slot</h2>"+sourceTable+
+      "<h2>Metric persistence heatmap</h2>"+table+
+      "<p>No original scenario IDs, source filenames, source hashes, raw source JSON, private notes, identities or target details are included. "+
+      "A source-reported flag is not independently verified evidence; REVIEW_ONLY is not approval.</p></body></html>";
+    download("assessment-trends-anonymous-brief-REVIEW-ONLY.html",html,"text/html");
+  }
+  function exportPrivateNotes(){
+    if(!notes.size||!snapshots.length)return;
+    if(!window.confirm("Export saved human commentary to a separate PRIVATE file? It contains your notes, but no original IDs, filenames or hashes."))return;
+    const out={schema:"lightup.assessment_trends_private_commentary.v1",status:"PRIVATE_UNSIGNED",
+      private_unsigned:true,fictional_demo_only:fictional,manually_selected_order:true,
+      chronology_authenticated:false,source_identity_authenticated:false,
+      notes:[...notes.entries()].map(([key,note])=>{const [id,metric]=JSON.parse(key);return {
+        scenario_slot:slot(id),metric,note};}).filter(row=>row.scenario_slot>0),
+      disclaimer:"Sensitive human commentary. Not evidence, authenticated chronology, remediation or permission.",
+      ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+    download("assessment-trends-PRIVATE-human-commentary.json",JSON.stringify(out,null,2)+"\n","application/json");
+    $("noteMessage").textContent="Saved commentary exported as a separate PRIVATE file; aggregate exports remain note-free.";
+  }
+
+  $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
+  $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});
+  $("noteMetric").addEventListener("change",()=>{selectedMetric=$("noteMetric").value;renderNotePanel();});
+  $("noteInput").addEventListener("input",()=>{const id=currentId();if(id)scratch.set(noteKey(id,$("noteMetric").value),$("noteInput").value);});
+  $("saveNote").addEventListener("click",()=>{const id=currentId();if(!id)return;const key=noteKey(id,$("noteMetric").value),value=scratch.get(key)||"";
+    if(value.length>500){$("noteMessage").textContent="HOLD: commentary exceeds 500 characters.";return;}
+    if(value.trim())notes.set(key,value);else notes.delete(key);
+    renderNotePanel();$("noteMessage").textContent="Commentary saved in memory only. It is not included in anonymous exports.";});
+  $("clearNote").addEventListener("click",()=>{const id=currentId();if(!id)return;const key=noteKey(id,$("noteMetric").value);
+    notes.delete(key);scratch.delete(key);renderNotePanel();$("noteMessage").textContent="Selected commentary cleared from this tab.";});
+  $("exportNotes").addEventListener("click",exportPrivateNotes);
+  $("exportJson").addEventListener("click",exportJson);
+  $("exportCsv").addEventListener("click",exportCsv);
+  $("exportBrief").addEventListener("click",exportBrief);
+  $("print").addEventListener("click",()=>{if(snapshots.length)window.print();});
+  $("forget").addEventListener("click",()=>{if(window.confirm("Forget all admitted source data and local commentary from this tab?"))forget();});
+  $("demo").addEventListener("click",()=>{if(snapshots.length&&!window.confirm("Replace current sources with fictional demo data?"))return;demoLoad();});
+  $("noteMetric").replaceChildren();
+  METRICS.forEach(name=>{const o=document.createElement("option");o.value=name;o.textContent=name;$("noteMetric").append(o);});
+  render();
+})();
