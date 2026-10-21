@@ -131,3 +131,27 @@ To verify the original generated editor's bytes again, with the unchanged origin
     python3 assessment-launchpad/editor.py --bundle-dir ~/private-lab-launchpad-output --responses ~/private-lab-human-round-1/lightup-lab-human-private.json --verify-editor-dir ~/private-lab-human-editor
 
 Native readmission rejects new fields, duplicate JSON keys, changed ordinals, changed source digests, affirmative authority claims, untrusted control/bidi marks and source drift. The local browser editor is a convenience for HUMAN self-report only; its download is NOT approval, consent, scope attestation, clearance, target access or verified original evidence. Security/privacy, separate authentic consent and revocation, required CI and HUMAN GO remain independent gates.
+
+
+## One-command PRIVATE HUMAN assessment workspace
+
+The native workspace.py composes the original Launchpad, a blank HUMAN review round, and the offline browser editor in one complete owner-private source-bound workspace.
+
+Prepare a mode-0600 original manifest in a separate private directory and a NEW empty mode-0700 output root. Launch:
+
+    mkdir -m 700 ~/private-lab-whole-workspace
+    python3 assessment-launchpad/workspace.py --manifest ~/private-input/lab-endpoints.txt --workspace-dir ~/private-lab-whole-workspace
+
+No subprocess, DNS, HTTP request, model, lab assessment, dispatch or permission request is executed. The orchestrator invokes the existing pinned original validator/source admission and native Launchpad, review desk and hash-pinned offline browser editor entirely in process. It creates owner-private mode-0700 subdirectories:
+- launchpad: all five original 0600 manifest/receipt/preview artifacts and exact display-only --preview-only command.
+- human-round-01: initial non-authorizing NEEDS_INPUT/UNASSIGNED HUMAN slots, private scriptless read-only HTML view, source-free stage/role count JSON/CSV.
+- human-editor: the portable self-contained PRIVATE HTML to edit a source-bound HUMAN worksheet locally and explicitly download revised PRIVATE JSON.
+- START-HERE-PRIVATE.txt: a mode-0600 guide and unsigned original source digest. This guide is PRIVATE; never publish it.
+
+The root directory MUST be empty, current-user owned and mode 0700; each subdirectory is exclusively created at mode 0700 and each file at mode 0600. The original input directory must be separate and never nested inside the output workspace. A failure leaves any intermediate files strictly private and explicitly invalid: never accept them as an approved, complete or deployable workspace.
+
+Reopen the entire original packet using the original five-file and source gates, complete HUMAN round, editor and guide verification, with no writes:
+
+    python3 assessment-launchpad/workspace.py --verify-workspace-dir ~/private-lab-whole-workspace
+
+For changed HUMAN responses, download from human-editor/lightup-lab-human-editor.html, move the download to a separate owner-only mode-0700 input directory, chmod 600 the JSON, then use review_desk.py --responses with a NEW private output directory. Compare separately admitted HUMAN rounds via compare_review.py. No claim of authorship, identity, consent, valid scope, completed review, cleared risk, remediation or HUMAN GO is possible from this workflow.
