@@ -42,7 +42,10 @@ same local features, embedded exact-source script and SHA-256-pinned CSP.
 The original two-file variant remains available. The standalone is
 source-only and UNSIGNED, not a software authenticity proof or consent.
 It also supports no-overwrite source-free HUMAN report comparisons,
-a full local old→proposed change preview and changed-only CSV export.
+a full local old→proposed change preview and changed-only CSV export, plus a
+pending HUMAN follow-up queue CSV and a scriptless current-plan HTML brief.
+These additional exports contain only fixed action captions and local marker
+labels; queue ordering is a discussion aid, never an urgency or risk rating.
 A distinct local HUMAN Attention Workboard is available as
 studios/human-lab-attention.html with adjacent human-lab-attention.js.
 It admits one to eight complete source-free original self-reports in
