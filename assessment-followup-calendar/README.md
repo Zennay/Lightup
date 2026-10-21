@@ -225,3 +225,23 @@ the currently filtered entries, with original ordinals and self-reported group
 labels, no source findings, targets, evidence or source digest. Spreadsheet-like
 formula cells are escaped. Nothing is automatically sent, merged, approved,
 authenticated, synchronized with a real calendar or treated as remediation.
+
+
+### Selective HUMAN reminder reconciliation between encrypted workrooms
+
+After loading two exact-original-source PRIVATE encrypted workrooms, the
+operator can individually select up to **32** changed HUMAN reminder ordinals
+across filtered/paginated comparison pages. The original private calendar
+series must agree. A full explicit preview computes the proposed complete
+workroom calendar in memory, checks declared HUMAN group weekdays, hours,
+blackout dates and daily caps, and refuses new local overlaps or changes for
+source-blocked HUMAN stages. Historical timestamps are not silently copied.
+No partial change is applied. The operator must explicitly confirm before
+the entire selected set replaces only the corresponding **local HUMAN draft
+reminders**. Current group rules, original HUMAN source fields, scanned assets,
+security approval and other original appointments remain unchanged. Removing
+a reminder in the local draft never cancels a previously published external
+appointment; use the existing manual calendar change desk separately.
+Any intervening plan, policy, editor or source change invalidates the
+comparison and preview. No external calendars, targets or identity providers
+are contacted.

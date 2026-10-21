@@ -196,11 +196,25 @@ worksheet and timezone are accepted. Comparison is invalidated if this workroom 
 </div>
 <p id="workroomCompareStatus" class="subtle" role="status" aria-live="polite">No compared PRIVATE workroom loaded.</p>
 <div class="tablebox"><table><thead><tr>
-<th>HUMAN change type</th><th>Original ordinal / unverified group label</th>
+<th>Select HUMAN appointment</th><th>HUMAN change type</th><th>Original ordinal / unverified group label</th>
 <th>Current local proposal</th><th>Compared local proposal</th></tr></thead>
 <tbody id="workroomCompareRows"></tbody></table></div>
 <div class="row"><button id="comparePrev" class="ghost" type="button">Previous differences</button>
 <button id="compareNext" class="ghost" type="button">Next differences</button></div>
+<div class="row">
+<button id="prepareWorkroomReconcile" type="button">Preview selected HUMAN appointment changes</button>
+<button id="applyWorkroomReconcile" type="button" disabled>Apply reviewed appointment changes (confirm)</button>
+<button id="discardWorkroomReconcile" type="button" class="ghost">Clear selection</button>
+</div>
+<details id="workroomReconcileDetails"><summary>Review local proposed appointment changes before applying</summary>
+<p id="workroomReconcileSummary" class="subtle" role="status">Select changed appointment rows above to create a preview.</p>
+<div class="tablebox"><table><thead><tr><th>Original HUMAN ordinal</th><th>Current proposal</th>
+<th>Compared proposal</th><th>Local scheduling advisory</th></tr></thead>
+<tbody id="workroomReconcileRows"></tbody></table></div>
+</details>
+<p class="subtle">Selections only propose changing local HUMAN calendar reminders. Declared group rules are not imported.
+Source ordinal and private calendar series must match. Newly conflicting, blocked, or outside-declared-availability
+appointments will NOT be accepted. Removing a local proposal does not cancel any previously imported external appointment.</p>
 <p class="subtle">Up to 50 changed entries per page; all matching changes can be navigated. Zero differences do not prove a
 fixed finding, consent, real availability, security review or an authenticated human source.</p>
 </details>
