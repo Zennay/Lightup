@@ -24,6 +24,7 @@ MATRIX = "PRIVATE-HUMAN-ATTENTION-MATRIX.csv"
 CHANGES = "PRIVATE-HUMAN-ATTENTION-CHANGES.csv"
 VIEWER = "OPEN-PRIVATE.html"
 LATEST = "PRIVATE-LATEST-HUMAN-ATTENTION.json"
+CHOICES = "PRIVATE-EDITABLE-HUMAN-CHOICES.csv"
 RECEIPT = "PRIVATE-RECEIPT.json"
 FALSE_AUTH = dict(original.FALSE_AUTH)
 
@@ -154,12 +155,14 @@ authenticate true actor, source, chronology, real task assignment,
 client consent, completed work, a vulnerability or any approved scan.</p>
 <p><a href="PRIVATE-HUMAN-ATTENTION-MATRIX.csv">Complete 20-action revision matrix (CSV)</a>
 · <a href="PRIVATE-HUMAN-ATTENTION-CHANGES.csv">Only changed HUMAN proposal cells (CSV)</a>
-· <a href="PRIVATE-LATEST-HUMAN-ATTENTION.json">Latest original v2 HUMAN proposal (source-free JSON)</a></p>
+· <a href="PRIVATE-LATEST-HUMAN-ATTENTION.json">Latest original v2 HUMAN proposal (source-free JSON)</a>
+· <a href="PRIVATE-EDITABLE-HUMAN-CHOICES.csv">Copy HUMAN revision-choice worksheet to a NEW private input file (CSV)</a></p>
 </header>
 <section><h2>Last selected revision · original five-stage HUMAN attention</h2>
 <div class="wide"><table><thead><tr><th>Original stage</th><th>Actions</th>
 <th>Self-reported NEEDS_INPUT</th><th>Proposed role unassigned</th>
 <th>HUMAN follow-up untriaged</th></tr></thead><tbody>""" + stage_rows + """</tbody></table></div></section>
+<section><h2>Prepare explicit HUMAN continuation (no automatic choices)</h2><p>The editable CSV starts with both role and follow-up selection WITHHELD (0) for every one of the 20 original actions. Copy it OUTSIDE this original receipt room into a NEW 0600 file in an existing owner-only 0700 input directory. Enter the source revision number 1–8 for a role and/or follow-up, or leave 0 to withhold. Native 80 can create a NEW source-free proposal from these explicit HUMAN choices only after re-admitting this original saved portfolio and all its input receipts. No original receipt may be edited in place. This does not assign a human or grant authority.</p></section>
 <section><h2>All proposal changes in manual order</h2><p>Role/follow-up changes
 represent choices in supplied files, never proof of execution or elapsed time.</p>
 <div class="wide"><table><thead><tr><th>Declared revision</th><th>Original action</th>
@@ -208,6 +211,8 @@ def _files(entries: list[dict[str, object]]) -> dict[str, bytes]:
         CHANGES: original._csv(changes),
         VIEWER: _viewer(entries, matrix, changes, summary),
         LATEST: entries[-1]["source"],
+        CHOICES: original._csv([["action", "role_from_revision", "followup_from_revision"]] +
+                             [[action, 0, 0] for action in original.ORDER]),
     }
 
 
