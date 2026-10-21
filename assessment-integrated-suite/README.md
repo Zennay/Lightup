@@ -1980,3 +1980,34 @@ Invalid replacement selections clear stale comparisons and do not partially
 load data. Changing current markers never endorses or imports a prior round.
 All data remains self-reported, unsigned and non-authorizing. The original
 release controls and explicit HUMAN GO remain separate and mandatory.
+
+## Explicit all-action HUMAN continuation proposal
+
+The same browser-only local [HUMAN Lab Route Desk](human-lab-route.html)
+can turn its 2–8 **self-reported** comparison into a brand-new, complete,
+**non-authorizing** HUMAN discussion proposal, without silently selecting
+"latest", accepting the file chooser's order as authentic chronology, or
+changing a saved review round.
+
+- After admitting 2–8 exact original self-report JSON files, open
+  **Compose a NEW human-only discussion proposal from these rounds**.
+- Explicitly choose a prior locally selected report for **each** of the
+  twenty original action ordinals (52–71). The same marker may occur in
+  multiple rounds; choices retain the locally selected slot only while the
+  composer is open, not as an authenticated origin or timestamp.
+- Incomplete selection disables export. The operator must confirm before
+  the browser requests a private local JSON download. The output retains the
+  original v1 20-step self-report shape and six explicit false claims;
+  no original source, reviewer, target, finding, client data, private text,
+  filenames or timestamps are included.
+- This output is a **NEW untrusted HUMAN proposal**, not a reviewed round.
+  It does not update the active local status checklist or any earlier source
+  or receipt, cannot finalize original native sources or dispatch anything.
+  Original native option 72 must separately receive a manually moved
+  private file before options 73–75 can provide their own source-bound
+  checks. A source-bound checksum does not verify who made a selection.
+- The **Discard all draft selections** action clears only this local
+  unsaved editor and leaves all selected original reports unchanged.
+
+Never interpret the round-specific status selection as verified remediation,
+execution, identity, client/operator approval, grant, release or HUMAN GO.
