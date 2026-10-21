@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Thirteen offline source-bound and local packet workflows in one user menu.
+Fourteen offline source-bound and local packet workflows in one user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -19,6 +19,7 @@ from next_round import propose as propose_next_round
 from review_hub import build as build_human_overview
 from packet_open import reopen as reopen_curated_packet
 from packet_handoff import prepare as prepare_priority_handoff, reopen as reopen_priority_handoff
+from priority_reply import receive as receive_priority_reply
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -44,9 +45,11 @@ WORKFLOWS = {
     "11": ("Reopen existing PRIVATE selected-evidence packet by local byte integrity",
            "already-produced original 0700 PRIVATE curation packet directory only"),
     "12": ("Prepare minimum-necessary single-priority PRIVATE HUMAN handoff",
-           "already-published complete source-bound curated packet; one priority; NEW private output"),
+           "already-published complete source-bound curated packet; one priority + HUMAN response CSV; NEW private output"),
     "13": ("Reopen existing single-priority PRIVATE HUMAN handoff",
            "existing 0700 HUMAN question-only handoff; no original source required"),
+    "14": ("Receive PRIVATE HUMAN reply for a single source-bound priority handoff",
+           "complete original priority handoff and edited full recipient HUMAN reply CSV"),
 }
 
 
@@ -102,6 +105,18 @@ def run_workflow(choice: str) -> None:
             count = reopen_priority_handoff(directory)
         print("PRIVATE HUMAN single-priority question count: " + str(count) +
               "; NO dispatch or authorization.")
+        return
+    if choice == "14":
+        original = ask_path("EXISTING 0700 original PRIVATE priority handoff directory")
+        returned = ask_path("EXISTING completed recipient HUMAN reply CSV")
+        output = ask_path("EXCLUSIVE NEW private recipient HUMAN return directory")
+        print("Recipient claims and identity remain UNVERIFIED. Review-only; "
+              "no response dispatch or disclosure approval.")
+        if input("Enter exactly REVIEW ONLY to create local HUMAN response: ") != "REVIEW ONLY":
+            raise Hold("HUMAN did not confirm private reply preparation")
+        count = receive_priority_reply(original, returned, output)
+        print("PRIVATE HUMAN self-reported replies recorded: " + str(count) +
+              "; NOT validated findings or remediation")
         return
     source = ask_path("EXISTING original lab source JSON")
     manifest = ask_path("EXISTING original PRIVATE source briefing manifest JSON")
@@ -207,7 +222,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–13]: ").strip()
+        choice = input("PRIVATE workflow [0–14]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
