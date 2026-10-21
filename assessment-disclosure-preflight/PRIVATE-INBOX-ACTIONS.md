@@ -193,3 +193,24 @@ are omitted. "Prior/current" is manually supplied order, not authenticated
 chronology. Inputs are read-only; this report is unsigned and non-authorizing.
 The directory must be a new/existing owner-only 0700 location and the three
 report names must not already exist.
+
+
+### Read-only reopen of the saved revision delta
+
+After generating the three-file report, the native receiver can re-admit it
+later without writing or repairing anything:
+
+~~~sh
+python3 assessment-disclosure-preflight/private_inbox_actions.py reopen-compare \
+  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \
+  --prior-human-csv ./owner-private-revisions/prior-actions.csv \
+  --human-csv ./owner-private-revisions/current-actions.csv \
+  --private-output-dir ./owner-private-revision-delta
+~~~
+
+The command rebuilds the expected delta from the currently selected board and
+both complete HUMAN CSVs, then requires exactly the three expected report files,
+an owner-owned 0700 directory, owner-owned regular 0600 files and byte equality.
+Missing/extra files, changed source/HUMAN inputs, wrong permissions, symlinks
+or altered report bytes return HOLD. This is unsigned local custody checking,
+not trusted identity, authenticated chronology, consent or approval.
