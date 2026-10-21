@@ -36,6 +36,8 @@
     $("exportPrivateSession").disabled=!ready||!hasSessionCrypto();
     $("importPrivateSession").disabled=!ready;
     $("privateSessionFile").disabled=!ready;
+    $("rotateSourceFile").disabled=!ready;
+    $("rotateSubmit").disabled=!ready||!hasSessionCrypto();
     $("sessionAvailability").textContent=ready?
       "Exact source-byte comparison available for this local cohort. Digest values are PRIVATE, not source authentication.":
       snapshots.length?
@@ -1074,6 +1076,55 @@
   }
 
 
+
+  // Local, source-bound migration/rotation. Never writes to original source or
+  // replaces current HUMAN work; the operator must handle legacy plaintext files.
+  async function rotatePrivateSession(){
+    const file=$("rotateSourceFile").files[0],
+      oldSecret=$("rotateOldSecret").value,
+      newSecret=$("rotateNewSecret").value,
+      confirmSecret=$("rotateConfirmSecret").value;
+    const sourceTicket=sourceAdmissionTicket;
+    try{
+      if(!file||!canResume()||!hasSessionCrypto()){
+        $("rotateMessage").textContent="HOLD: admit the original source cohort and choose a legacy or encrypted PRIVATE review session.";return;
+      }
+      if(newSecret.length<14||newSecret.length>256||newSecret!==confirmSecret){
+        $("rotateMessage").textContent="HOLD: new encryption passphrase and confirmation must match (14–256 characters).";return;
+      }
+      // Full existing strict source-byte/event/HUMAN admission before any export.
+      const {newStages,newNotes}=await admitPrivateSessionFile(file,oldSecret);
+      admit(sourceTicket===sourceAdmissionTicket&&canResume());
+      const stages=buildReviewEvents().filter(e=>
+        newStages.has(humanStageKey(e))).map(e=>[
+          e.snapshotSlot,e.scenarioSlot,e.metric,newStages.get(humanStageKey(e))]);
+      admit(stages.length===newStages.size);
+      const savedNotes=[...newNotes].map(([key,note])=>{
+        const [id,metric]=JSON.parse(key);
+        return [slot(id),metric,note];
+      }).sort((a,b)=>a[0]-b[0]||METRICS.indexOf(a[1])-METRICS.indexOf(b[1]));
+      admit(savedNotes.length===newNotes.size&&savedNotes.every(row=>row[0]>0));
+      const next={...privateSessionData(),stages,notes:savedNotes};
+      const cleartext=JSON.stringify(next)+"\n";
+      admit(new Blob([cleartext]).size<=MAX_PRIVATE_BUNDLE);
+      if(!window.confirm("Create a NEW passphrase-encrypted PRIVATE recovery file from this exact-source HUMAN session? Original input and current HUMAN work are never modified. Old plaintext/encrypted copies remain on your device and must be handled separately. No source authenticity or consent is proven.")){
+        $("rotateMessage").textContent="Rotation cancelled; nothing changed.";return;
+      }
+      const envelope=await encryptPrivatePayload(cleartext,newSecret);
+      admit(sourceTicket===sourceAdmissionTicket);
+      const output=JSON.stringify(envelope,null,2)+"\n";
+      admit(new Blob([output]).size<=MAX_ENCRYPTED_BUNDLE);
+      download("assessment-trends-PRIVATE-ENCRYPTED-rotated-session.json",output,"application/json");
+      $("rotateMessage").textContent="New encrypted PRIVATE session downloaded using fresh random salt and IV. Original file and current HUMAN work remain unchanged. Preserve the new passphrase; handle any old plaintext copies separately.";
+    }catch(_){
+      $("rotateMessage").textContent="HOLD: original file/password, exact source bytes, HUMAN membership or encryption did not match. No new file published; current HUMAN work unchanged.";
+    }finally{
+      $("rotateSourceFile").value="";
+      $("rotateOldSecret").value="";$("rotateNewSecret").value="";
+      $("rotateConfirmSecret").value="";
+    }
+  }
+
   let privateRevisionComparison=null;
   function revisionChanges(before,after){
     const records=[];
@@ -1443,6 +1494,7 @@
   $("revisionExportCsv").addEventListener("click",()=>exportRevision("csv"));
   $("revisionExportBrief").addEventListener("click",()=>exportRevision("html"));
   $("exportPrivateSession").addEventListener("click",()=>{void savePrivateSession();});
+  $("rotateSubmit").addEventListener("click",()=>{void rotatePrivateSession();});
   $("importPrivateSession").addEventListener("click",()=>{void restorePrivateSession();});
   $("files").addEventListener("change",()=>setPendingSources($("files").files));
   $("import").addEventListener("click",()=>{
