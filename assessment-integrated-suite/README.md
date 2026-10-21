@@ -1,5 +1,32 @@
 # LightUp integrated PRIVATE assessment handoff
 
+## CURRENT · Portable offline HUMAN toolkit v20 · 21 October 2026
+
+[**Open/download complete source-only offline ZIP v20**](LightUp-Assessment-Offline-Toolkit-v20.zip)
+— **262150 bytes**, **16 offline HTML workrooms and one adjacent local
+JavaScript asset**, plus README, guide and unsigned software-only manifest.
+The exact archive is [committed to this existing PR](https://github.com/Zennay/Lightup/commit/2a560ca9cd0696d6284386d710571fefbb36559a).
+Unsigned ZIP SHA-256: `a3c9f5d2f4a30d54c691500d499f805d6d7ab95834fc41eed07b92c83023f56b`.
+Checksums are for byte integrity only, NOT software signing,
+source authentication, consent, review, or release permission.
+
+The bundle includes a complete local-human Lab Route Desk
+(`studios/human-lab-route.html` and adjacent `studios/human-lab-route.js`)
+for twenty original actions (52–71), plus the fifteen other original
+offline HTML HUMAN workrooms. The new **native-only** standalone receiver
+and interactive console actions 72–74 receive the JSON exported by that
+browser, reopen all saved private bytes, and compare up to eight
+operator-ordered review rounds, with latest HUMAN attention and phase
+counts. Those native Python actions are deliberately *not* in the
+browser-only ZIP; use the original approved code checkout.
+Review state is never verified task execution or security remediation.
+
+Keep downloaded local files and all generated PRIVATE reports off public
+servers. No original customer source, scan, grant, authorized target,
+consent, live model, task dispatch, production release or user identity
+is included. All original mandatory gates remain DRAFT/HOLD.
+
+
 ## NEW · Native HUMAN Lab self-report custody, exact receipt and history (options 72–74)
 
 **Actual original installed code:** [`lab_route_handoff.py`](lab_route_handoff.py)
