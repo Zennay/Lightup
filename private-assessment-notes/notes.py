@@ -467,6 +467,8 @@ def main() -> int:
         "sensitivity-prepare", help="source-bound PRIVATE HUMAN privacy concern worksheet")
     sensitivity.add_argument("--completed-packet", required=True)
     sensitivity.add_argument("--private-parent", required=True)
+    sensitivity.add_argument("--with-mask-cues", action="store_true",
+                             help="embed original PRIVATE masking cue navigation and read-only receipt")
     sensitivity_end = commands.add_parser(
         "sensitivity-finalize", help="source-bound HUMAN sensitivity review; always HOLD")
     sensitivity_end.add_argument("--completed-packet", required=True)
@@ -659,7 +661,8 @@ def main() -> int:
             return prepare_mask_template(args.completed_packet, args.private_parent)
         if args.action == "sensitivity-prepare":
             from privacy_triage import prepare as prepare_sensitivity
-            return prepare_sensitivity(args.completed_packet, args.private_parent)
+            return prepare_sensitivity(args.completed_packet, args.private_parent,
+                                       include_masking_cues=args.with_mask_cues)
         if args.action == "sensitivity-finalize":
             from privacy_triage import finalize as finalize_sensitivity
             return finalize_sensitivity(args.completed_packet, args.triage_kit,

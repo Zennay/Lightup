@@ -119,7 +119,8 @@ def admit_preflight(path: str, sources: list[dict], manifest_sha: str,
         raise Hold("HOLD: original sensitivity template was modified")
 
 
-def render(rows: list[dict], prepared: bool) -> bytes:
+def render(rows: list[dict], prepared: bool,
+           include_masking_cues: bool = False) -> bytes:
     entries = "".join(
         "<tr><th scope='row'>" + html.escape(row["source_ordinal"]) +
         "</th><td>" + html.escape(row["review_status"]) +
@@ -147,7 +148,11 @@ table{width:100%;border-collapse:collapse}th,td{border:1px solid #bdcdd9;padding
 identities and human notes stay PRIVATE. Source hashes are UNSIGNED; matching is
 not authentication. Review status is NEVER consent, privacy certification,
 security assurance, grant or permission to disclose. No network/target action.</p></aside>
-<p>""" + html.escape(copy) + """</p>
+<p>""" + html.escape(copy) + """</p>""" + (
+    """<p><a href="PRIVATE-masking-cues.html">Open PRIVATE original-source masking cues</a>
+    (literal navigation only, never privacy clearance). Independently reopen the
+    source-bound receipt using the existing masking-cues-reopen command.</p>"""
+    if include_masking_cues else "") + """
 <table><caption>Original positions · no content copied</caption>
 <thead><tr><th>Original #</th><th>HUMAN status</th><th>Concern categories</th>
 <th>PRIVATE HUMAN follow-up</th></tr></thead><tbody>""" + entries + """</tbody></table>
@@ -157,7 +162,8 @@ explicit HUMAN GO remain required.</p></html>"""
     return page.encode("utf-8")
 
 
-def prepare(original: str, parent_string: str) -> int:
+def prepare(original: str, parent_string: str,
+            include_masking_cues: bool = False) -> int:
     parent = private_directory(parent_string)
     sources, manifest_sha, decision_sha = completed_packet(original)
     destination = Path(tempfile.mkdtemp(prefix="PRIVATE-lightup-sensitivity-draft-", dir=parent))
@@ -177,7 +183,28 @@ def prepare(original: str, parent_string: str) -> int:
         from privacy_triage_studio import render as render_sensitivity_studio
         file_new(destination / "PRIVATE-HUMAN-sensitivity-editor.html",
                  render_sensitivity_studio(rows))
-        file_new(destination / "OPEN-PRIVATE.html", render(rows, prepared=True))
+        if include_masking_cues:
+            # Optional ORIGINAL source-bound navigation, not another HUMAN
+            # classification. No modified source or canonical sensitivity
+            # manifest; the independent receipt can be read-only re-admitted
+            # with the existing notes.py masking-cues-reopen command.
+            from notes import load_workroom
+            from private_masking_cues import cue_csv, cue_page, cue_receipt, cues
+            origin = private_directory(original)
+            _, original_sources, masked_rows = load_workroom(origin)
+            manifest_bytes = private_input(str(origin / "PRIVATE-source-bindings.json"),
+                                           128 * 1024)
+            if (original_sources != sources
+                    or sha256(manifest_bytes).hexdigest() != manifest_sha):
+                raise Hold("HOLD: original sources changed during PRIVATE cue preparation")
+            save_json(destination / "PRIVATE-masking-cues-receipt.json",
+                      cue_receipt(manifest_bytes, original_sources))
+            cue_records = cues(masked_rows)
+            file_new(destination / "PRIVATE-masking-cues.csv", cue_csv(cue_records))
+            file_new(destination / "PRIVATE-masking-cues.html", cue_page(cue_records))
+        file_new(destination / "OPEN-PRIVATE.html",
+                 render(rows, prepared=True,
+                        include_masking_cues=include_masking_cues))
         complete = True
         print("REVIEW_ONLY: complete original-bound HUMAN sensitivity template created")
         print("OPEN LOCALLY: " + str(destination / "OPEN-PRIVATE.html"))
@@ -234,6 +261,8 @@ def main() -> int:
     draft = actions.add_parser("prepare", help="owner-private original-bound HUMAN template")
     draft.add_argument("--completed-packet", required=True)
     draft.add_argument("--private-parent", required=True)
+    draft.add_argument("--with-mask-cues", action="store_true",
+                       help="embed original private masking cue desk and receipt")
     end = actions.add_parser("finalize", help="independent complete HUMAN sensitivity receipt; HOLD")
     end.add_argument("--completed-packet", required=True)
     end.add_argument("--triage-kit", required=True)
@@ -242,7 +271,8 @@ def main() -> int:
     a = p.parse_args()
     try:
         if a.action == "prepare":
-            return prepare(a.completed_packet, a.private_parent)
+            return prepare(a.completed_packet, a.private_parent,
+                           include_masking_cues=a.with_mask_cues)
         return finalize(a.completed_packet, a.triage_kit, a.completed_csv, a.private_parent)
     except (Hold, OSError, ValueError, KeyError, TypeError):
         print("HOLD: PRIVATE sensitivity review refused", file=sys.stderr)
