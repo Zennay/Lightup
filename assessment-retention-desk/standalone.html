@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-isEIqGK/MjjlYYjVkSv7MYH83uwXcQVNF35dorhmKYo=' 'sha256-7RXN0GbOa9eA7uqe91ugbLe5JTORA8ZSNQG0mewKHnU='; style-src 'sha256-RFvcgvCNk2kvH5Fixwmv1eFTuTzZNJcjR2qkHfBpQ90='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nrnXHRCLy5LBJR7C2Q1NIahK6jTANjrAp56zpEroVc0=' 'sha256-mtKInDmX7Jb34IQK1/BxXko0E+gBjJcEhHb0KoarPd8='; style-src 'sha256-RFvcgvCNk2kvH5Fixwmv1eFTuTzZNJcjR2qkHfBpQ90='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | PRIVATE Assessment Retention Desk</title>
 <style>:root { color-scheme:dark; font: 16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0a1220; color:#f1f6fc; }
 * { box-sizing:border-box }
@@ -511,6 +511,23 @@ td input[type=text] { max-width: 255px; }
     }
     return proposed;
   }
+  async function decodeStrictJsonFile(file, maxBytes, label) {
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > maxBytes)
+      throw new Error(label + " is leeg of overschrijdt de bytegrens.");
+    const bytes = await file.arrayBuffer();
+    if (bytes.byteLength !== file.size || bytes.byteLength < 1 || bytes.byteLength > maxBytes)
+      throw new Error(label + " veranderde tijdens het lezen of overschrijdt de bytegrens.");
+    let raw;
+    try {
+      raw = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}).decode(bytes);
+    } catch {
+      throw new Error(label + " bevat ongeldige UTF-8; geen HUMAN-gegevens overgenomen.");
+    }
+    if (raw.charCodeAt(0) === 0xfeff)
+      throw new Error(label + " met UTF-8-BOM wordt niet toegelaten.");
+    return raw;
+  }
+
   async function importReceipt(event) {
     if (processing) return;
     processing = true;
@@ -519,7 +536,7 @@ td input[type=text] { max-width: 255px; }
       if (!file) return;
       if (!entries.length) throw new Error("Selecteer eerst originele bronbestanden voor SHA-binding.");
       if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Planbestand overschrijdt de 128 KiB grens.");
-      const raw = await file.text();
+      const raw = await decodeStrictJsonFile(file, MAX_RECEIPT_BYTES, "Planbestand");
       const rows = validateReceipt(raw);
       if (!window.confirm("Alle geselecteerde echte bestandsbytes komen overeen. De volledige bestaande HUMAN-planning lokaal overnemen? Dit verleent GEEN consent, toestemming tot wissen, bron-authenticatie of scanbevoegdheid.")) {
         status("Overname geannuleerd. De huidige werkruimte blijft intact."); return;
@@ -542,7 +559,8 @@ td input[type=text] { max-width: 255px; }
       if (!file) return;
       if (!entries.length) throw new Error("Selecteer eerst huidige originele bronbestanden.");
       if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Plan moet 1–128 KiB zijn.");
-      const plan = validateReceipt(await file.text(), false);
+      const raw = await decodeStrictJsonFile(file, MAX_RECEIPT_BYTES, "Vergelijkingsplan");
+      const plan = validateReceipt(raw, false);
       const current = new Map(entries.map(e => [e.sha256, e]));
       const added = entries.filter(e => !plan.has(e.sha256));
       const missing = Array.from(plan.values()).filter(e => !current.has(e.sha256));
@@ -891,7 +909,17 @@ td input[type=text] { max-width: 255px; }
   async function decryptEnvelope(file, pass) {
     if (file.size < 1 || file.size > MAX_ENVELOPE_BYTES)
       throw Error("Versleuteld bestand is leeg of groter dan 256 KiB.");
-    const json = await file.text();
+    const bytes = await file.arrayBuffer();
+    if (bytes.byteLength !== file.size || bytes.byteLength < 1 || bytes.byteLength > MAX_ENVELOPE_BYTES)
+      throw Error("Versleutelde envelope veranderde tijdens het lezen of overschrijdt de bytegrens.");
+    let json;
+    try {
+      json = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}).decode(bytes);
+    } catch {
+      throw Error("Versleutelde envelope bevat ongeldige UTF-8; geen HUMAN-gegevens hersteld.");
+    }
+    if (json.charCodeAt(0) === 0xfeff)
+      throw Error("UTF-8-BOM in de versleutelde envelope wordt niet toegelaten.");
     let receipt;
     try { receipt = JSON.parse(json); } catch { throw Error("Ongeldig versleuteld JSON."); }
     if (JSON.stringify(receipt) !== json.trim() ||
@@ -913,7 +941,15 @@ td input[type=text] { max-width: 255px; }
     } catch {
       throw Error("Verkeerd wachtwoord of gewijzigde cryptografische inhoud.");
     }
-    return new TextDecoder("utf-8",{fatal:true}).decode(decrypted);
+    let decoded;
+    try {
+      decoded = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}).decode(decrypted);
+    } catch {
+      throw Error("Ontsleutelde HUMAN-planning bevat ongeldige UTF-8; niets hersteld.");
+    }
+    if (decoded.charCodeAt(0) === 0xfeff)
+      throw Error("UTF-8-BOM in de ontsleutelde HUMAN-planning wordt niet toegelaten.");
+    return decoded;
   }
   async function importVault(event) {
     let acquired = false;
