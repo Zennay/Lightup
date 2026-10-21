@@ -26,6 +26,7 @@ MAX_ROUNDS = 8
 MAX_SIZE = 256 * 1024
 PAGE = "OPEN-PRIVATE-HAR-DESK.html"
 CSV = "PRIVATE-HAR-NEXT-ACTIONS.csv"
+SOURCE_CSV = "PRIVATE-HAR-SOURCE-QUEUE.csv"
 RECEIPT = "PRIVATE-HAR-DESK-receipt.json"
 ROUND_NAME = re.compile(r"PRIVATE-lightup-har-human-status-[a-zA-Z0-9_-]{8,32}")
 CSV_FIELDS = (
@@ -116,6 +117,51 @@ def _export_csv(rows: list[dict]) -> bytes:
     return output.getvalue().encode("utf-8")
 
 
+def _source_queue(rows: list[dict]) -> bytes:
+    """Source-ordinal-only operator work sequence, never risk scoring."""
+    fields = ("original_ordinal", "manual_work_sequence", "action_count",
+              "withheld", "source_owner_needed", "in_progress",
+              "pending_human", "human_marked_reviewed",
+              "reopened_after_human_marked_review")
+    grouped: dict[int, list[dict]] = {}
+    for item in rows:
+        grouped.setdefault(item["original_ordinal"], []).append(item)
+    records = []
+    for ordinal, items in grouped.items():
+        counts = Counter(x["last_human_status"] for x in items)
+        reopened = sum(bool(x["reopened_after_human_marked_review"])
+                       for x in items)
+        label = ("WITHHELD_HUMAN_ATTENTION" if counts["WITHHOLD"] else
+                 "SOURCE_OWNER_REQUIRED" if counts["SOURCE_OWNER_NEEDED"] else
+                 "REOPENED_MANUAL_REVIEW" if reopened else
+                 "CONTINUE_MANUAL_REVIEW" if counts["IN_PROGRESS"] else
+                 "PENDING_MANUAL_REVIEW" if counts["PENDING_HUMAN"] else
+                 "INDEPENDENT_REVIEW_STILL_REQUIRED")
+        records.append({
+            "original_ordinal": ordinal,
+            "manual_work_sequence": label,
+            "action_count": len(items),
+            "withheld": counts["WITHHOLD"],
+            "source_owner_needed": counts["SOURCE_OWNER_NEEDED"],
+            "in_progress": counts["IN_PROGRESS"],
+            "pending_human": counts["PENDING_HUMAN"],
+            "human_marked_reviewed": counts["HUMAN_REVIEWED"],
+            "reopened_after_human_marked_review": reopened,
+        })
+    sequence = (
+        "WITHHELD_HUMAN_ATTENTION", "SOURCE_OWNER_REQUIRED",
+        "REOPENED_MANUAL_REVIEW", "CONTINUE_MANUAL_REVIEW",
+        "PENDING_MANUAL_REVIEW", "INDEPENDENT_REVIEW_STILL_REQUIRED",
+    )
+    records.sort(key=lambda row: (sequence.index(row["manual_work_sequence"]),
+                                  row["original_ordinal"]))
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\r\n")
+    writer.writeheader()
+    writer.writerows(records)
+    return handle.getvalue().encode("utf-8")
+
+
 def _page(workflow: Path, original: Path, cues: Path,
           progress: list[Path], rows: list[dict]) -> bytes:
     # All URI components are regenerated from strict local sibling-name
@@ -152,7 +198,8 @@ def _page(workflow: Path, original: Path, cues: Path,
             )
         # Reporting status counts is NOT declaring anything approved.
         sections.append(
-            "<section><h2>Original #" + str(ordinal) + "</h2><p>" +
+            "<section id='original-" + str(ordinal) +
+            "'><h2>Original #" + str(ordinal) + "</h2><p>" +
             str(len(sorted_items)) + " source-minimal task(s), " +
             str(counts["WITHHOLD"]) + " withheld and " +
             str(counts["SOURCE_OWNER_NEEDED"]) +
@@ -163,6 +210,24 @@ def _page(workflow: Path, original: Path, cues: Path,
             "</tr></thead><tbody>" + "".join(lines) +
             "</tbody></table></div></section>"
         )
+    # Anchor navigation is ordered by manual operational follow-up, never
+    # automated severity/verified risk. Includes all original positions.
+    sequence = (
+        "WITHHELD_HUMAN_ATTENTION", "SOURCE_OWNER_REQUIRED",
+        "REOPENED_MANUAL_REVIEW", "CONTINUE_MANUAL_REVIEW",
+        "PENDING_MANUAL_REVIEW", "INDEPENDENT_REVIEW_STILL_REQUIRED",
+    )
+    quick = sorted(
+        ((item["original_ordinal"], item["manual_work_sequence"])
+         for item in csv.DictReader(io.StringIO(_source_queue(rows).decode("utf-8")))),
+        key=lambda item: (sequence.index(item[1]), int(item[0])),
+    )
+    quick_links = "".join(
+        "<li><a href='#original-" + escape(index, quote=True) +
+        "'>Original #" + escape(index) + "</a> — " +
+        escape(label.replace("_", " ")) + "</li>"
+        for index, label in quick
+    )
     round_links = []
     for idx, folder in enumerate(progress, start=1):
         prefix = "../" + escape(folder.name, quote=True)
@@ -208,6 +273,12 @@ hashes, credentials, HUMAN free-text notes or network functions.</aside>
 """. Currently not human-marked reviewed: """ + str(needs) +
 """; previously HUMAN_REVIEWED then later reopened: """ +
 str(revised) + """. These are coordination counters, not clearance.</p></header>
+<section><h2>Manual work-order navigation</h2><p>Task order is derived
+solely from self-reported HUMAN statuses; it is not severity, a
+verified security finding or approval. Every original stays listed.</p>
+<ol>""" + quick_links + """</ol>
+<p><a href='PRIVATE-HAR-SOURCE-QUEUE.csv'>Open source-minimal queue CSV</a>
+(owner-only directory; importing elsewhere may expose PRIVATE metadata).</p></section>
 <section><h2>Continue original owner-private review</h2>
 <ul><li><a href='""" + original_link + """/OPEN-PRIVATE.html'>Open original
 HUMAN notes workspace</a> (masked copies can still contain secrets)</li>
@@ -243,8 +314,10 @@ def _build(workflow_room: str, progress_rooms: list[str], output_parent: str):
         raise Hold("HOLD: desk links require original owner-private sibling folder")
     rows = _details(roster, history)
     csv_bytes = _export_csv(rows)
+    source_queue = _source_queue(rows)
     page = _page(room, original, cues, progress, rows)
-    if not (0 < len(page) <= MAX_SIZE and 0 < len(csv_bytes) <= MAX_SIZE):
+    if not all(0 < len(value) <= MAX_SIZE for value in
+               (page, csv_bytes, source_queue)):
         raise Hold("HOLD: PRIVATE HAR desk output exceeds bound")
     metadata = {
         "schema": SCHEMA,
@@ -259,17 +332,18 @@ def _build(workflow_room: str, progress_rooms: list[str], output_parent: str):
         "manual_round_count": len(progress),
         "desk_html_sha256_unsigned": sha256(page).hexdigest(),
         "desk_csv_sha256_unsigned": sha256(csv_bytes).hexdigest(),
+        "source_queue_sha256_unsigned": sha256(source_queue).hexdigest(),
         **{name: False for name in FALSE_FLAGS},
     }
     receipt = (json.dumps(metadata, indent=2, sort_keys=True,
                           ensure_ascii=False) + "\n").encode("utf-8")
-    return page, csv_bytes, receipt
+    return page, csv_bytes, source_queue, receipt
 
 
 def create(workflow_room: str, progress_rooms: list[str],
            private_parent: str, created_room: list[Path] | None = None) -> int:
     parent = private_directory(private_parent)
-    page, csv_bytes, receipt = _build(
+    page, csv_bytes, source_queue, receipt = _build(
         workflow_room, progress_rooms, str(parent))
     result = Path(tempfile.mkdtemp(
         prefix="PRIVATE-lightup-har-desk-", dir=parent))
@@ -278,6 +352,7 @@ def create(workflow_room: str, progress_rooms: list[str],
     try:
         file_new(result / PAGE, page)
         file_new(result / CSV, csv_bytes)
+        file_new(result / SOURCE_CSV, source_queue)
         file_new(result / RECEIPT, receipt)
         finished = True
         if created_room is not None:
@@ -296,10 +371,11 @@ def reopen(workflow_room: str, progress_rooms: list[str],
     if not re.fullmatch(r"PRIVATE-lightup-har-desk-[a-zA-Z0-9_-]{8,32}",
                         room.name):
         raise Hold("HOLD: invalid owner-private HAR desk folder")
-    page, csv_bytes, receipt = _build(
+    page, csv_bytes, source_queue, receipt = _build(
         workflow_room, progress_rooms, str(room.parent))
     for name, expected in (
-        (PAGE, page), (CSV, csv_bytes), (RECEIPT, receipt)
+        (PAGE, page), (CSV, csv_bytes),
+        (SOURCE_CSV, source_queue), (RECEIPT, receipt)
     ):
         if private_input(str(room / name), MAX_SIZE) != expected:
             raise Hold("HOLD: original-bound PRIVATE HAR desk bytes changed")
