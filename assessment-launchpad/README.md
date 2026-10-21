@@ -202,3 +202,30 @@ Create TWO distinct empty owner-only mode-0700 directories — one for original 
 The CLI prompts for 1–16 literal HTTP(S) private isolated-lab URLs, with an empty line ending input. Text typed into the terminal is visible locally (do not paste credentials). The complete batch must pass exact pinned original lab gates. It then publishes lightup-lab-input-manifest.txt in the separate private source folder, followed by the entire original five-file preview bundle, HUMAN workroom, local editor, role routing inbox, source-bound guide and start screen.
 
 No browser Downloads file or manual chmod is needed; all native writes use exclusive mode-0600 files. Empty input/output directories are required to prevent replacing old source or review work. Any error remains HOLD, with possible partial PRIVATE artifacts explicitly invalid for release; there is no silent cleanup that could remove previously existing user data. Use --verify-workspace-dir to reopen a complete source-bound packet without execution. Interactive mode cannot be used when verifying.
+
+
+## One-command HUMAN follow-up round — workroom, routing and delta
+
+The independent next-round builder under assessment-launchpad/advance.py admits the same original private five-file Launchpad packet and a previous independently validated full PRIVATE HUMAN round. It then admits a **new** owner-private 0600 edited HUMAN worksheet, checks exact original source-bound slot/false-authorization schema, and packages the whole next step into a fresh separate mode-0700 root. No source-owner files, original HUMAN input or old output are modified.
+
+Example: first complete offline workroom created by workspace.py at ~/private-lab-guided-workspace; after using its local browser editor, put the downloaded JSON in a NEW mode-0700 directory and chmod 600 it. Then:
+
+    mkdir -m 700 ~/private-lab-next-round
+    python3 assessment-launchpad/advance.py \
+      --bundle-dir ~/private-lab-guided-workspace/launchpad \
+      --previous-round-dir ~/private-lab-guided-workspace/human-round-01 \
+      --responses ~/private-import/lightup-lab-human-private.edited.json \
+      --output-dir ~/private-lab-next-round
+
+The workroom creates exclusive owner-only mode-0700 folders human-round (updated original-source-bound complete 0600 four-file HUMAN desk), human-editor (re-pinned private browser editor), human-routing (PRIVATE fixed-role/stage routing and counts), human-changes (PRIVATE scriptless HUMAN stage/role/note-change comparison and source-free counts), and PRIVATE 0600 START-HERE and OPEN-NEXT-ROUND local HTML navigation. It never changes original endpoint values, grants consent, starts assessment, contacts a target, executes commands or draws remediation conclusions.
+
+Changed HUMAN count and chronological order refer only to the two explicitly supplied HUMAN files, not authenticated time. The current HUMAN stage is a non-authorizing self-report; no CLEARED/APPROVED stage exists.
+
+Read-only reopening independently verifies the exact original Launchpad source packet, previous HUMAN round, all current source-bound HUMAN/role/delta/editor files, and the local landing/guide:
+
+    python3 assessment-launchpad/advance.py \
+      --bundle-dir ~/private-lab-guided-workspace/launchpad \
+      --previous-round-dir ~/private-lab-guided-workspace/human-round-01 \
+      --verify-workroom-dir ~/private-lab-next-round
+
+For another follow-up round, use the same original bundle and the new workroom's human-round as --previous-round-dir. The revised responses must always live in a separate owner-private source folder; choose a brand-new empty output root. A partial on-disk result after an error is not a validated workspace. All original security/privacy, authenticated consent and revocation, source-owner and mandatory CI, and HUMAN GO release gates remain entirely separate.
