@@ -3,10 +3,27 @@
 
 ## NEW · Source-free HUMAN Lab Attention Workboard (21 October 2026)
 
-**Complete offline product:** [HUMAN Attention Workboard](human-lab-attention.html)
-with its adjacent [local JavaScript](human-lab-attention.js).
+**Complete offline product:** [one-file HUMAN Attention Workboard](human-lab-attention-standalone.html)
+or the original [paired HTML](human-lab-attention.html)
+and adjacent [JavaScript](human-lab-attention.js).
+The single-file edition includes the same source code as a SHA-256-CSP
+pinned inline script and works without adjacent JavaScript.
 This is installed via the original native `suite.py` workroom navigator
 and included by `package_offline.py` in the next software-only offline kit.
+
+For standalone source-only regeneration on an approved local checkout:
+
+```bash
+python3 assessment-integrated-suite/build_attention_standalone.py \
+  --output /EXISTING-OWNER-PRIVATE-0700-DIRECTORY/LightUp-HUMAN-Attention.html
+```
+
+The builder refuses existing paths, group/world-accessible output parents
+or source/CSP drift and uses a new 0600 file outside the source tree.
+The unsigned SHA-256 is **not** publisher identity, verified source or
+consent. The original software-only kit builder independently refuses a
+checked-in standalone if it differs from its exact original HTML/JS.
+A new portable ZIP has **not** been claimed by this update.
 
 The independent browser product accepts **1–8 manually ordered** source-free
 `human-lab-route` JSON self-reports. Each is bounded to **24 KiB** and
