@@ -227,6 +227,18 @@
     absent:"Not flagged in this slot (not a verified fix)"
   };
   let reviewOffset=0;
+  const humanReviewStages=new Map();
+  const HUMAN_STAGES=["UNREVIEWED","NEEDS_INPUT","FOLLOW_UP","HUMAN_NOTED"];
+  function humanStageKey(e){return JSON.stringify([e.id,e.metric,e.snapshotSlot]);}
+  function humanStage(e){return humanReviewStages.get(humanStageKey(e))||"UNREVIEWED";}
+  function humanStageSummary(){
+    const all=buildReviewEvents(),assigned=all.filter(e=>humanStage(e)!=="UNREVIEWED");
+    return {total:all.length,assigned:assigned.length,
+      needs:assigned.filter(e=>humanStage(e)==="NEEDS_INPUT").length,
+      followup:assigned.filter(e=>humanStage(e)==="FOLLOW_UP").length,
+      noted:assigned.filter(e=>humanStage(e)==="HUMAN_NOTED").length};
+  }
+
   const REVIEW_PAGE=100;
   function buildReviewEvents(){
     const events=[];
@@ -248,10 +260,11 @@
   }
   function reviewSelection(){
     const kind=$("reviewKind").value,group=$("reviewGroup").value,
-      chosenSlot=$("reviewSlot").value;
+      chosenSlot=$("reviewSlot").value,chosenStage=$("reviewStage").value;
     return buildReviewEvents().filter(e=>(kind==="all"||kind===e.kind)&&
       (group==="all"||group===e.group)&&
-      (chosenSlot==="all"||Number(chosenSlot)===e.snapshotSlot));
+      (chosenSlot==="all"||Number(chosenSlot)===e.snapshotSlot)&&
+      (chosenStage==="all"||humanStage(e)===chosenStage));
   }
   function reviewTallies(rows){
     return Object.keys(REVIEW_KINDS).map(kind=>({kind,count:rows.filter(e=>e.kind===kind).length}));
@@ -290,6 +303,13 @@
     reviewOffset=Math.min(reviewOffset,Math.max(0,Math.floor((rows.length-1)/REVIEW_PAGE)*REVIEW_PAGE));
     $("reviewExportCsv").disabled=!rows.length;
     $("reviewExportJson").disabled=!rows.length;
+    $("reviewExportStages").disabled=humanReviewStages.size===0;
+    const h=humanStageSummary();
+    $("reviewHumanSummary").textContent=h.total?
+      "Local HUMAN-only marks: "+h.assigned+" of "+h.total+
+      " events · "+h.needs+" NEEDS_INPUT · "+h.followup+" FOLLOW_UP · "+
+      h.noted+" HUMAN_NOTED. These are not review approvals or evidence.":
+      "No source-flag events admitted or marked.";
     $("reviewPrev").disabled=reviewOffset===0;
     $("reviewNext").disabled=reviewOffset+REVIEW_PAGE>=rows.length;
     $("reviewCount").textContent=rows.length?
@@ -299,7 +319,7 @@
     if(!rows.length)return;
     const table=document.createElement("table"),head=document.createElement("thead"),tr=document.createElement("tr");
     for(const name of ["Manual slot","Anonymous case","Metric","Review group","Source-reported change",
-      "Candidate","Δ","Source status","Human follow-up"]){
+      "Candidate","Δ","Source status","Human stage · self-report only","Human follow-up"]){
       const th=document.createElement("th");th.scope="col";th.textContent=name;tr.append(th);
     }
     head.append(tr);table.append(head);
@@ -311,6 +331,19 @@
         event.sourceStatus]){
         const cell=document.createElement("td");cell.textContent=String(value);line.append(cell);
       }
+      const stageCell=document.createElement("td"),stageSelect=document.createElement("select");
+      stageSelect.setAttribute("aria-label","Human stage for scenario "+event.scenarioSlot+" "+event.metric+" slot "+event.snapshotSlot);
+      for(const stage of HUMAN_STAGES){
+        const option=document.createElement("option");option.value=stage;option.textContent=stage;stageSelect.append(option);
+      }
+      stageSelect.value=humanStage(event);
+      stageSelect.addEventListener("change",()=>{
+        const key=humanStageKey(event);
+        if(stageSelect.value==="UNREVIEWED")humanReviewStages.delete(key);
+        else humanReviewStages.set(key,stageSelect.value);
+        renderReviewQueue();
+      });
+      stageCell.append(stageSelect);line.append(stageCell);
       const action=document.createElement("td"),button=document.createElement("button");
       button.type="button";button.className="secondary";button.textContent="Open commentary";
       button.setAttribute("aria-label","Review scenario "+event.scenarioSlot+" "+event.metric);
@@ -323,6 +356,22 @@
       action.append(button);line.append(action);body.append(line);
     }
     table.append(body);root.append(table);
+  }
+  function exportHumanStages(){
+    if(!snapshots.length||!humanReviewStages.size)return;
+    if(!window.confirm("Export HUMAN-only local review stages as a separate PRIVATE, UNSIGNED file? Manual scenario/slot ordinals cannot authenticate source files or be safely imported against another cohort."))return;
+    const rows=buildReviewEvents().filter(e=>humanStage(e)!=="UNREVIEWED");
+    const out={schema:"lightup.assessment_trends_private_human_stage.v1",
+      status:"PRIVATE_UNSIGNED",private_unsigned:true,fictional_demo_only:fictional,
+      manually_selected_order:true,chronology_authenticated:false,
+      source_identity_authenticated:false,stage_count:rows.length,
+      stages:rows.map(e=>({snapshot_slot:e.snapshotSlot,scenario_slot:e.scenarioSlot,
+        metric:e.metric,source_flag_event:e.kind,human_self_report_stage:humanStage(e)})),
+      disclaimer:"PRIVATE local self-report only; no source binding or authenticated identity. Do not re-apply ordinal-only stages to another imported source. Not verification, remediation or release permission.",
+      ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+    download("assessment-trends-PRIVATE-human-stage-register.json",
+      JSON.stringify(out,null,2)+"\n","application/json");
+    $("reviewHumanSummary").textContent="PRIVATE unsigned HUMAN stage register downloaded separately. No source IDs or note text.";
   }
   function exportReviewQueue(format){
     if(!snapshots.length)return;
@@ -407,7 +456,9 @@
       ["metricHeatmap","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","printBrief"].forEach(id=>$(id).replaceChildren());
     }
     if(!active){$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
-      $("reviewPrev").disabled=true;$("reviewNext").disabled=true;}
+      $("reviewPrev").disabled=true;$("reviewNext").disabled=true;
+      $("reviewExportStages").disabled=true;
+      $("reviewHumanSummary").textContent="No local HUMAN stages.";}
     renderNotePanel();
   }
   async function importFiles(list){
@@ -424,7 +475,7 @@
       }
       const ids=harmonize(next);
       snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
-      reviewOffset=0;resetReviewFilters();
+      reviewOffset=0;humanReviewStages.clear();resetReviewFilters();
       notes.clear();scratch.clear();fictional=false;
       render();$("message").textContent="Accepted "+snapshots.length+
         " compatible source snapshots with "+scenarioIds.length+
@@ -460,12 +511,12 @@
     snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
-    reviewOffset=0;resetReviewFilters();render();
+    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();render();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
-    reviewOffset=0;resetReviewFilters();
+    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";render();
   }
   function exportJson(){
@@ -555,7 +606,7 @@
   }
 
   function resetReviewFilters(){
-    $("reviewKind").value="all";
+    $("reviewKind").value="all";$("reviewStage").value="all";
     const group=$("reviewGroup");group.replaceChildren();
     for(const name of ["all",...new Set(METRICS.map(family))]){
       const option=document.createElement("option");option.value=name;
@@ -567,13 +618,14 @@
       option.textContent=slot==="all"?"All manual slots":"Slot "+slot;selector.append(option);
     }
   }
-  for(const filter of ["reviewKind","reviewGroup","reviewSlot"]){
+  for(const filter of ["reviewKind","reviewGroup","reviewSlot","reviewStage"]){
     $(filter).addEventListener("change",()=>{reviewOffset=0;renderReviewQueue();});
   }
   $("reviewPrev").addEventListener("click",()=>{reviewOffset=Math.max(0,reviewOffset-REVIEW_PAGE);renderReviewQueue();});
   $("reviewNext").addEventListener("click",()=>{reviewOffset+=REVIEW_PAGE;renderReviewQueue();});
   $("reviewExportCsv").addEventListener("click",()=>exportReviewQueue("csv"));
   $("reviewExportJson").addEventListener("click",()=>exportReviewQueue("json"));
+  $("reviewExportStages").addEventListener("click",exportHumanStages);
   resetReviewFilters();
   $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
   $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});

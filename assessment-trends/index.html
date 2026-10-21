@@ -64,11 +64,19 @@
       <option value="absent">Not flagged in this slot (not a verified fix)</option>
     </select></label>
     <label>Review group<select id="reviewGroup"><option value="all">All review groups</option></select></label>
+    <label>HUMAN-only follow-up stage<select id="reviewStage">
+      <option value="all">All HUMAN stages</option>
+      <option value="UNREVIEWED">UNREVIEWED</option>
+      <option value="NEEDS_INPUT">NEEDS_INPUT</option>
+      <option value="FOLLOW_UP">FOLLOW_UP</option>
+      <option value="HUMAN_NOTED">HUMAN_NOTED</option>
+    </select></label>
     <label>Selected snapshot slot<select id="reviewSlot"><option value="all">All manual slots</option></select></label>
   </div>
   <h3>Source-flag transitions by selected slot</h3>
   <p class="footnote">Unfiltered counts over admitted reports, not authenticated time. A flag absent in a later slot does not prove any fix.</p>
   <div id="reviewSummary" class="tablewrap" role="region" aria-label="Source-flag counts by selected slot" tabindex="0"></div>
+  <p id="reviewHumanSummary" class="message" role="status" aria-live="polite">No local HUMAN stages.</p>
   <p id="reviewCount" class="message" role="status" aria-live="polite">Import snapshots to see local source-flag transitions.</p>
   <div id="reviewTable" class="tablewrap" role="region" aria-label="Paginated anonymous change events" tabindex="0"></div>
   <div class="controls">
@@ -76,7 +84,9 @@
     <button id="reviewNext" type="button" class="secondary" disabled>Next 100</button>
     <button id="reviewExportCsv" type="button" disabled>Export filtered anonymous CSV</button>
     <button id="reviewExportJson" type="button" class="secondary" disabled>Export filtered anonymous JSON</button>
+    <button id="reviewExportStages" type="button" class="ghost" disabled>Export PRIVATE HUMAN stage register</button>
   </div>
+  <p class="footnote">HUMAN stages are only local, unsigned self-reports; they reset when another snapshot batch is admitted, demo is loaded or data are forgotten. HUMAN stages and note text are never included in anonymous reports. The separate PRIVATE export records only manual ordinals and stages; it cannot authenticate the original source and must not be imported against a different cohort.</p>
   <p class="footnote">Export contains only manually ordered anonymous slots, fixed metric/group labels, numeric candidate/delta, source flags and literal false authority fields. No original IDs, uploaded content, filenames, hashes or HUMAN notes. The order is neither independently authenticated chronology nor a verified security result.</p>
 </section>
 <section class="panel no-print" id="commentary">
