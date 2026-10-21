@@ -142,3 +142,20 @@ Use [mediation_return.py](MEDIATION-RETURN.md) with the original offline workspa
 ### Original offline collaboration navigation
 
 New complete original-source private assessment workspaces include [collaboration-guide.html](COLLABORATION-NAVIGATION.md) linked directly from `workspace-home.html`. It gives operators the full source-bound independent human contribution, strict conflict-free merge, explicit mediation and next-cycle return workflows without needing to find repository docs. The new guide is covered by the private local content byte-consistency map, and older original workspaces remain readable under their existing strict original-source gates.
+
+## Strict JSON admission for private HUMAN restores
+
+The standalone original-HUMAN review editor now admits single-agenda proposals
+(256 KiB maximum) and complete all-agenda bundles (4 MiB maximum) through the
+shared `strict-json.js` parser. The hypothetical capacity Studio uses the same
+parser for source-bound capacity-plan restore (64 KiB maximum). All three paths
+reject duplicate decoded object keys, including escaped spellings that would
+otherwise collapse to one key under the browser's normal last-key-wins parser,
+plus invalid JSON whitespace/tokens and non-finite numeric values. Their
+existing exact-schema, source-digest, row-order, false-authority and atomic
+in-memory validation remains in place.
+
+The parser is embedded into each CSP-hashed standalone by the existing builders;
+it is not fetched at runtime. Generated handoffs remain local, private and
+non-authorizing. No original agenda, grant, scanner, consent or production
+source-owner path is modified.

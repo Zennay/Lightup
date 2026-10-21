@@ -17,7 +17,7 @@ def _hash(src):
 def build(agendas, summary):
     html=(ROOT/"review.template.html").read_text(encoding="utf-8")
     css=(ROOT/"review.css").read_text(encoding="utf-8")
-    js=(ROOT/"review.js").read_text(encoding="utf-8")
+    js=(ROOT/"strict-json.js").read_text(encoding="utf-8") + "\n" + (ROOT/"review.js").read_text(encoding="utf-8")
     source={"schema":"lightup.assessment_portfolio_review_studio.v1",
             "reference_date":summary["reference_date"],
             "sources":[{"slot":index,

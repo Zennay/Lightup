@@ -192,7 +192,7 @@
   });
   async function restore(file) {
     if (!file || file.size<1 || file.size>262144) throw Error("private proposal size");
-    const doc=JSON.parse(await file.text());
+    const doc=LightUpStrictJSON.parse(await file.text(),262144);
     const src=source();
     const replacement=admitRestoredProposal(src,doc);
     state.set(src.slot,replacement);
@@ -455,7 +455,7 @@
       throw Error("explicit private replacement acknowledgement required");
     if (!file || file.size<1 || file.size>4194304)
       throw Error("complete private bundle must be a regular bounded local file");
-    const doc=JSON.parse(await file.text());
+    const doc=LightUpStrictJSON.parse(await file.text(),4194304);
     if (!doc || Array.isArray(doc) || typeof doc!=="object" ||
         keys(doc)!==bundleKeys ||
         doc.schema!=="lightup.assessment_portfolio_human_proposal_bundle.v1" ||

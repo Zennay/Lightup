@@ -40,7 +40,7 @@
     const file=$("restorePlan").files[0];
     try {
       if (!file || file.size<1 || file.size>65536) throw Error("invalid size");
-      const plan=JSON.parse(await file.text());
+      const plan=LightUpStrictJSON.parse(await file.text(),65536);
       if (!sameKeys(plan,shape) ||
           plan.schema!=="lightup.assessment_portfolio_capacity_plan.v1" ||
           plan.reference_date!==date ||

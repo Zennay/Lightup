@@ -17,7 +17,7 @@ def digest(value):
 def build(agendas, summary):
     template=(ROOT/"studio.template.html").read_text(encoding="utf-8")
     css=(ROOT/"studio.css").read_text(encoding="utf-8")
-    js=(ROOT/"studio.js").read_text(encoding="utf-8") + "\n" + (ROOT/"studio-plan.js").read_text(encoding="utf-8")
+    js=(ROOT/"strict-json.js").read_text(encoding="utf-8") + "\n" + (ROOT/"studio.js").read_text(encoding="utf-8") + "\n" + (ROOT/"studio-plan.js").read_text(encoding="utf-8")
     source={
         "schema":"lightup.assessment_portfolio_live_capacity.v1",
         "reference_date":summary["reference_date"],
