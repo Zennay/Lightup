@@ -99,6 +99,18 @@
 <section class="panel no-print" id="humanPlan">
   <div class="section-head"><h2>06 / PRIVATE HUMAN follow-up work plan</h2><span class="tag">Non-authorizing HUMAN self-reports</span></div>
   <p>Collect the source-flag events manually marked <strong>NEEDS_INPUT</strong> or <strong>FOLLOW_UP</strong> into one action desk. Fixed P1–P4/Info grouping prioritizes readability only; it is <strong>not measured severity</strong> or a security verdict. Proposed next steps are generic HUMAN questions. Review the currently loaded source or open a note without triggering a scan, grant or external request.</p>
+  <div class="queue-controls">
+    <label>PRIVATE handoff: static review group
+      <select id="workPlanGroup"><option value="all">All static review groups</option></select>
+    </label>
+    <label>PRIVATE handoff: HUMAN-only stage
+      <select id="workPlanStage">
+        <option value="all">All actionable HUMAN stages</option>
+        <option value="NEEDS_INPUT">NEEDS_INPUT only</option>
+        <option value="FOLLOW_UP">FOLLOW_UP only</option>
+      </select>
+    </label>
+  </div>
   <p id="workPlanSummary" class="message" role="status" aria-live="polite">Import snapshots and mark HUMAN stages to assemble a local follow-up plan.</p>
   <div id="workPlanTable" class="tablewrap" role="region" aria-label="Sorted private HUMAN next-action plan" tabindex="0"></div>
   <p id="workPlanRange" class="footnote">No outstanding HUMAN follow-up actions.</p>
@@ -109,6 +121,7 @@
     <button id="workPlanExportCsv" type="button" class="ghost" disabled>Export PRIVATE HUMAN plan CSV</button>
     <button id="workPlanExportBrief" type="button" class="ghost" disabled>Export PRIVATE printable HUMAN plan</button>
   </div>
+  <p class="footnote">Exports include ONLY the selected static-group/HUMAN-stage subset and label the chosen filters. Narrow this handoff before sharing; the current HUMAN work and original source reports remain intact.</p>
   <p class="footnote">PRIVATE outputs contain manually ordered anonymous scenario slots, static metric labels, HUMAN-only stages and generic follow-up suggestions. They exclude original source IDs, filenames, hashes, HUMAN note text and original evidence. A HUMAN assignment is not authorization or independent verification.</p>
 </section>
 <section class="panel no-print" id="commentary">

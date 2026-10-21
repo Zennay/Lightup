@@ -575,15 +575,22 @@
     renderScenarioDetail();renderNotePanel();$("noteInput").focus();
     $("commentary").scrollIntoView({block:"start",behavior:"smooth"});
   }
+  function selectedHumanPlanRows(){
+    const group=$("workPlanGroup").value,stage=$("workPlanStage").value;
+    return actionableRows().filter(e=>(group==="all"||e.group===group)&&
+      (stage==="all"||humanStage(e)===stage));
+  }
   function renderHumanWorkPlan(){
-    const actions=snapshots.length?actionableRows():[];
+    const all=snapshots.length?actionableRows():[];
+    const actions=snapshots.length?selectedHumanPlanRows():[];
     workPlanOffset=Math.min(workPlanOffset,
       Math.max(0,Math.floor((actions.length-1)/WORK_PLAN_PAGE)*WORK_PLAN_PAGE));
-    const awaiting=actions.filter(e=>humanStage(e)==="NEEDS_INPUT").length,
-      following=actions.length-awaiting;
+    const awaiting=all.filter(e=>humanStage(e)==="NEEDS_INPUT").length,
+      following=all.length-awaiting;
     $("workPlanSummary").textContent=snapshots.length?
       awaiting+" HUMAN NEEDS_INPUT · "+following+" HUMAN FOLLOW_UP · "+
-      actions.length+" HUMAN self-reported next actions. Ordered by fixed display grouping, not authenticated severity or chronology.":
+      all.length+" total HUMAN self-reported next actions; "+actions.length+
+      " match the selected PRIVATE handoff filters. Fixed grouping is not authenticated severity or chronology.":
       "Import snapshots and mark HUMAN stages to assemble a local follow-up plan.";
     for(const id of ["workPlanExportCsv","workPlanExportJson","workPlanExportBrief"])
       $(id).disabled=actions.length===0;
@@ -620,11 +627,13 @@
     table.append(body);root.append(table);
   }
   function humanPlanPayload(){
-    const actions=actionableRows();
+    const actions=selectedHumanPlanRows();
     return {schema:"lightup.assessment_trends_private_human_plan.v1",
       status:"PRIVATE_UNSIGNED",private_unsigned:true,fictional_demo_only:fictional,
       manually_selected_order:true,chronology_authenticated:false,
       source_identity_authenticated:false,action_count:actions.length,
+      chosen_static_review_group:$("workPlanGroup").value,
+      chosen_human_stage:$("workPlanStage").value,
       proposed_human_actions:actions.map(e=>({
         human_self_report_stage:humanStage(e),static_review_group:e.group,
         snapshot_slot:e.snapshotSlot,scenario_slot:e.scenarioSlot,
@@ -634,7 +643,7 @@
       ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
   }
   function exportHumanPlan(format){
-    if(!snapshots.length||!actionableRows().length)return;
+    if(!snapshots.length||!selectedHumanPlanRows().length)return;
     if(!window.confirm("Export a PRIVATE UNSIGNED HUMAN follow-up plan? Contains anonymous scenario and metric ordinals, self-reported stages and generic questions, but NO original IDs, source hashes or note text."))return;
     const payload=humanPlanPayload();
     if(format==="json"){
@@ -829,7 +838,9 @@
       snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
       sourceFingerprints=nextFingerprints.every(v=>v!==null)?nextFingerprints:[];
       $("privateSessionFile").value="";
-      reviewOffset=0;workPlanOffset=0;humanReviewStages.clear();resetReviewFilters();
+      reviewOffset=0;workPlanOffset=0;
+      $("workPlanGroup").value="all";$("workPlanStage").value="all";
+      humanReviewStages.clear();resetReviewFilters();
       notes.clear();scratch.clear();fictional=false;resetRevisionComparison();resetHumanTimeline();
       render();$("sessionMessage").textContent="New snapshot batch admitted; previous HUMAN session cannot be carried across datasets.";
       $("message").textContent="Accepted "+snapshots.length+
@@ -871,7 +882,9 @@
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;workPlanOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();renderPendingSources();
+    reviewOffset=0;workPlanOffset=0;
+    $("workPlanGroup").value="all";$("workPlanStage").value="all";
+    humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();renderPendingSources();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
@@ -879,7 +892,9 @@
     pendingSources=[];$("files").value="";
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;workPlanOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();
+    reviewOffset=0;workPlanOffset=0;
+    $("workPlanGroup").value="all";$("workPlanStage").value="all";
+    humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";
     $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();renderPendingSources();
   }
@@ -1471,6 +1486,15 @@
   $("reviewNext").addEventListener("click",()=>{reviewOffset+=REVIEW_PAGE;renderReviewQueue();});
   $("reviewExportCsv").addEventListener("click",()=>exportReviewQueue("csv"));
   $("reviewExportJson").addEventListener("click",()=>exportReviewQueue("json"));
+  const planGroup=$("workPlanGroup");planGroup.replaceChildren();
+  for(const name of ["all",...new Set(METRICS.map(family))]){
+    const option=document.createElement("option");
+    option.value=name;option.textContent=name==="all"?"All static review groups":name;
+    planGroup.append(option);
+  }
+  for(const id of ["workPlanGroup","workPlanStage"]){
+    $(id).addEventListener("change",()=>{workPlanOffset=0;renderHumanWorkPlan();});
+  }
   $("workPlanPrev").addEventListener("click",()=>{
     workPlanOffset=Math.max(0,workPlanOffset-WORK_PLAN_PAGE);renderHumanWorkPlan();
   });
