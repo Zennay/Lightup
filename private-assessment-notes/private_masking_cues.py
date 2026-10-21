@@ -20,7 +20,8 @@ import tempfile
 from notes import FALSE_FLAGS, Hold, file_new, load_workroom, private_directory, private_input, save_json
 
 LEGACY_SCHEMA = "lightup.private_assessment_masking_cues.v1"
-SCHEMA = "lightup.private_assessment_masking_cues.v2"
+V2_SCHEMA = "lightup.private_assessment_masking_cues.v2"
+SCHEMA = "lightup.private_assessment_masking_cues.v3"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -35,8 +36,14 @@ GROUPS = (
 LEGACY_GROUPS = GROUPS
 # V2 receives a newly recognized HAR exported HTTP credential placeholder.
 # Original V1 cue room source bytes remain stable and read-only reopenable.
-GROUPS = (("HTTP_OR_SHELL", LEGACY_GROUPS[0][1] +
-           ("[REDACTED_HAR_HEADER_VALUE]",)), *LEGACY_GROUPS[1:])
+V2_GROUPS = (("HTTP_OR_SHELL", LEGACY_GROUPS[0][1] +
+              ("[REDACTED_HAR_HEADER_VALUE]",)), *LEGACY_GROUPS[1:])
+# V3 adds known credential-like HAR cookie, query and form name/value fields,
+# counted as literal structured markers, never as detected verified secrets.
+GROUPS = (*V2_GROUPS[:2],
+          ("STRUCTURED_CONFIG", V2_GROUPS[2][1] +
+           ("[REDACTED_HAR_PARAM_VALUE]",)),
+          V2_GROUPS[3])
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
@@ -168,6 +175,9 @@ def reopen(original: str, cue_room: str) -> int:
                            ensure_ascii=False) + "\n").encode("utf-8")
     if stored_receipt == serialized_receipt(SCHEMA):
         derived = cues(rows)
+    elif stored_receipt == serialized_receipt(V2_SCHEMA):
+        # Preserve exact historical V2 marker counts and source bytes.
+        derived = cues(rows, groups=V2_GROUPS)
     elif stored_receipt == serialized_receipt(LEGACY_SCHEMA):
         # Pre-HAR cue workrooms are not silently upgraded or overwritten.
         derived = cues(rows, groups=LEGACY_GROUPS)
