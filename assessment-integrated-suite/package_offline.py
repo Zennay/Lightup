@@ -103,11 +103,26 @@ The new PRIVATE review cockpit includes a full 20-action multi-revision
 matrix, role/follow-up change-only CSV, 5-stage overview, original latest
 source-free proposal and unsigned source/destination file receipt.
 This native-only Python and PRIVATE output are NOT in this ZIP.
+The original native portfolio 78 now also provides an editable
+source-free HUMAN revision choice CSV: exactly twenty original action
+rows, with both role and follow-up selection set to 0 = WITHHOLD.
+Copy it outside the saved original 0700/0600 receipt room to a NEW
+owner-private 0600 input file, and explicitly enter a declared
+revision number 1–8 only for the fixed HUMAN proposal fields to use.
+Native console 80 reopens all original route, attention and portfolio
+source bytes and strictly admits the edited original worksheet before
+creating a NEW HUMAN Attention v2 source-free proposal; native 81
+reopens all exact original and output bytes read-only. Default WITHHOLD
+means UNASSIGNED/UNCLASSIFIED, never an actual person or task.
+Original native attention_decision.py, personal identities, original
+client source, private HUMAN inputs and all generated PRIVATE output
+are deliberately NOT distributed in this software-only ZIP.
+
 Original HUMAN revision order does NOT prove chronology or real work.
 
 \nNative checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 79 actions, including original
+options 21/22. The same console now has 81 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
