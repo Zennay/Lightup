@@ -2,6 +2,10 @@
 
 **INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** Add-only, fully offline HUMAN operations companion. This is *not* part of an approved active assessment, release, authorization grant, consent workflow, delete automation or evidence verification.
 
+## Strict import encoding
+
+Plaintext HUMAN plan imports, source-free plan comparisons, and encrypted-vault envelopes are decoded from the original bytes with fatal UTF-8 handling. Malformed byte sequences and UTF-8 BOMs fail closed before JSON parsing or any restore/compare action. This prevents silent U+FFFD replacement from changing imported HUMAN fields while leaving the existing exact source SHA/size binding and all-or-nothing restore rules intact.
+
 ## Direct usable offline application
 
 **[Save the complete standalone HTML file](standalone.html)** from the branch to

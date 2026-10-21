@@ -342,6 +342,23 @@
     }
     return proposed;
   }
+  async function decodeStrictJsonFile(file, maxBytes, label) {
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > maxBytes)
+      throw new Error(label + " is leeg of overschrijdt de bytegrens.");
+    const bytes = await file.arrayBuffer();
+    if (bytes.byteLength !== file.size || bytes.byteLength < 1 || bytes.byteLength > maxBytes)
+      throw new Error(label + " veranderde tijdens het lezen of overschrijdt de bytegrens.");
+    let raw;
+    try {
+      raw = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}).decode(bytes);
+    } catch {
+      throw new Error(label + " bevat ongeldige UTF-8; geen HUMAN-gegevens overgenomen.");
+    }
+    if (raw.charCodeAt(0) === 0xfeff)
+      throw new Error(label + " met UTF-8-BOM wordt niet toegelaten.");
+    return raw;
+  }
+
   async function importReceipt(event) {
     if (processing) return;
     processing = true;
@@ -350,7 +367,7 @@
       if (!file) return;
       if (!entries.length) throw new Error("Selecteer eerst originele bronbestanden voor SHA-binding.");
       if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Planbestand overschrijdt de 128 KiB grens.");
-      const raw = await file.text();
+      const raw = await decodeStrictJsonFile(file, MAX_RECEIPT_BYTES, "Planbestand");
       const rows = validateReceipt(raw);
       if (!window.confirm("Alle geselecteerde echte bestandsbytes komen overeen. De volledige bestaande HUMAN-planning lokaal overnemen? Dit verleent GEEN consent, toestemming tot wissen, bron-authenticatie of scanbevoegdheid.")) {
         status("Overname geannuleerd. De huidige werkruimte blijft intact."); return;
@@ -373,7 +390,8 @@
       if (!file) return;
       if (!entries.length) throw new Error("Selecteer eerst huidige originele bronbestanden.");
       if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Plan moet 1–128 KiB zijn.");
-      const plan = validateReceipt(await file.text(), false);
+      const raw = await decodeStrictJsonFile(file, MAX_RECEIPT_BYTES, "Vergelijkingsplan");
+      const plan = validateReceipt(raw, false);
       const current = new Map(entries.map(e => [e.sha256, e]));
       const added = entries.filter(e => !plan.has(e.sha256));
       const missing = Array.from(plan.values()).filter(e => !current.has(e.sha256));

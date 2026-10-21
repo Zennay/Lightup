@@ -107,7 +107,17 @@
   async function decryptEnvelope(file, pass) {
     if (file.size < 1 || file.size > MAX_ENVELOPE_BYTES)
       throw Error("Versleuteld bestand is leeg of groter dan 256 KiB.");
-    const json = await file.text();
+    const bytes = await file.arrayBuffer();
+    if (bytes.byteLength !== file.size || bytes.byteLength < 1 || bytes.byteLength > MAX_ENVELOPE_BYTES)
+      throw Error("Versleutelde envelope veranderde tijdens het lezen of overschrijdt de bytegrens.");
+    let json;
+    try {
+      json = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}).decode(bytes);
+    } catch {
+      throw Error("Versleutelde envelope bevat ongeldige UTF-8; geen HUMAN-gegevens hersteld.");
+    }
+    if (json.charCodeAt(0) === 0xfeff)
+      throw Error("UTF-8-BOM in de versleutelde envelope wordt niet toegelaten.");
     let receipt;
     try { receipt = JSON.parse(json); } catch { throw Error("Ongeldig versleuteld JSON."); }
     if (JSON.stringify(receipt) !== json.trim() ||
@@ -129,7 +139,15 @@
     } catch {
       throw Error("Verkeerd wachtwoord of gewijzigde cryptografische inhoud.");
     }
-    return new TextDecoder("utf-8",{fatal:true}).decode(decrypted);
+    let decoded;
+    try {
+      decoded = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}).decode(decrypted);
+    } catch {
+      throw Error("Ontsleutelde HUMAN-planning bevat ongeldige UTF-8; niets hersteld.");
+    }
+    if (decoded.charCodeAt(0) === 0xfeff)
+      throw Error("UTF-8-BOM in de ontsleutelde HUMAN-planning wordt niet toegelaten.");
+    return decoded;
   }
   async function importVault(event) {
     let acquired = false;
