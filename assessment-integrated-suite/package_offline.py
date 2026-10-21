@@ -42,6 +42,17 @@ The original two-file variant remains available. The standalone is
 source-only and UNSIGNED, not a software authenticity proof or consent.
 It also supports no-overwrite source-free HUMAN report comparisons,
 a full local old→proposed change preview and changed-only CSV export.
+A distinct local HUMAN Attention Workboard is available as
+studios/human-lab-attention.html with adjacent human-lab-attention.js.
+It admits one to eight complete source-free original self-reports in
+manual order, rejects ambiguous duplicate keys and claimed authority,
+shows last-declared state and change counts for all twenty original
+actions, and lets a human propose a fixed role and follow-up category.
+All 20 rows remain in JSON, CSV and scriptless printable HTML.
+No real task assignment, reviewer identity, original evidence, client
+contact, scan, consent, grant, verification or recipient dispatch exists.
+The source-free exported workboard is UNSIGNED, not a source receipt.
+Both local files must stay adjacent; no network or storage is used.
 Imported 24 KiB-bounded JSON rejects duplicate object properties even
 when escaped or nested, unexpected fields and authority claims.
 Local search/status filters and confirmation-only bulk NEEDS_INPUT
@@ -177,7 +188,7 @@ def front_page(files: list[tuple[str, str]]) -> bytes:
         if not name.endswith(".html"):
             continue  # Local support scripts are packaged, not offered as standalone pages.
         if name in ("lab-launchpad.html", "lab-scenario-studio.html", "human-lab-route.html",
-                    "human-lab-route-standalone.html"):
+                    "human-lab-route-standalone.html", "human-lab-attention.html"):
             key = "02  Prepare isolated, fictional lab work"
         elif name in ("benchmark-lineage.html", "benchmark-candidates.html",
                       "lab-longitudinal-trends.html"):
