@@ -8,10 +8,24 @@ import html
 import json
 
 
-def render(rows: list[dict]) -> bytes:
-    """Only original ordinal/SHA labels; no note content or original filenames."""
-    source = [{"ordinal": row["source_ordinal"], "digest": row["source_sha256_unsigned"]}
-              for row in rows]
+def render(rows: list[dict], cue_rows: list[dict] | None = None) -> bytes:
+    """Original ordinal/source SHA plus optional literal-count HUMAN cues.
+
+    No original/masked content, filenames, note text, or privacy verdict.
+    """
+    if cue_rows is not None and (
+            len(cue_rows) != len(rows) or
+            any(cue["original_ordinal"] != int(row["source_ordinal"])
+                for row, cue in zip(rows, cue_rows))):
+        raise ValueError("HOLD: original source/cue roster mismatch")
+    keys = ("literal_http_or_shell_markers", "literal_url_or_session_markers",
+            "literal_config_markers", "literal_token_or_key_markers")
+    source = [{
+        "ordinal": row["source_ordinal"],
+        "digest": row["source_sha256_unsigned"],
+        **({"cues": [cue_rows[index][key] for key in keys]}
+           if cue_rows is not None else {}),
+    } for index, row in enumerate(rows)]
     encoded = json.dumps(source, separators=(",", ":"), ensure_ascii=True).replace("<", "\\u003c")
     javascript = """'use strict';
 const sources = """ + encoded + """;
@@ -22,6 +36,7 @@ const body = document.getElementById('rows');
 const count = document.getElementById('count');
 const notice = document.getElementById('notice');
 const button = document.getElementById('save');
+const cueFilter = document.getElementById('cue-filter');
 const csvCell = text => '"' + String(text).replaceAll('"','""') + '"';
 const banned = value => /^[\\s]*[=+@-]/.test(value) || /[\\x00-\\x08\\x0b-\\x1f\\x7f]/.test(value);
 function td(tr, child) {
@@ -34,7 +49,16 @@ function sync() {
   count.textContent = values.length + ' originals · ' +
     values.filter(x => x.status.value === 'WITHHOLD').length + ' withhold · ' +
     values.filter(x => x.status.value === 'PENDING').length + ' pending';
-  notice.textContent = 'LOCAL HUMAN draft only; no privacy verdict or recipient clearance.';
+  if (cueFilter) {
+    let visible = 0;
+    for (const item of stage.values()) {
+      const marked = item.source.cues.some(value => value > 0);
+      item.tr.hidden = cueFilter.checked && !marked;
+      if (!item.tr.hidden) visible++;
+    }
+    count.textContent += ' · ' + visible + ' visible in local cue view';
+  }
+  notice.textContent = 'LOCAL HUMAN draft only; zero markers never means clear.';
 }
 for (const source of sources) {
   const tr = document.createElement('tr');
@@ -75,12 +99,16 @@ for (const source of sources) {
   note.addEventListener('input', sync);
   select.addEventListener('change', sync);
   td(tr, '#' + source.ordinal);
+  if (source.cues)
+    td(tr, 'HTTP ' + source.cues[0] + ' · URL ' + source.cues[1] +
+       ' · Config ' + source.cues[2] + ' · Token ' + source.cues[3]);
   td(tr, select);
   td(tr, group);
   td(tr, note);
   body.append(tr);
-  stage.set(source.ordinal, {source, status:select, checks, note});
+  stage.set(source.ordinal, {source, tr, status:select, checks, note});
 }
+if (cueFilter) cueFilter.addEventListener('change', sync);
 sync();
 button.addEventListener('click', () => {
   try {
@@ -186,6 +214,7 @@ button{background:#144b75;color:white;border:0;border-radius:9px;padding:13px;cu
 button:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #f1a640}
 @media(max-width:700px){table,thead,tbody,tr,th,td{display:block}thead{display:none}
 tr{border:1px solid #bbcbd7;margin:12px 0;border-radius:10px}}
+tr[hidden]{display:none!important}
 """
     page = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -201,7 +230,15 @@ outside the consciously downloaded PRIVATE CSV. No automatic external transfer.<
 <p>After download move CSV to an owner-only 0700 parent and chmod 600. Use the
 native <code>sensitivity-finalize</code> with unchanged original completed HUMAN
 packet and unchanged triage kit. Native re-admission is still required.</p></header>
-<main><p id="count"></p><table><thead><tr><th>Original</th><th>HUMAN status</th>
+<main><p id="count"></p>""" + (
+    """<p><a href="PRIVATE-masking-cues.html">Open original PRIVATE masking-cue navigator</a>.
+    Counts are only literal placeholder appearances; zero is NOT clean.
+    <label><input type="checkbox" id="cue-filter">
+    Show only source positions with known literal marker appearances
+    (the complete roster is ALWAYS exported)</label></p>"""
+    if cue_rows is not None else "") + """<table><thead><tr><th>Original</th>""" + (
+    "<th>Literal PRIVATE masking cues · NOT a verdict</th>" if cue_rows is not None
+    else "") + """<th>HUMAN status</th>
 <th>Possible sensitive categories</th><th>PRIVATE follow-up (max 300)</th></tr></thead>
 <tbody id="rows"></tbody></table><p><label for="resume">Resume exact-source previous PRIVATE HUMAN browser CSV</label>
 <input id="resume" type="file" accept=".csv,text/csv" aria-describedby="notice"></p>

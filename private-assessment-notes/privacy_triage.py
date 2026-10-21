@@ -196,8 +196,7 @@ def prepare(original: str, parent_string: str,
         save_json(destination / "PRIVATE-triage-bindings.json", bindings)
         file_new(destination / "PRIVATE-HUMAN-sensitivity-template.csv", csv_bytes(rows))
         from privacy_triage_studio import render as render_sensitivity_studio
-        file_new(destination / "PRIVATE-HUMAN-sensitivity-editor.html",
-                 render_sensitivity_studio(rows))
+        cue_records = None
         if include_masking_cues:
             # Optional ORIGINAL source-bound navigation, not another HUMAN
             # classification. No modified source or canonical sensitivity
@@ -217,6 +216,10 @@ def prepare(original: str, parent_string: str,
             cue_records = cues(masked_rows)
             file_new(destination / "PRIVATE-masking-cues.csv", cue_csv(cue_records))
             file_new(destination / "PRIVATE-masking-cues.html", cue_page(cue_records))
+        # Combined original privacy editor displays only literal cue COUNTS
+        # and all original rows remain in the unfiltered complete CSV.
+        file_new(destination / "PRIVATE-HUMAN-sensitivity-editor.html",
+                 render_sensitivity_studio(rows, cue_records))
         file_new(destination / "OPEN-PRIVATE.html",
                  render(rows, prepared=True,
                         include_masking_cues=include_masking_cues))
