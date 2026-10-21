@@ -97,7 +97,7 @@ WORKFLOWS = {
     "29": ("Build 2–8 round PRIVATE all-priority HUMAN portfolio",
            "every original priority, complete HUMAN returns and saved source-reopened inboxes"),
     "30": ("Reopen PRIVATE all-priority HUMAN portfolio against every original round",
-           "same original source, full HUMAN rounds and existing exact four-file portfolio"),
+           "same original source, full HUMAN rounds and existing exact five-file portfolio"),
 }
 
 

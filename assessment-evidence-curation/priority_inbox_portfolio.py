@@ -26,6 +26,7 @@ STAGE_KEYS = ("no_human_response",) + tuple(key for key, _ in STAGES if key != "
 REPORT = "PRIVATE-HUMAN-priority-round-portfolio.html"
 COUNTS = "PRIVATE-HUMAN-priority-round-portfolio.json"
 CSV = "PRIVATE-HUMAN-priority-round-portfolio.csv"
+TRANSITIONS_CSV = "PRIVATE-HUMAN-priority-round-stage-transitions.csv"
 RECEIPT = "PRIVATE-HUMAN-priority-round-portfolio-receipt.json"
 LIMIT = 512 * 1024
 
@@ -116,13 +117,23 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                         for (old, new), n in sorted(stage_pairs.items())],
                 })
 
+    attention = [
+        {"human_priority": priority, "human_stage": stage,
+         "human_rows": next(item["human_rows"] for item in counts
+                            if item["operator_ordered_round"] == rounds and
+                            item["human_priority"] == priority and
+                            item["human_stage"] == stage)}
+        for priority in PRIORITIES
+        for stage in ("blocked_human", "needs_more_information", "no_human_response")
+    ]
     numeric = {
-        "schema": "lightup.private_human_cross_priority_portfolio.v1",
+        "schema": "lightup.private_human_cross_priority_portfolio.v2",
         "status": "REVIEW_ONLY",
         "operator_ordered_round_count": rounds,
         "selected_original_human_rows": len(selected),
         "round_priority_stage_counts": counts,
         "adjacent_human_round_changes": transitions,
+        "latest_round_attention_counts": attention,
         "manual_order_not_authenticated_chronology": True,
         **UNTRUSTED_FLAGS,
     }
@@ -134,6 +145,18 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         writer.writerow([item["operator_ordered_round"], item["human_priority"],
                          item["human_stage"], item["human_rows"]])
     csv_raw = output.getvalue().encode("utf-8")
+    flows_out = io.StringIO(newline="")
+    flows_writer = csv.writer(flows_out, lineterminator="\r\n")
+    flows_writer.writerow(["operator_ordered_from_round", "operator_ordered_to_round",
+                           "human_priority", "from_human_stage", "to_human_stage",
+                           "human_rows"])
+    for item in transitions:
+        for flow in item["human_stage_transitions"]:
+            flows_writer.writerow([item["operator_ordered_from_round"],
+                                   item["operator_ordered_to_round"],
+                                   item["human_priority"], flow["from_stage"],
+                                   flow["to_stage"], flow["human_rows"]])
+    flows_csv_raw = flows_out.getvalue().encode("utf-8")
     matrix_rows = "".join(
         "<tr><td>" + str(row["operator_ordered_round"]) + "</td><td>" +
         h(row["human_priority"]) + "</td><td>" + h(row["human_stage"]) +
@@ -147,6 +170,18 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         str(item["reply_changed_rows"]) + "</td><td>" +
         str(item["next_question_changed_rows"]) + "</td></tr>"
         for item in transitions)
+    attention_rows = "".join(
+        "<tr><td>" + h(item["human_priority"]) + "</td><td>" +
+        h(item["human_stage"]) + "</td><td>" +
+        str(item["human_rows"]) + "</td></tr>"
+        for item in attention)
+    flow_rows = "".join(
+        "<tr><td>" + str(item["operator_ordered_from_round"]) + " → " +
+        str(item["operator_ordered_to_round"]) + "</td><td>" +
+        h(item["human_priority"]) + "</td><td>" +
+        h(flow["from_stage"]) + "</td><td>" + h(flow["to_stage"]) +
+        "</td><td>" + str(flow["human_rows"]) + "</td></tr>"
+        for item in transitions for flow in item["human_stage_transitions"])
     body = (
         "<header><h1>LightUp · PRIVATE HUMAN cross-priority portfolio</h1>"
         "<p class='notice'>REVIEW ONLY · offline comparison of manually ordered "
@@ -169,11 +204,21 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "<th>Stage changed</th><th>Reply edited</th><th>Next question edited</th>"
         "</tr></thead><tbody>" + trend_rows +
         "</tbody></table></section>"
+        "<section><h2>Latest HUMAN attention (unverified, not assigned)</h2>"
+        "<p>No response, blocked, and needs-more-information are HUMAN self-"
+        "reports, not verified priorities or assigned work.</p><table>"
+        "<thead><tr><th>Priority</th><th>HUMAN stage</th><th>Rows</th></tr>"
+        "</thead><tbody>" + attention_rows + "</tbody></table></section>"
+        "<section><h2>Changed reported stages between adjacent rounds</h2>"
+        "<p>Only stage changes are shown; no human questions/replies copied.</p>"
+        "<table><thead><tr><th>Rounds</th><th>Priority</th><th>From</th>"
+        "<th>To</th><th>Rows</th></tr></thead><tbody>" + flow_rows +
+        "</tbody></table></section>"
     )
     html = private_frame("PRIVATE HUMAN cross-priority round portfolio", body)
     counts_raw = json_bytes(numeric)
     receipt = {
-        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v1",
+        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v2",
         "status": "REVIEW_ONLY",
         "operator_ordered_round_count": rounds,
         "original_source_sha256_unsigned": source_sha,
@@ -184,9 +229,11 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "private_html_sha256_unsigned": digest(html),
         "private_counts_sha256_unsigned": digest(counts_raw),
         "private_csv_sha256_unsigned": digest(csv_raw),
+        "private_transition_csv_sha256_unsigned": digest(flows_csv_raw),
         **UNTRUSTED_FLAGS,
     }
     files = {REPORT: html, COUNTS: counts_raw, CSV: csv_raw,
+             TRANSITIONS_CSV: flows_csv_raw,
              RECEIPT: json_bytes(receipt)}
     require(all(0 < len(raw) <= LIMIT for raw in files.values()))
     return files, len(selected)

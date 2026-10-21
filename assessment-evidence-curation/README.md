@@ -505,8 +505,8 @@ inboxes and 1–64 original selected HUMAN rows. Console action **29** prompts f
 those original sources and creates the packet; action **30** opens an existing
 packet read-only and checks it against every unchanged original source.
 
-The single **NEW owner-only 0700 output folder** contains four exclusive
-owner-only **0600** files:
+The single **NEW owner-only 0700 output folder** contains five exclusive
+owner-only **0600** files (five in the current v2 format):
 
 - `PRIVATE-HUMAN-priority-round-portfolio.html`: static, script-free,
   print-ready current/prior HUMAN stage and priority count tables and adjacent
@@ -516,6 +516,9 @@ owner-only **0600** files:
   self-reported stage transitions.
 - `PRIVATE-HUMAN-priority-round-portfolio.csv`: complete fixed-column
   round/priority/stage count matrix suitable for private spreadsheet use.
+- `PRIVATE-HUMAN-priority-round-stage-transitions.csv`: original-source-free
+  directional HUMAN stage changes per adjacent manually ordered round and
+  priority; no ordinals, free text or customer source.
 - `PRIVATE-HUMAN-priority-round-portfolio-receipt.json`: original source,
   selection, exact reopened inbox/canonical HUMAN CSV and output unsigned digests.
 
@@ -528,7 +531,11 @@ incorrect manually supplied round order. Use the matching flags with
 All original inboxes are fully re-admitted before any output is published;
 an incomplete priority group, duplicate inbox or missing original selected row
 causes HOLD rather than a misleading partial trend. Four artifacts are bounded
-to 512 KiB each. Neither a static group-count difference nor a HUMAN change
+to 512 KiB each. Version 2 also includes a PRIVATE latest-round HUMAN attention summary
+for blocked, unreturned and needs-more-information counts. Any v1 output
+must stay archived and is intentionally refused by v2 read-only reopen; original
+source must be selected again to create a new v2 output.
+Neither a static group-count difference nor a HUMAN change
 means a verified finding, recovery, consent, real chronological ordering, or
 approval for external disclosure. Tiny cohorts can still be identifiable:
 **these are PRIVATE artifacts**, not anonymous/public data. No scans, models,
