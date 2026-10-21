@@ -27,13 +27,13 @@ consent, live model, task dispatch, production release or user identity
 is included. All original mandatory gates remain DRAFT/HOLD.
 
 
-## NEW · Native HUMAN Lab self-report custody, exact receipt and history (options 72–74)
+## NEW · Native HUMAN Lab self-report custody, exact receipt and history (options 72–75)
 
 **Actual original installed code:** [`lab_route_handoff.py`](lab_route_handoff.py)
 and [`lab_route_handoff_console.py`](lab_route_handoff_console.py).
 Existing actions **1–71 remain unchanged**; the integrated foreground
-`console.py` now also offers **72 receive**, **73 reopen**, and
-**74 compare HUMAN discussion rounds**. These are an isolated completion
+`console.py` now offers **72 receive**, **73 reopen**,
+**74 compare HUMAN discussion rounds**, and **75 reopen exact history**. These are an isolated completion
 of the previously delivered source-free browser plan, **not**
 original lab-source verification, an assessment executor, or a release.
 
@@ -74,10 +74,19 @@ prompts, not verified task age, ownership, deadlines or actual fixes.
 The chosen order is NOT a proven timeline and a
 status change is NOT an assessment or verified remediation.
 
+**75:** read-only **full history reopening** requires the same 2–8 original
+HUMAN receipt rooms and the saved PRIVATE history room. It rebuilds
+all source-free derived HTML/JSON/CSV and the history receipt from
+original private inputs; even one altered source/output byte forces HOLD.
+History output cannot reside inside original input rooms. The receipt
+never establishes verified chronology, authentic actors or remediation.
+
 For direct opt-in use outside the operator menu:
 `python3 assessment-integrated-suite/lab_route_handoff.py receive --self-report /PRIVATE/input.json --private-parent /PRIVATE --folder receipt-1`;
 `python3 assessment-integrated-suite/lab_route_handoff.py reopen --room /PRIVATE/receipt-1`;
 `python3 assessment-integrated-suite/lab_route_handoff.py history --rooms /PRIVATE/receipt-1 /PRIVATE/receipt-2 --private-parent /PRIVATE --folder history-1`.
+To reopen that history without modifying the original files:
+`python3 assessment-integrated-suite/lab_route_handoff.py reopen-history --rooms /PRIVATE/receipt-1 /PRIVATE/receipt-2 --history-room /PRIVATE/history-1`.
 Paths are examples ONLY, and must already be owner-private on the
 operator's local filesystem. No original customer record or true
 scan, consent, grant, release or HUMAN GO is created or inferred.
