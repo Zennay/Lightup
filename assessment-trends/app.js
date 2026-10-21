@@ -520,6 +520,8 @@
       $("reviewHumanSummary").textContent="No local HUMAN stages.";}
     renderNotePanel();
     renderSessionControls();
+    for(const id of ["revisionEarlierFile","revisionLaterFile","revisionCompare"])
+      $(id).disabled=!canResume();
   }
   async function importFiles(list){
     const files=[...list];
@@ -539,7 +541,7 @@
       sourceFingerprints=nextFingerprints.every(v=>v!==null)?nextFingerprints:[];
       $("privateSessionFile").value="";
       reviewOffset=0;humanReviewStages.clear();resetReviewFilters();
-      notes.clear();scratch.clear();fictional=false;
+      notes.clear();scratch.clear();fictional=false;resetRevisionComparison();
       render();$("sessionMessage").textContent="New snapshot batch admitted; previous HUMAN session cannot be carried across datasets.";
       $("message").textContent="Accepted "+snapshots.length+
         " compatible source snapshots with "+scenarioIds.length+
@@ -576,13 +578,13 @@
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();render();
+    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();render();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();
+    reviewOffset=0;humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";
     $("sessionMessage").textContent="PRIVATE session and all local source digests forgotten.";render();
   }
@@ -699,12 +701,8 @@
     download("assessment-trends-PRIVATE-source-bound-review-session.json",content,"application/json");
     $("sessionMessage").textContent="PRIVATE recovery bundle downloaded. Keep exact original snapshot files and manual order for future reopening.";
   }
-  async function restorePrivateSession(){
-    const file=$("privateSessionFile").files[0];
-    if(!file||!canResume()){
-      $("sessionMessage").textContent="HOLD: admit the original source cohort first, then choose one PRIVATE recovery file.";return;
-    }
-    try{
+  async function admitPrivateSessionFile(file){
+    admit(canResume());
       admit(file.size>0&&file.size<=MAX_PRIVATE_BUNDLE);
       const bytes=await file.arrayBuffer();
       admit(bytes.byteLength>0&&bytes.byteLength<=MAX_PRIVATE_BUNDLE);
@@ -718,7 +716,7 @@
         data.status==="PRIVATE_UNSIGNED"&&data.private_unsigned===true&&
         data.fictional_demo_only===false&&data.manually_selected_order===true&&
         data.chronology_authenticated===false&&data.source_identity_authenticated===false&&
-        data.disclaimer===privateSessionData().disclaimer&&flags(data)&&
+        typeof data.disclaimer==="string"&&data.disclaimer.length>0&&data.disclaimer.length<=1000&&flags(data)&&
         Number.isSafeInteger(data.scenario_count)&&data.scenario_count===scenarioIds.length);
       admit(Array.isArray(data.snapshot_sha256_by_manual_slot)&&
         data.snapshot_sha256_by_manual_slot.length===sourceFingerprints.length&&
@@ -749,6 +747,16 @@
         admit(!seenNotes.has(idKey));seenNotes.add(idKey);
         newNotes.set(noteKey(scenarioIds[scenarioSlot-1],metric),note);
       }
+    return {newStages,newNotes};
+  }
+
+  async function restorePrivateSession(){
+    const file=$("privateSessionFile").files[0];
+    if(!file||!canResume()){
+      $("sessionMessage").textContent="HOLD: admit the original source cohort first, then choose one PRIVATE recovery file.";return;
+    }
+    try{
+      const {newStages,newNotes}=await admitPrivateSessionFile(file);
       // Never mutate existing work on failure. Consent to replace comes AFTER full validation.
       if(!window.confirm("Exact ordered source bytes matched. Replace the CURRENT local HUMAN marks and saved notes with this PRIVATE unsigned file? Unsaved scratch text will be discarded. Matching bytes are not proof of source authenticity.")){
         $("sessionMessage").textContent="PRIVATE restore cancelled. Existing HUMAN work left unchanged.";return;
@@ -763,6 +771,120 @@
     }finally{
       $("privateSessionFile").value="";
     }
+  }
+
+
+  let privateRevisionComparison=null;
+  function revisionChanges(before,after){
+    const records=[];
+    const events=new Map(buildReviewEvents().map(e=>[humanStageKey(e),e]));
+    const stageKeys=new Set([...before.newStages.keys(),...after.newStages.keys()]);
+    for(const key of stageKeys){
+      const left=before.newStages.get(key)||"UNREVIEWED",right=after.newStages.get(key)||"UNREVIEWED";
+      if(left===right)continue;
+      const event=events.get(key);admit(!!event);
+      records.push({kind:"HUMAN_STAGE",snapshot_slot:event.snapshotSlot,
+        scenario_slot:event.scenarioSlot,metric:event.metric,source_flag_event:event.kind,
+        before:left,after:right});
+    }
+    const noteKeys=new Set([...before.newNotes.keys(),...after.newNotes.keys()]);
+    for(const key of noteKeys){
+      const a=before.newNotes.get(key),b=after.newNotes.get(key);
+      if(a===b)continue;
+      const [id,metric]=JSON.parse(key),scenarioSlot=slot(id);
+      admit(scenarioSlot>=1&&METRICS.includes(metric));
+      const type=a===undefined?"ADDED":b===undefined?"REMOVED":"EDITED";
+      records.push({kind:"HUMAN_NOTE_CHANGE",snapshot_slot:null,
+        scenario_slot:scenarioSlot,metric,source_flag_event:null,
+        before:type==="ADDED"?"ABSENT":"PRESENT",after:type==="REMOVED"?"ABSENT":"PRESENT"});
+    }
+    records.sort((a,b)=>a.scenario_slot-b.scenario_slot||
+      METRICS.indexOf(a.metric)-METRICS.indexOf(b.metric)||
+      (a.snapshot_slot||0)-(b.snapshot_slot||0)||a.kind.localeCompare(b.kind));
+    return records;
+  }
+  function revisionTable(){
+    const root=$("revisionCompareTable");root.replaceChildren();
+    if(!privateRevisionComparison)return;
+    const changes=privateRevisionComparison.changes;
+    $("revisionCompareSummary").textContent=
+      "Two PRIVATE unsigned sessions bound to identical local source bytes and manual order · "+
+      changes.filter(v=>v.kind==="HUMAN_STAGE").length+" HUMAN stage changes · "+
+      changes.filter(v=>v.kind==="HUMAN_NOTE_CHANGE").length+
+      " note presence/content changes. Only a self-reported comparison, not remediation proof.";
+    for(const id of ["revisionExportJson","revisionExportCsv","revisionExportBrief"])
+      $(id).disabled=false;
+    const rows=changes.slice(0,150);
+    drawTable("revisionCompareTable",
+      ["Change","Manual slot","Anonymous scenario","Metric","Source flag event","Earlier HUMAN","Later HUMAN"],
+      rows.map(e=>[e.kind,e.snapshot_slot===null?"—":e.snapshot_slot,
+        "Scenario "+String(e.scenario_slot).padStart(2,"0"),e.metric,
+        e.source_flag_event||"PRIVATE note only",e.before,e.after]));
+    $("revisionCompareCount").textContent=changes.length>150?
+      "Showing 150 of "+changes.length+" PRIVATE changes. Explicit exports include all admitted changes.":
+      "All "+changes.length+" PRIVATE changes shown. No original IDs or HUMAN note text.";
+  }
+  function resetRevisionComparison(){
+    privateRevisionComparison=null;
+    for(const id of ["revisionExportJson","revisionExportCsv","revisionExportBrief"])
+      $(id).disabled=true;
+    $("revisionCompareTable").replaceChildren();
+    $("revisionCompareSummary").textContent="Choose two source-bound PRIVATE sessions after admitting their original snapshots.";
+    $("revisionCompareCount").textContent="";
+    $("revisionEarlierFile").value="";$("revisionLaterFile").value="";
+  }
+  async function comparePrivateRevisions(){
+    const earlier=$("revisionEarlierFile").files[0],later=$("revisionLaterFile").files[0];
+    if(!canResume()||!earlier||!later){
+      $("revisionCompareSummary").textContent="HOLD: original cohort and both PRIVATE source-bound session files required.";return;
+    }
+    try{
+      // Admit both complete files before changing the displayed comparison.
+      const before=await admitPrivateSessionFile(earlier);
+      const after=await admitPrivateSessionFile(later);
+      const changes=revisionChanges(before,after);
+      privateRevisionComparison={changes,beforeCount:before.newStages.size,
+        afterCount:after.newStages.size,earlierNotes:before.newNotes.size,
+        laterNotes:after.newNotes.size};
+      revisionTable();
+    }catch(_){
+      $("revisionCompareSummary").textContent="HOLD: one or both PRIVATE sessions did not match exact sources, schema, source order or HUMAN stage membership. Existing comparison and current HUMAN work left unchanged.";
+    }
+  }
+  function revisionPayload(){
+    admit(!!privateRevisionComparison);
+    return {schema:"lightup.assessment_trends_private_revision_diff.v1",
+      status:"PRIVATE_UNSIGNED",private_unsigned:true,fictional_demo_only:false,
+      manually_selected_order:true,chronology_authenticated:false,source_identity_authenticated:false,
+      earlier_stages:privateRevisionComparison.beforeCount,
+      later_stages:privateRevisionComparison.afterCount,
+      earlier_saved_notes:privateRevisionComparison.earlierNotes,
+      later_saved_notes:privateRevisionComparison.laterNotes,
+      changed_record_count:privateRevisionComparison.changes.length,
+      changes:privateRevisionComparison.changes.map(e=>({...e})),
+      disclaimer:"Two independently admitted PRIVATE HUMAN self-reports tied only by original source-byte equality. Manual order is not chronology; note changes contain no note text. Not authenticated review, consent, remediation or release.",
+      ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+  }
+  function exportRevision(format){
+    if(!privateRevisionComparison)return;
+    if(!window.confirm("Export PRIVATE UNSIGNED HUMAN revision differences? Includes self-reported stage changes, anonymous scenario and metric ordinals but no original IDs or note text."))return;
+    const data=revisionPayload();
+    if(format==="json"){
+      download("assessment-trends-PRIVATE-human-revisions.json",
+        JSON.stringify(data,null,2)+"\n","application/json");
+    }else if(format==="csv"){
+      const cols=["change_kind","manual_snapshot_slot","anonymous_scenario_slot","metric",
+        "source_flag_event","earlier_human_stage_or_note_presence",
+        "later_human_stage_or_note_presence","private_unsigned","authorized",
+        "consent_verified","dispatch_allowed","release_allowed"];
+      const rows=[cols,...data.changes.map(e=>[e.kind,e.snapshot_slot===null?"":e.snapshot_slot,
+        e.scenario_slot,e.metric,e.source_flag_event||"",e.before,e.after,
+        true,false,false,false,false])];
+      download("assessment-trends-PRIVATE-human-revisions.csv",
+        rows.map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    }
+    $("revisionCompareCount").textContent="PRIVATE "+format.toUpperCase()+
+      " comparison downloaded. No HUMAN note text or original source ID included.";
   }
 
   function resetReviewFilters(){
@@ -789,6 +911,9 @@
   $("reviewExportStageCsv").addEventListener("click",()=>exportHumanStages("csv"));
   $("reviewExportStageBrief").addEventListener("click",()=>exportHumanStages("html"));
   resetReviewFilters();
+  $("revisionCompare").addEventListener("click",()=>{void comparePrivateRevisions();});
+  $("revisionExportJson").addEventListener("click",()=>exportRevision("json"));
+  $("revisionExportCsv").addEventListener("click",()=>exportRevision("csv"));
   $("exportPrivateSession").addEventListener("click",savePrivateSession);
   $("importPrivateSession").addEventListener("click",()=>{void restorePrivateSession();});
   $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});

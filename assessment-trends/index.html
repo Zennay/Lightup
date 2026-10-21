@@ -124,8 +124,31 @@
   <p id="sessionMessage" class="message" role="status" aria-live="polite">No recovery file loaded.</p>
   <p class="footnote">Recovery is atomic: invalid, duplicate, oversized (over 2 MiB), out-of-scope, altered or differently ordered inputs are rejected before replacing work. A successful restore requires separate confirmation; forgotten or newly imported source data clears prior local HUMAN work. Browser SHA-256 capability is required only for this optional recovery feature. Source hashes establish local byte equality, <strong>not authentic provenance or security clearance</strong>. Private files are never included in anonymous exports.</p>
 </section>
+
+<section class="panel no-print" id="revision">
+  <div class="section-head"><h2>08 / PRIVATE human review revision comparison</h2><span class="tag">Read-only · offline</span></div>
+  <p>Compare two separately saved, source-byte-bound PRIVATE HUMAN sessions against the exact same already-admitted original cohort. This view <strong>does not restore, merge or rewrite either session</strong>. It shows changes to HUMAN stage choices and indicates whether saved HUMAN notes were added, removed or edited, <strong>without displaying or exporting note text</strong>. File order is a human comparison preference, not authenticated chronology.</p>
+  <div class="queue-controls">
+    <label class="file-picker">Earlier PRIVATE HUMAN session
+      <input id="revisionEarlierFile" type="file" accept=".json,application/json" disabled>
+    </label>
+    <label class="file-picker">Later PRIVATE HUMAN session
+      <input id="revisionLaterFile" type="file" accept=".json,application/json" disabled>
+    </label>
+  </div>
+  <button id="revisionCompare" type="button" disabled>Compare PRIVATE revisions · no mutation</button>
+  <p id="revisionCompareSummary" class="message" role="status" aria-live="polite">Choose two source-bound PRIVATE sessions after admitting their original snapshots.</p>
+  <div id="revisionCompareTable" class="tablewrap" role="region" tabindex="0" aria-label="Private source-bound HUMAN revision differences"></div>
+  <p id="revisionCompareCount" class="footnote"></p>
+  <div class="controls">
+    <button id="revisionExportJson" class="secondary" type="button" disabled>Export PRIVATE revision JSON</button>
+    <button id="revisionExportCsv" class="secondary" type="button" disabled>Export PRIVATE revision CSV</button>
+    <button id="revisionExportBrief" class="ghost" type="button" disabled>Export PRIVATE script-free revision brief</button>
+  </div>
+  <p class="footnote">Both source-bound bundles are fully re-admitted, including exact input byte digests and event scope, before comparison. No original IDs, source hashes, filenames or saved note text appear in the comparison exports. Changed or absent HUMAN declarations are not evidence of a resolved issue. The current working review remains untouched.</p>
+</section>
 <section class="panel no-print">
-  <div class="section-head"><h2>08 / Explicit local handoff</h2><span class="tag">No authority</span></div>
+  <div class="section-head"><h2>09 / Explicit local handoff</h2><span class="tag">No authority</span></div>
   <div class="controls">
     <button id="exportJson" type="button" disabled>Export aggregate JSON</button>
     <button id="exportCsv" type="button" disabled>Export anonymous trajectory CSV</button>
