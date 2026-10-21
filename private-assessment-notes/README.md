@@ -2,6 +2,37 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Complete local, non-authorizing HUMAN review product on the original Basic/Bearer/API-key credential redaction boundary. No target interaction, scan, model invocation, upload, customer notification, approval, deployment, retest, or release.
 
+### Single-command PRIVATE HAR HUMAN workflow
+
+A new `notes.py har-review-start` produces **three owner-only local
+0700 workrooms in one action**: the unchanged original redacted HUMAN
+notes, an independently original-bound v19 HAR cue packet, and a
+scriptless local `OPEN-PRIVATE-HAR-WORKFLOW.html` linking both.
+Source inputs must be 0600 and the preexisting parent 0700:
+
+~~~sh
+python3 private-assessment-notes/notes.py har-review-start \
+  --source /private/original-note.txt --private-parent /private/owner-room
+~~~
+
+`har-review-reopen --workflow-room <workflow>` re-admits the original
+source/cue receipts and checks the exact launcher bytes, read-only.
+`har-review-progress --workflow-room <workflow> --edited-actions
+<owner-only-edited.csv> --private-parent <owner-room>` accepts a separate
+0600 CSV via the original native HUMAN status admission.
+`har-review-progress-reopen`, `har-review-history` and
+`har-review-history-reopen` provide the same original-bound flow using
+one workflow reference rather than manually joining original/cue paths.
+
+No old packet is overwritten. On partial preparation failure only new
+workrooms from this invocation are removed; original selected input files
+remain unchanged. The HTML contains only random local sibling directory
+names and original-source count, not source filenames, content, URLs, SHA,
+clients, secrets or HUMAN notes. This workflow is strictly offline and
+PRIVATE/HOLD. Human CSV downloads must be manually chmod 0600 before
+native processing. No consent, authorization, privacy verdict, source
+owner signoff, active scan, disclosure or deployment is inferred.
+
 ### New: fully offline PRIVATE HAR HUMAN Status Studio (v19)
 
 The original owner-private workroom and independently source-bound masking
