@@ -929,6 +929,37 @@
   }
 
 
+
+  function humanRoundMetrics(revisions){
+    const metrics=METRICS.map(name=>({metric:name,review_priority_group:family(name),
+      needs_input_by_round:revisions.map(()=>0),follow_up_by_round:revisions.map(()=>0),
+      human_noted_by_round:revisions.map(()=>0)}));
+    revisions.forEach((revision,i)=>{
+      for(const [key,stage] of revision.newStages){
+        const [_id,metric]=JSON.parse(key),index=METRICS.indexOf(metric);
+        admit(index>=0);
+        const row=metrics[index];
+        if(stage==="NEEDS_INPUT")row.needs_input_by_round[i]++;
+        else if(stage==="FOLLOW_UP")row.follow_up_by_round[i]++;
+        else if(stage==="HUMAN_NOTED")row.human_noted_by_round[i]++;
+        else admit(false);
+      }
+    });
+    return metrics;
+  }
+  function renderHumanRoundMetrics(){
+    const table=$("timelineMetricTable");
+    if(!privateTimeline){table.replaceChildren();return;}
+    const k=privateTimeline.summary.length;
+    drawTable("timelineMetricTable",
+      ["Fixed metric","Static review group",...Array.from({length:k},(_,i)=>
+        "HUMAN round "+(i+1)+" · needs/follow-up/noted")],
+      privateTimeline.metric_matrix.map(v=>[v.metric,v.review_priority_group,
+        ...Array.from({length:k},(_,i)=>
+          "N:"+v.needs_input_by_round[i]+" · F:"+v.follow_up_by_round[i]+
+          " · H:"+v.human_noted_by_round[i])]));
+  }
+
   let privateTimeline=null;
   function timelineStageCounts(stages){
     const all=[...stages.values()];
@@ -940,8 +971,8 @@
     privateTimeline=null;
     $("timelineFiles").value="";
     $("timelineSummary").textContent="Select 2–8 source-bound PRIVATE HUMAN revisions to compare manual slots.";
-    $("timelineTable").replaceChildren();
-    for(const id of ["timelineExportJson","timelineExportCsv","timelineExportBrief"])
+    $("timelineTable").replaceChildren();$("timelineMetricTable").replaceChildren();
+    for(const id of ["timelineExportJson","timelineExportCsv","timelineExportBrief","timelineExportMetrics"])
       $(id).disabled=true;
   }
   async function importHumanTimeline(){
@@ -962,7 +993,8 @@
           changed_note_count:changes.filter(x=>x.kind==="HUMAN_NOTE_CHANGE").length});
       });
       // Only aggregate counters survive; do not retain source digests, ids or note text.
-      privateTimeline={summary};
+      privateTimeline={summary,metric_matrix:humanRoundMetrics(revisions)};
+      renderHumanRoundMetrics();
       drawTable("timelineTable",["Manually selected HUMAN round","Saved HUMAN stages",
         "NEEDS_INPUT","FOLLOW_UP","HUMAN_NOTED","Saved notes",
         "Changed stages vs previous","Changed note presence/content vs previous"],
@@ -970,7 +1002,7 @@
           v.follow_up,v.human_noted,v.saved_human_note_count,
           v.human_round_slot===1?"—":v.changed_stage_count,
           v.human_round_slot===1?"—":v.changed_note_count]));
-      for(const id of ["timelineExportJson","timelineExportCsv","timelineExportBrief"])
+      for(const id of ["timelineExportJson","timelineExportCsv","timelineExportBrief","timelineExportMetrics"])
         $(id).disabled=false;
       $("timelineSummary").textContent=summary.length+
         " manually selected PRIVATE HUMAN revision files admitted for identical original cohort bytes/order. Unauthenticated selection order, no current HUMAN work modified.";
@@ -985,6 +1017,11 @@
       status:"PRIVATE_UNSIGNED",private_unsigned:true,fictional_demo_only:false,
       manually_selected_order:true,chronology_authenticated:false,source_identity_authenticated:false,
       summary:privateTimeline.summary.map(v=>({...v})),
+      metric_matrix:privateTimeline.metric_matrix.map(v=>({
+        metric:v.metric,review_priority_group:v.review_priority_group,
+        needs_input_by_round:[...v.needs_input_by_round],
+        follow_up_by_round:[...v.follow_up_by_round],
+        human_noted_by_round:[...v.human_noted_by_round]})),
       disclaimer:"Human-chosen round order is unauthenticated. Counts only: no original source IDs, file names, hashes, private note text or proof of remediation. Source byte equality was verified only at local admission, not authenticated origin.",
       ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
   }
@@ -1006,6 +1043,18 @@
         v.human_round_slot===1?"":v.changed_note_count,true,false,false,false,false])];
       download("assessment-trends-PRIVATE-human-rounds.csv",
         rows.map(line=>line.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    }else if(format==="metric_csv"){
+      const columns=["human_round_slot","metric","review_priority_group","needs_input",
+        "follow_up","human_noted","private_unsigned","authorized","consent_verified",
+        "dispatch_allowed","release_allowed"];
+      const rows=[columns];
+      data.metric_matrix.forEach(v=>v.needs_input_by_round.forEach((_,i)=>rows.push([
+        i+1,v.metric,v.review_priority_group,v.needs_input_by_round[i],
+        v.follow_up_by_round[i],v.human_noted_by_round[i],
+        true,false,false,false,false
+      ])));
+      download("assessment-trends-PRIVATE-human-rounds-metrics.csv",
+        rows.map(line=>line.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
     }else if(format==="html"){
       const cols=["Human round · manual","Saved stages","NEEDS_INPUT","FOLLOW_UP",
         "HUMAN_NOTED","Saved notes","Stage changes vs prior","Note changes vs prior"];
@@ -1016,6 +1065,14 @@
       const table="<table><thead><tr>"+cols.map(x=>"<th scope='col'>"+esc(x)+"</th>").join("")+
         "</tr></thead><tbody>"+values.map(row=>"<tr>"+row.map(x=>"<td>"+esc(x)+"</td>").join("")+
         "</tr>").join("")+"</tbody></table>";
+      const metricColumns=["Fixed metric","Static review group",
+        ...data.summary.map(v=>"Round "+v.human_round_slot+" · N/F/H")];
+      const metricValues=data.metric_matrix.map(v=>[v.metric,v.review_priority_group,
+        ...v.needs_input_by_round.map((_,i)=>
+          v.needs_input_by_round[i]+"/"+v.follow_up_by_round[i]+"/"+v.human_noted_by_round[i])]);
+      const metricTable="<table><thead><tr>"+metricColumns.map(x=>"<th scope='col'>"+esc(x)+"</th>").join("")+
+        "</tr></thead><tbody>"+metricValues.map(row=>"<tr>"+
+        row.map(x=>"<td>"+esc(x)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
       const style="body{margin:2rem auto;padding:0 1rem;max-width:1100px;font:16px/1.5 system-ui,sans-serif;color:#182333}"+
         "table{width:100%;border-collapse:collapse}th,td{border:1px solid #b5c0cf;padding:.5rem;text-align:left}"+
         "th{background:#eaf0f6}.hold{border:2px solid #9a5b18;background:#fff7ed;padding:1rem}"+
@@ -1031,6 +1088,9 @@
         "<p>"+data.summary.length+" human-selected rounds. Order is not authenticated chronology."+
         " Changed HUMAN declarations do not establish actual remediation, consent, scan or release approval.</p>"+
         "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+        "<h2>HUMAN review workload by fixed metric and manually selected round</h2>"+
+        "<p>N=NEEDS_INPUT, F=FOLLOW_UP, H=HUMAN_NOTED. These are only HUMAN self-reported marks, not severity scores.</p>"+
+        metricTable+
         table+"<p>Only local HUMAN aggregate counts. No original source ID, file name,"+
         " SHA-256, HUMAN note text or verified security findings are disclosed."+
         " Original source byte equality is not independent provenance.</p></body></html>";
@@ -1068,6 +1128,7 @@
   $("timelineExportJson").addEventListener("click",()=>exportHumanTimeline("json"));
   $("timelineExportCsv").addEventListener("click",()=>exportHumanTimeline("csv"));
   $("timelineExportBrief").addEventListener("click",()=>exportHumanTimeline("html"));
+  $("timelineExportMetrics").addEventListener("click",()=>exportHumanTimeline("metric_csv"));
   $("revisionCompare").addEventListener("click",()=>{void comparePrivateRevisions();});
   $("revisionExportJson").addEventListener("click",()=>exportRevision("json"));
   $("revisionExportCsv").addEventListener("click",()=>exportRevision("csv"));

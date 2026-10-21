@@ -157,9 +157,13 @@
   <button id="timelineImport" type="button" disabled>Compare local HUMAN rounds · read-only</button>
   <p id="timelineSummary" class="message" role="status" aria-live="polite">Select 2–8 source-bound PRIVATE HUMAN revisions to compare manual slots.</p>
   <div id="timelineTable" class="tablewrap" role="region" aria-label="Anonymous HUMAN review round counts" tabindex="0"></div>
+  <h3>HUMAN review workload by metric and manual round</h3>
+  <p class="footnote">N = NEEDS_INPUT · F = FOLLOW_UP · H = HUMAN_NOTED. Only manually entered HUMAN statuses; no verified findings or remediation.</p>
+  <div id="timelineMetricTable" class="tablewrap" role="region" aria-label="Private anonymous fixed-metric HUMAN round workload matrix" tabindex="0"></div>
   <div class="controls">
     <button id="timelineExportJson" class="secondary" type="button" disabled>Export PRIVATE rounds JSON</button>
     <button id="timelineExportCsv" class="secondary" type="button" disabled>Export PRIVATE rounds CSV</button>
+    <button id="timelineExportMetrics" class="secondary" type="button" disabled>Export PRIVATE metric workload CSV</button>
     <button id="timelineExportBrief" class="ghost" type="button" disabled>Export PRIVATE script-free rounds brief</button>
   </div>
   <p class="footnote">Only aggregate HUMAN self-report counts are retained for this view; original source identities, digests, filenames and HUMAN note text are never in these exports. A missing note, changed HUMAN stage or absent source flag does not establish a verified fix. Previous comparison remains visible when any new file fails atomic admission.</p>
