@@ -6,11 +6,11 @@
 
 Open `composer.html` locally. It is one standalone file with a strict hash-pinned CSP (no unsafe-inline script/style) and no external assets, APIs, storage, DNS or network access. Compose 1–16 distinct literal HTTP(S) URLs within the native CLI\'s 16 KiB manifest limit, or import a private existing local manifest. Import is all-or-nothing (strict UTF-8, no BOM/NUL, no duplicate values); failed imports retain the current editor. Edit/remove/reorder endpoint slots before clicking **Download private text manifest**. Nothing is uploaded or saved to browser storage. Browser checks are convenience-only and do not prove an endpoint is isolated.
 
-Browser downloads cannot set file permissions. Before using the native CLI, move the downloaded file to a private directory and set mode `0600`.
+Browser downloads cannot set file permissions. Before using the native CLI, move the downloaded file to a private directory and set mode `0600`. Use this PR branch (not the older source-only pinned ancestor), for example `git fetch origin chatgpt/lightup-assessment-launchpad-20261021-gpt6` followed by `git switch --detach FETCH_HEAD` in a disposable trusted checkout. The CLI refuses any modified original pinned validator or CLI bytes.
 
 ## Native validator-backed handoff
 
-Requires the repository checkout at the pinned source commit and the existing project Python dependencies. Create an owner-only output directory separate from the manifest directory:
+Requires a checkout of this launchpad PR branch, which contains both `assessment-launchpad/` and the original source files at the frozen source pin, with the existing project Python dependencies. Checking out the pinned ancestor commit **alone will not work** because that older commit does not contain the launchpad. Create an owner-only output directory separate from the manifest directory:
 
 ```bash
 chmod 600 ~/Downloads/lightup-lab-targets.txt
@@ -20,7 +20,7 @@ python3 assessment-launchpad/launchpad.py \
   --output-dir ~/private-lab-launchpad-output
 ```
 
-The CLI checks the Git blob hashes of the pinned original `labrun.py`, `labeval.py`, `scope.py` and `models.py` before loading the original `_admit_explicit_lab_url` and `LabScenario`. `LabScenario` invokes the original isolated loopback/private-lab `ScopePolicy`. No DNS resolution or target connection is made.
+The CLI checks the Git blob hashes of the pinned original `cli.py`, `labrun.py`, `labeval.py`, `scope.py` and `models.py` before loading the original `_admit_explicit_lab_url` and `LabScenario`. `LabScenario` invokes the original isolated loopback/private-lab `ScopePolicy`. No DNS resolution or target connection is made.
 
 The command requires an owner-owned input regular file with mode `0600`, no symlink/hard-link alias, bounded stable contents (16 KiB), and 1–16 distinct endpoints. The output directory must already exist, be owned by the current user and have mode `0700`. Outputs are exclusive no-overwrite files with mode `0600`; failed bundle publication removes newly created outputs.
 

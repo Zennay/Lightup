@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 PINNED_SOURCE_COMMIT = "74e865201c8a4270e404046ef3447eb7f190edfb"
 PINNED_VALIDATOR_BLOBS = {
+    "src/lightup/cli.py": "d1053f4360397a94733a78fe7f6b9441b4f126d9",
     "src/lightup/labrun.py": "e2c1a238117783bd0ac1cf3be98b1d1a6444e41c",
     "src/lightup/labeval.py": "ac95f5ad66cf1a53999e2e618152f1a875226dc1",
     "src/lightup/scope.py": "23909917822b5630c76be0cb47c99e1549b30cf8",
@@ -211,6 +212,7 @@ def run(args):
             "endpoint_slots": list(range(1, len(admitted) + 1)),
             "pinned_source_commit": PINNED_SOURCE_COMMIT,
             "pinned_validator_blob_sha1": PINNED_VALIDATOR_BLOBS,
+            "pinned_original_cli_checked": True,
             "original_url_validator_applied": True,
             "original_lab_scenario_scope_policy_applied": True,
             "endpoint_values_in_receipt": False,
