@@ -45,9 +45,13 @@ STYLE = ("body{font:15px/1.55 system-ui,sans-serif;color:#17212f;"
          "code{overflow-wrap:anywhere}small{color:#49596a}"
          "@media print{body{margin:0;max-width:none}details>*{display:block!important}}")
 
-def analyze(rounds):
+def analyze(rounds, from_round=1, to_round=None):
     """Only self-reported HUMAN changes; do not infer true assessment state."""
     count = len(rounds[0]["human_rows"])
+    last = len(rounds) if to_round is None else to_round
+    if (type(from_round) is not int or type(last) is not int
+            or not 1 <= from_round < last <= len(rounds)):
+        raise Hold("HUMAN interval requires two ordered round ordinals within 2–8")
     aggregate = {
         "schema": "lightup.assessment_launchpad_human_history_counts.v1",
         "status": "REVIEW_ONLY",
@@ -56,6 +60,7 @@ def analyze(rounds):
         "human_round_count": len(rounds),
         "round_counts": [],
         "transition_counts": [],
+        "interval_counts": {},
         "current_human_stage_counts": {
             stage: sum(row["stage"] == stage for row in rounds[-1]["human_rows"])
             for stage in STAGES
@@ -104,6 +109,36 @@ def analyze(rounds):
             updates["private_note_changes"] += note_change
             updates["stage_transition_counts"][prev["stage"] + "_TO_" + cur["stage"]] += 1
         aggregate["transition_counts"].append(updates)
+    first_rows = rounds[from_round - 1]["human_rows"]
+    final_rows = rounds[last - 1]["human_rows"]
+    window = rounds[from_round - 1:last]
+    interval = {
+        "from_round": from_round,
+        "to_round": last,
+        "source_reported_slots": count,
+        "net_changed_slots": 0,
+        "net_stage_changes": 0,
+        "net_role_changes": 0,
+        "net_private_note_changes": 0,
+        "human_stages_returned_to_first_value": 0,
+        "human_roles_returned_to_first_value": 0,
+        "distinct_stage_values_represent_review_only": True,
+    }
+    for index, (before, after) in enumerate(zip(first_rows, final_rows)):
+        stage_changed = before["stage"] != after["stage"]
+        role_changed = before["role"] != after["role"]
+        note_changed = before["note"] != after["note"]
+        interval["net_changed_slots"] += bool(stage_changed or role_changed or note_changed)
+        interval["net_stage_changes"] += stage_changed
+        interval["net_role_changes"] += role_changed
+        interval["net_private_note_changes"] += note_changed
+        if before["stage"] == after["stage"] and any(
+                work["human_rows"][index]["stage"] != before["stage"] for work in window[1:-1]):
+            interval["human_stages_returned_to_first_value"] += 1
+        if before["role"] == after["role"] and any(
+                work["human_rows"][index]["role"] != before["role"] for work in window[1:-1]):
+            interval["human_roles_returned_to_first_value"] += 1
+    aggregate["interval_counts"] = interval
     return aggregate
 
 def render_history(rounds, endpoints, summary):
@@ -167,6 +202,34 @@ def render_history(rounds, endpoints, summary):
             "".join("<td>" + str(item["by_stage"][stage]) + "</td>" for stage in STAGES) +
             "<td>" + str(item["human_notes_present"]) + "</td></tr>"
         )
+    interval_rows = []
+    window_from = summary["interval_counts"]["from_round"]
+    window_to = summary["interval_counts"]["to_round"]
+    for index in range(len(endpoints)):
+        before = rounds[window_from - 1]["human_rows"][index]
+        after = rounds[window_to - 1]["human_rows"][index]
+        intermediate = rounds[window_from:window_to - 1]
+        stage_return = (
+            before["stage"] == after["stage"]
+            and any(x["human_rows"][index]["stage"] != before["stage"] for x in intermediate)
+        )
+        role_return = (
+            before["role"] == after["role"]
+            and any(x["human_rows"][index]["role"] != before["role"] for x in intermediate)
+        )
+        if (before["stage"], before["role"], before["note"]) == (
+                after["stage"], after["role"], after["note"]) and not (stage_return or role_return):
+            continue
+        slot = str(index + 1).zfill(2)
+        interval_rows.append(
+            "<tr><td><a href='#slot-" + slot + "'>Slot " + slot + "</a></td><td>" +
+            escape(before["stage"]) + " → " + escape(after["stage"]) +
+            "</td><td>" + escape(before["role"]) + " → " +
+            escape(after["role"]) + "</td><td>" +
+            ("YES" if before["note"] != after["note"] else "NO") +
+            "</td><td>" + ("YES" if stage_return else "NO") +
+            "</td><td>" + ("YES" if role_return else "NO") + "</td></tr>"
+        )
     transitions = []
     for item in summary["transition_counts"]:
         transitions.append(
@@ -204,6 +267,15 @@ def render_history(rounds, endpoints, summary):
         "<table><thead><tr><th>Original slot</th><th>HUMAN stage</th>"
         "<th>Suggested role</th><th>Note characters</th></tr></thead><tbody>" +
         "".join(attention) + "</tbody></table></section>"
+        "<section><h2>Manually selected HUMAN interval comparison: round " +
+        str(window_from) + " → " + str(window_to) + "</h2>"
+        "<p>Only HUMAN stage, role, note-change and temporary return-to-prior-value "
+        "are compared. A stage returning to its earlier value is NOT a verified "
+        "repair, relapse, severity change, clearance or authenticated chronology.</p>"
+        "<table><thead><tr><th>Original slot</th><th>Stage interval</th>"
+        "<th>Reviewer-role interval</th><th>Note changed?</th>"
+        "<th>Stage returned?</th><th>Role returned?</th></tr></thead><tbody>" +
+        "".join(interval_rows) + "</tbody></table></section>"
         "<section><h2>Human follow-up activity between adjacent rounds</h2>"
         "<table><thead><tr><th>Manual order</th><th>Changed slots</th>"
         "<th>Stages changed</th><th>Roles changed</th>"
@@ -220,8 +292,8 @@ def render_history(rounds, endpoints, summary):
         "revocation or explicit HUMAN GO.</small></p></body></html>"
     ).encode("utf-8")
 
-def output_artifacts(rounds, endpoints):
-    summary = analyze(rounds)
+def output_artifacts(rounds, endpoints, from_round=1, to_round=None):
+    summary = analyze(rounds, from_round, to_round)
     routing_rows = ["original_slot,current_human_stage,suggested_role,"
                     "note_character_count,changed_human_round_transitions"]
     for i, current in enumerate(rounds[-1]["human_rows"]):
@@ -257,6 +329,14 @@ def output_artifacts(rounds, endpoints):
             "human_transition," + label + ",stage_transition," + key + "," + str(value)
             for key, value in item["stage_transition_counts"].items()
         ]
+    interval = summary["interval_counts"]
+    label = str(interval["from_round"]) + "_to_" + str(interval["to_round"])
+    summary_lines += [
+        "human_interval," + label + ",count," + key + "," + str(value)
+        for key, value in interval.items()
+        if key not in ("from_round", "to_round", "source_reported_slots",
+                       "distinct_stage_values_represent_review_only")
+    ]
     return [
         (NAMES[0], render_history(rounds, endpoints, summary)),
         (NAMES[1], ("\n".join(routing_rows) + "\n").encode("utf-8")),
@@ -286,6 +366,10 @@ def main(argv=None):
                         help="original frozen-source five-file Launchpad packet")
     parser.add_argument("--round-dir", action="append", required=True,
                         help="PRIVATE HUMAN round, repeat 2–8 in manually selected order")
+    parser.add_argument("--compare-from-round", type=int, default=1,
+                        help="selected HUMAN interval first round ordinal (default 1)")
+    parser.add_argument("--compare-to-round", type=int,
+                        help="selected HUMAN interval final round ordinal (default latest)")
     destination = parser.add_mutually_exclusive_group(required=True)
     destination.add_argument("--output-dir", help="NEW owner-only 0700 directory")
     destination.add_argument("--verify-history-dir", help="read-only reopen prior output")
@@ -298,7 +382,8 @@ def main(argv=None):
             for source in [source_dir, *round_dirs]:
                 if os.path.commonpath((source, dest_dir)) in (source, dest_dir):
                     raise Hold("history destination must be separate from source and rounds")
-            expected = dict(output_artifacts(rounds, endpoints))
+            expected = dict(output_artifacts(rounds, endpoints,
+                                             args.compare_from_round, args.compare_to_round))
             if any(not 0 < len(data) <= MAX_OUTPUT_ITEM_BYTES
                    for data in expected.values()):
                 raise Hold("bounded HUMAN history output capacity exceeded")
