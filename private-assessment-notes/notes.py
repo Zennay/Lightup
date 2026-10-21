@@ -152,7 +152,11 @@ def landing(count: int, final: bool, stages: list[str] | None = None,
                   "<li><a href='PRIVATE-HAR-QUEUE.html'>PRIVATE HAR "
                   "HUMAN category attention queue</a></li>"
                   "<li><a href='PRIVATE-HAR-QUESTIONS.html'>PRIVATE "
-                  "source-minimal HUMAN HAR review checklist</a></li>")
+                  "source-minimal HUMAN HAR review checklist</a></li>"
+                  "<li><a href='PRIVATE-HAR-ACTIONS.html'>PRIVATE HAR "
+                  "original-ordinal HUMAN action worksheet</a></li>"
+                  "<li><a href='PRIVATE-HAR-ACTIONS.csv'>PRIVATE HAR "
+                  "HUMAN action CSV template (non-authorising)</a></li>")
     if final:
         items += "<li><a href='PRIVATE-redacted-notes.txt'>PRIVATE combined HUMAN redacted notes</a></li>"
     for slot in range(1, count + 1):
@@ -298,6 +302,9 @@ def prepare(inputs: list[str], parent_string: str,
             file_new(kit / "PRIVATE-HAR-QUEUE.html", render_har_queue(rows))
             from private_har_questions import render as render_questions
             file_new(kit / "PRIVATE-HAR-QUESTIONS.html", render_questions(rows))
+            from private_har_worklist import worksheet_html, worksheet_csv
+            file_new(kit / "PRIVATE-HAR-ACTIONS.html", worksheet_html(rows))
+            file_new(kit / "PRIVATE-HAR-ACTIONS.csv", worksheet_csv(rows))
         file_new(kit / "OPEN-PRIVATE.html",
                  landing(len(rows), False,
                          include_masking_cues=include_masking_cues))
