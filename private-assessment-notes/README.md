@@ -18,6 +18,10 @@ The same guide documents the native `notes.py masking-cues` command:
 a separate source-bound **offline HUMAN cue overview**, with original
 ordinals and literal known placeholder families but no note content.
 It does **not** establish redaction coverage, secrecy or public safety.
+Use optional `notes.py prepare --with-mask-cues` to make a
+source-minimal PRIVATE cue preview directly accessible inside a **NEW**
+original workroom, without changing the default original finalization.
+For separate exact original byte custody, use native `masking-cues`.
 
 ## What this does
 

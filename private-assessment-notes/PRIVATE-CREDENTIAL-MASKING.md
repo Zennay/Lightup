@@ -60,6 +60,36 @@ customer data, values encoded in unexpected ways and personal identifiers
 may remain. Original redacted text is still **PRIVATE**. No output may be
 published or sent to a customer solely because a pattern was replaced.
 
+## Immediate optional HUMAN cue preview inside a NEW original workroom
+
+A human operator who needs the literal original-source marker-navigation
+**during** their initial private note review can opt in to a same-room
+source-minimal preview:
+
+```sh
+python3 private-assessment-notes/notes.py prepare \
+  --source /private/first-private-note.txt \
+  --private-parent /private/operator-lightup-work \
+  --with-mask-cues
+```
+
+This adds two 0600 files, `PRIVATE-masking-cues.html` and
+`PRIVATE-masking-cues.csv`, inside the **new** 0700 original PRIVATE
+prepared workroom, with an explicit clickable local link in its
+`OPEN-PRIVATE.html`. Source hashes, content, decisions, current
+HUMAN statuses and the original `PRIVATE-source-bindings.json` format
+are unchanged. The original editor/finalizer remains mandatory and no
+external action occurs.
+
+This embedded preview is merely a navigation aid, **not a separate
+independently receipted artifact**. For byte-bound independent custody,
+run the standalone original native `masking-cues` command described
+below, and keep its source-linked 0600 receipt. When this option is
+omitted, `notes.py prepare` retains its original product behavior;
+previously generated packets are not changed or reinterpreted.
+Neither presence nor absence of masking placeholders is evidence
+that secrets or personal data are absent.
+
 ## NEW: offline PRIVATE original-by-original HUMAN masking-cue desk
 
 After creating a PRIVATE original notes workroom, use the native command

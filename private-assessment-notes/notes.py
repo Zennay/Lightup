@@ -134,12 +134,16 @@ def read_json(path: Path, max_bytes: int) -> dict:
         raise Hold("HOLD: original PRIVATE manifest is not a canonical object") from None
 
 
-def landing(count: int, final: bool, stages: list[str] | None = None) -> bytes:
+def landing(count: int, final: bool, stages: list[str] | None = None,
+            include_masking_cues: bool = False) -> bytes:
     items = ("<li><a href='PRIVATE-HUMAN-summary.html'>Offline redacted HUMAN review</a></li>"
              "<li><a href='PRIVATE-source-bindings.json'>Original unsigned PRIVATE byte identity</a></li>"
              "<li><a href='PRIVATE-HUMAN-decisions.csv'>PRIVATE original-bound HUMAN decisions CSV</a></li>")
     if not final:
         items += "<li><a href='PRIVATE-HUMAN-editor.html'>PRIVATE offline interactive HUMAN decision editor</a></li>"
+    if include_masking_cues and not final:
+        items += ("<li><a href='PRIVATE-masking-cues.html'>Optional PRIVATE "
+                  "literal masking-cue navigation (never a safety score)</a></li>")
     if final:
         items += "<li><a href='PRIVATE-redacted-notes.txt'>PRIVATE combined HUMAN redacted notes</a></li>"
     for slot in range(1, count + 1):
@@ -207,7 +211,8 @@ def csv_document(rows: list[dict]) -> bytes:
     return stream.getvalue().encode("utf-8")
 
 
-def prepare(inputs: list[str], parent_string: str) -> int:
+def prepare(inputs: list[str], parent_string: str,
+            include_masking_cues: bool = False) -> int:
     if not 1 <= len(inputs) <= MAX_FILES:
         raise Hold("HOLD: choose 1-12 existing original PRIVATE text notes")
     parent = private_directory(parent_string)
@@ -260,7 +265,17 @@ def prepare(inputs: list[str], parent_string: str) -> int:
         file_new(kit / "PRIVATE-HUMAN-decisions.csv", csv_document(rows))
         file_new(kit / "PRIVATE-HUMAN-summary.html", summary(rows, rows))
         file_new(kit / "PRIVATE-HUMAN-editor.html", render_browser_studio(rows))
-        file_new(kit / "OPEN-PRIVATE.html", landing(len(rows), False))
+        if include_masking_cues:
+            # Optional source-minimal navigator inside a NEW original kit.
+            # Existing original canonical source metadata remains unchanged.
+            # For independently source-bound custody use native masking-cues.
+            from private_masking_cues import cues as cue_rows, cue_page, cue_csv
+            mask_rows = cue_rows(rows)
+            file_new(kit / "PRIVATE-masking-cues.html", cue_page(mask_rows))
+            file_new(kit / "PRIVATE-masking-cues.csv", cue_csv(mask_rows))
+        file_new(kit / "OPEN-PRIVATE.html",
+                 landing(len(rows), False,
+                         include_masking_cues=include_masking_cues))
         ready = True
         print("REVIEW_ONLY: local PRIVATE notes workroom created; credential masking is incomplete.")
         print("OPEN LOCALLY: " + str(kit / "OPEN-PRIVATE.html"))
@@ -384,6 +399,9 @@ def main() -> int:
     prepared.add_argument("--source", action="append", required=True,
                           help="1-12 existing owner-private UTF-8 notes")
     prepared.add_argument("--private-parent", required=True, help="owner-only mode 0700 directory")
+    prepared.add_argument(
+        "--with-mask-cues", action="store_true",
+        help="embed additional PRIVATE source-minimal HUMAN masking-cue preview in NEW original kit")
     cues_command = commands.add_parser(
         "masking-cues",
         help="original-bound PRIVATE HUMAN literal masking-marker navigation; REVIEW_ONLY")
@@ -606,7 +624,8 @@ def main() -> int:
     args = p.parse_args()
     try:
         if args.action == "prepare":
-            return prepare(args.source, args.private_parent)
+            return prepare(args.source, args.private_parent,
+                           include_masking_cues=args.with_mask_cues)
         if args.action == "masking-cues":
             from private_masking_cues import create as create_masking_cues
             return create_masking_cues(args.original_kit, args.private_parent)
