@@ -373,3 +373,20 @@ downloaded. Old portable files **are not revoked, rewritten or
 deleted**, so anyone retaining an old file/passphrase can still open it.
 Users must manage rotation/retention outside the browser. No grants,
 verified identity, security findings, calendar sync, scan or network use.
+
+
+### Recover one original component from a portable HUMAN vault
+
+An encrypted portable vault can also be opened **read-only** to recover
+exactly one source-bound PRIVATE CSV: the original byte-for-byte HUMAN
+worksheet, the original full appointment plan or the complete
+self-declared HUMAN group-availability policy. Each export requires
+the portable passphrase, full cryptographic decryption plus all
+existing strict original-source, series, time-zone and rule admission,
+and an additional explicit human disclosure confirmation. Recovering
+a component never loads, replaces or changes an existing browser
+workroom and never touches an external calendar or assessed system.
+The worksheet is recovered from original encrypted bytes, not
+regenerated text, to preserve its exact SHA-256 binding; original
+HUMAN action/blocker text can be sensitive and belongs only on
+authorized PRIVATE storage.

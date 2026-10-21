@@ -44,6 +44,19 @@ keep their old passphrases: revoke them separately according to your own retenti
 </div>
 <p class="subtle">No accounts, real identity, external calendars, client authority or verified security findings are established by passphrase rotation.</p>
 </details>
+<details id="vaultExtractDetails"><summary>Recover one original HUMAN file from portable encrypted vault</summary>
+<p>Enter the existing vault passphrase above, select one original component and confirm a separate
+PRIVATE local download. No currently open browser workroom is replaced. The unchanged ORIGINAL
+HUMAN CSV may contain confidential action/blocker text and should never be shared publicly.</p>
+<div class="row">
+<label>Recover <select id="vaultExtractKind">
+<option value="source">Exact original HUMAN worksheet bytes (.csv)</option>
+<option value="plan">Original private calendar plan (.csv)</option>
+<option value="capacity">Original declared HUMAN group rules (.csv)</option>
+</select></label>
+<label class="file">Choose encrypted portable vault <input id="extractPortableVault" type="file" accept=".luhv,application/octet-stream"></label>
+</div>
+</details>
 </div>
 <p><button id="reset" type="button" class="ghost" disabled>Discard workroom</button> <span id="notice" role="status" aria-live="polite">Import a worksheet to begin.</span></p></section>
 <section id="desk" class="panel" hidden aria-labelledby="deskHeading">

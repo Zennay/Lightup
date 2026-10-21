@@ -1609,6 +1609,36 @@
         rule.start,rule.end,String(rule.maximum),rule.blackouts.join(";")];
     })]);
   }
+  async function recoverPortableVaultComponent(file){
+    hold(crypto.subtle);
+    const password=$("vaultPassword").value,kind=$("vaultExtractKind").value;
+    hold(["source","plan","capacity"].includes(kind));
+    let admitted=null;
+    try{
+      admitted=await readPortableVault(file,password);
+      const description=kind==="source"?"exact original HUMAN worksheet bytes":
+        kind==="plan"?"complete source-bound PRIVATE HUMAN appointment plan":
+        "complete original self-declared HUMAN group availability policy";
+      if(!confirm("Recover the "+description+" only from the encrypted portable vault? "+
+        "This local CSV may reveal confidential people/group labels or HUMAN follow-up notes. "+
+        "No current browser schedule, source, group policy, calendar, security scope or consent "+
+        "will be modified. Continue with an explicit PRIVATE download?"))return;
+      if(kind==="source"){
+        download(admitted.source,"lightup-original-human-worksheet.csv","text/csv;charset=utf-8");
+      }else if(kind==="plan"){
+        download(portablePlanCSV(admitted),"lightup-private-human-vault-plan.csv",
+          "text/csv;charset=utf-8");
+      }else{
+        download(portableCapacityCSV(admitted),"lightup-private-human-vault-capacity.csv",
+          "text/csv;charset=utf-8");
+      }
+      inform("Recovered selected PRIVATE original HUMAN vault component locally. "+
+        "No current browser workspace replaced or external target/calendar accessed.");
+    }finally{
+      if(admitted)admitted.source.fill(0);
+      clearVaultPasswords();
+    }
+  }
   function clearVaultRekeyFields(){
     $("vaultNewPassword").value="";$("vaultNewConfirm").value="";
   }
@@ -2378,6 +2408,12 @@
     workroomComparison=null;workroomComparePage=0;
     $("workroomCompareRows").replaceChildren();
     $("workroomCompareStatus").textContent="Compared HUMAN workroom forgotten from browser memory.";
+  });
+  hook("extractPortableVault","change",async e=>{
+    try{if(e.target.files[0])await recoverPortableVaultComponent(e.target.files[0]);}
+    catch(_){inform("PRIVATE portable vault component recovery held. "+
+      "Only an intact original HUMAN vault with correct passphrase can be extracted.",true);}
+    finally{e.target.value="";clearVaultPasswords();}
   });
   hook("rekeyPortableVault","change",async e=>{
     try{if(e.target.files[0])await rekeyPortableVault(e.target.files[0]);}
