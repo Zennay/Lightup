@@ -268,16 +268,22 @@ def artifacts_for(history: dict) -> list[tuple[str, bytes]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Source-free PRIVATE HUMAN revision history; no assessment execution")
-    parser.add_argument("action", choices=("build", "reopen"))
+    parser.add_argument("action", choices=("build", "reopen",
+                                           "receive-browser", "reopen-browser"))
     parser.add_argument("--board", required=True, help="exact original source-free PRIVATE board JSON")
     parser.add_argument("--revision", action="append", required=True,
                         help="one complete private HUMAN CSV, repeat in manual order 2-8 times")
     parser.add_argument("--private-output-dir", required=True,
                         help="fresh empty 0700 directory for build, exact saved 0700 directory for reopen")
+    parser.add_argument("--browser-history",
+                        help="owner-only 0600 source-free browser history JSON; required for receive-browser/reopen-browser")
     args = parser.parse_args()
     try:
         if not MIN_ROUNDS <= len(args.revision) <= MAX_ROUNDS:
             raise ValueError("2-8 complete HUMAN revision files required")
+        browser_mode = args.action in ("receive-browser", "reopen-browser")
+        if browser_mode != (args.browser_history is not None):
+            raise ValueError("browser history input allowed only for explicit browser receive/reopen")
         board_raw = source_bytes(args.board)
         digest, originals = actions.board_admit(args.board)
         if digest != hashlib.sha256(board_raw).hexdigest():
@@ -288,6 +294,22 @@ def main() -> int:
         revisions = [actions.read_human_csv(path, digest, originals)
                      for path in args.revision]
         history = compose_history(originals, revisions)
+        browser_raw = None
+        if browser_mode:
+            # Browser-generated JSON is unsigned. Admit only its exact canonical
+            # source-free content, rebuilt from the unchanged ORIGINAL native
+            # board and every complete original HUMAN CSV worksheet.
+            browser_raw = source_bytes(args.browser_history)
+            browser_data = json.loads(
+                browser_raw.decode("utf-8", "strict"),
+                object_pairs_hook=actions.unique,
+                parse_constant=lambda _: (_ for _ in ()).throw(
+                    ValueError("invalid browser JSON constant")))
+            canonical = lambda doc: json.dumps(
+                doc, ensure_ascii=True, sort_keys=True,
+                separators=(",", ":")).encode("utf-8")
+            if canonical(browser_data) != canonical(history):
+                raise ValueError("browser history differs from exact admitted original HUMAN revisions")
         artifacts = artifacts_for(history)
         # Repeat original private input-byte admission before output publication
         # or reopen, rejecting any concurrent original board/HUMAN file drift.
@@ -298,18 +320,24 @@ def main() -> int:
                 raise ValueError("original HUMAN revision changed during history")
         # Never publish inside a directory holding the original PRIVATE board
         # or HUMAN revisions; an extra report folder poisons exact admission.
-        for original_path in (args.board, *args.revision):
+        admitted_inputs = [args.board, *args.revision]
+        if browser_mode:
+            admitted_inputs.append(args.browser_history)
+        for original_path in admitted_inputs:
             actions.board.require_output_outside_source_tree(
                 os.path.dirname(os.path.realpath(original_path)),
                 args.private_output_dir)
-        if args.action == "build":
+        if browser_mode and source_bytes(args.browser_history) != browser_raw:
+            raise ValueError("browser history bytes changed during source admission")
+        if args.action in ("build", "receive-browser"):
             actions.publish_private_artifacts(args.private_output_dir, artifacts)
         else:
             actions.reopen_private_artifacts(args.private_output_dir, artifacts)
         print("REVIEW_ONLY: PRIVATE HUMAN manually ordered history", args.action,
               "complete; no chronology, consent, assessment or release")
         return 2
-    except (ValueError, OSError, TypeError, Hold, MemoryError, UnicodeError, csv.Error):
+    except (ValueError, OSError, TypeError, Hold, MemoryError, UnicodeError,
+            RecursionError, csv.Error):
         print("HOLD: PRIVATE HUMAN source-bound revision history not admitted", file=sys.stderr)
         return 3
 

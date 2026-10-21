@@ -1208,3 +1208,15 @@ original native four-file 0700/0600 custody report. The native history
 `build` and `reopen` commands remain required for independent saved-source
 re-admission. No source identity, reviewer authority, consent, remediation,
 scope clearance or permission to assess targets is created.
+
+### End-to-end browser → original native PRIVATE custody
+
+`private_inbox_history.py receive-browser` now receives the browser's
+unsigned source-free history JSON together with the **same original** owner-
+private board and 2–8 full HUMAN worksheets, performs an independent complete
+native recomputation, rejects any mismatched/differently typed JSON fields,
+and publishes the canonical four-file owner-only 0700/0600 native workroom.
+`reopen-browser` independently re-admits saved output bytes read-only.
+Use the exact command examples in [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md).
+No client/reviewer/source authentication, consent, assessment or release is
+created by a browser/native equality comparison.

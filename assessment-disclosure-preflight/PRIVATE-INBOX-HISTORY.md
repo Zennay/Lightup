@@ -137,3 +137,37 @@ It does not enforce 0700/0600 storage, independently authenticate clients or
 establish true time ordering. Browser output is not the native four-file
 source-custody workroom: use native `build` and `reopen` for that original
 owner-private verification, which itself is non-authorizing REVIEW_ONLY.
+
+### Native receive and reopen of a browser-composed history
+
+Browser composition is intentionally unsigned. After explicitly downloading
+the browser's source-free history JSON, move it to owner-controlled regular
+0600 local storage. To turn it into the original complete four-file PRIVATE
+custody packet, the **native** original-source receiver can use:
+
+~~~sh
+mkdir -m 700 ./owner-private-browser-received
+python3 assessment-disclosure-preflight/private_inbox_history.py receive-browser \
+  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \
+  --revision ./owner-private-sheets/first.csv \
+  --revision ./owner-private-sheets/second.csv \
+  --browser-history ./owner-private-browser-inbox/PRIVATE-inbox-HUMAN-history-browser-unsigned.json \
+  --private-output-dir ./owner-private-browser-received
+~~~
+
+The receiver re-admits the exact original board and every complete original
+HUMAN worksheet, checks the browser's entire canonical unsigned history
+against a fresh **independent native recomputation** (including boolean field
+types, exact stage membership and all transitions), and publishes the normal
+private HTML + two CSV files + JSON **only if the entire report matches**.
+Unexpected JSON keys, duplicate decoded keys, changed input files, symlinks
+or incorrect 0600/0700 owner custody return HOLD. This is *not* identity
+authentication: an identical malicious or misattributed unsigned source is
+still unsigned, and consent/approval is not inferred.
+
+A saved packet can later be re-admitted read-only by running the same command
+with `reopen-browser` instead of `receive-browser`; the existing private
+four-file folder is not altered. Browser-original source bytes remain
+unchanged, and a different browser report/source/slot order is rejected.
+A normal native `reopen` without `--browser-history` can also open an
+identical saved four-file packet from the same original source CSVs.
