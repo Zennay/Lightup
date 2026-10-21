@@ -49,3 +49,30 @@ python3 assessment-launchpad/launchpad.py --verify-output-dir ~/private-lab-laun
 Reopen demands the original five owner-owned single-link mode-0600 regular files in an owner-owned mode-0700 directory. It checks bounded stable bytes, the canonical manifest and ordinals, exact known receipt schema and literal-false authority flags, the pinned original CLI/scope sources, the stored HTML/command content hashes, and exact expected `--preview-only` command. It does not fetch outside the local workspace, run a subprocess, create an output file, authenticate the original source producer, verify client scope authority or prove that a target was assessed. The digest hashes are **unsigned consistency checks only**: an attacker controlling both payload and receipt could rewrite both. Mismatch fails closed with HOLD and no output.
 
 The separate minimal summary is deterministically reconstructed during reopen; any extra source identifiers, paths, hashes, or edited authority statements make the bundle fail closed. It is a low-detail planning artifact, **not proof of confidentiality, anonymous identity, validated scope or assessment**. Its endpoint count may still be sensitive in a small engagement.
+
+
+## PRIVATE HUMAN follow-up desk
+
+A second source-bound offline workflow turns one completed five-file Launchpad preview packet into a PRIVATE, human-only review desk. It does not execute its preview command, authorize any asset, perform network requests, or assess any target.
+
+Create a new, separate directory owned by the current user with mode 0700 (e.g., mkdir -m 700 ~/private-lab-human-round-1). Then run:
+
+    python3 assessment-launchpad/review_desk.py --bundle-dir ~/private-lab-launchpad-output --output-dir ~/private-lab-human-round-1
+
+The desk first reopens all five original files through the pinned original URL/isolated-lab scope validator. It creates four owner-only, no-overwrite mode-0600 files:
+- lightup-lab-human-private.json: a source-byte-bound per-slot HUMAN planning worksheet. Only ordinal slots, stages, roles and up to 400-character notes may be edited. All authority, consent, dispatch and release flags remain false.
+- lightup-lab-human-private.html: a CSP-pinned, scriptless printable workroom. **Contains the original endpoint URLs and private notes. Never publish or host it.**
+- lightup-lab-human-counts.json: counts by fixed stage and role. Excludes endpoints, identifiers, paths, hashes and notes.
+- lightup-lab-human-counts.csv: the same fixed-vocabulary counts for offline planning, no source or note values.
+
+The initial worksheet assigns NEEDS_INPUT and UNASSIGNED to every original endpoint slot. Human stages are limited to NEEDS_INPUT, HUMAN_REVIEW and FOLLOW_UP; there is intentionally no APPROVED, CLEARED or DONE state. Neutral role choices are UNASSIGNED, LAB_OPERATOR, SCOPE_OWNER, SECURITY_REVIEWER and PRIVACY_REVIEWER.
+
+To record a subsequent HUMAN follow-up, manually edit only the stage, role and note values in a copy of the owner-private JSON worksheet. Do not change its original source fingerprint, slot ordinals or false authority flags. Make a new empty owner-only 0700 directory and run:
+
+    python3 assessment-launchpad/review_desk.py --bundle-dir ~/private-lab-launchpad-output --responses ~/private-lab-human-round-1/lightup-lab-human-private.json --output-dir ~/private-lab-human-round-2
+
+Strict JSON duplicate-key rejection, source fingerprint binding, exact original endpoint count and ordered slots, neutral stage/role schema, and owner/mode/no-link bounded stable reads apply before publication. Existing rounds are not overwritten. To re-open a completed review round read-only, revalidate against the SAME original packet:
+
+    python3 assessment-launchpad/review_desk.py --bundle-dir ~/private-lab-launchpad-output --verify-review-dir ~/private-lab-human-round-2
+
+This checks the four output artifacts against the canonical worksheet and original-source manifest bytes; hashes here are UNSIGNED LOCAL CONSISTENCY ONLY. The aggregate handoffs are low-detail, not a promise of statistical anonymity in small engagements. HUMAN notes never become security findings, client approval, remediation proof or a scan permit. All existing source-owner, hosted/permanent named VPS CI, independent security/privacy review, distinct authenticated client/operator consent with action-time revocation, and HUMAN GO gates remain mandatory.
