@@ -51,6 +51,13 @@
       const note = stage.querySelector(".visible-stage-count");
       if (note) note.textContent = count + " matching actions";
     }
+    const needs = ALL.filter(id => state[id] === "NEEDS_INPUT").length;
+    const discussing = ALL.filter(id => state[id] === "IN_PROGRESS").length;
+    const notReviewed = ALL.filter(id => state[id] === "NOT_REVIEWED").length;
+    $("followup-summary").textContent = (needs + discussing + notReviewed) +
+      " HUMAN discussion follow-up markers: " + needs + " need original input · " +
+      discussing + " discussing · " + notReviewed + " not reviewed. " +
+      "This is not a risk rating, completion record or authorization.";
     return visible;
   }
   function bulkHUMAN(marker) {
@@ -188,7 +195,7 @@
   $("export-followup").addEventListener("click", () => {
     const queue = followupQueue();
     const rows = [[
-      "priority_order","stage","action","action_label","self_reported_state",
+      "queue_order","stage","action","action_label","self_reported_state",
       "suggested_human_next_step","authority"
     ], ...queue.map((item,index) => [
       String(index+1), item.stage, item.action, actionLabel[item.action],
