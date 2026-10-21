@@ -37,15 +37,9 @@ def require(value: bool) -> None:
         raise Hold("HOLD: original-source HUMAN action queue input changed")
 
 
-def build(source: str, manifest: str, worksheet: str, selection_receipt: str,
-          selection: str, curated_packet: str, handoffs: list[str],
-          replies: list[str], inbox: str) -> tuple[dict[str, bytes], int]:
-    original, count = reopen_expected(
-        source, manifest, worksheet, selection_receipt, selection,
-        curated_packet, handoffs, replies, inbox)
-    # The original native module has already admitted this complete CSV
-    # from the original source and all source-bound HUMAN returns.
-    raw = original[FINAL]
+
+def admitted_rows(raw: bytes, count: int) -> list[tuple[dict, str]]:
+    """Parse the already native-original-admitted HUMAN unified CSV."""
     reader = csv.DictReader(io.StringIO(raw.decode("utf-8"), newline=""),
                             strict=True)
     require(reader.fieldnames == list(HEADER))
@@ -63,6 +57,20 @@ def build(source: str, manifest: str, worksheet: str, selection_receipt: str,
         stage = row["recipient_reported_stage"] or "no_human_response"
         require(stage in dict(STAGES))
         safe_rows.append((row, stage))
+
+    return safe_rows
+
+
+def build(source: str, manifest: str, worksheet: str, selection_receipt: str,
+          selection: str, curated_packet: str, handoffs: list[str],
+          replies: list[str], inbox: str) -> tuple[dict[str, bytes], int]:
+    original, count = reopen_expected(
+        source, manifest, worksheet, selection_receipt, selection,
+        curated_packet, handoffs, replies, inbox)
+    # The original native module has already admitted this complete CSV
+    # from the original source and all source-bound HUMAN returns.
+    raw = original[FINAL]
+    safe_rows = admitted_rows(raw, count)
 
     navigation = []
     sections = []

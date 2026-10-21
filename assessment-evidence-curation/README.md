@@ -370,3 +370,28 @@ or prove authentic provenance, HUMAN identity, consent, disclosure right,
 remediation or findings. To assert correspondence with original source
 bytes, rerun the complete option 21 against the same original materials
 into a **new** private output directory; old output is never replaced.
+
+### Source-exact PRIVATE HUMAN stage-and-priority-only handoff
+
+The new `priority_inbox_stage_brief.py` (console option **23**) produces a
+single, separately PRIVATE 0700/0600 source-minimized handoff for exactly one
+HUMAN reply stage and one manually selected original HUMAN priority. Supply the
+same full source, manifest, worksheet, selection receipt, selection, curated
+packet, all priority handoffs and corresponding returned HUMAN CSV files as
+for option 21, plus `--private-inbox`, an exclusive `--output-dir`,
+`--human-stage` and `--human-priority`.
+
+Stages are `blocked_human`, `needs_more_information`,
+`no_human_response`, `responded_claimed`; priorities are
+`routine`, `soon`, `urgent`. All original source and saved inbox bytes
+are re-admitted before a new output. Empty chosen groups HOLD without implying
+remediation, authenticity or approval.
+
+Output: script-free printable `PRIVATE-HUMAN-stage-priority-brief.html`,
+private counts JSON and an unsigned full-inbox-source-bound receipt. Only the
+selected stage+priority group's HUMAN questions/replies/next questions and
+source-reported ordinal/severity/evidence counts appear; **all other**
+HUMAN groups and their notes stay out of this separate product. Still
+**PRIVATE**: human text may reveal client identities. No sharing, messaging,
+calendar event, permission, authorization, scanning or verified fix is
+performed. Original source, inbox and action queue remain untouched.
