@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import getpass
 from hashlib import sha256
 from html import escape
 import json
@@ -180,6 +181,39 @@ def make_artifacts(work, endpoints):
         (FILE_NAMES[3], ("\n".join(csv_lines) + "\n").encode("utf-8")),
     ]
 
+
+def interactive_review(work):
+    """Explicit local terminal HUMAN editing; never prompts for URLs or secrets."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        raise Hold("HUMAN interactive review requires a private terminal")
+    print("PRIVATE HUMAN review: no original endpoint URLs will be printed.")
+    print("Use stage 1=NEEDS_INPUT, 2=HUMAN_REVIEW, 3=FOLLOW_UP.")
+    print("Use role 1=UNASSIGNED, 2=LAB_OPERATOR, 3=SCOPE_OWNER, "
+          "4=SECURITY_REVIEWER, 5=PRIVACY_REVIEWER.")
+    print("Press Enter to keep current value. For a note, '-' clears the note.")
+    for row in work["human_rows"]:
+        print("HUMAN slot " + str(row["slot"]).zfill(2) +
+              " — " + row["stage"] + " / " + row["role"] +
+              "; private note length " + str(len(row["note"])))
+        stage = input("  Stage [1-3 or Enter to keep]: ").strip()
+        if stage:
+            if stage not in ("1", "2", "3"):
+                raise Hold("unrecognized HUMAN stage selection")
+            row["stage"] = STAGES[int(stage) - 1]
+        role = input("  Reviewer role [1-5 or Enter to keep]: ").strip()
+        if role:
+            if role not in ("1", "2", "3", "4", "5"):
+                raise Hold("unrecognized HUMAN role selection")
+            row["role"] = ROLES[int(role) - 1]
+        # getpass keeps private notes out of terminal scrollback and shell history.
+        note = getpass.getpass("  Private note [Enter=keep, -=clear]: ")
+        if note == "-":
+            row["note"] = ""
+        elif note:
+            row["note"] = note
+    print("HUMAN draft complete. No scan, approval, grant or release was issued.")
+    return work
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=(
         "Compose or reopen original-source-bound PRIVATE HUMAN follow-up. "
@@ -190,9 +224,11 @@ def main(argv=None):
     mode.add_argument("--output-dir", help="separate empty mode-0700 directory")
     mode.add_argument("--verify-review-dir", help="read-only verify exact four-file HUMAN handoff")
     parser.add_argument("--responses", help="optional existing owner-private HUMAN worksheet JSON")
+    parser.add_argument("--interactive", action="store_true",
+                        help="edit admitted HUMAN stage/role/private notes on a local TTY")
     args = parser.parse_args(argv)
     try:
-        if args.verify_review_dir and args.responses:
+        if args.verify_review_dir and (args.responses or args.interactive):
             raise Hold("verification cannot also import amended responses")
         original_dir, endpoints, digest = read_original_bundle(args.bundle_dir)
         output_dir = args.verify_review_dir or args.output_dir
@@ -212,6 +248,9 @@ def main(argv=None):
                 work = (load_json(require_private_file(args.responses)) if args.responses
                         else blank_worksheet(digest, len(endpoints)))
                 validate_worksheet(work, digest, len(endpoints))
+                if args.interactive:
+                    interactive_review(work)
+                    validate_worksheet(work, digest, len(endpoints))
                 artifacts = make_artifacts(work, endpoints)
                 publish_bundle(fd, artifacts)
         finally:
