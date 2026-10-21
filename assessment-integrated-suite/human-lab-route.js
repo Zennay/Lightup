@@ -1,0 +1,146 @@
+/* LightUp original offline HUMAN lab workflow desk. No backend, network, persistent storage or source admission. */
+"use strict";
+(() => {
+  const SCHEMA = "lightup.private.human-lab-route.self-report.v1";
+  const NO_AUTHORITY = Object.freeze({scan_authorized:false,grant_authorized:false,consent_verified:false,human_go:false});
+  const LABELS = Object.freeze({
+    NOT_REVIEWED:"Not reviewed", IN_PROGRESS:"Discussing", NEEDS_INPUT:"Needs original input", DISCUSSED:"Discussed only"
+  });
+  const STAGES = [
+    {title:"1 · Offline proposal",intro:"Prepare and compare numeric, isolated lab proposals. These plans never execute targets.",steps:[
+      [52,"Prepare isolated-lab proposal"],[53,"Reopen original owner-private proposal"],[54,"Compare two original proposals"],[55,"Review 3–8 original proposals"]]},
+    {title:"2 · Source-bound human review",intro:"Only original admitted packets and explicitly recorded HUMAN choices can advance the draft.",steps:[
+      [56,"Prepare review Studio"],[57,"Manually finalize original HUMAN proposal choices"],[58,"Reopen original HUMAN choices"],[59,"Compare 2–8 original HUMAN review rounds"]]},
+    {title:"3 · Team feedback",intro:"Prepare separate owner-private team rooms; absent replies are NOT approvals.",steps:[
+      [60,"Prepare assigned-team workrooms"],[61,"Read one exact source-bound HUMAN reply"],[62,"Assemble 1–4 replies with explicit withholding"],[63,"Reopen a complete original team batch"],[64,"Compare original team batches"]]},
+    {title:"4 · Multi-round continuation",intro:"Carry human drafts forward without silently replacing previous choices.",steps:[
+      [65,"Prepare explicit next HUMAN review round"],[66,"Reopen complete original continuation chain"],[67,"Inspect source-minimal HUMAN changes"]]},
+    {title:"5 · Conflict reconciliation",intro:"A conflict resolution creates a NEW unfinalized candidate; review and explicit human finalization remain separate.",steps:[
+      [68,"Prepare per-ordinal HUMAN conflict editor"],[69,"Publish selected HUMAN choices to a NEW draft"],[70,"Reopen published draft against originals"],[71,"Open NEW original HUMAN Review Studio"]]}
+  ];
+  const ALL = STAGES.flatMap(s => s.steps.map(x => String(x[0])));
+  const state = Object.create(null);
+  ALL.forEach(id => state[id] = "NOT_REVIEWED");
+  const $ = id => document.getElementById(id);
+  const node = (tag, label, className) => {
+    const el = document.createElement(tag);
+    if (label != null) el.textContent = label;
+    if (className) el.className = className;
+    return el;
+  };
+  const stageStatus = (stage) => {
+    const values = stage.steps.map(([id]) => state[String(id)]);
+    return values.filter(v => v === "DISCUSSED").length + "/" + values.length + " discussed · " +
+      values.filter(v => v === "NEEDS_INPUT").length + " need input";
+  };
+  function render() {
+    const host = $("stages");
+    host.replaceChildren();
+    STAGES.forEach((stage, index) => {
+      const section = node("section", null, "phase");
+      const h = node("h2", stage.title);
+      section.append(h, node("p", stage.intro, "hint"));
+      const meter = node("p", stageStatus(stage), "stage-metric");
+      section.append(meter);
+      const list = node("div", null, "actions");
+      stage.steps.forEach(([number, caption]) => {
+        const id = String(number);
+        const row = node("div", null, "action");
+        const field = node("label", null, "caption");
+        field.append(node("strong", number + " · "), document.createTextNode(caption));
+        const select = node("select");
+        select.setAttribute("aria-label", "Self-reported discussion state, action " + id);
+        Object.entries(LABELS).forEach(([value, label]) => {
+          const option = node("option", label);
+          option.value = value;
+          select.append(option);
+        });
+        select.value = state[id];
+        select.addEventListener("change", () => {
+          state[id] = select.value;
+          summary();
+          meter.textContent = stageStatus(stage);
+        });
+        row.append(field, select);
+        list.append(row);
+      });
+      section.append(list);
+      host.append(section);
+    });
+    summary();
+  }
+  function summary() {
+    const counts = Object.fromEntries(Object.keys(LABELS).map(k => [k, ALL.filter(id => state[id] === k).length]));
+    $("progress").textContent = counts.DISCUSSED + "/20 discussed (self-reported), " +
+      counts.IN_PROGRESS + " in discussion, " + counts.NEEDS_INPUT + " waiting on original input.";
+    $("pending").replaceChildren();
+    const items = ALL.filter(id => state[id] !== "DISCUSSED");
+    if (!items.length) $("pending").append(node("li","All steps marked discussed. This is NOT approval, validation or completion."));
+    else items.forEach(id => {
+      const entry = STAGES.flatMap(s => s.steps).find(([num]) => String(num) === id);
+      $("pending").append(node("li", id + " · " + entry[1] + " — " + LABELS[state[id]]));
+    });
+  }
+  function report() {
+    return {
+      schema:SCHEMA,mode:"REVIEW_ONLY",authority:{...NO_AUTHORITY},
+      verified_original_source:false, source_files_included:false, private_notes_included:false,
+      steps:ALL.map(id => ({action:Number(id),self_reported_state:state[id]}))
+    };
+  }
+  function download(name,text,kind) {
+    const blob = new Blob([text],{type:kind});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;a.download = name;document.body.append(a);a.click();a.remove();
+    setTimeout(() => URL.revokeObjectURL(url),1000);
+    $("result").textContent = "A LOCAL download was requested. Verify the actual file before using it; no upload, verification or release occurred.";
+  }
+  $("export-json").addEventListener("click", () => download(
+    "LightUp-PRIVATE-HUMAN-Lab-Route.json",JSON.stringify(report(),null,2)+"\n","application/json"));
+  $("export-csv").addEventListener("click", () => download(
+    "LightUp-PRIVATE-HUMAN-Lab-Route.csv",
+    "action,self_reported_state,authority\r\n" +
+    ALL.map(id => id+","+state[id]+",REVIEW_ONLY").join("\r\n")+"\r\n","text/csv"));
+  $("print").addEventListener("click", () => window.print());
+  $("reset").addEventListener("click", () => {
+    if (!window.confirm("Discard all local unsaved HUMAN discussion markers?")) return;
+    ALL.forEach(id => state[id]="NOT_REVIEWED");render();
+    $("result").textContent = "In-memory markers cleared. No original files changed.";
+  });
+  $("import-json").addEventListener("change", async ev => {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    try {
+      if (file.size < 20 || file.size > 24576) throw Error("Not a bounded route export");
+      const data = JSON.parse(await file.text());
+      if (!data || Array.isArray(data) || Object.keys(data).sort().join("|") !==
+          ["schema","mode","authority","verified_original_source","source_files_included","private_notes_included","steps"].sort().join("|") ||
+          data.schema !== SCHEMA || data.mode !== "REVIEW_ONLY" ||
+          data.verified_original_source !== false || data.source_files_included !== false || data.private_notes_included !== false)
+        throw Error("Wrong schema or asserted authority");
+      if (!data.authority || Array.isArray(data.authority) ||
+          Object.keys(data.authority).sort().join("|") !== Object.keys(NO_AUTHORITY).sort().join("|") ||
+          Object.keys(NO_AUTHORITY).some(k => data.authority[k] !== false))
+        throw Error("Any implied authority is prohibited");
+      if (!Array.isArray(data.steps) || data.steps.length !== ALL.length)
+        throw Error("Route must include exactly all original options");
+      const incoming = Object.create(null);
+      data.steps.forEach((item,index) => {
+        const id = ALL[index];
+        if (!item || Array.isArray(item) ||
+            Object.keys(item).sort().join("|") !== "action|self_reported_state" ||
+            item.action !== Number(id) || !Object.hasOwn(LABELS,item.self_reported_state))
+          throw Error("Unexpected, missing, reordered or altered HUMAN action");
+        incoming[id] = item.self_reported_state;
+      });
+      if (!window.confirm("Replace all in-memory self-reported markers? No source is authenticated.")) return;
+      ALL.forEach(id => state[id]=incoming[id]);render();
+      $("result").textContent = "Self-reported discussion markers imported locally. No original source or consent verified.";
+    } catch (_) {
+      $("result").textContent = "HOLD: untrusted route file refused (shape, size, sequence or authority claim). No changes applied.";
+    }
+  });
+  render();
+})();
