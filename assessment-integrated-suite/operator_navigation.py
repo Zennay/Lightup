@@ -90,9 +90,43 @@ CATEGORIES = (
     ("Owner-private session continuity", tuple(str(x) for x in range(37, 42))),
     ("HUMAN task queues", tuple(str(x) for x in range(42, 48))),
     ("Integrated HUMAN workpacks", tuple(str(x) for x in range(48, 52))),
-    ("Isolated lab offline planning", tuple(str(x) for x in range(52, 62))),
+    ("Isolated lab offline planning", tuple(str(x) for x in range(52, 60))),
+    ("PRIVATE HUMAN team feedback", tuple(str(x) for x in range(60, 65))),
+    ("PRIVATE HUMAN multi-round continuation", tuple(str(x) for x in range(65, 68))),
+    ("PRIVATE HUMAN conflict resolution", tuple(str(x) for x in range(68, 72))),
 )
 
+
+
+LAB_STAGES: tuple[tuple[str, str, tuple[str, ...], str], ...] = (
+    ("1. Prepare strictly offline proposals", "Original declared numeric lab plan, NEVER a scan",
+     ("52", "53", "54", "55"), "52 creates an unexecuted plan; 53 reopens original bytes; 54/55 compare alternatives."),
+    ("2. Human source-bound review", "Original proposal packets and HUMAN review only",
+     ("56", "57", "58", "59"), "56 prepares the owner-private editor; 57 requires deliberate source-bound HUMAN finalization; 58/59 reopen and compare."),
+    ("3. Separate team feedback", "Only if the original HUMAN review and team handoff exist",
+     ("60", "61", "62", "63", "64"), "60 assigns separate PRIVATE workrooms; 61 receives one; 62 composes 1–4 with explicit withholding; 63/64 reopen and compare."),
+    ("4. Continue across review rounds", "A previously admitted complete HUMAN batch is required",
+     ("65", "66", "67"), "65 withholds conflicting returns; 66 reopens the original entire chain; 67 shows source-minimal change history."),
+    ("5. Resolve HUMAN disagreements", "Unresolved original source-bound conflict room",
+     ("68", "69", "70", "71"), "68 prepares per-ordinal choices; 69 publishes a NEW unfinalized HUMAN candidate; 70 reopens it; 71 opens a NEW original manual review editor."),
+)
+
+def lab_guide() -> None:
+    """Explain original lab-to-HUMAN action sequence; never execute any of it."""
+    print("\\n=== Original LightUp LAB -> PRIVATE HUMAN review route ===")
+    print("INCUBATE M3/M7 / REVIEW_ONLY / DRAFT/HOLD")
+    print("This guide neither reads source nor implies that a stage is completed.")
+    for title, prerequisite, ids, guidance in LAB_STAGES:
+        print("\\n" + title + " [" + " -> ".join(ids) + "]")
+        print("  Prerequisite: " + prerequisite)
+        print("  " + guidance)
+        for option in ids:
+            print("  " + option + " · " + ACTIONS[option])
+    print("\\nChoose an explicit NUMBER from the console to run ONE local stage.")
+    print("Retain 0700 owner rooms / 0600 originals, and re-admit exact source bytes.")
+    print("No source validation here, no automatic scan, grants, consent, finalization,")
+    print("recipient dispatch, security verdict or production release.")
+    print("Mandatory original CI, reviews, current authenticated consent and HUMAN GO remain HOLD.")
 
 def overview() -> None:
     print("\n=== LightUp · offline PRIVATE assessment console ===")
@@ -101,7 +135,7 @@ def overview() -> None:
         print("  " + ids[0] + "–" + ids[-1] + "   " + name)
     print("Suggested safe HUMAN-only workflow: 37 → 49 → manual editor →")
     print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60 → 61 → 62 → 63 → 64 → 65 → 66 → 67 → 68 → 69 → 70 → 71.")
-    print("Enter an action number, ALL for full catalog, ?keyword to search,")
+    print("Enter an action number, ALL for full catalog, LAB for source-bound lab route, ?keyword to search,")
     print("HELP for a HUMAN walkthrough or 0 to exit. No action is automatic.")
 
 
