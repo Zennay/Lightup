@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE HUMAN action Studio</title>
+<link rel="stylesheet" href="./private-inbox-action-studio.css">
+<script src="./private-inbox-action-studio.js" defer></script>
+</head>
+<body>
+<header>
+<p class="eyebrow">LightUp / PRIVATE local-only HUMAN discussion</p>
+<h1>Inbox follow-up Studio</h1>
+<p>Import the complete original <code>PRIVATE-inbox-actions-template.csv</code> created by the native <code>private_inbox_actions.py prepare</code>. Work locally on all original slot ordinals and export a full source-bound HUMAN CSV for native <code>finalize</code>. Nothing is uploaded, sent, saved in browser storage, or used to scan a target.</p>
+<p class="warning"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> A proposed discussion role is NOT a real assignment. “Discussion complete” is explicitly NO RELEASE. Source byte hashes and browser exports do not authenticate findings, reviewers, identity, source, consent, authorization or remediation. Independent reviews and HUMAN GO remain mandatory.</p>
+</header>
+<main>
+<section class="panel" aria-labelledby="import-heading">
+<h2 id="import-heading">1. Load exact PRIVATE action worksheet</h2>
+<label for="upload">Original native six-column HUMAN actions template or a previously exported complete edited CSV (128 KiB maximum).</label>
+<input id="upload" type="file" accept=".csv,text/csv">
+<p id="message" role="status" aria-live="polite">No original HUMAN action sheet loaded. Nothing will be exported without its entire source-ordered rows.</p>
+<p class="privacy">Loading a new sheet clears the complete in-memory previous draft. The original path and source board digest are not displayed or transmitted.</p>
+</section>
+<section class="panel" id="editor" hidden aria-labelledby="edit-heading">
+<h2 id="edit-heading">2. Edit proposed HUMAN follow-up</h2>
+<div class="actions"><label for="filter">Show slots</label>
+<select id="filter"><option value="ALL">All original slots</option><option value="OPEN">Unreviewed / needs input</option><option value="PROGRESS">In progress</option><option value="DISCUSSION">Discussion complete, NO RELEASE</option></select>
+<span id="counter" aria-live="polite"></span></div>
+<div id="cards" class="cards"></div>
+<p class="privacy">Filters only hide cards; exports ALWAYS preserve all original slots and their original sequence. Browser notes are not persisted automatically. Do not use this app on shared machines for real sensitive HUMAN text.</p>
+<div class="actions">
+<button id="export" type="button">3. Export complete PRIVATE HUMAN actions CSV</button>
+<button id="clear" type="button" class="secondary">Clear entire PRIVATE session</button>
+</div>
+<p id="export-message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>4. Native source-bound finalization (separate owner operation)</h2>
+<p>Place the downloaded CSV in owner-controlled 0600 storage, then use <code>private_inbox_actions.py finalize --board ORIGINAL_PRIVATE_BOARD.json --human-csv EDITED_HUMAN.csv --private-output-dir PRIVATE_NEW_DIRECTORY</code>. Native admission re-reads the unchanged complete original board, checks its exact byte-bound SHA, each original ordinal, valid HUMAN statuses and notes, and publishes only PRIVATE 0600 output. <code>reopen</code> verifies those exact local PRIVATE results later.</p>
+<p>Browser export is NOT an approval, proof of disk persistence, source owner permission, release, authenticated consent or a cryptographic signature.</p>
+</section>
+</main><footer>LightUp PRIVATE HUMAN Action Studio · source-free original slot metadata only · no network, scanner, model, localStorage or remote upload.</footer>
+</body>
+</html>

@@ -48,6 +48,13 @@ Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** a
 
 ## Native original PRIVATE HUMAN inbox follow-up actions
 
+A new [fully offline PRIVATE HUMAN action browser Studio](./private-inbox-action-studio.html)
+loads an already prepared complete native six-column template and allows
+slot-by-slot source-free status, discussion-role and HUMAN text editing,
+in-memory filters and a full original-order CSV export. No HTTP, storage,
+background save or remote action; the original unchanged native
+`private_inbox_actions.py finalize` is still required to admit every
+complete exact source-bound row before publishing PRIVATE outputs.
 The [source-bound PRIVATE HUMAN action guide](./PRIVATE-INBOX-ACTIONS.md)
 and bundled `private_inbox_actions.py` complete the review workflow after
 `private_inbox_board.py` generates the original source-free board JSON:
@@ -798,7 +805,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 29
+store, scan workflow, credential grant or signed release. The 32
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -871,7 +878,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 29
+noncanonical, reordered, oversized or changed members, compares all 32
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no

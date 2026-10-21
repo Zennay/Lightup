@@ -39,6 +39,26 @@ The status `UNREVIEWED` must have no proposed role or copied notes. HUMAN
 questions/actions are restricted to bounded text (no spreadsheet formulas)
 and are NEVER treated as authenticated assignments or sent automatically.
 
+## Edit the original template with the complete offline HUMAN browser Studio
+
+Open [private-inbox-action-studio.html](./private-inbox-action-studio.html)
+locally in an owner-controlled browser and import the original
+`PRIVATE-inbox-actions-template.csv` from native `prepare`. The Studio
+requires the exact complete original six-column layout, one SHA-bound
+original row per original input slot in source order, a literal valid stage
+and suggested role, and bounded safe single-line HUMAN notes. It supports
+filters for open, in-progress and completed discussions **without omitting
+any hidden row from the full export**. All editing stays in memory:
+there is no fetch, localStorage, telemetry, auto-routing, scanner or model.
+
+Select **Export complete PRIVATE HUMAN actions CSV** and manually move the
+browser download to owner-controlled 0600 storage. A browser-generated CSV
+and its SHA do not prove successful persistence or original producer identity;
+reopen and finalize using the original *native* strict source-binding below.
+A cancelled or invalid editor source yields no valid native approval or output.
+The old original contents are not silently carried forward when importing a
+different file.
+
 **Finalize a separate PRIVATE operator report:**
 
 ~~~sh
