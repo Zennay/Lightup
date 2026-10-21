@@ -155,3 +155,21 @@ self-declared blocked HUMAN-stage count; no source targets, issue identities,
 group names, evidence, human notes, source digest, authority, consent or
 external recipient. Report CSP prevents scripts and remote resources.
 Reports are unsigned local snapshots, not proofs of genuine actions.
+
+
+### Complete encrypted HUMAN workroom (.luhw)
+
+One PRIVATE local encrypted file now preserves both original-source-byte-bound
+HUMAN appointments and the complete declared group policy. The format has a
+distinct versioned magic and authenticated AES-GCM context from legacy plan-only
+(.luhc) files. The decrypted plaintext uses strict byte-length-delimited UTF-8
+plan and capacity CSV sections; both are independently admitted against the
+exact original worksheet digest, timezone, series and complete original group
+membership before any mutations. Wrong passphrase, mismatch, missing source,
+invalid row or malformed file refuses the entire import without replacing
+previous data. Explicit user confirmation is required to replace both local
+sets atomically. Availability changes trigger a separate unsaved indicator
+and unload protection; plan-only export deliberately cannot dismiss it.
+The bundle is unsigned as to ORIGINAL SOURCE or identity: passphrase
+encryption does not confer real client/operator consent, verified risk,
+review completion, live scheduling or scanning authority. No network used.

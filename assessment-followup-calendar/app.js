@@ -171,6 +171,10 @@
     renderWorkload();
     renderChanges();
     renderCapacity();
+    $("workspaceSaveStatus").textContent=
+      (changed?"UNSAVED HUMAN appointments. ":"Appointments currently saved or unchanged. ")+
+      (capacityDirty?"UNSAVED HUMAN availability. ":"Availability currently saved or unchanged. ")+
+      "Use complete encrypted workroom to preserve both.";
   }
   function eventIntervals(from=plan){
     return items.filter(r=>from.has(r.ordinal)).map(r=>{
@@ -1310,6 +1314,101 @@
       inform("Encrypted PRIVATE source-bound plan downloaded. Password cleared from input fields.");
     }finally{plain.fill(0);clearPasswords();}
   }
+  const WORK_MAGIC=new Uint8Array([76,85,72,87,49,10]); // LUHW1 + LF
+  const WORK_AAD=new TextEncoder().encode(
+    "lightup.human_calendar.private_workroom.v1|REVIEW_ONLY|NO_AUTHORITY");
+  function workroomFingerprint(){
+    return JSON.stringify([hash,seriesId,zone,privatePlanCSV(),privateCapacityCSV()]);
+  }
+  function packWorkroom(planText,capacityText){
+    const encoder=new TextEncoder(),a=encoder.encode(planText),b=encoder.encode(capacityText);
+    const prefix=encoder.encode("LUHW-PRIVATE-1\n"+a.length+"\n"+b.length+"\n");
+    hold(a.length>0 && b.length>0 && prefix.length+a.length+b.length<=MAX_BYTES-64);
+    const all=new Uint8Array(prefix.length+a.length+b.length);
+    all.set(prefix);all.set(a,prefix.length);all.set(b,prefix.length+a.length);
+    a.fill(0);b.fill(0);
+    return all;
+  }
+  function unpackWorkroom(plaintext){
+    hold(plaintext.length>0 && plaintext.length<=MAX_BYTES);
+    let cursor=0;
+    function line(){
+      const end=plaintext.indexOf(10,cursor);
+      hold(end>cursor && end-cursor<36 && end<96);
+      const text=decoder.decode(plaintext.subarray(cursor,end));cursor=end+1;return text;
+    }
+    hold(line()==="LUHW-PRIVATE-1");
+    const count1=line(),count2=line();
+    hold(/^[1-9]\d{0,6}$/.test(count1) && /^[1-9]\d{0,6}$/.test(count2));
+    const len1=Number(count1),len2=Number(count2);
+    hold(cursor+len1+len2===plaintext.length);
+    const planText=decoder.decode(plaintext.subarray(cursor,cursor+len1));
+    const ruleText=decoder.decode(plaintext.subarray(cursor+len1));
+    const admitted=admitPlanText(planText);
+    hold(!admitted.legacy && /^[0-9a-f]{32}$/.test(admitted.series));
+    const rules=admitCapacityText(ruleText,admitted.series);
+    return {schedule:admitted.schedule,series:admitted.series,rules};
+  }
+  async function saveEncryptedWorkroom(){
+    hold(active && crypto.subtle);
+    const password=$("handoffPassword").value,confirmation=$("handoffConfirm").value;
+    hold(password.length>=16 && password.length<=256 && password===confirmation);
+    const snapshot=workroomFingerprint(),plain=packWorkroom(privatePlanCSV(),privateCapacityCSV());
+    const salt=new Uint8Array(16),iv=new Uint8Array(12);
+    crypto.getRandomValues(salt);crypto.getRandomValues(iv);
+    try{
+      const key=await handoffKey(password,salt);
+      const cipher=new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv,additionalData:WORK_AAD,tagLength:128},key,plain));
+      const result=new Uint8Array(WORK_MAGIC.length+salt.length+iv.length+cipher.length);
+      result.set(WORK_MAGIC,0);result.set(salt,WORK_MAGIC.length);
+      result.set(iv,WORK_MAGIC.length+16);result.set(cipher,WORK_MAGIC.length+28);
+      hold(result.length<=MAX_BYTES && snapshot===workroomFingerprint());
+      if(!confirm("Download complete encrypted PRIVATE HUMAN schedule AND declared group rules? Original security data, authority, consent and real availability are not authenticated."))return;
+      hold(snapshot===workroomFingerprint());
+      download(result,"lightup-private-human-complete-workroom.luhw","application/octet-stream");
+      changed=false;capacityDirty=false;exportedPlan=true;render();
+      inform("Both PRIVATE HUMAN scheduling and declared group rules saved in one encrypted local workroom. Preserve password separately.");
+    }finally{plain.fill(0);clearPasswords();}
+  }
+  async function readEncryptedWorkroom(file,password){
+    hold(active && crypto.subtle && password.length>=16 && password.length<=256);
+    let raw=null,cipher=null,plaintext=null;
+    try{
+      raw=await bytes(file);
+      hold(raw.length>WORK_MAGIC.length+16+12+16 && WORK_MAGIC.every((v,i)=>raw[i]===v));
+      const salt=raw.slice(6,22),iv=raw.slice(22,34);cipher=raw.slice(34);
+      const key=await handoffKey(password,salt);
+      try{
+        plaintext=new Uint8Array(await crypto.subtle.decrypt(
+          {name:"AES-GCM",iv,additionalData:WORK_AAD,tagLength:128},key,cipher));
+      }catch(_){hold(false);}
+      return unpackWorkroom(plaintext);
+    }finally{
+      if(plaintext)plaintext.fill(0);
+      if(cipher)cipher.fill(0);
+      if(raw)raw.fill(0);
+    }
+  }
+  async function restoreEncryptedWorkroom(file){
+    hold(active && crypto.subtle);
+    const initial=workroomFingerprint(),oldPlan=plan,oldSeries=seriesId;
+    const password=$("handoffPassword").value;
+    try{
+      const admitted=await readEncryptedWorkroom(file,password);
+      hold(active && initial===workroomFingerprint() && oldPlan===plan && oldSeries===seriesId);
+      if(!confirm("Replace ALL local HUMAN appointments and declared group availability with complete encrypted PRIVATE workroom? This authenticates neither identity, consent nor original risk; existing unsaved choices will be overwritten."))return;
+      hold(active && initial===workroomFingerprint() && oldPlan===plan && oldSeries===seriesId);
+      publicationBaseline=null;changesPage=0;
+      $("baselineStatus").textContent="No previous publication loaded.";
+      plan=admitted.schedule;seriesId=admitted.series;capacityRules=admitted.rules;
+      capacityProposal=null;backlogProposal=null;$("capacityApply").disabled=true;
+      changed=false;capacityDirty=false;exportedPlan=true;
+      page=0;agendaPage=0;backlogPage=0;
+      capacityLoadEditor();render();
+      inform("Complete PRIVATE HUMAN schedule and declared group rules restored from original worksheet-bound encrypted file; no authorization conferred.");
+    }finally{clearPasswords();}
+  }
   async function decryptPrivatePlan(file,password){
     hold(active && crypto.subtle && password.length>=16 && password.length<=256);
     let raw=null,cipher=null,plaintext=null;
@@ -1599,6 +1698,15 @@
   });
   hook("exportCancelled","click",()=>{
     try{calendarDiffExport(true);}catch(_){inform("PRIVATE cancellations held: save the current v2 plan and select a matching previous publication first.",true);}
+  });
+  hook("encryptWorkroom","click",async()=>{
+    try{await saveEncryptedWorkroom();}
+    catch(_){clearPasswords();inform("Complete encrypted PRIVATE HUMAN workroom export refused (HOLD).",true);}
+  });
+  hook("restoreWorkroom","change",async e=>{
+    try{if(e.target.files[0])await restoreEncryptedWorkroom(e.target.files[0]);}
+    catch(_){clearPasswords();inform("Complete workroom refused (HOLD), original source and schedule untouched.",true);}
+    finally{e.target.value="";}
   });
   hook("encryptPlan","click",async()=>{
     try{await saveEncrypted();}catch(_){clearPasswords();inform("Encrypted PRIVATE plan export refused (HOLD).",true);}

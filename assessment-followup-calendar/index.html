@@ -167,6 +167,18 @@
 <button id="encryptPlan" type="button">Save encrypted PRIVATE plan</button></div>
 <div class="row"><label class="file">Restore encrypted plan (.luhc) <input id="restoreEncrypted" type="file" accept=".luhc,application/octet-stream"></label><span class="subtle">Enter the passphrase before opening this file. Files never leave this browser.</span></div>
 </div>
+<div class="notice" id="completeWorkroom">
+<strong>Complete encrypted PRIVATE HUMAN workroom (.luhw)</strong>
+<p>Save or reopen both the original-worksheet-bound appointments and every declared
+HUMAN group availability rule in one local encrypted file. Use the passphrase above.
+This format is separate from existing plan-only .luhc backups. Encryption protects
+file bytes, not original source identity, verified risk, true consent or actual staff availability.</p>
+<div class="row">
+<button id="encryptWorkroom" type="button">Save complete encrypted workroom</button>
+<label class="file">Restore complete workroom <input id="restoreWorkroom" type="file" accept=".luhw,application/octet-stream"></label>
+</div>
+<p id="workspaceSaveStatus" class="subtle" role="status" aria-live="polite">Load original HUMAN worksheet first.</p>
+</div>
 <div class="notice" id="changeDesk">
 <strong>PRIVATE calendar change desk · comparing two exact-sheet HUMAN plans</strong>
 <p>To reconcile a calendar previously imported by a HUMAN, load a separate copy of that previously published <strong>v2 PRIVATE plan CSV</strong>. It must match this exact worksheet byte digest, timezone and private calendar series ID. No network, attendee, grant or source authentication. Compare before export; changed plan dates never prove any target's risk changed.</p>
