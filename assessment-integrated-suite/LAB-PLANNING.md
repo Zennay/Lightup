@@ -1,5 +1,51 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
+
+## Original native HUMAN Attention receipt: actions 76–77
+
+The existing offline [HUMAN Attention Workboard](human-lab-attention-standalone.html)
+exports untrusted, source-free twenty-row role/follow-up proposals. Those
+may now be **received against actual original local private HUMAN Lab
+Route receipts**, instead of accepting an unsigned browser JSON alone:
+
+1. Receive and reopen each original HUMAN Lab Route self-report using
+   original native console **72/73**, in PRIVATE 0700/0600 custody.
+2. In the local browser load those same 1–8 self-reports in a deliberate
+   manual order, mark fixed HUMAN roles/follow-ups and export full
+   v2 \`LightUp-PRIVATE-HUMAN-Attention.json\`. Copy it into a 0700
+   private input directory as a 0600 ordinary file.
+3. Run native console **76** and supply the original saved 0700 route
+   receipt directories **in that same manual order**, the original
+   browser v2 JSON, the distinct output private parent/folder and
+   the exact confirmation \`RECEIVE HUMAN ATTENTION ONLY\`.
+   The new separate 0700 output holds original proposal bytes,
+   canonical 20-row JSON, complete CSV, readable scriptless CSP HTML
+   and an UNSIGNED original byte receipt (all files 0600).
+4. Console **77** reopens the original 1–8 saved native route receipts
+   AND the complete original attention output room. A changed,
+   missing, extra, unprivate or source-incompatible file becomes HOLD.
+
+Original native \`lab_route_handoff.reopen()\` is called for every
+upstream receipt. The new native parser rejects duplicate JSON names,
+unknown/overclaimed fields, mismatched original twenty action/order
+statuses, incorrect transition counts and noncanonical HUMAN role/
+follow-up selectors. There is no recipient identity, delivery,
+actual assignment, task runner, scan, proof of original lab work,
+source authentication, timing verification, approval or consent.
+A successful unsigned local receipt **does not authorize anything**.
+No original source file or existing receipt is replaced.
+
+The native command is
+\`python3 assessment-integrated-suite/attention_receipt.py --help\`;
+native 76/77 are interactive wrappers. The native script is **not**
+in the software-only browser ZIP and requires an approved original
+checkout, kept separate from PRIVATE generated HUMAN artifacts.
+Stage remains **INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD**, with
+all original independent CI, security/privacy/browser reviews,
+separately authenticated current client+operator consent and
+action-time revocation, and explicit HUMAN GO intact.
+
+
 ## One-file HUMAN Attention Workboard — no originals or task dispatch
 
 The new [portable offline attention workboard](human-lab-attention-standalone.html)
