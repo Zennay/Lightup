@@ -29,7 +29,7 @@ The input is treated as untrusted and unauthenticated. Matching scenario IDs or 
 
 - Aggregate JSON: snapshot status/counts, per-metric flag counts and anonymous scenario-slot trajectories; no IDs, filenames, hashes or notes.
 - Change-event CSV/JSON: filtered, anonymous, manual-order source-flag events, page-independent; no notes, original IDs or authority.\n- CSV: long-form numeric trajectory per anonymous scenario slot × metric × selected snapshot slot; all authority fields false.
-- Script-free HTML: privacy-minimal aggregate summary with a restrictive no-network CSP.
+- Script-free HTML: privacy-minimal aggregate summary including a per-manual-slot event-kind matrix (initial, first, consecutive, reappeared, no-longer-reported). Absence of a source flag is never fix proof. with a restrictive no-network CSP.
 - PRIVATE commentary JSON: explicitly confirmed note handoff, not an anonymous artifact.
 
 All outputs preserve REVIEW_ONLY / HOLD, fictional_demo_only, manual-order and false-authority declarations. Nothing in this app authorizes a scan, grant, dispatch, remediation, consent or release. Independent source-owner/security/privacy review, exact-head mandatory CI, current authenticated client/operator consent with action-time revocation and explicit HUMAN GO remain separate gates.

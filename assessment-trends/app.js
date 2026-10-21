@@ -256,8 +256,36 @@
   function reviewTallies(rows){
     return Object.keys(REVIEW_KINDS).map(kind=>({kind,count:rows.filter(e=>e.kind===kind).length}));
   }
+  function reviewMatrix(){
+    const events=buildReviewEvents();
+    return snapshots.map((_,i)=>{
+      const subset=events.filter(e=>e.snapshotSlot===i+1);
+      const tally=Object.fromEntries(reviewTallies(subset).map(v=>[v.kind,v.count]));
+      return {snapshot_slot:i+1,initial:tally.initial,first:tally.first,
+        consecutive:tally.consecutive,reappeared:tally.reappeared,absent:tally.absent};
+    });
+  }
+  function eventSummaryTable(root){
+    const data=reviewMatrix(),table=document.createElement("table"),thead=document.createElement("thead");
+    const header=document.createElement("tr");
+    const columns=["Manual slot","Initially flagged","First flagged","Consecutive",
+      "Reappeared","No longer flagged · NOT verified fixed"];
+    columns.forEach(name=>{const th=document.createElement("th");th.scope="col";th.textContent=name;header.append(th);});
+    thead.append(header);table.append(thead);
+    const body=document.createElement("tbody");
+    for(const row of data){
+      const tr=document.createElement("tr");
+      [row.snapshot_slot,row.initial,row.first,row.consecutive,row.reappeared,row.absent].forEach(value=>{
+        const td=document.createElement("td");td.textContent=String(value);tr.append(td);
+      });
+      body.append(tr);
+    }
+    table.append(body);root.replaceChildren(table);
+  }
   function renderReviewQueue(){
     const root=$("reviewTable");root.replaceChildren();
+    if(snapshots.length)eventSummaryTable($("reviewSummary"));
+    else $("reviewSummary").replaceChildren();
     const rows=snapshots.length?reviewSelection():[];
     reviewOffset=Math.min(reviewOffset,Math.max(0,Math.floor((rows.length-1)/REVIEW_PAGE)*REVIEW_PAGE));
     $("reviewExportCsv").disabled=!rows.length;
@@ -354,6 +382,11 @@
     const body=document.createElement("tbody");
     rows.forEach(row=>{const tr=document.createElement("tr");row.forEach(v=>{const td=document.createElement("td");td.textContent=String(v);tr.append(td);});body.append(tr);});
     table.append(body);wrap.append(table);
+    const h2=document.createElement("h2");h2.textContent="Source-flag transitions by manually selected slot";
+    const note=document.createElement("p");
+    note.textContent="Flags no longer reported in a later selected slot are not verified fixes. Reappearance is not authenticated chronology.";
+    const matrix=document.createElement("div");matrix.className="tablewrap";
+    eventSummaryTable(matrix);root.append(h2,note,matrix);
   }
   function render(){
     const active=snapshots.length>0;
@@ -371,7 +404,7 @@
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","scenarioHeatmap","trajectoryTable","reviewTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","printBrief"].forEach(id=>$(id).replaceChildren());
     }
     if(!active){$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
       $("reviewPrev").disabled=true;$("reviewNext").disabled=true;}
@@ -482,6 +515,13 @@
       "Ever flagged cases","Persistent cases","Longest run"];
     const table="<table><thead><tr>"+headers.map(v=>"<th>"+esc(v)+"</th>").join("")+
       "</tr></thead><tbody>"+rows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
+    const eventColumns=["Manual slot","Initially flagged","First flagged","Consecutive",
+      "Reappeared","No longer flagged · NOT verified fixed"];
+    const eventRows=reviewMatrix().map(row=>[row.snapshot_slot,row.initial,row.first,
+      row.consecutive,row.reappeared,row.absent]);
+    const eventTable="<table><thead><tr>"+eventColumns.map(v=>"<th>"+esc(v)+"</th>").join("")+
+      "</tr></thead><tbody>"+eventRows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+
+      "</tr>").join("")+"</tbody></table>";
     const sourceTable="<table><thead><tr><th>Snapshot slot</th><th>Source status</th><th>Regressed scenarios</th><th>Regression instances</th></tr></thead><tbody>"+
       snapshots.map((r,i)=>"<tr><td>"+(i+1)+"</td><td>"+esc(r.status)+"</td><td>"+r.regressedScenarios.length+"</td><td>"+r.regressionInstances+"</td></tr>").join("")+"</tbody></table>";
     const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
@@ -493,7 +533,9 @@
       " anonymous scenarios · "+s.instances+" source-reported regression instances. Order is not authenticated chronology.</p>"+
       "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
       "<h2>Source status by manual snapshot slot</h2>"+sourceTable+
-      "<h2>Metric persistence heatmap</h2>"+table+
+       "<h2>Metric persistence heatmap</h2>"+table+
+       "<h2>Source-flag transitions by manually selected slot</h2>"+eventTable+
+       "<p>Flags absent in a later selected slot are NOT verified fixes; selected order is not authenticated chronology.</p>"+
       "<p>No original scenario IDs, source filenames, source hashes, raw source JSON, private notes, identities or target details are included. "+
       "A source-reported flag is not independently verified evidence; REVIEW_ONLY is not approval.</p></body></html>";
     download("assessment-trends-anonymous-brief-REVIEW-ONLY.html",html,"text/html");

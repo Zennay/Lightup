@@ -66,6 +66,9 @@
     <label>Review group<select id="reviewGroup"><option value="all">All review groups</option></select></label>
     <label>Selected snapshot slot<select id="reviewSlot"><option value="all">All manual slots</option></select></label>
   </div>
+  <h3>Source-flag transitions by selected slot</h3>
+  <p class="footnote">Unfiltered counts over admitted reports, not authenticated time. A flag absent in a later slot does not prove any fix.</p>
+  <div id="reviewSummary" class="tablewrap" role="region" aria-label="Source-flag counts by selected slot" tabindex="0"></div>
   <p id="reviewCount" class="message" role="status" aria-live="polite">Import snapshots to see local source-flag transitions.</p>
   <div id="reviewTable" class="tablewrap" role="region" aria-label="Paginated anonymous change events" tabindex="0"></div>
   <div class="controls">
