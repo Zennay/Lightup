@@ -306,6 +306,58 @@
     }
     return flags;
   }
+  function proposeLocalAlternative(ordinal){
+    hold(active && Number.isSafeInteger(ordinal));
+    const row=items[ordinal-1],old=plan.get(ordinal);
+    hold(row && row.ordinal===ordinal && old);
+    const rule=capacityRules.get(row.group)||capacityDefaultRule();
+    const minuteOf=time=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
+    const occupied=eventIntervals().filter(event=>event.ordinal!==ordinal);
+    const remaining=new Map();
+    for(const candidate of items){
+      if(candidate.ordinal===ordinal)continue;
+      const p=plan.get(candidate.ordinal);
+      if(p && candidate.group===row.group){
+        remaining.set(p.day,(remaining.get(p.day)||0)+1);
+      }
+    }
+    const current=eventDate(old.day,old.time);
+    const now=new Date();
+    const start=eventDate(current>now?old.day:nowToday(),"12:00");
+    const duration=Number(old.duration),reminder=old.reminder;
+    const earliest=Math.max(current.getTime(),now.getTime());
+    let result=null;
+    for(let offset=0;offset<31&&!result;offset++){
+      const date=new Date(start.getTime());
+      date.setDate(date.getDate()+offset);
+      const day=dayString(date);
+      if(!day.startsWith("20"))break;
+      if(!rule.days.includes(date.getDay())||rule.blackouts.includes(day)||
+          (remaining.get(day)||0)>=rule.maximum)continue;
+      const first=Math.ceil(minuteOf(rule.start)/15)*15;
+      const latest=minuteOf(rule.end)-duration;
+      for(let minutes=first;minutes<=latest;minutes+=15){
+        const time=String(Math.floor(minutes/60)).padStart(2,"0")+":"+
+          String(minutes%60).padStart(2,"0");
+        let proposed;
+        try{proposed=eventDate(day,time).getTime();}catch(_){continue;}
+        if(proposed<=earliest)continue;
+        if(occupied.some(other=>proposed<other.end&&other.start<proposed+duration*60000))continue;
+        result=admitSlot(day,time,old.duration,reminder);break;
+      }
+    }
+    if(!result){
+      inform("No non-overlapping HUMAN proposal within the next 31 local days under declared group rules. The original appointment is unchanged.",true);
+      return;
+    }
+    if(!confirm("Propose moving HUMAN reminder #"+ordinal+" from "+old.day+" "+old.time+
+      " to "+result.day+" "+result.time+" ("+duration+" min)? This uses DECLARED HUMAN group hours, weekdays, blackout days and daily cap, and avoids overlaps within this one local workroom. Real availability, consent, source authenticity and original risk were NOT checked. This changes only the PRIVATE draft; save the whole v2 plan separately."))return;
+    // Source and plan are synchronous in-memory state; the UI changes only after confirmation.
+    plan.set(ordinal,result);
+    changed=true;exportedPlan=false;page=0;render();
+    inform("New HUMAN-only local time proposed for #"+ordinal+
+      ". Previous calendar entry is not cancelled. Save the new plan and use explicit PRIVATE calendar change handoff if previously published.");
+  }
   function renderWeek(){
     if(!active)return;
     if(!weekAnchor)weekAnchor=nowToday();
@@ -379,6 +431,14 @@
           " in planner, "+p.time+" on "+day+(colliding?", local overlap":"")+
           (declaredFlags.length?", declared group availability mismatch: "+declaredFlags.join("; "):""));
         column.append(button);
+        const alternative=dom("button","Find next HUMAN slot","ghost week-alternate");
+        alternative.type="button";
+        alternative.setAttribute("aria-label","Propose next locally available HUMAN time for original ordinal "+r.ordinal);
+        alternative.addEventListener("click",()=>{
+          try{proposeLocalAlternative(r.ordinal);}
+          catch(_){inform("Could not construct a valid local HUMAN alternative; original reminder unchanged.",true);}
+        });
+        column.append(alternative);
       }
       if(entries.length>24)column.append(dom("p",(entries.length-24)+
         " more HUMAN reminders; use the full agenda to edit.","subtle"));

@@ -84,3 +84,15 @@ not check real people, calendars, source authenticity or consent. Capacity chang
 refresh visible warnings immediately without changing existing dates. Every
 appointment remains a tentative human-only reminder; use the original row planner
 to edit it, and explicitly save the source-bound private v2 plan to preserve it.
+
+### Single-reminder next-slot proposal
+
+Each scheduled week-board card provides **Find next HUMAN slot**. The operator
+explicitly confirms one proposed rescheduling; the local search considers at most
+31 calendar days, a 15-minute grid, the proposed HUMAN group's declared weekdays,
+blackouts, hours and daily appointment cap, and the entire current workroom's
+already scheduled (potentially unrelated group) collisions. It never contacts a
+calendar, sends a recipient message, changes source data or verifies real-world
+availability. Nothing is changed if there is no match or confirmation is declined.
+The new local draft is marked unsaved; previously imported events require manual,
+separately reviewed PRIVATE calendar update/cancellation handoff.

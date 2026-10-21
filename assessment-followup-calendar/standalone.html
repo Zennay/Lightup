@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WeSyO2dH0ZQUIsp7Vn9QRJgFN2VAL/krbIl2XzYRjY0='; style-src 'sha256-/2wc9tDEyqc8mAa10ZmfaDSK7U1rgXaQYP440KyT6U0='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-XhQdhKylL+hDRMLSQHH6QCQWYituM4BR3fUGWDKKiWY='; style-src 'sha256-TyltFvR27cVSasqFgnhSgmmdulb88+wWUmU8KgCakHE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -24,6 +24,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 
 .week-event.week-unavailable{box-shadow:inset 0 0 0 2px #d69f58}
 .week-event .week-warning{color:#f5cc8c;font-weight:600}
+
+.week-alternate{font-size:11px;width:100%;margin:0 0 9px;padding:6px;text-align:left}
+.week-alternate:focus-visible{outline:3px solid #a6ddff;outline-offset:2px}
 
 </style>
 <script>
@@ -335,6 +338,58 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     }
     return flags;
   }
+  function proposeLocalAlternative(ordinal){
+    hold(active && Number.isSafeInteger(ordinal));
+    const row=items[ordinal-1],old=plan.get(ordinal);
+    hold(row && row.ordinal===ordinal && old);
+    const rule=capacityRules.get(row.group)||capacityDefaultRule();
+    const minuteOf=time=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
+    const occupied=eventIntervals().filter(event=>event.ordinal!==ordinal);
+    const remaining=new Map();
+    for(const candidate of items){
+      if(candidate.ordinal===ordinal)continue;
+      const p=plan.get(candidate.ordinal);
+      if(p && candidate.group===row.group){
+        remaining.set(p.day,(remaining.get(p.day)||0)+1);
+      }
+    }
+    const current=eventDate(old.day,old.time);
+    const now=new Date();
+    const start=eventDate(current>now?old.day:nowToday(),"12:00");
+    const duration=Number(old.duration),reminder=old.reminder;
+    const earliest=Math.max(current.getTime(),now.getTime());
+    let result=null;
+    for(let offset=0;offset<31&&!result;offset++){
+      const date=new Date(start.getTime());
+      date.setDate(date.getDate()+offset);
+      const day=dayString(date);
+      if(!day.startsWith("20"))break;
+      if(!rule.days.includes(date.getDay())||rule.blackouts.includes(day)||
+          (remaining.get(day)||0)>=rule.maximum)continue;
+      const first=Math.ceil(minuteOf(rule.start)/15)*15;
+      const latest=minuteOf(rule.end)-duration;
+      for(let minutes=first;minutes<=latest;minutes+=15){
+        const time=String(Math.floor(minutes/60)).padStart(2,"0")+":"+
+          String(minutes%60).padStart(2,"0");
+        let proposed;
+        try{proposed=eventDate(day,time).getTime();}catch(_){continue;}
+        if(proposed<=earliest)continue;
+        if(occupied.some(other=>proposed<other.end&&other.start<proposed+duration*60000))continue;
+        result=admitSlot(day,time,old.duration,reminder);break;
+      }
+    }
+    if(!result){
+      inform("No non-overlapping HUMAN proposal within the next 31 local days under declared group rules. The original appointment is unchanged.",true);
+      return;
+    }
+    if(!confirm("Propose moving HUMAN reminder #"+ordinal+" from "+old.day+" "+old.time+
+      " to "+result.day+" "+result.time+" ("+duration+" min)? This uses DECLARED HUMAN group hours, weekdays, blackout days and daily cap, and avoids overlaps within this one local workroom. Real availability, consent, source authenticity and original risk were NOT checked. This changes only the PRIVATE draft; save the whole v2 plan separately."))return;
+    // Source and plan are synchronous in-memory state; the UI changes only after confirmation.
+    plan.set(ordinal,result);
+    changed=true;exportedPlan=false;page=0;render();
+    inform("New HUMAN-only local time proposed for #"+ordinal+
+      ". Previous calendar entry is not cancelled. Save the new plan and use explicit PRIVATE calendar change handoff if previously published.");
+  }
   function renderWeek(){
     if(!active)return;
     if(!weekAnchor)weekAnchor=nowToday();
@@ -408,6 +463,14 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
           " in planner, "+p.time+" on "+day+(colliding?", local overlap":"")+
           (declaredFlags.length?", declared group availability mismatch: "+declaredFlags.join("; "):""));
         column.append(button);
+        const alternative=dom("button","Find next HUMAN slot","ghost week-alternate");
+        alternative.type="button";
+        alternative.setAttribute("aria-label","Propose next locally available HUMAN time for original ordinal "+r.ordinal);
+        alternative.addEventListener("click",()=>{
+          try{proposeLocalAlternative(r.ordinal);}
+          catch(_){inform("Could not construct a valid local HUMAN alternative; original reminder unchanged.",true);}
+        });
+        column.append(alternative);
       }
       if(entries.length>24)column.append(dom("p",(entries.length-24)+
         " more HUMAN reminders; use the full agenda to edit.","subtle"));
