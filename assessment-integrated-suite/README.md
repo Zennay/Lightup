@@ -1944,3 +1944,39 @@ browser review, #177/#182/#829, original exact-head hosted + permanently
 registered named VPS CI, explicit HUMAN GO remain mandatory for any main
 merge/deploy/real activity. No QA/regression/testsuites, real scans,
 grants, recipient transmission or customer evidence performed by this work.
+
+## Local-only HUMAN Lab round comparison (21 October 2026)
+
+The source-only [HUMAN Lab Route Desk](human-lab-route.html) and adjacent
+[script](human-lab-route.js) can now display **two to eight independently
+exported, operator-ordered local HUMAN discussion self-report JSON files** in
+one screen. No installation, backend, login, network, cookies or browser
+storage is involved. This comparison is independent of the native 72–75
+original PRIVATE HUMAN receipt/reopen/history flows; it does NOT replace
+original source admission or validate native receipts.
+
+1. Open `human-lab-route.html` **locally**, with its adjacent original
+   `human-lab-route.js`. Export self-report JSON after manual discussion
+   rounds, retaining only the fixed original 20 action/status pairs.
+2. In **Compare 2–8 separate HUMAN discussion rounds**, choose two through
+   eight previously exported self-reports in the intended display order.
+   The chooser ordering is **not evidence of actual chronology** or actor
+   identity. Each file is admitted against the same bounded original schema:
+   24 KiB per report; all original twenty action slots in exact order;
+   only four named HUMAN statuses; every authority/source flag exactly false;
+   duplicate JSON keys, invalid content and identical repeated reports HOLD.
+3. Review the source-free twenty-action matrix and five stage summary rows.
+   It shows self-declared status transitions and last-round NEEDS_INPUT counts,
+   **never security quality, remediation, verified actions or authority**.
+4. Optionally export the minimal status-only CSV for **private local HUMAN
+   discussion**; export contains only literal action numbers, four known
+   status tokens, proposed chooser order, transition counts and REVIEW_ONLY.
+   It contains no original source/target/evidence, identities, file paths,
+   timestamps or private notes. Select **Clear compared reports** to remove
+   the entire browser-held comparison from memory.
+
+Loading these rounds never edits the active twenty-marker discussion plan.
+Invalid replacement selections clear stale comparisons and do not partially
+load data. Changing current markers never endorses or imports a prior round.
+All data remains self-reported, unsigned and non-authorizing. The original
+release controls and explicit HUMAN GO remain separate and mandatory.
