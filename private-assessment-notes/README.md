@@ -2,6 +2,61 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Complete local, non-authorizing HUMAN review product on the original Basic/Bearer/API-key credential redaction boundary. No target interaction, scan, model invocation, upload, customer notification, approval, deployment, retest, or release.
 
+### Original-source revision handoff (offline, fail-closed HUMAN)
+
+When the original source notes change, **never** resume a previous
+`HUMAN_REVIEWED` or owner-private status packet directly into a different
+workroom. Instead generate a **new** original-bound PRIVATE workflow with
+`har-review-start` for the revised files, and explicitly compare it to
+the previously retained original private workflow and one source-bound
+HUMAN status report:
+
+~~~sh
+python3 private-assessment-notes/notes.py har-review-revision \
+  --older-workflow /private/old/PRIVATE-lightup-har-workflow-... \
+  --newer-workflow /private/new/PRIVATE-lightup-har-workflow-... \
+  --older-progress-room /private/old/PRIVATE-lightup-har-human-status-... \
+  --private-parent /private/new
+~~~
+
+The new owner-only 0700 `PRIVATE-lightup-har-revision-...` contains
+`OPEN-PRIVATE-HAR-REVISION.html` (scriptless, source-minimal original
+position summary and per-action decision reasons),
+`PRIVATE-HAR-REVISION-decision-guide.csv` (original ordinal, review
+area, earlier HUMAN status, proposed status and conservative reason),
+`PRIVATE-HAR-REVISION-edited-actions.csv` (a **strict new-workflow
+template-compatible** complete proposed CSV), and an unsigned
+source-bound HOLD receipt. The three generated files are owner-only
+0600. No raw source content, original filename, credential, client
+identity, URL, source hash, HUMAN note or remote recipient is copied.
+
+The comparison matches **the same original ordinal and exact original
+input/derived bytes**, not inferred source identity. Any changed, added,
+removed or moved original position is flagged for new private HUMAN
+review. Prior `HUMAN_REVIEWED` is **always reset to
+`PENDING_HUMAN`**, even if source and task appear unchanged. Earlier
+`WITHHOLD` is conservatively retained across every task for that same
+ordinal even when source bytes have changed. Other unapproved HUMAN
+statuses may carry only when the original input bytes and task identity
+match exactly. All proposed statuses remain unverified and do **not**
+imply privacy clearance, consent, release or permission to scan.
+
+Open the **new** HAR Status Studio, choose its local CSV resume picker
+and inspect this revision's proposal. Perform real HUMAN review of the
+revised original sources, export a complete NEW edited CSV, keep it
+owner-only 0600 and manually run `har-review-progress` against the
+**new** workflow. No revision tool automatically imports, approves or
+dispatches anything. Output remains HOLD (3).
+
+`har-review-revision-reopen` with the same
+`--older-workflow`, `--newer-workflow`,
+`--older-progress-room` and `--revision-room` reconstructs and
+compares every source-bound output byte read-only. Only owner-private
+directories and previously immutable original v19 cue receipts are
+admitted. Unsigned local hashes are not independently authenticated
+timestamps, consent, identity, proof of complete redaction or safety.
+Existing exact-head CI and independent HUMAN reviews remain mandatory.
+
 ### Original-bound PRIVATE HAR HUMAN operations desk
 
 After the first full manual status import, `har-review-progress`
