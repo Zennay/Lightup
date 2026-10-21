@@ -27,7 +27,7 @@ The command requires an owner-owned input regular file with mode `0600`, no syml
 The output directory receives four private artifacts:
 
 - `lightup-lab-targets.txt` — canonical one-URL-per-line manifest, suitable for the original CLI's `--targets-file` argument.
-- `lightup-lab-plan-receipt.json` — source-bound anonymous receipt with input/canonical manifest SHA-256, endpoint count and source validator pin; no endpoint values.
+- `lightup-lab-plan-receipt.json` — source-bound anonymous receipt with input/canonical manifest SHA-256, endpoint count, pinned original CLI/validator sources, and SHA-256 of the generated HTML/command; no endpoint values.
 - `lightup-lab-plan-handoff.html` — scriptless, CSP-pinned handoff showing the exact preview command, counts and private paths; endpoint values are not embedded.
 - `lightup-lab-preview-command.txt` — exact shell-quoted display-only command using `--preview-only`.
 
@@ -36,3 +36,13 @@ The command is generated but **never executed**. A human may inspect it and, sep
 ## Safety boundaries
 
 All receipt flags remain `authorized=false`, `consent_verified=false`, `dispatch_allowed=false`, `release_allowed=false`. Source content/identity, client identity, scope approval, operator consent and HUMAN GO are each explicitly unauthenticated/false. The receipt does not authenticate source identity, client identity, scope approval or consent. No subprocess, assessment, model call, target interaction, DNS, network request, grant, scan, remediation, retest or release occurs. Original exact-head CI, source-owner/security/privacy review, authentic separate client/operator consent, action-time revocation and HUMAN GO remain mandatory.
+
+## Offline reopen and handoff integrity
+
+On the same verified PR checkout (and Python interpreter), re-open the generated packet without running its displayed command:
+
+```bash
+python3 assessment-launchpad/launchpad.py --verify-output-dir ~/private-lab-launchpad-output
+```
+
+Reopen demands the original four owner-owned single-link mode-0600 regular files in an owner-owned mode-0700 directory. It checks bounded stable bytes, the canonical manifest and ordinals, exact known receipt schema and literal-false authority flags, the pinned original CLI/scope sources, the stored HTML/command content hashes, and exact expected `--preview-only` command. It does not fetch outside the local workspace, run a subprocess, create an output file, authenticate the original source producer, verify client scope authority or prove that a target was assessed. The digest hashes are **unsigned consistency checks only**: an attacker controlling both payload and receipt could rewrite both. Mismatch fails closed with HOLD and no output.

@@ -182,6 +182,130 @@ def render_handoff(endpoint_count, source_digest, normalized_digest, manifest_pa
     )
     return html.encode("utf-8")
 
+
+def exact_preview_command(directory):
+    manifest_path = os.path.join(directory, "lightup-lab-targets.txt")
+    preview_output = os.path.join(directory, "lightup-lab-preview-result.json")
+    return ("PYTHONPATH=" + shlex.quote(str(SRC)) + " " + shlex.quote(sys.executable) +
+            " -m lightup.cli lab-assess --targets-file " + shlex.quote(manifest_path) +
+            " --output " + shlex.quote(preview_output) + " --preview-only")
+
+
+def read_private_bundle_item(directory_fd, name, limit):
+    # Bounded stable reads from an existing owner-only receipt bundle; no I/O on targets.
+    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+                 dir_fd=directory_fd)
+    with os.fdopen(fd, "rb") as stream:
+        before = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
+                or stat.S_IMODE(before.st_mode) != 0o600 or before.st_nlink != 1
+                or not 0 < before.st_size <= limit):
+            raise Hold("existing private output item was not admitted")
+        raw = stream.read(limit + 1)
+        after = os.fstat(stream.fileno())
+        first = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
+                 before.st_ctime_ns, before.st_uid, before.st_mode, before.st_nlink)
+        last = (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns,
+                after.st_ctime_ns, after.st_uid, after.st_mode, after.st_nlink)
+        if len(raw) != before.st_size or first != last:
+            raise Hold("existing private output item changed while reading")
+    return raw
+
+
+def unique_pairs(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise Hold("duplicate receipt metadata")
+        result[key] = value
+    return result
+
+
+def reject_constant(_):
+    raise Hold("noncanonical receipt numeric constant")
+
+
+def verify_existing(directory):
+    """Reopen a stored bundle, validate exact bytes and original source pins; never execute."""
+    output_fd, absolute = open_output_directory(directory)
+    try:
+        names = (
+            ("lightup-lab-targets.txt", MAX_MANIFEST_BYTES),
+            ("lightup-lab-plan-receipt.json", 16_384),
+            ("lightup-lab-plan-handoff.html", 65_536),
+            ("lightup-lab-preview-command.txt", 16_384),
+        )
+        items = {name: read_private_bundle_item(output_fd, name, limit)
+                 for name, limit in names}
+    finally:
+        os.close(output_fd)
+    receipt = json.loads(items["lightup-lab-plan-receipt.json"].decode("utf-8"),
+                         object_pairs_hook=unique_pairs, parse_constant=reject_constant,
+                         parse_float=reject_constant)
+    if type(receipt) is not dict:
+        raise Hold("private receipt is not a JSON object")
+    expected_keys = {
+        "schema", "status", "source_manifest_sha256", "canonical_manifest_sha256",
+        "endpoint_count", "endpoint_slots", "pinned_source_commit",
+        "pinned_validator_blob_sha1", "pinned_original_cli_checked",
+        "original_url_validator_applied", "original_lab_scenario_scope_policy_applied",
+        "endpoint_values_in_receipt", "source_content_authenticated",
+        "source_identity_authenticated", "client_identity_authenticated",
+        "scope_approval_authenticated", "operator_consent_authenticated",
+        "human_go_received", "preview_command_executed", "plan_created",
+        "model_called", "target_interaction_performed", "authorization_granted",
+        "planning_not_permission", "handoff_html_sha256", "preview_command_sha256",
+        *FLAGS,
+    }
+    if set(receipt) != expected_keys or receipt["schema"] != "lightup.assessment_launchpad_plan_receipt.v1":
+        raise Hold("private receipt schema changed")
+    if (receipt["status"] != "LAB_INPUT_PREVIEW_ONLY"
+            or receipt["pinned_source_commit"] != PINNED_SOURCE_COMMIT
+            or receipt["pinned_validator_blob_sha1"] != PINNED_VALIDATOR_BLOBS):
+        raise Hold("private receipt's source pin changed")
+    for key in FLAGS + ("endpoint_values_in_receipt", "source_content_authenticated",
+                        "source_identity_authenticated", "client_identity_authenticated",
+                        "scope_approval_authenticated", "operator_consent_authenticated",
+                        "human_go_received", "preview_command_executed", "plan_created",
+                        "model_called", "target_interaction_performed",
+                        "authorization_granted"):
+        if receipt[key] is not False:
+            raise Hold("private receipt contains non-denying authority claims")
+    if (receipt["planning_not_permission"] is not True
+            or receipt["pinned_original_cli_checked"] is not True
+            or receipt["original_url_validator_applied"] is not True
+            or receipt["original_lab_scenario_scope_policy_applied"] is not True):
+        raise Hold("missing local non-authorizing source controls")
+    for field in ("source_manifest_sha256", "canonical_manifest_sha256",
+                  "handoff_html_sha256", "preview_command_sha256"):
+        value = receipt[field]
+        if type(value) is not str or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise Hold("invalid unsigned digest in receipt")
+    if (sha256(items["lightup-lab-targets.txt"]).hexdigest() != receipt["canonical_manifest_sha256"]
+            or sha256(items["lightup-lab-plan-handoff.html"]).hexdigest() != receipt["handoff_html_sha256"]
+            or sha256(items["lightup-lab-preview-command.txt"]).hexdigest() != receipt["preview_command_sha256"]):
+        raise Hold("stored private bundle contains changed bytes")
+    raw_manifest = items["lightup-lab-targets.txt"]
+    if b"\x00" in raw_manifest or raw_manifest.startswith(b"\xef\xbb\xbf"):
+        raise Hold("stored manifest is not canonical UTF-8")
+    decoded = raw_manifest.decode("utf-8")
+    endpoints = decoded.splitlines()
+    if not 1 <= len(endpoints) <= MAX_ENDPOINTS or decoded != "\n".join(endpoints) + "\n":
+        raise Hold("stored manifest has noncanonical structure")
+    if (type(receipt["endpoint_count"]) is not int or len(endpoints) != receipt["endpoint_count"]
+            or receipt["endpoint_slots"] != list(range(1, len(endpoints) + 1))):
+        raise Hold("stored endpoint count or slot inventory changed")
+    if validate_endpoints(endpoints) != endpoints:
+        raise Hold("pinned original source admission changed")
+    command = exact_preview_command(absolute) + "\n"
+    if items["lightup-lab-preview-command.txt"] != command.encode("utf-8"):
+        raise Hold("private display-only preview command changed")
+    if b"LAB_INPUT_PREVIEW_ONLY" not in items["lightup-lab-plan-handoff.html"]:
+        raise Hold("private handoff lost no-authority designation")
+    print("LAB_LAUNCHPAD_RECEIPT_REOPENED endpoint_count=" + str(len(endpoints)) +
+          " — UNSIGNED LOCAL BYTE CONSISTENCY ONLY; NOT AUTHORIZED; COMMAND NOT EXECUTED")
+    return 0
+
 def run(args):
     source_path, source_raw, endpoints = open_private_input(args.manifest)
     admitted = validate_endpoints(endpoints)
@@ -196,11 +320,7 @@ def run(args):
             raise Hold("output directory must be separate from source manifest directory")
         manifest_path = os.path.join(output_dir, "lightup-lab-targets.txt")
         preview_output = os.path.join(output_dir, "lightup-lab-preview-result.json")
-        command = (
-            "PYTHONPATH=" + shlex.quote(str(SRC)) + " " + shlex.quote(sys.executable) +
-            " -m lightup.cli lab-assess --targets-file " + shlex.quote(manifest_path) +
-            " --output " + shlex.quote(preview_output) + " --preview-only"
-        )
+        command = exact_preview_command(output_dir)
         source_digest = sha256(source_raw).hexdigest()
         normalized_digest = sha256(canonical).hexdigest()
         receipt = {
@@ -233,6 +353,8 @@ def run(args):
         html_bytes = render_handoff(
             len(admitted), source_digest, normalized_digest, manifest_path, preview_output, command
         )
+        receipt["handoff_html_sha256"] = sha256(html_bytes).hexdigest()
+        receipt["preview_command_sha256"] = sha256((command + "\n").encode("utf-8")).hexdigest()
         artifacts = [
             ("lightup-lab-targets.txt", canonical),
             ("lightup-lab-plan-receipt.json",
@@ -251,10 +373,18 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Validate a private local lab endpoint manifest and create preview-only artifacts; no assessment is run."
     )
-    parser.add_argument("--manifest", required=True, help="owner-private local text manifest, mode 0600")
-    parser.add_argument("--output-dir", required=True, help="existing owner-private output directory, mode 0700")
+    parser.add_argument("--manifest", help="owner-private local text manifest, mode 0600")
+    parser.add_argument("--output-dir", help="existing owner-private output directory, mode 0700")
+    parser.add_argument("--verify-output-dir",
+                        help="reopen a previously generated private bundle without executing the preview")
     args = parser.parse_args(argv)
     try:
+        if args.verify_output_dir is not None:
+            if args.manifest is not None or args.output_dir is not None:
+                raise Hold("reopen is exclusive to creation")
+            return verify_existing(args.verify_output_dir)
+        if args.manifest is None or args.output_dir is None:
+            raise Hold("creation needs a manifest and private output directory")
         return run(args)
     except (Hold, OSError, ValueError, TypeError, ImportError, UnicodeError,
             OverflowError, RecursionError):
