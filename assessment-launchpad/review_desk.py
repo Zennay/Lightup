@@ -238,6 +238,8 @@ def main(argv=None):
             if os.path.commonpath((original_dir, absolute)) in (original_dir, absolute):
                 raise Hold("HUMAN output directory must be separate from original source bundle")
             if args.verify_review_dir:
+                if set(os.listdir(fd)) != set(FILE_NAMES):
+                    raise Hold("PRIVATE HUMAN review has unknown or missing files")
                 stored = {name: read_private_bundle_item(fd, name, 65536)
                           for name in FILE_NAMES}
                 work = load_json(stored[FILE_NAMES[0]])
@@ -246,6 +248,12 @@ def main(argv=None):
                 if stored != expected:
                     raise Hold("HUMAN packet changed or does not match exact source")
             else:
+                if os.listdir(fd):
+                    raise Hold("new PRIVATE HUMAN review directory must be empty")
+                if args.responses:
+                    response_parent = os.path.dirname(os.path.abspath(os.fspath(args.responses)))
+                    if os.path.commonpath((response_parent, absolute)) in (response_parent, absolute):
+                        raise Hold("PRIVATE HUMAN response input must be in a separate directory")
                 work = (load_json(require_private_file(args.responses)) if args.responses
                         else blank_worksheet(digest, len(endpoints)))
                 validate_worksheet(work, digest, len(endpoints))
