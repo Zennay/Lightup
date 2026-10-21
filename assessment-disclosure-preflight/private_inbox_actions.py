@@ -292,46 +292,57 @@ __TABLE__
     ]
 
 
-def reopen_revision_delta(output_dir: str, artifacts: list[tuple[str, bytes]]) -> None:
-    """Read-only exact inventory/mode/byte admission for a saved private delta."""
+def reopen_private_artifacts(output_dir: str, artifacts: list[tuple[str, bytes]]) -> None:
+    """Read-only, fail-closed custody admission shared by all HUMAN outputs.
+
+    Match the entire saved inventory, not just selected report filenames.
+    Local custody and byte equality never establish the sender's identity.
+    """
+    expected = {name for name, _ in artifacts}
+    if not expected or len(expected) != len(artifacts):
+        raise ValueError("PRIVATE HUMAN report inventory is not canonical")
     directory = os.stat(output_dir, follow_symlinks=False)
     if (not stat.S_ISDIR(directory.st_mode) or directory.st_uid != os.getuid() or
         stat.S_IMODE(directory.st_mode) != 0o700):
-        raise ValueError("saved revision delta directory must be owner-only 0700")
-    expected = {name for name, _ in artifacts}
+        raise ValueError("saved PRIVATE HUMAN directory must be owner-only 0700")
     if set(os.listdir(output_dir)) != expected:
-        raise ValueError("saved revision delta inventory differs from exact three-file output")
+        raise ValueError("saved PRIVATE HUMAN inventory differs from expected output")
     for name, content in artifacts:
+        if not name or name in (".", "..") or os.path.basename(name) != name:
+            raise ValueError("PRIVATE HUMAN output filename rejected")
         path = os.path.join(output_dir, name)
         metadata = os.stat(path, follow_symlinks=False)
         if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or
-            stat.S_IMODE(metadata.st_mode) != 0o600):
-            raise ValueError("saved revision delta file must be owner-only regular 0600")
+            stat.S_IMODE(metadata.st_mode) != 0o600 or metadata.st_nlink != 1):
+            raise ValueError("saved PRIVATE HUMAN file must be owner-only regular 0600")
         if not hmac.compare_digest(source_bytes(path), content):
-            raise ValueError("saved PRIVATE HUMAN revision delta changed")
+            raise ValueError("saved PRIVATE HUMAN report changed")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Original source-free HUMAN inbox discussion, never authorization")
-    parser.add_argument("action", choices=("prepare","finalize","reopen","compare","reopen-compare"))
+    parser.add_argument("action", choices=("prepare","reopen-template","finalize","reopen","compare","reopen-compare"))
     parser.add_argument("--board", required=True, help="original PRIVATE inbox portfolio JSON in 0600 storage")
     parser.add_argument("--human-csv", help="complete original board-bound current HUMAN action CSV")
     parser.add_argument("--prior-human-csv", help="prior complete original board-bound HUMAN action CSV for compare")
     parser.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
     args = parser.parse_args()
     try:
-        if args.action == "prepare":
+        if args.action in ("prepare", "reopen-template"):
             if args.human_csv is not None or args.prior_human_csv is not None:
-                raise ValueError("prepare does not accept HUMAN result CSV inputs")
+                raise ValueError("template actions do not accept HUMAN result CSV inputs")
         elif args.action in ("compare", "reopen-compare"):
             if args.human_csv is None or args.prior_human_csv is None:
                 raise ValueError("compare/reopen-compare require both prior and current HUMAN CSVs")
         elif args.human_csv is None or args.prior_human_csv is not None:
             raise ValueError("finalize/reopen require only the current HUMAN CSV")
         digest, originals = board_admit(args.board)
-        if args.action == "prepare":
-            board.atomic_private_publish(args.private_output_dir,
-                                         [(TEMPLATE,csv_template(digest,originals).encode("utf-8"))])
+        if args.action in ("prepare", "reopen-template"):
+            artifacts = [(TEMPLATE, csv_template(digest, originals).encode("utf-8"))]
+            if args.action == "prepare":
+                board.atomic_private_publish(args.private_output_dir, artifacts)
+            else:
+                reopen_private_artifacts(args.private_output_dir, artifacts)
         elif args.action in ("compare", "reopen-compare"):
             prior = read_human_csv(args.prior_human_csv,digest,originals)
             current = read_human_csv(args.human_csv,digest,originals)
@@ -339,17 +350,14 @@ def main() -> int:
             if args.action == "compare":
                 board.atomic_private_publish(args.private_output_dir,artifacts)
             else:
-                reopen_revision_delta(args.private_output_dir,artifacts)
+                reopen_private_artifacts(args.private_output_dir,artifacts)
         else:
             actions = read_human_csv(args.human_csv,digest,originals)
             artifacts = final_artifacts(digest,actions)
             if args.action == "finalize":
                 board.atomic_private_publish(args.private_output_dir,artifacts)
             else:
-                for name, content in artifacts:
-                    original_bytes = source_bytes(os.path.join(args.private_output_dir,name))
-                    if not hmac.compare_digest(original_bytes,content):
-                        raise ValueError("PRIVATE human action result changed")
+                reopen_private_artifacts(args.private_output_dir, artifacts)
         print("REVIEW_ONLY: original source-free HUMAN discussion", args.action,
               "complete; no consent, scan or release")
         return 2
