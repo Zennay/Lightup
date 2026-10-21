@@ -355,6 +355,7 @@
     $("history-rows").replaceChildren();
     $("history-stage-summary").replaceChildren();
     $("history-export").disabled = true;
+    $("history-brief").disabled = true;
     $("history-clear").disabled = true;
     $("history-result").textContent = "No prior HUMAN rounds selected.";
     proposalChoices = Object.create(null);
@@ -502,6 +503,7 @@
     $("history-view").hidden = false;
     renderReconciliation(rounds);
     $("history-export").disabled = false;
+    $("history-brief").disabled = false;
     $("history-clear").disabled = false;
     applyHistoryFilter();
   }
@@ -536,6 +538,49 @@
   $("history-clear").addEventListener("click", () => {
     clearHistory();
     $("history-result").textContent = "Compared HUMAN reports cleared from memory.";
+  });
+  // Explicitly private scriptless printable handoff, made only of fixed
+  // local status tokens and original action captions; source and actors never
+  // leave browser memory through this export.
+  $("history-brief").addEventListener("click", () => {
+    if (!roundHistory) return;
+    const escapeHTML = value => String(value).replace(/[&<>"']/g, c =>
+      ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const stageRows = STAGES.map(stage => {
+      const ids = stage.steps.map(([action]) => String(action));
+      const changed = ids.filter(id => transitionCount(id, roundHistory) > 0).length;
+      const needs = ids.filter(id =>
+        roundHistory[roundHistory.length - 1][id] === "NEEDS_INPUT").length;
+      return "<tr><th>" + escapeHTML(stage.title) + "</th><td>" +
+        changed + " of " + ids.length + "</td><td>" + needs + "</td></tr>";
+    }).join("");
+    const roundHead = roundHistory.map((_, i) =>
+      "<th>Selected local round " + (i + 1) + "</th>").join("");
+    const body = ALL.map(id => "<tr><th>" + escapeHTML(id) + " · " +
+      escapeHTML(actionLabel[id]) + "</th>" +
+      roundHistory.map(report => "<td>" +
+        escapeHTML(LABELS[report[id]]) + "</td>").join("") +
+      "<td>" + transitionCount(id, roundHistory) + "</td></tr>").join("");
+    const doc = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>PRIVATE HUMAN Lab Round Brief · REVIEW_ONLY</title>
+<style>body{margin:24px auto;max-width:1300px;padding:0 18px;font:15px/1.45 system-ui,sans-serif;color:#192330}
+h1{font-size:1.8rem}table{border-collapse:collapse;width:100%;margin:14px 0 25px}
+td,th{padding:8px 9px;border:1px solid #bec8d1;text-align:left;vertical-align:top}
+th{background:#eaf0f5}.wrap{overflow-x:auto}p{max-width:90ch}
+.flag{font-weight:bold}small{font-size:.9em}
+@page{size:landscape;margin:12mm}@media print{body{margin:0;padding:0}table{font-size:10px;break-inside:auto}tr{break-inside:avoid}}
+</style></head><body><h1>LightUp · PRIVATE original HUMAN round brief</h1>
+<p class="flag">REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</p>
+<p>Local browser-only, source-free, unsigned comparison of ${roundHistory.length} operator-selected self-report marker sets. Selected file order is NOT authenticated chronology, identity, approval, evidence, executed assessment, remediation, consent, grant or HUMAN GO. No targets, client data or original private notes are present. Keep this briefing PRIVATE.</p>
+<h2>Original stages · self-declared markers only</h2>
+<table><thead><tr><th>Stage</th><th>Actions with marker changes</th><th>Final selected-round NEEDS_INPUT</th></tr></thead><tbody>${stageRows}</tbody></table>
+<h2>Complete twenty-action status history</h2><div class="wrap"><table><thead><tr><th>Original HUMAN action</th>${roundHead}<th>Marker transitions</th></tr></thead><tbody>${body}</tbody></table></div>
+<p><small>No statuses were promoted to verified findings, tasks or authorization. Native original source-byte admission and genuine human, security, privacy and consent gates remain separate.</small></p>
+</body></html>`;
+    download("LightUp-PRIVATE-HUMAN-Lab-Round-Brief.html", doc, "text/html");
   });
   $("history-export").addEventListener("click", () => {
     if (!roundHistory) return;
