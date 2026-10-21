@@ -295,6 +295,46 @@ def history(rooms: list[str], parent: str, folder: str) -> Path:
         {"declared_round": no, **{key: state.count(key) for key in sorted(STATES)}}
         for no, state in enumerate(states, 1)
     ]
+    # Human coordination view: repeated self-report flags are not proof of elapsed
+    # time, execution status, an actual assignment, or a validated issue.
+    attention = []
+    for index, action in enumerate(ORDER):
+        latest = states[-1][index]
+        if latest == "DISCUSSED":
+            continue
+        unchanged_rounds = 0
+        for previous in reversed(states):
+            if previous[index] != latest:
+                break
+            unchanged_rounds += 1
+        attention.append({
+            "action": action, "caption": ACTIONS[str(action)],
+            "latest_self_reported_state": latest,
+            "consecutive_operator_ordered_rounds": unchanged_rounds,
+        })
+    phase_summary = []
+    for title, _, options, _ in LAB_STAGES:
+        values = [states[-1][int(option) - ORDER[0]] for option in options]
+        phase_summary.append({
+            "stage": title,
+            "discussed_only": values.count("DISCUSSED"),
+            "needs_original_input": values.count("NEEDS_INPUT"),
+            "in_discussion": values.count("IN_PROGRESS"),
+            "not_reviewed": values.count("NOT_REVIEWED"),
+        })
+    attention_html = "".join(
+        "<tr><td>" + str(row["action"]) + "</td><td>" +
+        html.escape(row["caption"]) + "</td><td>" +
+        html.escape(row["latest_self_reported_state"]) + "</td><td>" +
+        str(row["consecutive_operator_ordered_rounds"]) + "</td></tr>"
+        for row in attention)
+    stage_html = "".join(
+        "<tr><th scope='row'>" + html.escape(row["stage"]) + "</th><td>" +
+        str(row["needs_original_input"]) + "</td><td>" +
+        str(row["in_discussion"]) + "</td><td>" +
+        str(row["not_reviewed"]) + "</td><td>" +
+        str(row["discussed_only"]) + "</td></tr>"
+        for row in phase_summary)
     body = "".join(
         "<tr><td>" + str(row["declared_round"]) + "</td><td>" +
         str(row["action"]) + "</td><td>" + html.escape(row["before"]) +
@@ -313,14 +353,30 @@ Changed discussion markers are NOT verified fixes or security outcomes.</p>
 <table><thead><tr><th>Human-supplied round</th><th>Action</th>
 <th>Previous marker</th><th>New marker</th></tr></thead><tbody>""" +
               (body or "<tr><td colspan='4'>No self-reported marker changes. Nothing verified.</td></tr>") +
-              """</tbody></table><p>No scan, grant, consent, release, actor verification,
+              """</tbody></table>
+<h2>Latest HUMAN discussion attention, never verified completion</h2>
+<p>Counts describe the last OPERATOR-ORDERED local self-report only.
+An unchanged flag across multiple supplied rounds is NOT proven aging,
+a missed deadline or authenticated work ownership.</p>
+<table><thead><tr><th>Action</th><th>Human task</th>
+<th>Declared status</th><th>Consecutive supplied rounds</th>
+</tr></thead><tbody>""" +
+              (attention_html or "<tr><td colspan='4'>Nothing awaiting discussion in these self-reports. No authorization implied.</td></tr>") +
+              """</tbody></table>
+<h2>Latest discussion stage overview</h2>
+<table><thead><tr><th>Stage</th><th>Needs input</th>
+<th>Discussing</th><th>Not reviewed</th><th>Discussed only</th>
+</tr></thead><tbody>""" + stage_html +
+              """</tbody></table>
+<p>No scan, grant, consent, release, actor verification,
 original assessment source reading, external transfer, or HUMAN GO.</p>""").encode("utf-8")
     summary = _json({"schema": HISTORY, "mode": "REVIEW_ONLY",
                      "authority": dict(FALSE_AUTH),
                      "rounds_are_authenticated": False,
                      "rounds_are_proven_chronological": False,
                      "discussion_change_is_verified_fix": False,
-                     "counts": counts, "changed": changed})
+                     "counts": counts, "changed": changed,
+                     "attention": attention, "latest_stage_summary": phase_summary})
     table = _csv([["declared_round", "action", "before", "after"]] + [
         [r["declared_round"], r["action"], r["before"], r["after"]]
         for r in changed])
@@ -328,6 +384,11 @@ original assessment source reading, external transfer, or HUMAN GO.</p>""").enco
         "OPEN-PRIVATE.html": markup,
         "PRIVATE-HUMAN-HISTORY.json": summary,
         "PRIVATE-HUMAN-HISTORY.csv": table,
+        "PRIVATE-HUMAN-ATTENTION.csv": _csv(
+            [["action", "human_task", "latest_self_reported_state",
+              "consecutive_operator_ordered_rounds"]] + [
+                [row["action"], row["caption"], row["latest_self_reported_state"],
+                 row["consecutive_operator_ordered_rounds"]] for row in attention]),
     })
 
 
