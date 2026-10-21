@@ -150,7 +150,9 @@ def landing(count: int, final: bool, stages: list[str] | None = None,
                   "<li><a href='PRIVATE-HAR-INVENTORY.html'>PRIVATE HAR "
                   "original-ordinal marker-category inventory</a></li>"
                   "<li><a href='PRIVATE-HAR-QUEUE.html'>PRIVATE HAR "
-                  "HUMAN category attention queue</a></li>")
+                  "HUMAN category attention queue</a></li>"
+                  "<li><a href='PRIVATE-HAR-QUESTIONS.html'>PRIVATE "
+                  "source-minimal HUMAN HAR review checklist</a></li>")
     if final:
         items += "<li><a href='PRIVATE-redacted-notes.txt'>PRIVATE combined HUMAN redacted notes</a></li>"
     for slot in range(1, count + 1):
@@ -294,6 +296,8 @@ def prepare(inputs: list[str], parent_string: str,
             file_new(kit / "PRIVATE-HAR-INVENTORY.csv", inventory_csv(rows))
             from private_har_attention_queue import render as render_har_queue
             file_new(kit / "PRIVATE-HAR-QUEUE.html", render_har_queue(rows))
+            from private_har_questions import render as render_questions
+            file_new(kit / "PRIVATE-HAR-QUESTIONS.html", render_questions(rows))
         file_new(kit / "OPEN-PRIVATE.html",
                  landing(len(rows), False,
                          include_masking_cues=include_masking_cues))

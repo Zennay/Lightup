@@ -19,7 +19,7 @@ An ambiguous, embedded, malformed or over-limit HAR-like JSON note is
 withheld in full from newly derived PRIVATE workrooms, rather than
 partially interpreted without the original request/response context.
 The original privately retained source is never modified. New masking-cue
-receipts are v16, with exact historical v1-v15 reopen support.
+receipts are v17, with exact historical v1-v16 reopen support.
 A source-free, printable PRIVATE-HAR-HOLD.html board identifies whole-copy
 withheld markers by original ordinal inside a new separate masking-cue room
 or the optional initial HUMAN preview. PRIVATE-HAR-INVENTORY.html and
@@ -31,8 +31,12 @@ New PRIVATE-HAR-QUEUE.html also provides fully offline, script-free links
 from each HAR marker category to the complete original ordinal roster and
 a distinct list of wholly withheld copies. Source names, paths, original
 text, SHA values and human notes are excluded; marker counts do not
-represent a proven privacy assessment. The v16 native receipt binds the
-new queue HTML bytes without changing any v1-v15 historical artifact. A marker
+represent a proven privacy assessment. The PRIVATE-HAR-QUESTIONS.html
+printable script-free checklist now supplies non-authorizing manual
+questions by original ordinal and visible literal marker family.
+Local checkboxes have no persistence, storage, export or decision effects.
+The v17 native receipt binds the checklist and all existing source-free
+cue files; earlier v1-v16 packages reopen under their historical bytes. A marker
 may pre-exist in raw text; the board is only a navigation aid, not a verdict.
 When a new derived note is wholly withheld, its initial private HUMAN
 decision CSV and local browser editor start at SOURCE_OWNER_REQUIRED,
