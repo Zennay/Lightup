@@ -18,7 +18,11 @@ forms frequently present in assessment writeups:
   with sensitive Authorization, Cookie, Set-Cookie or API-token headers;
   compact `-H'Authorization: ...'` and `-H"Cookie: ..."` forms
   (without a space after `-H`);
-  explicit `-u`, `--user`, `--proxy-user`, `--password`,
+  `-b` and `--cookie` arguments (cookie text or private cookie-file
+  argument masked) and quoted form/data arguments such as
+  `--data-urlencode 'access_token=…'`, `-d 'password=…'` or
+  `-F 'api_key=…'`; the known field name remains visible locally.
+  Also explicit `-u`, `--user`, `--proxy-user`, `--password`,
   `--api-key`, `--access-token`, `--refresh-token`,
   `--client-secret` and `--auth-token` credential options.
   This treats pasted commands as **inert text**; it never runs them.
@@ -132,12 +136,13 @@ source filenames or source hashes enter the HTML/CSV. The original
 manifest and masked note hashes appear only in a separate PRIVATE unsigned
 receipt; they do NOT authenticate a producer.
 
-The current PRIVATE cue receipt is source-bound **v3**. Known HAR
+The current PRIVATE cue receipt is source-bound **v4**. Quoted cURL
+form/data markers appear under **HTTP/shell**. Known HAR
 cookie, query and form credential placeholders appear in the
 **Structured config** category; prior HAR HTTP-header placeholders remain
 under **HTTP/shell**. Cue counts are literal placeholder occurrences,
-not claims that a value was safely removed. Previously issued **v1 and
-v2 receipts remain exactly reopenable without reinterpretation**; the
+not claims that a value was safely removed. Previously issued **v1, v2 and v3 receipts remain exactly reopenable
+without reinterpretation**; the
 native reopen command applies their historical marker lists and leaves
 older workrooms unchanged.
 
