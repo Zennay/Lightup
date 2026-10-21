@@ -167,3 +167,29 @@ reconciliation. No HUMAN action field can override required exact-head hosted
 and registered named VPS CI, original source-owner/privacy/security/browser
 review, issues #177/#182/#829, actual separate current authenticated
 client/operator consent with revocation on use and explicit HUMAN GO.
+
+
+## Native comparison (without opening a browser)
+
+For an owner-only, source-bound CLI comparison of two saved complete worksheets,
+create a new existing private output directory and run:
+
+~~~sh
+mkdir -m 700 ./owner-private-revision-delta
+python3 assessment-disclosure-preflight/private_inbox_actions.py compare \
+  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \
+  --prior-human-csv ./owner-private-revisions/prior-actions.csv \
+  --human-csv ./owner-private-revisions/current-actions.csv \
+  --private-output-dir ./owner-private-revision-delta
+~~~
+
+Both complete CSVs must re-admit against the same original board bytes, SHA,
+slot order, statuses, roles and safe-note rules before any output is published.
+The new 0600 scriptless HTML, CSV and JSON contain only changed slot ordinals,
+field names, prior/current stage/role values, question/next-action text-change
+booleans and explicit false chronology/source/consent/authorization/release
+fields. The actual question and next-action contents, board SHA and filenames
+are omitted. "Prior/current" is manually supplied order, not authenticated
+chronology. Inputs are read-only; this report is unsigned and non-authorizing.
+The directory must be a new/existing owner-only 0700 location and the three
+report names must not already exist.

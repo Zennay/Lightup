@@ -32,6 +32,9 @@ TEMPLATE = "PRIVATE-inbox-actions-template.csv"
 OUT_HTML = "PRIVATE-inbox-actions.html"
 OUT_CSV = "PRIVATE-inbox-actions.csv"
 OUT_JSON = "PRIVATE-inbox-actions.json"
+DELTA_HTML = "PRIVATE-inbox-HUMAN-revision-delta.html"
+DELTA_CSV = "PRIVATE-inbox-HUMAN-revision-delta.csv"
+DELTA_JSON = "PRIVATE-inbox-HUMAN-revision-delta.json"
 
 
 def unique(pairs: list[tuple[str, object]]) -> dict:
@@ -198,20 +201,123 @@ def final_artifacts(digest: str, actions: list[dict]) -> list[tuple[str,bytes]]:
     ]
 
 
+def revision_delta_artifacts(prior: list[dict], current: list[dict]) -> list[tuple[str, bytes]]:
+    """Build a private changed-only HUMAN plan delta; never export free-text notes."""
+    if len(prior) != len(current) or not 1 <= len(prior) <= board.MAX_ROOMS:
+        raise ValueError("complete source-bound HUMAN revision pair required")
+    counts = {"stage": 0, "proposed_role": 0, "question_text": 0, "next_action_text": 0}
+    changes = []
+    for before, after in zip(prior, current):
+        if before["slot"] != after["slot"]:
+            raise ValueError("original HUMAN slot order differs")
+        fields = []
+        if before["human_status"] != after["human_status"]:
+            fields.append("stage")
+            counts["stage"] += 1
+        if before["proposed_discussion_role"] != after["proposed_discussion_role"]:
+            fields.append("proposed role")
+            counts["proposed_role"] += 1
+        question_changed = before["human_question"] != after["human_question"]
+        next_changed = before["human_next_action"] != after["human_next_action"]
+        if question_changed:
+            fields.append("question text")
+            counts["question_text"] += 1
+        if next_changed:
+            fields.append("next-action text")
+            counts["next_action_text"] += 1
+        if fields:
+            changes.append({
+                "slot": before["slot"], "changed_fields": fields,
+                "prior_status": before["human_status"], "current_status": after["human_status"],
+                "prior_role": before["proposed_discussion_role"],
+                "current_role": after["proposed_discussion_role"],
+                "question_text_changed": question_changed,
+                "next_action_text_changed": next_changed,
+            })
+    columns = (
+        "slot", "changed_fields", "prior_status", "current_status", "prior_role",
+        "current_role", "question_text_changed", "next_action_text_changed",
+        "chronology_authenticated", "source_authenticated", "client_consent_verified",
+        "operator_consent_verified", "authorization_granted", "release_allowed",
+    )
+    out = io.StringIO(newline="")
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(columns)
+    for row in changes:
+        writer.writerow((
+            row["slot"], "; ".join(row["changed_fields"]), row["prior_status"],
+            row["current_status"], row["prior_role"], row["current_role"],
+            str(row["question_text_changed"]).lower(), str(row["next_action_text_changed"]).lower(),
+            "false", "false", "false", "false", "false", "false",
+        ))
+    html_rows = []
+    for row in changes:
+        values = (
+            str(row["slot"]), "; ".join(row["changed_fields"]), row["prior_status"],
+            row["current_status"], row["prior_role"], row["current_role"],
+            "YES" if row["question_text_changed"] else "NO",
+            "YES" if row["next_action_text_changed"] else "NO",
+        )
+        html_rows.append("<tr>" + "".join("<td>" + html.escape(value) + "</td>" for value in values) + "</tr>")
+    table = ("<table><thead><tr>" + "".join("<th>" + html.escape(value) + "</th>" for value in (
+        "Slot", "Changed fields", "Prior stage", "Current stage", "Prior role",
+        "Current role", "Question changed", "Next action changed")) +
+        "</tr></thead><tbody>" + "".join(html_rows) + "</tbody></table>") if changes else (
+        "<p>No HUMAN planning-field differences between these two source-bound revisions.</p>")
+    page = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PRIVATE HUMAN revision delta</title><style>body{font:16px/1.5 system-ui;max-width:1100px;margin:2rem auto;padding:1rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #9aa9bc;padding:.5rem;text-align:left;overflow-wrap:anywhere}th{background:#edf3fa}.notice{background:#fff0dd;padding:1rem;border-left:5px solid #965400}</style></head><body>
+<h1>PRIVATE HUMAN revision delta</h1>
+<p class="notice">REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY. Same original board bytes, complete row membership and all HUMAN fields were locally admitted before comparison. The report is unsigned; source, reviewer, chronology and consent are not authenticated. A changed HUMAN stage is not remediation or release.</p>
+<p>Changed slots: __CHANGED__ / __SLOTS__. Question and next-action text is intentionally omitted; only whether it changed is shown.</p>
+__TABLE__
+<p>Prior/current ordering is operator-supplied, not authenticated chronology. Keep this report private. No original input or active HUMAN plan was changed.</p></body></html>"""
+    page = page.replace("__CHANGED__", str(len(changes))).replace("__SLOTS__", str(len(prior))).replace("__TABLE__", table)
+    data = {
+        "schema": "lightup.private_human_inbox_revision_delta.v1",
+        "status": "REVIEW_ONLY", "same_original_board_bytes_checked": True,
+        "source_authenticated": False, "reviewers_authenticated": False,
+        "client_consent_verified": False, "operator_consent_verified": False,
+        "authorization_granted": False, "release_allowed": False,
+        "chronology_authenticated": False, "signed": False,
+        "slot_count": len(prior), "changed_slot_count": len(changes),
+        "field_change_counts": counts, "changes": changes,
+    }
+    return [
+        (DELTA_HTML, page.encode("utf-8")),
+        (DELTA_CSV, out.getvalue().encode("utf-8")),
+        (DELTA_JSON, (json.dumps(data, ensure_ascii=True, sort_keys=True,
+                                 separators=(",", ":")) + "\n").encode("utf-8")),
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Original source-free HUMAN inbox discussion, never authorization")
-    parser.add_argument("action", choices=("prepare","finalize","reopen"))
+    parser.add_argument("action", choices=("prepare","finalize","reopen","compare"))
     parser.add_argument("--board", required=True, help="original PRIVATE inbox portfolio JSON in 0600 storage")
-    parser.add_argument("--human-csv", help="complete original board-bound HUMAN action CSV")
+    parser.add_argument("--human-csv", help="complete original board-bound current HUMAN action CSV")
+    parser.add_argument("--prior-human-csv", help="prior complete original board-bound HUMAN action CSV for compare")
     parser.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
     args = parser.parse_args()
     try:
-        if (args.action == "prepare") != (args.human_csv is None):
-            raise ValueError("HUMAN action CSV required only after prepare")
+        if args.action == "prepare":
+            if args.human_csv is not None or args.prior_human_csv is not None:
+                raise ValueError("prepare does not accept HUMAN result CSV inputs")
+        elif args.action == "compare":
+            if args.human_csv is None or args.prior_human_csv is None:
+                raise ValueError("compare requires both prior and current HUMAN CSVs")
+        elif args.human_csv is None or args.prior_human_csv is not None:
+            raise ValueError("finalize/reopen require only the current HUMAN CSV")
         digest, originals = board_admit(args.board)
         if args.action == "prepare":
             board.atomic_private_publish(args.private_output_dir,
                                          [(TEMPLATE,csv_template(digest,originals).encode("utf-8"))])
+        elif args.action == "compare":
+            prior = read_human_csv(args.prior_human_csv,digest,originals)
+            current = read_human_csv(args.human_csv,digest,originals)
+            artifacts = revision_delta_artifacts(prior,current)
+            board.atomic_private_publish(args.private_output_dir,artifacts)
         else:
             actions = read_human_csv(args.human_csv,digest,originals)
             artifacts = final_artifacts(digest,actions)

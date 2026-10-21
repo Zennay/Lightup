@@ -1104,3 +1104,14 @@ authorization/release fields. "Prior/current" is operator-supplied order, not
 authenticated chronology. This is a local HUMAN planning aid, not a signed
 audit log, source authentication, remediation proof, consent or authorization.
 The existing source-bound native finalizer remains the separate receiving step.
+
+
+The same source-bound revision delta is available from the native
+private_inbox_actions.py compare command for operators who do not use the
+browser. It independently re-admits both full original six-column HUMAN CSVs
+against the exact current source-free board before atomically publishing
+scriptless HTML, CSV and JSON. Only changed ordinal/field labels, stage/role
+transitions and boolean note-change flags are emitted; private question and
+next-action text is never included. Original input files and current HUMAN
+plans remain unchanged. The unsigned report is not authenticated chronology,
+remediation evidence, consent or authorization.
