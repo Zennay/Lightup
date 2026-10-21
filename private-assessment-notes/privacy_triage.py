@@ -22,6 +22,7 @@ from notes import (ALLOWED, Hold, csv_document, file_new, load_decisions,
                    save_json)
 
 SCHEMA = "lightup.private_notes_human_sensitivity_triage.v1"
+CUE_DRAFT_SCHEMA = "lightup.private_notes_human_sensitivity_triage.v2"
 FIELDS = ("source_ordinal", "source_sha256_unsigned", "review_status",
           "privacy_topics", "human_followup")
 STATUSES = ("PENDING", "REVIEW_REQUIRED", "WITHHOLD")
@@ -97,12 +98,16 @@ def read_completed_csv(raw: bytes, sources: list[dict]) -> list[dict]:
 
 
 def admit_preflight(path: str, sources: list[dict], manifest_sha: str,
-                    decision_sha: str) -> None:
+                    decision_sha: str, original: str) -> None:
     kit = private_directory(path)
     data = read_json(kit / "PRIVATE-triage-bindings.json", 64 * 1024)
+    with_cues = data.get("schema") == CUE_DRAFT_SCHEMA
     allowed = {"schema", "claimed_status", "original_manifest_sha256_unsigned",
                "original_human_csv_sha256_unsigned", "sources", *FALSE_FLAGS}
-    if (set(data) != allowed or data["schema"] != SCHEMA
+    if with_cues:
+        allowed.add("original_masking_cues_receipt_required")
+    if (set(data) != allowed or data["schema"] not in (SCHEMA, CUE_DRAFT_SCHEMA)
+            or (with_cues and data.get("original_masking_cues_receipt_required") is not True)
             or data["claimed_status"] != "HOLD"
             or data["original_manifest_sha256_unsigned"] != manifest_sha
             or data["original_human_csv_sha256_unsigned"] != decision_sha
@@ -117,6 +122,13 @@ def admit_preflight(path: str, sources: list[dict], manifest_sha: str,
     template = private_input(str(kit / "PRIVATE-HUMAN-sensitivity-template.csv"), 64 * 1024)
     if template != csv_bytes(default_rows(sources)):
         raise Hold("HOLD: original sensitivity template was modified")
+    if with_cues:
+        # A v2 source-bound draft cannot drop its original masking cue
+        # evidence or silently swap the navigator before HUMAN finalization.
+        # The established independent original receipt checks exact v6
+        # HTML, CSV, receipt and the original PRIVATE masked source bytes.
+        from private_masking_cues import reopen as reopen_cues
+        reopen_cues(original, str(kit))
 
 
 def render(rows: list[dict], prepared: bool,
@@ -170,13 +182,16 @@ def prepare(original: str, parent_string: str,
     os.chmod(destination, 0o700)
     complete = False
     try:
-        bindings = {"schema": SCHEMA, "claimed_status": "HOLD",
+        bindings = {"schema": CUE_DRAFT_SCHEMA if include_masking_cues else SCHEMA,
+                    "claimed_status": "HOLD",
                     "original_manifest_sha256_unsigned": manifest_sha,
                     "original_human_csv_sha256_unsigned": decision_sha,
                     "sources": [{"ordinal": r["ordinal"],
                                  "source_sha256_unsigned": r["source_sha256_unsigned"]}
                                 for r in sources],
                     **{field: False for field in FALSE_FLAGS}}
+        if include_masking_cues:
+            bindings["original_masking_cues_receipt_required"] = True
         rows = default_rows(sources)
         save_json(destination / "PRIVATE-triage-bindings.json", bindings)
         file_new(destination / "PRIVATE-HUMAN-sensitivity-template.csv", csv_bytes(rows))
@@ -217,7 +232,7 @@ def prepare(original: str, parent_string: str,
 def finalize(original: str, kit: str, completed: str, parent_string: str) -> int:
     parent = private_directory(parent_string)
     sources, manifest_sha, decision_sha = completed_packet(original)
-    admit_preflight(kit, sources, manifest_sha, decision_sha)
+    admit_preflight(kit, sources, manifest_sha, decision_sha, original)
     raw = private_input(completed, 64 * 1024)
     rows = read_completed_csv(raw, sources)
     destination = Path(tempfile.mkdtemp(prefix="PRIVATE-lightup-sensitivity-review-", dir=parent))
