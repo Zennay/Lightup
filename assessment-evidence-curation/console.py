@@ -319,14 +319,18 @@ def main() -> int:
         if choice not in WORKFLOWS:
             raise Hold("Unknown PRIVATE workflow")
         run_workflow(choice)
-    except (EOFError, KeyboardInterrupt, Hold):
-        print("\nHOLD: PRIVATE input cancelled, rejected or incomplete; no output claimed", file=sys.stderr)
+    except (EOFError, KeyboardInterrupt, Hold) as exc:
+        if 'choice' in locals() and choice == "18" and isinstance(exc, Hold):
+            # This path emits only static failure categories and member filenames.
+            print("\n" + str(exc), file=sys.stderr)
+        else:
+            print("\nHOLD: PRIVATE input cancelled, rejected or incomplete; no output claimed", file=sys.stderr)
         return 3
     except OSError:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15") else
+    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18") else
           "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 

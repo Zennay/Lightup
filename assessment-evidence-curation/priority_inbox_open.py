@@ -26,9 +26,12 @@ def reopen(source_path: str, manifest_path: str, worksheet_path: str,
            selection_receipt: str, selection_path: str, curated_dir: str,
            handoff_paths: list[str], reply_paths: list[str],
            private_dir: str) -> int:
-    expected, count = build(
-        source_path, manifest_path, worksheet_path, selection_receipt,
-        selection_path, curated_dir, handoff_paths, reply_paths)
+    try:
+        expected, count = build(
+            source_path, manifest_path, worksheet_path, selection_receipt,
+            selection_path, curated_dir, handoff_paths, reply_paths)
+    except Hold:
+        raise Hold("HOLD: original source/selection/priority handoff/response admission failed; no files changed") from None
     require(bool(expected) and all(0 < len(raw) <= MAX_FILE for raw in expected.values()))
     dfd = -1
     try:
@@ -37,10 +40,27 @@ def reopen(source_path: str, manifest_path: str, worksheet_path: str,
         meta = os.fstat(dfd)
         require(stat.S_ISDIR(meta.st_mode) and meta.st_uid == os.getuid() and
                 stat.S_IMODE(meta.st_mode) == 0o700)
-        require(set(os.listdir(dfd)) == set(expected))
+        actual = set(os.listdir(dfd))
+        if actual != set(expected):
+            missing = sorted(set(expected) - actual)
+            extra = sorted(actual - set(expected))
+            detail = []
+            if missing:
+                detail.append("missing=" + ",".join(missing))
+            if extra:
+                detail.append("unexpected=" + ",".join(extra))
+            raise Hold("HOLD: PRIVATE inbox inventory drift (" + "; ".join(detail) + "); no files changed")
+        drift = []
         for name, wanted in expected.items():
-            current = read_private(dfd, name, max(1, len(wanted)))
-            require(current == wanted)
+            try:
+                current = read_private(dfd, name, max(1, len(wanted)))
+            except (Hold, OSError):
+                drift.append(name + " (missing, unreadable or wrong owner/mode)")
+                continue
+            if current != wanted:
+                drift.append(name + " (bytes differ from current source rebuild)")
+        if drift:
+            raise Hold("HOLD: PRIVATE inbox drift in " + "; ".join(drift) + "; no files changed")
         return count
     finally:
         if dfd >= 0:
@@ -63,9 +83,14 @@ def main() -> int:
                        args.selection_receipt, args.selection,
                        args.curated_packet, args.private_handoff,
                        args.returned_csv, args.private_dir)
-    except (Hold, OSError, ValueError, TypeError, KeyError, UnicodeError,
+    except Hold as exc:
+        # Error text contains only static gate descriptions and artifact filenames,
+        # never original questions, target values, evidence or recipient replies.
+        print(str(exc), file=sys.stderr)
+        return 3
+    except (OSError, ValueError, TypeError, KeyError, UnicodeError,
             OverflowError, RecursionError, MemoryError):
-        print("HOLD: original HUMAN inbox drift or private member mismatch; nothing changed",
+        print("HOLD: PRIVATE inbox could not be reopened; no files changed",
               file=sys.stderr)
         return 3
     print("PRIVATE original-source HUMAN inbox reopened by exact deterministic bytes: " +
