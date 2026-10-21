@@ -57,7 +57,7 @@ def admitted_decisions(path: str, receipt_path: str) -> tuple[int, int, int, int
     return len(originals), counts["A"], counts["B"], counts["HOLD"]
 
 
-def read_one(parent_fd: int, parent_path: str, name: str, slot: int) -> dict:
+def read_one(parent_fd: int, parent_path: str, name: str, slot: int, full_reopened: bool = False) -> dict:
     if not inbox.ROOM_PATTERN.fullmatch(name):
         raise ValueError("room identifier refused")
     fd = os.open(name, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) |
@@ -86,7 +86,7 @@ def read_one(parent_fd: int, parent_path: str, name: str, slot: int) -> dict:
         "result_transport": ("ENCRYPTED" if inventory["transfer_mode"] ==
                              "PRIVATE_ENCRYPTED_BUNDLE" else "PRIVATE_PLAINTEXT"),
         "local_file_custody": "EXACT_UNSIGNED_BYTES",
-        "source_reopening": "NOT_PERFORMED_BY_BOARD",
+        "source_reopening": ("ORIGINAL_NATIVE_REVIEW_ONLY" if full_reopened else "NOT_PERFORMED_BY_BOARD"),
         "authority": "NONE",
         "human_followup": ("CHECK_HOLD_CHOICES" if held else "INDEPENDENT_REVIEW_REQUIRED")
     }
@@ -104,13 +104,13 @@ def source_free_csv(rows: list[dict]) -> str:
 def render(rows: list[dict]) -> str:
     headings = ("Slot", "Declared originals", "A decisions", "B decisions",
                 "HOLD decisions", "Result mode", "Local custody",
-                "HUMAN follow-up")
+                "Original HUMAN reopening", "HUMAN follow-up")
     body = []
     for row in rows:
         fields = (str(row["slot"]), str(row["source_declarations"]),
                   str(row["human_a_choices"]), str(row["human_b_choices"]),
                   str(row["unselected_hold"]), row["result_transport"],
-                  row["local_file_custody"], row["human_followup"])
+                  row["local_file_custody"], row["source_reopening"], row["human_followup"])
         body.append("<tr>"+"".join("<td>"+html.escape(f)+"</td>" for f in fields)+"</tr>")
     return """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
@@ -127,20 +127,21 @@ th{background:#ecf3fc}
 </style></head><body><header><h1>LightUp PRIVATE HUMAN inbox board</h1>
 <p>Strictly local, source-free **slot-ordered** operator overview; REVIEW_ONLY / HOLD.</p></header>
 <p class="warning"><strong>LOCAL UNSIGNED CUSTODY ONLY.</strong>
-The board checks the exact current bytes of the already received PRIVATE files
-and the original HUMAN decision format. It does NOT execute the original
-decryption/reconciliation of each room, authenticate reviewers or source,
-prove evidence/fix/security, obtain current client/operator consent, authorize a
-scan, release, or certify safe disclosure. Every room still requires the
-original private_reopen.py HUMAN read-only full re-admission and HUMAN GO.</p>
+The default board checks original exact received PRIVATE source bytes and
+HUMAN decisions. With manually requested --full-reopen, the original native
+source-bound HUMAN reopener also runs for each selected room before publishing.
+Neither mode authenticates clients/reviewers, proves source/mitigation/security,
+grants consent, permits any scan or authorizes release. Native REVIEW_ONLY
+never means approved evidence, identity, or permission.</p>
 <table><thead><tr>"""+"".join("<th scope='col'>"+html.escape(x)+"</th>" for x in headings)+"""</tr></thead>
 <tbody>"""+"".join(body)+"""</tbody></table>
 <p class="note">Room numbers refer ONLY to the caller's local --room order.
 Original room names, disk paths, evidence, HUMAN free-text, reviewer IDs, SHA
 and customer identifiers are intentionally absent. The table is still PRIVATE:
 small-cohort counts may identify a lab, so do not publish or email it.
-A row with zero HOLD choices is NOT an approval, finding verification or
-resolved vulnerability. Absence from the supplied room list never means fixed.</p>
+Zero HOLD choices or original native reopener REVIEW_ONLY are NOT approval,
+finding verification or resolved vulnerability. Native decryption may require
+local no-echo human input. Absent rooms never mean a fixed issue.</p>
 <p>Follow-up: reopen each original room explicitly with the native read-only
 PRIVATE HUMAN receiver; confirm genuine source owner and independent
 privacy/security/browser review, current separate authenticated client and
@@ -191,6 +192,8 @@ def main() -> int:
                         help="original PRIVATE room name, repeat 1–12 times in intended slot order")
     parser.add_argument("--private-output-dir", required=True,
                         help="existing owner-only 0700 directory, preferably separate from source rooms")
+    parser.add_argument("--full-reopen", action="store_true",
+                        help="explicit trusted TTY original HUMAN readmission of all selected rooms; no authorization")
     args = parser.parse_args()
     parent_fd = None
     try:
@@ -199,6 +202,24 @@ def main() -> int:
         parent_fd, parent_path = inbox.user_private_parent(args.private_parent)
         rows = [read_one(parent_fd, parent_path, name, i)
                 for i, name in enumerate(args.room, 1)]
+        if args.full_reopen:
+            if not sys.stdin.isatty() or not sys.stdout.isatty():
+                raise ValueError("full original HUMAN reopening needs a trusted terminal")
+            print("PRIVATE full original HUMAN reopening of", len(rows), "rooms.")
+            print("Original decryption may ask for passphrases privately.")
+            print("This is never identity verification, client consent or release.")
+            if input("Type exactly REOPEN to continue: ").strip() != "REOPEN":
+                raise ValueError("HUMAN did not confirm full original reopen")
+            for name in args.room:
+                reopened.reopen(parent_path, name)
+            # Catch source/decision changes after the initial source overview.
+            after = [read_one(parent_fd, parent_path, name, i, full_reopened=True)
+                     for i, name in enumerate(args.room, 1)]
+            expected = [{**row, "source_reopening": "ORIGINAL_NATIVE_REVIEW_ONLY"}
+                        for row in rows]
+            if after != expected:
+                raise ValueError("source changed during original HUMAN readmission")
+            rows = after
         # All inputs admitted before any output name becomes visible.
         manifest = {
             "schema": "lightup.private_human_inbox_board.v1",
@@ -210,7 +231,7 @@ def main() -> int:
             "operator_consent_verified": False,
             "authorization_granted": False,
             "release_allowed": False,
-            "original_human_reopening_performed": False,
+            "original_human_reopening_performed": bool(args.full_reopen),
             "signed": False,
             "rooms": rows,
         }
@@ -227,7 +248,10 @@ def main() -> int:
         if parent_fd is not None:
             os.close(parent_fd)
     print("REVIEW_ONLY: source-free PRIVATE HUMAN board published to owner-only output directory")
-    print("Slots are caller order only; full source-bound HUMAN reopening remains separate")
+    if args.full_reopen:
+        print("Original HUMAN readmission completed: still REVIEW_ONLY, no consent or release")
+    else:
+        print("Slots are input order; full original HUMAN readmission NOT requested")
     return 2
 
 

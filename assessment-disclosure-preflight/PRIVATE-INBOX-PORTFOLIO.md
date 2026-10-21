@@ -61,6 +61,25 @@ unsigned files was admitted. Encrypted result passwords are NOT requested;
 the board makes NO claim to decrypt or revalidate encrypted original HUMAN
 content. Even identical source-free declarations are not ground truth.
 
+## Optional full original HUMAN reopening before the board is produced
+
+By default, the board checks only existing locally stored unsigned source
+identities and original decision counts. If a HUMAN operator deliberately wants
+every selected room to undergo the **unchanged native original
+`private_reopen.reopen`** before publishing the same source-free overview,
+append `--full-reopen` to the example above. This requires an interactive
+trusted terminal and typing exactly `REOPEN` before any source is reopened.
+Encrypted reviewers and results use the original trusted local no-echo
+passphrase flow; no passphrases are included in output or CLI flags. Any native
+refusal causes the ENTIRE board to HOLD without publishing partial output.
+All rooms are locally byte-checked again after re-admission. A board row
+marked `ORIGINAL_NATIVE_REVIEW_ONLY` means only local original HUMAN content
+reopening returned REVIEW_ONLY, **never genuine client consent, trusted
+provenance, approval or verified remediation**.
+
+The `--full-reopen` mode is deliberately optional so generating a simple
+source-free overview cannot silently cause decryption or prompting.
+
 ## Full original reopening remains separate
 
 For every slot being considered for real follow-up, manually run:

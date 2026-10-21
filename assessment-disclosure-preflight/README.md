@@ -57,6 +57,11 @@ original source hashes, or private customer data into the board. Each room
 is represented by an ephemeral input-order slot and literal A/B/HOLD counts.
 The entire product is read-only against original rooms; 0600 handoff files
 are written exclusively into a separate existing owner-owned 0700 folder.
+An explicit trusted TTY `--full-reopen` option allows a HUMAN operator
+to request the original native full source-bound receipt/reviewer/result
+reopening for EACH selected room, without modifying source files. A cancelled,
+noninteractive or refused original reopen causes HOLD for the whole board;
+even an original REVIEW_ONLY is never a security or authorization verdict.
 This board explicitly does **not** decrypt or perform each original full
 HUMAN source-bound reopener: the unchanged separate native
 `private_reopen.py` is still necessary. REVIEW_ONLY/HOLD only, no PASS.
