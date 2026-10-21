@@ -16,7 +16,7 @@ import sys
 
 from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
 from review_desk import (
-    FILE_NAMES as REVIEW_FILES, load_json, make_artifacts,
+    FILE_NAMES as REVIEW_FILES, ROLES, STAGES, load_json, make_artifacts,
     read_original_bundle, require_private_file, validate_worksheet, interactive_review,
 )
 from editor import NAME as EDITOR_FILE, render_editor
@@ -24,12 +24,14 @@ from routing import FILES as ROUTING_FILES, create_artifacts as routing_artifact
 from compare_review import NAMES as DELTA_FILES, make_artifacts as delta_artifacts, read_round
 from workspace import private_child
 from history import output_artifacts as history_artifacts
+from role_handoff import assemble as handoff_artifacts
 
 ROUND = "human-round"
 EDITOR = "human-editor"
 ROUTING = "human-routing"
 DELTA = "human-changes"
 HISTORY = "human-history"
+HANDOFF = "human-selected-role"
 GUIDE = "START-HERE-PRIVATE.txt"
 HOME = "OPEN-NEXT-ROUND-PRIVATE.html"
 SUBDIRS = (ROUND, EDITOR, ROUTING, DELTA, HISTORY)
@@ -41,7 +43,7 @@ STYLE = ("body{font:16px/1.55 system-ui,sans-serif;color:#17212f;"
          "a:focus-visible{outline:3px solid #dbad43;outline-offset:3px}"
          "small{color:#465467}")
 
-def render_home(source_count, changed, history_count):
+def render_home(source_count, changed, history_count, handoff_role=None, handoff_stage='ALL'):
     h = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
@@ -81,6 +83,14 @@ def render_home(source_count, changed, history_count):
         "<p><small>Fixed-vocabulary HUMAN counts without endpoint values or "
         "private note text; small cohorts can still be identifiable. "
         "This is not authorization or verified security evidence.</small></p></section>"
+        ("<section><h2>Selected PRIVATE role handoff</h2>"
+         "<a href='human-selected-role/lightup-lab-role-handoff-private.html'>"
+         "Open voluntarily filtered HUMAN role packet</a><p><small>"
+         "Selected suggested HUMAN role: " + escape(handoff_role or "") +
+         "; latest HUMAN stage: " + escape(handoff_stage) +
+         ". Other-role HUMAN notes are intentionally withheld. This is "
+         "NOT identity authentication or permission.</small></p></section>"
+         if handoff_role is not None else "") +
         "<section><h2>Compare previous and current HUMAN planning</h2>"
         "<a href='human-changes/lightup-lab-human-delta-private.html'>"
         "Open source-free HUMAN delta</a><p><small>"
@@ -92,7 +102,7 @@ def render_home(source_count, changed, history_count):
         "</p></body></html>"
     ).encode("utf-8")
 
-def guide(count, changed, history_count):
+def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL'):
     return (
         "LightUp offline PRIVATE HUMAN next-round workroom\n"
         "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED\n"
@@ -108,6 +118,11 @@ def guide(count, changed, history_count):
         "human-history: PRIVATE manually ordered 2–8 HUMAN rounds and source-free counts.\n"
         "   Open human-history/lightup-lab-human-history-brief.html for a "
         "PRIVATE by default, counts-only management overview.\n"
+        ("human-selected-role: PRIVATE selected role-specific notes and local URL subset; "
+         "other-role HUMAN notes withheld.\n"
+         "Selected HUMAN role: " + handoff_role +
+         "; selected latest HUMAN stage: " + handoff_stage + "\n"
+         if handoff_role is not None else "") +
         "All outputs are owner-only, unsigned, private, not client approval.\n"
         "To edit another round, download private JSON from the offline editor, "
         "put it in an owner-only mode-0700 folder and chmod 600, then use "
@@ -117,25 +132,30 @@ def guide(count, changed, history_count):
         "with action-time revocation/HUMAN GO are independent mandatory gates.\n"
     ).encode("utf-8")
 
-def content_for(before, after, endpoints, earlier):
-    return {
+def content_for(before, after, endpoints, earlier, handoff_role=None, handoff_stage='ALL'):
+    artifacts = {
         ROUND: dict(make_artifacts(after, endpoints)),
         EDITOR: {EDITOR_FILE: render_editor(after)},
         ROUTING: dict(routing_artifacts(after, endpoints, "ALL", "ALL")),
         DELTA: dict(delta_artifacts(before, after)),
         HISTORY: dict(history_artifacts([*earlier, before, after], endpoints)),
     }
+    if handoff_role is not None:
+        artifacts[HANDOFF] = dict(
+            handoff_artifacts([*earlier, before, after], endpoints, handoff_role, handoff_stage))
+    return artifacts
 
-def inspect_root(fd, root_path, before, endpoints, after, earlier):
-    if set(os.listdir(fd)) != {*SUBDIRS, GUIDE, HOME}:
+def inspect_root(fd, root_path, before, endpoints, after, earlier,
+                 handoff_role=None, handoff_stage='ALL'):
+    expected = content_for(before, after, endpoints, earlier, handoff_role, handoff_stage)
+    if set(os.listdir(fd)) != {*expected, GUIDE, HOME}:
         raise Hold("follow-up workroom missing canonical inventory")
-    expected = content_for(before, after, endpoints, earlier)
-    for dirname in SUBDIRS:
+    for dirname in expected:
         folder_fd, _ = open_output_directory(os.path.join(root_path, dirname))
         try:
             if set(os.listdir(folder_fd)) != set(expected[dirname]):
                 raise Hold("PRIVATE follow-up subfolder has unknown or missing files")
-            bound = 524288 if dirname == HISTORY else 196608
+            bound = 524288 if dirname in (HISTORY, HANDOFF) else 196608
             actual = {name: read_private_bundle_item(folder_fd, name, bound)
                       for name in expected[dirname]}
         finally:
@@ -144,8 +164,10 @@ def inspect_root(fd, root_path, before, endpoints, after, earlier):
             raise Hold("follow-up workroom file changed or source mismatch")
     changes = sum(a != b for a, b in zip(before["human_rows"], after["human_rows"]))
     count = len(earlier) + 2
-    if (read_private_bundle_item(fd, HOME, 32768) != render_home(len(endpoints), changes, count)
-            or read_private_bundle_item(fd, GUIDE, 16384) != guide(len(endpoints), changes, count)):
+    if (read_private_bundle_item(fd, HOME, 32768) !=
+            render_home(len(endpoints), changes, count, handoff_role, handoff_stage)
+            or read_private_bundle_item(fd, GUIDE, 16384) !=
+            guide(len(endpoints), changes, count, handoff_role, handoff_stage)):
         raise Hold("follow-up workroom navigation changed")
     return changes
 
@@ -163,8 +185,14 @@ def main(argv=None):
     parser.add_argument("--responses", help="new owner-only mode-0600 HUMAN JSON (creation only)")
     parser.add_argument("--interactive", action="store_true",
                         help="edit the previous HUMAN round on a PRIVATE local TTY in memory")
+    parser.add_argument("--handoff-role", choices=ROLES,
+                        help="optionally include a voluntary PRIVATE role-selected HUMAN handoff")
+    parser.add_argument("--handoff-stage", choices=("ALL", *STAGES), default="ALL",
+                        help="optional latest HUMAN stage filter; requires --handoff-role")
     args = parser.parse_args(argv)
     try:
+        if args.handoff_stage != "ALL" and args.handoff_role is None:
+            raise Hold("selected HUMAN stage requires a selected HANDOFF role")
         if args.output_dir:
             if bool(args.responses) == bool(args.interactive):
                 raise Hold("creation requires either --responses OR private --interactive HUMAN input")
@@ -215,18 +243,19 @@ def main(argv=None):
                 if ((renewed, renewed_endpoints, renewed_digest, renewed_previous, renewed_before, again)
                         != (original, endpoints, digest, previous_dir, before, after)):
                     raise Hold("previous HUMAN or original source changed before publication")
-                expected = content_for(before, after, endpoints, earlier_rounds)
+                expected = content_for(
+                    before, after, endpoints, earlier_rounds, args.handoff_role, args.handoff_stage)
                 # The standalone HISTORY producer has a fixed 512-KiB cap. The
                 # integrated pipeline must enforce the same cap BEFORE it creates
                 # any of the fresh workroom directories, or it could leave a
                 # seemingly complete but impossible-to-reopen private packet.
                 for dirname, files in expected.items():
-                    limit = 524288 if dirname == HISTORY else 196608
+                    limit = 524288 if dirname in (HISTORY, HANDOFF) else 196608
                     if any(not 0 < len(blob) <= limit for blob in files.values()):
                         raise Hold("PRIVATE HUMAN next-round artifact exceeds reopen limit")
-                for name in SUBDIRS:
+                for name in expected:
                     private_child(root_fd, name)
-                for dirname in SUBDIRS:
+                for dirname in expected:
                     fd, _ = open_output_directory(os.path.join(root_path, dirname))
                     try:
                         publish_bundle(fd, list(expected[dirname].items()))
@@ -234,8 +263,10 @@ def main(argv=None):
                         os.close(fd)
                 changed = sum(a != b for a, b in zip(before["human_rows"], after["human_rows"]))
                 publish_bundle(root_fd, [
-                    (GUIDE, guide(len(endpoints), changed, len(earlier_rounds) + 2)),
-                    (HOME, render_home(len(endpoints), changed, len(earlier_rounds) + 2)),
+                    (GUIDE, guide(len(endpoints), changed, len(earlier_rounds) + 2,
+                                  args.handoff_role, args.handoff_stage)),
+                    (HOME, render_home(len(endpoints), changed, len(earlier_rounds) + 2,
+                                       args.handoff_role, args.handoff_stage)),
                 ])
             else:
                 fd, _ = open_output_directory(os.path.join(root_path, ROUND))
@@ -245,7 +276,8 @@ def main(argv=None):
                     os.close(fd)
                 after = load_json(source)
                 validate_worksheet(after, digest, len(endpoints))
-            changed = inspect_root(root_fd, root_path, before, endpoints, after, earlier_rounds)
+            changed = inspect_root(root_fd, root_path, before, endpoints, after,
+                                   earlier_rounds, args.handoff_role, args.handoff_stage)
         finally:
             os.close(root_fd)
         print("PRIVATE_HUMAN_NEXT_ROUND_" +
