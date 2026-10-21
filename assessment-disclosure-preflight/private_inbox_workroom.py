@@ -84,7 +84,7 @@ def main() -> int:
 
         # One exclusive private publication: no board without its matching
         # native HUMAN worksheet, and no overwrite of any existing artifact.
-        board.atomic_private_publish(args.private_output_dir, artifacts)
+        actions.publish_private_artifacts(args.private_output_dir, artifacts)
     except (OSError, TypeError, ValueError, UnicodeError, MemoryError, Hold):
         print("HOLD: complete PRIVATE HUMAN workroom not published or reopened; no authority",
               file=sys.stderr)
