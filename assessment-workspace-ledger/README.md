@@ -2035,9 +2035,20 @@ Priority is a HUMAN proposal: `unset`, `human_urgent`, `near_term`, or
 
 CLI, for manually selected original owner-only paths outside the checkout:
 
-    python3 assessment-workspace-ledger/portfolio_operator_calendar.py prepare       --history /private/original-history.json       --inbox /private/original-inbox.json       --followup /private/original-operator-followup.json       --operator-csv /private/original-operator-followup.csv       --reference-day 2026-10-21 --private-parent /private/output
+    python3 assessment-workspace-ledger/portfolio_operator_calendar.py prepare \
+      --history /private/original-history.json \
+      --inbox /private/original-inbox.json \
+      --followup /private/original-operator-followup.json \
+      --operator-csv /private/original-operator-followup.csv \
+      --reference-day 2026-10-21 \n      --private-parent /private/output
 
-    python3 assessment-workspace-ledger/portfolio_operator_calendar.py receive       --history /private/original-history.json       --inbox /private/original-inbox.json       --followup /private/original-operator-followup.json       --operator-csv /private/original-operator-followup.csv       --proposed-csv /private/HUMAN-proposed-calendar-template.csv       --reference-day 2026-10-21 --private-parent /private/output
+    python3 assessment-workspace-ledger/portfolio_operator_calendar.py receive \
+      --history /private/original-history.json \
+      --inbox /private/original-inbox.json \
+      --followup /private/original-operator-followup.json \
+      --operator-csv /private/original-operator-followup.csv \
+      --proposed-csv /private/HUMAN-proposed-calendar-template.csv \
+      --reference-day 2026-10-21 \n      --private-parent /private/output
 
 Each invocation creates a **new** owner-private 0700 directory and writes
 0600 data; nothing is overwritten, transmitted, deleted or dispatched.
@@ -2062,4 +2073,11 @@ day), else the read returns HOLD. Success is PRIVATE REVIEW_ONLY and writes
 **no** files. It authenticates no recipient and does not validate the
 previously rendered HTML's physical bytes. CLI:
 
-    python3 assessment-workspace-ledger/portfolio_operator_calendar.py reopen       --history /private/original-history.json       --inbox /private/original-inbox.json       --followup /private/original-operator-followup.json       --operator-csv /private/original-operator-followup.csv       --proposed-csv /private/PRIVATE-HUMAN-proposed-calendar.csv       --receipt /private/PRIVATE-HUMAN-proposed-calendar.json       --reference-day 2026-10-21 --private-parent /private/output
+    python3 assessment-workspace-ledger/portfolio_operator_calendar.py reopen \
+      --history /private/original-history.json \
+      --inbox /private/original-inbox.json \
+      --followup /private/original-operator-followup.json \
+      --operator-csv /private/original-operator-followup.csv \
+      --proposed-csv /private/PRIVATE-HUMAN-proposed-calendar.csv \
+      --receipt /private/PRIVATE-HUMAN-proposed-calendar.json \
+      --reference-day 2026-10-21 \n      --private-parent /private/output
