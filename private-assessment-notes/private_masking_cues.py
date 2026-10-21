@@ -23,7 +23,8 @@ LEGACY_SCHEMA = "lightup.private_assessment_masking_cues.v1"
 V2_SCHEMA = "lightup.private_assessment_masking_cues.v2"
 V3_SCHEMA = "lightup.private_assessment_masking_cues.v3"
 V4_SCHEMA = "lightup.private_assessment_masking_cues.v4"
-SCHEMA = "lightup.private_assessment_masking_cues.v5"
+V5_SCHEMA = "lightup.private_assessment_masking_cues.v5"
+SCHEMA = "lightup.private_assessment_masking_cues.v6"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -89,7 +90,7 @@ def cue_csv(rows: list[dict]) -> bytes:
     return handle.getvalue().encode("utf-8")
 
 
-def cue_page(rows: list[dict]) -> bytes:
+def cue_page_v5(rows: list[dict]) -> bytes:
     listing = []
     for record in rows:
         values = [record[name] for name in CSV_FIELDS]
@@ -130,6 +131,11 @@ proof, private data anonymisation, severity rating, authorization, or release.
 The original HUMAN review and all real security/consent/CI approvals remain
 separate and mandatory. No active tool, network, model or dispatch.</p>
 </html>""").encode("utf-8")
+
+
+def cue_page(rows: list[dict]) -> bytes:
+    from private_masking_navigation import render
+    return render(rows)
 
 
 def cue_receipt(manifest_raw: bytes, sources: list[dict],
@@ -186,14 +192,22 @@ def reopen(original: str, cue_room: str) -> int:
                            ensure_ascii=False) + "\n").encode("utf-8")
     if stored_receipt == serialized_receipt(SCHEMA):
         derived = cues(rows)
+        render_page = cue_page
+    elif stored_receipt == serialized_receipt(V5_SCHEMA):
+        derived = cues(rows, groups=GROUPS)
+        render_page = cue_page_v5
     elif stored_receipt == serialized_receipt(V4_SCHEMA):
+        render_page = cue_page_v5
         derived = cues(rows, groups=V4_GROUPS)
     elif stored_receipt == serialized_receipt(V3_SCHEMA):
+        render_page = cue_page_v5
         derived = cues(rows, groups=V3_GROUPS)
     elif stored_receipt == serialized_receipt(V2_SCHEMA):
+        render_page = cue_page_v5
         # Preserve exact historical V2 marker counts and source bytes.
         derived = cues(rows, groups=V2_GROUPS)
     elif stored_receipt == serialized_receipt(LEGACY_SCHEMA):
+        render_page = cue_page_v5
         # Pre-HAR cue workrooms are not silently upgraded or overwritten.
         derived = cues(rows, groups=LEGACY_GROUPS)
     else:
@@ -202,7 +216,7 @@ def reopen(original: str, cue_room: str) -> int:
     expected_files = (
         ("PRIVATE-masking-cues-receipt.json", expected_receipt),
         ("PRIVATE-masking-cues.csv", cue_csv(derived)),
-        ("PRIVATE-masking-cues.html", cue_page(derived)),
+        ("PRIVATE-masking-cues.html", render_page(derived)),
     )
     for name, original_bytes in expected_files:
         if private_input(str(folder / name), 65536) != original_bytes:
