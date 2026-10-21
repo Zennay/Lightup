@@ -1,6 +1,48 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
 
+## Complete PRIVATE HUMAN Attention proposal revisions (native 78–79)
+
+Operators can compare previously saved HUMAN Attention role/follow-up
+proposals **without interpreting a browser export as original authority**.
+
+- First use native actions 72/73 to place each original source-free HUMAN
+  Route discussion report in owner-only PRIVATE 0700/0600 custody.
+- Export complete fixed-twenty-row v2 HUMAN Attention proposals from the
+  offline browser and receive them with native action **76**, using the
+  **same original saved Route receipt rooms**. Native action 77 must be
+  able to reopen the complete original saved attention output.
+- **78: create PRIVATE attention revision portfolio.** Select the same
+  1–8 original saved HUMAN Route receipt rooms and 2–8 different
+  original 76/77 saved attention rooms in a manual order. Each original
+  receipt is fully reconstructed and checked read-only BEFORE any
+  new file is written. An exclusive new 0700 PRIVATE output directory
+  includes a scriptless HTML review page, a complete 20-action multi-
+  revision role/follow-up matrix, changed-only CSV, history JSON,
+  the unchanged last manually selected v2 source-free proposal, and an
+  unsigned original file receipt (all output files 0600).
+- **79: reopen saved private attention portfolio.** With all original
+  source rooms and exact same operator order, it checks every original
+  source/recipient-free saved receipt and every portfolio output byte.
+  Changed or missing PRIVATE originals or outputs are HOLD.
+
+Only original **role/follow-up HUMAN proposal choices** are compared,
+never timestamps, completed security work, authenticated roles, valid
+permissions or original findings. The original twenty native actions
+and five review stages remain complete in every product. The final
+selected local v2 proposal may be re-opened in the browser workboard
+with its original ordered source-free self-report files, but that also
+requires explicit HUMAN confirmation and does not authorize any
+real action.
+
+This native source-only workflow preserves all owner-review, hosted
+and permanent registered VPS exact-head CI, independent security/privacy/
+browser, separately current authenticated client+operator consent
+with revocation-at-use, #177/#182/#829 and explicit HUMAN GO gates.
+**INCUBATE M3/M7 / PLAN-LAB ONLY / DRAFT-HOLD.**
+
+
+
 ## Original native HUMAN Attention receipt: actions 76–77
 
 The existing offline [HUMAN Attention Workboard](human-lab-attention-standalone.html)
