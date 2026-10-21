@@ -16,6 +16,9 @@ operator guide. It explicitly excludes its own hash. To verify a locally
 downloaded package without extracting files, use the native checkout tool:
 python3 assessment-integrated-suite/verify_offline.py --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v26.zip
 
+The same verifier is available from the native suite command:
+python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v26.zip
+
 VERIFIED LOCAL INTEGRITY ONLY confirms the archive inventory and bytes match
 the unsigned manifest. It does not authenticate author, origin, source truth,
 consent, authorization, findings, remediation or release. The verifier is a

@@ -10,6 +10,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from verify_offline import Hold as VerifyHold, verify as verify_package
 
 ROOT = Path(__file__).resolve().parent.parent
 INSPECTOR = ROOT / "src/lightup/lab_inspect.py"
@@ -287,14 +288,23 @@ def main() -> int:
     following.add_argument("--human-confirm", required=True,
                            help="must equal CONTINUE PRIVATE WORKPACK")
     commands.add_parser("catalog", help="read-only inventory of installed original source modules")
+    verify = commands.add_parser(
+        "verify-kit", help="verify a v26+ software-only ZIP inventory without extracting")
+    verify.add_argument("--package", required=True,
+                        help="existing offline ZIP; byte integrity only, never authenticity")
     args = cli.parse_args()
     if args.command == "catalog":
         for label, component in (("source inspector", INSPECTOR), ("PRIVATE briefing", BRIEF),
-                                 ("PRIVATE disclosure", DISCLOSE), *APPS.items()):
+                                 ("PRIVATE disclosure", DISCLOSE),
+                                 ("offline package integrity verifier",
+                                  ROOT / "assessment-integrated-suite/verify_offline.py"),
+                                 *APPS.items()):
             print(label + ": " + ("installed" if component.is_file() else "absent"))
         print("REVIEW_ONLY: no authority to execute, scan or release")
         return 0
     try:
+        if args.command == "verify-kit":
+            return verify_package(Path(args.package).absolute())
         if args.command == "human-workpack":
             return private_human_workpack(args)
         if args.command == "workpack-progress":
@@ -302,8 +312,8 @@ def main() -> int:
         if args.command == "workpack-continue":
             return private_workpack_continue(args)
         return prepare(args)
-    except (Hold, OSError, ValueError, TypeError) as exc:
-        print(str(exc) if isinstance(exc, Hold) else "HOLD: local private preparation refused",
+    except (Hold, VerifyHold, OSError, ValueError, TypeError) as exc:
+        print(str(exc) if isinstance(exc, (Hold, VerifyHold)) else "HOLD: local private preparation refused",
               file=sys.stderr)
         return 3
 

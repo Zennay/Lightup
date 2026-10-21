@@ -171,7 +171,7 @@ def verify(path: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify local LightUp software-only ZIP bytes without extracting")
+        description="Verify v26+ LightUp software-only ZIP bytes without extracting")
     parser.add_argument("--package", required=True,
                         help="path to an existing offline software ZIP")
     args = parser.parse_args()
