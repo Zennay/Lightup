@@ -71,6 +71,22 @@ rejected too. This is a narrow export-boundary guard, not a guarantee that all
 spreadsheet clients are safe and not a general secret-redaction claim.
 HUMAN notes are NEVER treated as authenticated assignments or sent automatically.
 
+Before editing, the original unmodified template can also be re-admitted
+**without writing any file**:
+
+~~~sh
+python3 assessment-disclosure-preflight/private_inbox_actions.py reopen-template \
+  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \
+  --private-output-dir ./owner-private-discussion
+~~~
+
+`reopen-template` reconstructs the exact source-bound original template
+and accepts only the single expected output file in an owner-owned 0700
+directory, as a regular, unlinked owner-owned 0600 file with identical bytes.
+An extra file, symlink, wrong owner/mode, altered original board or changed
+template fails closed. Store editable copies in **separate** private folders;
+the original template reopen intentionally rejects extra copies.
+
 ## Edit the original template with the complete offline HUMAN browser Studio
 
 Open [private-inbox-action-studio.html](./private-inbox-action-studio.html)
@@ -146,11 +162,16 @@ python3 assessment-disclosure-preflight/private_inbox_actions.py reopen \
   --private-output-dir ./owner-private-final-discussion
 ~~~
 
-This reconstructs original exact HTML/CSV/JSON bytes and compares all three
-PRIVATE saved outputs without rewriting them. A changed source-free board,
-missing/reordered HUMAN row, invalid stage or unsafe note, mismatched receipt,
-unsigned output drift or missing private source results in HOLD (3).
+This reconstructs the exact HTML/CSV/JSON bytes and checks **the entire saved
+three-file inventory** and all bytes without rewriting. It requires an
+owner-owned 0700 directory containing exactly three expected owner-owned
+regular 0600 files (with no symlink or hard-link aliases). Unexpected extra
+files, changed board, missing/reordered HUMAN rows, an invalid stage/unsafe
+note, wrong permissions or altered report bytes return HOLD (3).
 Normal completion is REVIEW_ONLY (2), never approval or release.
+The same fail-closed custody boundary is shared with `reopen-template`
+and `reopen-compare`: byte equality proves local preservation only, not a
+trusted origin, original source authenticity, consent or approval.
 
 ## Security and scope
 
