@@ -26,6 +26,7 @@ SOFTWARE_FILES = (
     "private_reopen.py", "private_inbox_board.py", "PRIVATE-INBOX-PORTFOLIO.md",
     "private_inbox_actions.py", "PRIVATE-INBOX-ACTIONS.md", "private_inbox_workroom.py",
     "private_inbox_history.py", "PRIVATE-INBOX-HISTORY.md",
+    "private_inbox_interval.py",
     "private-inbox-history-studio.html", "private-inbox-history-studio.css",
     "private-inbox-history-studio.js", "private-inbox-history-compose.js",
     "private_inbox_history_package.py", "private-inbox-history-standalone.html",

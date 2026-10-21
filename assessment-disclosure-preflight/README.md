@@ -1239,3 +1239,25 @@ source-file choices change, and stale asynchronous native imports cannot
 overwrite newer histories. No remote deletion, browser-memory wiping
 guarantee, saved-download deletion or actual consent is asserted. Read
 [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md) for privacy boundaries.
+
+### New original native interval report (private HTML + CSV + JSON)
+
+For any earlier/later HUMAN planning round pair, the included
+[private_inbox_interval.py](./private_inbox_interval.py) builds and
+read-only reopens a **complete, source-bound owner-private interval
+dossier** using the original `PRIVATE-inbox-portfolio.json` and
+all 2–8 complete original HUMAN worksheets. The native reporter
+independently verifies all original source-free inputs before writing;
+it never imports the browser's unsigned interval CSV as original source.
+Outputs are scriptless HTML, all-slot privacy-minimal CSV and unsigned
+source-free JSON, exclusively into a new empty 0700 folder with
+owner-only 0600 files. Reopen enforces complete inventory and exact
+recalculated bytes. Unlike simple endpoint differences, an intervening
+status or role edit remains visibly flagged even if later reversed.
+Note-change flags indicate only an edit happened at least once.
+
+Command examples, native re-admission, privacy/consent and no-release
+limitations are documented in
+[PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md). This is a local
+HUMAN planning dossier, never a customer scan, authenticated finding,
+remediation, staff assignment, consent record or security approval.

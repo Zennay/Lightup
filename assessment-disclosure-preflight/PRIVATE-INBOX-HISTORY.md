@@ -203,3 +203,47 @@ belongs to the new originals. In-flight older file imports are rejected
 rather than overwriting a newer session. The browser cannot securely wipe
 its process memory or an already downloaded file; close the trusted browser
 after private work and protect local downloads separately.
+
+### Native original-source PRIVATE HUMAN interval dossier
+
+The source-bound interval counterpart to the browser range comparator is
+`private_inbox_interval.py`. It re-admits the exact original source-free
+board and all 2–8 complete HUMAN CSV revisions; an interval may begin
+at any earlier manual round and end at any later one. Original source-file
+SHA-256 membership, complete original slot order, valid private HUMAN
+note content and unchanged 0600 private input bytes are independently
+admitted before publication.
+
+To build an **original-source 0700/0600 PRIVATE three-file dossier**,
+create a new empty owner-only directory outside all original input trees:
+
+~~~sh
+mkdir -m 700 ./owner-private-interval
+python3 assessment-disclosure-preflight/private_inbox_interval.py build \
+  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \
+  --revision ./owner-private-sheets/first.csv \
+  --revision ./owner-private-sheets/second.csv \
+  --revision ./owner-private-sheets/third.csv \
+  --from-round 1 --to-round 3 \
+  --private-output-dir ./owner-private-interval
+~~~
+
+The resulting `PRIVATE-HUMAN-original-interval.html` (scriptless),
+`PRIVATE-HUMAN-original-interval.csv` (complete original slots) and
+`PRIVATE-HUMAN-original-interval.json` are independently regenerated
+only from the unchanged original board and original worksheets. Each row
+distinguishes **endpoint stage/role differences** from **any intervening
+stage/role edit**, including reversals. Question and next-action fields
+are represented only by an *at-least-one-edit* boolean, never note text.
+Manual row order is not a verified timestamp. None of these reports
+contains original target data, file paths, board digests or reviewer IDs.
+
+To reopen the stored dossier **read-only**, use the *same original files
+in the same manual order* and same round limits with the `reopen` action
+and existing output folder. The receiver requires the exact entire
+three-file output inventory, 0700/0600 owner-only ownership, ordinary
+unlinked files and byte-for-byte equality; unexpected files, symlinks,
+changed inputs or saved reports return HOLD without changes.
+The browser's unsigned interval CSV is not itself a native source-bound
+dossier; original private input custody remains mandatory. Exit code
+2 is REVIEW_ONLY and code 3 is HOLD, never authorization.
