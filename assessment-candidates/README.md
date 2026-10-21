@@ -67,9 +67,9 @@ This independent branch changes exclusively **new** files in `assessment-candida
 ### Combined candidate metrics + PRIVATE HUMAN round history
 
 When 2–8 source-byte-bound PRIVATE HUMAN drafts have been admitted against the
-same original lab report bytes, the existing scriptless aggregate brief now
-includes the complete manually ordered per-case round timeline and the current
-locally recorded generic discussion suggestions. The brief still includes
+same original lab report bytes, the scriptless HTML brief and aggregate JSON export now include the complete
+manually ordered per-case round timeline and current locally recorded generic
+discussion suggestions. The brief still includes
 candidate aggregate metrics, the selected pair numeric deltas and original
 adverse-flag crossover. It never exports source case IDs, source hashes,
 filenames, aliases, notes, targets or reviewer identities. A changed status,

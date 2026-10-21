@@ -592,6 +592,36 @@
     return Number.isSafeInteger(a)&&Number.isSafeInteger(b)&&a>=0&&b>=0&&
       a<reports.length&&b<reports.length&&a!==b?pairChurn(a,b):null;
   }
+  function reviewRoundExport(){
+    if(!reviewRounds||demo||reports.length<2||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]))return null;
+    const ids=queueIds();
+    const current=[...discussions.entries()].map(([id,row])=>({
+      case_ordinal:ids.indexOf(id)+1,proposed_group:row.route,discussion_stage:row.stage
+    })).filter(row=>row.case_ordinal>0).sort((a,b)=>a.case_ordinal-b.case_ordinal);
+    return {
+      schema:"lightup.lab_candidate_human_review_rounds.v1",
+      status:"REVIEW_ONLY",round_count:reviewRounds.rounds,
+      manually_selected_round_order:true,round_order_authenticated:false,
+      source_bytes_bound_to_current_import_locally:true,
+      changed_case_count:reviewRounds.diff.length,
+      proposal_transition_count:reviewRounds.totalTransitions,
+      hypothetical_setting_changes:reviewRounds.settingChanges,
+      changed_cases:reviewRounds.diff.map(item=>({
+        case_ordinal:item.ordinal,proposal_transitions:item.transitions,
+        reverted_to_first:item.before.route===item.after.route&&
+          item.before.stage===item.after.stage,
+        rounds:reviewRounds.snapshots.map((rows,i)=>({
+          round_slot:i+1,proposed_group:rows[item.ordinal-1].route,
+          discussion_stage:rows[item.ordinal-1].stage
+        }))
+      })),
+      current_local_discussions:current,
+      disclaimer:"Unsigned source-free HUMAN self-reports in manual file order. No reviewer identity, verified chronology, source authenticity, remediation, consent or release is established.",
+      source_identity_authenticated:false,...fixedFlags()
+    };
+  }
   function exportJSON(){
     if(!reports.length||!settings)return;
     const out={schema:"lightup.lab_candidate_matrix_review.v4",
@@ -603,6 +633,7 @@
       human_discussion_summary:discussionSummary(),
       source_based_discussion_agenda:agendaCounts(),
       selected_pair_flag_crossover:currentPairChurn(),
+      human_review_round_history:reviewRoundExport(),
       candidates:metricRows(),...fixedFlags()};
     download("lightup-candidate-aggregate-REVIEW-ONLY.json",JSON.stringify(out,null,2)+"\n","application/json");
   }
