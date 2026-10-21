@@ -29,6 +29,7 @@ NAMES = (
     "lightup-lab-human-history-routing-private.csv",
     "lightup-lab-human-history-counts.json",
     "lightup-lab-human-history-counts.csv",
+    "lightup-lab-human-history-brief.html",
 )
 STYLE = ("body{font:15px/1.55 system-ui,sans-serif;color:#17212f;"
          "background:#f5f7fa;max-width:1160px;margin:2rem auto;padding:0 1rem}"
@@ -292,6 +293,102 @@ def render_history(rounds, endpoints, summary):
         "revocation or explicit HUMAN GO.</small></p></body></html>"
     ).encode("utf-8")
 
+
+BRIEF_STYLE = (
+    "body{background:#f4f7fa;color:#17212f;font:15px/1.55 system-ui,sans-serif;"
+    "max-width:1020px;margin:2rem auto;padding:0 1rem}"
+    "h1{font-size:2rem}.warning{background:#fff5e9;border-left:6px solid #a05a17;"
+    "font-weight:750;padding:1rem}section{background:white;border:1px solid #cfd9e5;"
+    "border-radius:.6rem;margin:1rem 0;padding:1rem}"
+    "table{border-collapse:collapse;width:100%}th,td{text-align:left;"
+    "border:1px solid #bfcbd9;padding:.65rem}th{background:#eff3f8}"
+    "small{color:#475569}@media print{body{margin:0;max-width:none}}"
+)
+
+def render_counts_brief(summary):
+    """Private-by-default source-free HUMAN workload overview; no original per-slot data."""
+    css_hash = base64.b64encode(sha256(BRIEF_STYLE.encode("utf-8")).digest()).decode("ascii")
+    rounds = []
+    for record in summary["round_counts"]:
+        rounds.append("<tr><td>" + str(record["round_ordinal"]) + "</td>" +
+                      "".join("<td>" + str(record["by_stage"][stage]) + "</td>"
+                              for stage in STAGES) +
+                      "<td>" + str(record["human_notes_present"]) + "</td></tr>")
+    transitions = []
+    for record in summary["transition_counts"]:
+        transitions.append(
+            "<tr><td>" + str(record["from_round"]) + " → " +
+            str(record["to_round"]) + "</td><td>" +
+            str(record["changed_slots"]) + "</td><td>" +
+            str(record["stage_changes"]) + "</td><td>" +
+            str(record["role_changes"]) + "</td><td>" +
+            str(record["private_note_changes"]) + "</td></tr>"
+        )
+    interval = summary["interval_counts"]
+    current_roles = "".join(
+        "<tr><td>" + escape(role) + "</td><td>" +
+        str(summary["current_human_role_counts"][role]) + "</td></tr>"
+        for role in ROLES
+    )
+    rows = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none';"
+        " style-src 'sha256-" + css_hash +
+        "'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none';"
+        " base-uri 'none'; form-action 'none'\">"
+        "<title>LightUp HUMAN planning · counts only</title><style>" +
+        BRIEF_STYLE + "</style></head><body>"
+        "<h1>HUMAN planning · aggregate briefing</h1>"
+        "<p class='warning'>INCUBATE M3/M7 · PLAN/LAB ONLY · REVIEW_ONLY · "
+        "DRAFT/HOLD · NO AUTHORIZATION</p>"
+        "<p>Manually ordered HUMAN rounds: <strong>" +
+        str(summary["human_round_count"]) +
+        "</strong>; source-reported local slots: <strong>" +
+        str(summary["source_reported_endpoint_count"]) +
+        "</strong>. Stage and reviewer role are HUMAN self-reports only.</p>"
+        "<section><h2>Follow-up workload per manually selected round</h2>"
+        "<table><thead><tr><th>Round</th>" +
+        "".join("<th>" + escape(stage) + "</th>" for stage in STAGES) +
+        "<th>Notes present</th></tr></thead><tbody>" +
+        "".join(rounds) + "</tbody></table></section>"
+        "<section><h2>Changes between neighboring HUMAN rounds</h2>"
+        "<table><thead><tr><th>Manual order</th><th>Changed slots</th>"
+        "<th>Stage changes</th><th>Role changes</th>"
+        "<th>Private notes modified</th></tr></thead><tbody>" +
+        "".join(transitions) + "</tbody></table></section>"
+        "<section><h2>Human interval comparison</h2>"
+        "<p>Selected manual rounds " + str(interval["from_round"]) +
+        " → " + str(interval["to_round"]) + ".</p>"
+        "<table><tbody>"
+        "<tr><th>Slots with net HUMAN changes</th><td>" +
+        str(interval["net_changed_slots"]) + "</td></tr>"
+        "<tr><th>Stage changes</th><td>" +
+        str(interval["net_stage_changes"]) + "</td></tr>"
+        "<tr><th>Role changes</th><td>" +
+        str(interval["net_role_changes"]) + "</td></tr>"
+        "<tr><th>Private note changes</th><td>" +
+        str(interval["net_private_note_changes"]) + "</td></tr>"
+        "<tr><th>Stage returned to previous HUMAN value</th><td>" +
+        str(interval["human_stages_returned_to_first_value"]) + "</td></tr>"
+        "<tr><th>Role returned to previous HUMAN value</th><td>" +
+        str(interval["human_roles_returned_to_first_value"]) +
+        "</td></tr></tbody></table></section>"
+        "<section><h2>Latest suggested HUMAN reviewer distribution</h2>"
+        "<table><thead><tr><th>Suggested reviewer role</th><th>Slots</th>"
+        "</tr></thead><tbody>" + current_roles + "</tbody></table></section>"
+        "<p><small>Only fixed vocabulary and aggregate integer counts appear here. "
+        "Original endpoint URLs, source paths/digests, individual slot ordinals and "
+        "private HUMAN note texts are not embedded. Small populations can still "
+        "be identifiable from their counts; this briefing is PRIVATE by default "
+        "and is NOT a confidentiality or anonymity guarantee. Manual order is "
+        "not authenticated chronology. No real security findings, remediation, "
+        "approvals, consent, grants, verified client identity, scans or HUMAN GO "
+        "are attested by these self-reports.</small></p></body></html>"
+    )
+    return rows.encode("utf-8")
+
 def output_artifacts(rounds, endpoints, from_round=1, to_round=None):
     summary = analyze(rounds, from_round, to_round)
     routing_rows = ["original_slot,current_human_stage,suggested_role,"
@@ -342,6 +439,7 @@ def output_artifacts(rounds, endpoints, from_round=1, to_round=None):
         (NAMES[1], ("\n".join(routing_rows) + "\n").encode("utf-8")),
         (NAMES[2], (json.dumps(summary, indent=2, ensure_ascii=False) + "\n").encode("utf-8")),
         (NAMES[3], ("\n".join(summary_lines) + "\n").encode("utf-8")),
+        (NAMES[4], render_counts_brief(summary)),
     ]
 
 def admitted_rounds(paths, digest, endpoints):
