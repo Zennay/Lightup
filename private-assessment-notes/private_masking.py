@@ -41,7 +41,8 @@ _SHELL_HEADER = re.compile(
 _SHELL_CREDENTIAL = re.compile(
     r"""(?i)(?<![A-Za-z0-9_-])
     (?P<prefix>--(?:proxy-user|user|password|passwd|api-key|
-    access-token|refresh-token|client-secret|auth-token|cookie)
+    access-token|refresh-token|client-secret|auth-token|cookie|
+    oauth2-bearer|proxy-password|tlsuser|tlspassword|key|cert)
     (?:[ \t]+|=)|-u[ \t]+|-b(?:[ \t]+|=)?)
     (?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s\r\n]+)""",
     re.VERBOSE,

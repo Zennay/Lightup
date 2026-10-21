@@ -17,6 +17,17 @@ _CURL_ARGUMENT = re.compile(
     (?P=quote)""",
     re.VERBOSE,
 )
+# curl also accepts a single unquoted name=value or name@file argument.
+# The quote-aware path above handles multi-field values; this branch only
+# admits one bounded shell word and never joins across whitespace/operators.
+_CURL_UNQUOTED = re.compile(
+    r"""(?ix)(?<![A-Za-z0-9_-])
+    (?P<flag>--data(?:-raw|-binary|-urlencode)?|--form(?:-string)?|-[dF])
+    (?P<separator>[ \t]*=[ \t]*|[ \t]+)
+    (?P<payload>(?!["'])(?:[^\s\r\n"'`<>|;&]){1,4096})""",
+    re.VERBOSE,
+)
+
 _CREDENTIAL_FIELD = re.compile(
     r"""(?ix)^(?:password|passwd|pwd|api[_-]?key|secret|
     client[_-]?secret|private[_-]?key|(?:access|refresh|auth|id)[_-]?token|
@@ -72,10 +83,17 @@ def _mask_payload(match: re.Match[str]) -> str:
             + match.group("quote") + "".join(segments) + match.group("quote"))
 
 
+def _mask_unquoted(match: re.Match[str]) -> str:
+    payload = match.group("payload")
+    masked = _mask_field(payload, urlencoded=match.group("flag").lower() == "--data-urlencode")
+    return match.group("flag") + match.group("separator") + masked
+
+
 def mask_curl_form_payloads(text: str) -> str:
     """Mask known credential name=value / name@file form fragments.
 
     Multiple query-style fields in one bounded quoted argument are handled.
     Arbitrary shell syntax, encodings and nested structures are not.
     """
-    return _CURL_ARGUMENT.sub(_mask_payload, text)
+    quoted = _CURL_ARGUMENT.sub(_mask_payload, text)
+    return _CURL_UNQUOTED.sub(_mask_unquoted, quoted)
