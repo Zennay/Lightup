@@ -123,11 +123,15 @@ def main(argv=None):
                     raise Hold("PRIVATE routing output must be separate from all sources")
             expected = dict(create_artifacts(worksheet, endpoints, args.role, args.stage))
             if args.verify_routing_dir:
+                if set(os.listdir(output_fd)) != set(FILES):
+                    raise Hold("PRIVATE HUMAN routing directory has missing or unexpected files")
                 received = {name: read_private_bundle_item(output_fd, name, 65536)
                             for name in FILES}
                 if received != expected:
                     raise Hold("routing handoff changed or no longer matches exact source")
             else:
+                if os.listdir(output_fd):
+                    raise Hold("new PRIVATE HUMAN routing directory must be empty")
                 renewed_dir, renewed_endpoints, renewed_digest = read_original_bundle(args.bundle_dir)
                 renewed_round_dir, renewed_worksheet = read_round(
                     args.round_dir, renewed_digest, renewed_endpoints)
