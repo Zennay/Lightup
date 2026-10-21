@@ -11,8 +11,8 @@ JSON, as well as text data/payload within Chrome HAR `_webSocketMessages`.
 HAR cookie values with unrecognized application-specific names are also
 withheld in PRIVATE output. Headers, timing, cookie names and HUMAN review
 flow remain available.
-The source document is never modified. New masking-cue receipts are v9,
-with exact historical v1-v8 reopen support. No runtime scan or network.
+The source document is never modified. New masking-cue receipts are v10,
+with exact historical v1-v9 reopen support. No runtime scan or network.
 Any malformed/oversize/unknown source stays confidential and requires
 independent HUMAN review; this is not safe-sharing certification.
 

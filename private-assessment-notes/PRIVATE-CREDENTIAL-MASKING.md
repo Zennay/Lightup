@@ -214,7 +214,7 @@ previously generated packets are not changed or reinterpreted.
 Neither presence nor absence of masking placeholders is evidence
 that secrets or personal data are absent.
 
-## NEW: navigable original-ordinal masking-cue desk (v9)
+## NEW: navigable original-ordinal masking-cue desk (v10)
 
 The native `notes.py masking-cues` and optional
 `notes.py prepare --with-mask-cues` now render a fully offline
@@ -226,13 +226,14 @@ groups show no original text, customer names, source digests, freeform
 HUMAN notes, credentials or authority claims. Zero counts are *not* clearance.
 
 New independent native cue receipts use
-`lightup.private_assessment_masking_cues.v9`, including new
-opaque original HAR request/response body and WebSocket message markers
-in the structured-config literal-count family. The original v8 HAR
-form/JSON/multipart cue family and v1-v7 historical families are preserved
-exactly on read-only reopen; no older receipt is silently upgraded.
+`lightup.private_assessment_masking_cues.v10`, including new
+opaque original HAR request/response body, WebSocket message and
+unrecognized-name cookie value markers in the structured-config literal-count
+family. The original v9 body/frame markers, v8 HAR form/JSON/multipart
+family and v1-v7 historical families remain preserved exactly on read-only
+reopen; no older receipt is silently upgraded.
 The original source-bound 0700/0600 custody is unchanged. The read-only
-`notes.py masking-cues-reopen` accepts **v1 through v8** historical
+`notes.py masking-cues-reopen` accepts **v1 through v9** historical
 receipts and their original HTML/CSV bytes; existing historical packets
 are never rewritten, auto-upgraded or silently normalized. In particular,
 new cue navigation does not change the canonical original source manifest,
