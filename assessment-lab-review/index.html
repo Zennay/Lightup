@@ -13,6 +13,15 @@
 <p id="message" role="status" aria-live="polite"></p></section>
 <section id="workspace" hidden aria-labelledby="desk"><h2 id="desk">2. Triage source-declared findings</h2>
 <p id="stats" class="stats"></p><p id="progress"></p>
+<section class="coverage-panel" aria-labelledby="coverage-heading">
+ <div class="coverage-toolbar"><div><h3 id="coverage-heading">Endpoint review coverage</h3>
+ <p id="coverage-summary" class="note">Open an original private artifact to calculate human-planning coverage.</p></div>
+ <button id="coverage-export" type="button" disabled>Export anonymous endpoint coverage CSV</button></div>
+ <div class="table-wrap"><table id="coverage-table"><caption>Local endpoint ordinals only · unverified source declarations</caption>
+ <thead><tr><th>Source endpoint</th><th>Findings</th><th>Needs review</th><th>Stage moved forward</th><th>Blocked stage</th><th>Blocker note</th><th>Next action missing</th><th>Open</th></tr></thead>
+ <tbody id="coverage-rows"></tbody></table></div>
+ <p class="note">Coverage is a HUMAN planning summary, not finding verification, completion, remediation, source authenticity or authorization. Ordinal 0 means an unmatched source-reported asset. The optional CSV contains only counts and literal false authority flags; small aggregates may still be sensitive.</p>
+</section>
 <div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><label for="search">Find source title/check or HUMAN note
 <input id="search" type="search" maxlength="180" autocomplete="off" placeholder="Local private text search"></label>
 <label for="sort">Priority view <select id="sort"><option value="source">Original source order</option>

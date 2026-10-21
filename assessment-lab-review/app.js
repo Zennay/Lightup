@@ -180,6 +180,39 @@ function updateSummary(){
  $("progress").textContent=notes.filter(n=>n.stage!=="needs_review").length+
   " human review notes progressed · "+notes.filter(n=>n.stage==="blocked").length+
   " human blockers · all source status unverified";
+ renderEndpointCoverage();
+}
+function endpointCoverageRows(){
+ const rows=new Map();
+ for(let ordinal=1;ordinal<=source.targets.length;ordinal++)rows.set(ordinal,{ordinal,findings:0,needs_review:0,stage_forward:0,blocked_stage:0,blocker_notes:0,next_action_missing:0});
+ source.findings.forEach((finding,index)=>{
+  const ordinal=endpointOrdinal(finding);
+  if(!rows.has(ordinal))rows.set(ordinal,{ordinal,findings:0,needs_review:0,stage_forward:0,blocked_stage:0,blocker_notes:0,next_action_missing:0});
+  const row=rows.get(ordinal),note=notes[index];row.findings++;
+  if(note.stage==="needs_review")row.needs_review++;else row.stage_forward++;
+  if(note.stage==="blocked")row.blocked_stage++;
+  if(note.blocker.trim())row.blocker_notes++;
+  if(!note.next_action.trim())row.next_action_missing++;
+ });
+ return [...rows.values()].sort((a,b)=>a.ordinal===0?1:b.ordinal===0?-1:a.ordinal-b.ordinal);
+}
+function renderEndpointCoverage(){
+ if(!source||!$("coverage-rows"))return;
+ const rows=endpointCoverageRows(),body=$("coverage-rows");body.replaceChildren();
+ rows.forEach(row=>{
+  const tr=document.createElement("tr");
+  cell(tr,row.ordinal===0?"Unmatched source-reported assets":"Endpoint "+row.ordinal);
+  cell(tr,row.findings);cell(tr,row.needs_review);cell(tr,row.stage_forward);cell(tr,row.blocked_stage);cell(tr,row.blocker_notes);cell(tr,row.next_action_missing);
+  const td=document.createElement("td"),button=el("button","View findings");button.type="button";
+  button.addEventListener("click",()=>{
+   filter="endpoint:"+row.ordinal;searchTerm="";sortMode="source";$("filter").value=filter;$("search").value="";$("sort").value="source";render();
+   $("findings").closest(".table-wrap").scrollIntoView({behavior:"smooth",block:"start"});
+   status("Showing source-reported findings for "+(row.ordinal===0?"unmatched assets":"local endpoint ordinal "+row.ordinal)+". This is not verified asset identity or scope.");
+  });td.append(button);tr.append(td);body.append(tr);
+ });
+ const waiting=rows.filter(row=>row.needs_review>0).length,unmatched=rows.some(row=>row.ordinal===0)?" · unmatched findings present":"";
+ $("coverage-summary").textContent=source.targets.length+" declared endpoint(s) · "+rows.reduce((n,row)=>n+row.findings,0)+" source-reported finding(s) grouped · "+waiting+" endpoint group(s) still contain needs-review items"+unmatched+". Human planning only.";
+ $("coverage-export").disabled=false;
 }
 function field(label,value,fn){
  const wrapper=el("label"),span=el("span",label);wrapper.append(span);
@@ -380,6 +413,17 @@ $("private").addEventListener("click",()=>{if(!source||!sourceHash)return;downlo
 $("aggregate").addEventListener("click",()=>{if(!source)return;
  download("lab-anonymous-human-counts.json",JSON.stringify(aggregate(),null,2)+"\n","application/json");
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
+$("coverage-export").addEventListener("click",()=>{
+ if(!source)return;
+ if(!confirm("Export only local endpoint ordinals and HUMAN planning counts? No URLs, finding titles, source hashes or notes are included. Small counts may still be sensitive; the export proves no source authenticity, completion or authorization."))return;
+ const flags=["source_authenticated","ground_truth_verified","client_consent_verified","operator_consent_verified","authorized","consent_verified","dispatch_allowed","release_allowed"];
+ const columns=["status","endpoint_ordinal","source_reported_finding_count","human_needs_review_count","human_stage_moved_forward_count","human_blocked_stage_count","human_blocker_note_count","human_next_action_missing_count",...flags];
+ const quote=value=>'"'+String(value).replaceAll('"','""')+'"';
+ const rows=endpointCoverageRows().map(row=>["REVIEW_ONLY",row.ordinal,row.findings,row.needs_review,row.stage_forward,row.blocked_stage,row.blocker_notes,row.next_action_missing,...flags.map(()=>false)]);
+ const csv=[columns,...rows].map(row=>row.map(quote).join(",")).join("\r\n")+"\r\n";
+ download("PRIVATE-lab-endpoint-human-coverage.csv",csv,"text/csv;charset=utf-8");
+ status("Counts-only endpoint coverage CSV exported. Ordinals and human stages remain unverified; no authorization or completion is implied.");
+});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
  source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});

@@ -80,6 +80,7 @@ def main() -> int:
         "1. Keep this ZIP private; no source data is bundled.\n"
         "2. Operator opens standalone.html and selects an ORIGINAL existing PRIVATE lab result.\n"
         "3. Operator filters findings, chooses a bounded subset and saves PRIVATE reviewer handoff.\n"
+        "3a. Endpoint coverage summarizes only local ordinals and HUMAN planning counts; export is unverified.\n"
         "4. Human recipient opens team-reply-standalone.html and imports PRIVATE handoff.\n"
         "5. Recipient edits human-only fields, previews and exports PRIVATE reply.\n"
         "6. Operator reopens the unchanged original source, imports reply, inspects private diff\n"
