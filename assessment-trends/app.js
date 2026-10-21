@@ -650,6 +650,48 @@
       ])];
       download("assessment-trends-PRIVATE-human-plan.csv",
         rows.map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    }else if(format==="html"){
+      const cols=["HUMAN self-reported stage","Static review group","Manual source slot",
+        "Anonymous scenario","Fixed metric","Source-reported event","Generic HUMAN follow-up"];
+      const rows=payload.proposed_human_actions.map(e=>[
+        e.human_self_report_stage,e.static_review_group,e.snapshot_slot,
+        "Scenario "+String(e.scenario_slot).padStart(2,"0"),e.metric,
+        REVIEW_KINDS[e.unverified_source_flag_event],e.human_next_step]);
+      const table="<table><thead><tr>"+cols.map(label=>
+        "<th scope='col'>"+esc(label)+"</th>").join("")+"</tr></thead><tbody>"+
+        rows.map(row=>"<tr>"+row.map(value=>"<td>"+esc(value)+"</td>").join("")+"</tr>").join("")+
+        "</tbody></table>";
+      const n=payload.proposed_human_actions.filter(e=>
+        e.human_self_report_stage==="NEEDS_INPUT").length;
+      const css="body{margin:2rem auto;padding:0 1rem;max-width:1280px;"+
+        "font:15px/1.5 system-ui,sans-serif;color:#182436}"+
+        "h1{font-size:1.9rem}.hold{border:2px solid #9a5b18;padding:1rem;background:#fff7ed}"+
+        ".wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}"+
+        "th,td{border:1px solid #aeb9c7;padding:.4rem;text-align:left}"+
+        "thead th{background:#edf2f7}tbody tr:nth-child(even){background:#f8fafc}"+
+        "@media print{body{margin:0;max-width:none}.hold{background:white}"+
+        "thead{display:table-header-group}tr{break-inside:avoid}}";
+      const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"+
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none';"+
+        " script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none';"+
+        " frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'\">"+
+        "<title>LightUp PRIVATE HUMAN follow-up plan</title><style>"+css+"</style></head><body>"+
+        "<h1>LightUp · PRIVATE HUMAN follow-up plan</h1>"+
+        "<div class='hold'><strong>PRIVATE / UNSIGNED / REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY</strong>"+
+        "<p>"+payload.action_count+" self-reported HUMAN actions: "+n+" NEEDS_INPUT, "+
+        (payload.action_count-n)+" FOLLOW_UP. Static grouping is not measured severity; "+
+        "manually selected snapshots and HUMAN status are not authenticated chronology or proof.</p>"+
+        "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+        "<p>Questions below are generic HUMAN follow-ups, not conclusions, assessments, permissions or verified remediation. "+
+        "A flag no longer present in a later source is not a verified fix.</p>"+
+        "<div class='wrap'>"+table+"</div>"+
+        "<p>No original source IDs, filenames, hashes, evidence bytes, client identities or saved HUMAN note text are disclosed. "+
+        "This PRIVATE file is UNSIGNED and must be reviewed by its original authorized HUMAN owners.</p></body></html>";
+      if(new Blob([html]).size>4194304){
+        $("workPlanRange").textContent="HOLD: PRIVATE printable plan exceeds 4 MiB; use JSON or CSV.";return;
+      }
+      download("assessment-trends-PRIVATE-human-followup-plan-REVIEW-ONLY.html",html,"text/html");
     }
     $("workPlanRange").textContent="Downloaded PRIVATE unsigned "+format.toUpperCase()+
       " with "+payload.action_count+" generic HUMAN follow-up actions and no note text.";
@@ -1386,6 +1428,7 @@
   });
   $("workPlanExportJson").addEventListener("click",()=>exportHumanPlan("json"));
   $("workPlanExportCsv").addEventListener("click",()=>exportHumanPlan("csv"));
+  $("workPlanExportBrief").addEventListener("click",()=>exportHumanPlan("html"));
   $("reviewExportStages").addEventListener("click",()=>exportHumanStages("json"));
   $("reviewExportStageCsv").addEventListener("click",()=>exportHumanStages("csv"));
   $("reviewExportStageBrief").addEventListener("click",()=>exportHumanStages("html"));
