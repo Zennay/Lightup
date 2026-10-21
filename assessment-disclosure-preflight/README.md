@@ -46,6 +46,30 @@ python3 assessment-disclosure-preflight/preflight.py \
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
 
+## Browser download → PRIVATE owner-only receiving inbox
+
+The new [offline PRIVATE HUMAN inbox](./PRIVATE-BROWSER-INBOX.md) provides a
+complete receiving operation instead of asking the operator to trust permissive
+browser Downloads storage. Native `private_intake.py` imports the original
+PRIVATE unsigned receipt, both reviewer CSV/encrypted source files, complete
+HUMAN decision CSV, one original full final plaintext/encrypted result and its
+separate suppressed counts CSV, into a new owner-only 0700 room with 0600 files.
+All original source/reviewer decisions, decrypted result when applicable and
+counts are re-admitted by the **original unmodified `reconcile.py reopen`**.
+Any mismatch results in HOLD with ordinary rollback of newly created files.
+Original Downloads files remain untouched and may still be insecure.
+
+~~~sh
+python3 assessment-disclosure-preflight/private_intake.py --help
+~~~
+
+Only after full original reopening does the room contain an additional
+PRIVATE unsigned receipt of exact local file lengths and SHA-256 with
+all genuine authority flags FALSE. It authenticates nobody, proves no findings,
+and is never permission to publish or launch assessments. Both this inbox
+and its detailed operator guide are bundled in the current **source-only**
+offline ZIP; they perform no network or target actions.
+
 ## Browser-generated COMPLETE PRIVATE HUMAN result: encrypted or plaintext
 
 The source-only [current one-file offline workroom](./reconcile-standalone.html)
@@ -720,7 +744,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 21
+store, scan workflow, credential grant or signed release. The 23
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -793,7 +817,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 21
+noncanonical, reordered, oversized or changed members, compares all 23
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no
