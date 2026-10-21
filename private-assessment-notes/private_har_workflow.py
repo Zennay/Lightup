@@ -142,6 +142,10 @@ def prepare(sources: list[str], private_parent: str) -> int:
         file_new(workflow / LANDING, _launcher(
             original[0].name, cue_rooms[0].name, manifest["original_count"]))
         save_json(workflow / MANIFEST, manifest)
+        # Native product admission before publishing any component path:
+        # reconstruct the exact original source, v19 cues and launcher.
+        # This is part of the create transaction, not a separate QA run.
+        admit(str(workflow))
         complete = True
         print("REVIEW_ONLY/HOLD: linked offline PRIVATE original+HAR workrooms prepared")
         print("OPEN LOCALLY: " + str(workflow / LANDING))
