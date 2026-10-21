@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Ten existing offline source-bound workflows in one accessible user menu.
+Eleven offline source-bound and local packet workflows in one user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -17,6 +17,7 @@ from response import prepare_reply, return_reply
 from response_triage import prepare as prepare_triage, finish as return_triage
 from next_round import propose as propose_next_round
 from review_hub import build as build_human_overview
+from packet_open import reopen as reopen_curated_packet
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -39,6 +40,8 @@ WORKFLOWS = {
           "same original source, response, triage binding and explicit HUMAN proposed next question"),
     "10": ("Create PRIVATE consolidated HUMAN assessment workroom dashboard",
            "original selection and optionally source-bound recipient response and sender HUMAN triage"),
+    "11": ("Reopen existing PRIVATE selected-evidence packet by local byte integrity",
+           "already-produced original 0700 PRIVATE curation packet directory only"),
 }
 
 
@@ -65,6 +68,16 @@ def run_workflow(choice: str) -> None:
     print("Required:", WORKFLOWS[choice][1])
     print("HOLD: original lab source and HUMAN reviews are UNVERIFIED.")
     print("Never grants target permission, verifies source identity or changes runtime.")
+    if choice == "11":
+        private_directory = ask_path("EXISTING PRIVATE curated packet directory")
+        print("This checks owner-only local files against UNSIGNED recorded bytes ONLY.")
+        print("It CANNOT validate original sources, consent, recipient identity or findings.")
+        if input("Enter exactly REVIEW ONLY to reopen without publishing: ") != "REVIEW ONLY":
+            raise Hold("Human declined local packet reopen")
+        count = reopen_curated_packet(private_directory)
+        print("PRIVATE local packet bytes consistent; " + str(count) +
+              " HUMAN-selected entries; UNSIGNED / NO permission / REVIEW_ONLY")
+        return
     source = ask_path("EXISTING original lab source JSON")
     manifest = ask_path("EXISTING original PRIVATE source briefing manifest JSON")
     worksheet = ask_path("EXISTING original seven-column source-bound HUMAN worksheet CSV")
@@ -169,7 +182,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–10]: ").strip()
+        choice = input("PRIVATE workflow [0–11]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
@@ -183,7 +196,8 @@ def main() -> int:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
+    print("\nEXISTING PRIVATE packet reopened; no new output" if choice == "11" else
+          "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 
 

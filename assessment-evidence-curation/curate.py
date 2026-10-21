@@ -310,6 +310,7 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
         "human_selection_sha256_unsigned": digest(selection_raw),
         "private_curated_dossier_sha256_unsigned": digest(private_report),
         "private_packet_directory_sha256_unsigned": digest(directory),
+        "anonymous_counts_sha256_unsigned": digest(json_bytes(aggregate)),
         "source_minimized_human_handoff_sha256_unsigned": digest(limited_handoff),
         "private_priority_handoff_sha256_unsigned": {
             priority: digest(data) for priority, data in prioritized.items()
