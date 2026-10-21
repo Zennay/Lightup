@@ -16,6 +16,8 @@ forms frequently present in assessment writeups:
 
 - **Shell and cURL:** quoted `-H`, `--header` and `--proxy-header`
   with sensitive Authorization, Cookie, Set-Cookie or API-token headers;
+  compact `-H'Authorization: ...'` and `-H"Cookie: ..."` forms
+  (without a space after `-H`);
   explicit `-u`, `--user`, `--proxy-user`, `--password`,
   `--api-key`, `--access-token`, `--refresh-token`,
   `--client-secret` and `--auth-token` credential options.
