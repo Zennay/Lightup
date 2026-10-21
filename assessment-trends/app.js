@@ -459,7 +459,7 @@
       button.addEventListener("click",()=>{
         selectedScenario=event.id;selectedMetric=event.metric;
         $("scenarioSelect").value=selectedScenario;$("noteMetric").value=selectedMetric;
-        renderScenarioDetail();renderNotePanel();$("noteInput").focus();
+        renderScenarioDetail();renderNotePanel();renderNotePacketControls();$("noteInput").focus();
         $("commentary").scrollIntoView({block:"start",behavior:"smooth"});
       });
       action.append(button);line.append(action);body.append(line);
@@ -572,7 +572,7 @@
   function openHumanCommentary(event){
     selectedScenario=event.id;selectedMetric=event.metric;
     $("scenarioSelect").value=selectedScenario;$("noteMetric").value=selectedMetric;
-    renderScenarioDetail();renderNotePanel();$("noteInput").focus();
+    renderScenarioDetail();renderNotePanel();renderNotePacketControls();$("noteInput").focus();
     $("commentary").scrollIntoView({block:"start",behavior:"smooth"});
   }
   function selectedHumanPlanRows(){
