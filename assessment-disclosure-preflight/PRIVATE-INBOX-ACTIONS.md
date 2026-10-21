@@ -80,7 +80,12 @@ requires the exact complete original six-column layout, one SHA-bound
 original row per original input slot in source order, a literal valid stage
 and suggested role, and bounded safe single-line HUMAN notes. It supports
 filters for open, in-progress and completed discussions **without omitting
-any hidden row from the full export**. All editing stays in memory:
+any hidden row from the full export**. Bulk-propose a status and/or discussion
+role for only currently visible slots after explicit confirmation; the full
+proposed batch is validated before any row changes, and a single Undo restores
+the pre-batch values until an individual row edit invalidates it. If any
+proposed combination violates the original worksheet rules, the entire batch
+is refused. All editing stays in memory:
 there is no fetch, localStorage, telemetry, auto-routing, scanner or model.
 
 Select **Export complete PRIVATE HUMAN actions CSV** and manually move the

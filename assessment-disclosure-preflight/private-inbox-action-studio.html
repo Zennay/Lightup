@@ -28,6 +28,13 @@
 <div class="actions"><label for="filter">Show slots</label>
 <select id="filter"><option value="ALL">All original slots</option><option value="OPEN">Unreviewed / needs input</option><option value="PROGRESS">In progress</option><option value="DISCUSSION">Discussion complete, NO RELEASE</option></select>
 <span id="counter" aria-live="polite"></span></div>
+<div class="bulk-tools" aria-labelledby="bulk-heading">
+<h3 id="bulk-heading">Bulk-propose HUMAN stage or discussion role</h3>
+<div class="bulk-fields"><label for="bulk-status">Stage for visible slots<select id="bulk-status"><option value="">Leave unchanged</option><option value="UNREVIEWED">UNREVIEWED</option><option value="NEEDS_INPUT">NEEDS_INPUT</option><option value="IN_PROGRESS">IN_PROGRESS</option><option value="DISCUSSION_COMPLETE_NO_RELEASE">DISCUSSION_COMPLETE_NO_RELEASE</option></select></label>
+<label for="bulk-role">Proposed role for visible slots<select id="bulk-role"><option value="">Leave unchanged</option><option value="UNASSIGNED">UNASSIGNED</option><option value="SECURITY">SECURITY</option><option value="PRIVACY">PRIVACY</option><option value="CLIENT_OPERATIONS">CLIENT_OPERATIONS</option><option value="PLATFORM">PLATFORM</option></select></label></div>
+<div class="actions"><button id="bulk-apply" type="button" disabled>Apply to visible slots</button><button id="bulk-undo" type="button" class="secondary" disabled>Undo last bulk change</button><span id="bulk-visible-count" aria-live="polite"></span></div>
+<p id="bulk-message" role="status" aria-live="polite">Bulk changes are HUMAN-only. The whole batch is refused if any row would violate the original worksheet rules.</p>
+</div>
 <div id="cards" class="cards"></div>
 <p class="privacy">Filters only hide cards; exports ALWAYS preserve all original slots and their original sequence. Browser notes are not persisted automatically. Do not use this app on shared machines for real sensitive HUMAN text.</p>
 <div class="actions">

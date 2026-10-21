@@ -10,11 +10,20 @@
   const $ = id => document.getElementById(id);
   let rows = [];
   let digest = "";
+  let lastBulkUndo = null;
 
   function clear() {
     rows = [];
     digest = "";
+    lastBulkUndo = null;
     $("upload").value = "";
+    $("bulk-apply").disabled = true;
+    $("bulk-undo").disabled = true;
+    $("bulk-status").value = "";
+    $("bulk-role").value = "";
+    $("bulk-message").textContent = "No original HUMAN action sheet loaded. Nothing will be exported without its complete source-ordered rows.";
+    $("bulk-message").dataset.error = "false";
+    $("bulk-visible-count").textContent = "";
     $("cards").replaceChildren();
     $("editor").hidden = true;
     $("message").textContent = "No original HUMAN action sheet loaded.";
@@ -131,10 +140,10 @@
       const next = document.createElement("textarea");
       next.maxLength = MAX_TEXT; next.value = data.next;
       next.setAttribute("aria-label", "PRIVATE HUMAN next action slot "+(i+1));
-      status.addEventListener("change", () => { data.status = status.value; filter(); });
-      role.addEventListener("change", () => { data.role = role.value; });
-      question.addEventListener("input", () => { data.question = question.value; });
-      next.addEventListener("input", () => { data.next = next.value; });
+      status.addEventListener("change", () => { data.status = status.value; invalidateBulkUndo(); filter(); });
+      role.addEventListener("change", () => { data.role = role.value; invalidateBulkUndo(); });
+      question.addEventListener("input", () => { data.question = question.value; invalidateBulkUndo(); });
+      next.addEventListener("input", () => { data.next = next.value; invalidateBulkUndo(); });
       card.append(title, tag,
         fieldCardLabel("HUMAN stage (never a security verdict)", status),
         fieldCardLabel("Suggested discussion role (not assignment)", role),
@@ -158,6 +167,23 @@
       if (visible) displayed++;
     }
     $("counter").textContent = displayed + " visible · " + rows.length + " original slots retained in full export";
+    updateBulkControls(displayed);
+  }
+
+  function updateBulkControls(visibleCount) {
+    const count = visibleCount ?? [...$("cards").children].filter(card => !card.hidden).length;
+    $("bulk-apply").disabled = rows.length === 0 || count === 0;
+    $("bulk-undo").disabled = !lastBulkUndo;
+    $("bulk-visible-count").textContent = rows.length ? count + " visible slot(s) · batch changes affect only these rows" : "";
+  }
+
+  function invalidateBulkUndo() {
+    if (lastBulkUndo) {
+      lastBulkUndo = null;
+      $("bulk-message").textContent = "An individual row was edited; the previous bulk Undo was cleared to preserve the newer change.";
+      $("bulk-message").dataset.error = "false";
+    }
+    updateBulkControls();
   }
 
   $("upload").addEventListener("change", async event => {
@@ -191,6 +217,35 @@
   });
 
   $("filter").addEventListener("change", filter);
+  $("bulk-apply").addEventListener("click", () => {
+    if (!rows.length) return;
+    const stage = $("bulk-status").value, role = $("bulk-role").value;
+    const visible = [...$("cards").children].map((card,index)=>({card,index})).filter(item=>!item.card.hidden).map(item=>item.index);
+    if (!visible.length || (!stage && !role)) return;
+    const proposed = rows.map(row=>({...row}));
+    for (const index of visible) {
+      if (stage) proposed[index].status = stage;
+      if (role) proposed[index].role = role;
+    }
+    try {
+      proposed.forEach((row,index)=>validRow([digest,String(index+1),row.status,row.role,row.question,row.next],index,digest));
+      if (!confirm("Apply these HUMAN-only proposals to exactly "+visible.length+" currently visible original slots? All hidden rows stay unchanged. If the native worksheet rules are not met, no changes are applied.")) return;
+      lastBulkUndo = rows.map(row=>({...row}));
+      rows = proposed;
+      show();
+      $("bulk-message").textContent = "HUMAN-only batch applied to "+visible.length+" visible slot(s). One Undo is available; every original slot remains in the export.";
+      $("bulk-message").dataset.error = "false";
+    } catch (err) {
+      $("bulk-message").textContent = "HOLD: no batch changes applied ("+String(err.message||"worksheet rule refused")+"). Correct the conflicting rows individually or choose a different proposal.";
+      $("bulk-message").dataset.error = "true";
+    }
+  });
+  $("bulk-undo").addEventListener("click", () => {
+    if (!lastBulkUndo) return;
+    rows = lastBulkUndo; lastBulkUndo = null; show();
+    $("bulk-message").textContent = "Last HUMAN-only batch undone. No source slot or original evidence changed.";
+    $("bulk-message").dataset.error = "false";
+  });
   $("clear").addEventListener("click", clear);
   $("export").addEventListener("click", () => {
     $("export-message").textContent = "";

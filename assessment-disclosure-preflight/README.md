@@ -75,10 +75,14 @@ Studio and continue with native `private_inbox_actions.py finalize`.
 A new [fully offline PRIVATE HUMAN action browser Studio](./private-inbox-action-studio.html)
 loads an already prepared complete native six-column template and allows
 slot-by-slot source-free status, discussion-role and HUMAN text editing,
-in-memory filters and a full original-order CSV export. No HTTP, storage,
-background save or remote action; the original unchanged native
-`private_inbox_actions.py finalize` is still required to admit every
-complete exact source-bound row before publishing PRIVATE outputs.
+in-memory filters, an atomic bulk proposal for status/role on only visible
+slots with one reversible HUMAN-only Undo, and a full original-order CSV
+export. Every proposed row is admitted before any bulk change; a conflicting
+worksheet state refuses the entire batch. An individual edit invalidates Undo
+so it cannot overwrite newer choices. No HTTP, storage, background save or
+remote action; the original unchanged native `private_inbox_actions.py
+finalize` is still required to admit every complete exact source-bound row
+before publishing PRIVATE outputs.
 The [source-bound PRIVATE HUMAN action guide](./PRIVATE-INBOX-ACTIONS.md)
 and bundled `private_inbox_actions.py` complete the review workflow after
 `private_inbox_board.py` generates the original source-free board JSON:
