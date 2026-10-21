@@ -53,7 +53,11 @@ def human_text_ok(s: object) -> bool:
         return False
     if any(unicodedata.category(c) in ("Cf", "Cs", "Co", "Cn") for c in s):
         return False
-    first = s.lstrip(" \t\r\n")
+    # Spreadsheet imports may interpret compatibility forms (FULLWIDTH +/-/=)
+    # or leading combining marks before a dangerous formula prefix.
+    first = unicodedata.normalize("NFKC", s).lstrip()
+    while first and unicodedata.category(first[0]).startswith("M"):
+        first = first[1:].lstrip()
     return not first or first[0] not in FORMULA
 
 def read_original(source_path: str, manifest_path: str, worksheet_path: str):

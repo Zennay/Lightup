@@ -43,7 +43,7 @@ const headers=["original_ordinal","source_reported_severity","evidence_reference
 "original_human_priority","original_human_question","recipient_reported_stage",
 "recipient_human_reply","recipient_human_next_question"];
 const prohibited=/[\u0000-\u001f\u007f\p{Cf}\p{Cs}\p{Co}\p{Cn}]/u;
-const formula=/^\s*[=+@-]/u;
+function formulaText(value){return /^[=+@-]/u.test(value.normalize("NFKC").replace(/^[\s\p{Mark}]*/u,""));}
 const root=document.getElementById("cards"),feedback=document.getElementById("feedback");
 const summary=document.getElementById("summary"),pageLabel=document.getElementById("page");
 const filter=document.getElementById("filter"),stageFilter=document.getElementById("stage-filter");
@@ -51,7 +51,7 @@ const priorityFilter=document.getElementById("priority-filter");
 const size=16;let page=0;
 function error(message){feedback.textContent=message;feedback.hidden=!message;}
 function admitted(value){
- return value.length<=500&&!prohibited.test(value)&&!formula.test(value);
+ return value.length<=500&&!prohibited.test(value)&&!formulaText(value);
 }
 function changed(){return states.filter(s=>s.stage!=="").length;}
 function visible(){

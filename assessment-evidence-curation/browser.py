@@ -40,7 +40,7 @@ const root=document.getElementById("entries"), info=document.getElementById("sum
 const pages=document.getElementById("page-info"), error=document.getElementById("error");
 const search=document.getElementById("filter"), severity=document.getElementById("severity");
 const onlySelected=document.getElementById("selected-only");
-const formula=/^[\s]*[=+@-]/u;
+function formulaText(value){return /^[=+@-]/u.test(value.normalize("NFKC").replace(/^[\s\p{Mark}]*/u,""));}
 const prohibited=/[\u0000-\u001f\u007f\p{Cf}\p{Cs}\p{Co}\p{Cn}]/u;
 function selectedCount(){return states.reduce((n,x)=>n+(x.yes?1:0),0);}
 function showError(message){error.textContent=message;error.hidden=!message;}
@@ -114,7 +114,7 @@ function selectionCsv(){
  for(let i=0;i<states.length;i++){
   const s=states[i];if(!s.yes)continue;
   const v=s.question;
-  if(!v.trim() || v.length>500 || formula.test(v) || prohibited.test(v))
+  if(!v.trim() || v.length>500 || formulaText(v) || prohibited.test(v))
    throw Error("Original ordinal #"+(i+1)+" needs a safe HUMAN question without formula/control prefixes.");
  }
  const csv=[["original_ordinal","source_reported_severity","evidence_reference_count","select_for_private_dossier","human_priority","human_question"]];
@@ -184,7 +184,7 @@ async function resumeSelection(file){
    const yes=c[3]==="yes";
    if(!yes&&(c[4]!==""||c[5]!==""))throw Error("Unselected HUMAN fields must be blank.");
    if(yes&&(!["routine","soon","urgent"].includes(c[4])||!c[5].trim()||
-    c[5].length>500||formula.test(c[5])||prohibited.test(c[5])))
+    c[5].length>500||formulaText(c[5])||prohibited.test(c[5])))
     throw Error("Unsafe or incomplete HUMAN question at #"+(i+1)+".");
    if(yes&&++chosen>maxSelected)throw Error("At most 64 HUMAN selections.");
    incoming.push({yes,priority:yes?c[4]:"routine",question:yes?c[5]:""});

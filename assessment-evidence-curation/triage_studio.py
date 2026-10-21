@@ -42,13 +42,13 @@ const headers=["original_ordinal","original_human_priority","recipient_reported_
  "sender_human_route","sender_human_owner_group","sender_human_next_question"];
 const stages=original.map(()=>({route:"",owner:"",next:""}));
 const forbidden=/[\u0000-\u001f\u007f\p{Cf}\p{Cs}\p{Co}\p{Cn}]/u;
-const formula=/^\s*[=+@-]/u;
+function formulaText(value){return /^[=+@-]/u.test(value.normalize("NFKC").replace(/^[\s\p{Mark}]*/u,""));}
 const root=document.getElementById("entries");
 const summary=document.getElementById("summary"),notice=document.getElementById("notice");
 const query=document.getElementById("search"),filter=document.getElementById("route-filter");
 const size=12;let page=0;
 function fail(msg){notice.textContent=msg;notice.hidden=!msg;}
-function admissible(s,limit){return s.length<=limit&&!forbidden.test(s)&&!formula.test(s);}
+function admissible(s,limit){return s.length<=limit&&!forbidden.test(s)&&!formulaText(s);}
 function filtered(){
  const q=query.value.trim().toLowerCase();
  return original.map((r,i)=>({r,i})).filter(({r,i})=>
