@@ -252,8 +252,11 @@
     let candidate;
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      if (bytes.length !== file.size) throw new Error("Source changed while reading.");
-      const decoded = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+      if (bytes.length !== file.size ||
+          (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)) {
+        throw new Error("Source changed or uses a noncanonical UTF-8 BOM.");
+      }
+      const decoded = new TextDecoder("utf-8", {fatal: true, ignoreBOM:true}).decode(bytes);
       const catalogDoc = JSON.parse(decoded);
       const flags = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
       if (!catalogDoc || Array.isArray(catalogDoc) || typeof catalogDoc !== "object" ||
