@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Fourteen offline source-bound and local packet workflows in one user menu.
+Fifteen offline source-bound and local packet workflows in one user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -20,6 +20,7 @@ from review_hub import build as build_human_overview
 from packet_open import reopen as reopen_curated_packet
 from packet_handoff import prepare as prepare_priority_handoff, reopen as reopen_priority_handoff
 from priority_reply import receive as receive_priority_reply
+from priority_return_open import reopen as reopen_priority_return
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -50,6 +51,8 @@ WORKFLOWS = {
            "existing 0700 HUMAN question-only handoff; no original source required"),
     "14": ("Receive PRIVATE HUMAN reply for a single source-bound priority handoff",
            "complete original priority handoff and edited full recipient HUMAN reply CSV"),
+    "15": ("Reopen PRIVATE HUMAN priority reply packet by local unsigned bytes",
+           "already-produced full PRIVATE recipient HUMAN response folder"),
 }
 
 
@@ -117,6 +120,14 @@ def run_workflow(choice: str) -> None:
         count = receive_priority_reply(original, returned, output)
         print("PRIVATE HUMAN self-reported replies recorded: " + str(count) +
               "; NOT validated findings or remediation")
+        return
+    if choice == "15":
+        folder = ask_path("EXISTING PRIVATE HUMAN recipient return directory")
+        print("This checks UNSIGNED local packet bytes only; never recipient identity or consent.")
+        if input("Enter exactly REVIEW ONLY to reopen: ") != "REVIEW ONLY":
+            raise Hold("HUMAN declined local return packet reopen")
+        count = reopen_priority_return(folder)
+        print("PRIVATE HUMAN return rows: " + str(count) + "; NOT verified findings")
         return
     source = ask_path("EXISTING original lab source JSON")
     manifest = ask_path("EXISTING original PRIVATE source briefing manifest JSON")
@@ -222,7 +233,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–14]: ").strip()
+        choice = input("PRIVATE workflow [0–15]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
@@ -236,7 +247,7 @@ def main() -> int:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13") else
+    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15") else
           "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 
