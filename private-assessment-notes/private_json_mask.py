@@ -48,6 +48,7 @@ _HAR_MULTIPART_MARKER = "[REDACTED_HAR_MULTIPART_TEXT]"
 _HAR_REQUEST_BODY_MARKER = "[REDACTED_HAR_REQUEST_BODY]"
 _HAR_RESPONSE_BODY_MARKER = "[REDACTED_HAR_RESPONSE_BODY]"
 _HAR_WEBSOCKET_MARKER = "[REDACTED_HAR_WEBSOCKET_FRAME]"
+_HAR_COOKIE_MARKER = "[REDACTED_HAR_COOKIE_VALUE]"
 _DECODER = json.JSONDecoder(parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
 
 
@@ -142,11 +143,22 @@ class _Reader:
             value_node = members.get("value")
             if (name_node and value_node and name_node[0] == "string"
                     and value_node[0] == "string"
-                    and isinstance(name_node[1], str)
-                    and _SECRET_FIELD.fullmatch(name_node[1])):
-                marker = (_HEADER_MARKER if _HEADER_FIELD.fullmatch(name_node[1])
-                          else _PARAM_MARKER)
-                self.spans.append((value_node[2], value_node[3], marker))
+                    and isinstance(name_node[1], str)):
+                # HAR cookies carry credentials even when exporters use an
+                # arbitrary application-specific cookie name. Never display
+                # any of their original string values in a derived PRIVATE
+                # note. Preserve the cookie name for original HUMAN triage.
+                if path[-2:] in (("request", "cookies"),
+                                 ("response", "cookies")):
+                    marker = _HAR_COOKIE_MARKER
+                elif _SECRET_FIELD.fullmatch(name_node[1]):
+                    marker = (_HEADER_MARKER
+                              if _HEADER_FIELD.fullmatch(name_node[1])
+                              else _PARAM_MARKER)
+                else:
+                    marker = None
+                if marker is not None:
+                    self.spans.append((value_node[2], value_node[3], marker))
             # HAR postData.text can contain an entire *serialized* request
             # body. The existing name/value pairs do NOT inspect this field.
             # Recognize only explicit original postData mimeType + text with

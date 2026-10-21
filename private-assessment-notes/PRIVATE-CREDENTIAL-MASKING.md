@@ -108,6 +108,14 @@ forms frequently present in assessment writeups:
   JSON, duplicate keys, over-limit fragments, irregular exporter fields,
   HAR URLs/query values and unknown fields still require source-bound
   HUMAN privacy review. Already-created packages remain immutable.
+- **HAR cookies with application-specific names:** a well-formed bounded
+  original HAR entry's \`request.cookies[]\` and \`response.cookies[]\`
+  now withhold **every string cookie value**, including names that do not
+  resemble a known token. This prevents a derived PRIVATE workroom from
+  echoing arbitrary opaque session cookies. Literal cookie names and
+  surrounding original metadata remain for HUMAN inspection; the source
+  itself is unchanged. \`[REDACTED_HAR_COOKIE_VALUE]\` is a local
+  navigation marker, not proof of complete privacy or permission to send.
 - **HAR/JSON HTTP header objects:** adjacent quoted
   `"name": "Authorization", "value": "…"` and reversed
   `"value": "…", "name": "Authorization"`; also Cookie,

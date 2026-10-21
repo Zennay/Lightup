@@ -8,7 +8,9 @@ For newly generated **owner-private** workrooms, the original source-bound
 offline note redactor now withholds entire `request.postData.text` and
 `response.content.text` string bodies from structurally valid bounded HAR
 JSON, as well as text data/payload within Chrome HAR `_webSocketMessages`.
-Headers, timing, original positions and HUMAN review flow remain available.
+HAR cookie values with unrecognized application-specific names are also
+withheld in PRIVATE output. Headers, timing, cookie names and HUMAN review
+flow remain available.
 The source document is never modified. New masking-cue receipts are v9,
 with exact historical v1-v8 reopen support. No runtime scan or network.
 Any malformed/oversize/unknown source stays confidential and requires

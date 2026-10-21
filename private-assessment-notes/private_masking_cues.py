@@ -81,7 +81,8 @@ GROUPS = (*V8_GROUPS[:2],
           ("STRUCTURED_CONFIG", V8_GROUPS[2][1] +
            ("[REDACTED_HAR_REQUEST_BODY]",
             "[REDACTED_HAR_RESPONSE_BODY]",
-            "[REDACTED_HAR_WEBSOCKET_FRAME]")),
+            "[REDACTED_HAR_WEBSOCKET_FRAME]",
+            "[REDACTED_HAR_COOKIE_VALUE]")),
           V8_GROUPS[3])
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
