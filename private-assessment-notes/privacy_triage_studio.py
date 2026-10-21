@@ -40,7 +40,23 @@ const cueFilter = document.getElementById('cue-filter');
 const cueCategory = document.getElementById('cue-category');
 const cueReview = document.getElementById('cue-review');
 const csvCell = text => '"' + String(text).replaceAll('"','""') + '"';
-const banned = value => /^[\\s]*[=+@-]/.test(value) || /[\\x00-\\x08\\x0b-\\x1f\\x7f]/.test(value);
+const banned = value => {
+  const text = String(value);
+  if (/[\\x00-\\x08\\x0b-\\x1f\\x7f]/.test(text)) return true;
+  const badDirection = Array.from(text).some(ch => {
+    const n = ch.codePointAt(0);
+    return n === 0x061C || (n >= 0x202A && n <= 0x202E) ||
+      (n >= 0x2066 && n <= 0x2069) || n === 0x2028 || n === 0x2029;
+  });
+  const normalized = text.trimStart();
+  const first = normalized.codePointAt(0);
+  const leadingMark = first !== undefined &&
+    ((first >= 0x200B && first <= 0x200F) ||
+     (first >= 0x2060 && first <= 0x206F) ||
+     (first >= 0x0300 && first <= 0x036F) || first === 0xFEFF);
+  return badDirection || leadingMark || /^[=+@-]/.test(
+    normalized.normalize('NFKC').trimStart());
+};
 function td(tr, child) {
   const cell = document.createElement('td');
   if (child instanceof Node) cell.append(child); else cell.textContent = child;

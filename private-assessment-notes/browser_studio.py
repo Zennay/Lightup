@@ -18,6 +18,22 @@ JS = r"""
   const undo = document.getElementById("undo");
   let beforeBulk = null;
   function csv(value) {return '"' + String(value).replaceAll('"','""') + '"';}
+  function unsafeHumanCSVNote(value) {
+    const text = String(value);
+    const direction = Array.from(text).some(ch => {
+      const n = ch.codePointAt(0);
+      return n === 0x061C || (n >= 0x202A && n <= 0x202E) ||
+        (n >= 0x2066 && n <= 0x2069) || n === 0x2028 || n === 0x2029;
+    });
+    const trimmed = text.trimStart();
+    const initial = trimmed.codePointAt(0);
+    const formatted = initial !== undefined &&
+      ((initial >= 0x200B && initial <= 0x200F) ||
+       (initial >= 0x2060 && initial <= 0x206F) ||
+       (initial >= 0x0300 && initial <= 0x036F) || initial === 0xFEFF);
+    return direction || formatted ||
+      /^[=+@-]/.test(trimmed.normalize("NFKC").trimStart());
+  }
   function status(node) {return node.querySelector("select").value;}
   function note(node) {return node.querySelector("textarea").value;}
   function refresh() {
@@ -96,7 +112,7 @@ JS = r"""
         if (ordinal !== node.dataset.ordinal || sha !== node.dataset.sha256 ||
             !permitted.has(stage) || human.length > 500 ||
             /[\r\n\x00-\x08\x0B\x0C\x0E-\x1F]/.test(human) ||
-            /^[\s]*[=+@-]/.test(human))
+            unsafeHumanCSVNote(human))
           throw Error("Draft original byte identity or HUMAN stage does not match.");
         proposed.push({stage,human});
       }
@@ -214,7 +230,7 @@ JS = r"""
       const stage=status(node);
       const human=note(node).replace(/[\r\n\x00-\x08\x0B\x0C\x0E-\x1F]/g," ").trim();
       if (!/^[0-9a-f]{64}$/.test(source) || !/^\d+$/.test(ordinal) || !permitted.has(stage)
-          || human.length>500 || /^[\s]*[=+@-]/.test(human)) {
+          || human.length>500 || unsafeHumanCSVNote(human)) {
         message.textContent="HOLD: invalid local HUMAN choice or formula-like note; no CSV saved.";
         return;
       }
