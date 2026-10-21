@@ -2084,3 +2084,35 @@ previously rendered HTML's physical bytes. CLI:
       --receipt /private/PRIVATE-HUMAN-proposed-calendar.json \
       --reference-day 2026-10-21 \
       --private-parent /private/output
+
+### Ready-to-open LOCAL HUMAN calendar editor (offline v51)
+
+[Open the complete source-free HUMAN calendar Studio](portfolio-operator-calendar-studio.html)
+locally with no account, backend, network, external script or browser storage.
+A CSP SHA-256 binds its bundled JavaScript and stylesheet. This **source-only**
+HTML contains no case data and is included in the deterministic ZIP. Native
+calendar **prepare** and **receive** also place a copy of the browser in each
+new owner-private workspace.
+
+1. Native console **56** prepares an original-source-bound complete
+   `HUMAN-proposed-calendar-template.csv` in owner-private custody.
+2. Open the HTML locally, choose that original complete CSV, filter original
+   owner/priority/date and enter HUMAN-proposed discussion dates, priorities
+   and private questions. Filtering only hides rows visually; it does not
+   remove them from the complete export.
+3. Export the **complete** original-source-bound CSV after an explicit HUMAN
+   confirmation. The HTML can restore a previously exported complete draft
+   only if every original row, owner, original-stage and original byte-digest
+   are unchanged. It never copies proposal values onto a different source.
+4. Native console **57** receives the complete CSV only after its original
+   owner inbox, source history, finalized operator receipt and original CSV
+   are admitted again; creates a 0700/0600 PRIVATE proposal receipt.
+   Console **58** reopens receipt + CSV without writing files. Console **59**
+   produces an independent new source-free Studio HTML in owner-only custody.
+
+The browser is a local editor, **not** original-source or reviewer
+authentication, security review, consent, task dispatch, appointment booking,
+remediation verification or a valid release signal. Its download can inherit
+a browser-default non-private permissions mask; the operator must transfer
+the file to genuine owner-only PRIVATE custody before native receive. Native
+source admission cannot be skipped or replaced with browser output.
