@@ -277,3 +277,12 @@ The next-round builder now also has a **PRIVATE TTY-only interactive mode**, reu
 For 3–8 rounds, provide up to six --earlier-round-dir values (oldest first) as documented above. The TTY menu displays **only original slot ordinals**, stages, neutral roles and note lengths; source endpoint values are not printed. Notes are entered without terminal echo through getpass. Blank stage/role/note inputs preserve the previous HUMAN value; entering a hyphen for a note clears it. An invalid entry or interruption aborts without publishing a new complete packet. The new workroom includes HUMAN updated notes, browser editor, private routing and 2–8 round chronological-*proposal* history, with all original source/rounds re-admitted immediately before publication. Its multi-round order is user-chosen, never authenticated chronology.
 
 Interactive creation is mutually exclusive with --responses and with read-only --verify-workroom-dir. No browser, external service, model, scan, target operation, authorization, consent or HUMAN GO is involved. The resulting HTML/JSON includes sensitive PRIVATE notes and endpoint URLs, remains unencrypted local 0600 and must not be shared or hosted.
+
+
+### Navigable 2–8-round attention and bounded source custody
+
+The full PRIVATE history now starts with a HUMAN-only per-round workload matrix (NEEDS_INPUT, HUMAN_REVIEW, FOLLOW_UP, note-presence counts) and a current HUMAN attention queue. The queue lists only fixed HUMAN states, fixed reviewer roles, note lengths and original slot ordinals, with local anchor links to each expandable private endpoint-by-endpoint discussion. There are **no inferred security severities, remediation findings, real deadlines or approval flags**.
+
+The native output enforces a consistent 512-KiB ceiling for each saved history item, including a full eight-round, sixteen-slot discussion whose private HUMAN notes may contain HTML-escaped characters. The standalone history reopener and integrated next-round reopener use the same bound, reject missing/extra artifacts, require owner-only mode 0600 regular files and re-admit original source and all selected previous HUMAN rounds. If a legitimate input exceeds that fixed product bound, generation refuses publication rather than issuing a saved packet it cannot later reopen.
+
+No QA suites, scans, real target or model actions are required or performed. The user-selected sequence is NOT authenticated time and changed HUMAN notes are not evidence that work was performed or a vulnerability fixed.
