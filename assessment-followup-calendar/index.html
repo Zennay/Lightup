@@ -178,6 +178,22 @@ file bytes, not original source identity, verified risk, true consent or actual 
 <label class="file">Restore complete workroom <input id="restoreWorkroom" type="file" accept=".luhw,application/octet-stream"></label>
 </div>
 <p id="workspaceSaveStatus" class="subtle" role="status" aria-live="polite">Load original HUMAN worksheet first.</p>
+<details id="compareWorkroomDetails">
+<summary>Compare another encrypted PRIVATE workroom without importing it</summary>
+<p>Uses the same local passphrase field. Nothing is changed or sent. Only the exact original
+worksheet and timezone are accepted. Comparison is invalidated if this workroom changes.</p>
+<div class="row">
+<label class="file">Compare encrypted .luhw <input type="file" id="compareWorkroom" accept=".luhw,application/octet-stream"></label>
+<button id="clearWorkroomComparison" class="ghost" type="button">Forget compared workroom</button>
+</div>
+<p id="workroomCompareStatus" class="subtle" role="status" aria-live="polite">No compared PRIVATE workroom loaded.</p>
+<div class="tablebox"><table><thead><tr>
+<th>HUMAN change type</th><th>Original ordinal / unverified group label</th>
+<th>Current local proposal</th><th>Compared local proposal</th></tr></thead>
+<tbody id="workroomCompareRows"></tbody></table></div>
+<p class="subtle">At most 80 changed entries are shown here. Zero differences do not prove a
+fixed finding, consent, real availability, security review or an authenticated human source.</p>
+</details>
 </div>
 <div class="notice" id="changeDesk">
 <strong>PRIVATE calendar change desk · comparing two exact-sheet HUMAN plans</strong>

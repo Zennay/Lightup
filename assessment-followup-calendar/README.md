@@ -197,3 +197,20 @@ CSV export reject uncommitted group form fields rather than silently
 exporting old group hours. The operator explicitly saves the current
 HUMAN group rule first. This does not imply real staff acceptance or
 verified availability.
+
+
+### Side-by-side comparison of encrypted HUMAN workrooms
+
+A separate local, password-gated .luhw import now displays appointment and
+declared group-policy differences **without** replacing the current PRIVATE
+workroom. Both files must admit the same original worksheet bytes and time
+zone, and each decrypted section is fully re-admitted under the existing
+native browser policy. Differences are strictly HUMAN scheduling data:
+original ordinals, local dates, time and durations, and proposed unverified
+group availability. The browser lists up to 80 changed entries and provides
+a count for the full comparison. Any later change to the current plan,
+capacity policy or unsaved capacity editor invalidates and forgets the
+previous comparison. The operator can explicitly forget it sooner.
+Neither a zero-difference count nor a matching unsigned SHA authorizes
+execution, proves consent, verifies findings, establishes owner identity or
+synchronizes an external calendar.

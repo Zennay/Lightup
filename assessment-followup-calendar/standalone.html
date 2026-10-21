@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-09ZuCtLAQgEh2znxtH1xrdaqCjdnY53vV5RFXB0ykFc='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bOZEQEzEzF+OU3wRcp1Jab4hWtROe/6g76VOHTl4I2c='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -72,6 +72,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let backlogPage=0, backlogProposal=null;
   let capacityRules = new Map(), capacityProposal = null, capacityDirty = false;
   let capacityEditorDirty = false, capacityEditingGroup = "";
+  let workroomComparison = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -221,6 +222,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     renderChanges();
     renderCapacity();
     renderWorkspaceSaveStatus();
+    renderWorkroomComparison();
   }
   function renderWorkspaceSaveStatus(){
     const label=$("workspaceSaveStatus");
@@ -990,7 +992,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     if(!active)return;
     capacityEditorDirty=true;
     capacityProposal=null;$("capacityApply").disabled=true;
-    renderWorkspaceSaveStatus();
+    renderWorkspaceSaveStatus();renderWorkroomComparison();
     capacityMessage("Uncommitted HUMAN availability fields: click Save local HUMAN group availability before whole-workroom export. Original appointments unchanged.");
   }
   function capacitySnapshot(){
@@ -1435,6 +1437,61 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       inform("Both PRIVATE HUMAN scheduling and declared group rules saved in one encrypted local workroom. Preserve password separately.");
     }finally{plain.fill(0);clearPasswords();}
   }
+  function reviewSlotSummary(slot){
+    return slot ? slot.day+" "+slot.time+" · "+slot.duration+" min · "+slot.reminder+" min reminder" :
+      "(unscheduled)";
+  }
+  function reviewCapacitySummary(rule){
+    const v=admitCapacityRule(rule||capacityDefaultRule());
+    return "Days "+v.days.join("/")+" · "+v.start+"–"+v.end+
+      " · max "+v.maximum+"/day · "+v.blackouts.length+" blackout dates";
+  }
+  function renderWorkroomComparison(){
+    const output=$("workroomCompareRows");if(!output)return;
+    output.replaceChildren();
+    if(workroomComparison && (capacityEditorDirty ||
+      workroomComparison.fingerprint!==workroomFingerprint())){
+      workroomComparison=null;
+      $("workroomCompareStatus").textContent=
+        "Previous comparison cleared: original private schedule, declared availability or group editor changed.";
+    }
+    if(!workroomComparison)return;
+    const other=workroomComparison.admitted,rows=[];
+    for(const row of items){
+      const here=plan.get(row.ordinal),there=other.schedule.get(row.ordinal);
+      if(!slotEquals(here,there) && (here||there)){
+        rows.push(["HUMAN proposed appointment","#"+row.ordinal,
+          reviewSlotSummary(here),reviewSlotSummary(there)]);
+      }
+    }
+    for(const group of capacityGroups()){
+      const a=reviewCapacitySummary(capacityRules.get(group));
+      const z=reviewCapacitySummary(other.rules.get(group));
+      if(a!==z)rows.push(["HUMAN declared availability",group||"(unassigned)",a,z]);
+    }
+    $("workroomCompareStatus").textContent=rows.length+
+      " PRIVATE HUMAN scheduling or group-policy differences across matching original worksheet and timezone. "+
+      Math.min(80,rows.length)+" shown; no automatic changes. Same source digest is UNSIGNED.";
+    for(const data of rows.slice(0,80)){
+      const tr=dom("tr");
+      data.forEach(value=>tr.append(dom("td",value)));
+      output.append(tr);
+    }
+  }
+  async function compareEncryptedWorkroom(file){
+    hold(active && crypto.subtle && !capacityEditorDirty);
+    const initial=workroomFingerprint(),password=$("handoffPassword").value;
+    try{
+      const admitted=await readEncryptedWorkroom(file,password);
+      hold(active && initial===workroomFingerprint() && !capacityEditorDirty);
+      if(!confirm("Compare an encrypted PRIVATE HUMAN workroom without changing original appointments or group policies? Matched source fingerprints are unsigned. The local differences may reveal private scheduling information."))return;
+      hold(active && initial===workroomFingerprint() && !capacityEditorDirty);
+      workroomComparison={fingerprint:initial,admitted};
+      renderWorkroomComparison();
+      $("compareWorkroomDetails").open=true;
+      inform("Encrypted comparison loaded in browser memory only. No current HUMAN plan, group rules or external calendar changed.");
+    }finally{clearPasswords();}
+  }
   async function readEncryptedWorkroom(file,password){
     hold(active && crypto.subtle && password.length>=16 && password.length<=256);
     let raw=null,cipher=null,plaintext=null;
@@ -1541,7 +1598,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
     if(active && (changed||capacityDirty||capacityEditorDirty) &&
       !confirm("Discard all unsaved PRIVATE HUMAN plan, group availability and group-editor changes?"))return;
-    publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
+    publicationBaseline=null;changesPage=0;workroomComparison=null;
+    $("workroomCompareRows").replaceChildren();
+    $("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
     backlogProposal=null;
@@ -1782,6 +1841,16 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("exportCancelled","click",()=>{
     try{calendarDiffExport(true);}catch(_){inform("PRIVATE cancellations held: save the current v2 plan and select a matching previous publication first.",true);}
   });
+  hook("compareWorkroom","change",async e=>{
+    try{if(e.target.files[0])await compareEncryptedWorkroom(e.target.files[0]);}
+    catch(_){clearPasswords();inform("Encrypted comparison refused (HOLD); current HUMAN schedule and group rules untouched.",true);}
+    finally{e.target.value="";}
+  });
+  hook("clearWorkroomComparison","click",()=>{
+    workroomComparison=null;
+    $("workroomCompareRows").replaceChildren();
+    $("workroomCompareStatus").textContent="Compared HUMAN workroom forgotten from browser memory.";
+  });
   hook("encryptWorkroom","click",async()=>{
     try{await saveEncryptedWorkroom();}
     catch(_){clearPasswords();inform("Complete encrypted PRIVATE HUMAN workroom export refused (HOLD).",true);}
@@ -1805,7 +1874,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityDirty=false;capacityEditorDirty=false;capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    weekAnchor="";monthAnchor="";backlogPage=0;backlogProposal=null;
+    weekAnchor="";monthAnchor="";backlogPage=0;backlogProposal=null;workroomComparison=null;
+    $("workroomCompareRows").replaceChildren();
     $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("backlog").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
@@ -2118,6 +2188,22 @@ file bytes, not original source identity, verified risk, true consent or actual 
 <label class="file">Restore complete workroom <input id="restoreWorkroom" type="file" accept=".luhw,application/octet-stream"></label>
 </div>
 <p id="workspaceSaveStatus" class="subtle" role="status" aria-live="polite">Load original HUMAN worksheet first.</p>
+<details id="compareWorkroomDetails">
+<summary>Compare another encrypted PRIVATE workroom without importing it</summary>
+<p>Uses the same local passphrase field. Nothing is changed or sent. Only the exact original
+worksheet and timezone are accepted. Comparison is invalidated if this workroom changes.</p>
+<div class="row">
+<label class="file">Compare encrypted .luhw <input type="file" id="compareWorkroom" accept=".luhw,application/octet-stream"></label>
+<button id="clearWorkroomComparison" class="ghost" type="button">Forget compared workroom</button>
+</div>
+<p id="workroomCompareStatus" class="subtle" role="status" aria-live="polite">No compared PRIVATE workroom loaded.</p>
+<div class="tablebox"><table><thead><tr>
+<th>HUMAN change type</th><th>Original ordinal / unverified group label</th>
+<th>Current local proposal</th><th>Compared local proposal</th></tr></thead>
+<tbody id="workroomCompareRows"></tbody></table></div>
+<p class="subtle">At most 80 changed entries are shown here. Zero differences do not prove a
+fixed finding, consent, real availability, security review or an authenticated human source.</p>
+</details>
 </div>
 <div class="notice" id="changeDesk">
 <strong>PRIVATE calendar change desk · comparing two exact-sheet HUMAN plans</strong>
