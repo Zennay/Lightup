@@ -63,6 +63,19 @@
 <div id="weekDays" class="week-grid" aria-label="PRIVATE HUMAN weekly proposed reminders"></div>
 <p class="subtle">Dates and weekdays use this browser's local timezone. Only scheduled rows are displayed; the original complete worksheet remains in the planner. At most 24 events are shown per day. Declared group weekdays, daily appointment cap, local time window and blackout dates are compared against this local proposed schedule; mismatch markers do not reflect real staff availability. No external calendar is queried.</p>
 </section>
+<section id="month" class="panel" hidden aria-labelledby="monthHeading">
+<h2 id="monthHeading">3b · PRIVATE HUMAN month overview</h2>
+<p>Monthly tentative HUMAN reminders and local overlap counts, not verified availability, remediation or consent.</p>
+<div class="toolbar">
+<button id="monthBack" type="button" class="ghost">Previous month</button>
+<label>Month <input type="month" id="monthSelect"></label>
+<button id="monthNext" type="button" class="ghost">Next month</button>
+<button id="monthToday" type="button" class="ghost">Current month</button>
+<label>HUMAN group <select id="monthGroup"><option value="">All groups</option></select></label>
+</div><p id="monthSummary" role="status" class="subtle"></p>
+<div id="monthGrid" class="month-grid" role="group" aria-label="Private monthly HUMAN proposal calendar"></div>
+<p class="subtle">Select a date to open its HUMAN week. No external calendar or identity check occurs.</p>
+</section>
 <section id="workload" class="panel" hidden aria-labelledby="workloadHeading">
 <h2 id="workloadHeading">4 · HUMAN owner workload</h2>
 <p>PRIVATE human group names from the original worksheet, not verified personnel or assigned authority. Counts are appointment planning, never proof of remediation or accepted scope.</p>

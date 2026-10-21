@@ -20,7 +20,7 @@
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   let publicationBaseline = null, changesPage = 0;
-  let weekAnchor = "";
+  let weekAnchor = "", monthAnchor = "";
   let capacityRules = new Map(), capacityProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
@@ -165,6 +165,7 @@
     });
     renderAgenda();
     renderWeek();
+    renderMonth();
     renderWorkload();
     renderChanges();
     renderCapacity();
@@ -476,6 +477,70 @@
         " more HUMAN reminders; use the full agenda to edit.","subtle"));
       if(!entries.length)column.append(dom("p","No proposed reminders","subtle"));
       body.append(column);
+    }
+  }
+  function monthShift(month,diff){
+    hold(/^20\\d{2}-(0[1-9]|1[0-2])$/.test(month) && [-1,1].includes(diff));
+    const year=Number(month.slice(0,4)),number=Number(month.slice(5,7));
+    const target=new Date(year,number-1+diff,1,12);
+    hold(target.getFullYear()>=2000 && target.getFullYear()<=2099);
+    return dayString(target).slice(0,7);
+  }
+  function renderMonth(){
+    if(!active)return;
+    if(!monthAnchor)monthAnchor=nowToday().slice(0,7);
+    const groups=capacityGroups(),input=$("monthGroup"),previous=input.value;
+    if(input.options.length!==groups.length+1 ||
+       groups.some((group,i)=>input.options[i+1]?.textContent!==(group||"(unassigned)"))){
+      input.replaceChildren();
+      const option=dom("option","All HUMAN groups");option.value="";input.append(option);
+      groups.forEach((group,i)=>{
+        const option=dom("option",group||"(unassigned)");
+        option.value=String(i+1);input.append(option);
+      });
+      input.value=previous;if(input.selectedIndex<0)input.value="";
+    }
+    const selected=input.value?groups[Number(input.value)-1]:null;
+    const year=Number(monthAnchor.slice(0,4)),month=Number(monthAnchor.slice(5,7));
+    const first=new Date(year,month-1,1,12),totalDays=new Date(year,month,0,12).getDate();
+    hold(first.getFullYear()===year && first.getMonth()===month-1);
+    const before=(first.getDay()+6)%7,collisions=collisionIds();
+    const planned=items.filter(row=>plan.has(row.ordinal) &&
+      (selected===null || row.group===selected) &&
+      plan.get(row.ordinal).day.startsWith(monthAnchor));
+    const byDay=new Map();
+    for(const row of planned){
+      const key=plan.get(row.ordinal).day;
+      if(!byDay.has(key))byDay.set(key,[]);
+      byDay.get(key).push(row);
+    }
+    const overlaps=planned.filter(r=>collisions.has(r.ordinal)).length;
+    const blocked=planned.filter(r=>r.stage==="blocked").length;
+    $("monthSelect").value=monthAnchor;
+    $("monthSummary").textContent=planned.length+" proposed HUMAN reminders · "+
+      overlaps+" overlap markers · "+blocked+" blocked HUMAN stages · "+
+      byDay.size+" active dates · "+zone+" · no external calendar checked.";
+    const grid=$("monthGrid");grid.replaceChildren();
+    for(const label of ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"])
+      grid.append(dom("strong",label,"month-weekday"));
+    for(let x=0;x<before;x++){
+      const blank=dom("div","","month-empty");blank.setAttribute("aria-hidden","true");grid.append(blank);
+    }
+    for(let day=1;day<=totalDays;day++){
+      const key=monthAnchor+"-"+String(day).padStart(2,"0");
+      const rows=byDay.get(key)||[],clashes=rows.filter(r=>collisions.has(r.ordinal)).length,
+        blockedCount=rows.filter(r=>r.stage==="blocked").length;
+      const button=dom("button",undefined,"month-day"+(key===nowToday()?" month-current":"")+
+        (clashes?" month-overlap":""));
+      button.type="button";button.append(dom("strong",String(day)),dom("span",rows.length+" HUMAN planned"));
+      if(clashes)button.append(dom("small",clashes+" local overlap"));
+      if(blockedCount)button.append(dom("small",blockedCount+" blocked stage"));
+      button.setAttribute("aria-label",key+": "+rows.length+" proposed HUMAN reminders, "+
+        clashes+" overlapping reminders, "+blockedCount+" blocked HUMAN stages. Open week.");
+      button.addEventListener("click",()=>{
+        weekAnchor=key;renderWeek();$("week").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      grid.append(button);
     }
   }
   function renderWorkload(){
@@ -1067,9 +1132,10 @@
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
+    monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
     weekAnchor=nowToday();$("weekGroup").value="";
     $("weekConflicts").checked=false;$("weekConstraints").checked=false;
-    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("month").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
@@ -1300,8 +1366,8 @@
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    weekAnchor="";
-    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    weekAnchor="";monthAnchor="";
+    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
@@ -1314,6 +1380,19 @@
   hook("weekForward","click",()=>{try{weekAnchor=moveDay(weekAnchor,7);renderWeek();}
     catch(_){inform("Cannot navigate beyond valid local dates.",true);}});
   hook("weekToday","click",()=>{weekAnchor=nowToday();renderWeek();});
+  hook("monthBack","click",()=>{try{monthAnchor=monthShift(monthAnchor,-1);renderMonth();}
+    catch(_){inform("Month range unavailable, no local changes made.",true);}});
+  hook("monthNext","click",()=>{try{monthAnchor=monthShift(monthAnchor,1);renderMonth();}
+    catch(_){inform("Month range unavailable, no local changes made.",true);}});
+  hook("monthToday","click",()=>{monthAnchor=nowToday().slice(0,7);renderMonth();});
+  hook("monthGroup","change",renderMonth);
+  hook("monthSelect","change",()=>{
+    const candidate=$("monthSelect").value;
+    if(!/^20\\d{2}-(0[1-9]|1[0-2])$/.test(candidate)){
+      $("monthSelect").value=monthAnchor;inform("Invalid HUMAN calendar month.",true);return;
+    }
+    monthAnchor=candidate;renderMonth();
+  });
   hook("weekNextDue","click",()=>{try{jumpScheduledWeek(1);}
     catch(_){inform("Could not locate a later HUMAN week under current filters.",true);}});
   hook("weekPrevDue","click",()=>{try{jumpScheduledWeek(-1);}

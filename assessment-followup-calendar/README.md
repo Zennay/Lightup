@@ -104,3 +104,12 @@ without HUMAN reminders rather than requiring dozens of clicks. They respect the
 selected HUMAN group and the optional overlap/availability-mismatch filters, and
 never change any planned date or export state. If nothing matches, the current
 week stays selected. All navigation remains local, in memory and source-free.
+
+
+### Monthly visual HUMAN calendar
+
+A source-free, offline month overview shows proposed reminders, HUMAN blocked stage
+counts and local time-overlap indicators per day. Navigate months, focus a declared
+HUMAN owner group and click a date to open the corresponding seven-day planning
+desk. This is only a tentative scheduling overview; no external calendar, client,
+security result, authority or real-world staff capacity has been verified.

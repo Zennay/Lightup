@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-u/u949YhAk6I5Yphkn7StDRp3yJiQw91u+Jz3KIVSWQ='; style-src 'sha256-TyltFvR27cVSasqFgnhSgmmdulb88+wWUmU8KgCakHE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8xyqQYADPc/PXtOliRsRy9K4QDDdkozFyUWmK5DoXLo='; style-src 'sha256-TJ+MIBzMAbZUMvmL1ivKQEConxVhwGVt92e85Eth3FQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -27,6 +27,19 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 
 .week-alternate{font-size:11px;width:100%;margin:0 0 9px;padding:6px;text-align:left}
 .week-alternate:focus-visible{outline:3px solid #a6ddff;outline-offset:2px}
+
+.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:14px 0}
+.month-weekday{text-align:center;background:#202e44;font-size:12px;padding:7px}
+.month-day{display:flex;flex-direction:column;text-align:left;gap:5px;min-height:98px;padding:9px;
+  border:1px solid #425d7b;background:#13283f;overflow-wrap:anywhere}
+.month-day strong{font-size:17px}.month-day span{font-size:12px}
+.month-day small{color:#efc895}.month-day.month-current{outline:2px solid #8ccff3}
+.month-day.month-overlap{border:2px solid #eab96a;background:#40352c}
+.month-day:focus-visible{outline:3px solid #e5faff;outline-offset:2px}
+.month-empty{background:#142033;opacity:.55}
+@media(max-width:700px){.month-grid{gap:3px}.month-day{min-height:85px;padding:3px}
+.month-day strong{font-size:14px}.month-day span,.month-day small{font-size:10px}
+.month-weekday{font-size:10px;padding:4px}.month-empty{min-height:80px}}
 
 </style>
 <script>
@@ -52,7 +65,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   let publicationBaseline = null, changesPage = 0;
-  let weekAnchor = "";
+  let weekAnchor = "", monthAnchor = "";
   let capacityRules = new Map(), capacityProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
@@ -197,6 +210,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     });
     renderAgenda();
     renderWeek();
+    renderMonth();
     renderWorkload();
     renderChanges();
     renderCapacity();
@@ -508,6 +522,70 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
         " more HUMAN reminders; use the full agenda to edit.","subtle"));
       if(!entries.length)column.append(dom("p","No proposed reminders","subtle"));
       body.append(column);
+    }
+  }
+  function monthShift(month,diff){
+    hold(/^20\\d{2}-(0[1-9]|1[0-2])$/.test(month) && [-1,1].includes(diff));
+    const year=Number(month.slice(0,4)),number=Number(month.slice(5,7));
+    const target=new Date(year,number-1+diff,1,12);
+    hold(target.getFullYear()>=2000 && target.getFullYear()<=2099);
+    return dayString(target).slice(0,7);
+  }
+  function renderMonth(){
+    if(!active)return;
+    if(!monthAnchor)monthAnchor=nowToday().slice(0,7);
+    const groups=capacityGroups(),input=$("monthGroup"),previous=input.value;
+    if(input.options.length!==groups.length+1 ||
+       groups.some((group,i)=>input.options[i+1]?.textContent!==(group||"(unassigned)"))){
+      input.replaceChildren();
+      const option=dom("option","All HUMAN groups");option.value="";input.append(option);
+      groups.forEach((group,i)=>{
+        const option=dom("option",group||"(unassigned)");
+        option.value=String(i+1);input.append(option);
+      });
+      input.value=previous;if(input.selectedIndex<0)input.value="";
+    }
+    const selected=input.value?groups[Number(input.value)-1]:null;
+    const year=Number(monthAnchor.slice(0,4)),month=Number(monthAnchor.slice(5,7));
+    const first=new Date(year,month-1,1,12),totalDays=new Date(year,month,0,12).getDate();
+    hold(first.getFullYear()===year && first.getMonth()===month-1);
+    const before=(first.getDay()+6)%7,collisions=collisionIds();
+    const planned=items.filter(row=>plan.has(row.ordinal) &&
+      (selected===null || row.group===selected) &&
+      plan.get(row.ordinal).day.startsWith(monthAnchor));
+    const byDay=new Map();
+    for(const row of planned){
+      const key=plan.get(row.ordinal).day;
+      if(!byDay.has(key))byDay.set(key,[]);
+      byDay.get(key).push(row);
+    }
+    const overlaps=planned.filter(r=>collisions.has(r.ordinal)).length;
+    const blocked=planned.filter(r=>r.stage==="blocked").length;
+    $("monthSelect").value=monthAnchor;
+    $("monthSummary").textContent=planned.length+" proposed HUMAN reminders · "+
+      overlaps+" overlap markers · "+blocked+" blocked HUMAN stages · "+
+      byDay.size+" active dates · "+zone+" · no external calendar checked.";
+    const grid=$("monthGrid");grid.replaceChildren();
+    for(const label of ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"])
+      grid.append(dom("strong",label,"month-weekday"));
+    for(let x=0;x<before;x++){
+      const blank=dom("div","","month-empty");blank.setAttribute("aria-hidden","true");grid.append(blank);
+    }
+    for(let day=1;day<=totalDays;day++){
+      const key=monthAnchor+"-"+String(day).padStart(2,"0");
+      const rows=byDay.get(key)||[],clashes=rows.filter(r=>collisions.has(r.ordinal)).length,
+        blockedCount=rows.filter(r=>r.stage==="blocked").length;
+      const button=dom("button",undefined,"month-day"+(key===nowToday()?" month-current":"")+
+        (clashes?" month-overlap":""));
+      button.type="button";button.append(dom("strong",String(day)),dom("span",rows.length+" HUMAN planned"));
+      if(clashes)button.append(dom("small",clashes+" local overlap"));
+      if(blockedCount)button.append(dom("small",blockedCount+" blocked stage"));
+      button.setAttribute("aria-label",key+": "+rows.length+" proposed HUMAN reminders, "+
+        clashes+" overlapping reminders, "+blockedCount+" blocked HUMAN stages. Open week.");
+      button.addEventListener("click",()=>{
+        weekAnchor=key;renderWeek();$("week").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      grid.append(button);
     }
   }
   function renderWorkload(){
@@ -1099,9 +1177,10 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
+    monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
     weekAnchor=nowToday();$("weekGroup").value="";
     $("weekConflicts").checked=false;$("weekConstraints").checked=false;
-    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("month").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
@@ -1332,8 +1411,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    weekAnchor="";
-    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    weekAnchor="";monthAnchor="";
+    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
@@ -1346,6 +1425,19 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("weekForward","click",()=>{try{weekAnchor=moveDay(weekAnchor,7);renderWeek();}
     catch(_){inform("Cannot navigate beyond valid local dates.",true);}});
   hook("weekToday","click",()=>{weekAnchor=nowToday();renderWeek();});
+  hook("monthBack","click",()=>{try{monthAnchor=monthShift(monthAnchor,-1);renderMonth();}
+    catch(_){inform("Month range unavailable, no local changes made.",true);}});
+  hook("monthNext","click",()=>{try{monthAnchor=monthShift(monthAnchor,1);renderMonth();}
+    catch(_){inform("Month range unavailable, no local changes made.",true);}});
+  hook("monthToday","click",()=>{monthAnchor=nowToday().slice(0,7);renderMonth();});
+  hook("monthGroup","change",renderMonth);
+  hook("monthSelect","change",()=>{
+    const candidate=$("monthSelect").value;
+    if(!/^20\\d{2}-(0[1-9]|1[0-2])$/.test(candidate)){
+      $("monthSelect").value=monthAnchor;inform("Invalid HUMAN calendar month.",true);return;
+    }
+    monthAnchor=candidate;renderMonth();
+  });
   hook("weekNextDue","click",()=>{try{jumpScheduledWeek(1);}
     catch(_){inform("Could not locate a later HUMAN week under current filters.",true);}});
   hook("weekPrevDue","click",()=>{try{jumpScheduledWeek(-1);}
@@ -1488,6 +1580,19 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 <p id="weekSummary" class="subtle" role="status" aria-live="polite"></p>
 <div id="weekDays" class="week-grid" aria-label="PRIVATE HUMAN weekly proposed reminders"></div>
 <p class="subtle">Dates and weekdays use this browser's local timezone. Only scheduled rows are displayed; the original complete worksheet remains in the planner. At most 24 events are shown per day. Declared group weekdays, daily appointment cap, local time window and blackout dates are compared against this local proposed schedule; mismatch markers do not reflect real staff availability. No external calendar is queried.</p>
+</section>
+<section id="month" class="panel" hidden aria-labelledby="monthHeading">
+<h2 id="monthHeading">3b · PRIVATE HUMAN month overview</h2>
+<p>Monthly tentative HUMAN reminders and local overlap counts, not verified availability, remediation or consent.</p>
+<div class="toolbar">
+<button id="monthBack" type="button" class="ghost">Previous month</button>
+<label>Month <input type="month" id="monthSelect"></label>
+<button id="monthNext" type="button" class="ghost">Next month</button>
+<button id="monthToday" type="button" class="ghost">Current month</button>
+<label>HUMAN group <select id="monthGroup"><option value="">All groups</option></select></label>
+</div><p id="monthSummary" role="status" class="subtle"></p>
+<div id="monthGrid" class="month-grid" role="group" aria-label="Private monthly HUMAN proposal calendar"></div>
+<p class="subtle">Select a date to open its HUMAN week. No external calendar or identity check occurs.</p>
 </section>
 <section id="workload" class="panel" hidden aria-labelledby="workloadHeading">
 <h2 id="workloadHeading">4 · HUMAN owner workload</h2>

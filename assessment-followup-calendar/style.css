@@ -19,3 +19,16 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 
 .week-alternate{font-size:11px;width:100%;margin:0 0 9px;padding:6px;text-align:left}
 .week-alternate:focus-visible{outline:3px solid #a6ddff;outline-offset:2px}
+
+.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:14px 0}
+.month-weekday{text-align:center;background:#202e44;font-size:12px;padding:7px}
+.month-day{display:flex;flex-direction:column;text-align:left;gap:5px;min-height:98px;padding:9px;
+  border:1px solid #425d7b;background:#13283f;overflow-wrap:anywhere}
+.month-day strong{font-size:17px}.month-day span{font-size:12px}
+.month-day small{color:#efc895}.month-day.month-current{outline:2px solid #8ccff3}
+.month-day.month-overlap{border:2px solid #eab96a;background:#40352c}
+.month-day:focus-visible{outline:3px solid #e5faff;outline-offset:2px}
+.month-empty{background:#142033;opacity:.55}
+@media(max-width:700px){.month-grid{gap:3px}.month-day{min-height:85px;padding:3px}
+.month-day strong{font-size:14px}.month-day span,.month-day small{font-size:10px}
+.month-weekday{font-size:10px;padding:4px}.month-empty{min-height:80px}}
