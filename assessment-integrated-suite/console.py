@@ -460,6 +460,7 @@ def main() -> int:
         "72": lambda x: lab_route_handoff_console.run(x, path_prompt, ask, "receive"),
         "73": lambda x: lab_route_handoff_console.run(x, path_prompt, ask, "reopen"),
         "74": lambda x: lab_route_handoff_console.run(x, path_prompt, ask, "history"),
+        "75": lambda x: lab_route_handoff_console.run(x, path_prompt, ask, "reopen_history"),
     }
     while True:
         operator_navigation.overview()
@@ -490,7 +491,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 74.")
+                print("Choose a number from 0 to 75.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
