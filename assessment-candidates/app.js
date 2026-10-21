@@ -706,6 +706,19 @@
         crossover.metrics.map(r=>[nice(r.name),r.only_first,r.only_second,r.both,r.neither])):"";
     const metricTable=table(["Metric",...data.map(r=>"Candidate "+r.candidate_slot+" · total")],
       NAMES.map(n=>[nice(n),...data.map(r=>format(r.metrics[n].candidate_total))]));
+    const pairNumericTable=crossover?
+      "<h2>Selected two-candidate numeric comparison</h2>"+
+      "<p>Second minus first is descriptive only. Shared baselines and original adverse counts are source-reported, not independently verified.</p>"+
+      table(["Metric","First baseline aggregate","Second baseline aggregate",
+        "First candidate aggregate","Second candidate aggregate","Delta (second − first)",
+        "First adverse cases","Second adverse cases"],
+        NAMES.map(n=>{
+          const first=stats[crossover.first_candidate_slot-1].total[n];
+          const second=stats[crossover.second_candidate_slot-1].total[n];
+          return [nice(n),format(first.baseline),format(second.baseline),
+            format(first.candidate),format(second.candidate),
+            format(second.candidate-first.candidate),first.adverse,second.adverse];
+        })):"";
     const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
       "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; "+
       "connect-src 'none'; img-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
@@ -717,7 +730,7 @@
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
       advisory+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
-      agendaTable+crossoverTable+"<h2>Unverified original metric totals</h2>"+metricTable+
+      agendaTable+crossoverTable+pairNumericTable+"<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
       "consent with action-time revocation, original security fixes, full required hosted/permanent VPS "+
       "CI, independent security/privacy review and human GO remain mandatory.</p></body></html>";
