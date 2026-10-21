@@ -867,21 +867,31 @@
       return;
     }
     const diffs=reviewRounds.diff;
-    $("roundsSummary").textContent=diffs.length+" of "+queueIds().length+
-      " anonymous cases have changed local HUMAN group or discussion stage. "+
-      reviewRounds.settingChanges+" separate hypothetical setting/focus choices differ. "+
+    const filtered=diffs.filter(d=>{
+      const mode=$("roundFilter").value;
+      return mode==="all"||(mode==="repeated"&&d.transitions>=2)||
+        (mode==="reverted"&&d.before.route===d.after.route&&
+          d.before.stage===d.after.stage);
+    });
+    $("roundsSummary").textContent=reviewRounds.rounds+" separately chosen local HUMAN rounds · "+
+      diffs.length+" of "+queueIds().length+
+      " anonymous cases changed across at least one adjacent round ("+
+      reviewRounds.totalTransitions+" changes). "+
+      reviewRounds.settingChanges+" hypothetical setting/focus changes across round boundaries. "+
+
       "File order is a manual selection, not verified chronology. Zero changes cannot prove remediation.";
     $("roundsTable").innerHTML=table(
-      ["Anonymous case","First HUMAN stage","Second HUMAN stage",
-       "First proposed group","Second proposed group"],
-      diffs.map(d=>["Lab case "+String(d.ordinal).padStart(2,"0"),
-        nice(d.before.stage),nice(d.after.stage),nice(d.before.route),nice(d.after.route)])
+      ["Anonymous case","First HUMAN stage","Last HUMAN stage",
+       "First proposed group","Last proposed group","Proposal transitions"],
+      filtered.map(d=>["Lab case "+String(d.ordinal).padStart(2,"0"),
+        nice(d.before.stage),nice(d.after.stage),nice(d.before.route),
+        nice(d.after.route),d.transitions])
     );
-    if(!diffs.length)$("roundsTable").textContent="No different local HUMAN case suggestions; source findings remain unverified.";
+    if(!filtered.length)$("roundsTable").textContent="No HUMAN changes for this view; original source findings remain unverified.";
   }
   async function compareReviewRounds(files){
     try{
-      assert(files.length===2&&!demo&&reports.length>=2&&
+      assert(files.length>=2&&files.length<=8&&!demo&&reports.length>=2&&
         sourceHashes.length===reports.length);
       const drafts=[];
       for(const file of files){
@@ -894,15 +904,25 @@
         assert(draft.schema===DRAFT_SCHEMA_V2||draft.schema===DRAFT_SCHEMA);
         drafts.push(draft);
       }
-      const [before,after]=drafts.map(roundRows),diff=[];
+      const snapshots=drafts.map(roundRows),before=snapshots[0],
+        after=snapshots[snapshots.length-1],diff=[];
+      let totalTransitions=0,settingChanges=0;
+      for(let j=1;j<drafts.length;j++)
+        settingChanges+=roundSettingsDiff(drafts[j-1],drafts[j]);
       for(let i=0;i<before.length;i++){
-        if(before[i].route!==after[i].route||before[i].stage!==after[i].stage)
-          diff.push({ordinal:i+1,before:before[i],after:after[i]});
+        let transitions=0;
+        for(let j=1;j<snapshots.length;j++)
+          if(snapshots[j][i].route!==snapshots[j-1][i].route||
+            snapshots[j][i].stage!==snapshots[j-1][i].stage)transitions++;
+        totalTransitions+=transitions;
+        if(transitions)diff.push({ordinal:i+1,before:before[i],after:after[i],
+          transitions});
       }
       // All admission and source binding above must succeed before replacing view.
       reviewRounds={hashes:[...sourceHashes],before,after,diff,
-        settingChanges:roundSettingsDiff(drafts[0],drafts[1])};
-      $("roundsMessage").textContent="Two PRIVATE source-byte-bound HUMAN drafts admitted. "+
+        rounds:drafts.length,totalTransitions,settingChanges};
+      $("roundFilter").value="all";
+      $("roundsMessage").textContent=drafts.length+" PRIVATE source-byte-bound HUMAN drafts admitted. "+
         "Only ordinal discussion changes shown. No identity, consent or reviewer chronology verified.";
       displayReviewRounds();
     }catch(_){
@@ -915,11 +935,14 @@
       sourceHashes.length!==reports.length||
       !sourceHashes.every((h,i)=>h===reviewRounds.hashes[i]))return;
     const header=["case_ordinal","first_local_stage","second_local_stage",
-      "first_proposed_group","second_proposed_group","local_human_discussion_only",
+      "first_proposed_group","last_proposed_group","human_rounds","proposal_transitions",
+      "reverted_to_first","local_human_discussion_only",
       "source_identity_authenticated","authorized","consent_verified",
       "dispatch_allowed","release_allowed","status"];
     const lines=reviewRounds.diff.map(d=>[
       d.ordinal,d.before.stage,d.after.stage,d.before.route,d.after.route,
+      reviewRounds.rounds,d.transitions,
+      d.before.route===d.after.route&&d.before.stage===d.after.stage?"true":"false",
       "true","false","false","false","false","false","REVIEW_ONLY"].join(","));
     download("lightup-PRIVATE-HUMAN-review-round-changes.csv",
       header.join(",")+"\n"+lines.join("\n")+(lines.length?"\n":""),
@@ -1055,6 +1078,7 @@
   $("exportRoundsCSV").addEventListener("click",exportReviewRoundsCSV);
   $("adoptRound").addEventListener("click",adoptReviewRound);
   $("saveDraft").addEventListener("click",saveDraft);
+  $("roundFilter").addEventListener("change",displayReviewRounds);
   $("draftRounds").addEventListener("change",e=>{
     if(e.target.files.length)void compareReviewRounds([...e.target.files]);
     e.target.value="";

@@ -74,11 +74,15 @@
 <div class="controls"><button id="saveDraft" type="button" class="secondary" disabled>Save PRIVATE preferences</button>
 <label class="filelabel">Restore PRIVATE draft<input id="draftFile" type="file" accept=".json,application/json" disabled></label></div>
 <p id="draftMessage" role="status" aria-live="polite"></p></div>
-<div class="panel-inset" id="roundsPanel"><h3>PRIVATE HUMAN review-round comparison</h3>
-<p>After loading the exact original lab reports, choose two separately saved v2/v3 PRIVATE HUMAN preference drafts in the intended order. Compare only local generic discussion group/stage changes by anonymous case ordinal. This is neither authenticated chronology nor evidence of a fix, grant or consent. No network, persistent storage or recipient dispatch.</p>
-<div class="controls"><label class="filelabel">Compare two PRIVATE HUMAN drafts<input id="draftRounds" type="file" accept=".json,application/json" multiple disabled></label>
+<div class="panel-inset" id="roundsPanel"><h3>PRIVATE HUMAN review history (2–8 rounds)</h3>
+<p>After loading the exact original lab reports, choose 2–8 separately saved v2/v3 PRIVATE HUMAN preference drafts in the intended order. Compare all adjacent local generic discussion group/stage changes by anonymous case ordinal, including proposals later reverted. This is neither authenticated chronology nor evidence of a fix, grant or consent. No network, persistent storage or recipient dispatch.</p>
+<div class="controls"><label class="filelabel">Compare 2–8 PRIVATE HUMAN drafts<input id="draftRounds" type="file" accept=".json,application/json" multiple disabled></label>
 <button id="exportRoundsCSV" type="button" class="secondary" disabled>Export PRIVATE changed-only CSV</button>
-<button id="adoptRound" type="button" class="ghost" disabled>Use second round's HUMAN suggestions</button></div>
+<button id="adoptRound" type="button" class="ghost" disabled>Use last round's HUMAN suggestions</button></div>
+<label>Visible HUMAN changes<select id="roundFilter">
+<option value="all">All changed case suggestions</option>
+<option value="repeated">Two or more round transitions</option>
+<option value="reverted">Returned to first suggestion</option></select></label>
 <p id="roundsMessage" role="status" aria-live="polite"></p>
 <div id="roundsSummary" class="statline"></div>
 <div id="roundsTable" class="tablewrap"></div></div>
