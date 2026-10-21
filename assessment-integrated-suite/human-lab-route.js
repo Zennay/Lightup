@@ -186,26 +186,85 @@
     return {
       changes,
       preview: changes.map(id =>
-        id + " · " + LABELS[state[id]] + " → " + LABELS[incoming[id]]).join("\\n")
+        id + " · " + LABELS[state[id]] + " → " + LABELS[incoming[id]]).join("\n")
     };
   }
+
+  // Comparison is intentionally not an import. Only fixed local marker
+  // tokens are rendered, never original source, paths, private notes or IDs.
+  let comparison = null;
+  function showComparison(incoming) {
+    const diff = describeChanges(incoming);
+    comparison = diff.changes.map(id => ({
+      action: id, old_state: state[id], proposed_state: incoming[id]
+    }));
+    const table = $("compare-rows");
+    table.replaceChildren();
+    for (const item of comparison) {
+      const tr = node("tr");
+      for (const label of [
+        item.action,
+        LABELS[item.old_state],
+        LABELS[item.proposed_state]
+      ]) tr.append(node("td", label));
+      table.append(tr);
+    }
+    if (!comparison.length) {
+      const row = node("tr");
+      const cell = node("td", "No local marker changes. Nothing was verified.");
+      cell.colSpan = 3;
+      row.append(cell);
+      table.append(row);
+    }
+    $("compare-summary").textContent = diff.changes.length +
+      " of 20 self-reported HUMAN markers differ. This is a discussion-only comparison.";
+    $("compare-details").open = true;
+    $("export-diff").disabled = !comparison.length;
+    return diff;
+  }
+  async function readReport(file) {
+    if (file.size < 20 || file.size > 24576) throw Error("Not a bounded HUMAN report");
+    return admitImportedReport(parseWithoutDuplicateKeys(await file.text()));
+  }
+  $("compare-json").addEventListener("change", async ev => {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    try {
+      const incoming = await readReport(file);
+      const diff = showComparison(incoming);
+      $("result").textContent = "Compared " + diff.changes.length +
+        " HUMAN markers without changing current values. No source authenticated.";
+    } catch (_) {
+      $("result").textContent =
+        "HOLD: local HUMAN comparison refused. Current values are unchanged.";
+    }
+  });
+  $("export-diff").addEventListener("click", () => {
+    if (!comparison || !comparison.length) return;
+    const lines = ["action,previous_self_report,proposed_self_report,authority"];
+    for (const change of comparison) {
+      lines.push([change.action, change.old_state, change.proposed_state,
+        "REVIEW_ONLY"].join(","));
+    }
+    download("LightUp-PRIVATE-HUMAN-Lab-Discussion-Changes.csv",
+      lines.join("\r\n") + "\r\n", "text/csv");
+  });
 
   $("import-json").addEventListener("change", async ev => {
     const file = ev.target.files && ev.target.files[0];
     ev.target.value = "";
     if (!file) return;
     try {
-      if (file.size < 20 || file.size > 24576) throw Error("Not a bounded route export");
-      const data = parseWithoutDuplicateKeys(await file.text());
-      const incoming = admitImportedReport(data);
-      const diff = describeChanges(incoming);
+      const incoming = await readReport(file);
+      const diff = showComparison(incoming);
       if (!diff.changes.length) {
         $("result").textContent = "The self-report contains the same 20 local discussion markers. Nothing replaced.";
         return;
       }
       const notice = "PRIVATE HUMAN discussion import: " + diff.changes.length +
-        " of 20 self-reported markers would change.\\n\\n" +
-        diff.preview + "\\n\\nReplace all 20 in-memory markers? " +
+        " of 20 self-reported markers would change.\n\n" +
+        diff.preview + "\n\nReplace all 20 in-memory markers? " +
         "No original source, review, identity or consent is authenticated.";
       if (!window.confirm(notice)) {
         $("result").textContent = "HUMAN import cancelled. No local markers were changed.";
