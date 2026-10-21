@@ -79,6 +79,9 @@ ACTIONS: dict[str, str] = {
     '69': 'Publish explicitly selected HUMAN conflict choices to a NEW PRIVATE candidate',
     '70': 'Reopen PRIVATE HUMAN conflict resolution against exact original source bytes',
     '71': 'Admit resolved HUMAN source and open NEW ORIGINAL review Studio manually',
+    '72': 'Receive an offline HUMAN Lab discussion JSON into a PRIVATE exact-byte receipt',
+    '73': 'Reopen original HUMAN Lab discussion receipt read-only',
+    '74': 'Compare 2–8 complete PRIVATE HUMAN Lab discussion receipts',
 }
 
 CATEGORIES = (
@@ -94,6 +97,7 @@ CATEGORIES = (
     ("PRIVATE HUMAN team feedback", tuple(str(x) for x in range(60, 65))),
     ("PRIVATE HUMAN multi-round continuation", tuple(str(x) for x in range(65, 68))),
     ("PRIVATE HUMAN conflict resolution", tuple(str(x) for x in range(68, 72))),
+    ("PRIVATE HUMAN Lab discussion custody", tuple(str(x) for x in range(72, 75))),
 )
 
 
@@ -134,7 +138,8 @@ def overview() -> None:
     for name, ids in CATEGORIES:
         print("  " + ids[0] + "–" + ids[-1] + "   " + name)
     print("Suggested safe HUMAN-only workflow: 37 → 49 → manual editor →")
-    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54 → 55 → 56 → 57 → 58 → 59 → 60 → 61 → 62 → 63 → 64 → 65 → 66 → 67 → 68 → 69 → 70 → 71.")
+    print("  50 (compare) → 51 (continue). Original LAB: 52–71.")
+    print("  Local LAB discussion custody: 72 (receive) → 73 (reopen) → 74 (history).")
     print("Enter an action number, ALL for full catalog, LAB for source-bound lab route, ?keyword to search,")
     print("HELP for a HUMAN walkthrough or 0 to exit. No action is automatic.")
 
@@ -198,6 +203,9 @@ def help_flow() -> None:
     print("69. Admit edited exact-source HUMAN choices into NEW unfinalized candidate.")
     print("70. Reopen published HUMAN conflict choices read-only against originals.")
     print("71. Open the exact-source resolved draft in NEW ORIGINAL HUMAN Studio.")
+    print("72. Admit exported 20-action self-report JSON into owner-private exact receipt.")
+    print("73. Reopen saved self-report AND every original output byte read-only.")
+    print("74. Compare 2–8 owner-private HUMAN discussion receipts in explicit order.")
     print("Every step remains PRIVATE and REVIEW_ONLY. No scan, grant, report")
     print("verification, real scheduling, recipient dispatch or consent.")
     print("Original current authenticated client+operator consent, revocation")
