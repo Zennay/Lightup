@@ -52,13 +52,13 @@ _SHELL_CREDENTIAL = re.compile(
 # Arbitrary encodings, unnamed fields and other shapes remain PRIVATE/HOLD.
 _SHELL_FORM_SECRET = re.compile(
     r"""(?i)(?<![A-Za-z0-9_-])
-    (?P<prefix>(?:--(?:data(?:-raw|-binary|-urlencode)?|form(?:-string)?)
+    (?P<prefix>--(?:data(?:-raw|-binary|-urlencode)?|form(?:-string)?)
     (?:[ \t]+|=)|-[dF][ \t]+)
     (?P<quote>["'])
     (?P<key>(?:password|passwd|api[_-]?key|secret|client[_-]?secret|
     (?:access|refresh|auth|id)[_-]?token|session[_-]?(?:id|token)|
     csrf(?:[_-]?token)?|xsrf(?:[_-]?token)?|jwt|signature|sig))
-    =)(?:\\.|(?! (?P=quote) )[^\\\r\n]){0,4096}(?P=quote)""",
+    =(?:\\.|(?! (?P=quote) )[^\\\r\n]){0,4096}(?P=quote)""",
     re.VERBOSE,
 )
 
@@ -209,8 +209,8 @@ def mask_private_notes(original: str) -> str:
     value = _SHELL_CREDENTIAL.sub(
         lambda m: m.group("prefix") + "[REDACTED_COMMAND_CREDENTIAL]", value)
     value = _SHELL_FORM_SECRET.sub(
-        lambda m: m.group("prefix") + m.group("key")
-        + "[REDACTED_FORM_VALUE]" + m.group("quote"), value)
+        lambda m: m.group("prefix") + m.group("quote") + m.group("key")
+        + "=[REDACTED_FORM_VALUE]" + m.group("quote"), value)
     value = _URL_USERINFO.sub(r"\1[REDACTED_USERINFO]@", value)
     value = _URL_PARAMETER.sub(r"\1[REDACTED_URL_VALUE]", value)
     value = _PATH_SESSION.sub(r"\1[REDACTED_SESSION_VALUE]", value)
