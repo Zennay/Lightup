@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 
 from lightup.redaction import redact_text
+from curl_payload_mask import mask_curl_form_payloads
 
 # Entire credential-bearing HTTP header values are withheld. In particular,
 # Cookie may contain several sensitive fields with punctuation and spaces.
@@ -199,7 +200,9 @@ def mask_private_notes(original: str) -> str:
     No original source mutation, network, classification or approval. Masking
     remains incomplete; outputs are always PRIVATE/HOLD regardless of count.
     """
-    value = redact_text(original)
+    # Mask individual named fields before the generic producer mutates their
+    # syntactic delimiters. This is only local defence-in-depth, never PASS.
+    value = redact_text(mask_curl_form_payloads(original))
     value = _PRIVATE_KEY.sub("[REDACTED_PRIVATE_KEY_BLOCK]", value)
     value = _HEADER.sub(r"\1[REDACTED_HEADER_VALUE]", value)
     value = _RAW_HTTP_HEADER.sub(r"\1[REDACTED_HTTP_VALUE]", value)
