@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<title>LightUp · Isolated Lab Launchpad</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}</style>
+</head>
+<body>
+<header class="hero">
+  <p class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME</p>
+  <h1>Isolated-lab batch launchpad</h1>
+  <p>Compose a bounded local text manifest for the existing <code>lightup lab-assess</code> CLI. This page never opens a connection, resolves DNS, starts a model, creates a plan or runs an assessment.</p>
+  <div class="status" role="status">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · PREVIEW ONLY · NOT AUTHORIZED</div>
+</header>
+<main>
+  <section class="panel">
+    <h2>Endpoint manifest</h2>
+    <p>Add 1–16 distinct literal HTTP(S) URLs. Browser checks are only a convenience; the native CLI re-runs the original URL validator and original <code>LabScenario</code> private/loopback scope policy before it creates the preview command.</p>
+    <div id="endpointList" aria-label="Local endpoint manifest"></div>
+    <p class="count" id="endpointCount">0 / 16 slots</p>
+    <div class="controls">
+      <button id="addEndpoint" type="button" class="secondary">Add endpoint</button>
+      <button id="downloadManifest" type="button" disabled>Download private text manifest</button>
+    </div>
+    <p id="message" class="message" role="status" aria-live="polite">Add a local lab URL to begin.</p>
+  </section>
+  <section class="panel">
+    <h2>What happens next</h2>
+    <ol>
+      <li>The browser downloads one URL per line; no content is uploaded or saved to browser storage.</li>
+      <li>Move the file into a private local folder and set its permissions to <code>0600</code>. Browser downloads cannot enforce file permissions.</li>
+      <li>The native CLI re-admits the file against the pinned original validator and <code>LabScenario</code> scope policy, then creates private no-overwrite artifacts.</li>
+      <li>The generated command contains <code>--preview-only</code> and is displayed for a human to inspect. This tool never executes it.</li>
+    </ol>
+    <p class="warning">A URL passing browser syntax checks is not proof that it is an isolated lab endpoint. The original native scope gate is mandatory and may reject it. No authorization, consent or release is created.</p>
+  </section>
+</main>
+<footer><p class="note">Standalone local HTML · no external assets · no network API · no active target access.</p></footer>
+<script>"use strict";
+(() => {
+  const $ = id => document.getElementById(id);
+  const list = $("endpointList");
+  let rowSequence = 0;
+  function values() {
+    return [...list.querySelectorAll("input")].map(input => input.value);
+  }
+  function addRow(value = "") {
+    if (list.querySelectorAll("input").length >= 16) {
+      $("message").textContent = "Maximum 16 endpoint slots.";
+      return;
+    }
+    rowSequence += 1;
+    const row = document.createElement("div");
+    row.className = "endpoint";
+    const label = document.createElement("label");
+    label.textContent = "Endpoint slot " + String(rowSequence).padStart(2, "0");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.maxLength = 2048;
+    input.placeholder = "http://127.0.0.1:18080/";
+    input.value = value;
+    input.setAttribute("aria-label", label.textContent);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      if (list.querySelectorAll("input").length === 1) input.value = "";
+      else row.remove();
+      refresh();
+    });
+    label.append(input);
+    row.append(label, remove);
+    list.append(row);
+    input.addEventListener("input", refresh);
+    refresh();
+  }
+  function validate() {
+    const entries = values();
+    if (entries.length < 1 || entries.length > 16) return {error:"Enter 1–16 endpoint URLs."};
+    if (entries.some(value => !value || value !== value.trim() || value.length > 2048 ||
+        [...value].some(char => char.charCodeAt(0) < 33 || char.charCodeAt(0) === 127))) {
+      return {error:"Fill every row with bounded literal text; remove blank rows and whitespace."};
+    }
+    if (new Set(entries).size !== entries.length) return {error:"Duplicate literal endpoint values are not allowed."};
+    for (const value of entries) {
+      try {
+        const url = new URL(value);
+        if ((url.protocol !== "http:" && url.protocol !== "https:") ||
+            !url.hostname || url.username || url.password || url.hash) {
+          return {error:"Use HTTP(S) URLs without credentials or fragments."};
+        }
+      } catch (_) {
+        return {error:"One or more entries are not syntactically valid HTTP(S) URLs."};
+      }
+    }
+    return {entries};
+  }
+  function refresh() {
+    const checked = validate();
+    $("endpointCount").textContent = String(list.querySelectorAll("input").length) + " / 16 slots";
+    $("downloadManifest").disabled = !checked.entries;
+    $("message").textContent = checked.error || "Ready to export a local text manifest. Native original-scope validation has not run.";
+  }
+  function downloadManifest() {
+    const checked = validate();
+    if (!checked.entries) {
+      $("message").textContent = checked.error;
+      return;
+    }
+    const blob = new Blob([checked.entries.join("\n") + "\n"], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "lightup-lab-targets.txt";
+    link.style.display = "none";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $("message").textContent = "Private local text manifest downloaded. Move it to a private directory and set mode 0600 before the native CLI; the browser cannot set file permissions.";
+  }
+  $("addEndpoint").addEventListener("click", () => addRow(""));
+  $("downloadManifest").addEventListener("click", downloadManifest);
+  addRow("");
+})();</script>
+</body>
+</html>
