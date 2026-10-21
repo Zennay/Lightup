@@ -305,3 +305,20 @@ The 2–8-round private history supports an explicit operator-selected interval.
 Any two different original round ordinals within 1..N are allowed as long as from < to. By default the first and last rounds are compared. The PRIVATE scriptless HTML shows an ordinal-level net stage/role change, note-change indicator and separate markers for a HUMAN stage or reviewer role that returned to its original value after differing in one of the manually inserted rounds. The source-free counts JSON/CSV include the total net changed slots, HUMAN stage/role/note changes and stage/role returns, but no original endpoint, source path/hash or note text. The ordinary next-round workroom uses the default first-to-latest HUMAN interval and includes the comparison automatically.
 
 This is **not** a status change on an actual system, not verified remediation or regression, not authenticated real-world chronology, not identity attestation, not consent and not release. A HUMAN status returning to its previous value has no security meaning by itself. To reopen the custom interval artifact, use --verify-history-dir instead of --output-dir with the SAME repeated --round-dir list and the SAME --compare-from-round/--compare-to-round values.
+
+
+## Updated PRIVATE HUMAN management briefing and canonical packet integrity
+
+A HUMAN history now generates a **fifth** self-contained artifact: lightup-lab-human-history-brief.html. It is a scriptless, CSP-hash-pinned offline management briefing that displays stage counts for every manually selected 2–8 HUMAN rounds, adjacent HUMAN change totals, currently proposed reviewer-role allocation, and net plus return-to-earlier-value counts for the requested interval. It contains no original endpoint URLs, per-slot ordinals, source paths/digests or private note text. It is **PRIVATE by default** because even aggregate counts from a small lab engagement can reveal context; it is not an anonymity or client-consent guarantee.
+
+The existing one-command next-round workroom automatically includes the source-free briefing and links to it from OPEN-NEXT-ROUND-PRIVATE.html. The original detailed PRIVATE history is still available separately, under a distinct link, and must never be served or shared. The standalone history's exact read-only reopen now expects five canonical files; both standalone and integrated publication share their previous source/round re-admission, 512-KiB history-item capacity and exclusive owner-only mode 0600 output.
+
+### Strengthened original-source reopen and private source isolation
+
+- launchpad.py now refuses any missing or unexpected file in its original five-file private bundle. It reconstructs the original scriptless CSP-pinned HTML from the pinned renderer and validated canonical manifest, receipt fields and exact display-only --preview-only command. A matching hash in a **rewritten unsigned receipt** is no longer sufficient to re-open arbitrary replacement HTML. This remains unsigned byte consistency, not cryptographic source authentication.
+- workspace.py demands the complete canonical file inventory in each private HUMAN review/editor/routing subfolder in addition to its original Launchpad and parent-inventory checks.
+- review_desk.py refuses nonempty destination directories, requires existing response worksheets to be in distinct private source directories, and demands exact four-file inventory on read-only reopen.
+- compare_review.py and its shared original-source human-round reader require exact private file inventories. Standalone routing.py and editor.py now likewise demand empty new output roots and exact inventories on reopen.
+- advance.py checks the full bounded output sizes, including all history artifacts, **before creating** its new private subdirectories. Its integrated stored packet cannot be published in a state which would later exceed the read-only re-open limits.
+
+No changes grant scope, consent, risk approval, authorization, release, scanning or real security assessment. The original release gates, independent source ownership and separate action-time revocation checks remain mandatory. No QA or regression suites were written or run.
