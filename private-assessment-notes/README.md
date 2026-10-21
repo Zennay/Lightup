@@ -14,6 +14,10 @@ incomplete, confidential and not approved for external sharing**.
 
 [Supported original PRIVATE source shapes, operator usage and explicit privacy
 limits](PRIVATE-CREDENTIAL-MASKING.md).
+The same guide documents the native `notes.py masking-cues` command:
+a separate source-bound **offline HUMAN cue overview**, with original
+ordinals and literal known placeholder families but no note content.
+It does **not** establish redaction coverage, secrecy or public safety.
 
 ## What this does
 

@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""Original-source PRIVATE HUMAN masking cue navigation; never clearance.
+
+Reopens immutable owner-private masked note packets and provides a
+source-minimal, human-only overview of literal known placeholder appearances.
+Marker counts are not proven masks and never a security/privacy verdict.
+"""
+from __future__ import annotations
+
+import csv
+from hashlib import sha256
+import html
+import io
+import os
+from pathlib import Path
+import shutil
+import tempfile
+
+from notes import FALSE_FLAGS, Hold, file_new, load_workroom, private_directory, private_input, save_json
+
+SCHEMA = "lightup.private_assessment_masking_cues.v1"
+GROUPS = (
+    ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
+                       "[REDACTED_COMMAND_CREDENTIAL]")),
+    ("URL_OR_SESSION", ("[REDACTED_USERINFO]", "[REDACTED_URL_VALUE]",
+                        "[REDACTED_SESSION_VALUE]")),
+    ("STRUCTURED_CONFIG", ("[REDACTED_JSON_VALUE]", "[REDACTED_ENV_VALUE]",
+                           "[REDACTED_CONFIG_VALUE]")),
+    ("TOKEN_OR_PRIVATE_KEY", ("[REDACTED_PRIVATE_KEY_BLOCK]",
+                              "[REDACTED_JWT_SHAPE]", "[REDACTED_PROVIDER_TOKEN_SHAPE]",
+                              "[REDACTED_AWS_ACCESS_KEY]", "[REDACTED]")),
+)
+CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
+              "literal_url_or_session_markers", "literal_config_markers",
+              "literal_token_or_key_markers", "literal_total_markers")
+
+
+def cues(sources: list[dict]) -> list[dict]:
+    output = []
+    for record in sources:
+        # IMPORTANT: these are plain STRING OCCURRENCES. The source may
+        # already contain the marker in plaintext, and unknown secrets can
+        # survive all patterns. Never use as proof or risk classification.
+        message = record["redacted_text"]
+        by_type = [sum(message.count(marker) for marker in markers)
+                   for _, markers in GROUPS]
+        output.append({
+            "original_ordinal": record["ordinal"],
+            "literal_http_or_shell_markers": by_type[0],
+            "literal_url_or_session_markers": by_type[1],
+            "literal_config_markers": by_type[2],
+            "literal_token_or_key_markers": by_type[3],
+            "literal_total_markers": sum(by_type),
+        })
+    return output
+
+
+def cue_csv(rows: list[dict]) -> bytes:
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS, lineterminator="\r\n")
+    writer.writeheader()
+    for entry in rows:
+        writer.writerow({field: entry[field] for field in CSV_FIELDS})
+    return handle.getvalue().encode("utf-8")
+
+
+def cue_page(rows: list[dict]) -> bytes:
+    listing = []
+    for record in rows:
+        values = [record[name] for name in CSV_FIELDS]
+        cells = "".join("<td>" + html.escape(str(value)) + "</td>" for value in values[1:])
+        listing.append("<tr><th scope='row'>Original #" +
+                       str(record["original_ordinal"]) + "</th>" + cells + "</tr>")
+    return ("""<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';connect-src 'none';form-action 'none';base-uri 'none';object-src 'none'">
+<title>LightUp PRIVATE HUMAN masking-cue navigation</title>
+<style>body{max-width:1050px;margin:2rem auto;padding:1rem;font:16px/1.6 system-ui}
+aside{background:#fff1e7;border-left:5px solid #b24822;padding:1rem}
+table{border-collapse:collapse;width:100%;margin:1rem 0}
+th,td{border:1px solid #cad4dd;padding:10px;text-align:left}
+thead{background:#f0f4f8}caption{margin:10px;font-weight:700}
+@media print{body{margin:0;max-width:none}}</style>
+<h1>PRIVATE original source · literal masking-cue desk</h1>
+<aside><b>INCUBATE / REVIEW_ONLY / HOLD · NOT A MASKING SAFETY SCORE.</b>
+The counts below are literal appearances of known REDACTED marker strings
+inside the original owner-private masked note outputs. Some source text
+may already contain those strings; unknown secrets and personal data may
+remain. Zero counts means nothing about source safety or approval.
+No reviewer identity, permission, client consent or right to disclose
+is inferred. Keep this entire output confidential.</aside>
+<p>Original PRIVATE sources: """ + str(len(rows)) + """.
+The original source hashes, masked notes, free HUMAN comments,
+source filenames and any raw customer or target details are deliberately
+withheld from this overview.</p>
+<table><caption>Human review navigation by ORIGINAL source ordinal</caption>
+<thead><tr><th scope="col">Original source</th>
+<th scope="col">HTTP / shell</th><th scope="col">URL / session</th>
+<th scope="col">Structured config</th><th scope="col">Tokens / keys</th>
+<th scope="col">Literal marker total</th></tr></thead>
+<tbody>""" + "".join(listing) + """</tbody></table>
+<p>Return to the original PRIVATE HUMAN source review and independently
+inspect all remaining context and credentials. A marker is not a credential
+proof, private data anonymisation, severity rating, authorization, or release.
+The original HUMAN review and all real security/consent/CI approvals remain
+separate and mandatory. No active tool, network, model or dispatch.</p>
+</html>""").encode("utf-8")
+
+
+def create(original: str, private_parent: str) -> int:
+    kit = private_directory(original)
+    # Original notes.py admission checks complete canonical source-bound
+    # original slot identities and the actual masked content bytes.
+    _manifest, sources, rows = load_workroom(kit)
+    marker_rows = cues(rows)
+    manifest_raw = private_input(str(kit / "PRIVATE-source-bindings.json"), 128 * 1024)
+    output_parent = private_directory(private_parent)
+    output = Path(tempfile.mkdtemp(prefix="PRIVATE-lightup-masking-cues-", dir=output_parent))
+    os.chmod(output, 0o700)
+    ready = False
+    try:
+        save_json(output / "PRIVATE-masking-cues-receipt.json", {
+            "schema": SCHEMA, "claimed_status": "HOLD",
+            "source_count": len(sources),
+            "original_manifest_sha256_unsigned": sha256(manifest_raw).hexdigest(),
+            "original_masked_sha256_unsigned": [
+                source["output_sha256_unsigned"] for source in sources],
+            "counts_are_literal_marker_occurrences_not_verified_masks": True,
+            "not_authorized_or_safe_to_share": True,
+            **{flag: False for flag in FALSE_FLAGS},
+        })
+        file_new(output / "PRIVATE-masking-cues.csv", cue_csv(marker_rows))
+        file_new(output / "PRIVATE-masking-cues.html", cue_page(marker_rows))
+        ready = True
+        print("REVIEW_ONLY: PRIVATE original masking-cue navigation created; NOT privacy proof")
+        print("OPEN LOCALLY: " + str(output / "PRIVATE-masking-cues.html"))
+        return 2
+    finally:
+        if not ready:
+            shutil.rmtree(output)

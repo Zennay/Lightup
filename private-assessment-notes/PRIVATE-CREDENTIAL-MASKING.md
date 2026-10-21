@@ -54,6 +54,41 @@ customer data, values encoded in unexpected ways and personal identifiers
 may remain. Original redacted text is still **PRIVATE**. No output may be
 published or sent to a customer solely because a pattern was replaced.
 
+## NEW: offline PRIVATE original-by-original HUMAN masking-cue desk
+
+After creating a PRIVATE original notes workroom, use the native command
+below to get a separate owner-private, **source-minimal** HTML and CSV desk
+for reviewing the literal known redaction-placeholder shapes observed
+in each already-masked original source:
+
+```sh
+python3 private-assessment-notes/notes.py masking-cues \
+  --original-kit /private/operator-lightup-work/PRIVATE-lightup-notes-<actual-id> \
+  --private-parent /private/operator-lightup-work
+```
+
+The original source-bound masked content, SHA/byte source manifest, owner-
+private file modes and ordinal roster are checked by the **same native
+original `load_workroom` function**, without scanning or rereading
+unmasked original customer evidence. This produces a NEW 0700 owner-only
+directory with 0600 `PRIVATE-masking-cues.html`,
+`PRIVATE-masking-cues.csv` and `PRIVATE-masking-cues-receipt.json`.
+
+The read-only scriptless view groups literal placeholder appearances by
+HTTP/shell, URL/session, JSON/YAML/config and token/key families, indexed
+by **original source ordinal** only. No masked note text, free HUMAN notes,
+source filenames or source hashes enter the HTML/CSV. The original
+manifest and masked note hashes appear only in a separate PRIVATE unsigned
+receipt; they do NOT authenticate a producer.
+
+**This is NOT a count of detected secrets or completeness score.** Literal
+placeholder strings can already exist in source text, and unknown secrets
+will not have placeholders. Zero is not safe, nonzero is not a privacy
+verdict, and neither authorizes disclosure, actual target assessment,
+automated decision-making or a merge. The original independent HUMAN
+review remains mandatory. The command creates no model/network/target
+work and exits REVIEW_ONLY (2).
+
 ## Operator behavior and original source custody
 
 Use the existing `notes.py prepare --source ... --private-parent ...`
