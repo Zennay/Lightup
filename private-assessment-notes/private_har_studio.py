@@ -38,7 +38,7 @@ def render(rows: list[dict]) -> bytes:
             ' data-action="1" data-ordinal="' + str(ordinal) +
             '" data-area="' + escape(area, quote=True) +
             '" data-count="' + str(count) +
-            '" data-action="' + escape(instruction, quote=True) + '"'
+            '" data-task="' + escape(instruction, quote=True) + '"'
         )
         select = "".join(
             '<option value="' + escape(status, quote=True) + '">' +
