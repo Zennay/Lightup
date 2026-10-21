@@ -128,7 +128,7 @@ def render_history(rounds, endpoints, summary):
                 escape(marker) + "</td></tr>"
             )
         elements.append(
-            "<details><summary>Original endpoint slot " + str(i + 1).zfill(2) +
+            "<details id='slot-" + str(i + 1).zfill(2) + "'><summary>Original endpoint slot " + str(i + 1).zfill(2) +
             " — current HUMAN stage " + escape(current["stage"]) + " · role " +
             escape(current["role"]) + " · " + str(changed) +
             " manually ordered changes</summary><p>PRIVATE literal original lab URL: "
@@ -137,6 +137,34 @@ def render_history(rounds, endpoints, summary):
             "<th>Suggested reviewer role</th><th>PRIVATE HUMAN note</th>"
             "<th>Self-report change</th></tr></thead><tbody>" +
             "".join(rows) + "</tbody></table></details>"
+        )
+    attention = []
+    # Current source-free vocabulary only; no attestation or inferred clearance.
+    # The private document contains endpoint/notes further down, but this
+    # navigation deliberately shows only fixed labels and original ordinals.
+    for row in sorted(
+        rounds[-1]["human_rows"],
+        key=lambda item: (
+            STAGES.index(item["stage"]),
+            ROLES.index(item["role"]),
+            item["slot"],
+        ),
+    ):
+        if row["stage"] not in ("NEEDS_INPUT", "FOLLOW_UP"):
+            continue
+        slot = str(row["slot"]).zfill(2)
+        attention.append(
+            "<tr><td><a href='#slot-" + slot + "'>Original slot " + slot +
+            "</a></td><td>" + escape(row["stage"]) +
+            "</td><td>" + escape(row["role"]) +
+            "</td><td>" + str(len(row["note"])) + "</td></tr>"
+        )
+    workload_rows = []
+    for item in summary["round_counts"]:
+        workload_rows.append(
+            "<tr><td>" + str(item["round_ordinal"]) + "</td>" +
+            "".join("<td>" + str(item["by_stage"][stage]) + "</td>" for stage in STAGES) +
+            "<td>" + str(item["human_notes_present"]) + "</td></tr>"
         )
     transitions = []
     for item in summary["transition_counts"]:
@@ -164,6 +192,17 @@ def render_history(rounds, endpoints, summary):
         "The selected order is NOT authenticated chronology and these are "
         "HUMAN self-reports, not tested findings, consent, authorization, "
         "remediation evidence or HUMAN GO.</p>"
+        "<section><h2>Operator-selected HUMAN workload by round</h2>"
+        "<table><thead><tr><th>Manual round</th>" +
+        "".join("<th>" + escape(stage) + "</th>" for stage in STAGES) +
+        "<th>Rows containing HUMAN notes</th></tr></thead><tbody>" +
+        "".join(workload_rows) + "</tbody></table></section>"
+        "<section><h2>Current HUMAN attention queue</h2>"
+        "<p>Self-reported NEEDS_INPUT/FOLLOW_UP only. The link opens that "
+        "endpoint's PRIVATE history below; no approval or clearance implied.</p>"
+        "<table><thead><tr><th>Original slot</th><th>HUMAN stage</th>"
+        "<th>Suggested role</th><th>Note characters</th></tr></thead><tbody>" +
+        "".join(attention) + "</tbody></table></section>"
         "<section><h2>Human follow-up activity between adjacent rounds</h2>"
         "<table><thead><tr><th>Manual order</th><th>Changed slots</th>"
         "<th>Stages changed</th><th>Roles changed</th>"
