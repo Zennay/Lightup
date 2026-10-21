@@ -146,12 +146,55 @@
  });
  function documentData(){
   const last=rounds[rounds.length-1];
-  return {schema:"lightup.private.human-lab-attention.v1",mode:"REVIEW_ONLY",authority:{...NO_AUTH},
+  return {schema:"lightup.private.human-lab-attention.v2",mode:"REVIEW_ONLY",authority:{...NO_AUTH},
    original_source_verified:false,actual_work_verified:false,consent_or_release_inferred:false,
    source_files_included:false,notes_included:false,round_order:"MANUALLY_ASSUMED",round_count:rounds.length,
+   source_profiles:rounds.map(signature),
    steps:ITEMS.map(i=>({action:i.id,self_reported_state:last[i.id],marker_transitions:changes(i.id),
     proposed_role:proposals[i.id].role,proposed_human_followup:proposals[i.id].plan}))};
  }
+ // A saved HUMAN proposal can be reopened ONLY after the operator loads all
+ // same source-free marker rounds in the same declared order. Byte identity,
+ // actor identity, real source authenticity and chronology are NOT inferred.
+ $("restore").addEventListener("change",async e=>{
+  const file=e.target.files&&e.target.files[0];e.target.value="";
+  if(!file)return;
+  if(!rounds){$("message").textContent="HOLD: load original source-free HUMAN rounds before restoring a proposal.";return;}
+  try{
+   if(file.size<20||file.size>65536)throw Error("bytes");
+   const saved=uniqueKeys(await file.text());
+   const keys=["schema","mode","authority","original_source_verified","actual_work_verified",
+    "consent_or_release_inferred","source_files_included","notes_included","round_order",
+    "round_count","source_profiles","steps"];
+   if(!exact(saved,keys)||saved.schema!=="lightup.private.human-lab-attention.v2"||
+    saved.mode!=="REVIEW_ONLY"||!exact(saved.authority,Object.keys(NO_AUTH))||
+    Object.keys(NO_AUTH).some(k=>saved.authority[k]!==false)||
+    saved.original_source_verified!==false||saved.actual_work_verified!==false||
+    saved.consent_or_release_inferred!==false||saved.source_files_included!==false||
+    saved.notes_included!==false||saved.round_order!=="MANUALLY_ASSUMED"||
+    saved.round_count!==rounds.length||!Array.isArray(saved.source_profiles)||
+    saved.source_profiles.length!==rounds.length||
+    saved.source_profiles.some((signatureValue,i)=>signatureValue!==signature(rounds[i]))||
+    !Array.isArray(saved.steps)||saved.steps.length!==20)throw Error("source drift");
+   const incoming=Object.create(null),last=rounds[rounds.length-1];
+   saved.steps.forEach((entry,i)=>{
+    const id=ITEMS[i].id;
+    if(!exact(entry,["action","self_reported_state","marker_transitions",
+      "proposed_role","proposed_human_followup"])||
+      entry.action!==id||entry.self_reported_state!==last[id]||
+      entry.marker_transitions!==changes(id)||
+      !Object.hasOwn(ROLE,entry.proposed_role)||
+      !Object.hasOwn(PLAN,entry.proposed_human_followup))throw Error("ambiguous proposal");
+    incoming[id]={role:entry.proposed_role,plan:entry.proposed_human_followup};
+   });
+   if(!window.confirm("Restore ALL 20 HUMAN proposals against the identical currently loaded source-free discussion rounds? No original source, actor or consent was verified."))return;
+   proposals=incoming;render();
+   $("message").textContent="Restored exact source-marker-bound LOCAL HUMAN role/follow-up choices. Still REVIEW_ONLY / not authorized.";
+  }catch(_){
+   $("message").textContent="HOLD: saved HUMAN proposal refused (schema, duplicate key, source-marker drift or authority). Current proposals unchanged.";
+  }
+ });
+
  function download(filename,text,type){
   const url=URL.createObjectURL(new Blob([text],{type})),a=el("a");
   a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();
