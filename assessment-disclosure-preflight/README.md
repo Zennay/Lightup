@@ -46,6 +46,25 @@ python3 assessment-disclosure-preflight/preflight.py \
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
 
+## Source-free multi-room HUMAN inbox board
+
+New native [PRIVATE multi-room inbox board](./PRIVATE-INBOX-PORTFOLIO.md)
+collects up to twelve explicitly named original PRIVATE received HUMAN
+rooms into one fresh owner-controlled HTML/CSV/JSON portfolio. It reads the
+original full local inventory and original seven-column source-free HUMAN
+decision material without leaking room names, source paths, free-text notes,
+original source hashes, or private customer data into the board. Each room
+is represented by an ephemeral input-order slot and literal A/B/HOLD counts.
+The entire product is read-only against original rooms; 0600 handoff files
+are written exclusively into a separate existing owner-owned 0700 folder.
+This board explicitly does **not** decrypt or perform each original full
+HUMAN source-bound reopener: the unchanged separate native
+`private_reopen.py` is still necessary. REVIEW_ONLY/HOLD only, no PASS.
+
+~~~sh
+python3 assessment-disclosure-preflight/private_inbox_board.py --help
+~~~
+
 ## Browser download → PRIVATE owner-only receiving inbox
 
 The new [offline PRIVATE HUMAN inbox](./PRIVATE-BROWSER-INBOX.md) provides a
@@ -757,7 +776,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 25
+store, scan workflow, credential grant or signed release. The 27
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -830,7 +849,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 25
+noncanonical, reordered, oversized or changed members, compares all 27
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no

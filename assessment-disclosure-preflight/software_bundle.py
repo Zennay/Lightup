@@ -23,7 +23,7 @@ SOFTWARE_FILES = (
     "standalone.html", "reconcile-studio.html", "reconcile-studio.css",
     "reconcile-studio.js", "reconcile_package.py", "reconcile-standalone.html",
     "kit-home.html", "kit-home.css", "private_install.py", "private_intake.py", "private_intake_wizard.py",
-    "private_reopen.py",
+    "private_reopen.py", "private_inbox_board.py", "PRIVATE-INBOX-PORTFOLIO.md",
     "PRIVATE-BROWSER-INBOX.md", "software_bundle.py",
 )
 MAX_ASSET = 512 * 1024
