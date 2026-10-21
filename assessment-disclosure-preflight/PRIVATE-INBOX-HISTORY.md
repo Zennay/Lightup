@@ -75,6 +75,22 @@ to source files, sets localStorage, uploads data or verifies genuine reviewer
 identity. A browser 'loaded' message is not proof of trusted source or
 filesystem custody: always use the **original native reopen** below.
 
+### Portable single-file viewer (offline)
+
+For a simpler workflow, save the [standalone PRIVATE History Desk](./private-inbox-history-standalone.html)
+into trusted owner-only local storage and open it as a single HTML file.
+Everything needed for the interactive timeline, filters and print view is
+already embedded in that one file, with inline CSP SHA-256 integrity hashes.
+Choose only your local native source-free history JSON; the browser never
+uploads anything. Local browser rendering is **not** native source admission,
+genuine provenance, consent, an approved security verdict or release.
+
+The deterministic source-only `private_inbox_history_package.py` builder
+recreates the one-file viewer from the exact adjacent HTML/CSS/JS assets.
+Its `verify-current` command is read-only, comparing the current software
+source with the physically saved standalone. These are unsigned files:
+source/kit equality does not prove an independent publisher's identity.
+
 ## Reopen an existing private history without writing
 
 Use the *same* original board and complete ordered revision files.

@@ -1168,3 +1168,23 @@ JSON keys and unexpected schema/authority fields, incomplete stage histories,
 falsely claimed no-release flags and inconsistent latest attention entries.
 It retains the source-free report only in browser memory; use **Clear private
 session** on shared devices. See the [history guide](./PRIVATE-INBOX-HISTORY.md).
+
+
+### Portable one-file PRIVATE History Desk
+
+The complete [single-file HUMAN History Desk](./private-inbox-history-standalone.html)
+contains the same offline interactive browser interface with all HTML, CSS
+and JavaScript physically embedded into **one file**. Its restrictive CSP
+pins the exact source script and stylesheet by SHA-256; no network, storage,
+external scripts, inline event handlers, scanning or assessment execution.
+This is convenient for isolated offline review without a three-file software
+directory. It still imports only the previously native-generated local
+source-free history JSON and never authenticates that report.
+
+Use `python3 private_inbox_history_package.py verify-current` to compare the
+one-file version with the exact installed original HTML/CSS/JS source bytes;
+REVIEW_ONLY (2) means equality of local unsigned bytes, not trusted identity
+or security approval. After intentionally changing these original sources,
+run `python3 private_inbox_history_package.py build --replace` to regenerate
+only the owned one-file browser output. The software-only ZIP includes the
+original source, builder and generated single-file browser.
