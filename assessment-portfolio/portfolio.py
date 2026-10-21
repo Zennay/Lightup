@@ -1,0 +1,419 @@
+#!/usr/bin/env python3
+"""Offline cross-agenda human coordination portfolio. No target/network/authorization calls."""
+from __future__ import annotations
+
+import argparse
+import base64
+from collections import Counter
+from datetime import date
+from hashlib import sha256
+from html import escape
+import csv
+import io
+import json
+import os
+import stat
+import sys
+
+AGENDA_SCHEMA = "lightup.archive_human_agenda.v1"
+PORTFOLIO_SCHEMA = "lightup.assessment_portfolio_aggregate.v1"
+MAX_AGENDA = 128 * 1024
+MAX_AGENDAS = 12
+MAX_TOTAL = MAX_AGENDA * MAX_AGENDAS
+FLAGS = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")
+STAGES = (
+    "PENDING_ORIGINAL", "NEEDS_ORIGINAL_EVIDENCE", "NEEDS_SOURCE_OWNER",
+    "NEEDS_PRIVACY_REVIEW", "AWAITING_INPUT", "HUMAN_DISCUSSION",
+)
+ROLES = ("unassigned", "source_owner", "reviewer", "privacy", "operator")
+DATE_BUCKETS = (
+    "PAST_PLANNED_DATE", "PLANNED_FOR_REFERENCE_DAY",
+    "FUTURE_PLANNED_DATE", "UNSCHEDULED",
+)
+KINDS = (
+    "completed_lab_case_claim", "completed_lab_cohort_claim",
+    "offline_comparison_claim", "studio_catalog_draft",
+    "other_lightup_draft", "private_review_zip_claim",
+)
+GUIDANCE = {
+    "completed_lab_case_claim": "Compare source-run facts with the original isolated lab scenario and provenance.",
+    "completed_lab_cohort_claim": "Check original cohort membership and source-bound baseline/candidate choices.",
+    "offline_comparison_claim": "Discuss flagged source metrics using the canonical original comparator.",
+    "studio_catalog_draft": "Review scenario authorship, declared ground truth and separate numeric lab bindings.",
+    "other_lightup_draft": "Confirm original producer/schema and assess privacy before sharing details.",
+    "private_review_zip_claim": "Inspect with the original review-pack tool and verify the responsible source owner.",
+}
+BUCKET_ORDER = {value: index for index, value in enumerate(DATE_BUCKETS)}
+STYLE = """*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,section,footer{max-width:1240px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.kicker{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.4rem 0}.state{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;background:#fff7ed;border-radius:.45rem;font-weight:700}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem}.card,section{background:white;border:1px solid #dbe1e8;border-radius:.65rem;margin:.8rem auto}.card{padding:.9rem}.value{font-size:1.6rem;font-weight:800;display:block}.label{font-size:.82rem;color:#536174}.tablewrap{overflow:auto;border:1px solid #e0e5eb;border-radius:.45rem;margin:.7rem 0}table{border-collapse:collapse;width:100%;font-size:.86rem}th,td{border-bottom:1px solid #e0e5eb;border-right:1px solid #edf0f4;padding:.55rem;text-align:left;vertical-align:top}th{background:#eef2f6}tbody tr:nth-child(even){background:#fafbfd}.note{font-size:.9rem;color:#536174}footer{font-size:.85rem;color:#64748b}@media print{body{background:white;font-size:10pt}.hero,main,section,footer{max-width:none;padding:.35rem}.card,section{break-inside:avoid}table{font-size:8pt}th,td{padding:.25rem}}"""
+class Hold(Exception):
+    pass
+
+def unique_pairs(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise Hold("ambiguous JSON keys")
+        result[key] = value
+    return result
+
+def reject_constant(_value):
+    raise Hold("invalid JSON constant")
+
+def reject_float(_value):
+    raise Hold("unexpected floating-point value")
+
+def parse_date(value, *, nullable=False):
+    if value is None and nullable:
+        return None
+    if type(value) is not str or len(value) != 10:
+        raise Hold("invalid date")
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as error:
+        raise Hold("invalid date") from error
+    if parsed.isoformat() != value or not 2020 <= parsed.year <= 2100:
+        raise Hold("invalid date")
+    return parsed
+
+def open_directory_nofollow(path):
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        raise Hold("platform lacks required no-follow directory support")
+    absolute = os.path.abspath(os.fspath(path))
+    parts = [part for part in absolute.split(os.sep) if part]
+    fd = os.open(os.sep, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in parts:
+            next_fd = os.open(
+                part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd
+            )
+            os.close(fd)
+            fd = next_fd
+        return fd, absolute
+    except Exception:
+        os.close(fd)
+        raise
+
+def read_private_agenda(path):
+    absolute = os.path.abspath(os.fspath(path))
+    parent_path, name = os.path.dirname(absolute), os.path.basename(absolute)
+    if name in ("", ".", ".."):
+        raise Hold("invalid input path")
+    parent_fd, _ = open_directory_nofollow(parent_path)
+    try:
+        fd = os.open(
+            name, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=parent_fd,
+        )
+    finally:
+        os.close(parent_fd)
+    with os.fdopen(fd, "rb") as stream:
+        before = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
+                or stat.S_IMODE(before.st_mode) != 0o600 or before.st_nlink != 1
+                or not 0 < before.st_size <= MAX_AGENDA):
+            raise Hold("input is not an owner-private bounded regular file")
+        raw = stream.read(MAX_AGENDA + 1)
+        after = os.fstat(stream.fileno())
+        signature_before = (
+            before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
+            before.st_ctime_ns, before.st_uid, before.st_mode, before.st_nlink,
+        )
+        signature_after = (
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns,
+            after.st_ctime_ns, after.st_uid, after.st_mode, after.st_nlink,
+        )
+        if len(raw) != before.st_size or signature_before != signature_after:
+            raise Hold("input changed during admission")
+    try:
+        text = raw.decode("utf-8", errors="strict")
+        doc = json.loads(
+            text, object_pairs_hook=unique_pairs,
+            parse_constant=reject_constant, parse_float=reject_float,
+        )
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise Hold("invalid private agenda JSON") from error
+    validate_agenda(doc)
+    return absolute, raw, doc
+
+def validate_count_map(value, keys):
+    if type(value) is not dict or set(value) != set(keys):
+        raise Hold("invalid count map")
+    if any(type(value[key]) is not int or value[key] < 0 for key in keys):
+        raise Hold("invalid count value")
+
+def date_bucket(review_date, reference_day):
+    if review_date is None:
+        return "UNSCHEDULED"
+    parsed = parse_date(review_date)
+    if parsed < reference_day:
+        return "PAST_PLANNED_DATE"
+    if parsed == reference_day:
+        return "PLANNED_FOR_REFERENCE_DAY"
+    return "FUTURE_PLANNED_DATE"
+
+def validate_agenda(doc):
+    expected = {
+        "schema", "claimed_status", "reference_date", "source_count",
+        "human_stage_counts", "neutral_role_counts", "date_bucket_counts",
+        "planning_not_permission", "items", *FLAGS,
+    }
+    if type(doc) is not dict or set(doc) != expected or doc["schema"] != AGENDA_SCHEMA:
+        raise Hold("wrong agenda schema")
+    if any(doc[key] is not False for key in FLAGS) or doc["planning_not_permission"] is not True:
+        raise Hold("agenda contains contradictory authority metadata")
+    if doc["claimed_status"] not in ("HOLD", "REVIEW_ONLY"):
+        raise Hold("unknown source status")
+    reference = parse_date(doc["reference_date"])
+    count = doc["source_count"]
+    items = doc["items"]
+    if type(count) is not int or not 2 <= count <= 64 or type(items) is not list or len(items) != count:
+        raise Hold("invalid agenda item count")
+    validate_count_map(doc["human_stage_counts"], STAGES)
+    validate_count_map(doc["neutral_role_counts"], ROLES)
+    validate_count_map(doc["date_bucket_counts"], DATE_BUCKETS)
+    seen_slots = set()
+    stage_counts, role_counts, date_counts = Counter(), Counter(), Counter()
+    expected_item = {"slot", "source_kind", "stage", "next_role", "review_date", "date_bucket", "suggested_human_question"}
+    for item in items:
+        if type(item) is not dict or set(item) != expected_item:
+            raise Hold("invalid agenda item shape")
+        slot = item["slot"]
+        if type(slot) is not int or not 1 <= slot <= count or slot in seen_slots:
+            raise Hold("invalid or duplicate source slot")
+        seen_slots.add(slot)
+        kind, stage, role = item["source_kind"], item["stage"], item["next_role"]
+        if kind not in KINDS or stage not in STAGES or role not in ROLES:
+            raise Hold("unknown agenda classification")
+        if item["suggested_human_question"] != GUIDANCE[kind]:
+            raise Hold("non-canonical human question")
+        review_date = item["review_date"]
+        parse_date(review_date, nullable=True)
+        bucket = date_bucket(review_date, reference)
+        if item["date_bucket"] != bucket:
+            raise Hold("inconsistent source date bucket")
+        stage_counts[stage] += 1
+        role_counts[role] += 1
+        date_counts[bucket] += 1
+    if seen_slots != set(range(1, count + 1)):
+        raise Hold("incomplete source slots")
+    if any(doc["human_stage_counts"][key] != stage_counts[key] for key in STAGES):
+        raise Hold("stage counts do not match agenda items")
+    if any(doc["neutral_role_counts"][key] != role_counts[key] for key in ROLES):
+        raise Hold("role counts do not match agenda items")
+    if any(doc["date_bucket_counts"][key] != date_counts[key] for key in DATE_BUCKETS):
+        raise Hold("date counts do not match agenda items")
+
+def collect(agendas, reference_day):
+    if not 2 <= len(agendas) <= MAX_AGENDAS:
+        raise Hold("select 2–12 original private agenda exports")
+    documents, seen_digests, total_bytes = [], set(), 0
+    source_dirs = set()
+    rows = []
+    for agenda_slot, (absolute, raw, doc) in enumerate(agendas, 1):
+        total_bytes += len(raw)
+        if total_bytes > MAX_TOTAL:
+            raise Hold("total source size exceeded")
+        digest = sha256(raw).digest()
+        if digest in seen_digests:
+            raise Hold("duplicate agenda export")
+        seen_digests.add(digest)
+        source_dirs.add(os.path.dirname(absolute))
+        documents.append(doc)
+        for item in doc["items"]:
+            rows.append({
+                "agenda_slot": agenda_slot,
+                "source_slot": item["slot"],
+                "source_kind": item["source_kind"],
+                "stage": item["stage"],
+                "next_role": item["next_role"],
+                "review_date": item["review_date"],
+                "date_bucket": date_bucket(item["review_date"], reference_day),
+                "suggested_human_question": item["suggested_human_question"],
+            })
+    return documents, rows, source_dirs
+
+def aggregate(documents, rows, reference_day):
+    stage_counts = Counter(row["stage"] for row in rows)
+    role_counts = Counter(row["next_role"] for row in rows)
+    date_counts = Counter(row["date_bucket"] for row in rows)
+    claimed_status_counts = Counter(doc["claimed_status"] for doc in documents)
+    status = "HOLD" if claimed_status_counts["HOLD"] else "REVIEW_ONLY"
+    return {
+        "schema": PORTFOLIO_SCHEMA,
+        "status": status,
+        "reference_date": reference_day.isoformat(),
+        "agenda_count": len(documents),
+        "item_count": len(rows),
+        "claimed_status_counts": {key: claimed_status_counts[key] for key in ("HOLD", "REVIEW_ONLY")},
+        "human_stage_counts": {key: stage_counts[key] for key in STAGES},
+        "neutral_role_counts": {key: role_counts[key] for key in ROLES},
+        "date_bucket_counts": {key: date_counts[key] for key in DATE_BUCKETS},
+        "planning_not_permission": True,
+        **{key: False for key in FLAGS},
+    }
+
+def render_private_html(summary, rows):
+    style_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
+    table_head = (
+        "<thead><tr><th>Agenda slot</th><th>Source slot</th><th>Source kind</th>"
+        "<th>Human stage</th><th>Neutral role</th><th>Proposed review date</th>"
+        "<th>Date bucket</th><th>Suggested human question</th></tr></thead>"
+    )
+    sections = []
+    for role in ROLES:
+        selected = [row for row in rows if row["next_role"] == role]
+        if not selected:
+            continue
+        selected.sort(key=lambda row: (
+            BUCKET_ORDER[row["date_bucket"]], row["review_date"] or "9999-12-31",
+            row["agenda_slot"], row["source_slot"],
+        ))
+        body = "".join(
+            "<tr>" + "".join("<td>" + escape(str(value)) + "</td>" for value in (
+                "Agenda " + str(row["agenda_slot"]).zfill(2),
+                "Slot " + str(row["source_slot"]).zfill(2),
+                row["source_kind"], row["stage"], row["next_role"],
+                row["review_date"] or "Not specified", row["date_bucket"],
+                row["suggested_human_question"],
+            )) + "</tr>"
+            for row in selected
+        )
+        sections.append(
+            "<section><h2>Neutral role: " + escape(role) + "</h2>"
+            "<p>" + str(len(selected)) + " human-planning items. Role labels are proposals, not identities or assignments.</p>"
+            "<div class='tablewrap'><table>" + table_head + "<tbody>" + body + "</tbody></table></div></section>"
+        )
+    status = "HOLD" if summary["status"] == "HOLD" else "REVIEW_ONLY"
+    cards = "".join(
+        "<div class='card'><span class='value'>" + str(summary["date_bucket_counts"][key]) +
+        "</span><span class='label'>" + escape(label) + "</span></div>"
+        for key, label in (
+            ("PAST_PLANNED_DATE", "Past proposed dates"),
+            ("PLANNED_FOR_REFERENCE_DAY", "Reference-day plans"),
+            ("FUTURE_PLANNED_DATE", "Future proposed dates"),
+            ("UNSCHEDULED", "No proposed date"),
+        )
+    )
+    html = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'sha256-" +
+        style_hash + "'; img-src 'none'; script-src 'none'; connect-src 'none'; "
+        "form-action 'none'; base-uri 'none'\">"
+        "<title>LightUp — Private Assessment Portfolio</title><style>" + STYLE + "</style></head><body>"
+        "<header class='hero'><div class='kicker'>LIGHTUP / ASSESSMENT RUNTIME / OFFLINE</div>"
+        "<h1>Cross-agenda human coordination</h1>"
+        "<p>Reference day: " + escape(summary["reference_date"]) +
+        ". Compare only previously generated private human agendas. All source details remain local.</p>"
+        "<div class='state'>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · " + status +
+        " · NOT AUTHORIZED</div></header>"
+        "<main><div class='cards'>" + cards + "</div>"
+        "<p class='note'>" + str(summary["agenda_count"]) + " selected agendas · " +
+        str(summary["item_count"]) + " human-planning items. Input order is a local ordinal only, not authenticated chronology.</p></main>"
+        + "".join(sections) +
+        "<section><h2>Boundary and interpretation</h2><p class='note'>Past proposed dates are discussion prompts, not legal deadlines,"
+        " verified finding age, security severity, authorization expiry or proof of a missed action. Missing sources are not treated as fixed."
+        " No original paths, filenames, hashes, target labels, client identities or HUMAN notes are shown. The source claims and suggested questions remain unverified."
+        " No assessment, network request, grant, scan, retest, remediation or release action is performed.</p></section>"
+        "<footer>Static scriptless private HTML. Source bytes are not embedded in this artifact.</footer></body></html>"
+    )
+    return html.encode("utf-8")
+
+def render_counts_csv(summary):
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\r\n")
+    writer.writerow(("dimension", "value", "count"))
+    writer.writerow(("summary", "agenda_count", summary["agenda_count"]))
+    writer.writerow(("summary", "item_count", summary["item_count"]))
+    for key, count in summary["claimed_status_counts"].items():
+        writer.writerow(("source_status", key, count))
+    for key, count in summary["human_stage_counts"].items():
+        writer.writerow(("human_stage", key, count))
+    for key, count in summary["neutral_role_counts"].items():
+        writer.writerow(("neutral_role", key, count))
+    for key, count in summary["date_bucket_counts"].items():
+        writer.writerow(("date_bucket", key, count))
+    return stream.getvalue().encode("utf-8")
+
+def open_output_directory(path):
+    fd, absolute = open_directory_nofollow(path)
+    info = os.fstat(fd)
+    if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) != 0o700):
+        os.close(fd)
+        raise Hold("output directory must be owned by the current user and mode 0700")
+    return fd, absolute
+
+def publish_bundle(directory_fd, artifacts):
+    created = []
+    try:
+        for name, data in artifacts:
+            fd = os.open(
+                name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600, dir_fd=directory_fd,
+            )
+            created.append(name)
+            with os.fdopen(fd, "wb") as stream:
+                os.fchmod(stream.fileno(), 0o600)
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+        os.fsync(directory_fd)
+    except Exception:
+        for name in reversed(created):
+            try:
+                os.unlink(name, dir_fd=directory_fd)
+            except OSError:
+                pass
+        try:
+            os.fsync(directory_fd)
+        except OSError:
+            pass
+        raise
+
+def run(args):
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise Hold("platform lacks no-follow file support")
+    reference_day = parse_date(args.as_of)
+    if not 2 <= len(args.agendas) <= MAX_AGENDAS:
+        raise Hold("select 2–12 original private agenda exports")
+    admitted = [read_private_agenda(path) for path in args.agendas]
+    documents, rows, source_dirs = collect(admitted, reference_day)
+    output_fd, output_path = open_output_directory(args.output_dir)
+    try:
+        for source_dir in source_dirs:
+            common = os.path.commonpath((output_path, source_dir))
+            if common in (output_path, source_dir):
+                raise Hold("output directory must be separate from source rooms")
+        summary = aggregate(documents, rows, reference_day)
+        outputs = [
+            ("assessment-portfolio-private.html", render_private_html(summary, rows)),
+            ("assessment-portfolio-anonymous.json",
+             (json.dumps(summary, ensure_ascii=False, indent=2) + "\n").encode("utf-8")),
+            ("assessment-portfolio-anonymous.csv", render_counts_csv(summary)),
+        ]
+        publish_bundle(output_fd, outputs)
+    finally:
+        os.close(output_fd)
+    print("ASSESSMENT_PORTFOLIO_CREATED agendas=" + str(len(documents)) +
+          " items=" + str(len(rows)) + " — PLANNING ONLY; NOT AUTHORIZED")
+    return 0
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Aggregate original private human agendas offline; no target or authorization calls."
+    )
+    parser.add_argument("--as-of", required=True, help="Explicit planning reference day YYYY-MM-DD")
+    parser.add_argument("--output-dir", required=True, help="Existing owner-only directory, mode 0700")
+    parser.add_argument("agendas", nargs="+", help="2–12 original private JSON agenda exports")
+    args = parser.parse_args(argv)
+    try:
+        return run(args)
+    except (Hold, OSError, ValueError, TypeError, UnicodeError, KeyError,
+            OverflowError, RecursionError, csv.Error):
+        print("ASSESSMENT_PORTFOLIO_HOLD — invalid, unsafe, or incompatible private source/output", file=sys.stderr)
+        return 3
+
+if __name__ == "__main__":
+    raise SystemExit(main())
