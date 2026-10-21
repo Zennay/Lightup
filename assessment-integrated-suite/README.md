@@ -1,4 +1,21 @@
-## Latest portable software bundle — v26
+## Latest portable software bundle — v27
+
+[Download the source-only offline toolkit v27](LightUp-Assessment-Offline-Toolkit-v27.zip) ·
+[Detached SHA-256 reference](LightUp-Assessment-Offline-Toolkit-v27.zip.sha256)
+
+Unsigned ZIP SHA-256: dc012bed8d0e58d9bd8bbb33320de327f0db859848ed8c8e5f68d799318028f3.
+
+The v27 manifest is explicitly versioned as schema v2 and includes the complete
+unsigned byte inventory for all studio/support files, launcher, README and
+operator guide. The native verifier reads legacy v1 bundles (v25), the extended
+v1 manifest in v26, and current v2 bundles. Legacy v1 bundles do not hash their
+generated launcher or README internally; pass an expected whole-ZIP SHA-256
+from a separately trusted source when required.
+
+Verify v27 without extracting files:
+python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v27.zip --expected-sha256 dc012bed8d0e58d9bd8bbb33320de327f0db859848ed8c8e5f68d799318028f3
+
+## Previous portable software bundle — v26
 
 [Download the source-only offline toolkit v26](LightUp-Assessment-Offline-Toolkit-v26.zip) ·
 [Detached SHA-256 reference](LightUp-Assessment-Offline-Toolkit-v26.zip.sha256)
@@ -11,7 +28,7 @@ browser studio HTML pages plus two adjacent local support JavaScript files.
 Native Python, original assessment results, customer data, targets and reviewer
 notes are not bundled. Every studio remains REVIEW_ONLY / DRAFT/HOLD.
 
-The ZIP's unsigned manifest.json now binds exact byte lengths and SHA-256
+The v26 ZIP's unsigned manifest.json binds exact byte lengths and SHA-256
 digests for every studio/support asset, the launcher, README.txt and the
 operator guide. It explicitly excludes its own hash. To verify a locally
 downloaded package without extracting files, use the native checkout tool:

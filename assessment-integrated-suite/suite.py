@@ -289,9 +289,9 @@ def main() -> int:
                            help="must equal CONTINUE PRIVATE WORKPACK")
     commands.add_parser("catalog", help="read-only inventory of installed original source modules")
     verify = commands.add_parser(
-        "verify-kit", help="verify a v26+ software-only ZIP inventory without extracting")
+        "verify-kit", help="verify a legacy v1 or current v2 software-only ZIP inventory without extracting")
     verify.add_argument("--package", required=True,
-                        help="existing v26+ offline ZIP; byte integrity only, never authenticity")
+                        help="existing offline ZIP; byte integrity only, never authenticity")
     verify.add_argument("--expected-sha256", default="",
                         help="optional expected ZIP digest from a trusted separate channel")
     args = cli.parse_args()

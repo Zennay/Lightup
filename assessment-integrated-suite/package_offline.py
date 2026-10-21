@@ -32,9 +32,9 @@ authority to scan, vulnerability verification, release or deployment.
 
 These source files are unsigned. manifest.json hashes are only local file-byte
 integrity references; they do not authenticate source provenance.
-The manifest lists exact byte lengths and SHA-256 digests for every studio,
-support asset, START-HERE.html, this README.txt and the operator guide. It
-does not hash itself. Use verify_offline.py from the original native checkout
+The current v27 manifest uses schema v2 and lists exact byte lengths and
+SHA-256 digests for every studio, support asset, START-HERE.html, this
+README.txt and the operator guide. It does not hash itself. Use verify_offline.py from the original native checkout
 to check the archive inventory without extracting any files. A successful
 verification establishes local archive byte integrity only, not authenticity,
 trusted origin, consent, security findings, permission or release.
@@ -349,7 +349,7 @@ def build(destination: Path) -> int:
          "sha256_unsigned": hashlib.sha256(guide).hexdigest()},
     ]
     inventory = json.dumps({
-        "schema": "lightup.assessment_offline_software_kit.v1",
+        "schema": "lightup.assessment_offline_software_kit.v2",
         "status": "REVIEW_ONLY",
         "software_only": True, "sources_or_client_data_included": False,
         "original_app_count": len(files), "support_asset_count": len(originals) - len(files),

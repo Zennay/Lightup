@@ -118,20 +118,29 @@ def verify(path: Path, expected_sha256: str = "") -> int:
                                   object_pairs_hook=unique_object)
             if not isinstance(manifest, dict):
                 raise Hold("HOLD: inventory root must be an object")
-            required = {"schema", "status", "software_only",
-                        "sources_or_client_data_included", "original_app_count",
-                        "support_asset_count", "files", "package_assets",
-                        "manifest_self_hash_excluded", "operator_guide", *FLAGS}
+            common_required = {"schema", "status", "software_only",
+                               "sources_or_client_data_included", "original_app_count",
+                               "support_asset_count", "files", "operator_guide", *FLAGS}
+            has_assets = "package_assets" in manifest or "manifest_self_hash_excluded" in manifest
+            required = common_required | ({"package_assets", "manifest_self_hash_excluded"}
+                                           if has_assets else set())
             if set(manifest) != required:
                 raise Hold("HOLD: unsupported manifest schema or fields")
-            if (manifest["schema"] != "lightup.assessment_offline_software_kit.v1" or
-                    manifest["status"] != "REVIEW_ONLY" or
+            schema = manifest["schema"]
+            if schema not in ("lightup.assessment_offline_software_kit.v1",
+                              "lightup.assessment_offline_software_kit.v2"):
+                raise Hold("HOLD: unsupported manifest version")
+            if schema == "lightup.assessment_offline_software_kit.v2" and not has_assets:
+                raise Hold("HOLD: v2 manifest lacks full package asset inventory")
+            if has_assets and manifest["manifest_self_hash_excluded"] is not True:
+                raise Hold("HOLD: manifest self-hash posture is missing")
+            if (manifest["status"] != "REVIEW_ONLY" or
                     manifest["software_only"] is not True or
                     manifest["sources_or_client_data_included"] is not False or
-                    manifest["manifest_self_hash_excluded"] is not True or
                     any(manifest[flag] is not False for flag in FLAGS)):
                 raise Hold("HOLD: package posture or non-authority flags do not match")
-            files, assets = manifest["files"], manifest["package_assets"]
+            files = manifest["files"]
+            assets = manifest.get("package_assets", [])
             if (not isinstance(files, list) or not files or
                     not isinstance(assets, list)):
                 raise Hold("HOLD: inventory collections are malformed")
@@ -161,14 +170,29 @@ def verify(path: Path, expected_sha256: str = "") -> int:
                 if len(content) != size or digest(content) != sha:
                     raise Hold("HOLD: package support asset bytes do not match manifest")
                 verified += 1
-            if asset_names != PACKAGE_ASSETS:
-                raise Hold("HOLD: package support inventory is incomplete")
             guide = manifest["operator_guide"]
-            if guide != next(x for x in assets if x["filename"] == "GUIDE-LAB-PLANNING.md"):
-                raise Hold("HOLD: operator guide inventory entries disagree")
-            expected = {"manifest.json"} | file_names | asset_names
+            if assets:
+                if asset_names != PACKAGE_ASSETS:
+                    raise Hold("HOLD: package support inventory is incomplete")
+                if guide != next(x for x in assets if x["filename"] == "GUIDE-LAB-PLANNING.md"):
+                    raise Hold("HOLD: operator guide inventory entries disagree")
+            else:
+                # Legacy v1 manifest: original guide/apps are hashed, but the
+                # generated launcher and README are not independently inventoried.
+                name, size, sha = descriptor(
+                    guide, {"GUIDE-LAB-PLANNING.md"}, with_source=False)
+                content = archive.read(by_name[name])
+                if len(content) != size or digest(content) != sha:
+                    raise Hold("HOLD: legacy operator guide does not match manifest")
+                verified += 1
+                print("LEGACY MANIFEST: START-HERE.html and README.txt have no individual hashes; " +
+                      "supply an independently trusted expected ZIP SHA-256 for whole-package matching.")
+            expected = {"manifest.json", "START-HERE.html", "README.txt",
+                        "GUIDE-LAB-PLANNING.md"} | file_names
             if set(by_name) != expected:
                 raise Hold("HOLD: unexpected or missing archive members")
+            if (assets and asset_names != PACKAGE_ASSETS):
+                raise Hold("HOLD: package support inventory is incomplete")
             if (type(manifest["original_app_count"]) is not int or
                     manifest["original_app_count"] != app_count or
                     type(manifest["support_asset_count"]) is not int or
@@ -190,7 +214,7 @@ def verify(path: Path, expected_sha256: str = "") -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify v26+ LightUp software-only ZIP bytes without extracting")
+        description="Verify legacy v1 or current v2 LightUp software-only ZIP bytes without extracting")
     parser.add_argument("--package", required=True,
                         help="path to an existing offline software ZIP")
     args = parser.parse_args()
