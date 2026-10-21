@@ -28,7 +28,7 @@
   let originalBytes = null;
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   let conflictProposal=null;
-  const decoder = new TextDecoder("utf-8", {fatal:true});
+  const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
     s.normalize("NFKC").replace(/^[\u0009\u0020\u00a0\u2000-\u200f\u202a-\u202e\u2060-\u206f\ufeff]+/gu,""));
