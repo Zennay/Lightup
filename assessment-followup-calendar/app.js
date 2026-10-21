@@ -1434,13 +1434,16 @@
   }
   async function restoreEncryptedFile(file){
     hold(active && crypto.subtle);
-    const originHash=hash,originSeries=seriesId,oldPlan=plan;
+    const fingerprint=workroomFingerprint(),oldPlan=plan;
     const password=$("handoffPassword").value;
     try{
       const admitted=await decryptPrivatePlan(file,password);
-      hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
-      if(changed && !confirm("Replace current unsaved PRIVATE HUMAN reminder dates with the authenticated encrypted plan? This does not prove original-source authenticity."))return;
-      hold(active && hash===originHash && seriesId===originSeries && plan===oldPlan);
+      hold(active && fingerprint===workroomFingerprint() && plan===oldPlan);
+      const replacingGroupPolicy=admitted.series!==seriesId;
+      if(!confirm("Restore a separate encrypted PRIVATE plan-only file? All existing proposed HUMAN appointment dates will be replaced. "+
+        (replacingGroupPolicy?"IMPORTANT: its calendar series differs, so ALL current declared group availability settings will reset to defaults. Save complete .luhw workroom first if needed. ":"Matching calendar series; saved local group rules will be retained. ")+
+        "This file is not original source, identity, consent or security verification."))return;
+      hold(active && fingerprint===workroomFingerprint() && plan===oldPlan);
       publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
       const previousSeries=seriesId;
       plan=admitted.schedule;seriesId=admitted.series;
@@ -1490,9 +1493,15 @@
   }
   async function onRestore(file){
     hold(active);
+    const snapshot=workroomFingerprint(),initialPlan=plan;
     const raw=decoder.decode(await bytes(file));
     const imported=admitPlanText(raw);
-    if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
+    hold(active && snapshot===workroomFingerprint() && plan===initialPlan);
+    const replacingGroupPolicy=imported.series!==seriesId;
+    if(!confirm("Restore plan-only CSV and replace ALL local proposed HUMAN appointment dates? "+
+      (replacingGroupPolicy?"IMPORTANT: this import changes calendar series and will RESET currently declared group availability to defaults. Save complete encrypted .luhw workroom first if needed. ":"Existing declared HUMAN group availability stays unchanged. ")+
+      "Source SHA is unsigned and does not provide permission, identity, verified security status or actual calendar availability."))return;
+    hold(active && snapshot===workroomFingerprint() && plan===initialPlan);
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     const previousSeries=seriesId;
     plan=imported.schedule;seriesId=imported.series;exportedPlan=!imported.legacy;page=0;agendaPage=0;changed=false;

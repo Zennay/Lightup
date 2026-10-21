@@ -173,3 +173,15 @@ and unload protection; plan-only export deliberately cannot dismiss it.
 The bundle is unsigned as to ORIGINAL SOURCE or identity: passphrase
 encryption does not confer real client/operator consent, verified risk,
 review completion, live scheduling or scanning authority. No network used.
+
+
+### Safe legacy plan-only import
+
+Importing a plan-only CSV or .luhc file now explicitly warns before replacing
+existing calendar proposals. When an imported plan has a different calendar
+series, existing group availability rules would be invalid for the new source
+series: the confirmation explicitly announces their reset to defaults and
+advises saving the complete encrypted .luhw workroom first. The original
+worksheet, current local plan and availability cannot be partially changed
+by malformed inputs; source and policy state are rechecked after reading
+the file and after the user's confirmation.
