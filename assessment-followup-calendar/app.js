@@ -22,7 +22,7 @@
   let publicationBaseline = null, changesPage = 0;
   let weekAnchor = "", monthAnchor = "";
   let backlogPage=0, backlogProposal=null;
-  let capacityRules = new Map(), capacityProposal = null;
+  let capacityRules = new Map(), capacityProposal = null, capacityDirty = false;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -891,7 +891,7 @@
       blackouts:[...seen].sort()};
   }
   function resetCapacity(){
-    capacityRules=new Map();
+    capacityRules=new Map();capacityDirty=false;
     capacityProposal=null;
     $("capacityApply").disabled=true;
     const select=$("capacityGroup");
@@ -973,30 +973,24 @@
       body.append(row);
     }
   }
-  function capacityExport(){
+  function privateCapacityCSV(){
     hold(active && capacityGroups().length<=256 && /^[0-9a-f]{32}$/.test(seriesId));
-    const rows=[CAP_HEAD,...capacityGroups().map(group=>{
-      const rule=capacityRules.get(group)||capacityDefaultRule();
+    return makeCsv([CAP_HEAD,...capacityGroups().map(group=>{
+      const rule=admitCapacityRule(capacityRules.get(group)||capacityDefaultRule());
       return [hash,seriesId,zone,group,rule.days.join(";"),
         rule.start,rule.end,String(rule.maximum),rule.blackouts.join(";")];
-    })];
-    if(!confirm("Download the complete source-bound PRIVATE HUMAN group availability policy? This contains HUMAN group labels, time windows and holiday dates. It is UNSIGNED and authorizes no assessment or external calendar access."))return;
-    download(makeCsv(rows),"lightup-private-human-capacity.csv","text/csv;charset=utf-8");
-    capacityMessage("Source-bound PRIVATE HUMAN availability rules downloaded; not automatically persisted in the browser.");
+    })]);
   }
-  async function capacityImport(file){
-    hold(active && capacityGroups().length<=256);
-    const currentHash=hash,currentSeries=seriesId,currentPlan=plan;
-    const raw=decoder.decode(await bytes(file));
-    hold(raw.charCodeAt(0)!==0xFEFF);
+  function admitCapacityText(raw, expectedSeries){
+    hold(active && typeof raw==="string" && raw.length<=MAX_BYTES && !raw.startsWith("\uFEFF"));
     const parsed=csv(raw,CAP_HEAD.length);
     hold(JSON.stringify(parsed[0])===JSON.stringify(CAP_HEAD));
     const groups=capacityGroups();
-    hold(parsed.length===groups.length+1);
+    hold(groups.length<=256 && parsed.length===groups.length+1);
     const next=new Map();
     for(let i=0;i<groups.length;i++){
       const row=parsed[i+1];
-      hold(row[0]===currentHash&&row[1]===currentSeries&&row[2]===zone&&row[3]===groups[i]);
+      hold(row[0]===hash && row[1]===expectedSeries && row[2]===zone && row[3]===groups[i]);
       const days=row[4].split(";").map(n=>Number(n));
       hold(row[4]===days.join(";") && /^([1-9]|1[0-2])$/.test(row[7]));
       const blackouts=row[8]?row[8].split(";"):[];
@@ -1004,12 +998,29 @@
         maximum:Number(row[7]),blackouts});
       next.set(row[3],rule);
     }
+    return next;
+  }
+  function capacityExport(){
+    const snapshot=privateCapacityCSV();
+    if(!confirm("Download the complete source-bound PRIVATE HUMAN group availability policy? This contains HUMAN group labels, time windows and holiday dates. It is UNSIGNED and authorizes no assessment or external calendar access."))return;
+    hold(snapshot===privateCapacityCSV());
+    download(snapshot,"lightup-private-human-capacity.csv","text/csv;charset=utf-8");
+    capacityDirty=false;
+    capacityMessage("Source-bound PRIVATE HUMAN group rules downloaded. The source remains local; preserve this CSV securely.");
+  }
+  async function capacityImport(file){
+    hold(active && capacityGroups().length<=256);
+    const currentHash=hash,currentSeries=seriesId,currentPlan=plan;
+    const initialRules=privateCapacityCSV();
+    const raw=decoder.decode(await bytes(file));
+    const next=admitCapacityText(raw,currentSeries);
     if(!confirm("Replace current local HUMAN group availability rules with this exact-worksheet/series/timezone PRIVATE policy? Existing HUMAN appointments and the original worksheet will not change."))return;
-    hold(active&&hash===currentHash&&seriesId===currentSeries&&plan===currentPlan);
-    capacityRules=next;
+    hold(active && hash===currentHash && seriesId===currentSeries &&
+      plan===currentPlan && initialRules===privateCapacityCSV());
+    capacityRules=next;capacityDirty=true;
     capacityProposal=null;$("capacityApply").disabled=true;
     capacityLoadEditor();renderCapacity();renderWeek();
-    capacityMessage("PRIVATE group availability reloaded; existing HUMAN reminders unchanged.");
+    capacityMessage("PRIVATE group availability reloaded with unsaved changes. Download policy or encrypted whole workroom to preserve it.");
   }
   function capacityPreview(){
     hold(active && capacityGroups().length>0 && capacityGroups().length<=256);
@@ -1362,7 +1373,8 @@
     hold(!raw.startsWith("\uFEFF"));
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
-    if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
+    if(active && (changed||capacityDirty) &&
+      !confirm("Discard all unsaved PRIVATE HUMAN plan and availability changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
@@ -1532,14 +1544,14 @@
     try{
       const group=$("capacityGroup").value;
       hold(active && capacityGroups().includes(group));
-      capacityRules.set(group,capacityEditorRule());
+      capacityRules.set(group,capacityEditorRule());capacityDirty=true;
       capacityProposal=null;$("capacityApply").disabled=true;
       renderCapacity();renderWeek();capacityMessage("PRIVATE HUMAN group availability changed locally. Download the policy to preserve it.");
     }catch(_){capacityMessage("Human group availability rejected (HOLD). Existing group policy unchanged.",true);}
   });
   hook("capacityDefault","click",()=>{
     if(!active)return;
-    capacityRules.delete($("capacityGroup").value);
+    capacityRules.delete($("capacityGroup").value);capacityDirty=true;
     capacityProposal=null;$("capacityApply").disabled=true;
     capacityLoadEditor();renderCapacity();renderWeek();
     capacityMessage("Selected HUMAN group returned to private default weekdays; original appointments unchanged.");
@@ -1597,9 +1609,9 @@
     finally{e.target.value="";}
   });
   hook("reset","click",()=>{
-    if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
+    if((changed||capacityDirty)&&!confirm("Discard unsaved PRIVATE plan and availability changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
-    capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
+    capacityRules=new Map();capacityDirty=false;capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
     weekAnchor="";monthAnchor="";backlogPage=0;backlogProposal=null;
     $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("backlog").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
@@ -1739,6 +1751,6 @@
   hook("savePlan","click",()=>{try{hold(active);planExport();}catch(err){inform(err.message,true);}});
   hook("calendar","click",()=>{try{calendarExport();}catch(err){inform(err.message,true);}});
   hook("summaryExport","click",()=>{try{hold(active);countsExport();}catch(err){inform(err.message,true);}});
-  window.addEventListener("beforeunload",e=>{if(changed){e.preventDefault();e.returnValue="";}});
+  window.addEventListener("beforeunload",e=>{if(changed||capacityDirty){e.preventDefault();e.returnValue="";}});
   $("tz").textContent=zone;
 })();
