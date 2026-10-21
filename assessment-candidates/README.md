@@ -49,6 +49,12 @@ Click **Explore fictional demo** to view four made-up candidate outputs for four
 - No reading disk other than explicitly picked files, and no DNS or HTTP APIs. CSP `connect-src 'none'`, `default-src 'none'` and SHA-256 hashes restrict the standalone artifact.
 - Stage remains **DRAFT/HOLD**. Original source-owner #177/#182/#829 repairs, independently authenticated client and operator consent plus revocation-at-action, complete existing exact-HEAD hosted and permanently named registered VPS CI, independent privacy/security review and explicit HUMAN GO remain unfulfilled release gates. **Do not merge or deploy to production.**
 
+## Selected-pair numeric comparison CSV
+
+The metric panel now has **Export selected-pair metric comparison (CSV)**. Choose two distinct imported candidate slots; the export records the shared case count and, for each of the fifteen original metrics, both reported baseline aggregates, both candidate aggregates, second-minus-first deltas, adverse-case counts and the original source-flag crossover (first-only, second-only, both, neither). It records whether the baselines match and includes explicit REVIEW_ONLY, demo-provenance, source-order/source-identity and false-authority flags.
+
+This is an aggregate descriptive handoff: it includes no case IDs, source filenames, target metadata, raw source bytes, aliases or notes. A numeric improvement or an absent source-reported flag is not evidence of a fix, safety, authorization, chronology or release readiness. The CSV is available only when two distinct candidate slots are selected; it does not alter source reports or local HUMAN casework.
+
 ## Isolation and source ownership
 
 This independent branch changes exclusively **new** files in `assessment-candidates/`. It does not edit or claim the comparator #1515, reviewdesk #1576, trajectory #1585, production runtime, domain, policies, webapp, scanner, service, CI, self-hosted runner or any other worker's files. The standalone works with original #1515 JSON schemas but does not import or copy the actively owned source implementation. No QA/regression suites have been written or run under the 17 October execution policy.
