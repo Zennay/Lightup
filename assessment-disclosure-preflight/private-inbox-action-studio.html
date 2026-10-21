@@ -36,6 +36,21 @@
 <p id="bulk-message" role="status" aria-live="polite">Bulk changes are HUMAN-only. The whole batch is refused if any row would violate the original worksheet rules.</p>
 </div>
 <div id="cards" class="cards"></div>
+<section class="revision-compare" aria-labelledby="revision-heading">
+<h3 id="revision-heading">Compare saved HUMAN revisions</h3>
+<p>Choose a previous complete HUMAN action CSV and compare it with the current in-memory draft. Both files must carry the same original board SHA and complete source-ordered slot membership. Question and next-action text is never shown or exported by this comparison.</p>
+<label for="prior-upload">Prior saved HUMAN action worksheet (.csv)</label>
+<input id="prior-upload" type="file" accept=".csv,text/csv">
+<div class="actions"><button id="compare-revisions" type="button" disabled>Compare prior vs current draft</button><button id="clear-comparison" type="button" class="secondary" disabled>Clear comparison</button></div>
+<p id="revision-status" role="status" aria-live="polite">Choose a prior complete HUMAN CSV after loading the current worksheet.</p>
+<div id="revision-results" hidden>
+<p id="revision-summary"></p>
+<ul id="revision-breakdown"></ul>
+<div class="revision-table-scroll"><table><thead><tr><th>Slot</th><th>Changed fields</th><th>Prior stage</th><th>Current stage</th><th>Prior role</th><th>Current role</th><th>Question changed</th><th>Next action changed</th></tr></thead><tbody id="revision-rows"></tbody></table></div>
+<div class="actions"><button id="revision-export" type="button">Export privacy-minimal revision delta CSV</button></div>
+<p class="privacy">The delta contains field names, ordinal slots, HUMAN stage/role values and yes/no text-change flags only. It omits private notes, source hashes, source filenames and identities. "Prior/current" is operator-supplied ordering, not authenticated chronology; this comparison is not source authentication, consent, remediation or authorization.</p>
+</div>
+</section>
 <p class="privacy">Filters only hide cards; exports ALWAYS preserve all original slots and their original sequence. Browser notes are not persisted automatically. Do not use this app on shared machines for real sensitive HUMAN text.</p>
 <div class="actions">
 <button id="export" type="button">3. Prepare complete PRIVATE HUMAN CSV preview</button>

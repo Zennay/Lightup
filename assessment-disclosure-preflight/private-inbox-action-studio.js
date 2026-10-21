@@ -12,12 +12,21 @@
   let digest = "";
   let lastBulkUndo = null;
   let pendingCsv = null;
+  let pendingDelta = null;
 
   function clear() {
     rows = [];
     digest = "";
     lastBulkUndo = null;
     pendingCsv = null;
+    pendingDelta = null;
+    $("prior-upload").value = "";
+    $("revision-results").hidden = true;
+    $("revision-rows").replaceChildren();
+    $("revision-breakdown").replaceChildren();
+    $("compare-revisions").disabled = true;
+    $("clear-comparison").disabled = true;
+    $("revision-status").textContent = "Load a current HUMAN worksheet, then choose a prior saved revision.";
     $("export-preview").hidden = true;
     $("confirm-export").disabled = true;
     $("export-preview-summary").textContent = "";
@@ -174,6 +183,7 @@
     }
     $("counter").textContent = displayed + " visible · " + rows.length + " original slots retained in full export";
     updateBulkControls(displayed);
+    updateRevisionControls();
   }
 
   function updateBulkControls(visibleCount) {
@@ -181,6 +191,11 @@
     $("bulk-apply").disabled = rows.length === 0 || count === 0;
     $("bulk-undo").disabled = !lastBulkUndo;
     $("bulk-visible-count").textContent = rows.length ? count + " visible slot(s) · batch changes affect only these rows" : "";
+  }
+  function updateRevisionControls() {
+    const prior = $("prior-upload").files?.[0];
+    $("compare-revisions").disabled = rows.length === 0 || !prior;
+    $("clear-comparison").disabled = !prior && pendingDelta === null;
   }
 
   function invalidateExportPreview(message) {
@@ -193,8 +208,18 @@
       $("export-message").dataset.error = "false";
     }
   }
+  function invalidateRevisionComparison(message) {
+    const hadDelta = pendingDelta !== null;
+    pendingDelta = null;
+    $("revision-results").hidden = true;
+    $("revision-rows").replaceChildren();
+    $("revision-breakdown").replaceChildren();
+    if (hadDelta && message) $("revision-status").textContent = message;
+    updateRevisionControls();
+  }
 
   function invalidateBulkUndo() {
+    invalidateRevisionComparison("The current HUMAN draft changed. Compare again to refresh the delta.");
     invalidateExportPreview("A HUMAN row changed. Prepare a new full-export preview before downloading.");
     if (lastBulkUndo) {
       lastBulkUndo = null;
@@ -248,6 +273,7 @@
     try {
       proposed.forEach((row,index)=>validRow([digest,String(index+1),row.status,row.role,row.question,row.next],index,digest));
       if (!confirm("Apply these HUMAN-only proposals to exactly "+visible.length+" currently visible original slots? All hidden rows stay unchanged. If the native worksheet rules are not met, no changes are applied.")) return;
+      invalidateRevisionComparison("The current HUMAN draft changed. Compare again to refresh the delta.");
       invalidateExportPreview("The HUMAN worksheet changed. Prepare a new full-export preview before downloading.");
       lastBulkUndo = rows.map(row=>({...row}));
       rows = proposed;
@@ -261,6 +287,7 @@
   });
   $("bulk-undo").addEventListener("click", () => {
     if (!lastBulkUndo) return;
+    invalidateRevisionComparison("The current HUMAN draft changed. Compare again to refresh the delta.");
     invalidateExportPreview("The HUMAN worksheet changed. Prepare a new full-export preview before downloading.");
     rows = lastBulkUndo; lastBulkUndo = null; show();
     $("bulk-message").textContent = "Last HUMAN-only batch undone. No source slot or original evidence changed.";
@@ -278,6 +305,159 @@
     if (new TextEncoder().encode(csv).length > MAX_BYTES) throw Error("Edited PRIVATE actions exceed native file limit");
     return csv;
   }
+
+  function admittedWorksheet(raw) {
+    const parsed = parseCSV(raw);
+    if (parsed.length < 2 || parsed.length > 13 ||
+        JSON.stringify(parsed[0]) !== JSON.stringify(FIELDS))
+      throw Error("Complete original six-column HUMAN worksheet required");
+    const actualDigest = parsed[1][0];
+    if (!/^[0-9a-f]{64}$/.test(actualDigest)) throw Error("Missing original board SHA");
+    const items = parsed.slice(1);
+    items.forEach((row,i) => validRow(row,i,actualDigest));
+    return {
+      digest: actualDigest,
+      rows: items.map(row => ({status:row[2],role:row[3],question:row[4],next:row[5]}))
+    };
+  }
+
+  function renderRevisionComparison() {
+    const body = $("revision-rows");
+    const breakdown = $("revision-breakdown");
+    body.replaceChildren();
+    breakdown.replaceChildren();
+    $("revision-results").hidden = pendingDelta === null;
+    if (!pendingDelta) return;
+    const {changes,counts,slotCount} = pendingDelta;
+    $("revision-summary").textContent = changes.length + " changed slot(s) out of " +
+      slotCount + ". The comparison exposes no question or next-action text.";
+    for (const [label,count] of [
+      ["Stage changes",counts.stage],
+      ["Proposed-role changes",counts.role],
+      ["Question changed (text hidden)",counts.question],
+      ["Next action changed (text hidden)",counts.next]
+    ]) {
+      const item = document.createElement("li");
+      item.textContent = label + ": " + count;
+      breakdown.append(item);
+    }
+    if (!changes.length) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 8;
+      td.textContent = "No HUMAN planning-field differences between these two source-bound revisions.";
+      tr.append(td); body.append(tr);
+      return;
+    }
+    for (const row of changes) {
+      const tr = document.createElement("tr");
+      for (const value of [
+        row.slot,row.changed.join("; "),row.prior.status,row.current.status,
+        row.prior.role,row.current.role,row.questionChanged ? "YES" : "NO",
+        row.nextChanged ? "YES" : "NO"
+      ]) {
+        const td = document.createElement("td");
+        td.textContent = String(value);
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+  }
+
+  async function compareRevisions() {
+    pendingDelta = null;
+    renderRevisionComparison();
+    try {
+      const file = $("prior-upload").files?.[0];
+      if (!rows.length || !digest || !file || file.size <= 0 ||
+          file.size > MAX_BYTES || !file.name.toLowerCase().endsWith(".csv"))
+        throw Error("Choose a bounded prior complete HUMAN CSV and load the current worksheet first");
+      // Validate the live draft before comparing; do not admit partial/invalid current edits.
+      const currentBytes = currentCsv();
+      const decoded = new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      const prior = admittedWorksheet(decoded);
+      if (prior.digest !== digest) throw Error("Prior and current worksheets reference different original board bytes");
+      if (prior.rows.length !== rows.length) throw Error("Prior and current original slot counts differ");
+      const counts = {stage:0,role:0,question:0,next:0};
+      const changes = [];
+      for (let i=0; i<rows.length; i++) {
+        const before = prior.rows[i], now = rows[i];
+        const changed = [];
+        if (before.status !== now.status) { changed.push("stage"); counts.stage++; }
+        if (before.role !== now.role) { changed.push("proposed role"); counts.role++; }
+        const questionChanged = before.question !== now.question;
+        const nextChanged = before.next !== now.next;
+        if (questionChanged) { changed.push("question text"); counts.question++; }
+        if (nextChanged) { changed.push("next-action text"); counts.next++; }
+        if (changed.length) changes.push({
+          slot:i+1,changed,prior:before,current:{...now},questionChanged,nextChanged
+        });
+      }
+      pendingDelta = {changes,counts,slotCount:rows.length,currentBytes};
+      renderRevisionComparison();
+      $("revision-status").textContent = changes.length ?
+        "Comparison complete. Only changed fields and non-text status/role values are shown; chronology and source authority remain unverified." :
+        "No HUMAN planning-field differences. Both revisions match the same original board and slot order.";
+    } catch (err) {
+      pendingDelta = null;
+      renderRevisionComparison();
+      $("revision-status").textContent = "HOLD: revision comparison refused (" +
+        String(err.message || "invalid source-bound worksheet") + "). No partial delta retained.";
+    }
+    updateRevisionControls();
+  }
+
+  function clearRevisionComparison() {
+    pendingDelta = null;
+    $("prior-upload").value = "";
+    renderRevisionComparison();
+    $("revision-status").textContent = "Comparison cleared. Select a prior complete HUMAN CSV to compare again.";
+    updateRevisionControls();
+  }
+
+  $("prior-upload").addEventListener("change", () => {
+    invalidateRevisionComparison();
+    $("revision-status").textContent = $("prior-upload").files?.length ?
+      "Prior file selected. Compare it against the current in-memory HUMAN draft." :
+      "Choose a prior complete HUMAN CSV to compare.";
+    updateRevisionControls();
+  });
+  $("compare-revisions").addEventListener("click", compareRevisions);
+  $("clear-comparison").addEventListener("click", clearRevisionComparison);
+  $("revision-export").addEventListener("click", () => {
+    try {
+      if (!pendingDelta) throw Error("No admitted revision comparison");
+      if (currentCsv() !== pendingDelta.currentBytes)
+        throw Error("Current HUMAN draft changed after comparison");
+      const columns = [
+        "slot","changed_fields","prior_stage","current_stage","prior_role","current_role",
+        "question_text_changed","next_action_text_changed","chronology_authenticated",
+        "source_authenticated","client_consent_verified","operator_consent_verified",
+        "authorization_granted","release_allowed"
+      ];
+      const lines = [csvEncode(columns)];
+      for (const row of pendingDelta.changes) {
+        lines.push([
+          row.slot,row.changed.join(";"),row.prior.status,row.current.status,
+          row.prior.role,row.current.role,row.questionChanged ? "true" : "false",
+          row.nextChanged ? "true" : "false","false","false","false","false","false","false"
+        ].map(csvEncode).join(","));
+      }
+      const csv = lines.join("\r\n") + "\r\n";
+      if (new TextEncoder().encode(csv).length > MAX_BYTES) throw Error("Revision delta exceeds export size limit");
+      const url = URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+      try {
+        const a = document.createElement("a");
+        a.href = url; a.download = "PRIVATE-inbox-HUMAN-revision-delta.csv";
+        document.body.append(a); a.click(); a.remove();
+      } finally { setTimeout(()=>URL.revokeObjectURL(url),1000); }
+      $("revision-status").textContent = "REVIEW_ONLY: privacy-minimal revision delta download requested. No notes, source hash, source filename or authority is included.";
+    } catch (err) {
+      clearRevisionComparison();
+      $("revision-status").textContent = "HOLD: revision delta export refused (" +
+        String(err.message || "comparison changed") + "). Re-admit and compare again.";
+    }
+  });
 
   $("export").addEventListener("click", () => {
     invalidateExportPreview();

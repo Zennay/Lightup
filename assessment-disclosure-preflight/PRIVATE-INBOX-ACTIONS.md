@@ -101,6 +101,26 @@ A cancelled or invalid editor source yields no valid native approval or output.
 The old original contents are not silently carried forward when importing a
 different file.
 
+### Compare a prior saved HUMAN revision (privacy-minimal)
+
+The browser Studio can also compare a previous complete edited six-column CSV
+against the current in-memory draft. Select the prior CSV and choose **Compare
+prior vs current draft**. Both revisions must admit the same original board SHA,
+complete original slot count/order, all HUMAN stages/roles and note constraints.
+The comparison refuses different source bytes, incomplete or malformed rows,
+invalid current edits, and oversized/malformed UTF-8 input. Every later edit,
+bulk proposal or Undo invalidates the displayed delta; the export rechecks the
+exact current worksheet bytes before downloading.
+
+The changed-only table shows stage/role values and whether the question or next
+action changed, but never displays the text itself. The optional delta CSV
+omits all question/action contents, source hashes, source filenames and
+identities; it includes only slot ordinals, changed-field names, stage/role
+values, boolean text-change flags and explicit false chronology/source/consent/
+authorization/release fields. “Prior/current” is operator-supplied ordering,
+not authenticated chronology or a signed audit trail. Keep this output private
+and continue to use the original native finalizer for source-bound admission.
+
 **Finalize a separate PRIVATE operator report:**
 
 ~~~sh

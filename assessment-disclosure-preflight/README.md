@@ -1081,3 +1081,26 @@ Example (the same --full-reopen choice must be used as when the workroom was cre
 python3 assessment-disclosure-preflight/private_inbox_workroom.py --private-parent ./private-received --room owner-room-01 --room owner-room-02 --saved-workroom-dir ./private-workroom --full-reopen
 
 Omit --full-reopen only if the original workroom was created without it. When enabled, the command requires a trusted interactive terminal and explicit REOPEN confirmation, then reopens each original room through the unchanged native source-bound receiver before comparing the saved bytes. This is read-only custody/re-admission, not source authenticity, identity, consent, a security verdict, authorization or release. No original files or workroom outputs are modified.
+
+
+## Compare saved HUMAN inbox revisions without exposing note contents
+
+The browser Inbox Action Studio now compares a prior complete six-column HUMAN
+worksheet against the current in-memory draft. Both revisions must be valid
+complete CSVs with the same original board SHA, all original ordinals in the
+same order, and every status/role/note row admitted against the existing
+worksheet rules. Different source bytes, incomplete rows, malformed UTF-8,
+oversized files or a stale/invalid current draft produce HOLD with no partial
+delta. Editing a row, applying or undoing a bulk proposal invalidates the
+comparison; the export rechecks that the current full worksheet still matches
+the exact compared draft.
+
+The on-screen changed-only table shows stage/role transitions and whether the
+question or next-action text changed, but never displays either private text.
+Its optional CSV similarly omits note contents, board hashes, filenames and
+identities; it carries only slot ordinals, changed field names, stage/role
+values, boolean text-change flags and explicit false chronology/source/consent/
+authorization/release fields. "Prior/current" is operator-supplied order, not
+authenticated chronology. This is a local HUMAN planning aid, not a signed
+audit log, source authentication, remediation proof, consent or authorization.
+The existing source-bound native finalizer remains the separate receiving step.
