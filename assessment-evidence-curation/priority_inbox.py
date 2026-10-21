@@ -25,6 +25,7 @@ from response import (HEADER, STAGES, accepted_original, csv_template,
 from revision import private_frame
 
 FINAL = "PRIVATE-original-HUMAN-unified-response.csv"
+DETAIL = "PRIVATE-original-HUMAN-answer-inbox.html"
 REPORT = "PRIVATE-original-HUMAN-priority-inbox.html"
 COUNTS = "PRIVATE-original-HUMAN-priority-inbox-counts.json"
 RECEIPT_OUT = "PRIVATE-original-HUMAN-priority-inbox-receipt.json"
@@ -150,6 +151,8 @@ def join(source_path: str, manifest_path: str, worksheet_path: str,
         "<p>Original source finding count: " + str(len(source["findings"])) +
         "; HUMAN selected count: " + str(len(selected)) + ".</p></header>" + fragment
     )
+    from priority_inbox_detail import render as render_detail
+    private_answer_inbox = render_detail(source, selected, answers)
     counts = {
         "schema": "lightup.private_original_human_priority_inbox_counts.v1",
         "status": "REVIEW_ONLY",
@@ -169,13 +172,14 @@ def join(source_path: str, manifest_path: str, worksheet_path: str,
         "original_curated_packet_receipt_sha256_unsigned": digest(full_raw),
         "per_human_priority_unsigned_receipts": receipts,
         "private_unified_response_sha256_unsigned": digest(combined),
+        "private_detailed_inbox_sha256_unsigned": digest(private_answer_inbox),
         "private_report_sha256_unsigned": digest(report),
         "private_counts_sha256_unsigned": digest(json_bytes(counts)),
         "human_selected_count": len(selected),
         **UNTRUSTED_FLAGS,
     }
     publish_new(output, {
-        FINAL: combined, REPORT: report,
+        FINAL: combined, REPORT: report, DETAIL: private_answer_inbox,
         COUNTS: json_bytes(counts), RECEIPT_OUT: json_bytes(receipt),
     })
     return len(selected)
