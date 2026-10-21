@@ -267,7 +267,7 @@ def _build(workflow_room: str, progress_rooms: list[str], output_parent: str):
 
 
 def create(workflow_room: str, progress_rooms: list[str],
-           private_parent: str) -> int:
+           private_parent: str, created_room: list[Path] | None = None) -> int:
     parent = private_directory(private_parent)
     page, csv_bytes, receipt = _build(
         workflow_room, progress_rooms, str(parent))
@@ -280,6 +280,8 @@ def create(workflow_room: str, progress_rooms: list[str],
         file_new(result / CSV, csv_bytes)
         file_new(result / RECEIPT, receipt)
         finished = True
+        if created_room is not None:
+            created_room.append(result)
         print("HOLD: original-bound PRIVATE HAR HUMAN next-action desk prepared")
         print("OPEN LOCALLY: " + str(result / PAGE))
         return 3

@@ -88,7 +88,8 @@ def _status_csv(rows: list[dict]) -> bytes:
 
 
 def import_progress(original_kit: str, cue_room: str, edited_actions: str,
-                    private_parent: str) -> int:
+                    private_parent: str,
+                    created_room: list[Path] | None = None) -> int:
     original = private_directory(original_kit)
     room = private_directory(cue_room)
     parent = private_directory(private_parent)
@@ -120,6 +121,8 @@ def import_progress(original_kit: str, cue_room: str, edited_actions: str,
         file_new(output / "PRIVATE-HAR-HUMAN-status.html", _dashboard(parsed))
         file_new(output / "PRIVATE-HAR-HUMAN-status.csv", _status_csv(parsed))
         complete = True
+        if created_room is not None:
+            created_room.append(output)
         print("HOLD: local PRIVATE HUMAN status imported; NOT verified or authorised")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-HAR-HUMAN-status.html"))
         return 3
