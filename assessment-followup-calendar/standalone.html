@@ -3,11 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-9VvZSAX/05R3GnhA8Fi8zIzPXPBdgYCMMxQdZFzF+aA='; style-src 'sha256-JnUGLKJgFQOWL8Irho1YuW4jsGOaQ8hT/x6gQr7pXZA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-UGEmJBds7NDZJjlrzZUZMhVYL5ab3iB/WOAKeg19qOw='; style-src 'sha256-x0gkr8PKuJzcXbg0SH5INmb9IHUIKRjMw4+VCvaQca8='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
 textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}details{margin:14px 0;border:1px solid #435a73;border-radius:8px;padding:10px}details>summary{cursor:pointer;color:#c5e7ff;font-weight:700}details[open] summary{margin-bottom:12px}#capacityPreviewRows tr:nth-child(even){background:#1b2c42}#capacityMessage[data-error=true]{color:#ffaaa1}#capacityProposalDetails .tablebox{max-height:470px;overflow:auto}
+
+.week-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:9px;margin:14px 0}
+.week-day{background:#101d30;border:1px solid #425872;border-radius:10px;padding:11px;min-width:0}
+.week-day h3{font-size:14px;color:#e9f4ff;margin:0 0 4px}
+.week-day p{margin:4px 0 10px}
+.week-event{display:flex;flex-direction:column;gap:4px;text-align:left;width:100%;margin:7px 0;
+  border:1px solid #366e99;background:#183a57;padding:9px;white-space:normal;overflow-wrap:anywhere;font-size:12px}
+.week-event strong{font-size:13px;color:#f6faff}
+.week-event small{font-size:11px;color:#bed1e5}
+.week-event.week-clash{border:2px solid #e8bb68;background:#49382d}
+.week-event:focus-visible{outline:3px solid #a6ddff;outline-offset:2px}
+@media(max-width:1050px){.week-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){.week-grid{grid-template-columns:repeat(1,minmax(0,1fr))}}
 
 </style>
 <script>
@@ -33,6 +46,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   let publicationBaseline = null, changesPage = 0;
+  let weekAnchor = "";
   let capacityRules = new Map(), capacityProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
@@ -176,6 +190,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       body.append(tr);
     });
     renderAgenda();
+    renderWeek();
     renderWorkload();
     renderChanges();
     renderCapacity();
@@ -273,20 +288,90 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     for(const r of upcoming.slice(agendaPage*50,agendaPage*50+50)){
       const p=plan.get(r.ordinal),tr=dom("tr"),edit=dom("button","Edit original #"+r.ordinal,"ghost");
       edit.type="button";
-      edit.addEventListener("click",()=>{
-        $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
-        selectedGroup=null; // An agenda event may belong to a different focused HUMAN group.
-        page=Math.floor((r.ordinal-1)/PAGE);
-        render();
-        const source=document.querySelector('#rows tr[data-ordinal="'+r.ordinal+'"] input[type="date"]');
-        $("desk").scrollIntoView({behavior:"smooth",block:"start"});
-        if(source)source.focus({preventScroll:true});
-      });
+      edit.addEventListener("click",()=>focusOrdinal(r.ordinal));
       const cell=dom("td");cell.append(edit);
       tr.append(dom("td",p.day+" "+p.time),dom("td","#"+r.ordinal),
         dom("td",r.severity),dom("td",(r.stage||"unset")+" / "+(r.group||"unassigned")),
         dom("td",r.action||"No HUMAN action supplied"),cell);
       body.append(tr);
+    }
+  }
+  function dayString(d){
+    return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),
+      String(d.getDate()).padStart(2,"0")].join("-");
+  }
+  function moveDay(day,days){
+    const date=eventDate(day,"12:00");date.setDate(date.getDate()+days);
+    return dayString(date);
+  }
+  function startWeek(day){
+    const date=eventDate(day,"12:00");date.setDate(date.getDate()-(date.getDay()+6)%7);
+    return dayString(date);
+  }
+  function focusOrdinal(ordinal){
+    selectedGroup=null;
+    $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
+    page=Math.floor((ordinal-1)/PAGE);render();
+    const source=document.querySelector('#rows tr[data-ordinal="'+ordinal+'"] input[type="date"]');
+    $("desk").scrollIntoView({behavior:"smooth",block:"start"});
+    if(source)source.focus({preventScroll:true});
+  }
+  function renderWeek(){
+    if(!active)return;
+    if(!weekAnchor)weekAnchor=nowToday();
+    const groups=capacityGroups(), selectGroup=$("weekGroup"), prior=selectGroup.value;
+    if(selectGroup.options.length!==groups.length+1 ||
+      groups.some((g,i)=>selectGroup.options[i+1]?.textContent!== (g||"(unassigned)"))){
+      selectGroup.replaceChildren();
+      const all=dom("option","All HUMAN groups");all.value="";selectGroup.append(all);
+      groups.forEach((g,i)=>{
+        const option=dom("option",g||"(unassigned)");option.value=String(i+1);selectGroup.append(option);
+      });
+      selectGroup.value=prior;
+      if(selectGroup.selectedIndex<0)selectGroup.value="";
+    }
+    const focus=selectGroup.value ? groups[Number(selectGroup.value)-1] : null;
+    const monday=startWeek(weekAnchor),collisions=collisionIds();
+    $("weekDate").value=weekAnchor;
+    const body=$("weekDays");body.replaceChildren();
+    const onlyConflicts=$("weekConflicts").checked;
+    const relevant=items.filter(r=>{
+      if(!plan.has(r.ordinal))return false;
+      if(focus!==null && r.group!==focus)return false;
+      if(onlyConflicts && !collisions.has(r.ordinal))return false;
+      const day=plan.get(r.ordinal).day;
+      return day>=monday && day<=moveDay(monday,6);
+    });
+    const countConflict=relevant.filter(r=>collisions.has(r.ordinal)).length;
+    $("weekSummary").textContent=monday+" — "+moveDay(monday,6)+" · "+
+      relevant.length+" proposed HUMAN reminders · "+countConflict+
+      " local overlapping reminders · "+zone+" · private-only planning.";
+    for(let offset=0;offset<7;offset++){
+      const day=moveDay(monday,offset);
+      const entries=relevant.filter(r=>plan.get(r.ordinal).day===day).sort((a,b)=>{
+        const left=plan.get(a.ordinal),right=plan.get(b.ordinal);
+        return left.time.localeCompare(right.time)||a.ordinal-b.ordinal;
+      });
+      const column=dom("section",undefined,"week-day");
+      column.setAttribute("aria-label",day+" proposed HUMAN reminders");
+      const title=dom("h3",["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][offset]+" · "+day.slice(5));
+      column.append(title,dom("p",entries.length+" proposed appointments","subtle"));
+      for(const r of entries.slice(0,24)){
+        const p=plan.get(r.ordinal),colliding=collisions.has(r.ordinal);
+        const button=dom("button",undefined,"week-event"+(colliding?" week-clash":""));
+        button.type="button";button.addEventListener("click",()=>focusOrdinal(r.ordinal));
+        const time=dom("strong",p.time+" · "+p.duration+" min · #"+r.ordinal);
+        const details=dom("span",(r.group||"(unassigned)")+" · "+r.severity+" (source-reported)");
+        const status=dom("small",(colliding?"OVERLAP · ":"")+(r.stage||"HUMAN stage unset"));
+        button.append(time,details,status);
+        button.setAttribute("aria-label","Open original HUMAN ordinal "+r.ordinal+
+          " in planner, "+p.time+" on "+day+(colliding?", local overlap":""));
+        column.append(button);
+      }
+      if(entries.length>24)column.append(dom("p",(entries.length-24)+
+        " more HUMAN reminders; use the full agenda to edit.","subtle"));
+      if(!entries.length)column.append(dom("p","No proposed reminders","subtle"));
+      body.append(column);
     }
   }
   function renderWorkload(){
@@ -878,7 +963,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
-    $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    weekAnchor=nowToday();$("weekGroup").value="";$("weekConflicts").checked=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
@@ -1109,11 +1195,22 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    weekAnchor="";
+    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
+  hook("weekDate","change",()=>{try{startWeek($("weekDate").value);
+    weekAnchor=$("weekDate").value;renderWeek();}
+    catch(_){$("weekDate").value=weekAnchor;inform("Select a valid local week date.",true);}});
+  hook("weekBack","click",()=>{try{weekAnchor=moveDay(weekAnchor,-7);renderWeek();}
+    catch(_){inform("Cannot navigate beyond valid local dates.",true);}});
+  hook("weekForward","click",()=>{try{weekAnchor=moveDay(weekAnchor,7);renderWeek();}
+    catch(_){inform("Cannot navigate beyond valid local dates.",true);}});
+  hook("weekToday","click",()=>{weekAnchor=nowToday();renderWeek();});
+  hook("weekGroup","change",renderWeek);
+  hook("weekConflicts","change",renderWeek);
   hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
   hook("workloadQuery","input",()=>{workloadPage=0;renderWorkload();});
@@ -1230,6 +1327,21 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 <p class="subtle">This only edits proposed HUMAN reminder times in memory. It never executes an assessment or decides technical risk; verify resource availability in your real calendar.</p></div>
 <p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
 <div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
+</section>
+<section id="week" class="panel" hidden aria-labelledby="weekHeading">
+<h2 id="weekHeading">3a · PRIVATE HUMAN week board</h2>
+<p>Seven days of tentative local HUMAN reminders. Open any ordinal in the planning desk. Overlap means a local time collision, not a verified security finding or external calendar conflict. PRIVATE owner labels are unverified.</p>
+<div class="toolbar">
+<label>Any date in week <input id="weekDate" type="date"></label>
+<button id="weekBack" class="ghost" type="button">Previous week</button>
+<button id="weekToday" class="ghost" type="button">Current week</button>
+<button id="weekForward" class="ghost" type="button">Next week</button>
+<label>HUMAN group <select id="weekGroup"><option value="">All groups</option></select></label>
+<label><input id="weekConflicts" type="checkbox"> Local overlaps only</label>
+</div>
+<p id="weekSummary" class="subtle" role="status" aria-live="polite"></p>
+<div id="weekDays" class="week-grid" aria-label="PRIVATE HUMAN weekly proposed reminders"></div>
+<p class="subtle">Dates and weekdays use this browser's local timezone. Only scheduled rows are displayed; the original complete worksheet remains in the planner. At most 24 events are shown per day. No external calendar is queried.</p>
 </section>
 <section id="workload" class="panel" hidden aria-labelledby="workloadHeading">
 <h2 id="workloadHeading">4 · HUMAN owner workload</h2>

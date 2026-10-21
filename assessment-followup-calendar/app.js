@@ -20,6 +20,7 @@
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   let publicationBaseline = null, changesPage = 0;
+  let weekAnchor = "";
   let capacityRules = new Map(), capacityProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
@@ -163,6 +164,7 @@
       body.append(tr);
     });
     renderAgenda();
+    renderWeek();
     renderWorkload();
     renderChanges();
     renderCapacity();
@@ -260,20 +262,90 @@
     for(const r of upcoming.slice(agendaPage*50,agendaPage*50+50)){
       const p=plan.get(r.ordinal),tr=dom("tr"),edit=dom("button","Edit original #"+r.ordinal,"ghost");
       edit.type="button";
-      edit.addEventListener("click",()=>{
-        $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
-        selectedGroup=null; // An agenda event may belong to a different focused HUMAN group.
-        page=Math.floor((r.ordinal-1)/PAGE);
-        render();
-        const source=document.querySelector('#rows tr[data-ordinal="'+r.ordinal+'"] input[type="date"]');
-        $("desk").scrollIntoView({behavior:"smooth",block:"start"});
-        if(source)source.focus({preventScroll:true});
-      });
+      edit.addEventListener("click",()=>focusOrdinal(r.ordinal));
       const cell=dom("td");cell.append(edit);
       tr.append(dom("td",p.day+" "+p.time),dom("td","#"+r.ordinal),
         dom("td",r.severity),dom("td",(r.stage||"unset")+" / "+(r.group||"unassigned")),
         dom("td",r.action||"No HUMAN action supplied"),cell);
       body.append(tr);
+    }
+  }
+  function dayString(d){
+    return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),
+      String(d.getDate()).padStart(2,"0")].join("-");
+  }
+  function moveDay(day,days){
+    const date=eventDate(day,"12:00");date.setDate(date.getDate()+days);
+    return dayString(date);
+  }
+  function startWeek(day){
+    const date=eventDate(day,"12:00");date.setDate(date.getDate()-(date.getDay()+6)%7);
+    return dayString(date);
+  }
+  function focusOrdinal(ordinal){
+    selectedGroup=null;
+    $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
+    page=Math.floor((ordinal-1)/PAGE);render();
+    const source=document.querySelector('#rows tr[data-ordinal="'+ordinal+'"] input[type="date"]');
+    $("desk").scrollIntoView({behavior:"smooth",block:"start"});
+    if(source)source.focus({preventScroll:true});
+  }
+  function renderWeek(){
+    if(!active)return;
+    if(!weekAnchor)weekAnchor=nowToday();
+    const groups=capacityGroups(), selectGroup=$("weekGroup"), prior=selectGroup.value;
+    if(selectGroup.options.length!==groups.length+1 ||
+      groups.some((g,i)=>selectGroup.options[i+1]?.textContent!== (g||"(unassigned)"))){
+      selectGroup.replaceChildren();
+      const all=dom("option","All HUMAN groups");all.value="";selectGroup.append(all);
+      groups.forEach((g,i)=>{
+        const option=dom("option",g||"(unassigned)");option.value=String(i+1);selectGroup.append(option);
+      });
+      selectGroup.value=prior;
+      if(selectGroup.selectedIndex<0)selectGroup.value="";
+    }
+    const focus=selectGroup.value ? groups[Number(selectGroup.value)-1] : null;
+    const monday=startWeek(weekAnchor),collisions=collisionIds();
+    $("weekDate").value=weekAnchor;
+    const body=$("weekDays");body.replaceChildren();
+    const onlyConflicts=$("weekConflicts").checked;
+    const relevant=items.filter(r=>{
+      if(!plan.has(r.ordinal))return false;
+      if(focus!==null && r.group!==focus)return false;
+      if(onlyConflicts && !collisions.has(r.ordinal))return false;
+      const day=plan.get(r.ordinal).day;
+      return day>=monday && day<=moveDay(monday,6);
+    });
+    const countConflict=relevant.filter(r=>collisions.has(r.ordinal)).length;
+    $("weekSummary").textContent=monday+" — "+moveDay(monday,6)+" · "+
+      relevant.length+" proposed HUMAN reminders · "+countConflict+
+      " local overlapping reminders · "+zone+" · private-only planning.";
+    for(let offset=0;offset<7;offset++){
+      const day=moveDay(monday,offset);
+      const entries=relevant.filter(r=>plan.get(r.ordinal).day===day).sort((a,b)=>{
+        const left=plan.get(a.ordinal),right=plan.get(b.ordinal);
+        return left.time.localeCompare(right.time)||a.ordinal-b.ordinal;
+      });
+      const column=dom("section",undefined,"week-day");
+      column.setAttribute("aria-label",day+" proposed HUMAN reminders");
+      const title=dom("h3",["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][offset]+" · "+day.slice(5));
+      column.append(title,dom("p",entries.length+" proposed appointments","subtle"));
+      for(const r of entries.slice(0,24)){
+        const p=plan.get(r.ordinal),colliding=collisions.has(r.ordinal);
+        const button=dom("button",undefined,"week-event"+(colliding?" week-clash":""));
+        button.type="button";button.addEventListener("click",()=>focusOrdinal(r.ordinal));
+        const time=dom("strong",p.time+" · "+p.duration+" min · #"+r.ordinal);
+        const details=dom("span",(r.group||"(unassigned)")+" · "+r.severity+" (source-reported)");
+        const status=dom("small",(colliding?"OVERLAP · ":"")+(r.stage||"HUMAN stage unset"));
+        button.append(time,details,status);
+        button.setAttribute("aria-label","Open original HUMAN ordinal "+r.ordinal+
+          " in planner, "+p.time+" on "+day+(colliding?", local overlap":""));
+        column.append(button);
+      }
+      if(entries.length>24)column.append(dom("p",(entries.length-24)+
+        " more HUMAN reminders; use the full agenda to edit.","subtle"));
+      if(!entries.length)column.append(dom("p","No proposed reminders","subtle"));
+      body.append(column);
     }
   }
   function renderWorkload(){
@@ -865,7 +937,8 @@
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
-    $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    weekAnchor=nowToday();$("weekGroup").value="";$("weekConflicts").checked=false;
+    $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";clearPasswords();$("baselinePassword").value="";$("tz").textContent=zone;
@@ -1096,11 +1169,22 @@
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    weekAnchor="";
+    $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
+  hook("weekDate","change",()=>{try{startWeek($("weekDate").value);
+    weekAnchor=$("weekDate").value;renderWeek();}
+    catch(_){$("weekDate").value=weekAnchor;inform("Select a valid local week date.",true);}});
+  hook("weekBack","click",()=>{try{weekAnchor=moveDay(weekAnchor,-7);renderWeek();}
+    catch(_){inform("Cannot navigate beyond valid local dates.",true);}});
+  hook("weekForward","click",()=>{try{weekAnchor=moveDay(weekAnchor,7);renderWeek();}
+    catch(_){inform("Cannot navigate beyond valid local dates.",true);}});
+  hook("weekToday","click",()=>{weekAnchor=nowToday();renderWeek();});
+  hook("weekGroup","change",renderWeek);
+  hook("weekConflicts","change",renderWeek);
   hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
   hook("workloadQuery","input",()=>{workloadPage=0;renderWorkload();});
