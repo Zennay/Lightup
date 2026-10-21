@@ -279,3 +279,16 @@ require explicit confirmation before applying, and external calendar
 changes/cancellations remain separate manual work. Overlap status alone
 never asserts a vulnerability, unapproved target, verified resources
 or human consent.
+
+
+### Precise original HUMAN blackout-day comparisons
+
+Group policy reconciliation compares canonical **full** rule contents, not
+just the number of declared blackout dates. Changing one unavailable day
+to another must produce a visible difference even if total blackout count
+stays equal. The preview explicitly displays affected local dates.
+Unassigned HUMAN group (empty identifier) is kept separate from a literal
+self-reported group name that says '(unassigned)'. The private comparison
+table and changed-only CSV include only the four intended visible fields;
+the exact opaque group key is used solely within memory for unambiguous
+selection and never added as an accidental extra export column.

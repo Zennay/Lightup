@@ -1463,10 +1463,14 @@
     return slot ? slot.day+" "+slot.time+" · "+slot.duration+" min · "+slot.reminder+" min reminder" :
       "(unscheduled)";
   }
+  function canonicalCapacity(rule){
+    return admitCapacityRule(rule||capacityDefaultRule());
+  }
   function reviewCapacitySummary(rule){
-    const v=admitCapacityRule(rule||capacityDefaultRule());
+    const v=canonicalCapacity(rule);
     return "Days "+v.days.join("/")+" · "+v.start+"–"+v.end+
-      " · max "+v.maximum+"/day · "+v.blackouts.length+" blackout dates";
+      " · max "+v.maximum+"/day · blackouts: "+
+      (v.blackouts.length?v.blackouts.join(", "):"(none)");
   }
   function changedWorkroomRows(){
     hold(workroomComparison && !capacityEditorDirty &&
@@ -1479,9 +1483,12 @@
           reviewSlotSummary(here),reviewSlotSummary(there)]);
     }
     for(const group of capacityGroups()){
-      const a=reviewCapacitySummary(capacityRules.get(group));
-      const z=reviewCapacitySummary(other.rules.get(group));
-      if(a!==z)rows.push(["group","HUMAN declared availability",group||"(unassigned)",a,z]);
+      const current=canonicalCapacity(capacityRules.get(group)),
+        compared=canonicalCapacity(other.rules.get(group));
+      if(JSON.stringify(current)!==JSON.stringify(compared)){
+        rows.push(["group","HUMAN declared availability",group||"(unassigned)",
+          reviewCapacitySummary(current),reviewCapacitySummary(compared),group]);
+      }
     }
     return rows;
   }
@@ -1668,7 +1675,7 @@
       const tr=dom("tr"),box=dom("input");
       box.type="checkbox";box.disabled=workroomComparison.admitted.series!==seriesId;
       const isAppointment=row[0]==="appointment",ordinal=Number(row[2].replace(/^#/,""));
-      const group= row[2]==="(unassigned)"?"":row[2];
+      const group=row[0]==="group"?row[5]:"";
       box.checked=isAppointment?reconcileSelection.has(ordinal):reconcileGroupSelection.has(group);
       box.setAttribute("aria-label","Select PRIVATE HUMAN "+(isAppointment?"appointment ":"group policy ")+
         row[2]+" for local reconciliation");
@@ -1679,7 +1686,7 @@
         reconcileProposal=null;renderReconcilePreview();
       });
       const cell=dom("td");cell.append(box);tr.append(cell);
-      row.slice(1).forEach(value=>tr.append(dom("td",value)));
+      row.slice(1,5).forEach(value=>tr.append(dom("td",value)));
       output.append(tr);
     }
   }
@@ -1691,7 +1698,7 @@
     const safeCell=v=>unsafeText(String(v))?"'"+String(v):String(v);
     const output=[["change_type","original_ordinal_or_unverified_group",
       "current_private_human_proposal","compared_private_human_proposal"],
-      ...rows.map(row=>row.slice(1).map(safeCell))];
+      ...rows.map(row=>row.slice(1,5).map(safeCell))];
     download(makeCsv(output),"lightup-private-human-workroom-differences.csv","text/csv;charset=utf-8");
     inform("PRIVATE HUMAN changed-only comparison CSV downloaded locally; no file sent or live assessment performed.");
   }

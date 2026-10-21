@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bsAUcgzVxUcjDvFet3pNhOtMJ4rVlM2o2kiUiqW+HyY='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5ohoa2jcTdntYPd1u2z4MzZdnKPUNVqkRTGKuhqY2lk='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -1511,10 +1511,14 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     return slot ? slot.day+" "+slot.time+" · "+slot.duration+" min · "+slot.reminder+" min reminder" :
       "(unscheduled)";
   }
+  function canonicalCapacity(rule){
+    return admitCapacityRule(rule||capacityDefaultRule());
+  }
   function reviewCapacitySummary(rule){
-    const v=admitCapacityRule(rule||capacityDefaultRule());
+    const v=canonicalCapacity(rule);
     return "Days "+v.days.join("/")+" · "+v.start+"–"+v.end+
-      " · max "+v.maximum+"/day · "+v.blackouts.length+" blackout dates";
+      " · max "+v.maximum+"/day · blackouts: "+
+      (v.blackouts.length?v.blackouts.join(", "):"(none)");
   }
   function changedWorkroomRows(){
     hold(workroomComparison && !capacityEditorDirty &&
@@ -1527,9 +1531,12 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
           reviewSlotSummary(here),reviewSlotSummary(there)]);
     }
     for(const group of capacityGroups()){
-      const a=reviewCapacitySummary(capacityRules.get(group));
-      const z=reviewCapacitySummary(other.rules.get(group));
-      if(a!==z)rows.push(["group","HUMAN declared availability",group||"(unassigned)",a,z]);
+      const current=canonicalCapacity(capacityRules.get(group)),
+        compared=canonicalCapacity(other.rules.get(group));
+      if(JSON.stringify(current)!==JSON.stringify(compared)){
+        rows.push(["group","HUMAN declared availability",group||"(unassigned)",
+          reviewCapacitySummary(current),reviewCapacitySummary(compared),group]);
+      }
     }
     return rows;
   }
@@ -1716,7 +1723,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       const tr=dom("tr"),box=dom("input");
       box.type="checkbox";box.disabled=workroomComparison.admitted.series!==seriesId;
       const isAppointment=row[0]==="appointment",ordinal=Number(row[2].replace(/^#/,""));
-      const group= row[2]==="(unassigned)"?"":row[2];
+      const group=row[0]==="group"?row[5]:"";
       box.checked=isAppointment?reconcileSelection.has(ordinal):reconcileGroupSelection.has(group);
       box.setAttribute("aria-label","Select PRIVATE HUMAN "+(isAppointment?"appointment ":"group policy ")+
         row[2]+" for local reconciliation");
@@ -1727,7 +1734,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
         reconcileProposal=null;renderReconcilePreview();
       });
       const cell=dom("td");cell.append(box);tr.append(cell);
-      row.slice(1).forEach(value=>tr.append(dom("td",value)));
+      row.slice(1,5).forEach(value=>tr.append(dom("td",value)));
       output.append(tr);
     }
   }
@@ -1739,7 +1746,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const safeCell=v=>unsafeText(String(v))?"'"+String(v):String(v);
     const output=[["change_type","original_ordinal_or_unverified_group",
       "current_private_human_proposal","compared_private_human_proposal"],
-      ...rows.map(row=>row.slice(1).map(safeCell))];
+      ...rows.map(row=>row.slice(1,5).map(safeCell))];
     download(makeCsv(output),"lightup-private-human-workroom-differences.csv","text/csv;charset=utf-8");
     inform("PRIVATE HUMAN changed-only comparison CSV downloaded locally; no file sent or live assessment performed.");
   }
