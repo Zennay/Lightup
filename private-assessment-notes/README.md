@@ -722,3 +722,16 @@ read-only original-bound action reopener. No automatic consensus, authentic
 reviewer identities, disclosure rights or release claims.
 
 [Full step-by-step offline PRIVATE HUMAN action workroom instructions](PRIVATE-DISCUSSION-ACTIONS.md).
+
+
+## PRIVATE HUMAN team conversation planning from original completed actions
+
+The original source-bound PRIVATE HUMAN action chronology now supports a
+complete separate local proposed-team discussion Studio and strictly admitted
+HUMAN CSV finalization. Every original selected source remains present, starts
+UNASSIGNED, and can be manually proposed for SECURITY/PRIVACY/CLIENT_OPERATIONS/
+PLATFORM human conversation without making a real assignment, grant or send.
+The resulting receipt, private full CSV and text-minimal printable team board
+are separate from the original full HUMAN reviews and always HOLD.
+
+[Complete source-bound offline HUMAN team routing instructions](PRIVATE-DISCUSSION-TEAM-ROUTING.md).

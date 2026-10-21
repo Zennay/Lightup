@@ -286,3 +286,8 @@ source-owner review, independent security/privacy/browser review, issues
 #177/#182/#829, separately authenticated current client/operator consent
 with action-time revocation and explicit HUMAN GO remain mandatory before
 any main merge, production deployment or actual client assessment.
+
+
+## Further LOCAL HUMAN team proposal desk
+
+[Open the original-bound PRIVATE HUMAN team proposal workflow](PRIVATE-DISCUSSION-TEAM-ROUTING.md). A team name is an unauthenticated HUMAN discussion suggestion only; never a real assignment or permission to disclose.

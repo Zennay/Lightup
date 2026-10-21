@@ -530,6 +530,26 @@ def main() -> int:
     history_receive_reopen.add_argument("--final-room", action="append", required=True)
     history_receive_reopen.add_argument("--history-room", required=True)
     history_receive_reopen.add_argument("--selected-room", required=True)
+    team_prepare = commands.add_parser(
+        "sensitivity-discussion-team-prepare",
+        help="source-bound offline PRIVATE HUMAN internal team routing proposals")
+    team_prepare.add_argument("--completed-packet", required=True)
+    team_prepare.add_argument("--review", action="append", required=True)
+    team_prepare.add_argument("--room", required=True)
+    team_prepare.add_argument("--final-room", action="append", required=True)
+    team_prepare.add_argument("--history-room", required=True)
+    team_prepare.add_argument("--private-parent", required=True)
+    team_finalize = commands.add_parser(
+        "sensitivity-discussion-team-finalize",
+        help="write PRIVATE original-bound HUMAN proposed-team packet; always HOLD")
+    team_finalize.add_argument("--completed-packet", required=True)
+    team_finalize.add_argument("--review", action="append", required=True)
+    team_finalize.add_argument("--room", required=True)
+    team_finalize.add_argument("--final-room", action="append", required=True)
+    team_finalize.add_argument("--history-room", required=True)
+    team_finalize.add_argument("--draft-room", required=True)
+    team_finalize.add_argument("--completed-csv", required=True)
+    team_finalize.add_argument("--private-parent", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -647,6 +667,17 @@ def main() -> int:
             return reopen_selected(args.completed_packet, args.review,
                                    args.room, args.final_room,
                                    args.history_room, args.selected_room)
+        if args.action in {"sensitivity-discussion-team-prepare",
+                           "sensitivity-discussion-team-finalize"}:
+            from privacy_triage_discussion_team import prepare, finalize
+            if args.action == "sensitivity-discussion-team-prepare":
+                return prepare(args.completed_packet, args.review, args.room,
+                               args.final_room, args.history_room,
+                               args.private_parent)
+            return finalize(args.completed_packet, args.review, args.room,
+                            args.final_room, args.history_room,
+                            args.draft_room, args.completed_csv,
+                            args.private_parent)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(
