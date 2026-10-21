@@ -22,10 +22,10 @@ def require(condition: bool) -> None:
         raise Hold("HOLD: PRIVATE HUMAN inbox does not match current original source lineage")
 
 
-def reopen(source_path: str, manifest_path: str, worksheet_path: str,
+def reopen_expected(source_path: str, manifest_path: str, worksheet_path: str,
            selection_receipt: str, selection_path: str, curated_dir: str,
            handoff_paths: list[str], reply_paths: list[str],
-           private_dir: str) -> int:
+           private_dir: str) -> tuple[dict[str, bytes], int]:
     try:
         expected, count = build(
             source_path, manifest_path, worksheet_path, selection_receipt,
@@ -61,10 +61,20 @@ def reopen(source_path: str, manifest_path: str, worksheet_path: str,
                 drift.append(name + " (bytes differ from current source rebuild)")
         if drift:
             raise Hold("HOLD: PRIVATE inbox drift in " + "; ".join(drift) + "; no files changed")
-        return count
+        return expected, count
     finally:
         if dfd >= 0:
             os.close(dfd)
+
+
+def reopen(source_path: str, manifest_path: str, worksheet_path: str,
+           selection_receipt: str, selection_path: str, curated_dir: str,
+           handoff_paths: list[str], reply_paths: list[str],
+           private_dir: str) -> int:
+    _, count = reopen_expected(source_path, manifest_path, worksheet_path,
+                               selection_receipt, selection_path, curated_dir,
+                               handoff_paths, reply_paths, private_dir)
+    return count
 
 
 def main() -> int:

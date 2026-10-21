@@ -13,8 +13,8 @@ import io
 import os
 import sys
 
-from briefing import h, json_bytes, publish_new
 from curate import Hold, digest
+from briefing import h, json_bytes, publish_new
 from human_return import read_limited_file
 from packet_open import json_private, reopen as reopen_curated
 from packet_handoff import RECEIPT, TEMPLATE, reopen as reopen_handoff
@@ -34,6 +34,17 @@ RECEIPT_OUT = "PRIVATE-original-HUMAN-priority-inbox-receipt.json"
 def require(condition: bool) -> None:
     if not condition:
         raise Hold("HOLD: PRIVATE original HUMAN priority inbox refused")
+
+
+def ensure_output_outside_inputs(output: str, protected_dirs: list[str]) -> None:
+    destination = os.path.realpath(os.path.abspath(output))
+    for item in protected_dirs:
+        source_dir = os.path.realpath(os.path.abspath(item))
+        try:
+            overlap = os.path.commonpath((destination, source_dir))
+        except ValueError:
+            continue
+        require(overlap != source_dir)
 
 
 def build(source_path: str, manifest_path: str, worksheet_path: str,
@@ -187,6 +198,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
 def join(source_path: str, manifest_path: str, worksheet_path: str,
          selection_receipt: str, selection_path: str, curated_dir: str,
          handoff_paths: list[str], reply_paths: list[str], output: str) -> int:
+    ensure_output_outside_inputs(output, [curated_dir, *handoff_paths])
     files, count = build(source_path, manifest_path, worksheet_path,
                          selection_receipt, selection_path, curated_dir,
                          handoff_paths, reply_paths)

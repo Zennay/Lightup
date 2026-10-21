@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Eighteen offline source-bound and local packet workflows in one user menu.
+Nineteen offline source-bound and local packet workflows in one user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -24,6 +24,7 @@ from priority_return_open import reopen as reopen_priority_return
 from priority_reconcile import reconcile as reconcile_original_priority
 from priority_inbox import join as join_priority_inbox
 from priority_inbox_open import reopen as reopen_priority_inbox
+from priority_inbox_diff import compare as compare_priority_inbox
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -62,6 +63,8 @@ WORKFLOWS = {
            "full original lab and every separate priority/HUMAN reply pair, all-or-nothing"),
     "18": ("Reopen complete PRIVATE HUMAN inbox against original sources and all replies",
            "full original source/selection, full curated packet, every unique handoff + reply pair"),
+    "19": ("Compare two full-lineage PRIVATE HUMAN response inbox revisions",
+           "same original source/selection and handoffs; complete before/after reply CSV + inbox pairs"),
 }
 
 
@@ -182,6 +185,36 @@ def run_workflow(choice: str) -> None:
                                        selection, curated, handoffs, replies, inbox)
         print("PRIVATE original-source HUMAN inbox consistent: " + str(count) +
               " selected rows; UNSIGNED, no consent/dispatch")
+        return
+    if choice == "19":
+        source = ask_path("EXISTING full original lab source JSON")
+        manifest = ask_path("EXISTING original briefing manifest")
+        worksheet = ask_path("EXISTING original full HUMAN worksheet")
+        receipt = ask_path("EXISTING original selection receipt")
+        selection = ask_path("EXISTING complete HUMAN selection CSV")
+        curated = ask_path("EXISTING complete original PRIVATE curated packet")
+        n = input("Original nonempty HUMAN priority groups [1 / 2 / 3]: ").strip()
+        if n not in ("1", "2", "3"):
+            raise Hold("HOLD: invalid HUMAN priority group count")
+        handoffs = []
+        before_replies = []
+        after_replies = []
+        for i in range(int(n)):
+            handoffs.append(ask_path("Original PRIVATE priority handoff " + str(i+1)))
+            before_replies.append(ask_path("Prior complete HUMAN response CSV " + str(i+1)))
+            after_replies.append(ask_path("Current complete HUMAN response CSV " + str(i+1)))
+        before_inbox = ask_path("EXISTING prior complete PRIVATE HUMAN inbox directory")
+        after_inbox = ask_path("EXISTING current complete PRIVATE HUMAN inbox directory")
+        output = ask_path("EXCLUSIVE NEW PRIVATE HUMAN response-delta directory")
+        print("Both inboxes are re-admitted against the same original source and "
+              "all source-bound handoffs. The report may contain client-confidential HUMAN text.")
+        if input("Enter exactly REVIEW ONLY to create PRIVATE comparison: ") != "REVIEW ONLY":
+            raise Hold("Human declined PRIVATE HUMAN response comparison")
+        changed = compare_priority_inbox(
+            source, manifest, worksheet, receipt, selection, curated, handoffs,
+            before_replies, before_inbox, after_replies, after_inbox, output)
+        print("PRIVATE HUMAN response rows changed: " + str(changed) +
+              "; unverified claims, no consent or dispatch")
         return
     if choice == "17":
         source = ask_path("EXISTING full original lab source JSON")
@@ -312,7 +345,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–18]: ").strip()
+        choice = input("PRIVATE workflow [0–19]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
