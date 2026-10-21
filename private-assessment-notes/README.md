@@ -12,8 +12,11 @@ HAR cookie values with unrecognized application-specific names are also
 withheld in PRIVATE output. Original HAR request queryString and
 postData.params string values are withheld even with unknown application
 field names. Headers, timing, original field names and HUMAN review flow
-remain available. The source document is never modified. New masking-cue
-receipts are v11, with exact historical v1-v10 reopen support. No runtime scan or network.
+remain available. Original HAR request URLs, response redirects,
+all string HTTP header values (including unknown custom headers) and form
+upload file references are now withheld from PRIVATE derivatives.
+The source document is never modified. New masking-cue receipts are v12,
+with exact historical v1-v11 reopen support. No runtime scan or network.
 Any malformed/oversize/unknown source stays confidential and requires
 independent HUMAN review; this is not safe-sharing certification.
 

@@ -51,6 +51,10 @@ _HAR_WEBSOCKET_MARKER = "[REDACTED_HAR_WEBSOCKET_FRAME]"
 _HAR_COOKIE_MARKER = "[REDACTED_HAR_COOKIE_VALUE]"
 _HAR_QUERY_MARKER = "[REDACTED_HAR_QUERY_VALUE]"
 _HAR_FORM_PARAM_MARKER = "[REDACTED_HAR_FORM_PARAM_VALUE]"
+_HAR_URL_MARKER = "[REDACTED_HAR_REQUEST_URL]"
+_HAR_REDIRECT_MARKER = "[REDACTED_HAR_REDIRECT_URL]"
+_HAR_ANY_HEADER_MARKER = "[REDACTED_HAR_ANY_HEADER_VALUE]"
+_HAR_FILE_MARKER = "[REDACTED_HAR_FILE_REFERENCE]"
 _DECODER = json.JSONDecoder(parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
 
 
@@ -117,6 +121,19 @@ class _Reader:
                 # untouched and preserve its surrounding metadata. In this
                 # PRIVATE derivative, omit complete opaque body strings even
                 # when they are not shaped like a known credential.
+                if node[0] == "string":
+                    # A request URL can include opaque identifiers in any
+                    # path/query, not only parameters named token/password.
+                    # Withhold the entire URL in the derived local review.
+                    if path[-1:] == ("request",) and key == "url":
+                        self.spans.append((node[2], node[3], _HAR_URL_MARKER))
+                    elif path[-1:] == ("response",) and key == "redirectURL":
+                        self.spans.append((node[2], node[3], _HAR_REDIRECT_MARKER))
+                    elif (path[-3:] == ("request", "postData", "params")
+                          and key == "fileName"):
+                        # Form-upload local paths can identify a reviewer,
+                        # organisation or private evidence source.
+                        self.spans.append((node[2], node[3], _HAR_FILE_MARKER))
                 if key == "text" and node[0] == "string":
                     if path[-2:] == ("request", "postData"):
                         self.spans.append((node[2], node[3], _HAR_REQUEST_BODY_MARKER))
@@ -150,8 +167,13 @@ class _Reader:
                 # arbitrary application-specific cookie name. Never display
                 # any of their original string values in a derived PRIVATE
                 # note. Preserve the cookie name for original HUMAN triage.
-                if path[-2:] in (("request", "cookies"),
-                                 ("response", "cookies")):
+                if path[-2:] in (("request", "headers"),
+                                 ("response", "headers")):
+                    # Unknown headers can carry unrecognised session and
+                    # customer data. Preserve name only for HUMAN triage.
+                    marker = _HAR_ANY_HEADER_MARKER
+                elif path[-2:] in (("request", "cookies"),
+                                   ("response", "cookies")):
                     marker = _HAR_COOKIE_MARKER
                 elif path[-2:] == ("request", "queryString"):
                     # Even unknown names can hold private searches or IDs.
