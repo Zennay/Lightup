@@ -69,7 +69,9 @@ This independent branch changes exclusively **new** files in `assessment-candida
 When 2–8 source-byte-bound PRIVATE HUMAN drafts have been admitted against the
 same original lab report bytes, the scriptless HTML brief and aggregate JSON export now include the complete
 manually ordered per-case round timeline and current locally recorded generic
-discussion suggestions. The brief still includes
+discussion suggestions.
+The aggregate JSON schema is v5; its human_review_round_history field is null
+unless a compatible source-byte-bound comparison of PRIVATE HUMAN drafts is loaded. The brief still includes
 candidate aggregate metrics, the selected pair numeric deltas and original
 adverse-flag crossover. It never exports source case IDs, source hashes,
 filenames, aliases, notes, targets or reviewer identities. A changed status,
