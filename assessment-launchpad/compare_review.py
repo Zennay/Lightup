@@ -162,6 +162,15 @@ def main(argv=None):
                 if actual != desired:
                     raise Hold("stored HUMAN delta changed or no longer matches exact rounds")
             else:
+                # In a long-running operator handoff, source rounds may change
+                # between initial admission and output publication.
+                fresh_original, fresh_endpoints, fresh_digest = read_original_bundle(args.bundle_dir)
+                fresh_before_dir, fresh_before = read_round(args.before_dir, fresh_digest, fresh_endpoints)
+                fresh_after_dir, fresh_after = read_round(args.after_dir, fresh_digest, fresh_endpoints)
+                if ((fresh_original, fresh_endpoints, fresh_digest) != (original, endpoints, digest)
+                        or (fresh_before_dir, fresh_before) != (first_dir, first)
+                        or (fresh_after_dir, fresh_after) != (second_dir, second)):
+                    raise Hold("original source or HUMAN round changed before output")
                 publish_bundle(fd, list(desired.items()))
         finally:
             os.close(fd)
