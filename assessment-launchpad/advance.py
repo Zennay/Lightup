@@ -176,6 +176,8 @@ def main(argv=None):
             earlier_rounds.append(old_round)
         root_fd, root_path = open_output_directory(args.output_dir or args.verify_workroom_dir)
         try:
+            if args.output_dir and os.listdir(root_fd):
+                raise Hold("new PRIVATE HUMAN next-round workspace must be empty")
             for source in (original, previous_dir, *earlier_dirs):
                 if os.path.commonpath((source, root_path)) in (source, root_path):
                     raise Hold("next-round output must be separate from original inputs")
@@ -205,9 +207,17 @@ def main(argv=None):
                 if ((renewed, renewed_endpoints, renewed_digest, renewed_previous, renewed_before, again)
                         != (original, endpoints, digest, previous_dir, before, after)):
                     raise Hold("previous HUMAN or original source changed before publication")
+                expected = content_for(before, after, endpoints, earlier_rounds)
+                # The standalone HISTORY producer has a fixed 512-KiB cap. The
+                # integrated pipeline must enforce the same cap BEFORE it creates
+                # any of the fresh workroom directories, or it could leave a
+                # seemingly complete but impossible-to-reopen private packet.
+                for dirname, files in expected.items():
+                    limit = 524288 if dirname == HISTORY else 196608
+                    if any(not 0 < len(blob) <= limit for blob in files.values()):
+                        raise Hold("PRIVATE HUMAN next-round artifact exceeds reopen limit")
                 for name in SUBDIRS:
                     private_child(root_fd, name)
-                expected = content_for(before, after, endpoints, earlier_rounds)
                 for dirname in SUBDIRS:
                     fd, _ = open_output_directory(os.path.join(root_path, dirname))
                     try:
