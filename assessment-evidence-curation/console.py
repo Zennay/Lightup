@@ -24,6 +24,7 @@ from priority_return_open import reopen as reopen_priority_return
 from priority_reconcile import reconcile as reconcile_original_priority
 from priority_inbox import join as join_priority_inbox
 from priority_inbox_open import reopen as reopen_priority_inbox
+from priority_inbox_action_queue import publish_queue as publish_human_action_queue
 from priority_inbox_diff import compare as compare_priority_inbox
 from priority_inbox_diff_open import reopen as reopen_priority_inbox_diff
 
@@ -68,6 +69,8 @@ WORKFLOWS = {
            "same original source/selection and handoffs; complete before/after reply CSV + inbox pairs"),
     "20": ("Reopen PRIVATE HUMAN response delta against both source-bound inbox revisions",
            "same original source, handoffs, both complete inboxes + before/after reply CSVs"),
+    "21": ("Build PRIVATE HUMAN response-stage action queue from an exact source-reopened inbox",
+           "original source/selection, every reply group and saved exact-byte PRIVATE inbox"),
 }
 
 
@@ -163,6 +166,32 @@ def run_workflow(choice: str) -> None:
                                             returned, output)
         print("Original-source HUMAN priority rows checked: " + str(count) +
               "; NO verified remediation, recipient or consent")
+        return
+    if choice == "21":
+        source = ask_path("EXISTING full original lab source JSON")
+        manifest = ask_path("EXISTING original briefing manifest")
+        worksheet = ask_path("EXISTING original full HUMAN worksheet")
+        receipt = ask_path("EXISTING original selection receipt")
+        selection = ask_path("EXISTING complete HUMAN selection CSV")
+        curated = ask_path("EXISTING complete original PRIVATE curated packet")
+        n = input("Original nonempty HUMAN priority groups [1 / 2 / 3]: ").strip()
+        if n not in ("1", "2", "3"):
+            raise Hold("HOLD: invalid HUMAN priority group count")
+        handoffs = []
+        replies = []
+        for i in range(int(n)):
+            handoffs.append(ask_path("Original PRIVATE priority handoff " + str(i+1)))
+            replies.append(ask_path("Corresponding complete HUMAN response CSV " + str(i+1)))
+        inbox = ask_path("EXISTING complete original PRIVATE HUMAN inbox directory")
+        output = ask_path("EXCLUSIVE NEW PRIVATE HUMAN action queue output directory")
+        print("Output contains confidential HUMAN text, is REVIEW ONLY and never assigns tasks.")
+        if input("Enter exactly REVIEW ONLY for the offline HUMAN action queue: ") != "REVIEW ONLY":
+            raise Hold("Human declined source-bound PRIVATE action queue")
+        count = publish_human_action_queue(
+            source, manifest, worksheet, receipt, selection,
+            curated, handoffs, replies, inbox, output)
+        print("Private stage-grouped HUMAN action queue prepared for " + str(count) +
+              " original source ordinals; no source, consent or target modified")
         return
     if choice == "18":
         source = ask_path("EXISTING full original lab source JSON")
@@ -378,7 +407,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–20]: ").strip()
+        choice = input("PRIVATE workflow [0–21]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0

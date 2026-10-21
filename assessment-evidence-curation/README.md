@@ -306,3 +306,46 @@ Only NEW companion files under assessment-evidence-curation/. Frozen original ow
 **DO NOT MERGE MAIN OR DEPLOY.** Original exact-approved-head hosted GitHub CI + permanently registered named VPS CI, original source-owner review, independent security/privacy/browser review, #177/#182/#829, authentic separately authenticated current client/operator consent and action-time revocation, and explicit HUMAN GO remain mandatory. Nothing in this companion claims to have met these gates.
 
 No QA or regression tests authored or executed. Source/syntax inspection is not independent security certification.
+
+## Step 10 — Exact-source PRIVATE HUMAN response action queue (offline, no dispatch)
+
+After completing the original all-priority HUMAN response inbox from step 9,
+operators can turn its already-existing, source-minimized replies into a
+**stage-grouped printable HUMAN worklist**, rather than hunting through a
+full original-order CSV. This is an independent action, not a new assessment:
+
+    python3 assessment-evidence-curation/priority_inbox_action_queue.py \
+      --source ./PRIVATE-original-lab.json \
+      --manifest ./PRIVATE-original-briefing/manifest.json \
+      --worksheet ./PRIVATE-human-followup.csv \
+      --selection-receipt ./NEW-PRIVATE-PREPARATION/selection-receipt.json \
+      --selection ./PRIVATE-human-selection.csv \
+      --curated-packet ./EXISTING-PRIVATE-EVIDENCE-DOSSIER \
+      --private-handoff ./PRIVATE-PRIORITY-HANDOFF \
+      --returned-csv ./PRIVATE-PRIORITY-HUMAN-RETURN.csv \
+      --private-inbox ./EXISTING-PRIVATE-ORIGINAL-HUMAN-INBOX \
+      --output-dir ./NEW-PRIVATE-HUMAN-ACTION-QUEUE
+
+Repeat each `--private-handoff` and matching `--returned-csv` pair
+for every original nonempty priority group (1–3). The foreground operator
+console offers the same workflow as **21**.
+
+Before publishing, the original native inbox **fully reopens** against the
+exact original source, selection, all handoffs, all returned HUMAN CSVs and
+every existing private inbox output byte. Drift, missing original priorities,
+untrusted file identity or incomplete returns HOLD without publishing.
+The original inbox files and owner source are never changed.
+
+The new separately private 0700 output contains 0600
+`PRIVATE-HUMAN-action-queue.html` (script-free/printable with fixed links
+for HUMAN blocked, more-information-needed, no-response and
+responded-claimed), `PRIVATE-HUMAN-action-queue-counts.json` and a PRIVATE
+receipt binding the exact inbox receipt, original unified HUMAN CSV and both
+new artifact hashes. Rows retain original source ordinals, source-reported
+severity/count, HUMAN priorities, questions, replies and next questions.
+No source target, original finding ID, raw evidence or original source hash is
+included in the visible HTML; HUMAN free text can still identify clients.
+No network, browser storage, recipient contact, automatic calendar booking,
+approval, verified fix, task dispatch or security authority is inferred.
+Original previously published HUMAN inbox formats and read-only reopen
+continue unchanged; this is a **new separate explicitly requested** output.
