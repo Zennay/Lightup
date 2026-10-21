@@ -25,9 +25,12 @@ v2 exact-field admission:
   original 0600 bytes and all literal false authority fields.
 - All input and output must live under owner-only 0700 directories,
   outside the original checkout; the native output is a new exclusive
-  0700 PRIVATE room with five 0600 files including unchanged original
+  0700 PRIVATE room with seven 0600 files: unchanged original
   proposal bytes, canonical received JSON, complete CSV, scriptless
-  CSP-restricted original action HTML and an unsigned receipt.
+  CSP-restricted original action HTML, a NEW grouped HUMAN proposed-role
+  cockpit HTML, anonymous source-free role/count JSON and an unsigned
+  receipt. The grouped role board retains all twenty original action
+  ordinals, including UNASSIGNED, but it does not assign anyone.
   No original source room is mutated.
 - Native **77** re-admits the same browser proposal, every original
   native self-report receipt room and **every** saved output byte.
