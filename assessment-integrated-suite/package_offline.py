@@ -33,7 +33,7 @@ integrity references; they do not authenticate source provenance.
 Individual studios independently re-admit any PRIVATE local HUMAN/source data.
 Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
-Native checkout users can additionally prepare an original-source PRIVATE
+A local HUMAN Lab Route Desk with 20 original review options (52–71) now\nships as human-lab-route.html plus adjacent human-lab-route.js, with memory-only\ndiscussion states, private JSON/CSV export and bounded JSON reimport. The\nportable browser app never opens original assessment sources, validates\ncompletion, accesses a network or grants authority. It is NOT an executor.\nNative checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
 options 21/22. The same console now has 58 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
@@ -139,7 +139,9 @@ def front_page(files: list[tuple[str, str]]) -> bytes:
         "04  Coordinate multiple humans locally": [],
     }
     for name, destination in files:
-        if name in ("lab-launchpad.html", "lab-scenario-studio.html"):
+        if not name.endswith(".html"):
+            continue  # Local support scripts are packaged, not offered as standalone pages.
+        if name in ("lab-launchpad.html", "lab-scenario-studio.html", "human-lab-route.html"):
             key = "02  Prepare isolated, fictional lab work"
         elif name in ("benchmark-lineage.html", "benchmark-candidates.html",
                       "lab-longitudinal-trends.html"):
@@ -220,13 +222,13 @@ def build(destination: Path) -> int:
     guide_path = ROOT / "assessment-integrated-suite/LAB-PLANNING.md"
     read_safe(guide_path, 262_144)
     guide = guide_path.read_bytes()
-    files = [(name, target) for name, target, _ in originals]
+    files = [(name, target) for name, target, _ in originals if name.endswith(".html")]
     opening = front_page(files)
     inventory = json.dumps({
         "schema": "lightup.assessment_offline_software_kit.v1",
         "status": "REVIEW_ONLY",
         "software_only": True, "sources_or_client_data_included": False,
-        "original_app_count": len(files), "files": manifest,
+        "original_app_count": len(files), "support_asset_count": len(originals) - len(files), "files": manifest,
         "operator_guide": {
             "filename": "GUIDE-LAB-PLANNING.md", "bytes": len(guide),
             "sha256_unsigned": hashlib.sha256(guide).hexdigest(),
@@ -247,7 +249,7 @@ def build(destination: Path) -> int:
             output.flush()
             os.fsync(output.fileno())
         completed = True
-        print(f"SOFTWARE-ONLY / REVIEW_ONLY: portable offline kit contains {len(originals)} unchanged original apps.")
+        print(f"SOFTWARE-ONLY / REVIEW_ONLY: portable offline kit contains {len(files)} offline HUMAN studios + {len(originals)-len(files)} local support assets.")
         print("LOCAL ZIP: " + str(destination))
         print("Unsigned SHA-256: " + hashlib.sha256(destination.read_bytes()).hexdigest())
         return 2
