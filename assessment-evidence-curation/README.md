@@ -447,3 +447,32 @@ inbox lineages and compares the exact three-file inventory, owner/modes and
 every byte. Any source drift, incomplete return, changed room, missing/extra
 file or modified output HOLDs without repair. Human text remains confidential;
 no delivery, assignment, remediation, authorization or consent is inferred.
+
+### 2–8 source-bound HUMAN inbox rounds for one selected stage + priority
+
+Console option **27** (read-only exact-source reopen: **28**) adds a
+multi-round continuation to the selected stage/priority workflow. Supply the
+same original source, manifest, worksheet, selection receipt, full selection,
+complete curated packet and every original priority handoff. Then provide
+**2–8 complete existing PRIVATE inbox revisions** in explicit operator order
+and the corresponding complete HUMAN return CSV for every nonempty priority
+group in each round.
+
+The native source-bound inbox builder independently reconstructs every
+revision before comparison. The resulting new owner-private three-file
+scriptless HTML/counts/unsigned-receipt package includes only original
+selected ordinals in the chosen priority that entered the selected HUMAN
+stage in at least one round. It shows stage for every operator-ordered round,
+but shows reply/follow-up text **only** for rounds in the selected stage.
+Aggregate counts report per-round selected-stage presence and transitions
+between adjacent supplied rounds.
+
+The operator's order is not verified chronology: there are no timestamps,
+reviewer identities, client names or original targets in the product. Each
+round's receipt and complete HUMAN CSV byte hash is recorded in an unsigned
+receipt with the original source/worksheet/selection hashes and generated
+output hashes. Option 28 re-admits every source-bound round and byte-compares
+the saved owner-only directory without writing or repairing it. A missing
+round, changed return, wrong source, extra/missing/modified output or unsafe
+file fails closed. No note is sent, task assigned, fix inferred or permission
+granted; freeform HUMAN text remains PRIVATE.

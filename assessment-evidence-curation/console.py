@@ -30,6 +30,8 @@ from priority_inbox_stage_brief import publish as publish_stage_priority_brief
 from priority_inbox_stage_brief_open import reopen as reopen_stage_priority_brief
 from priority_inbox_stage_brief_diff import compare as compare_stage_priority_delta
 from priority_inbox_stage_brief_diff_open import reopen as reopen_stage_priority_delta
+from priority_inbox_stage_brief_timeline import publish as publish_stage_priority_timeline
+from priority_inbox_stage_brief_timeline_open import reopen as reopen_stage_priority_timeline
 from priority_inbox_diff import compare as compare_priority_inbox
 from priority_inbox_diff_open import reopen as reopen_priority_inbox_diff
 
@@ -86,6 +88,10 @@ WORKFLOWS = {
            "original source, all handoffs/returns, both inboxes and selected stage/priority"),
     "26": ("Reopen selected stage/priority delta against both original inbox revisions",
            "same original source, before/after replies/inboxes and saved exact delta"),
+    "27": ("Build 2–8 round source-bound PRIVATE HUMAN stage/priority timeline",
+           "same original source, every handoff and complete HUMAN returns for each ordered inbox"),
+    "28": ("Reopen selected HUMAN timeline against every original ordered inbox revision",
+           "same original source and returns plus saved exact three-file timeline"),
 }
 
 
@@ -181,6 +187,46 @@ def run_workflow(choice: str) -> None:
                                             returned, output)
         print("Original-source HUMAN priority rows checked: " + str(count) +
               "; NO verified remediation, recipient or consent")
+        return
+    if choice in ("27", "28"):
+        source = ask_path("EXISTING original lab source JSON")
+        manifest = ask_path("EXISTING original briefing manifest")
+        worksheet = ask_path("EXISTING original HUMAN worksheet")
+        receipt = ask_path("EXISTING original selection receipt")
+        selection = ask_path("EXISTING complete HUMAN selection CSV")
+        curated = ask_path("EXISTING complete PRIVATE curated packet")
+        n = input("Original nonempty priority groups [1/2/3]: ").strip()
+        if n not in ("1", "2", "3"):
+            raise Hold("Invalid original priority count")
+        handoffs = [ask_path("Original priority handoff " + str(i+1))
+                    for i in range(int(n))]
+        rounds = input("Number of complete inbox revisions [2–8]: ").strip()
+        if rounds not in [str(x) for x in range(2, 9)]:
+            raise Hold("Timeline requires 2–8 explicitly ordered inbox revisions")
+        round_replies, round_inboxes = [], []
+        for round_no in range(1, int(rounds)+1):
+            print("Operator-supplied round " + str(round_no) + "; chronology is not verified.")
+            round_replies.append([
+                ask_path("Round " + str(round_no) + " matching HUMAN return CSV " + str(i+1))
+                for i in range(int(n))])
+            round_inboxes.append(ask_path("Round " + str(round_no) + " complete PRIVATE inbox"))
+        stage = ask_path("Exact HUMAN stage to focus on")
+        priority = ask_path("Exact original HUMAN priority to focus on")
+        saved = ask_path("EXCLUSIVE NEW PRIVATE timeline folder" if choice == "27" else
+                         "EXISTING saved PRIVATE timeline folder")
+        print("Replies are confidential; only notes in the selected stage are included.")
+        if input("Enter exactly REVIEW ONLY for this timeline operation: ") != "REVIEW ONLY":
+            raise Hold("Human declined PRIVATE timeline")
+        args = (source, manifest, worksheet, receipt, selection, curated,
+                handoffs, round_replies, round_inboxes, stage, priority)
+        if choice == "27":
+            count = publish_stage_priority_timeline(*args, saved)
+            print("PRIVATE selected stage/priority timeline published: " + str(count) +
+                  " ordinals; no authenticated chronology, dispatch or authority")
+        else:
+            count = reopen_stage_priority_timeline(*args, saved)
+            print("PRIVATE timeline reopened against exact source and every inbox: " +
+                  str(count) + " ordinals; no authorization")
         return
     if choice in ("25", "26"):
         source = ask_path("EXISTING original lab source JSON")
@@ -520,7 +566,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–26]: ").strip()
+        choice = input("PRIVATE workflow [0–28]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
@@ -538,7 +584,7 @@ def main() -> int:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18", "20", "22", "24", "26") else
+    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18", "20", "22", "24", "26", "28") else
           "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 
