@@ -259,7 +259,11 @@ The printable board identifies, by **original source ordinal only**, notes
 whose entire derived copy contains the literal source-withheld marker.
 All original ordinals remain visible, including zero withheld counts.
 It instructs the human reviewer to return to the unchanged privately held
-original. The board never includes source text, names, paths, digests,
+original. New source copies fully withheld by the admission guard also
+begin their own PRIVATE HUMAN CSV/editor discussion at SOURCE_OWNER_REQUIRED
+instead of the ordinary NEEDS_HUMAN_REVIEW default; this is a proposed
+human discussion starting point, never an automatic security verdict,
+consent, release decision or verified source-owner identity. The board never includes source text, names, paths, digests,
 raw notes or client identity; a marker may be literal original input and
 is not proven detection, clearance or release. Separate native receipt
 reopen compares the exact new HTML bytes as part of a v14 packet.

@@ -25,6 +25,11 @@ withheld markers by original ordinal inside a new separate masking-cue room
 or the optional initial HUMAN preview. Native reopen binds its new HTML
 bytes to the original owner-private source manifest and receipt. A marker
 may pre-exist in raw text; the board is only a navigation aid, not a verdict.
+When a new derived note is wholly withheld, its initial private HUMAN
+decision CSV and local browser editor start at SOURCE_OWNER_REQUIRED,
+rather than implying that the derived source can be inspected directly.
+The actual source owner may review and propose a different local stage;
+all final outputs remain HOLD and no stage authorizes disclosure.
 Independent HUMAN review of the original is mandatory; this is never
 safe-sharing certification. No runtime scan or network.
 

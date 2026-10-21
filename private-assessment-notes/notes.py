@@ -241,7 +241,13 @@ def prepare(inputs: list[str], parent_string: str,
             "output_bytes": len(after.encode("utf-8")),
             "redacted_text": after,
             "source_ordinal": index,
-            "human_stage": "NEEDS_HUMAN_REVIEW",
+            # Wholly withheld derived HAR-like copies cannot be inspected
+            # without the original private source holder. Surface this as a
+            # starting HUMAN discussion state, never as an automatic permit
+            # or permanent decision. Existing non-HAR behavior is unchanged.
+            "human_stage": ("SOURCE_OWNER_REQUIRED"
+                            if after == "[WITHHELD_PRIVATE_HAR_UNREVIEWED]"
+                            else "NEEDS_HUMAN_REVIEW"),
             "human_note": "",
         }
         rows.append(row)
