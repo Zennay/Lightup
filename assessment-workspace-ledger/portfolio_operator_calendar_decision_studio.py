@@ -74,7 +74,14 @@ never uses network, external scripts, storage, scanning or task scheduling.</p>
 <input id="file" type="file" accept=".csv,text/csv"></label>
 <p id="status" role="status" aria-live="polite"></p></section>
 <section id="room" hidden><h2>Complete HUMAN-only source reconciliation</h2>
-<p id="summary"></p><div class="controls">
+<p id="summary"></p>
+<label for="options">Optional: open source-matching PRIVATE ORIGINAL HUMAN proposal alternatives JSON
+<input id="options" type="file" accept=".json,application/json"></label>
+<p><small>Native prepare provides PRIVATE-HUMAN-original-calendar-options.json:
+original HUMAN candidate dates and priorities per round, without any previous
+free-text question contents. This is an unsigned local preview. Copying one
+candidate is an EXPLICIT human proposal and NEVER changes approval stage.</small></p>
+<div class="controls">
 <label for="owner">Filter proposed HUMAN owner
 <select id="owner"><option value="">All proposed HUMAN owners</option></select></label>
 <label for="stage">HUMAN proposal stage

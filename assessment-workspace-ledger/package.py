@@ -21,6 +21,7 @@ from ledger import Hold, canonical, object_unique, private_parent, reject, liter
 ROOT = Path(__file__).resolve().parent
 PREFIX = "LightUp-Workspace-Ledger/"
 NAMES = (
+    "PRIVATE-CALENDAR-DECISION-OPTIONS.md",
     "portfolio_operator_calendar_decision_handoff.py",
     "portfolio_operator_calendar_decisions.py",
     "portfolio_operator_calendar_decision_studio.py",
@@ -37,9 +38,11 @@ NAMES = (
     "history_actions_browser.py", "history_owner_brief.py",
     "history_progress.py", "portfolio.py", "portfolio_delta.py", "portfolio_owner_packets.py", "portfolio_dayboard.py", "portfolio_focus.py", "portfolio_focus_review.py", "portfolio_focus_history.py", "portfolio_focus_owner_handoff.py", "portfolio_owner_reply.py", "portfolio_owner_inbox.py", "portfolio_owner_inbox_review.py", "portfolio_owner_attention.py", "portfolio_inbox_history.py", "portfolio_inbox_timeline.py", "portfolio_inbox_timeline_selection.py", "portfolio_inbox_timeline_batch.py", "portfolio_inbox_owner_return.py", "portfolio_inbox_owner_return_studio.py", "portfolio_inbox_owner_reconcile.py", "portfolio_owner_inbox_viewer.py", "portfolio_owner_followup.py", "portfolio_owner_change_briefs.py", "portfolio_owner_change_board.py", "portfolio_owner_change_history.py", "portfolio_owner_change_history_studio.py", "portfolio_owner_change_history_studio.js", "portfolio-owner-change-history-studio.html", "portfolio_owner_change_board.js", "portfolio-owner-change-board.html", "portfolio_owner_followup_studio.py", "portfolio_owner_followup_studio.js", "portfolio-owner-followup-studio.html", "portfolio_owner_inbox_viewer.js", "portfolio-owner-inbox-viewer.html", "portfolio_inbox_owner_return_studio.js", "portfolio-inbox-owner-return-studio.html", "portfolio_inbox_timeline.js", "portfolio-inbox-timeline.html", "portfolio_inbox_studio.py", "portfolio_inbox_studio.js", "portfolio-inbox-studio.html", "portfolio_owner_studio.py", "portfolio_owner_studio.js", "portfolio-owner-studio.html", "portfolio_focus_studio.py", "portfolio_focus_studio.js", "portfolio-focus-studio.html", "package.py", "standalone.html",
 )
-SCHEMA = "lightup.private.workspace-ledger-software.v55"
+SCHEMA = "lightup.private.workspace-ledger-software.v56"
+V55_SCHEMA = "lightup.private.workspace-ledger-software.v55"
+V55_NAMES = tuple(n for n in NAMES if n != "PRIVATE-CALENDAR-DECISION-OPTIONS.md")
 V54_SCHEMA = "lightup.private.workspace-ledger-software.v54"
-V54_NAMES = tuple(n for n in NAMES if n != "portfolio_operator_calendar_decision_handoff.py")
+V54_NAMES = tuple(n for n in V55_NAMES if n != "portfolio_operator_calendar_decision_handoff.py")
 V53_SCHEMA = "lightup.private.workspace-ledger-software.v53"
 V53_NAMES = tuple(n for n in V54_NAMES if n not in (
     "portfolio_operator_calendar_decisions.py",
@@ -260,7 +263,7 @@ def inspect(args):
     with zipfile.ZipFile(io.BytesIO(raw), "r") as src:
         entries = src.infolist()
         stored = [entry.filename for entry in entries]
-        profiles = ((NAMES, SCHEMA), (V54_NAMES, V54_SCHEMA), (V53_NAMES, V53_SCHEMA), (V52_NAMES, V52_SCHEMA), (V51_NAMES, V51_SCHEMA), (V50_NAMES, V50_SCHEMA), (V49_NAMES, V49_SCHEMA), (V48_NAMES, V48_SCHEMA), (V47_NAMES, V47_SCHEMA), (V46_NAMES, V46_SCHEMA), (V45_NAMES, V45_SCHEMA), (V44_NAMES, V44_SCHEMA), (V43_NAMES, V43_SCHEMA), (V42_NAMES, V42_SCHEMA), (V41_NAMES, V41_SCHEMA), (V40_NAMES, V40_SCHEMA), (V39_NAMES, V39_SCHEMA), (V38_NAMES, V38_SCHEMA), (V37_NAMES, V37_SCHEMA), (V36_NAMES, V36_SCHEMA), (V35_NAMES, V35_SCHEMA), (V34_NAMES, V34_SCHEMA), (LATEST_NAMES, LATEST_SCHEMA), (CURRENT_PRIOR_NAMES, CURRENT_PRIOR_SCHEMA), (MIDDLE_NAMES, MIDDLE_SCHEMA), (PRIOR_NAMES, PRIOR_SCHEMA), (RECENT_NAMES, RECENT_SCHEMA), (PREVIOUS_NAMES, PREVIOUS_SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA), (OLDER_NAMES, OLDER_SCHEMA), (OLDEST_NAMES, OLDEST_SCHEMA), (ANCIENT_NAMES, ANCIENT_SCHEMA), (FIRST_NAMES, FIRST_SCHEMA), (BASE_NAMES, BASE_SCHEMA), (ORIGIN_NAMES, ORIGIN_SCHEMA), (ANCIENT_BASE_NAMES, ANCIENT_BASE_SCHEMA), (FIRST_BASE_NAMES, FIRST_BASE_SCHEMA), (ORIGINAL_NAMES, ORIGINAL_SCHEMA), (MINIMUM_NAMES, MINIMUM_SCHEMA), (ZERO_NAMES, ZERO_SCHEMA))
+        profiles = ((NAMES, SCHEMA), (V55_NAMES, V55_SCHEMA), (V54_NAMES, V54_SCHEMA), (V53_NAMES, V53_SCHEMA), (V52_NAMES, V52_SCHEMA), (V51_NAMES, V51_SCHEMA), (V50_NAMES, V50_SCHEMA), (V49_NAMES, V49_SCHEMA), (V48_NAMES, V48_SCHEMA), (V47_NAMES, V47_SCHEMA), (V46_NAMES, V46_SCHEMA), (V45_NAMES, V45_SCHEMA), (V44_NAMES, V44_SCHEMA), (V43_NAMES, V43_SCHEMA), (V42_NAMES, V42_SCHEMA), (V41_NAMES, V41_SCHEMA), (V40_NAMES, V40_SCHEMA), (V39_NAMES, V39_SCHEMA), (V38_NAMES, V38_SCHEMA), (V37_NAMES, V37_SCHEMA), (V36_NAMES, V36_SCHEMA), (V35_NAMES, V35_SCHEMA), (V34_NAMES, V34_SCHEMA), (LATEST_NAMES, LATEST_SCHEMA), (CURRENT_PRIOR_NAMES, CURRENT_PRIOR_SCHEMA), (MIDDLE_NAMES, MIDDLE_SCHEMA), (PRIOR_NAMES, PRIOR_SCHEMA), (RECENT_NAMES, RECENT_SCHEMA), (PREVIOUS_NAMES, PREVIOUS_SCHEMA), (LEGACY_NAMES, LEGACY_SCHEMA), (OLDER_NAMES, OLDER_SCHEMA), (OLDEST_NAMES, OLDEST_SCHEMA), (ANCIENT_NAMES, ANCIENT_SCHEMA), (FIRST_NAMES, FIRST_SCHEMA), (BASE_NAMES, BASE_SCHEMA), (ORIGIN_NAMES, ORIGIN_SCHEMA), (ANCIENT_BASE_NAMES, ANCIENT_BASE_SCHEMA), (FIRST_BASE_NAMES, FIRST_BASE_SCHEMA), (ORIGINAL_NAMES, ORIGINAL_SCHEMA), (MINIMUM_NAMES, MINIMUM_SCHEMA), (ZERO_NAMES, ZERO_SCHEMA))
         selected = next((
             (names, schema) for names, schema in profiles
             if stored == [PREFIX + name for name in names] + [PREFIX + "manifest.json"]

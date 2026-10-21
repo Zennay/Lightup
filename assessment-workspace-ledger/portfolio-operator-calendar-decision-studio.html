@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-XkVLqLvwdAUGWaCCpGJGc0lBM+hEDX5b4kkdoFFlM8o='; script-src 'sha256-dOMc1GFsQwCsXn+wJyf4A6mdW4PAAKayNkVLufGfkxw='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-XkVLqLvwdAUGWaCCpGJGc0lBM+hEDX5b4kkdoFFlM8o='; script-src 'sha256-I/TyfDhQtYYxrTROvjebW+sCBNwD8+ObvBmoGagUTOM='">
 <title>LightUp PRIVATE HUMAN Calendar Decision Studio</title><style>body{margin:0;background:#edf3f8;color:#10233a;font:16px/1.55 system-ui,sans-serif}
 header{padding:1.3rem max(1rem,calc((100vw - 1180px)/2));background:#112b46;color:#fff}
 main{max-width:1180px;margin:1.2rem auto;padding:0 1rem 4rem}
@@ -38,7 +38,14 @@ never uses network, external scripts, storage, scanning or task scheduling.</p>
 <input id="file" type="file" accept=".csv,text/csv"></label>
 <p id="status" role="status" aria-live="polite"></p></section>
 <section id="room" hidden><h2>Complete HUMAN-only source reconciliation</h2>
-<p id="summary"></p><div class="controls">
+<p id="summary"></p>
+<label for="options">Optional: open source-matching PRIVATE ORIGINAL HUMAN proposal alternatives JSON
+<input id="options" type="file" accept=".json,application/json"></label>
+<p><small>Native prepare provides PRIVATE-HUMAN-original-calendar-options.json:
+original HUMAN candidate dates and priorities per round, without any previous
+free-text question contents. This is an unsigned local preview. Copying one
+candidate is an EXPLICIT human proposal and NEVER changes approval stage.</small></p>
+<div class="controls">
 <label for="owner">Filter proposed HUMAN owner
 <select id="owner"><option value="">All proposed HUMAN owners</option></select></label>
 <label for="stage">HUMAN proposal stage
@@ -78,7 +85,7 @@ const HEAD=[
 "human_selected_priority","private_human_alignment_question","human_alignment_stage"];
 const STAGES=["needs_discussion","hold","human_alignment_proposed"];
 const PRIORITIES=["unset","human_urgent","near_term","routine"];
-let records=[],sourceSha="",dirty=false;
+let records=[],sourceSha="",dirty=false,sourceOptions=null;
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const safe=x=>typeof x==="string"&&x.length<=240&&!/[\u0000-\u001f\u007f]/.test(x)&&!/^\s*[=+@-]/.test(x);
 function validDate(x) {
@@ -174,6 +181,26 @@ function render(){
     " | conflicts: day "+entry.fixed[6]+", priority "+entry.fixed[7]+
     ", private question "+entry.fixed[8];
   article.append(info);
+  if(sourceOptions){
+   const alternatives=sourceOptions[Number(entry.fixed[1])-1];
+   const optionBox=create("div");optionBox.className="facts";
+   const note=create("p","UNVERIFIED original-source proposal preview: every candidate is HUMAN-only, NOT authenticated or a real booking.");
+   optionBox.append(note);
+   alternatives.dates.forEach((day,index)=>{
+    const line=create("div");line.className="fact";
+    const humanPriority=alternatives.priorities[index];
+    line.append(create("span","Original proposal "+(index+1)+": "+(day||"(no day)")+" / "+humanPriority+" "));
+    const select=create("button","Use ONLY these HUMAN proposed day/priority values");
+    select.type="button";select.className="secondary";
+    select.addEventListener("click",()=>{
+     if(!window.confirm("Copy this HUMAN round's proposed date and priority into the local DRAFT? It does NOT change decision stage or approve a meeting."))return;
+     entry.day=day;entry.priority=humanPriority;dirty=true;render();
+     status("HUMAN proposed values copied locally; stage remains unchanged. Native receive remains required.");
+    });
+    line.append(select);optionBox.append(line);
+   });
+   article.append(optionBox);
+  }
   const container=create("div");container.className="controls";
   const stageLabel=create("label","HUMAN alignment proposal only");
   const select=create("select");
@@ -220,7 +247,8 @@ async function open(event){
  try{
   const parsed=admit(await readCSV(event.target.files?.[0]));
   if(dirty&&!window.confirm("Discard unsaved local HUMAN decisions?"))return;
-  sourceSha=parsed.sha;records=parsed.rows;dirty=false;
+  sourceSha=parsed.sha;records=parsed.rows;dirty=false;sourceOptions=null;
+  $("options").value="";
   $("owner").replaceChildren(create("option","All proposed HUMAN owners"));
   $("owner").firstChild.value="";
   for(const owner of parsed.owners){
@@ -231,6 +259,66 @@ async function open(event){
   status("Original HUMAN decisions opened LOCALLY. Native original-source admission is mandatory.");
  }catch(error){status("PRIVATE HOLD: "+(error?.message||"invalid complete CSV")+". Existing draft unchanged.");}
 }
+async function loadOptions(event){
+ try{
+  if(!records.length)throw Error("Open original complete decision CSV first");
+  const file=event.target.files?.[0];
+  if(!file||file.size<=0||file.size>1048576||!file.name.toLowerCase().endsWith(".json"))
+   throw Error("Select PRIVATE HUMAN options JSON <=1MiB");
+  const doc=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer()));
+  const plain=x=>x&&typeof x==="object"&&!Array.isArray(x);
+  const fields=["schema","authority","historical_only","sources_reopened",
+   "recipient_authenticated","consent_assumed","actions_dispatched",
+   "appointments_booked","verified_remediation","original_human_calendar_set_sha256",
+   "original_human_round_count","human_source_options_in_original_order"];
+  const authority=["authorization","consent","verified_finding","release_approval"];
+  if(!plain(doc)||Object.keys(doc).length!==fields.length||
+   !fields.every(k=>Object.hasOwn(doc,k))||
+   doc.schema!=="lightup.private.workspace-ledger-human-calendar-options.v1"||
+   doc.original_human_calendar_set_sha256!==sourceSha||doc.historical_only!==true||
+   !plain(doc.authority)||Object.keys(doc.authority).length!==authority.length||
+   !authority.every(k=>doc.authority[k]===false)||
+   !["sources_reopened","recipient_authenticated","consent_assumed",
+    "actions_dispatched","appointments_booked","verified_remediation"].every(k=>doc[k]===false)||
+   !Number.isInteger(doc.original_human_round_count)||doc.original_human_round_count<2||
+   doc.original_human_round_count>8||
+   !Array.isArray(doc.human_source_options_in_original_order)||
+   doc.human_source_options_in_original_order.length!==records.length)
+    throw Error("Options do not match original HUMAN proposal source and format");
+  const columns=["original_human_source_ordinal","original_proposed_human_owner_label",
+   "local_case","historical_transition","original_kit","human_day_proposals_differ",
+   "human_priority_proposals_differ","private_human_question_proposals_differ",
+   "human_day_proposals_by_original_round","human_priority_proposals_by_original_round"];
+  const loaded=doc.human_source_options_in_original_order.map((option,index)=>{
+   const row=records[index];
+   if(!plain(option)||Object.keys(option).length!==columns.length||
+      !columns.every(k=>Object.hasOwn(option,k))||
+      option.original_human_source_ordinal!==index+1||
+      option.original_proposed_human_owner_label!==row.fixed[2]||
+      String(option.local_case)!==row.fixed[3]||
+      String(option.historical_transition)!==row.fixed[4]||
+      String(option.original_kit)!==row.fixed[5]||
+      ["human_day_proposals_differ","human_priority_proposals_differ",
+       "private_human_question_proposals_differ"].some((k,i)=>option[k] !== (row.fixed[i+6]==="yes"))||
+      !Array.isArray(option.human_day_proposals_by_original_round)||
+      !Array.isArray(option.human_priority_proposals_by_original_round)||
+      option.human_day_proposals_by_original_round.length!==doc.original_human_round_count||
+      option.human_priority_proposals_by_original_round.length!==doc.original_human_round_count||
+      !option.human_day_proposals_by_original_round.every(validDate)||
+      !option.human_priority_proposals_by_original_round.every(x=>PRIORITIES.includes(x))||
+      ((new Set(option.human_day_proposals_by_original_round)).size>1)!==option.human_day_proposals_differ||
+      ((new Set(option.human_priority_proposals_by_original_round)).size>1)!==option.human_priority_proposals_differ)
+    throw Error("Original owner, slot or HUMAN option values inconsistent");
+   return {dates:option.human_day_proposals_by_original_round,
+           priorities:option.human_priority_proposals_by_original_round};
+  });
+  sourceOptions=loaded;render();
+  status("Source-matching PRIVATE HUMAN proposals displayed, unsigned preview only; native receipt remains mandatory.");
+ }catch(error){
+  status("PRIVATE HOLD: options refused ("+(error?.message||"invalid")+"). Existing HUMAN choices retained.");
+ }
+}
+
 async function restore(event){
  try{
   if(!records.length)throw Error("Open original HUMAN template first");
@@ -267,12 +355,13 @@ function download(){
 }
 function forget(){
  if(dirty&&!window.confirm("Discard unsaved local PRIVATE HUMAN choices?"))return;
- records=[];sourceSha="";dirty=false;
- $("file").value="";$("restore").value="";$("room").hidden=true;
+ records=[];sourceSha="";dirty=false;sourceOptions=null;
+ $("file").value="";$("restore").value="";$("options").value="";$("room").hidden=true;
  $("cards").replaceChildren();status("Private HUMAN discussion cleared from browser memory.");
 }
 $("file").addEventListener("change",open);
 $("restore").addEventListener("change",restore);
+$("options").addEventListener("change",loadOptions);
 for(const id of ["owner","stage","conflict","search"])
  $(id).addEventListener(id==="search"?"input":"change",render);
 $("export").addEventListener("click",download);

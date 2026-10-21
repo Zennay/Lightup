@@ -89,6 +89,40 @@ def original(args):
     return originals, owners, versions, source_rounds, source_set_sha, items
 
 
+OPTIONS_SCHEMA = "lightup.private.workspace-ledger-human-calendar-options.v1"
+
+
+def private_options(items, original_rounds, sha):
+    return {
+        "schema": OPTIONS_SCHEMA,
+        "authority": FLAGS,
+        "historical_only": True,
+        "sources_reopened": False,
+        "recipient_authenticated": False,
+        "consent_assumed": False,
+        "actions_dispatched": False,
+        "appointments_booked": False,
+        "verified_remediation": False,
+        "original_human_calendar_set_sha256": sha,
+        "original_human_round_count": len(original_rounds),
+        "human_source_options_in_original_order": [{
+            "original_human_source_ordinal": x["original_human_source_ordinal"],
+            "original_proposed_human_owner_label": x["original_proposed_human_owner_label"],
+            "local_case": x["local_case"],
+            "historical_transition": x["historical_transition"],
+            "original_kit": x["original_kit"],
+            "human_day_proposals_differ": x["human_day_proposals_differ"],
+            "human_priority_proposals_differ": x["human_priority_proposals_differ"],
+            "private_human_question_proposals_differ":
+                x["private_human_question_proposals_differ"],
+            "human_day_proposals_by_original_round":
+                x["human_day_proposals_by_original_round"],
+            "human_priority_proposals_by_original_round":
+                x["human_priority_proposals_by_original_round"],
+        } for x in items],
+    }
+
+
 def source_cells(item, sha):
     return (
         sha, str(item["original_human_source_ordinal"]),
@@ -293,6 +327,13 @@ def run(args):
         write_private(root, "PRIVATE-HUMAN-calendar-decision-studio.html", browser)
         if args.mode == "prepare":
             write_private(root, "HUMAN-calendar-decision-template.csv", chosen_csv)
+            # PRIVATE browser-only comparison payload: source-bound originals
+            # but no earlier confidential HUMAN free question contents.
+            original_options = canonical(private_options(items, rounds, sha))
+            if len(original_options) > MAX_MANIFEST:
+                reject("PRIVATE HOLD: original HUMAN options payload too large")
+            write_private(root, "PRIVATE-HUMAN-original-calendar-options.json",
+                          original_options)
             # Review original HUMAN alternatives BEFORE entering any decisions.
             # Original private questions are reduced to disagreement Booleans.
             local_defaults = receive_csv(chosen_csv, items, sha)
