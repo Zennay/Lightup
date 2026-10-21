@@ -38,6 +38,7 @@ import lab_conflict_followup_console
 import lab_route_handoff_console
 import attention_receipt_console
 import attention_history_console
+import attention_decision_console
 import private_session
 import os
 from pathlib import Path
@@ -467,6 +468,8 @@ def main() -> int:
         "77": lambda x: attention_receipt_console.run(x, path_prompt, ask, "reopen"),
         "78": lambda x: attention_history_console.run(x, path_prompt, ask, "create"),
         "79": lambda x: attention_history_console.run(x, path_prompt, ask, "reopen"),
+        "80": lambda x: attention_decision_console.run(x, path_prompt, ask, "create"),
+        "81": lambda x: attention_decision_console.run(x, path_prompt, ask, "reopen"),
     }
     while True:
         operator_navigation.overview()
@@ -497,7 +500,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 79.")
+                print("Choose a number from 0 to 81.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
