@@ -303,7 +303,8 @@
     reviewOffset=Math.min(reviewOffset,Math.max(0,Math.floor((rows.length-1)/REVIEW_PAGE)*REVIEW_PAGE));
     $("reviewExportCsv").disabled=!rows.length;
     $("reviewExportJson").disabled=!rows.length;
-    $("reviewExportStages").disabled=humanReviewStages.size===0;
+    for(const id of ["reviewExportStages","reviewExportStageCsv","reviewExportStageBrief"])
+      $(id).disabled=humanReviewStages.size===0;
     const h=humanStageSummary();
     $("reviewHumanSummary").textContent=h.total?
       "Local HUMAN-only marks: "+h.assigned+" of "+h.total+
@@ -357,21 +358,53 @@
     }
     table.append(body);root.append(table);
   }
-  function exportHumanStages(){
+  function exportHumanStages(format){
+    admit(["json","csv","html"].includes(format));
     if(!snapshots.length||!humanReviewStages.size)return;
     if(!window.confirm("Export HUMAN-only local review stages as a separate PRIVATE, UNSIGNED file? Manual scenario/slot ordinals cannot authenticate source files or be safely imported against another cohort."))return;
     const rows=buildReviewEvents().filter(e=>humanStage(e)!=="UNREVIEWED");
+    const exported=rows.map(e=>({snapshot_slot:e.snapshotSlot,scenario_slot:e.scenarioSlot,
+      metric:e.metric,source_flag_event:e.kind,human_self_report_stage:humanStage(e)}));
+    if(format==="csv"){
+      const headers=["snapshot_slot","scenario_slot","metric","source_flag_event",
+        "human_self_report_stage","private_unsigned","chronology_authenticated",
+        "source_identity_authenticated",...FLAGS];
+      const values=[headers,...exported.map(e=>[e.snapshot_slot,e.scenario_slot,e.metric,
+        e.source_flag_event,e.human_self_report_stage,true,false,false,false,false,false,false])];
+      download("assessment-trends-PRIVATE-human-stage-register.csv",
+        values.map(v=>v.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    }else if(format==="html"){
+      const columns=["Manual slot","Anonymous scenario","Metric","Source-flag event",
+        "HUMAN self-reported stage"];
+      const values=exported.map(e=>[e.snapshot_slot,e.scenario_slot,e.metric,
+        REVIEW_KINDS[e.source_flag_event],e.human_self_report_stage]);
+      const table="<table><thead><tr>"+columns.map(k=>"<th>"+esc(k)+"</th>").join("")+
+        "</tr></thead><tbody>"+values.map(row=>"<tr>"+row.map(value=>"<td>"+esc(value)+"</td>").join("")+
+        "</tr>").join("")+"</tbody></table>";
+      const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; connect-src 'none'; script-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; style-src 'unsafe-inline'\">"+
+        "<title>PRIVATE HUMAN follow-up · unsigned</title><style>body{font:15px system-ui,sans-serif;max-width:1100px;margin:2rem auto;color:#162334;padding:0 1rem}table{border-collapse:collapse;width:100%}td,th{padding:.5rem;border:1px solid #aab6c5;text-align:left}th{background:#eaf0f6}.hold{border:2px solid #9a5b18;padding:1rem}</style></head><body>"+
+        "<h1>LightUp PRIVATE HUMAN follow-up · UNSIGNED</h1><div class='hold'><strong>"+
+        (fictional?"FICTIONAL DEMO ONLY · ":"")+
+        "INCUBATE M3/M7 · PLAN/LAB ONLY · REVIEW_ONLY / HOLD</strong><p>"+
+        exported.length+" human self-reported local stages from manually ordered untrusted source reports.</p>"+
+        "<p>Source identity and chronology unauthenticated. Missing source flag is NOT fix proof. This worksheet is NOT evidence, consent or approval.</p>"+
+        "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+        table+"<p>PRIVATE · UNSIGNED · Original source IDs, filenames, raw evidence, uploaded hashes and HUMAN notes are excluded. No portable stage import or security authority.</p></body></html>";
+      download("assessment-trends-PRIVATE-human-followup-REVIEW-ONLY.html",html,"text/html");
+    }else{
     const out={schema:"lightup.assessment_trends_private_human_stage.v1",
       status:"PRIVATE_UNSIGNED",private_unsigned:true,fictional_demo_only:fictional,
       manually_selected_order:true,chronology_authenticated:false,
       source_identity_authenticated:false,stage_count:rows.length,
-      stages:rows.map(e=>({snapshot_slot:e.snapshotSlot,scenario_slot:e.scenarioSlot,
-        metric:e.metric,source_flag_event:e.kind,human_self_report_stage:humanStage(e)})),
+      stages:exported,
       disclaimer:"PRIVATE local self-report only; no source binding or authenticated identity. Do not re-apply ordinal-only stages to another imported source. Not verification, remediation or release permission.",
       ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
     download("assessment-trends-PRIVATE-human-stage-register.json",
       JSON.stringify(out,null,2)+"\n","application/json");
-    $("reviewHumanSummary").textContent="PRIVATE unsigned HUMAN stage register downloaded separately. No source IDs or note text.";
+    }
+    $("reviewHumanSummary").textContent="PRIVATE unsigned HUMAN follow-up "+format.toUpperCase()+
+      " downloaded separately. No source IDs, uploaded hashes or note text.";
   }
   function exportReviewQueue(format){
     if(!snapshots.length)return;
@@ -457,7 +490,8 @@
     }
     if(!active){$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
       $("reviewPrev").disabled=true;$("reviewNext").disabled=true;
-      $("reviewExportStages").disabled=true;
+      for(const id of ["reviewExportStages","reviewExportStageCsv","reviewExportStageBrief"])
+        $(id).disabled=true;
       $("reviewHumanSummary").textContent="No local HUMAN stages.";}
     renderNotePanel();
   }
@@ -625,7 +659,9 @@
   $("reviewNext").addEventListener("click",()=>{reviewOffset+=REVIEW_PAGE;renderReviewQueue();});
   $("reviewExportCsv").addEventListener("click",()=>exportReviewQueue("csv"));
   $("reviewExportJson").addEventListener("click",()=>exportReviewQueue("json"));
-  $("reviewExportStages").addEventListener("click",exportHumanStages);
+  $("reviewExportStages").addEventListener("click",()=>exportHumanStages("json"));
+  $("reviewExportStageCsv").addEventListener("click",()=>exportHumanStages("csv"));
+  $("reviewExportStageBrief").addEventListener("click",()=>exportHumanStages("html"));
   resetReviewFilters();
   $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
   $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});
