@@ -101,6 +101,40 @@ _HAR_HEADER_REVERSE = re.compile(
     cookie|set-cookie)(?P=name_quote))""",
     re.VERBOSE,
 )
+# HAR cookies, queryString and form postData.params commonly serialize a
+# sensitive field as adjacent "name"/"value" members instead of "token":
+# "secret". Unlike the named HTTP-header cases above, the *field name* is
+# variable. Admit only known credential-like names, without inspecting or
+# exporting actual values. Unknown field names still require HUMAN review.
+# Values are conservatively capped per field to avoid unbounded regex scans;
+# longer/multiline/irregular encodings may remain. Never a privacy PASS.
+_HAR_PARAM_VALUE = re.compile(
+    r"""(?i)(?P<prefix>["']name["'][ \t]*:[ \t]*
+    (?P<name_quote>["'])(?:session(?:id|[_-]?(?:id|key|token))?|
+    (?:x-)?(?:csrf|xsrf)(?:[_-]?token)?|(?:auth|access|refresh|id)[_-]?token|
+    jwt|bearer|api[_-]?key|client[_-]?secret|password|passwd|
+    secret|signature|sig|sid|phpsessid|jsessionid|
+    aws[_-]?secret[_-]?access[_-]?key|x-amz-security-token)
+    (?P=name_quote)[ \t\r\n]*,[ \t\r\n]*
+    ["']value["'][ \t]*:[ \t]*)
+    (?P<value_quote>["'])(?:\\.|(?! (?P=value_quote) )[^\\\r\n]){0,4096}
+    (?P=value_quote)""",
+    re.VERBOSE,
+)
+_HAR_PARAM_REVERSE = re.compile(
+    r"""(?i)(?P<prefix>["']value["'][ \t]*:[ \t]*)
+    (?P<value_quote>["'])(?:\\.|(?! (?P=value_quote) )[^\\\r\n]){0,4096}
+    (?P=value_quote)
+    (?P<suffix>[ \t\r\n]*,[ \t\r\n]*["']name["'][ \t]*:[ \t]*
+    (?P<name_quote>["'])(?:session(?:id|[_-]?(?:id|key|token))?|
+    (?:x-)?(?:csrf|xsrf)(?:[_-]?token)?|(?:auth|access|refresh|id)[_-]?token|
+    jwt|bearer|api[_-]?key|client[_-]?secret|password|passwd|
+    secret|signature|sig|sid|phpsessid|jsessionid|
+    aws[_-]?secret[_-]?access[_-]?key|x-amz-security-token)
+    (?P=name_quote))""",
+    re.VERBOSE,
+)
+
 # E.g. DB_PASSWORD="long password" and INTERNAL_API_TOKEN=abc (not merely a
 # word-boundary 'token' or 'password' in the original producer regex).
 _ENV_SECRET = re.compile(
@@ -165,6 +199,13 @@ def mask_private_notes(original: str) -> str:
     value = _HAR_HEADER_REVERSE.sub(
         lambda m: m.group("prefix") + m.group("value_quote")
         + "[REDACTED_HAR_HEADER_VALUE]" + m.group("value_quote")
+        + m.group("suffix"), value)
+    value = _HAR_PARAM_VALUE.sub(
+        lambda m: m.group("prefix") + m.group("value_quote")
+        + "[REDACTED_HAR_PARAM_VALUE]" + m.group("value_quote"), value)
+    value = _HAR_PARAM_REVERSE.sub(
+        lambda m: m.group("prefix") + m.group("value_quote")
+        + "[REDACTED_HAR_PARAM_VALUE]" + m.group("value_quote")
         + m.group("suffix"), value)
     value = _ENV_SECRET.sub(r"\1[REDACTED_ENV_VALUE]", value)
     value = _YAML_CREDENTIAL.sub(r"\1[REDACTED_CONFIG_VALUE]", value)
