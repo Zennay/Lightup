@@ -1,5 +1,24 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
+## Original local HUMAN discussion handoff: console 72–74
+
+After offline `human-lab-route.html` + adjacent JavaScript exports a
+source-free JSON, a trusted owner may explicitly copy it into 0700/0600
+PRIVATE local custody **outside the original checkout**. Native
+`console.py` **72** uses the strict browser schema to receive only
+the 20 self-declared discussion statuses, retaining original byte
+input, canonical JSON/CSV and a scriptless 0600 viewer alongside an
+*unsigned* complete-file SHA receipt. **73** reopens the receipt
+read-only against every exact output byte and rejects altered files.
+**74** compares 2–8 completely re-admitted source-free HUMAN discussion
+rooms in a user-declared order to create a new PRIVATE summary.
+Neither SHA matching nor claimed marker changes establish true
+original lab source, chronology, remediation, permission, user identity,
+current consent or any verified finding. No native action is run
+automatically by the browser. Original independent CI/review gates
+and authenticated client+operator consent and HUMAN GO remain HOLD.
+
+
 ## Browser-only HUMAN Lab Route Desk companion
 
 The portable, source-free `human-lab-route.html` together with its
