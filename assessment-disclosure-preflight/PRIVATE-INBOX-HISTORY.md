@@ -247,3 +247,9 @@ changed inputs or saved reports return HOLD without changes.
 The browser's unsigned interval CSV is not itself a native source-bound
 dossier; original private input custody remains mandatory. Exit code
 2 is REVIEW_ONLY and code 3 is HOLD, never authorization.
+
+The native and browser interval CSV downloads use matching **field names
+and ordering**, including all original slots, original HOLD counts, selected
+round bounds, endpoint-versus-intermediate HUMAN edit flags and explicit
+false authority columns. They remain distinct unsigned local outputs: only
+the native path re-admits every original private source and stored report.

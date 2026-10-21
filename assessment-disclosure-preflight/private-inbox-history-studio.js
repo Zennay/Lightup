@@ -226,6 +226,7 @@
       const fields=new Set(changes.flatMap(change=>change.changed_fields));
       intervalRows.push({
         slot:item.slot,from_round:from,to_round:to,
+        original_unselected_holds:item.original_unselected_holds,
         from_status:before.human_status,to_status:after.human_status,
         status_endpoint_changed:before.human_status!==after.human_status,
         status_edited_within_interval:fields.has("human_status"),
@@ -263,22 +264,24 @@
 
   function downloadRange() {
     if(!history || $("range-export").disabled || !intervalRows.length) return;
+    // Match original native PRIVATE interval CSV columns and order.
+    // Equality of unsigned browser/native schema is NOT custody authority.
     const fields=[
-      "slot","from_manual_round","to_manual_round",
-      "from_status","to_status","status_endpoint_changed",
+      "slot","from_status","to_status","status_endpoint_changed",
       "status_edited_within_interval","from_proposed_role","to_proposed_role",
-      "role_endpoint_changed","role_edited_within_interval",
+      "proposed_role_endpoint_changed","role_edited_within_interval",
       "question_edited_within_interval","next_action_edited_within_interval",
+      "original_unselected_holds","manual_start_round","manual_end_round",
       "source_authenticated","chronology_authenticated","authorization_granted",
       "release_allowed"];
     const csvCell=value=>'"'+String(value).replaceAll('"','""')+'"';
     const lines=[fields.map(csvCell).join(",")];
     intervalRows.forEach(item=>lines.push([
-      item.slot,item.from_round,item.to_round,
-      item.from_status,item.to_status,item.status_endpoint_changed,
+      item.slot,item.from_status,item.to_status,item.status_endpoint_changed,
       item.status_edited_within_interval,item.from_role,item.to_role,
       item.role_endpoint_changed,item.role_edited_within_interval,
       item.question_edited_within_interval,item.next_action_edited_within_interval,
+      item.original_unselected_holds,item.from_round,item.to_round,
       false,false,false,false
     ].map(csvCell).join(",")));
     const blob=new Blob([lines.join("\n")+"\n"],{type:"text/csv;charset=utf-8"});

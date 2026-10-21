@@ -1261,3 +1261,15 @@ limitations are documented in
 [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md). This is a local
 HUMAN planning dossier, never a customer scan, authenticated finding,
 remediation, staff assignment, consent record or security approval.
+
+### Browser/native PRIVATE interval CSV column compatibility
+
+The browser interval download and original native
+`private_inbox_interval.py` CSV use the same column names, order, entire
+original slot membership, original HOLD-count field, manually selected round
+bounds, endpoint differences, intermediate edit flags and literal false
+source/chronology/authorization/release columns. CSV field quoting may differ.
+This is *format compatibility only*: the browser export is unsigned and is
+never accepted as proof of original-source file custody, verified identity,
+review, consent or release. Use the native source-bound build/reopen to
+establish local original/private bytes independently.
