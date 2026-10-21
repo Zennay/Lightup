@@ -882,6 +882,47 @@
         true,false,false,false,false])];
       download("assessment-trends-PRIVATE-human-revisions.csv",
         rows.map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    }else if(format==="html"){
+      const columns=["Change type","Manual source slot","Anonymous scenario","Metric",
+        "Source-reported flag event","Earlier HUMAN state","Later HUMAN state"];
+      const values=data.changes.map(e=>[e.kind,e.snapshot_slot===null?"—":e.snapshot_slot,
+        "Scenario "+String(e.scenario_slot).padStart(2,"0"),e.metric,
+        e.source_flag_event||"Saved HUMAN note (contents withheld)",e.before,e.after]);
+      const table="<table><thead><tr>"+columns.map(v=>"<th scope='col'>"+esc(v)+"</th>").join("")+
+        "</tr></thead><tbody>"+values.map(row=>"<tr>"+
+        row.map(v=>"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
+      const style="body{margin:2rem auto;padding:0 1rem;max-width:1280px;color:#192435;"+
+        "font:15px/1.5 system-ui,sans-serif}h1{font-size:1.9rem}"+
+        ".hold{border:2px solid #9a5b18;padding:1rem;background:#fff7ed}"+
+        ".tablewrap{max-width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse}"+
+        "th,td{border:1px solid #b6bec9;padding:.45rem;text-align:left}th{background:#eaf0f6}"+
+        "tbody tr:nth-child(even){background:#f6f8fa}"+
+        "@media print{body{margin:0;max-width:none}.hold{background:white}"+
+        "thead{display:table-header-group}tr{break-inside:avoid}}";
+      const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"+
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none';"+
+        " script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none';"+
+        " frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'\">"+
+        "<title>LightUp PRIVATE HUMAN revision differences</title><style>"+style+"</style></head><body>"+
+        "<h1>LightUp · PRIVATE HUMAN review revisions</h1>"+
+        "<div class='hold'><strong>PRIVATE / UNSIGNED / REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY</strong>"+
+        "<p>Two separate human-selected PRIVATE sessions re-admitted against identical source bytes."+
+        " This comparison is NOT authenticated chronology, proof, consent, grant, verified remediation or release.</p>"+
+        "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+        "<h2>Local HUMAN self-report differences</h2>"+
+        "<p>"+data.changed_record_count+" anonymous changes; "+
+        data.changes.filter(e=>e.kind==="HUMAN_STAGE").length+" stage changes and "+
+        data.changes.filter(e=>e.kind==="HUMAN_NOTE_CHANGE").length+
+        " saved note content/presence changes. Note text intentionally withheld.</p>"+
+        "<div class='tablewrap'>"+table+"</div>"+
+        "<p>Output includes only fixed non-authorizing labels, anonymous scenario ordinals and metric names."+
+        " No original source IDs, hashes, filenames or private note text. Missing a source flag is NOT evidence of a fix.</p>"+
+        "</body></html>";
+      if(new Blob([html]).size>4194304){
+        $("revisionCompareCount").textContent="HOLD: PRIVATE printable report exceeds 4 MiB; use JSON or CSV.";return;
+      }
+      download("assessment-trends-PRIVATE-human-revision-brief-REVIEW-ONLY.html",html,"text/html");
     }
     $("revisionCompareCount").textContent="PRIVATE "+format.toUpperCase()+
       " comparison downloaded. No HUMAN note text or original source ID included.";
@@ -914,6 +955,7 @@
   $("revisionCompare").addEventListener("click",()=>{void comparePrivateRevisions();});
   $("revisionExportJson").addEventListener("click",()=>exportRevision("json"));
   $("revisionExportCsv").addEventListener("click",()=>exportRevision("csv"));
+  $("revisionExportBrief").addEventListener("click",()=>exportRevision("html"));
   $("exportPrivateSession").addEventListener("click",savePrivateSession);
   $("importPrivateSession").addEventListener("click",()=>{void restorePrivateSession();});
   $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
