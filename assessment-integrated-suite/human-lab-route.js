@@ -28,6 +28,55 @@
     if (className) el.className = className;
     return el;
   };
+  const actionLabel = Object.fromEntries(
+    STAGES.flatMap(stage => stage.steps.map(([id, caption]) => [String(id), caption])));
+  function matchesFilter(id) {
+    const query = $("action-search").value.trim().toLocaleLowerCase();
+    const filter = $("status-filter").value;
+    return (!query || id.includes(query) ||
+            actionLabel[id].toLocaleLowerCase().includes(query)) &&
+            (!filter || state[id] === filter);
+  }
+  function applyFilter() {
+    let visible = 0;
+    for (const row of document.querySelectorAll("[data-lab-action]")) {
+      row.hidden = !matchesFilter(row.dataset.labAction);
+      if (!row.hidden) visible++;
+    }
+    $("visible-count").textContent = visible +
+      " of 20 original HUMAN steps visible. Hidden steps are still exported.";
+    for (const stage of document.querySelectorAll(".phase")) {
+      const count = [...stage.querySelectorAll("[data-lab-action]")]
+        .filter(row => !row.hidden).length;
+      const note = stage.querySelector(".visible-stage-count");
+      if (note) note.textContent = count + " matching actions";
+    }
+    return visible;
+  }
+  function bulkHUMAN(marker) {
+    if (!["NEEDS_INPUT", "IN_PROGRESS"].includes(marker)) return;
+    const ids = ALL.filter(id => matchesFilter(id));
+    if (!ids.length) {
+      $("result").textContent = "No matching HUMAN actions to change.";
+      return;
+    }
+    if (!window.confirm("Mark " + ids.length + " currently visible HUMAN discussion steps as " +
+        LABELS[marker] + "? Only this local plan will change; " +
+        "hidden steps remain unchanged. Nothing is approved or validated.")) {
+      return;
+    }
+    ids.forEach(id => state[id] = marker);
+    clearComparison();
+    render();
+    $("result").textContent = ids.length +
+      " local self-report markers updated to " + LABELS[marker] +
+      ". Nothing was verified, sent or authorized.";
+  }
+  $("action-search").addEventListener("input", applyFilter);
+  $("status-filter").addEventListener("change", applyFilter);
+  $("bulk-input").addEventListener("click", () => bulkHUMAN("NEEDS_INPUT"));
+  $("bulk-discussing").addEventListener("click", () => bulkHUMAN("IN_PROGRESS"));
+
   const stageStatus = (stage) => {
     const values = stage.steps.map(([id]) => state[String(id)]);
     return values.filter(v => v === "DISCUSSED").length + "/" + values.length + " discussed · " +
@@ -46,6 +95,7 @@
       stage.steps.forEach(([number, caption]) => {
         const id = String(number);
         const row = node("div", null, "action");
+        row.dataset.labAction = id;
         const field = node("label", null, "caption");
         field.append(node("strong", number + " · "), document.createTextNode(caption));
         const select = node("select");
@@ -61,14 +111,16 @@
           clearComparison();
           summary();
           meter.textContent = stageStatus(stage);
+          applyFilter();
         });
         row.append(field, select);
         list.append(row);
       });
-      section.append(list);
+      section.append(list, node("p", "", "visible-stage-count hint"));
       host.append(section);
     });
     summary();
+    applyFilter();
   }
   function summary() {
     const counts = Object.fromEntries(Object.keys(LABELS).map(k => [k, ALL.filter(id => state[id] === k).length]));
