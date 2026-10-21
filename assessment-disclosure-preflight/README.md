@@ -1136,13 +1136,14 @@ Use [private_inbox_history.py](./private_inbox_history.py) to admit 2–8
 original source-free board. In explicitly supplied order it builds a full
 scriptless offline HUMAN stage/role progression for every original slot,
 privacy-minimal per-round change booleans and a three-file source-free
-PRIVATE HTML/CSV/JSON history. No private question or next-action text,
+PRIVATE HTML/CSV/JSON history plus a fourth private CSV grouping
+the most recently declared HUMAN attention and suggested role for each slot. No private question or next-action text,
 source identifiers, evidence, filenames or board digests appear in outputs.
 Manual ordering does not authenticate chronology, actors or consent.
 
-The `build` command exclusively publishes into a fresh empty owner-only
+The `build` command rejects source-tree-nested output and exclusively publishes into a fresh empty owner-only
 0700 directory; `reopen` re-admits current exact original board and all
-complete selected HUMAN sheets, then verifies original saved three-file
+complete selected HUMAN sheets, then verifies original saved four-file
 inventory, mode 0600, regular unlinked file identity and byte equality
 without writing anything. It does not change the active HUMAN plan.
 The full operator route, examples and security warnings are in

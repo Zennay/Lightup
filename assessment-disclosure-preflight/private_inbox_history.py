@@ -11,6 +11,7 @@ import hashlib
 import html
 import io
 import json
+import os
 import sys
 
 import private_inbox_actions as actions
@@ -21,6 +22,7 @@ MAX_ROUNDS = 8
 OUTPUT_HTML = "PRIVATE-inbox-HUMAN-history.html"
 OUTPUT_CSV = "PRIVATE-inbox-HUMAN-history.csv"
 OUTPUT_JSON = "PRIVATE-inbox-HUMAN-history.json"
+OUTPUT_ATTENTION_CSV = "PRIVATE-inbox-HUMAN-latest-attention.csv"
 AUTHORITY_FLAGS = (
     "source_authenticated", "reviewers_authenticated",
     "chronology_authenticated", "client_consent_verified",
@@ -96,6 +98,28 @@ def compose_history(originals: list[dict], revisions: list[list[dict]]) -> dict:
             "rounds": snapshots,
         })
 
+    # HUMAN follow-up categories derive only from the last manually ordered
+    # complete worksheet; they are neither actual routing nor risk severity.
+    categories = {
+        "NEEDS_INPUT": "HUMAN_INPUT_REQUESTED",
+        "UNREVIEWED": "HUMAN_INITIAL_REVIEW",
+        "IN_PROGRESS": "HUMAN_DISCUSSION_IN_PROGRESS",
+        "DISCUSSION_COMPLETE_NO_RELEASE": "HUMAN_RECHECK_NO_RELEASE",
+    }
+    latest_attention = []
+    for item in paths:
+        last = item["rounds"][-1]
+        latest_attention.append({
+            "slot": item["slot"], "manual_round": len(revisions),
+            "discussion_group": categories[last["human_status"]],
+            "human_status": last["human_status"],
+            "suggested_role": last["proposed_role"],
+            "original_unselected_holds": item["original_unselected_holds"],
+            "actual_owner_assigned": False, "release_allowed": False,
+        })
+    ranking = {status: index for index, status in enumerate(categories.values())}
+    latest_attention.sort(key=lambda item: (ranking[item["discussion_group"]],
+                                            item["slot"]))
     return {
         "schema": "lightup.private_human_inbox_history.v1",
         "status": "REVIEW_ONLY", "source_free": True,
@@ -105,7 +129,7 @@ def compose_history(originals: list[dict], revisions: list[list[dict]]) -> dict:
         **{flag: False for flag in AUTHORITY_FLAGS},
         "slot_count": len(slots), "round_count": len(revisions),
         "round_summaries": totals, "slot_paths": paths,
-        "changed_transitions": transitions,
+        "changed_transitions": transitions, "latest_human_attention": latest_attention,
     }
 
 
@@ -142,6 +166,23 @@ def render_csv(history: dict) -> bytes:
     return output.getvalue().encode("utf-8")
 
 
+def render_attention_csv(history: dict) -> bytes:
+    output = io.StringIO(newline="")
+    fields = ("slot", "manual_round", "discussion_group", "human_status",
+              "suggested_role", "original_unselected_holds",
+              "actual_owner_assigned", "source_authenticated",
+              "chronology_authenticated", "release_allowed")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(fields)
+    for item in history["latest_human_attention"]:
+        writer.writerow((
+            item["slot"], item["manual_round"], item["discussion_group"],
+            item["human_status"], item["suggested_role"],
+            item["original_unselected_holds"], "false", "false", "false", "false",
+        ))
+    return output.getvalue().encode("utf-8")
+
+
 def render_html(history: dict) -> bytes:
     escape = lambda value: html.escape(str(value), quote=True)
     rows = []
@@ -164,6 +205,14 @@ def render_html(history: dict) -> bytes:
                 change["current_role"],
             )) + "</tr>"
         )
+    attention_rows = []
+    for item in history["latest_human_attention"]:
+        attention_rows.append("<tr>" + "".join(
+            "<td>" + escape(value) + "</td>"
+            for value in (item["slot"], item["discussion_group"],
+                          item["human_status"], item["suggested_role"],
+                          item["original_unselected_holds"])
+        ) + "</tr>")
     summaries = []
     for round_ in history["round_summaries"]:
         summaries.append("<tr>" + "".join(
@@ -187,6 +236,10 @@ client/operator consent, security review or authorization to scan, dispatch or r
 All original evidence and current HUMAN choices remain unchanged. Keep this private.</p>
 <h2>Discussion progress (declared, not verified)</h2>
 <table><thead><tr><th>Manual round</th><th>Slots</th><th>Unreviewed</th><th>Needs input</th><th>Discussion complete / no release</th></tr></thead><tbody>__SUMMARY__</tbody></table>
+<h2>Latest manual HUMAN follow-up (no automatic routing)</h2>
+<p>Includes all original slots, even completed discussion without release.
+Proposed roles are never actual staff assignments or verified deadlines.</p>
+<table><thead><tr><th>Slot</th><th>Follow-up category</th><th>Latest stage</th><th>Suggested role</th><th>Original HOLD choices</th></tr></thead><tbody>__ATTENTION__</tbody></table>
 <h2>Per-slot progress</h2>
 <table><thead><tr><th>Original order slot</th><th>Original unresolved choices</th><th>Manually ordered HUMAN stage / proposed role</th></tr></thead><tbody>__PATHS__</tbody></table>
 <h2>Changes between adjacent rounds</h2>
@@ -196,6 +249,7 @@ All original evidence and current HUMAN choices remain unchanged. Keep this priv
 Slots refer to manual original board order, not identity. All data is source-free but not necessarily anonymous.
 This unsigned local custody report has no trusted history or identity proof.</p></body></html>"""
     return (page.replace("__SUMMARY__", "".join(summaries))
+                .replace("__ATTENTION__", "".join(attention_rows))
                 .replace("__PATHS__", "".join(rows))
                 .replace("__CHANGES__", "".join(transition_rows)
                          or "<tr><td colspan='5'>No HUMAN planning changes</td></tr>")
@@ -206,6 +260,7 @@ def artifacts_for(history: dict) -> list[tuple[str, bytes]]:
     return [
         (OUTPUT_HTML, render_html(history)),
         (OUTPUT_CSV, render_csv(history)),
+        (OUTPUT_ATTENTION_CSV, render_attention_csv(history)),
         (OUTPUT_JSON, (json.dumps(history, sort_keys=True, separators=(",", ":"),
                                   ensure_ascii=True) + "\n").encode("utf-8")),
     ]
@@ -241,6 +296,12 @@ def main() -> int:
         for path, raw in zip(args.revision, original_raws):
             if source_bytes(path) != raw:
                 raise ValueError("original HUMAN revision changed during history")
+        # Never publish inside a directory holding the original PRIVATE board
+        # or HUMAN revisions; an extra report folder poisons exact admission.
+        for original_path in (args.board, *args.revision):
+            actions.board.require_output_outside_source_tree(
+                os.path.dirname(os.path.realpath(original_path)),
+                args.private_output_dir)
         if args.action == "build":
             actions.publish_private_artifacts(args.private_output_dir, artifacts)
         else:

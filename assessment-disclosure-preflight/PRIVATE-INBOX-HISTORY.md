@@ -12,7 +12,8 @@ different manually selected moments against **the same exact original
 source-free inbox board**. The history includes all original 1–12 slot
 memberships, even unchanged or currently unreviewed slots.
 
-The read-only admission rejects changed board bytes, unknown/duplicate
+The read-only admission rejects output destinations nested inside any
+original board/worksheet folder, changed board bytes, unknown/duplicate
 CSV columns, missing/reordered slots, inconsistent SHA-256 board binding,
 noncanonical stages or roles, unsafe notes, duplicate complete revisions,
 unexpected output inventory, and local file ownership/mode drift.
@@ -25,13 +26,17 @@ Results are private and source-free, **not anonymous**:
   roles, original HOLD counts and booleans for changed HUMAN note fields.
 - `PRIVATE-inbox-HUMAN-history.json`: same source-minimal data, literal false
   authority flags and explicit *manual order is not authenticated chronology*.
+- `PRIVATE-inbox-HUMAN-latest-attention.csv`: all original slots grouped
+  by the last manually supplied HUMAN stage, proposed discussion role and
+  unresolved original HOLD counts; this is neither a real staff assignment
+  nor an automated workflow.
   
 No original board hashes, local input paths, filenames, customer identifiers,
 original evidence or actual question/next-action text enter report outputs.
 Small cohort and suggested roles may still identify a person; **keep all
-three outputs private**, not for external publication.
+four outputs private**, not for external publication.
 
-## Build a new three-file report
+## Build a new four-file report
 
 Choose 2–8 *separately saved* **complete** six-column HUMAN worksheets.
 The CLI argument order is a HUMAN choice, not a verified timestamp.
@@ -50,7 +55,7 @@ python3 assessment-disclosure-preflight/private_inbox_history.py build \
 
 No report file is published until all complete worksheets admit against
 the exact original board, and input bytes are reread immediately before
-the exclusive publish. All three outputs are created as owner-only 0600.
+the exclusive publish. All four outputs are created as owner-only 0600.
 The source files and already active HUMAN plan are never modified.
 
 ## Reopen an existing private history without writing
@@ -66,7 +71,7 @@ python3 assessment-disclosure-preflight/private_inbox_history.py reopen \
   --private-output-dir ./owner-private-history
 ~~~
 
-The native receiver rebuilds all three expected report bytes and requires
+The native receiver rebuilds all four expected report bytes and requires
 the complete expected file inventory, current-user owner, a 0700 directory,
 regular unlinked owner-only 0600 files, and exact content equality. Unexpected
 files, links, changed originals or report bytes produce HOLD, never repair.
