@@ -58,6 +58,7 @@
         select.value = state[id];
         select.addEventListener("change", () => {
           state[id] = select.value;
+          clearComparison();
           summary();
           meter.textContent = stageStatus(stage);
         });
@@ -105,7 +106,7 @@
   $("print").addEventListener("click", () => window.print());
   $("reset").addEventListener("click", () => {
     if (!window.confirm("Discard all local unsaved HUMAN discussion markers?")) return;
-    ALL.forEach(id => state[id]="NOT_REVIEWED");render();
+    ALL.forEach(id => state[id]="NOT_REVIEWED");clearComparison();render();
     $("result").textContent = "In-memory markers cleared. No original files changed.";
   });
   // JSON.parse alone accepts duplicate object properties and silently keeps the
@@ -156,7 +157,8 @@
   function admitImportedReport(data) {
     const sameKeys = (value, expected) =>
       value !== null && typeof value === "object" && !Array.isArray(value) &&
-      Object.keys(value).sort().join("|") === expected.slice().sort().join("|");
+      Object.keys(value).length === expected.length &&
+      expected.every(key => Object.hasOwn(value, key));
     if (!sameKeys(data, ["schema","mode","authority","verified_original_source",
           "source_files_included","private_notes_included","steps"]) ||
         data.schema !== SCHEMA || data.mode !== "REVIEW_ONLY" ||
@@ -193,6 +195,14 @@
   // Comparison is intentionally not an import. Only fixed local marker
   // tokens are rendered, never original source, paths, private notes or IDs.
   let comparison = null;
+  function clearComparison() {
+    comparison = null;
+    $("compare-rows").replaceChildren();
+    $("compare-summary").textContent =
+      "No current local comparison. Load another plan to view differences.";
+    $("compare-details").open = false;
+    $("export-diff").disabled = true;
+  }
   function showComparison(incoming) {
     const diff = describeChanges(incoming);
     comparison = diff.changes.map(id => ({
@@ -236,6 +246,7 @@
       $("result").textContent = "Compared " + diff.changes.length +
         " HUMAN markers without changing current values. No source authenticated.";
     } catch (_) {
+      clearComparison();
       $("result").textContent =
         "HOLD: local HUMAN comparison refused. Current values are unchanged.";
     }
@@ -272,9 +283,10 @@
       }
 
 
-      ALL.forEach(id => state[id]=incoming[id]);render();
+      ALL.forEach(id => state[id]=incoming[id]);clearComparison();render();
       $("result").textContent = "Imported " + diff.changes.length + " local HUMAN marker changes. No original source or consent verified.";
     } catch (_) {
+      clearComparison();
       $("result").textContent = "HOLD: untrusted route file refused (shape, size, sequence or authority claim). No changes applied.";
     }
   });
