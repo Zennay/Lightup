@@ -347,6 +347,7 @@
   // There is deliberately no timestamp, identity inference, source ingestion,
   // stored session, network request, or application to active discussion markers.
   let roundHistory = null;
+  let proposalChoices = Object.create(null);
   function clearHistory() {
     roundHistory = null;
     $("history-view").hidden = true;
@@ -356,6 +357,12 @@
     $("history-export").disabled = true;
     $("history-clear").disabled = true;
     $("history-result").textContent = "No prior HUMAN rounds selected.";
+    proposalChoices = Object.create(null);
+    $("reconcile-rows").replaceChildren();
+    $("reconcile-details").open = false;
+    $("reconcile-summary").textContent = "No original HUMAN rounds selected.";
+    $("reconcile-export").disabled = true;
+    $("reconcile-reset").disabled = true;
     $("history-focus").value = "";
     $("history-stage").value = "";
     $("history-visible").textContent = "";
@@ -391,6 +398,71 @@
   }
   $("history-focus").addEventListener("change", applyHistoryFilter);
   $("history-stage").addEventListener("change", applyHistoryFilter);
+
+  function updateReconciliation() {
+    if (!roundHistory) return;
+    const chosen = ALL.filter(id => proposalChoices[id] !== "").length;
+    $("reconcile-summary").textContent = chosen + "/20 distinct original action markers explicitly chosen. " +
+      "No prior original HUMAN round has been modified or authenticated.";
+    $("reconcile-export").disabled = chosen !== ALL.length;
+    $("reconcile-reset").disabled = chosen === 0;
+  }
+  function renderReconciliation(rounds) {
+    proposalChoices = Object.create(null);
+    const host = $("reconcile-rows");
+    host.replaceChildren();
+    for (const id of ALL) {
+      proposalChoices[id] = "";
+      const tr = node("tr");
+      tr.append(node("td", id + " · " + actionLabel[id]));
+      const td = node("td");
+      const select = node("select");
+      select.setAttribute("aria-label", "Choose source round for original HUMAN action " + id);
+      const none = node("option", "Explicit HUMAN selection required");
+      none.value = "";
+      select.append(none);
+      rounds.forEach((report, index) => {
+        const opt = node("option",
+          "Selected round " + (index + 1) + " — " + LABELS[report[id]]);
+        opt.value = "r" + index;
+        select.append(opt);
+      });
+      select.value = "";
+      select.addEventListener("change", () => {
+        proposalChoices[id] = select.value;
+        updateReconciliation();
+      });
+      td.append(select);
+      tr.append(td);
+      host.append(tr);
+    }
+    $("reconcile-details").open = false;
+    updateReconciliation();
+  }
+  $("reconcile-reset").addEventListener("click", () => {
+    if (!roundHistory || !window.confirm("Discard all twenty unsaved local HUMAN draft choices?")) return;
+    renderReconciliation(roundHistory);
+    $("reconcile-summary").textContent = "New proposal selections cleared. Prior reports are unchanged.";
+  });
+  $("reconcile-export").addEventListener("click", () => {
+    if (!roundHistory || ALL.some(id => !/^r[0-7]$/.test(proposalChoices[id]))) return;
+    const proposedSteps = [];
+    for (const id of ALL) {
+      const selectedIndex = Number(proposalChoices[id].slice(1));
+      if (!Number.isInteger(selectedIndex) || selectedIndex >= roundHistory.length) return;
+      proposedSteps.push({
+        action: Number(id), self_reported_state: roundHistory[selectedIndex][id]
+      });
+    }
+    if (!window.confirm("Export a NEW complete, unsigned, HUMAN discussion-only proposal? " +
+        "You explicitly chose all twenty markers from prior local reports. " +
+        "This does not prove chronology, review, findings, identity or consent. " +
+        "A separate native review and HUMAN receipt are still required.")) return;
+    const proposal = report();
+    proposal.steps = proposedSteps;
+    download("LightUp-PRIVATE-HUMAN-Lab-Next-Proposal.json",
+      JSON.stringify(proposal, null, 2) + "\n", "application/json");
+  });
   function renderHistory(rounds) {
     roundHistory = rounds;
     const header = node("tr");
@@ -428,6 +500,7 @@
       changed + "/20 original actions changed at least once, " + transitions +
       " marker transitions. This is not authenticated chronology or assessment progress.";
     $("history-view").hidden = false;
+    renderReconciliation(rounds);
     $("history-export").disabled = false;
     $("history-clear").disabled = false;
     applyHistoryFilter();
