@@ -249,6 +249,17 @@ def prepare(original: str, reviews: list[str], received: str, finals: list[str],
             shutil.rmtree(folder)
 
 
+def completed_receipt(source, raw: bytes, rows: list[dict]) -> dict:
+    return {
+        **bindings(source),
+        "completed_human_team_csv_sha256_unsigned": sha256(raw).hexdigest(),
+        "manual_team_counts": {
+            team: sum(row["human_proposed_team"] == team for row in rows)
+            for team in TEAMS},
+        "real_team_members_or_consent_authenticated": False,
+    }
+
+
 def finalize(original: str, reviews: list[str], received: str,
              finals: list[str], history: str, draft_room: str,
              completed_csv: str, parent_name: str) -> int:
@@ -271,14 +282,8 @@ def finalize(original: str, reviews: list[str], received: str,
     os.chmod(out, 0o700)
     complete = False
     try:
-        save_json(out / "PRIVATE-HUMAN-team-receipt.json", {
-            **bindings(source),
-            "completed_human_team_csv_sha256_unsigned": sha256(raw).hexdigest(),
-            "manual_team_counts": {
-                team: sum(row["human_proposed_team"] == team for row in rows)
-                for team in TEAMS},
-            "real_team_members_or_consent_authenticated": False,
-        })
+        save_json(out / "PRIVATE-HUMAN-team-receipt.json",
+                  completed_receipt(source, raw, rows))
         file_new(out / "PRIVATE-HUMAN-team-proposals.csv", raw)
         file_new(out / "PRIVATE-HUMAN-team-briefing.html",
                  meeting_page(rows, source[-2]))
@@ -289,3 +294,26 @@ def finalize(original: str, reviews: list[str], received: str,
     finally:
         if not complete:
             shutil.rmtree(out)
+
+
+
+def reopen_team(original: str, reviews: list[str], received: str,
+                finals: list[str], history: str, team_room: str) -> int:
+    """Read-only original source/round/team receipt admission, no assignment."""
+    source = original_state(original, reviews, received, finals, history)
+    folder = private_directory(team_room)
+    csv_raw = private_input(
+        str(folder / "PRIVATE-HUMAN-team-proposals.csv"), 65536)
+    rows = read_complete(csv_raw, source[-1])
+    expected = completed_receipt(source, csv_raw, rows)
+    canonical = (json.dumps(expected, indent=2, sort_keys=True,
+                            ensure_ascii=False) + "\n").encode("utf-8")
+    if (private_input(str(folder / "PRIVATE-HUMAN-team-receipt.json"), 65536)
+            != canonical):
+        raise Hold("HOLD: original-bound HUMAN team receipt altered")
+    if (private_input(str(folder / "PRIVATE-HUMAN-team-briefing.html"), 65536)
+            != meeting_page(rows, source[-2])):
+        raise Hold("HOLD: original-bound HUMAN team briefing altered")
+    print("HOLD: original-bound PRIVATE HUMAN team packet reopened read-only")
+    print("OPEN LOCALLY: " + str(folder / "PRIVATE-HUMAN-team-briefing.html"))
+    return 3

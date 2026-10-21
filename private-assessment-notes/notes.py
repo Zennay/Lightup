@@ -550,6 +550,15 @@ def main() -> int:
     team_finalize.add_argument("--draft-room", required=True)
     team_finalize.add_argument("--completed-csv", required=True)
     team_finalize.add_argument("--private-parent", required=True)
+    team_reopen = commands.add_parser(
+        "sensitivity-discussion-team-reopen",
+        help="read-only original-bound PRIVATE HUMAN proposed-team packet; HOLD")
+    team_reopen.add_argument("--completed-packet", required=True)
+    team_reopen.add_argument("--review", action="append", required=True)
+    team_reopen.add_argument("--room", required=True)
+    team_reopen.add_argument("--final-room", action="append", required=True)
+    team_reopen.add_argument("--history-room", required=True)
+    team_reopen.add_argument("--team-room", required=True)
     sensitivity_attention = commands.add_parser(
         "sensitivity-attention", help="PRIVATE changed/new HUMAN concern handoff from two original reviews")
     sensitivity_attention.add_argument("--completed-packet", required=True)
@@ -678,6 +687,11 @@ def main() -> int:
                             args.final_room, args.history_room,
                             args.draft_room, args.completed_csv,
                             args.private_parent)
+        if args.action == "sensitivity-discussion-team-reopen":
+            from privacy_triage_discussion_team import reopen_team
+            return reopen_team(args.completed_packet, args.review,
+                               args.room, args.final_room,
+                               args.history_room, args.team_room)
         if args.action == "sensitivity-attention":
             from privacy_triage_attention import create as build_sensitivity_attention
             return build_sensitivity_attention(

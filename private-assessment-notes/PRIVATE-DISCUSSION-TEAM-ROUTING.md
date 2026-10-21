@@ -74,6 +74,31 @@ all PRIVATE human comment text. All human team proposals remain merely
 proposals. Preparation exits REVIEW_ONLY (2). Completion deliberately
 exits HOLD (3), even when files are created successfully.
 
+## 3. Reopen a completed PRIVATE proposed-team packet, read-only
+
+Use the same original completed HUMAN source, original reviewer list and
+manually ordered action round paths used when producing the packet:
+
+```sh
+python3 private-assessment-notes/notes.py sensitivity-discussion-team-reopen \
+  --completed-packet /private/work/ORIGINAL-completed-packet \
+  --review /private/work/FIRST-completed-review \
+  --review /private/work/SECOND-completed-review \
+  --room /private/work/PRIVATE-lightup-human-discussion-ROOM \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-1 \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-2 \
+  --history-room /private/work/PRIVATE-lightup-human-action-history-ROOM \
+  --team-room /private/work/PRIVATE-lightup-human-team-proposals-ROOM
+```
+
+This does not modify or publish data. It reopens each original source-
+and reviewer-bound HUMAN action round, checks the stored complete PRIVATE
+proposed-team CSV, recomputes the canonical unsigned private receipt and
+demands byte-identical scriptless proposed-team briefing. Missing, altered,
+stale or reordered originals HOLD. Successful local reopening still exits
+HOLD (3), and gives no real team assignment, reviewer authentication,
+consent or recipient permission.
+
 ## No real ownership or release
 
 This creates no authenticated team or recipient, no service ticket, no
