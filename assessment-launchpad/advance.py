@@ -43,7 +43,7 @@ STYLE = ("body{font:16px/1.55 system-ui,sans-serif;color:#17212f;"
          "a:focus-visible{outline:3px solid #dbad43;outline-offset:3px}"
          "small{color:#465467}")
 
-def render_home(source_count, changed, history_count, handoff_role=None, handoff_stage='ALL'):
+def render_home(source_count, changed, history_count, handoff_role=None, handoff_stage='ALL', handoff_slots=None):
     h = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
@@ -88,6 +88,8 @@ def render_home(source_count, changed, history_count, handoff_role=None, handoff
          "Open voluntarily filtered HUMAN role packet</a><p><small>"
          "Selected suggested HUMAN role: " + escape(handoff_role or "") +
          "; latest HUMAN stage: " + escape(handoff_stage) +
+         "; explicit private slot subset: " +
+         (str(len(handoff_slots)) if handoff_slots else "none (all matching slots)") +
          ". Other-role HUMAN notes are intentionally withheld. This is "
          "NOT identity authentication or permission.</small></p></section>"
          if handoff_role is not None else "") +
@@ -102,7 +104,7 @@ def render_home(source_count, changed, history_count, handoff_role=None, handoff
         "</p></body></html>"
     ).encode("utf-8")
 
-def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL'):
+def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL', handoff_slots=None):
     return (
         "LightUp offline PRIVATE HUMAN next-round workroom\n"
         "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED\n"
@@ -122,6 +124,9 @@ def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL')
          "other-role HUMAN notes withheld.\n"
          "Selected HUMAN role: " + handoff_role +
          "; selected latest HUMAN stage: " + handoff_stage + "\n"
+         "Explicit slot subset: " +
+         (str(len(handoff_slots)) + " selected original slots\n"
+          if handoff_slots else "none (all matching original slots)\n")
          if handoff_role is not None else "") +
         "All outputs are owner-only, unsigned, private, not client approval.\n"
         "To edit another round, download private JSON from the offline editor, "
@@ -132,7 +137,7 @@ def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL')
         "with action-time revocation/HUMAN GO are independent mandatory gates.\n"
     ).encode("utf-8")
 
-def content_for(before, after, endpoints, earlier, handoff_role=None, handoff_stage='ALL'):
+def content_for(before, after, endpoints, earlier, handoff_role=None, handoff_stage='ALL', handoff_slots=None):
     artifacts = {
         ROUND: dict(make_artifacts(after, endpoints)),
         EDITOR: {EDITOR_FILE: render_editor(after)},
@@ -142,12 +147,14 @@ def content_for(before, after, endpoints, earlier, handoff_role=None, handoff_st
     }
     if handoff_role is not None:
         artifacts[HANDOFF] = dict(
-            handoff_artifacts([*earlier, before, after], endpoints, handoff_role, handoff_stage))
+            handoff_artifacts([*earlier, before, after], endpoints, handoff_role,
+                              handoff_stage, handoff_slots))
     return artifacts
 
 def inspect_root(fd, root_path, before, endpoints, after, earlier,
-                 handoff_role=None, handoff_stage='ALL'):
-    expected = content_for(before, after, endpoints, earlier, handoff_role, handoff_stage)
+                 handoff_role=None, handoff_stage='ALL', handoff_slots=None):
+    expected = content_for(before, after, endpoints, earlier, handoff_role,
+                           handoff_stage, handoff_slots)
     if set(os.listdir(fd)) != {*expected, GUIDE, HOME}:
         raise Hold("follow-up workroom missing canonical inventory")
     for dirname in expected:
@@ -165,9 +172,9 @@ def inspect_root(fd, root_path, before, endpoints, after, earlier,
     changes = sum(a != b for a, b in zip(before["human_rows"], after["human_rows"]))
     count = len(earlier) + 2
     if (read_private_bundle_item(fd, HOME, 32768) !=
-            render_home(len(endpoints), changes, count, handoff_role, handoff_stage)
+            render_home(len(endpoints), changes, count, handoff_role, handoff_stage, handoff_slots)
             or read_private_bundle_item(fd, GUIDE, 16384) !=
-            guide(len(endpoints), changes, count, handoff_role, handoff_stage)):
+            guide(len(endpoints), changes, count, handoff_role, handoff_stage, handoff_slots)):
         raise Hold("follow-up workroom navigation changed")
     return changes
 
@@ -189,10 +196,12 @@ def main(argv=None):
                         help="optionally include a voluntary PRIVATE role-selected HUMAN handoff")
     parser.add_argument("--handoff-stage", choices=("ALL", *STAGES), default="ALL",
                         help="optional latest HUMAN stage filter; requires --handoff-role")
+    parser.add_argument("--handoff-slot", type=int, action="append",
+                        help="optional minimal original slot subset for selected role; repeat as needed")
     args = parser.parse_args(argv)
     try:
-        if args.handoff_stage != "ALL" and args.handoff_role is None:
-            raise Hold("selected HUMAN stage requires a selected HANDOFF role")
+        if (args.handoff_stage != "ALL" or args.handoff_slot) and args.handoff_role is None:
+            raise Hold("selected HUMAN stage/slot requires a selected HANDOFF role")
         if args.output_dir:
             if bool(args.responses) == bool(args.interactive):
                 raise Hold("creation requires either --responses OR private --interactive HUMAN input")
@@ -244,7 +253,8 @@ def main(argv=None):
                         != (original, endpoints, digest, previous_dir, before, after)):
                     raise Hold("previous HUMAN or original source changed before publication")
                 expected = content_for(
-                    before, after, endpoints, earlier_rounds, args.handoff_role, args.handoff_stage)
+                    before, after, endpoints, earlier_rounds, args.handoff_role,
+                    args.handoff_stage, args.handoff_slot)
                 # The standalone HISTORY producer has a fixed 512-KiB cap. The
                 # integrated pipeline must enforce the same cap BEFORE it creates
                 # any of the fresh workroom directories, or it could leave a
@@ -264,9 +274,9 @@ def main(argv=None):
                 changed = sum(a != b for a, b in zip(before["human_rows"], after["human_rows"]))
                 publish_bundle(root_fd, [
                     (GUIDE, guide(len(endpoints), changed, len(earlier_rounds) + 2,
-                                  args.handoff_role, args.handoff_stage)),
+                                  args.handoff_role, args.handoff_stage, args.handoff_slot)),
                     (HOME, render_home(len(endpoints), changed, len(earlier_rounds) + 2,
-                                       args.handoff_role, args.handoff_stage)),
+                                       args.handoff_role, args.handoff_stage, args.handoff_slot)),
                 ])
             else:
                 fd, _ = open_output_directory(os.path.join(root_path, ROUND))
@@ -277,7 +287,8 @@ def main(argv=None):
                 after = load_json(source)
                 validate_worksheet(after, digest, len(endpoints))
             changed = inspect_root(root_fd, root_path, before, endpoints, after,
-                                   earlier_rounds, args.handoff_role, args.handoff_stage)
+                                   earlier_rounds, args.handoff_role, args.handoff_stage,
+                                   args.handoff_slot)
         finally:
             os.close(root_fd)
         print("PRIVATE_HUMAN_NEXT_ROUND_" +
