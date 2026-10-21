@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-q7+5DrbxLn9crPGXJxPRz7Q3oWLToT9RacYeRaRfh/w='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-p7APspJv6qCYpjLEnKw/KAEQsBfVTi71w6Gi9++50d0='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -535,6 +535,65 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const target=new Date(year,number-1+diff,1,12);
     hold(target.getFullYear()>=2000 && target.getFullYear()<=2099);
     return dayString(target).slice(0,7);
+  }
+  function monthRows(){
+    hold(active && /^20\\d{2}-(0[1-9]|1[0-2])$/.test(monthAnchor));
+    const groups=capacityGroups(),choice=$("monthGroup").value,
+      focused=choice?groups[Number(choice)-1]:null;
+    const collisions=collisionIds();
+    const year=Number(monthAnchor.slice(0,4)),month=Number(monthAnchor.slice(5,7)),
+      days=new Date(year,month,0,12).getDate();
+    const rows=[];
+    for(let date=1;date<=days;date++){
+      const day=monthAnchor+"-"+String(date).padStart(2,"0");
+      const matching=items.filter(row=>{
+        const p=plan.get(row.ordinal);
+        return p && p.day===day && (focused===null || row.group===focused);
+      });
+      rows.push({day,planned:matching.length,overlap:matching.filter(r=>
+        collisions.has(r.ordinal)).length,blocked:matching.filter(r=>
+        r.stage==="blocked").length});
+    }
+    return {rows,filtered:focused!==null};
+  }
+  function exportMonthBrief(kind){
+    const snapshot=monthRows();
+    const relevant=snapshot.rows;
+    const summary=relevant.reduce((out,row)=>{
+      out.planned+=row.planned;out.overlap+=row.overlap;out.blocked+=row.blocked;return out;
+    },{planned:0,overlap:0,blocked:0});
+    const filter=snapshot.filtered?"One locally chosen unverified HUMAN group":"All HUMAN groups";
+    if(!confirm("Download "+monthAnchor+" HUMAN-only "+(kind==="csv"?"daily count CSV":"scriptless month report")+
+      "? "+filter+". Daily totals can disclose small private cohort activity. No original targets, evidence or HUMAN action text will be included. Use only authorized PRIVATE storage."))return;
+    if(kind==="csv"){
+      const rows=[["date_local","proposed_human_reminders","local_overlap_markers","original_human_blocked_stages"],
+        ...relevant.map(r=>[r.day,String(r.planned),String(r.overlap),String(r.blocked)])];
+      download(makeCsv(rows),"lightup-private-human-month-counts.csv","text/csv;charset=utf-8");
+    }else{
+      const escaped=htmlEsc(monthAnchor),safeZone=htmlEsc(zone);
+      const table=relevant.map(r=>"<tr><th>"+htmlEsc(r.day)+"</th><td>"+r.planned+
+        "</td><td>"+r.overlap+"</td><td>"+r.blocked+"</td></tr>").join("");
+      const page='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+        '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;">'+
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'+
+        "<title>PRIVATE HUMAN monthly planning summary</title>"+
+        "<style>body{font:15px/1.5 system-ui;max-width:860px;margin:32px auto;padding:16px;color:#18212d}"+
+        "table{border-collapse:collapse;width:100%}th,td{padding:8px;border:1px solid #778;text-align:left}"+
+        "thead{background:#e6ecf2}p{max-width:80ch}@media print{body{margin:0}}</style></head><body>"+
+        "<h1>PRIVATE HUMAN planning · "+escaped+"</h1><p><strong>REVIEW_ONLY · NO AUTHORITY · UNSIGNED.</strong> "+
+        "This report is a proposal derived only from the currently open browser workroom; not an independent "+
+        "security finding, approval, real staff availability, consent, completed follow-up or calendar synchronization.</p>"+
+        "<p>Scope: "+htmlEsc(filter)+". Timezone: "+safeZone+". "+
+        summary.planned+" tentative reminders, "+summary.overlap+" local overlap markers, "+
+        summary.blocked+" source-declared HUMAN blocked stages.</p>"+
+        "<table><thead><tr><th>Local date</th><th>HUMAN planned</th><th>Local overlap</th>"+
+        "<th>HUMAN blocked stages</th></tr></thead><tbody>"+table+"</tbody></table>"+
+        "<p>Original source details, identity labels, HUMAN action text, findings, targets and evidence "+
+        "have not been included. Small totals may nevertheless be sensitive: keep this report PRIVATE.</p>"+
+        "</body></html>";
+      download(page,"lightup-private-human-month-summary.html","text/html;charset=utf-8");
+    }
+    inform("PRIVATE source-free month counts downloaded. No file uploaded, assessment executed or calendar updated.");
   }
   function renderMonth(){
     if(!active)return;
@@ -1610,6 +1669,11 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     catch(_){inform("Month range unavailable, no local changes made.",true);}});
   hook("monthToday","click",()=>{monthAnchor=nowToday().slice(0,7);renderMonth();});
   hook("monthGroup","change",renderMonth);
+  hook("monthBrief","click",()=>{try{exportMonthBrief("html");}
+    catch(_){inform("PRIVATE month report refused; original local plan unchanged.",true);}});
+  hook("monthCounts","click",()=>{try{exportMonthBrief("csv");}
+    catch(_){inform("PRIVATE month count handoff refused; original local plan unchanged.",true);}});
+
   hook("backlogPrepare","click",()=>{
     try{prepareBacklogBatch();}catch(_){
       backlogProposal=null;renderBacklogPreview();inform("Complete HUMAN batch proposal rejected; no plan changes made.",true);
@@ -1792,7 +1856,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 <button id="monthNext" type="button" class="ghost">Next month</button>
 <button id="monthToday" type="button" class="ghost">Current month</button>
 <label>HUMAN group <select id="monthGroup"><option value="">All groups</option></select></label>
-</div><p id="monthSummary" role="status" class="subtle"></p>
+</div><div class="row"><button id="monthBrief" type="button" class="ghost">Download PRIVATE month summary (.html)</button>
+<button id="monthCounts" type="button" class="ghost">Download daily HUMAN counts (.csv)</button></div>
+<p id="monthSummary" role="status" class="subtle"></p>
 <div id="monthGrid" class="month-grid" role="group" aria-label="Private monthly HUMAN proposal calendar"></div>
 <p class="subtle">Select a date to open its HUMAN week. No external calendar or identity check occurs.</p>
 </section>

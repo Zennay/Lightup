@@ -142,3 +142,16 @@ the full set changes the local draft. Editing the plan, queue filters, group
 policy, source or series invalidates the preview. Manual source-bound v2
 save/reopen remains required. No calendar APIs, claims of actual availability,
 review status, scan, consent, scope or dispatch.
+
+
+### Minimum-necessary PRIVATE monthly handoff
+
+The visual month desk can deliberately export a **scriptless local PRIVATE
+HTML report** and a separate **daily counts-only CSV** for the currently
+selected month and HUMAN-group filter. Explicit confirmation reminds operators
+that even small aggregate counts may be sensitive. Outputs include ONLY local
+calendar day, proposed HUMAN reminder count, local collision marker count and
+self-declared blocked HUMAN-stage count; no source targets, issue identities,
+group names, evidence, human notes, source digest, authority, consent or
+external recipient. Report CSP prevents scripts and remote resources.
+Reports are unsigned local snapshots, not proofs of genuine actions.

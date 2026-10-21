@@ -488,6 +488,65 @@
     hold(target.getFullYear()>=2000 && target.getFullYear()<=2099);
     return dayString(target).slice(0,7);
   }
+  function monthRows(){
+    hold(active && /^20\\d{2}-(0[1-9]|1[0-2])$/.test(monthAnchor));
+    const groups=capacityGroups(),choice=$("monthGroup").value,
+      focused=choice?groups[Number(choice)-1]:null;
+    const collisions=collisionIds();
+    const year=Number(monthAnchor.slice(0,4)),month=Number(monthAnchor.slice(5,7)),
+      days=new Date(year,month,0,12).getDate();
+    const rows=[];
+    for(let date=1;date<=days;date++){
+      const day=monthAnchor+"-"+String(date).padStart(2,"0");
+      const matching=items.filter(row=>{
+        const p=plan.get(row.ordinal);
+        return p && p.day===day && (focused===null || row.group===focused);
+      });
+      rows.push({day,planned:matching.length,overlap:matching.filter(r=>
+        collisions.has(r.ordinal)).length,blocked:matching.filter(r=>
+        r.stage==="blocked").length});
+    }
+    return {rows,filtered:focused!==null};
+  }
+  function exportMonthBrief(kind){
+    const snapshot=monthRows();
+    const relevant=snapshot.rows;
+    const summary=relevant.reduce((out,row)=>{
+      out.planned+=row.planned;out.overlap+=row.overlap;out.blocked+=row.blocked;return out;
+    },{planned:0,overlap:0,blocked:0});
+    const filter=snapshot.filtered?"One locally chosen unverified HUMAN group":"All HUMAN groups";
+    if(!confirm("Download "+monthAnchor+" HUMAN-only "+(kind==="csv"?"daily count CSV":"scriptless month report")+
+      "? "+filter+". Daily totals can disclose small private cohort activity. No original targets, evidence or HUMAN action text will be included. Use only authorized PRIVATE storage."))return;
+    if(kind==="csv"){
+      const rows=[["date_local","proposed_human_reminders","local_overlap_markers","original_human_blocked_stages"],
+        ...relevant.map(r=>[r.day,String(r.planned),String(r.overlap),String(r.blocked)])];
+      download(makeCsv(rows),"lightup-private-human-month-counts.csv","text/csv;charset=utf-8");
+    }else{
+      const escaped=htmlEsc(monthAnchor),safeZone=htmlEsc(zone);
+      const table=relevant.map(r=>"<tr><th>"+htmlEsc(r.day)+"</th><td>"+r.planned+
+        "</td><td>"+r.overlap+"</td><td>"+r.blocked+"</td></tr>").join("");
+      const page='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+        '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;">'+
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'+
+        "<title>PRIVATE HUMAN monthly planning summary</title>"+
+        "<style>body{font:15px/1.5 system-ui;max-width:860px;margin:32px auto;padding:16px;color:#18212d}"+
+        "table{border-collapse:collapse;width:100%}th,td{padding:8px;border:1px solid #778;text-align:left}"+
+        "thead{background:#e6ecf2}p{max-width:80ch}@media print{body{margin:0}}</style></head><body>"+
+        "<h1>PRIVATE HUMAN planning · "+escaped+"</h1><p><strong>REVIEW_ONLY · NO AUTHORITY · UNSIGNED.</strong> "+
+        "This report is a proposal derived only from the currently open browser workroom; not an independent "+
+        "security finding, approval, real staff availability, consent, completed follow-up or calendar synchronization.</p>"+
+        "<p>Scope: "+htmlEsc(filter)+". Timezone: "+safeZone+". "+
+        summary.planned+" tentative reminders, "+summary.overlap+" local overlap markers, "+
+        summary.blocked+" source-declared HUMAN blocked stages.</p>"+
+        "<table><thead><tr><th>Local date</th><th>HUMAN planned</th><th>Local overlap</th>"+
+        "<th>HUMAN blocked stages</th></tr></thead><tbody>"+table+"</tbody></table>"+
+        "<p>Original source details, identity labels, HUMAN action text, findings, targets and evidence "+
+        "have not been included. Small totals may nevertheless be sensitive: keep this report PRIVATE.</p>"+
+        "</body></html>";
+      download(page,"lightup-private-human-month-summary.html","text/html;charset=utf-8");
+    }
+    inform("PRIVATE source-free month counts downloaded. No file uploaded, assessment executed or calendar updated.");
+  }
   function renderMonth(){
     if(!active)return;
     if(!monthAnchor)monthAnchor=nowToday().slice(0,7);
@@ -1562,6 +1621,11 @@
     catch(_){inform("Month range unavailable, no local changes made.",true);}});
   hook("monthToday","click",()=>{monthAnchor=nowToday().slice(0,7);renderMonth();});
   hook("monthGroup","change",renderMonth);
+  hook("monthBrief","click",()=>{try{exportMonthBrief("html");}
+    catch(_){inform("PRIVATE month report refused; original local plan unchanged.",true);}});
+  hook("monthCounts","click",()=>{try{exportMonthBrief("csv");}
+    catch(_){inform("PRIVATE month count handoff refused; original local plan unchanged.",true);}});
+
   hook("backlogPrepare","click",()=>{
     try{prepareBacklogBatch();}catch(_){
       backlogProposal=null;renderBacklogPreview();inform("Complete HUMAN batch proposal rejected; no plan changes made.",true);
