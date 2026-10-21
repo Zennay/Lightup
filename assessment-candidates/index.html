@@ -27,7 +27,9 @@
 <div id="pairMetrics" class="tablewrap"></div>
 <h3>Source-adverse flag crossover · selected candidate pair</h3>
 <p>Compare original source-reported regression flags for the same laboratory cases. “Only in second” and “only in first” are unverified differences, <strong>not</strong> a chronology, a fix, resolved risk or permission. A case can have more than one flagged metric.</p>
-<div id="pairChurnSummary" class="statline"></div><div id="pairChurn" class="tablewrap"></div></section>
+<div id="pairChurnSummary" class="statline"></div><div id="pairChurn" class="tablewrap"></div>
+<div class="controls"><button id="exportPairCSV" type="button" class="secondary" disabled>Export selected-pair metric comparison (CSV)</button></div>
+<p class="footnote">The CSV contains aggregate metric totals and source-reported adverse-flag crossover only. It excludes case IDs, source filenames and target metadata; all authority and source-authentication flags remain false.</p></section>
 <section class="panel" id="thresholdPanel"><div class="section-head"><h2>03 / Discussion thresholds</h2><span class="eyebrow">Hypothetical only</span></div>
 <p>A threshold breach asks for human discussion. A non-breach never authorizes execution or confirms safety. Controls do not alter original reports.</p>
 <div class="settings">
