@@ -22,6 +22,10 @@ button:hover,.file-label:hover{background:#355574}button:focus-visible,select:fo
 .compare summary{cursor:pointer;font-weight:700}.comparison-scroll{overflow-x:auto}
 .compare table{width:100%;border-collapse:collapse}.compare td,.compare th{text-align:left;padding:9px;border-bottom:1px solid #3c5b72}
 button:disabled{cursor:not-allowed;opacity:.45}
+.filterbar{display:flex;gap:16px;flex-wrap:wrap}
+.filterbar label{flex:1;min-width:230px;color:#cce2f2}
+.filterbar input,.filterbar select{display:block;margin-top:7px;width:100%;font:inherit;color:#eef7ff;background:#243b51;border:1px solid #8c9fb1;border-radius:8px;padding:9px}
+.action[hidden]{display:none}
 ol{padding-left:24px;columns:2;column-gap:38px}li{break-inside:avoid;margin:6px 0}
 code{font-size:.95em}small{color:#c1d1e1}#result{min-height:1.5em}
 @media(max-width:650px){.action{display:block}select{margin-top:10px;width:100%}ol{columns:1}}
@@ -39,7 +43,7 @@ header,.intro,.phase,.summary,footer{background:#fff;color:#000;border-color:#77
 <section class="intro" aria-labelledby="how"><h2 id="how">How this room works</h2>
 <p>In the trusted local checkout, start <code>python3 assessment-integrated-suite/console.py</code> and enter <code>LAB</code> to display these original actions. Choose a numeric action there to run its separate native stage. Keep source-private outputs in owner-controlled directories (0700/0600) and manually re-admit originals at every actual stage.</p>
 <p>Here, mark <em>discussion progress only</em>. A “Discussed only” choice does not prove that code ran, input was validated, evidence was reviewed, a vulnerability was repaired, a source was authenticated, or anybody consented.</p>
-<p>Nothing is saved automatically. Export a local self-report JSON (for reimport), minimal CSV, or printable sheet. In a trusted original checkout, native console <code>72</code> can receive that JSON only after you manually place it in 0700/0600 owner-private custody outside the checkout; <code>73</code> checks its entire saved receipt, <code>74</code> compares 2–8 privately saved HUMAN discussion rounds, and <code>75</code> reopens the complete saved history against those original rounds. None of these authenticates sources, reviews, actors or consent. Use **Compare another plan** to inspect original HUMAN status differences without changing the active local plan; exporting the changed-only CSV is an untrusted discussion summary. Import now explicitly previews every change and rejects duplicate JSON property names even when escaped. This page and its adjacent local JavaScript require no network, cookies, localStorage, IndexedDB, server or permissions. Do not attach real private source files, credentials or client identifiers.</p>
+<p>Nothing is saved automatically. Export a local self-report JSON (for reimport), minimal CSV, or printable sheet. In a trusted original checkout, native console <code>72</code> can receive that JSON only after you manually place it in 0700/0600 owner-private custody outside the checkout; <code>73</code> checks its entire saved receipt, <code>74</code> compares 2–8 privately saved HUMAN discussion rounds, and <code>75</code> reopens the complete saved history against those original rounds. None of these authenticates sources, reviews, actors or consent. Use the separate comparison chooser to inspect original HUMAN status differences without changing the active local plan; exporting the changed-only CSV is an untrusted discussion summary. Import now explicitly previews every change and rejects duplicate JSON property names even when escaped. This page and its adjacent local JavaScript require no network, cookies, localStorage, IndexedDB, server or permissions. Do not attach real private source files, credentials or client identifiers.</p>
 <div class="controls" role="group" aria-label="Local-only workplan controls">
 <button id="export-json" type="button">Save PRIVATE discussion plan (JSON)</button>
 <button id="export-csv" type="button">Export status rows (CSV)</button>
@@ -63,6 +67,21 @@ source or assessment results. It does not import, verify or approve anything.</s
 <h2>Human discussion overview</h2><p id="progress" aria-live="polite">Local script unavailable; no status was loaded.</p>
 <details><summary>Outstanding or waiting-for-input actions</summary><ol id="pending"></ol></details>
 </section>
+<section class="intro" aria-label="Filter and discuss original HUMAN actions">
+<h2>Find unfinished HUMAN review steps</h2>
+<div class="filterbar">
+<label>Find action number or task <input id="action-search" type="search" maxlength="100" autocomplete="off" placeholder="E.g. team feedback"></label>
+<label>Discussion status <select id="status-filter"><option value="">All statuses</option>
+<option value="NOT_REVIEWED">Not reviewed</option><option value="IN_PROGRESS">Discussing</option>
+<option value="NEEDS_INPUT">Needs original input</option><option value="DISCUSSED">Discussed only</option></select></label>
+</div>
+<p id="visible-count" class="hint" aria-live="polite">All HUMAN steps available offline.</p>
+<div class="controls"><button type="button" id="bulk-input">Mark visible: needs input</button>
+<button type="button" id="bulk-discussing">Mark visible: discussing</button></div>
+<p><small>Only actions matching the current filters change after explicit confirmation.
+Bulk marking can NEVER set “Discussed only”, validate a finding, approve
+a plan, authenticate consent or execute a scan. Hidden rows are preserved
+in all complete local exports.</small></p></section>
 <main id="stages"><p>Enable this local JavaScript file to use the HUMAN discussion checklist. The original CLI remains fully available without this browser page.</p></main>
 <footer><h2>Release conditions are separate</h2>
 <p class="warning">Not authorized: active scan, target contact, grant, consent, model execution, recipient dispatch, release or deploy.</p>
