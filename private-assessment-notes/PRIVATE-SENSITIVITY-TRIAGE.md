@@ -15,6 +15,47 @@ python3 private-assessment-notes/notes.py sensitivity-prepare \
   --private-parent /private/owner
 ```
 
+### Optional integrated original masking-cue navigation
+
+For a completed original HUMAN packet, prepare an additional **source-bound
+PRIVATE cue navigator in the SAME sensitivity workroom**, without modifying
+the original packet or any existing HUMAN decisions:
+
+```sh
+python3 private-assessment-notes/notes.py sensitivity-prepare \
+  --completed-packet /private/owner/PRIVATE-lightup-human-handoff-ORIGINAL \
+  --private-parent /private/owner --with-mask-cues
+```
+
+The optional new 0700 workroom includes three 0600 files:
+`PRIVATE-masking-cues.html` (script-free category and original-ordinal links),
+`PRIVATE-masking-cues.csv` (complete original marker-count roster), and
+`PRIVATE-masking-cues-receipt.json` (original-source-bound unsigned HOLD
+receipt). `OPEN-PRIVATE.html` links directly to this navigator and to the
+unchanged sensitivity workflow. No original note bytes or source hashes
+appear in the navigator. Literal placeholder counts do **not** establish
+secret masking completeness or safe sharing.
+
+The opt-in source-bound sensitivity **draft** uses schema v2, recording that
+the exact cue receipt is required. On `sensitivity-finalize`, the native
+finalizer independently reopens the original prepared notes and rejects a
+missing, modified or substituted cue HTML, CSV or receipt **before** admitting
+the completed HUMAN sensitivity CSV. Legacy non-opt-in v1 draft workrooms
+retain their original behavior and do not require these files. The final
+HUMAN packet remains PRIVATE/HOLD; opt-in cue receipt authentication is not
+client authentication, security/privacy clearance or authorization.
+
+To independently reopen only the cue desk from this optional joint workroom:
+
+```sh
+python3 private-assessment-notes/notes.py masking-cues-reopen \
+  --original-kit /private/owner/PRIVATE-lightup-human-handoff-ORIGINAL \
+  --room /private/owner/PRIVATE-lightup-sensitivity-draft-ACTUAL
+```
+
+The separate cue reopening always returns HOLD and never changes the original
+source or sensitivity decisions.
+
 This creates a **new** `PRIVATE-lightup-sensitivity-draft-*` owner-only directory, with:
 
 - `OPEN-PRIVATE.html`: readable human-only original-slot concern preview, not a source-text viewer.
