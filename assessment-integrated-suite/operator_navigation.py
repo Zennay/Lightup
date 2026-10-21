@@ -6,7 +6,7 @@ remain the single entry point. This module only prints documentation.
 """
 from __future__ import annotations
 
-# Companion labels mirror original console options 1–74; no actions execute here.
+# Companion labels mirror original console options 1–75; no actions execute here.
 ACTIONS: dict[str, str] = {
     '1': 'Prepare PRIVATE original briefing + 15 offline HUMAN workrooms',
     '2': 'Prepare exact-source PRIVATE HUMAN selection studio',
@@ -82,6 +82,7 @@ ACTIONS: dict[str, str] = {
     '72': 'Receive an offline HUMAN Lab discussion JSON into a PRIVATE exact-byte receipt',
     '73': 'Reopen original HUMAN Lab discussion receipt read-only',
     '74': 'Compare 2–8 complete PRIVATE HUMAN Lab discussion receipts',
+    '75': 'Reopen exact original PRIVATE HUMAN Lab discussion history bytes',
 }
 
 CATEGORIES = (
@@ -97,7 +98,7 @@ CATEGORIES = (
     ("PRIVATE HUMAN team feedback", tuple(str(x) for x in range(60, 65))),
     ("PRIVATE HUMAN multi-round continuation", tuple(str(x) for x in range(65, 68))),
     ("PRIVATE HUMAN conflict resolution", tuple(str(x) for x in range(68, 72))),
-    ("PRIVATE HUMAN Lab discussion custody", tuple(str(x) for x in range(72, 75))),
+    ("PRIVATE HUMAN Lab discussion custody", tuple(str(x) for x in range(72, 76))),
 )
 
 
@@ -135,6 +136,7 @@ def lab_guide() -> None:
     print("  72 · receive exact browser self-report into PRIVATE HUMAN receipt")
     print("  73 · reopen every original saved report and output byte")
     print("  74 · compare 2–8 complete manually ordered HUMAN review rounds")
+    print("  75 · re-admit original rounds and exact saved HUMAN history output")
     print("Mandatory original CI, reviews, current authenticated consent and HUMAN GO remain HOLD.")
 
 def overview() -> None:
@@ -211,6 +213,7 @@ def help_flow() -> None:
     print("72. Admit exported 20-action self-report JSON into owner-private exact receipt.")
     print("73. Reopen saved self-report AND every original output byte read-only.")
     print("74. Compare 2–8 owner-private HUMAN discussion receipts in explicit order.")
+    print("75. Re-admit original HUMAN round inputs and exact output history bytes.")
     print("Every step remains PRIVATE and REVIEW_ONLY. No scan, grant, report")
     print("verification, real scheduling, recipient dispatch or consent.")
     print("Original current authenticated client+operator consent, revocation")
