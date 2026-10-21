@@ -19,12 +19,14 @@ ROOT = Path(__file__).resolve().parent
 HTML = "private-inbox-history-studio.html"
 CSS = "private-inbox-history-studio.css"
 JS = "private-inbox-history-studio.js"
+COMPOSE_JS = "private-inbox-history-compose.js"
 OUTPUT = "private-inbox-history-standalone.html"
 MAX_ASSET = 128 * 1024
 MAX_OUTPUT = 256 * 1024
 
 STYLE_TAG = '<link href="./private-inbox-history-studio.css" rel="stylesheet">'
 SCRIPT_TAG = '<script src="./private-inbox-history-studio.js" defer></script>'
+COMPOSE_TAG = '<script src="./private-inbox-history-compose.js" defer></script>'
 CSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
 
 
@@ -56,21 +58,30 @@ def compose() -> bytes:
     html = original_bytes(HTML).decode("utf-8")
     style = original_bytes(CSS).decode("utf-8")
     script = original_bytes(JS).decode("utf-8")
+    composer = original_bytes(COMPOSE_JS).decode("utf-8")
     if (html.count(STYLE_TAG) != 1 or html.count(SCRIPT_TAG) != 1 or
+        html.count(COMPOSE_TAG) != 1 or html.count("</body>") != 1 or
         html.count(CSP) != 1 or
-        "</style" in style.lower() or "</script" in script.lower()):
+        "</style" in style.lower() or "</script" in script.lower() or "</script" in composer.lower()):
         raise ValueError("history desk source HTML/CSS/JS inconsistent")
     js_hash = base64.b64encode(hashlib.sha256(script.encode("utf-8")).digest()).decode("ascii")
+    compose_hash = base64.b64encode(hashlib.sha256(composer.encode("utf-8")).digest()).decode("ascii")
     css_hash = base64.b64encode(hashlib.sha256(style.encode("utf-8")).digest()).decode("ascii")
     strict_csp = (
-        "default-src 'none'; script-src 'sha256-" + js_hash + "'; "
+        "default-src 'none'; script-src 'sha256-" + js_hash + "' 'sha256-" + compose_hash + "'; "
         "script-src-attr 'none'; style-src 'sha256-" + css_hash + "'; "
         "style-src-attr 'none'; connect-src 'none'; img-src 'none'; "
         "object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
     )
+    # Inline scripts DO NOT honor the external defer attribute. Running
+    # scripts in <head> before their DOM controls exist breaks standalone UI.
+    # Move both original modules to end-of-body in exact source order.
     result = (html.replace(CSP, strict_csp)
               .replace(STYLE_TAG, "<style>" + style + "</style>")
-              .replace(SCRIPT_TAG, "<script>" + script + "</script>")
+              .replace(SCRIPT_TAG, "")
+              .replace(COMPOSE_TAG, "")
+              .replace("</body>", "<script>" + script + "</script>\n" +
+                       "<script>" + composer + "</script>\n</body>")
               .encode("utf-8"))
     if not 0 < len(result) <= MAX_OUTPUT:
         raise ValueError("standalone history desk exceeds source-only bound")

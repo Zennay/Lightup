@@ -1188,3 +1188,23 @@ or security approval. After intentionally changing these original sources,
 run `python3 private_inbox_history_package.py build --replace` to regenerate
 only the owned one-file browser output. The software-only ZIP includes the
 original source, builder and generated single-file browser.
+
+### Direct original HUMAN sheet authoring in the offline browser
+
+The [standalone PRIVATE History Desk](./private-inbox-history-standalone.html)
+now creates source-free HUMAN history without Python: select one complete
+original owner-private `PRIVATE-inbox-portfolio.json` and 2-8 complete saved
+six-column HUMAN CSVs in manually chosen order. Browser Web Crypto SHA-256
+checks exact original board bytes against every worksheet, including all slots,
+allowed statuses/roles and safe HUMAN notes. Changed note contents are compared
+only in browser memory and never included in output. Repeated snapshots,
+duplicate JSON keys, malformed UTF-8 and authority claims are rejected.
+
+A new private history opens in the existing interactive viewer immediately.
+An explicit download of source-free JSON rechecks all source bytes first.
+The browser retains file handles until the session is cleared; use only
+trusted offline machines. Browser-generated JSON is unsigned and is NOT the
+original native four-file 0700/0600 custody report. The native history
+`build` and `reopen` commands remain required for independent saved-source
+re-admission. No source identity, reviewer authority, consent, remediation,
+scope clearance or permission to assess targets is created.

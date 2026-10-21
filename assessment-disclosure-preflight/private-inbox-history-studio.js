@@ -312,6 +312,26 @@
       reset("HOLD: PRIVATE history rejected. Confirm an unchanged original native source-free history JSON (no duplicate fields, missing slots or authority claims).",true);
     }
   }
+  // The adjacent PRIVATE composer uses the exact same strict source-free
+  // schema admission and rendering, never reaching into private note memory.
+  // This is a local browser-generated preview, not native output custody.
+  window.LightUpPrivateHistory = Object.freeze({
+    parseJSON: strictJSON,
+    openComposed(sourceFreeJSON) {
+      try {
+        const original = validate(strictJSON(sourceFreeJSON));
+        reset();
+        history=original;
+        renderStatic();
+        $("notice").textContent="REVIEW_ONLY: unsigned BROWSER-COMPOSED PRIVATE history. "+
+          "All complete original inputs require separate native custody admission.";
+        return true;
+      } catch (_error) {
+        reset("HOLD: browser-composed PRIVATE HUMAN history failed source-free admission.",true);
+        return false;
+      }
+    }
+  });
   $("history-file").addEventListener("change",onImport);
   $("clear").addEventListener("click",()=>reset());
   ["round","stage","role"].forEach(id=>$(id).addEventListener("change",()=>{

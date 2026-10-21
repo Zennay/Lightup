@@ -120,3 +120,20 @@ independent security/privacy/browser reviews, request/grant tenant integrity
 issues #177/#182/#829, genuine separate current client/operator consent with
 action-time revocation and explicit HUMAN GO remain mandatory. Never treat
 REVIEW_ONLY as permission to scan, dispatch, disclose or release.
+
+### Compose directly from complete original HUMAN files in the browser
+
+The offline History Desk also has a manual original-input route: select
+owner-private original `PRIVATE-inbox-portfolio.json`, then 2-8 complete
+`PRIVATE-inbox-actions` CSV files in explicitly chosen order. Each must have
+the native six columns, every original slot and the exact SHA-256 of the
+original board bytes. Valid HUMAN question/next-action text is processed
+ONLY in browser memory; source-free output contains statuses/role transitions
+and boolean note-change indicators, no narrative contents. Explicitly confirm
+that a trusted offline computer is being used before composing/downloading.
+
+Browser composition requires SHA-256 Web Crypto and fails closed without it.
+It does not enforce 0700/0600 storage, independently authenticate clients or
+establish true time ordering. Browser output is not the native four-file
+source-custody workroom: use native `build` and `reopen` for that original
+owner-private verification, which itself is non-authorizing REVIEW_ONLY.

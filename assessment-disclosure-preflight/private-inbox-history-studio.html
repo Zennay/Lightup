@@ -7,6 +7,7 @@
 <title>LightUp · PRIVATE HUMAN History Desk</title>
 <link href="./private-inbox-history-studio.css" rel="stylesheet">
 <script src="./private-inbox-history-studio.js" defer></script>
+<script src="./private-inbox-history-compose.js" defer></script>
 </head>
 <body>
 <header>
@@ -21,7 +22,20 @@
 <label for="history-file">Import <code>PRIVATE-inbox-HUMAN-history.json</code> saved by the native <code>private_inbox_history.py build</code> workflow.</label>
 <input type="file" id="history-file" accept=".json,application/json">
 <p id="notice" role="status" aria-live="polite">No private HUMAN history loaded.</p>
-<p class="muted">Maximum 256 KiB, 2–8 complete rounds and 1–12 original slot ordinals. Import is read-only. The browser does not authenticate the source, original files, reviewers, chronology or SHA.</p>
+<p class="muted">Maximum 256 KiB, 2–8 complete rounds and 1–12 original slot ordinals. Imported native JSON is read-only. The browser does not authenticate the source, original files, reviewers, chronology or SHA.</p>
+</section>
+<section class="panel" aria-labelledby="compose-heading">
+<h2 id="compose-heading">Or compose PRIVATE history from original complete HUMAN worksheets</h2>
+<p>Without Python, select the original <strong>owner-private source-free inbox board JSON</strong> and 2–8 separately saved complete HUMAN action CSVs. Select files in manual earliest-to-latest order using the numbered controls. The original HUMAN note contents are temporarily processed in <strong>browser memory only</strong> and excluded entirely from the resulting history.</p>
+<p class="warning">Only use this on a trusted offline computer. Browser composition does not authenticate the source producer, reviewers, chronology, consent or file custody. The original native `reopen` is still required for saved PRIVATE reports. Never upload files to this page on a public website.</p>
+<label for="compose-board">Original PRIVATE-inbox-portfolio.json (owner-only, up to 64 KiB)</label>
+<input id="compose-board" type="file" accept=".json,application/json">
+<div class="topline"><label for="compose-count">Number of complete manually ordered revisions
+<select id="compose-count"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><button type="button" id="compose-reset" class="secondary">Clear original inputs</button></div>
+<div id="compose-revisions" class="compose-grid"></div>
+<label class="checkbox confirm"><input type="checkbox" id="compose-confirm"> I understand original HUMAN notes remain in local browser memory during comparison; outputs omit notes and are unsigned, non-authorizing coordination reports.</label>
+<div class="topline"><button type="button" id="compose-build">Compose PRIVATE source-free history in memory</button><button type="button" id="compose-download" class="secondary" disabled>Download private source-free history JSON</button></div>
+<p id="compose-status" role="status" aria-live="polite">No original private inputs processed. Native source custody remains separate.</p>
 </section>
 <section class="panel" id="workspace" hidden aria-labelledby="workspace-heading">
 <div class="topline"><h2 id="workspace-heading">2 · Review your manually ordered snapshots</h2><button type="button" id="clear" class="secondary">Clear private session</button></div>
