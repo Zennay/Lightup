@@ -188,7 +188,7 @@ def page(source: dict, original_digest: str, worksheet_digest: str,
         details = "".join("<dt>" + h(k) + "</dt><dd><pre>" + h(v) +
                           "</pre></dd>" for k, v in labels)
         cards.append(
-            "<article><h2>Original source ordinal #" + str(ordinal) +
+            "<article id='ordinal-" + str(ordinal) + "'><h2>Original source ordinal #" + str(ordinal) +
             " · human priority " + h(item["priority"]) + "</h2>"
             "<p class='notice'>Human question — PRIVATE, unverified</p><pre>" +
             h(item["question"]) + "</pre>"
@@ -236,7 +236,7 @@ def private_question_handoff(source: dict, selected: list[dict]) -> bytes:
         ordinal = item["ordinal"]
         finding = source["findings"][ordinal-1]
         elements.append(
-            "<article><h2>Original ordinal #" + str(ordinal) + "</h2>"
+            "<article id='ordinal-" + str(ordinal) + "'><h2>Original ordinal #" + str(ordinal) + "</h2>"
             "<p><strong>Source-reported severity (UNVERIFIED):</strong> " +
             h(finding["severity"]) + " · original evidence reference count: " +
             str(len(finding["evidence_ids"])) + "</p>"
@@ -273,6 +273,8 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
     selection_raw = read_limited_file(selection_path, MAX_CSV_BYTES)
     selected = read_selection(selection_raw, source)
     private_report = page(source, original_digest, digest(human_raw), selected, notes)
+    from packet_directory import render as private_directory
+    directory = private_directory(source, selected, PRIORITIES)
     limited_handoff = private_question_handoff(source, selected)
     # Optional independent human routing packets. A PRIVATE recipient receives
     # only the selected HUMAN questions in their proposed priority group.
@@ -303,6 +305,7 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
         "human_worksheet_sha256_unsigned": digest(human_raw),
         "human_selection_sha256_unsigned": digest(selection_raw),
         "private_curated_dossier_sha256_unsigned": digest(private_report),
+        "private_packet_directory_sha256_unsigned": digest(directory),
         "source_minimized_human_handoff_sha256_unsigned": digest(limited_handoff),
         "private_priority_handoff_sha256_unsigned": {
             priority: digest(data) for priority, data in prioritized.items()
@@ -312,6 +315,7 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
     }
     publish_new(destination, {
         "PRIVATE-curated-dossier.html": private_report,
+        "PRIVATE-packet-directory.html": directory,
         "PRIVATE-source-minimized-HUMAN-handoff.html": limited_handoff,
         "PRIVATE-curation-receipt.json": json_bytes(private_receipt),
         "anonymous-counts-PRIVATE.json": json_bytes(aggregate),
