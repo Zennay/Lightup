@@ -262,6 +262,7 @@
       edit.type="button";
       edit.addEventListener("click",()=>{
         $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
+        selectedGroup=null; // An agenda event may belong to a different focused HUMAN group.
         page=Math.floor((r.ordinal-1)/PAGE);
         render();
         const source=document.querySelector('#rows tr[data-ordinal="'+r.ordinal+'"] input[type="date"]');
