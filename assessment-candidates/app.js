@@ -30,6 +30,8 @@
     evidence:["evidence_quality","reproducibility","remediation_quality","retest_correctness"],
     operations:["human_interventions","tool_calls","runtime_seconds","compute_cost_usd"]};
   let discussions=new Map(),queueFocus=0,batchUndo=null;
+  let reviewRounds=null; // Two explicit PRIVATE HUMAN drafts; no data leaves the browser.
+
 
   // Unlike JSON.parse, reject repeated JSON keys (including escaped aliases) at every depth.
   function strictJSON(raw) {
@@ -218,8 +220,10 @@
       } else selector.value=old;
     }
     const a=Number($("pairA").value),b=Number($("pairB").value);
-    if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<0||b<0||
-      a>=stats.length||b>=stats.length||a===b){
+    const validPair=Number.isSafeInteger(a)&&Number.isSafeInteger(b)&&a>=0&&b>=0&&
+      a<stats.length&&b<stats.length&&a!==b;
+    $("exportPairCSV").disabled=!validPair;
+    if(!validPair){
       $("pairMetrics").textContent="Select two distinct candidates for a descriptive comparison.";
       $("pairChurn").textContent="";$("pairChurnSummary").textContent="";return;
     }
@@ -413,11 +417,12 @@
     }
   }
   function render(){
+    displayReviewRounds();
     const active=reports.length>0,stats=reports.map(aggregates);
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
-    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","print"])$(id).disabled=!active;
+    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","print"])$(id).disabled=!active;
     $("appendFile").disabled=!(active&&!demo&&reports.length<12);
     $("saveDraft").disabled=!(active&&!demo&&sourceHashes.length===reports.length);
     $("draftFile").disabled=$("saveDraft").disabled;
@@ -493,7 +498,7 @@
         meta.push({bytes:bytes.byteLength,sha,alias:""});
         next.push(decodeReport(strictJSON(source)));
       }
-      compatible(next);discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
+      compatible(next);clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
       reports=next;sourceMeta=meta;sourceHashes=hashes.every(h=>typeof h==="string")?hashes:[];demo=false;selectedCase="";
       $("draftMessage").textContent=sourceHashes.length?"Private restore available only for identical source bytes.":"WebCrypto unavailable: private draft save/restore disabled.";
       setStatus("Accepted "+next.length+" compatible, unverified lab comparison files. All remain non-authorizing.");
@@ -513,7 +518,7 @@
       const hash=await hashBytes(bytes);
       const newHashes=sourceHashes.length===reports.length&&hash?
         [...sourceHashes,hash]:[];
-      reports=newReports;sourceHashes=newHashes;
+      clearReviewRounds();reports=newReports;sourceHashes=newHashes;
       sourceMeta=[...sourceMeta,{bytes:bytes.byteLength,sha:hash,alias:""}];batchUndo=null;
       $("draftMessage").textContent=sourceHashes.length?
         "Source set changed: earlier private drafts no longer bind; save new preferences.":
@@ -551,7 +556,7 @@
     });
   }
   function demoLoad(){
-    try{const next=fictional().map(decodeReport);compatible(next);discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
+    try{const next=fictional().map(decodeReport);compatible(next);clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
       reports=next;sourceMeta=[];sourceHashes=[];demo=true;
       $("draftMessage").textContent="Private source-bound drafts are unavailable for fictional demo.";
       selectedCase="";setStatus("FICTIONAL DEMO ONLY: four invented candidates; no real assessments or permissions.");render();
@@ -587,6 +592,36 @@
     return Number.isSafeInteger(a)&&Number.isSafeInteger(b)&&a>=0&&b>=0&&
       a<reports.length&&b<reports.length&&a!==b?pairChurn(a,b):null;
   }
+  function reviewRoundExport(){
+    if(!reviewRounds||demo||reports.length<2||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]))return null;
+    const ids=queueIds();
+    const current=[...discussions.entries()].map(([id,row])=>({
+      case_ordinal:ids.indexOf(id)+1,proposed_group:row.route,discussion_stage:row.stage
+    })).filter(row=>row.case_ordinal>0).sort((a,b)=>a.case_ordinal-b.case_ordinal);
+    return {
+      schema:"lightup.lab_candidate_human_review_rounds.v1",
+      status:"REVIEW_ONLY",round_count:reviewRounds.rounds,
+      manually_selected_round_order:true,round_order_authenticated:false,
+      source_bytes_bound_to_current_import_locally:true,
+      changed_case_count:reviewRounds.diff.length,
+      proposal_transition_count:reviewRounds.totalTransitions,
+      hypothetical_setting_changes:reviewRounds.settingChanges,
+      changed_cases:reviewRounds.diff.map(item=>({
+        case_ordinal:item.ordinal,proposal_transitions:item.transitions,
+        reverted_to_first:item.before.route===item.after.route&&
+          item.before.stage===item.after.stage,
+        rounds:reviewRounds.snapshots.map((rows,i)=>({
+          round_slot:i+1,proposed_group:rows[item.ordinal-1].route,
+          discussion_stage:rows[item.ordinal-1].stage
+        }))
+      })),
+      current_local_discussions:current,
+      disclaimer:"Unsigned source-free HUMAN self-reports in manual file order. No reviewer identity, verified chronology, source authenticity, remediation, consent or release is established.",
+      source_identity_authenticated:false,...fixedFlags()
+    };
+  }
   function exportJSON(){
     if(!reports.length||!settings)return;
     const out={schema:"lightup.lab_candidate_matrix_review.v4",
@@ -598,6 +633,7 @@
       human_discussion_summary:discussionSummary(),
       source_based_discussion_agenda:agendaCounts(),
       selected_pair_flag_crossover:currentPairChurn(),
+      human_review_round_history:reviewRoundExport(),
       candidates:metricRows(),...fixedFlags()};
     download("lightup-candidate-aggregate-REVIEW-ONLY.json",JSON.stringify(out,null,2)+"\n","application/json");
   }
@@ -614,6 +650,41 @@
     download("lightup-candidate-aggregate-REVIEW-ONLY.csv",
       head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
   }
+  function exportSelectedPairCSV(){
+    if(!reports.length||!settings)return;
+    const a=Number($("pairA").value),b=Number($("pairB").value);
+    if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<0||b<0||
+      a>=reports.length||b>=reports.length||a===b){
+      setStatus("Choose two distinct original candidates before exporting pair metrics.",true);
+      return;
+    }
+    const first=aggregates(reports[a]),second=aggregates(reports[b]),churn=pairChurn(a,b);
+    const crossover=new Map(churn.metrics.map(row=>[row.name,row]));
+    const head=[
+      "first_candidate_slot","second_candidate_slot","shared_case_count","metric",
+      "first_baseline_aggregate","second_baseline_aggregate","baseline_delta_second_minus_first",
+      "first_candidate_aggregate","second_candidate_aggregate","candidate_delta_second_minus_first",
+      "first_original_adverse_cases","second_original_adverse_cases",
+      "only_first_original_flags","only_second_original_flags","both_original_flags","neither_original_flags",
+      "shared_baseline_matches","fictional_demo_only","report_status",
+      "source_order_authenticated","source_identity_authenticated",
+      "authorized","consent_verified","dispatch_allowed","release_allowed"
+    ];
+    const rows=NAMES.map(name=>{
+      const x=first.total[name],y=second.total[name],flags=crossover.get(name);
+      return [
+        a+1,b+1,churn.case_count,name,x.baseline,y.baseline,y.baseline-x.baseline,
+        x.candidate,y.candidate,y.candidate-x.candidate,x.adverse,y.adverse,
+        flags.only_first,flags.only_second,flags.both,flags.neither,
+        String(close(x.baseline,y.baseline)),String(demo),"REVIEW_ONLY",
+        "false","false","false","false","false","false"
+      ];
+    });
+    const csvField=value=>"\""+String(value).replace(/"/g,"\"\"")+"\"";
+    const csv=[head,...rows].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n";
+    download("lightup-candidate-pair-metrics-REVIEW-ONLY.csv",csv,"text/csv");
+  }
+
   function exportPrivateCaseCSV(){
     if(!reports.length||!settings)return;
     const a=Number($("pairA").value),b=Number($("pairB").value);
@@ -669,6 +740,46 @@
         crossover.metrics.map(r=>[nice(r.name),r.only_first,r.only_second,r.both,r.neither])):"";
     const metricTable=table(["Metric",...data.map(r=>"Candidate "+r.candidate_slot+" · total")],
       NAMES.map(n=>[nice(n),...data.map(r=>format(r.metrics[n].candidate_total))]));
+    const pairNumericTable=crossover?
+      "<h2>Selected two-candidate numeric comparison</h2>"+
+      "<p>Second minus first is descriptive only. Shared baselines and original adverse counts are source-reported, not independently verified.</p>"+
+      table(["Metric","First baseline aggregate","Second baseline aggregate",
+        "First candidate aggregate","Second candidate aggregate","Delta (second − first)",
+        "First adverse cases","Second adverse cases"],
+        NAMES.map(n=>{
+          const first=stats[crossover.first_candidate_slot-1].total[n];
+          const second=stats[crossover.second_candidate_slot-1].total[n];
+          return [nice(n),format(first.baseline),format(second.baseline),
+            format(first.candidate),format(second.candidate),
+            format(second.candidate-first.candidate),first.adverse,second.adverse];
+        })):"";
+    const historyBound=!!reviewRounds&&!demo&&
+      sourceHashes.length===reports.length&&
+      sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]);
+    const reviewHistorySection=historyBound?
+      "<h2>PRIVATE HUMAN review-round history · manually ordered</h2>"+
+      "<p>"+reviewRounds.rounds+" separately selected unsigned HUMAN drafts; "+
+      reviewRounds.diff.length+" anonymous cases changed at least once; "+
+      reviewRounds.totalTransitions+" local proposal transitions; "+
+      reviewRounds.settingChanges+" hypothetical settings/focus changes. "+
+      "Chooser order is not verified chronology. No status proves a fix or permission.</p>"+
+      (reviewRounds.diff.length?reviewRounds.diff.map(item=>
+        "<h3>Lab case "+String(item.ordinal).padStart(2,"0")+
+        " · "+item.transitions+" proposal transition(s)</h3>"+
+        table(["Manually selected round","Generic HUMAN group","Local discussion stage"],
+          reviewRounds.snapshots.map((rows,i)=>[
+            "Round "+(i+1),nice(rows[item.ordinal-1].route),
+            nice(rows[item.ordinal-1].stage)]))).join("")
+        :"<p>No changed local HUMAN proposals. This does not verify any finding, remediation or release.</p>")
+      :"";
+    const currentDiscussionSection=historyBound&&discussions.size?
+      "<h2>Current local HUMAN discussion suggestions</h2>"+
+      "<p>Only locally recorded proposals are listed. Unlisted cases have no saved local suggestion; nothing is assigned to a real person.</p>"+
+      table(["Anonymous case","Generic proposed group","Local discussion stage"],
+        [...discussions.entries()].map(([id,row])=>[
+          "Lab case "+String(queueIds().indexOf(id)+1).padStart(2,"0"),
+          nice(row.route),nice(row.stage)]))
+      :"";
     const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
       "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; "+
       "connect-src 'none'; img-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
@@ -680,7 +791,8 @@
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
       advisory+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
-      agendaTable+crossoverTable+"<h2>Unverified original metric totals</h2>"+metricTable+
+      agendaTable+crossoverTable+pairNumericTable+reviewHistorySection+currentDiscussionSection+
+      "<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
       "consent with action-time revocation, original security fixes, full required hosted/permanent VPS "+
       "CI, independent security/privacy review and human GO remain mandatory.</p></body></html>";
@@ -761,7 +873,7 @@
       const ids=queueIds(),next=new Map();
       for(const row of x.discussions||[])next.set(ids[row.ordinal-1],
         {route:row.route,stage:row.stage});
-      discussions=next;batchUndo=null;queueFocus=x.focus.caseIndex;
+      clearReviewRounds();discussions=next;batchUndo=null;queueFocus=x.focus.caseIndex;
       sourceMeta.forEach((entry,i)=>entry.alias=x.source_aliases?.[i]||"");
       PREF_KEYS.forEach(k=>$(k).value=String(x.thresholds[k]));
       DIM_KEYS.forEach(k=>$(k).checked=x.dimensions[k]);
@@ -773,7 +885,265 @@
       $("draftMessage").textContent="PRIVATE source-bound settings and discussion state restored. No grant, consent or permission created.";
     }catch(_){$("draftMessage").textContent="HOLD: changed, malformed or incompatible PRIVATE draft. Workspace unchanged.";}
   }
+
+  // Offline, separately chosen, unsigned HUMAN discussion rounds from identical
+  // original source bytes. No timestamp, reviewer identity or order is inferred.
+  function clearReviewRounds(){
+    reviewRounds=null;
+    $("draftRounds").value="";
+    $("roundsMessage").textContent="";
+    $("roundsSummary").textContent="";
+    $("roundsTable").textContent="";
+    $("exportRoundsCSV").disabled=true;
+    $("exportRoundsHTML").disabled=true;
+    $("adoptRound").disabled=true;
+    $("adoptSelected").disabled=true;
+    $("selectVisibleRounds").disabled=true;
+    $("clearSelectedRounds").disabled=true;
+    $("selectedRoundsCount").textContent="";
+    $("roundDetail").textContent="";
+  }
+  function roundRows(draft){
+    const n=queueIds().length,rows=Array.from({length:n},()=>({
+      route:"unrouted",stage:"needs_review"
+    }));
+    for(const row of draft.discussions||[])
+      rows[row.ordinal-1]={route:row.route,stage:row.stage};
+    return rows;
+  }
+  function roundSettingsDiff(first,second){
+    let changed=0;
+    for(const key of PREF_KEYS)if(first.thresholds[key]!==second.thresholds[key])changed++;
+    for(const key of DIM_KEYS)if(first.dimensions[key]!==second.dimensions[key])changed++;
+    for(const key of ["pairA","pairB","caseIndex","metric"])
+      if(first.focus[key]!==second.focus[key])changed++;
+    return changed;
+  }
+  function displayReviewRounds(){
+    const valid=!!reviewRounds&&reports.length>=2&&!demo&&
+      sourceHashes.length===reports.length&&
+      sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]);
+    $("draftRounds").disabled=!(reports.length>=2&&!demo&&sourceHashes.length===reports.length);
+    $("exportRoundsCSV").disabled=!valid;
+    $("exportRoundsHTML").disabled=!valid;
+    $("adoptRound").disabled=!valid;
+    $("selectVisibleRounds").disabled=!valid;
+    $("clearSelectedRounds").disabled=!valid;
+    $("adoptSelected").disabled=!valid||!reviewRounds?.selected.size;
+    $("selectedRoundsCount").textContent=valid?
+      reviewRounds.selected.size+" case suggestions selected for optional LOCAL carry-forward.":"";
+    if(!valid){
+      $("adoptSelected").disabled=true;
+      $("roundsSummary").textContent="";
+      $("roundsTable").textContent="";
+      return;
+    }
+    const diffs=reviewRounds.diff;
+    const filtered=diffs.filter(d=>{
+      const mode=$("roundFilter").value;
+      return mode==="all"||(mode==="repeated"&&d.transitions>=2)||
+        (mode==="reverted"&&d.before.route===d.after.route&&
+          d.before.stage===d.after.stage);
+    });
+    $("roundsSummary").textContent=reviewRounds.rounds+" separately chosen local HUMAN rounds · "+
+      diffs.length+" of "+queueIds().length+
+      " anonymous cases changed across at least one adjacent round ("+
+      reviewRounds.totalTransitions+" changes). "+
+      reviewRounds.settingChanges+" hypothetical setting/focus changes across round boundaries. "+
+
+      "File order is a manual selection, not verified chronology. Zero changes cannot prove remediation.";
+    $("roundsTable").innerHTML=table(
+      ["Select","Anonymous case","First HUMAN stage","Last HUMAN stage",
+       "First proposed group","Last proposed group","Proposal transitions"],
+      filtered.map(d=>[
+        '<input type="checkbox" aria-label="Select local HUMAN case '+d.ordinal+
+          '" data-round-select="'+d.ordinal+'" '+(reviewRounds.selected.has(d.ordinal)?"checked":"")+'>',
+        '<button type="button" class="secondary" data-round-focus="'+d.ordinal+
+          '">Lab case '+String(d.ordinal).padStart(2,"0")+'</button>',
+        nice(d.before.stage),nice(d.after.stage),nice(d.before.route),
+        nice(d.after.route),d.transitions])
+    );
+    if(!filtered.length)$("roundsTable").textContent="No HUMAN changes for this view; original source findings remain unverified.";
+    if(reviewRounds.focused)showRoundTimeline(reviewRounds.focused);
+    else $("roundDetail").textContent="";
+  }
+  function shownRoundDiffs(){
+    if(!reviewRounds)return [];
+    const mode=$("roundFilter").value;
+    return reviewRounds.diff.filter(d=>mode==="all"||
+      (mode==="repeated"&&d.transitions>=2)||
+      (mode==="reverted"&&d.before.route===d.after.route&&
+       d.before.stage===d.after.stage));
+  }
+  function showRoundTimeline(ordinal){
+    if(!reviewRounds||!Number.isSafeInteger(ordinal)||ordinal<1||
+      ordinal>queueIds().length)return;
+    reviewRounds.focused=ordinal;
+    $("roundDetail").innerHTML='<h4>Lab case '+String(ordinal).padStart(2,"0")+
+      ' · local proposal history only</h4>'+table(
+      ["Manually supplied round","Proposed HUMAN group","Local discussion stage"],
+      reviewRounds.snapshots.map((rows,i)=>[
+        "HUMAN draft "+(i+1),nice(rows[ordinal-1].route),
+        nice(rows[ordinal-1].stage)]));
+  }
+  async function compareReviewRounds(files){
+    try{
+      assert(files.length>=2&&files.length<=8&&!demo&&reports.length>=2&&
+        sourceHashes.length===reports.length);
+      const drafts=[];
+      for(const file of files){
+        assert(file&&file.size>0&&file.size<=32768);
+        const bytes=await file.arrayBuffer();
+        assert(bytes.byteLength>0&&bytes.byteLength<=32768);
+        const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+        const draft=checkDraft(strictJSON(raw));
+        // Earlier settings-only v1 drafts have no HUMAN queue to compare.
+        assert(draft.schema===DRAFT_SCHEMA_V2||draft.schema===DRAFT_SCHEMA);
+        drafts.push(draft);
+      }
+      const snapshots=drafts.map(roundRows),before=snapshots[0],
+        after=snapshots[snapshots.length-1],diff=[];
+      let totalTransitions=0,settingChanges=0;
+      for(let j=1;j<drafts.length;j++)
+        settingChanges+=roundSettingsDiff(drafts[j-1],drafts[j]);
+      for(let i=0;i<before.length;i++){
+        let transitions=0;
+        for(let j=1;j<snapshots.length;j++)
+          if(snapshots[j][i].route!==snapshots[j-1][i].route||
+            snapshots[j][i].stage!==snapshots[j-1][i].stage)transitions++;
+        totalTransitions+=transitions;
+        if(transitions)diff.push({ordinal:i+1,before:before[i],after:after[i],
+          transitions});
+      }
+      // All admission and source binding above must succeed before replacing view.
+      reviewRounds={hashes:[...sourceHashes],before,after,diff,
+        snapshots,selected:new Set(),focused:0,
+        rounds:drafts.length,totalTransitions,settingChanges};
+      $("roundFilter").value="all";
+      $("roundsMessage").textContent=drafts.length+" PRIVATE source-byte-bound HUMAN drafts admitted. "+
+        "Only ordinal discussion changes shown. No identity, consent or reviewer chronology verified.";
+      displayReviewRounds();
+    }catch(_){
+      $("roundsMessage").textContent="HOLD: original source bytes, HUMAN schema or size mismatch. "+
+        "Prior local comparison and workspace are unchanged.";
+    }
+  }
+  function exportReviewRoundsCSV(){
+    if(!reviewRounds||demo||reports.length<2||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((h,i)=>h===reviewRounds.hashes[i]))return;
+    const header=["case_ordinal","manually_selected_round_slot","round_count",
+      "proposed_group","discussion_stage","changed_from_previous_round",
+      "returned_to_first_proposal","case_transition_count","local_human_discussion_only",
+      "source_identity_authenticated","round_order_authenticated","authorized",
+      "consent_verified","dispatch_allowed","release_allowed","status"];
+    const lines=[];
+    for(const item of reviewRounds.diff){
+      const snapshots=reviewRounds.snapshots.map(rows=>rows[item.ordinal-1]);
+      snapshots.forEach((row,i)=>{
+        const previous=i?snapshots[i-1]:null;
+        const changed=!!previous&&(row.route!==previous.route||row.stage!==previous.stage);
+        const returned=!!previous&&changed&&row.route===snapshots[0].route&&
+          row.stage===snapshots[0].stage;
+        lines.push([item.ordinal,i+1,reviewRounds.rounds,row.route,row.stage,
+          changed?"true":"false",returned?"true":"false",item.transitions,
+          "true","false","false","false","false","false","false","REVIEW_ONLY"]);
+      });
+    }
+    const csvField=value=>'"'+String(value).replace(/"/g,'""')+'"';
+    download("lightup-PRIVATE-HUMAN-review-round-history.csv",
+      [header,...lines].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n",
+      "text/csv");
+    $("roundsMessage").textContent="PRIVATE changed-only HUMAN proposals saved locally. "+
+      "Missing changes never imply a security fix or approval.";
+  }
+  function exportReviewRoundsHTML(){
+    if(!reviewRounds||demo||reports.length<2||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]))return;
+    // Values entering HTML are constrained to bounded integer ordinals or
+    // hard-coded enum stage/group labels by original private draft admission.
+    const css="body{font:15px system-ui,sans-serif;max-width:1000px;margin:2rem auto;"+
+      "padding:0 1rem;color:#182336}table{border-collapse:collapse;width:100%;"+
+      "margin:1rem 0 2rem}th,td{border:1px solid #9da9b6;padding:.45rem;text-align:left}"+
+      "th{background:#e9edf2}.hold{border:2px solid #a54a22;padding:1rem}"+
+      "h2{page-break-after:avoid}table{break-inside:avoid}"+
+      "@media print{body{margin:0;max-width:none}}";
+    const header="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "+
+      "script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; "+
+      "frame-src 'none'; base-uri 'none'; form-action 'none'; style-src 'unsafe-inline'\">"+
+      "<title>LightUp PRIVATE HUMAN lab review history · REVIEW ONLY</title><style>"+css+
+      "</style></head><body><h1>LightUp · PRIVATE HUMAN lab review history</h1>"+
+      "<div class='hold'><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong>"+
+      "<p>Unauthenticated local HUMAN proposals from separately chosen unsigned source-byte-matched drafts. "+
+      "No established file chronology, reviewer identity, client consent, remediation, authorization, "+
+      "release, scanner instruction, security finding verification or dispatch. "+
+      "authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>";
+    const summary="<h2>Source-free discussion summary</h2><p>"+
+      reviewRounds.rounds+" manually ordered private drafts; "+queueIds().length+
+      " anonymous lab cases; "+reviewRounds.diff.length+
+      " case suggestions changed at least once; "+reviewRounds.totalTransitions+
+      " local proposal changes. "+reviewRounds.settingChanges+
+      " hypothetical setting/focus changes are counted separately and never treated as policy.</p>";
+    let body="";
+    for(const item of reviewRounds.diff){
+      body+="<h2>Anonymous lab case "+String(item.ordinal).padStart(2,"0")+
+        " · "+item.transitions+" HUMAN proposal transition(s)</h2>"+
+        table(["Manually supplied round","Generic HUMAN review group","Local discussion stage"],
+          reviewRounds.snapshots.map((rows,i)=>["Round "+(i+1),
+            nice(rows[item.ordinal-1].route),nice(rows[item.ordinal-1].stage)]));
+    }
+    if(!reviewRounds.diff.length)body="<p>No changes in the local HUMAN proposals; "+
+      "this cannot verify a finding, resolution or release.</p>";
+    const footer="<p>Source case IDs, source fingerprints, aliases, filenames, "+
+      "targets, raw original metrics, human identities and notes are intentionally absent. "+
+      "Separate original security/privacy reviews, authentic current client and operator consent, "+
+      "action-time revocation, exact-head CI and HUMAN GO remain mandatory.</p></body></html>";
+    download("lightup-PRIVATE-HUMAN-review-history-REVIEW-ONLY.html",
+      header+summary+body+footer,"text/html");
+    $("roundsMessage").textContent="PRIVATE script-free HUMAN timeline briefing saved locally. "+
+      "No source IDs, people, findings or permission claims included.";
+  }
+  function adoptReviewRound(){
+    if(!reviewRounds||demo||reports.length<2||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((h,i)=>h===reviewRounds.hashes[i]))return;
+    if(!window.confirm("Replace current LOCAL anonymous HUMAN discussion suggestions "+
+      "with all suggestions from the LAST manually selected PRIVATE draft? "+
+      "This does not alter original lab data, evidence, consent or security findings."))return;
+    const ids=queueIds(),next=new Map();
+    reviewRounds.after.forEach((row,i)=>{
+      if(row.route!=="unrouted"||row.stage!=="needs_review")
+        next.set(ids[i],{route:row.route,stage:row.stage});
+    });
+    batchUndo=new Map(discussions);discussions=next;
+    $("roundsMessage").textContent="Last PRIVATE HUMAN discussion round copied "+
+      "to local queue. Hypothetical thresholds and original findings unchanged.";
+    render();
+  }
+  function adoptSelectedReviewRows(){
+    if(!reviewRounds||!reviewRounds.selected.size||demo||
+      sourceHashes.length!==reports.length||
+      !sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]))return;
+    const count=reviewRounds.selected.size;
+    if(!window.confirm("Apply last-round LOCAL HUMAN proposals to exactly "+count+
+      " selected anonymous cases and preserve other local discussion states? "+
+      "No real assignments, security findings or consent are changed."))return;
+    const ids=queueIds(),next=new Map(discussions);
+    for(const ordinal of reviewRounds.selected){
+      if(!Number.isSafeInteger(ordinal)||ordinal<1||ordinal>ids.length)return;
+      const row=reviewRounds.after[ordinal-1],id=ids[ordinal-1];
+      if(row.route==="unrouted"&&row.stage==="needs_review")next.delete(id);
+      else next.set(id,{route:row.route,stage:row.stage});
+    }
+    batchUndo=new Map(discussions);discussions=next;
+    $("roundsMessage").textContent="Copied "+count+
+      " selected LOCAL HUMAN suggestions. Other discussions and original lab sources unchanged; one-step undo is available in the Human queue.";
+    render();
+  }
   function forget(){
+    clearReviewRounds();
     reports=[];sourceMeta=[];sourceHashes=[];demo=false;selectedCase="";settings=null;
     discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
     $("draftFile").value="";$("draftMessage").textContent="";
@@ -880,7 +1250,41 @@
     discussions.clear();batchUndo=null;$("queueMessage").textContent="Local human discussion suggestions forgotten.";
     drawQueue();
   });
+  $("exportRoundsCSV").addEventListener("click",exportReviewRoundsCSV);
+  $("exportRoundsHTML").addEventListener("click",exportReviewRoundsHTML);
+  $("adoptRound").addEventListener("click",adoptReviewRound);
   $("saveDraft").addEventListener("click",saveDraft);
+  $("roundFilter").addEventListener("change",displayReviewRounds);
+  $("roundsTable").addEventListener("click",e=>{
+    const b=e.target.closest("button[data-round-focus]");
+    if(!b||!reviewRounds)return;
+    showRoundTimeline(Number(b.dataset.roundFocus));
+  });
+  $("roundsTable").addEventListener("change",e=>{
+    const input=e.target.closest("input[data-round-select]");
+    if(!input||!reviewRounds)return;
+    const ordinal=Number(input.dataset.roundSelect);
+    if(!reviewRounds.diff.some(d=>d.ordinal===ordinal))return;
+    if(input.checked)reviewRounds.selected.add(ordinal);
+    else reviewRounds.selected.delete(ordinal);
+    $("adoptSelected").disabled=!reviewRounds.selected.size;
+    $("selectedRoundsCount").textContent=reviewRounds.selected.size+
+      " case suggestions selected for optional LOCAL carry-forward.";
+  });
+  $("selectVisibleRounds").addEventListener("click",()=>{
+    if(!reviewRounds)return;
+    for(const row of shownRoundDiffs())reviewRounds.selected.add(row.ordinal);
+    displayReviewRounds();
+  });
+  $("clearSelectedRounds").addEventListener("click",()=>{
+    if(!reviewRounds)return;
+    reviewRounds.selected.clear();displayReviewRounds();
+  });
+  $("adoptSelected").addEventListener("click",adoptSelectedReviewRows);
+  $("draftRounds").addEventListener("change",e=>{
+    if(e.target.files.length)void compareReviewRounds([...e.target.files]);
+    e.target.value="";
+  });
   $("draftFile").addEventListener("change",e=>{
     if(e.target.files.length)void restoreDraft(e.target.files[0]);
     e.target.value="";
@@ -909,6 +1313,7 @@
   $("exportJSON").addEventListener("click",exportJSON);
   $("exportHTML").addEventListener("click",exportHTML);
   $("exportCaseCSV").addEventListener("click",exportPrivateCaseCSV);
+  $("exportPairCSV").addEventListener("click",exportSelectedPairCSV);
   $("print").addEventListener("click",()=>{if(reports.length&&settings)window.print();});
   render();
 })();
