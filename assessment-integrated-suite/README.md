@@ -1,5 +1,50 @@
 # LightUp integrated PRIVATE assessment handoff
 
+## NEW · One-file offline HUMAN Lab Route Desk (21 October 2026)
+
+The full [standalone HUMAN Lab Route Desk](human-lab-route-standalone.html)
+is a **single HTML file**: no adjacent `human-lab-route.js` file required.
+It retains all twenty original source-free HUMAN discussion statuses (52–71),
+local plan import/export, side-by-side comparison, 2–8 manually ordered HUMAN
+rounds, next-round proposals, filters and print-only HUMAN briefings.
+There is no network, browser persistence, original evidence ingestion, target
+contact, scan, grant, source verification, recipient dispatch or activation.
+
+The standalone file is generated from the **existing** two-file editor without
+forking its logic. Its inline script is SHA-256 pinned in a restrictive
+Content Security Policy; `default-src 'none'` and `connect-src 'none'` remain.
+This is an unsigned *software-byte* restriction, **not** an authenticated
+publisher signature, verification of actual review or permission to scan.
+
+To rebuild locally from an approved checkout using Python stdlib (no QA or
+network involved):
+
+```bash
+python3 assessment-integrated-suite/build_route_standalone.py \
+  --output /YOUR-EXISTING-PRIVATE-DIRECTORY/LightUp-HUMAN-Route.html
+```
+
+The destination must already exist and the file must **not** exist. The
+builder exclusively creates a 0600 local HTML, refuses source/CSP drift,
+never overwrites existing output and prints its unsigned SHA-256. If there is
+a syntax/source drift error, treat the output as HOLD; do not bypass the
+native original validators. Operators can also use the original
+[HTML + adjacent JS](human-lab-route.html) unchanged.
+
+`package_offline.py` now packages BOTH options in the next software-only
+offline kit. It byte-compares the checked-in standalone against a fresh
+source-derived build **before packaging** and fails closed if they disagree.
+The linked standalone HTML and updated packager are committed to this
+DRAFT/HOLD PR; **no new ZIP release is claimed by this section**.
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Source-owner and
+independent security/privacy/browser review, exact-head hosted and named
+permanent VPS CI, current separate authenticated client/operator consent
+with action-time revocation, #177/#182/#829 and explicit HUMAN GO remain
+prerequisites to any main merge/live release. A discussion marker never
+proves execution, finding closure or authorization.
+
+
 ## Offline LAB Desk improvement: strict browser input + useful HUMAN triage (21 Oct)
 
 The previously shipped browser-only HUMAN Lab Route Desk now offers
