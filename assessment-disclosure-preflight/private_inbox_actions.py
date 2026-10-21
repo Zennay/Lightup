@@ -292,6 +292,19 @@ __TABLE__
     ]
 
 
+def publish_private_artifacts(output_dir: str, artifacts: list[tuple[str, bytes]]) -> None:
+    """Publish an exact-inventory private report into a fresh empty destination.
+
+    This matches the strict subsequent reopen contract. Do not create a
+    'successful' report in a mixed directory that cannot be reopened.
+    """
+    directory = os.stat(output_dir, follow_symlinks=False)
+    if (not stat.S_ISDIR(directory.st_mode) or directory.st_uid != os.getuid() or
+        stat.S_IMODE(directory.st_mode) != 0o700 or os.listdir(output_dir)):
+        raise ValueError("PRIVATE HUMAN output needs an empty owner-only 0700 directory")
+    board.atomic_private_publish(output_dir, artifacts)
+
+
 def reopen_private_artifacts(output_dir: str, artifacts: list[tuple[str, bytes]]) -> None:
     """Read-only, fail-closed custody admission shared by all HUMAN outputs.
 
@@ -340,7 +353,7 @@ def main() -> int:
         if args.action in ("prepare", "reopen-template"):
             artifacts = [(TEMPLATE, csv_template(digest, originals).encode("utf-8"))]
             if args.action == "prepare":
-                board.atomic_private_publish(args.private_output_dir, artifacts)
+                publish_private_artifacts(args.private_output_dir, artifacts)
             else:
                 reopen_private_artifacts(args.private_output_dir, artifacts)
         elif args.action in ("compare", "reopen-compare"):
@@ -348,14 +361,14 @@ def main() -> int:
             current = read_human_csv(args.human_csv,digest,originals)
             artifacts = revision_delta_artifacts(prior,current)
             if args.action == "compare":
-                board.atomic_private_publish(args.private_output_dir,artifacts)
+                publish_private_artifacts(args.private_output_dir, artifacts)
             else:
                 reopen_private_artifacts(args.private_output_dir,artifacts)
         else:
             actions = read_human_csv(args.human_csv,digest,originals)
             artifacts = final_artifacts(digest,actions)
             if args.action == "finalize":
-                board.atomic_private_publish(args.private_output_dir,artifacts)
+                publish_private_artifacts(args.private_output_dir, artifacts)
             else:
                 reopen_private_artifacts(args.private_output_dir, artifacts)
         print("REVIEW_ONLY: original source-free HUMAN discussion", args.action,
