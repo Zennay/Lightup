@@ -278,8 +278,8 @@ def reopen(room: str) -> tuple[str, ...]:
     return states
 
 
-def history(rooms: list[str], parent: str, folder: str) -> Path:
-    if not 2 <= len(rooms) <= 8 or len(set(rooms)) != len(rooms):
+def _history_files(rooms: list[str]) -> dict[str, bytes]:
+    if not 2 <= len(rooms) <= 8 or len({Path(room).resolve() for room in rooms}) != len(rooms):
         raise Hold("HOLD: choose two to eight distinct original saved HUMAN rooms")
     states = [reopen(room) for room in rooms]
     changed = []
@@ -380,7 +380,7 @@ original assessment source reading, external transfer, or HUMAN GO.</p>""").enco
     table = _csv([["declared_round", "action", "before", "after"]] + [
         [r["declared_round"], r["action"], r["before"], r["after"]]
         for r in changed])
-    return _write_room(parent, folder, {
+    return {
         "OPEN-PRIVATE.html": markup,
         "PRIVATE-HUMAN-HISTORY.json": summary,
         "PRIVATE-HUMAN-HISTORY.csv": table,
@@ -389,7 +389,53 @@ original assessment source reading, external transfer, or HUMAN GO.</p>""").enco
               "consecutive_operator_ordered_rounds"]] + [
                 [row["action"], row["caption"], row["latest_self_reported_state"],
                  row["consecutive_operator_ordered_rounds"]] for row in attention]),
+    }
+
+
+HISTORY_RECEIPT = "PRIVATE-HUMAN-HISTORY-RECEIPT.json"
+
+
+def _complete_history_files(rooms: list[str]) -> dict[str, bytes]:
+    """Re-admit each original room before constructing deterministic outputs."""
+    files = _history_files(rooms)
+    receipts = [_read(Path(room) / RECEIPT_FILE, 262144) for room in rooms]
+    files[HISTORY_RECEIPT] = _json({
+        "schema": "lightup.private.human-lab-route.history.receipt.v1",
+        "mode": "REVIEW_ONLY", "authority": dict(FALSE_AUTH),
+        "original_round_receipts_sha256_unsigned": [_digest(r) for r in receipts],
+        "rounds_proven_chronological": False,
+        "original_client_source_authenticated": False,
+        "finding_verified": False, "consent_verified": False,
+        "release_allowed": False,
+        "files": {name: {"bytes": len(data), "sha256_unsigned": _digest(data)}
+                  for name, data in sorted(files.items())},
     })
+    return files
+
+
+def history(rooms: list[str], parent: str, folder: str) -> Path:
+    base = _private_dir(Path(parent))
+    # A history output must never modify any original admitted receipt room:
+    # even an innocuous new nested directory would change the original inventory.
+    for room in rooms:
+        origin = _private_dir(Path(room))
+        if base == origin or origin in base.parents:
+            raise Hold("HOLD: new history must be OUTSIDE original HUMAN rooms")
+    files = _complete_history_files(rooms)
+    return _write_room(parent, folder, files)
+
+
+def reopen_history(rooms: list[str], saved_history: str) -> None:
+    old = _private_dir(Path(saved_history))
+    originals = [_private_dir(Path(room)) for room in rooms]
+    if any(old == origin or old in origin.parents for origin in originals):
+        raise Hold("HOLD: history cannot replace or contain original receipts")
+    expected = _complete_history_files(rooms)
+    for name, data in expected.items():
+        if _read(old / name, 262144) != data:
+            raise Hold("HOLD: saved HUMAN history changed from original review rooms")
+    if set(os.listdir(old)) != set(expected):
+        raise Hold("HOLD: unexpected saved HUMAN history entries")
 
 
 def main() -> int:
@@ -405,6 +451,10 @@ def main() -> int:
     c.add_argument("--rooms", nargs="+", required=True)
     c.add_argument("--private-parent", required=True)
     c.add_argument("--folder", required=True)
+    d = commands.add_parser("reopen-history",
+                            help="Re-admit original self-report rooms and exact saved history bytes")
+    d.add_argument("--rooms", nargs="+", required=True)
+    d.add_argument("--history-room", required=True)
     args = parser.parse_args()
     try:
         if args.cmd == "receive":
@@ -415,10 +465,14 @@ def main() -> int:
             s = reopen(args.room)
             print("PRIVATE REVIEW_ONLY: original browser and output bytes unchanged.")
             print("Self-reported discussion markers: " + str(s.count("DISCUSSED")))
-        else:
+        elif args.cmd == "history":
             target = history(args.rooms, args.private_parent, args.folder)
             print("PRIVATE REVIEW_ONLY: HUMAN self-report history created, no source proof.")
             print("OPEN LOCALLY: " + str(target / HTML))
+        else:
+            reopen_history(args.rooms, args.history_room)
+            print("PRIVATE REVIEW_ONLY: original source-free HUMAN history bytes unchanged.")
+            print("No actor identity, chronology, real source, consent or fix authenticated.")
         return 2
     except (Hold, OSError, ValueError) as exc:
         print(str(exc) if isinstance(exc, Hold) else
