@@ -56,6 +56,10 @@ python3 private-assessment-notes/notes.py masking-cues-reopen \
 The separate cue reopening always returns HOLD and never changes the original
 source or sensitivity decisions.
 
+Cue schema v8 includes the named multipart postData marker where recognized.
+All v1–v7 original private cue rooms remain read-only byte-reopenable,
+and no marker family is a privacy release/verdict.
+
 The optional original PRIVATE browser sensitivity editor also shows those
 source-bound original-ordinal cue **counts inline** (never the original source
 text or notes). Its local filter can restrict the visible table to any one

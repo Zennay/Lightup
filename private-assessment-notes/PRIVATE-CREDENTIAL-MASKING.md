@@ -82,6 +82,16 @@ forms frequently present in assessment writeups:
   oversize bodies or unrecognized credentials. No actual HTTP requests.
   New local markers: `[REDACTED_HAR_FORM_TEXT]` and
   `[REDACTED_HAR_EMBEDDED_JSON]`; they are **literal text cues only**.
+- **HAR multipart/form-data postData:** original HTTP Archive
+  `postData.text` values labeled `multipart/form-data` now also mask the
+  **entire** bounded body when a conventional
+  `Content-Disposition: form-data; name="credential_field"` part header
+  names a known sensitive credential. This avoids exposing that part's
+  raw value or other bytes of the same body in the derived PRIVATE note.
+  A new `[REDACTED_HAR_MULTIPART_TEXT]` placeholder is a literal
+  HUMAN navigation cue. Unknown/long/folded headers, noncanonical MIME,
+  nested multipart, unusually encoded part names and bodies longer than
+  16 KiB remain HUMAN/HOLD without a sanitization claim.
 - **HAR/JSON HTTP header objects:** adjacent quoted
   `"name": "Authorization", "value": "…"` and reversed
   `"value": "…", "name": "Authorization"`; also Cookie,
@@ -158,7 +168,7 @@ previously generated packets are not changed or reinterpreted.
 Neither presence nor absence of masking placeholders is evidence
 that secrets or personal data are absent.
 
-## NEW: navigable original-ordinal masking-cue desk (v7)
+## NEW: navigable original-ordinal masking-cue desk (v8)
 
 The native `notes.py masking-cues` and optional
 `notes.py prepare --with-mask-cues` now render a fully offline
@@ -170,10 +180,10 @@ groups show no original text, customer names, source digests, freeform
 HUMAN notes, credentials or authority claims. Zero counts are *not* clearance.
 
 New independent native cue receipts use
-`lightup.private_assessment_masking_cues.v7`, including the original HAR
-postData known-secret cue family, with unchanged original source-bound
+`lightup.private_assessment_masking_cues.v8`, including original HAR
+postData form, JSON and multipart known-field cue families, with unchanged original source-bound
 0700/0600 custody. The read-only
-`notes.py masking-cues-reopen` still preserves **v1 through v6**
+`notes.py masking-cues-reopen` still preserves **v1 through v7**
 receipts and their original HTML/CSV bytes; existing historical packets
 are never rewritten, auto-upgraded or silently normalized. In particular,
 new cue navigation does not change the canonical original source manifest,
