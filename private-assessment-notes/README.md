@@ -2,6 +2,35 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Complete local, non-authorizing HUMAN review product on the original Basic/Bearer/API-key credential redaction boundary. No target interaction, scan, model invocation, upload, customer notification, approval, deployment, retest, or release.
 
+### New: source-bound original HAR HUMAN action worksheets (v18)
+
+The original PRIVATE source-owner workroom now emits
+`PRIVATE-HAR-ACTIONS.html` (printable, scriptless) and
+`PRIVATE-HAR-ACTIONS.csv` (manually editable task template).
+Every original ordinal receives a mandatory **full original review** task,
+even when all cue counters are zero; a completely withheld derived copy
+gets an additional **SOURCE OWNER REQUIRED** task. Visible HAR category
+markers create separate original-position tasks. The CSV has an unfilled
+HUMAN notes column and initial `PENDING_HUMAN` statuses; updating it
+is a private manual coordination action, **not** native consent, clearance,
+finalisation or an accepted input to any assessment execution.
+
+No original source names, paths, URLs, hashes, content, identifiers or
+reviewer notes are read into the generated worklist. Literal marker counts
+are not real detections or proof of effective credential masking. Edited
+task CSVs are **not** the immutable source-bound receipt. The unchanged
+original PRIVATE HUMAN decision workroom is the sole local decision path;
+all decisions remain HOLD without independent review and HUMAN GO.
+
+With `notes.py prepare --with-mask-cues` the two worksheets appear in the
+fresh original owner-private kit. The independent `notes.py masking-cues`
+creates the same files with immutable byte-level receipt admission.
+`notes.py masking-cues-reopen` verifies unedited v18 action HTML/CSV
+against the unmodified original source; earlier v1–v17 cue packets
+reopen using their exact original historical algorithms. **Do not edit
+receipt-bound originals.** Copy the editable CSV elsewhere, keep owner-only
+permissions, and treat all copies as PRIVATE/HOLD.
+
 ### New: conservative HAR source-content withholding
 
 For newly generated **owner-private** workrooms, the original source-bound
@@ -19,7 +48,7 @@ An ambiguous, embedded, malformed or over-limit HAR-like JSON note is
 withheld in full from newly derived PRIVATE workrooms, rather than
 partially interpreted without the original request/response context.
 The original privately retained source is never modified. New masking-cue
-receipts are v17, with exact historical v1-v16 reopen support.
+receipts are v18, with exact historical v1-v17 reopen support.
 A source-free, printable PRIVATE-HAR-HOLD.html board identifies whole-copy
 withheld markers by original ordinal inside a new separate masking-cue room
 or the optional initial HUMAN preview. PRIVATE-HAR-INVENTORY.html and

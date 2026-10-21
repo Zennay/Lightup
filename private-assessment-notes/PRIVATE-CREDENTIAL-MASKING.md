@@ -416,3 +416,16 @@ authenticated current client/operator consent with action-time revocation,
 plus explicit HUMAN GO, remain mandatory for any authorized actual
 customer use, production merge or deploy. This work introduces no new
 assessments, active scanning, network calls, releases or automation.
+
+### v18 PRIVATE HAR action worksheet
+
+For local original-owner HUMAN follow-up, a new source-minimal
+`PRIVATE-HAR-ACTIONS.html` gives one mandatory full-source review action
+per original ordinal plus conditional withheld-copy and HAR-category actions.
+`PRIVATE-HAR-ACTIONS.csv` is a **manual PRIVATE coordination template**,
+not an assessment, privacy declaration, verified finding or grant request.
+No source text, filenames, URLs, SHA hashes, client identifiers or HUMAN notes
+are embedded in either generated file. Original source-bound independent cue
+packets admit the exact template bytes under v18; earlier v1–v17 packages
+retain their original immutable verification behavior. Do not edit a
+receipt-bound file: make a separate owner-private copy of the CSV if needed.
