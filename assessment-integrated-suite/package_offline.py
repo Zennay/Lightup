@@ -47,6 +47,11 @@ per-stage marker transition summaries, local changed/repeated/needs-input
 filters, and a fixed-status-only private CSV covering all 20 original
 actions. The browser never infers actor identity or chronological truth
 from chooser order, and invalid files clear stale comparisons.
+The multi-round HUMAN comparison can also export a completely
+scriptless CSP-pinned printable HTML briefing, with all 20 original
+status rows and five anonymous stage transition summaries. No input
+file names, hashes, sources, notes, targets or identity are included.
+The brief is unsigned, private, and never proof of an authentic review.
 The same browser now offers a NEW next-round HUMAN discussion proposal:
 manually pick one of the selected round markers for EACH of the original
 20 action ordinals, with no default choices, no incomplete export and
