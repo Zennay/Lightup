@@ -304,6 +304,30 @@
       [label(i), priority(c), c.status, c.route, stageText(c.stage),
         c.due || "-", c.regressions.join(", ") || "None"].forEach(x => child(tr,"td",x));
     });
+    if (planDelta) {
+      child(box, "h2", "Saved HUMAN plan comparison");
+      child(box, "p", planDelta.rows.length + " changed case(s) · " +
+        planDelta.stageChanges + " stage changes · " + planDelta.routeChanges +
+        " workstream changes · " + planDelta.dateChanges +
+        " date changes. Prior/current labels are operator supplied, not authenticated chronology.", "print-note");
+      const deltaTable = child(box, "table");
+      const deltaHead = child(child(deltaTable, "thead"), "tr");
+      ["Case","Changed fields","Prior stage","Current stage","Prior workstream",
+       "Current workstream","Prior date","Current date"].forEach(x => child(deltaHead,"th",x));
+      const deltaBody = child(deltaTable, "tbody");
+      if (!planDelta.rows.length) {
+        const tr = child(deltaBody,"tr");
+        const td = child(tr,"td","No HUMAN planning-field differences.");
+        td.colSpan = 8;
+      } else {
+        planDelta.rows.forEach(row => {
+          const tr = child(deltaBody,"tr");
+          [row.case,row.changed.join("; "),row.before.stage,row.after.stage,
+           row.before.route,row.after.route,row.before.due || "-",row.after.due || "-"]
+            .forEach(x => child(tr,"td",x));
+        });
+      }
+    }
     child(box, "p", "Unsigned, unverified lab review data. No targets, case identities, actual permission or grant asserted.", "print-note");
   }
 
@@ -583,7 +607,7 @@
     const box = $("plan-results"), body = $("plan-rows");
     body.replaceChildren();
     box.hidden = !planDelta;
-    if (!planDelta) return;
+    if (!planDelta) { if (report) renderPrintBrief(); return; }
     const {rows, stageChanges, routeChanges, dateChanges} = planDelta;
     $("plan-changed").textContent = rows.length + " changed case(s)";
     $("plan-stage-changes").textContent = stageChanges + " stage change(s)";
@@ -600,6 +624,7 @@
       const td = child(tr,"td","No HUMAN planning-field changes between these snapshots.");
       td.colSpan = 8;
     }
+    if (report) renderPrintBrief();
   }
   async function compareSavedPlans() {
     planDelta = null;

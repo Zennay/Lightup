@@ -68,3 +68,8 @@ All local JSON intake now rejects duplicate object keys (including escaped
 spellings that decode to the same key) before canonical schema admission. This
 prevents ambiguous source or saved-plan fields from being silently resolved by
 the browser's ordinary last-key-wins JSON parser.
+
+When the saved-plan comparison is active, **Print brief** includes the same
+changed-only planning table and transition totals alongside the complete
+current all-case follow-up brief. Clearing the comparison removes its delta
+from the print output; the original lab verdict and current plan remain intact.
