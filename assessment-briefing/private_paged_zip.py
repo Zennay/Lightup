@@ -15,7 +15,8 @@ import stat
 import sys
 import zipfile
 
-from briefing import DENIAL_FLAGS, Hold, json_bytes, publish_new, require, strict_pairs
+from briefing import (DENIAL_FLAGS, Hold, json_bytes, open_directory_nofollow,
+                      publish_new, read_private_at, require, strict_pairs)
 
 START_HERE_PRIVATE = (
                 "LIGHTUP PRIVATE OFFLINE PAGED BRIEFING — REVIEW ONLY\n\n"
@@ -87,33 +88,17 @@ def admit_inventory(manifest: dict) -> dict[str, str]:
 
 
 def read_private_file(directory_fd: int, name: str, limit: int) -> bytes:
-    """Use directory-fd relative nofollow reads, not arbitrary paths or links."""
-    require(name and "/" not in name and "\\" not in name and name not in (".", ".."))
-    fd = -1
+    """Use the shared owner-private stable no-follow reader."""
     try:
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
-        fd = os.open(name, flags, dir_fd=directory_fd)
-        status = os.fstat(fd)
-        require(stat.S_ISREG(status.st_mode) and status.st_nlink == 1)
-        require(stat.S_IMODE(status.st_mode) & 0o077 == 0)
-        require(0 < status.st_size <= limit)
-        with os.fdopen(fd, "rb") as stream:
-            fd = -1
-            data = stream.read(limit+1)
-        require(0 < len(data) <= limit)
-        return data
-    except OSError:
+        return read_private_at(directory_fd, name, limit)
+    except (OSError, ValueError, Hold):
         raise Hold("PRIVATE report source not admitted (HOLD)") from None
-    finally:
-        if fd >= 0:
-            os.close(fd)
 
 
 def assemble_from_existing(private_dir: str) -> tuple[bytes, dict]:
     dir_fd = -1
     try:
-        dir_fd = os.open(private_dir, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) |
-                        getattr(os, "O_NOFOLLOW", 0))
+        dir_fd, _ = open_directory_nofollow(private_dir, private=True)
         folder_status = os.fstat(dir_fd)
         require(stat.S_ISDIR(folder_status.st_mode) and
                 (stat.S_IMODE(folder_status.st_mode) & 0o077) == 0)

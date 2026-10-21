@@ -78,28 +78,74 @@ def strict_pairs(pairs: list[tuple[str, object]]) -> dict:
     return out
 
 
-def open_source(path: str) -> tuple[dict, bytes, str]:
-    fd = -1
+def open_directory_nofollow(path: str | Path, *, private: bool = False) -> tuple[int, str]:
+    """Open an absolute directory path component-by-component without following links."""
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        raise Hold("PRIVATE path refused: no-follow support unavailable")
+    absolute = os.path.abspath(os.fspath(path))
+    parts = [part for part in absolute.split(os.sep) if part]
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    fd = os.open(os.sep, flags)
     try:
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
-        fd = os.open(path, flags)
-        meta = os.fstat(fd)
-        require(stat.S_ISREG(meta.st_mode) and 0 < meta.st_size <= MAX_BYTES)
-        with os.fdopen(fd, "rb") as f:
-            fd = -1
-            raw = f.read(MAX_BYTES + 1)
-        require(0 < len(raw) <= MAX_BYTES)
+        for part in parts:
+            next_fd = os.open(part, flags, dir_fd=fd)
+            os.close(fd)
+            fd = next_fd
+        info = os.fstat(fd)
+        require(stat.S_ISDIR(info.st_mode))
+        if private:
+            require(info.st_uid == os.getuid() and stat.S_IMODE(info.st_mode) == 0o700)
+        return fd, absolute
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def read_private_at(directory_fd: int, name: str, maximum: int) -> bytes:
+    """Read one bounded owner-private regular file through a directory descriptor."""
+    require(name not in ("", ".", "..") and "/" not in name and "\\" not in name)
+    require(hasattr(os, "O_NOFOLLOW"))
+    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0) |
+                 getattr(os, "O_NONBLOCK", 0), dir_fd=directory_fd)
+    try:
+        before = os.fstat(fd)
+        require(stat.S_ISREG(before.st_mode) and before.st_uid == os.getuid())
+        require(before.st_mode & 0o077 == 0 and before.st_nlink == 1)
+        require(0 < before.st_size <= maximum)
+        with os.fdopen(os.dup(fd), "rb", closefd=True) as stream:
+            raw = stream.read(maximum + 1)
+        after = os.fstat(fd)
+        first = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
+                 before.st_ctime_ns, before.st_uid, before.st_mode, before.st_nlink)
+        last = (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns,
+                after.st_ctime_ns, after.st_uid, after.st_mode, after.st_nlink)
+        require(len(raw) == before.st_size and len(raw) <= maximum and first == last)
+        return raw
+    finally:
+        os.close(fd)
+
+
+def read_private_bytes(path: str | Path, maximum: int) -> bytes:
+    absolute = os.path.abspath(os.fspath(path))
+    parent_path, name = os.path.dirname(absolute), os.path.basename(absolute)
+    parent_fd, _ = open_directory_nofollow(parent_path)
+    try:
+        return read_private_at(parent_fd, name, maximum)
+    finally:
+        os.close(parent_fd)
+
+
+def open_source(path: str) -> tuple[dict, bytes, str]:
+    try:
+        raw = read_private_bytes(path, MAX_BYTES)
         payload = json.loads(raw.decode("utf-8"), object_pairs_hook=strict_pairs,
                              parse_constant=lambda _: require(False))
         require(type(payload) is dict)
         admit_source(payload)
         return payload, raw, hashlib.sha256(raw).hexdigest()
     except (OSError, ValueError, UnicodeError, RecursionError, OverflowError, TypeError,
-            MemoryError) as exc:
+            MemoryError, Hold):
         raise Hold("PRIVATE source rejected (HOLD); no output published") from None
-    finally:
-        if fd >= 0:
-            os.close(fd)
 
 
 def admit_source(x: dict) -> None:
@@ -246,38 +292,70 @@ def json_bytes(data: dict) -> bytes:
 
 
 def publish_new(directory: str, artifacts: dict[str, bytes]) -> None:
-    # Exclusive, private and all-or-nothing package. No symlink traversal or overwrite.
-    parent = Path(directory)
-    created = False
+    """Create a new private bundle through directory descriptors; never follow links or overwrite."""
+    absolute = os.path.abspath(os.fspath(directory))
+    parent_path, directory_name = os.path.dirname(absolute), os.path.basename(absolute)
+    require(directory_name not in ("", ".", ".."))
+    parent_fd = output_fd = -1
+    created_directory = False
+    created_files: list[tuple[str, int | None, int | None]] = []
     try:
-        os.mkdir(parent, 0o700)
-        created = True
-        require(stat.S_IMODE(parent.stat().st_mode) == 0o700)
+        parent_fd, _ = open_directory_nofollow(parent_path)
+        os.mkdir(directory_name, 0o700, dir_fd=parent_fd)
+        created_directory = True
+        output_fd = os.open(directory_name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW |
+                            getattr(os, "O_CLOEXEC", 0), dir_fd=parent_fd)
+        folder = os.fstat(output_fd)
+        require(stat.S_ISDIR(folder.st_mode) and folder.st_uid == os.getuid())
+        require(stat.S_IMODE(folder.st_mode) == 0o700)
         for name, data in artifacts.items():
-            require("/" not in name and "\\" not in name and len(data) <= 24 * 1024 * 1024)
-            fd = os.open(parent / name, os.O_CREAT | os.O_EXCL | os.O_WRONLY |
-                         getattr(os, "O_NOFOLLOW", 0), 0o600)
-            with os.fdopen(fd, "wb") as f:
-                f.write(data)
-                f.flush()
-                os.fsync(f.fileno())
-        dirfd = os.open(parent, os.O_RDONLY)
-        try:
-            os.fsync(dirfd)
-        finally:
-            os.close(dirfd)
-    except (OSError, Hold):
-        if created:
-            for name in artifacts:
+            require(name not in ("", ".", "..") and "/" not in name and "\\" not in name)
+            require(len(data) <= 24 * 1024 * 1024)
+            fd = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW |
+                         getattr(os, "O_CLOEXEC", 0), 0o600, dir_fd=output_fd)
+            created_files.append((name, None, None))
+            try:
+                identity = os.fstat(fd)
+                created_files[-1] = (name, identity.st_dev, identity.st_ino)
+                os.fchmod(fd, 0o600)
+                with os.fdopen(fd, "wb", closefd=True) as stream:
+                    fd = -1
+                    stream.write(data)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            finally:
+                if fd >= 0:
+                    os.close(fd)
+        os.fsync(output_fd)
+        os.fsync(parent_fd)
+    except BaseException as error:
+        if output_fd >= 0:
+            for name, device, inode in reversed(created_files):
                 try:
-                    (parent / name).unlink(missing_ok=True)
+                    current = os.stat(name, dir_fd=output_fd, follow_symlinks=False)
+                    if ((device is None or inode is None) or
+                            (current.st_dev == device and current.st_ino == inode)):
+                        os.unlink(name, dir_fd=output_fd)
                 except OSError:
                     pass
             try:
-                parent.rmdir()
+                os.fsync(output_fd)
             except OSError:
                 pass
-        raise Hold("PRIVATE output refused; no existing files overwritten") from None
+        if created_directory and parent_fd >= 0:
+            try:
+                os.rmdir(directory_name, dir_fd=parent_fd)
+                os.fsync(parent_fd)
+            except OSError:
+                pass
+        if isinstance(error, (OSError, Hold, ValueError, TypeError, OverflowError, MemoryError)):
+            raise Hold("PRIVATE output refused; no existing files overwritten") from None
+        raise
+    finally:
+        if output_fd >= 0:
+            os.close(output_fd)
+        if parent_fd >= 0:
+            os.close(parent_fd)
 
 
 def make_package(path: str, output: str) -> None:

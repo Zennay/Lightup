@@ -13,7 +13,7 @@ import stat
 import sys
 
 from briefing import (CSS, DENIAL_FLAGS, Hold, SEVERITIES, h, json_bytes,
-                      open_source, publish_new, require, text_value)
+                      open_source, publish_new, read_private_bytes, require, text_value)
 
 MAX_CSV_BYTES = 1024 * 1024
 MAX_MANIFEST_BYTES = 64 * 1024
@@ -23,22 +23,10 @@ STAGES = ("", "needs_review", "discussing", "blocked", "documented")
 
 
 def read_limited_file(path: str, maximum: int) -> bytes:
-    fd = -1
     try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
-                     getattr(os, "O_NONBLOCK", 0))
-        mode = os.fstat(fd)
-        require(stat.S_ISREG(mode.st_mode) and 0 < mode.st_size <= maximum)
-        with os.fdopen(fd, "rb") as stream:
-            fd = -1
-            result = stream.read(maximum + 1)
-        require(0 < len(result) <= maximum)
-        return result
-    except (OSError, OverflowError, ValueError, MemoryError):
+        return read_private_bytes(path, maximum)
+    except (OSError, OverflowError, ValueError, MemoryError, Hold):
         raise Hold("PRIVATE review file rejected (HOLD)") from None
-    finally:
-        if fd >= 0:
-            os.close(fd)
 
 
 def source_manifest(raw: bytes, digest: str, source: dict) -> None:

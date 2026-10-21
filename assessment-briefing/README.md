@@ -7,10 +7,11 @@
 From a trusted local checkout containing a PRIVATE original source JSON produced elsewhere:
 
 ```bash
+chmod 600 ./original-private-lab.json
 python3 assessment-briefing/briefing.py --source ./original-private-lab.json --output-dir ./NEW-PRIVATE-BRIEFING
 ```
 
-This **does not run a scan**. Creates the new directory exclusively as 0700 and the following files as 0600, refuses to overwrite existing output, and rejects symlinks, duplicate JSON keys and unsupported/oversize source before publishing:
+Before any native workflow, every source JSON, manifest, worksheet and ZIP input must be a current-user-owned regular file with no group/other permissions, a single hard link, bounded stable contents and no symlink in any path component. The output directory must not exist; it is created exclusively as owner-only mode 0700 and its files as 0600 through directory descriptors. This **does not run a scan**; it refuses to overwrite existing output and rejects unsafe paths, duplicate JSON keys and unsupported/oversize source before publishing:
 
 - **`private-briefing.html`:** Print-friendly scriptless, CSP-hash-pinned offline report with original severity distribution, finding descriptions, check/capability, exact declared endpoint ordinal when literally equal, private source evidence reference counts, impact/fix/retest/evidence summary in opt-in expandable details, and blank HUMAN-only follow-up worksheets. Records appear in source order. Empty original results still produce a report.
 - **`human-followup.csv`:** Blank HUMAN ownership / action / blocker worksheet indexed only by original row ordinal, source severity and evidence-reference count. No source target URLs, findings text, names, hashes or evidence content in this CSV; still treat aggregates as PRIVATE. Blank cells cannot inject spreadsheet formulas.
