@@ -56,6 +56,18 @@ python3 private-assessment-notes/notes.py masking-cues-reopen \
 The separate cue reopening always returns HOLD and never changes the original
 source or sensitivity decisions.
 
+The optional original PRIVATE browser sensitivity editor also shows those
+source-bound original-ordinal cue **counts inline** (never the original source
+text or notes). Its local filter can restrict the visible table to any one
+literal marker category or to positions containing any recognized marker.
+The complete original-source HUMAN CSV export **always includes all rows**,
+including hidden and unchanged sources. An independent explicit HUMAN
+confirmation can mark only currently VISIBLE rows `REVIEW_REQUIRED` for
+local discussion: never `WITHHOLD`, cleared, approved, remediated or
+authentic. It does not dispatch or finalize anything. Filtering zero markers
+does **not** mean that the source is safe, anonymous or free of secrets.
+
+
 This creates a **new** `PRIVATE-lightup-sensitivity-draft-*` owner-only directory, with:
 
 - `OPEN-PRIVATE.html`: readable human-only original-slot concern preview, not a source-text viewer.

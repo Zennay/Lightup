@@ -68,6 +68,20 @@ forms frequently present in assessment writeups:
   nodes, with a maximum of 96 candidate parses per note. Invalid JSON,
   duplicate keys, unknown secret names, non-string values and oversized
   inputs are **NOT** certified clean. The original redactor still runs.
+- **HAR postData body privacy:** in a valid, bounded original HAR JSON
+  object containing exact string `mimeType` and `text` properties, a
+  `application/x-www-form-urlencoded` body with a recognized credential
+  field name (including strictly UTF-8 percent-decoded field names) now
+  **withholds the entire original body text string**. Known
+  `application/json` or `application/*+json` text bodies are withheld
+  when a separate non-recursive bounded JSON parse finds an original named
+  credential-bearing string value. This recognizes a real HAR body that
+  previously bypassed ordinary adjacent HAR name/value field masking.
+  Body inspection is limited to 16 KiB / 128 form entries and does not
+  certify unknown MIME, malformed input, unusually encoded field names,
+  oversize bodies or unrecognized credentials. No actual HTTP requests.
+  New local markers: `[REDACTED_HAR_FORM_TEXT]` and
+  `[REDACTED_HAR_EMBEDDED_JSON]`; they are **literal text cues only**.
 - **HAR/JSON HTTP header objects:** adjacent quoted
   `"name": "Authorization", "value": "…"` and reversed
   `"value": "…", "name": "Authorization"`; also Cookie,
@@ -144,7 +158,7 @@ previously generated packets are not changed or reinterpreted.
 Neither presence nor absence of masking placeholders is evidence
 that secrets or personal data are absent.
 
-## NEW: navigable original-ordinal masking-cue desk (v6)
+## NEW: navigable original-ordinal masking-cue desk (v7)
 
 The native `notes.py masking-cues` and optional
 `notes.py prepare --with-mask-cues` now render a fully offline
@@ -156,9 +170,10 @@ groups show no original text, customer names, source digests, freeform
 HUMAN notes, credentials or authority claims. Zero counts are *not* clearance.
 
 New independent native cue receipts use
-`lightup.private_assessment_masking_cues.v6`, with the exact original
-source-bound 0700/0600 custody. The read-only
-`notes.py masking-cues-reopen` still preserves **v1 through v5**
+`lightup.private_assessment_masking_cues.v7`, including the original HAR
+postData known-secret cue family, with unchanged original source-bound
+0700/0600 custody. The read-only
+`notes.py masking-cues-reopen` still preserves **v1 through v6**
 receipts and their original HTML/CSV bytes; existing historical packets
 are never rewritten, auto-upgraded or silently normalized. In particular,
 new cue navigation does not change the canonical original source manifest,
