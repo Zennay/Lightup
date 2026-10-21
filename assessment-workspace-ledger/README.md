@@ -2116,3 +2116,44 @@ remediation verification or a valid release signal. Its download can inherit
 a browser-default non-private permissions mask; the operator must transfer
 the file to genuine owner-only PRIVATE custody before native receive. Native
 source admission cannot be skipped or replaced with browser output.
+
+### ORIGINAL HUMAN calendar change history (offline v52)
+
+**Foreground console action 60** compares **2–8 deliberately selected original**
+`PRIVATE-HUMAN-proposed-calendar.json` receipt files and their corresponding
+complete `PRIVATE-HUMAN-proposed-calendar.csv` files. Every complete pair is
+accepted only against ONE unchanged original source-bound owner inbox,
+original history, native operator follow-up and its complete original CSV.
+Each revision must match the native canonical receipt, original byte
+identities and all source slots in their original order. A shifted date,
+changed priority or updated question remains a HUMAN-only proposal.
+
+The owner-private output is a new 0700 folder with a source-minimal root
+HTML index and unsigned revision receipt. For each original proposed owner
+there is a distinct 0700 room containing 0600 HTML and CSV: initial/current
+proposed HUMAN dates and priorities, plus a Boolean that says the PRIVATE
+HUMAN question changed. Original question text is intentionally omitted
+from these revision briefs. The root index contains no owner labels, source
+case IDs, private questions, original file paths or hashes. Select
+`--changed-only` to include only HUMAN proposal slots that changed in
+at least one explicitly selected round; unchanged sources are not described
+as fixed. No appointment is booked and no real work is dispatched.
+
+For manual native CLI use, supply all original paths and pairs explicitly:
+
+    python3 assessment-workspace-ledger/portfolio_operator_calendar_history.py \
+      --history /private/original-history.json \
+      --inbox /private/original-inbox.json \
+      --followup /private/original-operator-followup.json \
+      --operator-csv /private/original-operator-followup.csv \
+      --calendar-receipt /private/version1/PRIVATE-HUMAN-proposed-calendar.json \
+      --proposed-csv /private/version1/PRIVATE-HUMAN-proposed-calendar.csv \
+      --calendar-receipt /private/version2/PRIVATE-HUMAN-proposed-calendar.json \
+      --proposed-csv /private/version2/PRIVATE-HUMAN-proposed-calendar.csv \
+      --private-parent /private/output
+
+All files remain private; a proposed HUMAN owner label is not proof of
+recipient identity, and repeated unchanged content does not prove
+independent authenticated HUMAN reviews. No actual schedule, consent,
+grant, scan, remediation, authorization, independent security review or
+release is created by this historical desk.
