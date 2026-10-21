@@ -294,6 +294,8 @@ def main() -> int:
                         help="existing offline ZIP; byte integrity only, never authenticity")
     verify.add_argument("--expected-sha256", default="",
                         help="optional expected ZIP digest from a trusted separate channel")
+    verify.add_argument("--sha256-file", default="",
+                        help="optional standard sha256sum sidecar bound to the package filename")
     args = cli.parse_args()
     if args.command == "catalog":
         for label, component in (("source inspector", INSPECTOR), ("PRIVATE briefing", BRIEF),
@@ -306,7 +308,9 @@ def main() -> int:
         return 0
     try:
         if args.command == "verify-kit":
-            return verify_package(Path(args.package).absolute(), args.expected_sha256)
+            return verify_package(
+                Path(args.package).absolute(), args.expected_sha256,
+                Path(args.sha256_file).absolute() if args.sha256_file else None)
         if args.command == "human-workpack":
             return private_human_workpack(args)
         if args.command == "workpack-progress":

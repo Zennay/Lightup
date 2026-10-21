@@ -81,7 +81,33 @@ def file_digest(path: Path) -> str:
     return digestor.hexdigest()
 
 
-def verify(path: Path, expected_sha256: str = "") -> int:
+def sidecar_digest(sidecar: Path, package: Path) -> str:
+    try:
+        st = sidecar.lstat()
+        if (not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode) or
+                not 0 < st.st_size <= 4096):
+            raise Hold("HOLD: SHA-256 sidecar must be a bounded ordinary file")
+        raw = sidecar.read_bytes().decode("utf-8", errors="strict")
+    except Hold:
+        raise
+    except (OSError, UnicodeDecodeError):
+        raise Hold("HOLD: SHA-256 sidecar unavailable or not UTF-8") from None
+    lines = raw.splitlines()
+    if len(lines) != 1:
+        raise Hold("HOLD: SHA-256 sidecar must contain exactly one checksum line")
+    match = re.fullmatch(r"([a-f0-9]{64})  ([^/\\\\]+)", lines[0])
+    if not match or match.group(2) != package.name:
+        raise Hold("HOLD: SHA-256 sidecar digest or package filename mismatch")
+    return match.group(1)
+
+
+def verify(path: Path, expected_sha256: str = "",
+           sha256_file: Path | None = None) -> int:
+    sidecar_value = sidecar_digest(sha256_file, path) if sha256_file else ""
+    if expected_sha256 and sidecar_value and expected_sha256 != sidecar_value:
+        raise Hold("HOLD: explicit expected digest conflicts with sidecar")
+    if sidecar_value:
+        expected_sha256 = sidecar_value
     try:
         st = path.lstat()
     except OSError:

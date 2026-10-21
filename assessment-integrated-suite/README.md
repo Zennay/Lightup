@@ -12,7 +12,10 @@ v1 manifest in v26, and current v2 bundles. Legacy v1 bundles do not hash their
 generated launcher or README internally; pass an expected whole-ZIP SHA-256
 from a separately trusted source when required.
 
-Verify v27 without extracting files:
+Verify v27 without extracting files, using the committed convenience sidecar:
+python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v27.zip --sha256-file assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v27.zip.sha256
+
+Or provide an expected digest explicitly from a trusted separate channel:
 python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v27.zip --expected-sha256 dc012bed8d0e58d9bd8bbb33320de327f0db859848ed8c8e5f68d799318028f3
 
 ## Previous portable software bundle — v26
