@@ -108,36 +108,113 @@
     ALL.forEach(id => state[id]="NOT_REVIEWED");render();
     $("result").textContent = "In-memory markers cleared. No original files changed.";
   });
+  // JSON.parse alone accepts duplicate object properties and silently keeps the
+  // last value. Inspect every syntactic string key in a valid JSON document,
+  // including escaped names, before trusting an offline imported self-report.
+  function parseWithoutDuplicateKeys(raw) {
+    const result = JSON.parse(raw);
+    const containers = [];
+    for (let i = 0; i < raw.length;) {
+      const char = raw[i];
+      if (char === '"') {
+        let end = i + 1;
+        while (end < raw.length) {
+          if (raw[end] === "\\") { end += 2; continue; }
+          if (raw[end] === '"') break;
+          end++;
+        }
+        if (end >= raw.length) throw Error("Malformed JSON string");
+        let next = end + 1;
+        while (next < raw.length && /\s/.test(raw[next])) next++;
+        if (raw[next] === ":") {
+          const keys = containers[containers.length - 1];
+          if (!(keys instanceof Set)) throw Error("Unexpected JSON key position");
+          const key = JSON.parse(raw.slice(i, end + 1));
+          if (keys.has(key)) throw Error("Duplicate JSON object property");
+          keys.add(key);
+        }
+        i = end + 1;
+      } else if (char === "{") {
+        containers.push(new Set());
+        if (containers.length > 32) throw Error("JSON nesting limit exceeded");
+        i++;
+      } else if (char === "[") {
+        containers.push(null);
+        if (containers.length > 32) throw Error("JSON nesting limit exceeded");
+        i++;
+      } else if (char === "}" || char === "]") {
+        containers.pop();
+        i++;
+      } else {
+        i++;
+      }
+    }
+    if (containers.length) throw Error("Unbalanced JSON");
+    return result;
+  }
+
+  function admitImportedReport(data) {
+    const sameKeys = (value, expected) =>
+      value !== null && typeof value === "object" && !Array.isArray(value) &&
+      Object.keys(value).sort().join("|") === expected.slice().sort().join("|");
+    if (!sameKeys(data, ["schema","mode","authority","verified_original_source",
+          "source_files_included","private_notes_included","steps"]) ||
+        data.schema !== SCHEMA || data.mode !== "REVIEW_ONLY" ||
+        data.verified_original_source !== false || data.source_files_included !== false ||
+        data.private_notes_included !== false) throw Error("Unknown schema or source claim");
+    if (!sameKeys(data.authority, Object.keys(NO_AUTHORITY)) ||
+        Object.keys(NO_AUTHORITY).some(key => data.authority[key] !== false)) {
+      throw Error("Attempted authorization claim");
+    }
+    if (!Array.isArray(data.steps) || data.steps.length !== ALL.length) {
+      throw Error("Incomplete original HUMAN action order");
+    }
+    const imported = Object.create(null);
+    data.steps.forEach((entry, index) => {
+      const id = ALL[index];
+      if (!sameKeys(entry, ["action","self_reported_state"]) ||
+          entry.action !== Number(id) || !Object.hasOwn(LABELS,entry.self_reported_state)) {
+        throw Error("Altered original HUMAN action or marker");
+      }
+      imported[id] = entry.self_reported_state;
+    });
+    return imported;
+  }
+
+  function describeChanges(incoming) {
+    const changes = ALL.filter(id => state[id] !== incoming[id]);
+    return {
+      changes,
+      preview: changes.map(id =>
+        id + " · " + LABELS[state[id]] + " → " + LABELS[incoming[id]]).join("\\n")
+    };
+  }
+
   $("import-json").addEventListener("change", async ev => {
     const file = ev.target.files && ev.target.files[0];
     ev.target.value = "";
     if (!file) return;
     try {
       if (file.size < 20 || file.size > 24576) throw Error("Not a bounded route export");
-      const data = JSON.parse(await file.text());
-      if (!data || Array.isArray(data) || Object.keys(data).sort().join("|") !==
-          ["schema","mode","authority","verified_original_source","source_files_included","private_notes_included","steps"].sort().join("|") ||
-          data.schema !== SCHEMA || data.mode !== "REVIEW_ONLY" ||
-          data.verified_original_source !== false || data.source_files_included !== false || data.private_notes_included !== false)
-        throw Error("Wrong schema or asserted authority");
-      if (!data.authority || Array.isArray(data.authority) ||
-          Object.keys(data.authority).sort().join("|") !== Object.keys(NO_AUTHORITY).sort().join("|") ||
-          Object.keys(NO_AUTHORITY).some(k => data.authority[k] !== false))
-        throw Error("Any implied authority is prohibited");
-      if (!Array.isArray(data.steps) || data.steps.length !== ALL.length)
-        throw Error("Route must include exactly all original options");
-      const incoming = Object.create(null);
-      data.steps.forEach((item,index) => {
-        const id = ALL[index];
-        if (!item || Array.isArray(item) ||
-            Object.keys(item).sort().join("|") !== "action|self_reported_state" ||
-            item.action !== Number(id) || !Object.hasOwn(LABELS,item.self_reported_state))
-          throw Error("Unexpected, missing, reordered or altered HUMAN action");
-        incoming[id] = item.self_reported_state;
-      });
-      if (!window.confirm("Replace all in-memory self-reported markers? No source is authenticated.")) return;
+      const data = parseWithoutDuplicateKeys(await file.text());
+      const incoming = admitImportedReport(data);
+      const diff = describeChanges(incoming);
+      if (!diff.changes.length) {
+        $("result").textContent = "The self-report contains the same 20 local discussion markers. Nothing replaced.";
+        return;
+      }
+      const notice = "PRIVATE HUMAN discussion import: " + diff.changes.length +
+        " of 20 self-reported markers would change.\\n\\n" +
+        diff.preview + "\\n\\nReplace all 20 in-memory markers? " +
+        "No original source, review, identity or consent is authenticated.";
+      if (!window.confirm(notice)) {
+        $("result").textContent = "HUMAN import cancelled. No local markers were changed.";
+        return;
+      }
+
+
       ALL.forEach(id => state[id]=incoming[id]);render();
-      $("result").textContent = "Self-reported discussion markers imported locally. No original source or consent verified.";
+      $("result").textContent = "Imported " + diff.changes.length + " local HUMAN marker changes. No original source or consent verified.";
     } catch (_) {
       $("result").textContent = "HOLD: untrusted route file refused (shape, size, sequence or authority claim). No changes applied.";
     }
