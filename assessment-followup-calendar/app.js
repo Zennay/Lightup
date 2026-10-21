@@ -480,7 +480,7 @@
     }
   }
   function monthShift(month,diff){
-    hold(/^20\\d{2}-(0[1-9]|1[0-2])$/.test(month) && [-1,1].includes(diff));
+    hold(/^20\d{2}-(0[1-9]|1[0-2])$/.test(month) && [-1,1].includes(diff));
     const year=Number(month.slice(0,4)),number=Number(month.slice(5,7));
     const target=new Date(year,number-1+diff,1,12);
     hold(target.getFullYear()>=2000 && target.getFullYear()<=2099);
@@ -1388,7 +1388,7 @@
   hook("monthGroup","change",renderMonth);
   hook("monthSelect","change",()=>{
     const candidate=$("monthSelect").value;
-    if(!/^20\\d{2}-(0[1-9]|1[0-2])$/.test(candidate)){
+    if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(candidate)){
       $("monthSelect").value=monthAnchor;inform("Invalid HUMAN calendar month.",true);return;
     }
     monthAnchor=candidate;renderMonth();
