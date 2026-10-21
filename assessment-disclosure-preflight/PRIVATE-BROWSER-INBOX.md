@@ -72,6 +72,29 @@ On complete admission exit **2 / REVIEW_ONLY** returns a ready owner-only
 local receiving room. Any refused input or existing room yields **3 / HOLD**.
 There is no successful authentication/consent/release exit status.
 
+## Reopen the exact original received HUMAN room later (read-only)
+
+The bundled `private_reopen.py` independently checks the owner-only room,
+the *entire exact* private unsigned file inventory, every original SHA-256/length,
+all six required original private roles, and uses the unchanged native original
+`reconcile.py reopen` again to read the receipt/reviewers/decisions/full
+HUMAN result/suppressed counts. This action never modifies, extracts or
+publishes a prior receiving room. A corrupt/missing/extra file, changed source,
+duplicate manifest key, unsafe mode or original admission mismatch causes
+**HOLD (3)**. Exact matching plus original reopening returns **REVIEW_ONLY (2)**,
+never evidence/consent/authorization.
+
+~~~sh
+python3 assessment-disclosure-preflight/private_reopen.py \
+  --private-parent ./owner-private-inbox \
+  --room review-001
+~~~
+
+Encrypted inputs use the original secure native no-echo password prompts when
+opened again. This does not prove that someone else did not copy/replace
+unsigned bytes and manifest together, or that any reviewer/customer identity
+or source was verified.
+
 **Important:** Original files in Downloads remain exactly where they were,
 potentially readable by other users or backup software. Inspect and arrange
 their cleanup yourself under your organization’s retention/privacy policy.

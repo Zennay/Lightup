@@ -63,6 +63,14 @@ Original Downloads files remain untouched and may still be insecure.
 python3 assessment-disclosure-preflight/private_intake.py --help
 ~~~
 
+Original received HUMAN rooms can then be **reopened without writing files**
+via the additional native `private_reopen.py --private-parent ... --room ...`.
+It admits only exact current owner-owned private files, the entire original
+unsigned byte inventory (duplicate keys and unexpected/missing files are HOLD),
+and delegates again to the unchanged original full `reconcile.py reopen`.
+Neither a local digest nor repeat reopening verifies genuine customer identity,
+reviewer independence, evidence, consent, resolution or release.
+
 Only after full original reopening does the room contain an additional
 PRIVATE unsigned receipt of exact local file lengths and SHA-256 with
 all genuine authority flags FALSE. It authenticates nobody, proves no findings,
@@ -744,7 +752,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 23
+store, scan workflow, credential grant or signed release. The 24
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -817,7 +825,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 23
+noncanonical, reordered, oversized or changed members, compares all 24
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no
