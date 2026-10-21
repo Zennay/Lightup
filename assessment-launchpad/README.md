@@ -229,3 +229,35 @@ Read-only reopening independently verifies the exact original Launchpad source p
       --verify-workroom-dir ~/private-lab-next-round
 
 For another follow-up round, use the same original bundle and the new workroom's human-round as --previous-round-dir. The revised responses must always live in a separate owner-private source folder; choose a brand-new empty output root. A partial on-disk result after an error is not a validated workspace. All original security/privacy, authenticated consent and revocation, source-owner and mandatory CI, and HUMAN GO release gates remain entirely separate.
+
+
+## Multi-round PRIVATE HUMAN history (2–8 original-source-bound rounds)
+
+The separate offline history.py viewer accepts **2–8 already generated** HUMAN rounds in the human-selected order. Every previous round must be a complete owner-private four-file source-bound review packet for the exact same original private five-file Launchpad packet. This avoids conflating inconsistent original endpoints or copying HUMAN state between different source manifests.
+
+    mkdir -m 700 ~/private-lab-human-history
+    python3 assessment-launchpad/history.py \
+      --bundle-dir ~/private-lab-guided-workspace/launchpad \
+      --round-dir ~/private-lab-guided-workspace/human-round-01 \
+      --round-dir ~/private-lab-next-round/human-round \
+      --output-dir ~/private-lab-human-history
+
+Repeat --round-dir up to eight times in the operator-selected order. **The order is not authenticated time; it cannot prove that any reviewer acted at a particular date or that a finding was fixed.** No original source, HUMAN stage, reviewer identity, consent, scope or HUMAN GO is authenticated by this unsigned local tool.
+
+Output in a distinct current-user-owned mode-0700 directory (all artifacts exclusive mode 0600):
+- lightup-lab-human-history-private.html: single-file scriptless SHA-256-CSP-pinned PRIVATE HUMAN history. Collapsible endpoint-by-endpoint view of the original local URL, self-reported HUMAN stage, proposed role, private note and changes across 2–8 manually selected rounds. **Contains original endpoints and every selected private note. Do not host/share.**
+- lightup-lab-human-history-routing-private.csv: PRIVATE latest-stage/role routing for each original ordinal, note length and number of changed HUMAN transitions. Never described as anonymous.
+- lightup-lab-human-history-counts.json: counts only by fixed stage/role per round, adjacent transitions, changed HUMAN slots and note-presence counts. No URLs, hashes, paths, private note text or per-slot identifiers.
+- lightup-lab-human-history-counts.csv: equivalent counts-only stage/role and transition matrix in static no-formula vocabulary.
+
+The file integrity reopen is source-bound and read-only:
+
+    python3 assessment-launchpad/history.py \
+      --bundle-dir ~/private-lab-guided-workspace/launchpad \
+      --round-dir ~/private-lab-guided-workspace/human-round-01 \
+      --round-dir ~/private-lab-next-round/human-round \
+      --verify-history-dir ~/private-lab-human-history
+
+The existing next-round builder assessment-launchpad/advance.py **now creates this 2-round HUMAN history automatically**, along with the current HUMAN desk/editor/routing/delta. To include more old rounds when advancing, add --earlier-round-dir for each earlier round, oldest first, up to **six earlier** rounds, then --previous-round-dir for the immediate prior round. The edited response worksheet becomes the final round (up to 8 total). The same --earlier-round-dir values in the same order must be provided to --verify-workroom-dir so it can reopen the original source, earlier HUMAN rounds, current HUMAN state and every new history artifact. The local HTML landing page includes a direct history link.
+
+All work remains offline PRIVATE, LAB-ONLY DRAFT/HOLD. A HUMAN stage transition cannot mean CLEAR, APPROVE, consent, verified repair or end-user permission, and a missing source round is never evidence of a fixed vulnerability.
