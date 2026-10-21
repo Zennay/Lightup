@@ -720,7 +720,7 @@ into one deterministic, fixed-name **unsigned software-only**
 
 This is intentionally an operator software kit, not a source packet,
 customer assessment result, verified evidence, approval record, secret
-store, scan workflow, credential grant or signed release. The 20
+store, scan workflow, credential grant or signed release. The 21
 explicitly allowlisted source files and one deterministic
 `MANIFEST.json` are the **only** ZIP members; every actual included
 software byte is recorded with its size and SHA-256. Fixed ZIP member
@@ -734,9 +734,28 @@ browser/crypto review or HUMAN GO.
 
 ### Open the actual offline kit
 
-Extract into owner-controlled private storage, then open
-[kit-home.html](./kit-home.html) locally for two direct, functional offline
-workroom links. The page is a script-free static navigation guide with a
+To prevent permissive extraction, run the included source-only
+`private_install.py` locally from a trusted LightUp source checkout.
+It checks the original unsigned ZIP without executing its contents, requires
+an existing user-owned private 0700 parent, creates a completely NEW
+0700 child with 0600 software files, refuses existing destinations and
+attempts to remove only newly created files after normal failure.
+It never claims package authenticity, grants or customer rights.
+
+~~~sh
+mkdir -m 700 ./owner-private-kit-parent
+python3 assessment-disclosure-preflight/private_install.py \
+  --zip ./assessment-disclosure-preflight/LightUp-PRIVATE-Assessment-Offline-Kit.zip \
+  --private-dir ./owner-private-kit-parent/installed
+~~~
+
+The installer deliberately returns **2 (REVIEW_ONLY)** when it copied the
+strictly allowlisted unsigned software; invalid input, non-private parent
+or existing output is **3 (HOLD)**. The console does not execute scripts,
+open a browser, scan, run models or contact a network. The destination
+contains `assessment-disclosure-preflight/kit-home.html`.
+Open [kit-home.html](./kit-home.html) locally from that installed folder
+for two direct, functional offline workroom links. The page is a script-free static navigation guide with a
 network-denying CSP; `kit-home.css` remains a separate allowlisted source
 asset. The original lab inspector is **not** in this kit and must be provided
 separately by its actual owner before any native original-artifact preflight.
@@ -774,7 +793,7 @@ python3 assessment-disclosure-preflight/software_bundle.py \
 ~~~
 
 The offline inspector rejects unknown, duplicated, symlink-like,
-noncanonical, reordered, oversized or changed members, compares all 20
+noncanonical, reordered, oversized or changed members, compares all 21
 source asset SHA-256 values with the strict embedded unsigned manifest,
 checks literal-false authority flags and finally compares the COMPLETE
 ZIP bytes with a reproducible rebuilt original software kit. It opens no

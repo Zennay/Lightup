@@ -22,7 +22,7 @@ SOFTWARE_FILES = (
     "review-studio.css", "review-studio.js", "review-vault.js", "package.py",
     "standalone.html", "reconcile-studio.html", "reconcile-studio.css",
     "reconcile-studio.js", "reconcile_package.py", "reconcile-standalone.html",
-    "kit-home.html", "kit-home.css", "software_bundle.py",
+    "kit-home.html", "kit-home.css", "private_install.py", "software_bundle.py",
 )
 MAX_ASSET = 512 * 1024
 ARCHIVE_NAME = "LightUp-PRIVATE-Assessment-Offline-Kit.zip"

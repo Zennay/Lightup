@@ -35,7 +35,7 @@
 <section aria-labelledby="operator">
 <h2 id="operator">Safe operator route</h2>
 <ol>
-<li><strong>Extract privately.</strong> Keep the complete kit in an owner-managed directory. A browser download is not guaranteed to be 0600 or encrypted.</li>
+<li><strong>Install privately.</strong> From the trusted source checkout use <code>python3 private_install.py --zip LightUp-PRIVATE-Assessment-Offline-Kit.zip --private-dir OWNER_ONLY_PARENT/new-kit</code> after creating a 0700 parent directory. It refuses existing destinations and copies only unsigned verified-structure software with 0600 files. A browser download is not guaranteed to be 0600 or encrypted.</li>
 <li><strong>Check source freshness.</strong> On a trusted offline workstation run <code>python3 software_bundle.py --verify-current</code> in this folder. REVIEW_ONLY (exit 2) indicates only that the unsigned installed ZIP matches these exact local source bytes. HOLD (exit 3) rejects a stale or altered package.</li>
 <li><strong>Prepare PRIVATE original artifacts.</strong> The preflight native step requires original held source-owner code. Missing inspector means HOLD; this kit never vendors or invents it.</li>
 <li><strong>Keep evidence separate.</strong> Never treat a source ordinal, digest or anonymous-looking count as proof of provenance, confidentiality, owner consent, valid finding, or remediation.</li>
