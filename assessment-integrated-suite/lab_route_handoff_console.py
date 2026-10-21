@@ -43,6 +43,18 @@ def run(session, path_prompt, ask, mode: str) -> None:
             new = handoff.history(sources, parent, folder)
             _report(str(new / "OPEN-PRIVATE.html"),
                     "PRIVATE REVIEW_ONLY: manual-order HUMAN changes; not verified fixes.")
+        elif mode == "reopen_history":
+            amount = ask("Number of original human review rooms (2-8)")
+            if amount not in tuple(str(n) for n in range(2, 9)):
+                raise handoff.Hold("HOLD: select 2 to 8 original receipt rooms")
+            sources = [
+                path_prompt("Original PRIVATE HUMAN receipt room #" + str(n))
+                for n in range(1, int(amount) + 1)
+            ]
+            original_history = path_prompt("Existing PRIVATE HUMAN history output room")
+            handoff.reopen_history(sources, original_history)
+            print("PRIVATE REVIEW_ONLY: original source-free HUMAN history fully re-admitted.")
+            print("Original HUMAN changes do NOT authorize a scan or verify a fix.")
         else:
             raise handoff.Hold("HOLD: unknown PRIVATE HUMAN route activity")
     except (handoff.Hold, OSError, ValueError) as exc:
