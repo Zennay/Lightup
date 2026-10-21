@@ -33,7 +33,16 @@ integrity references; they do not authenticate source provenance.
 Individual studios independently re-admit any PRIVATE local HUMAN/source data.
 Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
-A local HUMAN Lab Route Desk with 20 original review options (52–71) now\nships as human-lab-route.html plus adjacent human-lab-route.js, with memory-only\ndiscussion states, private JSON/CSV export and bounded JSON reimport. The\nportable browser app never opens original assessment sources, validates\ncompletion, accesses a network or grants authority. It is NOT an executor.\nThe native-only companion console options 72/73/74/75 RECEIVE, REOPEN,\nCOMPARE 2–8 and EXACTLY REOPEN the resulting PRIVATE HUMAN history from\nstrict local self-report receipts exported by this source-free editor. The operator MUST manually move downloaded self-report JSON into\nan existing owner-only 0700 directory with a 0600 input outside any Git\ncheckout; browser storage is never restored automatically. Signed identity,\ntrue originals, actual review, consent and release are NOT inferred.\nThis native Python receiver is deliberately NOT included in this ZIP.\nNative checkout users can additionally prepare an original-source PRIVATE
+A local HUMAN Lab Route Desk with 20 original review options (52–71) now\nships as human-lab-route.html plus adjacent human-lab-route.js, with memory-only\ndiscussion states, private JSON/CSV export and bounded JSON reimport. The\nportable browser app never opens original assessment sources, validates\ncompletion, accesses a network or grants authority. It is NOT an executor.
+It also supports no-overwrite source-free HUMAN report comparisons,
+a full local old→proposed change preview and changed-only CSV export.
+Imported 24 KiB-bounded JSON rejects duplicate object properties even
+when escaped or nested, unexpected fields and authority claims.
+Local search/status filters and confirmation-only bulk NEEDS_INPUT
+or IN_PROGRESS affect matching HUMAN markers; a bulk approval action
+does not exist. Hidden status rows remain in complete JSON/CSV export.
+None of these browser-only conveniences proves that any native lab step
+executed or that a review, consent, finding or release is authentic.\nThe native-only companion console options 72/73/74/75 RECEIVE, REOPEN,\nCOMPARE 2–8 and EXACTLY REOPEN the resulting PRIVATE HUMAN history from\nstrict local self-report receipts exported by this source-free editor. The operator MUST manually move downloaded self-report JSON into\nan existing owner-only 0700 directory with a 0600 input outside any Git\ncheckout; browser storage is never restored automatically. Signed identity,\ntrue originals, actual review, consent and release are NOT inferred.\nThis native Python receiver is deliberately NOT included in this ZIP.\nNative checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
 options 21/22. The same console now has 75 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
