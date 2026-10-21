@@ -16,6 +16,7 @@ import os
 import re
 import stat
 import sys
+import unicodedata
 
 import private_inbox_board as board
 import private_reopen as original
@@ -40,6 +41,17 @@ def unique(pairs: list[tuple[str, object]]) -> dict:
             raise ValueError("duplicate source-free board JSON key")
         ret[key] = val
     return ret
+
+
+def safe_action_note(value: object) -> str:
+    """Fail closed on Unicode-disguised spreadsheet formulas in HUMAN CSV cells."""
+    note = safe_note(value)
+    if any(unicodedata.category(char).startswith("C") or
+           unicodedata.category(char) in ("Zl", "Zp") for char in note):
+        raise ValueError("HUMAN note contains unsafe Unicode control/format/separator")
+    if unicodedata.normalize("NFKC", note).lstrip().startswith(("=", "+", "-", "@")):
+        raise ValueError("HUMAN note resembles a spreadsheet formula after Unicode normalization")
+    return note
 
 
 def board_admit(path: str) -> tuple[str, list[dict]]:
@@ -112,8 +124,8 @@ def read_human_csv(path: str, digest: str, originals: list[dict]) -> list[dict]:
             item["human_status"] not in STATUSES or
             item["proposed_discussion_role"] not in ROLES):
             raise ValueError("HUMAN action not bound to exact original board")
-        question = safe_note(item["human_question"])
-        next_action = safe_note(item["human_next_action"])
+        question = safe_action_note(item["human_question"])
+        next_action = safe_action_note(item["human_next_action"])
         if (item["human_status"] == "UNREVIEWED" and
             (item["proposed_discussion_role"] != "UNASSIGNED" or question or next_action)):
             raise ValueError("unreviewed must not silently retain HUMAN instructions")

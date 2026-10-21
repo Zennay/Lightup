@@ -62,9 +62,13 @@ native `prepare` exports a fresh original slot-ordered HUMAN action template,
 `finalize` requires all original slots and explicit human notes/statuses and
 writes a separate PRIVATE owner-only HTML/CSV/JSON discussion pack, and
 `reopen` verifies exact original source-bound HUMAN private bytes read-only.
-Human role labels are **proposals**, not actual assignments. A completed
-discussion is expressly **NO RELEASE**: it is not a verified finding,
-client/operator consent, original source identity or any activation approval.
+Human role labels are **proposals**, not actual assignments. Both the browser
+Studio and native finalizer reject Unicode format/control characters and
+NFKC-disguised spreadsheet formula prefixes in human CSV notes; native
+finalization remains authoritative if the CSV was edited outside the browser.
+A completed discussion is expressly **NO RELEASE**: it is not a verified
+finding, client/operator consent, original source identity or any activation
+approval.
 
 ~~~sh
 python3 assessment-disclosure-preflight/private_inbox_actions.py --help

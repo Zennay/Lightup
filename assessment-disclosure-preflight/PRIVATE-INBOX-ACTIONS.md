@@ -36,8 +36,17 @@ all original slots and exact board SHA**. Store the edited CSV as owner-only
 The status `DISCUSSION_COMPLETE_NO_RELEASE` requires explicit question and
 next-action text; it is **not** evidence approval or mitigation verification.
 The status `UNREVIEWED` must have no proposed role or copied notes. HUMAN
-questions/actions are restricted to bounded text (no spreadsheet formulas)
-and are NEVER treated as authenticated assignments or sent automatically.
+questions/actions are restricted to bounded text and rejected if they
+contain Unicode category-C controls/format characters (including zero-width,
+bidi, BOM, private-use, surrogate or unassigned characters), Unicode line or
+paragraph separators, or a formula prefix after NFKC normalization. This
+catches compatibility disguises such as fullwidth equals before spreadsheet
+interpretation, while retaining ordinary international text. The browser
+Studio applies the same fail-closed rule, but the unchanged native
+`finalize` is authoritative: a hand-edited CSV that bypasses the browser is
+rejected too. This is a narrow export-boundary guard, not a guarantee that all
+spreadsheet clients are safe and not a general secret-redaction claim.
+HUMAN notes are NEVER treated as authenticated assignments or sent automatically.
 
 ## Edit the original template with the complete offline HUMAN browser Studio
 

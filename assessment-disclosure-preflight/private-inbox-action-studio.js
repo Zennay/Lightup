@@ -66,9 +66,12 @@
   function admitText(text, title) {
     if (typeof text !== "string" || text.length > MAX_TEXT) throw Error(title + " exceeds 1200 characters");
     for (const ch of text) {
-      if (ch.codePointAt(0) < 32 || ch.codePointAt(0) === 127) throw Error(title + " contains control characters");
+      if (/[\p{C}\p{Zl}\p{Zp}]/u.test(ch))
+        throw Error(title + " contains unsafe Unicode control, format, or separator characters");
     }
-    if (/^[\s]*[=+\-@]/u.test(text)) throw Error(title + " could be interpreted as a spreadsheet formula");
+    // Native finalization repeats this guard for CSV files edited outside the browser.
+    if (/^[\s]*[=+\-@]/u.test(text.normalize("NFKC")))
+      throw Error(title + " could be interpreted as a spreadsheet formula after Unicode normalization");
     return text;
   }
 
