@@ -1,0 +1,275 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-XkVLqLvwdAUGWaCCpGJGc0lBM+hEDX5b4kkdoFFlM8o='; script-src 'sha256-wPm0Jrigj39dDGpjnixDESGwUNDPeqCr1JlVLnh5FwI='">
+<title>LightUp PRIVATE HUMAN review calendar Studio</title><style>body{margin:0;background:#edf3f8;color:#10233a;font:16px/1.55 system-ui,sans-serif}
+header{padding:1.3rem max(1rem,calc((100vw - 1180px)/2));background:#112b46;color:#fff}
+main{max-width:1180px;margin:1.2rem auto;padding:0 1rem 4rem}
+h1,h2,h3{line-height:1.2}h1{margin:.2rem 0}h3{font-size:1.1rem}
+section,.card{background:white;border:1px solid #afc0d0;border-radius:13px;padding:1.1rem;margin:1rem 0}
+.notice{border-left:5px solid #a65316;padding:.9rem;background:#fff5e5}
+.controls,.edit,.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.8rem}
+.fact{display:grid;align-content:start;padding:.5rem;border-radius:8px;background:#f0f5fa;overflow-wrap:anywhere}
+.fact strong{font-size:.85rem;color:#3b5569}.fact span{margin-top:.2rem}
+label{display:grid;gap:.3rem;font-weight:600}input,select,textarea,button{font:inherit}
+input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #8e9fac;border-radius:7px;padding:.6rem}
+textarea{resize:vertical;min-height:4rem}input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #ed9700;outline-offset:2px}
+button{padding:.7rem 1.1rem;border:0;border-radius:7px;background:#11557d;color:white;font-weight:700;cursor:pointer}
+button.secondary{background:#365068}button:hover{filter:brightness(1.12)}
+.actions{display:flex;flex-wrap:wrap;gap:.7rem}.status{padding:.7rem;background:#e1eef7;border-radius:7px;overflow-wrap:anywhere}
+.card{border-left:5px solid #1b668f}.card h3{margin-top:0}
+small{color:#465c6d}#summary{font-weight:700}#visibility{font-weight:600}
+footer{max-width:1180px;padding:1rem;margin:auto;color:#31475a}
+@media print{header,.controls,.actions,#source,.notice{display:none!important}
+body{background:white}.card{page-break-inside:avoid;border:1px solid #888}}
+</style></head>
+<body><header><h1>LightUp · PRIVATE HUMAN proposed-review Studio</h1>
+<p>Incubate M3/M7 · PLAN/LAB ONLY · offline DRAFT/HOLD</p></header>
+<main><section><h2>Open original native HUMAN calendar template</h2>
+<p class="notice"><strong>HUMAN discussion-day proposals only.</strong>
+Use console 56 to prepare an ORIGINAL source-bound 10-column PRIVATE HUMAN
+calendar CSV. Select it below; this browser makes local edits and exports the
+COMPLETE source-bound CSV. The browser never opens or verifies original client
+material, authoritative permission, authenticated identities or actual work.
+Console 57 remains the obligatory native exact-original receipt step.
+No remote network, API, browser storage, scanner, grant, actual scheduling,
+message, reminder, booking or recipient verification occurs.</p>
+<label for="file">Select original HUMAN-proposed-calendar-template.csv (≤1 MiB)
+<input id="file" type="file" accept=".csv,text/csv"></label>
+<p id="status" role="status" aria-live="polite"></p></section>
+<section id="room" hidden>
+<h2>HUMAN-only original source proposal workroom</h2><p id="summary"></p>
+<div class="controls">
+<label for="owner">Proposed HUMAN owner
+<select id="owner"><option value="">All owners</option></select></label>
+<label for="priority">Human-only priority
+<select id="priority"><option value="">All priorities</option>
+<option value="unset">Unset</option><option value="human_urgent">Human urgent</option>
+<option value="near_term">Near term</option><option value="routine">Routine</option></select></label>
+<label for="proposal">HUMAN proposed day
+<select id="proposal"><option value="all">All dates</option>
+<option value="set">Date proposed</option><option value="empty">Unscheduled proposal</option></select></label>
+<label for="query">Search owner, case and HUMAN questions locally
+<input id="query" type="search" placeholder="Search PRIVATE memory only"></label>
+</div>
+<p id="visible"></p>
+<label for="restore">Optional: reopen an earlier COMPLETE original-source HUMAN calendar CSV
+<input id="restore" type="file" accept=".csv,text/csv"></label>
+<p><small>Restore is all-or-nothing, source-ordinal- and original-byte-hash-bound.
+No filtered subset export or assumed completion. Every original row is retained.</small></p>
+<div class="actions"><button type="button" id="export">Export COMPLETE PRIVATE HUMAN calendar CSV</button>
+<button type="button" id="clear" class="secondary">Clear local private workroom</button></div>
+<div id="cards"></div></section></main>
+<footer>Offline owner-private HUMAN editing only. No release approval,
+real dates booked, actual tasks assigned, verified remediation or grants.</footer>
+<script>/* LightUp PRIVATE source-free HUMAN proposed review calendar editor.
+ * Browser is a local editor only. All source provenance is rechecked in
+ * the native original-bound receive/reopen commands. No actual scheduling.
+ */
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const HEAD = [
+ "original_operator_followup_sha256","original_proposed_human_owner_label",
+ "local_case","historical_transition","original_kit",
+ "original_owner_human_reply_stage","original_operator_human_stage",
+ "proposed_human_review_day","human_attention_priority",
+ "private_human_discussion_question"
+];
+const PRIORITY=["unset","human_urgent","near_term","routine"];
+const STAGES=["needs_discussion","proposed_followup","hold"];
+const hex=v=>typeof v==="string"&&/^[a-f0-9]{64}$/.test(v);
+const clean=v=>typeof v==="string"&&v.length<=240&&!/[\u0000-\u001f\u007f]/.test(v)&&!/^\s*[=+@-]/.test(v);
+const safeOwner=v=>clean(v)&&v.length>0&&v.length<=80&&v.trim()===v;
+function day(value) {
+ if(value==="")return true;
+ if(!/^20\d\d-[01]\d-[0-3]\d$/.test(value))return false;
+ const parsed=new Date(value+"T00:00:00Z");
+ return !Number.isNaN(parsed.valueOf())&&parsed.toISOString().slice(0,10)===value;
+}
+const elem=(tag,value)=>{const node=document.createElement(tag);if(value!==undefined)node.textContent=String(value);return node;};
+function status(msg){$("status").textContent=msg;}
+function parseCSV(text) {
+ let pos=0,field="",row=[],rows=[],quoted=false,closed=false;
+ while(pos<text.length) {
+   const ch=text[pos++];
+   if(quoted) {
+     if(ch==='"') {
+       if(text[pos]==='"'){field+='"';pos++;}
+       else{quoted=false;closed=true;}
+     } else field+=ch;
+   } else if(ch==='"') {
+     if(field!==""||closed)throw Error("Invalid CSV quote");
+     quoted=true;
+   } else if(ch===',') {
+     row.push(field);field="";closed=false;
+   } else if(ch==='\n'||ch==='\r') {
+     if(ch==='\r'){if(text[pos]!=='\n')throw Error("Invalid CSV newline");pos++;}
+     row.push(field);rows.push(row);row=[];field="";closed=false;
+   } else {
+     if(closed)throw Error("Trailing CSV quoted cell content");
+     field+=ch;
+   }
+ }
+ if(quoted||field!==""||row.length!==0)throw Error("Truncated CSV record");
+ return rows;
+}
+function parseOriginal(text) {
+ const records=parseCSV(text);
+ if(records.length<2||records.length>2049||JSON.stringify(records[0])!==JSON.stringify(HEAD))
+   throw Error("Expected exact 10-column native HUMAN proposed calendar template");
+ const rows=[],unique=new Set();
+ let originalSha="";
+ for(const cells of records.slice(1)) {
+   if(cells.length!==HEAD.length||!hex(cells[0])||!safeOwner(cells[1])||
+     !STAGES.includes(cells[5])||!STAGES.includes(cells[6])||
+     !PRIORITY.includes(cells[8])||!day(cells[7])||!clean(cells[9]))
+     throw Error("Invalid original HUMAN template row");
+   const expected=[8,11,12];
+   for(let k=2;k<=4;k++){
+     const n=Number(cells[k]);
+     if(!/^[1-9]\d*$/.test(cells[k])||!Number.isSafeInteger(n)||n>expected[k-2])
+       throw Error("Invalid original source ordinal");
+   }
+   if(originalSha!==""&&cells[0]!==originalSha)
+     throw Error("Multiple incompatible original HUMAN follow-up sources");
+   originalSha=cells[0];
+   const key=cells.slice(2,5).join(":");
+   if(unique.has(key))throw Error("Duplicate original case/round/kit slot");
+   unique.add(key);
+   rows.push({source:cells.slice(0,7),date:cells[7],priority:cells[8],note:cells[9]});
+ }
+ return {sha:originalSha,rows};
+}
+function quote(v){return '"'+String(v).replaceAll('"','""')+'"';}
+function exportCSV(rows) {
+ const records=[HEAD.map(quote).join(",")];
+ for(const row of rows) {
+   if(!day(row.date)||!PRIORITY.includes(row.priority)||!clean(row.note))
+      throw Error("Invalid local HUMAN proposal");
+   records.push([...row.source,row.date,row.priority,row.note].map(quote).join(","));
+ }
+ return records.join("\r\n")+"\r\n";
+}
+let original=[],dirty=false,originalSha="";
+function visible() {
+ const owner=$("owner").value,priority=$("priority").value;
+ const proposal=$("proposal").value,query=$("query").value.trim().toLowerCase();
+ return original.filter(r=>{
+   if(owner&&r.source[1]!==owner)return false;
+   if(priority&&r.priority!==priority)return false;
+   if(proposal==="set"&&!r.date)return false;
+   if(proposal==="empty"&&r.date)return false;
+   const hay=[...r.source,r.date,r.priority,r.note].join(" ").toLowerCase();
+   return !query||hay.includes(query);
+ });
+}
+function updateCounts(){
+ const dates=original.filter(r=>r.date).length;
+ $("summary").textContent=original.length+" original HUMAN source slots | "+
+   dates+" proposed dates | "+original.filter(r=>r.priority==="human_urgent").length+
+   " HUMAN urgent proposals"+(dirty?" | UNSAVED local edits":"");
+ $("visible").textContent=visible().length+" source slots visible; filters never remove rows from full export.";
+}
+function render() {
+ const cards=$("cards");cards.replaceChildren();
+ updateCounts();
+ for(const row of visible()) {
+   const section=elem("article");section.className="card";
+   section.append(elem("h3","Original slot "+row.source[2]+" / "+row.source[3]+" / "+row.source[4]));
+   const facts=elem("p");
+   facts.textContent="Original proposed HUMAN owner (NOT authenticated): "+row.source[1]+
+    " | owner reply: "+row.source[5]+" | operator proposal: "+row.source[6];
+   section.append(facts);
+   const controls=elem("div");controls.className="controls";
+   const dateLabel=elem("label","HUMAN proposed review day (not an appointment)");
+   const proposed=elem("input");
+   proposed.type="date";proposed.min="2000-01-01";proposed.max="2099-12-31";
+   proposed.value=row.date;
+   proposed.addEventListener("change",()=>{
+     if(!day(proposed.value)){proposed.value=row.date;status("PRIVATE HOLD: invalid HUMAN proposed day");return;}
+     row.date=proposed.value;dirty=true;updateCounts();
+   });
+   dateLabel.append(proposed);
+   const prioLabel=elem("label","HUMAN-only attention priority");
+   const select=elem("select");
+   for(const name of PRIORITY) {
+     const opt=elem("option",name.replaceAll("_"," "));opt.value=name;
+     opt.selected=row.priority===name;select.append(opt);
+   }
+   select.addEventListener("change",()=>{row.priority=select.value;dirty=true;updateCounts();});
+   prioLabel.append(select);
+   const noteLabel=elem("label","PRIVATE HUMAN discussion question (max 240, no formulas)");
+   const note=elem("textarea");note.maxLength=240;note.rows=2;note.value=row.note;
+   note.addEventListener("input",()=>{
+     if(!clean(note.value)){note.value=row.note;status("PRIVATE HOLD: HUMAN question rejected");return;}
+     row.note=note.value;dirty=true;updateCounts();
+   });
+   noteLabel.append(note);
+   controls.append(dateLabel,prioLabel,noteLabel);section.append(controls);cards.append(section);
+ }
+ if(!cards.childNodes.length)cards.append(elem("p","No matching HUMAN proposals. No change to the complete original CSV."));
+}
+async function readFile(event) {
+ const file=event.target.files?.[0];
+ if(!file||file.size===0||file.size>1048576||!file.name.toLowerCase().endsWith(".csv")) {
+   status("PRIVATE HOLD: select bounded original HUMAN calendar CSV");return;
+ }
+ try {
+   const source=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+   const proposed=parseOriginal(source);
+   if(dirty&&!window.confirm("Discard unsaved local PRIVATE HUMAN edits?"))return;
+   original=proposed.rows;originalSha=proposed.sha;dirty=false;
+   const owners=new Set(original.map(r=>r.source[1]));
+   $("owner").replaceChildren(elem("option","All proposed HUMAN owners"));
+   $("owner").firstChild.value="";
+   for(const owner of owners){const opt=elem("option",owner);opt.value=owner;$("owner").append(opt);}
+   $("priority").value="";$("proposal").value="all";$("query").value="";
+   $("room").hidden=false;render();
+   status("Original template opened in browser memory. Native original-source receipt verification is STILL REQUIRED.");
+ }catch(error){
+   status("PRIVATE HOLD: input rejected ("+(error?.message||"invalid CSV")+"). Previous draft retained.");
+ }
+}
+async function restoreFile(event) {
+ const file=event.target.files?.[0];
+ if(!original.length||!file||file.size===0||file.size>1048576){
+   status("PRIVATE HOLD: open original HUMAN template and complete bounded draft");return;
+ }
+ try {
+   const text=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+   const incoming=parseOriginal(text);
+   if(incoming.sha!==originalSha||incoming.rows.length!==original.length||
+      incoming.rows.some((r,i)=>JSON.stringify(r.source)!==JSON.stringify(original[i].source)))
+     throw Error("Changed original source, owner or row order");
+   if(!window.confirm("Restore ALL original-source-bound HUMAN edits? Current local draft will be replaced."))return;
+   incoming.rows.forEach((r,i)=>{original[i].date=r.date;original[i].priority=r.priority;original[i].note=r.note;});
+   dirty=false;render();status("Complete source-matching HUMAN draft restored. No native source admission yet.");
+ }catch(error){
+   status("PRIVATE HOLD: full HUMAN draft rejected ("+(error?.message||"invalid")+"). Existing edits retained.");
+ }
+}
+function download() {
+ if(!original.length)return;
+ if(!window.confirm("Export COMPLETE original-bound PRIVATE HUMAN proposed calendar? This is not a real booking, permission, task or security result."))return;
+ try {
+   const csv=exportCSV(original),url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+   const a=elem("a");a.href=url;a.download="HUMAN-proposed-calendar-template.csv";
+   document.body.append(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),800);
+   dirty=false;updateCounts();
+   status("Full HUMAN proposal CSV downloaded. Native receive + exact original source validation required.");
+ }catch(error){status("PRIVATE HOLD: proposed CSV not exported ("+(error?.message||"invalid")+").");}
+}
+function clear(){
+ if(dirty&&!window.confirm("Discard unsaved PRIVATE HUMAN calendar edits?"))return;
+ original=[];originalSha="";dirty=false;
+ $("file").value="";$("restore").value="";$("room").hidden=true;
+ $("cards").replaceChildren();status("PRIVATE HUMAN calendar cleared from browser memory.");
+}
+$("file").addEventListener("change",readFile);
+$("restore").addEventListener("change",restoreFile);
+for(const id of ["owner","priority","proposal","query"])$(id).addEventListener(id==="query"?"input":"change",render);
+$("export").addEventListener("click",download);
+$("clear").addEventListener("click",clear);
+})();
+</script></body></html>
