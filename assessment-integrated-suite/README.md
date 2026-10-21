@@ -1,5 +1,35 @@
 # LightUp integrated PRIVATE assessment handoff
 
+## LATEST · Portable original HUMAN Lab offline Toolkit v21 · 21 October 2026
+
+[**Download committed v21 software-only ZIP**](LightUp-Assessment-Offline-Toolkit-v21.zip)
+([exact committed binary](https://github.com/Zennay/Lightup/commit/f35fdf9169445633afaefdf5724099cfa09f42fe)):
+**262304 bytes**, 16 offline HTML HUMAN/lab workrooms with one adjacent
+local JavaScript asset and original source-free manifest, README and guide.
+Unsigned SHA-256 `113561a28bafc7bd18b4318a51367569043c0dd53317a667fd7f1568e1e9b26a`.
+This hash is NOT a signature, authorization or a customer-source receipt.
+The actual ZIP byte blob was independently verified against local Git
+object `97649e723a5163acad8630cc81d2d27e9d6a4511` before an exact-parent,
+non-force GitHub commit to the existing original PR. The prior v20 ZIP remains
+historical; **v21 is the current browser-only software package**.
+
+The new accompanying **native-only** original source checkout provides
+actions **72 receive, 73 reopen, 74 compare HUMAN rounds, and 75 reopen
+the complete saved original HUMAN change history**. Action 75 re-admits
+all original owner-private input rooms, regenerates the scriptless
+timeline, unresolved HUMAN attention/status stage view and JSON/CSV output,
+then refuses any changed, missing or extra saved byte. These are
+SOURCE-FREE, HUMAN self-report custody tools, not approved assessments,
+identity proof, actual fixes, grant, scan, dispatch, consent or release.
+Native Python is deliberately excluded from the portable ZIP.
+
+**REVIEW_ONLY / DRAFT/HOLD — INCUBATE M3/M7 PLAN/LAB ONLY.**
+No main merge or deployment; original exact-head named VPS+hosted CI,
+source-owner/independent security/privacy/browser review, current separate
+authenticated client/operator consent with action-time revocation, and
+explicit HUMAN GO remain mandatory.
+
+
 ## CURRENT · Portable offline HUMAN toolkit v20 · 21 October 2026
 
 [**Open/download complete source-only offline ZIP v20**](LightUp-Assessment-Offline-Toolkit-v20.zip)
