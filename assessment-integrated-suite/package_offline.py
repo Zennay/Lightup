@@ -13,6 +13,7 @@ import sys
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from suite import APPS, Hold, ROOT, read_safe
+from build_route_standalone import build as build_standalone_route
 
 MAX_APP = 4 * 1024 * 1024
 FALSE_FLAGS = ("authorization_granted", "consent_verified", "source_authenticated",
@@ -34,6 +35,11 @@ Individual studios independently re-admit any PRIVATE local HUMAN/source data.
 Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
 A local HUMAN Lab Route Desk with 20 original review options (52–71) now\nships as human-lab-route.html plus adjacent human-lab-route.js, with memory-only\ndiscussion states, private JSON/CSV export and bounded JSON reimport. The\nportable browser app never opens original assessment sources, validates\ncompletion, accesses a network or grants authority. It is NOT an executor.
+For devices where the adjacent JS asset could be lost, the same original UI
+also ships as studios/human-lab-route-standalone.html: ONE file with the
+same local features, embedded exact-source script and SHA-256-pinned CSP.
+The original two-file variant remains available. The standalone is
+source-only and UNSIGNED, not a software authenticity proof or consent.
 It also supports no-overwrite source-free HUMAN report comparisons,
 a full local old→proposed change preview and changed-only CSV export.
 Imported 24 KiB-bounded JSON rejects duplicate object properties even
@@ -170,7 +176,8 @@ def front_page(files: list[tuple[str, str]]) -> bytes:
     for name, destination in files:
         if not name.endswith(".html"):
             continue  # Local support scripts are packaged, not offered as standalone pages.
-        if name in ("lab-launchpad.html", "lab-scenario-studio.html", "human-lab-route.html"):
+        if name in ("lab-launchpad.html", "lab-scenario-studio.html", "human-lab-route.html",
+                    "human-lab-route-standalone.html"):
             key = "02  Prepare isolated, fictional lab work"
         elif name in ("benchmark-lineage.html", "benchmark-candidates.html",
                       "lab-longitudinal-trends.html"):
@@ -248,6 +255,24 @@ def build(destination: Path) -> int:
             "filename": destination_name, "source_path": str(source.relative_to(ROOT)),
             "bytes": len(raw), "sha256_unsigned": hashlib.sha256(raw).hexdigest(),
         })
+    # Include the one-file HUMAN route desk as a genuine self-contained tool.
+    # Refuse drift between the original two-file sources and checked-in output.
+    standalone_path = ROOT / "assessment-integrated-suite/human-lab-route-standalone.html"
+    read_safe(standalone_path, MAX_APP)
+    standalone_bytes = standalone_path.read_bytes()
+    if standalone_bytes != build_standalone_route():
+        raise Hold("HOLD: standalone HUMAN route software does not match original sources")
+    total += len(standalone_bytes)
+    if total > 20 * 1024 * 1024:
+        raise Hold("HOLD: bundled product source is over size limit")
+    standalone_name = "studios/human-lab-route-standalone.html"
+    originals.append(("human-lab-route-standalone.html", standalone_name, standalone_bytes))
+    manifest.append({
+        "filename": standalone_name,
+        "source_path": str(standalone_path.relative_to(ROOT)),
+        "bytes": len(standalone_bytes),
+        "sha256_unsigned": hashlib.sha256(standalone_bytes).hexdigest(),
+    })
     guide_path = ROOT / "assessment-integrated-suite/LAB-PLANNING.md"
     read_safe(guide_path, 262_144)
     guide = guide_path.read_bytes()
