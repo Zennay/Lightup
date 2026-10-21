@@ -448,6 +448,16 @@ def main() -> int:
     cues_reopen.add_argument("--original-kit", required=True)
     cues_reopen.add_argument("--room", required=True,
                              help="unchanged original PRIVATE masking cue room")
+    har_progress = commands.add_parser(
+        "har-action-progress",
+        help="PRIVATE original-bound manual HAR status import, always HOLD")
+    har_progress.add_argument("--original-kit", required=True)
+    har_progress.add_argument("--cue-room", required=True,
+                              help="unchanged source-bound masking-cue packet v18")
+    har_progress.add_argument("--edited-actions", required=True,
+                              help="separate owner-only manually edited actions CSV")
+    har_progress.add_argument("--private-parent", required=True,
+                              help="owner-only 0700 destination parent")
     finished = commands.add_parser("finalize", help="source-bound local PRIVATE HUMAN handoff only")
     finished.add_argument("--original-kit", required=True, help="unchanged PRIVATE workroom")
     finished.add_argument("--decisions", required=True, help="locally completed PRIVATE HUMAN CSV")
@@ -667,6 +677,10 @@ def main() -> int:
         if args.action == "masking-cues-reopen":
             from private_masking_cues import reopen as reopen_masking_cues
             return reopen_masking_cues(args.original_kit, args.room)
+        if args.action == "har-action-progress":
+            from private_har_progress import import_progress
+            return import_progress(args.original_kit, args.cue_room,
+                                   args.edited_actions, args.private_parent)
         if args.action == "finalize":
             return finalize(args.original_kit, args.decisions, args.private_parent)
         # Offline local PRIVATE operations only, never a scan/target dispatch.
