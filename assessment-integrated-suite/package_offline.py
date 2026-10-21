@@ -47,6 +47,13 @@ per-stage marker transition summaries, local changed/repeated/needs-input
 filters, and a fixed-status-only private CSV covering all 20 original
 actions. The browser never infers actor identity or chronological truth
 from chooser order, and invalid files clear stale comparisons.
+The same browser now offers a NEW next-round HUMAN discussion proposal:
+manually pick one of the selected round markers for EACH of the original
+20 action ordinals, with no default choices, no incomplete export and
+an explicit final confirmation. The generated JSON is untrusted and has
+the exact original false-authority self-report shape for separate native
+HUMAN custody; no old round or active local marker changes. Clearing
+local selections removes only the in-memory proposed new discussion.
 This is separate from original native receipt verification and does not
 edit active local markers or authenticate a review.
 None of these browser-only conveniences proves that any native lab step
