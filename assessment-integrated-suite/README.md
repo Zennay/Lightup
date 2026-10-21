@@ -1,5 +1,45 @@
 # LightUp integrated PRIVATE assessment handoff
 
+## NEW · Source-free offline HUMAN Lab Route Desk (20 original actions)
+
+[Open the portable HUMAN Lab Route Desk](human-lab-route.html) beside
+[its local JavaScript](human-lab-route.js). This is a usable, accessible,
+private **discussion workplan**, not a scan or an execution interface.
+The same two assets are copied together under `workrooms/` in the native
+PRIVATE Assessment Kit and `studios/` in the portable software-only ZIP.
+They must remain **next to each other** for the local browser UI to run.
+No internet, browser storage, cookies, server, source-file import, grant,
+model, scanner, task dispatch or remote action is used.
+
+**Practical operator workflow:** from an approved original checkout run
+`python3 assessment-integrated-suite/console.py`, enter **LAB** for the
+5-stage source-bound operator guide, and pick a numeric 52–71 action **only
+when its original source and private output requirements exist**. Use
+the browser Route Desk to mark *discussion-only* states: Not reviewed,
+Discussing, Needs original input, or Discussed only. The desk never
+infers completion, source authenticity, consent or release from these.
+Original native output lives in independent 0700/0600 directories.
+Browser self-report files contain only 20 numeric action IDs, four fixed
+status literals and all false authority flags — no source paths, target
+IDs, private questions or freeform input.
+
+Export the local **self-report JSON** for later bounded local import or
+the minimal **CSV** for a human meeting. After browser download, check
+that the output was actually saved in private custody; downloads can
+fail or be cancelled. The complete JSON importer rejects oversize files,
+missing/reordered action IDs, unknown state values, unexpected fields
+and claimed authority before replacing in-memory markers, then requires
+explicit human confirmation. No old state is silently persisted.
+
+**Important distinction:** Discussed only ≠ original workflow executed
+≠ verified finding ≠ human review signoff ≠ authentic client/operator
+authorization. Native original action 57 / subsequent HUMAN finalization
+remains separate, and the original release gates remain HOLD. This
+offline workstation and its unsigned discussion export must never be
+used as evidence of actual scan, approval, vulnerability closure or
+permission to touch a target. Do not upload private source files.
+
+
 ## New offline software-only Toolkit v17 · native Lab HUMAN guide
 
 [Open source-only Toolkit v17](LightUp-Assessment-Offline-Toolkit-v17.zip).
