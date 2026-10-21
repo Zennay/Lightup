@@ -19,11 +19,14 @@ An ambiguous, embedded, malformed or over-limit HAR-like JSON note is
 withheld in full from newly derived PRIVATE workrooms, rather than
 partially interpreted without the original request/response context.
 The original privately retained source is never modified. New masking-cue
-receipts are v14, with exact historical v1-v13 reopen support.
+receipts are v15, with exact historical v1-v14 reopen support.
 A source-free, printable PRIVATE-HAR-HOLD.html board identifies whole-copy
 withheld markers by original ordinal inside a new separate masking-cue room
-or the optional initial HUMAN preview. Native reopen binds its new HTML
-bytes to the original owner-private source manifest and receipt. A marker
+or the optional initial HUMAN preview. PRIVATE-HAR-INVENTORY.html and
+PRIVATE-HAR-INVENTORY.csv also group literal masking markers by HAR source
+category and original ordinal, never showing source text, URLs, paths,
+client names or digests. Native v15 reopen compares these HTML and CSV bytes
+as part of the original owner-private source-linked receipt. A marker
 may pre-exist in raw text; the board is only a navigation aid, not a verdict.
 When a new derived note is wholly withheld, its initial private HUMAN
 decision CSV and local browser editor start at SOURCE_OWNER_REQUIRED,
