@@ -33,6 +33,8 @@ APPS = {
     "human-lab-route.html": ROOT / "assessment-integrated-suite/human-lab-route.html",
     "human-lab-route.js": ROOT / "assessment-integrated-suite/human-lab-route.js",
     "human-lab-route-standalone.html": ROOT / "assessment-integrated-suite/human-lab-route-standalone.html",
+    "human-lab-attention.html": ROOT / "assessment-integrated-suite/human-lab-attention.html",
+    "human-lab-attention.js": ROOT / "assessment-integrated-suite/human-lab-attention.js",
     "human-remediation-team-room.html": ROOT / "assessment-remediation/team-room.html",
 }
 
@@ -97,6 +99,7 @@ def write_html(destination: Path, detail: bool, count: int) -> None:
         ("Offline PRIVATE HUMAN follow-up calendar", "workrooms/human-followup-calendar.html"),
         ("Track 20 original HUMAN Lab discussion steps locally (no authority)", "workrooms/human-lab-route.html"),
         ("Open one-file HUMAN Lab Route Desk (no adjacent JS required)", "workrooms/human-lab-route-standalone.html"),
+        ("Coordinate source-free HUMAN Lab attention and reviewer proposals (offline)", "workrooms/human-lab-attention.html"),
         ("Prepare offline isolated lab manifest (never dispatch)", "workrooms/lab-launchpad.html"),
         ("Author offline hypothetical lab scenarios", "workrooms/lab-scenario-studio.html"),
         ("Compare original lab benchmark lineage", "workrooms/benchmark-lineage.html"),
