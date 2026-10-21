@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import unicodedata
 
 from launchpad import (
     FLAGS, Hold, MAX_MANIFEST_BYTES, open_output_directory, publish_bundle,
@@ -84,8 +85,8 @@ def validate_worksheet(work, manifest_sha, endpoint_count):
             raise Hold("HUMAN role is outside the fixed vocabulary")
         note = row["note"]
         if (type(note) is not str or len(note) > 400
-                or any(ord(char) < 32 and char not in "\n\t" for char in note)
-                or any(ord(char) == 127 for char in note)):
+                or any(unicodedata.category(char).startswith("C") and char not in "\n\t"
+                       for char in note)):
             raise Hold("HUMAN note is overlong or contains controls")
     return work
 
@@ -252,6 +253,10 @@ def main(argv=None):
                     interactive_review(work)
                     validate_worksheet(work, digest, len(endpoints))
                 artifacts = make_artifacts(work, endpoints)
+                # HUMAN review can take time; readmit the exact source at publication time.
+                renewed_dir, renewed_endpoints, renewed_digest = read_original_bundle(args.bundle_dir)
+                if (renewed_dir, renewed_endpoints, renewed_digest) != (original_dir, endpoints, digest):
+                    raise Hold("original source packet changed during HUMAN editing")
                 publish_bundle(fd, artifacts)
         finally:
             os.close(fd)
@@ -259,7 +264,8 @@ def main(argv=None):
               " endpoint_count=" + str(len(endpoints)) +
               " — PRIVATE HUMAN REVIEW ONLY; UNSIGNED; NO AUTHORIZATION OR EXECUTION")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
+    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError,
+            OverflowError, EOFError, KeyboardInterrupt):
         print("HUMAN_LAUNCHPAD_HOLD — original bundle or private human review not admitted",
               file=sys.stderr)
         return 3
