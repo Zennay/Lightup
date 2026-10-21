@@ -624,7 +624,7 @@
   }
   function exportJSON(){
     if(!reports.length||!settings)return;
-    const out={schema:"lightup.lab_candidate_matrix_review.v4",
+    const out={schema:"lightup.lab_candidate_matrix_review.v5",
       posture:"INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
       status:"REVIEW_ONLY",source_identity_authenticated:false,
       temporal_order_authenticated:false,fictional_demo_only:demo,
