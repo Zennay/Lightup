@@ -1075,3 +1075,23 @@ The resulting receipt, private full CSV and text-minimal printable team board
 are separate from the original full HUMAN reviews and always HOLD.
 
 [Complete source-bound offline HUMAN team routing instructions](PRIVATE-DISCUSSION-TEAM-ROUTING.md).
+
+### Print-only PRIVATE HAR HUMAN source agenda (desk schema v2)
+
+`notes.py har-review-progress` and `notes.py har-review-desk` now emit a
+separate **`PRINT-PRIVATE-HAR-HUMAN-AGENDA.html`** in every new immutable
+PRIVATE HAR next-action desk. Open it locally from the desk home page and
+print an original-position-only checklist. It includes all 1–12 original
+positions, operator-declared manual round count, generic next-action label,
+manual outstanding-action count and unsigned paper checkboxes. It does **not**
+contain the underlying HAR, note text, URLs, source filenames, hashes, source
+identities or credentials. All status and priority labels are self-reported
+HUMAN coordination, **not** security severity or an authorization verdict.
+
+The unchanged `har-review-desk-reopen --workflow-room ... --progress-room ...
+--desk-room ...` command now readmits the exact agenda bytes and its v2
+unsigned receipt hash alongside all existing desk files. Older schema-v1
+PRIVATE desks remain read-only reopenable using their original exact output
+algorithm; they did not include a print agenda. This local print page can
+still carry PRIVATE operational metadata: do not send or publish without an
+independent HUMAN privacy review, current separate consent and release GO.
