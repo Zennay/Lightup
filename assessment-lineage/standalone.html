@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zRBCAVO0445X2Xnf7EywczvbRwiRs2wahlFKwe9qrAg='; style-src 'sha256-GdLEigU6fEfKD+wX/IxytPwLBP/KQSwgEfrkQIJ9CcY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LL+YCtoVhu2WBj8GV2aob1YN/OkA0I5CgMh5hMNDLYA='; style-src 'sha256-GdLEigU6fEfKD+wX/IxytPwLBP/KQSwgEfrkQIJ9CcY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
 <title>LightUp · Offline Lab Lineage Desk</title>
 <style>:root{color-scheme:dark;--bg:#081523;--panel:#14263b;--ink:#edf6ff;--muted:#b3c5d5;--line:#3b526b;--link:#8fd8ff;--hold:#ffce8a}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,Segoe UI,sans-serif}
@@ -286,7 +286,8 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
   }
   async function read(file,max){
     admit(file instanceof File&&file.size>0&&file.size<=max);
-    const bytes=await file.arrayBuffer(),str=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    const bytes=await file.arrayBuffer(),str=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes);
+    if(str.charCodeAt(0)===0xfeff)throw Error("A leading UTF-8 BOM is not canonical for original source JSON.");
     admit(str.length>0&&str.length<=max);
     const result=parse(str),digest=await hashOriginal(bytes);
     return {result,digest};
