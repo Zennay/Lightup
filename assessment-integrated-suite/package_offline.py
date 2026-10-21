@@ -83,9 +83,20 @@ local selections removes only the in-memory proposed new discussion.
 This is separate from original native receipt verification and does not
 edit active local markers or authenticate a review.
 None of these browser-only conveniences proves that any native lab step
-executed or that a review, consent, finding or release is authentic.\nThe native-only companion console options 72/73/74/75 RECEIVE, REOPEN,\nCOMPARE 2–8 and EXACTLY REOPEN the resulting PRIVATE HUMAN history from\nstrict local self-report receipts exported by this source-free editor. The operator MUST manually move downloaded self-report JSON into\nan existing owner-only 0700 directory with a 0600 input outside any Git\ncheckout; browser storage is never restored automatically. Signed identity,\ntrue originals, actual review, consent and release are NOT inferred.\nThis native Python receiver is deliberately NOT included in this ZIP.\nNative checkout users can additionally prepare an original-source PRIVATE
+executed or that a review, consent, finding or release is authentic.\nThe native-only companion console options 72/73/74/75 RECEIVE, REOPEN,\nCOMPARE 2–8 and EXACTLY REOPEN the resulting PRIVATE HUMAN history from\nstrict local self-report receipts exported by this source-free editor. The operator MUST manually move downloaded self-report JSON into\nan existing owner-only 0700 directory with a 0600 input outside any Git\ncheckout; browser storage is never restored automatically. Signed identity,\ntrue originals, actual review, consent and release are NOT inferred.\nThis native Python receiver is deliberately NOT included in this ZIP.
+The source-only HUMAN Attention Workboard also has native original receipt
+custody: console 76 receives a saved v2 fixed-role/follow-up HUMAN proposal
+only after REOPENING each of 1-8 original 72/73 PRIVATE self-report rooms,
+matching all twenty action positions, status transitions, round-marker
+profiles, false authority and fixed proposal enumerations.
+Console 77 reopens every original receipt and every attention output byte.
+Both operate only in owner-private 0700/0600 directories OUTSIDE source
+checkout. They never contact targets, recipients or services.
+The original native attention_receipt.py code, HUMAN input and generated
+private outputs are deliberately NOT bundled in this browser-only ZIP.
+\nNative checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 75 actions, including original
+options 21/22. The same console now has 77 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
