@@ -104,6 +104,18 @@ source or assessment results. It does not import, verify or approve anything.</s
 <div class="history-scroll"><table class="history-table">
 <thead id="history-columns"></thead><tbody id="history-rows"></tbody>
 </table></div>
+<details id="reconcile-details" class="compare history-detail"><summary>Compose a NEW human-only discussion proposal from these rounds</summary>
+<p>Choose one explicitly selected prior round for <strong>every original action</strong>. No choice is copied automatically. Only after all twenty individual choices can you export a new complete local JSON self-report. Choosing a prior marker does not mean its step occurred, that the author is known, or that a vulnerability is fixed. This does not change any earlier report, active marker or native review receipt.</p>
+<div class="history-scroll"><table class="history-table">
+<thead><tr><th>Original HUMAN action</th><th>Explicit next-proposal marker</th></tr></thead>
+<tbody id="reconcile-rows"></tbody></table></div>
+<p id="reconcile-summary" role="status" aria-live="polite">No original HUMAN rounds selected.</p>
+<div class="controls">
+<button type="button" id="reconcile-export" disabled>Export NEW discussion proposal (JSON)</button>
+<button type="button" id="reconcile-reset" disabled>Discard all draft selections</button>
+</div>
+<p><small>The exported unsigned proposal has the original twenty-position, no-authority self-report shape for subsequent independent native HUMAN admission; there is no auto-import, granting, assignment, finding validation, source-authenticated lineage or recipient sending.</small></p>
+</details>
 <p><small>Only source-free fixed action numbers and self-reported status tokens are displayed/exported; this is not evidence of improvement, finding remediation, approval, consent, or release. Repeated identical reports are rejected to prevent accidental duplicate rounds. Local focus filters never remove any original actions from the full exported CSV. No time or actor identity is inferred.</small></p>
 </div>
 </section>
