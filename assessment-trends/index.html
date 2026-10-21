@@ -50,8 +50,34 @@
   <h3>Selected scenario · metric trajectory</h3>
   <div id="trajectoryTable" class="tablewrap"><p class="empty">No trajectory to inspect yet.</p></div>
 </section>
-<section class="panel no-print">
-  <div class="section-head"><h2>05 / Private human commentary</h2><span class="tag">In-memory only</span></div>
+
+<section class="panel no-print" id="flagReview">
+  <div class="section-head"><h2>05 / Source-flag change review queue</h2><span class="tag">Manual order · not chronology</span></div>
+  <p>Explore first reports, repeated flags, reappearances and flags no longer reported. A missing flag is <strong>not</strong> a verified fix. Filter the local queue, page through source-reported events, open a specific anonymous scenario/metric in the HUMAN commentary editor or explicitly export the filtered anonymous events. Nothing here approves a scan or release.</p>
+  <div class="queue-controls">
+    <label>Source-flag event<select id="reviewKind">
+      <option value="all">All source-flag events</option>
+      <option value="initial">Initially flagged</option>
+      <option value="first">First flagged in selected order</option>
+      <option value="consecutive">Consecutive flags</option>
+      <option value="reappeared">Flag reappeared</option>
+      <option value="absent">Not flagged in this slot (not a verified fix)</option>
+    </select></label>
+    <label>Review group<select id="reviewGroup"><option value="all">All review groups</option></select></label>
+    <label>Selected snapshot slot<select id="reviewSlot"><option value="all">All manual slots</option></select></label>
+  </div>
+  <p id="reviewCount" class="message" role="status" aria-live="polite">Import snapshots to see local source-flag transitions.</p>
+  <div id="reviewTable" class="tablewrap" role="region" aria-label="Paginated anonymous change events" tabindex="0"></div>
+  <div class="controls">
+    <button id="reviewPrev" type="button" class="secondary" disabled>Previous 100</button>
+    <button id="reviewNext" type="button" class="secondary" disabled>Next 100</button>
+    <button id="reviewExportCsv" type="button" disabled>Export filtered anonymous CSV</button>
+    <button id="reviewExportJson" type="button" class="secondary" disabled>Export filtered anonymous JSON</button>
+  </div>
+  <p class="footnote">Export contains only manually ordered anonymous slots, fixed metric/group labels, numeric candidate/delta, source flags and literal false authority fields. No original IDs, uploaded content, filenames, hashes or HUMAN notes. The order is neither independently authenticated chronology nor a verified security result.</p>
+</section>
+<section class="panel no-print" id="commentary">
+  <div class="section-head"><h2>06 / Private human commentary</h2><span class="tag">In-memory only</span></div>
   <p>Notes are never part of the anonymous aggregate brief, JSON or CSV. Save a note explicitly to retain it in this tab; navigate between scenarios without losing scratch text. Exporting notes creates a separate clearly marked PRIVATE file.</p>
   <label>Metric for commentary
     <select id="noteMetric" disabled></select>
@@ -67,7 +93,7 @@
   <p id="noteMessage" class="message" role="status" aria-live="polite"></p>
 </section>
 <section class="panel no-print">
-  <div class="section-head"><h2>06 / Explicit local handoff</h2><span class="tag">No authority</span></div>
+  <div class="section-head"><h2>07 / Explicit local handoff</h2><span class="tag">No authority</span></div>
   <div class="controls">
     <button id="exportJson" type="button" disabled>Export aggregate JSON</button>
     <button id="exportCsv" type="button" disabled>Export anonymous trajectory CSV</button>

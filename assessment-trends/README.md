@@ -10,8 +10,8 @@ Open standalone.html locally. For development, open index.html with its sibling 
 2. The browser validates the exact canonical CLI output schema, duplicate-free JSON keys (including escaped aliases), the exact 15 metric shape, derived deltas, source-reported regression flags and four literal false authority flags.
 3. All snapshots must have exactly the same original scenario set and exactly the same baseline for every (scenario_id, metric) pair. An invalid or partially matching batch is rejected atomically; a previous admitted workspace remains intact.
 4. Explore the review-priority and persistence heatmap, anonymous scenario trajectories and candidate/delta/flag values across all manually selected slots. Persistent means the same scenario/metric has a source-reported adverse flag in at least two consecutive slots. This is a display calculation over untrusted reports, not a verified finding.
-5. Save human commentary only in tab memory. Anonymous JSON, CSV, printable and script-free HTML brief omit original IDs, filenames, uploaded hashes, raw source JSON and note text. A separate, explicitly confirmed PRIVATE commentary export contains note text with only anonymous scenario ordinals and fixed false authority flags.
-6. Forget all local data clears imported snapshots, saved commentary and scratch notes. No localStorage, cookies, IndexedDB, service worker, telemetry or network access is used.
+5. Review anonymous source-flag change events using manual slot, event-kind and static review-group filters. The paginated 100-row queue shows initially reported, newly reported, consecutive, reappeared and no-longer-reported flags. Jump from a row directly to its HUMAN commentary editor. Download strictly separate filtered anonymous event CSV/JSON; no original scenario IDs, filenames, hashes or private notes are included. A flag absent in a later manually selected slot is **never** proof of remediation.\n6. Save human commentary only in tab memory. Anonymous JSON, CSV, printable and script-free HTML brief omit original IDs, filenames, uploaded hashes, raw source JSON and note text. A separate, explicitly confirmed PRIVATE commentary export contains note text with only anonymous scenario ordinals and fixed false authority flags.
+7. Forget all local data clears imported snapshots, saved commentary and scratch notes. No localStorage, cookies, IndexedDB, service worker, telemetry or network access is used.
 
 ## Accepted source schema
 
@@ -28,7 +28,7 @@ The input is treated as untrusted and unauthenticated. Matching scenario IDs or 
 ## Handoff
 
 - Aggregate JSON: snapshot status/counts, per-metric flag counts and anonymous scenario-slot trajectories; no IDs, filenames, hashes or notes.
-- CSV: long-form numeric trajectory per anonymous scenario slot × metric × selected snapshot slot; all authority fields false.
+- Change-event CSV/JSON: filtered, anonymous, manual-order source-flag events, page-independent; no notes, original IDs or authority.\n- CSV: long-form numeric trajectory per anonymous scenario slot × metric × selected snapshot slot; all authority fields false.
 - Script-free HTML: privacy-minimal aggregate summary with a restrictive no-network CSP.
 - PRIVATE commentary JSON: explicitly confirmed note handoff, not an anonymous artifact.
 

@@ -218,6 +218,116 @@
           v.regression?"cell-adverse":"cell-neutral");})]);
     drawTable("trajectoryTable",headers,rows);
   }
+
+  // All cases are admitted first; this is a *manual-order* flag transition desk,
+  // not a chronology, remediation, severity verdict, or authority source.
+  const REVIEW_KINDS={
+    initial:"Initially flagged",first:"First flagged in selected order",
+    consecutive:"Consecutive flags",reappeared:"Flag reappeared",
+    absent:"Not flagged in this slot (not a verified fix)"
+  };
+  let reviewOffset=0;
+  const REVIEW_PAGE=100;
+  function buildReviewEvents(){
+    const events=[];
+    snapshots.forEach((report,i)=>scenarioIds.forEach((id,ordinal)=>METRICS.forEach(metric=>{
+      const flagsBySlot=snapshots.map(s=>s.cases.get(id).metrics.get(metric).regression);
+      const now=flagsBySlot[i],previous=i>0&&flagsBySlot[i-1];
+      if(!now&&!previous)return;
+      let kind;
+      if(i===0)kind="initial";
+      else if(!now)kind="absent";
+      else if(previous)kind="consecutive";
+      else kind=flagsBySlot.slice(0,i).some(Boolean)?"reappeared":"first";
+      const row=report.cases.get(id).metrics.get(metric);
+      events.push({id,scenarioSlot:ordinal+1,metric,group:family(metric),
+        snapshotSlot:i+1,kind,candidate:row.candidate,delta:row.delta,
+        sourceStatus:report.status,sourceFlag:now});
+    })));
+    return events;
+  }
+  function reviewSelection(){
+    const kind=$("reviewKind").value,group=$("reviewGroup").value,
+      chosenSlot=$("reviewSlot").value;
+    return buildReviewEvents().filter(e=>(kind==="all"||kind===e.kind)&&
+      (group==="all"||group===e.group)&&
+      (chosenSlot==="all"||Number(chosenSlot)===e.snapshotSlot));
+  }
+  function reviewTallies(rows){
+    return Object.keys(REVIEW_KINDS).map(kind=>({kind,count:rows.filter(e=>e.kind===kind).length}));
+  }
+  function renderReviewQueue(){
+    const root=$("reviewTable");root.replaceChildren();
+    const rows=snapshots.length?reviewSelection():[];
+    reviewOffset=Math.min(reviewOffset,Math.max(0,Math.floor((rows.length-1)/REVIEW_PAGE)*REVIEW_PAGE));
+    $("reviewExportCsv").disabled=!rows.length;
+    $("reviewExportJson").disabled=!rows.length;
+    $("reviewPrev").disabled=reviewOffset===0;
+    $("reviewNext").disabled=reviewOffset+REVIEW_PAGE>=rows.length;
+    $("reviewCount").textContent=rows.length?
+      "Displaying "+(reviewOffset+1)+"–"+Math.min(rows.length,reviewOffset+REVIEW_PAGE)+" of "+
+      rows.length+" anonymous source-flag events. Manual order only; no fix or permission inferred.":
+      snapshots.length?"No source-flag transitions match these filters.":"Import snapshots to see local source-flag transitions.";
+    if(!rows.length)return;
+    const table=document.createElement("table"),head=document.createElement("thead"),tr=document.createElement("tr");
+    for(const name of ["Manual slot","Anonymous case","Metric","Review group","Source-reported change",
+      "Candidate","Δ","Source status","Human follow-up"]){
+      const th=document.createElement("th");th.scope="col";th.textContent=name;tr.append(th);
+    }
+    head.append(tr);table.append(head);
+    const body=document.createElement("tbody");
+    for(const event of rows.slice(reviewOffset,reviewOffset+REVIEW_PAGE)){
+      const line=document.createElement("tr");
+      for(const value of [event.snapshotSlot,"Scenario "+String(event.scenarioSlot).padStart(2,"0"),
+        event.metric,event.group,REVIEW_KINDS[event.kind],fmt(event.candidate),fmt(event.delta),
+        event.sourceStatus]){
+        const cell=document.createElement("td");cell.textContent=String(value);line.append(cell);
+      }
+      const action=document.createElement("td"),button=document.createElement("button");
+      button.type="button";button.className="secondary";button.textContent="Open commentary";
+      button.setAttribute("aria-label","Review scenario "+event.scenarioSlot+" "+event.metric);
+      button.addEventListener("click",()=>{
+        selectedScenario=event.id;selectedMetric=event.metric;
+        $("scenarioSelect").value=selectedScenario;$("noteMetric").value=selectedMetric;
+        renderScenarioDetail();renderNotePanel();$("noteInput").focus();
+        $("commentary").scrollIntoView({block:"start",behavior:"smooth"});
+      });
+      action.append(button);line.append(action);body.append(line);
+    }
+    table.append(body);root.append(table);
+  }
+  function exportReviewQueue(format){
+    if(!snapshots.length)return;
+    const rows=reviewSelection();
+    if(!rows.length)return;
+    // The original ID is used only for navigation inside this tab, never serialized.
+    const events=rows.map(e=>({snapshot_slot:e.snapshotSlot,scenario_slot:e.scenarioSlot,
+      metric:e.metric,review_priority_group:e.group,source_flag_event:e.kind,
+      source_reported_regression:e.sourceFlag,candidate:e.candidate,delta:e.delta,
+      source_snapshot_status:e.sourceStatus}));
+    if(format==="json"){
+      const out={schema:"lightup.assessment_trends_change_events.v1",status:summary().status,
+        fictional_demo_only:fictional,manually_selected_order:true,
+        chronology_authenticated:false,source_identity_authenticated:false,
+        filtered_event_count:events.length,events,
+        disclaimer:"Source-reported flag events in manually selected order only. An absent flag does not prove remediation. No source identity, chronology, permission, ground truth or release.",
+        ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+      download("assessment-trends-anonymous-change-events.json",JSON.stringify(out,null,2)+"\n","application/json");
+    }else{
+      const header=["snapshot_slot","scenario_slot","metric","review_priority_group",
+        "source_flag_event","source_reported_regression","candidate","delta",
+        "source_snapshot_status","fictional_demo_only","chronology_authenticated",
+        "source_identity_authenticated",...FLAGS];
+      const csv=[header,...events.map(e=>[e.snapshot_slot,e.scenario_slot,e.metric,
+        e.review_priority_group,e.source_flag_event,e.source_reported_regression,e.candidate,
+        e.delta,e.source_snapshot_status,fictional,false,false,false,false,false,false])];
+      download("assessment-trends-anonymous-change-events.csv",
+        csv.map(line=>line.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    }
+    $("reviewCount").textContent="Exported "+events.length+
+      " filtered anonymous flag events. No source IDs, filenames, hashes or HUMAN notes.";
+  }
+
   function renderNotePanel(){
     const id=currentId(),metric=$("noteMetric").value||METRICS[0];
     const key=id?noteKey(id,metric):"";
@@ -247,7 +357,7 @@
   }
   function render(){
     const active=snapshots.length>0;
-    for(const id of ["forget","exportJson","exportCsv","exportBrief","print"])$(id).disabled=!active;
+    for(const id of ["forget","exportJson","exportCsv","exportBrief","print","reviewExportCsv","reviewExportJson"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
     $("noteMetric").replaceChildren();
     METRICS.forEach(name=>{const option=document.createElement("option");option.value=name;option.textContent=name;$("noteMetric").append(option);});
@@ -256,13 +366,15 @@
     scenarioIds.forEach((id,i)=>{const option=document.createElement("option");option.value=id;
       option.textContent="Scenario "+String(i+1).padStart(2,"0");$("scenarioSelect").append(option);});
     if(active){selectedScenario=scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];$("scenarioSelect").value=selectedScenario;
-      renderSummary();renderMetricBoard();renderScenarioBoard();renderScenarioDetail();renderPrintBrief();}
+      renderSummary();renderMetricBoard();renderScenarioBoard();renderScenarioDetail();renderReviewQueue();renderPrintBrief();}
     else{
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","scenarioHeatmap","trajectoryTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","scenarioHeatmap","trajectoryTable","reviewTable","printBrief"].forEach(id=>$(id).replaceChildren());
     }
+    if(!active){$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
+      $("reviewPrev").disabled=true;$("reviewNext").disabled=true;}
     renderNotePanel();
   }
   async function importFiles(list){
@@ -279,6 +391,7 @@
       }
       const ids=harmonize(next);
       snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
+      reviewOffset=0;resetReviewFilters();
       notes.clear();scratch.clear();fictional=false;
       render();$("message").textContent="Accepted "+snapshots.length+
         " compatible source snapshots with "+scenarioIds.length+
@@ -313,11 +426,13 @@
   function demoLoad(){
     snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
-    selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;render();
+    selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
+    reviewOffset=0;resetReviewFilters();render();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
+    reviewOffset=0;resetReviewFilters();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";render();
   }
   function exportJson(){
@@ -397,6 +512,27 @@
     $("noteMessage").textContent="Saved commentary exported as a separate PRIVATE file; aggregate exports remain note-free.";
   }
 
+  function resetReviewFilters(){
+    $("reviewKind").value="all";
+    const group=$("reviewGroup");group.replaceChildren();
+    for(const name of ["all",...new Set(METRICS.map(family))]){
+      const option=document.createElement("option");option.value=name;
+      option.textContent=name==="all"?"All review groups":name;group.append(option);
+    }
+    const selector=$("reviewSlot");selector.replaceChildren();
+    for(const slot of ["all",...snapshots.map((_,i)=>String(i+1))]){
+      const option=document.createElement("option");option.value=slot;
+      option.textContent=slot==="all"?"All manual slots":"Slot "+slot;selector.append(option);
+    }
+  }
+  for(const filter of ["reviewKind","reviewGroup","reviewSlot"]){
+    $(filter).addEventListener("change",()=>{reviewOffset=0;renderReviewQueue();});
+  }
+  $("reviewPrev").addEventListener("click",()=>{reviewOffset=Math.max(0,reviewOffset-REVIEW_PAGE);renderReviewQueue();});
+  $("reviewNext").addEventListener("click",()=>{reviewOffset+=REVIEW_PAGE;renderReviewQueue();});
+  $("reviewExportCsv").addEventListener("click",()=>exportReviewQueue("csv"));
+  $("reviewExportJson").addEventListener("click",()=>exportReviewQueue("json"));
+  resetReviewFilters();
   $("import").addEventListener("click",()=>{if($("files").files.length)void importFiles($("files").files);else $("message").textContent="Choose 3–12 original cohort JSON files first.";});
   $("scenarioSelect").addEventListener("change",()=>{selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();});
   $("noteMetric").addEventListener("change",()=>{selectedMetric=$("noteMetric").value;renderNotePanel();});
