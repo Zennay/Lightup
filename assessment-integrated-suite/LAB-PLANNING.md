@@ -1,5 +1,43 @@
 # LightUp · Original Lab Launchpad → PRIVATE HUMAN Review
 
+## Explicit new source-free HUMAN role/follow-up continuation (native 80–81)
+
+After native 78 creates a PRIVATE twenty-action Attention revision
+portfolio, the operator must copy the generated
+`PRIVATE-EDITABLE-HUMAN-CHOICES.csv` into a NEW 0600 private file
+**outside** the unchanged original saved revision room. The full
+worksheet always contains original actions 52–71 with columns
+`action,role_from_revision,followup_from_revision`.
+Both selection numbers start as 0 = WITHHOLD. For a HUMAN-approved
+proposal, select a specific existing revision number 1–8 separately
+for the role and follow-up of each original action. Only fixed
+source-free role/follow-up categories are copied: no personal
+recipient, private source finding, token, target, date or original
+HUMAN evidence is copied.
+
+Native **80** reopens every original native 72/73 source-free Lab
+Route receipt, all original 76/77 HUMAN Attention receipts, and the
+whole original saved 78 revision portfolio before admitting the
+edited twenty-row selection file. It constructs a NEW original-marker-
+bound v2 HUMAN Attention draft suitable for importing into the
+existing browser Attention Workboard, plus scriptless local readable
+HTML, full choice matrix, original edited worksheet, source-free
+decision count JSON and unsigned exact-file receipt.
+Native **81** repeats original source admission and checks EVERY
+saved output byte unchanged. Both operations remain local and
+owner-private 0700/0600 and never modify any original saved room.
+
+The chosen revision number is merely declared file order, not
+verified chronology or a valid assignment. Default WITHHOLD prevents
+a previous role choice from silently propagating into a new HUMAN
+draft. Creating a new HUMAN proposal does not establish a genuine
+person, owner approval, grant, consent, source proof, remediated
+finding, live scan or release. CI, source-owner, independent security/
+privacy/browser review, #177/#182/#829, distinct current authenticated
+client/operator consent with revocation at use and HUMAN GO remain
+mandatory. **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.**
+
+
 
 ## Complete PRIVATE HUMAN Attention proposal revisions (native 78–79)
 
