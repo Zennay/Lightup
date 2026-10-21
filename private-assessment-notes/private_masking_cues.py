@@ -31,7 +31,8 @@ V9_SCHEMA = "lightup.private_assessment_masking_cues.v9"
 V10_SCHEMA = "lightup.private_assessment_masking_cues.v10"
 V11_SCHEMA = "lightup.private_assessment_masking_cues.v11"
 V12_SCHEMA = "lightup.private_assessment_masking_cues.v12"
-SCHEMA = "lightup.private_assessment_masking_cues.v13"
+V13_SCHEMA = "lightup.private_assessment_masking_cues.v13"
+SCHEMA = "lightup.private_assessment_masking_cues.v14"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -121,6 +122,10 @@ GROUPS = (*V12_GROUPS[:2],
           (V12_GROUPS[2][0],
            V12_GROUPS[2][1] + ("[WITHHELD_PRIVATE_HAR_UNREVIEWED]",)),
           V12_GROUPS[3])
+V13_GROUPS = GROUPS
+# V14 keeps the historical V13 marker algorithm while adding a distinct
+# source-free HUMAN attention HTML file to the private cue packet.
+GROUPS = V13_GROUPS
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
@@ -233,6 +238,8 @@ def create(original: str, private_parent: str) -> int:
                   cue_receipt(manifest_raw, sources))
         file_new(output / "PRIVATE-masking-cues.csv", cue_csv(marker_rows))
         file_new(output / "PRIVATE-masking-cues.html", cue_page(marker_rows))
+        from private_har_hold_board import render as render_har_hold
+        file_new(output / "PRIVATE-HAR-HOLD.html", render_har_hold(rows))
         ready = True
         print("REVIEW_ONLY: PRIVATE original masking-cue navigation created; NOT privacy proof")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-masking-cues.html"))
@@ -255,8 +262,12 @@ def reopen(original: str, cue_room: str) -> int:
         return (json.dumps(cue_receipt(manifest_raw, sources, schema=schema),
                            indent=2, sort_keys=True,
                            ensure_ascii=False) + "\n").encode("utf-8")
-    if stored_receipt == serialized_receipt(SCHEMA):
+    is_v14 = stored_receipt == serialized_receipt(SCHEMA)
+    if is_v14:
         derived = cues(rows)
+        render_page = cue_page
+    elif stored_receipt == serialized_receipt(V13_SCHEMA):
+        derived = cues(rows, groups=V13_GROUPS)
         render_page = cue_page
     elif stored_receipt == serialized_receipt(V12_SCHEMA):
         derived = cues(rows, groups=V12_GROUPS)
@@ -304,6 +315,10 @@ def reopen(original: str, cue_room: str) -> int:
         ("PRIVATE-masking-cues.csv", cue_csv(derived)),
         ("PRIVATE-masking-cues.html", render_page(derived)),
     )
+    if is_v14:
+        from private_har_hold_board import render as render_har_hold
+        expected_files += (("PRIVATE-HAR-HOLD.html",
+                            render_har_hold(rows)),)
     for name, original_bytes in expected_files:
         if private_input(str(folder / name), 65536) != original_bytes:
             raise Hold("HOLD: original-bound PRIVATE HUMAN masking-cue packet changed")

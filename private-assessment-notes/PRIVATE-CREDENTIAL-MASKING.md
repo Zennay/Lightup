@@ -250,7 +250,23 @@ previously generated packets are not changed or reinterpreted.
 Neither presence nor absence of masking placeholders is evidence
 that secrets or personal data are absent.
 
-## NEW: navigable original-ordinal masking-cue desk (v13)
+## NEW: owner-private HAR HOLD attention board
+
+When creating a new original HUMAN workroom with the optional masking-cue
+preview or using native masking-cues as a separate source-bound workroom,
+the product also writes a script-free, owner-only PRIVATE-HAR-HOLD.html.
+The printable board identifies, by **original source ordinal only**, notes
+whose entire derived copy contains the literal source-withheld marker.
+All original ordinals remain visible, including zero withheld counts.
+It instructs the human reviewer to return to the unchanged privately held
+original. The board never includes source text, names, paths, digests,
+raw notes or client identity; a marker may be literal original input and
+is not proven detection, clearance or release. Separate native receipt
+reopen compares the exact new HTML bytes as part of a v14 packet.
+Historical v1-v13 rooms remain unchanged and reopen against their own
+original three-file packet algorithms.
+
+## NEW: navigable original-ordinal masking-cue desk (v14)
 
 The native `notes.py masking-cues` and optional
 `notes.py prepare --with-mask-cues` now render a fully offline
@@ -262,16 +278,17 @@ groups show no original text, customer names, source digests, freeform
 HUMAN notes, credentials or authority claims. Zero counts are *not* clearance.
 
 New independent native cue receipts use
-`lightup.private_assessment_masking_cues.v13`, including new
+`lightup.private_assessment_masking_cues.v14`, including new
 opaque original HAR request/response body, WebSocket message, cookie,
 queryString, form-parameter, URL/redirect, arbitrary header and file-reference
-markers plus a whole-source HAR REVIEW/HOLD marker in their
-literal-count families. The original v12 URL/header, v11 query/form,
+markers plus a whole-source HAR REVIEW/HOLD marker and separate
+script-free attention board. The original v13 marker-only receipt,
+v12 URL/header, v11 query/form,
 v10 cookie, v9 body/frame, v8 HAR form/JSON/multipart and v1-v7 families
 remain exactly reopenable with their original historical marker algorithms,
 without silent upgrade.
 The original source-bound 0700/0600 custody is unchanged. The read-only
-`notes.py masking-cues-reopen` accepts **v1 through v12** historical
+`notes.py masking-cues-reopen` accepts **v1 through v13** historical
 receipts and their original HTML/CSV bytes; existing historical packets
 are never rewritten, auto-upgraded or silently normalized. In particular,
 new cue navigation does not change the canonical original source manifest,

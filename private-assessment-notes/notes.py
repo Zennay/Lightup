@@ -144,7 +144,9 @@ def landing(count: int, final: bool, stages: list[str] | None = None,
         items += "<li><a href='PRIVATE-HUMAN-editor.html'>PRIVATE offline interactive HUMAN decision editor</a></li>"
     if include_masking_cues and not final:
         items += ("<li><a href='PRIVATE-masking-cues.html'>Optional PRIVATE "
-                  "literal masking-cue navigation (never a safety score)</a></li>")
+                  "literal masking-cue navigation (never a safety score)</a></li>"
+                  "<li><a href='PRIVATE-HAR-HOLD.html'>PRIVATE original "
+                  "HAR whole-copy HOLD attention (HUMAN-only)</a></li>")
     if final:
         items += "<li><a href='PRIVATE-redacted-notes.txt'>PRIVATE combined HUMAN redacted notes</a></li>"
     for slot in range(1, count + 1):
@@ -274,6 +276,8 @@ def prepare(inputs: list[str], parent_string: str,
             mask_rows = cue_rows(rows)
             file_new(kit / "PRIVATE-masking-cues.html", cue_page(mask_rows))
             file_new(kit / "PRIVATE-masking-cues.csv", cue_csv(mask_rows))
+            from private_har_hold_board import render as render_har_hold
+            file_new(kit / "PRIVATE-HAR-HOLD.html", render_har_hold(rows))
         file_new(kit / "OPEN-PRIVATE.html",
                  landing(len(rows), False,
                          include_masking_cues=include_masking_cues))
