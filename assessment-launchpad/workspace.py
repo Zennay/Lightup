@@ -168,6 +168,8 @@ def read_review(root_dir, endpoints, digest):
     location = os.path.join(root_dir, REVIEW_DIR)
     fd, _ = open_output_directory(location)
     try:
+        if set(os.listdir(fd)) != set(REVIEW_FILES):
+            raise Hold("private HUMAN review folder has missing or unknown files")
         recorded = {name: read_private_bundle_item(fd, name, 65536)
                     for name in REVIEW_FILES}
     finally:
@@ -187,6 +189,8 @@ def check_workspace(root_fd, root_dir):
     work = read_review(root_dir, endpoints, digest)
     fd, _ = open_output_directory(os.path.join(root_dir, EDITOR_DIR))
     try:
+        if set(os.listdir(fd)) != {EDITOR_FILE}:
+            raise Hold("private HUMAN editor folder has missing or unknown files")
         stored = read_private_bundle_item(fd, EDITOR_FILE, 131072)
     finally:
         os.close(fd)
@@ -197,6 +201,8 @@ def check_workspace(root_fd, root_dir):
         raise Hold("private workspace start screen changed or became noncanonical")
     routing_fd, _ = open_output_directory(os.path.join(root_dir, ROUTING_DIR))
     try:
+        if set(os.listdir(routing_fd)) != set(ROUTING_FILES):
+            raise Hold("private HUMAN routing folder has missing or unknown files")
         recorded_routing = {name: read_private_bundle_item(routing_fd, name, 65536)
                             for name in ROUTING_FILES}
     finally:
