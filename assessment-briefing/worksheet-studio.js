@@ -442,7 +442,8 @@
       cryptoReady();
       need(file&&file.size>0&&file.size<=2*1024*1024);
       need(pass.length>=12&&pass.length<=256);
-      const outer=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      const outer=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(await file.arrayBuffer());
+      need(outer.charCodeAt(0)!==0xfeff);
       const envelope=JSON.parse(outer);
       need(envelope&&typeof envelope==="object"&&!Array.isArray(envelope) &&
         Object.keys(envelope).sort().join(",")===VAULT_FIELDS.slice().sort().join(","));
