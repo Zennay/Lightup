@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 from json.decoder import scanstring
+from private_har_payload import MAX_BODY, contains_named_form_secret, mime_family
 
 MAX_FRAGMENT = 128 * 1024
 MAX_ATTEMPTS = 96
@@ -35,14 +36,17 @@ _HEADER_FIELD = re.compile(
 _CREDENTIAL_MARKER = "[REDACTED_JSON_VALUE]"
 _HEADER_MARKER = "[REDACTED_HAR_HEADER_VALUE]"
 _PARAM_MARKER = "[REDACTED_HAR_PARAM_VALUE]"
+_HAR_FORM_MARKER = "[REDACTED_HAR_FORM_TEXT]"
+_HAR_JSON_MARKER = "[REDACTED_HAR_EMBEDDED_JSON]"
 _DECODER = json.JSONDecoder(parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
 
 
 class _Reader:
-    def __init__(self, source: str, position: int):
+    def __init__(self, source: str, position: int, *, allow_embedded: bool = True):
         self.source = source
         self.pos = position
         self.nodes = 0
+        self.allow_embedded = allow_embedded
         self.spans: list[tuple[int, int, str]] = []
 
     def _ws(self) -> None:
@@ -117,6 +121,35 @@ class _Reader:
                 marker = (_HEADER_MARKER if _HEADER_FIELD.fullmatch(name_node[1])
                           else _PARAM_MARKER)
                 self.spans.append((value_node[2], value_node[3], marker))
+            # HAR postData.text can contain an entire *serialized* request
+            # body. The existing name/value pairs do NOT inspect this field.
+            # Recognize only explicit original postData mimeType + text with
+            # bounded, nonrecursive and strictly parsed parameter names.
+            mime = members.get("mimeType")
+            body = members.get("text")
+            if (self.allow_embedded and mime and body
+                    and mime[0] == "string" and body[0] == "string"
+                    and type(mime[1]) is str and type(body[1]) is str
+                    and len(body[1]) <= MAX_BODY):
+                family = mime_family(mime[1])
+                if (family == "form"
+                        and contains_named_form_secret(body[1], _SECRET_FIELD)):
+                    # Withhold the WHOLE source-serialized text field: this
+                    # avoids leaking its other query/body members and preserves
+                    # the parent original JSON object layout.
+                    self.spans.append((body[2], body[3], _HAR_FORM_MARKER))
+                elif family == "json":
+                    try:
+                        nested = _Reader(body[1], 0, allow_embedded=False)
+                        consumed, nested_spans = nested.read()
+                        if (nested_spans and not body[1][consumed:].strip()):
+                            self.spans.append(
+                                (body[2], body[3], _HAR_JSON_MARKER))
+                    except (ValueError, UnicodeError, RecursionError,
+                            OverflowError):
+                        # An undecodable or ambiguous nested body never
+                        # becomes a security/privacy clearance.
+                        pass
             return ("object", None, start, self.pos)
         if ch == "[":
             self.pos += 1
