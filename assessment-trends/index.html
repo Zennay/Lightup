@@ -53,6 +53,11 @@
   <div id="scenarioHeatmap" class="tablewrap"><p class="empty">No admitted scenarios yet.</p></div>
   <h3>Selected scenario · metric trajectory</h3>
   <div id="trajectoryTable" class="tablewrap"><p class="empty">No trajectory to inspect yet.</p></div>
+  <div class="controls no-print">
+    <button id="exportScenarioCsv" type="button" disabled>Export selected scenario CSV</button>
+    <button id="exportScenarioJson" type="button" class="secondary" disabled>Export selected scenario JSON</button>
+  </div>
+  <p class="footnote">Minimum-necessary local handoff: exports only the selected anonymous scenario across the manually ordered slots. Original scenario IDs, filenames, source hashes and HUMAN notes are excluded. Slot order is not authenticated chronology; source-reported flags do not prove findings or fixes.</p>
 </section>
 
 <section class="panel no-print" id="flagReview">

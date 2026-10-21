@@ -906,7 +906,7 @@
   }
   function render(){
     const active=snapshots.length>0;
-    for(const id of ["forget","exportJson","exportCsv","exportBrief","print","reviewExportCsv","reviewExportJson"])$(id).disabled=!active;
+    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportBrief","print","reviewExportCsv","reviewExportJson"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
     $("noteMetric").replaceChildren();
     METRICS.forEach(name=>{const option=document.createElement("option");option.value=name;option.textContent=name;$("noteMetric").append(option);});
@@ -1101,6 +1101,60 @@
       rows.map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
     $("message").textContent="Anonymous trajectory CSV downloaded. Only ordinals, metric names and source-reported numbers/flags.";
   }
+
+  // Minimum-necessary local handoff for one selected anonymous scenario.
+  // It intentionally excludes original IDs, source bytes, filenames and HUMAN notes.
+  function selectedScenarioRows(){
+    const id=currentId();
+    if(!id||!snapshots.length)return [];
+    const scenarioSlot=scenarioIds.indexOf(id)+1;
+    if(scenarioSlot<1)return [];
+    return snapshots.flatMap((report,i)=>METRICS.map(metric=>{
+      const m=report.cases.get(id).metrics.get(metric);
+      return {
+        snapshot_slot:i+1,scenario_slot:scenarioSlot,metric,review_priority_group:family(metric),
+        baseline:m.baseline,candidate:m.candidate,delta:m.delta,
+        source_reported_regression:m.regression,source_snapshot_status:report.status,
+        fictional_demo_only:fictional,source_identity_authenticated:false,
+        chronology_authenticated:false,authorized:false,consent_verified:false,
+        dispatch_allowed:false,release_allowed:false,status:"REVIEW_ONLY"
+      };
+    }));
+  }
+  function exportScenarioCsv(){
+    const rows=selectedScenarioRows();if(!rows.length)return;
+    const header=["snapshot_slot","scenario_slot","metric","review_priority_group","baseline","candidate",
+      "delta","source_reported_regression","source_snapshot_status","fictional_demo_only",
+      "source_identity_authenticated","chronology_authenticated","authorized","consent_verified",
+      "dispatch_allowed","release_allowed","status"];
+    download("assessment-trends-scenario-"+String(rows[0].scenario_slot).padStart(2,"0")+"-trajectory.csv",
+      [header,...rows.map(row=>header.map(key=>row[key]))]
+        .map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    $("message").textContent="Selected anonymous scenario CSV downloaded. It contains only this scenario's source-reported metric trajectory; no original IDs, filenames, hashes or HUMAN notes.";
+  }
+  function exportScenarioJson(){
+    const rows=selectedScenarioRows();if(!rows.length)return;
+    const scenarioSlot=rows[0].scenario_slot;
+    const out={
+      schema:"lightup.assessment_trends_selected_scenario_trajectory.v1",
+      status:"REVIEW_ONLY",scenario_slot:scenarioSlot,
+      snapshot_count:snapshots.length,manually_selected_order:true,
+      chronology_authenticated:false,source_identity_authenticated:false,
+      fictional_demo_only:fictional,authorized:false,consent_verified:false,
+      dispatch_allowed:false,release_allowed:false,
+      trajectories:METRICS.map(metric=>{
+        const subset=rows.filter(row=>row.metric===metric);
+        return {metric,review_priority_group:family(metric),baseline:subset[0].baseline,
+          slots:subset.map(row=>({snapshot_slot:row.snapshot_slot,candidate:row.candidate,delta:row.delta,
+            source_reported_regression:row.source_reported_regression,source_snapshot_status:row.source_snapshot_status}))};
+      }),
+      disclaimer:"One selected anonymous scenario from already-completed untrusted comparison reports. Slot order is manually selected, not authenticated chronology. Source flags are not verified findings or remediation. This export does not grant authorization or release approval."
+    };
+    download("assessment-trends-scenario-"+String(scenarioSlot).padStart(2,"0")+"-trajectory.json",
+      JSON.stringify(out,null,2)+"\n","application/json");
+    $("message").textContent="Selected anonymous scenario JSON downloaded. Original IDs, filenames, hashes and HUMAN notes are excluded; status remains REVIEW_ONLY.";
+  }
+
   function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
   function exportBrief(){
     if(!snapshots.length)return;
@@ -1730,6 +1784,8 @@
   $("exportNotes").addEventListener("click",exportPrivateNotes);
   $("exportJson").addEventListener("click",exportJson);
   $("exportCsv").addEventListener("click",exportCsv);
+  $("exportScenarioCsv").addEventListener("click",exportScenarioCsv);
+  $("exportScenarioJson").addEventListener("click",exportScenarioJson);
   $("exportBrief").addEventListener("click",exportBrief);
   $("print").addEventListener("click",()=>{if(snapshots.length)window.print();});
   $("forget").addEventListener("click",()=>{if(window.confirm("Forget all admitted source data and local commentary from this tab?"))forget();});
