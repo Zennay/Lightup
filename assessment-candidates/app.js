@@ -722,6 +722,33 @@
             format(first.candidate),format(second.candidate),
             format(second.candidate-first.candidate),first.adverse,second.adverse];
         })):"";
+    const historyBound=!!reviewRounds&&!demo&&
+      sourceHashes.length===reports.length&&
+      sourceHashes.every((hash,i)=>hash===reviewRounds.hashes[i]);
+    const reviewHistorySection=historyBound?
+      "<h2>PRIVATE HUMAN review-round history · manually ordered</h2>"+
+      "<p>"+reviewRounds.rounds+" separately selected unsigned HUMAN drafts; "+
+      reviewRounds.diff.length+" anonymous cases changed at least once; "+
+      reviewRounds.totalTransitions+" local proposal transitions; "+
+      reviewRounds.settingChanges+" hypothetical settings/focus changes. "+
+      "Chooser order is not verified chronology. No status proves a fix or permission.</p>"+
+      (reviewRounds.diff.length?reviewRounds.diff.map(item=>
+        "<h3>Lab case "+String(item.ordinal).padStart(2,"0")+
+        " · "+item.transitions+" proposal transition(s)</h3>"+
+        table(["Manually selected round","Generic HUMAN group","Local discussion stage"],
+          reviewRounds.snapshots.map((rows,i)=>[
+            "Round "+(i+1),nice(rows[item.ordinal-1].route),
+            nice(rows[item.ordinal-1].stage)]))).join("")
+        :"<p>No changed local HUMAN proposals. This does not verify any finding, remediation or release.</p>")
+      :"";
+    const currentDiscussionSection=historyBound&&discussions.size?
+      "<h2>Current local HUMAN discussion suggestions</h2>"+
+      "<p>Only locally recorded proposals are listed. Unlisted cases have no saved local suggestion; nothing is assigned to a real person.</p>"+
+      table(["Anonymous case","Generic proposed group","Local discussion stage"],
+        [...discussions.entries()].map(([id,row])=>[
+          "Lab case "+String(queueIds().indexOf(id)+1).padStart(2,"0"),
+          nice(row.route),nice(row.stage)]))
+      :"";
     const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
       "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; "+
       "connect-src 'none'; img-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
@@ -733,7 +760,8 @@
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
       advisory+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
-      agendaTable+crossoverTable+pairNumericTable+"<h2>Unverified original metric totals</h2>"+metricTable+
+      agendaTable+crossoverTable+pairNumericTable+reviewHistorySection+currentDiscussionSection+
+      "<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
       "consent with action-time revocation, original security fixes, full required hosted/permanent VPS "+
       "CI, independent security/privacy review and human GO remain mandatory.</p></body></html>";

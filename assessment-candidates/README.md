@@ -62,3 +62,17 @@ The standalone script-free briefing now includes the selected-pair numeric compa
 ## Isolation and source ownership
 
 This independent branch changes exclusively **new** files in `assessment-candidates/`. It does not edit or claim the comparator #1515, reviewdesk #1576, trajectory #1585, production runtime, domain, policies, webapp, scanner, service, CI, self-hosted runner or any other worker's files. The standalone works with original #1515 JSON schemas but does not import or copy the actively owned source implementation. No QA/regression suites have been written or run under the 17 October execution policy.
+
+
+### Combined candidate metrics + PRIVATE HUMAN round history
+
+When 2–8 source-byte-bound PRIVATE HUMAN drafts have been admitted against the
+same original lab report bytes, the existing scriptless aggregate brief now
+includes the complete manually ordered per-case round timeline and the current
+locally recorded generic discussion suggestions. The brief still includes
+candidate aggregate metrics, the selected pair numeric deltas and original
+adverse-flag crossover. It never exports source case IDs, source hashes,
+filenames, aliases, notes, targets or reviewer identities. A changed status,
+zero difference or proposed group is not proof of remediation, chronology,
+authorization, consent or release. If no compatible round comparison is
+loaded, the existing aggregate-only report is unchanged.
