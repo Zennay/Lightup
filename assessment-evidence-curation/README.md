@@ -505,8 +505,8 @@ inboxes and 1–64 original selected HUMAN rows. Console action **29** prompts f
 those original sources and creates the packet; action **30** opens an existing
 packet read-only and checks it against every unchanged original source.
 
-The single **NEW owner-only 0700 output folder** contains five exclusive
-owner-only **0600** files (five in the current v2 format):
+The single **NEW owner-only 0700 output folder** contains seven exclusive
+owner-only **0600** files (current v3 format):
 
 - `PRIVATE-HUMAN-priority-round-portfolio.html`: static, script-free,
   print-ready current/prior HUMAN stage and priority count tables and adjacent
@@ -519,6 +519,17 @@ owner-only **0600** files (five in the current v2 format):
 - `PRIVATE-HUMAN-priority-round-stage-transitions.csv`: original-source-free
   directional HUMAN stage changes per adjacent manually ordered round and
   priority; no ordinals, free text or customer source.
+- `PRIVATE-HUMAN-priority-round-intervals.csv`: aggregate direct comparisons
+  for **every earlier/later round pair** (not just adjacent rounds), separated
+  by HUMAN priority. It explicitly counts unchanged final status after one
+  or more intervening HUMAN-reported status reversals and counts edited
+  HUMAN reply/follow-up fields **without exporting their text**.
+- `PRIVATE-HUMAN-priority-round-explorer.html`: interactive **single-file**
+  offline browser, with pinned inline CSS/JS Content-Security-Policy. Pick any
+  two manually ordered HUMAN rounds and a priority, see complete counts,
+  including otherwise-hidden intermediate stage reversals and text-edit counts.
+  Never uploads, contacts a network, saves browser data, runs a scan or
+  makes permissions, consent, task, remediation or real-time claims.
 - `PRIVATE-HUMAN-priority-round-portfolio-receipt.json`: original source,
   selection, exact reopened inbox/canonical HUMAN CSV and output unsigned digests.
 
@@ -530,11 +541,20 @@ incorrect manually supplied round order. Use the matching flags with
 
 All original inboxes are fully re-admitted before any output is published;
 an incomplete priority group, duplicate inbox or missing original selected row
-causes HOLD rather than a misleading partial trend. Four artifacts are bounded
-to 512 KiB each. Version 2 also includes a PRIVATE latest-round HUMAN attention summary
-for blocked, unreturned and needs-more-information counts. Any v1 output
-must stay archived and is intentionally refused by v2 read-only reopen; original
-source must be selected again to create a new v2 output.
+causes HOLD rather than a misleading partial trend. **Each of all seven
+artifacts** is bounded to 512 KiB. The canonical v3 JSON additionally includes
+PRIVATE latest-round HUMAN attention summary (blocked, unreturned and
+needs-more-information) and complete original-source-free direct pairwise
+HUMAN interval metrics. Historical v1/v2 packets remain untouched and
+intentionally HOLD on current v3 read-only reopen; the original full source
+and all HUMAN rounds must be provided again for a new v3 packet.
+
+Open the generated explorer HTML *locally*, not via a hosted web service.
+It renders aggregate **numeric self-reported** differences only. A status
+returning to its previous value after a different intermediate HUMAN stage is
+shown separately from net stage changes. Round order is supplied manually and
+does not prove chronology; pairwise comparison does not independently prove
+that a change occurred at a real-world time or that a reported fix was made.
 Neither a static group-count difference nor a HUMAN change
 means a verified finding, recovery, consent, real chronological ordering, or
 approval for external disclosure. Tiny cohorts can still be identifiable:

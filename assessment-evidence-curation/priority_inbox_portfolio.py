@@ -20,6 +20,7 @@ from priority_inbox_action_queue import STAGES
 from priority_reply import UNTRUSTED_FLAGS
 from response import accepted_original, admit_returned_reply
 from revision import private_frame
+from priority_inbox_portfolio_browser import build as build_browser
 
 PRIORITIES = ("urgent", "soon", "routine")
 STAGE_KEYS = ("no_human_response",) + tuple(key for key, _ in STAGES if key != "no_human_response")
@@ -27,6 +28,8 @@ REPORT = "PRIVATE-HUMAN-priority-round-portfolio.html"
 COUNTS = "PRIVATE-HUMAN-priority-round-portfolio.json"
 CSV = "PRIVATE-HUMAN-priority-round-portfolio.csv"
 TRANSITIONS_CSV = "PRIVATE-HUMAN-priority-round-stage-transitions.csv"
+INTERVALS_CSV = "PRIVATE-HUMAN-priority-round-intervals.csv"
+BROWSER = "PRIVATE-HUMAN-priority-round-explorer.html"
 RECEIPT = "PRIVATE-HUMAN-priority-round-portfolio-receipt.json"
 LIMIT = 512 * 1024
 
@@ -117,6 +120,42 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                         for (old, new), n in sorted(stage_pairs.items())],
                 })
 
+    interval_rows = []
+    for first in range(rounds - 1):
+        for last in range(first + 1, rounds):
+            for priority in PRIORITIES:
+                ids = [ordinal for ordinal, item in selected_by_ordinal.items()
+                       if item["priority"] == priority]
+                before = ordered[first]
+                after = ordered[last]
+                changed_stage = changed_reply = changed_followup = reverted = 0
+                for ordinal in ids:
+                    old = before[ordinal]
+                    new = after[ordinal]
+                    left_stage = old["recipient_reported_stage"] or "no_human_response"
+                    right_stage = new["recipient_reported_stage"] or "no_human_response"
+                    changed_stage += int(left_stage != right_stage)
+                    changed_reply += int(old["recipient_human_reply"] !=
+                                         new["recipient_human_reply"])
+                    changed_followup += int(old["recipient_human_next_question"] !=
+                                            new["recipient_human_next_question"])
+                    if left_stage == right_stage and any(
+                        (ordered[middle][ordinal]["recipient_reported_stage"] or
+                         "no_human_response") != left_stage
+                        for middle in range(first + 1, last)
+                    ):
+                        reverted += 1
+                interval_rows.append({
+                    "operator_ordered_from_round": first + 1,
+                    "operator_ordered_to_round": last + 1,
+                    "human_priority": priority,
+                    "human_rows_in_priority": len(ids),
+                    "stage_changed_rows": changed_stage,
+                    "intermediate_stage_reverted_rows": reverted,
+                    "reply_changed_rows": changed_reply,
+                    "next_question_changed_rows": changed_followup,
+                })
+
     attention = [
         {"human_priority": priority, "human_stage": stage,
          "human_rows": next(item["human_rows"] for item in counts
@@ -127,13 +166,14 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         for stage in ("blocked_human", "needs_more_information", "no_human_response")
     ]
     numeric = {
-        "schema": "lightup.private_human_cross_priority_portfolio.v2",
+        "schema": "lightup.private_human_cross_priority_portfolio.v3",
         "status": "REVIEW_ONLY",
         "operator_ordered_round_count": rounds,
         "selected_original_human_rows": len(selected),
         "round_priority_stage_counts": counts,
         "adjacent_human_round_changes": transitions,
         "latest_round_attention_counts": attention,
+        "all_operator_selected_round_intervals": interval_rows,
         "manual_order_not_authenticated_chronology": True,
         **UNTRUSTED_FLAGS,
     }
@@ -157,6 +197,18 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                                    item["human_priority"], flow["from_stage"],
                                    flow["to_stage"], flow["human_rows"]])
     flows_csv_raw = flows_out.getvalue().encode("utf-8")
+    intervals_out = io.StringIO(newline="")
+    intervals_writer = csv.writer(intervals_out, lineterminator="\r\n")
+    interval_header = (
+        "operator_ordered_from_round", "operator_ordered_to_round",
+        "human_priority", "human_rows_in_priority", "stage_changed_rows",
+        "intermediate_stage_reverted_rows", "reply_changed_rows",
+        "next_question_changed_rows")
+    intervals_writer.writerow(interval_header)
+    for item in interval_rows:
+        intervals_writer.writerow([item[key] for key in interval_header])
+    intervals_raw = intervals_out.getvalue().encode("utf-8")
+    interactive_html = build_browser(interval_rows, rounds)
     matrix_rows = "".join(
         "<tr><td>" + str(row["operator_ordered_round"]) + "</td><td>" +
         h(row["human_priority"]) + "</td><td>" + h(row["human_stage"]) +
@@ -218,7 +270,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     html = private_frame("PRIVATE HUMAN cross-priority round portfolio", body)
     counts_raw = json_bytes(numeric)
     receipt = {
-        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v2",
+        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v3",
         "status": "REVIEW_ONLY",
         "operator_ordered_round_count": rounds,
         "original_source_sha256_unsigned": source_sha,
@@ -230,10 +282,13 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "private_counts_sha256_unsigned": digest(counts_raw),
         "private_csv_sha256_unsigned": digest(csv_raw),
         "private_transition_csv_sha256_unsigned": digest(flows_csv_raw),
+        "private_intervals_csv_sha256_unsigned": digest(intervals_raw),
+        "private_explorer_html_sha256_unsigned": digest(interactive_html),
         **UNTRUSTED_FLAGS,
     }
     files = {REPORT: html, COUNTS: counts_raw, CSV: csv_raw,
-             TRANSITIONS_CSV: flows_csv_raw,
+             TRANSITIONS_CSV: flows_csv_raw, INTERVALS_CSV: intervals_raw,
+             BROWSER: interactive_html,
              RECEIPT: json_bytes(receipt)}
     require(all(0 < len(raw) <= LIMIT for raw in files.values()))
     return files, len(selected)
