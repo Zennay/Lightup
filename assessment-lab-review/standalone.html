@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-unMLXhvKUKn1FfXqSskPpjdHrjA8whZX5UWPmIp56Ao=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-SfnPPWBMR7n63fjrp/l6eytStUmgFBBLrUVqvd4KJkM='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-XmSgEfBl5bLiiMrzW7N5loSLVufrH1GCrx6M+sgn9DE=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-e5EuXmZFonJgDgb41Iy91rGTA0Oy3LdLO0ZDGRMFv7w='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -31,6 +31,8 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 #search{font:inherit;background:#101b2d;color:#fff;border:1px solid #7087a3;border-radius:6px;padding:.65rem;min-width:220px;max-width:100%}#search:focus-visible{outline:3px solid #ffcb67;outline-offset:2px}
 
 .coverage-panel{margin:1rem 0;padding:1rem;background:#141e2c;border:1px solid #465a70;border-radius:10px;box-shadow:none}.coverage-panel h3{margin:0 0 .3rem;font-size:1.05rem}.coverage-toolbar{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}.coverage-toolbar p{margin:.25rem 0 .75rem}.coverage-panel .table-wrap{margin-top:.7rem}.coverage-panel table{min-width:850px;font-size:.83rem}.coverage-panel th{padding:.65rem}.coverage-panel td{padding:.65rem}.coverage-panel td:first-child{width:auto;white-space:nowrap}.coverage-panel td:last-child{white-space:nowrap}.coverage-panel button{padding:.45rem .6rem;font-size:.8rem}
+
+.metrics-panel{margin:1rem 0;padding:1rem;background:#141e2c;border:1px solid #465a70;border-radius:10px;box-shadow:none}.metrics-panel h3{margin:0 0 .3rem;font-size:1.05rem}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:.65rem;margin:.9rem 0 0}.metric-card{min-width:0;padding:.75rem;border:1px solid #394b61;border-radius:8px;background:#111b29}.metric-card dt{font-size:.8rem;color:#b7c8da}.metric-card dd{margin:.25rem 0 0;font-size:1.2rem;font-weight:750;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:#f3f7fd}
 </style></head><body>
 <header><div class="eyebrow">LIGHTUP / ISOLATED LAB / HUMAN REVIEW ONLY</div>
 <h1>Private Lab Review Desk</h1><p>Explore an <strong>already-created</strong> isolated-lab assessment JSON. Review individual source-declared findings, track human follow-up and prepare a private handoff. Nothing scans, calls a model, contacts an asset, verifies consent or grants permission.</p>
@@ -42,6 +44,11 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 <p id="message" role="status" aria-live="polite"></p></section>
 <section id="workspace" hidden aria-labelledby="desk"><h2 id="desk">2. Triage source-declared findings</h2>
 <p id="stats" class="stats"></p><p id="progress"></p>
+<section class="metrics-panel" aria-labelledby="metrics-heading">
+ <h3 id="metrics-heading">Original evaluation metrics</h3>
+ <p class="note">Only the already-produced source-reported numeric fields are shown. Values are unverified declarations, not a validated run, benchmark, security verdict or release decision.</p>
+ <dl id="metric-grid" class="metric-grid"></dl>
+</section>
 <section class="coverage-panel" aria-labelledby="coverage-heading">
  <div class="coverage-toolbar"><div><h3 id="coverage-heading">Endpoint review coverage</h3>
  <p id="coverage-summary" class="note">Open an original private artifact to calculate human-planning coverage.</p></div>
@@ -120,6 +127,16 @@ const FLAGS=["authorized","consent_verified","dispatch_allowed","release_allowed
 const STAGES=["needs_review","discussing","documented","blocked"];
 const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
+const METRIC_LABELS=[
+ ["valid_findings","Valid findings (reported count)"],["invalid_findings","Invalid findings (reported count)"],
+ ["missed_findings","Missed findings (reported count)"],["coverage_assessed","Coverage assessed (reported count)"],
+ ["coverage_unknown","Coverage unknown (reported count)"],["scope_violations","Scope violations (reported count)"],
+ ["policy_violations","Policy violations (reported count)"],["human_interventions","Human interventions (reported count)"],
+ ["tool_calls","Tool calls (reported count)"],["evidence_quality","Evidence quality (reported score 0–1)"],
+ ["reproducibility","Reproducibility (reported score 0–1)"],["remediation_quality","Remediation quality (reported score 0–1)"],
+ ["retest_correctness","Retest correctness (reported score 0–1)"],["runtime_seconds","Runtime (reported seconds)"],
+ ["compute_cost_usd","Compute cost (reported USD)"],["false_positive_rate","False-positive rate (reported ratio 0–1)"]
+];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",searchTerm="",sortMode="source",lastBulkUndo=null;
 const selectedForHandoff=new Set();
@@ -286,7 +303,16 @@ function buildEndpointFilter(){
  const unmatched=el("option","Unmatched source-reported assets");
  unmatched.value="endpoint:0";group.append(unmatched);select.append(group);
 }
+function renderEvaluationMetrics(){
+ const grid=$("metric-grid");if(!source||!grid)return;grid.replaceChildren();
+ const metrics=source.evaluation.metrics;
+ METRIC_LABELS.forEach(([key,label])=>{
+  const card=el("div",undefined,"metric-card");
+  card.append(el("dt",label),el("dd",String(metrics[key])));grid.append(card);
+ });
+}
 function updateSummary(){
+ renderEvaluationMetrics();
  const sev=Object.fromEntries(SEVERITIES.map(s=>[s,0]));
  source.findings.forEach(f=>sev[f.severity]++);
  $("stats").textContent=source.targets.length+" declared lab endpoints · "+source.findings.length+

@@ -6,6 +6,16 @@ const FLAGS=["authorized","consent_verified","dispatch_allowed","release_allowed
 const STAGES=["needs_review","discussing","documented","blocked"];
 const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
+const METRIC_LABELS=[
+ ["valid_findings","Valid findings (reported count)"],["invalid_findings","Invalid findings (reported count)"],
+ ["missed_findings","Missed findings (reported count)"],["coverage_assessed","Coverage assessed (reported count)"],
+ ["coverage_unknown","Coverage unknown (reported count)"],["scope_violations","Scope violations (reported count)"],
+ ["policy_violations","Policy violations (reported count)"],["human_interventions","Human interventions (reported count)"],
+ ["tool_calls","Tool calls (reported count)"],["evidence_quality","Evidence quality (reported score 0–1)"],
+ ["reproducibility","Reproducibility (reported score 0–1)"],["remediation_quality","Remediation quality (reported score 0–1)"],
+ ["retest_correctness","Retest correctness (reported score 0–1)"],["runtime_seconds","Runtime (reported seconds)"],
+ ["compute_cost_usd","Compute cost (reported USD)"],["false_positive_rate","False-positive rate (reported ratio 0–1)"]
+];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",searchTerm="",sortMode="source",lastBulkUndo=null;
 const selectedForHandoff=new Set();
@@ -172,7 +182,16 @@ function buildEndpointFilter(){
  const unmatched=el("option","Unmatched source-reported assets");
  unmatched.value="endpoint:0";group.append(unmatched);select.append(group);
 }
+function renderEvaluationMetrics(){
+ const grid=$("metric-grid");if(!source||!grid)return;grid.replaceChildren();
+ const metrics=source.evaluation.metrics;
+ METRIC_LABELS.forEach(([key,label])=>{
+  const card=el("div",undefined,"metric-card");
+  card.append(el("dt",label),el("dd",String(metrics[key])));grid.append(card);
+ });
+}
 function updateSummary(){
+ renderEvaluationMetrics();
  const sev=Object.fromEntries(SEVERITIES.map(s=>[s,0]));
  source.findings.forEach(f=>sev[f.severity]++);
  $("stats").textContent=source.targets.length+" declared lab endpoints · "+source.findings.length+
