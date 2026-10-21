@@ -62,8 +62,10 @@ python3 assessment-disclosure-preflight/private_inbox_workroom.py \
 ~~~
 
 The output directory receives the portfolio HTML/CSV/JSON and
-`PRIVATE-inbox-actions-template.csv`. It must be an existing separate
-owner-only 0700 directory outside the original inbox tree. Optional `--full-reopen` requires a trusted
+`PRIVATE-inbox-actions-template.csv`. It must be an **empty existing separate**
+owner-only 0700 directory outside the original inbox tree. Already populated
+destinations now HOLD before publication, matching the exact-inventory
+read-only saved-workroom reopening contract. Optional `--full-reopen` requires a trusted
 interactive terminal and exact `REOPEN` confirmation; it performs the
 unchanged original HUMAN reopener for every selected room before publishing.
 Exit 2 is REVIEW_ONLY; exit 3 is HOLD. This does not authenticate a source,
