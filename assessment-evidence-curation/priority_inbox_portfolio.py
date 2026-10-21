@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""PRIVATE source-bound HUMAN cross-priority portfolio for 2–8 saved inboxes.
+
+Never tests targets, sends communications, makes authorization decisions, or
+interprets human self-reports as remediation. All data remains PRIVATE.
+"""
+from __future__ import annotations
+
+import argparse
+from collections import Counter
+import csv
+import io
+import sys
+
+from curate import Hold, digest
+from briefing import h, json_bytes, publish_new
+from priority_inbox import FINAL, RECEIPT_OUT, ensure_output_outside_inputs
+from priority_inbox_open import reopen_expected
+from priority_inbox_action_queue import STAGES
+from priority_reply import UNTRUSTED_FLAGS
+from response import accepted_original, admit_returned_reply
+from revision import private_frame
+
+PRIORITIES = ("urgent", "soon", "routine")
+STAGE_KEYS = ("no_human_response",) + tuple(key for key, _ in STAGES if key != "no_human_response")
+REPORT = "PRIVATE-HUMAN-priority-round-portfolio.html"
+COUNTS = "PRIVATE-HUMAN-priority-round-portfolio.json"
+CSV = "PRIVATE-HUMAN-priority-round-portfolio.csv"
+RECEIPT = "PRIVATE-HUMAN-priority-round-portfolio-receipt.json"
+LIMIT = 512 * 1024
+
+
+def require(ok: bool) -> None:
+    if not ok:
+        raise Hold("HOLD: PRIVATE HUMAN cross-priority portfolio source or shape invalid")
+
+
+def build(source_path: str, manifest_path: str, worksheet_path: str,
+          selection_receipt: str, selection_path: str, curated_dir: str,
+          handoff_paths: list[str], round_reply_paths: list[list[str]],
+          round_inboxes: list[str]) -> tuple[dict[str, bytes], int]:
+    rounds = len(round_inboxes)
+    require(2 <= rounds <= 8 and 1 <= len(handoff_paths) <= 3 and
+            len(set(handoff_paths)) == len(handoff_paths) and
+            len(set(round_inboxes)) == rounds and
+            len(round_reply_paths) == rounds and
+            all(len(group) == len(handoff_paths) and
+                len(set(group)) == len(group) for group in round_reply_paths))
+    source, source_sha, worksheet_sha, selection_raw, selected = accepted_original(
+        source_path, manifest_path, worksheet_path, selection_receipt, selection_path)
+    require(bool(selected) and len(selected) <= 64)
+    selected_by_ordinal = {row["ordinal"]: row for row in selected}
+    require(len(selected_by_ordinal) == len(selected) and
+            all(row["priority"] in PRIORITIES for row in selected))
+    ordered = []
+    receipt_shas = []
+    csv_shas = []
+    for replies, inbox in zip(round_reply_paths, round_inboxes):
+        files, count = reopen_expected(
+            source_path, manifest_path, worksheet_path, selection_receipt,
+            selection_path, curated_dir, handoff_paths, replies, inbox)
+        require(count == len(selected))
+        rows = admit_returned_reply(files[FINAL], source, selected)
+        by_id = {row["ordinal"]: row for row in rows}
+        require(len(by_id) == len(rows) == len(selected) and
+                set(by_id) == set(selected_by_ordinal))
+        for ordinal, item in selected_by_ordinal.items():
+            row = by_id[ordinal]
+            require(row["priority"] == item["priority"] and
+                    row["original_question"] == item["question"] and
+                    (row["recipient_reported_stage"] or "no_human_response") in STAGE_KEYS)
+        ordered.append(by_id)
+        receipt_shas.append(digest(files[RECEIPT_OUT]))
+        csv_shas.append(digest(files[FINAL]))
+
+    counts = []
+    transitions = []
+    for index, current in enumerate(ordered):
+        for priority in PRIORITIES:
+            ids = [ordinal for ordinal, item in selected_by_ordinal.items()
+                   if item["priority"] == priority]
+            for stage in STAGE_KEYS:
+                count = sum((current[ordinal]["recipient_reported_stage"] or
+                             "no_human_response") == stage for ordinal in ids)
+                counts.append({"operator_ordered_round": index + 1,
+                               "human_priority": priority,
+                               "human_stage": stage, "human_rows": count})
+        if index:
+            prior = ordered[index - 1]
+            for priority in PRIORITIES:
+                ids = [ordinal for ordinal, item in selected_by_ordinal.items()
+                       if item["priority"] == priority]
+                changed_stage = changed_reply = changed_followup = 0
+                stage_pairs = Counter()
+                for ordinal in ids:
+                    before = prior[ordinal]
+                    after = current[ordinal]
+                    old_stage = before["recipient_reported_stage"] or "no_human_response"
+                    new_stage = after["recipient_reported_stage"] or "no_human_response"
+                    if old_stage != new_stage:
+                        changed_stage += 1
+                        stage_pairs[(old_stage, new_stage)] += 1
+                    changed_reply += int(before["recipient_human_reply"] !=
+                                         after["recipient_human_reply"])
+                    changed_followup += int(before["recipient_human_next_question"] !=
+                                            after["recipient_human_next_question"])
+                transitions.append({
+                    "operator_ordered_from_round": index,
+                    "operator_ordered_to_round": index + 1,
+                    "human_priority": priority,
+                    "stage_changed_rows": changed_stage,
+                    "reply_changed_rows": changed_reply,
+                    "next_question_changed_rows": changed_followup,
+                    "human_stage_transitions": [
+                        {"from_stage": old, "to_stage": new, "human_rows": n}
+                        for (old, new), n in sorted(stage_pairs.items())],
+                })
+
+    numeric = {
+        "schema": "lightup.private_human_cross_priority_portfolio.v1",
+        "status": "REVIEW_ONLY",
+        "operator_ordered_round_count": rounds,
+        "selected_original_human_rows": len(selected),
+        "round_priority_stage_counts": counts,
+        "adjacent_human_round_changes": transitions,
+        "manual_order_not_authenticated_chronology": True,
+        **UNTRUSTED_FLAGS,
+    }
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\r\n")
+    writer.writerow(["operator_ordered_round", "human_priority", "human_stage",
+                     "human_rows"])
+    for item in counts:
+        writer.writerow([item["operator_ordered_round"], item["human_priority"],
+                         item["human_stage"], item["human_rows"]])
+    csv_raw = output.getvalue().encode("utf-8")
+    matrix_rows = "".join(
+        "<tr><td>" + str(row["operator_ordered_round"]) + "</td><td>" +
+        h(row["human_priority"]) + "</td><td>" + h(row["human_stage"]) +
+        "</td><td>" + str(row["human_rows"]) + "</td></tr>"
+        for row in counts)
+    trend_rows = "".join(
+        "<tr><td>" + str(item["operator_ordered_from_round"]) + " → " +
+        str(item["operator_ordered_to_round"]) + "</td><td>" +
+        h(item["human_priority"]) + "</td><td>" +
+        str(item["stage_changed_rows"]) + "</td><td>" +
+        str(item["reply_changed_rows"]) + "</td><td>" +
+        str(item["next_question_changed_rows"]) + "</td></tr>"
+        for item in transitions)
+    body = (
+        "<header><h1>LightUp · PRIVATE HUMAN cross-priority portfolio</h1>"
+        "<p class='notice'>REVIEW ONLY · offline comparison of manually ordered "
+        "HUMAN self-reports. Order is not authenticated chronology; changes "
+        "do not imply verified progress, repair, permission, consent or release.</p>"
+        "<p>All original source, selected findings, separate priority handoffs, "
+        "complete HUMAN returns and exact saved inbox bytes were re-admitted. "
+        "Only numeric counts and fixed status/priority names are copied. "
+        "No original targets, source IDs, ordinals, HUMAN questions or replies.</p>"
+        "<p>Small counts can still be identifying; keep all outputs PRIVATE. "
+        "No network, message, task assignment or active assessment was run.</p>"
+        "<p>Selected original HUMAN rows: " + str(len(selected)) +
+        " · operator-ordered rounds: " + str(rounds) + ".</p></header>"
+        "<section><h2>Status counts by priority and round</h2><table>"
+        "<thead><tr><th>Round</th><th>HUMAN priority</th><th>HUMAN stage</th>"
+        "<th>Rows</th></tr></thead><tbody>" + matrix_rows +
+        "</tbody></table></section>"
+        "<section><h2>Adjacent HUMAN changes (not verified improvement)</h2>"
+        "<table><thead><tr><th>Manually ordered rounds</th><th>Priority</th>"
+        "<th>Stage changed</th><th>Reply edited</th><th>Next question edited</th>"
+        "</tr></thead><tbody>" + trend_rows +
+        "</tbody></table></section>"
+    )
+    html = private_frame("PRIVATE HUMAN cross-priority round portfolio", body)
+    counts_raw = json_bytes(numeric)
+    receipt = {
+        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v1",
+        "status": "REVIEW_ONLY",
+        "operator_ordered_round_count": rounds,
+        "original_source_sha256_unsigned": source_sha,
+        "original_worksheet_sha256_unsigned": worksheet_sha,
+        "original_selection_sha256_unsigned": digest(selection_raw),
+        "round_original_inbox_receipt_sha256_unsigned": receipt_shas,
+        "round_original_human_csv_sha256_unsigned": csv_shas,
+        "private_html_sha256_unsigned": digest(html),
+        "private_counts_sha256_unsigned": digest(counts_raw),
+        "private_csv_sha256_unsigned": digest(csv_raw),
+        **UNTRUSTED_FLAGS,
+    }
+    files = {REPORT: html, COUNTS: counts_raw, CSV: csv_raw,
+             RECEIPT: json_bytes(receipt)}
+    require(all(0 < len(raw) <= LIMIT for raw in files.values()))
+    return files, len(selected)
+
+
+def publish(source: str, manifest: str, worksheet: str, selection_receipt: str,
+            selection: str, curated: str, handoffs: list[str],
+            round_replies: list[list[str]], round_inboxes: list[str],
+            output_dir: str) -> int:
+    ensure_output_outside_inputs(output_dir, [curated, *handoffs, *round_inboxes])
+    files, count = build(source, manifest, worksheet, selection_receipt,
+                         selection, curated, handoffs, round_replies, round_inboxes)
+    publish_new(output_dir, files)
+    return count
+
+
+def arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build a source-reopened offline PRIVATE HUMAN priority/stage round portfolio")
+    for key in ("source", "manifest", "worksheet", "selection-receipt",
+                "selection", "curated-packet", "output-dir"):
+        parser.add_argument("--" + key, required=True)
+    parser.add_argument("--private-handoff", action="append", required=True)
+    parser.add_argument("--round-inbox", action="append", required=True)
+    parser.add_argument("--round-returned-csv", action="append", required=True)
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = arguments()
+    try:
+        rounds = len(args.round_inbox)
+        group_count = len(args.private_handoff)
+        require(2 <= rounds <= 8 and 1 <= group_count <= 3 and
+                len(args.round_returned_csv) == rounds * group_count)
+        groups = [args.round_returned_csv[i:i + group_count]
+                  for i in range(0, len(args.round_returned_csv), group_count)]
+        count = publish(args.source, args.manifest, args.worksheet,
+                        args.selection_receipt, args.selection,
+                        args.curated_packet, args.private_handoff,
+                        groups, args.round_inbox, args.output_dir)
+    except (Hold, OSError, ValueError, TypeError, KeyError, UnicodeError,
+            OverflowError, RecursionError, MemoryError, csv.Error):
+        print("HOLD: original source, HUMAN rounds or PRIVATE output refused; "
+              "no partial publication", file=sys.stderr)
+        return 3
+    print("PRIVATE cross-priority HUMAN portfolio: " + str(count) +
+          " source-bound rows; REVIEW_ONLY, no authority.")
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

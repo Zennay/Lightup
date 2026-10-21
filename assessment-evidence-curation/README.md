@@ -476,3 +476,61 @@ the saved owner-only directory without writing or repairing it. A missing
 round, changed return, wrong source, extra/missing/modified output or unsafe
 file fails closed. No note is sent, task assigned, fix inferred or permission
 granted; freeform HUMAN text remains PRIVATE.
+
+## Complete original-bound PRIVATE all-priority HUMAN rounds portfolio (console 29/30)
+
+To review **every** originally selected HUMAN priority together (instead of one
+stage/priority at a time), use the new source-bound offline portfolio:
+
+```sh
+python3 assessment-evidence-curation/priority_inbox_portfolio.py \
+  --source ORIGINAL-LAB.json --manifest ORIGINAL-manifest.json \
+  --worksheet ORIGINAL-human.csv --selection-receipt ORIGINAL-selection-receipt.json \
+  --selection ORIGINAL-selection.csv --curated-packet ORIGINAL-PRIVATE-PACKET \
+  --private-handoff ORIGINAL-URGENT-HANDOFF \
+  --private-handoff ORIGINAL-SOON-HANDOFF \
+  --round-inbox ORIGINAL-INBOX-ROUND-1 \
+  --round-inbox ORIGINAL-INBOX-ROUND-2 \
+  --round-returned-csv URGENT-ROUND-1.csv \
+  --round-returned-csv SOON-ROUND-1.csv \
+  --round-returned-csv URGENT-ROUND-2.csv \
+  --round-returned-csv SOON-ROUND-2.csv \
+  --output-dir NEW-PRIVATE-HUMAN-PORTFOLIO
+```
+
+Use **exactly one handoff for every originally nonempty priority**, and one complete
+corresponding recipient-return CSV per priority **per round**, in the same
+priority order. Accepts 1–3 handoffs, 2–8 complete manually ordered original
+inboxes and 1–64 original selected HUMAN rows. Console action **29** prompts for
+those original sources and creates the packet; action **30** opens an existing
+packet read-only and checks it against every unchanged original source.
+
+The single **NEW owner-only 0700 output folder** contains four exclusive
+owner-only **0600** files:
+
+- `PRIVATE-HUMAN-priority-round-portfolio.html`: static, script-free,
+  print-ready current/prior HUMAN stage and priority count tables and adjacent
+  human-edit summaries; no original ordinal, target, source hashes or HUMAN text.
+- `PRIVATE-HUMAN-priority-round-portfolio.json`: canonical counts for each
+  round/priority/stage and adjacent-round changes, including directional
+  self-reported stage transitions.
+- `PRIVATE-HUMAN-priority-round-portfolio.csv`: complete fixed-column
+  round/priority/stage count matrix suitable for private spreadsheet use.
+- `PRIVATE-HUMAN-priority-round-portfolio-receipt.json`: original source,
+  selection, exact reopened inbox/canonical HUMAN CSV and output unsigned digests.
+
+**Read-only reopen** rejects missing/extra or changed output files, changed
+source/selection/priority handoff/HUMAN response, altered 0700/0600 custody, and
+incorrect manually supplied round order. Use the matching flags with
+`priority_inbox_portfolio_open.py`; replace `--output-dir` with
+`--private-portfolio-dir EXISTING-PRIVATE-HUMAN-PORTFOLIO`.
+
+All original inboxes are fully re-admitted before any output is published;
+an incomplete priority group, duplicate inbox or missing original selected row
+causes HOLD rather than a misleading partial trend. Four artifacts are bounded
+to 512 KiB each. Neither a static group-count difference nor a HUMAN change
+means a verified finding, recovery, consent, real chronological ordering, or
+approval for external disclosure. Tiny cohorts can still be identifiable:
+**these are PRIVATE artifacts**, not anonymous/public data. No scans, models,
+notifications, grants, tasks, new QA suites or CI bypass are part of this flow.
+The branch remains **DRAFT/HOLD**, not main or live.
