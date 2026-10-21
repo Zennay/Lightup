@@ -86,6 +86,14 @@ The native receiver re-admits the entire original handoff, exact template source
 
 Use console choices **14** (receive) and **15** (reopen). Outputs remain HOLD / REVIEW_ONLY, not main/live.
 
+### Restore complete ORIGINAL source lineage before a HUMAN recipient decision
+
+For sender-side offline review, the new **priority_reconcile.py** goes beyond checking only a detached packet: it re-admits the original lab source, original manifest, exact original seven-column HUMAN worksheet, preparation receipt and full original HUMAN selection. It independently reopens the **entire original PRIVATE curated dossier** and the detached priority-specific handoff, links their unsigned original receipt hashes, regenerates the canonical selected-priority recipient CSV from the ORIGINAL live source snapshot and compares the exact five immutable question columns and HUMAN reply rows. Any changed source, missing original evidence packet, wrong priority, original selection drift or unexpected row is HOLD before publishing.
+
+    python3 assessment-evidence-curation/priority_reconcile.py --source ORIGINAL-LAB.json --manifest ORIGINAL-manifest.json --worksheet ORIGINAL-human.csv --selection-receipt ORIGINAL-selection-receipt.json --selection ORIGINAL-selection.csv --curated-packet ORIGINAL-FULL-PRIVATE-DOSSIER --private-handoff PRIVATE-PRIORITY-HANDOFF --returned-csv PRIVATE-priority-human-reply.csv --output-dir NEW-PRIVATE-ORIGINAL-RECONCILIATION
+
+It exclusively publishes a new owner-private 0700 folder with 0600 scriptless HUMAN reply report (source-minimized, priority-only), numeric HUMAN counts and an **UNSIGNED** original-source/worksheet/selection/curated-receipt/handoff-receipt/recipient-response receipt. This provides byte consistency to the **same original declared lab** and selection, not authentication of the actual source producer, real recipient, claimed fix, client/operator consent, scope or permission to disclose. Foreground console action **16** provides the same strictly offline workflow. No email, scanner, model, network, grant, runner job or live release is triggered.
+
 ## Step 3 — Compare PRIVATE HUMAN selection revisions (without target work)
 
 Use two complete separately saved original-ordinal HUMAN selection CSVs, **both against the same exact original PRIVATE lab source, original manifest, seven-column HUMAN worksheet and selection-preparation receipt**:
@@ -129,7 +137,7 @@ Use the menu instead of assembling long paths or shell commands:
 
     python3 assessment-evidence-curation/console.py
 
-It offers **fifteen offline HUMAN/local-packet workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
+It offers **sixteen offline HUMAN/local-packet workflows**: prepare local browser workroom, publish selected finding report, compare two HUMAN selections, inspect 2–12 HUMAN versions, prepare PRIVATE recipient replies or reconcile recipient response CSV. Enter only explicit existing local ORIGINAL input files, a NEW private output directory, and exactly `REVIEW ONLY` after the accurate PRIVATE disclosure warning. No subprocess or target network is invoked, no special operating-system privileges or assessment grant are requested. Cancelled, invalid or missing inputs HOLD without claiming completed work. Existing source and prior local packages remain untouched.
 
 ## Step 5 — PRIVATE recipient HUMAN question/reply exchange (without assessment execution)
 
