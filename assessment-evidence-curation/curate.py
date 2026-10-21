@@ -289,6 +289,14 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
         for priority in PRIORITIES
         if any(item["priority"] == priority for item in selected)
     }
+    # Build strictly source-minimized PRIVATE reply templates for the same
+    # priority slices, preserving the canonical original recipient CSV contract.
+    from response import csv_template as original_reply_template
+    replies = {
+        priority: original_reply_template(
+            source, [item for item in selected if item["priority"] == priority])
+        for priority in prioritized
+    }
     counts = {s: sum(source["findings"][i["ordinal"]-1]["severity"] == s
                      for i in selected) for s in SEVERITIES}
     priorities = {p: sum(i["priority"] == p for i in selected) for p in PRIORITIES}
@@ -315,6 +323,9 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
         "private_priority_handoff_sha256_unsigned": {
             priority: digest(data) for priority, data in prioritized.items()
         },
+        "private_priority_reply_template_sha256_unsigned": {
+            priority: digest(data) for priority, data in replies.items()
+        },
         "selected_original_ordinals": [i["ordinal"] for i in selected],
         **UNVERIFIED,
     }
@@ -324,6 +335,10 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
         "PRIVATE-source-minimized-HUMAN-handoff.html": limited_handoff,
         "PRIVATE-curation-receipt.json": json_bytes(private_receipt),
         "anonymous-counts-PRIVATE.json": json_bytes(aggregate),
+        **{
+            "PRIVATE-HUMAN-" + priority + "-reply-template.csv": data
+            for priority, data in replies.items()
+        },
         **{
             "PRIVATE-HUMAN-" + priority + "-priority.html": data
             for priority, data in prioritized.items()

@@ -77,6 +77,7 @@ def reopen(path: str) -> int:
             "anonymous_counts_sha256_unsigned",
             "source_minimized_human_handoff_sha256_unsigned",
             "private_priority_handoff_sha256_unsigned",
+            "private_priority_reply_template_sha256_unsigned",
             "selected_original_ordinals", *UNVERIFIED
         }
         require(set(receipt) == needed and
@@ -94,8 +95,15 @@ def reopen(path: str) -> int:
         require(type(grouped) is dict and bool(grouped) and
                 set(grouped).issubset(PRIORITIES) and
                 all(literal_sha(x) for x in grouped.values()))
+        reply_hashes = receipt["private_priority_reply_template_sha256_unsigned"]
+        require(type(reply_hashes) is dict and set(reply_hashes) == set(grouped) and
+                all(literal_sha(x) for x in reply_hashes.values()))
         actual = set(BASE_FILES) | {
             "PRIVATE-HUMAN-" + priority + "-priority.html" for priority in grouped
+        }
+        actual |= {
+            "PRIVATE-HUMAN-" + priority + "-reply-template.csv"
+            for priority in grouped
         }
         require(set(os.listdir(dfd)) == actual)
         hashes = {
@@ -107,6 +115,9 @@ def reopen(path: str) -> int:
         }
         for name, key in hashes.items():
             require(digest(read_private(dfd, name)) == receipt[key])
+        for priority, wanted in reply_hashes.items():
+            name = "PRIVATE-HUMAN-" + priority + "-reply-template.csv"
+            require(digest(read_private(dfd, name)) == wanted)
         for priority, wanted in grouped.items():
             name = "PRIVATE-HUMAN-" + priority + "-priority.html"
             require(digest(read_private(dfd, name)) == wanted)

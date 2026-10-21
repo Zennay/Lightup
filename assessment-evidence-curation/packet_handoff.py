@@ -22,6 +22,7 @@ SCHEMA = "lightup.private_minimum_necessary_human_handoff.v1"
 RECEIPT = "PRIVATE-priority-handoff-receipt.json"
 GUIDE = "OPEN-PRIVATE-handoff.html"
 QUESTIONS = "PRIVATE-selected-HUMAN-questions.html"
+TEMPLATE = "PRIVATE-recipient-HUMAN-reply-template.csv"
 FLAGS = {
     "recipient_authenticated": False,
     "disclosure_authorized": False,
@@ -52,6 +53,10 @@ def guide(priority: str, count: int) -> bytes:
         "human-recipient identity or actual dispatch.</p>" +
         "<p>Chosen HUMAN priority: <strong>" + h(priority) +
         "</strong>; questions in this group: " + str(count) + ".</p>" +
+        "<p>Download the PRIVATE reply CSV next to this guide; preserve the "
+        "five original HUMAN question columns and edit only recipient stage, "
+        "reply and next question. Returned files still require native source-"
+        "bound review. The CSV never contains original target or evidence.</p>" +
         "<p>This package deliberately does NOT contain the full original "
         "finding report, original target data, other priorities, original "
         "source or private parent directory. Its questions and count STILL "
@@ -91,6 +96,10 @@ def prepare(source_dir: str, priority: str, output_dir: str) -> int:
         question_bytes = read_private(fd, source_filename)
         require(digest(question_bytes) ==
                 original_receipt["private_priority_handoff_sha256_unsigned"][priority])
+        template_name = "PRIVATE-HUMAN-" + priority + "-reply-template.csv"
+        template_bytes = read_private(fd, template_name)
+        require(digest(template_bytes) ==
+                original_receipt["private_priority_reply_template_sha256_unsigned"][priority])
         guide_bytes = guide(priority, count)
         receipt = {
             "schema": SCHEMA,
@@ -99,6 +108,7 @@ def prepare(source_dir: str, priority: str, output_dir: str) -> int:
             "source_human_priority": priority,
             "selected_human_question_count": count,
             "private_selected_handoff_sha256_unsigned": digest(question_bytes),
+            "private_reply_template_sha256_unsigned": digest(template_bytes),
             "private_guide_sha256_unsigned": digest(guide_bytes),
             **FLAGS,
         }
@@ -106,6 +116,7 @@ def prepare(source_dir: str, priority: str, output_dir: str) -> int:
         publish_new(output_dir, {
             GUIDE: guide_bytes,
             QUESTIONS: question_bytes,
+            TEMPLATE: template_bytes,
             RECEIPT: json_bytes(receipt),
         })
         return count
@@ -122,14 +133,15 @@ def reopen(source_dir: str) -> int:
         before = os.fstat(fd)
         require(stat.S_ISDIR(before.st_mode) and before.st_uid == os.getuid() and
                 stat.S_IMODE(before.st_mode) == 0o700)
-        require(set(os.listdir(fd)) == {GUIDE, QUESTIONS, RECEIPT})
+        require(set(os.listdir(fd)) == {GUIDE, QUESTIONS, TEMPLATE, RECEIPT})
         raw = read_private(fd, RECEIPT, MAX_JSON)
         receipt = json_private(raw)
         expected = {
             "schema", "status", "original_private_packet_receipt_sha256_unsigned",
             "source_human_priority", "selected_human_question_count",
             "private_selected_handoff_sha256_unsigned",
-            "private_guide_sha256_unsigned", *FLAGS,
+            "private_guide_sha256_unsigned",
+            "private_reply_template_sha256_unsigned", *FLAGS,
         }
         require(type(receipt) is dict and set(receipt) == expected and
                 receipt["schema"] == SCHEMA and receipt["status"] == "REVIEW_ONLY" and
@@ -139,7 +151,8 @@ def reopen(source_dir: str) -> int:
         require(type(count) is int and 1 <= count <= 64)
         for key in ("original_private_packet_receipt_sha256_unsigned",
                     "private_selected_handoff_sha256_unsigned",
-                    "private_guide_sha256_unsigned"):
+                    "private_guide_sha256_unsigned",
+                    "private_reply_template_sha256_unsigned"):
             sha = receipt[key]
             require(type(sha) is str and len(sha) == 64 and
                     all(c in "0123456789abcdef" for c in sha))
@@ -147,6 +160,8 @@ def reopen(source_dir: str) -> int:
                 receipt["private_guide_sha256_unsigned"])
         require(digest(read_private(fd, QUESTIONS)) ==
                 receipt["private_selected_handoff_sha256_unsigned"])
+        require(digest(read_private(fd, TEMPLATE)) ==
+                receipt["private_reply_template_sha256_unsigned"])
         return count
     finally:
         if fd >= 0:
