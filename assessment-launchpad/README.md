@@ -110,3 +110,24 @@ Read-only reopen against the SAME original packet and two original HUMAN rounds:
     python3 assessment-launchpad/compare_review.py --bundle-dir ~/private-lab-launchpad-output --before-dir ~/private-lab-human-round-1 --after-dir ~/private-lab-human-round-2 --verify-delta-dir ~/private-lab-human-changes
 
 The ordering of the two supplied rounds is manually selected, not authenticated chronology. These changes do not prove finding resolution, client scope, completion, consent, verified identity, a scan, release or HUMAN GO. Any locally consistent data remains UNSIGNED. Never expose the PRIVATE outputs to a web server; continue to apply the original release gates.
+
+
+## Portable PRIVATE browser editor for HUMAN worksheets
+
+A HUMAN reviewer can now edit status, fixed reviewer role and private notes directly in the browser without entering values into raw JSON or a terminal. The new standalone editor is **produced offline from a previously admitted original Launchpad packet and one owner-private HUMAN worksheet**. It does not embed endpoint URL values, call external services, store anything in browser storage, or execute a preview/assessment. It DOES embed the PRIVATE worksheet and notes, so keep this HTML owner-only and never serve/host it.
+
+    mkdir -m 700 ~/private-lab-human-editor
+    python3 assessment-launchpad/editor.py --bundle-dir ~/private-lab-launchpad-output --responses ~/private-lab-human-round-1/lightup-lab-human-private.json --output-dir ~/private-lab-human-editor
+
+Open the mode-0600 file lightup-lab-human-editor.html locally in the browser. This is a single-file app with SHA-256 CSP-pinned script and styles, no unsafe-inline, no dependencies or external network. Change the HUMAN stage/role and note fields for source ordinals, then explicitly click **Download edited PRIVATE HUMAN JSON**. Original source digest and literal-false authority fields are carried unchanged, with no endpoint values.
+
+Browser downloads do not enforce private permissions. Move the newly downloaded lightup-lab-human-private.edited.json to a separate current-user-owned mode-0700 local directory and set its file permissions to mode 0600 before native import. Native import remains authoritative:
+
+    mkdir -m 700 ~/private-lab-human-browser-round
+    python3 assessment-launchpad/review_desk.py --bundle-dir ~/private-lab-launchpad-output --responses ~/private-import/lightup-lab-human-private.edited.json --output-dir ~/private-lab-human-browser-round
+
+To verify the original generated editor's bytes again, with the unchanged original Launchpad packet and source HUMAN worksheet:
+
+    python3 assessment-launchpad/editor.py --bundle-dir ~/private-lab-launchpad-output --responses ~/private-lab-human-round-1/lightup-lab-human-private.json --verify-editor-dir ~/private-lab-human-editor
+
+Native readmission rejects new fields, duplicate JSON keys, changed ordinals, changed source digests, affirmative authority claims, untrusted control/bidi marks and source drift. The local browser editor is a convenience for HUMAN self-report only; its download is NOT approval, consent, scope attestation, clearance, target access or verified original evidence. Security/privacy, separate authentic consent and revocation, required CI and HUMAN GO remain independent gates.
