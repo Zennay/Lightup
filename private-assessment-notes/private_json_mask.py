@@ -42,6 +42,12 @@ _PARAM_MARKER = "[REDACTED_HAR_PARAM_VALUE]"
 _HAR_FORM_MARKER = "[REDACTED_HAR_FORM_TEXT]"
 _HAR_JSON_MARKER = "[REDACTED_HAR_EMBEDDED_JSON]"
 _HAR_MULTIPART_MARKER = "[REDACTED_HAR_MULTIPART_TEXT]"
+# In a well-formed HAR entry, request and response body text is not needed
+# for a privacy-minimal human index. Withhold regardless of declared MIME,
+# encoding or recognised field names; never claim comprehensive anonymisation.
+_HAR_REQUEST_BODY_MARKER = "[REDACTED_HAR_REQUEST_BODY]"
+_HAR_RESPONSE_BODY_MARKER = "[REDACTED_HAR_RESPONSE_BODY]"
+_HAR_WEBSOCKET_MARKER = "[REDACTED_HAR_WEBSOCKET_FRAME]"
 _DECODER = json.JSONDecoder(parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
 
 
@@ -75,7 +81,7 @@ class _Reader:
         self.pos = end
         return decoded, first, end
 
-    def _node(self, depth: int) -> tuple[str, str | None, int, int]:
+    def _node(self, depth: int, path: tuple[str, ...] = ()) -> tuple[str, str | None, int, int]:
         if depth > MAX_DEPTH or self.nodes >= MAX_NODES:
             raise ValueError("bounded JSON depth/nodes exceeded")
         self.nodes += 1
@@ -102,8 +108,24 @@ class _Reader:
                     raise ValueError("duplicate JSON member")
                 seen.add(key)
                 self._char(":")
-                node = self._node(depth + 1)
+                node = self._node(depth + 1, path + (key,))
                 members[key] = node
+                # Structural HAR entry paths only. Leave the source archive
+                # untouched and preserve its surrounding metadata. In this
+                # PRIVATE derivative, omit complete opaque body strings even
+                # when they are not shaped like a known credential.
+                if key == "text" and node[0] == "string":
+                    if path[-2:] == ("request", "postData"):
+                        self.spans.append((node[2], node[3], _HAR_REQUEST_BODY_MARKER))
+                    elif path[-2:] == ("response", "content"):
+                        self.spans.append((node[2], node[3], _HAR_RESPONSE_BODY_MARKER))
+                # DevTools HAR extensions may include captured WebSocket
+                # frame strings in a _webSocketMessages array. Keep frame
+                # metadata but never copy its message bytes into this PRIVATE
+                # derivative; frames can include session or user content.
+                if (key in ("data", "payload") and node[0] == "string"
+                        and path[-1:] == ("_webSocketMessages",)):
+                    self.spans.append((node[2], node[3], _HAR_WEBSOCKET_MARKER))
                 if _SECRET_FIELD.fullmatch(key) and node[0] == "string":
                     self.spans.append((node[2], node[3], _CREDENTIAL_MARKER))
                 self._ws()
@@ -131,7 +153,9 @@ class _Reader:
             # bounded, nonrecursive and strictly parsed parameter names.
             mime = members.get("mimeType")
             body = members.get("text")
-            if (self.allow_embedded and mime and body
+            if (self.allow_embedded
+                    and path[-2:] != ("request", "postData")
+                    and mime and body
                     and mime[0] == "string" and body[0] == "string"
                     and type(mime[1]) is str and type(body[1]) is str
                     and len(body[1]) <= MAX_BODY):
@@ -166,7 +190,7 @@ class _Reader:
                 self.pos += 1
                 return ("array", None, start, self.pos)
             while True:
-                self._node(depth + 1)
+                self._node(depth + 1, path)
                 self._ws()
                 if self.pos >= len(self.source):
                     raise ValueError("truncated JSON array")

@@ -2,6 +2,18 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Complete local, non-authorizing HUMAN review product on the original Basic/Bearer/API-key credential redaction boundary. No target interaction, scan, model invocation, upload, customer notification, approval, deployment, retest, or release.
 
+### New: conservative HAR source-content withholding
+
+For newly generated **owner-private** workrooms, the original source-bound
+offline note redactor now withholds entire `request.postData.text` and
+`response.content.text` string bodies from structurally valid bounded HAR
+JSON, as well as text data/payload within Chrome HAR `_webSocketMessages`.
+Headers, timing, original positions and HUMAN review flow remain available.
+The source document is never modified. New masking-cue receipts are v9,
+with exact historical v1-v8 reopen support. No runtime scan or network.
+Any malformed/oversize/unknown source stays confidential and requires
+independent HUMAN review; this is not safe-sharing certification.
+
 ### New: pasted command, HTTP exchange and structured credential masking
 
 The original local PRIVATE note masker now withholds more credential-bearing
