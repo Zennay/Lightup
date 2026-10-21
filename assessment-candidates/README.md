@@ -55,6 +55,8 @@ The metric panel now has **Export selected-pair metric comparison (CSV)**. Choos
 
 This is an aggregate descriptive handoff: it includes no case IDs, source filenames, target metadata, raw source bytes, aliases or notes. A numeric improvement or an absent source-reported flag is not evidence of a fix, safety, authorization, chronology or release readiness. The CSV is available only when two distinct candidate slots are selected; it does not alter source reports or local HUMAN casework.
 
+The standalone script-free briefing now includes the selected-pair numeric comparison table whenever two distinct candidate slots are selected, alongside the original adverse-flag crossover. The separate aggregate CSV remains the downloadable spreadsheet handoff; both exports omit source case IDs and target metadata.
+
 ## Isolation and source ownership
 
 This independent branch changes exclusively **new** files in `assessment-candidates/`. It does not edit or claim the comparator #1515, reviewdesk #1576, trajectory #1585, production runtime, domain, policies, webapp, scanner, service, CI, self-hosted runner or any other worker's files. The standalone works with original #1515 JSON schemas but does not import or copy the actively owned source implementation. No QA/regression suites have been written or run under the 17 October execution policy.
