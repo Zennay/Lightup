@@ -12,6 +12,7 @@ import csv
 from datetime import date
 import html
 import io
+import json
 from pathlib import Path
 import re
 import shutil
@@ -20,6 +21,7 @@ import sys
 from ledger import (
     FLAGS, Hold, MAX_MANIFEST, canonical, digest, html_page, new_private,
     private_parent, read_owner_file, reject, safe_human, write_private,
+    object_unique,
 )
 from portfolio_focus import local_path
 from portfolio_owner_change_briefs import admit as native_admit
@@ -186,7 +188,55 @@ def index_html(items, owners, reference):
     return html_page("LightUp PRIVATE HUMAN calendar counts", body)
 
 
+def receipt_document(originals, sha, payload, rows, reference_day):
+    return {
+        "schema": SCHEMA, "authority": FLAGS, "historical_only": True,
+        "sources_reopened": False, "recipient_authenticated": False,
+        "consent_assumed": False, "actions_dispatched": False,
+        "appointments_booked": False, "verified_remediation": False,
+        "original_owner_inbox_sha256": digest(originals[0]),
+        "original_history_sha256": digest(originals[1]),
+        "original_operator_followup_sha256": sha,
+        "original_operator_csv_sha256": digest(originals[3]),
+        "human_proposed_calendar_csv_sha256": digest(payload),
+        "human_selected_reference_day": reference_day,
+        "human_only_proposed_review_rows": rows,
+    }
+
+
+def reopen(args):
+    paths = [args.inbox, args.history, args.followup, args.operator_csv,
+             args.proposed_csv, args.receipt, args.private_parent]
+    if any(not local_path(path) for path in paths) or len(paths) != len(set(paths)):
+        reject("PRIVATE HOLD: original HUMAN calendar reopen paths must be distinct")
+    private_parent(args.private_parent)
+    if day(args.reference_day) is None:
+        reject("PRIVATE HOLD: explicit HUMAN comparison day required")
+    originals, _, items = read_original(args)
+    payload = read_owner_file(args.proposed_csv, MAX_MANIFEST)
+    rows = admit_proposals(payload, items, digest(originals[2]))
+    raw = read_owner_file(args.receipt, MAX_MANIFEST)
+    try:
+        doc = json.loads(raw.decode("utf-8"), object_pairs_hook=object_unique,
+                         parse_constant=lambda _: reject("PRIVATE HOLD: nonfinite receipt"))
+    except (UnicodeError, ValueError, TypeError) as exc:
+        raise Hold("PRIVATE HOLD: invalid original HUMAN calendar receipt") from exc
+    expected = receipt_document(originals, digest(originals[2]), payload,
+                                rows, args.reference_day)
+    if type(doc) is not dict or raw != canonical(doc) or doc != expected:
+        reject("PRIVATE HOLD: original HUMAN receipt, CSV or source-byte mismatch")
+    if (read_original(args)[0] != originals or
+            read_owner_file(args.proposed_csv, MAX_MANIFEST) != payload or
+            read_owner_file(args.receipt, MAX_MANIFEST) != raw):
+        reject("PRIVATE HOLD: original HUMAN calendar input drift")
+    print("PRIVATE REVIEW_ONLY: exact original HUMAN proposal CSV and unsigned "
+          "receipt reopened; no actual task, recipient authentication or appointment")
+    return 2
+
+
 def run(args):
+    if args.mode == "reopen":
+        return reopen(args)
     paths = [args.inbox, args.history, args.followup, args.operator_csv,
              args.private_parent]
     if args.mode == "receive":
@@ -218,19 +268,8 @@ def run(args):
                 write_private(room, "PRIVATE-HUMAN-proposed-calendar.html",
                               private_detail(owner, selected, args.reference_day))
                 folders.append(Path(room).name)
-            receipt = {
-                "schema": SCHEMA, "authority": FLAGS, "historical_only": True,
-                "sources_reopened": False, "recipient_authenticated": False,
-                "consent_assumed": False, "actions_dispatched": False,
-                "appointments_booked": False, "verified_remediation": False,
-                "original_owner_inbox_sha256": digest(originals[0]),
-                "original_history_sha256": digest(originals[1]),
-                "original_operator_followup_sha256": sha,
-                "original_operator_csv_sha256": digest(originals[3]),
-                "human_proposed_calendar_csv_sha256": digest(payload),
-                "human_selected_reference_day": args.reference_day,
-                "human_only_proposed_review_rows": rows,
-            }
+            receipt = receipt_document(originals, sha, payload, rows,
+                                       args.reference_day)
             write_private(output, "PRIVATE-HUMAN-proposed-calendar.json", canonical(receipt))
             write_private(output, "PRIVATE-HUMAN-proposed-calendar.csv", payload)
             write_private(output, "OPEN-PRIVATE.html",
@@ -251,17 +290,20 @@ def run(args):
 def main():
     parser = argparse.ArgumentParser(
         description="Offline PRIVATE HUMAN-only review calendar, never real scheduling")
-    parser.add_argument("mode", choices=("prepare", "receive"))
+    parser.add_argument("mode", choices=("prepare", "receive", "reopen"))
     parser.add_argument("--history", required=True)
     parser.add_argument("--inbox", required=True)
     parser.add_argument("--followup", required=True)
     parser.add_argument("--operator-csv", required=True)
     parser.add_argument("--proposed-csv")
+    parser.add_argument("--receipt")
     parser.add_argument("--reference-day", required=True, help="Explicit 20xx-mm-dd")
     parser.add_argument("--private-parent", required=True)
     args = parser.parse_args()
-    if (args.mode == "receive") != bool(args.proposed_csv):
-        parser.error("receive requires --proposed-csv; prepare omits it")
+    if ((args.mode == "prepare" and (args.proposed_csv or args.receipt)) or
+            (args.mode == "receive" and (not args.proposed_csv or args.receipt)) or
+            (args.mode == "reopen" and (not args.proposed_csv or not args.receipt))):
+        parser.error("prepare: no CSV/receipt; receive: CSV; reopen: CSV + receipt")
     try:
         return run(args)
     except (Hold, OSError, ValueError, TypeError, UnicodeError, csv.Error):
