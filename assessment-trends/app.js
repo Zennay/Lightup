@@ -906,7 +906,7 @@
   }
   function render(){
     const active=snapshots.length>0;
-    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportBrief","print","reviewExportCsv","reviewExportJson"])$(id).disabled=!active;
+    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
     $("noteMetric").replaceChildren();
     METRICS.forEach(name=>{const option=document.createElement("option");option.value=name;option.textContent=name;$("noteMetric").append(option);});
@@ -1153,6 +1153,40 @@
     download("assessment-trends-scenario-"+String(scenarioSlot).padStart(2,"0")+"-trajectory.json",
       JSON.stringify(out,null,2)+"\n","application/json");
     $("message").textContent="Selected anonymous scenario JSON downloaded. Original IDs, filenames, hashes and HUMAN notes are excluded; status remains REVIEW_ONLY.";
+  }
+
+
+  function exportScenarioBrief(){
+    const rows=selectedScenarioRows();if(!rows.length)return;
+    const scenarioSlot=rows[0].scenario_slot;
+    const headers=["Metric","Review-priority group","Original baseline",
+      ...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")+" · candidate / Δ / source flag")];
+    const bodyRows=METRICS.map(metric=>{
+      const subset=rows.filter(row=>row.metric===metric);
+      return [metric,family(metric),fmt(subset[0].baseline),
+        ...subset.map(row=>fmt(row.candidate)+" / "+fmt(row.delta)+" / "+
+          (row.source_reported_regression?"HOLD":"—"))];
+    });
+    const table="<table><thead><tr>"+headers.map(v=>"<th>"+esc(v)+"</th>").join("")+
+      "</tr></thead><tbody>"+bodyRows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+
+      "</tr>").join("")+"</tbody></table>";
+    const cssText="body{font:15px/1.5 system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#17212f}"+
+      "h1{font-size:1.8rem}.hold{border:2px solid #9a5b18;padding:.8rem;background:#fff7ed}"+
+      "table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #aab6c5;padding:.4rem;text-align:left}"+
+      "th{background:#eef2f6}td{white-space:nowrap}.note{font-size:.9rem;color:#475569}"+
+      "@media print{body{margin:0;max-width:none}table{font-size:9pt}th,td{white-space:normal;padding:.25rem}}";
+    const doc="<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"+
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"+
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; style-src 'unsafe-inline'\">"+
+      "<title>LightUp · Anonymous scenario trajectory</title><style>"+cssText+"</style></head><body>"+
+      "<p class=\"eyebrow\">LIGHTUP / ASSESSMENT RUNTIME</p><h1>Anonymous scenario trajectory</h1>"+
+      "<p class=\"hold\"><strong>REVIEW_ONLY · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></p>"+
+      "<p>Selected anonymous scenario: "+esc(String(scenarioSlot).padStart(2,"0"))+
+      " · Snapshot slots: "+esc(String(snapshots.length))+".</p>"+table+
+      "<p class=\"note\">Slot order is manually selected, not authenticated chronology. Values and regression flags are source-reported from already-completed, untrusted comparison documents. A missing flag is not a verified fix. This brief contains no original scenario IDs, filenames, source hashes or HUMAN notes and grants no authorization, consent, dispatch or release approval.</p>"+
+      "</body></html>";
+    download("assessment-trends-scenario-"+String(scenarioSlot).padStart(2,"0")+"-brief.html",doc,"text/html");
+    $("message").textContent="Script-free printable HTML brief downloaded for the selected anonymous scenario. It contains no original IDs, filenames, hashes or HUMAN notes.";
   }
 
   function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
@@ -1786,6 +1820,7 @@
   $("exportCsv").addEventListener("click",exportCsv);
   $("exportScenarioCsv").addEventListener("click",exportScenarioCsv);
   $("exportScenarioJson").addEventListener("click",exportScenarioJson);
+  $("exportScenarioBrief").addEventListener("click",exportScenarioBrief);
   $("exportBrief").addEventListener("click",exportBrief);
   $("print").addEventListener("click",()=>{if(snapshots.length)window.print();});
   $("forget").addEventListener("click",()=>{if(window.confirm("Forget all admitted source data and local commentary from this tab?"))forget();});
