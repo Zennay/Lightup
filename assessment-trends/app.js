@@ -708,6 +708,60 @@
       " with "+payload.action_count+" generic HUMAN follow-up actions and no note text.";
   }
 
+
+  // In-memory PRIVATE saved-note navigation. Never put note text in a listing,
+  // printed anonymous report, exported aggregate, browser storage or URL.
+  let savedNoteOffset=0;
+  const SAVED_NOTE_PAGE=80;
+  function sortedSavedNotes(){
+    const filter=$("savedNoteGroup").value;
+    return [...notes].map(([key,content])=>{
+      const [id,metric]=JSON.parse(key);
+      return {id,metric,scenarioSlot:slot(id),group:family(metric),
+        characterCount:content.length};
+    }).filter(row=>row.scenarioSlot>0&&(filter==="all"||row.group===filter))
+      .sort((a,b)=>a.scenarioSlot-b.scenarioSlot||
+        METRICS.indexOf(a.metric)-METRICS.indexOf(b.metric));
+  }
+  function renderSavedNoteIndex(){
+    const rows=sortedSavedNotes();
+    savedNoteOffset=Math.min(savedNoteOffset,
+      Math.max(0,Math.floor((rows.length-1)/SAVED_NOTE_PAGE)*SAVED_NOTE_PAGE));
+    $("savedNoteCount").textContent=notes.size?
+      notes.size+" saved PRIVATE HUMAN note(s) in this tab; "+rows.length+
+      " match the selected static group. Note contents are only shown in the selected editor.":
+      "No HUMAN notes saved locally. Imported source-bound note packets appear here after confirmed merge.";
+    $("savedNotePrev").disabled=savedNoteOffset===0;
+    $("savedNoteNext").disabled=savedNoteOffset+SAVED_NOTE_PAGE>=rows.length;
+    const root=$("savedNoteTable");root.replaceChildren();
+    if(!rows.length)return;
+    const table=document.createElement("table"),head=document.createElement("thead"),
+      title=document.createElement("tr"),body=document.createElement("tbody");
+    for(const label of ["Anonymous scenario","Fixed metric","Static group","Saved characters","View PRIVATE note"]){
+      const th=document.createElement("th");th.scope="col";th.textContent=label;title.append(th);
+    }
+    head.append(title);table.append(head);
+    for(const row of rows.slice(savedNoteOffset,savedNoteOffset+SAVED_NOTE_PAGE)){
+      const tr=document.createElement("tr");
+      for(const val of ["Scenario "+String(row.scenarioSlot).padStart(2,"0"),
+        row.metric,row.group,row.characterCount]){
+        const td=document.createElement("td");td.textContent=String(val);tr.append(td);
+      }
+      const td=document.createElement("td"),button=document.createElement("button");
+      button.type="button";button.className="secondary";button.textContent="Open";
+      button.setAttribute("aria-label","Open locally saved PRIVATE HUMAN note for scenario "+
+        row.scenarioSlot+" metric "+row.metric);
+      button.addEventListener("click",()=>{
+        selectedScenario=row.id;selectedMetric=row.metric;
+        $("scenarioSelect").value=selectedScenario;$("noteMetric").value=selectedMetric;
+        renderScenarioDetail();renderNotePanel();renderNotePacketControls();
+        $("noteInput").focus();$("commentary").scrollIntoView({block:"start",behavior:"smooth"});
+      });
+      td.append(button);tr.append(td);body.append(tr);
+    }
+    table.append(body);root.append(table);
+  }
+
   function renderNotePanel(){
     const id=currentId(),metric=$("noteMetric").value||METRICS[0];
     const key=id?noteKey(id,metric):"";
@@ -716,6 +770,7 @@
     $("noteInput").value=key?(scratch.has(key)?scratch.get(key):(notes.get(key)||"")):"";
     $("noteMessage").textContent=id?"Scenario "+String(slot(id)).padStart(2,"0")+" · "+metric+
       ". Notes are local to this tab and are never included in anonymous exports.":"";
+    renderSavedNoteIndex();
   }
 
   // Minimum-necessary encrypted HUMAN note handoff; no HUMAN stage or source
@@ -950,7 +1005,9 @@
       reviewOffset=0;workPlanOffset=0;
       $("workPlanGroup").value="all";$("workPlanStage").value="all";
       humanReviewStages.clear();resetReviewFilters();
-      notes.clear();scratch.clear();fictional=false;resetRevisionComparison();resetHumanTimeline();
+      notes.clear();scratch.clear();fictional=false;
+      savedNoteOffset=0;$("savedNoteGroup").value="all";
+      resetRevisionComparison();resetHumanTimeline();
       render();$("sessionMessage").textContent="New snapshot batch admitted; previous HUMAN session cannot be carried across datasets.";
       $("message").textContent="Accepted "+snapshots.length+
         " compatible source snapshots with "+scenarioIds.length+
@@ -990,6 +1047,7 @@
     snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
+    savedNoteOffset=0;$("savedNoteGroup").value="all";
     sourceFingerprints=[];$("privateSessionFile").value="";
     reviewOffset=0;workPlanOffset=0;
     $("workPlanGroup").value="all";$("workPlanStage").value="all";
@@ -1000,6 +1058,7 @@
     ++sourceAdmissionTicket;sourceAdmissionBusy=false;
     pendingSources=[];$("files").value="";
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
+    savedNoteOffset=0;$("savedNoteGroup").value="all";
     sourceFingerprints=[];$("privateSessionFile").value="";
     reviewOffset=0;workPlanOffset=0;
     $("workPlanGroup").value="all";$("workPlanStage").value="all";
@@ -1650,6 +1709,21 @@
   $("clearNote").addEventListener("click",()=>{const id=currentId();if(!id)return;const key=noteKey(id,$("noteMetric").value);
     notes.delete(key);scratch.delete(key);renderNotePanel();renderNotePacketControls();
     $("noteMessage").textContent="Selected commentary cleared from this tab.";});
+  const noteIndexGroup=$("savedNoteGroup");noteIndexGroup.replaceChildren();
+  for(const group of ["all",...new Set(METRICS.map(family))]){
+    const option=document.createElement("option");option.value=group;
+    option.textContent=group==="all"?"All saved HUMAN note groups":group;
+    noteIndexGroup.append(option);
+  }
+  $("savedNoteGroup").addEventListener("change",()=>{
+    savedNoteOffset=0;renderSavedNoteIndex();
+  });
+  $("savedNotePrev").addEventListener("click",()=>{
+    savedNoteOffset=Math.max(0,savedNoteOffset-SAVED_NOTE_PAGE);renderSavedNoteIndex();
+  });
+  $("savedNoteNext").addEventListener("click",()=>{
+    savedNoteOffset+=SAVED_NOTE_PAGE;renderSavedNoteIndex();
+  });
   $("notePacketScope").addEventListener("change",renderNotePacketControls);
   $("notePacketExport").addEventListener("click",()=>{void exportEncryptedNotes();});
   $("notePacketImport").addEventListener("click",()=>{void importEncryptedNotes();});
