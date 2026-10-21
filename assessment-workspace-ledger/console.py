@@ -47,6 +47,7 @@ import portfolio_owner_change_briefs
 import portfolio_owner_change_board
 import portfolio_owner_change_history
 import portfolio_owner_change_history_studio
+import portfolio_operator_calendar
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -110,6 +111,8 @@ MENU = (
     ("53", "Build portable offline PRIVATE HUMAN operator change board"),
     ("54", "Compare 2–8 original HUMAN operator versions per private owner"),
     ("55", "Build portable offline ORIGINAL HUMAN operator version explorer"),
+    ("56", "Prepare full original-bound PRIVATE HUMAN proposed review calendar CSV"),
+    ("57", "Receive complete original-bound HUMAN calendar into PRIVATE owner workrooms"),
     ("0", "Exit"),
 )
 
@@ -258,6 +261,18 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action in ("56", "57"):
+        return portfolio_operator_calendar.run(argparse.Namespace(
+            mode="prepare" if action == "56" else "receive",
+            inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            followup=prompt("Original native PRIVATE-HUMAN-operator-followup.json"),
+            operator_csv=prompt("Matching original complete HUMAN operator follow-up CSV"),
+            proposed_csv=prompt("Edited complete HUMAN-proposed-calendar-template.csv")
+            if action == "57" else None,
+            reference_day=prompt("Explicit HUMAN reference day 20xx-mm-dd (not real booking)"),
+            private_parent=private_parent(),
         ))
     if action == "55":
         return portfolio_owner_change_history_studio.build(argparse.Namespace(
