@@ -127,3 +127,18 @@ workroom event. Suggestions never contact real calendars, scan targets, send
 messages, assert actual human ownership, or claim verified security risk/consent.
 Original worksheet and HUMAN fields are immutable. Changes remain unsaved
 until the operator explicitly saves the complete source-bound PRIVATE v2 plan.
+
+
+### Bounded complete HUMAN batch scheduling
+
+The source-free HUMAN queue offers a separate preview for up to twelve currently
+filtered, unblocked original ordinals. The local 31-day scheduler reserves each
+proposed 30-minute slot against the complete existing and in-flight PRIVATE
+plan, respecting declared group weekdays, time windows, blackout days, daily
+caps and overlaps. No proposed slot for any selected ordinal means the entire
+preview is refused; no partial scheduling occurs. The operator sees every exact
+proposed day/time in a separate private table and must explicitly confirm before
+the full set changes the local draft. Editing the plan, queue filters, group
+policy, source or series invalidates the preview. Manual source-bound v2
+save/reopen remains required. No calendar APIs, claims of actual availability,
+review status, scan, consent, scope or dispatch.

@@ -98,6 +98,13 @@
 <label>Search ordinal, HUMAN action or blocker <input type="search" id="backlogQuery" maxlength="120" placeholder="Local only"></label>
 <label>Earliest proposed date <input type="date" id="backlogStart"></label>
 </div>
+<div class="row"><button id="backlogPrepare" type="button">Prepare up to 12 unblocked HUMAN suggestions</button>
+<button id="backlogApply" type="button" disabled>Apply these local proposals (confirm)</button>
+<button id="backlogDiscard" type="button" class="ghost">Discard proposal</button></div>
+<details id="backlogPreviewDetails"><summary>Review exact pending HUMAN appointment proposals</summary>
+<p id="backlogPreviewStatus" class="subtle">No batch proposal prepared.</p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>HUMAN group</th><th>Proposed day</th><th>Time</th><th>Duration</th></tr></thead>
+<tbody id="backlogPreviewRows"></tbody></table></div></details>
 <p id="backlogSummary" role="status" class="subtle"></p>
 <div class="tablebox"><table>
 <thead><tr><th>Original ordinal</th><th>Unverified severity</th><th>HUMAN group</th>

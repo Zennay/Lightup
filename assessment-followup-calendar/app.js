@@ -21,7 +21,7 @@
   let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   let publicationBaseline = null, changesPage = 0;
   let weekAnchor = "", monthAnchor = "";
-  let backlogPage=0;
+  let backlogPage=0, backlogProposal=null;
   let capacityRules = new Map(), capacityProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
@@ -560,16 +560,16 @@
       return true;
     });
   }
-  function proposalForUnscheduled(ordinal,fromDay){
+  function proposalForUnscheduled(ordinal,fromDay,scheduled=plan){
     hold(active && Number.isSafeInteger(ordinal) && ordinal>=1&&ordinal<=items.length);
     const row=items[ordinal-1];
-    hold(row.ordinal===ordinal && !plan.has(ordinal) && row.stage!=="blocked");
+    hold(row.ordinal===ordinal && !scheduled.has(ordinal) && row.stage!=="blocked");
     eventDate(fromDay,"12:00");
     hold(fromDay>=nowToday());
     const rule=capacityRules.get(row.group)||capacityDefaultRule();
-    const existing=eventIntervals(),daily=new Map();
+    const existing=eventIntervals(scheduled),daily=new Map();
     for(const other of items){
-      const p=plan.get(other.ordinal);
+      const p=scheduled.get(other.ordinal);
       if(!p || other.group!==row.group)continue;
       daily.set(p.day,(daily.get(p.day)||0)+1);
     }
@@ -610,6 +610,72 @@
     inform("Added PRIVATE HUMAN draft reminder for #"+ordinal+
       ". Save the original source-bound v2 plan before leaving the workroom.");
   }
+  function backlogSignature(){
+    return JSON.stringify([hash,seriesId,zone,
+      Array.from(plan.entries()).sort((a,b)=>a[0]-b[0]),
+      Array.from(capacityRules.entries()).sort((a,b)=>a[0].localeCompare(b[0])),
+      $("backlogStart").value,$("backlogView").value,
+      $("backlogGroup").value,$("backlogQuery").value,
+      backlogFiltered().slice(0,12).map(row=>row.ordinal)]);
+  }
+  function renderBacklogPreview(){
+    const valid=backlogProposal && backlogProposal.signature===backlogSignature();
+    if(!valid)backlogProposal=null;
+    const body=$("backlogPreviewRows");body.replaceChildren();
+    $("backlogApply").disabled=!valid;
+    if(!valid){
+      $("backlogPreviewStatus").textContent=
+        "No current source-bound proposal. Prepare a new one for this exact workroom and filter.";
+      return;
+    }
+    $("backlogPreviewStatus").textContent=backlogProposal.slots.size+
+      " UNSIGNED HUMAN-only proposals ready for explicit confirmation. No local plan or external calendar has changed.";
+    for(const [ordinal,slot] of backlogProposal.slots){
+      const row=items[ordinal-1],tr=dom("tr");
+      tr.append(dom("td","#"+ordinal),dom("td",row.group||"(unassigned)"),
+        dom("td",slot.day),dom("td",slot.time),dom("td",slot.duration+" minutes"));
+      body.append(tr);
+    }
+  }
+  function prepareBacklogBatch(){
+    hold(active);
+    const candidates=backlogFiltered().filter(row=>row.stage!=="blocked").slice(0,12);
+    hold(candidates.length>0);
+    const from=$("backlogStart").value;
+    eventDate(from,"12:00");hold(from>=nowToday());
+    const tentative=new Map(plan),prepared=new Map();
+    for(const row of candidates){
+      const next=proposalForUnscheduled(row.ordinal,from,tentative);
+      if(!next){
+        backlogProposal=null;renderBacklogPreview();
+        inform("HUMAN group proposal held: no local valid slot within 31 days for original #"+
+          row.ordinal+". Nothing changed, including earlier proposals.",true);return;
+      }
+      tentative.set(row.ordinal,next);prepared.set(row.ordinal,next);
+    }
+    backlogProposal={signature:backlogSignature(),slots:prepared};
+    $("backlogPreviewDetails").open=true;renderBacklogPreview();
+    inform("Prepared "+prepared.size+" complete PRIVATE HUMAN provisional reminders. Check every row before applying; no appointments have changed.");
+  }
+  function applyBacklogBatch(){
+    hold(backlogProposal && backlogProposal.signature===backlogSignature());
+    const proposals=backlogProposal.slots;
+    hold(proposals.size>0 && proposals.size<=12);
+    if(!confirm("Apply exactly "+proposals.size+" tentative HUMAN reminders to the PRIVATE local plan? "+
+      "The original source fields, real calendars, people, authority and verified security state will NOT change. "+
+      "These are entirely human-confirmed local drafts requiring an explicit full v2 plan save."))return;
+    hold(backlogProposal && backlogProposal.signature===backlogSignature());
+    for(const [ordinal,slot] of proposals){
+      hold(!plan.has(ordinal) && items[ordinal-1]?.stage!=="blocked");
+      admitSlot(slot.day,slot.time,slot.duration,slot.reminder);
+    }
+    const updated=new Map(plan);
+    for(const [ordinal,slot] of proposals)updated.set(ordinal,{...slot});
+    plan=updated;
+    backlogProposal=null;changed=true;exportedPlan=false;backlogPage=0;
+    render();
+    inform("Applied "+proposals.size+" explicit PRIVATE HUMAN proposed reminders locally. Save complete source-bound v2 plan separately; no external calendar updated.");
+  }
   function renderBacklog(){
     if(!active)return;
     const selector=$("backlogGroup"),groups=capacityGroups(),old=selector.value;
@@ -623,6 +689,7 @@
       });
       selector.value=old;if(selector.selectedIndex<0)selector.value="";
     }
+    renderBacklogPreview();
     const list=backlogFiltered(),pages=Math.max(1,Math.ceil(list.length/30));
     backlogPage=Math.min(Math.max(0,backlogPage),pages-1);
     const blocked=list.filter(row=>row.stage==="blocked").length;
@@ -1240,6 +1307,7 @@
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
+    backlogProposal=null;
     backlogPage=0;$("backlogView").value="open";$("backlogGroup").value="";$("backlogQuery").value="";$("backlogStart").value=nowToday();
     weekAnchor=nowToday();$("weekGroup").value="";
     $("weekConflicts").checked=false;$("weekConstraints").checked=false;
@@ -1474,7 +1542,7 @@
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityProposal=null;$("capacityApply").disabled=true;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
-    weekAnchor="";monthAnchor="";backlogPage=0;
+    weekAnchor="";monthAnchor="";backlogPage=0;backlogProposal=null;
     $("desk").hidden=true;$("agenda").hidden=true;$("week").hidden=true;$("month").hidden=true;$("backlog").hidden=true;$("workload").hidden=true;$("capacity").hidden=true;$("brief").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     clearPasswords();$("baselinePassword").value="";$("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
@@ -1494,6 +1562,23 @@
     catch(_){inform("Month range unavailable, no local changes made.",true);}});
   hook("monthToday","click",()=>{monthAnchor=nowToday().slice(0,7);renderMonth();});
   hook("monthGroup","change",renderMonth);
+  hook("backlogPrepare","click",()=>{
+    try{prepareBacklogBatch();}catch(_){
+      backlogProposal=null;renderBacklogPreview();inform("Complete HUMAN batch proposal rejected; no plan changes made.",true);
+    }
+  });
+  hook("backlogApply","click",()=>{
+    try{applyBacklogBatch();}catch(_){
+      backlogProposal=null;renderBacklogPreview();inform("HUMAN batch became stale or invalid; no changes made.",true);
+    }
+  });
+  hook("backlogDiscard","click",()=>{
+    backlogProposal=null;renderBacklogPreview();$("backlogPreviewDetails").open=false;
+    inform("Tentative HUMAN batch preview discarded; original local plan unchanged.");
+  });
+  hook("backlogStart","change",()=>{
+    backlogProposal=null;renderBacklogPreview();
+  });
   hook("backlogView","change",()=>{backlogPage=0;renderBacklog();});
   hook("backlogGroup","change",()=>{backlogPage=0;renderBacklog();});
   hook("backlogQuery","input",()=>{backlogPage=0;renderBacklog();});
