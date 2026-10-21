@@ -6,13 +6,14 @@
 
 Combine **2–12 already-created original private agenda JSON exports** from the unchanged `assessment-archive/agenda.py` against one explicit human planning reference day. The portfolio groups follow-up rows by neutral role and proposed-date bucket, includes a role-by-date workload matrix, preserves separate agenda/source slot ordinals, and never merges original source identifiers or bytes.
 
-The output bundle contains three separate, no-overwrite artifacts in an existing directory owned by the current user with mode `0700`:
+The output bundle contains four separate, no-overwrite artifacts in an existing directory owned by the current user with mode `0700`:
 
 - `assessment-portfolio-private.html` — static, scriptless, CSP-pinned, printable private workroom. Shows only agenda and source slot ordinals, fixed source kind, human stage, neutral role, proposed review date, date bucket, and canonical generic question.
+- `assessment-portfolio-private-routing.csv` — sorted PRIVATE per-item human coordination list for local spreadsheet/calendar preparation: admitted agenda/source ordinals, fixed source kind/stage/role, proposed date bucket and canonical generic human question. It contains no original source identifiers or bytes. It is **not an anonymous export** and must remain private.
 - `assessment-portfolio-anonymous.json` — aggregate counts only.
 - `assessment-portfolio-anonymous.csv` — aggregate counts only.
 
-All three files are created with mode `0600`. The private HTML does not embed source bytes, source paths, filenames, hashes, targets, client identities or HUMAN commentary. The JSON/CSV contain no row-level or per-agenda data.
+All four files are created with mode `0600`. The private HTML does not embed source bytes, source paths, filenames, hashes, targets, client identities or HUMAN commentary. Only the `assessment-portfolio-anonymous.json` and `assessment-portfolio-anonymous.csv` contain aggregate counts without row-level or per-agenda data. The private routing CSV is intentionally row-level, designed solely for local operator follow-up and must not be mistaken for anonymous data.
 
 ## Use
 
@@ -41,3 +42,5 @@ The directory must already exist, be owned by the current user and have mode `07
 - No network, model, target, scanner, grant, active assessment, remediation, retest or release operation is performed.
 
 This feature remains **DRAFT/HOLD** until the existing parent workbench and this exact child head receive all required CI, source-owner, independent security/privacy review and authorization gates. No QA/regression suites are added by this change.
+
+The private routing CSV is sorted first by fixed neutral role, then proposed-date bucket, planned date and local ordinals. Every text field comes from an exact schema-admitted fixed vocabulary or generic question; role labels are suggestions, not verified people or assignments. Imported source dates are planning claims, not actual deadlines. No client IDs, target URLs, filenames, hashes or HUMAN notes are included.

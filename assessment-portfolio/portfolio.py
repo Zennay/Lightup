@@ -338,6 +338,31 @@ def render_private_html(summary, rows):
     )
     return html.encode("utf-8")
 
+def render_private_routing_csv(rows):
+    """Explicit PRIVATE per-item human handoff. Never an anonymous public export.
+
+    All value-bearing fields come from exact admitted enums, ordinals, ISO dates,
+    or one of the fixed generic human questions. No original source field appears.
+    """
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\r\n")
+    writer.writerow((
+        "agenda_slot", "source_slot", "source_kind", "human_stage",
+        "neutral_role", "proposed_review_date", "proposed_date_bucket",
+        "suggested_human_question", "authority_status",
+    ))
+    for row in sorted(rows, key=lambda item: (
+        ROLES.index(item["next_role"]), BUCKET_ORDER[item["date_bucket"]],
+        item["review_date"] or "9999-12-31", item["agenda_slot"], item["source_slot"],
+    )):
+        writer.writerow((
+            row["agenda_slot"], row["source_slot"], row["source_kind"],
+            row["stage"], row["next_role"], row["review_date"] or "",
+            row["date_bucket"], row["suggested_human_question"], "REVIEW_ONLY",
+        ))
+    return stream.getvalue().encode("utf-8")
+
+
 def render_counts_csv(summary):
     stream = io.StringIO(newline="")
     writer = csv.writer(stream, lineterminator="\r\n")
@@ -410,6 +435,7 @@ def run(args):
         summary = aggregate(documents, rows, reference_day)
         outputs = [
             ("assessment-portfolio-private.html", render_private_html(summary, rows)),
+            ("assessment-portfolio-private-routing.csv", render_private_routing_csv(rows)),
             ("assessment-portfolio-anonymous.json",
              (json.dumps(summary, ensure_ascii=False, indent=2) + "\n").encode("utf-8")),
             ("assessment-portfolio-anonymous.csv", render_counts_csv(summary)),
