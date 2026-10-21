@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; script-src 'self'; style-src 'self'">
+<title>LightUp · Assessment Trends</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<header class="hero">
+  <p class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME</p>
+  <h1>Assessment Trends</h1>
+  <p>Compare 3–12 already-completed canonical cohort snapshots. Inspect persistence, reappearance and metric trajectories without running an assessment.</p>
+  <div id="statusBanner" class="status hold" role="status" aria-live="polite">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.</div>
+</header>
+<main>
+<section class="panel no-print">
+  <div class="section-head"><h2>01 / Import existing snapshots</h2><span class="tag">Offline · memory only</span></div>
+  <p>Select 3–12 original cohort-comparison JSON documents from the existing comparator. The selected file order is a display order only, not authenticated chronology. Each file is limited to 256 KiB.</p>
+  <label class="file-picker">Choose 3–12 cohort JSON files
+    <input id="files" type="file" accept=".json,application/json" multiple>
+  </label>
+  <div class="controls">
+    <button id="import" type="button">Import atomically</button>
+    <button id="demo" type="button" class="secondary">Load fictional demo</button>
+    <button id="forget" type="button" class="ghost" disabled>Forget all local data</button>
+  </div>
+  <p id="message" class="message" role="status" aria-live="polite">No source files have been admitted.</p>
+  <p class="footnote">Malformed, duplicate-key, mismatched or baseline-inconsistent batches are rejected as a whole. A failed import leaves the previously admitted workspace untouched. No file names, source hashes or source identifiers are retained for export.</p>
+</section>
+<section class="panel">
+  <div class="section-head"><h2>02 / Snapshot summary</h2><span class="tag">REVIEW_ONLY / HOLD</span></div>
+  <div id="summaryCards" class="cards"><p class="empty">Import snapshots to build the trend view.</p></div>
+  <p id="summaryText" class="footnote"></p>
+</section>
+<section class="panel">
+  <div class="section-head"><h2>03 / Metric persistence heatmap</h2><span class="tag">Source-reported flags</span></div>
+  <p>Cells show how many anonymous scenarios carry a source-reported regression flag for that metric in each manually selected snapshot. Grouping is a static display aid, not an independently assessed security severity. “Persistent” means the same scenario/metric is flagged in at least two consecutive slots.</p>
+  <div id="metricHeatmap" class="tablewrap"><p class="empty">No admitted metrics yet.</p></div>
+</section>
+<section class="panel">
+  <div class="section-head"><h2>04 / Anonymous scenario trajectories</h2><span class="tag">IDs hidden</span></div>
+  <p>Each scenario has a stable local ordinal. The workspace validates the original IDs privately to confirm exact membership, but never displays or exports them.</p>
+  <label>Inspect anonymous scenario
+    <select id="scenarioSelect" disabled><option>Import snapshots first</option></select>
+  </label>
+  <div id="scenarioHeatmap" class="tablewrap"><p class="empty">No admitted scenarios yet.</p></div>
+  <h3>Selected scenario · metric trajectory</h3>
+  <div id="trajectoryTable" class="tablewrap"><p class="empty">No trajectory to inspect yet.</p></div>
+</section>
+<section class="panel no-print">
+  <div class="section-head"><h2>05 / Private human commentary</h2><span class="tag">In-memory only</span></div>
+  <p>Notes are never part of the anonymous aggregate brief, JSON or CSV. Save a note explicitly to retain it in this tab; navigate between scenarios without losing scratch text. Exporting notes creates a separate clearly marked PRIVATE file.</p>
+  <label>Metric for commentary
+    <select id="noteMetric" disabled></select>
+  </label>
+  <label>Human commentary (maximum 500 characters)
+    <textarea id="noteInput" maxlength="500" rows="4" disabled placeholder="Record a human observation; not measured evidence or remediation proof."></textarea>
+  </label>
+  <div class="controls">
+    <button id="saveNote" type="button" disabled>Save commentary in memory</button>
+    <button id="clearNote" type="button" class="secondary" disabled>Clear commentary</button>
+    <button id="exportNotes" type="button" class="ghost" disabled>Export PRIVATE commentary JSON</button>
+  </div>
+  <p id="noteMessage" class="message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel no-print">
+  <div class="section-head"><h2>06 / Explicit local handoff</h2><span class="tag">No authority</span></div>
+  <div class="controls">
+    <button id="exportJson" type="button" disabled>Export aggregate JSON</button>
+    <button id="exportCsv" type="button" disabled>Export anonymous trajectory CSV</button>
+    <button id="exportBrief" type="button" disabled>Download script-free aggregate brief</button>
+    <button id="print" type="button" disabled>Print aggregate brief</button>
+  </div>
+  <p class="footnote">Anonymous exports include no original scenario IDs, file names, uploaded hashes, raw source JSON or private notes. Source status and metric flags remain unverified claims from the imported reports. All authorization, consent, dispatch and release flags remain false.</p>
+</section>
+<section id="printBrief" class="print-only" aria-label="Anonymous aggregate brief"></section>
+</main>
+<footer>LightUp Assessment Trends · local comparison only · no network, storage, scanner, handler, grant or release capability.</footer>
+</body>
+</html>
