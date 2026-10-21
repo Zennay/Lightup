@@ -36,9 +36,9 @@ def require(condition: bool) -> None:
         raise Hold("HOLD: PRIVATE original HUMAN priority inbox refused")
 
 
-def join(source_path: str, manifest_path: str, worksheet_path: str,
-         selection_receipt: str, selection_path: str, curated_dir: str,
-         handoff_paths: list[str], reply_paths: list[str], output: str) -> int:
+def build(source_path: str, manifest_path: str, worksheet_path: str,
+          selection_receipt: str, selection_path: str, curated_dir: str,
+          handoff_paths: list[str], reply_paths: list[str]) -> tuple[dict[str, bytes], int]:
     require(len(handoff_paths) == len(reply_paths) and 1 <= len(handoff_paths) <= 3)
     source, source_sha, worksheet_sha, original_selection, selected = accepted_original(
         source_path, manifest_path, worksheet_path, selection_receipt, selection_path)
@@ -178,11 +178,20 @@ def join(source_path: str, manifest_path: str, worksheet_path: str,
         "human_selected_count": len(selected),
         **UNTRUSTED_FLAGS,
     }
-    publish_new(output, {
+    return ({
         FINAL: combined, REPORT: report, DETAIL: private_answer_inbox,
         COUNTS: json_bytes(counts), RECEIPT_OUT: json_bytes(receipt),
-    })
-    return len(selected)
+    }, len(selected))
+
+
+def join(source_path: str, manifest_path: str, worksheet_path: str,
+         selection_receipt: str, selection_path: str, curated_dir: str,
+         handoff_paths: list[str], reply_paths: list[str], output: str) -> int:
+    files, count = build(source_path, manifest_path, worksheet_path,
+                         selection_receipt, selection_path, curated_dir,
+                         handoff_paths, reply_paths)
+    publish_new(output, files)
+    return count
 
 
 def main() -> int:
