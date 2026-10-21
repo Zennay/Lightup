@@ -79,10 +79,12 @@ in-memory filters, an atomic bulk proposal for status/role on only visible
 slots with one reversible HUMAN-only Undo, and a full original-order CSV
 export. Every proposed row is admitted before any bulk change; a conflicting
 worksheet state refuses the entire batch. An individual edit invalidates Undo
-so it cannot overwrite newer choices. No HTTP, storage, background save or
-remote action; the original unchanged native `private_inbox_actions.py
-finalize` is still required to admit every complete exact source-bound row
-before publishing PRIVATE outputs.
+so it cannot overwrite newer choices. CSV export now has a separate aggregate
+preview and explicit download confirmation; any row edit or bulk change
+invalidates the preview, and filtered-out original slots remain included. No
+HTTP, storage, background save or remote action; the original unchanged native
+`private_inbox_actions.py finalize` is still required to admit every complete
+exact source-bound row before publishing PRIVATE outputs.
 The [source-bound PRIVATE HUMAN action guide](./PRIVATE-INBOX-ACTIONS.md)
 and bundled `private_inbox_actions.py` complete the review workflow after
 `private_inbox_board.py` generates the original source-free board JSON:

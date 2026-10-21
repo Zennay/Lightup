@@ -88,9 +88,14 @@ proposed combination violates the original worksheet rules, the entire batch
 is refused. All editing stays in memory:
 there is no fetch, localStorage, telemetry, auto-routing, scanner or model.
 
-Select **Export complete PRIVATE HUMAN actions CSV** and manually move the
-browser download to owner-controlled 0600 storage. A browser-generated CSV
-and its SHA do not prove successful persistence or original producer identity;
+Select **Prepare complete PRIVATE HUMAN CSV preview** to see full original-slot
+counts by proposed stage/role and whether HUMAN questions/next actions are
+present. The preview contains no note text; it covers every original slot even
+when filters hide cards. Explicitly select **Confirm and download full CSV**
+to request the download. Any HUMAN row edit or bulk update invalidates the
+preview and requires a fresh one. Manually move the browser download to
+owner-controlled 0600 storage. A browser-generated CSV and its SHA do not prove
+successful persistence or original producer identity;
 reopen and finalize using the original *native* strict source-binding below.
 A cancelled or invalid editor source yields no valid native approval or output.
 The old original contents are not silently carried forward when importing a

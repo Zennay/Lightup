@@ -38,10 +38,17 @@
 <div id="cards" class="cards"></div>
 <p class="privacy">Filters only hide cards; exports ALWAYS preserve all original slots and their original sequence. Browser notes are not persisted automatically. Do not use this app on shared machines for real sensitive HUMAN text.</p>
 <div class="actions">
-<button id="export" type="button">3. Export complete PRIVATE HUMAN actions CSV</button>
+<button id="export" type="button">3. Prepare complete PRIVATE HUMAN CSV preview</button>
 <button id="clear" type="button" class="secondary">Clear entire PRIVATE session</button>
 </div>
 <p id="export-message" role="status" aria-live="polite"></p>
+<div id="export-preview" class="export-preview" hidden aria-labelledby="export-preview-heading">
+<h3 id="export-preview-heading">Confirm full original-order export</h3>
+<p id="export-preview-summary"></p>
+<ul id="export-preview-breakdown"></ul>
+<p class="privacy">This preview shows aggregate counts only, not private question/action text. The CSV still contains all original source-ordered HUMAN rows, including filtered-out slots. Review the private cards before confirming; the export is unsigned and non-authorizing.</p>
+<div class="actions"><button id="confirm-export" type="button" disabled>Confirm and download full CSV</button><button id="cancel-export" type="button" class="secondary">Cancel preview</button></div>
+</div>
 </section>
 <section class="panel">
 <h2>4. Native source-bound finalization (separate owner operation)</h2>

@@ -11,11 +11,17 @@
   let rows = [];
   let digest = "";
   let lastBulkUndo = null;
+  let pendingCsv = null;
 
   function clear() {
     rows = [];
     digest = "";
     lastBulkUndo = null;
+    pendingCsv = null;
+    $("export-preview").hidden = true;
+    $("confirm-export").disabled = true;
+    $("export-preview-summary").textContent = "";
+    $("export-preview-breakdown").replaceChildren();
     $("upload").value = "";
     $("bulk-apply").disabled = true;
     $("bulk-undo").disabled = true;
@@ -177,7 +183,19 @@
     $("bulk-visible-count").textContent = rows.length ? count + " visible slot(s) · batch changes affect only these rows" : "";
   }
 
+  function invalidateExportPreview(message) {
+    const hadPreview = pendingCsv !== null;
+    pendingCsv = null;
+    $("export-preview").hidden = true;
+    $("confirm-export").disabled = true;
+    if (hadPreview && message) {
+      $("export-message").textContent = message;
+      $("export-message").dataset.error = "false";
+    }
+  }
+
   function invalidateBulkUndo() {
+    invalidateExportPreview("A HUMAN row changed. Prepare a new full-export preview before downloading.");
     if (lastBulkUndo) {
       lastBulkUndo = null;
       $("bulk-message").textContent = "An individual row was edited; the previous bulk Undo was cleared to preserve the newer change.";
@@ -230,6 +248,7 @@
     try {
       proposed.forEach((row,index)=>validRow([digest,String(index+1),row.status,row.role,row.question,row.next],index,digest));
       if (!confirm("Apply these HUMAN-only proposals to exactly "+visible.length+" currently visible original slots? All hidden rows stay unchanged. If the native worksheet rules are not met, no changes are applied.")) return;
+      invalidateExportPreview("The HUMAN worksheet changed. Prepare a new full-export preview before downloading.");
       lastBulkUndo = rows.map(row=>({...row}));
       rows = proposed;
       show();
@@ -242,35 +261,71 @@
   });
   $("bulk-undo").addEventListener("click", () => {
     if (!lastBulkUndo) return;
+    invalidateExportPreview("The HUMAN worksheet changed. Prepare a new full-export preview before downloading.");
     rows = lastBulkUndo; lastBulkUndo = null; show();
     $("bulk-message").textContent = "Last HUMAN-only batch undone. No source slot or original evidence changed.";
     $("bulk-message").dataset.error = "false";
   });
   $("clear").addEventListener("click", clear);
+  function currentCsv() {
+    if (!rows.length) throw Error("No original PRIVATE worksheet loaded");
+    const values = [FIELDS];
+    rows.forEach((r,i) => {
+      const record = [digest,String(i+1),r.status,r.role,r.question,r.next];
+      validRow(record,i,digest); values.push(record);
+    });
+    const csv = values.map(csvEncode).join("\n") + "\n";
+    if (new TextEncoder().encode(csv).length > MAX_BYTES) throw Error("Edited PRIVATE actions exceed native file limit");
+    return csv;
+  }
+
   $("export").addEventListener("click", () => {
+    invalidateExportPreview();
     $("export-message").textContent = "";
     try {
-      if (!rows.length) throw Error("No original PRIVATE worksheet loaded");
-      const values = [FIELDS];
-      rows.forEach((r,i) => {
-        const record = [digest,String(i+1),r.status,r.role,r.question,r.next];
-        validRow(record,i,digest);
-        values.push(record);
-      });
-      const csv = values.map(csvEncode).join("\n") + "\n";
-      if (new TextEncoder().encode(csv).length > MAX_BYTES) throw Error("Edited PRIVATE actions exceed native file limit");
+      pendingCsv = currentCsv();
+      const stages = Object.fromEntries(STATUSES.map(value=>[value,0]));
+      const roles = Object.fromEntries(ROLES.map(value=>[value,0]));
+      rows.forEach(row=>{stages[row.status]++;roles[row.role]++;});
+      const breakdown = $("export-preview-breakdown"); breakdown.replaceChildren();
+      for (const value of STATUSES) { const item=document.createElement("li");item.textContent="Stage "+value+": "+stages[value];breakdown.append(item); }
+      for (const value of ROLES) { const item=document.createElement("li");item.textContent="Proposed role "+value+": "+roles[value];breakdown.append(item); }
+      for (const [label,count] of [["Rows with HUMAN question",rows.filter(row=>row.question.trim()).length],["Rows with HUMAN next action",rows.filter(row=>row.next.trim()).length]]) {
+        const item=document.createElement("li");item.textContent=label+": "+count+" / "+rows.length;breakdown.append(item);
+      }
+      $("export-preview-summary").textContent = rows.length+" original slot(s) will be exported in original order. The current CSV is "+new TextEncoder().encode(pendingCsv).length+" bytes. No file has been downloaded yet.";
+      $("export-preview").hidden = false; $("confirm-export").disabled = false;
+      $("export-message").textContent = "Preview ready. Inspect the full local worksheet, then explicitly confirm the download. This remains REVIEW_ONLY.";
+      $("export-message").dataset.error = "false";
+    } catch (err) {
+      invalidateExportPreview();
+      $("export-message").textContent = "HOLD: original PRIVATE HUMAN preview refused ("+String(err.message||"invalid row")+")";
+      $("export-message").dataset.error = "true";
+    }
+  });
+  $("confirm-export").addEventListener("click", () => {
+    try {
+      if (pendingCsv === null) throw Error("No current full-export preview");
+      const csv = currentCsv();
+      if (csv !== pendingCsv) throw Error("HUMAN worksheet changed after preview");
       const blob = new Blob([csv],{type:"text/csv;charset=utf-8"});
       const url = URL.createObjectURL(blob);
       try {
-        const a = document.createElement("a");
-        a.href = url; a.download = "PRIVATE-inbox-HUMAN-actions.csv";
+        const a = document.createElement("a"); a.href=url; a.download="PRIVATE-inbox-HUMAN-actions.csv";
         document.body.append(a); a.click(); a.remove();
-      } finally {
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-      $("export-message").textContent = "REVIEW_ONLY: browser generated complete original slot-ordered PRIVATE CSV. This does NOT prove it was saved on disk. Use unchanged native finalize and independent original HUMAN review.";
+      } finally { setTimeout(()=>URL.revokeObjectURL(url),1000); }
+      invalidateExportPreview();
+      $("export-message").textContent = "REVIEW_ONLY: full original slot-ordered PRIVATE CSV download requested. This does NOT prove disk persistence. Use unchanged native finalize and independent original HUMAN review.";
+      $("export-message").dataset.error = "false";
     } catch (err) {
-      $("export-message").textContent = "HOLD: original PRIVATE HUMAN export refused ("+String(err.message||"invalid row")+")";
+      invalidateExportPreview();
+      $("export-message").textContent = "HOLD: full PRIVATE HUMAN export refused ("+String(err.message||"invalid row")+")";
+      $("export-message").dataset.error = "true";
     }
+  });
+  $("cancel-export").addEventListener("click", () => {
+    invalidateExportPreview();
+    $("export-message").textContent = "Export preview canceled; no file was downloaded.";
+    $("export-message").dataset.error = "false";
   });
 })();
