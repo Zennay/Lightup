@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import copy
 from hashlib import sha256
 from html import escape
 import os
@@ -16,7 +17,7 @@ import sys
 from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
 from review_desk import (
     FILE_NAMES as REVIEW_FILES, load_json, make_artifacts,
-    read_original_bundle, require_private_file, validate_worksheet,
+    read_original_bundle, require_private_file, validate_worksheet, interactive_review,
 )
 from editor import NAME as EDITOR_FILE, render_editor
 from routing import FILES as ROUTING_FILES, create_artifacts as routing_artifacts
@@ -149,10 +150,15 @@ def main(argv=None):
     target.add_argument("--output-dir", help="new EMPTY current-user-owned 0700 root")
     target.add_argument("--verify-workroom-dir", help="read-only reopen exact current workroom")
     parser.add_argument("--responses", help="new owner-only mode-0600 HUMAN JSON (creation only)")
+    parser.add_argument("--interactive", action="store_true",
+                        help="edit the previous HUMAN round on a PRIVATE local TTY in memory")
     args = parser.parse_args(argv)
     try:
-        if bool(args.responses) != bool(args.output_dir):
-            raise Hold("new private HUMAN JSON required for creation, not for reopen")
+        if args.output_dir:
+            if bool(args.responses) == bool(args.interactive):
+                raise Hold("creation requires either --responses OR private --interactive HUMAN input")
+        elif args.responses or args.interactive:
+            raise Hold("read-only reopen cannot import or edit HUMAN responses")
         original, endpoints, digest = read_original_bundle(args.bundle_dir)
         previous_dir, before = read_round(args.previous_round_dir, digest, endpoints)
         if len(args.earlier_round_dir) > 6:
@@ -171,10 +177,15 @@ def main(argv=None):
                 if os.path.commonpath((source, root_path)) in (source, root_path):
                     raise Hold("next-round output must be separate from original inputs")
             if args.output_dir:
-                response_parent = os.path.dirname(os.path.abspath(os.fspath(args.responses)))
-                if os.path.commonpath((response_parent, root_path)) in (response_parent, root_path):
-                    raise Hold("new HUMAN response source must be in a separate private directory")
-                after = load_json(require_private_file(args.responses))
+                if args.interactive:
+                    # The original prior round stays unchanged even when a
+                    # HUMAN operator edits several rows and then aborts.
+                    after = interactive_review(copy.deepcopy(before))
+                else:
+                    response_parent = os.path.dirname(os.path.abspath(os.fspath(args.responses)))
+                    if os.path.commonpath((response_parent, root_path)) in (response_parent, root_path):
+                        raise Hold("new HUMAN response source must be in a separate private directory")
+                    after = load_json(require_private_file(args.responses))
                 validate_worksheet(after, digest, len(endpoints))
                 if os.listdir(root_fd):
                     raise Hold("next-round output root must be empty")
@@ -185,7 +196,8 @@ def main(argv=None):
                                    for old_path in args.earlier_round_dir]
                 if renewed_earlier != list(zip(earlier_dirs, earlier_rounds)):
                     raise Hold("older HUMAN rounds changed before publication")
-                again = load_json(require_private_file(args.responses))
+                again = (after if args.interactive else
+                         load_json(require_private_file(args.responses)))
                 validate_worksheet(again, renewed_digest, len(renewed_endpoints))
                 if ((renewed, renewed_endpoints, renewed_digest, renewed_previous, renewed_before, again)
                         != (original, endpoints, digest, previous_dir, before, after)):
