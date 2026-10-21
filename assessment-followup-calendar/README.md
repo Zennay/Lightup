@@ -308,3 +308,17 @@ longer recomputes the entire workroom's original event intervals.
 Original blocked-stage conflicts display the precise ordinal instead
 of attempting any automatic rescheduling. No original source, risk,
 consent or live-calendar verification is inferred.
+
+
+### Portable original HUMAN workroom — independent original worksheet
+
+The browser also offers a separate **encrypted portable source-and-workroom**
+file workflow. The original imported HUMAN-only seven-column CSV bytes remain
+in volatile browser memory until replacing or discarding the source (at which
+point the previous buffer is cleared). A portable vault is separate from the
+older appointment-only and whole-workroom backups and will include the
+original source bytes as encrypted content. It is not produced by a network
+service, does not assert source authenticity, and requires an explicit
+passphrase supplied only inside the local browser. Legacy backups remain
+fully supported. A portable vault should be kept on authorized PRIVATE media:
+even HUMAN worksheets and group policies can reveal sensitive operations.

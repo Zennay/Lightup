@@ -16,6 +16,23 @@
 <section class="panel" aria-labelledby="importHeading"><h2 id="importHeading">1 · Open original HUMAN worksheet</h2>
 <p>Use <code>human-followup.csv</code> from the original PRIVATE Assessment Briefing (held PR #1672). Strict original 7-column order, max 2,048 rows / 1 MiB. Includes anonymous ordinal, source-reported severity, evidence-reference count and HUMAN-only follow-up fields; no original target or evidence required.</p>
 <div class="row"><label class="file">Original worksheet CSV <input id="worksheet" type="file" accept=".csv,text/csv"></label><span id="identity" class="subtle">No worksheet loaded</span></div>
+<div class="notice" id="portableVault">
+<strong>Portable encrypted original HUMAN workroom (.luhv)</strong>
+<p>One self-contained private file with the <em>original imported HUMAN-only CSV bytes</em>, every
+proposed HUMAN reminder and each declared group-availability rule. Unlike a plan-only backup,
+this reopens on a different private device <strong>without locating the original worksheet separately</strong>.
+The encrypted source may itself contain confidential HUMAN text; keep the file/password separate
+and never publish. This is not authentication of the producer, consent or security findings.</p>
+<div class="row">
+<label>Portable vault passphrase <input id="vaultPassword" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+<label>Confirm new vault password <input id="vaultConfirm" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+</div>
+<div class="row">
+<button id="savePortableVault" type="button" disabled>Save portable encrypted original + workroom</button>
+<label class="file">Open portable private workroom <input id="restorePortableVault" type="file" accept=".luhv,application/octet-stream"></label>
+</div>
+<p id="vaultStatus" class="subtle" role="status" aria-live="polite">Opening a valid portable vault does not require a worksheet to be loaded first.</p>
+</div>
 <p><button id="reset" type="button" class="ghost" disabled>Discard workroom</button> <span id="notice" role="status" aria-live="polite">Import a worksheet to begin.</span></p></section>
 <section id="desk" class="panel" hidden aria-labelledby="deskHeading">
 <h2 id="deskHeading">2 · Plan HUMAN follow-ups</h2>

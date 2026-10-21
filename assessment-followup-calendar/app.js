@@ -25,6 +25,7 @@
   let capacityRules = new Map(), capacityProposal = null, capacityDirty = false;
   let capacityEditorDirty = false, capacityEditingGroup = "";
   let workroomComparison = null, workroomComparePage = 0;
+  let originalBytes = null;
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   let conflictProposal=null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
@@ -179,6 +180,8 @@
     renderWorkroomComparison();
   }
   function renderWorkspaceSaveStatus(){
+    $("savePortableVault").disabled=!active || !originalBytes || capacityEditorDirty;
+    $("vaultStatus").textContent=active?"Original HUMAN-only CSV retained in local browser memory; this unsigned SHA does not grant consent or verified findings.":"A private encrypted portable vault may be opened without any separate worksheet.";
     const label=$("workspaceSaveStatus");
     if(!label)return;
     label.textContent=(changed?"UNSAVED HUMAN appointments. ":"Appointments unchanged or saved. ")+
@@ -1858,6 +1861,8 @@
     publicationBaseline=null;changesPage=0;workroomComparison=null;
     $("workroomCompareRows").replaceChildren();
     $("baselineStatus").textContent="No previous publication loaded.";
+    if(originalBytes)originalBytes.fill(0);
+    originalBytes=new Uint8Array(buffer);
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
     backlogProposal=null;
@@ -2153,6 +2158,7 @@
       !confirm("Discard unsaved PRIVATE plan, group availability and editor field changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     capacityRules=new Map();capacityDirty=false;capacityEditorDirty=false;capacityProposal=null;$("capacityApply").disabled=true;
+    if(originalBytes)originalBytes.fill(0);originalBytes=null;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
     weekAnchor="";monthAnchor="";backlogPage=0;backlogProposal=null;workroomComparison=null;
     $("workroomCompareRows").replaceChildren();
