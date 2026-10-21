@@ -290,6 +290,22 @@
     $("desk").scrollIntoView({behavior:"smooth",block:"start"});
     if(source)source.focus({preventScroll:true});
   }
+  function weekAvailabilityFlags(row,slot,dailyCounts){
+    const rule=capacityRules.get(row.group)||capacityDefaultRule();
+    const start=eventDate(slot.day,slot.time);
+    const begin=start.getHours()*60+start.getMinutes();
+    const mins=time=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
+    const flags=[];
+    if(!rule.days.includes(start.getDay()))flags.push("outside HUMAN weekdays");
+    if(rule.blackouts.includes(slot.day))flags.push("HUMAN blackout date");
+    if(begin<mins(rule.start)||begin+Number(slot.duration)>mins(rule.end)){
+      flags.push("outside HUMAN hours");
+    }
+    if((dailyCounts.get(JSON.stringify([row.group,slot.day]))||0)>rule.maximum){
+      flags.push("above HUMAN group daily cap");
+    }
+    return flags;
+  }
   function renderWeek(){
     if(!active)return;
     if(!weekAnchor)weekAnchor=nowToday();
@@ -305,21 +321,37 @@
       if(selectGroup.selectedIndex<0)selectGroup.value="";
     }
     const focus=selectGroup.value ? groups[Number(selectGroup.value)-1] : null;
-    const monday=startWeek(weekAnchor),collisions=collisionIds();
+    const monday=startWeek(weekAnchor),sunday=moveDay(monday,6),collisions=collisionIds();
     $("weekDate").value=weekAnchor;
     const body=$("weekDays");body.replaceChildren();
+    const dailyCounts=new Map();
+    for(const r of items){
+      const p=plan.get(r.ordinal);
+      if(!p)continue;
+      const key=JSON.stringify([r.group,p.day]);
+      dailyCounts.set(key,(dailyCounts.get(key)||0)+1);
+    }
+    const constraintFlags=new Map();
+    for(const r of items){
+      const p=plan.get(r.ordinal);
+      if(p)constraintFlags.set(r.ordinal,weekAvailabilityFlags(r,p,dailyCounts));
+    }
     const onlyConflicts=$("weekConflicts").checked;
+    const onlyConstraints=$("weekConstraints").checked;
     const relevant=items.filter(r=>{
       if(!plan.has(r.ordinal))return false;
       if(focus!==null && r.group!==focus)return false;
       if(onlyConflicts && !collisions.has(r.ordinal))return false;
+      if(onlyConstraints && !constraintFlags.get(r.ordinal).length)return false;
       const day=plan.get(r.ordinal).day;
-      return day>=monday && day<=moveDay(monday,6);
+      return day>=monday && day<=sunday;
     });
     const countConflict=relevant.filter(r=>collisions.has(r.ordinal)).length;
-    $("weekSummary").textContent=monday+" — "+moveDay(monday,6)+" · "+
+    const countUnavailable=relevant.filter(r=>constraintFlags.get(r.ordinal).length).length;
+    $("weekSummary").textContent=monday+" — "+sunday+" · "+
       relevant.length+" proposed HUMAN reminders · "+countConflict+
-      " local overlapping reminders · "+zone+" · private-only planning.";
+      " local overlaps · "+countUnavailable+
+      " declared HUMAN availability mismatches · "+zone+" · no real availability checked.";
     for(let offset=0;offset<7;offset++){
       const day=moveDay(monday,offset);
       const entries=relevant.filter(r=>plan.get(r.ordinal).day===day).sort((a,b)=>{
@@ -332,14 +364,20 @@
       column.append(title,dom("p",entries.length+" proposed appointments","subtle"));
       for(const r of entries.slice(0,24)){
         const p=plan.get(r.ordinal),colliding=collisions.has(r.ordinal);
-        const button=dom("button",undefined,"week-event"+(colliding?" week-clash":""));
+        const declaredFlags=constraintFlags.get(r.ordinal);
+        const button=dom("button",undefined,"week-event"+(colliding?" week-clash":"")+
+          (declaredFlags.length?" week-unavailable":""));
         button.type="button";button.addEventListener("click",()=>focusOrdinal(r.ordinal));
         const time=dom("strong",p.time+" · "+p.duration+" min · #"+r.ordinal);
         const details=dom("span",(r.group||"(unassigned)")+" · "+r.severity+" (source-reported)");
         const status=dom("small",(colliding?"OVERLAP · ":"")+(r.stage||"HUMAN stage unset"));
         button.append(time,details,status);
+        if(declaredFlags.length){
+          button.append(dom("small","HUMAN rule mismatch: "+declaredFlags.join("; "),"week-warning"));
+        }
         button.setAttribute("aria-label","Open original HUMAN ordinal "+r.ordinal+
-          " in planner, "+p.time+" on "+day+(colliding?", local overlap":""));
+          " in planner, "+p.time+" on "+day+(colliding?", local overlap":"")+
+          (declaredFlags.length?", declared group availability mismatch: "+declaredFlags.join("; "):""));
         column.append(button);
       }
       if(entries.length>24)column.append(dom("p",(entries.length-24)+
@@ -580,7 +618,7 @@
     hold(active&&hash===currentHash&&seriesId===currentSeries&&plan===currentPlan);
     capacityRules=next;
     capacityProposal=null;$("capacityApply").disabled=true;
-    capacityLoadEditor();renderCapacity();
+    capacityLoadEditor();renderCapacity();renderWeek();
     capacityMessage("PRIVATE group availability reloaded; existing HUMAN reminders unchanged.");
   }
   function capacityPreview(){
@@ -937,7 +975,8 @@
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
-    weekAnchor=nowToday();$("weekGroup").value="";$("weekConflicts").checked=false;
+    weekAnchor=nowToday();$("weekGroup").value="";
+    $("weekConflicts").checked=false;$("weekConstraints").checked=false;
     $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
@@ -1102,14 +1141,14 @@
       hold(active && capacityGroups().includes(group));
       capacityRules.set(group,capacityEditorRule());
       capacityProposal=null;$("capacityApply").disabled=true;
-      renderCapacity();capacityMessage("PRIVATE HUMAN group availability changed locally. Download the policy to preserve it.");
+      renderCapacity();renderWeek();capacityMessage("PRIVATE HUMAN group availability changed locally. Download the policy to preserve it.");
     }catch(_){capacityMessage("Human group availability rejected (HOLD). Existing group policy unchanged.",true);}
   });
   hook("capacityDefault","click",()=>{
     if(!active)return;
     capacityRules.delete($("capacityGroup").value);
     capacityProposal=null;$("capacityApply").disabled=true;
-    capacityLoadEditor();renderCapacity();
+    capacityLoadEditor();renderCapacity();renderWeek();
     capacityMessage("Selected HUMAN group returned to private default weekdays; original appointments unchanged.");
   });
   hook("capacityPreview","click",()=>{
@@ -1185,6 +1224,7 @@
   hook("weekToday","click",()=>{weekAnchor=nowToday();renderWeek();});
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
+  hook("weekConstraints","change",renderWeek);
   hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
   hook("workloadQuery","input",()=>{workloadPage=0;renderWorkload();});

@@ -72,3 +72,15 @@ Builds an exact, deterministic one-file HTML (only source HTML/CSS/JS), hashes a
 - This release remains **DRAFT/HOLD. DO NOT MERGE OR DEPLOY** until the original exact-head hosted and permanently named self-hosted VPS CI, original source-owner approval, independent security/privacy/browser review, original #177/#182/#829 resolution, actual separately authenticated current client and operator consent including action-time revocation, and **explicit HUMAN GO** are all proven. No active target operations.
 
 No QA, regression or testsuites are added or run as part of this change. Local production script syntax and asset generation can be inspected without waiving any release gate.
+
+### Visual seven-day HUMAN desk (offline)
+
+The same [standalone HTML](standalone.html) includes an interactive Monday–Sunday
+calendar board with local date navigation, source-HUMAN group focus, ordinal-to-planner
+navigation and filters for literal scheduling overlaps or declared HUMAN availability
+mismatches. The board checks each proposed event against the **locally declared**
+group weekdays, blackout dates, hour window and maximum appointments/day. It does
+not check real people, calendars, source authenticity or consent. Capacity changes
+refresh visible warnings immediately without changing existing dates. Every
+appointment remains a tentative human-only reminder; use the original row planner
+to edit it, and explicitly save the source-bound private v2 plan to preserve it.

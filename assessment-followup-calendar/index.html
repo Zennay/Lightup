@@ -55,10 +55,11 @@
 <button id="weekForward" class="ghost" type="button">Next week</button>
 <label>HUMAN group <select id="weekGroup"><option value="">All groups</option></select></label>
 <label><input id="weekConflicts" type="checkbox"> Local overlaps only</label>
+<label><input id="weekConstraints" type="checkbox"> HUMAN availability mismatches only</label>
 </div>
 <p id="weekSummary" class="subtle" role="status" aria-live="polite"></p>
 <div id="weekDays" class="week-grid" aria-label="PRIVATE HUMAN weekly proposed reminders"></div>
-<p class="subtle">Dates and weekdays use this browser's local timezone. Only scheduled rows are displayed; the original complete worksheet remains in the planner. At most 24 events are shown per day. No external calendar is queried.</p>
+<p class="subtle">Dates and weekdays use this browser's local timezone. Only scheduled rows are displayed; the original complete worksheet remains in the planner. At most 24 events are shown per day. Declared group weekdays, daily appointment cap, local time window and blackout dates are compared against this local proposed schedule; mismatch markers do not reflect real staff availability. No external calendar is queried.</p>
 </section>
 <section id="workload" class="panel" hidden aria-labelledby="workloadHeading">
 <h2 id="workloadHeading">4 · HUMAN owner workload</h2>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-UGEmJBds7NDZJjlrzZUZMhVYL5ab3iB/WOAKeg19qOw='; style-src 'sha256-x0gkr8PKuJzcXbg0SH5INmb9IHUIKRjMw4+VCvaQca8='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WeSyO2dH0ZQUIsp7Vn9QRJgFN2VAL/krbIl2XzYRjY0='; style-src 'sha256-/2wc9tDEyqc8mAa10ZmfaDSK7U1rgXaQYP440KyT6U0='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -21,6 +21,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 .week-event:focus-visible{outline:3px solid #a6ddff;outline-offset:2px}
 @media(max-width:1050px){.week-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:700px){.week-grid{grid-template-columns:repeat(1,minmax(0,1fr))}}
+
+.week-event.week-unavailable{box-shadow:inset 0 0 0 2px #d69f58}
+.week-event .week-warning{color:#f5cc8c;font-weight:600}
 
 </style>
 <script>
@@ -316,6 +319,22 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     $("desk").scrollIntoView({behavior:"smooth",block:"start"});
     if(source)source.focus({preventScroll:true});
   }
+  function weekAvailabilityFlags(row,slot,dailyCounts){
+    const rule=capacityRules.get(row.group)||capacityDefaultRule();
+    const start=eventDate(slot.day,slot.time);
+    const begin=start.getHours()*60+start.getMinutes();
+    const mins=time=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
+    const flags=[];
+    if(!rule.days.includes(start.getDay()))flags.push("outside HUMAN weekdays");
+    if(rule.blackouts.includes(slot.day))flags.push("HUMAN blackout date");
+    if(begin<mins(rule.start)||begin+Number(slot.duration)>mins(rule.end)){
+      flags.push("outside HUMAN hours");
+    }
+    if((dailyCounts.get(JSON.stringify([row.group,slot.day]))||0)>rule.maximum){
+      flags.push("above HUMAN group daily cap");
+    }
+    return flags;
+  }
   function renderWeek(){
     if(!active)return;
     if(!weekAnchor)weekAnchor=nowToday();
@@ -331,21 +350,37 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       if(selectGroup.selectedIndex<0)selectGroup.value="";
     }
     const focus=selectGroup.value ? groups[Number(selectGroup.value)-1] : null;
-    const monday=startWeek(weekAnchor),collisions=collisionIds();
+    const monday=startWeek(weekAnchor),sunday=moveDay(monday,6),collisions=collisionIds();
     $("weekDate").value=weekAnchor;
     const body=$("weekDays");body.replaceChildren();
+    const dailyCounts=new Map();
+    for(const r of items){
+      const p=plan.get(r.ordinal);
+      if(!p)continue;
+      const key=JSON.stringify([r.group,p.day]);
+      dailyCounts.set(key,(dailyCounts.get(key)||0)+1);
+    }
+    const constraintFlags=new Map();
+    for(const r of items){
+      const p=plan.get(r.ordinal);
+      if(p)constraintFlags.set(r.ordinal,weekAvailabilityFlags(r,p,dailyCounts));
+    }
     const onlyConflicts=$("weekConflicts").checked;
+    const onlyConstraints=$("weekConstraints").checked;
     const relevant=items.filter(r=>{
       if(!plan.has(r.ordinal))return false;
       if(focus!==null && r.group!==focus)return false;
       if(onlyConflicts && !collisions.has(r.ordinal))return false;
+      if(onlyConstraints && !constraintFlags.get(r.ordinal).length)return false;
       const day=plan.get(r.ordinal).day;
-      return day>=monday && day<=moveDay(monday,6);
+      return day>=monday && day<=sunday;
     });
     const countConflict=relevant.filter(r=>collisions.has(r.ordinal)).length;
-    $("weekSummary").textContent=monday+" — "+moveDay(monday,6)+" · "+
+    const countUnavailable=relevant.filter(r=>constraintFlags.get(r.ordinal).length).length;
+    $("weekSummary").textContent=monday+" — "+sunday+" · "+
       relevant.length+" proposed HUMAN reminders · "+countConflict+
-      " local overlapping reminders · "+zone+" · private-only planning.";
+      " local overlaps · "+countUnavailable+
+      " declared HUMAN availability mismatches · "+zone+" · no real availability checked.";
     for(let offset=0;offset<7;offset++){
       const day=moveDay(monday,offset);
       const entries=relevant.filter(r=>plan.get(r.ordinal).day===day).sort((a,b)=>{
@@ -358,14 +393,20 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       column.append(title,dom("p",entries.length+" proposed appointments","subtle"));
       for(const r of entries.slice(0,24)){
         const p=plan.get(r.ordinal),colliding=collisions.has(r.ordinal);
-        const button=dom("button",undefined,"week-event"+(colliding?" week-clash":""));
+        const declaredFlags=constraintFlags.get(r.ordinal);
+        const button=dom("button",undefined,"week-event"+(colliding?" week-clash":"")+
+          (declaredFlags.length?" week-unavailable":""));
         button.type="button";button.addEventListener("click",()=>focusOrdinal(r.ordinal));
         const time=dom("strong",p.time+" · "+p.duration+" min · #"+r.ordinal);
         const details=dom("span",(r.group||"(unassigned)")+" · "+r.severity+" (source-reported)");
         const status=dom("small",(colliding?"OVERLAP · ":"")+(r.stage||"HUMAN stage unset"));
         button.append(time,details,status);
+        if(declaredFlags.length){
+          button.append(dom("small","HUMAN rule mismatch: "+declaredFlags.join("; "),"week-warning"));
+        }
         button.setAttribute("aria-label","Open original HUMAN ordinal "+r.ordinal+
-          " in planner, "+p.time+" on "+day+(colliding?", local overlap":""));
+          " in planner, "+p.time+" on "+day+(colliding?", local overlap":"")+
+          (declaredFlags.length?", declared group availability mismatch: "+declaredFlags.join("; "):""));
         column.append(button);
       }
       if(entries.length>24)column.append(dom("p",(entries.length-24)+
@@ -606,7 +647,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     hold(active&&hash===currentHash&&seriesId===currentSeries&&plan===currentPlan);
     capacityRules=next;
     capacityProposal=null;$("capacityApply").disabled=true;
-    capacityLoadEditor();renderCapacity();
+    capacityLoadEditor();renderCapacity();renderWeek();
     capacityMessage("PRIVATE group availability reloaded; existing HUMAN reminders unchanged.");
   }
   function capacityPreview(){
@@ -963,7 +1004,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
-    weekAnchor=nowToday();$("weekGroup").value="";$("weekConflicts").checked=false;
+    weekAnchor=nowToday();$("weekGroup").value="";
+    $("weekConflicts").checked=false;$("weekConstraints").checked=false;
     $("desk").hidden=false;$("agenda").hidden=false;$("week").hidden=false;$("workload").hidden=false;$("capacity").hidden=false;$("brief").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
@@ -1128,14 +1170,14 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       hold(active && capacityGroups().includes(group));
       capacityRules.set(group,capacityEditorRule());
       capacityProposal=null;$("capacityApply").disabled=true;
-      renderCapacity();capacityMessage("PRIVATE HUMAN group availability changed locally. Download the policy to preserve it.");
+      renderCapacity();renderWeek();capacityMessage("PRIVATE HUMAN group availability changed locally. Download the policy to preserve it.");
     }catch(_){capacityMessage("Human group availability rejected (HOLD). Existing group policy unchanged.",true);}
   });
   hook("capacityDefault","click",()=>{
     if(!active)return;
     capacityRules.delete($("capacityGroup").value);
     capacityProposal=null;$("capacityApply").disabled=true;
-    capacityLoadEditor();renderCapacity();
+    capacityLoadEditor();renderCapacity();renderWeek();
     capacityMessage("Selected HUMAN group returned to private default weekdays; original appointments unchanged.");
   });
   hook("capacityPreview","click",()=>{
@@ -1211,6 +1253,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("weekToday","click",()=>{weekAnchor=nowToday();renderWeek();});
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
+  hook("weekConstraints","change",renderWeek);
   hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
   hook("workloadQuery","input",()=>{workloadPage=0;renderWorkload();});
@@ -1338,10 +1381,11 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 <button id="weekForward" class="ghost" type="button">Next week</button>
 <label>HUMAN group <select id="weekGroup"><option value="">All groups</option></select></label>
 <label><input id="weekConflicts" type="checkbox"> Local overlaps only</label>
+<label><input id="weekConstraints" type="checkbox"> HUMAN availability mismatches only</label>
 </div>
 <p id="weekSummary" class="subtle" role="status" aria-live="polite"></p>
 <div id="weekDays" class="week-grid" aria-label="PRIVATE HUMAN weekly proposed reminders"></div>
-<p class="subtle">Dates and weekdays use this browser's local timezone. Only scheduled rows are displayed; the original complete worksheet remains in the planner. At most 24 events are shown per day. No external calendar is queried.</p>
+<p class="subtle">Dates and weekdays use this browser's local timezone. Only scheduled rows are displayed; the original complete worksheet remains in the planner. At most 24 events are shown per day. Declared group weekdays, daily appointment cap, local time window and blackout dates are compared against this local proposed schedule; mismatch markers do not reflect real staff availability. No external calendar is queried.</p>
 </section>
 <section id="workload" class="panel" hidden aria-labelledby="workloadHeading">
 <h2 id="workloadHeading">4 · HUMAN owner workload</h2>
