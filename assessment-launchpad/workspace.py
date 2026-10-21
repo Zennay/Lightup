@@ -7,7 +7,9 @@ written for a human, never executed. No target/network/subprocess interaction.
 from __future__ import annotations
 
 import argparse
+import base64
 from hashlib import sha256
+from html import escape
 import os
 import stat
 import sys
@@ -26,6 +28,7 @@ BUNDLE_DIR = "launchpad"
 REVIEW_DIR = "human-round-01"
 EDITOR_DIR = "human-editor"
 GUIDE_FILE = "START-HERE-PRIVATE.txt"
+HOME_FILE = "OPEN-WORKSPACE-PRIVATE.html"
 SUBDIRS = (BUNDLE_DIR, REVIEW_DIR, EDITOR_DIR)
 LAB_ONLY = "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED"
 
@@ -38,6 +41,66 @@ def private_child(root_fd, dirname):
             or stat.S_IMODE(info.st_mode) != 0o700):
         raise Hold("new private workspace directory could not be admitted")
 
+
+HOME_STYLE = ("body{font:16px/1.55 system-ui,sans-serif;color:#17212f;"
+              "background:#f3f5f9;max-width:980px;margin:0 auto;padding:2rem 1rem}"
+              "h1{font-size:2.4rem}.hold{border-left:6px solid #9a5b18;"
+              "background:#fff3dd;padding:1rem;font-weight:750}"
+              "section{background:white;border:1px solid #d7e0eb;border-radius:.7rem;"
+              "padding:1.15rem;margin:1rem 0}a{color:#18467b;font-weight:750}"
+              "a:focus-visible{outline:3px solid #e5ae46;outline-offset:3px}"
+              "small{color:#475569}code{overflow-wrap:anywhere}")
+
+def render_home(count, digest):
+    """Static no-network local navigation. Links are only known relative PRIVATE files."""
+    style_hash = base64.b64encode(sha256(HOME_STYLE.encode("utf-8")).digest()).decode("ascii")
+    return (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "
+        "style-src 'sha256-" + style_hash +
+        "'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none';"
+        " base-uri 'none'; form-action 'none'\">"
+        "<title>LightUp · PRIVATE offline LAB HUMAN workspace</title>"
+        "<style>" + HOME_STYLE + "</style></head><body>"
+        "<p>LIGHTUP / ASSESSMENT RUNTIME / OFFLINE WORKROOM</p>"
+        "<h1>Isolated Lab · Private HUMAN Workspace</h1>"
+        "<p class='hold'>" + escape(LAB_ONLY) +
+        " · PREVIEW NOT RUN · NO AUTHORITY</p>"
+        "<p>This original-source-bound local desk groups the preview, HUMAN review "
+        "and editing lifecycle. It is entirely private, unsigned and lab-only. "
+        "The underlying endpoint values and HUMAN notes exist in OTHER PRIVATE "
+        "files. Do not host or share this workspace.</p>"
+        "<section><h2>1 · Original lab preview</h2><p>" + str(count) +
+        " original locally declared endpoints; source SHA-256 "
+        "<code>" + escape(digest) + "</code></p>"
+        "<a href='launchpad/lightup-lab-plan-handoff.html'>"
+        "Open original preview handoff</a><p><small>Generated --preview-only "
+        "command is for human inspection, never executed here. "
+        "No consent or scope authority.</small></p></section>"
+        "<section><h2>2 · Initial PRIVATE HUMAN review</h2>"
+        "<a href='human-round-01/lightup-lab-human-private.html'>"
+        "Open human follow-up desk</a>"
+        "<p><small>Contains endpoint URLs and private notes. HUMAN status is "
+        "self-reported and cannot clear findings or grant permission.</small></p></section>"
+        "<section><h2>3 · Browser-only HUMAN editor</h2>"
+        "<a href='human-editor/lightup-lab-human-editor.html'>"
+        "Open local editable HUMAN worksheet</a>"
+        "<p><small>Edited JSON must be privately downloaded and independently "
+        "re-admitted by the native --responses option into a NEW private round."
+        "</small></p></section>"
+        "<section><h2>4 · Source-free HUMAN counts</h2>"
+        "<a href='human-round-01/lightup-lab-human-counts.json'>"
+        "Open low-detail counts JSON</a>"
+        "<p><small>No endpoint values or HUMAN text. Counts can still be "
+        "sensitive for small engagements.</small></p></section>"
+        "<p><small>Read START-HERE-PRIVATE.txt for further native operations. "
+        "All original source-owner, independent security/privacy, hosted/permanent "
+        "CI, authentic separate consent with revocation and HUMAN GO gates "
+        "remain unchanged.</small></p></body></html>"
+    ).encode("utf-8")
+
 def guide(root_dir, source_count, digest):
     """One source-bound, PRIVATE on-disk entry point; never an execution script."""
     return (
@@ -45,6 +108,7 @@ def guide(root_dir, source_count, digest):
         + LAB_ONLY + "\n"
         "Original local manifest endpoint count: " + str(source_count) + "\n"
         "Canonical unsigned source SHA-256: " + digest + "\n\n"
+        "OPEN-WORKSPACE-PRIVATE.html is the offline start screen for this bundle.\n\n"
         "1. Original Launchpad plan: launchpad/lightup-lab-plan-handoff.html\n"
         "   Original human-inspectable preview command: "
         "launchpad/lightup-lab-preview-command.txt\n"
@@ -105,7 +169,7 @@ def read_review(root_dir, endpoints, digest):
 def check_workspace(root_fd, root_dir):
     """Readmit every artifact; reject invented, missing, or modified workspace files."""
     entries = set(os.listdir(root_fd))
-    if entries != {*SUBDIRS, GUIDE_FILE}:
+    if entries != {*SUBDIRS, GUIDE_FILE, HOME_FILE}:
         raise Hold("workspace has missing or unknown top-level entries")
     endpoints, digest = original_info(root_dir)
     work = read_review(root_dir, endpoints, digest)
@@ -116,6 +180,9 @@ def check_workspace(root_fd, root_dir):
         os.close(fd)
     if stored != render_editor(work):
         raise Hold("offline HUMAN editor no longer matches original private worksheet")
+    dashboard_bytes = read_private_bundle_item(root_fd, HOME_FILE, 32768)
+    if dashboard_bytes != render_home(len(endpoints), digest):
+        raise Hold("private workspace start screen changed or became noncanonical")
     guide_bytes = read_private_bundle_item(root_fd, GUIDE_FILE, 16384)
     if guide_bytes != guide(root_dir, len(endpoints), digest):
         raise Hold("private workspace guide no longer matches original source")
@@ -149,7 +216,10 @@ def create_workspace(manifest, root_fd, root_dir):
         publish_bundle(editor_fd, [(EDITOR_FILE, render_editor(work))])
     finally:
         os.close(editor_fd)
-    publish_bundle(root_fd, [(GUIDE_FILE, guide(root_dir, len(endpoints), digest))])
+    publish_bundle(root_fd, [
+        (GUIDE_FILE, guide(root_dir, len(endpoints), digest)),
+        (HOME_FILE, render_home(len(endpoints), digest)),
+    ])
     # Recheck complete packet before reporting success. Partial directories, if
     # any error occurs, remain private and cannot be mistaken for a valid pack.
     return check_workspace(root_fd, root_dir)
