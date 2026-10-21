@@ -262,3 +262,20 @@ and users must manually save a fresh encrypted complete workroom to keep
 the combined changes. Source worksheet, client findings, actual grants,
 scan permissions, external calendars, previous published reminders and
 identity authentication are not changed.
+
+
+### Group-aware exact conflict-desk handoff
+
+The original local collision resolution button now opens an **exact,
+separate HUMAN preview table** of up to 32 changes, before any plan
+mutation. It uses the user-declared group weekdays, operating hours,
+blackout days and daily appointment caps rather than silently falling
+back to global 09:00–18:00 weekdays. Proposed replacements avoid every
+original and already proposed appointment in the local workroom.
+A source-blocked HUMAN stage, an appointment lacking a valid slot
+within 90 days, a newly introduced clash, stale local source/policy or
+a group-rule violation fails closed with **no partial edit**. All rows
+require explicit confirmation before applying, and external calendar
+changes/cancellations remain separate manual work. Overlap status alone
+never asserts a vulnerability, unapproved target, verified resources
+or human consent.

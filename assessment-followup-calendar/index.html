@@ -40,8 +40,19 @@
 <strong>HUMAN scheduling collisions</strong>
 <p id="conflictSummary" role="status" aria-live="polite"></p>
 <div class="row"><button type="button" id="conflictFocus" class="ghost">Show conflicts in agenda</button>
-<button type="button" id="resolveConflicts">Propose non-overlapping weekdays (confirmation required)</button></div>
-<p class="subtle">This only edits proposed HUMAN reminder times in memory. It never executes an assessment or decides technical risk; verify resource availability in your real calendar.</p></div>
+<button type="button" id="resolveConflicts">Preview group-aware conflict resolution</button>
+<button type="button" id="applyConflictResolution" disabled>Apply all reviewed HUMAN changes (confirm)</button>
+<button type="button" id="discardConflictResolution" class="ghost">Discard preview</button></div>
+<details id="conflictPreviewDetails"><summary>Inspect exact conflicting HUMAN appointments and alternative local times</summary>
+<p id="conflictPreviewSummary" class="subtle" role="status">No schedule changes prepared.</p>
+<div class="tablebox"><table><thead><tr><th>Original HUMAN ordinal</th><th>Previous proposal</th>
+<th>Alternative local reminder</th><th>Declared group</th></tr></thead><tbody id="conflictPreviewRows"></tbody></table></div>
+</details>
+<p class="subtle">Rescheduling suggestions respect declared HUMAN group weekdays, hours, blackout dates and
+daily capacity, and avoid all existing local workroom appointments. They are bounded to 32 moves per
+confirmation and 90 local calendar days. A blocked original HUMAN stage is never rescheduled automatically.
+One unsuitable appointment blocks the entire preview. No real staff calendar is checked, no external appointment
+is updated or cancelled, and no authority or security result is inferred.</p></div>
 <p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
 <div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
 </section>

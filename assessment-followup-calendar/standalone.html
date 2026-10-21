@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-a0H4BMSg0I2sCzWAGwvfXmLEtAFiJv+1ElRPh9ujGrQ='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bsAUcgzVxUcjDvFet3pNhOtMJ4rVlM2o2kiUiqW+HyY='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -74,6 +74,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let capacityEditorDirty = false, capacityEditingGroup = "";
   let workroomComparison = null, workroomComparePage = 0;
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
+  let conflictProposal=null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -248,58 +249,126 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     }
     return found;
   }
-  function resolveConflicts(){
-    hold(active);
-    const existing=eventIntervals();
-    if(!collisionIds().size){inform("No overlaps within this PRIVATE follow-up workroom.");return;}
-    const occupied=[],proposal=new Map();
-    const startToday=nowToday(),now=Date.now();
-    for(const event of existing){
-      const previous=plan.get(event.ordinal);
-      let target=event;
-      if(occupied.some(o=>target.start<o.end && o.start<target.end)){
-        if(proposal.size>=32){occupied.push(target);continue;}
-        let selected=null;
-        const base=eventDate(previous.day,"12:00");
-        if(previous.day<startToday)base.setTime(eventDate(startToday,"12:00").getTime());
-        for(let day=0;day<90 && !selected;day++){
-          const current=new Date(base.getTime());current.setDate(base.getDate()+day);
-          if(current.getDay()===0||current.getDay()===6)continue;
-          const y=current.getFullYear(),m=String(current.getMonth()+1).padStart(2,"0"),
-            d=String(current.getDate()).padStart(2,"0"),date=y+"-"+m+"-"+d;
-          for(let minute=9*60;minute<=18*60-Number(previous.duration);minute+=15){
-            const hh=String(Math.floor(minute/60)).padStart(2,"0");
-            const mm=String(minute%60).padStart(2,"0");
-            const time=hh+":"+mm;
-            const candidate=eventDate(date,time).getTime(),end=candidate+Number(previous.duration)*60000;
-            if(candidate<now || occupied.some(o=>candidate<o.end && o.start<end))continue;
-            // Protect all other original HUMAN reservations, not only those seen so far.
-            if(existing.some(o=>o.ordinal!==event.ordinal && !proposal.has(o.ordinal) &&
-                candidate<o.end && o.start<end))continue;
-            selected={slot:{day:date,time,duration:previous.duration,reminder:previous.reminder},
-              event:{ordinal:event.ordinal,start:candidate,end}};
-            break;
-          }
-        }
-        hold(selected!==null);
-        proposal.set(event.ordinal,selected.slot);
-        target=selected.event;
-      }
-      occupied.push(target);
+  function renderConflictPreview(){
+    const body=$("conflictPreviewRows");body.replaceChildren();
+    if(conflictProposal && (capacityEditorDirty ||
+      conflictProposal.fingerprint!==workroomFingerprint()))conflictProposal=null;
+    $("applyConflictResolution").disabled=!conflictProposal;
+    if(!conflictProposal){
+      $("conflictPreviewSummary").textContent="No valid source-bound group-aware HUMAN conflict proposal prepared.";
+      return;
     }
-    if(!proposal.size){inform("No schedule changes required.");return;}
-    const preview=Array.from(proposal).slice(0,5).map(([ordinal,slot])=>
-      "#"+ordinal+" → "+slot.day+" "+slot.time).join("\\n");
-    if(!confirm("Propose "+proposal.size+" changes (maximum 32 per confirmation) to overlapping PRIVATE HUMAN reminder dates? First existing appointment retains its slot. Proposed times are weekdays 09:00–18:00, non-overlapping within THIS LOCAL WORKROOM only. No external calendar has been checked or changed.\\n\\n"+preview))return;
-    for(const [ordinal,slot] of proposal)plan.set(ordinal,slot);
-    changed=true;exportedPlan=false;agendaPage=0;render();
-    inform("Rescheduled "+proposal.size+" HUMAN-only reminder proposals. Remaining overlaps are shown; review and repeat if needed. Save the PRIVATE plan before calendar export.");
+    $("conflictPreviewSummary").textContent=conflictProposal.slots.size+
+      " exact HUMAN appointments in this local bounded proposal; "+
+      conflictProposal.remaining+" other overlapping reminder ordinals may remain. "+
+      "No plan, real calendar, source risk or consent has changed yet.";
+    for(const [ordinal,slot] of conflictProposal.slots){
+      const tr=dom("tr"),row=items[ordinal-1],previous=plan.get(ordinal);
+      tr.append(dom("td","#"+ordinal),
+        dom("td",previous.day+" "+previous.time+" · "+previous.duration+" min"),
+        dom("td",slot.day+" "+slot.time+" · "+slot.duration+" min"),
+        dom("td",row.group||"(unassigned)"));
+      body.append(tr);
+    }
+  }
+  function resolveConflicts(){
+    hold(active && !capacityEditorDirty);
+    const before=collisionIds();
+    if(!before.size){
+      conflictProposal=null;renderConflictPreview();
+      inform("No overlapping HUMAN reminders in this local workroom.");return;
+    }
+    const snapshot=workroomFingerprint(),existing=eventIntervals();
+    const projected=new Map(plan),proposed=new Map(),reserved=[];
+    const today=nowToday(),now=Date.now();
+    for(const event of existing){
+      const previous=projected.get(event.ordinal),row=items[event.ordinal-1];
+      if(!reserved.some(other=>event.start<other.end && other.start<event.end)){
+        reserved.push(event);continue;
+      }
+      if(proposed.size>=32)break;
+      hold(row && row.stage!=="blocked");
+      const rule=capacityRules.get(row.group)||capacityDefaultRule();
+      const start=eventDate(previous.day<today?today:previous.day,"12:00");
+      const startMinute=Math.ceil((Number(rule.start.slice(0,2))*60+
+        Number(rule.start.slice(3,5)))/15)*15;
+      const endMinute=Number(rule.end.slice(0,2))*60+
+        Number(rule.end.slice(3,5))-Number(previous.duration);
+      let found=null;
+      for(let offset=0;offset<90&&!found;offset++){
+        const calendarDay=new Date(start.getTime());
+        calendarDay.setDate(start.getDate()+offset);
+        const day=dayString(calendarDay);
+        if(!day.startsWith("20"))break;
+        if(!rule.days.includes(calendarDay.getDay())||rule.blackouts.includes(day))continue;
+        const groupCount=items.filter(r=>r.ordinal!==event.ordinal && r.group===row.group &&
+          projected.get(r.ordinal)?.day===day).length;
+        if(groupCount>=rule.maximum)continue;
+        const busy=eventIntervals(projected).filter(e=>e.ordinal!==event.ordinal);
+        for(let minute=startMinute;minute<=endMinute;minute+=15){
+          const time=String(Math.floor(minute/60)).padStart(2,"0")+":"+
+            String(minute%60).padStart(2,"0");
+          let startAt;
+          try{startAt=eventDate(day,time).getTime();}catch(_){continue;}
+          const until=startAt+Number(previous.duration)*60000;
+          if(startAt<=now || busy.some(e=>startAt<e.end&&e.start<until))continue;
+          found=admitSlot(day,time,previous.duration,previous.reminder);
+          break;
+        }
+      }
+      if(!found){
+        conflictProposal=null;renderConflictPreview();
+        inform("HUMAN conflict preview held: original #"+event.ordinal+
+          " has no valid non-overlapping, declared-group-compliant proposal within 90 days. No partial changes made.",true);
+        return;
+      }
+      projected.set(event.ordinal,found);proposed.set(event.ordinal,found);
+      const startAt=eventDate(found.day,found.time).getTime();
+      reserved.push({ordinal:event.ordinal,start:startAt,
+        end:startAt+Number(found.duration)*60000});
+    }
+    const after=collisionIds(projected);
+    hold(proposed.size>0 && proposed.size<=32 && after.size<before.size);
+    hold(Array.from(after).every(ordinal=>before.has(ordinal)));
+    const counts=new Map();
+    for(const row of items){
+      const slot=projected.get(row.ordinal);if(!slot)continue;
+      const key=JSON.stringify([row.group,slot.day]);
+      counts.set(key,(counts.get(key)||0)+1);
+    }
+    for(const [ordinal,slot] of proposed){
+      const row=items[ordinal-1];
+      hold(!weekAvailabilityFlags(row,slot,counts).length);
+    }
+    hold(snapshot===workroomFingerprint());
+    conflictProposal={fingerprint:snapshot,slots:proposed,remaining:after.size};
+    $("conflictPreviewDetails").open=true;renderConflictPreview();
+    inform("Prepared "+proposed.size+
+      " complete group-aware HUMAN collision adjustments. Review ALL proposed ordinals and confirm to apply. No changes have been made.");
+  }
+  function applyConflictResolution(){
+    hold(active && conflictProposal && !capacityEditorDirty &&
+      conflictProposal.fingerprint===workroomFingerprint());
+    const slots=conflictProposal.slots;
+    hold(slots.size>0 && slots.size<=32);
+    if(!confirm("Apply all "+slots.size+" individually reviewed PRIVATE HUMAN conflict adjustments "+
+      "to this LOCAL draft only? Declared group hours, weekdays and blackout dates are local proposals, NOT "+
+      "verified staff availability. External calendar entries will NOT be cancelled/moved; "+
+      "save your revised source-bound complete workroom before any manual calendar change desk export."))return;
+    hold(conflictProposal && conflictProposal.fingerprint===workroomFingerprint());
+    const projected=new Map(plan);
+    for(const [ordinal,slot] of slots)projected.set(ordinal,{...slot});
+    hold(Array.from(collisionIds(projected)).every(id=>collisionIds(plan).has(id)));
+    plan=projected;changed=true;exportedPlan=false;agendaPage=0;
+    conflictProposal=null;render();
+    inform("Applied "+slots.size+" reviewed HUMAN-only local conflict proposals. Save complete PRIVATE workroom; external appointments unchanged.");
   }
   function renderAgenda(){
     if(!active)return;
     const now=new Date(),days=$("agendaHorizon").value;
     const q=$("agendaQuery").value.trim().toLocaleLowerCase();
     const colliding=collisionIds();
+    renderConflictPreview();
     $("conflictPanel").hidden=colliding.size===0;
     $("conflictSummary").textContent=colliding.size+" HUMAN reminders overlap in this workroom. These are timing clashes only; not a security or authorization verdict.";
     let upcoming=items.filter(r=>{
@@ -2168,7 +2237,18 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("agendaPrev","click",()=>{agendaPage--;renderAgenda();});
   hook("agendaNext","click",()=>{agendaPage++;renderAgenda();});
   hook("conflictFocus","click",()=>{$("agendaHorizon").value="conflicts";agendaPage=0;renderAgenda();$("agenda").scrollIntoView({behavior:"smooth",block:"start"});});
-  hook("resolveConflicts","click",()=>{try{resolveConflicts();}catch(err){inform(err.message,true);}});
+  hook("resolveConflicts","click",()=>{
+    try{resolveConflicts();}
+    catch(err){conflictProposal=null;renderConflictPreview();inform("HUMAN group-aware conflict proposal held: "+err.message,true);}
+  });
+  hook("applyConflictResolution","click",()=>{
+    try{applyConflictResolution();}
+    catch(_){conflictProposal=null;renderConflictPreview();inform("Conflict proposal is stale or invalid; no partial HUMAN edits applied.",true);}
+  });
+  hook("discardConflictResolution","click",()=>{
+    conflictProposal=null;renderConflictPreview();$("conflictPreviewDetails").open=false;
+    inform("Unapplied HUMAN conflict preview discarded. Current local plan unchanged.");
+  });
   function bulk(clear=false){
     const candidates=filtered();
     if(!candidates.length){inform("No matching rows to schedule.",true);return;}
@@ -2271,8 +2351,19 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 <strong>HUMAN scheduling collisions</strong>
 <p id="conflictSummary" role="status" aria-live="polite"></p>
 <div class="row"><button type="button" id="conflictFocus" class="ghost">Show conflicts in agenda</button>
-<button type="button" id="resolveConflicts">Propose non-overlapping weekdays (confirmation required)</button></div>
-<p class="subtle">This only edits proposed HUMAN reminder times in memory. It never executes an assessment or decides technical risk; verify resource availability in your real calendar.</p></div>
+<button type="button" id="resolveConflicts">Preview group-aware conflict resolution</button>
+<button type="button" id="applyConflictResolution" disabled>Apply all reviewed HUMAN changes (confirm)</button>
+<button type="button" id="discardConflictResolution" class="ghost">Discard preview</button></div>
+<details id="conflictPreviewDetails"><summary>Inspect exact conflicting HUMAN appointments and alternative local times</summary>
+<p id="conflictPreviewSummary" class="subtle" role="status">No schedule changes prepared.</p>
+<div class="tablebox"><table><thead><tr><th>Original HUMAN ordinal</th><th>Previous proposal</th>
+<th>Alternative local reminder</th><th>Declared group</th></tr></thead><tbody id="conflictPreviewRows"></tbody></table></div>
+</details>
+<p class="subtle">Rescheduling suggestions respect declared HUMAN group weekdays, hours, blackout dates and
+daily capacity, and avoid all existing local workroom appointments. They are bounded to 32 moves per
+confirmation and 90 local calendar days. A blocked original HUMAN stage is never rescheduled automatically.
+One unsuitable appointment blocks the entire preview. No real staff calendar is checked, no external appointment
+is updated or cancelled, and no authority or security result is inferred.</p></div>
 <p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
 <div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
 </section>
