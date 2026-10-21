@@ -399,6 +399,13 @@ def reopen(workflow_room: str, progress_rooms: list[str],
                       (SOURCE_CSV, source_queue), (RECEIPT, receipt)]
     if not legacy:
         expected_files.append((AGENDA, agenda))
+        # V2 output is a closed immutable packet. Unexpected sidecars,
+        # including accidental browser downloads, must not be silently
+        # mistaken for a reviewed/receipt-bound artifact.
+        expected_names = {name for name, _ in expected_files}
+        actual_names = {entry.name for entry in room.iterdir()}
+        if actual_names != expected_names:
+            raise Hold("HOLD: PRIVATE HAR v2 desk inventory changed")
     for name, expected in expected_files:
         if private_input(str(room / name), MAX_SIZE) != expected:
             raise Hold("HOLD: original-bound PRIVATE HAR desk bytes changed")
