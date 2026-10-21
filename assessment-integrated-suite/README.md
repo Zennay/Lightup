@@ -1,5 +1,57 @@
 # LightUp integrated PRIVATE assessment handoff
 
+
+## NEW · Source-free HUMAN Lab Attention Workboard (21 October 2026)
+
+**Complete offline product:** [HUMAN Attention Workboard](human-lab-attention.html)
+with its adjacent [local JavaScript](human-lab-attention.js).
+This is installed via the original native `suite.py` workroom navigator
+and included by `package_offline.py` in the next software-only offline kit.
+
+The independent browser product accepts **1–8 manually ordered** source-free
+`human-lab-route` JSON self-reports. Each is bounded to **24 KiB** and
+must match the exact original twenty-position action list (52–71), fixed
+four discussion markers and all false authority flags. Repeated JSON
+object keys (including escaped decoded duplicates), nested ambiguous
+keys, unexpected source/authority claims, repeated identical rounds,
+incorrect order and oversized documents are rejected **atomically**.
+A refused import leaves any previous in-memory workboard intact.
+
+**Operator workflow:**
+1. On a trusted local device, open `human-lab-route-standalone.html` or
+   its original two-file equivalent. Export a complete source-free HUMAN
+   discussion self-report to owner-private local storage.
+2. Open `human-lab-attention.html` with `human-lab-attention.js` **beside
+   it**. Select 1–8 such source-free self-reports in the order in which
+   you want them discussed. This chooser order is explicitly NOT
+   authenticated chronology, nor a history of real work.
+3. Inspect fixed action status, transition count and five phase summaries.
+   Filter current needs-input, non-discussed, changed/repeated or locally
+   untriaged actions; manually propose a fixed role and follow-up category.
+   The visible-only bulk action proposes **request original input** solely
+   on originally marked NEEDS_INPUT, after HUMAN confirmation.
+4. Export an **unsigned complete** twenty-row HUMAN attention JSON, CSV,
+   or a **scriptless, CSP-restricted printable HTML** brief. All filtered
+   original steps remain in every complete export, and no freeform
+   client/source data is ever loaded.
+
+The role and follow-up selectors are **proposal annotations only**:
+unassigned/unclassified by default; no identity, real recipient,
+deadline, priority claim, assignment, notification, external request
+or action-time consent is established. No input is persistently stored
+by the browser. No original lab result, tenant record, finding, scan,
+grant, provider/model, server, network, auth session, reviewer identity,
+source-note text or private path is accessed.
+
+**Strict release posture:** LightUp remains Incubate M3/M7 · PLAN/LAB ONLY
+· DRAFT/HOLD. These self-reports are not original source receipts or
+proof of authentic HUMAN review. The original source-owner, independent
+security/privacy/browser reviews, exact-head hosted + permanently named
+VPS CI, genuine separate current client/operator consent with action-time
+revocation, #177/#182/#829 and explicit HUMAN GO remain mandatory before
+any main merge, live deployment or real-target assessment.
+
+
 ## NEW · One-file offline HUMAN Lab Route Desk (21 October 2026)
 
 The full [standalone HUMAN Lab Route Desk](human-lab-route-standalone.html)
