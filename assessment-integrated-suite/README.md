@@ -1997,7 +1997,7 @@ changing a saved review round.
   composer is open, not as an authenticated origin or timestamp.
 - Incomplete selection disables export. The operator must confirm before
   the browser requests a private local JSON download. The output retains the
-  original v1 20-step self-report shape and six explicit false claims;
+  original v1 20-step self-report shape and false authority/source claims;
   no original source, reviewer, target, finding, client data, private text,
   filenames or timestamps are included.
 - This output is a **NEW untrusted HUMAN proposal**, not a reviewed round.
