@@ -1,5 +1,40 @@
 # LightUp integrated PRIVATE assessment handoff
 
+## Offline LAB Desk improvement: strict browser input + useful HUMAN triage (21 Oct)
+
+The previously shipped browser-only HUMAN Lab Route Desk now offers
+**separate compare-without-import**, side-by-side action-by-action
+current/proposed status display, and a **changed-only source-free CSV**
+for HUMAN discussions. A previous local JSON can still be imported,
+but *all* 20 source-free entries are first admitted under the exact
+native-compatible schema and strict action order, then a complete
+per-action before/after preview and explicit human confirmation are
+required before any existing in-memory state is replaced.
+
+This update closes the earlier browser-side ambiguity: ordinary
+`JSON.parse` silently accepts repeated JSON property names. The
+local parser now detects repeated decoded keys even when a key uses
+JSON Unicode escapes, including recursively nested `authority`
+and each `steps` object. It refuses files exceeding 24 KiB, nesting
+beyond 32 containers, unexpected source/authority claims, changed
+action IDs, missing fields, or states outside the four HUMAN-only
+discussion tokens. The native receiver remains the **independent
+required** final private byte admission and no browser import grants
+a permission, fixes an issue or proves current review.
+
+The HUMAN Desk also includes instant search for original action number
+or title, fixed-state filter, stage-local visible counts, and explicit
+confirmation-gated bulk **Needs original input** / **Discussing**
+actions for **visible rows only**. There is no bulk approval,
+`DISCUSSED`/PASS, grant, dispatch, model, target connection,
+source import or persistence. Hidden actions remain in every
+complete JSON/CSV export; a changed input or rejected import clears
+any stale side-by-side preview. The exported changed-only CSV is a
+local HUMAN discussion note, not a source receipt. The independent
+native review, present client/operator consent, release and original
+mandatory exact-head CI gates remain unchanged.
+
+
 ## LATEST · Portable original HUMAN Lab offline Toolkit v21 · 21 October 2026
 
 [**Download committed v21 software-only ZIP**](LightUp-Assessment-Offline-Toolkit-v21.zip)
