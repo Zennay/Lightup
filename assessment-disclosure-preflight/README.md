@@ -89,9 +89,19 @@ The [source-bound PRIVATE HUMAN action guide](./PRIVATE-INBOX-ACTIONS.md)
 and bundled `private_inbox_actions.py` complete the review workflow after
 `private_inbox_board.py` generates the original source-free board JSON:
 native `prepare` exports a fresh original slot-ordered HUMAN action template,
+`reopen-template` checks the saved original standalone template read-only,
 `finalize` requires all original slots and explicit human notes/statuses and
 writes a separate PRIVATE owner-only HTML/CSV/JSON discussion pack, and
-`reopen` verifies exact original source-bound HUMAN private bytes read-only.
+`reopen` checks the entire saved three-file inventory and byte bindings
+read-only. Every native reopen requires an owner-owned 0700 output directory
+with exactly the expected regular owner-owned 0600 unlinked files; stray names,
+symlinks, changed inputs and altered output bytes produce HOLD. The existing
+combined workroom's `--saved-workroom-dir` mode now shares that strict
+four-file custody boundary. The standalone `reopen-template` is only for a
+single-file `prepare` destination: for the recommended four-file workroom,
+use `private_inbox_workroom.py --saved-workroom-dir` with the original
+room selection instead. None of these read-only checks establish identity,
+authentic chronology, consent, original evidence validity or release.
 Human role labels are **proposals**, not actual assignments. Both the browser
 Studio and native finalizer reject Unicode format/control characters and
 NFKC-disguised spreadsheet formula prefixes in human CSV notes; native
