@@ -236,6 +236,8 @@ def verify_existing(directory):
             ("lightup-lab-preview-command.txt", 16_384),
             ("lightup-lab-minimal-summary.json", 4096),
         )
+        if set(os.listdir(output_fd)) != {name for name, _ in names}:
+            raise Hold("private Launchpad bundle contains missing or unexpected files")
         items = {name: read_private_bundle_item(output_fd, name, limit)
                  for name, limit in names}
     finally:
@@ -307,8 +309,19 @@ def verify_existing(directory):
     command = exact_preview_command(absolute) + "\n"
     if items["lightup-lab-preview-command.txt"] != command.encode("utf-8"):
         raise Hold("private display-only preview command changed")
-    if b"LAB_INPUT_PREVIEW_ONLY" not in items["lightup-lab-plan-handoff.html"]:
-        raise Hold("private handoff lost no-authority designation")
+    # Reconstruct the canonical handoff from the admitted manifest and the
+    # original source-bound fixed renderer. A matching self-reported HTML hash
+    # alone is not proof that a modified receipt + modified HTML is authentic.
+    expected_handoff = render_handoff(
+        len(endpoints),
+        receipt["source_manifest_sha256"],
+        receipt["canonical_manifest_sha256"],
+        os.path.join(absolute, "lightup-lab-targets.txt"),
+        os.path.join(absolute, "lightup-lab-preview-result.json"),
+        command[:-1],
+    )
+    if items["lightup-lab-plan-handoff.html"] != expected_handoff:
+        raise Hold("stored private HTML differs from the pinned canonical preview handoff")
     print("LAB_LAUNCHPAD_RECEIPT_REOPENED endpoint_count=" + str(len(endpoints)) +
           " — UNSIGNED LOCAL BYTE CONSISTENCY ONLY; NOT AUTHORIZED; COMMAND NOT EXECUTED")
     return 0
