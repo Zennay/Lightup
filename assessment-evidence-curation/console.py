@@ -25,6 +25,7 @@ from priority_reconcile import reconcile as reconcile_original_priority
 from priority_inbox import join as join_priority_inbox
 from priority_inbox_open import reopen as reopen_priority_inbox
 from priority_inbox_action_queue import publish_queue as publish_human_action_queue
+from priority_inbox_action_queue_open import reopen as reopen_human_action_queue
 from priority_inbox_diff import compare as compare_priority_inbox
 from priority_inbox_diff_open import reopen as reopen_priority_inbox_diff
 
@@ -71,6 +72,8 @@ WORKFLOWS = {
            "same original source, handoffs, both complete inboxes + before/after reply CSVs"),
     "21": ("Build PRIVATE HUMAN response-stage action queue from an exact source-reopened inbox",
            "original source/selection, every reply group and saved exact-byte PRIVATE inbox"),
+    "22": ("Read-only reopen previously published PRIVATE HUMAN action queue",
+           "existing private action queue directory; checks local unsigned byte custody"),
 }
 
 
@@ -166,6 +169,15 @@ def run_workflow(choice: str) -> None:
                                             returned, output)
         print("Original-source HUMAN priority rows checked: " + str(count) +
               "; NO verified remediation, recipient or consent")
+        return
+    if choice == "22":
+        directory = ask_path("EXISTING published PRIVATE HUMAN action queue folder")
+        print("This checks ONLY unsigned local byte custody, NOT current original source or authority.")
+        if input("Enter exactly REVIEW ONLY for local byte custody: ") != "REVIEW ONLY":
+            raise Hold("Human declined PRIVATE action queue reopen")
+        count = reopen_human_action_queue(directory)
+        print("PRIVATE HUMAN action queue local byte consistency: " + str(count) +
+              " HUMAN rows; no source/authentication/authorization verdict")
         return
     if choice == "21":
         source = ask_path("EXISTING full original lab source JSON")
@@ -407,7 +419,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–21]: ").strip()
+        choice = input("PRIVATE workflow [0–22]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
@@ -425,7 +437,7 @@ def main() -> int:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18", "20") else
+    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18", "20", "22") else
           "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 

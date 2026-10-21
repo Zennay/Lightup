@@ -349,3 +349,24 @@ No network, browser storage, recipient contact, automatic calendar booking,
 approval, verified fix, task dispatch or security authority is inferred.
 Original previously published HUMAN inbox formats and read-only reopen
 continue unchanged; this is a **new separate explicitly requested** output.
+
+### Reopen a previously saved HUMAN action queue (read-only local custody)
+
+For a received, copied or archived output from option 21, run:
+
+    python3 assessment-evidence-curation/priority_inbox_action_queue_open.py \
+      --private-dir ./EXISTING-PRIVATE-HUMAN-ACTION-QUEUE
+
+Or choose console option **22**. The read-only native inspector checks that
+the private directory is owner-owned 0700, contains **exactly** the three
+expected ordinary single-link 0600 files, has canonical/duplicate-key-free
+schema-v1 JSON with literal false authority flags, internally consistent
+stage/priority counts and SHA-256 bytes matching its private unsigned
+receipt. Malformed, missing, symlinked, extra, modified or non-owner
+entries HOLD without modifying any file.
+
+This local-custody convenience **does not** re-admit the original source
+or prove authentic provenance, HUMAN identity, consent, disclosure right,
+remediation or findings. To assert correspondence with original source
+bytes, rerun the complete option 21 against the same original materials
+into a **new** private output directory; old output is never replaced.
