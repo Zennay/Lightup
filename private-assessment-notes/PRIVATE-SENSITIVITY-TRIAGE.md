@@ -81,6 +81,28 @@ This creates a **new** `PRIVATE-lightup-sensitivity-draft-*` owner-only director
 
 In the browser, choose per source one of `PENDING`, `REVIEW_REQUIRED`, `WITHHOLD`. Select `UNKNOWN` **alone**, or one or more categories in canonical order `CREDENTIALS|PERSONAL_DATA|CLIENT_DATA|OTHER`. No status is a clearance. Free text is at most 300 characters and cannot begin with spreadsheet formula characters even after whitespace. Avoid copying actual secrets or PII into follow-up notes.
 
+### Unicode-disguised spreadsheet formula notes remain HOLD
+
+The original private HUMAN decision CSV, HUMAN sensitivity follow-up CSV,
+private discussion actions, HUMAN proposed-team notes and agenda questions
+now share a **server-side fail-closed Unicode formula-prefix admission**.
+Besides ordinary `=`, `+`, `-`, `@` and leading whitespace, it rejects
+compatibility-equivalent prefixes (including fullwidth forms), leading
+invisible/combining Unicode markers, unsafe controls and bidirectional
+formatting that can disguise spreadsheet interpretation. The offline
+original HUMAN and sensitivity editors also warn/refuse these forms before
+saving a draft; the native command remains authoritative.
+
+This applies only to original PRIVATE HUMAN note/question acceptance under
+`private-assessment-notes/`, **not** the separate authenticated client
+finding CSV exporter already owned by an independent PR. No original
+PRIVATE human note bytes are silently normalized, modified or removed.
+Older original review packets containing newly refused Unicode/format
+prefixes intentionally remain HOLD on native reopening: a HUMAN source owner
+must prepare a NEW original-source-bound acceptable note/CSV rather than
+silently migrating historical evidence. Passing this check is NOT proof
+that any output is safe to share or authenticated.
+
 **Resume:** the browser editor can reopen one earlier **browser-generated complete** PRIVATE HUMAN CSV through the local **Resume exact-source previous PRIVATE HUMAN browser CSV** picker. The editor fatally decodes UTF-8, checks the exact full row count, complete source ordinal/byte-SHA roster and all original HUMAN statuses, categories and notes before **any** state change. It asks for an explicit HUMAN confirmation; cancellation or a single mismatch leaves all current editor choices untouched. This restores only draft UI inputs, not privacy clearance, local file permissions, provenance, consent, or any finalizer receipt. No file is uploaded. The original native source re-admission on finalize remains required.
 
 After saving the browser-generated `PRIVATE-HUMAN-sensitivity-completed.csv`, move it to an owner-private location and `chmod 600` it: ordinary browser downloads may default to world-readable permissions.

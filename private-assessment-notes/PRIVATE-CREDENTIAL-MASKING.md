@@ -138,6 +138,18 @@ customer data, values encoded in unexpected ways and personal identifiers
 may remain. Original redacted text is still **PRIVATE**. No output may be
 published or sent to a customer solely because a pattern was replaced.
 
+## PRIVATE HUMAN notes and Unicode spreadsheet safety
+
+When a HUMAN original assessment reviewer enters free notes or follow-up
+questions, the **native** acceptance boundary now rejects formula-leading
+Unicode compatibility forms, initial invisible/combining marks and
+bidirectional control characters, in addition to ordinary spreadsheet
+prefixes. The local browser editor mirrors that guard for immediate
+feedback; native finalization remains separate and authoritative. No
+unsafe original historical input is rewritten or silently accepted on
+reopening. This is a CSV-format precaution only, never masking completeness,
+safe disclosure, authenticated source identity or review approval.
+
 ## Immediate optional HUMAN cue preview inside a NEW original workroom
 
 A human operator who needs the literal original-source marker-navigation
