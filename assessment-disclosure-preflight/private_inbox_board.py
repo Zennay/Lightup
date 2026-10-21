@@ -110,6 +110,13 @@ def manifest_bytes(rows: list[dict], full_reopened: bool) -> bytes:
     return (json.dumps(manifest, separators=(",", ":"), sort_keys=True) + "\n").encode("utf-8")
 
 
+def require_output_outside_source_tree(parent_path: str, output_dir: str) -> None:
+    source_parent = os.path.realpath(parent_path)
+    output_path = os.path.realpath(output_dir)
+    if os.path.commonpath((source_parent, output_path)) == source_parent:
+        raise ValueError("PRIVATE board output must be outside the original inbox tree")
+
+
 def source_free_csv(rows: list[dict]) -> str:
     out = io.StringIO(newline="")
     writer = csv.DictWriter(out, fieldnames=FIELDS, lineterminator="\n")
@@ -218,6 +225,7 @@ def main() -> int:
         if not 1 <= len(args.room) <= MAX_ROOMS or len(set(args.room)) != len(args.room):
             raise ValueError("1–12 distinct original PRIVATE rooms required")
         parent_fd, parent_path = inbox.user_private_parent(args.private_parent)
+        require_output_outside_source_tree(parent_path, args.private_output_dir)
         rows = [read_one(parent_fd, parent_path, name, i)
                 for i, name in enumerate(args.room, 1)]
         if args.full_reopen:

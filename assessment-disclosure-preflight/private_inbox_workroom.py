@@ -35,10 +35,7 @@ def main() -> int:
         if not 1 <= len(args.room) <= board.MAX_ROOMS or len(set(args.room)) != len(args.room):
             raise ValueError("1–12 distinct original PRIVATE rooms required")
         parent_fd, parent_path = inbox.user_private_parent(args.private_parent)
-        source_parent = os.path.realpath(parent_path)
-        output_path = os.path.realpath(args.private_output_dir)
-        if os.path.commonpath((source_parent, output_path)) == source_parent:
-            raise ValueError("PRIVATE workroom output must be outside the original inbox tree")
+        board.require_output_outside_source_tree(parent_path, args.private_output_dir)
         rows = [board.read_one(parent_fd, parent_path, name, slot)
                 for slot, name in enumerate(args.room, 1)]
         if args.full_reopen:
