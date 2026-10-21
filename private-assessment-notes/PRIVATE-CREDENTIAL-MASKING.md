@@ -270,11 +270,13 @@ reopen compares the exact new HTML bytes as part of a v14 packet.
 Historical v1-v13 rooms remain unchanged and reopen against their own
 original three-file packet algorithms.
 
-## PRIVATE HAR category inventory (source-free v15)
+## PRIVATE HAR category inventory and navigation (source-free v16)
 
 The existing original-owner PRIVATE cue workroom now includes
-PRIVATE-HAR-INVENTORY.html and PRIVATE-HAR-INVENTORY.csv.
-These are readable offline by ORIGINAL ordinal, with literal category
+PRIVATE-HAR-INVENTORY.html and PRIVATE-HAR-INVENTORY.csv, plus
+PRIVATE-HAR-QUEUE.html for script-free category navigation and an
+explicit whole-derived-copy HOLD section. These are readable offline by
+ORIGINAL ordinal, with literal category
 counts for URL/redirect, headers, cookie/query/form, bodies/frames, local
 file references and whole-copy-withheld indicators. Counts are untrusted
 placeholder occurrences in the DERIVED PRIVATE text, not detections,
@@ -282,14 +284,15 @@ anonymization scores, actual consent, source identity or safety proof.
 They omit original note text, source filenames, paths, URLs, source
 digests, reviewer notes and targets. All original ordinals are retained.
 
-A new v15 native receipt binds the HTML and CSV bytes when reopening
-a standalone PRIVATE masking-cue room. Earlier v1-v14 rooms reopen using
+A new v16 native receipt binds the inventory HTML, CSV and queue HTML
+bytes when reopening a standalone PRIVATE masking-cue room. Earlier
+v1-v15 rooms reopen using
 their original historical artifacts and count algorithms, unchanged.
 The optional initial HUMAN workroom creates the same standalone
 source-free HTML/CSV inventory without changing original decisions.
 No scan, model, recipient contact, grant or network action.
 
-## NEW: navigable original-ordinal masking-cue desk (v15)
+## NEW: navigable original-ordinal masking-cue desk (v16)
 
 The native `notes.py masking-cues` and optional
 `notes.py prepare --with-mask-cues` now render a fully offline
@@ -301,18 +304,19 @@ groups show no original text, customer names, source digests, freeform
 HUMAN notes, credentials or authority claims. Zero counts are *not* clearance.
 
 New independent native cue receipts use
-`lightup.private_assessment_masking_cues.v15`, including new
+`lightup.private_assessment_masking_cues.v16`, including new
 opaque original HAR request/response body, WebSocket message, cookie,
 queryString, form-parameter, URL/redirect, arbitrary header and file-reference
 markers plus a whole-source HAR REVIEW/HOLD marker, source-free
-category inventory HTML/CSV and separate script-free attention board.
-The original v14 attention board receipt, v13 marker-only receipt,
+category inventory HTML/CSV, category-navigation queue and separate
+script-free attention board. The original v15 inventory receipt,
+v14 attention board receipt, v13 marker-only receipt,
 v12 URL/header, v11 query/form,
 v10 cookie, v9 body/frame, v8 HAR form/JSON/multipart and v1-v7 families
 remain exactly reopenable with their original historical marker algorithms,
 without silent upgrade.
 The original source-bound 0700/0600 custody is unchanged. The read-only
-`notes.py masking-cues-reopen` accepts **v1 through v14** historical
+`notes.py masking-cues-reopen` accepts **v1 through v15** historical
 receipts and their original HTML/CSV bytes; existing historical packets
 are never rewritten, auto-upgraded or silently normalized. In particular,
 new cue navigation does not change the canonical original source manifest,

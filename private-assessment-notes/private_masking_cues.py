@@ -33,7 +33,8 @@ V11_SCHEMA = "lightup.private_assessment_masking_cues.v11"
 V12_SCHEMA = "lightup.private_assessment_masking_cues.v12"
 V13_SCHEMA = "lightup.private_assessment_masking_cues.v13"
 V14_SCHEMA = "lightup.private_assessment_masking_cues.v14"
-SCHEMA = "lightup.private_assessment_masking_cues.v15"
+V15_SCHEMA = "lightup.private_assessment_masking_cues.v15"
+SCHEMA = "lightup.private_assessment_masking_cues.v16"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -130,6 +131,9 @@ GROUPS = V13_GROUPS
 V14_GROUPS = GROUPS
 # V15 adds source-free HAR category inventory while preserving V14 receipts.
 GROUPS = V14_GROUPS
+V15_GROUPS = GROUPS
+# V16 additionally binds original-ordinal-only HTML attention navigation.
+GROUPS = V15_GROUPS
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
@@ -248,6 +252,8 @@ def create(original: str, private_parent: str) -> int:
         file_new(output / "PRIVATE-HAR-HOLD.html", render_har_hold(rows))
         file_new(output / "PRIVATE-HAR-INVENTORY.html", render_inventory(rows))
         file_new(output / "PRIVATE-HAR-INVENTORY.csv", inventory_csv(rows))
+        from private_har_attention_queue import render as render_har_queue
+        file_new(output / "PRIVATE-HAR-QUEUE.html", render_har_queue(rows))
         ready = True
         print("REVIEW_ONLY: PRIVATE original masking-cue navigation created; NOT privacy proof")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-masking-cues.html"))
@@ -270,10 +276,14 @@ def reopen(original: str, cue_room: str) -> int:
         return (json.dumps(cue_receipt(manifest_raw, sources, schema=schema),
                            indent=2, sort_keys=True,
                            ensure_ascii=False) + "\n").encode("utf-8")
-    is_v15 = stored_receipt == serialized_receipt(SCHEMA)
+    is_v16 = stored_receipt == serialized_receipt(SCHEMA)
+    is_v15 = stored_receipt == serialized_receipt(V15_SCHEMA)
     is_v14 = stored_receipt == serialized_receipt(V14_SCHEMA)
-    if is_v15:
+    if is_v16:
         derived = cues(rows)
+        render_page = cue_page
+    elif is_v15:
+        derived = cues(rows, groups=V15_GROUPS)
         render_page = cue_page
     elif is_v14:
         derived = cues(rows, groups=V14_GROUPS)
@@ -327,16 +337,19 @@ def reopen(original: str, cue_room: str) -> int:
         ("PRIVATE-masking-cues.csv", cue_csv(derived)),
         ("PRIVATE-masking-cues.html", render_page(derived)),
     )
-    if is_v15 or is_v14:
+    if is_v16 or is_v15 or is_v14:
         from private_har_hold_board import render as render_har_hold
         expected_files += (("PRIVATE-HAR-HOLD.html",
                             render_har_hold(rows)),)
-    if is_v15:
+    if is_v16 or is_v15:
         from private_har_hold_board import render_inventory, inventory_csv
         expected_files += (
             ("PRIVATE-HAR-INVENTORY.html", render_inventory(rows)),
             ("PRIVATE-HAR-INVENTORY.csv", inventory_csv(rows)),
         )
+    if is_v16:
+        from private_har_attention_queue import render as render_har_queue
+        expected_files += (("PRIVATE-HAR-QUEUE.html", render_har_queue(rows)),)
     for name, original_bytes in expected_files:
         if private_input(str(folder / name), 65536) != original_bytes:
             raise Hold("HOLD: original-bound PRIVATE HUMAN masking-cue packet changed")
