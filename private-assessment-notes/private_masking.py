@@ -178,6 +178,23 @@ _YAML_CREDENTIAL = re.compile(
     (?:"[^"\r\n]*"|'[^'\r\n]*'|[^\r\n#]+)""",
     re.VERBOSE,
 )
+# Copied SOAP/XML manifests and configuration snippets can carry credentials
+# as element text or quoted attributes. Keep the element/attribute identity,
+# withhold only bounded text values. Mixed-content XML remains HUMAN/HOLD.
+_XML_NAME = (r"password|passwd|secret|api[_-]?key|apiKey|client[_-]?secret|"
+             r"clientSecret|access[_-]?token|accessToken|refresh[_-]?token|"
+             r"refreshToken|auth[_-]?token|authToken|session[_-]?id|sessionId|"
+             r"private[_-]?key|privateKey|bearerToken|jwt")
+_XML_ELEMENT = re.compile(
+    r"(?is)(?P<open><(?P<key>" + _XML_NAME + r")\b(?:[ \t]+[^<>]{0,256})?[ \t]*>)"
+    r"(?P<content>[^<>]{0,4096})(?P<close></(?P=key)[ \t]*>)"
+)
+_XML_ATTRIBUTE = re.compile(
+    r"(?i)(?P<prefix>\b(?:" + _XML_NAME + r")[ \t]*=[ \t]*)"
+    r"(?P<quote>[\"'])(?:\\.|(?! (?P=quote) )[^\\\r\n]){0,4096}(?P=quote)",
+    re.VERBOSE,
+)
+
 _PRIVATE_KEY = re.compile(
     r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?"
     r"-----END [A-Z0-9 ]*PRIVATE KEY-----", re.I
@@ -234,6 +251,12 @@ def mask_private_notes(original: str) -> str:
         lambda m: m.group("prefix") + m.group("value_quote")
         + "[REDACTED_HAR_PARAM_VALUE]" + m.group("value_quote")
         + m.group("suffix"), value)
+    value = _XML_ELEMENT.sub(
+        lambda m: m.group("open") + "[REDACTED_XML_VALUE]" + m.group("close"),
+        value)
+    value = _XML_ATTRIBUTE.sub(
+        lambda m: m.group("prefix") + m.group("quote")
+        + "[REDACTED_XML_VALUE]" + m.group("quote"), value)
     value = _ENV_SECRET.sub(r"\1[REDACTED_ENV_VALUE]", value)
     value = _YAML_CREDENTIAL.sub(r"\1[REDACTED_CONFIG_VALUE]", value)
     value = _JWT.sub("[REDACTED_JWT_SHAPE]", value)
