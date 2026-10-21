@@ -63,12 +63,13 @@ When original scenario membership matches exactly, anonymous aggregate JSON now 
 The owner-private `private_workroom.py` builder now accepts an optional `--human-draft` argument containing a *previously saved* original-byte-bound human work draft v1/v2/v3 (up to 65,536 bytes). This creates a **single owner-private HTML file** carrying exact original catalogue bytes, existing completed comparator reports and, if explicitly supplied, human stages, private notes and proposed discussion plans. All input files, including the human draft, must be owner-owned regular `0600` files. The builder refuses duplicate input file paths, original-byte mismatches, bad statuses/authority flags, invalid human fields, oversized content and a pre-existing output path. Original SHA-256 fingerprints and report *human order* are checked before packaging; any mismatch fails closed and no output is produced. It does not authenticate measurement claims or authorize a scan.
 
 ```bash
+mkdir -m 700 /private/lightup-lineage-inputs /private/lightup-lineage-output
 python3 assessment-lineage/private_workroom.py \
-  --catalog /private/original-lab-catalog.json \
-  --report /private/completed-cohort-01.json \
-  --report /private/completed-cohort-02.json \
-  --human-draft /private/lightup-PRIVATE-lineage-human-draft.json \
-  --output /private/lightup-PRIVATE-full-review-workroom.html
+  --catalog /private/lightup-lineage-inputs/original-lab-catalog.json \
+  --report /private/lightup-lineage-inputs/completed-cohort-01.json \
+  --report /private/lightup-lineage-inputs/completed-cohort-02.json \
+  --human-draft /private/lightup-lineage-inputs/lightup-PRIVATE-lineage-human-draft.json \
+  --output /private/lightup-lineage-output/lightup-PRIVATE-full-review-workroom.html
 ```
 
 The local browser requires **two separate explicit actions**. First, **Load embedded PRIVATE originals** admits all source records using the unchanged canonical source checks and then wipes the inert original-source HTML template from the active DOM. Second, **Separately restore exact-source PRIVATE human work** verifies the original byte fingerprints once more and then restores human stages, notes and proposed plans; neither is automatic. If the original sources change or are reordered, the pending embedded draft is invalidated. **Forget all local data** also clears un-imported inert private source text and any pending human draft from the active browser document, although the sensitive HTML file on disk is **not** deleted. Both the public standalone and all anonymous reports contain **no original source or embedded human draft**.
@@ -81,13 +82,13 @@ Inputs **must** be regular owner-owned files with mode \`0600\` (no group/other 
 
 \`\`\`bash
 python3 assessment-lineage/private_workroom.py \
-  --catalog /private/lab-original.json \
-  --report /private/original-cohort-A.json \
-  --report /private/original-cohort-B.json \
-  --output /private/lightup-PRIVATE-workroom.html
+  --catalog /private/lightup-lineage-inputs/lab-original.json \
+  --report /private/lightup-lineage-inputs/original-cohort-A.json \
+  --report /private/lightup-lineage-inputs/original-cohort-B.json \
+  --output /private/lightup-lineage-output/lightup-PRIVATE-workroom.html
 \`\`\`
 
-The output **must not already exist**. Creation uses exclusive O_EXCL mode \`0600\`, owner-only files and current checked-in static standalone JS/CSS SHA256 pins, never a user-supplied HTML template. The new PRIVATE HTML contains sensitive source byte strings: store it separately and **never share or upload** it, unlike aggregate-only anonymous exports. No network requests, dynamic imports, credentials, database access, shell invocation, tool/scanner execution or CI run is done by this helper.
+The output **must not already exist**. Every input parent and the separate output directory must be owned by the current user with mode 0700. The builder walks all path components without following symlinks, rejects hard-linked source files, and confirms each bounded source remains unchanged during admission. Creation uses exclusive O_EXCL mode \`0600\`, 0600 owner-only files and current checked-in static standalone JS/CSS SHA256 pins, never a user-supplied HTML template. Partial output is removed only if it is still the exact file created by this invocation. The new PRIVATE HTML contains sensitive source byte strings: store it separately and **never share or upload** it, unlike aggregate-only anonymous exports. No network requests, dynamic imports, credentials, database access, shell invocation, tool/scanner execution or CI run is done by this helper.
 
 When opened, the browser still displays the no-authority original source import boundary; nothing runs or auto-loads. Click **Load embedded PRIVATE originals** to atomically admit exactly the original source catalog and reports. Only source identities and declared ground-truth counts remain in memory after admission, not original IPs, descriptions or finding IDs. The original byte-bound private stage resume continues to work if browser crypto is available, because the in-memory source SHA-256 corresponds to the exact embedded original bytes. Template text is cleared after successful admission. A copied PRIVATE HTML is still a copy of original sensitive sources even after browser memory clears it; deleting the original file requires separate human action.
 
