@@ -38,14 +38,25 @@ STYLE = (
     "@media print{body{margin:0;max-width:none}}"
 )
 
-def select(rounds, role, stage):
+def select(rounds, role, stage, selected_slots=None):
     """Only select latest HUMAN role; old notes appear only under the SAME role."""
     latest = rounds[-1]["human_rows"]
-    return [row["slot"] - 1 for row in latest
-            if row["role"] == role and (stage == "ALL" or row["stage"] == stage)]
+    matches = [row["slot"] - 1 for row in latest
+               if row["role"] == role and (stage == "ALL" or row["stage"] == stage)]
+    if selected_slots is None or not selected_slots:
+        return matches
+    if (len(selected_slots) > len(latest)
+            or any(type(slot) is not int or not 1 <= slot <= len(latest)
+                   for slot in selected_slots)
+            or len(set(selected_slots)) != len(selected_slots)):
+        raise Hold("HUMAN slot filter requires unique existing original ordinals")
+    selected = {slot - 1 for slot in selected_slots}
+    if not selected.issubset(matches):
+        raise Hold("requested HUMAN slot is not assigned to this latest role/stage")
+    return [index for index in matches if index in selected]
 
-def assemble(rounds, endpoints, role, stage):
-    indices = select(rounds, role, stage)
+def assemble(rounds, endpoints, role, stage, selected_slots=None):
+    indices = select(rounds, role, stage, selected_slots)
     # A role-specific handoff must not be described as evidence when nothing
     # matches; require an intentional nonempty HUMAN selection.
     if not indices:
@@ -133,6 +144,7 @@ def assemble(rounds, endpoints, role, stage):
         "selected_human_role": role,
         "selected_latest_stage": stage,
         "selected_human_slots": len(indices),
+        "explicit_ordinal_subset_used": bool(selected_slots),
         "selected_current_human_stage_counts": {
             label: sum(value["current_stage"] == label for value in count_rows)
             for label in STAGES
@@ -155,6 +167,8 @@ def assemble(rounds, endpoints, role, stage):
         "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED\n"
         "Role filter: " + role + "; latest HUMAN stage filter: " + stage + "\n"
         "Selected original HUMAN slots: " + str(len(indices)) + "\n"
+        "Explicit original-slot minimization applied: " +
+        ("YES" if selected_slots else "NO") + "\n"
         "Manually ordered HUMAN rounds: " + str(all_rounds) + "\n"
         "The HTML contains PRIVATE original local endpoint URLs and HUMAN notes.\n"
         "Only notes from HUMAN rounds with the same suggested role are shown.\n"
@@ -184,6 +198,8 @@ def main(argv=None):
                         help="fixed HUMAN role value, NOT an identity or access check")
     parser.add_argument("--stage", choices=("ALL", *STAGES), default="ALL",
                         help="optional latest HUMAN self-report stage filter")
+    parser.add_argument("--slot", type=int, action="append",
+                        help="optional PRIVATE original slot ordinal, repeat for the minimal needed subset")
     output = parser.add_mutually_exclusive_group(required=True)
     output.add_argument("--output-dir", help="NEW separate owner-only empty mode-0700 directory")
     output.add_argument("--verify-handoff-dir", help="read-only reopen a prior PRIVATE handoff")
@@ -196,7 +212,7 @@ def main(argv=None):
             for source in (original, *round_dirs):
                 if os.path.commonpath((source, dest)) in (source, dest):
                     raise Hold("role handoff must be separate from original PRIVATE source and HUMAN rounds")
-            expected = dict(assemble(rounds, endpoints, args.role, args.stage))
+            expected = dict(assemble(rounds, endpoints, args.role, args.stage, args.slot))
             if any(not 0 < len(data) <= LIMIT for data in expected.values()):
                 raise Hold("PRIVATE role handoff exceeds bounded output capacity")
             if args.verify_handoff_dir:
