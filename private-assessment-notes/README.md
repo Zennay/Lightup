@@ -26,7 +26,7 @@ position summary and per-action decision reasons),
 area, earlier HUMAN status, proposed status and conservative reason),
 `PRIVATE-HAR-REVISION-edited-actions.csv` (a **strict new-workflow
 template-compatible** complete proposed CSV), and an unsigned
-source-bound HOLD receipt. The three generated files are owner-only
+source-bound HOLD receipt. The four generated files are owner-only
 0600. No raw source content, original filename, credential, client
 identity, URL, source hash, HUMAN note or remote recipient is copied.
 

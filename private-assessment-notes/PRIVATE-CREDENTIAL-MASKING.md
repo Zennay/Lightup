@@ -469,3 +469,25 @@ status transitions and a source-bound unsigned HOLD receipt. Its read-only
 `har-action-history-reopen` verifies all original receipts and output bytes.
 Round order and statuses are manual, never verified findings, consent,
 privacy certification or release. No targets, scans, client data or uploads.
+
+### Conservative original HAR source revision handoff
+
+Use `notes.py har-review-revision` with two distinct admitted original
+PRIVATE workflows, one original-bound old HUMAN status packet, and the
+owner-private parent of the **new** workflow. It writes a new 0700
+`PRIVATE-lightup-har-revision-...` directory with a source-minimal
+scriptless HTML explanation, a complete new-source-aligned editable HAR
+CSV, a source-position-only decision guide CSV and an unsigned source-
+bound HOLD receipt; all files 0600. Original source bytes, filenames,
+URLs, hashes, identities, HUMAN free text and client data stay within
+their original private workrooms.
+
+Identical input and derived source bytes plus task identity permit only
+nonfinal manual status carry-forward. Any previous HUMAN_REVIEWED is
+reset to PENDING_HUMAN; WITHHOLD remains conservative for the same
+original position even when original bytes change. Changed, added,
+removed and moved positions require new human review. No automatic
+finalisation, grant, source-owner verification, scan or client disclosure.
+`har-review-revision-reopen` re-admits both source-bound workflows,
+the exact original human status packet and every immutable output
+byte without changing the prior or new materials. Both return HOLD.
