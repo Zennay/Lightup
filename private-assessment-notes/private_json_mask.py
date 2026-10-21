@@ -61,7 +61,9 @@ class _Reader:
         if self.pos >= len(self.source) or self.source[self.pos] != '"':
             raise ValueError("not a JSON string")
         first = self.pos
-        decoded, end = scanstring(self.source, first + 1, strict=True)
+        # The C-accelerated scanner takes positional-only arguments on CPython.
+        # Passing strict= as a keyword raises TypeError before any HAR masking.
+        decoded, end = scanstring(self.source, first + 1, True)
         self.pos = end
         return decoded, first, end
 
