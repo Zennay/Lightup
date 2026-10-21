@@ -401,3 +401,18 @@ Resetting the browser workroom and loading a different original worksheet
 clear the portable old/new password fields as well as plan handoff inputs.
 Encrypted file possession does not establish actual client or operator
 consent, and cryptographic review remains an original release prerequisite.
+
+
+## Calendar revision sequence for manual re-import
+
+All three ICS output paths (complete plan, selected group, and changed/cancelled
+events) now emit the same stable event UID per saved calendar series and
+original ordinal plus a numeric SEQUENCE for each export batch. SEQUENCE uses
+the local clock's epoch seconds and advances within the active browser session,
+so later reschedule/cancellation exports normally supersede the earlier
+tentative event instead of repeating the old constant sequence. Keep the
+private v2 plan and import updates manually; there is no calendar API or sync.
+Clock changes across devices/sessions are not authenticated chronology, and
+calendar clients may still interpret imports differently. This remains a
+local HUMAN planning aid, not evidence of a completed appointment, consent or
+remediation.

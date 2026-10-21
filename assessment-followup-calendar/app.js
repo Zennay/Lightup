@@ -28,6 +28,7 @@
   let originalBytes = null;
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   let conflictProposal=null;
+  let lastIcsSequence=0;
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -951,14 +952,14 @@
       " group? Original group names are unverified HUMAN labels. "+
       (include?"Optional HUMAN action descriptions MAY reveal private targets/client details. ":"")+
       "Calendar clients may share data. Original assessment data, permission and source authenticity are NOT verified."))return;
-    const stamp=icsTime(new Date());
+    const stamp=icsTime(new Date()),sequence=nextIcsSequence();
     const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN",
       "CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Group Follow-ups"];
     for(const row of relevant){
       const slot=plan.get(row.ordinal),start=eventDate(slot.day,slot.time),
         end=new Date(start.getTime()+Number(slot.duration)*60000);
       lines.push("BEGIN:VEVENT","UID:"+seriesId+"-"+row.ordinal+"@lightup-private.invalid",
-        "DTSTAMP:"+stamp,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
+        "SEQUENCE:"+sequence,"DTSTAMP:"+stamp,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
         "STATUS:TENTATIVE","TRANSP:TRANSPARENT",
         "SUMMARY:"+icsText("PRIVATE HUMAN follow-up #"+row.ordinal),
         "DESCRIPTION:"+icsText("REVIEW_ONLY: source-reported "+row.severity+
@@ -1331,7 +1332,7 @@
     hold(delta.length>0);
     const kind=cancelled?"cancellations":"new/changed HUMAN reminders";
     if(!confirm("Export "+delta.length+" PRIVATE "+kind+"? Calendar import is a manual action, providers may not recognize changes, and no existing external event is deleted by LightUp. "+(cancelled?"Cancellations will use historical HUMAN times.":"Opt-in HUMAN descriptions may include sensitive content.")))return;
-    const now=icsTime(new Date());
+    const now=icsTime(new Date()),sequence=nextIcsSequence();
     const lines=["BEGIN:VCALENDAR","VERSION:2.0",
       "PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN",
       "CALSCALE:GREGORIAN","METHOD:"+(cancelled?"CANCEL":"PUBLISH"),
@@ -1341,7 +1342,7 @@
       const slot=cancelled?row.before:row.now;
       const start=eventDate(slot.day,slot.time),end=new Date(start.getTime()+Number(slot.duration)*60000);
       const uid=seriesId+"-"+row.ordinal+"@lightup-private.invalid";
-      lines.push("BEGIN:VEVENT","UID:"+uid,"SEQUENCE:1","DTSTAMP:"+now,
+      lines.push("BEGIN:VEVENT","UID:"+uid,"SEQUENCE:"+sequence,"DTSTAMP:"+now,
         "DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
         "STATUS:"+(cancelled?"CANCELLED":"TENTATIVE"),
         "TRANSP:TRANSPARENT",
@@ -2176,6 +2177,14 @@
   const icsText=s=>String(s).replaceAll("\\","\\\\").replace(/\r\n|\r|\n/g,"\\n").replaceAll(";","\\;").replaceAll(",","\\,");
   const icsTime=date=>[date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,"0"),
     String(date.getUTCDate()).padStart(2,"0")].join("")+"T"+[date.getUTCHours(),date.getUTCMinutes(),date.getUTCSeconds()].map(v=>String(v).padStart(2,"0")).join("")+"Z";
+  function nextIcsSequence(){
+    // Stable UID + increasing SEQUENCE lets manual calendar imports replace a prior
+    // tentative event. Wall-clock epoch seconds span sessions; the in-memory floor
+    // also orders multiple exports made during the same second.
+    const wallClock=Math.floor(Date.now()/1000);
+    lastIcsSequence=Math.max(wallClock,lastIcsSequence+1);
+    return lastIcsSequence;
+  }
   function fold(line){
     // RFC5545: fold at <=75 UTF-8 octets, never splitting a code point.
     const textEncoder=new TextEncoder();
@@ -2193,12 +2202,12 @@
     const include=$("includeAction").checked;
     const conflicts=collisionIds().size;
     if(!confirm(`Export ${plan.size} PRIVATE tentative HUMAN calendar events? ${include?"Your HUMAN next-action texts WILL be included.":"No HUMAN next-action texts will be included."} ${conflicts?conflicts+" overlapping HUMAN reminders remain; calendar export retains those overlaps. ":""} Only import into an authorized private calendar; cloud calendars may synchronize.`))return;
-    const now=icsTime(new Date()),lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Follow-ups"];
+    const now=icsTime(new Date()),sequence=nextIcsSequence(),lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Follow-ups"];
     for(const r of items){
       const p=plan.get(r.ordinal);if(!p)continue;
       const start=eventDate(p.day,p.time),end=new Date(start.getTime()+Number(p.duration)*60000);
       const uid=seriesId+"-"+r.ordinal+"@lightup-private.invalid";
-      lines.push("BEGIN:VEVENT","UID:"+uid,"DTSTAMP:"+now,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
+      lines.push("BEGIN:VEVENT","UID:"+uid,"SEQUENCE:"+sequence,"DTSTAMP:"+now,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
         "STATUS:TENTATIVE","TRANSP:TRANSPARENT",
         "SUMMARY:"+icsText("PRIVATE HUMAN follow-up #"+r.ordinal),
         "DESCRIPTION:"+icsText("REVIEW_ONLY: source-reported "+r.severity+"; HUMAN stage "+(r.stage||"unset")+"; not a verified security or consent result."+(include?" HUMAN action: "+r.action:"")),

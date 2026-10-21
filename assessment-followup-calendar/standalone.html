@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ItDofDItsp2BoAjN10MeJRCC+cIPPWUKusywPa8oGkY='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gF8t/Yh+RNOOmYxIyheUEuFqO7tTr/e/8zlHTH66/E0='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -76,6 +76,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let originalBytes = null;
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   let conflictProposal=null;
+  let lastIcsSequence=0;
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -999,14 +1000,14 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       " group? Original group names are unverified HUMAN labels. "+
       (include?"Optional HUMAN action descriptions MAY reveal private targets/client details. ":"")+
       "Calendar clients may share data. Original assessment data, permission and source authenticity are NOT verified."))return;
-    const stamp=icsTime(new Date());
+    const stamp=icsTime(new Date()),sequence=nextIcsSequence();
     const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN",
       "CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Group Follow-ups"];
     for(const row of relevant){
       const slot=plan.get(row.ordinal),start=eventDate(slot.day,slot.time),
         end=new Date(start.getTime()+Number(slot.duration)*60000);
       lines.push("BEGIN:VEVENT","UID:"+seriesId+"-"+row.ordinal+"@lightup-private.invalid",
-        "DTSTAMP:"+stamp,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
+        "SEQUENCE:"+sequence,"DTSTAMP:"+stamp,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
         "STATUS:TENTATIVE","TRANSP:TRANSPARENT",
         "SUMMARY:"+icsText("PRIVATE HUMAN follow-up #"+row.ordinal),
         "DESCRIPTION:"+icsText("REVIEW_ONLY: source-reported "+row.severity+
@@ -1379,7 +1380,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     hold(delta.length>0);
     const kind=cancelled?"cancellations":"new/changed HUMAN reminders";
     if(!confirm("Export "+delta.length+" PRIVATE "+kind+"? Calendar import is a manual action, providers may not recognize changes, and no existing external event is deleted by LightUp. "+(cancelled?"Cancellations will use historical HUMAN times.":"Opt-in HUMAN descriptions may include sensitive content.")))return;
-    const now=icsTime(new Date());
+    const now=icsTime(new Date()),sequence=nextIcsSequence();
     const lines=["BEGIN:VCALENDAR","VERSION:2.0",
       "PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN",
       "CALSCALE:GREGORIAN","METHOD:"+(cancelled?"CANCEL":"PUBLISH"),
@@ -1389,7 +1390,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       const slot=cancelled?row.before:row.now;
       const start=eventDate(slot.day,slot.time),end=new Date(start.getTime()+Number(slot.duration)*60000);
       const uid=seriesId+"-"+row.ordinal+"@lightup-private.invalid";
-      lines.push("BEGIN:VEVENT","UID:"+uid,"SEQUENCE:1","DTSTAMP:"+now,
+      lines.push("BEGIN:VEVENT","UID:"+uid,"SEQUENCE:"+sequence,"DTSTAMP:"+now,
         "DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
         "STATUS:"+(cancelled?"CANCELLED":"TENTATIVE"),
         "TRANSP:TRANSPARENT",
@@ -2224,6 +2225,14 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   const icsText=s=>String(s).replaceAll("\\","\\\\").replace(/\r\n|\r|\n/g,"\\n").replaceAll(";","\\;").replaceAll(",","\\,");
   const icsTime=date=>[date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,"0"),
     String(date.getUTCDate()).padStart(2,"0")].join("")+"T"+[date.getUTCHours(),date.getUTCMinutes(),date.getUTCSeconds()].map(v=>String(v).padStart(2,"0")).join("")+"Z";
+  function nextIcsSequence(){
+    // Stable UID + increasing SEQUENCE lets manual calendar imports replace a prior
+    // tentative event. Wall-clock epoch seconds span sessions; the in-memory floor
+    // also orders multiple exports made during the same second.
+    const wallClock=Math.floor(Date.now()/1000);
+    lastIcsSequence=Math.max(wallClock,lastIcsSequence+1);
+    return lastIcsSequence;
+  }
   function fold(line){
     // RFC5545: fold at <=75 UTF-8 octets, never splitting a code point.
     const textEncoder=new TextEncoder();
@@ -2241,12 +2250,12 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const include=$("includeAction").checked;
     const conflicts=collisionIds().size;
     if(!confirm(`Export ${plan.size} PRIVATE tentative HUMAN calendar events? ${include?"Your HUMAN next-action texts WILL be included.":"No HUMAN next-action texts will be included."} ${conflicts?conflicts+" overlapping HUMAN reminders remain; calendar export retains those overlaps. ":""} Only import into an authorized private calendar; cloud calendars may synchronize.`))return;
-    const now=icsTime(new Date()),lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Follow-ups"];
+    const now=icsTime(new Date()),sequence=nextIcsSequence(),lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Follow-ups"];
     for(const r of items){
       const p=plan.get(r.ordinal);if(!p)continue;
       const start=eventDate(p.day,p.time),end=new Date(start.getTime()+Number(p.duration)*60000);
       const uid=seriesId+"-"+r.ordinal+"@lightup-private.invalid";
-      lines.push("BEGIN:VEVENT","UID:"+uid,"DTSTAMP:"+now,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
+      lines.push("BEGIN:VEVENT","UID:"+uid,"SEQUENCE:"+sequence,"DTSTAMP:"+now,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
         "STATUS:TENTATIVE","TRANSP:TRANSPARENT",
         "SUMMARY:"+icsText("PRIVATE HUMAN follow-up #"+r.ordinal),
         "DESCRIPTION:"+icsText("REVIEW_ONLY: source-reported "+r.severity+"; HUMAN stage "+(r.stage||"unset")+"; not a verified security or consent result."+(include?" HUMAN action: "+r.action:"")),
