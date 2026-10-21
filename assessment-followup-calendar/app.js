@@ -489,7 +489,7 @@
     return dayString(target).slice(0,7);
   }
   function monthRows(){
-    hold(active && /^20\\d{2}-(0[1-9]|1[0-2])$/.test(monthAnchor));
+    hold(active && /^20\d{2}-(0[1-9]|1[0-2])$/.test(monthAnchor));
     const groups=capacityGroups(),choice=$("monthGroup").value,
       focused=choice?groups[Number(choice)-1]:null;
     const collisions=collisionIds();
