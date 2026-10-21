@@ -36,7 +36,8 @@ V14_SCHEMA = "lightup.private_assessment_masking_cues.v14"
 V15_SCHEMA = "lightup.private_assessment_masking_cues.v15"
 V16_SCHEMA = "lightup.private_assessment_masking_cues.v16"
 V17_SCHEMA = "lightup.private_assessment_masking_cues.v17"
-SCHEMA = "lightup.private_assessment_masking_cues.v18"
+V18_SCHEMA = "lightup.private_assessment_masking_cues.v18"
+SCHEMA = "lightup.private_assessment_masking_cues.v19"
 GROUPS = (
     ("HTTP_OR_SHELL", ("[REDACTED_HEADER_VALUE]", "[REDACTED_HTTP_VALUE]",
                        "[REDACTED_COMMAND_CREDENTIAL]")),
@@ -140,8 +141,11 @@ V16_GROUPS = GROUPS
 # V17 only adds source-minimal printable private HUMAN questions.
 GROUPS = V16_GROUPS
 V17_GROUPS = GROUPS
-# V18 adds a human-editable source-free task worksheet, never a grant.
+# V18 adds original task worksheets, V19 adds the offline HUMAN status studio.
+# No legacy masking/count algorithm or original v18 artifact changes.
 GROUPS = V17_GROUPS
+V18_GROUPS = GROUPS
+GROUPS = V18_GROUPS
 CSV_FIELDS = ("original_ordinal", "literal_http_or_shell_markers",
               "literal_url_or_session_markers", "literal_config_markers",
               "literal_token_or_key_markers", "literal_total_markers")
@@ -267,6 +271,8 @@ def create(original: str, private_parent: str) -> int:
         from private_har_worklist import worksheet_html, worksheet_csv
         file_new(output / "PRIVATE-HAR-ACTIONS.html", worksheet_html(rows))
         file_new(output / "PRIVATE-HAR-ACTIONS.csv", worksheet_csv(rows))
+        from private_har_studio import render as render_har_studio
+        file_new(output / "PRIVATE-HAR-STUDIO.html", render_har_studio(rows))
         ready = True
         print("REVIEW_ONLY: PRIVATE original masking-cue navigation created; NOT privacy proof")
         print("OPEN LOCALLY: " + str(output / "PRIVATE-masking-cues.html"))
@@ -289,12 +295,13 @@ def reopen(original: str, cue_room: str) -> int:
         return (json.dumps(cue_receipt(manifest_raw, sources, schema=schema),
                            indent=2, sort_keys=True,
                            ensure_ascii=False) + "\n").encode("utf-8")
-    is_v18 = stored_receipt == serialized_receipt(SCHEMA)
+    is_v19 = stored_receipt == serialized_receipt(SCHEMA)
+    is_v18 = stored_receipt == serialized_receipt(V18_SCHEMA)
     is_v17 = stored_receipt == serialized_receipt(V17_SCHEMA)
     is_v16 = stored_receipt == serialized_receipt(V16_SCHEMA)
     is_v15 = stored_receipt == serialized_receipt(V15_SCHEMA)
     is_v14 = stored_receipt == serialized_receipt(V14_SCHEMA)
-    if is_v18 or is_v17:
+    if is_v19 or is_v18 or is_v17:
         derived = cues(rows)
         render_page = cue_page
     elif is_v16:
@@ -355,28 +362,31 @@ def reopen(original: str, cue_room: str) -> int:
         ("PRIVATE-masking-cues.csv", cue_csv(derived)),
         ("PRIVATE-masking-cues.html", render_page(derived)),
     )
-    if is_v18 or is_v17 or is_v16 or is_v15 or is_v14:
+    if is_v19 or is_v18 or is_v17 or is_v16 or is_v15 or is_v14:
         from private_har_hold_board import render as render_har_hold
         expected_files += (("PRIVATE-HAR-HOLD.html",
                             render_har_hold(rows)),)
-    if is_v18 or is_v17 or is_v16 or is_v15:
+    if is_v19 or is_v18 or is_v17 or is_v16 or is_v15:
         from private_har_hold_board import render_inventory, inventory_csv
         expected_files += (
             ("PRIVATE-HAR-INVENTORY.html", render_inventory(rows)),
             ("PRIVATE-HAR-INVENTORY.csv", inventory_csv(rows)),
         )
-    if is_v18 or is_v17 or is_v16:
+    if is_v19 or is_v18 or is_v17 or is_v16:
         from private_har_attention_queue import render as render_har_queue
         expected_files += (("PRIVATE-HAR-QUEUE.html", render_har_queue(rows)),)
-    if is_v18 or is_v17:
+    if is_v19 or is_v18 or is_v17:
         from private_har_questions import render as render_questions
         expected_files += (("PRIVATE-HAR-QUESTIONS.html", render_questions(rows)),)
-    if is_v18:
+    if is_v19 or is_v18:
         from private_har_worklist import worksheet_html, worksheet_csv
         expected_files += (
             ("PRIVATE-HAR-ACTIONS.html", worksheet_html(rows)),
             ("PRIVATE-HAR-ACTIONS.csv", worksheet_csv(rows)),
         )
+    if is_v19:
+        from private_har_studio import render as render_har_studio
+        expected_files += (("PRIVATE-HAR-STUDIO.html", render_har_studio(rows)),)
     for name, original_bytes in expected_files:
         if private_input(str(folder / name), 65536) != original_bytes:
             raise Hold("HOLD: original-bound PRIVATE HUMAN masking-cue packet changed")
