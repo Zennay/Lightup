@@ -192,7 +192,7 @@ def create(route_rooms: list[str], attention_rooms: list[str],
     parent = original._private_dir(Path(private_parent))
     if any(parent == p or p in parent.parents for p in originals):
         raise original.Hold("HOLD: HUMAN continuation cannot write inside original/private inputs")
-    if any(choices_file == Path(history_room) / history.CHOICES for _ in (0,)):
+    if choices_file == Path(history_room) / history.CHOICES:
         raise original.Hold("HOLD: copy and edit HUMAN choice sheet OUTSIDE saved original portfolio")
     files = _build(route_rooms, attention_rooms, choice_path)
     return original._write_room(str(parent), folder, files)
