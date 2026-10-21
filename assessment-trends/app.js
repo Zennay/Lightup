@@ -13,7 +13,7 @@
   const LOW=new Set(["invalid_findings","missed_findings","scope_violations","policy_violations"]);
   const FLAGS=["authorized","consent_verified","dispatch_allowed","release_allowed"];
   const MAX_FILE=262144;
-  let snapshots=[],scenarioIds=[],selectedScenario="",notes=new Map(),scratch=new Map(),fictional=false;
+  let snapshots=[],scenarioIds=[],selectedScenario="",selectedMetric=METRICS[0],notes=new Map(),scratch=new Map(),fictional=false;
 
   function admit(ok){if(!ok)throw Error("Invalid or incompatible source");}
   function exact(v,keys){return v!==null&&typeof v==="object"&&!Array.isArray(v)&&
