@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import os
 import sys
 
@@ -15,7 +16,7 @@ import private_inbox_actions as actions
 import private_inbox_board as board
 import private_intake as inbox
 import private_reopen as original
-from human_review import Hold
+from human_review import Hold, source_bytes
 
 
 def main() -> int:
@@ -25,17 +26,23 @@ def main() -> int:
                         help="existing owner-only 0700 parent of received PRIVATE rooms")
     parser.add_argument("--room", action="append", required=True,
                         help="exact received room name, repeat 1–12 times in intended slot order")
-    parser.add_argument("--private-output-dir", required=True,
-                        help="separate existing owner-only 0700 output directory")
+    parser.add_argument("--private-output-dir",
+                        help="create mode: separate existing owner-only 0700 output directory")
+    parser.add_argument("--saved-workroom-dir",
+                        help="read-only reopen mode: existing owner-only 0700 saved workroom")
     parser.add_argument("--full-reopen", action="store_true",
-                        help="explicit trusted TTY native HUMAN re-admission of every room")
+                        help="explicit trusted TTY native HUMAN re-admission of every room; use the same setting as creation")
     args = parser.parse_args()
     parent_fd = None
     try:
+        reopen_mode = args.saved_workroom_dir is not None
+        if reopen_mode == (args.private_output_dir is not None):
+            raise ValueError("choose exactly one of --private-output-dir (create) or --saved-workroom-dir (read-only reopen)")
+        output_dir = args.saved_workroom_dir if reopen_mode else args.private_output_dir
         if not 1 <= len(args.room) <= board.MAX_ROOMS or len(set(args.room)) != len(args.room):
             raise ValueError("1–12 distinct original PRIVATE rooms required")
         parent_fd, parent_path = inbox.user_private_parent(args.private_parent)
-        board.require_output_outside_source_tree(parent_path, args.private_output_dir)
+        board.require_output_outside_source_tree(parent_path, output_dir)
         rows = [board.read_one(parent_fd, parent_path, name, slot)
                 for slot, name in enumerate(args.room, 1)]
         if args.full_reopen:
@@ -64,11 +71,30 @@ def main() -> int:
             (board.JSON, manifest),
             (actions.TEMPLATE, actions.csv_template(digest, rows).encode("utf-8")),
         ]
+        if reopen_mode:
+            # Reconstruct every expected byte from the currently re-admitted
+            # original rooms. A saved workroom is accepted only as a complete,
+            # owner-private, exact four-file match; it is never rewritten.
+            saved_fd, saved_path = inbox.user_private_parent(args.saved_workroom_dir)
+            try:
+                expected_names = {name for name, _ in artifacts}
+                if set(os.listdir(saved_fd)) != expected_names:
+                    raise ValueError("saved PRIVATE workroom has missing or unexpected files")
+                for name, expected_bytes in artifacts:
+                    actual_bytes = source_bytes(os.path.join(saved_path, name))
+                    if not hmac.compare_digest(actual_bytes, expected_bytes):
+                        raise ValueError("saved PRIVATE workroom differs from current original inputs")
+            finally:
+                os.close(saved_fd)
+            print("REVIEW_ONLY: saved PRIVATE HUMAN workroom reopened read-only; all four output files match.")
+            print("Original rooms and saved outputs were not changed; no authority or release was created.")
+            return 2
+
         # One exclusive private publication: no board without its matching
         # native HUMAN worksheet, and no overwrite of any existing artifact.
         board.atomic_private_publish(args.private_output_dir, artifacts)
     except (OSError, TypeError, ValueError, UnicodeError, MemoryError, Hold):
-        print("HOLD: complete PRIVATE HUMAN workroom not published; no authority",
+        print("HOLD: complete PRIVATE HUMAN workroom not published or reopened; no authority",
               file=sys.stderr)
         return 3
     finally:
