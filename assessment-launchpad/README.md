@@ -322,3 +322,46 @@ The existing one-command next-round workroom automatically includes the source-f
 - advance.py checks the full bounded output sizes, including all history artifacts, **before creating** its new private subdirectories. Its integrated stored packet cannot be published in a state which would later exceed the read-only re-open limits.
 
 No changes grant scope, consent, risk approval, authorization, release, scanning or real security assessment. The original release gates, independent source ownership and separate action-time revocation checks remain mandatory. No QA or regression suites were written or run.
+
+
+## Voluntary PRIVATE HUMAN reviewer handoff — selected role, stage and original slots
+
+The new independent native assessment-launchpad/role_handoff.py creates a small original-source-bound PRIVATE offline reviewer dossier from 2–8 existing complete HUMAN rounds. It is a privacy-minimized alternative to sharing the complete multi-round PRIVATE history, which contains every endpoint and every HUMAN note.
+
+Choose one latest self-reported HUMAN reviewer role, optionally one latest self-reported HUMAN stage and optionally exact original slot ordinals:
+
+    mkdir -m 700 ~/private-lab-role-subset
+    python3 assessment-launchpad/role_handoff.py \
+      --bundle-dir ~/private-lab-guided-workspace/launchpad \
+      --round-dir ~/private-lab-guided-workspace/human-round-01 \
+      --round-dir ~/private-lab-next-round/human-round \
+      --role SECURITY_REVIEWER \
+      --stage FOLLOW_UP \
+      --slot 2 --slot 5 \
+      --output-dir ~/private-lab-role-subset
+
+A supplied --slot must match the selected role and stage in the latest round. Duplicate, missing, incompatible and out-of-range ordinals are rejected rather than silently broadening disclosure. Without --slot, all matching latest HUMAN slots are included. Zero matching HUMAN slots is a non-authorizing HOLD, not grounds to invent or infer approval.
+
+The four resulting exclusive 0600 private files (in a NEW empty 0700 owner-only folder):
+- lightup-lab-role-handoff-private.html: standalone scriptless CSP-hash-pinned PRIVATE printable dossier. Contains only selected original endpoint URL values and HUMAN stages/roles/private notes belonging to the chosen suggested role across the rounds. Historical notes belonging to other suggested roles are withheld even when the endpoint is selected. Do not host or share publicly.
+- lightup-lab-role-handoff-private.csv: PRIVATE selected original slot ordinals and latest fixed vocabulary and lengths, omitting endpoint values and note texts. Per-slot ordinals can still be sensitive.
+- lightup-lab-role-handoff-counts.json: separate low-detail aggregate counts. No original URLs, per-slot ordinals, source paths/digests, or HUMAN note text. Tiny cohorts can still be identifiable; keep private.
+- START-HERE-ROLE-PRIVATE.txt: safe-use operator guide with explicit non-authorizing HUMAN-only limitations.
+
+To read-only reopen the full source-bound packet, supply the SAME ordered --round-dir values, role/stage/slot selection and original --bundle-dir, replacing --output-dir with --verify-handoff-dir. The original five-file source and all complete previous HUMAN rounds are re-admitted before publishing. The output is capacity-bounded to 512 KiB per artifact, owner-only, no overwrite, and requires exactly the original four output files.
+
+The existing native advance.py next-round builder can include a selected role handoff as part of its full new private workroom in one command:
+
+    mkdir -m 700 ~/private-next-with-role
+    python3 assessment-launchpad/advance.py \
+      --bundle-dir ~/private-lab-guided-workspace/launchpad \
+      --previous-round-dir ~/private-lab-guided-workspace/human-round-01 \
+      --responses ~/private-import/lightup-lab-human-private.edited.json \
+      --handoff-role SECURITY_REVIEWER \
+      --handoff-stage FOLLOW_UP \
+      --handoff-slot 2 --handoff-slot 5 \
+      --output-dir ~/private-next-with-role
+
+The resulting human-selected-role folder contains the four private files and the scriptless local OPEN-NEXT-ROUND-PRIVATE.html navigation now links the dossier. Without --handoff-role no dossier is created. A subsequent --verify-workroom-dir must be run with identical --handoff-role, --handoff-stage and any --handoff-slot values; otherwise the complete-workroom admission fails.
+
+IMPORTANT: Human roles are unsigned self-reports, not verified identities or server-side access control. A privacy-reduced file is not automatically safe to distribute: an operator must authenticate and authorize recipients separately. This product does not issue consent, grants, assessment scope, clearance, completed findings, remediation, real chronology, security permissions or HUMAN GO. No active target, model or scan actions occur. Existing source-owner, CI/permanent VPS, independent security/privacy, actual client/operator consent and action-time revocation/HUMAN GO release gates remain mandatory.
