@@ -2040,7 +2040,8 @@ CLI, for manually selected original owner-only paths outside the checkout:
       --inbox /private/original-inbox.json \
       --followup /private/original-operator-followup.json \
       --operator-csv /private/original-operator-followup.csv \
-      --reference-day 2026-10-21 \n      --private-parent /private/output
+      --reference-day 2026-10-21 \
+      --private-parent /private/output
 
     python3 assessment-workspace-ledger/portfolio_operator_calendar.py receive \
       --history /private/original-history.json \
@@ -2048,7 +2049,8 @@ CLI, for manually selected original owner-only paths outside the checkout:
       --followup /private/original-operator-followup.json \
       --operator-csv /private/original-operator-followup.csv \
       --proposed-csv /private/HUMAN-proposed-calendar-template.csv \
-      --reference-day 2026-10-21 \n      --private-parent /private/output
+      --reference-day 2026-10-21 \
+      --private-parent /private/output
 
 Each invocation creates a **new** owner-private 0700 directory and writes
 0600 data; nothing is overwritten, transmitted, deleted or dispatched.
@@ -2080,4 +2082,5 @@ previously rendered HTML's physical bytes. CLI:
       --operator-csv /private/original-operator-followup.csv \
       --proposed-csv /private/PRIVATE-HUMAN-proposed-calendar.csv \
       --receipt /private/PRIVATE-HUMAN-proposed-calendar.json \
-      --reference-day 2026-10-21 \n      --private-parent /private/output
+      --reference-day 2026-10-21 \
+      --private-parent /private/output
