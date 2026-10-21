@@ -25,7 +25,7 @@
   let capacityRules = new Map(), capacityProposal = null, capacityDirty = false;
   let capacityEditorDirty = false, capacityEditingGroup = "";
   let workroomComparison = null, workroomComparePage = 0;
-  let reconcileSelection = new Set(), reconcileProposal = null;
+  let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -306,8 +306,8 @@
     $("desk").scrollIntoView({behavior:"smooth",block:"start"});
     if(source)source.focus({preventScroll:true});
   }
-  function weekAvailabilityFlags(row,slot,dailyCounts){
-    const rule=capacityRules.get(row.group)||capacityDefaultRule();
+  function weekAvailabilityFlags(row,slot,dailyCounts,overrideRule=null){
+    const rule=overrideRule||capacityRules.get(row.group)||capacityDefaultRule();
     const start=eventDate(slot.day,slot.time);
     const begin=start.getHours()*60+start.getMinutes();
     const mins=time=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
@@ -1427,7 +1427,8 @@
     hold(workroomComparison && workroomComparison.fingerprint===workroomFingerprint());
     return JSON.stringify([workroomComparison.fingerprint,
       workroomComparison.admitted.series,
-      Array.from(reconcileSelection).sort((a,b)=>a-b)]);
+      Array.from(reconcileSelection).sort((a,b)=>a-b),
+      Array.from(reconcileGroupSelection).sort((a,b)=>a.localeCompare(b))]);
   }
   function renderReconcilePreview(){
     const body=$("workroomReconcileRows");body.replaceChildren();
@@ -1439,11 +1440,13 @@
       reconcileProposal.warnings.length>0;
     if(!reconcileProposal){
       $("workroomReconcileSummary").textContent=reconcileSelection.size+
-        " HUMAN appointment differences selected. Preview required before any local changes.";
+        " HUMAN appointments and "+reconcileGroupSelection.size+
+        " declared group policies selected. Complete preview required before any local changes.";
       return;
     }
     $("workroomReconcileSummary").textContent=reconcileProposal.slots.size+
-      " exact HUMAN appointments prepared; "+reconcileProposal.warnings.length+
+      " HUMAN appointments and "+reconcileProposal.rules.size+" declared group policy changes prepared; "+
+      reconcileProposal.warnings.length+
       " scheduling warnings. New scheduling conflicts/blocked stages/group-rule violations BLOCK application. "+
       "No current plan or external calendar has been modified.";
     for(const [ordinal,slot] of reconcileProposal.slots){
@@ -1455,13 +1458,32 @@
         dom("td",violations.length?violations.join("; "):"Local planning only; no external calendar check"));
       body.append(tr);
     }
+    for(const [group,rule] of reconcileProposal.rules){
+      const tr=dom("tr"),violations=reconcileProposal.perGroup.get(group)||[];
+      tr.append(dom("td","GROUP · "+(group||"(unassigned)")),
+        dom("td",reviewCapacitySummary(capacityRules.get(group))),
+        dom("td",reviewCapacitySummary(rule)),
+        dom("td",violations.length?violations.join("; "):
+          "Only declared local HUMAN availability; not real verified owner availability"));
+      body.append(tr);
+    }
   }
   function prepareWorkroomReconcile(){
     hold(active && workroomComparison && !capacityEditorDirty &&
       workroomComparison.fingerprint===workroomFingerprint());
     const other=workroomComparison.admitted;
-    hold(other.series===seriesId && reconcileSelection.size>=1 && reconcileSelection.size<=32);
-    const next=new Map(plan),slots=new Map();
+    hold(other.series===seriesId &&
+      reconcileSelection.size<=32 && reconcileGroupSelection.size<=12 &&
+      reconcileSelection.size+reconcileGroupSelection.size>0);
+    const next=new Map(plan),slots=new Map(),rules=new Map();
+    for(const group of reconcileGroupSelection){
+      hold(capacityGroups().includes(group));
+      const proposal=other.rules.get(group);
+      hold(proposal);
+      const current=capacityRules.get(group)||capacityDefaultRule();
+      hold(JSON.stringify(admitCapacityRule(current))!==JSON.stringify(admitCapacityRule(proposal)));
+      rules.set(group,admitCapacityRule(proposal));
+    }
     for(const ordinal of Array.from(reconcileSelection).sort((a,b)=>a-b)){
       hold(Number.isSafeInteger(ordinal)&&ordinal>=1&&ordinal<=items.length);
       const row=items[ordinal-1],current=plan.get(ordinal),proposed=other.schedule.get(ordinal);
@@ -1480,14 +1502,14 @@
         counts.set(key,(counts.get(key)||0)+1);
       }
     }
-    const warnings=[],perRow=new Map();
+    const warnings=[],perRow=new Map(),perGroup=new Map();
     for(const [ordinal,slot] of slots){
       const row=items[ordinal-1],flags=[];
       if(row.stage==="blocked"){
         flags.push("original HUMAN stage is blocked");
       }
       if(slot){
-        flags.push(...weekAvailabilityFlags(row,slot,counts));
+        flags.push(...weekAvailabilityFlags(row,slot,counts,rules.get(row.group)||null));
         if(newClashes.has(ordinal))flags.push("local reminder overlaps another event");
         if(eventDate(slot.day,slot.time)<new Date())flags.push("compared reminder is in the past");
       }
@@ -1498,23 +1520,38 @@
       if(flags.length)warnings.push("#"+ordinal+": "+flags.join(", "));
       perRow.set(ordinal,flags);
     }
-    reconcileProposal={fingerprint:reconcileFingerprint(),slots,warnings,perRow};
+    for(const [group,rule] of rules){
+      const issues=[];
+      const relevant=items.filter(row=>row.group===group && next.has(row.ordinal));
+      for(const row of relevant){
+        const slot=next.get(row.ordinal);
+        const flags=weekAvailabilityFlags(row,slot,counts,rule);
+        if(flags.length)issues.push("#"+row.ordinal+": "+flags.join(", "));
+      }
+      if(issues.length)warnings.push("HUMAN group "+(group||"(unassigned)")+
+        " conflicts with "+issues.length+" locally scheduled reminders");
+      perGroup.set(group,issues);
+    }
+    reconcileProposal={fingerprint:reconcileFingerprint(),slots,rules,warnings,perRow,perGroup};
     $("workroomReconcileDetails").open=true;
     renderReconcilePreview();
     inform(warnings.length?"Selected HUMAN reminder changes held due to "+warnings.length+
       " local scheduling conflict/policy warnings. Adjust the original HUMAN workroom or select other rows.":
-      "Prepared "+slots.size+" exact local HUMAN reminder changes. Review every row and explicitly confirm to apply.",Boolean(warnings.length));
+      "Prepared "+slots.size+" exact HUMAN reminder changes and "+rules.size+
+      " declared group rules. Review each proposed row and explicitly confirm.",Boolean(warnings.length));
   }
   function applyWorkroomReconcile(){
     hold(active && reconcileProposal && !reconcileProposal.warnings.length &&
       workroomComparison && !capacityEditorDirty &&
       reconcileProposal.fingerprint===reconcileFingerprint());
-    const proposal=reconcileProposal.slots;
-    hold(proposal.size>0 && proposal.size<=32);
-    if(!confirm("Apply "+proposal.size+" selected HUMAN reminder changes from the compared PRIVATE workroom? "+
-      "Changes affect ONLY this local unsaved draft, NOT the original source, declared group policy, "+
-      "actual staff, security findings, consent, scope or external calendar. Removed reminders are NOT cancelled externally. "+
-      "Save the complete encrypted .luhw workroom separately afterward."))return;
+    const proposal=reconcileProposal.slots,updatedRules=reconcileProposal.rules;
+    hold(proposal.size<=32 && updatedRules.size<=12 &&
+      proposal.size+updatedRules.size>0);
+    if(!confirm("Apply "+proposal.size+" HUMAN reminder changes and "+updatedRules.size+
+      " DECLARED HUMAN group policy changes from the compared PRIVATE workroom? "+
+      "Changes affect ONLY this unsaved local draft, NOT actual people, original source, security results, "+
+      "consent, scope, risk or external calendars. Removed reminders are NOT cancelled externally. "+
+      "Explicitly save the complete encrypted .luhw workroom separately afterward."))return;
     hold(reconcileProposal && reconcileProposal.fingerprint===reconcileFingerprint() &&
       !reconcileProposal.warnings.length);
     const upcoming=new Map(plan);
@@ -1522,10 +1559,14 @@
       if(slot)upcoming.set(ordinal,{...slot});
       else upcoming.delete(ordinal);
     }
-    plan=upcoming;changed=true;exportedPlan=false;
-    reconcileProposal=null;reconcileSelection.clear();workroomComparePage=0;
-    page=0;render();
-    inform("Applied "+proposal.size+" reviewed PRIVATE HUMAN reminder edits locally. Save entire workroom; no external agenda, security action, or confirmation dispatched.");
+    const nextRules=new Map(capacityRules);
+    for(const [group,rule] of updatedRules)nextRules.set(group,admitCapacityRule(rule));
+    if(proposal.size){plan=upcoming;changed=true;exportedPlan=false;}
+    if(updatedRules.size){capacityRules=nextRules;capacityDirty=true;capacityLoadEditor();}
+    reconcileProposal=null;reconcileSelection.clear();reconcileGroupSelection.clear();
+    workroomComparePage=0;page=0;render();
+    inform("Applied "+proposal.size+" reviewed HUMAN appointment changes and "+updatedRules.size+
+      " declared group rules locally. Save complete encrypted workroom; no external agenda, security action, or confirmation dispatched.");
   }
   function renderWorkroomComparison(){
     const output=$("workroomCompareRows");if(!output)return;
@@ -1537,7 +1578,7 @@
         "Previous comparison cleared: PRIVATE schedule, declared group policy or editor changed.";
     }
     if(!workroomComparison){
-      reconcileProposal=null;reconcileSelection.clear();
+      reconcileProposal=null;reconcileSelection.clear();reconcileGroupSelection.clear();
       renderReconcilePreview();
       $("workroomCompareStatus").textContent="No compared PRIVATE HUMAN workroom loaded. Any earlier private comparison is no longer available.";
       $("comparePrev").disabled=true;$("compareNext").disabled=true;
@@ -1556,13 +1597,16 @@
       " · matching original worksheet bytes are UNSIGNED · no automatic changes.";
     for(const row of visible.slice(workroomComparePage*50,(workroomComparePage+1)*50)){
       const tr=dom("tr"),box=dom("input");
-      box.type="checkbox";box.disabled=row[0]!=="appointment" ||
-        workroomComparison.admitted.series!==seriesId;
-      const ordinal=Number(row[2].replace(/^#/,""));
-      box.checked=row[0]==="appointment"&&reconcileSelection.has(ordinal);
-      box.setAttribute("aria-label","Select original HUMAN appointment "+row[2]+" for local reconciliation");
+      box.type="checkbox";box.disabled=workroomComparison.admitted.series!==seriesId;
+      const isAppointment=row[0]==="appointment",ordinal=Number(row[2].replace(/^#/,""));
+      const group= row[2]==="(unassigned)"?"":row[2];
+      box.checked=isAppointment?reconcileSelection.has(ordinal):reconcileGroupSelection.has(group);
+      box.setAttribute("aria-label","Select PRIVATE HUMAN "+(isAppointment?"appointment ":"group policy ")+
+        row[2]+" for local reconciliation");
       box.addEventListener("change",()=>{
-        if(box.checked)reconcileSelection.add(ordinal);else reconcileSelection.delete(ordinal);
+        const selection=isAppointment?reconcileSelection:reconcileGroupSelection;
+        const key=isAppointment?ordinal:group;
+        if(box.checked)selection.add(key);else selection.delete(key);
         reconcileProposal=null;renderReconcilePreview();
       });
       const cell=dom("td");cell.append(box);tr.append(cell);
@@ -1591,7 +1635,7 @@
       if(!confirm("Compare an encrypted PRIVATE HUMAN workroom without changing original appointments or group policies? Matched source fingerprints are unsigned. The local differences may reveal private scheduling information."))return;
       hold(active && initial===workroomFingerprint() && !capacityEditorDirty);
       workroomComparison={fingerprint:initial,admitted};workroomComparePage=0;
-      reconcileSelection.clear();reconcileProposal=null;
+      reconcileSelection.clear();reconcileGroupSelection.clear();reconcileProposal=null;
       $("workroomCompareKind").value="all";$("workroomCompareQuery").value="";
       renderWorkroomComparison();
       $("compareWorkroomDetails").open=true;
@@ -1963,7 +2007,8 @@
       inform("Selected HUMAN local reconciliation rejected: preview/source/group policy changed.",true);}
   });
   hook("discardWorkroomReconcile","click",()=>{
-    reconcileSelection.clear();reconcileProposal=null;renderWorkroomComparison();
+    reconcileSelection.clear();reconcileGroupSelection.clear();reconcileProposal=null;
+    renderWorkroomComparison();
     inform("All provisional HUMAN comparison selections discarded; original plan unchanged.");
   });
   hook("workroomCompareKind","change",()=>{workroomComparePage=0;renderWorkroomComparison();});

@@ -245,3 +245,20 @@ appointment; use the existing manual calendar change desk separately.
 Any intervening plan, policy, editor or source change invalidates the
 comparison and preview. No external calendars, targets or identity providers
 are contacted.
+
+
+### Atomic HUMAN reminder and group-policy reconciliation
+
+The encrypted side-by-side PRIVATE comparison now supports selecting either
+original appointment differences or changes to self-declared HUMAN group
+availability (up to 32 appointments and 12 group policies). The preview
+combines both types into one proposed local workroom, checks all appointments
+against the resulting group weekday/hour/blackout/daily-cap rules, refuses
+new overlaps and original blocked-stage changes, and requires one explicit
+HUMAN confirmation before any local mutation. Group availability changes
+cannot trigger any real external staff permission; they are only PRIVATE
+planning fields. Both independent unsaved indicators are set appropriately,
+and users must manually save a fresh encrypted complete workroom to keep
+the combined changes. Source worksheet, client findings, actual grants,
+scan permissions, external calendars, previous published reminders and
+identity authentication are not changed.
