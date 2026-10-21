@@ -1027,7 +1027,7 @@
     if(!confirm("Download the complete source-bound PRIVATE HUMAN group availability policy? This contains HUMAN group labels, time windows and holiday dates. It is UNSIGNED and authorizes no assessment or external calendar access."))return;
     hold(snapshot===privateCapacityCSV());
     download(snapshot,"lightup-private-human-capacity.csv","text/csv;charset=utf-8");
-    capacityDirty=false;
+    capacityDirty=false;renderWorkspaceSaveStatus();
     capacityMessage("Source-bound PRIVATE HUMAN group rules downloaded. The source remains local; preserve this CSV securely.");
   }
   async function capacityImport(file){
@@ -1432,6 +1432,7 @@
         "Previous comparison cleared: PRIVATE schedule, declared group policy or editor changed.";
     }
     if(!workroomComparison){
+      $("workroomCompareStatus").textContent="No compared PRIVATE HUMAN workroom loaded. Any earlier private comparison is no longer available.";
       $("comparePrev").disabled=true;$("compareNext").disabled=true;
       $("exportWorkroomDiff").disabled=true;
       return;
