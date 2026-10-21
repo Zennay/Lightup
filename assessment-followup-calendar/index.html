@@ -32,6 +32,18 @@ and never publish. This is not authentication of the producer, consent or securi
 <label class="file">Open portable private workroom <input id="restorePortableVault" type="file" accept=".luhv,application/octet-stream"></label>
 </div>
 <p id="vaultStatus" class="subtle" role="status" aria-live="polite">Opening a valid portable vault does not require a worksheet to be loaded first.</p>
+<details id="vaultRekeyDetails"><summary>Change the passphrase for an existing portable PRIVATE vault</summary>
+<p>Enter the <strong>current</strong> vault passphrase above, then a different new passphrase below.
+The entire source-bound HUMAN workroom is admitted and encrypted locally using fresh parameters;
+your current open browser workspace is not replaced, edited or saved. Existing encrypted copies
+keep their old passphrases: revoke them separately according to your own retention policy.</p>
+<div class="row">
+<label>New portable vault passphrase <input type="password" id="vaultNewPassword" minlength="16" maxlength="256" autocomplete="off"></label>
+<label>Confirm new vault passphrase <input type="password" id="vaultNewConfirm" minlength="16" maxlength="256" autocomplete="off"></label>
+<label class="file">Rotate private encrypted vault <input id="rekeyPortableVault" type="file" accept=".luhv,application/octet-stream"></label>
+</div>
+<p class="subtle">No accounts, real identity, external calendars, client authority or verified security findings are established by passphrase rotation.</p>
+</details>
 </div>
 <p><button id="reset" type="button" class="ghost" disabled>Discard workroom</button> <span id="notice" role="status" aria-live="polite">Import a worksheet to begin.</span></p></section>
 <section id="desk" class="panel" hidden aria-labelledby="deskHeading">

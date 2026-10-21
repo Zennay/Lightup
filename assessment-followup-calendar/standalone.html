@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8tZQT62fVsQW17WfJwXhHBSHPNbev2i//wyho3VyNhs='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-BMIXyHoukbe90K4HmWR4/6CRxMN1CWDWNYqqowXJVfo='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -1638,6 +1638,63 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       clearVaultPasswords();
     }
   }
+  function portablePlanCSV(admitted){
+    hold(admitted && admitted.sourceRows.length>0 &&
+      /^[0-9a-f]{32}$/.test(admitted.series));
+    return makeCsv([PLAN_HEAD_V2,...admitted.sourceRows.map(row=>{
+      const slot=admitted.schedule.get(row.ordinal);
+      return [admitted.sourceHash,String(row.ordinal),slot?.day||"",
+        slot?.time||"",slot?.duration||"",slot?.reminder||"",zone,admitted.series];
+    })]);
+  }
+  function portableCapacityCSV(admitted){
+    const groups=Array.from(new Set(admitted.sourceRows.map(row=>row.group)))
+      .sort((a,b)=>a.localeCompare(b));
+    hold(groups.length<=256 && groups.length===admitted.policies.size);
+    return makeCsv([CAP_HEAD,...groups.map(group=>{
+      const rule=admitCapacityRule(admitted.policies.get(group));
+      return [admitted.sourceHash,admitted.series,zone,group,rule.days.join(";"),
+        rule.start,rule.end,String(rule.maximum),rule.blackouts.join(";")];
+    })]);
+  }
+  function clearVaultRekeyFields(){
+    $("vaultNewPassword").value="";$("vaultNewConfirm").value="";
+  }
+  async function rekeyPortableVault(file){
+    hold(crypto.subtle);
+    const oldPassword=$("vaultPassword").value,newPassword=$("vaultNewPassword").value,
+      confirmation=$("vaultNewConfirm").value;
+    hold(newPassword.length>=16 && newPassword.length<=256 &&
+      newPassword===confirmation && newPassword!==oldPassword);
+    let opened=null,plaintext=null;
+    try{
+      opened=await readPortableVault(file,oldPassword);
+      const originalPlan=portablePlanCSV(opened),originalCapacity=portableCapacityCSV(opened);
+      plaintext=vaultPack(opened.source,originalPlan,originalCapacity);
+      const salt=new Uint8Array(16),iv=new Uint8Array(12);
+      crypto.getRandomValues(salt);crypto.getRandomValues(iv);
+      const key=await handoffKey(newPassword,salt);
+      const cipher=new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv,additionalData:VAULT_AAD,tagLength:128},key,plaintext));
+      const output=new Uint8Array(VAULT_MAGIC.length+16+12+cipher.length);
+      output.set(VAULT_MAGIC,0);output.set(salt,6);
+      output.set(iv,22);output.set(cipher,34);
+      hold(output.length<=MAX_BYTES);
+      if(!confirm("Replace the PASSPHRASE of this separate portable PRIVATE HUMAN file for "+
+        opened.sourceRows.length+" original HUMAN rows and "+opened.schedule.size+
+        " proposed reminders? A fresh, independent encrypted file will be downloaded. "+
+        "The source, proposed appointments, group policy and current opened browser workroom "+
+        "are NOT modified. Older copies will STILL decrypt using the previous passphrase."))return;
+      download(output,"lightup-private-original-human-vault-rekeyed.luhv",
+        "application/octet-stream");
+      inform("Separately re-encrypted PRIVATE HUMAN source and complete workroom downloaded with a new "+
+        "passphrase. Old copies remain accessible under old credentials; current browser workroom unchanged.");
+    }finally{
+      if(plaintext)plaintext.fill(0);
+      if(opened)opened.source.fill(0);
+      clearVaultPasswords();clearVaultRekeyFields();
+    }
+  }
   async function savePortableVault(){
     hold(active && originalBytes && items.length>0 && !capacityEditorDirty && crypto.subtle &&
       /^[0-9a-f]{64}$/.test(hash));
@@ -2370,6 +2427,12 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     $("workroomCompareRows").replaceChildren();
     $("workroomCompareStatus").textContent="Compared HUMAN workroom forgotten from browser memory.";
   });
+  hook("rekeyPortableVault","change",async e=>{
+    try{if(e.target.files[0])await rekeyPortableVault(e.target.files[0]);}
+    catch(_){inform("PRIVATE encrypted portable vault passphrase change refused (HOLD). "+
+      "Confirm old/new passphrases, same original HUMAN source, capacity policy and file limit.",true);}
+    finally{e.target.value="";clearVaultPasswords();clearVaultRekeyFields();}
+  });
   hook("restorePortableVault","change",async e=>{
     try{if(e.target.files[0])await restorePortableVault(e.target.files[0]);}
     catch(_){inform("Portable PRIVATE ORIGINAL HUMAN vault rejected (HOLD)."+
@@ -2590,6 +2653,18 @@ and never publish. This is not authentication of the producer, consent or securi
 <label class="file">Open portable private workroom <input id="restorePortableVault" type="file" accept=".luhv,application/octet-stream"></label>
 </div>
 <p id="vaultStatus" class="subtle" role="status" aria-live="polite">Opening a valid portable vault does not require a worksheet to be loaded first.</p>
+<details id="vaultRekeyDetails"><summary>Change the passphrase for an existing portable PRIVATE vault</summary>
+<p>Enter the <strong>current</strong> vault passphrase above, then a different new passphrase below.
+The entire source-bound HUMAN workroom is admitted and encrypted locally using fresh parameters;
+your current open browser workspace is not replaced, edited or saved. Existing encrypted copies
+keep their old passphrases: revoke them separately according to your own retention policy.</p>
+<div class="row">
+<label>New portable vault passphrase <input type="password" id="vaultNewPassword" minlength="16" maxlength="256" autocomplete="off"></label>
+<label>Confirm new vault passphrase <input type="password" id="vaultNewConfirm" minlength="16" maxlength="256" autocomplete="off"></label>
+<label class="file">Rotate private encrypted vault <input id="rekeyPortableVault" type="file" accept=".luhv,application/octet-stream"></label>
+</div>
+<p class="subtle">No accounts, real identity, external calendars, client authority or verified security findings are established by passphrase rotation.</p>
+</details>
 </div>
 <p><button id="reset" type="button" class="ghost" disabled>Discard workroom</button> <span id="notice" role="status" aria-live="polite">Import a worksheet to begin.</span></p></section>
 <section id="desk" class="panel" hidden aria-labelledby="deskHeading">

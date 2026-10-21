@@ -356,3 +356,20 @@ restores the source's original HUMAN rows, the entire schedule, all
 group policies and private calendar event series without browser
 storage or servers. The browser does not authenticate the original
 CSV producer, true reviewer identity, actual consent or findings.
+
+
+### Offline portable-vault passphrase change
+
+Existing encrypted .luhv files may be locally re-encrypted to a **new,
+different** 16–256-character passphrase without opening/changing the
+current browser planning workroom and without needing the old worksheet
+as a separate file. The app first decrypts using the original passphrase,
+strictly readmits the complete byte-exact original HUMAN worksheet,
+every proposed appointment and every group rule, reserializes both
+source-bound components in the same stable series, and applies a new
+fresh salt/IV with the existing distinct portable-vault AES-GCM AAD.
+Only after explicit human confirmation is a newly encrypted file
+downloaded. Old portable files **are not revoked, rewritten or
+deleted**, so anyone retaining an old file/passphrase can still open it.
+Users must manage rotation/retention outside the browser. No grants,
+verified identity, security findings, calendar sync, scan or network use.

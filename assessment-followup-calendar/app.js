@@ -1590,6 +1590,63 @@
       clearVaultPasswords();
     }
   }
+  function portablePlanCSV(admitted){
+    hold(admitted && admitted.sourceRows.length>0 &&
+      /^[0-9a-f]{32}$/.test(admitted.series));
+    return makeCsv([PLAN_HEAD_V2,...admitted.sourceRows.map(row=>{
+      const slot=admitted.schedule.get(row.ordinal);
+      return [admitted.sourceHash,String(row.ordinal),slot?.day||"",
+        slot?.time||"",slot?.duration||"",slot?.reminder||"",zone,admitted.series];
+    })]);
+  }
+  function portableCapacityCSV(admitted){
+    const groups=Array.from(new Set(admitted.sourceRows.map(row=>row.group)))
+      .sort((a,b)=>a.localeCompare(b));
+    hold(groups.length<=256 && groups.length===admitted.policies.size);
+    return makeCsv([CAP_HEAD,...groups.map(group=>{
+      const rule=admitCapacityRule(admitted.policies.get(group));
+      return [admitted.sourceHash,admitted.series,zone,group,rule.days.join(";"),
+        rule.start,rule.end,String(rule.maximum),rule.blackouts.join(";")];
+    })]);
+  }
+  function clearVaultRekeyFields(){
+    $("vaultNewPassword").value="";$("vaultNewConfirm").value="";
+  }
+  async function rekeyPortableVault(file){
+    hold(crypto.subtle);
+    const oldPassword=$("vaultPassword").value,newPassword=$("vaultNewPassword").value,
+      confirmation=$("vaultNewConfirm").value;
+    hold(newPassword.length>=16 && newPassword.length<=256 &&
+      newPassword===confirmation && newPassword!==oldPassword);
+    let opened=null,plaintext=null;
+    try{
+      opened=await readPortableVault(file,oldPassword);
+      const originalPlan=portablePlanCSV(opened),originalCapacity=portableCapacityCSV(opened);
+      plaintext=vaultPack(opened.source,originalPlan,originalCapacity);
+      const salt=new Uint8Array(16),iv=new Uint8Array(12);
+      crypto.getRandomValues(salt);crypto.getRandomValues(iv);
+      const key=await handoffKey(newPassword,salt);
+      const cipher=new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv,additionalData:VAULT_AAD,tagLength:128},key,plaintext));
+      const output=new Uint8Array(VAULT_MAGIC.length+16+12+cipher.length);
+      output.set(VAULT_MAGIC,0);output.set(salt,6);
+      output.set(iv,22);output.set(cipher,34);
+      hold(output.length<=MAX_BYTES);
+      if(!confirm("Replace the PASSPHRASE of this separate portable PRIVATE HUMAN file for "+
+        opened.sourceRows.length+" original HUMAN rows and "+opened.schedule.size+
+        " proposed reminders? A fresh, independent encrypted file will be downloaded. "+
+        "The source, proposed appointments, group policy and current opened browser workroom "+
+        "are NOT modified. Older copies will STILL decrypt using the previous passphrase."))return;
+      download(output,"lightup-private-original-human-vault-rekeyed.luhv",
+        "application/octet-stream");
+      inform("Separately re-encrypted PRIVATE HUMAN source and complete workroom downloaded with a new "+
+        "passphrase. Old copies remain accessible under old credentials; current browser workroom unchanged.");
+    }finally{
+      if(plaintext)plaintext.fill(0);
+      if(opened)opened.source.fill(0);
+      clearVaultPasswords();clearVaultRekeyFields();
+    }
+  }
   async function savePortableVault(){
     hold(active && originalBytes && items.length>0 && !capacityEditorDirty && crypto.subtle &&
       /^[0-9a-f]{64}$/.test(hash));
@@ -2321,6 +2378,12 @@
     workroomComparison=null;workroomComparePage=0;
     $("workroomCompareRows").replaceChildren();
     $("workroomCompareStatus").textContent="Compared HUMAN workroom forgotten from browser memory.";
+  });
+  hook("rekeyPortableVault","change",async e=>{
+    try{if(e.target.files[0])await rekeyPortableVault(e.target.files[0]);}
+    catch(_){inform("PRIVATE encrypted portable vault passphrase change refused (HOLD). "+
+      "Confirm old/new passphrases, same original HUMAN source, capacity policy and file limit.",true);}
+    finally{e.target.value="";clearVaultPasswords();clearVaultRekeyFields();}
   });
   hook("restorePortableVault","change",async e=>{
     try{if(e.target.files[0])await restorePortableVault(e.target.files[0]);}
