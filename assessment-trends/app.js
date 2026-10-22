@@ -448,6 +448,7 @@
       snapshots.length?"No metrics match the selected group/flag filters.":"Import snapshots to summarize median shifts and source-flag prevalence.";
     $("metricTrendSummaryCsv").disabled=!rows.length;
     $("metricTrendSummaryJson").disabled=!rows.length;
+    $("metricTrendSummaryBrief").disabled=!rows.length;
   }
   function metricTrendSummaryPayload(){
     return {schema:"lightup.assessment_trends_metric_trend_summary.v1",status:summary().status,
@@ -457,8 +458,41 @@
       release_allowed:false,selected_group_filter:$("metricDistributionGroup").value,
       selected_flag_filter:$("metricTrendFlagFilter").value,rows:metricTrendSummaryRows()};
   }
+  function exportMetricTrendSummaryHtml(payload){
+    const headers=["Metric","Review group","Scenarios","First median candidate","Last median candidate",
+      "Net candidate shift","Peak candidate shift","Peak slot","First median delta","Last median delta",
+      "Net delta shift","Peak delta shift","Peak slot","Max flagged scenarios","Max flagged %",
+      "Slots with flags","Flagged scenario-slot observations"];
+    const values=payload.rows.map(r=>[r.metric,r.review_group,r.scenario_count,r.first_median_candidate,
+      r.last_median_candidate,r.net_median_candidate_shift,r.max_abs_median_candidate_shift,
+      r.max_candidate_shift_slot,r.first_median_delta,r.last_median_delta,r.net_median_delta_shift,
+      r.max_abs_median_delta_shift,r.max_delta_shift_slot,r.max_flagged_scenarios,
+      r.max_flagged_percent.toFixed(4)+"%",r.slots_with_flagged_scenarios,r.flagged_scenario_slot_observations]);
+    const table="<table><thead><tr>"+headers.map(v=>"<th scope='col'>"+esc(v)+"</th>").join("")+
+      "</tr></thead><tbody>"+values.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+
+      "</tr>").join("")+"</tbody></table>";
+    const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"+
+      `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'">`+
+      "<title>LightUp · Anonymous metric trend summary</title><style>"+
+      "body{font:14px/1.5 system-ui,sans-serif;margin:2rem;color:#17202a}h1{font-size:1.6rem}"+
+      ".hold{border:1px solid #8a6d3b;padding:1rem;margin:1rem 0}table{border-collapse:collapse;width:100%;font-size:12px}"+
+      "th,td{border:1px solid #bbb;padding:.4rem;text-align:left;vertical-align:top}th{background:#eee}"+
+      "@media print{body{margin:0}table{font-size:9px}tr{break-inside:avoid}}"+
+      "</style></head><body><h1>LightUp · Anonymous metric trend summary</h1>"+
+      "<p>Aggregate summaries of already-completed source reports. Selected slot order is manual, not authenticated chronology. Shifts do not prove remediation.</p>"+
+      "<p>Selected static group: "+esc(payload.selected_group_filter)+" · Flag filter: "+
+      esc(payload.selected_flag_filter)+" · Manual slots: "+payload.manual_slot_count+"</p>"+
+      "<div class='hold'><strong>"+esc(payload.status)+" · REVIEW ONLY / HOLD</strong><p>"+
+      "authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false · "+
+      "authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false</p></div>"+
+      table+"<p>No original scenario IDs, filenames, source hashes or HUMAN notes are included.</p></body></html>";
+    if(new Blob([html]).size>4*1024*1024)return;
+    download("assessment-trends-anonymous-metric-trend-summary-REVIEW-ONLY.html",html,"text/html");
+  }
   function exportMetricTrendSummary(format){
     const payload=metricTrendSummaryPayload();if(!payload.rows.length)return;
+    if(format==="html"){exportMetricTrendSummaryHtml(payload);return;}
     if(format==="json"){
       download("assessment-trends-anonymous-metric-trend-summary.json",
         JSON.stringify(payload,null,2)+"\n","application/json");return;
@@ -1221,7 +1255,7 @@
   function render(){
     const active=snapshots.length>0;
     for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson",
-      "metricTrendSummaryCsv","metricTrendSummaryJson"])$(id).disabled=!active;
+      "metricTrendSummaryCsv","metricTrendSummaryJson","metricTrendSummaryBrief"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
     $("noteMetric").replaceChildren();
     METRICS.forEach(name=>{const option=document.createElement("option");option.value=name;option.textContent=name;$("noteMetric").append(option);});
@@ -1240,7 +1274,7 @@
       $("metricDistributionSummary").textContent="Import snapshots to summarize numeric metric distributions.";
       $("metricTrendSummaryText").textContent="Import snapshots to summarize median shifts and source-flag prevalence.";
       $("metricDistributionCsv").disabled=$("metricDistributionJson").disabled=true;
-      $("metricTrendSummaryCsv").disabled=$("metricTrendSummaryJson").disabled=true;
+      $("metricTrendSummaryCsv").disabled=$("metricTrendSummaryJson").disabled=$("metricTrendSummaryBrief").disabled=true;
       renderHumanWorkPlan();
     }
     if(!active){updateStageBatchControls();$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
@@ -2122,6 +2156,7 @@
   $("metricTrendFlagFilter").addEventListener("change",renderMetricTrendSummary);
   $("metricTrendSummaryCsv").addEventListener("click",()=>exportMetricTrendSummary("csv"));
   $("metricTrendSummaryJson").addEventListener("click",()=>exportMetricTrendSummary("json"));
+  $("metricTrendSummaryBrief").addEventListener("click",()=>exportMetricTrendSummary("html"));
   $("metricDistributionCsv").addEventListener("click",()=>exportMetricDistribution("csv"));
   $("metricDistributionJson").addEventListener("click",()=>exportMetricDistribution("json"));
   for(const filter of ["reviewKind","reviewGroup","reviewSlot","reviewStage"]){
