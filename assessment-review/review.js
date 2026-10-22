@@ -893,6 +893,7 @@
   $("plan-compare").addEventListener("click", compareSavedPlans);
   $("plan-clear").addEventListener("click", () => {invalidateReads();clearPlanComparison();});
   ["plan-before-file","plan-after-file"].forEach(id => $(id).addEventListener("change", () => {
+    invalidateReads();
     planDelta = null;
     renderPlanComparison();
     $("plan-status").textContent = "A selected file changed. Compare again to replace the previous result.";
@@ -932,6 +933,7 @@
     }
     if (!window.confirm("Move " + pending.length +
        " new regressed lab cases to human investigation? This is NOT assessment authorization.")) return;
+    invalidateReads();
     pending.forEach(c => {
       c.stage = "investigating";
       if (c.route === "unassigned") {
@@ -953,17 +955,20 @@
   $("queue-export-json").addEventListener("click", exportFilteredQueueJson);
   $("route").addEventListener("change", e => {
     if (!report || selected < 0 || !ROUTES.has(e.target.value)) return;
+    invalidateReads();
     report.cases[selected].route = e.target.value;
     render();
   });
   $("stage").addEventListener("change", e => {
     if (!report || selected < 0 || !STAGES.has(e.target.value)) return;
+    invalidateReads();
     report.cases[selected].stage = e.target.value; render();
   });
   $("due").addEventListener("change", e => {
     if (!report || selected < 0) return;
     const value = e.target.value;
     if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {e.target.value = ""; return;}
+    invalidateReads();
     report.cases[selected].due = value; renderOverview();
   });
   $("export-json").addEventListener("click", () => {
