@@ -6,6 +6,9 @@ import argparse
 from hashlib import sha256
 import json
 import os
+from types import SimpleNamespace
+
+import launchpad
 
 from launchpad import (
     Hold, MAX_ENDPOINTS, MAX_MANIFEST_BYTES, open_output_directory,
@@ -85,6 +88,25 @@ def run(args):
         args.ack_normalization, args.ack_replace,
     )
     output_fd, output_abs = open_output_directory(args.output_dir)
+    if args.handoff_dir:
+        try:
+            handoff_fd, handoff_abs = open_output_directory(args.handoff_dir)
+            try:
+                shared = os.path.commonpath((output_abs, handoff_abs))
+                if shared in (output_abs, handoff_abs):
+                    raise Hold("handoff directory must be separate from combined output directory")
+                for original in originals:
+                    source_parent = os.path.dirname(original)
+                    source_shared = os.path.commonpath((handoff_abs, source_parent))
+                    if source_shared in (handoff_abs, source_parent):
+                        raise Hold("handoff directory must be separate from private source trees")
+                if not args.verify_output and os.listdir(handoff_fd):
+                    raise Hold("handoff output directory must be empty before publication")
+            finally:
+                os.close(handoff_fd)
+        except Exception:
+            os.close(output_fd)
+            raise
     try:
         for original in originals:
             parent = os.path.dirname(original)
@@ -112,6 +134,20 @@ def run(args):
             publish_bundle(output_fd, [(name, files[name]) for name in FILES])
     finally:
         os.close(output_fd)
+    if args.handoff_dir:
+        if args.verify_output:
+            launchpad.verify_existing(args.handoff_dir)
+            handoff_fd, _ = open_output_directory(args.handoff_dir)
+            try:
+                if read_private_bundle_item(handoff_fd, MANIFEST, MAX_MANIFEST_BYTES) != files[MANIFEST]:
+                    raise Hold("private handoff does not match exact combined source")
+            finally:
+                os.close(handoff_fd)
+        else:
+            # This only creates local preview-only artifacts, never runs the displayed command.
+            # If this second publication fails, the separate combined source remains owner-private.
+            launchpad.run(SimpleNamespace(manifest=os.path.join(output_abs, MANIFEST),
+                                           output_dir=args.handoff_dir))
     status = "REOPENED_REVIEW_ONLY" if args.verify_output else "PUBLISHED_REVIEW_ONLY"
     print(status + " · " + str(counts["result_endpoints"]) +
           " isolated-lab endpoint slots · no assessment, consent, target contact or authorization")
@@ -124,6 +160,7 @@ def main(argv=None):
     parser.add_argument("--second-manifest", required=True, help="incoming source manifest (0600)")
     parser.add_argument("--mode", choices=("append", "replace"), required=True)
     parser.add_argument("--output-dir", required=True, help="separate existing private output directory (0700)")
+    parser.add_argument("--handoff-dir", help="optional second separate empty 0700 directory for complete PREVIEW-ONLY launchpad bundle")
     parser.add_argument("--ack-normalization", action="store_true", help="allow source comments/whitespace to be omitted")
     parser.add_argument("--ack-replace", action="store_true", help="explicitly accept discarding first manifest endpoints")
     parser.add_argument("--verify-output", action="store_true", help="read-only strict reopen against both original sources")
@@ -133,7 +170,7 @@ def main(argv=None):
         return run(args)
     except Hold as error:
         report_hold("LAB_MANIFEST_COMBINE_HOLD — private source or original lab policy not admitted", error, args.explain_hold)
-    except (OSError, ValueError, UnicodeError) as error:
+    except (OSError, ValueError, TypeError, ImportError, UnicodeError, OverflowError, RecursionError) as error:
         report_hold("LAB_MANIFEST_COMBINE_HOLD — filesystem or source parsing rejected", error, args.explain_hold)
     return 3
 
