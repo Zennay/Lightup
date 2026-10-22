@@ -55,6 +55,16 @@ Click **Explore fictional demo** to view four made-up candidate outputs for four
 - No reading disk other than explicitly picked files, and no DNS or HTTP APIs. CSP `connect-src 'none'`, `default-src 'none'` and SHA-256 hashes restrict the standalone artifact.
 - Stage remains **DRAFT/HOLD**. Original source-owner #177/#182/#829 repairs, independently authenticated client and operator consent plus revocation-at-action, complete existing exact-HEAD hosted and permanently named registered VPS CI, independent privacy/security review and explicit HUMAN GO remain unfulfilled release gates. **Do not merge or deploy to production.**
 
+## Spreadsheet-safe CSV serialization
+
+All candidate-matrix CSV downloads use the same serializer. It quotes every field,
+escapes embedded quotes, normalizes CR/LF in text values, and prefixes string cells
+with an apostrophe if they begin with a spreadsheet formula trigger (`=`, `+`,
+`-` or `@`), including after leading whitespace. Actual numeric values are not
+prefixed, so negative deltas remain numeric. This applies to aggregate, selected-pair,
+anonymous case/conflict and PRIVATE HUMAN round-history CSVs. These files remain
+unsigned review handoffs, not authenticated evidence or release decisions.
+
 ## Selected-pair numeric comparison CSV
 
 The metric panel now has **Export selected-pair metric comparison (CSV)**. Choose two distinct imported candidate slots; the export records the shared case count and, for each of the fifteen original metrics, both reported baseline aggregates, both candidate aggregates, second-minus-first deltas, adverse-case counts and the original source-flag crossover (first-only, second-only, both, neither). It records whether the baselines match and includes explicit REVIEW_ONLY, demo-provenance, source-order/source-identity and false-authority flags.
