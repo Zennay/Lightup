@@ -464,3 +464,60 @@ directory; output remains mode 0600 and is included in the strict exact-byte
 is explicitly not a completed review. This separate view does **not**
 authenticate the person associated with a role, prove that the proposed
 date is booked, authorize a scan or amend any original source.
+
+
+## 22 October 2026 — exact-day / source-kind HUMAN queue and PRIVATE spreadsheet
+
+The native portfolio now supports `--focus-day YYYY-MM-DD` (the actual
+originally proposed human review date, **not** an invented calendar day) and
+`--focus-kind KIND` (one of the six original fixed
+`source_kind` categories). Both may be combined with the existing
+`--focus-role`, `--focus-stage` and `--focus-bucket` to produce a
+small, private exact selection. Source agenda files are still admitted
+**completely** before any row filtering. The original *unfiltered* v1 and
+three-dimension focused-v2 packet schemas remain unchanged; the extra
+`view_selection` keys are included in v2 **only if** one of the new
+dimensions is actually requested.
+
+Add `--private-role-day-csv` to generate
+`assessment-portfolio-private-role-day.csv`: a source-minimal owner-only
+spreadsheet of each original proposed day × neutral role, the number of HUMAN
+items and original agendas, and PRIVATE source-slot ordinals. Unlike
+counts-only public aggregates, this opt-in row grouping is **PRIVATE**,
+even without source names, because dates and small counts reveal work context.
+Unscheduled items are retained under a blank day; empty selections create a
+header-only spreadsheet (not a completed-work conclusion). Its fields
+are fixed original enums/dates, integers and ordinals, with explicit
+`REVIEW_ONLY` labels. No identifiers, targets, raw source paths, sensitive
+HUMAN notes, URLs or network operations enter the CSV.
+
+```bash
+mkdir -m 700 /private/new-exact-day-planning
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --focus-day 2026-10-30 \
+  --focus-kind completed_lab_case_claim \
+  --private-day-brief \
+  --private-role-day-csv \
+  --private-human-workbook \
+  --private-calendar-clusters \
+  --output-dir /private/new-exact-day-planning \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+This combination creates the original four artifacts plus a PRIVATE
+day-brief HTML, grouped role/day CSV, role/day tentative ICS, local HUMAN
+worksheet, and a standalone scriptless HUMAN start page that links to
+**all** of those exact local artifacts. The original private output
+directory must already exist with mode 0700; individual outputs use exclusive
+0600 publication with complete exact-byte reopening. Repeat **all** options,
+original source order and the reference day with `--verify-output-dir`
+to readmit the same bundle without changes.
+
+This product proposes HUMAN discussion only. It does not book meetings,
+authenticate identities, verify findings, create consent, authorize live
+targets, grant privileges, dispatch work or schedule scanners. Client/operator
+consent, action-time revocation, independent privacy/security/source-owner
+review, original #177/#182/#829 gates, hosted and permanently named VPS CI and
+explicit HUMAN GO remain independent prerequisites for any future release.
