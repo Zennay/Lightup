@@ -31,6 +31,7 @@
   let lastIcsSequence=0;
   let recipientPage=0;
   let recipientProposal=null;
+  let recipientSelection=new Set();
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -473,15 +474,26 @@
     const body=$("recipientProposalRows");body.replaceChildren();
     if(recipientProposal && recipientProposal.identity!==recipientProposalIdentity())
       recipientProposal=null;
-    $("recipientApply").disabled=!recipientProposal;
+    $("recipientApply").disabled=!recipientProposal||!recipientSelection.size;
+    $("recipientProposalExport").disabled=!recipientProposal||!recipientSelection.size;
     if(!recipientProposal){
       $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
       return;
     }
-    $("recipientProposalSummary").textContent=recipientProposal.slots.size+
-      " tentative HUMAN moves prepared; current plan and external calendars unchanged.";
+    $("recipientProposalSummary").textContent=recipientSelection.size+" of "+
+      recipientProposal.slots.size+" tentative HUMAN moves selected for HUMAN review; "+
+      "current plan and external calendars unchanged.";
     for(const [ordinal,slot] of recipientProposal.slots){
       const row=items[ordinal-1],old=plan.get(ordinal),tr=dom("tr");
+      const choice=dom("input");choice.type="checkbox";
+      choice.checked=recipientSelection.has(ordinal);
+      choice.setAttribute("aria-label","Include HUMAN ordinal #"+ordinal+" in PRIVATE handoff and apply");
+      choice.addEventListener("change",()=>{
+        if(choice.checked)recipientSelection.add(ordinal);
+        else recipientSelection.delete(ordinal);
+        renderRecipientProposal();
+      });
+      const cell=dom("td");cell.append(choice);tr.append(cell);
       tr.append(dom("td","#"+ordinal),dom("td",old.day+" "+old.time),
         dom("td",slot.day+" "+slot.time),dom("td",row.group||"(unassigned)"));
       body.append(tr);
@@ -536,13 +548,40 @@
     }
     hold(identity===recipientProposalIdentity());
     recipientProposal={identity,slots:changes};
+    recipientSelection=new Set(changes.keys());
     renderRecipientProposal();$("recipientProposalDetails").open=true;
     inform("Prepared "+changes.size+" review-only HUMAN cross-zone moves; inspect before confirmation.");
+  }
+  function exportRecipientProposal(){
+    hold(active&&recipientProposal&&!capacityEditorDirty &&
+      recipientProposal.identity===recipientProposalIdentity());
+    const selected=[...recipientProposal.slots].filter(([ordinal])=>
+      recipientSelection.has(ordinal));
+    hold(selected.length>0&&selected.length<=12);
+    if(!confirm("Download "+selected.length+" selected, still-unapplied PRIVATE HUMAN common-hours proposals? Contains unsigned source SHA, unverified owner groups and both dates. HUMAN review only; external calendar events, scope, consent and findings remain unchanged."))return;
+    hold(recipientProposal&&recipientProposal.identity===recipientProposalIdentity());
+    const rows=[["worksheet_sha256_unsigned","private_series_unsigned","source_zone",
+      "recipient_zone_unverified","original_ordinal","human_group_unverified",
+      "previous_local_date","previous_local_time","proposed_local_date",
+      "proposed_local_time","duration_minutes","reminder_minutes",
+      "authority","consent","verified","applied"]];
+    const target=recipientFormatter().resolvedOptions().timeZone;
+    for(const [ordinal,next] of selected){
+      const old=plan.get(ordinal),row=items[ordinal-1];
+      hold(old&&row&&row.ordinal===ordinal);
+      rows.push([hash,seriesId,zone,target,ordinal,row.group,old.day,old.time,
+        next.day,next.time,next.duration,next.reminder,
+        "false","false","false","false"]);
+    }
+    download(makeCsv(rows),"lightup-private-human-common-hours-proposals.csv",
+      "text/csv;charset=utf-8");
+    inform("Selected PRIVATE HUMAN planning proposals saved locally, not applied or sent.");
   }
   function applyRecipientProposal(){
     hold(active&&recipientProposal&&!capacityEditorDirty &&
       recipientProposal.identity===recipientProposalIdentity());
-    const changedSlots=recipientProposal.slots,simulated=new Map(plan);
+    const changedSlots=new Map([...recipientProposal.slots].filter(([id])=>
+      recipientSelection.has(id))),simulated=new Map(plan);
     hold(changedSlots.size>0&&changedSlots.size<=12);
     for(const [ordinal,slot] of changedSlots){
       const row=items[ordinal-1],previous=simulated.get(ordinal);
@@ -551,8 +590,12 @@
       hold(eventDate(admitted.day,admitted.time)>eventDate(previous.day,previous.time));
       simulated.set(ordinal,admitted);
     }
-    const collisions=collisionIds(simulated),prior=collisionIds();
-    hold(Array.from(collisions).every(ordinal=>prior.has(ordinal)));
+    const intervals=eventIntervals(simulated);
+    for(const [ordinal] of changedSlots){
+      const current=intervals.find(e=>e.ordinal===ordinal);
+      hold(current&&!intervals.some(e=>e.ordinal!==ordinal &&
+        current.start<e.end&&e.start<current.end));
+    }
     const daily=new Map();
     for(const row of items){
       const slot=simulated.get(row.ordinal);if(!slot)continue;
@@ -566,7 +609,8 @@
     }
     if(!confirm("Apply exactly "+changedSlots.size+" PRIVATE HUMAN draft reminder moves? These are NON-authorizing proposals using ONLY illustrative recipient 09–17 hours and locally declared source-group availability. Previously exported external appointments are NOT updated or cancelled."))return;
     hold(recipientProposal&&recipientProposal.identity===recipientProposalIdentity());
-    plan=simulated;recipientProposal=null;changed=true;exportedPlan=false;
+    plan=simulated;recipientProposal=null;recipientSelection.clear();
+    changed=true;exportedPlan=false;
     page=0;agendaPage=0;render();$("recipientProposalDetails").open=false;
     inform("PRIVATE HUMAN planning moved locally. Save a new source-bound plan and manually reconcile any previous calendar imports.");
   }
@@ -2825,7 +2869,12 @@
     catch(err){recipientProposal=null;renderRecipientProposal();
       inform("PRIVATE HUMAN cross-zone move refused without changes (HOLD).",true);}
   });
-  hook("recipientDiscard","click",()=>{recipientProposal=null;renderRecipientProposal();
+  hook("recipientProposalExport","click",()=>{
+    try{exportRecipientProposal();}
+    catch(_){inform("PRIVATE common-hours proposal export refused (HOLD).",true);}
+  });
+  hook("recipientDiscard","click",()=>{recipientProposal=null;recipientSelection.clear();
+    renderRecipientProposal();
     $("recipientProposalDetails").open=false;inform("Unapplied HUMAN proposals discarded.");});
   hook("recipientZone","input",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientView","change",()=>{recipientPage=0;renderRecipientZone();});
