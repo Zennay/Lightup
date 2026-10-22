@@ -341,18 +341,32 @@
     const sorted=[...values].sort((a,b)=>a-b),middle=Math.floor(sorted.length/2);
     return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
   }
+  // Linear interpolation at (n - 1) * p defines quartiles for every cohort size.
+  function quantile(sorted,p){
+    const position=(sorted.length-1)*p,lower=Math.floor(position),upper=Math.ceil(position);
+    return sorted[lower]+(sorted[upper]-sorted[lower])*(position-lower);
+  }
   function metricDistributionRows(){
     const chosen=$("metricDistributionGroup").value,rows=[];
+    const reference=new Map(METRICS.map(name=>{
+      const values=scenarioIds.map(id=>snapshots[0].cases.get(id).metrics.get(name));
+      return [name,{candidate:median(values.map(v=>v.candidate)),delta:median(values.map(v=>v.delta))}];
+    }));
     snapshots.forEach((report,index)=>METRICS.forEach(name=>{
       const group=family(name);if(chosen!=="all"&&chosen!==group)return;
       const values=scenarioIds.map(id=>report.cases.get(id).metrics.get(name));
       const candidates=values.map(v=>v.candidate).sort((a,b)=>a-b);
       const deltas=values.map(v=>v.delta).sort((a,b)=>a-b);
+      const cq1=quantile(candidates,.25),cq3=quantile(candidates,.75);
+      const dq1=quantile(deltas,.25),dq3=quantile(deltas,.75);
+      const mc=median(candidates),md=median(deltas),base=reference.get(name);
       rows.push({manual_slot:index+1,metric:name,review_group:group,scenario_count:values.length,
-        flagged_scenarios:values.filter(v=>v.regression).length,
-        median_candidate:median(candidates),min_candidate:candidates[0],max_candidate:candidates.at(-1),
-        median_delta:median(deltas),min_delta:deltas[0],max_delta:deltas.at(-1),
-        source_snapshot_status:report.status});
+        flagged_scenarios:values.filter(v=>v.regression).length,median_candidate:mc,
+        q1_candidate:cq1,q3_candidate:cq3,candidate_iqr:cq3-cq1,
+        min_candidate:candidates[0],max_candidate:candidates[candidates.length-1],
+        median_delta:md,q1_delta:dq1,q3_delta:dq3,delta_iqr:dq3-dq1,
+        median_candidate_shift_from_slot_01:mc-base.candidate,
+        median_delta_shift_from_slot_01:md-base.delta,source_snapshot_status:report.status});
     }));
     return rows;
   }
@@ -360,14 +374,17 @@
     const rows=metricDistributionRows();
     drawTable("metricDistribution",
       ["Manual slot","Metric","Static review group","Scenarios","Flagged scenarios",
-       "Median candidate","Candidate min","Candidate max","Median Δ","Δ min","Δ max","Source status"],
+       "Median candidate","Candidate Q1","Candidate Q3","Candidate IQR","Candidate min","Candidate max",
+       "Median Δ","Δ Q1","Δ Q3","Δ IQR","Median candidate shift vs slot 01","Median Δ shift vs slot 01","Source status"],
       rows.map(r=>[r.manual_slot,r.metric,r.review_group,r.scenario_count,
         cell(r.flagged_scenarios,r.flagged_scenarios?"cell-adverse":"cell-neutral"),
-        fmt(r.median_candidate),fmt(r.min_candidate),fmt(r.max_candidate),
-        fmt(r.median_delta),fmt(r.min_delta),fmt(r.max_delta),r.source_snapshot_status]));
+        fmt(r.median_candidate),fmt(r.q1_candidate),fmt(r.q3_candidate),fmt(r.candidate_iqr),
+        fmt(r.min_candidate),fmt(r.max_candidate),fmt(r.median_delta),fmt(r.q1_delta),
+        fmt(r.q3_delta),fmt(r.delta_iqr),fmt(r.median_candidate_shift_from_slot_01),
+        fmt(r.median_delta_shift_from_slot_01),r.source_snapshot_status]));
     $("metricDistributionSummary").textContent=rows.length?
       "Showing "+rows.length+" aggregate metric/slot rows across "+scenarioIds.length+
-      " anonymous scenarios. Median uses the middle value(s); ranges are descriptive only. Order is manual, not chronology.":
+      " anonymous scenarios. Quartiles use linear interpolation at (n−1)×p; IQR is Q3−Q1. Median shifts compare against manual slot 01 only. These summaries are descriptive; order is not chronology.":
       snapshots.length?"No metrics match the selected static review group.":
       "Import snapshots to summarize numeric metric distributions.";
     $("metricDistributionCsv").disabled=!rows.length;
@@ -387,10 +404,11 @@
         JSON.stringify(payload,null,2)+"\n","application/json");return;
     }
     const columns=["schema","selected_group_filter","manual_slot_order","manual_slot","metric","review_group",
-      "scenario_count","flagged_scenarios","median_candidate","min_candidate","max_candidate",
-      "median_delta","min_delta","max_delta","source_snapshot_status","overall_status",
-      "fictional_demo_only","authenticated_chronology","source_metrics_independently_verified",
-      "remediation_verified",...FLAGS];
+      "scenario_count","flagged_scenarios","median_candidate","q1_candidate","q3_candidate","candidate_iqr",
+      "min_candidate","max_candidate","median_delta","q1_delta","q3_delta","delta_iqr",
+      "median_candidate_shift_from_slot_01","median_delta_shift_from_slot_01","min_delta","max_delta",
+      "source_snapshot_status","overall_status","fictional_demo_only","authenticated_chronology",
+      "source_metrics_independently_verified","remediation_verified",...FLAGS];
     const lines=[columns.map(csvField).join(","),...payload.rows.map(row=>columns.map(key=>
       csvField(key==="overall_status"?payload.status:
         Object.prototype.hasOwnProperty.call(row,key)?row[key]:
