@@ -29,23 +29,52 @@ def fail() -> None:
     raise ValueError("HOLD: invalid private input or incompatible standalone source")
 
 
-def read_private(path: Path, maximum: int) -> bytes:
-    # Refuse symlinks, directories, devices, shared source and mutable races.
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
-    fd = os.open(path, flags)
+def open_parent_nofollow(path: Path) -> tuple[int, str]:
+    """Pin every parent component as a directory; never follow path aliases."""
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        fail()
+    absolute = os.path.abspath(os.fspath(path))
+    parent, name = os.path.split(absolute)
+    if not name or name in (".", ".."):
+        fail()
+    fd = os.open(os.sep, os.O_RDONLY | os.O_DIRECTORY)
     try:
-        info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
-            fail()
-        if info.st_mode & 0o077 or info.st_size <= 0 or info.st_size > maximum:
-            fail()
-        with os.fdopen(os.dup(fd), "rb", closefd=True) as stream:
-            raw = stream.read(maximum + 1)
-        if len(raw) != info.st_size or len(raw) > maximum:
-            fail()
-        return raw
-    finally:
+        for component in (part for part in parent.split(os.sep) if part):
+            child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                            dir_fd=fd)
+            os.close(fd)
+            fd = child
+        return fd, name
+    except BaseException:
         os.close(fd)
+        raise
+
+
+def read_private(path: Path, maximum: int) -> bytes:
+    """Admit unchanged owner-private regular file without symlink/hard-link aliases."""
+    parent_fd, name = open_parent_nofollow(path)
+    try:
+        fd = os.open(
+            name, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=parent_fd,
+        )
+    finally:
+        os.close(parent_fd)
+    with os.fdopen(fd, "rb") as stream:
+        before = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
+                or stat.S_IMODE(before.st_mode) != 0o600 or before.st_nlink != 1
+                or not 0 < before.st_size <= maximum):
+            fail()
+        raw = stream.read(maximum + 1)
+        after = os.fstat(stream.fileno())
+        signature = lambda info: (
+            info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
+            info.st_ctime_ns, info.st_uid, info.st_mode, info.st_nlink,
+        )
+        if len(raw) != before.st_size or signature(before) != signature(after):
+            fail()
+    return raw
 
 
 def no_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
@@ -224,19 +253,42 @@ def main(argv: list[str]) -> int:
     if draft is not None:
         admit_private_draft(draft, catalog, reports)
     private_html = create_bundle(catalog, reports, html, draft).encode("utf-8")
+    # Re-admit all original source bytes immediately before publication.
+    for original_path, expected, limit in [
+        (args.catalog, catalog, CATALOG_LIMIT),
+        *[(path, raw, REPORT_LIMIT) for path, raw in zip(args.report, reports)],
+        *([(args.human_draft, draft, DRAFT_LIMIT)] if draft is not None else []),
+    ]:
+        if read_private(original_path, limit) != expected:
+            fail()
     output = args.output
-    if output.suffix.lower() != ".html" or output.is_symlink():
+    if output.suffix.lower() != ".html":
         fail()
-    # O_EXCL / 0600; never overwrite another operator document.
-    fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    parent_fd, name = open_parent_nofollow(output)
+    created = False
     try:
-        with os.fdopen(fd, "wb", closefd=True) as stream:
-            stream.write(private_html)
-            stream.flush()
-            os.fsync(stream.fileno())
-    except BaseException:
-        output.unlink(missing_ok=True)
-        raise
+        info = os.fstat(parent_fd)
+        if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
+                or stat.S_IMODE(info.st_mode) != 0o700):
+            fail()
+        fd = os.open(
+            name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600,
+            dir_fd=parent_fd,
+        )
+        created = True
+        try:
+            with os.fdopen(fd, "wb", closefd=True) as stream:
+                os.fchmod(stream.fileno(), 0o600)
+                stream.write(private_html)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.fsync(parent_fd)
+        except BaseException:
+            if created:
+                os.unlink(name, dir_fd=parent_fd)
+            raise
+    finally:
+        os.close(parent_fd)
     print("PRIVATE offline HTML workroom created (original inputs unchanged).")
     print("Not a scan, consent, authorization or production release.")
     return 0
