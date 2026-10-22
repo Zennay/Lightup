@@ -67,3 +67,6 @@ Export the filtered matrix as anonymous CSV, JSON or a script-free printable HTM
 
 
 The local-only drilldown can also filter the scenarios behind one selected metric and adjacent manual-slot pair by flag state. “Open trajectory” switches the existing anonymous scenario view and HUMAN commentary editor to that scenario; it does not export original IDs or change any review stage. The drilldown is tab-memory-only and has no network or authorization behavior.
+
+
+The transition drilldown also exports only its currently filtered anonymous cases as CSV, JSON or script-free printable HTML. These handoffs contain a local anonymous scenario ordinal (never the original scenario ID), selected metric/group, manual slot pair, flag state, reported values and literal false authorization/verification fields. They do not include original filenames, source hashes or HUMAN notes and do not assert that a missing flag is a verified fix.
