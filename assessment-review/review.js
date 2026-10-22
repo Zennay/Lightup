@@ -237,12 +237,11 @@
     $("pending").textContent = String(report.cases.filter(c => c.stage !== "reviewed").length);
     $("source-hash").textContent = digest ? "Local source SHA-256: " + digest : "Source hash unavailable in this browser; no provenance assertion.";
   }
-  function renderQueue() {
+  function filteredQueueRows() {
+    if (!report) return [];
     const filter = $("filter").value;
     const routeFilter = $("route-filter").value;
-    const parent = $("cases");
-    parent.replaceChildren();
-    const sorted = report.cases.map((c, i) => ({c, i}))
+    return report.cases.map((c, i) => ({c, i}))
       .filter(({c}) => routeFilter === "all" || c.route === routeFilter)
       .filter(({c}) => !metricFocus || c.regressions.includes(metricFocus))
       .filter(({c}) => filter === "all" ||
@@ -251,6 +250,17 @@
         (filter === "waiting" && c.stage === "waiting") ||
         (filter === "reviewed" && c.stage === "reviewed"))
       .sort((a,b) => urgency(a.c) - urgency(b.c) || a.i - b.i);
+  }
+  function renderQueue() {
+    const parent = $("cases");
+    parent.replaceChildren();
+    const sorted = filteredQueueRows();
+    $("queue-export-summary").textContent = sorted.length
+      ? "Filtered export includes " + sorted.length + " of " + report.cases.length +
+        " cases. Current status, workstream and metric filters are applied; raw scenario IDs stay excluded."
+      : "No cases match the current filters; filtered exports are disabled.";
+    $("queue-export-csv").disabled = !sorted.length;
+    $("queue-export-json").disabled = !sorted.length;
     $("no-matches").hidden = sorted.length > 0;
     for (const {c, i} of sorted) {
       const row = child(parent, "button", "", "case" + (i === selected ? " selected" : ""));
@@ -494,6 +504,88 @@
       alert("HOLD · Unsupported, oversized, inconsistent or malformed local report. No partial review imported.", "error");
     }
   }
+  function filteredQueueExport() {
+    const rows = filteredQueueRows();
+    return {
+      schema: "lightup-offline-human-triage-filtered-v1",
+      source_sha256: digest,
+      source_kind: sourceKind,
+      source_status: report.verdict,
+      filters: {
+        case_status: $("filter").value,
+        workstream: $("route-filter").value,
+        metric: metricFocus || "all"
+      },
+      authorized: false,
+      consent_verified: false,
+      dispatch_allowed: false,
+      release_allowed: false,
+      release_approved: false,
+      scan_allowed: false,
+      review_only: true,
+      case_count: rows.length,
+      cases: rows.map(({c,i}) => ({
+        case: label(i),
+        priority: priority(c),
+        source_status: c.status,
+        metric_regressions: c.regressions.slice().sort(),
+        human_stage: c.stage,
+        follow_up_date: c.due || null,
+        routing_group: c.route,
+        suggested_human_action: nextHumanAction(c)
+      })),
+      warning: "FILTERED UNSIGNED OFFLINE HUMAN PLANNING ONLY. No source identity, remediation, consent or execution authority is asserted."
+    };
+  }
+  function exportFilteredQueueJson() {
+    if (!report) return;
+    const output = filteredQueueExport();
+    if (!output.case_count) {
+      $("queue-export-summary").textContent = "Nothing exported: no cases match the current filters.";
+      return;
+    }
+    download("lightup-human-follow-up-filtered-queue.json",
+      JSON.stringify(output, null, 2) + "\n", "application/json");
+    $("queue-export-summary").textContent = "Exported " + output.case_count +
+      " filtered case(s) as anonymous JSON. No raw scenario IDs or source evidence included.";
+  }
+  function exportFilteredQueueCsv() {
+    if (!report) return;
+    const output = filteredQueueExport();
+    if (!output.case_count) {
+      $("queue-export-summary").textContent = "Nothing exported: no cases match the current filters.";
+      return;
+    }
+    const columns = ["case","priority","source_status","metric_regressions","human_stage",
+      "follow_up_date","routing_group","suggested_human_action","source_sha256","source_kind",
+      "overall_source_status","filter_case_status","filter_workstream","filter_metric",
+      "authorized","consent_verified","dispatch_allowed","release_allowed","release_approved","scan_allowed"];
+    const lines = [columns.map(csvCell).join(",")];
+    for (const item of output.cases) {
+      const row = {...item,
+        metric_regressions: item.metric_regressions.join(";"),
+        follow_up_date: item.follow_up_date || "",
+        source_sha256: output.source_sha256 || "",
+        source_kind: output.source_kind,
+        overall_source_status: output.source_status,
+        filter_case_status: output.filters.case_status,
+        filter_workstream: output.filters.workstream,
+        filter_metric: output.filters.metric,
+        authorized: false,
+        consent_verified: false,
+        dispatch_allowed: false,
+        release_allowed: false,
+        release_approved: false,
+        scan_allowed: false
+      };
+      lines.push(columns.map(key => csvCell(row[key])).join(","));
+    }
+    download("lightup-human-follow-up-filtered-queue.csv",
+      lines.join("\r\n") + "\r\n", "text/csv;charset=utf-8");
+    $("queue-export-summary").textContent = "Exported " + output.case_count +
+      " filtered case(s) as anonymous CSV. Formula-leading cells are escaped; authority flags remain false.";
+  }
+
   function reviewExport() {
     const rows = report.cases.map((c,i) => ({
       case: label(i), priority: priority(c), source_status: c.status,
@@ -733,6 +825,8 @@
   $("clear").addEventListener("click", reset);
   $("filter").addEventListener("change", renderQueue);
   $("route-filter").addEventListener("change", renderQueue);
+  $("queue-export-csv").addEventListener("click", exportFilteredQueueCsv);
+  $("queue-export-json").addEventListener("click", exportFilteredQueueJson);
   $("route").addEventListener("change", e => {
     if (!report || selected < 0 || !ROUTES.has(e.target.value)) return;
     report.cases[selected].route = e.target.value;

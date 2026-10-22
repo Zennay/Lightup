@@ -73,3 +73,8 @@ When the saved-plan comparison is active, **Print brief** includes the same
 changed-only planning table and transition totals alongside the complete
 current all-case follow-up brief. Clearing the comparison removes its delta
 from the print output; the original lab verdict and current plan remain intact.
+
+
+## Filtered queue handoff
+
+The queue has separate CSV and JSON export actions that reuse the exact on-screen status, workstream and metric filters. They export only the currently visible cases, in the same informational priority order, with anonymous ordinal labels, source-reported metric names, local HUMAN stage/date/routing labels and static suggested follow-up guidance. The handoff records the selected filters and literal false authorization, consent, dispatch, release, approval and scan flags. CSV cells use the existing formula-prefix guard. Raw scenario IDs, hostnames, client/operator names, source evidence and notes are excluded. An empty filtered view produces no file; the all-case exports remain available separately. This is an unsigned planning handoff, not proof of remediation, identity, permission or release.
