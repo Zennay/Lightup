@@ -310,7 +310,7 @@ def main(argv=None):
     parser.add_argument("--ack-normalization", action="store_true", help="allow source comments/whitespace to be omitted")
     parser.add_argument("--ack-replace", action="store_true", help="explicitly accept discarding first manifest endpoints")
     parser.add_argument("--verify-output", action="store_true", help="read-only strict reopen against both original sources")
-    parser.add_argument("--dry-run", action="store_true", help="show counts only after original scope admission, without creating files")
+    parser.add_argument("--dry-run", action="store_true", help="show admitted counts and optional source-slot ordinals without creating files")
     parser.add_argument("--explain-hold", action="store_true", help="print curated reasons; never endpoint/path values")
     args = parser.parse_args(argv)
     try:
