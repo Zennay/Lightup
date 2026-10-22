@@ -9,7 +9,7 @@ import json
 import os
 import sys
 
-from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
+from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold
 from review_desk import (
     load_json, read_original_bundle, require_private_file, validate_worksheet,
 )
@@ -162,6 +162,8 @@ def main(argv=None):
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--output-dir", help="new separate owner-private mode-0700 directory")
     mode.add_argument("--verify-editor-dir", help="read-only reopen existing private editor")
+    parser.add_argument("--explain-hold", action="store_true",
+                        help="print the curated non-sensitive HOLD reason; never prints paths, endpoint values or raw exceptions")
     args = parser.parse_args(argv)
     try:
         original, endpoints, digest = read_original_bundle(args.bundle_dir)
@@ -197,9 +199,13 @@ def main(argv=None):
         print("HUMAN_EDITOR_" + ("REOPENED" if args.verify_editor_dir else "CREATED") +
               " — PRIVATE LOCAL ONLY, UNSIGNED; NOT AUTHORIZED")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
-        print("HUMAN_EDITOR_HOLD — original packet or HUMAN source could not be admitted",
-              file=sys.stderr)
+    except Hold as error:
+        report_hold("HUMAN_EDITOR_HOLD — original packet or HUMAN source could not be admitted",
+                    error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
+        report_hold("HUMAN_EDITOR_HOLD — original packet or HUMAN source could not be admitted",
+                    None, args.explain_hold)
         return 3
 
 if __name__ == "__main__":

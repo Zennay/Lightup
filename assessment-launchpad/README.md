@@ -20,7 +20,7 @@ python3 assessment-launchpad/launchpad.py \
   --output-dir ~/private-lab-launchpad-output
 ```
 
-The CLI checks the Git blob hashes of the pinned original `cli.py`, `labrun.py`, `labeval.py`, `scope.py` and `models.py` before loading the original `_admit_explicit_lab_url` and `LabScenario`. `LabScenario` invokes the original isolated loopback/private-lab `ScopePolicy`. No DNS resolution or target connection is made. If a local admission returns HOLD, `--explain-hold` prints only the curated reason; filesystem paths, endpoint values and raw exception details remain withheld. This flag does not relax or bypass any admission gate.
+The CLI checks the Git blob hashes of the pinned original `cli.py`, `labrun.py`, `labeval.py`, `scope.py` and `models.py` before loading the original `_admit_explicit_lab_url` and `LabScenario`. `LabScenario` invokes the original isolated loopback/private-lab `ScopePolicy`. No DNS resolution or target connection is made. If a local admission returns HOLD, `--explain-hold` prints only the curated reason; filesystem paths, endpoint values and raw exception details remain withheld. This flag does not relax or bypass any admission gate. The same opt-in diagnostic is available on `workspace.py`, `review_desk.py`, `editor.py`, `routing.py` and `advance.py` for consistent troubleshooting across the offline HUMAN workflow.
 
 The command requires an owner-owned input regular file with mode `0600`, no symlink/hard-link alias, bounded stable contents (16 KiB), and 1–16 distinct endpoints. The output directory must already exist, be owned by the current user and have mode `0700`. Outputs are exclusive no-overwrite files with mode `0600`; failed bundle publication removes newly created outputs.
 

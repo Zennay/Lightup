@@ -31,6 +31,14 @@ STYLE = """body{font:15px/1.5 system-ui,sans-serif;max-width:1000px;margin:2rem 
 class Hold(Exception):
     pass
 
+def report_hold(prefix, error=None, explain=False):
+    """Report a safe HOLD summary and optionally its curated reason, never raw exception details."""
+    print(prefix, file=sys.stderr)
+    if explain:
+        reason = str(error) if isinstance(error, Hold) else (
+            "filesystem, parsing or source-admission error; raw details withheld")
+        print("HOLD_REASON: " + reason, file=sys.stderr)
+
 def open_directory_nofollow(path):
     if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
         raise Hold("platform lacks required no-follow support")
@@ -430,17 +438,13 @@ def main(argv=None):
             raise Hold("creation needs a manifest and private output directory")
         return run(args)
     except Hold as error:
-        print("LAB_LAUNCHPAD_HOLD — private manifest or original lab gate was not admitted", file=sys.stderr)
-        if args.explain_hold:
-            # Hold messages above are deliberately curated and never interpolate source paths or endpoint values.
-            print("HOLD_REASON: " + str(error), file=sys.stderr)
+        report_hold("LAB_LAUNCHPAD_HOLD — private manifest or original lab gate was not admitted",
+                    error, args.explain_hold)
         return 3
     except (OSError, ValueError, TypeError, ImportError, UnicodeError,
             OverflowError, RecursionError):
-        # Raw exceptions can contain local paths or private data; never echo them, even in explain mode.
-        print("LAB_LAUNCHPAD_HOLD — private manifest or original lab gate was not admitted", file=sys.stderr)
-        if args.explain_hold:
-            print("HOLD_REASON: filesystem, parsing or source-admission error; raw details withheld", file=sys.stderr)
+        report_hold("LAB_LAUNCHPAD_HOLD — private manifest or original lab gate was not admitted",
+                    None, args.explain_hold)
         return 3
 
 if __name__ == "__main__":

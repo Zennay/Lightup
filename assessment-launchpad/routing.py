@@ -13,7 +13,7 @@ import json
 import os
 import sys
 
-from launchpad import FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item
+from launchpad import FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold
 from review_desk import ROLES, STAGES, read_original_bundle
 from compare_review import read_round
 
@@ -112,6 +112,8 @@ def main(argv=None):
     destination = parser.add_mutually_exclusive_group(required=True)
     destination.add_argument("--output-dir", help="NEW separate mode-0700 directory")
     destination.add_argument("--verify-routing-dir", help="read-only reopen a completed routing desk")
+    parser.add_argument("--explain-hold", action="store_true",
+                        help="print the curated non-sensitive HOLD reason; never prints paths, endpoint values or raw exceptions")
     args = parser.parse_args(argv)
     try:
         original_dir, endpoints, digest = read_original_bundle(args.bundle_dir)
@@ -147,9 +149,13 @@ def main(argv=None):
               " role=" + args.role + " stage=" + args.stage +
               " — HUMAN PLANNING ONLY; UNSIGNED; NO AUTHORIZATION OR EXECUTION")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
-        print("PRIVATE_HUMAN_ROUTING_HOLD — source-bound inputs not admitted",
-              file=sys.stderr)
+    except Hold as error:
+        report_hold("PRIVATE_HUMAN_ROUTING_HOLD — source-bound inputs not admitted",
+                    error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
+        report_hold("PRIVATE_HUMAN_ROUTING_HOLD — source-bound inputs not admitted",
+                    None, args.explain_hold)
         return 3
 
 if __name__ == "__main__":

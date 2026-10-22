@@ -15,7 +15,7 @@ import stat
 import sys
 
 from launchpad import (
-    FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item,
+    FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold,
     run as run_launchpad, verify_existing, validate_endpoints, MAX_MANIFEST_BYTES,
 )
 from review_desk import (
@@ -329,18 +329,13 @@ def main(argv=None):
               "TARGET ACTIVITY OR COMMAND EXECUTION")
         return 0
     except Hold as error:
-        print("PRIVATE_HUMAN_WORKSPACE_HOLD — private packet not admitted; "
-              "do not use any partial output as valid", file=sys.stderr)
-        if args.explain_hold:
-            # Workspace and composed Launchpad/HUMAN Hold messages are curated and do not interpolate private values.
-            print("HOLD_REASON: " + str(error), file=sys.stderr)
+        report_hold("PRIVATE_HUMAN_WORKSPACE_HOLD — private packet not admitted; do not use any partial output as valid",
+                    error, args.explain_hold)
         return 3
     except (OSError, ValueError, TypeError, UnicodeError, ImportError,
             OverflowError, EOFError, KeyboardInterrupt):
-        print("PRIVATE_HUMAN_WORKSPACE_HOLD — private packet not admitted; "
-              "do not use any partial output as valid", file=sys.stderr)
-        if args.explain_hold:
-            print("HOLD_REASON: filesystem, parsing or source-admission error; raw details withheld", file=sys.stderr)
+        report_hold("PRIVATE_HUMAN_WORKSPACE_HOLD — private packet not admitted; do not use any partial output as valid",
+                    None, args.explain_hold)
         return 3
 
 if __name__ == "__main__":

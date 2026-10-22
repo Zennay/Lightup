@@ -14,7 +14,7 @@ from html import escape
 import os
 import sys
 
-from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
+from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold
 from review_desk import (
     FILE_NAMES as REVIEW_FILES, ROLES, STAGES, load_json, make_artifacts,
     read_original_bundle, require_private_file, validate_worksheet, interactive_review,
@@ -269,6 +269,8 @@ def main(argv=None):
                         help="optional latest HUMAN stage filter; requires --handoff-role")
     parser.add_argument("--handoff-slot", type=int, action="append",
                         help="optional minimal original slot subset for selected role; repeat as needed")
+    parser.add_argument("--explain-hold", action="store_true",
+                        help="print the curated non-sensitive HOLD reason; never prints paths, endpoint values or raw exceptions")
     args = parser.parse_args(argv)
     try:
         if (args.handoff_stage != "ALL" or args.handoff_slot) and args.handoff_role is None:
@@ -449,10 +451,14 @@ def main(argv=None):
               " human_changed_slots=" + str(changed) +
               " — REVIEW_ONLY; NOT AUTHORIZED; NO TARGET ACTIVITY")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError,
+    except Hold as error:
+        report_hold("PRIVATE_HUMAN_NEXT_ROUND_HOLD — original or HUMAN inputs not admitted; partial output is not valid",
+                    error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, ImportError,
             OverflowError, EOFError, KeyboardInterrupt):
-        print("PRIVATE_HUMAN_NEXT_ROUND_HOLD — original or HUMAN inputs not admitted; "
-              "partial output is not valid", file=sys.stderr)
+        report_hold("PRIVATE_HUMAN_NEXT_ROUND_HOLD — original or HUMAN inputs not admitted; partial output is not valid",
+                    None, args.explain_hold)
         return 3
 
 if __name__ == "__main__":

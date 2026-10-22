@@ -19,7 +19,7 @@ import unicodedata
 
 from launchpad import (
     FLAGS, Hold, MAX_MANIFEST_BYTES, open_output_directory, publish_bundle,
-    read_private_bundle_item, unique_pairs, reject_constant, verify_existing,
+    read_private_bundle_item, unique_pairs, reject_constant, verify_existing, report_hold,
 )
 
 SCHEMA = "lightup.assessment_launchpad_human_worksheet.v1"
@@ -227,6 +227,8 @@ def main(argv=None):
     parser.add_argument("--responses", help="optional existing owner-private HUMAN worksheet JSON")
     parser.add_argument("--interactive", action="store_true",
                         help="edit admitted HUMAN stage/role/private notes on a local TTY")
+    parser.add_argument("--explain-hold", action="store_true",
+                        help="print the curated non-sensitive HOLD reason; never prints paths, endpoint values or raw exceptions")
     args = parser.parse_args(argv)
     try:
         if args.verify_review_dir and (args.responses or args.interactive):
@@ -272,10 +274,14 @@ def main(argv=None):
               " endpoint_count=" + str(len(endpoints)) +
               " — PRIVATE HUMAN REVIEW ONLY; UNSIGNED; NO AUTHORIZATION OR EXECUTION")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError,
+    except Hold as error:
+        report_hold("HUMAN_LAUNCHPAD_HOLD — original bundle or private human review not admitted",
+                    error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, ImportError,
             OverflowError, EOFError, KeyboardInterrupt):
-        print("HUMAN_LAUNCHPAD_HOLD — original bundle or private human review not admitted",
-              file=sys.stderr)
+        report_hold("HUMAN_LAUNCHPAD_HOLD — original bundle or private human review not admitted",
+                    None, args.explain_hold)
         return 3
 
 if __name__ == "__main__":
