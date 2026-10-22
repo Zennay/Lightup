@@ -25,6 +25,7 @@ FILES = (
     "lightup-lab-human-return-reconciliation-private.html",
     "lightup-lab-human-return-reconciliation-private.csv",
     "lightup-lab-human-unreturned-private.csv",
+    "lightup-lab-human-role-worklist-private.csv",
     "lightup-lab-human-return-reconciliation-counts.json",
     "START-HERE-RECONCILIATION-PRIVATE.txt",
 )
@@ -101,6 +102,33 @@ def render_files(replies, rounds, endpoints):
     missing_csv.writerow(("original_slot", "latest_suggested_role",
                           "last_self_reported_human_stage"))
     missing_csv.writerows(unreturned)
+    current = {record[0]: record for record in records}
+    actions = {
+        "NEEDS_INPUT": "COLLECT_MISSING_HUMAN_INPUT",
+        "HUMAN_REVIEW": "SCHEDULE_HUMAN_REVIEW",
+        "FOLLOW_UP": "FOLLOW_UP_WITH_HUMAN_OWNER",
+    }
+    work = []
+    for ordinal, prior in enumerate(before, 1):
+        returned = current.get(ordinal)
+        stage = returned[3] if returned else prior["stage"]
+        status = "ROLE_REPLY_RECEIVED" if returned else "AWAITING_HUMAN_ROLE_REPLY"
+        work.append((ordinal, prior["role"], status, stage,
+                     actions[stage] if returned else "REQUEST_HUMAN_ROLE_REPLY",
+                     returned[5] if returned else "NOT_RETURNED"))
+    work.sort(key=lambda row: (0 if row[2] == "AWAITING_HUMAN_ROLE_REPLY" else 1,
+                               0 if row[3] == "NEEDS_INPUT" else 1,
+                               row[0]))
+    work_sink = io.StringIO(newline="")
+    work_csv = csv.writer(work_sink, lineterminator="\n")
+    work_csv.writerow(("original_slot", "latest_suggested_role",
+                       "private_human_reply_status", "latest_self_reported_human_stage",
+                       "suggested_operator_next_step", "private_note_changed"))
+    work_csv.writerows(work)
+    work_rows = "".join(
+        "<tr>" + "".join("<td>" + escape(str(cell)) + "</td>" for cell in row)
+        + "</tr>" for row in work
+    )
     missing_html = "".join(
         "<tr>" + "".join("<td>" + escape(str(cell)) + "</td>" for cell in row)
         + "</tr>" for row in unreturned
@@ -131,6 +159,10 @@ def render_files(replies, rounds, endpoints):
         },
         "changed_human_stage_count": sum(row[4] == "YES" for row in records),
         "changed_private_note_count": sum(row[5] == "YES" for row in records),
+        "next_human_actions": {
+            action: sum(row[4] == action for row in work)
+            for action in ("REQUEST_HUMAN_ROLE_REPLY", *actions.values())
+        },
         "role_packets": counts,
         "authentication_verified": False,
         "authorization_granted": False,
@@ -167,6 +199,14 @@ def render_files(replies, rounds, endpoints):
         "<table><thead><tr><th>Original slot</th><th>Last suggested HUMAN role</th>"
         "<th>Last self-reported HUMAN stage</th></tr></thead><tbody>" +
         missing_html + "</tbody></table></section>"
+        "<section><h2>PRIVATE next HUMAN actions</h2>"
+        "<p>Owner-only suggested actions based on original HUMAN self-report."
+        " Missing recipient answers remain visible even if previous stage"
+        " was HUMAN_REVIEW. No endpoint URL or PRIVATE note text included.</p>"
+        "<table><thead><tr><th>Original slot</th><th>Suggested role</th>"
+        "<th>Role reply</th><th>HUMAN stage</th><th>Suggested HUMAN next step</th>"
+        "<th>Note changed?</th></tr></thead><tbody>" + work_rows +
+        "</tbody></table></section>"
         "<p>Only exact source-bound local HUMAN self-reports were combined; "
         "this is not recipient authentication, remediation proof, scope approval, "
         "client or operator consent, action-time revocation, a scan permit "
@@ -179,7 +219,8 @@ def render_files(replies, rounds, endpoints):
         "This is an UNSIGNED local source-bound HUMAN self-report summary.\n"
         "Every source packet was re-admitted against the exact original source.\n"
         "Both original-ordinal CSV files omit endpoint URLs and private note text.\n"
-        "The UNRETURNED CSV lists local original slots not selected by any return.\n"
+        "The UNRETURNED CSV lists local original slots not selected by any return.\n"        "The PRIVATE HUMAN worklist CSV proposes only fixed, non-authorizing\n"
+        "human follow-up actions based on original untrusted review stages.\n"
         "An older HUMAN stage, including HUMAN_REVIEW, never proves response.\n"
         "Small cohorts, roles and ordinal combinations may remain identifying.\n"
         "Counts-only JSON provides no real proof of review, consent or safety.\n"
@@ -191,7 +232,8 @@ def render_files(replies, rounds, endpoints):
                              separators=(",", ":")) + "\n").encode("utf-8")
     return dict(zip(FILES, (
         html, sink.getvalue().encode("utf-8"),
-        missing_sink.getvalue().encode("utf-8"), json_bytes, guide)))
+        missing_sink.getvalue().encode("utf-8"),
+        work_sink.getvalue().encode("utf-8"), json_bytes, guide)))
 
 
 def main(argv=None):

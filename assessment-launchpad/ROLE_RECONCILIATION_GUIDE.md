@@ -36,7 +36,7 @@ python3 assessment-launchpad/role_return_reconcile.py \
   --output-dir ~/private-human-reconciliation
 ```
 
-The result consists of exactly five exclusive mode-0600 files:
+The result consists of exactly six exclusive mode-0600 files:
 
 * `lightup-lab-human-return-reconciliation-private.html`: offline,
   scriptless, SHA-256 CSP-pinned table of suggested role, original **local
@@ -51,6 +51,14 @@ The result consists of exactly five exclusive mode-0600 files:
   private note content are included. An earlier HUMAN_REVIEW stage is **not**
   evidence that a human has returned anything. The PRIVATE HTML includes
   a separate attention table for these unreturned slots.
+* `lightup-lab-human-role-worklist-private.csv`: every original local slot,
+  whether its selected-role return is received, latest suggested HUMAN role
+  and stage, private-note-changed YES/NO, and one fixed operator follow-up
+  suggestion. Unreturned slots are first: REQUEST_HUMAN_ROLE_REPLY. Returned
+  stages map to COLLECT_MISSING_HUMAN_INPUT, SCHEDULE_HUMAN_REVIEW or
+  FOLLOW_UP_WITH_HUMAN_OWNER. These are **suggestions**, not new process gates
+  or proof that anyone completed a review. The same action queue is visible
+  as a separate table in the PRIVATE offline reconciliation HTML.
 * `lightup-lab-human-return-reconciliation-counts.json`: source-free
   overall change counts, suggested-role workload, nonreturned slot totals
   by fixed suggested role/stage, and explicitly negative
