@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-s+Nwx8qOA0ASBZe9ZQSE7sHD+btPL4fvL/zG9A5VSUs='; style-src 'sha256-1JmdbJ1AJ0hEcY4T8XvvX425VGOFoJwsxFFZWoJbkig='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-x7nhWPaz4X+Ab9ZNa7CABJD7xAAeqP4sId/P5Ix45uU='; style-src 'sha256-1JmdbJ1AJ0hEcY4T8XvvX425VGOFoJwsxFFZWoJbkig='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE manifest HUMAN follow-up</title>
 <style>:root{font-family:system-ui,-apple-system,sans-serif;color:#17212f;background:#f3f6fa;font-synthesis:none}*{box-sizing:border-box}body{max-width:1100px;margin:0 auto;padding:1.25rem;line-height:1.5}header,section{background:#fff;border:1px solid #d6dfeb;border-radius:14px;padding:1.1rem;margin-bottom:1rem}h1{font-size:clamp(1.7rem,4vw,2.4rem);line-height:1.15;margin:.35rem 0 .7rem}h2{font-size:1.15rem;margin:.1rem 0 .65rem}.eyebrow{font-size:.78rem;font-weight:800;letter-spacing:.09em;color:#46576e}.status{border-left:5px solid #a35b12;background:#fff4df;padding:.8rem 1rem;font-weight:800}.note{color:#4d5d71;font-size:.92rem}.controls{display:flex;gap:.7rem;align-items:end;flex-wrap:wrap}.field{display:grid;gap:.3rem;min-width:180px;flex:1}label{font-weight:700}input,select,button{font:inherit;border:1px solid #8c9bb0;border-radius:8px;padding:.6rem .7rem;background:white;color:inherit}button{cursor:pointer;font-weight:750;background:#173f70;color:white;border-color:#173f70}button.secondary{background:#fff;color:#173f70}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #dfaa45;outline-offset:2px}.summary{display:flex;gap:.6rem;flex-wrap:wrap;margin:.85rem 0}.pill{border:1px solid #d3dce8;border-radius:999px;padding:.3rem .7rem;font-weight:750;font-variant-numeric:tabular-nums;background:#f8fafc}.table-wrap{overflow-x:auto;border:1px solid #d6dfeb;border-radius:10px}table{border-collapse:collapse;width:100%;min-width:680px}th,td{text-align:left;padding:.65rem .7rem;border-bottom:1px solid #e3e9f0;vertical-align:middle}th{background:#f0f4f9;font-size:.88rem}tbody tr:last-child td{border-bottom:0}td:first-child{font-weight:800}td select{width:100%;min-width:155px}.empty{padding:1.3rem;text-align:center;color:#536174}.error{color:#8a261e;font-weight:750}.success{color:#225d3b;font-weight:750}footer{padding:.4rem .2rem 1.5rem;color:#4d5d71;font-size:.9rem}code{overflow-wrap:anywhere}@media(max-width:620px){body{padding:.6rem}.controls{display:grid;grid-template-columns:1fr}.field{min-width:0}header,section{padding:.85rem}}</style>
 </head>
@@ -18,11 +18,11 @@
 <section>
   <h2>1. Import the native change CSV</h2>
   <div class="controls">
-    <div class="field"><label for="csvFile">PRIVATE delta CSV (max 64 KiB)</label><input id="csvFile" type="file" accept=".csv,text/csv"></div>
+    <div class="field"><label for="csvFile">PRIVATE delta or saved follow-up CSV (max 64 KiB)</label><input id="csvFile" type="file" accept=".csv,text/csv"></div>
     <button id="clearAll" class="secondary" type="button">Clear local review</button>
   </div>
-  <p class="note">The page checks the exact column header, allowed change states, slot ordinals, row shape and REVIEW_ONLY marker. This is format validation only; the original native CLI remains responsible for source-bundle admission.</p>
-  <p id="status" role="status" aria-live="polite">Import a native delta CSV to begin. Nothing is sent or saved automatically.</p>
+  <p class="note">Import the native four-column delta CSV to start a review, or re-import this tool’s five-column HUMAN follow-up CSV to resume saved stages. The page checks exact headers, allowed states, slot ordinals, row shape and REVIEW_ONLY marker. This is format validation only; the original native CLI remains responsible for source-bundle admission.</p>
+  <p id="status" role="status" aria-live="polite">Import a native delta or a previously exported HUMAN follow-up CSV to begin. Nothing is sent or saved automatically.</p>
 </section>
 <section>
   <h2>2. Record HUMAN follow-up</h2>
@@ -76,15 +76,20 @@ function slot(value){
 function admitCsv(text){
  if(text.length===0)safeError("The selected CSV is empty.");
  if(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text))safeError("The CSV contains unsupported control characters.");
- const parsed=parseCsv(text),expected=["change_state","before_slot","after_slot","review_state"];
- if(!parsed.length||parsed[0].length!==expected.length||parsed[0].some((x,i)=>x!==expected[i]))safeError("Expected the exact native delta CSV header.");
- const data=parsed.slice(1);
+ const parsed=parseCsv(text),nativeHeader=["change_state","before_slot","after_slot","review_state"],humanHeader=["change_state","before_slot","after_slot","review_state","human_follow_up"];
+ const header=parsed[0]||[];
+ const resumed=header.length===humanHeader.length&&header.every((x,i)=>x===humanHeader[i]);
+ const native=header.length===nativeHeader.length&&header.every((x,i)=>x===nativeHeader[i]);
+ if(!native&&!resumed)safeError("Expected the exact native delta CSV header or a previously exported HUMAN follow-up CSV.");
+ const width=resumed?5:4,data=parsed.slice(1);
  if(data.length>MAX_ROWS)safeError("The delta has more rows than the native 16-slot manifest limit allows.");
  const seenBefore=new Set(),seenAfter=new Set(),seenRows=new Set(),result=[];
  for(const values of data){
-  if(values.length!==4)safeError("Every delta row must contain exactly four native fields.");
-  const [state,beforeText,afterText,review]=values;
+  if(values.length!==width)safeError("Every row must match the exact native or HUMAN follow-up CSV shape.");
+  const [state,beforeText,afterText,review,stageText]=values;
+  const stage=resumed?stageText:"NOT_REVIEWED";
   if(!CHANGE_STATES.includes(state)||review!=="REVIEW_ONLY")safeError("The CSV contains an unknown state or a non-REVIEW_ONLY source status.");
+  if(!STAGES.includes(stage))safeError("The CSV contains an unknown HUMAN follow-up stage.");
   const before=slot(beforeText),after=slot(afterText);
   if(state==="UNCHANGED"&&(before===null||after===null||before!==after))safeError("An UNCHANGED row must have matching before and after slots.");
   if(state==="MOVED"&&(before===null||after===null||before===after))safeError("A MOVED row must have two different slot ordinals.");
@@ -95,9 +100,9 @@ function admitCsv(text){
   const key=[state,beforeText,afterText,review].join("|");
   if(seenRows.has(key))safeError("The CSV repeats a change row.");
   if(before!==null)seenBefore.add(before);if(after!==null)seenAfter.add(after);seenRows.add(key);
-  result.push({state,before,after,review,stage:"NOT_REVIEWED"});
+  result.push({state,before,after,review,stage});
  }
- return result;
+ return {rows:result,resumed};
 }
 function render(){
  tableBody.replaceChildren();
@@ -137,8 +142,8 @@ fileInput.addEventListener("change",async()=>{
  try{
   const text=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
   const admitted=admitCsv(text);
-  entries=admitted;loaded=true;changeFilter.value="ALL";stageFilter.value="ALL";render();
-  setStatus("Native-shaped delta admitted locally. Review stages are human follow-up labels only; no source authenticity or authorization is established.","success");
+  entries=admitted.rows;loaded=true;changeFilter.value="ALL";stageFilter.value="ALL";render();
+  setStatus(admitted.resumed?"Previously exported HUMAN stages restored locally. Source status remains REVIEW_ONLY; no authorization is established.":"Native-shaped delta admitted locally. Stages start NOT_REVIEWED; no source authenticity or authorization is established.","success");
  }catch(error){
   entries=[];loaded=false;render();
   setStatus("CSV not admitted: "+(error&&error.safeMessage?error.safeMessage:"invalid UTF-8 or unreadable input."),"error");
