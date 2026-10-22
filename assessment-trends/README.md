@@ -33,6 +33,15 @@ Each file is the already-produced JSON object from assessment_runtime_compare_co
 
 The input is treated as untrusted and unauthenticated. Matching scenario IDs or baseline numbers is not proof that source files, measurement claims, chronology or lab environments are authentic.
 
+## Spreadsheet-safe CSV serialization
+
+Every CSV export uses one shared serializer. It quotes fields, doubles embedded quotes,
+normalizes CR/LF in text cells, and prefixes string values with an apostrophe when they
+begin with a spreadsheet formula trigger (`=`, `+`, `-` or `@`), including when
+leading whitespace comes first. Numeric JavaScript values remain numeric cells, so
+negative metric values are not converted into text. CSV output is still untrusted review
+data and must not be treated as an authenticated source or release decision.
+
 ## Handoff
 
 - Aggregate JSON: snapshot status/counts, per-metric flag counts, persistent/reappearing metric summaries and anonymous scenario-slot trajectories; no IDs, filenames, hashes or notes.
