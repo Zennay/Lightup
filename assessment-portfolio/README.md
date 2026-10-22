@@ -714,3 +714,56 @@ This draft remains INCUBATE M3/M7 · PLAN/LAB ONLY / DRAFT-HOLD until
 original source-owner, security/privacy, hosted/named-runner CI,
 #177/#182/#829, authenticated separate current client/operator consent,
 revocation-at-action and explicit HUMAN GO requirements are satisfied.
+
+
+## Interactive PRIVATE capacity scenario studio — browser-memory only
+
+The optional `--private-capacity-studio` flag generates
+`assessment-portfolio-private-capacity-studio.html` in the same
+owner-only source-bound output packet. It requires
+`--private-capacity-plan --daily-capacity N` and may start from the
+optional alternative declared capacity. No browser editor is produced
+without an explicit native original capacity admission.
+
+```bash
+mkdir -m 700 /private/human-capacity-studio-room
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --focus-from 2026-10-26 \
+  --focus-through 2026-11-01 \
+  --private-home \
+  --private-capacity-plan \
+  --daily-capacity 4 \
+  --alternate-daily-capacity 6 \
+  --private-capacity-studio \
+  --output-dir /private/human-capacity-studio-room \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+Open the generated PRIVATE start page and then the capacity studio. It
+contains only **strictly admitted original proposed dates, fixed role
+labels, counts and local ordinal links**, not original filenames, client
+identifiers, endpoints, private HUMAN notes or authorization claims.
+Locally adjust the first and alternative hypothetical HUMAN items/day
+for each fixed neutral role (integers 1–128). The browser recalculates
+both arithmetic scenario totals immediately, presents original row
+drilldowns, permits printing the PRIVATE screen and explicitly
+downloading a bounded PRIVATE comparison CSV. Invalid entries make the
+download unavailable rather than silently defaulting to a limit.
+The original native PRIVATE baseline/comparison artifacts are **not**
+overwritten by browser-memory edits. Reset restores exactly the initial
+native-assumed values; closing the page discards edits.
+
+This studio is a SHA-256 CSP-pinned **single local HTML file**: no
+external assets, storage, cookies, network, model, target calls, scan,
+grant, real calendar booking, authenticated recipient, consent or
+dispatch. Browser CSV downloads/prints may retain PRIVATE derived
+planning metadata and must not be shared without independent review.
+A smaller hypothetical excess is not a staffing conclusion or
+evidence of completed remediation. For persistent original-source-
+reproducible assumption changes, create a **new** separate 0700
+PRIVATE packet with the desired original native CLI flags. The
+immutable native packet can be reopened with the same options and
+`--verify-output-dir`, but edits made inside the browser studio are
+memory-only and are **not** represented as original native evidence.
