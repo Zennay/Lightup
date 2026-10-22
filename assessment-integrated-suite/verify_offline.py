@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 import stat
@@ -117,9 +118,65 @@ def sidecar_digest(sidecar: Path, package: Path) -> str:
     return match.group(1)
 
 
+def verify_source_checkout(source_root: Path, files: list[dict]) -> int:
+    """Compare packaged software bytes with an explicit local checkout, fail closed."""
+    root = reject_symlink_components(source_root)
+    try:
+        root_stat = root.lstat()
+    except OSError:
+        raise Hold("HOLD: explicit source checkout is unavailable") from None
+    if not stat.S_ISDIR(root_stat.st_mode) or stat.S_ISLNK(root_stat.st_mode):
+        raise Hold("HOLD: source checkout root must be an ordinary directory")
+
+    compared = 0
+    for item in files:
+        relative = item["source_path"]
+        candidate = reject_symlink_components(root / relative)
+        try:
+            fd = os.open(candidate, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
+                         getattr(os, "O_CLOEXEC", 0))
+        except OSError:
+            raise Hold("HOLD: source checkout member is missing or unsafe") from None
+        try:
+            with os.fdopen(fd, "rb") as stream:
+                before = os.fstat(stream.fileno())
+                try:
+                    path_before = candidate.lstat()
+                except OSError:
+                    raise Hold("HOLD: source checkout member changed during admission") from None
+                identity_before = (before.st_dev, before.st_ino, before.st_size,
+                                   before.st_mtime_ns, before.st_ctime_ns)
+                if (not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(path_before.st_mode) or
+                        not stat.S_ISREG(path_before.st_mode) or
+                        (path_before.st_dev, path_before.st_ino) != (before.st_dev, before.st_ino) or
+                        before.st_size != item["bytes"] or before.st_size > MAX_MEMBER):
+                    raise Hold("HOLD: source checkout member is unsafe or differs from package")
+                raw = stream.read(MAX_MEMBER + 1)
+                after = os.fstat(stream.fileno())
+                try:
+                    path_after = candidate.lstat()
+                except OSError:
+                    raise Hold("HOLD: source checkout member changed during read") from None
+                identity_after = (after.st_dev, after.st_ino, after.st_size,
+                                  after.st_mtime_ns, after.st_ctime_ns)
+                if (identity_before != identity_after or
+                        (path_after.st_dev, path_after.st_ino) != (after.st_dev, after.st_ino) or
+                        len(raw) != item["bytes"] or digest(raw) != item["sha256_unsigned"]):
+                    raise Hold("HOLD: package software is stale against the supplied source checkout")
+        except Hold:
+            raise
+        except OSError:
+            raise Hold("HOLD: source checkout member could not be read safely") from None
+        compared += 1
+    return compared
+
+
 def verify(path: Path, expected_sha256: str = "",
-           sha256_file: Path | None = None) -> int:
+           sha256_file: Path | None = None,
+           source_root: Path | None = None) -> int:
     path = reject_symlink_components(path)
+    if source_root is not None:
+        source_root = reject_symlink_components(source_root)
     if sha256_file is not None:
         sha256_file = reject_symlink_components(sha256_file)
     sidecar_value = sidecar_digest(sha256_file, path) if sha256_file else ""
@@ -243,6 +300,11 @@ def verify(path: Path, expected_sha256: str = "",
                     type(manifest["support_asset_count"]) is not int or
                     manifest["support_asset_count"] != support_count):
                 raise Hold("HOLD: declared studio/support counts do not match")
+            if source_root is not None:
+                compared = verify_source_checkout(source_root, files)
+                print("SOURCE CHECKOUT PARITY: " + str(compared) +
+                      " packaged software files match the explicit local checkout.")
+                print("This is local byte parity only; it does not authenticate authorship or provenance.")
     except Hold:
         raise
     except (OSError, BadZipFile, UnicodeDecodeError, json.JSONDecodeError,
@@ -266,12 +328,15 @@ def main() -> int:
                         help="optional expected ZIP digest from a separately trusted channel")
     parser.add_argument("--sha256-file", default="",
                         help="optional standard sha256sum sidecar bound to the package filename")
+    parser.add_argument("--source-root", default="",
+                        help="optional local checkout root; fail if packaged software bytes are stale")
     args = parser.parse_args()
     try:
         return verify(
             Path(args.package).absolute(),
             args.expected_sha256,
             Path(args.sha256_file).absolute() if args.sha256_file else None,
+            Path(args.source_root).absolute() if args.source_root else None,
         )
     except (Hold, OSError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: cannot read package",
