@@ -9,6 +9,7 @@ import os
 from types import SimpleNamespace
 
 import launchpad
+from source_board import render_board
 
 from launchpad import (
     Hold, MAX_ENDPOINTS, MAX_MANIFEST_BYTES, open_output_directory,
@@ -18,7 +19,8 @@ from launchpad import (
 
 MANIFEST = "lightup-lab-targets.txt"
 SUMMARY = "lightup-manifest-combine-private.json"
-FILES = {MANIFEST: MAX_MANIFEST_BYTES, SUMMARY: 4096}
+BOARD = "lightup-manifest-source-board-private.html"
+FILES = {MANIFEST: MAX_MANIFEST_BYTES, SUMMARY: 4096, BOARD: 16384}
 MAX_SOURCES = 8
 
 
@@ -85,7 +87,10 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
     receipt_bytes = (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode()
     if len(receipt_bytes) > FILES[SUMMARY]:
         raise Hold("private source receipt exceeds bound")
-    return originals, {MANIFEST:canonical, SUMMARY:receipt_bytes}, counts
+    artifacts = {MANIFEST:canonical, SUMMARY:receipt_bytes}
+    if len(opened) > 2:
+        artifacts[BOARD] = render_board(receipt)
+    return originals, artifacts, counts
 
 
 def run(args):
@@ -121,10 +126,10 @@ def run(args):
             if shared == output_abs or shared == parent:
                 raise Hold("output directory must be separate from both source trees")
         if args.verify_output:
-            if set(os.listdir(output_fd)) != set(FILES):
+            if set(os.listdir(output_fd)) != set(files):
                 raise Hold("existing combined output contains missing or extra files")
-            for name, limit in FILES.items():
-                if read_private_bundle_item(output_fd, name, limit) != files[name]:
+            for name, contents in files.items():
+                if read_private_bundle_item(output_fd, name, FILES[name]) != contents:
                     raise Hold("combined output drifted from exact re-admitted private sources")
         else:
             if os.listdir(output_fd):
