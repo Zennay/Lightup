@@ -230,3 +230,45 @@ scriptless 0600 HTML report in an existing owner-owned 0700 directory. It does
 not write decrypted JSON or HUMAN notes to disk. Manual order is not verified
 chronology; source absence is not deletion, remediation, revocation or
 clearance. Digest prefixes and HUMAN stage/hold categories remain sensitive.
+
+
+## Portable private lineage bundle (HTML + CSV + JSON)
+
+Both lineage commands accept `--bundle-output` **instead of** `--output`.
+This publishes one new, owner-only 0600 ZIP atomically through the same native
+private publisher, rather than publishing several separate files that could
+leave a partial export.
+
+Plaintext receipt declarations:
+
+~~~sh
+python3 assessment-retention-desk/source_history.py \
+  --bundle-output /private/operator/source-set-history.zip \
+  /private/operator/plan-01.json \
+  /private/operator/plan-02.json \
+  /private/operator/plan-03.json
+~~~
+
+Encrypted plans, without writing decrypted plan JSON to disk:
+
+~~~sh
+python3 assessment-retention-desk/vault_source_history.py \
+  --bundle-output /private/operator/encrypted-source-history.zip \
+  --source-file 1=/private/older/source-a.json \
+  --source-file 1=/private/older/source-b.json \
+  --source-file 2=/private/newer/source-a.json \
+  /private/operator/plan-before.lurt \
+  /private/operator/plan-after.lurt
+~~~
+
+The bounded ZIP contains the scriptless HTML, a complete flat CSV, a
+machine-readable JSON projection, privacy/evidence-boundary notes and an
+unsigned manifest with hashes of the report artifacts. The manifest protects
+against accidental local byte changes only; it is not a signature or source
+provenance. The exports deliberately omit original source paths, aliases,
+free-text actions, full source digests and source contents. Digest prefixes,
+plan dates, stages and hold/classification categories can still identify a
+small cohort, so the archive remains sensitive. Plan order is manual, and
+neither export mode authorizes retention changes, assessment, client contact,
+scanning, grants or release. The ZIP's entry modes are 0600; extract and store
+it only in owner-private storage.
