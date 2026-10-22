@@ -483,8 +483,8 @@
       "<p>Aggregate summaries of already-completed source reports. Selected slot order is manual, not authenticated chronology. Shifts do not prove remediation.</p>"+
       "<p>Selected static group: "+esc(payload.selected_group_filter)+" · Flag filter: "+
       esc(payload.selected_flag_filter)+" · Manual slots: "+payload.manual_slot_count+"</p>"+
-      "<div class='hold'><strong>"+esc(payload.status)+" · REVIEW ONLY / HOLD</strong><p>"+
-      "authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false · "+
+      "<div class='hold'><strong>"+esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+payload.status+" · REVIEW ONLY / HOLD")+"</strong><p>"+
+      "fictional_demo_only="+payload.fictional_demo_only+" · authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false · "+
       "authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false</p></div>"+
       table+"<p>No original scenario IDs, filenames, source hashes or HUMAN notes are included.</p></body></html>";
     if(new Blob([html]).size>4*1024*1024)return;
