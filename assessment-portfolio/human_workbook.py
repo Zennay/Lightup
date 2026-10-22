@@ -846,9 +846,11 @@ def render_private_timeline_html(rounds, reference_date):
         "<header><h1>PRIVATE HUMAN multi-round timeline</h1>"
         "<p><strong>INCUBATE / PLAN-LAB ONLY / DRAFT-HOLD / NO AUTHORIZATION / NO SCAN</strong></p>"
         "<p>Reference day: " + escape(reference_date) + ". " +
-        str(summary["round_count"]) + " rounds in manually supplied order. "
+        str(summary["round_count"]) + " rounds in manually supplied order across " +
+        str(summary["row_count"]) + " admitted rows. "
         "This order is not authenticated chronology; no note contents, source identifiers "
-        "or targets are included. Small-cell counts and ordinals remain PRIVATE.</p></header>"
+        "or targets are included. Small-cell counts and ordinals remain PRIVATE. "
+        "An empty selection is not evidence that work is complete.</p></header>"
         "<section><h2>Adjacent-round changes</h2><table border='1'><thead><tr>"
         "<th>Operator-supplied transition</th><th>Rows with any HUMAN field change</th>"
         "<th>Status changes</th><th>Proposed-role changes</th><th>Private-note changes</th>"
