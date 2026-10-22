@@ -95,7 +95,8 @@ def reject_constant(value: str) -> None:
 def finite_json_number(text: str) -> float:
     """No Infinity/underflow-to-zero ambiguity in original numerical claims."""
     number = float(text)
-    if not math.isfinite(number) or (number == 0.0 and any(ch in text.lower() for ch in "123456789")):
+    coefficient = text.lower().split("e", 1)[0]
+    if not math.isfinite(number) or (number == 0.0 and any("1" <= ch <= "9" for ch in coefficient)):
         fail()
     return number
 
