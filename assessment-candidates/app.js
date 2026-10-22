@@ -882,6 +882,13 @@
     const a=document.createElement("a");a.href=url;a.download=name;
     document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
   }
+  function csvField(value){
+    const raw=String(value).replace(/[\r\n]/g," ");
+    // Prefix formula-leading text only; numeric values, including negative deltas,
+    // stay numeric when spreadsheet applications infer CSV cell types.
+    const safe=typeof value==="string"&&/^[\s\uFEFF]*[=+\-@]/.test(raw)?"'"+raw:raw;
+    return '"'+safe.replace(/"/g,'""')+'"';
+  }
   function currentPairChurn(){
     const a=Number($("pairA").value),b=Number($("pairB").value);
     return Number.isSafeInteger(a)&&Number.isSafeInteger(b)&&a>=0&&b>=0&&
@@ -941,10 +948,6 @@
       "source_adverse_metrics_by_candidate","case_disposition","fictional_demo_only","report_status",
       "source_identity_authenticated","temporal_order_authenticated",
       "authorized","consent_verified","dispatch_allowed","release_allowed"];
-    const csvCell=value=>{
-      const text=String(value);
-      return /[",\r\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text;
-    };
     const rows=scenarioConflictRows().flatMap(row=>{
       const adverse=row.adverseByCandidate.map(item=>
         "Candidate "+item.slot+"="+item.metrics.join("|")).join("; ");
@@ -959,7 +962,7 @@
       });
     });
     download("lightup-candidate-scenario-conflicts-REVIEW-ONLY.csv",
-      [header,...rows].map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n","text/csv");
+      [header,...rows].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
     setStatus("Scenario review ledger exported locally. Candidate labels remain unverified; all authority flags are false.");
   }
   function exportCSV(){
@@ -978,7 +981,7 @@
       (paretoBySlot.get(r.candidate_slot)?.dominated_by_candidate_slots||[]).join("|"),
       pareto.selected_dimensions.join("|"),"false","false","false","false"]);
     download("lightup-candidate-aggregate-REVIEW-ONLY.csv",
-      head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
+      [head,...rows].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
   }
   function exportSelectedPairCSV(){
     if(!reports.length||!settings)return;
@@ -1010,7 +1013,6 @@
         "false","false","false","false","false","false"
       ];
     });
-    const csvField=value=>"\""+String(value).replace(/"/g,"\"\"")+"\"";
     const csv=[head,...rows].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n";
     download("lightup-candidate-pair-metrics-REVIEW-ONLY.csv",csv,"text/csv");
   }
@@ -1042,7 +1044,7 @@
         "false","false","false","REVIEW_ONLY"];
     });
     download("lightup-PRIVATE-anonymous-case-review-REVIEW-ONLY.csv",
-      head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
+      [head,...rows].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
     $("queueMessage").textContent="PRIVATE anonymous source-flag conversation CSV exported. Local handling required; no actual authorization or assignments.";
   }
   function exportHTML(){
@@ -1420,7 +1422,6 @@
           "true","false","false","false","false","false","false","REVIEW_ONLY"]);
       });
     }
-    const csvField=value=>'"'+String(value).replace(/"/g,'""')+'"';
     download("lightup-PRIVATE-HUMAN-review-round-history.csv",
       [header,...lines].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n",
       "text/csv");
