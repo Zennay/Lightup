@@ -18,7 +18,7 @@ import os
 import sys
 import unicodedata
 
-from launchpad import Hold, FLAGS, open_output_directory, publish_bundle, read_private_bundle_item
+from launchpad import Hold, FLAGS, open_output_directory, publish_bundle, read_private_bundle_item, report_hold
 from review_desk import ROLES, STAGES, read_original_bundle, require_private_file, validate_worksheet
 from history import admitted_rounds
 from role_handoff import NAMES as HANDOFF_NAMES, LIMIT, assemble, select
@@ -166,6 +166,7 @@ def main(argv=None):
     output = parser.add_mutually_exclusive_group(required=True)
     output.add_argument("--output-dir", help="separate empty owner-only 0700 destination")
     output.add_argument("--verify-output-dir", help="read-only exact original return reopen")
+    parser.add_argument("--explain-hold", action="store_true", help="print curated HOLD reason; raw paths, endpoint values and exceptions stay hidden")
     args = parser.parse_args(argv)
     try:
         if args.verify_output_dir and args.interactive:
@@ -231,9 +232,11 @@ def main(argv=None):
         print("PRIVATE_HUMAN_ROLE_RETURN_" + ("REOPENED" if args.verify_output_dir else "IMPORTED" if args.reply_file else "CAPTURED" if args.interactive else "PREPARED")
               + " slots=" + str(len(indices)) + " — UNSIGNED REVIEW_ONLY; NO AUTHORITY")
         return 0
-    except (Hold, OSError, ValueError, UnicodeError, TypeError, csv.Error, OverflowError, EOFError, KeyboardInterrupt):
-        print("PRIVATE_HUMAN_ROLE_RETURN_HOLD — refused invalid PRIVATE source or reply",
-              file=sys.stderr)
+    except Hold as error:
+        report_hold("PRIVATE_HUMAN_ROLE_RETURN_HOLD — refused invalid PRIVATE source or reply", error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, UnicodeError, TypeError, csv.Error, OverflowError, EOFError, KeyboardInterrupt):
+        report_hold("PRIVATE_HUMAN_ROLE_RETURN_HOLD — refused invalid PRIVATE source or reply", None, args.explain_hold)
         return 3
 
 

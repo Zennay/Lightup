@@ -11,7 +11,7 @@ import os
 import sys
 
 from launchpad import (
-    FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item,
+    FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold,
 )
 from review_desk import (
     FILE_NAMES, STAGES, ROLES, load_json, read_original_bundle,
@@ -145,6 +145,7 @@ def main(argv=None):
     output = parser.add_mutually_exclusive_group(required=True)
     output.add_argument("--output-dir")
     output.add_argument("--verify-delta-dir")
+    parser.add_argument("--explain-hold", action="store_true", help="print curated HOLD reason; raw paths, endpoint values and exceptions stay hidden")
     args = parser.parse_args(argv)
     try:
         original, endpoints, digest = read_original_bundle(args.bundle_dir)
@@ -183,9 +184,11 @@ def main(argv=None):
         print("HUMAN_DELTA_" + ("REOPENED" if args.verify_delta_dir else "CREATED") +
               " — REVIEW_ONLY, UNSIGNED; NO TARGET ACTION OR AUTHORIZATION")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
-        print("HUMAN_DELTA_HOLD — original source or HUMAN rounds not admitted",
-              file=sys.stderr)
+    except Hold as error:
+        report_hold("HUMAN_DELTA_HOLD — original source or HUMAN rounds not admitted", error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
+        report_hold("HUMAN_DELTA_HOLD — original source or HUMAN rounds not admitted", None, args.explain_hold)
         return 3
 
 if __name__ == "__main__":

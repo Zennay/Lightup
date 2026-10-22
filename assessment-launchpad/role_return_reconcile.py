@@ -16,7 +16,7 @@ import json
 import os
 import sys
 
-from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
+from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold
 from review_desk import STAGES, ROLES, read_original_bundle
 from history import admitted_rounds
 from role_return_receipt import admit_return
@@ -249,6 +249,7 @@ def main(argv=None):
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--output-dir", help="fresh existing empty mode-0700 destination")
     mode.add_argument("--verify-output-dir", help="read-only exact source-bound reopen")
+    parser.add_argument("--explain-hold", action="store_true", help="print curated HOLD reason; raw paths, endpoint values and exceptions stay hidden")
     args = parser.parse_args(argv)
     try:
         original, endpoints, digest = read_original_bundle(args.bundle_dir)
@@ -287,9 +288,11 @@ def main(argv=None):
               ("REOPENED" if args.verify_output_dir else "CREATED") +
               " — UNSIGNED HUMAN REVIEW_ONLY; NO AUTHORITY")
         return 0
-    except (Hold, OSError, ValueError, UnicodeError, TypeError, OverflowError, csv.Error):
-        print("PRIVATE_HUMAN_RECONCILIATION_HOLD — original source/return not admitted",
-              file=sys.stderr)
+    except Hold as error:
+        report_hold("PRIVATE_HUMAN_RECONCILIATION_HOLD — original source/return not admitted", error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, UnicodeError, TypeError, OverflowError, csv.Error):
+        report_hold("PRIVATE_HUMAN_RECONCILIATION_HOLD — original source/return not admitted", None, args.explain_hold)
         return 3
 
 

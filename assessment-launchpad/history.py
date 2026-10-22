@@ -16,7 +16,7 @@ import os
 import sys
 
 from launchpad import (
-    FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item,
+    FLAGS, Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold,
 )
 from review_desk import ROLES, STAGES, read_original_bundle
 from compare_review import read_round
@@ -471,6 +471,7 @@ def main(argv=None):
     destination = parser.add_mutually_exclusive_group(required=True)
     destination.add_argument("--output-dir", help="NEW owner-only 0700 directory")
     destination.add_argument("--verify-history-dir", help="read-only reopen prior output")
+    parser.add_argument("--explain-hold", action="store_true", help="print curated HOLD reason; raw paths, endpoint values and exceptions stay hidden")
     args = parser.parse_args(argv)
     try:
         source_dir, endpoints, digest = read_original_bundle(args.bundle_dir)
@@ -506,9 +507,11 @@ def main(argv=None):
               " source_slot_count=" + str(len(endpoints)) +
               " — MANUAL ORDER, UNSIGNED, NO AUTHORIZATION OR EXECUTION")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
-        print("PRIVATE_HUMAN_HISTORY_HOLD — original source or private rounds not admitted",
-              file=sys.stderr)
+    except Hold as error:
+        report_hold("PRIVATE_HUMAN_HISTORY_HOLD — original source or private rounds not admitted", error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, ImportError, OverflowError):
+        report_hold("PRIVATE_HUMAN_HISTORY_HOLD — original source or private rounds not admitted", None, args.explain_hold)
         return 3
 
 if __name__ == "__main__":

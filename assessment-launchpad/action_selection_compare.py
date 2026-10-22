@@ -13,7 +13,7 @@ import sys
 
 from action_handoff import read_selected, selected_source_rows, WORK_CSV
 from history import admitted_rounds
-from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
+from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold
 from review_desk import read_original_bundle, ROLES
 from role_return_reconcile import admitted_replies, render_files
 
@@ -228,6 +228,7 @@ def main(argv=None):
     output.add_argument("--verify-output-dir", help="read-only reopen of prior 4-file packet")
     output.add_argument("--preview-only", action="store_true",
                         help="show counts from original-source-bound CSVs, write nothing")
+    parser.add_argument("--explain-hold", action="store_true", help="print curated HOLD reason; raw paths, endpoint values and exceptions stay hidden")
     args = parser.parse_args(argv)
     try:
         source = read_sources(args)
@@ -267,9 +268,11 @@ def main(argv=None):
               ("REOPENED" if args.verify_output_dir else "CREATED") +
               " — REVIEW_ONLY; NO AUTHORITY")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, OverflowError):
-        print("PRIVATE_HUMAN_SELECTION_DIFF_HOLD — sources or selections rejected",
-              file=sys.stderr)
+    except Hold as error:
+        report_hold("PRIVATE_HUMAN_SELECTION_DIFF_HOLD — sources or selections rejected", error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, OverflowError):
+        report_hold("PRIVATE_HUMAN_SELECTION_DIFF_HOLD — sources or selections rejected", None, args.explain_hold)
         return 3
 
 

@@ -12,7 +12,7 @@ import json
 import os
 import sys
 
-from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
+from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item, report_hold
 from history import admitted_rounds
 from review_desk import read_original_bundle, ROLES
 from role_return_reconcile import admitted_replies, render_files
@@ -234,6 +234,7 @@ def main(argv=None):
                       help="existing PRIVATE packet; exact read-only reopen, writes nothing")
     mode.add_argument("--preview-only", action="store_true",
                       help="admit all original sources and selected CSV, show counts, create no files")
+    parser.add_argument("--explain-hold", action="store_true", help="print curated HOLD reason; raw paths, endpoint values and exceptions stay hidden")
     args = parser.parse_args(argv)
     try:
         source = admit_all(args)
@@ -289,9 +290,11 @@ def main(argv=None):
               ("REOPENED" if args.verify_output_dir else "CREATED") +
               " — " + selection_status + "; REVIEW_ONLY; NO AUTHORITY")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, csv.Error, OverflowError):
-        print("PRIVATE_HUMAN_SELECTED_ACTIONS_HOLD — source or selection rejected",
-              file=sys.stderr)
+    except Hold as error:
+        report_hold("PRIVATE_HUMAN_SELECTED_ACTIONS_HOLD — source or selection rejected", error, args.explain_hold)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, csv.Error, OverflowError):
+        report_hold("PRIVATE_HUMAN_SELECTED_ACTIONS_HOLD — source or selection rejected", None, args.explain_hold)
         return 3
 
 
