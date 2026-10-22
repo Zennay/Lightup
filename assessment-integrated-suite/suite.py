@@ -74,6 +74,8 @@ def guard_command_paths(args: argparse.Namespace) -> None:
         paths.append(args.package)
         if args.sha256_file:
             paths.append(args.sha256_file)
+        if args.source_root:
+            paths.append(args.source_root)
     for value in paths:
         reject_symlink_components(Path(value))
 
@@ -334,6 +336,8 @@ def main() -> int:
                         help="optional expected ZIP digest from a trusted separate channel")
     verify.add_argument("--sha256-file", default="",
                         help="optional standard sha256sum sidecar bound to the package filename")
+    verify.add_argument("--source-root", default="",
+                        help="optional local checkout root; fail if packaged software bytes are stale")
     args = cli.parse_args()
     if args.command == "catalog":
         for label, component in (("source inspector", INSPECTOR), ("PRIVATE briefing", BRIEF),
@@ -349,7 +353,8 @@ def main() -> int:
         if args.command == "verify-kit":
             return verify_package(
                 Path(args.package).absolute(), args.expected_sha256,
-                Path(args.sha256_file).absolute() if args.sha256_file else None)
+                Path(args.sha256_file).absolute() if args.sha256_file else None,
+                Path(args.source_root).absolute() if args.source_root else None)
         if args.command == "human-workpack":
             return private_human_workpack(args)
         if args.command == "workpack-progress":
