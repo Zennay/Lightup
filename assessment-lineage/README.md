@@ -20,6 +20,36 @@ application code**, never uploaded private client/lab content, never
 scans or executes an assessment. It is not independent browser approval,
 original source-owner review or authorization to deploy.
 
+## Exact original-source PRIVATE workroom reopen (read-only)
+
+After building an owner-private workroom, the native builder can independently
+reconstruct the expected **complete HTML bytes** from the same original catalog,
+the same ordered 1–8 original completed reports, the same optional original
+HUMAN draft, and the checked-in CSP-pinned offline application. The explicit
+`--verify-existing` flag opens the already saved HTML as an owner-owned
+mode-0600 non-symlink single-hard-link file, compares its exact bytes with
+the reconstructed workroom and **never writes, repairs, regenerates or launches
+the browser**. The output parent must remain current-user-owned mode 0700.
+The output file may not alias any original private input.
+
+```bash
+python3 assessment-lineage/private_workroom.py \
+  --catalog /private/source/original-lab-catalog.json \
+  --report /private/source/original-cohort-a.json \
+  --report /private/source/original-cohort-b.json \
+  --output /private/lineage-room/private-review.html \
+  --verify-existing
+```
+
+Omit `--verify-existing` only when explicitly creating a **new**
+never-overwritten private packet in an already-existing mode-0700 folder.
+A changed original source, missing packet, extra/replaced HTML bytes,
+changed source ordering, unsafe source/output path or changed offline
+application fails closed with HOLD. This is local byte consistency, not a
+digital signature, verified original authorship, customer authorization,
+independent HUMAN review or release permission. It does not contact any
+target, network, scanner or external service.
+
 ## Open the working product
 
 Download [standalone.html](standalone.html) and open it locally. It is an actual single-file HTML application with its own static JavaScript and stylesheet SHA-256 pinned in the Content Security Policy, with all connections, images, external scripts, forms, frames and workers disabled. Alternatively open [index.html](index.html) alongside its sibling [app.js](app.js) and [style.css](style.css). The app does **not** run a backend, send telemetry or persist files/cookies/localStorage. Closing the tab forgets all private state.
