@@ -70,8 +70,8 @@ MENU = (
     ("6", "Export complete source-free single-file offline HUMAN studio"),
     ("7", "Show PRIVATE session-only action results"),
     ("8", "Review historical HUMAN stage/owner/question changes on unchanged kit bytes"),
-    ("9", "Build a NEW source-only offline software ZIP"),
-    ("10", "Inspect unsigned software ZIP file inventory locally"),
+    ("9", "Build a NEW source-only offline software ZIP (+ optional SHA256 sidecar)"),
+    ("10", "Inspect ZIP inventory, optional checksum and current-source parity"),
     ("11", "Import browser-downloaded HUMAN CSV safely into PRIVATE native custody"),
     ("12", "Import PRIVATE browser CSV and immediately prepare original HUMAN follow-up packet"),
     ("13", "Review 2-12 ORIGINAL capture-linked inventory snapshots as PRIVATE HUMAN history"),
@@ -672,8 +672,12 @@ def handle_action(action):
     if action == "10":
         archive = prompt("Absolute existing LightUp source-only software ZIP")
         sidecar = prompt("Verify adjacent .sha256 sidecar? [y/N]", False).lower()
+        compare_source = prompt(
+            "Compare against the current allowlisted checkout sources? [y/N]", False
+        ).lower()
         return package.inspect(argparse.Namespace(
-            archive=archive, sha256_sidecar=sidecar in ("y", "yes")
+            archive=archive, sha256_sidecar=sidecar in ("y", "yes"),
+            compare_source=compare_source in ("y", "yes")
         ))
     if action == "8":
         return human_revisions.run(argparse.Namespace(
