@@ -123,7 +123,7 @@ Before HUMAN return publication, the native CLI re-verifies the saved history ag
 
 ### One-command next HUMAN round with optional timeline and delta
 
-For an existing exact 2–7-round local HUMAN chain, `manifest_history_next_round.py` now joins the source-bound native operations into **one explicit offline command**. It re-admits the original PRIVATE plan history and all prior v1/v2 HUMAN rounds, checks the unsigned previous-round linkage, carries forward unmodified HUMAN stages and changes only selected `--stage ROW:STAGE` choices. It then creates a **new PRIVATE HUMAN return** and can independently generate the two-round stage comparison and an updated 3–8-round timeline with a follow-up CSV. No original source or prior HUMAN round is overwritten.
+For an existing exact 1–7-round local HUMAN chain, `manifest_history_next_round.py` now joins the source-bound native operations into **one explicit offline command**. It re-admits the original PRIVATE plan history and all prior v1/v2 HUMAN rounds, checks the unsigned previous-round linkage, carries forward unmodified HUMAN stages and changes only selected `--stage ROW:STAGE` choices. It then creates a **new PRIVATE HUMAN return** and can independently generate the two-round stage comparison and an updated 2–8-round timeline with a follow-up CSV. No original source or prior HUMAN round is overwritten.
 
 ```sh
 mkdir -m 700 ~/private-human-next ~/private-human-next-delta ~/private-human-next-timeline
@@ -131,12 +131,27 @@ python3 assessment-launchpad/manifest_history_next_round.py \
   --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
   --history-dir ~/private-plan-history \
   --round-dir ~/private-human-return-one \
-  --round-dir ~/private-human-return-two \
   --stage 2:NEEDS_CONTEXT --stage 3:IN_REVIEW \
   --output-dir ~/private-human-next \
   --delta-dir ~/private-human-next-delta \
   --timeline-dir ~/private-human-next-timeline
 ```
+
+The same command also accepts a complete private browser-edited six-column CSV via `--answers-dir` **instead of** `--stage`. This completes the browser-to-native-to-timeline workflow in one call, with the original previous round retained and an explicit acknowledgement before importing *all* replacement HUMAN stages:
+
+```sh
+mkdir -m 700 ~/private-human-next ~/private-human-next-delta ~/private-human-next-timeline
+python3 assessment-launchpad/manifest_history_next_round.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --round-dir ~/private-human-return-one \
+  --answers-dir ~/private-edited-answers --ack-csv-stage-replace \
+  --output-dir ~/private-human-next \
+  --delta-dir ~/private-human-next-delta \
+  --timeline-dir ~/private-human-next-timeline
+```
+
+To preview this exact edited CSV, use `--dry-run` and omit **all** output directories and the acknowledgement flag. The source-bound native return still reopens the original plan, history, prior HUMAN return and private browser-edited answers; the browser itself cannot establish original-source authenticity or permissions.
 
 Use the same original inputs with `--dry-run` and **no output directories** to see only changed-row counts and the next HUMAN round ordinal; no files are published. To reopen all three finished PRIVATE outputs without rewriting them, repeat the original arguments with `--verify-output`. Every requested destination must exist, belong to the current user, have mode `0700`, and be separate from each other and all original source trees; publication uses mode-`0600` exclusive files.
 
