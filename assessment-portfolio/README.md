@@ -767,3 +767,17 @@ PRIVATE packet with the desired original native CLI flags. The
 immutable native packet can be reopened with the same options and
 `--verify-output-dir`, but edits made inside the browser studio are
 memory-only and are **not** represented as original native evidence.
+
+
+### PRIVATE studio: no stale scenario export
+
+The memory-only browser studio also preserves **original undated HUMAN
+proposal ordinals** as a separate local section with original workroom
+links. Those rows appear in any explicitly downloaded PRIVATE scenario
+CSV with empty proposed date and empty capacity/arithmetic columns. They
+are not silently omitted and do not consume invented day limits. If a
+human enters an invalid scenario limit, the studio clears its last
+calculated table and summary and disables both print and export until
+**every** fixed-role input is valid again; it never silently saves or
+exports a stale scenario. The native source-bound 0600 artifacts are
+unchanged by local edits.
