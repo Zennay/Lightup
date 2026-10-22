@@ -340,7 +340,7 @@ def render_private_html(summary, rows):
         ". Compare only previously generated private human agendas. All source details remain local.</p>"
         "<div class='state'>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · " + status +
         " · NOT AUTHORIZED</div>" + view_note + "</header>"
-        "<main><div class='cards'>" + cards + "</div>" + empty_note
+        "<main><div class='cards'>" + cards + "</div>" + empty_note +
         "<p class='note'>" + str(summary["agenda_count"]) + " selected agendas · " +
         str(summary["item_count"]) + " human-planning items. Input order is a local ordinal only, not authenticated chronology.</p></main>"
         + matrix + "".join(sections) +
