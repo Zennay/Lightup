@@ -378,3 +378,8 @@ Owner-only multi-recipient workflow: advance.py accepts up to five repeatable --
 ## PRIVATE HUMAN return reconciliation desk
 
 Native offline per-role/ordinal change desk and source-free aggregate workload across 1–5 disjoint original role replies: [ROLE_RECONCILIATION_GUIDE.md](ROLE_RECONCILIATION_GUIDE.md). Separate exact source-bound CLI role_return_reconcile.py, scriptless CSP-pinned HTML, private CSV, aggregate JSON, deterministic owner-only read-only reopen. This is NOT recipient authentication or a grant.
+
+
+## Manual resolution of overlapping HUMAN role returns
+
+If two original private selected-role returns claim the same local slot, advance.py deliberately HOLDS. Use [ROLE_CONFLICT_GUIDE.md](ROLE_CONFLICT_GUIDE.md) and role_return_conflicts.py to prepare a PRIVATE role/slot choice CSV + scriptless CSP offline HTML, explicitly choose a source packet per conflict, and produce a complete owner-private canonical HUMAN worksheet for advance.py --responses. This is never automatic precedence, identity proof, remediation validation, consent or an assessment permission.
