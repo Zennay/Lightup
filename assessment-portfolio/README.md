@@ -433,3 +433,34 @@ Original CI, independent source/privacy/security review, true separate current
 client/operator consent with action-time revocation and explicit HUMAN GO
 remain mandatory before any authorized live functionality. This draft stays
 INCUBATE M3/M7 PLAN/LAB ONLY and MUST NOT be deployed.
+
+
+## Printable PRIVATE role/day brief
+
+Use `--private-day-brief` to include
+`assessment-portfolio-private-day-brief.html`, a small standalone,
+**scriptless** print/read companion to the canonical full PRIVATE
+workroom. It groups **all** admitted selected rows, including single-item
+role/date groups and rows without an original proposed date. Each entry
+contains only a neutral stage/kind, canonical generic HUMAN question
+and a local ordinal link (Axx/Sxx) back to
+`assessment-portfolio-private.html` in the same private folder.
+
+```bash
+mkdir -m 700 /private/assessment-role-day-brief
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --private-day-brief \
+  --private-calendar-clusters \
+  --output-dir /private/assessment-role-day-brief \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+The browser needs no scripts or resources outside that private output
+directory; output remains mode 0600 and is included in the strict exact-byte
+`--verify-output-dir` re-open. `--focus-role`, `--focus-stage` and
+`--focus-bucket` still limit the resulting private brief; an empty match
+is explicitly not a completed review. This separate view does **not**
+authenticate the person associated with a role, prove that the proposed
+date is booked, authorize a scan or amend any original source.
