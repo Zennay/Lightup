@@ -7,6 +7,7 @@ review, and NO derived output is cleared for publication or execution.
 from __future__ import annotations
 
 import re
+import unicodedata
 
 _CURL_ARGUMENT = re.compile(
     r"""(?ix)(?<![A-Za-z0-9_-])
@@ -36,8 +37,7 @@ _CREDENTIAL_FIELD = re.compile(
     x-amz-security-token|aws[_-]?secret[_-]?access[_-]?key)$"""
 )
 _FIELD_DELIMITER = re.compile(r"([&;])")
-_PERCENT_UNDERSCORE = re.compile(r"(?i)%5f")
-_PERCENT_HYPHEN = re.compile(r"(?i)%2d")
+_PERCENT_ASCII_FIELD_CHAR = re.compile(r"(?i)%([0-9a-f]{2})")
 _PRIVATE_MARKER = "[REDACTED_FORM_VALUE]"
 # Protect a named field delimiter only while the original generic redactor
 # runs; otherwise its broad key=value matcher can consume the next &field.
@@ -46,10 +46,24 @@ FIELD_BOUNDARY_GUARD = "_LIGHTUP_PRIVATE_CURL_FIELD_BOUNDARY_"
 
 
 def _field_key(name: str) -> str:
-    # Decode only separators in a field name; do not decode a payload or
-    # interpret arbitrary percent escapes and do not perform network access.
-    name = _PERCENT_UNDERSCORE.sub("_", name)
-    return _PERCENT_HYPHEN.sub("-", name)
+    """Canonicalise only a field name for credential matching.
+
+    Decode percent escapes only when they represent ASCII letters, digits,
+    underscore or hyphen. NFKC folds compatibility spellings, and Unicode
+    format controls are ignored for matching. The original key is retained in
+    output; the value is withheld. Never decode payload values or use a URI,
+    shell or network parser here.
+    """
+    def decode_ascii_name_char(match: re.Match[str]) -> str:
+        character = chr(int(match.group(1), 16))
+        if character.isascii() and (character.isalnum() or character in "_-"):
+            return character
+        return match.group(0)
+
+    canonical = _PERCENT_ASCII_FIELD_CHAR.sub(decode_ascii_name_char, name)
+    canonical = unicodedata.normalize("NFKC", canonical)
+    return "".join(character for character in canonical
+                   if unicodedata.category(character) != "Cf")
 
 
 def _mask_field(fragment: str, *, urlencoded: bool) -> str:

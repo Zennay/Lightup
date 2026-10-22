@@ -811,6 +811,12 @@ complete credential removal, PII anonymization, safe publication, or privacy
 clearance**. Previously created packets are not silently rewritten; new
 `notes.py prepare` operations use the enhanced masking.
 
+### Credential-field name obfuscation in pasted cURL payloads
+
+The local cURL form masker canonicalises field names only before matching known credential labels. It recognises percent-encoded ASCII letters/digits/underscore/hyphen (for example, pass%77ord), Unicode compatibility spellings (such as full-width Latin letters), and embedded Unicode format controls (such as zero-width characters). The displayed original key spelling is retained for HUMAN context while the associated value is replaced. Payload values are never percent-decoded, and this narrow heuristic does not parse or execute shell/URI syntax.
+
+This closes known obfuscation gaps for a bounded set of credential names; it is not complete redaction, secret detection, anonymisation or permission to share. Unknown keys, malformed payloads and irregular encodings remain PRIVATE/HOLD and require independent HUMAN review.
+
 ### Manually mask remaining sensitive text without changing original packets
 
 The operator can also request a **second, explicitly HUMAN-directed literal
