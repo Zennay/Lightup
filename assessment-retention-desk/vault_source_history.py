@@ -12,7 +12,7 @@ import getpass
 import sys
 
 from history import Hold, MAX_FILES, publish_private
-from source_history import compose_history, render_html
+from source_history import compose_history, render_bundle, render_html
 from vault_history import MAX_ENVELOPE_BYTES, decrypt_vault_bytes, original_sources, read_bounded_regular
 
 
@@ -55,8 +55,11 @@ def main() -> int:
             "Original bytes are re-hashed per snapshot; no plaintext plan is written."
         )
     )
-    parser.add_argument("--output", required=True,
-                        help="New scriptless HTML report in an existing owner-owned 0700 directory")
+    outputs = parser.add_mutually_exclusive_group(required=True)
+    outputs.add_argument("--output",
+                         help="New scriptless HTML report in an existing owner-owned 0700 directory")
+    outputs.add_argument("--bundle-output",
+                         help="New private ZIP containing scriptless HTML, CSV, JSON and caveats")
     parser.add_argument(
         "--source-file", action="append", required=True, dest="source_files",
         metavar="SNAPSHOT=PATH",
@@ -88,7 +91,13 @@ def main() -> int:
             plans.append(plan)
             expected_sets.append(expected)
             vault_bytes.append(raw_vault)
-        report = render_html(compose_history(plans), original_bytes_rehashed=True)
+        history = compose_history(plans)
+        if args.bundle_output:
+            report = render_bundle(history, original_bytes_rehashed=True)
+            output_path = args.bundle_output
+        else:
+            report = render_html(history, original_bytes_rehashed=True)
+            output_path = args.output
         # Re-admit every original input immediately before publishing. A changed
         # source set or vault refuses the complete report; no partial dossier.
         for source_paths, expected in zip(source_sets, expected_sets):
@@ -99,7 +108,7 @@ def main() -> int:
                 vault_path, MAX_ENVELOPE_BYTES, owner_private=True
             ) != expected_raw:
                 raise Hold("encrypted vault bytes changed before lineage publication")
-        publish_private(args.output, report)
+        publish_private(output_path, report)
     except (Hold, OSError, ValueError, TypeError, MemoryError, RecursionError, UnicodeError):
         parser.exit(
             2,
