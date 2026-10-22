@@ -510,6 +510,21 @@
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
     for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","exportConflictsCSV","print"])$(id).disabled=!active;
     $("appendFile").disabled=!(active&&!demo&&reports.length<12);
+    const canReplace=active&&!demo&&sourceMeta.length===reports.length;
+    $("replaceFile").disabled=!canReplace;
+    $("replaceSlot").disabled=!canReplace;
+    if(canReplace){
+      const control=$("replaceSlot"),old=control.value;
+      if(control.options.length!==reports.length){
+        control.replaceChildren();
+        reports.forEach((_,i)=>{
+          const option=document.createElement("option");
+          option.value=String(i);option.textContent="Candidate "+(i+1);
+          control.append(option);
+        });
+        if([...control.options].some(o=>o.value===old))control.value=old;
+      }
+    }else $("replaceSlot").replaceChildren();
     $("saveDraft").disabled=!(active&&!demo&&sourceHashes.length===reports.length);
     $("draftFile").disabled=$("saveDraft").disabled;
     if(!active){
@@ -748,6 +763,39 @@
       setStatus("One compatible, previously finished unverified lab candidate appended. All source safety flags preserved.");
       render();
     }catch(_){if(generation===fileGeneration)setStatus("HOLD: incompatible, duplicate, malformed or oversized append. Existing workspace preserved.",true);}
+  }
+  async function replaceCandidate(file){
+    // Replace exactly one candidate without reconstructing the entire source set.
+    // A different finished cohort changes the HUMAN review context: local notes
+    // and source-bound drafts must never be silently carried across this edit.
+    const generation=beginFileRead(),slot=Number($("replaceSlot").value);
+    try{
+      assert(!demo&&reports.length>=2&&reports.length<=12&&
+        sourceMeta.length===reports.length&&Number.isSafeInteger(slot)&&
+        slot>=0&&slot<reports.length&&file&&file.size>0&&file.size<=262144);
+      const bytes=await file.arrayBuffer();assertCurrentFile(generation);
+      assert(bytes.byteLength>0&&bytes.byteLength<=262144);
+      const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      const candidate=decodeReport(strictJSON(raw));
+      const sha=await hashBytes(bytes);assertCurrentFile(generation);
+      assert(sha!==sourceMeta[slot].sha);
+      const next=[...reports];next[slot]=candidate;
+      compatible(next);assertCurrentFile(generation);
+      const hashes=sourceHashes.length===reports.length&&sha?
+        sourceHashes.map((value,i)=>i===slot?sha:value):[];
+      const meta=sourceMeta.map((entry,i)=>i===slot?
+        {bytes:bytes.byteLength,sha,alias:""}:entry);
+      clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;
+      reports=next;sourceHashes=hashes;sourceMeta=meta;
+      $("queueMessage").textContent="Previous HUMAN discussion proposals cleared after source replacement; all original source evidence remains unverified.";
+      $("draftMessage").textContent="PRIVATE source-byte-bound drafts from the previous candidate set must not be reused; save a fresh draft.";
+      setStatus("Candidate "+(slot+1)+" replaced by one compatible unverified source. "+
+        "Human proposals reset; review every affected case again.");
+      render();
+    }catch(_){
+      if(generation===fileGeneration)setStatus(
+        "HOLD: replacement is identical, malformed, duplicated or baseline-incompatible. Prior reports and HUMAN review preserved.",true);
+    }
   }
   function fictional(){
     const ids=["fictional-case-A","fictional-case-B","fictional-case-C","fictional-case-D"];
@@ -1600,6 +1648,11 @@
   });
   $("appendFile").addEventListener("change",e=>{
     if(e.target.files.length)void appendCandidate(e.target.files[0]);
+    e.target.value="";
+  });
+  $("replaceSlot").addEventListener("change",cancelPendingFiles);
+  $("replaceFile").addEventListener("change",e=>{
+    if(e.target.files.length)void replaceCandidate(e.target.files[0]);
     e.target.value="";
   });
   $("demo").addEventListener("click",demoLoad);
