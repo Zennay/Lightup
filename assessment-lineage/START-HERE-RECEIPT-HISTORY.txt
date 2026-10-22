@@ -1,0 +1,44 @@
+LightUp PRIVATE Receipt History CLI Kit
+INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD
+
+This portable kit compares 2–12 already-created canonical PRIVATE source receipts.
+It reads only the receipt files, not the source catalogs/reports described by them.
+It never runs a comparator, starts an assessment, contacts a target, scans, grants,
+validates consent, or authorizes remediation or release.
+
+CONTENTS
+- receipt_history.py: multi-snapshot receipt history and read-only reopen
+- compare_receipts.py: strict canonical receipt decoder and two-receipt comparison
+- private_workroom.py: shared strict reader and original receipt producer
+- README.md: full operator guide and evidence/privacy boundaries
+- build_offline_kit.py: deterministic standard-library packager
+- HASHES.txt: unsigned SHA-256 digests for the packaged files
+
+QUICK START
+1. Extract this ZIP into a directory you control. Keep receipts and outputs private.
+2. Create a new, separate owner-owned private output directory:
+     umask 077
+     mkdir -m 700 /private/lineage-history
+3. Compare manually ordered receipts:
+     python3 receipt_history.py --output-dir /private/lineage-history \
+       /private/snapshot-01/review.private-lineage-receipt.json \
+       /private/snapshot-02/review.private-lineage-receipt.json
+4. The output directory receives three exclusive mode-0600 files: scriptless HTML,
+   JSON and CSV. Existing output files are never overwritten.
+5. To re-open the saved packet read-only, run the same command with
+   --verify-existing added.
+6. For repeatable long commands, use --receipts-file /private/receipt-selection.txt.
+   That list must itself be owner-private mode 0600, contain 2–12 canonical absolute
+   receipt paths with one path per LF-terminated line, and remain unchanged.
+
+BOUNDARIES
+- Inputs are unsigned local receipts. Matching bytes prove local equality only.
+- Snapshot order is manually selected, not authenticated chronology.
+- A missing source is not proof of deletion, remediation, revocation or clearance.
+- Packet-local source labels are correlation aids, not anonymization.
+- No original source hashes, paths, content, case IDs or HUMAN notes are exported.
+- Output remains sensitive. Use a separately approved confidential channel.
+- The ZIP and HASHES.txt are unsigned; their digests are not source authenticity,
+  consent, identity, security approval or release authorization.
+- Python 3.10+ and a local filesystem supporting no-follow file operations are
+  required. No third-party packages or network access are used.
