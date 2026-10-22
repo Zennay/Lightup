@@ -342,7 +342,7 @@
   function scenarioBoardRows(){
     const filter=$("scenarioViewFilter").value;
     const raw=$("scenarioSearch").value.trim();
-    const exactOrdinal=/^\\d{1,4}$/.test(raw)?Number(raw):null;
+    const exactOrdinal=/^\d{1,4}$/.test(raw)?Number(raw):null;
     const query=raw.toLowerCase();
     return scenarioIds.map((id,index)=>({id,ordinal:index+1,stats:scenarioStats(id)})).filter(item=>{
       const label="Scenario "+String(item.ordinal).padStart(2,"0");
