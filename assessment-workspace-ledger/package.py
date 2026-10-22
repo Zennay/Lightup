@@ -209,6 +209,72 @@ def bundle():
     return result.getvalue()
 
 
+def write_private_exclusive(path: Path, payload: bytes):
+    """Write one complete owner-only file without following or replacing a path."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    identity = None
+    try:
+        info = os.fstat(fd)
+        identity = (info.st_dev, info.st_ino)
+        os.fchmod(fd, 0o600)
+        offset = 0
+        while offset < len(payload):
+            written = os.write(fd, payload[offset:])
+            if written <= 0:
+                reject("PRIVATE HOLD: incomplete software artifact write")
+            offset += written
+        os.fsync(fd)
+    except BaseException:
+        if identity is not None:
+            unlink_if_same(path, identity)
+        raise
+    finally:
+        os.close(fd)
+    return identity
+
+
+def unlink_if_same(path: Path, identity):
+    """Remove only the regular file inode created by this operation."""
+    try:
+        info = os.stat(path, follow_symlinks=False)
+        if stat.S_ISREG(info.st_mode) and (info.st_dev, info.st_ino) == identity:
+            os.unlink(path)
+    except OSError:
+        pass
+
+
+def read_checksum_sidecar(path: Path, expected: str):
+    """Require an exact, stable, owner-only detached checksum file."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
+    try:
+        before = os.fstat(fd)
+        if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or
+                before.st_uid != os.getuid() or stat.S_IMODE(before.st_mode) != 0o600 or
+                before.st_size <= 0 or before.st_size > 256):
+            reject("PRIVATE HOLD: detached checksum sidecar type/permissions")
+        raw = bytearray()
+        while True:
+            chunk = os.read(fd, 257 - len(raw))
+            if not chunk:
+                break
+            raw.extend(chunk)
+            if len(raw) > 256:
+                reject("PRIVATE HOLD: detached checksum sidecar size")
+        after = os.fstat(fd)
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (
+                after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns
+        ) or len(raw) != before.st_size:
+            reject("PRIVATE HOLD: detached checksum sidecar changed while reading")
+        try:
+            value = bytes(raw).decode("ascii")
+        except UnicodeDecodeError:
+            reject("PRIVATE HOLD: detached checksum sidecar encoding")
+        if value != expected:
+            reject("PRIVATE HOLD: detached checksum does not match archive bytes")
+    finally:
+        os.close(fd)
+
+
 def build(args):
     dest = Path(args.output)
     if not dest.is_absolute() or dest.suffix.lower() != ".zip":
@@ -217,18 +283,20 @@ def build(args):
     if dest.is_relative_to(ROOT):
         reject("PRIVATE HOLD: output must be outside source checkout")
     contents = bundle()
-    fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
-    try:
-        os.fchmod(fd, 0o600)
-        count = 0
-        while count < len(contents):
-            count += os.write(fd, contents[count:])
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+    digest = sha256(contents)
+    identity = write_private_exclusive(dest, contents)
+    sidecar = Path(str(dest) + ".sha256") if getattr(args, "sha256_sidecar", False) else None
+    if sidecar is not None:
+        try:
+            write_private_exclusive(sidecar, (digest + "  " + dest.name + "\n").encode("ascii"))
+        except BaseException:
+            unlink_if_same(dest, identity)
+            raise
     print("PRIVATE REVIEW_ONLY: offline software-only archive produced (unsigned inventory)")
     print("Archive: " + str(dest))
-    print("SHA256: " + sha256(contents))
+    print("SHA256: " + digest)
+    if sidecar is not None:
+        print("SHA256 sidecar: " + str(sidecar))
     return 2
 
 
@@ -260,6 +328,12 @@ def inspect(args):
             reject("PRIVATE HOLD: archive changed during inspection")
     finally:
         os.close(fd)
+    if getattr(args, "sha256_sidecar", False):
+        read_checksum_sidecar(
+            Path(str(path) + ".sha256"),
+            sha256(bytes(raw)) + "  " + path.name + "\n",
+        )
+        print("Detached SHA256 sidecar matches archive bytes (unsigned).")
     with zipfile.ZipFile(io.BytesIO(raw), "r") as src:
         entries = src.infolist()
         stored = [entry.filename for entry in entries]
@@ -323,8 +397,12 @@ def main():
     sub = parser.add_subparsers(dest="action", required=True)
     make = sub.add_parser("build", help="Build a new source-only ZIP outside checkout")
     make.add_argument("--output", required=True)
+    make.add_argument("--sha256-sidecar", action="store_true",
+                      help="Write an adjacent exclusive .sha256 sidecar (unsigned)")
     check = sub.add_parser("inspect", help="Read a source-only ZIP and verify bounded unsigned internal SHA manifest")
     check.add_argument("--archive", required=True)
+    check.add_argument("--sha256-sidecar", action="store_true",
+                       help="Require and verify the adjacent .sha256 sidecar")
     args = parser.parse_args()
     try:
         return build(args) if args.action == "build" else inspect(args)
