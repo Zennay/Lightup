@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-b4Rxn29HTrEMJJ1V8qTxHbs3swOySkka4ultpnlBDCs='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ctqHCQZRb6BsMTsS6tTmRtl08MDx/xiWKFmkr6zxMV8='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -219,18 +219,36 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     options.forEach(v=>{let o=dom("option",v.text);o.value=v.value;e.append(o);});
     e.value=value;e.addEventListener("change",change);return e;
   }
+  function clearRecipientWorkspace(){
+    recipientPreferenceSource="";recipientPolicyDirty=false;recipientPage=0;
+    recipientProposal=null;recipientSelection.clear();recipientUndo=null;
+    $("recipientZone").value="";$("recipientStart").value="09:00";
+    $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
+    $("recipientView").value="all";$("recipientQuery").value="";
+    $("recipientPolicyImport").value="";
+    for(const id of ["recipientRows","recipientProposalRows"])
+      $(id).replaceChildren();
+    $("recipientSummary").textContent="No PRIVATE HUMAN worksheet or alternate recipient zone loaded.";
+    $("recipientRemainder").textContent="";
+    $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
+    $("recipientPolicyStatus").textContent="Recipient preference not loaded; this is not authenticated availability.";
+    for(const id of ["recipientExport","recipientPolicyExport",
+      "recipientPrev","recipientNext","recipientApply",
+      "recipientProposalExport","recipientProposalPrint","recipientUndo"])
+      $(id).disabled=true;
+    $("recipientProposalDetails").open=false;
+  }
   function render(){
     if(!active)return;
     // Do not carry manually declared recipient availability into a different
     // source worksheet or a newly imported PRIVATE calendar-series identity.
     const binding=hash+"|"+seriesId;
     if(recipientPreferenceSource!==binding){
-      recipientPreferenceSource=binding;recipientPolicyDirty=false;
-      recipientProposal=null;recipientSelection.clear();recipientUndo=null;
-      $("recipientZone").value="";$("recipientStart").value="09:00";
-      $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
-      $("recipientView").value="all";$("recipientQuery").value="";
+      clearRecipientWorkspace();
+      recipientPreferenceSource=binding;
     }
+    $("recipientDesk").hidden=false;
+    $("recipientPolicyExport").disabled=false;
     const due=items.filter(r=>plan.has(r.ordinal)).length;
     const late=items.filter(r=>{const p=plan.get(r.ordinal);return p && eventDate(p.day,p.time)<new Date();}).length;
     $("summary").textContent=`${items.length} original HUMAN rows · ${due} scheduled · ${items.length-due} unscheduled · ${late} past scheduled time · ${changed?"unsaved edits":"no unsaved plan edits"}.`;
@@ -2963,9 +2981,10 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     finally{e.target.value="";}
   });
   hook("reset","click",()=>{
-    if((changed||capacityDirty||capacityEditorDirty)&&
-      !confirm("Discard unsaved PRIVATE plan, group availability and editor field changes?"))return;
+    if((changed||capacityDirty||capacityEditorDirty||recipientPolicyDirty)&&
+      !confirm("Discard unsaved PRIVATE plan, group availability, recipient window and editor field changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
+    clearRecipientWorkspace();$("recipientDesk").hidden=true;
     capacityRules=new Map();capacityDirty=false;capacityEditorDirty=false;capacityProposal=null;$("capacityApply").disabled=true;
     if(originalBytes)originalBytes.fill(0);originalBytes=null;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
@@ -3285,7 +3304,7 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <button id="exportTransitions" type="button" class="ghost" disabled>Export PRIVATE clock-change review (.csv)</button>
 <p class="subtle">PRIVATE unsigned source-bound file; proposed times and HUMAN groups may be confidential. Authority, verification and consent always false.</p>
 </section>
-<section id="recipientDesk" class="panel" aria-labelledby="recipientHeading">
+<section id="recipientDesk" class="panel" hidden aria-labelledby="recipientHeading">
 <h2 id="recipientHeading">3b · PRIVATE HUMAN alternate-timezone preview</h2>
 <p>View proposed local HUMAN reminders as wall-clock times in another manually chosen IANA timezone, with the current browser's OS timezone rules. This is read-only: it does not adjust the original private plan, verify a real recipient, detect external availability, contact a server or send an appointment.</p>
 <div class="row"><label>Other HUMAN recipient timezone (unverified)

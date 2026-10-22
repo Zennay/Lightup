@@ -443,6 +443,10 @@ To reopen, first import the same exact source HUMAN worksheet and its saved v2 p
 
 Recipient preference changes trigger an unsaved-local-workroom navigation warning until their private CSV is exported or a matching private preference file is reloaded. Keep this **cleartext** CSV private; unlike the encrypted workroom it is not password-protected. The original source-bound plan must still be saved separately to retain private event identities.
 
+## Source-switch and workroom-reset privacy
+
+When a different original HUMAN worksheet or calendar-series identity is imported, the recipient zone desk now **fully clears its previous source-derived rows, tentative change previews, exported/handoff button states, unsaved preference state, and pending preview actions** before the new source is rendered. This also happens when **Discard workroom** is confirmed; the recipient desk starts hidden and is only available after a HUMAN worksheet is opened. A previous source's private schedule data is not retained visibly after a source swap or reset. The reset confirmation includes unsaved recipient availability preferences. This is only browser-memory visibility hygiene, not a guarantee of OS/browser memory erasure or external data deletion.
+
 ## Calendar revision sequence for manual re-import
 
 All three ICS output paths (complete plan, selected group, and changed/cancelled

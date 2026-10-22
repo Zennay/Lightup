@@ -171,18 +171,36 @@
     options.forEach(v=>{let o=dom("option",v.text);o.value=v.value;e.append(o);});
     e.value=value;e.addEventListener("change",change);return e;
   }
+  function clearRecipientWorkspace(){
+    recipientPreferenceSource="";recipientPolicyDirty=false;recipientPage=0;
+    recipientProposal=null;recipientSelection.clear();recipientUndo=null;
+    $("recipientZone").value="";$("recipientStart").value="09:00";
+    $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
+    $("recipientView").value="all";$("recipientQuery").value="";
+    $("recipientPolicyImport").value="";
+    for(const id of ["recipientRows","recipientProposalRows"])
+      $(id).replaceChildren();
+    $("recipientSummary").textContent="No PRIVATE HUMAN worksheet or alternate recipient zone loaded.";
+    $("recipientRemainder").textContent="";
+    $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
+    $("recipientPolicyStatus").textContent="Recipient preference not loaded; this is not authenticated availability.";
+    for(const id of ["recipientExport","recipientPolicyExport",
+      "recipientPrev","recipientNext","recipientApply",
+      "recipientProposalExport","recipientProposalPrint","recipientUndo"])
+      $(id).disabled=true;
+    $("recipientProposalDetails").open=false;
+  }
   function render(){
     if(!active)return;
     // Do not carry manually declared recipient availability into a different
     // source worksheet or a newly imported PRIVATE calendar-series identity.
     const binding=hash+"|"+seriesId;
     if(recipientPreferenceSource!==binding){
-      recipientPreferenceSource=binding;recipientPolicyDirty=false;
-      recipientProposal=null;recipientSelection.clear();recipientUndo=null;
-      $("recipientZone").value="";$("recipientStart").value="09:00";
-      $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
-      $("recipientView").value="all";$("recipientQuery").value="";
+      clearRecipientWorkspace();
+      recipientPreferenceSource=binding;
     }
+    $("recipientDesk").hidden=false;
+    $("recipientPolicyExport").disabled=false;
     const due=items.filter(r=>plan.has(r.ordinal)).length;
     const late=items.filter(r=>{const p=plan.get(r.ordinal);return p && eventDate(p.day,p.time)<new Date();}).length;
     $("summary").textContent=`${items.length} original HUMAN rows · ${due} scheduled · ${items.length-due} unscheduled · ${late} past scheduled time · ${changed?"unsaved edits":"no unsaved plan edits"}.`;
@@ -2915,9 +2933,10 @@
     finally{e.target.value="";}
   });
   hook("reset","click",()=>{
-    if((changed||capacityDirty||capacityEditorDirty)&&
-      !confirm("Discard unsaved PRIVATE plan, group availability and editor field changes?"))return;
+    if((changed||capacityDirty||capacityEditorDirty||recipientPolicyDirty)&&
+      !confirm("Discard unsaved PRIVATE plan, group availability, recipient window and editor field changes?"))return;
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
+    clearRecipientWorkspace();$("recipientDesk").hidden=true;
     capacityRules=new Map();capacityDirty=false;capacityEditorDirty=false;capacityProposal=null;$("capacityApply").disabled=true;
     if(originalBytes)originalBytes.fill(0);originalBytes=null;
     items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
