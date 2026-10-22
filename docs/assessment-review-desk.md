@@ -95,3 +95,8 @@ The review desk prefers Web Crypto for source-byte SHA-256 and falls back to a p
 Opening a new original offline JSON comparison first validates the entire bounded canonical report and its local source-byte SHA-256 before replacing the current HUMAN review workspace. An invalid, oversized, incompatible or superseded file **no longer erases** the original loaded report, current HUMAN follow-up stages, print view or source-bound saved plan. Only a successful source replacement intentionally clears old review/history state. Choosing a newer file, pressing Clear, changing a HUMAN follow-up or clearing a saved comparison cancels stale pending local reads.
 
 Likewise, import of a historical follow-up and comparison of two saved HUMAN plans is transaction-like: malformed or stale files cannot replace a previously accepted historical comparison/plan delta. A saved HUMAN follow-up restore is source-byte-bound and rechecks that no newer local user action superseded it before applying any per-case planning fields. No source authenticity, authorization or consent is inferred from this local file workflow.
+
+
+## Undo a local HUMAN review edit
+
+Use **Undo last HUMAN change** to reverse the most recent manual planning edit in this browser session (workstream, human stage, follow-up date, bulk triage, or successful source-byte-matched private review restore). The single-step snapshot covers only HUMAN planning fields, not source comparison metrics, evidence or reports. It remains bound to the currently loaded original source SHA-256; loading a different original or clearing the workspace discards the undo snapshot. The action is local-only, does not execute assessments, and never grants consent, release or authority.
