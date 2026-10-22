@@ -16,6 +16,7 @@ import stat
 import sys
 import unicodedata
 import human_workbook
+import capacity
 
 AGENDA_SCHEMA = "lightup.archive_human_agenda.v1"
 PORTFOLIO_SCHEMA = "lightup.assessment_portfolio_aggregate.v1"
@@ -809,8 +810,8 @@ def publish_bundle(directory_fd, artifacts):
 
 def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
                      calendar=False, calendar_clusters=False, day_brief=False, role_day_csv=False,
-                     home=False, workbook=False, human_entries=None,
-                     previous_human_entries=None):
+                     home=False, workbook=False, capacity_limits=None,
+                     human_entries=None, previous_human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
     A filtered handoff has an explicit v2 view contract; unchanged full
@@ -837,6 +838,8 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
     if role_day_csv:
         result.append(("assessment-portfolio-private-role-day.csv",
                        render_private_role_day_csv(rows)))
+    if capacity_limits is not None:
+        result.extend(capacity.render_private_capacity(rows, reference_day, capacity_limits, ROLES))
     if day_brief:
         result.append(("assessment-portfolio-private-day-brief.html",
                        render_private_day_brief(summary, rows)))
@@ -952,6 +955,9 @@ def run(args):
     if not hasattr(os, "O_NOFOLLOW"):
         raise Hold("platform lacks no-follow file support")
     reference_day = parse_date(args.as_of)
+    capacity_limits = capacity.configure(
+        args.private_capacity_plan, args.daily_capacity, args.role_capacity, ROLES,
+    )
     if bool(args.focus_from) != bool(args.focus_through):
         raise Hold("planning window needs both first and last proposed dates")
     if args.focus_day and args.focus_from:
@@ -1038,7 +1044,8 @@ def run(args):
             day_brief=args.private_day_brief,
             role_day_csv=args.private_role_day_csv,
             home=args.private_home,
-            workbook=args.private_human_workbook, human_entries=human_entries,
+            workbook=args.private_human_workbook,
+            capacity_limits=capacity_limits, human_entries=human_entries,
             previous_human_entries=previous_entries,
         )
         readmit_unchanged_sources(admitted)
@@ -1098,6 +1105,12 @@ def main(argv=None):
                         help="Add one inert PRIVATE tentative role/day proposal per same-date HUMAN workload")
     parser.add_argument("--private-home", action="store_true",
                         help="Add source-bound scriptless PRIVATE start screen for any selected packet assets")
+    parser.add_argument("--private-capacity-plan", action="store_true",
+                        help="PRIVATE HUMAN items vs explicitly declared daily role-limit assumption desk")
+    parser.add_argument("--daily-capacity", type=int,
+                        help="Operator-declared 1–128 HUMAN proposals per neutral role and proposed day")
+    parser.add_argument("--role-capacity", action="append", default=[], metavar="ROLE=N",
+                        help="Optional explicit daily HUMAN item assumption for a fixed neutral role")
     parser.add_argument("--private-role-day-csv", action="store_true",
                         help="Add offline PRIVATE role/day staffing and source-ordinal spreadsheet CSV")
     parser.add_argument("--private-day-brief", action="store_true",
