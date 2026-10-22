@@ -429,6 +429,29 @@ them, and invokes no comparator, scanner, target, network or external service.
 All consent, authorization and HUMAN GO flags remain false. This is a private
 review aid, not a source-authenticity or release certificate.
 
+## Portable native PRIVATE receipt-history kit
+
+Build the self-contained standard-library CLI package from the repository root:
+
+```bash
+python3 assessment-lineage/build_offline_kit.py
+```
+
+This deterministically rebuilds `assessment-lineage/LightUp-Private-Receipt-History-Kit.zip`
+and its `.sha256` sidecar. The ZIP contains only the history/comparison source,
+shared private reader, README and operator instructions; it never packages a lab
+receipt, catalog, report, finding, target, client file or HUMAN note. `HASHES.txt`
+contains unsigned file-integrity digests for the kit contents; the sidecar hashes
+the ZIP. Neither proves authorship, consent, identity, measurement validity or
+release authority.
+
+After extracting the kit, run `python3 receipt_history.py --help` for the local
+CLI. Inputs remain original owner-private canonical receipts; the output is a
+separate owner-owned exact-mode-0700 directory and the three generated files are
+exclusive mode-0600 private artifacts. See
+[START-HERE-RECEIPT-HISTORY.txt](./START-HERE-RECEIPT-HISTORY.txt) for the
+portable quick start and boundaries.
+
 ## Private data handling
 
 The original source catalog is sensitive. Local file selection does not upload it, and the standalone does not send it to any server; downloaded aggregate handoffs avoid source identities but do not prove provenance. Use suitable private device storage, and independently review any source before ingestion. Private scenario IDs exist transiently in memory only to match against original source cases and are not displayed to an external audience. Anonymous **HOLD** means a human must reconcile genuine source evidence, not repeat the execution automatically.
