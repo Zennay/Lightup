@@ -57,3 +57,10 @@ All outputs preserve REVIEW_ONLY / HOLD, fictional_demo_only, manual-order and f
 Run: python3 assessment-trends/build_standalone.py
 
 The builder inlines the checked-in JS/CSS and pins their SHA-256 hashes in the standalone Content Security Policy. It is a packaging step, not a QA/test suite.
+
+
+## Per-metric flag-state transition matrix
+
+The transition matrix compares every metric across each adjacent pair of manually ordered snapshots. Each anonymous scenario contributes exactly once to one of four categories: clear in both slots, flagged in both, clear → flagged, or flagged → clear. It also reports the previous/current flagged counts, changed-scenario count and net flag-count change. The existing static review-group filter is shared with the distribution views; a separate transition filter narrows the displayed/exported rows.
+
+Export the filtered matrix as anonymous CSV, JSON or a script-free printable HTML brief. The output contains fixed metric/group labels, manual slot numbers, aggregate counts and literal false authorization/consent/dispatch/release fields only. It excludes original scenario IDs, filenames, source hashes and HUMAN notes. A flag missing from a later selected slot is not proof of a fix, and the manually selected order is not authenticated chronology.

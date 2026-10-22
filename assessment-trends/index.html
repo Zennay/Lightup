@@ -86,6 +86,25 @@
     <button id="metricTrendSummaryJson" type="button" class="secondary" disabled>Export metric trend summary JSON</button>
     <button id="metricTrendSummaryBrief" type="button" class="ghost" disabled>Export script-free printable trend summary</button>
   </div>
+  <h3>Manual-slot flag-state transition matrix</h3>
+  <p>For every metric and adjacent pair of manually selected snapshots, classify each anonymous scenario as clear in both, flagged in both, clear → flagged, or flagged → clear. This separates new source-reported flags from flags that are no longer reported without implying a verified fix. The selected order is a display order, not authenticated chronology. The static review-group filter above also applies here.</p>
+  <label>Filter flag-state transition rows
+    <select id="metricTransitionFilter">
+      <option value="all">All metric/slot pairs</option>
+      <option value="changed">At least one scenario changed flag state</option>
+      <option value="clear_to_flagged">At least one clear → flagged scenario</option>
+      <option value="flagged_to_clear">At least one flagged → clear scenario (not a verified fix)</option>
+      <option value="flagged_both">At least one scenario flagged in both slots</option>
+      <option value="clear_both">At least one scenario clear in both slots</option>
+    </select>
+  </label>
+  <p id="metricTransitionSummary" class="message" role="status" aria-live="polite">Import at least two snapshots to summarize flag-state changes.</p>
+  <div id="metricTransitionTable" class="tablewrap" role="region" aria-label="Per-metric source-flag state transitions by adjacent manual slot" tabindex="0"><p class="empty">No flag-state transitions yet.</p></div>
+  <div class="controls no-print">
+    <button id="metricTransitionCsv" type="button" disabled>Export filtered flag transitions CSV</button>
+    <button id="metricTransitionJson" type="button" class="secondary" disabled>Export filtered flag transitions JSON</button>
+    <button id="metricTransitionBrief" type="button" class="ghost" disabled>Export script-free printable transition brief</button>
+  </div>
   <p class="footnote">Both distribution views are aggregate-only: no original scenario IDs, filenames, source hashes or HUMAN notes. All authority/verification flags stay false; manual slot numbers never assert chronology.</p>
   <p class="footnote">Exports contain fixed metric labels, manual slot numbers, aggregate numeric values and literal false authority fields only. They exclude original scenario IDs, filenames, uploaded source hashes and HUMAN notes. A static review group is a display aid, not a severity judgment.</p>
 </section>

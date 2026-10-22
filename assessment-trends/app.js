@@ -574,6 +574,141 @@
     download("assessment-trends-anonymous-metric-distribution.csv",lines.join("\n")+"\n","text/csv;charset=utf-8");
   }
 
+  function metricTransitionRows(){
+    const chosenGroup=$("metricDistributionGroup").value;
+    const chosenTransition=$("metricTransitionFilter").value;
+    const rows=[];
+    if(snapshots.length<2||!scenarioIds.length)return rows;
+    for(let index=1;index<snapshots.length;index++){
+      const previous=snapshots[index-1],current=snapshots[index];
+      for(const name of METRICS){
+        const group=family(name);
+        if(chosenGroup!=="all"&&chosenGroup!==group)continue;
+        let clearToFlagged=0,flaggedToClear=0,flaggedBoth=0,clearBoth=0;
+        for(const id of scenarioIds){
+          const before=previous.cases.get(id).metrics.get(name).regression;
+          const after=current.cases.get(id).metrics.get(name).regression;
+          if(!before&&after)clearToFlagged++;
+          else if(before&&!after)flaggedToClear++;
+          else if(before&&after)flaggedBoth++;
+          else clearBoth++;
+        }
+        const changed=clearToFlagged+flaggedToClear;
+        const matches={
+          all:true,
+          changed:changed>0,
+          clear_to_flagged:clearToFlagged>0,
+          flagged_to_clear:flaggedToClear>0,
+          flagged_both:flaggedBoth>0,
+          clear_both:clearBoth>0
+        };
+        if(!matches[chosenTransition])continue;
+        rows.push({
+          previous_manual_slot:index,current_manual_slot:index+1,
+          metric:name,review_group:group,scenario_count:scenarioIds.length,
+          previous_flagged_scenarios:flaggedToClear+flaggedBoth,
+          current_flagged_scenarios:clearToFlagged+flaggedBoth,
+          clear_to_flagged_scenarios:clearToFlagged,
+          flagged_to_clear_scenarios:flaggedToClear,
+          flagged_in_both_slots_scenarios:flaggedBoth,
+          clear_in_both_slots_scenarios:clearBoth,
+          changed_scenarios:changed,
+          net_flag_change:clearToFlagged-flaggedToClear,
+          previous_source_status:previous.status,current_source_status:current.status
+        });
+      }
+    }
+    return rows;
+  }
+  function renderMetricTransitions(){
+    const rows=metricTransitionRows();
+    drawTable("metricTransitionTable",
+      ["Previous manual slot","Current manual slot","Metric","Static review group","Scenarios",
+       "Flagged before","Flagged after","Clear → flagged","Flagged → clear · NOT a verified fix",
+       "Flagged in both","Clear in both","Changed scenarios","Net flag-count change",
+       "Previous source status","Current source status"],
+      rows.map(r=>[r.previous_manual_slot,r.current_manual_slot,r.metric,r.review_group,r.scenario_count,
+        r.previous_flagged_scenarios,r.current_flagged_scenarios,
+        cell(r.clear_to_flagged_scenarios,r.clear_to_flagged_scenarios?"cell-adverse":"cell-neutral"),
+        cell(r.flagged_to_clear_scenarios,r.flagged_to_clear_scenarios?"cell-adverse":"cell-neutral"),
+        r.flagged_in_both_slots_scenarios,r.clear_in_both_slots_scenarios,r.changed_scenarios,
+        r.net_flag_change,r.previous_source_status,r.current_source_status]));
+    $("metricTransitionSummary").textContent=rows.length?
+      "Showing "+rows.length+" metric/pair rows across "+(snapshots.length-1)+
+      " adjacent manual-slot pairs and "+scenarioIds.length+
+      " anonymous scenarios. Each scenario contributes to exactly one flag-state category. A flag absent in the next selected slot is not a verified fix; slot order is not authenticated chronology.":
+      snapshots.length>1?"No metric/slot-pair rows match the selected group and transition filters.":
+      "Import at least two snapshots to summarize flag-state changes.";
+    for(const id of ["metricTransitionCsv","metricTransitionJson","metricTransitionBrief"])
+      $(id).disabled=!rows.length;
+  }
+  function metricTransitionPayload(){
+    return {schema:"lightup.assessment_trends_flag_transition_matrix.v1",
+      status:summary().status,fictional_demo_only:fictional,
+      manual_slot_order:true,manual_slot_count:snapshots.length,
+      adjacent_manual_slot_pairs:Math.max(0,snapshots.length-1),
+      authenticated_chronology:false,source_metrics_independently_verified:false,
+      remediation_verified:false,...Object.fromEntries(FLAGS.map(name=>[name,false])),
+      selected_group_filter:$("metricDistributionGroup").value,
+      selected_transition_filter:$("metricTransitionFilter").value,
+      rows:metricTransitionRows()};
+  }
+  function exportMetricTransitionHtml(payload){
+    const headers=["Previous slot","Current slot","Metric","Review group","Scenarios",
+      "Flagged before","Flagged after","Clear to flagged","Flagged to clear · NOT a verified fix",
+      "Flagged in both","Clear in both","Changed scenarios","Net flag-count change",
+      "Previous source status","Current source status"];
+    const values=payload.rows.map(r=>[r.previous_manual_slot,r.current_manual_slot,r.metric,r.review_group,
+      r.scenario_count,r.previous_flagged_scenarios,r.current_flagged_scenarios,
+      r.clear_to_flagged_scenarios,r.flagged_to_clear_scenarios,r.flagged_in_both_slots_scenarios,
+      r.clear_in_both_slots_scenarios,r.changed_scenarios,r.net_flag_change,
+      r.previous_source_status,r.current_source_status]);
+    const table="<table><thead><tr>"+headers.map(v=>"<th scope='col'>"+esc(v)+"</th>").join("")+
+      "</tr></thead><tbody>"+values.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+
+      "</tr>").join("")+"</tbody></table>";
+    const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"+
+      "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'\">"+
+      "<title>LightUp · Anonymous flag-state transitions</title><style>"+
+      "body{font:14px/1.5 system-ui,sans-serif;margin:2rem;color:#17202a}h1{font-size:1.6rem}"+
+      ".hold{border:1px solid #8a6d3b;padding:1rem;margin:1rem 0}table{border-collapse:collapse;width:100%;font-size:11px}"+
+      "th,td{border:1px solid #bbb;padding:.35rem;text-align:left;vertical-align:top}th{background:#eee}"+
+      "@media print{body{margin:0}table{font-size:8px}tr{break-inside:avoid}}"+
+      "</style></head><body><h1>LightUp · Anonymous flag-state transitions</h1>"+
+      "<p>Counts compare adjacent manually ordered snapshots only. The selected order is not authenticated chronology; a missing flag is not a verified fix.</p>"+
+      "<p>Static review group: "+esc(payload.selected_group_filter)+" · Transition filter: "+
+      esc(payload.selected_transition_filter)+" · Manual slots: "+payload.manual_slot_count+"</p>"+
+      "<div class='hold'><strong>"+esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+
+      payload.status+" · REVIEW ONLY / HOLD")+"</strong><p>fictional_demo_only="+payload.fictional_demo_only+
+      " · authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false · "+
+      "authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+      table+"<p>Every scenario is counted in exactly one category per metric and adjacent slot pair. "+
+      "No original scenario IDs, filenames, source hashes or HUMAN notes are included.</p></body></html>";
+    if(new Blob([html]).size>4*1024*1024)return;
+    download("assessment-trends-anonymous-flag-transitions-REVIEW-ONLY.html",html,"text/html");
+  }
+  function exportMetricTransitions(format){
+    const payload=metricTransitionPayload();
+    if(!payload.rows.length)return;
+    if(format==="html"){exportMetricTransitionHtml(payload);return;}
+    if(format==="json"){
+      download("assessment-trends-anonymous-flag-transitions.json",
+        JSON.stringify(payload,null,2)+"\n","application/json");return;
+    }
+    const columns=["schema","selected_group_filter","selected_transition_filter","manual_slot_order",
+      "manual_slot_count","adjacent_manual_slot_pairs","previous_manual_slot","current_manual_slot",
+      "metric","review_group","scenario_count","previous_flagged_scenarios","current_flagged_scenarios",
+      "clear_to_flagged_scenarios","flagged_to_clear_scenarios","flagged_in_both_slots_scenarios",
+      "clear_in_both_slots_scenarios","changed_scenarios","net_flag_change","previous_source_status",
+      "current_source_status","overall_status","fictional_demo_only","authenticated_chronology",
+      "source_metrics_independently_verified","remediation_verified",...FLAGS];
+    const lines=[columns.map(csvField).join(","),...payload.rows.map(row=>columns.map(key=>
+      csvField(key==="overall_status"?payload.status:
+        Object.prototype.hasOwnProperty.call(row,key)?row[key]:
+        Object.prototype.hasOwnProperty.call(payload,key)?payload[key]:false)).join(","))];
+    download("assessment-trends-anonymous-flag-transitions.csv",lines.join("\n")+"\n","text/csv;charset=utf-8");
+  }
+
   const SCENARIO_PAGE=100;
   let scenarioOffset=0;
   function scenarioBoardRows(){
@@ -1291,7 +1426,8 @@
   function render(){
     const active=snapshots.length>0;
     for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson","metricDistributionBrief",
-      "metricTrendSummaryCsv","metricTrendSummaryJson","metricTrendSummaryBrief"])$(id).disabled=!active;
+      "metricTrendSummaryCsv","metricTrendSummaryJson","metricTrendSummaryBrief",
+      "metricTransitionCsv","metricTransitionJson","metricTransitionBrief"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
     $("noteMetric").replaceChildren();
     METRICS.forEach(name=>{const option=document.createElement("option");option.value=name;option.textContent=name;$("noteMetric").append(option);});
@@ -1300,17 +1436,20 @@
     scenarioIds.forEach((id,i)=>{const option=document.createElement("option");option.value=id;
       option.textContent="Scenario "+String(i+1).padStart(2,"0");$("scenarioSelect").append(option);});
     if(active){selectedScenario=scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];$("scenarioSelect").value=selectedScenario;
-      renderSummary();renderMetricBoard();renderMetricDistribution();renderMetricTrendSummary();renderScenarioBoard();renderScenarioDetail();
+      renderSummary();renderMetricBoard();renderMetricDistribution();renderMetricTrendSummary();
+      renderMetricTransitions();renderScenarioBoard();renderScenarioDetail();
       renderReviewQueue();renderHumanWorkPlan();renderPrintBrief();}
     else{
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","metricDistribution","metricTrendSummary","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","metricDistribution","metricTrendSummary","metricTransitionTable","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
       $("metricDistributionSummary").textContent="Import snapshots to summarize numeric metric distributions.";
       $("metricTrendSummaryText").textContent="Import snapshots to summarize median shifts and source-flag prevalence.";
+      $("metricTransitionSummary").textContent="Import at least two snapshots to summarize flag-state changes.";
       $("metricDistributionCsv").disabled=$("metricDistributionJson").disabled=$("metricDistributionBrief").disabled=true;
       $("metricTrendSummaryCsv").disabled=$("metricTrendSummaryJson").disabled=$("metricTrendSummaryBrief").disabled=true;
+      $("metricTransitionCsv").disabled=$("metricTransitionJson").disabled=$("metricTransitionBrief").disabled=true;
       renderHumanWorkPlan();
     }
     if(!active){updateStageBatchControls();$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
@@ -2186,10 +2325,14 @@
     }
   }
   $("metricDistributionGroup").addEventListener("change",()=>{
-    renderMetricDistribution();renderMetricTrendSummary();
+    renderMetricDistribution();renderMetricTrendSummary();renderMetricTransitions();
   });
   $("metricDistributionFlagFilter").addEventListener("change",renderMetricDistribution);
   $("metricTrendFlagFilter").addEventListener("change",renderMetricTrendSummary);
+  $("metricTransitionFilter").addEventListener("change",renderMetricTransitions);
+  $("metricTransitionCsv").addEventListener("click",()=>exportMetricTransitions("csv"));
+  $("metricTransitionJson").addEventListener("click",()=>exportMetricTransitions("json"));
+  $("metricTransitionBrief").addEventListener("click",()=>exportMetricTransitions("html"));
   $("metricTrendSummaryCsv").addEventListener("click",()=>exportMetricTrendSummary("csv"));
   $("metricTrendSummaryJson").addEventListener("click",()=>exportMetricTrendSummary("json"));
   $("metricTrendSummaryBrief").addEventListener("click",()=>exportMetricTrendSummary("html"));
