@@ -44,6 +44,11 @@ def admit_saved_bundle(path):
             raise Hold("saved PRIVATE receipt is not canonical JSON") from error
         if not isinstance(receipt, dict):
             raise Hold("saved PRIVATE receipt schema rejected")
+        canonical_receipt = (
+            json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n"
+        ).encode("utf-8")
+        if raw_receipt != canonical_receipt:
+            raise Hold("saved PRIVATE receipt is not byte-canonical JSON")
         schema = receipt.get("schema")
         if schema == "lightup.offline-manifest-combine.v1":
             admitted_sets = ({MANIFEST, SUMMARY},)
