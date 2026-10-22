@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import base64
+import csv
 from hashlib import sha256
 import json
 import os
+import io
 from html import escape
 
 from combine_manifest import (
@@ -21,6 +23,7 @@ from source_board import render_board, slot_map_csv
 
 DELTA_JSON = "lightup-private-manifest-delta.json"
 DELTA_HTML = "lightup-private-manifest-delta.html"
+DELTA_CSV = "lightup-private-manifest-delta.csv"
 OUTPUT_LIMIT = 16384
 
 STYLE = ("body{font:16px/1.5 system-ui,sans-serif;color:#17212f;"
@@ -148,6 +151,21 @@ def render_html(packet):
     return html.encode("utf-8")
 
 
+def render_csv(packet):
+    """Ordinal-only portable change ledger; never export endpoint values or source paths."""
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(("change_state", "before_slot", "after_slot", "review_state"))
+    for item in packet["changes"]:
+        writer.writerow((
+            item["state"],
+            "" if item["before_slot"] is None else item["before_slot"],
+            "" if item["after_slot"] is None else item["after_slot"],
+            "REVIEW_ONLY",
+        ))
+    return output.getvalue().encode("ascii")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Compare two existing PRIVATE canonical manifests offline; never execute a scan.")
     parser.add_argument("--before-dir", required=True, help="existing owner-private combined source directory")
@@ -178,6 +196,7 @@ def main(argv=None):
         contents = {
             DELTA_JSON: (json.dumps(packet, sort_keys=True, separators=(",", ":")) + "\n").encode(),
             DELTA_HTML: render_html(packet),
+            DELTA_CSV: render_csv(packet),
         }
         if any(not 0 < len(data) <= OUTPUT_LIMIT for data in contents.values()):
             raise Hold("private change desk exceeds output bound")
@@ -189,10 +208,13 @@ def main(argv=None):
                 if common in (output_abs, source):
                     raise Hold("change output must remain separate from both source directories")
             if args.verify_output_dir:
-                if set(os.listdir(fd)) != set(contents):
+                found = set(os.listdir(fd))
+                legacy_names = set(contents) - {DELTA_CSV}
+                if found not in (set(contents), legacy_names):
                     raise Hold("saved change output has missing or extra files")
-                for name, expected in contents.items():
-                    if read_private_bundle_item(fd, name, OUTPUT_LIMIT) != expected:
+                # Preserve exact read-only reopening of older native two-file bundles.
+                for name in found:
+                    if read_private_bundle_item(fd, name, OUTPUT_LIMIT) != contents[name]:
                         raise Hold("source-bound change desk bytes drifted")
             else:
                 if os.listdir(fd):
@@ -204,7 +226,7 @@ def main(argv=None):
                "MANIFEST_CHANGE_CREATED") + " · before=" + str(len(before)) +
               " after=" + str(len(after)) + " added=" + str(totals["ADDED"]) +
               " removed=" + str(totals["REMOVED"]) + " moved=" + str(totals["MOVED"]) +
-              " · REVIEW_ONLY; no authorization, scan or target interaction")
+              " · PRIVATE ordinal CSV; REVIEW_ONLY; no authorization, scan or target interaction")
         return 0
     except Hold as error:
         report_hold("PRIVATE_MANIFEST_CHANGE_HOLD — original private source or output not admitted", error, args.explain_hold)
