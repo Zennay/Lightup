@@ -419,10 +419,12 @@
         first_manual_slot:first.slot,last_manual_slot:last.slot,
         first_median_candidate:first.medianCandidate,last_median_candidate:last.medianCandidate,
         net_median_candidate_shift:last.medianCandidate-first.medianCandidate,
-        max_abs_median_candidate_shift:peakCandidate.shift,max_candidate_shift_slot:peakCandidate.slot,
+        max_abs_median_candidate_shift:Math.abs(peakCandidate.shift),
+        peak_median_candidate_shift:peakCandidate.shift,max_candidate_shift_slot:peakCandidate.slot,
         first_median_delta:first.medianDelta,last_median_delta:last.medianDelta,
         net_median_delta_shift:last.medianDelta-first.medianDelta,
-        max_abs_median_delta_shift:peakDelta.shift,max_delta_shift_slot:peakDelta.slot,
+        max_abs_median_delta_shift:Math.abs(peakDelta.shift),
+        peak_median_delta_shift:peakDelta.shift,max_delta_shift_slot:peakDelta.slot,
         max_flagged_scenarios:maxFlagged,max_flagged_percent:maxFlagged/scenarioIds.length*100,
         slots_with_flagged_scenarios:flaggedSlots,
         flagged_scenario_slot_observations:slots.reduce((sum,slot)=>sum+slot.flagged,0)});
@@ -433,13 +435,13 @@
     const rows=metricTrendSummaryRows();
     drawTable("metricTrendSummary",
       ["Metric","Static review group","Scenarios","First median candidate","Last median candidate",
-       "Net median candidate shift","Largest candidate median shift vs slot 01","Slot",
-       "First median Δ","Last median Δ","Net median Δ shift","Largest median Δ shift vs slot 01","Slot",
+       "Net median candidate shift","Peak candidate shift (signed)","Peak candidate shift magnitude","Peak slot",
+       "First median Δ","Last median Δ","Net median Δ shift","Peak Δ shift (signed)","Peak Δ shift magnitude","Peak slot",
        "Max flagged scenarios","Max flagged %","Slots with any flags","Flagged scenario-slot observations"],
       rows.map(r=>[r.metric,r.review_group,r.scenario_count,fmt(r.first_median_candidate),
-        fmt(r.last_median_candidate),fmt(r.net_median_candidate_shift),fmt(r.max_abs_median_candidate_shift),
-        r.max_candidate_shift_slot,fmt(r.first_median_delta),fmt(r.last_median_delta),
-        fmt(r.net_median_delta_shift),fmt(r.max_abs_median_delta_shift),r.max_delta_shift_slot,
+        fmt(r.last_median_candidate),fmt(r.net_median_candidate_shift),fmt(r.peak_median_candidate_shift),
+        fmt(r.max_abs_median_candidate_shift),r.max_candidate_shift_slot,fmt(r.first_median_delta),fmt(r.last_median_delta),
+        fmt(r.net_median_delta_shift),fmt(r.peak_median_delta_shift),fmt(r.max_abs_median_delta_shift),r.max_delta_shift_slot,
         r.max_flagged_scenarios,fmt(r.max_flagged_percent)+"%",r.slots_with_flagged_scenarios,
         r.flagged_scenario_slot_observations]));
     $("metricTrendSummaryText").textContent=rows.length?
@@ -460,13 +462,14 @@
   }
   function exportMetricTrendSummaryHtml(payload){
     const headers=["Metric","Review group","Scenarios","First median candidate","Last median candidate",
-      "Net candidate shift","Peak candidate shift","Peak slot","First median delta","Last median delta",
-      "Net delta shift","Peak delta shift","Peak slot","Max flagged scenarios","Max flagged %",
+      "Net candidate shift","Peak candidate shift (signed)","Peak candidate shift magnitude","Peak slot",
+      "First median delta","Last median delta","Net delta shift","Peak delta shift (signed)",
+      "Peak delta shift magnitude","Peak slot","Max flagged scenarios","Max flagged %",
       "Slots with flags","Flagged scenario-slot observations"];
     const values=payload.rows.map(r=>[r.metric,r.review_group,r.scenario_count,r.first_median_candidate,
-      r.last_median_candidate,r.net_median_candidate_shift,r.max_abs_median_candidate_shift,
-      r.max_candidate_shift_slot,r.first_median_delta,r.last_median_delta,r.net_median_delta_shift,
-      r.max_abs_median_delta_shift,r.max_delta_shift_slot,r.max_flagged_scenarios,
+      r.last_median_candidate,r.net_median_candidate_shift,r.peak_median_candidate_shift,
+      r.max_abs_median_candidate_shift,r.max_candidate_shift_slot,r.first_median_delta,r.last_median_delta,r.net_median_delta_shift,
+      r.peak_median_delta_shift,r.max_abs_median_delta_shift,r.max_delta_shift_slot,r.max_flagged_scenarios,
       r.max_flagged_percent.toFixed(4)+"%",r.slots_with_flagged_scenarios,r.flagged_scenario_slot_observations]);
     const table="<table><thead><tr>"+headers.map(v=>"<th scope='col'>"+esc(v)+"</th>").join("")+
       "</tr></thead><tbody>"+values.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+
@@ -499,9 +502,9 @@
     }
     const columns=["schema","selected_group_filter","selected_flag_filter","manual_slot_order","manual_slot_count",
       "metric","review_group","scenario_count","first_manual_slot","last_manual_slot",
-      "first_median_candidate","last_median_candidate","net_median_candidate_shift",
+      "first_median_candidate","last_median_candidate","net_median_candidate_shift","peak_median_candidate_shift",
       "max_abs_median_candidate_shift","max_candidate_shift_slot","first_median_delta","last_median_delta",
-      "net_median_delta_shift","max_abs_median_delta_shift","max_delta_shift_slot","max_flagged_scenarios",
+      "net_median_delta_shift","peak_median_delta_shift","max_abs_median_delta_shift","max_delta_shift_slot","max_flagged_scenarios",
       "max_flagged_percent","slots_with_flagged_scenarios","flagged_scenario_slot_observations",
       "overall_status","fictional_demo_only","authenticated_chronology","source_metrics_independently_verified",
       "remediation_verified",...FLAGS];
