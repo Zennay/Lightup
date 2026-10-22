@@ -484,6 +484,60 @@ def render_private_comparison_html(previous, current, reference_date):
     return content.encode("utf-8")
 
 
+PRIVATE_LABELS = {
+    "assessment-portfolio-private.html": "Original PRIVATE cross-agenda human planning",
+    "assessment-portfolio-private-routing.csv": "Original PRIVATE ordinal routing CSV",
+    "assessment-portfolio-anonymous.json": "Original counts-only JSON (may be sensitive in small cohorts)",
+    "assessment-portfolio-anonymous.csv": "Original counts-only CSV (may be sensitive in small cohorts)",
+    "assessment-portfolio-private-explorer.html": "Interactive PRIVATE planning explorer",
+    "assessment-portfolio-private-proposals.ics": "PRIVATE tentative calendar (external import may disclose planning)",
+    "assessment-portfolio-human-workbook.html": "Edit and download PRIVATE HUMAN discussion worksheet",
+    "assessment-portfolio-private-HUMAN-return.html": "PRIVATE HUMAN response and status-by-role dashboard",
+    "assessment-portfolio-private-HUMAN-return.csv": "PRIVATE HUMAN detailed response CSV",
+    "assessment-portfolio-private-HUMAN-summary.json": "PRIVATE HUMAN status/role rollup",
+    "assessment-portfolio-private-HUMAN-delta.html": "PRIVATE comparison of two human-selected discussion rounds",
+    "assessment-portfolio-private-HUMAN-delta.json": "PRIVATE ordinal-level discussion change details",
+}
+
+
+def render_private_home(names, reference_date):
+    """Standalone scriptless local navigation over a fixed closed artifact vocabulary."""
+    if len(set(names)) != len(names) or any(name not in PRIVATE_LABELS for name in names):
+        raise Hold("unexpected PRIVATE workspace file inventory")
+    items = "".join(
+        "<li><a href='" + escape(name, quote=True) + "'>" +
+        escape(PRIVATE_LABELS[name]) + "</a></li>"
+        for name in names
+    )
+    css = ("body{font:16px/1.5 system-ui,sans-serif;max-width:960px;margin:2rem auto;"
+           "padding:1rem;color:#192334;background:#f3f5f8}header,section{background:white;"
+           "border:1px solid #d0d9e5;border-radius:10px;padding:1.4rem;margin:.8rem 0}"
+           ".hold{font-weight:750;background:#fff4e2;padding:.8rem;border-left:4px solid #99601a}"
+           "li{margin:.6rem 0}a{color:#07549d}")
+    css_hash = base64.b64encode(sha256(css.encode()).digest()).decode()
+    document = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none';"
+        "style-src 'sha256-" + css_hash + "'; script-src 'none'; connect-src 'none';"
+        "form-action 'none'; base-uri 'none'\">"
+        "<title>LightUp PRIVATE HUMAN workroom</title><style>" + css + "</style></head><body>"
+        "<header><h1>LightUp PRIVATE HUMAN workroom</h1>"
+        "<p class='hold'>INCUBATE / M3-M7 PLAN-LAB ONLY / HUMAN DISCUSSION / HOLD."
+        " No consent, grant, active target, verification or release.</p>"
+        "<p>Operator-selected reference day " + escape(reference_date) +
+        ". File names are fixed product artifacts; original input files remain separate.</p></header>"
+        "<section><h2>Open this local PRIVATE packet</h2><ul>" + items + "</ul>"
+        "<p>Use local original source inputs and strict native gates to return any downloaded HUMAN JSON."
+        " These files alone do not prove human identity, approved scope, completed work or chronology.</p>"
+        "<p>Exporting, printing, calendar-importing or sharing PRIVATE files may disclose sensitive"
+        " human-planning information. Never distribute without independent authorization.</p>"
+        "</section></body></html>"
+    )
+    return document.encode("utf-8")
+
+
 def render_private_csv(entries):
     output = io.StringIO(newline="")
     writer = csv.writer(output, lineterminator="\r\n")
