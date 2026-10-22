@@ -763,3 +763,60 @@ identities are exported. Even private ordinals and role combinations may be
 identifying. **Manual selection order does not prove event chronology;
 removed selection is not a remediated finding.** Full create/reopen commands:
 [ACTION_SELECTION_COMPARISON_GUIDE.md](ACTION_SELECTION_COMPARISON_GUIDE.md).
+
+
+## Two-source private slot map — explicit source-to-result traceability
+
+The native `combine_manifest.py` already publishes a source board and
+source-local → combined-slot CSV for multi-source combinations and any
+combination that omits sources. For a **simple two-source combination**,
+`--source-slot-map` now opts into the same four-file PRIVATE receipt:
+the canonical manifest, unsigned source receipt, scriptless source board,
+and per-source ordinal/slot CSV. This is useful when the operator needs to
+review exactly which local slots from each input occupy the resulting
+manifest without exposing literal endpoint values in the map.
+
+```bash
+mkdir -m 700 /private/combined-manifest-with-map
+python3 assessment-launchpad/combine_manifest.py \
+  --first-manifest /private/source-a/manifest.txt \
+  --second-manifest /private/source-b/manifest.txt \
+  --mode append \
+  --source-slot-map \
+  --output-dir /private/combined-manifest-with-map
+```
+
+Open `lightup-manifest-source-board-private.html` for the source-level
+retained/discarded view and `lightup-manifest-source-slots-private.csv`
+for every source-local slot, its resulting slot (blank when discarded),
+fixed-vocabulary selection state and `REVIEW_ONLY` label. The CSV and HTML
+contain no endpoint values, source filenames, paths, free text or source
+hashes. The unsigned private JSON receipt remains sensitive and is not an
+attestation of provenance, consent, client identity, lab isolation or
+authorization.
+
+For an exact **read-only** reopen, repeat the same original manifest order,
+mode, `--source-slot-map` flag and output directory, and add
+`--verify-output`:
+
+```bash
+python3 assessment-launchpad/combine_manifest.py \
+  --first-manifest /private/source-a/manifest.txt \
+  --second-manifest /private/source-b/manifest.txt \
+  --mode append \
+  --source-slot-map \
+  --output-dir /private/combined-manifest-with-map \
+  --verify-output
+```
+
+The explicit flag participates in the exact output shape: omitting it on
+reopen will HOLD if the original bundle contains the map, and adding it
+will HOLD if the original bundle was published in the legacy two-file
+shape. Existing v1 two-source receipts and historical multi-source receipts
+remain supported by their original exact-shape reopen/admission paths; this
+option does not rewrite them. For 3–8 source files or explicit source
+omissions, the board and slot map are already included and the option is
+redundant. This is offline planning only; the original source-owner,
+exact-head hosted and permanent named-VPS CI, independent security/privacy
+review, authentic distinct current client/operator consent with action-time
+revocation, #177/#182/#829 and explicit HUMAN GO gates remain mandatory.
