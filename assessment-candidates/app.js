@@ -163,10 +163,22 @@
       return Array.from(new Uint8Array(raw),b=>b.toString(16).padStart(2,"0")).join("");}
     catch(_){return null;}
   }
-  function cell(x){return String(x);}
+  // Imported report fields are untrusted. Escape every ordinary cell/header;
+  // only the two locally constructed, ordinal-only controls below opt into HTML.
+  const TRUSTED_HTML=Symbol("trusted-html");
+  function escapeHTML(value){
+    return String(value).replace(/[&<>"']/g,ch=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    })[ch]);
+  }
+  function trustedHTML(value){return {[TRUSTED_HTML]:true,value};}
+  function cell(value){
+    return value&&typeof value==="object"&&value[TRUSTED_HTML]===true?
+      value.value:escapeHTML(value);
+  }
   function tr(values){return "<tr>"+values.map(x=>"<td>"+cell(x)+"</td>").join("")+"</tr>";}
   function table(headers,rows){
-    return "<table><thead><tr>"+headers.map(h=>"<th scope='col'>"+h+"</th>").join("")+
+    return "<table><thead><tr>"+headers.map(h=>"<th scope='col'>"+escapeHTML(h)+"</th>").join("")+
       "</tr></thead><tbody>"+rows.map(tr).join("")+"</tbody></table>";
   }
   function setStatus(s,failed=false){$("message").textContent=s;$("message").className=failed?"danger":"";}
@@ -335,9 +347,9 @@
       topic==="operations"?"Informational source metric changes":"Original adverse metric instances",
       "Local discussion stage","Generic proposed reviewer group"],
       rows.map(r=>[
-        "<button type='button' class='case-link' data-queue-index='"+r.i+
+        trustedHTML("<button type='button' class='case-link' data-queue-index='"+r.i+
           "' aria-label='Select anonymous case "+(r.i+1)+"'>Lab case "+
-          String(r.i+1).padStart(2,"0")+"</button>",
+          String(r.i+1).padStart(2,"0")+"</button>"),
         r.count,r.review.stage.replaceAll("_"," "),r.review.route.replaceAll("_"," ")]));
   }
   function renderSourceManifest(){
@@ -1173,10 +1185,10 @@
       ["Select","Anonymous case","First HUMAN stage","Last HUMAN stage",
        "First proposed group","Last proposed group","Proposal transitions"],
       filtered.map(d=>[
-        '<input type="checkbox" aria-label="Select local HUMAN case '+d.ordinal+
-          '" data-round-select="'+d.ordinal+'" '+(reviewRounds.selected.has(d.ordinal)?"checked":"")+'>',
-        '<button type="button" class="secondary" data-round-focus="'+d.ordinal+
-          '">Lab case '+String(d.ordinal).padStart(2,"0")+'</button>',
+        trustedHTML('<input type="checkbox" aria-label="Select local HUMAN case '+d.ordinal+
+          '" data-round-select="'+d.ordinal+'" '+(reviewRounds.selected.has(d.ordinal)?"checked":"")+'>'),
+        trustedHTML('<button type="button" class="secondary" data-round-focus="'+d.ordinal+
+          '">Lab case '+String(d.ordinal).padStart(2,"0")+'</button>'),
         nice(d.before.stage),nice(d.after.stage),nice(d.before.route),
         nice(d.after.route),d.transitions])
     );
