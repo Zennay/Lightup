@@ -23,6 +23,12 @@
   const CHANGE_KEYS = ["name", "baseline", "candidate", "delta", "regression"];
   const $ = id => document.getElementById(id);
   let report = null, selected = -1, digest = null, sourceKind = null, trend = null, metricFocus = null, planDelta = null;
+  // User choice is authoritative: stale local file completions cannot clear
+  // or silently replace a newer HUMAN planning workspace.
+  let readGeneration = 0;
+  const beginRead = () => ++readGeneration;
+  const invalidateReads = () => { readGeneration++; };
+  const currentRead = generation => generation === readGeneration;
   const exactKeys = (x, keys) => !!x && Object.getPrototypeOf(x) === Object.prototype &&
     Object.keys(x).length === keys.length && keys.every(k => Object.hasOwn(x, k));
   const fail = () => { throw new Error("Source structure or values do not match canonical lab CLI output."); };
@@ -523,7 +529,8 @@
     if(report) render();
   });
   function render() { renderOverview(); renderLandscape(); renderQueue(); renderDetails(); renderPrintBrief(); renderFilteredPrintBrief(); }
-  function reset() {
+  function reset(invalidate = true) {
+    if (invalidate) invalidateReads();
     report = null; selected = -1; digest = null; sourceKind = null;
     clearHistorical(); clearPlanComparison(); metricFocus = null;
     $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all";
@@ -585,25 +592,26 @@
   }
 
   async function load(file) {
-    reset();
+    const generation = beginRead();
     try {
       ensure(file && file.size > 0 && file.size <= 524288 && file.name.toLowerCase().endsWith(".json"));
       const raw = await file.text();
+      ensure(currentRead(generation));
       ensure(new TextEncoder().encode(raw).length <= 524288);
-      const parsed = parseStrictJson(raw);
-      const candidate = readReport(parsed);
-      // This binds the HUMAN plan to local source bytes only; it does NOT authenticate source.
-      // Web Crypto is preferred, with portable offline SHA-256 for local file:// contexts.
-      const bytes = new TextEncoder().encode(raw);
-      digest = await hashBytes(bytes);
-      report = candidate; sourceKind = candidate.kind;
+      const candidate = readReport(parseStrictJson(raw));
+      // The digest binds HUMAN planning to exact local bytes, not source identity.
+      const nextDigest = await hashBytes(new TextEncoder().encode(raw));
+      ensure(currentRead(generation) && /^[a-f0-9]{64}$/.test(nextDigest));
+      // Commit only after all original source validation and local hashing succeeds.
+      reset(false);
+      report = candidate; digest = nextDigest; sourceKind = candidate.kind;
       selected = candidate.cases.length ? 0 : -1;
       alert(candidate.cases.length ? "Untrusted canonical-shape report loaded locally. Human review only." :
         "Source says HOLD with no comparable cases. No partial details accepted.", candidate.cases.length ? "good" : "error");
       render();
     } catch (_) {
-      reset();
-      alert("HOLD · Unsupported, oversized, inconsistent or malformed local report. No partial review imported.", "error");
+      if (currentRead(generation)) alert(
+        "HOLD · Unsupported, oversized, inconsistent or malformed local report. Previous HUMAN workspace preserved.", "error");
     }
   }
   function filteredQueueExport() {
@@ -722,6 +730,7 @@
   // Restore only human planning state, never underlying metrics, source identity,
   // release verdict or authority. A byte-identical original source is required.
   async function restoreReview(file) {
+    const generation = beginRead();
     if (!report || !digest) {
       alert("HOLD · Load the exact original lab report first; a local source-byte digest is required to restore the private review.", "error");
       return;
@@ -729,7 +738,9 @@
     try {
       ensure(file && file.name.toLowerCase().endsWith(".json") &&
         file.size > 0 && file.size <= 131072);
-      const saved = parseStrictJson(await file.text(), 131072);
+      const raw = await file.text();
+      ensure(currentRead(generation));
+      const saved = parseStrictJson(raw, 131072);
       ensure(exactKeys(saved, ["schema","source_sha256","source_kind","source_status",
         ...AUTH,"release_approved","scan_allowed","review_only","cases","warning"]));
       const v2 = saved.schema === "lightup-offline-human-triage-v2";
@@ -760,11 +771,12 @@
           new Date(due + "T00:00:00Z").toISOString().startsWith(due)));
         updates.push({stage: row.human_stage, due: due || "", route: v2 ? row.routing_group : "unassigned"});
       }
+      ensure(currentRead(generation));
       updates.forEach((step,i) => Object.assign(report.cases[i], step));
       alert("Saved human follow-up restored for the exact same local report. No approval imported.", "good");
       render();
     } catch (_) {
-      alert("HOLD · Saved review does not match the source bytes or canonical planning schema. No changes applied.", "error");
+      if(currentRead(generation))alert("HOLD · Saved review does not match the source bytes or canonical planning schema. No changes applied.", "error");
     } finally {
       $("restore-file").value = "";
     }
