@@ -216,6 +216,10 @@ def main(argv=None):
             print("PRIVATE_HUMAN_SELECTED_ACTIONS_PREVIEW_ONLY — " +
                   str(len(source[5])) + "/" + str(source[6]) +
                   " original slots selected; no files written; REVIEW_ONLY; NO AUTHORITY")
+            preview = json.loads(artifacts[PRIVATE_SUMMARY].decode("utf-8"))
+            print("Selected HUMAN dimension counts only (no slot rows, notes, targets or paths):")
+            print(json.dumps(preview["selected_action_counts"], sort_keys=True,
+                             separators=(",", ":")))
             return 0
         fd, destination = open_output_directory(args.output_dir or args.verify_output_dir)
         try:

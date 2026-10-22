@@ -426,8 +426,8 @@ Launchpad bundle, original operator-ordered HUMAN rounds and original selected
 role-return packets. No new grants, targets, scans or reviewer identities.
 See `ROLE_RECONCILIATION_GUIDE.md` for the complete create/reopen commands.
 Run `action_handoff.py` with `--preview-only` first to re-admit the complete
-original source set and selected CSV, display selected/original slot counts,
-and exit before opening or creating any output directory. The downloaded
+original source set and selected CSV, display selected/original slot counts plus fixed-vocabulary counts across the
+five HUMAN dimensions, and exit before opening or creating any output directory. The downloaded
 browser CSV must first be moved into a private `0700` folder
 and set to mode `0600`. Its six-column header must remain exactly
 `original_slot,latest_suggested_role,private_human_reply_status,latest_self_reported_human_stage,suggested_operator_next_step,private_note_changed`;

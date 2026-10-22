@@ -179,8 +179,9 @@ python3 assessment-launchpad/action_handoff.py \
   --preview-only
 ```
 
-This reports only the selected/original slot counts and writes nothing. For
-actual publication, use a separate new empty mode-`0700` destination:
+This reports selected/original slot counts and five-dimensional fixed-vocabulary
+HUMAN counts only—never slot rows, notes, targets or paths—and writes nothing.
+For actual publication, use a separate new empty mode-`0700` destination:
 
 ```sh
 mkdir -m 700 ~/private-selected-human-input ~/private-selected-human-output
