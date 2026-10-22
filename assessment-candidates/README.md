@@ -81,3 +81,14 @@ one row per changed anonymous case and manually selected round, including
 intermediate and reverted proposals, transition markers and false authority
 flags. If no compatible round comparison is
 loaded, the existing aggregate-only report is unchanged.
+
+### Scenario-level cross-candidate label conflicts
+
+The **Scenario-level conflict explorer** adds a case-by-case reconciliation view across the 2–12 manually selected candidate reports. It compares the source-reported regression boolean for each of the 15 fixed metrics on the same anonymous scenario. For every case, the table shows:
+- which candidate slots report adverse metrics, and the fixed metric names involved;
+- each metric whose regression label differs between candidates, including the candidate slots labelled adverse and not adverse;
+- a neutral explanation of whether the imported labels disagree, are consistently adverse, or contain no source-labelled regression.
+
+Use the candidate-focus selector and the view selector to narrow the table to label disagreements, adverse labels, or all cases. Candidate slots follow manual file-selection order and are **not verified chronology**. A disagreement is a request to reconcile original evidence, not proof that one candidate is correct. A missing regression label is not proof of safety or remediation.
+
+**Export integration:** the aggregate JSON is now schema `lightup.lab_candidate_matrix_review.v6` and includes `scenario_level_conflict_review`. The scriptless printable HTML brief includes the same anonymous case-level review. **Export scenario conflict ledger (CSV)** emits one or more rows per anonymous case, including a no-disagreement row when appropriate, and carries explicit `REVIEW_ONLY`, source-identity/temporal-order false flags, and all four authority flags set to false. No original scenario IDs, filenames, aliases, hashes, targets, private notes or reviewer identities are exported. Everything is calculated locally; no network, persistence, scan, grant or release action is performed.
