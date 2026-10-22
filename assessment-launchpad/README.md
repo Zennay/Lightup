@@ -383,3 +383,8 @@ Native offline per-role/ordinal change desk and source-free aggregate workload a
 ## Manual resolution of overlapping HUMAN role returns
 
 If two original private selected-role returns claim the same local slot, advance.py deliberately HOLDS. Use [ROLE_CONFLICT_GUIDE.md](ROLE_CONFLICT_GUIDE.md) and role_return_conflicts.py to prepare a PRIVATE role/slot choice CSV + scriptless CSP offline HTML, explicitly choose a source packet per conflict, and produce a complete owner-private canonical HUMAN worksheet for advance.py --responses. This is never automatic precedence, identity proof, remediation validation, consent or an assessment permission.
+
+
+## Direct owner PRIVATE manual conflict handoff to next HUMAN round
+
+The original resolved four-file overlap packet plus original chosen CSV and original source-bound role returns can now be imported with advance.py --conflict-resolved-dir, --conflict-decision-file and repeated --conflict-return-dir. Preserves a scriptless local provenance desk inside human-manual-conflict-review without duplicating the complete PRIVATE notes worksheet. See [ROLE_NATIVE_MANUAL_INTAKE.md](ROLE_NATIVE_MANUAL_INTAKE.md). No assessment authorization, real identity or scan.
