@@ -59,7 +59,7 @@ def mask_url_query_names(source: str, secret_name) -> str:
             if _BAD_PERCENT.search(name):
                 continue
             try:
-                    decoded = unquote_plus(name, encoding="utf-8", errors="strict")
+                decoded = unquote_plus(name, encoding="utf-8", errors="strict")
             except UnicodeError:
                 continue
             # Decode only the parameter name, at most two more times. Values
