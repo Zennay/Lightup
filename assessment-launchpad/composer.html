@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xfVZORK8JocKRqhSjyMyJ1y1kfJjKxeIx76yxcstaJA='; style-src 'sha256-kF8dZh9yHMP5XMAKKFRjc6omDgt1CC6BiZdU+V44fOk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-schcPW/h4+DysSIrZ6AVwEd2BTQaLJcYYTCqB59NYmo='; style-src 'sha256-kF8dZh9yHMP5XMAKKFRjc6omDgt1CC6BiZdU+V44fOk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}textarea,select{width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem}textarea{min-height:10rem;resize:vertical}label{font-weight:650}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
@@ -26,6 +26,7 @@
     <select id="fileMode"><option value="replace">Replace current draft with imported manifest</option><option value="append">Append imported manifest after filled draft slots</option></select>
     <div class="controls">
       <button id="addEndpoint" type="button" class="secondary">Add endpoint</button>
+      <button id="cleanDraft" type="button" class="secondary">Review draft cleanup</button>
       <button id="chooseManifest" type="button" class="secondary">Import existing manifest</button>
       <button id="showBulk" type="button" class="secondary" aria-expanded="false" aria-controls="bulkPanel">Paste multiple endpoints</button>
       <button id="toggleMask" type="button" class="secondary" aria-pressed="false">Hide endpoint values</button>
@@ -50,7 +51,7 @@
     <h2>Review proposed manifest before applying</h2>
     <p id="importPreviewSummary" role="status" aria-live="polite"></p>
     <div id="importPreviewRows"></div>
-    <label id="normalizationAckRow" hidden><input id="normalizationAck" type="checkbox"> I reviewed the normalization: blank/comment lines and empty draft slots (when appending) are omitted; endpoint whitespace is trimmed.</label>
+    <label id="normalizationAckRow" hidden><input id="normalizationAck" type="checkbox"> I reviewed the proposal: any blank/comment lines, duplicate endpoints or empty draft slots may be discarded and endpoint whitespace may be trimmed. Changes are not original-scope validation.</label>
     <div class="controls">
       <button id="downloadProposedManifest" type="button" class="secondary" disabled>Download proposed manifest without applying</button>
       <button id="applyManifestImport" type="button" disabled>Apply imported manifest</button>
@@ -274,7 +275,7 @@
     summary.textContent = (pendingImport.sourceKind || "Imported local file") + " · source " + pendingImport.sourceBytes + " bytes / " +
       pendingImport.sourceLines + " lines; " + pendingImport.blankLines + " blank and " +
       pendingImport.commentLines + " comment lines omitted; " + pendingImport.trimmedLines +
-      " endpoint lines trimmed. Canonical proposed output: " + manifestBytes(proposed) + " bytes. " +
+      " endpoint lines trimmed" + (pendingImport.cleanup ? "; " + pendingImport.duplicateLines + " repeated literal endpoints omitted" : "") + ". Canonical proposed output: " + manifestBytes(proposed) + " bytes. " +
       "Current " + current.length + (current.length === 1 ? " slot" : " slots") +
       " / " + manifestBytes(current) + " bytes · proposed " + proposed.length +
       (proposed.length === 1 ? " slot" : " slots") + " / " + manifestBytes(proposed) + " bytes" +
@@ -282,7 +283,8 @@
       changed + " changed slots · " + moved + " existing endpoints moved · " +
       added + " added endpoints · " + removed + " removed endpoints · " + emptyDraft +
       " empty draft slots ignored. Slot labels describe position changes; added/removed counts compare endpoint values across both manifests. " +
-      duplicateWarning + (pendingImport.skippedDraft ? " Empty current draft slots will be discarded on append." : "") + " Native scope validation has not run.";
+      duplicateWarning + (pendingImport.skippedDraft ? " Empty current draft slots will be discarded on append." : "") +
+      (pendingImport.cleanup ? " Cleanup would remove " + pendingImport.duplicateLines + " repeat values; first occurrences remain in original order." : "") + " Native scope validation has not run.";
     panel.hidden = false;
     const requiresAck = pendingImport.requiresAck;
     $("normalizationAckRow").hidden = !requiresAck;
@@ -368,6 +370,38 @@
     previous.forEach(item => addRow(item));
     refresh();
     $("message").textContent = "Restored the editor contents from before the last applied import. No browser storage was used; native scope validation has NOT run.";
+  }
+  function reviewDraftCleanup() {
+    const original = values();
+    const seen = new Set();
+    const proposed = [];
+    let blankLines = 0, trimmedLines = 0, duplicateLines = 0;
+    for (const raw of original) {
+      const candidate = raw.trim();
+      if (!candidate) { blankLines++; continue; }
+      if (raw !== candidate) trimmedLines++;
+      if (seen.has(candidate)) { duplicateLines++; continue; }
+      seen.add(candidate);
+      proposed.push(candidate);
+    }
+    if (!blankLines && !trimmedLines && !duplicateLines) {
+      $("message").textContent = "Draft has no blank slots, exact duplicates or leading/trailing whitespace to clean.";
+      return;
+    }
+    const checked = validate(proposed);
+    if (!checked.entries) {
+      $("message").textContent = "Cleanup cannot produce an admissible manifest. " + checked.error +
+        " Correct the listed endpoint slots manually before cleanup.";
+      return;
+    }
+    importSequence++;
+    pendingImport = {entries: proposed, baseline: original.slice(), sourceKind:"Current draft cleanup",
+      sourceBytes:manifestBytes(original), sourceLines:original.length, blankLines,
+      commentLines:0, trimmedLines, duplicateLines, cleanup:true,
+      requiresAck:true, normalizationAcknowledged:false};
+    renderImportPreview();
+    $("message").textContent = "Review all removed duplicate/blank rows and trimmed whitespace. Apply only after acknowledging the changes; Undo remains available.";
+    $("importPreviewPanel").scrollIntoView({block:"start"});
   }
   function previewPastedBatch() {
     importSequence++; // Cancel any still-reading file import.
@@ -508,6 +542,7 @@
     $("toggleMask").setAttribute("aria-pressed", String(masked));
     renderImportPreview();
   });
+  $("cleanDraft").addEventListener("click", reviewDraftCleanup);
   $("showBulk").addEventListener("click", () => {
     const open = $("bulkPanel").hidden;
     if (open) {
