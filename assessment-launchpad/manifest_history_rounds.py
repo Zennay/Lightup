@@ -21,6 +21,7 @@ MAX_ROUNDS = 8
 DETAIL = "lightup-human-timeline-private.json"
 BOARD = "lightup-human-timeline-private.html"
 COUNTS = "lightup-human-timeline-counts-private.csv"
+BACKLOG = "lightup-human-timeline-followups-private.csv"
 STYLE = ("body{font:16px/1.5 system-ui,sans-serif;max-width:1040px;margin:2rem auto;"
          "padding:1rem;color:#152437}.hold{background:#fff3df;border-left:5px solid #96691a;"
          "padding:1rem}table{border-collapse:collapse;width:100%}th,td{padding:.55rem;"
@@ -131,6 +132,26 @@ def render_counts(packet):
     return out.getvalue().encode("utf-8")
 
 
+def render_followups(packet):
+    """Ordinal-only HUMAN next-review queue. Never an unremediated findings list."""
+    out = StringIO(newline="")
+    writer = csv.writer(out, lineterminator="\\n")
+    writer.writerow(("original_row", "plan_pair_from", "plan_pair_to", "literal_change",
+                     "before_slot", "after_slot", "last_human_stage", "stage_changes"))
+    for row in packet["rows"]:
+        final = row["human_stages"][-1]
+        if final not in ("FOLLOW_UP_REQUIRED", "NEEDS_CONTEXT",
+                         "IN_REVIEW", "QUESTION_PREPARED"):
+            continue
+        stages = row["human_stages"]
+        writer.writerow((row["original_row"], row["from_plan"], row["to_plan"],
+                         row["literal_change"],
+                         row["before_slot"] if row["before_slot"] is not None else "",
+                         row["after_slot"] if row["after_slot"] is not None else "",
+                         final, sum(a != b for a, b in zip(stages, stages[1:]))))
+    return out.getvalue().encode("utf-8")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Compare 2–8 exactly chained saved HUMAN rounds offline, never run an assessment.")
@@ -149,6 +170,7 @@ def main(argv=None):
         files = {
             DETAIL: (json.dumps(packet, sort_keys=True, separators=(",", ":"))+"\n").encode(),
             BOARD: render_board(packet), COUNTS: render_counts(packet),
+            BACKLOG: render_followups(packet),
         }
         if any(not 0 < len(content) <= LIMIT for content in files.values()):
             raise Hold("PRIVATE HUMAN timeline output exceeds bound")
