@@ -120,6 +120,7 @@ def sidecar_digest(sidecar: Path, package: Path) -> str:
                               after.st_mtime_ns, after.st_ctime_ns)
             if (identity_before != identity_after or
                     (path_after.st_dev, path_after.st_ino) != (after.st_dev, after.st_ino) or
+                    not stat.S_ISREG(path_after.st_mode) or stat.S_ISLNK(path_after.st_mode) or
                     len(raw_bytes) != before.st_size or len(raw_bytes) > 4096):
                 raise Hold("HOLD: SHA-256 sidecar changed during read")
         raw = raw_bytes.decode("utf-8", errors="strict")
