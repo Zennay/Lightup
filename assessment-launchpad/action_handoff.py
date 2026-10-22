@@ -191,13 +191,19 @@ def admit_all(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Offline PRIVATE original-source-bound selected HUMAN action handoff")
-    parser.add_argument("--bundle-dir", required=True)
-    parser.add_argument("--round-dir", action="append", required=True)
-    parser.add_argument("--role-return-dir", action="append", required=True)
-    parser.add_argument("--selected-csv", required=True)
+    parser.add_argument("--bundle-dir", required=True,
+                        help="original source-pinned five-file PRIVATE Launchpad packet")
+    parser.add_argument("--round-dir", action="append", required=True,
+                        help="original PRIVATE HUMAN round; repeat 2-8 in operator-selected order")
+    parser.add_argument("--role-return-dir", action="append", required=True,
+                        help="original selected-role return packet; repeat 1-5")
+    parser.add_argument("--selected-csv", required=True,
+                        help="browser-exported CSV; owner-only 0700 parent, file mode 0600")
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--output-dir")
-    mode.add_argument("--verify-output-dir")
+    mode.add_argument("--output-dir",
+                      help="new empty owner-owned mode-0700 destination, separate from every source")
+    mode.add_argument("--verify-output-dir",
+                      help="existing PRIVATE packet; exact read-only reopen, writes nothing")
     args = parser.parse_args(argv)
     try:
         source = admit_all(args)
