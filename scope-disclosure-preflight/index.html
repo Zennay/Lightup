@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<title>LightUp · PRIVATE Scope Disclosure Desk</title>
+<link rel="stylesheet" href="./desk.css">
+<script defer src="./desk.js"></script>
+</head>
+<body>
+<header><div class="brand">LightUp <span>PRIVATE · LOCAL ONLY</span></div><h1>Scope disclosure desk</h1><p>Inspect, selectively mask, and explicitly export a <strong>new text-only copy</strong> of a human-owned handoff. Nothing is uploaded, scanned, approved or authorized.</p></header>
+<main>
+<section class="banner" aria-label="Safety boundary"><strong>DRAFT / HOLD · M3/M7 PLAN/LAB ONLY</strong><p>Redaction is not reliable declassification. Review every exported byte. A hash proves byte equality, not identity, approval, consent, or permission to assess an asset. Do not load untrusted executable files.</p></section>
+<section class="card" aria-labelledby="source-title">
+<h2 id="source-title"><span>01</span> Open PRIVATE text</h2>
+<label for="file">Choose a local UTF-8 TXT, CSV, JSON, MD, LOG, PEM, KEY or ASC file (maximum 2 MiB)</label>
+<input id="file" type="file" accept=".txt,.csv,.json,.md,.log,.pem,.key,.asc,text/plain,text/csv,application/json">
+<div class="grid three"><div class="metric"><b id="filename">None</b><small>Selected source (private)</small></div><div class="metric"><b id="filesize">—</b><small>Original bytes</small></div><div class="metric"><b id="originalHash">—</b><small>Original SHA-256 prefix (private)</small></div></div>
+<div id="openStatus" class="status" role="status" aria-live="polite">Choose a source file to begin.</div>
+</section>
+<section class="card" aria-labelledby="mask-title">
+<h2 id="mask-title"><span>02</span> Manual exact-text masking</h2>
+<p>Type a sensitive literal as it appears in the source. Each rule replaces <em>every exact case-sensitive occurrence</em> with <code>[REDACTED]</code>. No fuzzy matching or automatic safety guarantee. Never share the original.</p>
+<div class="ruleform"><label for="rule">Sensitive literal to mask (3–128 characters, single line)</label><input id="rule" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Exact text to mask"><button id="addRule" type="button">Add mask rule</button></div>
+<div id="rules" class="rules" aria-live="polite">No masking rules yet.</div>
+<div class="assisted">
+<h3>Local sensitive-value suggestions</h3>
+<p>Optional human-triggered discovery only. The source is examined <strong>in browser memory</strong>; detected literal values are not shown or exported as a list. Suggested masks are not a guarantee that disclosure is safe.</p>
+<div class="suggest-options">
+<label class="tick"><input id="suggestCredentials" type="checkbox" checked> Bearer, credentials, API tokens and JWT-like values</label>
+<label class="tick"><input id="suggestEmail" type="checkbox"> Email addresses</label>
+<label class="tick"><input id="suggestNetwork" type="checkbox"> HTTP(S) URLs and IPv4-like addresses</label>
+</div>
+<div class="actions"><button id="stageSuggestions" type="button" disabled>Add all selected suggestions as masks</button></div>
+<div id="suggestStatus" class="status" role="status" aria-live="polite">Suggestions have not been requested.</div>
+</div>
+<div class="pem-control">
+<h3>Complete multiline private-key removal</h3>
+<p>When enabled by a human, replace an entire recognized PEM or PGP private-key block, from its exact BEGIN through matching END marker, with a non-secret placeholder. Incomplete, nested, oversized or ambiguous blocks cause <strong>HOLD</strong> instead of partial masking. Never use this as proof of safe disclosure.</p>
+<label class="tick"><input id="maskPrivateBlocks" type="checkbox" disabled> I explicitly choose to mask all recognized complete private-key blocks in this PRIVATE source</label>
+<div id="pemStatus" class="status" role="status" aria-live="polite">Open a PRIVATE source before enabling block removal.</div>
+</div>
+<div class="actions"><button id="review" type="button" disabled>Prepare redacted preview</button><button id="clear" type="button" class="secondary">Clear local session</button></div>
+</section>
+<section class="card" aria-labelledby="review-title">
+<h2 id="review-title"><span>03</span> Inspect the resulting copy</h2>
+<div class="grid three"><div class="metric"><b id="matches">—</b><small>Literal replacements</small></div><div class="metric"><b id="residual">—</b><small>Residual pattern hints</small></div><div class="metric"><b id="outputHash">—</b><small>Redacted SHA-256 prefix</small></div></div>
+<div id="warnings" class="warnings" role="status" aria-live="polite">No preview prepared.</div>
+<div class="reader-search">
+<label for="reviewSearch">Find text only in the already-redacted PRIVATE copy (max 120 characters)</label>
+<input id="reviewSearch" type="search" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Find non-secret phrase in redacted output">
+<div class="actions"><button id="reviewFindPrev" type="button" class="secondary" disabled>Previous match</button><button id="reviewFindNext" type="button" class="secondary" disabled>Next match</button><span id="reviewFindStatus" role="status" aria-live="polite">No search active.</span></div>
+</div>
+<label for="preview">Read-only redacted text, paged in 8,000-character sections (exports contain the entire text)</label>
+<textarea id="preview" rows="12" readonly spellcheck="false"></textarea>
+<div class="actions"><button id="prevPage" class="secondary" type="button" disabled>Previous page</button><span id="pageInfo" role="status" aria-live="polite">No pages</span><button id="nextPage" class="secondary" type="button" disabled>Next page</button></div>
+<label class="tick"><input type="checkbox" id="readAll"> I have inspected all displayed pages and independently considered sensitive information these masks and heuristics may miss.</label>
+<label class="tick"><input type="checkbox" id="accept"> I understand masking may miss secrets and this is NOT an authorization, consent, or security clearance.</label>
+<label for="confirm">Type <strong>EXPORT REDACTED</strong> to enable export</label>
+<input id="confirm" type="text" autocomplete="off" spellcheck="false" placeholder="EXPORT REDACTED">
+<div class="actions"><button id="exportText" disabled type="button">Export redacted .txt</button><button id="exportReceipt" disabled type="button" class="secondary">Export PRIVATE counts receipt</button></div>
+<div id="exportStatus" class="status" aria-live="polite">Exports are locked until explicit confirmation.</div>
+</section>
+<section class="card" aria-labelledby="feedback-title">
+<h2 id="feedback-title"><span>04</span> Review PRIVATE recipient feedback</h2>
+<p>Import a separate response only after preparing the exact current redacted text. The response must match its SHA-256 and byte length. Notes are <strong>unverified HUMAN assertions</strong>; no client approval, identity, grant or consent is inferred or applied.</p>
+<label for="humanReplyFile">PRIVATE HUMAN follow-up JSON (maximum 4 KiB)</label><input type="file" id="humanReplyFile" accept=".json,application/json">
+<div class="actions"><button id="importHuman" type="button" disabled>Read source-bound HUMAN feedback</button></div>
+<div id="humanReturnStatus" class="status" role="status" aria-live="polite">Prepare the exact redacted preview before importing feedback.</div>
+<p id="humanReturnOutcome"></p>
+<label for="humanReturnNote">Received PRIVATE HUMAN note — read-only</label>
+<textarea id="humanReturnNote" readonly spellcheck="false" rows="4"></textarea>
+</section>
+</main>
+<footer><a href="./verify.html">Open recipient byte-comparison screen</a> · Offline human preparation only · no network, persistence, grants, scans, targets, or automatic execution. Keep originals private and unchanged.</footer>
+</body></html>

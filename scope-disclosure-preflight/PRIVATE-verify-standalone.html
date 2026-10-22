@@ -1,0 +1,336 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0aeqAixUddS/aWTptdL769uPxsXzWndEsjKP/MLCrTg='; style-src 'sha256-N1svnkNkhVeDqNl1lA0DNY6uizCLM8V3IR+6eU6KXjo='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<title>LightUp · Recipient Equality Review</title><style>:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#18243b;background:#eef2f8;line-height:1.5}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(125deg,#101a30,#263e66);color:#fff;padding:2.5rem max(24px,calc((100vw - 1060px)/2)) 2rem}.brand{font-size:1.12rem;font-weight:800;letter-spacing:.05em}.brand span{font-size:.66rem;color:#9db7e0;vertical-align:middle;margin-left:12px}h1{font-size:clamp(2rem,4vw,3.2rem);line-height:1.1;margin:.9rem 0}header p{max-width:780px;color:#dce6f5}main{max-width:1110px;padding:24px;margin:auto}.banner,.card{border-radius:16px;box-shadow:0 8px 28px #14284910;margin-bottom:18px}.banner{background:#fff5e9;border:1px solid #dcb878;padding:18px 24px}.banner strong{color:#8b4309}.banner p{margin:.4rem 0 0}.card{padding:25px;background:white;border:1px solid #dde5ef}h2{display:flex;align-items:center;font-size:1.32rem;margin:0 0 12px;gap:12px}h2 span{font-size:.76rem;border:1px solid #98abc7;border-radius:9px;color:#2c568b;padding:4px 8px}p{margin-top:0;color:#41516a}label{display:block;font-size:.91rem;font-weight:650;margin:14px 0 7px}input[type=file],input[type=text],input[type=password],textarea{font:inherit;width:100%;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}input:focus,textarea:focus,button:focus-visible{outline:3px solid #3a82db;outline-offset:2px}textarea{resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}.grid{display:grid;gap:13px;margin:15px 0}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{background:#f4f7fc;border-radius:10px;padding:15px;min-width:0}.metric b{display:block;font-size:1.1rem;overflow-wrap:anywhere}.metric small{color:#687892}.ruleform{display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:end}.ruleform label{grid-column:1/-1;margin-bottom:-3px}.ruleform input{grid-column:1}.ruleform button{grid-column:2}.rules{border:1px dashed #b1c0d4;border-radius:10px;margin:16px 0;padding:14px;color:#455773}.rule{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #e5e9f0;padding:8px 0}.rule:last-child{border:0}.rule button{padding:6px 11px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}button{border:0;border-radius:9px;background:#205ea7;color:white;font-weight:700;font:inherit;cursor:pointer;padding:11px 17px}button.secondary{background:#e4ebf5;color:#163457}button:disabled{cursor:not-allowed;opacity:.5}.status,.warnings{padding:11px 14px;border-radius:9px;background:#ecf3fb;border:1px solid #c7d7ed;color:#26466a;font-size:.91rem;overflow-wrap:anywhere}.warnings.warn{background:#fff3e5;border-color:#e8c294;color:#79400b}.warnings.good{background:#eff8f2;border-color:#add5b8;color:#27593a}.tick{display:flex;align-items:flex-start;gap:10px;font-weight:500}.tick input{margin-top:6px}code{background:#e9eef6;border-radius:4px;padding:2px 4px}footer{text-align:center;color:#71809a;padding:22px;font-size:.84rem}@media(max-width:700px){header{padding:26px 19px}.grid.three{grid-template-columns:1fr}.ruleform{display:block}.ruleform button{margin-top:9px;width:100%}.card{padding:18px}.actions button{width:100%}}
+/* Opt-in private source suggestions; keep warnings and inputs readable on mobile. */
+.assisted{margin:22px 0 6px;padding:20px;border-radius:12px;border:1px solid #c4d4e9;background:#f5f8fe}
+.assisted h3{font-size:1.08rem;margin:0 0 9px}
+.assisted .suggest-options{display:grid;gap:4px;margin:8px 0 16px}
+.assisted .suggest-options label{margin:3px 0;font-weight:550}
+.assisted .status{background:#fff}
+@media(max-width:700px){.assisted{padding:14px}}
+
+/* Recipient review stays local, paged, and accessible for a complete manual read. */
+.recipient-review{margin-top:22px;padding-top:16px;border-top:1px solid #d9e2ee}
+.recipient-review h3{margin:0 0 8px;font-size:1.12rem}
+.recipient-review textarea{margin-top:9px;min-height:250px}
+.recipient-review .actions{align-items:center}
+.recipient-review .actions span{font-size:.87rem;color:#3b506f}
+
+/* Human-only recipient return and source-bound owner feedback. */
+select{width:100%;font:inherit;border:1px solid #aebdd1;border-radius:9px;padding:11px;background:#fbfcff;color:#18243b}
+select:focus{outline:3px solid #3a82db;outline-offset:2px}
+#humanReturnOutcome{font-weight:700;color:#315582;overflow-wrap:anywhere}
+#humanReturnNote,#humanNote{min-height:105px}
+#humanReturnStatus,#humanStatus{margin-top:12px}
+
+/* Scoped local key-block removal and human review find controls. */
+.pem-control{margin:20px 0;padding:18px;border:1px solid #c6d5e7;background:#f4f7fc;border-radius:12px}
+.pem-control h3{margin:0 0 8px;font-size:1.05rem}
+.pem-control .status{margin-top:12px;background:#fff}
+.reader-search{padding:14px;margin:12px 0;border:1px solid #d4dfea;border-radius:10px;background:#f8fafd}
+.reader-search label{margin-top:0}
+.reader-search .actions{align-items:center;margin-bottom:0}
+#reviewFindStatus{font-size:.88rem;color:#475a79}
+@media(max-width:700px){.pem-control{padding:14px}.reader-search .actions button{width:auto;flex:1}}
+
+/* Bounded recipient navigation for large redacted files; never indexes source originals. */
+.recipient-review input[type=search]{font:inherit;width:100%;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}
+.recipient-review input[type=number]{font:inherit;width:7rem;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}
+.recipient-review .actions label{margin:0;align-self:center}
+#receivedFindStatus{overflow-wrap:anywhere;max-width:100%}
+</style></head>
+<body><header><div class="brand">LightUp <span>PRIVATE · LOCAL ONLY</span></div><h1>Recipient byte comparison</h1><p>Compare the delivered redacted text with its separate PRIVATE counts receipt. A matching hash establishes only <strong>byte equality</strong> to a self-declared receipt, not a trusted sender, safe content, or consent.</p></header>
+<main><section class="banner"><strong>DRAFT / HOLD · HUMAN ONLY</strong><p>The sender and the receipt may both be malicious or wrong. Obtain source identity and actual client/operator permission from separately authenticated channels. NEVER use a matching result to authorize scanning or release.</p></section>
+<section class="card"><h2><span>01</span> Choose privately received files</h2>
+<label for="receivedFile">Received redacted UTF-8 .txt (maximum 8 MiB)</label><input id="receivedFile" type="file" accept=".txt,text/plain">
+<label for="receiptFile">Companion PRIVATE counts receipt .json (maximum 8 KiB)</label><input id="receiptFile" type="file" accept=".json,application/json">
+<div class="actions"><button id="compare" type="button">Compare local bytes</button><button id="reset" type="button" class="secondary">Clear local selection</button><a href="./PRIVATE-disclosure-standalone.html">Return to disclosure desk</a></div>
+<div id="result" class="status" role="status" aria-live="polite">No comparison made.</div></section>
+<section class="card"><h2><span>02</span> Human recipient decision</h2><p>The comparison is never an approval, consent receipt, original provenance, privacy guarantee or security finding.</p>
+<div class="grid three"><div class="metric"><b id="status">HOLD</b><small>Non-authorizing state</small></div><div class="metric"><b id="bytes">—</b><small>Received redacted bytes</small></div><div class="metric"><b id="hash">—</b><small>SHA-256 prefix</small></div></div>
+<p id="details">Separate authentic client/operator consent and actual human review remain mandatory.</p>
+<div class="recipient-review">
+<h3>PRIVATE received-content review</h3>
+<p>Content is shown only after the receipt has matched, and only on this local page. It may still contain confidential information. No changes, grants, copies or transmissions are made. You must review it yourself.</p>
+<div id="recipientHints" class="warnings" aria-live="polite">No readable matched content.</div>
+<label for="receivedSearch">Find in received redacted text (case-sensitive, local only)</label>
+<input id="receivedSearch" type="search" maxlength="120" autocomplete="off" disabled placeholder="Search only the received redacted copy">
+<div class="actions"><button id="receivedFindPrev" type="button" class="secondary" disabled>Previous match</button><span id="receivedFindStatus" role="status" aria-live="polite">No active search.</span><button id="receivedFindNext" type="button" class="secondary" disabled>Next match</button></div>
+<label for="receivedPreview">Complete received text, presented in 8,000-character pages</label>
+<textarea id="receivedPreview" readonly spellcheck="false" rows="12" aria-label="Matched received text"></textarea>
+<div class="actions"><button id="receivedPrev" type="button" class="secondary" disabled>Previous page</button><span id="receivedPage" role="status">No pages</span><button id="receivedNext" type="button" class="secondary" disabled>Next page</button></div>
+<div class="actions"><label for="receivedPageJump">Go directly to page</label><input id="receivedPageJump" type="number" min="1" step="1" disabled aria-label="Page number to display"><button id="goReceivedPage" type="button" class="secondary" disabled>Open page</button></div>
+<p class="note">Search and page jumps show only the already matched redacted copy. A jump marks only the displayed page as viewed; every page must still be displayed before a HUMAN reply can be exported.</p>
+</div>
+<div class="recipient-review">
+<h3>PRIVATE HUMAN follow-up (non-authorizing)</h3>
+<p>After reading every received page, you may prepare a separate PRIVATE response bound to the exact redacted file bytes. It is unauthenticated human feedback, never consent, security clearance or permission to execute anything.</p>
+<label for="humanOutcome">Human follow-up proposal</label>
+<select id="humanOutcome">
+<option value="">Select a human-only outcome</option>
+<option value="needs_more_masking">Request more masking</option>
+<option value="needs_context">Request clarification</option>
+<option value="read_only_notes">Return review notes (no approval)</option>
+</select>
+<label for="humanNote">PRIVATE optional reply notes (maximum 800 characters)</label>
+<textarea id="humanNote" maxlength="800" rows="4" placeholder="Do not include credentials or secrets. The recipient may share this PRIVATE file."></textarea>
+<label class="tick"><input id="humanAck" type="checkbox"> I viewed every page; this is PRIVATE HUMAN feedback, not verified actor identity or client/operator authorization.</label>
+<div class="actions"><button id="exportHuman" type="button" disabled>Export PRIVATE human reply .json</button></div>
+<div id="humanStatus" class="status" role="status" aria-live="polite">Read and compare a PRIVATE file before responding.</div>
+</div>
+</section></main><footer>Offline local-only verification · no network, accounts, source inspection, grants, targets or deployment.</footer><script>"use strict";
+/* One-way file byte equality with the companion untrusted receipt, never authorization. */
+(() => {
+  const e=id=>document.getElementById(id), enc=new TextDecoder("utf-8",{fatal:true});
+
+  let operation=0, receivedText=null, viewPage=0, viewedPages=new Set(), matched=null;
+  let searchMatches=[], searchIndex=-1;
+  function updateFindStatus(message){
+    const available=receivedText!==null&&searchMatches.length>0;
+    e("receivedFindPrev").disabled=e("receivedFindNext").disabled=!available;
+    e("receivedFindStatus").textContent=message||(available?
+      "Match "+(searchIndex+1)+" of "+searchMatches.length+" in the received redacted copy.":
+      "No active matches. This is not a privacy-safety finding.");
+  }
+  function navigateMatch(direction){
+    if(receivedText===null||!searchMatches.length)return;
+    searchIndex=(searchIndex+direction+searchMatches.length)%searchMatches.length;
+    const position=searchMatches[searchIndex];
+    showPage(Math.floor(position/8000));
+    const within=position-viewPage*8000;
+    e("receivedPreview").focus();
+    e("receivedPreview").setSelectionRange(within,within+e("receivedSearch").value.length);
+    updateFindStatus();
+  }
+  e("receivedSearch").addEventListener("input",()=>{
+    searchMatches=[];searchIndex=-1;
+    const needle=e("receivedSearch").value;
+    if(receivedText===null){updateFindStatus("Compare matching files before searching.");return;}
+    if(needle.length<2||needle.length>120||/[\x00-\x1f\x7f-\x9f]/u.test(needle)){
+      updateFindStatus("Enter a 2–120 character search without control characters.");return;
+    }
+    let offset=0,next;
+    while((next=receivedText.indexOf(needle,offset))!==-1){
+      searchMatches.push(next);offset=next+needle.length;
+      if(searchMatches.length>500){
+        searchMatches=[];searchIndex=-1;
+        updateFindStatus("HOLD: more than 500 matches. Narrow the local search.");
+        return;
+      }
+    }
+    if(searchMatches.length){searchIndex=-1;navigateMatch(1);}
+    else updateFindStatus("No matches in the received redacted copy.");
+  });
+  e("receivedFindPrev").addEventListener("click",()=>navigateMatch(-1));
+  e("receivedFindNext").addEventListener("click",()=>navigateMatch(1));
+  e("goReceivedPage").addEventListener("click",()=>{
+    if(receivedText===null)return;
+    const total=Math.max(1,Math.ceil(receivedText.length/8000));
+    const target=Number(e("receivedPageJump").value);
+    if(!Number.isSafeInteger(target)||target<1||target>total){
+      e("receivedPage").textContent="HOLD: enter a page from 1 to "+total+".";
+      return;
+    }
+    showPage(target-1);
+  });
+  function showPage(target){
+    if(receivedText===null)return;
+    const total=Math.max(1,Math.ceil(receivedText.length/8000));
+    viewPage=Math.min(total-1,Math.max(0,target));
+    viewedPages.add(viewPage);
+    e("receivedPreview").value=receivedText.slice(viewPage*8000,(viewPage+1)*8000);
+    e("receivedPrev").disabled=viewPage===0;
+    e("receivedNext").disabled=viewPage===total-1;
+    e("receivedPage").textContent="Page "+(viewPage+1)+" / "+total+" · "+viewedPages.size+" viewed";
+    e("receivedSearch").disabled=false;
+    e("receivedPageJump").disabled=e("goReceivedPage").disabled=false;
+    e("receivedPageJump").min="1";e("receivedPageJump").max=String(total);
+    e("receivedPageJump").value=String(viewPage+1);
+    humanGate();
+  }
+  e("receivedPrev").addEventListener("click",()=>showPage(viewPage-1));
+  e("receivedNext").addEventListener("click",()=>showPage(viewPage+1));
+  function sourceHints(text){
+    const expressions=[
+      ["email",/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi],
+      ["URL",/\bhttps?:\/\/[^\s"'<>]+/gi],
+      ["Bearer",/\bBearer\s+[a-z0-9._~+/-]{8,}/gi],
+      ["credential-like",/\b(?:password|passwd|api[_-]?key|secret|token)\s*[:=]\s*[^\s,;}]{3,}/gi],
+      ["private key",/-----BEGIN (?:[A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?)-----/g],
+      ["JWT-like",/\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g],
+      ["GitHub token",/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g],
+      ["AWS access key",/\bAKIA[A-Z0-9]{16}\b/g],
+      ["API token prefix",/\bsk-[A-Za-z0-9_-]{20,}\b/g],
+      ["IPv4-like",/\b(?:\d{1,3}\.){3}\d{1,3}\b/g]
+    ];
+    return expressions.map(([label,re])=>{
+      let count=0;
+      while(re.exec(text)!==null && count<1000) count++;
+      return [label,count];
+    }).filter(v=>v[1]>0);
+  }
+
+  function hold(msg) {
+    matched=null;
+    e("humanOutcome").value="";e("humanNote").value="";e("humanAck").checked=false;
+    e("exportHuman").disabled=true;
+    e("humanStatus").textContent="No matched received file is available for human feedback.";
+    receivedText=null;viewPage=0;viewedPages=new Set();searchMatches=[];searchIndex=-1;
+    e("receivedPreview").value="";
+    e("receivedPrev").disabled=e("receivedNext").disabled=true;
+    e("receivedSearch").value="";e("receivedSearch").disabled=true;
+    e("receivedFindPrev").disabled=e("receivedFindNext").disabled=true;
+    e("receivedFindStatus").textContent="No active search.";
+    e("receivedPageJump").value="";e("receivedPageJump").disabled=true;
+    e("goReceivedPage").disabled=true;
+    e("receivedPage").textContent="No pages";
+    e("recipientHints").textContent="No matched content to inspect.";
+    e("recipientHints").className="warnings";
+
+    e("status").textContent="HOLD";
+    e("bytes").textContent=e("hash").textContent="—";
+    e("result").textContent=msg;
+    e("details").textContent="No source identity, authenticated consent, risk approval or permission is established.";
+  }
+  async function digest(bytes) {
+    if (!crypto?.subtle) throw Error("crypto unavailable");
+    const data=await crypto.subtle.digest("SHA-256",bytes);
+    return [...new Uint8Array(data)].map(x=>x.toString(16).padStart(2,"0")).join("");
+  }
+  const KEYS=[
+    "schema","purpose","output_sha256","output_bytes","replacements","mask_rules",
+    "residual_hints","authorization","client_consent","operator_consent",
+    "revocation_at_use_verified","scanning_permitted","release_approved"
+  ];
+  const FALSE_KEYS=[
+    "authorization","client_consent","operator_consent",
+    "revocation_at_use_verified","scanning_permitted","release_approved"
+  ];
+  function admitReceipt(text) {
+    const val=JSON.parse(text);
+    if (!val || Array.isArray(val) || typeof val!=="object" ||
+        JSON.stringify(val,null,2)+"\n"!==text ||
+        Object.keys(val).join("|")!==KEYS.join("|")) throw Error("canonical receipt shape");
+    if (val.schema!=="lightup-private-disclosure-human-v1" ||
+        val.purpose!=="Local human disclosure preparation, not verified clearance or authenticated origin" ||
+        !/^[0-9a-f]{64}$/.test(val.output_sha256) ||
+        !Number.isSafeInteger(val.output_bytes) || val.output_bytes<1 || val.output_bytes>8*1024*1024 ||
+        !Number.isSafeInteger(val.replacements) || val.replacements<1 ||
+        !Number.isSafeInteger(val.mask_rules) || val.mask_rules<1 || val.mask_rules>30 ||
+        !FALSE_KEYS.every(k=>val[k]===false)) throw Error("receipt semantic boundary");
+    const hints=val.residual_hints;
+    if (!hints || Array.isArray(hints) || typeof hints!=="object") throw Error("hints");
+    const allowed=["email","URL","Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix","IPv4-like"];
+    const keys=Object.keys(hints);
+    if (keys.length>10 || keys.some(k=>!allowed.includes(k)) ||
+        keys.some(k=>!Number.isSafeInteger(hints[k]) || hints[k]<1 || hints[k]>1000)) {
+      throw Error("bad counts");
+    }
+    return val;
+  }
+
+  const HUMAN_OUTCOMES=["needs_more_masking","needs_context","read_only_notes"];
+  // Block invisible direction/format controls in HUMAN notes without rewriting text.
+  const unsafeHumanText=value=>/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/u.test(value);
+  function humanGate() {
+    const total=receivedText===null?0:Math.max(1,Math.ceil(receivedText.length/8000));
+    const note=e("humanNote").value;
+    const unsafeNote=unsafeHumanText(note);
+    const cleanNote=note.length<=800&&!unsafeNote;
+    const stage=e("humanOutcome").value;
+    const suspiciousNote=sourceHints(note).some(([name])=>["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].includes(name));
+    if(unsafeNote)
+      e("humanStatus").textContent="HOLD: PRIVATE follow-up note contains hidden direction or control characters. Remove them before export.";
+    else if(suspiciousNote)
+      e("humanStatus").textContent="HOLD: PRIVATE follow-up note appears to contain a credential, token or private-key marker. Remove it before export.";
+    else if(matched?.highRisk)
+      e("humanStatus").textContent="HOLD: only a request for more masking may be exported.";
+    else if(matched)
+      e("humanStatus").textContent="Read every page, select HUMAN follow-up and explicitly confirm. Heuristic note checks are not comprehensive.";
+    const ok=!!matched && viewedPages.size===total && e("humanAck").checked &&
+      HUMAN_OUTCOMES.includes(stage) && cleanNote && !suspiciousNote &&
+      (!matched.highRisk || stage==="needs_more_masking");
+    e("exportHuman").disabled=!ok;
+  }
+  for(const id of ["humanOutcome","humanNote","humanAck"]) {
+    e(id).addEventListener("input",humanGate);
+    e(id).addEventListener("change",humanGate);
+  }
+  e("exportHuman").addEventListener("click",()=>{
+    humanGate();if(e("exportHuman").disabled)return;
+    const feedback={
+      schema:"lightup-private-disclosure-return-v1",
+      redacted_sha256:matched.hash,
+      redacted_bytes:matched.bytes,
+      human_followup:e("humanOutcome").value,
+      human_note:e("humanNote").value,
+      all_pages_displayed:true,
+      sender_authenticated:false,
+      client_consent:false,
+      operator_consent:false,
+      revocation_at_use_verified:false,
+      scanning_permitted:false,
+      release_approved:false
+    };
+    const uri=URL.createObjectURL(new Blob([JSON.stringify(feedback,null,2)+"\n"],{type:"application/json"}));
+    const a=document.createElement("a");a.href=uri;a.download="lightup-private-human-return.json";
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(uri),30000);
+    e("humanAck").checked=false;humanGate();
+    e("humanStatus").textContent="PRIVATE HUMAN reply downloaded. It is unauthenticated and grants no permission.";
+  });
+  e("compare").addEventListener("click",async()=>{
+    const own=++operation;
+    hold("Reading private files locally; no network request.");
+    const f=e("receivedFile").files?.[0], r=e("receiptFile").files?.[0];
+    if (!f || !r || !/^[^/\x00-\x1f]{1,120}\.txt$/i.test(f.name) ||
+        !/^[^/\x00-\x1f]{1,120}\.json$/i.test(r.name) ||
+        f.size===0 || f.size>8*1024*1024 || r.size===0 || r.size>8192){
+      hold("HOLD: choose bounded local redacted text and a separate JSON receipt.");return;
+    }
+    try{
+      const [a,b]=await Promise.all([f.arrayBuffer(),r.arrayBuffer()]);
+      if (own!==operation)return;
+      const bytes=new Uint8Array(a), receipt=admitReceipt(enc.decode(new Uint8Array(b)));
+      const received=enc.decode(bytes);
+      if(!received || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(received))
+        throw Error("invalid text");
+      const sha=await digest(bytes);
+      if (own!==operation)return;
+      if (sha!==receipt.output_sha256 || bytes.byteLength!==receipt.output_bytes) {
+        hold("HOLD: received bytes do not match the independent HUMAN receipt.");return;
+      }
+      const observed=Object.fromEntries(sourceHints(received));
+      const listed=receipt.residual_hints;
+      if(Object.keys(observed).length!==Object.keys(listed).length ||
+         Object.keys(observed).some(k=>observed[k]!==listed[k])){
+        hold("HOLD: privacy hint counts differ from the actual matched bytes.");return;
+      }
+      receivedText=received;viewedPages=new Set();
+      matched={hash:sha,bytes:bytes.length,highRisk:["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].some(k=>observed[k]>0)};
+      showPage(0);
+      const risky=["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].some(k=>observed[k]>0);
+      e("recipientHints").className=risky||Object.keys(observed).length?"warnings warn":"warnings good";
+      e("recipientHints").textContent=risky?
+        "HOLD: possible credential, JWT, API token or private key material remains. Matching bytes cannot clear this. Request a corrected private handoff.":
+        Object.keys(observed).length?
+          "Possible sensitive references remain: "+Object.entries(observed).map(([k,v])=>k+" "+v).join("; ")+". Independently review all pages.":
+          "No pattern hints matched. This NEVER proves safe disclosure.";
+      e("status").textContent=risky?"HOLD / CONTENT ATTENTION":"MATCH / REVIEW ONLY";
+      e("humanStatus").textContent=risky?"HOLD: only a request for more masking may be exported.":"Read every page, select HUMAN follow-up and explicitly confirm.";
+      e("bytes").textContent=String(bytes.length);
+      e("hash").textContent=sha.slice(0,12)+"…";
+      e("result").textContent="Local file bytes match the declared redacted digest and length. HUMAN identity and disclosure clearance are still unknown.";
+      e("details").textContent="Next: inspect actual received text privately, authenticate the human sender separately, obtain authentic current consent and action-time revocation confirmation. NO scans, grants or release.";
+    }catch(_){
+      if(own!==operation)return;
+      hold("HOLD: malformed, noncanonical or unsafe receipt, invalid UTF-8, or browser cryptography unavailable.");
+    }
+  });
+  for(const name of ["receivedFile","receiptFile"]) e(name).addEventListener("change",()=>{ ++operation;hold("File selection changed. Compare again."); });
+  e("reset").addEventListener("click",()=>{
+    ++operation;e("receivedFile").value=e("receiptFile").value="";
+    hold("Local selections cleared. Previously downloaded files are not erased.");
+  });
+  hold("Choose two local files. A matched, unauthenticated receipt never grants authority.");
+})();</script></body></html>

@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WEXyP63qDdsvjBgqCffTVfWImWuTnjKyuL8wd3eaFI4='; style-src 'sha256-N1svnkNkhVeDqNl1lA0DNY6uizCLM8V3IR+6eU6KXjo='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<title>LightUp · PRIVATE Scope Disclosure Desk</title>
+<style>:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#18243b;background:#eef2f8;line-height:1.5}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(125deg,#101a30,#263e66);color:#fff;padding:2.5rem max(24px,calc((100vw - 1060px)/2)) 2rem}.brand{font-size:1.12rem;font-weight:800;letter-spacing:.05em}.brand span{font-size:.66rem;color:#9db7e0;vertical-align:middle;margin-left:12px}h1{font-size:clamp(2rem,4vw,3.2rem);line-height:1.1;margin:.9rem 0}header p{max-width:780px;color:#dce6f5}main{max-width:1110px;padding:24px;margin:auto}.banner,.card{border-radius:16px;box-shadow:0 8px 28px #14284910;margin-bottom:18px}.banner{background:#fff5e9;border:1px solid #dcb878;padding:18px 24px}.banner strong{color:#8b4309}.banner p{margin:.4rem 0 0}.card{padding:25px;background:white;border:1px solid #dde5ef}h2{display:flex;align-items:center;font-size:1.32rem;margin:0 0 12px;gap:12px}h2 span{font-size:.76rem;border:1px solid #98abc7;border-radius:9px;color:#2c568b;padding:4px 8px}p{margin-top:0;color:#41516a}label{display:block;font-size:.91rem;font-weight:650;margin:14px 0 7px}input[type=file],input[type=text],input[type=password],textarea{font:inherit;width:100%;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}input:focus,textarea:focus,button:focus-visible{outline:3px solid #3a82db;outline-offset:2px}textarea{resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}.grid{display:grid;gap:13px;margin:15px 0}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{background:#f4f7fc;border-radius:10px;padding:15px;min-width:0}.metric b{display:block;font-size:1.1rem;overflow-wrap:anywhere}.metric small{color:#687892}.ruleform{display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:end}.ruleform label{grid-column:1/-1;margin-bottom:-3px}.ruleform input{grid-column:1}.ruleform button{grid-column:2}.rules{border:1px dashed #b1c0d4;border-radius:10px;margin:16px 0;padding:14px;color:#455773}.rule{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #e5e9f0;padding:8px 0}.rule:last-child{border:0}.rule button{padding:6px 11px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}button{border:0;border-radius:9px;background:#205ea7;color:white;font-weight:700;font:inherit;cursor:pointer;padding:11px 17px}button.secondary{background:#e4ebf5;color:#163457}button:disabled{cursor:not-allowed;opacity:.5}.status,.warnings{padding:11px 14px;border-radius:9px;background:#ecf3fb;border:1px solid #c7d7ed;color:#26466a;font-size:.91rem;overflow-wrap:anywhere}.warnings.warn{background:#fff3e5;border-color:#e8c294;color:#79400b}.warnings.good{background:#eff8f2;border-color:#add5b8;color:#27593a}.tick{display:flex;align-items:flex-start;gap:10px;font-weight:500}.tick input{margin-top:6px}code{background:#e9eef6;border-radius:4px;padding:2px 4px}footer{text-align:center;color:#71809a;padding:22px;font-size:.84rem}@media(max-width:700px){header{padding:26px 19px}.grid.three{grid-template-columns:1fr}.ruleform{display:block}.ruleform button{margin-top:9px;width:100%}.card{padding:18px}.actions button{width:100%}}
+/* Opt-in private source suggestions; keep warnings and inputs readable on mobile. */
+.assisted{margin:22px 0 6px;padding:20px;border-radius:12px;border:1px solid #c4d4e9;background:#f5f8fe}
+.assisted h3{font-size:1.08rem;margin:0 0 9px}
+.assisted .suggest-options{display:grid;gap:4px;margin:8px 0 16px}
+.assisted .suggest-options label{margin:3px 0;font-weight:550}
+.assisted .status{background:#fff}
+@media(max-width:700px){.assisted{padding:14px}}
+
+/* Recipient review stays local, paged, and accessible for a complete manual read. */
+.recipient-review{margin-top:22px;padding-top:16px;border-top:1px solid #d9e2ee}
+.recipient-review h3{margin:0 0 8px;font-size:1.12rem}
+.recipient-review textarea{margin-top:9px;min-height:250px}
+.recipient-review .actions{align-items:center}
+.recipient-review .actions span{font-size:.87rem;color:#3b506f}
+
+/* Human-only recipient return and source-bound owner feedback. */
+select{width:100%;font:inherit;border:1px solid #aebdd1;border-radius:9px;padding:11px;background:#fbfcff;color:#18243b}
+select:focus{outline:3px solid #3a82db;outline-offset:2px}
+#humanReturnOutcome{font-weight:700;color:#315582;overflow-wrap:anywhere}
+#humanReturnNote,#humanNote{min-height:105px}
+#humanReturnStatus,#humanStatus{margin-top:12px}
+
+/* Scoped local key-block removal and human review find controls. */
+.pem-control{margin:20px 0;padding:18px;border:1px solid #c6d5e7;background:#f4f7fc;border-radius:12px}
+.pem-control h3{margin:0 0 8px;font-size:1.05rem}
+.pem-control .status{margin-top:12px;background:#fff}
+.reader-search{padding:14px;margin:12px 0;border:1px solid #d4dfea;border-radius:10px;background:#f8fafd}
+.reader-search label{margin-top:0}
+.reader-search .actions{align-items:center;margin-bottom:0}
+#reviewFindStatus{font-size:.88rem;color:#475a79}
+@media(max-width:700px){.pem-control{padding:14px}.reader-search .actions button{width:auto;flex:1}}
+
+/* Bounded recipient navigation for large redacted files; never indexes source originals. */
+.recipient-review input[type=search]{font:inherit;width:100%;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}
+.recipient-review input[type=number]{font:inherit;width:7rem;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}
+.recipient-review .actions label{margin:0;align-self:center}
+#receivedFindStatus{overflow-wrap:anywhere;max-width:100%}
+</style>
+
+</head>
+<body>
+<header><div class="brand">LightUp <span>PRIVATE · LOCAL ONLY</span></div><h1>Scope disclosure desk</h1><p>Inspect, selectively mask, and explicitly export a <strong>new text-only copy</strong> of a human-owned handoff. Nothing is uploaded, scanned, approved or authorized.</p></header>
+<main>
+<section class="banner" aria-label="Safety boundary"><strong>DRAFT / HOLD · M3/M7 PLAN/LAB ONLY</strong><p>Redaction is not reliable declassification. Review every exported byte. A hash proves byte equality, not identity, approval, consent, or permission to assess an asset. Do not load untrusted executable files.</p></section>
+<section class="card" aria-labelledby="source-title">
+<h2 id="source-title"><span>01</span> Open PRIVATE text</h2>
+<label for="file">Choose a local UTF-8 TXT, CSV, JSON, MD, LOG, PEM, KEY or ASC file (maximum 2 MiB)</label>
+<input id="file" type="file" accept=".txt,.csv,.json,.md,.log,.pem,.key,.asc,text/plain,text/csv,application/json">
+<div class="grid three"><div class="metric"><b id="filename">None</b><small>Selected source (private)</small></div><div class="metric"><b id="filesize">—</b><small>Original bytes</small></div><div class="metric"><b id="originalHash">—</b><small>Original SHA-256 prefix (private)</small></div></div>
+<div id="openStatus" class="status" role="status" aria-live="polite">Choose a source file to begin.</div>
+</section>
+<section class="card" aria-labelledby="mask-title">
+<h2 id="mask-title"><span>02</span> Manual exact-text masking</h2>
+<p>Type a sensitive literal as it appears in the source. Each rule replaces <em>every exact case-sensitive occurrence</em> with <code>[REDACTED]</code>. No fuzzy matching or automatic safety guarantee. Never share the original.</p>
+<div class="ruleform"><label for="rule">Sensitive literal to mask (3–128 characters, single line)</label><input id="rule" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Exact text to mask"><button id="addRule" type="button">Add mask rule</button></div>
+<div id="rules" class="rules" aria-live="polite">No masking rules yet.</div>
+<div class="assisted">
+<h3>Local sensitive-value suggestions</h3>
+<p>Optional human-triggered discovery only. The source is examined <strong>in browser memory</strong>; detected literal values are not shown or exported as a list. Suggested masks are not a guarantee that disclosure is safe.</p>
+<div class="suggest-options">
+<label class="tick"><input id="suggestCredentials" type="checkbox" checked> Bearer, credentials, API tokens and JWT-like values</label>
+<label class="tick"><input id="suggestEmail" type="checkbox"> Email addresses</label>
+<label class="tick"><input id="suggestNetwork" type="checkbox"> HTTP(S) URLs and IPv4-like addresses</label>
+</div>
+<div class="actions"><button id="stageSuggestions" type="button" disabled>Add all selected suggestions as masks</button></div>
+<div id="suggestStatus" class="status" role="status" aria-live="polite">Suggestions have not been requested.</div>
+</div>
+<div class="pem-control">
+<h3>Complete multiline private-key removal</h3>
+<p>When enabled by a human, replace an entire recognized PEM or PGP private-key block, from its exact BEGIN through matching END marker, with a non-secret placeholder. Incomplete, nested, oversized or ambiguous blocks cause <strong>HOLD</strong> instead of partial masking. Never use this as proof of safe disclosure.</p>
+<label class="tick"><input id="maskPrivateBlocks" type="checkbox" disabled> I explicitly choose to mask all recognized complete private-key blocks in this PRIVATE source</label>
+<div id="pemStatus" class="status" role="status" aria-live="polite">Open a PRIVATE source before enabling block removal.</div>
+</div>
+<div class="actions"><button id="review" type="button" disabled>Prepare redacted preview</button><button id="clear" type="button" class="secondary">Clear local session</button></div>
+</section>
+<section class="card" aria-labelledby="review-title">
+<h2 id="review-title"><span>03</span> Inspect the resulting copy</h2>
+<div class="grid three"><div class="metric"><b id="matches">—</b><small>Literal replacements</small></div><div class="metric"><b id="residual">—</b><small>Residual pattern hints</small></div><div class="metric"><b id="outputHash">—</b><small>Redacted SHA-256 prefix</small></div></div>
+<div id="warnings" class="warnings" role="status" aria-live="polite">No preview prepared.</div>
+<div class="reader-search">
+<label for="reviewSearch">Find text only in the already-redacted PRIVATE copy (max 120 characters)</label>
+<input id="reviewSearch" type="search" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Find non-secret phrase in redacted output">
+<div class="actions"><button id="reviewFindPrev" type="button" class="secondary" disabled>Previous match</button><button id="reviewFindNext" type="button" class="secondary" disabled>Next match</button><span id="reviewFindStatus" role="status" aria-live="polite">No search active.</span></div>
+</div>
+<label for="preview">Read-only redacted text, paged in 8,000-character sections (exports contain the entire text)</label>
+<textarea id="preview" rows="12" readonly spellcheck="false"></textarea>
+<div class="actions"><button id="prevPage" class="secondary" type="button" disabled>Previous page</button><span id="pageInfo" role="status" aria-live="polite">No pages</span><button id="nextPage" class="secondary" type="button" disabled>Next page</button></div>
+<label class="tick"><input type="checkbox" id="readAll"> I have inspected all displayed pages and independently considered sensitive information these masks and heuristics may miss.</label>
+<label class="tick"><input type="checkbox" id="accept"> I understand masking may miss secrets and this is NOT an authorization, consent, or security clearance.</label>
+<label for="confirm">Type <strong>EXPORT REDACTED</strong> to enable export</label>
+<input id="confirm" type="text" autocomplete="off" spellcheck="false" placeholder="EXPORT REDACTED">
+<div class="actions"><button id="exportText" disabled type="button">Export redacted .txt</button><button id="exportReceipt" disabled type="button" class="secondary">Export PRIVATE counts receipt</button></div>
+<div id="exportStatus" class="status" aria-live="polite">Exports are locked until explicit confirmation.</div>
+</section>
+<section class="card" aria-labelledby="feedback-title">
+<h2 id="feedback-title"><span>04</span> Review PRIVATE recipient feedback</h2>
+<p>Import a separate response only after preparing the exact current redacted text. The response must match its SHA-256 and byte length. Notes are <strong>unverified HUMAN assertions</strong>; no client approval, identity, grant or consent is inferred or applied.</p>
+<label for="humanReplyFile">PRIVATE HUMAN follow-up JSON (maximum 4 KiB)</label><input type="file" id="humanReplyFile" accept=".json,application/json">
+<div class="actions"><button id="importHuman" type="button" disabled>Read source-bound HUMAN feedback</button></div>
+<div id="humanReturnStatus" class="status" role="status" aria-live="polite">Prepare the exact redacted preview before importing feedback.</div>
+<p id="humanReturnOutcome"></p>
+<label for="humanReturnNote">Received PRIVATE HUMAN note — read-only</label>
+<textarea id="humanReturnNote" readonly spellcheck="false" rows="4"></textarea>
+</section>
+</main>
+<footer><a href="./PRIVATE-verify-standalone.html">Open recipient byte-comparison screen</a> · Offline human preparation only · no network, persistence, grants, scans, targets, or automatic execution. Keep originals private and unchanged.</footer>
+<script>"use strict";
+(() => {
+  const $ = id => document.getElementById(id);
+  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","maskPrivateBlocks","pemStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","reviewSearch","reviewFindPrev","reviewFindNext","reviewFindStatus","readAll","accept","confirm","exportText","exportReceipt","exportStatus","humanReplyFile","importHuman","humanReturnStatus","humanReturnOutcome","humanReturnNote"];
+  const e = Object.fromEntries(ids.map(id => [id,$(id)]));
+  const encoder = new TextEncoder();
+  let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0, revision = 0;
+  const message = (id,text) => { e[id].textContent = text; };
+  const chars = text => [...text].length;
+  // Reject visually deceptive invisible direction controls in PRIVATE notes;
+  // preserve ordinary multilingual joiners and line breaks.
+  const unsafeHumanText = value => /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/u.test(value);
+  const hash = async bytes => {
+    if (!crypto?.subtle) throw Error("WebCrypto is unavailable");
+    return [...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(v=>v.toString(16).padStart(2,"0")).join("");
+  };
+  const hits = (text,word) => {
+    let c = 0, pos = 0;
+    while ((pos=text.indexOf(word,pos))!==-1) { c++; pos+=word.length; }
+    return c;
+  };
+  function lock() {
+    e.exportText.disabled = e.exportReceipt.disabled = true;
+    e.readAll.checked = e.accept.checked = false; e.confirm.value = "";
+    message("exportStatus","Exports require a fresh explicit human confirmation.");
+  }
+  function gate() {
+    const total = prepared ? Math.max(1,Math.ceil(prepared.text.length/8000)) : 0;
+    const ok = prepared && !prepared.highRisk && seen.size === total && e.readAll.checked && e.accept.checked &&
+      e.confirm.value === "EXPORT REDACTED" && source && source.hash === prepared.originalHash;
+    e.exportText.disabled = e.exportReceipt.disabled = !ok;
+  }
+  function invalidate() {
+    revision++; // invalidate async preview calculations when the human changes masks or source
+    prepared = null; seen = new Set(); page = 0; e.preview.value = "";
+    e.reviewSearch.value="";searchMatches=[];searchIndex=-1;updateSearchNav();
+    ["matches","residual","outputHash"].forEach(id=>message(id,"—"));
+    message("warnings","No preview prepared.");
+    e.warnings.className="warnings";
+    message("pageInfo","No pages");
+    e.prevPage.disabled=e.nextPage.disabled=true;
+    e.review.disabled = !source || (rules.length===0 && !e.maskPrivateBlocks.checked);
+    e.stageSuggestions.disabled = !source;
+    e.maskPrivateBlocks.disabled = !source;
+    e.importHuman.disabled = true;
+    e.humanReplyFile.value="";
+    e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
+    message("humanReturnStatus","Prepare the exact current redacted preview before importing feedback.");
+    lock();
+  }
+  function clear() {
+    ++ticket; source=null; rules=[];e.maskPrivateBlocks.checked=false;
+    e.file.value=e.rule.value="";
+    message("filename","None");message("filesize","—");message("originalHash","—");
+    message("openStatus","Session cleared from application state. Previously downloaded files remain on disk.");
+    message("suggestStatus","Suggestions have not been requested.");
+    message("pemStatus","Open a PRIVATE source before enabling block removal.");
+    showRules();invalidate();
+  }
+  function showRules() {
+    e.rules.replaceChildren();
+    if (!rules.length) {e.rules.textContent="No masking rules yet.";return;}
+    rules.forEach((rule,index)=>{
+      const row=document.createElement("div"), text=document.createElement("span"), button=document.createElement("button");
+      row.className="rule";button.className="secondary";button.type="button";
+      text.textContent="Mask "+(index+1)+" · "+chars(rule)+" characters · "+(source?hits(source.text,rule):0)+" literal hits before overlap";
+      button.textContent="Remove "+(index+1);
+      button.onclick=()=>{rules.splice(index,1);showRules();invalidate();};
+      row.append(text,button);e.rules.append(row);
+    });
+  }
+  e.file.addEventListener("change",async()=>{
+    const file=e.file.files?.[0], current=++ticket;
+    source=null;rules=[];e.maskPrivateBlocks.checked=false;showRules();invalidate();
+    message("filename","None");message("filesize","—");message("originalHash","—");
+    if (!file) return;
+    if (!/^[^/\x00-\x1f]{1,120}\.(txt|csv|json|md|log|pem|key|asc)$/i.test(file.name) ||
+        file.size===0 || file.size>2*1024*1024) {
+      message("openStatus","HOLD: choose nonempty UTF-8 text with a safe filename, maximum 2 MiB.");
+      e.file.value="";return;
+    }
+    try{
+      const raw=new Uint8Array(await file.arrayBuffer());
+      if (current!==ticket) return;
+      const text=new TextDecoder("utf-8",{fatal:true}).decode(raw);
+      if (/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)) throw Error("Control bytes");
+      const sha=await hash(raw);
+      if(current!==ticket)return;
+      source={text,hash:sha,bytes:raw.length};
+      message("filename",file.name);message("filesize",raw.length.toLocaleString()+" bytes");
+      message("originalHash",sha.slice(0,12)+"…");
+      message("openStatus","PRIVATE original loaded into memory; original bytes are not modified.");
+      e.file.value=""; invalidate();
+      message("suggestStatus","Choose detection categories and request suggestions.");
+      message("pemStatus","A complete PEM/PGP block can be masked by explicit opt-in. Unrecognized or incomplete keys remain HOLD.");
+    }catch(err){
+      if(current!==ticket)return;
+      message("openStatus","HOLD: invalid UTF-8, binary data, unreadable file or unavailable cryptography.");
+      e.file.value="";
+    }
+  });
+  e.addRule.onclick=()=>{
+    if(!source){message("openStatus","Choose a PRIVATE source first.");return;}
+    const raw=e.rule.value;e.rule.value="";
+    if(chars(raw)<3 || chars(raw)>128 || /[\x00-\x1f]/.test(raw) ||
+        raw.includes("[REDACTED]") || !raw.trim() || rules.includes(raw) ||
+        rules.length>=30-(e.maskPrivateBlocks.checked?1:0) || !source.text.includes(raw)){
+      message("openStatus","HOLD: literal must be unique, present, single-line, 3–128 characters; at most 30 rules.");
+      return;
+    }
+    rules.push(raw);showRules();invalidate();
+    message("openStatus","Exact literal mask added. Rule content is never rendered in the list.");
+  };
+
+
+  // Special-case whole multiline blocks, never partial short-value replacement.
+  // The parser requires matching literal PEM BEGIN and END labels and refuses nested blocks.
+  const privateKeyStart = /-----BEGIN ((?:[A-Z0-9]+ )?PRIVATE KEY|PGP PRIVATE KEY BLOCK)-----/g;
+  const sourcePrivateMarkers = /-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----/g;
+  const privateKeyWhole = /-----BEGIN ((?:[A-Z0-9]+ )?PRIVATE KEY|PGP PRIVATE KEY BLOCK)-----[\s\S]{1,262144}?-----END \1-----/g;
+  function privateBlocksRedacted(text) {
+    const starts = text.match(privateKeyStart) || [];
+    const allMarkers = text.match(sourcePrivateMarkers) || [];
+    if(starts.length!==allMarkers.length) throw Error("Unrecognized private-key header");
+    if (starts.length===0) throw Error("No recognized private-key block present");
+    if (starts.length>16) throw Error("Too many private-key blocks");
+    let replaced=0, ambiguous=false;
+    privateKeyWhole.lastIndex=0;
+    const redacted=text.replace(privateKeyWhole, original=>{
+      if (original.slice(12).includes("-----BEGIN ")) ambiguous=true;
+      replaced++;
+      return "[REDACTED PRIVATE KEY BLOCK]";
+    });
+    if(ambiguous || replaced!==starts.length) throw Error("Incomplete or nested private-key block");
+    return {text:redacted,count:replaced};
+  }
+  e.maskPrivateBlocks.addEventListener("change",()=>{
+    if(!source){e.maskPrivateBlocks.checked=false;invalidate();return;}
+    if(e.maskPrivateBlocks.checked && rules.length>=30){
+      e.maskPrivateBlocks.checked=false;
+      message("pemStatus","HOLD: 30 literal masks already exist. Remove one before enabling one whole-block mask category.");
+      invalidate();return;
+    }
+    const enabled=e.maskPrivateBlocks.checked;
+    invalidate();
+    message("pemStatus",enabled?
+      "Whole-block masking explicitly enabled. Prepare a fresh preview: unmatched or nested blocks HOLD.":
+      "Whole-block masking disabled. Existing private-key markers must still be removed or export remains HOLD.");
+  });
+
+  // Optional HUMAN-triggered in-memory suggestions, never an automatic privacy verdict.
+  const suggestionFamilies = Object.freeze({
+    credentials: [
+      /\bBearer\s+[A-Za-z0-9._~+\/-]{8,}/g,
+      /\b(?:password|passwd|api[_-]?key|secret|access[_-]?token|token)\s*[:=]\s*(?:"[^"\r\n]{3,}"|'[^'\r\n]{3,}'|[^\s,;}]{3,})/gi,
+      /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16})\b/g,
+      /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g,
+      /\bsk-[A-Za-z0-9_-]{20,}\b/g
+    ],
+    email: [/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi],
+    network: [/\bhttps?:\/\/[^\s"'<>]+/gi, /\b(?:\d{1,3}\.){3}\d{1,3}\b/g]
+  });
+  e.stageSuggestions.addEventListener("click",()=>{
+    if(!source){
+      message("suggestStatus","HOLD: open a PRIVATE source first.");return;
+    }
+    const groups=[
+      e.suggestCredentials.checked && "credentials",
+      e.suggestEmail.checked && "email",
+      e.suggestNetwork.checked && "network"
+    ].filter(Boolean);
+    if(!groups.length){
+      message("suggestStatus","Select at least one category.");return;
+    }
+    const proposed=new Set();
+    let hold=false;
+    for(const category of groups){
+      for(const regexp of suggestionFamilies[category]){
+        regexp.lastIndex=0;
+        let match;
+        while((match=regexp.exec(source.text))!==null){
+          const literal=match[0], n=chars(literal);
+          if(n<3 || n>128 || literal.length>512 || literal.includes("[REDACTED]") ||
+             /[\x00-\x1f]/.test(literal)){hold=true;break;}
+          if(!rules.includes(literal)) proposed.add(literal);
+          if(proposed.size>30-(e.maskPrivateBlocks.checked?1:0)-rules.length){hold=true;break;}
+        }
+        if(hold)break;
+      }
+      if(hold)break;
+    }
+    if(hold){
+      message("suggestStatus","HOLD: candidates are oversized, invalid or over the 30-mask limit. No partial rules added. Narrow the categories or mask manually.");
+      return;
+    }
+    if(!proposed.size){
+      message("suggestStatus","No new candidate literals found in selected categories. This does NOT establish safe sharing.");return;
+    }
+    const count=proposed.size;
+    rules.push(...proposed);showRules();invalidate();
+    message("suggestStatus",count+" suggested literal masks added by HUMAN request, without displaying their values. Check the full redacted output.");
+  });
+  const quote = text => text.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&");
+  function hints(text){
+    const expressions=[
+      ["email",/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi],
+      ["URL",/\bhttps?:\/\/[^\s"'<>]+/gi],
+      ["Bearer",/\bBearer\s+[a-z0-9._~+/-]{8,}/gi],
+      ["credential-like",/\b(?:password|passwd|api[_-]?key|secret|token)\s*[:=]\s*[^\s,;}]{3,}/gi],
+      ["private key",/-----BEGIN (?:[A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?)-----/g],
+      ["JWT-like",/\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g],
+      ["GitHub token",/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g],
+      ["AWS access key",/\bAKIA[A-Z0-9]{16}\b/g],
+      ["API token prefix",/\bsk-[A-Za-z0-9_-]{20,}\b/g],
+      ["IPv4-like",/\b(?:\d{1,3}\.){3}\d{1,3}\b/g]
+    ];
+    return expressions.map(([label,re])=>{
+      let count=0;
+      while(re.exec(text)!==null && count<1000) count++;
+      return [label,count];
+    }).filter(v=>v[1]>0);
+  }
+
+  // Search only the sanitized review copy. No original secret value is indexed or exported.
+  let searchMatches=[], searchIndex=-1;
+  function updateSearchNav(){
+    const available=prepared!==null && searchMatches.length>0;
+    e.reviewFindPrev.disabled=e.reviewFindNext.disabled=!available;
+    message("reviewFindStatus",available?
+      "Match "+(searchIndex+1)+" of "+searchMatches.length+" (PRIVATE local preview)":
+      "No active matches. This is not a privacy-safety finding.");
+  }
+  function navigateMatch(direction) {
+    if(!prepared || !searchMatches.length)return;
+    searchIndex=(searchIndex+direction+searchMatches.length)%searchMatches.length;
+    const position=searchMatches[searchIndex];
+    showPage(Math.floor(position/8000));
+    const within=position-page*8000;
+    e.preview.focus();
+    e.preview.setSelectionRange(within,within+e.reviewSearch.value.length);
+    updateSearchNav();
+  }
+  e.reviewSearch.addEventListener("input",()=>{
+    searchMatches=[];searchIndex=-1;
+    if(!prepared){updateSearchNav();return;}
+    const needle=e.reviewSearch.value;
+    if(needle.length<2 || needle.length>120 || /[\x00-\x1f]/.test(needle)){updateSearchNav();return;}
+    const haystack=prepared.text; // preserve exact UTF-16 offsets for precise page highlighting
+    let offset=0,next;
+    while((next=haystack.indexOf(needle,offset))!==-1){
+      searchMatches.push(next);offset=next+needle.length;
+      if(searchMatches.length>=500){
+        searchMatches=[];message("reviewFindStatus","HOLD: too many private matches. Narrow the search.");return;
+      }
+    }
+    if(searchMatches.length){searchIndex=-1;navigateMatch(1);}
+    else updateSearchNav();
+  });
+  e.reviewFindPrev.addEventListener("click",()=>navigateMatch(-1));
+  e.reviewFindNext.addEventListener("click",()=>navigateMatch(1));
+  function showPage(n) {
+    if(!prepared)return;
+    const total=Math.max(1,Math.ceil(prepared.text.length/8000));
+    page=Math.max(0,Math.min(total-1,n));seen.add(page);
+    e.preview.value=prepared.text.slice(page*8000,(page+1)*8000);
+    e.prevPage.disabled=page===0;e.nextPage.disabled=page===total-1;
+    message("pageInfo","Page "+(page+1)+"/"+total+" · "+seen.size+" pages opened");
+    e.readAll.checked=false;gate();
+  }
+  e.prevPage.onclick=()=>showPage(page-1);
+  e.nextPage.onclick=()=>showPage(page+1);
+  e.review.onclick=async()=>{
+    if(!source || (!rules.length && !e.maskPrivateBlocks.checked))return;
+    const current=++ticket;
+    invalidate();const snapshotRevision=revision;e.review.disabled=true;
+    try{
+      // Full PEM/PGP block masking happens first, preventing short literals from
+      // breaking the key-block structural integrity check.
+      let text=source.text, count=0;
+      const originalKeyMarkers=source.text.match(sourcePrivateMarkers) || [];
+      if(originalKeyMarkers.length && !e.maskPrivateBlocks.checked)
+        throw Error("Whole private-key block removal required before any partial masks");
+      if(e.maskPrivateBlocks.checked){
+        const whole=privateBlocksRedacted(text);
+        text=whole.text;count+=whole.count;
+      }
+      if(rules.length){
+        const ordered=[...rules].sort((a,b)=>b.length-a.length);
+        const rx=new RegExp(ordered.map(quote).join("|"),"g");
+        text=text.replace(rx,()=>{count++;return "[REDACTED]";});
+      }
+      if(count===0)throw Error("No masking was applied");
+      const bytes=encoder.encode(text);
+      if(bytes.length>8*1024*1024)throw Error("Output too large");
+      const sha=await hash(bytes);
+      if(current!==ticket || snapshotRevision!==revision || !source)return;
+      const remaining=hints(text);
+      const highRisk=remaining.some(([kind])=>["private key","Bearer","credential-like","JWT-like","GitHub token","AWS access key","API token prefix"].includes(kind));
+      prepared={text,sha,bytes:bytes.length,count,remaining,highRisk,originalHash:source.hash};
+      e.importHuman.disabled=false;
+      message("matches",String(count));
+      message("residual",String(remaining.reduce((n,r)=>n+r[1],0)));
+      message("outputHash",sha.slice(0,12)+"…");
+      e.warnings.className=remaining.length?"warnings warn":"warnings good";
+      message("warnings",remaining.length?
+        "Potential sensitive patterns remain: "+remaining.map(x=>x[0]+" "+x[1]+(x[1]===1000?"+":"")).join("; ")+". Not exhaustive.":
+        "No heuristic pattern matches; this does not imply safe sharing. Inspect the entire file.");
+      seen=new Set();showPage(0);
+      searchMatches=[];searchIndex=-1;updateSearchNav();
+      message("exportStatus",highRisk ? "HOLD: possible key, Bearer token or credential remains. Mask it and prepare a new preview before export." : "Review every page, then confirm privately.");
+    }catch(err){
+      if(current!==ticket)return;
+      e.warnings.className="warnings warn";
+      message("warnings",e.maskPrivateBlocks.checked || source?.text.match(sourcePrivateMarkers)?.length ?
+        "HOLD: entire private-key block removal is mandatory for any PRIVATE KEY header. Incomplete, nested, oversized or unsupported blocks cannot be partially disclosed." :
+        "HOLD: failed to prepare a bounded full-file redacted preview.");
+    }finally{if(current===ticket)e.review.disabled=!source || (!rules.length && !e.maskPrivateBlocks.checked);}
+  };
+  ["readAll","accept","confirm"].forEach(id=>{
+    e[id].addEventListener("change",gate);
+    e[id].addEventListener("input",gate);
+  });
+  function download(bytes,name,type){
+    const uri=URL.createObjectURL(new Blob([bytes],{type}));
+    const a=document.createElement("a");a.href=uri;a.download=name;a.style.display="none";
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(uri),30000);
+  }
+  function verified(){
+    gate();
+    if(e.exportText.disabled || e.exportReceipt.disabled)throw Error("No approval");
+  }
+  function finish(label){
+    lock();message("exportStatus",label+" downloaded locally. This is HUMAN preparation, not consent or authorization.");
+  }
+  e.exportText.onclick=()=>{
+    try{verified();download(prepared.text,"lightup-private-redacted.txt","text/plain;charset=utf-8");finish("Redacted text");}
+    catch(err){message("exportStatus","HOLD: review and reconfirm before exporting.");}
+  };
+  e.exportReceipt.onclick=()=>{
+    try{
+      verified();
+      const report={
+        schema:"lightup-private-disclosure-human-v1",
+        purpose:"Local human disclosure preparation, not verified clearance or authenticated origin",
+        output_sha256:prepared.sha,output_bytes:prepared.bytes,replacements:prepared.count,
+        mask_rules:rules.length+(e.maskPrivateBlocks.checked?1:0),residual_hints:Object.fromEntries(prepared.remaining),
+        authorization:false,client_consent:false,operator_consent:false,
+        revocation_at_use_verified:false,scanning_permitted:false,release_approved:false
+      };
+      download(JSON.stringify(report,null,2)+"\n","lightup-private-disclosure-receipt.json","application/json");
+      finish("PRIVATE receipt");
+    }catch(err){message("exportStatus","HOLD: review and reconfirm before exporting.");}
+  };
+
+  const returnKeys=[
+    "schema","redacted_sha256","redacted_bytes","human_followup","human_note",
+    "all_pages_displayed","sender_authenticated","client_consent","operator_consent",
+    "revocation_at_use_verified","scanning_permitted","release_approved"
+  ];
+  e.humanReplyFile.addEventListener("change",()=>{
+    e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
+    message("humanReturnStatus","PRIVATE feedback file selection changed. Read it against the current redacted preview.");
+  });
+  e.importHuman.addEventListener("click",async()=>{
+    e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
+    const file=e.humanReplyFile.files?.[0], current=prepared;
+    if(!current || !file || !/^[^/\x00-\x1f]{1,120}\.json$/i.test(file.name) ||
+       file.size<1 || file.size>4096){
+      message("humanReturnStatus","HOLD: prepare the current redacted preview and choose one bounded PRIVATE JSON reply.");
+      return;
+    }
+    try{
+      const bytes=new Uint8Array(await file.arrayBuffer());
+      const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      const reply=JSON.parse(raw);
+      if(!reply || Array.isArray(reply) || typeof reply!=="object" ||
+         JSON.stringify(reply,null,2)+"\n"!==raw ||
+         Object.keys(reply).join("|")!==returnKeys.join("|") ||
+         reply.schema!=="lightup-private-disclosure-return-v1" ||
+         reply.redacted_sha256!==current.sha ||
+         reply.redacted_bytes!==current.bytes ||
+         reply.all_pages_displayed!==true ||
+         (current.highRisk && reply.human_followup!=="needs_more_masking") ||
+         !["needs_more_masking","needs_context","read_only_notes"].includes(reply.human_followup) ||
+         typeof reply.human_note!=="string" || reply.human_note.length>800 ||
+         unsafeHumanText(reply.human_note) ||
+         hints(reply.human_note).some(([name])=>["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].includes(name)) ||
+         !["sender_authenticated","client_consent","operator_consent",
+           "revocation_at_use_verified","scanning_permitted","release_approved"].every(k=>reply[k]===false)){
+        throw Error("invalid recipient response");
+      }
+      if(prepared!==current || e.humanReplyFile.files?.[0]!==file || !source || source.hash!==current.originalHash)
+        throw Error("source changed while reading");
+      e.humanReturnOutcome.textContent="HUMAN follow-up: "+reply.human_followup.replaceAll("_"," ")+
+        " · sender identity and consent UNVERIFIED";
+      e.humanReturnNote.value=reply.human_note;
+      message("humanReturnStatus","Source-bound PRIVATE HUMAN feedback opened. Nothing has been applied to masks, source, grant or authorization.");
+    }catch(_){
+      e.humanReturnOutcome.textContent="";e.humanReturnNote.value="";
+      message("humanReturnStatus","HOLD: feedback invalid, noncanonical, source-mismatched, unauthenticated or unreadable. No prior HUMAN state carried over.");
+    }
+  });
+  e.clear.onclick=clear;
+  invalidate();
+})();</script></body></html>
