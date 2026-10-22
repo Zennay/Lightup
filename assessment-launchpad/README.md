@@ -867,3 +867,17 @@ either canonical manifest's original bytes/slot list changed while the
 comparison was being prepared, it holds instead of publishing a stale delta.
 This is a local source-drift guard only; it does not make unsigned local
 receipts authentic or establish when an operator selected either snapshot.
+
+
+### Browser HUMAN follow-up editor for manifest-change CSV
+
+Open `assessment-launchpad/manifest_change_review.html` directly in a browser (no server required). Select the `lightup-private-manifest-delta.csv` produced by `manifest_change_desk.py`. The page validates the fixed native CSV header, REVIEW_ONLY source marker, bounded slot ordinals, row count and allowed transition shapes, then lets a human assign one fixed follow-up stage per ordinal row:
+
+- `NOT_REVIEWED`
+- `REVIEWED`
+- `FOLLOW_UP`
+- `NOT_APPLICABLE`
+
+Use **Export full HUMAN follow-up CSV** to save the complete ledger. Filters affect only the visible table, never which rows are exported. The original `review_state=REVIEW_ONLY` remains unchanged; `human_follow_up` is a separate local workflow field. The browser tool does not include endpoint URLs, source paths, source hashes or free-text notes, and keeps edits in memory only. Its restrictive CSP hashes the exact inline script and stylesheet; no external assets, storage, network, telemetry or target activity are used.
+
+This is a convenience format check and HUMAN follow-up worksheet, **not** source authentication, evidence of remediation, authorization, consent, revocation status or HUMAN GO. Keep the downloaded CSV private. The original native CLI remains the source-bundle admission boundary.
