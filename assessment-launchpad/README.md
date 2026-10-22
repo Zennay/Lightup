@@ -469,7 +469,10 @@ CSV snapshots against the *same* freshly re-admitted original Launchpad source,
 2–8 manually ordered HUMAN rounds and 1–5 role returns. Both six-field CSVs
 must be an exact, unique, original-order subset of the original worklist.
 It classifies original local slots as newly selected, no longer selected or
-selected in both, and creates an owner-only four-file packet (scriptless
+selected in both. Optional `--suggested-role SECURITY_REVIEWER` (or another
+fixed role) narrows output to that original proposed HUMAN role, **after** both
+complete selections and all source packets are admitted; the operator still
+must authenticate recipients. Default output is unchanged. Creates an owner-only four-file packet (scriptless
 network-denied CSP HTML, source-minimal CSV, fixed-vocabulary counts JSON and
 handling guide). Breakdown by suggested HUMAN role/next action is also
 included. Use `--preview-only` for write-free counts or `--verify-output-dir`

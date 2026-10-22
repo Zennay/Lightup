@@ -14,7 +14,7 @@ import sys
 from action_handoff import read_selected, selected_source_rows, WORK_CSV
 from history import admitted_rounds
 from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
-from review_desk import read_original_bundle
+from review_desk import read_original_bundle, ROLES
 from role_return_reconcile import admitted_replies, render_files
 
 REPORT_HTML = "lightup-lab-human-selection-diff-private.html"
@@ -113,8 +113,13 @@ def summarize(before, after, total):
     return classified, data
 
 
-def render(before, after, total):
+def render(before, after, total, role_filter=None):
     rows, summary = summarize(before, after, total)
+    if role_filter is not None:
+        summary["operator_suggested_role_filter"] = role_filter
+    role_note = ("<p>Restricted to suggested HUMAN role: " +
+                 escape(role_filter.replace("_", " ")) +
+                 ". This is NOT verified recipient identity.</p>") if role_filter else ""
     cards = "".join("<div><strong>" + escape(label.replace("_", " ")) +
                     "</strong><br>" + str(summary[key]) + "</div>"
                     for label, key in (
@@ -158,6 +163,7 @@ def render(before, after, total):
         + "HUMAN selection CSVs. Their chosen order is not verified chronology, "
         + "role ownership or review. No source changes, scanning, consent, "
         + "remediation, grants, dispatch or HUMAN GO are inferred.</p>"
+        + role_note
         + "<div class='grid'>" + cards + "</div>" + matrix
         + "<p>The rows below contain only PRIVATE original-local ordinals and "
         + "fixed HUMAN labels; small groups may still identify people. "
@@ -183,6 +189,8 @@ def render(before, after, total):
         "The packet is owner-only 0600 / 0700 and contains PRIVATE identifiers.\n"
         "Reopen against the SAME original source bundle, HUMAN rounds, returns\n"
         "and both exact selected CSV files; no output changes are permitted.\n"
+        + ("Optional proposed-role filtering never authenticates a recipient.\n"
+           if role_filter is not None else "")
     ).encode("utf-8")
     payload = (html, csv_out,
                (json.dumps(summary, sort_keys=True, separators=(",", ":")) + "\n").encode(),
@@ -200,6 +208,8 @@ def main(argv=None):
     parser.add_argument("--role-return-dir", action="append", required=True)
     parser.add_argument("--before-csv", required=True)
     parser.add_argument("--after-csv", required=True)
+    parser.add_argument("--suggested-role", choices=ROLES,
+                        help="optional source-verified proposed HUMAN role-only packet")
     output = parser.add_mutually_exclusive_group(required=True)
     output.add_argument("--output-dir", help="new empty owner-only 0700 folder")
     output.add_argument("--verify-output-dir", help="read-only reopen of prior 4-file packet")
@@ -208,7 +218,13 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         source = read_sources(args)
-        payload, summary = render(source[2], source[3], source[4])
+        before, after = source[2:4]
+        if args.suggested_role is not None:
+            before = [row for row in before if row[1] == args.suggested_role]
+            after = [row for row in after if row[1] == args.suggested_role]
+            if not before and not after:
+                raise Hold("no exact original selected HUMAN slots in proposed role")
+        payload, summary = render(before, after, source[4], args.suggested_role)
         if args.preview_only:
             print(json.dumps(summary, sort_keys=True, separators=(",", ":")))
             return 0

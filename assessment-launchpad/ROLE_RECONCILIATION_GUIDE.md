@@ -251,6 +251,9 @@ membership changes. The standalone native HTML/CSV/JSON + guide are new
 exclusive owner-private 0600 artifacts under an existing separate 0700 folder.
 No earlier source or selection is overwritten. It also offers a write-free
 five-count `--preview-only` and exact read-only `--verify-output-dir` reopen.
+Optional `--suggested-role SECURITY_REVIEWER` can create a role-limited
+comparison *after* both original selected CSVs and all source packets are fully
+admitted. This is an unverified proposal, not recipient authentication.
 Breakdowns by fixed suggested HUMAN roles/actions are unsigned suggestions,
 not authority, chronology or remediation status. For full commands and
 privacy handling, see [ACTION_SELECTION_COMPARISON_GUIDE.md](ACTION_SELECTION_COMPARISON_GUIDE.md).

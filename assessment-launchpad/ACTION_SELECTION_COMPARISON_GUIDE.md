@@ -33,6 +33,13 @@ python3 assessment-launchpad/action_selection_compare.py \
 
 Preview prints counts and fixed-vocabulary aggregates only. No source slot
 rows, endpoint URL, private note text, source path or SHA enters this output.
+Add `--suggested-role SECURITY_REVIEWER` (or any original fixed role) for a
+role-minimal comparison: **both complete original selected CSV files and all
+source packets are still admitted first**; only the separately published
+change rows, role/action aggregates and counted selected slots are filtered.
+This never verifies the proposed recipient identity. An empty selected-role
+comparison is HOLD. Repeat the identical optional role for preview, output
+and read-only reopen; default/unfiltered output remains byte-compatible.
 A browser-local selection-diff preview is also available before Apply/Replace.
 The browser action desk separately offers **Download PRIVATE selection
 differences CSV** using fixed source-local labels; this browser-only CSV is
