@@ -106,12 +106,12 @@
     <button id="metricTransitionBrief" type="button" class="ghost" disabled>Export script-free printable transition brief</button>
   </div>
   <h4>Inspect the scenarios behind a transition</h4>
-  <p>This local-only drilldown identifies which anonymous scenarios contribute to one metric's state change across an adjacent manual-slot pair. Choose a metric, slot pair and flag-state category, then open a scenario directly in the existing trajectory view. Scenario IDs remain private to the current tab; this drilldown has no export, network or authorization behavior.</p>
+  <p>This local-only drilldown identifies which anonymous scenarios change one metric's source-flag state between any two selected manual slots, including non-adjacent slots. The aggregate matrix above remains adjacent-only. Choose a metric, pair and flag-state category; open a scenario in the existing trajectory view or export only the filtered anonymous cases. Original scenario IDs remain private to this tab, and the drilldown has no network or authorization behavior.</p>
   <div class="queue-controls">
     <label>Metric to inspect
       <select id="metricTransitionMetric" disabled><option>Import snapshots first</option></select>
     </label>
-    <label>Adjacent manual-slot pair
+    <label>Manual-slot pair
       <select id="metricTransitionPair" disabled><option>Import at least two snapshots</option></select>
     </label>
     <label>Flag-state category
