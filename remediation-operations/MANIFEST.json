@@ -1,0 +1,422 @@
+{
+  "active_execution": false,
+  "authentication": false,
+  "client_consent": false,
+  "files": [
+    {
+      "bytes": 21337,
+      "path": "remediation-artifact-ledger/README.md",
+      "sha256": "6763bb2f983da6a258977be13f219c01f725d96f10d466b62b76d7493ad45431"
+    },
+    {
+      "bytes": 23378,
+      "path": "remediation-artifact-ledger/index.html",
+      "sha256": "a1c66843902cf6c99a5f46fead5d74304bcc9f8193125ab308310b9a5165ad2f"
+    },
+    {
+      "bytes": 62147,
+      "path": "remediation-artifact-ledger/ledger.js",
+      "sha256": "2dad1b4a7b61c42ac51d46d0a9613c6a4cba69d9e46908e185f541c05caf08d6"
+    },
+    {
+      "bytes": 15542,
+      "path": "remediation-artifact-ledger/owner-reply-standalone.html",
+      "sha256": "153b48d843fbd6cc19568fbff3aaf75aa28b1155ae39795f3f6df230733e7913"
+    },
+    {
+      "bytes": 2981,
+      "path": "remediation-artifact-ledger/owner-reply.html",
+      "sha256": "8aab774021df50a67126528a76ebb40d78f7402c2b7fd195b5cbe52c4a32ff80"
+    },
+    {
+      "bytes": 9049,
+      "path": "remediation-artifact-ledger/owner-reply.js",
+      "sha256": "5a842d555e95e0d75e930d7f8180025c2aab814216cf4e04b3764a4969447302"
+    },
+    {
+      "bytes": 5070,
+      "path": "remediation-artifact-ledger/package.py",
+      "sha256": "e2b7598be33519ab60c38b62ca3069a9205a0a57a3eabc44aec3aec1c20ceec0"
+    },
+    {
+      "bytes": 26880,
+      "path": "remediation-artifact-ledger/request-board.js",
+      "sha256": "55c52752025a5425219574b0f4699cc688f41294966f518f01a25c8d789d97df"
+    },
+    {
+      "bytes": 126823,
+      "path": "remediation-artifact-ledger/standalone.html",
+      "sha256": "4707fa609387dd8b50050bf746485feee648704886da729f5d072c467f753aa7"
+    },
+    {
+      "bytes": 3464,
+      "path": "remediation-artifact-ledger/style.css",
+      "sha256": "840faa4b826011e892a36c9d26a4027c0634dc7423f6e9b2e5a534a24a803168"
+    },
+    {
+      "bytes": 15741,
+      "path": "remediation-response-reconciliation/README.md",
+      "sha256": "c45cdf2d825a18c2eb5d0c2a6355184255f4df67c79d95375f52c48c8abee176"
+    },
+    {
+      "bytes": 53722,
+      "path": "remediation-response-reconciliation/app.js",
+      "sha256": "20a11f120756c8f611d8207331b5af537b39dc7f39490bb8d5230b8bf2f9a936"
+    },
+    {
+      "bytes": 2783,
+      "path": "remediation-response-reconciliation/build_owner_brief.py",
+      "sha256": "1322b318f733d6ff50a9333f1ae7ae1e9b139c09cde0cc8edec0606da4398a0b"
+    },
+    {
+      "bytes": 3152,
+      "path": "remediation-response-reconciliation/build_standalone.py",
+      "sha256": "8a195de1038884c46e9e6d3c4d155f700d7cba9cee43546cf87c0e3967c140c4"
+    },
+    {
+      "bytes": 7385,
+      "path": "remediation-response-reconciliation/index.html",
+      "sha256": "1b1a8eb86ec41d93451017afd6a9c7d42c28e5736681d7be510e89705ad84e30"
+    },
+    {
+      "bytes": 25068,
+      "path": "remediation-response-reconciliation/owner-brief-standalone.html",
+      "sha256": "fe64782e37b2df4aede78f54653b019742fde11c6929ca9372f94c30f720a726"
+    },
+    {
+      "bytes": 2870,
+      "path": "remediation-response-reconciliation/owner-brief.html",
+      "sha256": "765e4b1b82f9ea119b2c1db80d12eac2a6e41264d81497a9aaed950d9159a5e2"
+    },
+    {
+      "bytes": 15346,
+      "path": "remediation-response-reconciliation/owner-brief.js",
+      "sha256": "17a9d7072379e48f1379058cb4e44220508895afb9394328cbfba52db388c45c"
+    },
+    {
+      "bytes": 67967,
+      "path": "remediation-response-reconciliation/standalone.html",
+      "sha256": "3d65a5d440de010c8a51fbcf8f58da1ac58d5b4e009fd943f826a103c2b2e4fd"
+    },
+    {
+      "bytes": 6814,
+      "path": "remediation-response-reconciliation/style.css",
+      "sha256": "84f0eb8091504df420e7a94210aed938f121eabac1ab01831b08b0c63dcdac93"
+    },
+    {
+      "bytes": 16728,
+      "path": "remediation-handoff-inbox/README.md",
+      "sha256": "0346d56fac55a8d429e857815c2f7453f286af425dd77d116cb987f8016bf72c"
+    },
+    {
+      "bytes": 50519,
+      "path": "remediation-handoff-inbox/app.js",
+      "sha256": "341c02ec2592563bc850624db6a7adb86b66f1f316ab6697d8f6523ec1e53d92"
+    },
+    {
+      "bytes": 28092,
+      "path": "remediation-handoff-inbox/human-workplan.js",
+      "sha256": "811eec816306349fbdf9c2f31b81d827a1e213420fa70f41f6d992ce2eb500e2"
+    },
+    {
+      "bytes": 13131,
+      "path": "remediation-handoff-inbox/index.html",
+      "sha256": "141861d11b40a982c4e05e23e0637343b736dcbc21c4128fce783ab22b534704"
+    },
+    {
+      "bytes": 10856,
+      "path": "remediation-handoff-inbox/original-casework.js",
+      "sha256": "c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225"
+    },
+    {
+      "bytes": 3071,
+      "path": "remediation-handoff-inbox/package.py",
+      "sha256": "9527fd15323f1e0fcb135ff594b672ccfceea5aa26ddd9b80a2dfc588f14a73e"
+    },
+    {
+      "bytes": 106236,
+      "path": "remediation-handoff-inbox/standalone.html",
+      "sha256": "ea1574cd3e27e11d5e930556c20ed883e6bb37cb9e39baddedfb6a03a77b9dac"
+    },
+    {
+      "bytes": 3525,
+      "path": "remediation-handoff-inbox/style.css",
+      "sha256": "2b778950ca64407bae5286df5e5760df36c669a73116db267cdccca027a65cc4"
+    },
+    {
+      "bytes": 19664,
+      "path": "remediation-human-runbooks/README.md",
+      "sha256": "69e5c0fc2e9d2eec4ad5e7b48279770e9ff193f7758fe0904469ec9c3891c612"
+    },
+    {
+      "bytes": 2106,
+      "path": "remediation-human-runbooks/build_editor.py",
+      "sha256": "88115cb9e454306b2787a06127f07888ed0b32de78faf665fac34b5773354243"
+    },
+    {
+      "bytes": 2461,
+      "path": "remediation-human-runbooks/build_owner_return.py",
+      "sha256": "397611c3cc9c2857e1a398c8b90f85ec963c4a93692a5bce70d45ca29cfbdd46"
+    },
+    {
+      "bytes": 2322,
+      "path": "remediation-human-runbooks/editor.css",
+      "sha256": "aa6944ef0a1268a8f1182a770bdc75a9566ee20f26011b0e3e77229ed7c14c26"
+    },
+    {
+      "bytes": 67991,
+      "path": "remediation-human-runbooks/editor.js",
+      "sha256": "ab51ddfc44a4d29129554546ccdff203f0109ac0498950cba4b54a6f00ed8f2c"
+    },
+    {
+      "bytes": 11154,
+      "path": "remediation-human-runbooks/editor.template.html",
+      "sha256": "1a5ca9b6cf28a74814f01c6b23a52e94ab2e53309cb14a4dec9dae26784ba5b5"
+    },
+    {
+      "bytes": 2086,
+      "path": "remediation-human-runbooks/owner-return.css",
+      "sha256": "53d5644571c90ee56a5a010ea0629748d84b7ab2a8e7e79e8b37a7c75ab83459"
+    },
+    {
+      "bytes": 27126,
+      "path": "remediation-human-runbooks/owner-return.html",
+      "sha256": "8cfb5d763e2ba0b432bc62983cb545991198c5029465a2c8dce47ac0a1dbf488"
+    },
+    {
+      "bytes": 21389,
+      "path": "remediation-human-runbooks/owner-return.js",
+      "sha256": "1d173eb00fecd83f7027f10e6e169eda3b0ca3a92bab863c598752340747b604"
+    },
+    {
+      "bytes": 3609,
+      "path": "remediation-human-runbooks/owner-return.template.html",
+      "sha256": "571f35976f9b5cf93326afb6df46c6950d8e84c3918ed3fa45081d3f511886bf"
+    },
+    {
+      "bytes": 81487,
+      "path": "remediation-human-runbooks/standalone.html",
+      "sha256": "e05fb6a22cbe20e2fea32c8fa0492cd01f7e02305c4a2c99b4e7acc5f41042e2"
+    },
+    {
+      "bytes": 149290,
+      "path": "remediation-vault/LightUp-Private-Handoff-Vault.zip",
+      "sha256": "22e09bd6b232d94532e2a8d3ccfa9a4c654f6fc641f2304ea8b031771f0abf6e"
+    },
+    {
+      "bytes": 10114,
+      "path": "remediation-vault/README.md",
+      "sha256": "041e0b6310b669daacbe35e773f62809dbd39f4c14d2d5df0d6713b5a5491398"
+    },
+    {
+      "bytes": 8159,
+      "path": "remediation-vault/START-HERE.html",
+      "sha256": "521152c439840ba70c0c29ec202a1206957666ce1975b0912cc1d83d110e5604"
+    },
+    {
+      "bytes": 6575,
+      "path": "remediation-vault/WORKFLOWS.md",
+      "sha256": "1c7e7886a0f950bff365b32522666e4ed0ec56dc341f9866e631a68a5870e04d"
+    },
+    {
+      "bytes": 24516,
+      "path": "remediation-vault/app.js",
+      "sha256": "dc83a557095e4af7507fc1614e506bc1dfbb86ff4f6c9892d058849ce8a4f743"
+    },
+    {
+      "bytes": 8842,
+      "path": "remediation-vault/index.html",
+      "sha256": "5f9e352ab150a4683b8e21c2a8b440e848d827c81d4aefc4846f552e2a915827"
+    },
+    {
+      "bytes": 1322,
+      "path": "remediation-vault/package.py",
+      "sha256": "3b653270cb86da0b9ab97c1c770a49814957f9a7bc5f8c9b0b73a7e4d89fcfad"
+    },
+    {
+      "bytes": 4332,
+      "path": "remediation-vault/package_kit.py",
+      "sha256": "766341b0c15ae77f34114562a5eefbe57bb64993b7b2d9d4b79b0045e8daf946"
+    },
+    {
+      "bytes": 109203,
+      "path": "remediation-vault/partner-apps/capacity-studio.html",
+      "sha256": "88a8e13ff62915f96a6ef74fccc2fe513e2fc92582a4d48e7fd2cc4fd7ab1659"
+    },
+    {
+      "bytes": 89181,
+      "path": "remediation-vault/partner-apps/casework-calendar.html",
+      "sha256": "d791d1ad92d29027c3837622117210d023a4bf44f79754eb5da6c150657977e6"
+    },
+    {
+      "bytes": 43524,
+      "path": "remediation-vault/partner-apps/dependency-board.html",
+      "sha256": "1f769362ac35ea47417ca35227d624fd7ad510591541cd7e2590e7067df1eafa"
+    },
+    {
+      "bytes": 84711,
+      "path": "remediation-vault/partner-apps/evidence-review.html",
+      "sha256": "a818110f7078aa8a9981ea9857cc898221cd01b9b7490493a8945357d0ee967f"
+    },
+    {
+      "bytes": 60143,
+      "path": "remediation-vault/partner-apps/funding-studio.html",
+      "sha256": "c118071dc2cb5e85ba204113f2f65bcc3e56f419ed9a46b49916477b651f125a"
+    },
+    {
+      "bytes": 44186,
+      "path": "remediation-vault/partner-apps/owner-reply.html",
+      "sha256": "b4d4bb1e1c02f3e0a3ac884e0d5cf05ae0a8a088e97c2ae92a39da9191be742a"
+    },
+    {
+      "bytes": 38845,
+      "path": "remediation-vault/standalone.html",
+      "sha256": "bf8145add3ab201989aaea3deeebdab53abab7cf9b7a78691c0b58a79e457c5b"
+    },
+    {
+      "bytes": 5209,
+      "path": "remediation-vault/style.css",
+      "sha256": "bc272fc44e9dbc3369b982e11066add9dfebf76062be83519bc7e60242ff10e7"
+    },
+    {
+      "bytes": 14683,
+      "path": "remediation-change-windows/README.md",
+      "sha256": "1eea9cc7ae765905f2e1fe876b0e00f9c93e79a7ec508664fe28c9922196b13b"
+    },
+    {
+      "bytes": 72415,
+      "path": "remediation-change-windows/board.js",
+      "sha256": "4a6935d59961ac67859377c6c0dc75e2872b2246f5bafb1d5f5fa324135d4645"
+    },
+    {
+      "bytes": 15724,
+      "path": "remediation-change-windows/index.html",
+      "sha256": "c02a7826b44473a54dbe449a06d817e371b78d915ea1c4c7ec0db9bd1567c063"
+    },
+    {
+      "bytes": 2407,
+      "path": "remediation-change-windows/package.py",
+      "sha256": "6cc54af65b496dce024ea0c21debae93aac175f0ac5b48c5591f42d7215b159b"
+    },
+    {
+      "bytes": 99027,
+      "path": "remediation-change-windows/standalone.html",
+      "sha256": "db0c347e1a05645ca54cb85be67ea64da37904570d6bd281ac463889edd9f7df"
+    },
+    {
+      "bytes": 22124,
+      "path": "remediation-operations/README.md",
+      "sha256": "24f3b458470fc17c7c53d1ff8b553a88309c99ad926d92c7c87ae9b9964ac862"
+    },
+    {
+      "bytes": 5943,
+      "path": "remediation-operations/build_bundle.py",
+      "sha256": "32965a5a37a51014636b4ec39c6b3e990db4e82b41881035e48d70e7523028e8"
+    },
+    {
+      "bytes": 3293,
+      "path": "remediation-operations/build_source_continuity_standalone.py",
+      "sha256": "637aaccb189685c23ece4a2a806a9b727abcfc80c00554aaa24b7e89590efbbd"
+    },
+    {
+      "bytes": 3887,
+      "path": "remediation-operations/build_triage_standalone.py",
+      "sha256": "7c81db06ad61db3370dda7196a176dfdfd7535c33ab45363927b56ed66d28b32"
+    },
+    {
+      "bytes": 3627,
+      "path": "remediation-operations/compare.html",
+      "sha256": "c9378aa62512a23b23822f8ebb79855e5b5435974b73c1ceb3258263b64aff68"
+    },
+    {
+      "bytes": 9878,
+      "path": "remediation-operations/compare.js",
+      "sha256": "8026a552c7d3654377d71a96acd722ece4e139175676f8b125c0f813aecdf893"
+    },
+    {
+      "bytes": 12597,
+      "path": "remediation-operations/custody.js",
+      "sha256": "400095bd6152f3fc25257a5747b61692e095d15ad0a5122c87fbbc48e47851a8"
+    },
+    {
+      "bytes": 10120,
+      "path": "remediation-operations/hub.js",
+      "sha256": "1c2813bd408a860b0a678388db06ef900b248394d88d1a2a45d2b54cd506908c"
+    },
+    {
+      "bytes": 9763,
+      "path": "remediation-operations/index.html",
+      "sha256": "bc37dd500df9c62f355bc5e26add3cf1c1a3dba5d820eee8eeff7e68cb48804a"
+    },
+    {
+      "bytes": 14546,
+      "path": "remediation-operations/owner-actions.js",
+      "sha256": "3454fe4bdcc2bea724ef88e30493816c2be08acd6698b46519b1bedd218854ab"
+    },
+    {
+      "bytes": 25038,
+      "path": "remediation-operations/source-continuity-standalone.html",
+      "sha256": "bf268633ed3d2672db9bd591cfe08e494cf1a823d239aefedd7bac5b5daf2c95"
+    },
+    {
+      "bytes": 5132,
+      "path": "remediation-operations/source-continuity.html",
+      "sha256": "670cc0cd6ab74d5d5d69e3ea9d0718105cd2ee1f70b7cb11bd3c1c63df5f126d"
+    },
+    {
+      "bytes": 15867,
+      "path": "remediation-operations/source-continuity.js",
+      "sha256": "63c96f2f95c0ca227bb6d60ea86ebd7123e32410e8f7eeae4866d73b0777fefd"
+    },
+    {
+      "bytes": 2235,
+      "path": "remediation-operations/theme.css",
+      "sha256": "e01f6e9258d80d37ef7bffe245a9eaf52602ffaca60dd21d6ee5072202058d60"
+    },
+    {
+      "bytes": 110596,
+      "path": "remediation-operations/triage-standalone.html",
+      "sha256": "3d536a13b6c5bb680b0e763a375aa46d84a69f58c7e60fbec18f0fb5901659ac"
+    },
+    {
+      "bytes": 1701,
+      "path": "remediation-operations/triage.css",
+      "sha256": "1e29205bd4c661415a4fc83ebd29521d1ba917a83361e83a766d6216b8a6d391"
+    },
+    {
+      "bytes": 12878,
+      "path": "remediation-operations/triage.html",
+      "sha256": "7ba52bc20e9ad4b4af3a0b2b6d9b23393c98edb69fab9914a805f418b3e21abb"
+    },
+    {
+      "bytes": 46636,
+      "path": "remediation-operations/triage.js",
+      "sha256": "a02e05177246ef221e4018ebd12c55cd0a3e01920c80a331ab66004786f2e1e8"
+    },
+    {
+      "bytes": 8821,
+      "path": "remediation-operations/verify_local_bundle.py",
+      "sha256": "6f336229bd88142e48f321c1a0854be5eb10ea0b0132d783fba0252224c5d1ee"
+    },
+    {
+      "bytes": 8855,
+      "path": "remediation-operations/windows-overlay.js",
+      "sha256": "8fab32b16b3155efa8d9d3ba308e19ef6f9ff19130c6508832348a7fce5ce029"
+    }
+  ],
+  "operator_consent": false,
+  "original_source_pr_heads": {
+    "1631": "b7291f4cf560638509cac414207a5e126b4f07de",
+    "1640": "1a1ec2b95db5fdb15716e5c7dde21d22322bbb54",
+    "1642": "6a8cd3baf6535705a7baca77dc3dc5067f862b3d",
+    "1643": "58ad10f0b8cfb949287d4751b782221fc4ff9948",
+    "1644": "933a0a4e278c957bbeaa564c3effcab6d1ae8a31",
+    "1645": "f08fb96f7094d021493a39aa5d1a3eed025509f3"
+  },
+  "privacy": "PRIVATE HUMAN only. App integrity hashes are NOT authenticated owner consent or security approval.",
+  "production_release_approved": false,
+  "release": "INCUBATE M3/M7 - PLAN/LAB ONLY - DRAFT/HOLD",
+  "schema": "lightup-private-human-evidence-integration-v1",
+  "security_fix_verified": false,
+  "start": "remediation-operations/index.html"
+}

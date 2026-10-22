@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src '__OWNER_SCRIPT_HASH__'; style-src '__OWNER_STYLE_HASH__'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp · PRIVATE HUMAN owner handoff and return</title>
+<!--OWNER_RETURN_STYLE--></head>
+<body><header>
+<h1>LightUp · PRIVATE HUMAN owner handoff & return</h1>
+<p>Self-contained offline recipient + operator review. UNVERIFIED · HUMAN-only · INCUBATE M3/M7 · DRAFT/HOLD.</p>
+</header><main>
+<section><h2>1 · Receive owner-specific HUMAN handoff</h2>
+<p class="warning">Open only a privately received <strong>one-owner HUMAN runbook handoff</strong> exported by the separate held Runbook Editor PR #1645. This tool never authenticates the sender, checks current client/operator consent, grants scope or claims completed fixes. Verify the recipient through a separate trusted human channel.</p>
+<label for="handoffFile">PRIVATE owner-specific runbook JSON (max 8 MiB)</label><input id="handoffFile" type="file" accept=".json,application/json">
+<div class="actions"><button class="primary" id="open">Open PRIVATE handoff</button><button class="danger" id="forget">Forget all PRIVATE content</button></div>
+<p class="muted" id="source">No PRIVATE owner packet selected.</p><p id="dirty" class="warning">No browser storage: export any local HUMAN replies before closing.</p><p id="notice" class="status" role="status" aria-live="polite">Nothing loaded.</p>
+</section>
+<section id="desk" class="hidden">
+<h2>2 · Prepare HUMAN-only responses to proposed steps</h2>
+<p>Read the exact proposed HUMAN actions and prepare an acknowledgement, clarification or follow-up question. No result implies execution, authorized scanning, retesting or security verification.</p>
+<div class="grid">
+<div><label for="search">Search original ID, HUMAN proposed text or stage</label><input id="search" maxlength="120" placeholder="Filter human coordination steps"></div>
+<div><label for="filter">HUMAN response filter</label><select id="filter"><option value="all">All steps</option><option value="missing">No human reply</option><option value="clarify">Needs HUMAN discussion</option><option value="responded">Has HUMAN reply</option></select></div>
+</div><p class="muted" id="summary"></p><div id="steps"></div>
+</section>
+<section id="out" class="hidden">
+<h2>3 · PRIVATE owner return / independent operator review</h2>
+<div class="actions"><button class="primary" id="save">Download owner-only PRIVATE HUMAN return JSON</button><button id="brief">Download scriptless PRIVATE HUMAN briefing</button><button id="csv">Download anonymous HUMAN response counts CSV</button></div>
+<p class="warning">PRIVATE exports contain original finding IDs, recipient alias and unverified human comments. Use authenticated, confidential human delivery. Counts-only CSV excludes individual IDs and notes, but small groups can reveal information.</p>
+<label for="replyFile">Operator: inspect a privately received HUMAN return (max 8 MiB)</label><input id="replyFile" type="file" accept=".json,application/json">
+<div class="actions"><button id="preview">Inspect returned HUMAN answers against exact original handoff</button><button id="clearPreview">Discard received reply preview</button></div>
+<p class="muted" id="compareSummary">No external HUMAN return compared.</p><div id="review"></div>
+</section>
+</main>
+<!--OWNER_RETURN_SCRIPT--></body></html>

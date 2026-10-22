@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp · PRIVATE HUMAN Owner Review Brief</title>
+<link rel="stylesheet" href="./style.css"></head>
+<body><main>
+<header><p class="eyebrow">LIGHTUP · PRIVATE OWNER REVIEW · OFFLINE</p>
+<h1>Your HUMAN follow-up brief</h1>
+<p>Read and prepare PRIVATE HUMAN feedback for exactly one self-declared owner. Source labels and recipient identity are <strong>UNVERIFIED</strong>. This reader does not modify original requests, authenticate anyone, verify a fix or authorize scans, retests or other execution.</p></header>
+<section><h2>1 · Open private one-owner brief</h2>
+<label for="briefFile">PRIVATE owner brief JSON</label><input id="briefFile" type="file" accept=".json,application/json">
+<div class="actions"><button id="briefLoad">Load local brief</button><button id="briefForget" class="secondary">Forget all</button><button id="briefPrint" disabled>Print PRIVATE brief</button></div>
+<p id="briefMessage" role="status" aria-live="polite"></p>
+<p id="briefIdentity">No PRIVATE source loaded.</p></section>
+<section><h2>2 · Unverified HUMAN tasks</h2>
+<p id="briefCount">Open an original, independently delivered one-owner PRIVATE brief.</p>
+<p>For each original request, select a human-only acknowledgement and optionally write a private response. These remain local until you explicitly export a PRIVATE HUMAN feedback packet. The operator must review that packet separately.</p>
+<div class="filters"><label>Search original HUMAN task<input id="briefSearch" type="search" placeholder="Original finding or request kind"></label>
+<label>HUMAN status<select id="briefFilter"><option value="all">All</option><option value="unanswered">Unanswered</option><option value="needs_changes">Needs human changes</option><option value="followup">Operator asked follow-up</option></select></label></div>
+<div id="briefItems" class="briefItems"></div><div class="actions"><button id="feedbackExport" disabled>Export PRIVATE HUMAN feedback JSON</button><button id="feedbackClear" class="secondary" disabled>Discard draft feedback</button></div><p id="draftCount" aria-live="polite">No HUMAN feedback drafted.</p></section>
+<footer>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Human review context does not prove source authenticity, remediation, permission, identity, delivery, retest verification or grant. Obtain independent authenticated client/operator consent and action-time revocation before any future authorized security activity. No network or browser storage is used.</footer>
+</main><script defer src="./owner-brief.js"></script></body></html>

@@ -1,0 +1,1092 @@
+/* LightUp Change Window Board: untrusted human planning only, never a security authority. */
+(()=>{'use strict';
+const C=window.LightUpCasework;
+if(!C)throw Error('Original pinned Casework module is required.');
+const $=id=>document.getElementById(id);
+const FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+const FIELDS=['finding_id','title','severity','retest_status','remediation'];
+const EVIDENCE=['change_reference','deployment_reference','rollback_reference','retest_request_reference','review_question'];
+const STAGES=['missing','submitted','needs_changes','ready_for_authorized_retest'];
+const MAX={change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
+const bidi=/[\u202a-\u202e\u2066-\u2069]/;
+const HOURS=4;
+let state=null,lastBulkSnapshot=null,revisionCandidate=null,caseworkCandidate=null,followupSelected=null,lastFollowBulkSnapshot=null;
+const setStatus=(value,error=false)=>{$('status').textContent=value;$('status').dataset.error=error?'true':'false';};
+function fail(s){throw Error(s);}
+function keys(o,allowed,required=allowed){
+ if(!o||typeof o!=='object'||Array.isArray(o)||Object.getPrototypeOf(o)!==Object.prototype)fail('Invalid private JSON object.');
+ if(Object.keys(o).some(k=>!allowed.includes(k))||required.some(k=>!Object.prototype.hasOwnProperty.call(o,k)))fail('Unexpected, ambiguous or missing private fields.');
+}
+function human(s,max){
+ if(typeof s!=='string'||s.length>max||/[\u0000-\u001f\u007f]/.test(s)||bidi.test(s))fail('Invalid human note.');
+ return s;
+}
+function meetingNote(s){
+ if(typeof s!=='string'||s.length>600||/[\u0000-\u0009\u000b-\u001f\u007f]/.test(s)||bidi.test(s))fail('Invalid human meeting note.');
+ return s;
+}
+async function read(file,max,allowOriginalCsvBom=false){
+ if(!file||file.size<1||file.size>max)fail('Private input missing or exceeds limit.');
+ const buffer=await file.arrayBuffer();if(buffer.byteLength>max)fail('Private input exceeds limit.');
+ const bytes=new Uint8Array(buffer);
+ const inputBom=bytes.length>=3&&bytes[0]===0xef&&bytes[1]===0xbb&&bytes[2]===0xbf;
+ if(inputBom&&!allowOriginalCsvBom)fail('UTF-8 BOM not permitted in private JSON.');
+ const text=new TextDecoder('utf-8',{fatal:true}).decode(buffer);
+ if(!text)fail('Empty private input.');
+ if(text.charCodeAt(0)===0xfeff){
+  if(!allowOriginalCsvBom)fail('UTF-8 BOM is not accepted in private JSON.');
+  return text.slice(1);
+ }
+ return text;
+}
+/* Reject repeated keys BEFORE native JSON.parse; JSON.parse alone silently accepts them. */
+function strictJSON(s){
+ let i=0,count=0;const limit=40000;
+ const ws=()=>{while(i<s.length&&/[ \t\n\r]/.test(s[i]))i++;};
+ function str(){
+  if(s[i]!=='"')fail('Malformed JSON string.');
+  const start=i++;let escaped=false;
+  while(i<s.length){const c=s[i++];
+   if(escaped){escaped=false;continue;}
+   if(c==='\\'){escaped=true;continue;}
+   if(c==='"')return JSON.parse(s.slice(start,i));
+   if(c<' ')fail('Malformed JSON control.');
+  }fail('Unclosed JSON string.');
+ }
+ function val(depth){
+  if(++count>limit||depth>26)fail('JSON structure too deep or large.');
+  ws();const c=s[i];
+  if(c==='{'){
+   i++;ws();const found=new Set();if(s[i]==='}'){i++;return;}
+   while(true){ws();const k=str();
+    if(['__proto__','constructor','prototype'].includes(k)||found.has(k))fail('Duplicate or unsafe JSON key.');
+    found.add(k);ws();if(s[i++]!==':')fail('Malformed JSON colon.');
+    val(depth+1);ws();const next=s[i++];if(next==='}')return;
+    if(next!==',')fail('Malformed JSON object.');ws();
+   }
+  }
+  if(c==='['){i++;ws();if(s[i]===']'){i++;return;}
+   while(true){val(depth+1);ws();const next=s[i++];if(next===']')return;
+    if(next!==',')fail('Malformed JSON array.');ws();
+   }
+  }
+  if(c==='"'){str();return;}
+  const m=/^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(s.slice(i));
+  if(!m)fail('Malformed JSON scalar.');i+=m[0].length;
+ }
+ val(0);ws();if(i!==s.length)fail('Trailing JSON content.');return JSON.parse(s);
+}
+/* Offline file:// fallback: SHA-256 on canonical original five-field source, no network. */
+function localSha256(str){
+ const bytes=new TextEncoder().encode(str),K=[
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+ const H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+ const length=bytes.length,padded=new Uint8Array(Math.ceil((length+9)/64)*64);
+ padded.set(bytes);padded[length]=0x80;
+ const bits=length*8,offset=padded.length-8;
+ for(let i=0;i<8;i++)padded[offset+i]=Math.floor(bits/2**(8*(7-i)))&255;
+ const rotate=(n,k)=>(n>>>k)|(n<<(32-k));
+ for(let off=0;off<padded.length;off+=64){
+  const w=new Uint32Array(64);
+  for(let i=0;i<16;i++){const j=off+4*i;w[i]=((padded[j]<<24)|(padded[j+1]<<16)|(padded[j+2]<<8)|padded[j+3])>>>0;}
+  for(let i=16;i<64;i++){const a=w[i-15],b=w[i-2];w[i]=(w[i-16]+(rotate(a,7)^rotate(a,18)^(a>>>3))+w[i-7]+(rotate(b,17)^rotate(b,19)^(b>>>10)))>>>0;}
+  let [a,b,c,d,e,f,g,h]=H;
+  for(let i=0;i<64;i++){const S1=rotate(e,6)^rotate(e,11)^rotate(e,25),ch=(e&f)^(~e&g);
+   const t1=(h+S1+ch+K[i]+w[i])>>>0;const S0=rotate(a,2)^rotate(a,13)^rotate(a,22),maj=(a&b)^(a&c)^(b&c),t2=(S0+maj)>>>0;
+   h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+  }
+  const end=[a,b,c,d,e,f,g,h];for(let i=0;i<8;i++)H[i]=(H[i]+end[i])>>>0;
+ }
+ return H.map(n=>n.toString(16).padStart(8,'0')).join('');
+}
+async function digest(source){
+ const canonical=JSON.stringify(C.normalizeSource(source).slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
+ const value=(await C.digest(source))||localSha256(canonical);
+ if(!/^[a-f0-9]{64}$/.test(value)||value!==localSha256(canonical))fail('Original canonical source fingerprint mismatch.');
+ return value;
+}
+function reviewFile(o,src,hash){
+ keys(o,['kind','schema_version','disposition','source_contract','source_sha256','review','revision_register','warning',...FLAGS],
+  ['kind','schema_version','disposition','source_contract','source_sha256','review',...FLAGS]);
+ if(o.kind!=='lightup.remediation_evidence_coordination'||![1,2].includes(o.schema_version)||
+    o.disposition!=='UNVERIFIED_OFFLINE_HUMAN_COORDINATION'||o.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+    o.source_sha256!==hash||FLAGS.some(k=>o[k]!==false))fail('Review is not bound to this exact original source or claims authority.');
+ if(o.warning!==undefined)human(o.warning,1600);
+ if(o.revision_register!==undefined&&(!Array.isArray(o.revision_register)||o.revision_register.length>12))fail('Invalid source revision length.');
+ if(!Array.isArray(o.review)||o.review.length!==src.length)fail('Original review has incomplete finding coverage.');
+ const ids=new Set(src.map(x=>x.finding_id)),seen=new Set(),result=new Map();
+ for(const r of o.review){
+  keys(r,['finding_id','stage','reference','reviewer','next_step','evidence'],
+    ['finding_id','stage','reference','reviewer','next_step',...(o.schema_version===2?['evidence']:[])]);
+  if(typeof r.finding_id!=='string'||!ids.has(r.finding_id)||seen.has(r.finding_id)||!STAGES.includes(r.stage))fail('Ambiguous, missing or duplicate original review row.');
+  seen.add(r.finding_id);human(r.reference,240);human(r.reviewer,120);human(r.next_step,500);
+  const ev={};
+  if(r.evidence===undefined||r.evidence===null){
+   if(o.schema_version===2)fail('Review v2 evidence fields missing.');
+   EVIDENCE.forEach(k=>ev[k]='');
+  }else{
+   keys(r.evidence,EVIDENCE);
+   for(const k of EVIDENCE)ev[k]=human(r.evidence[k],MAX[k]);
+  }
+  result.set(r.finding_id,{stage:r.stage,reviewer:r.reviewer,next_step:r.next_step,evidence:ev});
+ }
+ if(seen.size!==src.length)fail('Missing original review record.');
+ return result;
+}
+
+/* Existing source-owner Casework is read-only; its stage/date/owner is
+ * self-reported planning, never evidence or verified remediation. */
+function caseworkFile(o,src,hash){
+ const required=['kind','schema_version','disposition',...FLAGS,'source_contract','source_sha256','findings','cases'];
+ keys(o,[...required,'instructions'],required);
+ if(o.kind!=='lightup.remediation_casework_draft'||o.schema_version!==1||
+    o.disposition!=='LOCAL_CLIENT_PLANNING'||o.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+    (o.source_sha256!==hash&&o.source_sha256!==null)||FLAGS.some(k=>o[k]!==false))
+  fail('Casework is not original v1, contradicts the loaded canonical source SHA or claims authority.');
+ if(o.instructions!==undefined&&typeof o.instructions!=='string')fail('Invalid original Casework instructions.');
+ if(!Array.isArray(o.findings)||o.findings.length!==src.length||
+    !Array.isArray(o.cases)||o.cases.length!==src.length)fail('Incomplete original Casework source rows.');
+ for(const row of o.findings)keys(row,FIELDS);
+ const originalIds=new Map(src.map(f=>[f.finding_id,f])),seen=new Set();
+ for(const row of o.findings){
+  if(typeof row.finding_id!=='string'||seen.has(row.finding_id))fail('Duplicated original Casework finding.');
+  const actual=originalIds.get(row.finding_id);
+  if(!actual||FIELDS.some(k=>actual[k]!==row[k]))fail('Original Casework finding differs from canonical CSV.');
+  seen.add(row.finding_id);
+ }
+ const fields=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+ for(const item of o.cases)keys(item,fields);
+ const parsed=C.loadPacket(o),rows=new Map(parsed.cases.map(c=>[c.finding_id,c]));
+ if(rows.size!==src.length)fail('Original Casework duplicate or missing human case.');
+ return {rows,sha256:localSha256(JSON.stringify(src.map(f=>rows.get(f.finding_id)))),
+  original_packet_hashless:o.source_sha256===null};
+}
+function pastDue(c){
+ if(!c||!c.due_date||['completed','deferred'].includes(c.status))return false;
+ /* UTC date is a local planning reminder, NOT a contractual deadline. */
+ return c.due_date<new Date().toISOString().slice(0,10);
+}
+function caseBlocked(c){return Boolean(c&&(c.status==='blocked'||c.blocker.trim()));}
+
+function windowAfterHumanDue(f){
+ if(!state?.casework)return false;
+ const c=state.casework.get(f.finding_id),slot=state.assignments.get(f.finding_id)||0;
+ if(!c?.due_date||['completed','deferred'].includes(c.status)||!slot)return false;
+ const proposed=$('date'+(slot-1)).value;
+ return Boolean(proposed&&proposed.slice(0,10)>c.due_date);
+}
+
+function caseLabel(c){return c?(c.owner||'Unassigned owner')+' · '+c.status+(c.due_date?' · '+c.due_date+' UTC':' · no due date'):'No original Casework attached';}
+
+
+function privateHumanActionSheet(){
+ if(!state?.followup)fail('Load an original private five-column findings CSV first.');
+ ensureHumanEditorSaved();
+ if(!confirm('PRIVATE: export original finding IDs and confidential HUMAN action notes/reminders? Share only with an independently approved confidential recipient. This is NOT a grant, verified remediation, retest or change approval.'))return;
+ /* No original Casework or valid proposed UTC change window is needed for
+  * human follow-up; an optional slot number is never a booked appointment. */
+ const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g,' ').
+  replace(/[\\|*_<>{}[\]()!#]/g,' ').replace(new RegExp(String.fromCharCode(96),'g'),' ').slice(0,640);
+ const lines=['# PRIVATE LightUp human follow-up action sheet','',
+ '**UNVERIFIED PRIVATE HUMAN COORDINATION ONLY. Nothing in this file is authenticated issuer evidence, a security grant, an approved change, a verified fix or retest permission.**','',
+ 'Canonical original five-column source SHA-256: '+state.hash+' (unsigned content correlation only).',
+ state.casework?'Optional original Casework human rows SHA-256: '+state.caseworkDigest+' (unsigned; not independently authenticated).':'No original Casework required or joined.',
+ state.caseworkHashless?'WARNING: optional original Casework contained no source fingerprint; original source rows only matched.':'Original source fingerprint or independent identity must still be checked externally.',
+ 'Original source finding count: '+state.source.length,'',
+ ];
+ const severe=f=>['critical','high'].includes(f.severity);
+ const priority=(a,b)=>Number(followupPastDue(b))-Number(followupPastDue(a))||
+  Number(severe(b))-Number(severe(a))||
+  (followupFor(a.finding_id).due_date||'9999').localeCompare(followupFor(b.finding_id).due_date||'9999')||
+  a.finding_id.localeCompare(b.finding_id);
+ lines.push('## Private human follow-up overview','',
+  'Open human follow-ups: '+state.source.filter(humanFollowupOpen).length,
+  'Human reminder dates past due: '+state.source.filter(followupPastDue).length,
+  'Human discussions logged (NOT approved): '+state.source.filter(f=>followupFor(f.finding_id).status==='discussion_logged').length,
+  'Critical/high original source findings: '+state.source.filter(severe).length,'');
+ for(const stage of FOLLOW_STATES){
+  const cohort=state.source.filter(f=>followupFor(f.finding_id).status===stage).sort(priority);
+  lines.push('## '+FOLLOW_LABELS[stage]+' ('+cohort.length+' original findings)','');
+  if(!cohort.length){lines.push('No private human actions in this category.','');continue;}
+  lines.push('| Original finding ID | Original severity / retest status | Human reminder UTC | Proposed human window slot | Human evidence review stage | Human owner (optional original Casework) | PRIVATE next human action |',
+  '| --- | --- | --- | --- | --- | --- | --- |');
+  for(const f of cohort){
+   const v=followupFor(f.finding_id),r=state.review.get(f.finding_id),c=state.casework?.get(f.finding_id);
+   const label=v.due_date?(v.due_date+(followupPastDue(f)?' HUMAN REMINDER OVERDUE':'')):'no human reminder';
+   lines.push('| '+[f.finding_id,f.severity+' / '+f.retest_status,label,
+    String(state.assignments.get(f.finding_id)||0)+' (tentative, not booked)',
+    r.stage+(hasHumanHold(f,r)?' - HUMAN EVIDENCE GAPS':''),
+    c?.owner||'not recorded',v.note||'(No private next action written)'].map(clean).join(' | ')+' |');
+  }
+  lines.push('');
+ }
+ lines.push('## Recipient boundary','',
+ 'Verify real client, exact engagement, source provenance, authorized confidential recipient and current revocation state independently.',
+ 'A human discussion-logged state is only a local human note; never convert it into completed remediation or permission.',
+ 'No original LightUp target, original source status, Casework owner/action, scanner, grant, backend, mail, ticket or calendar was changed.','');
+ output('lightup-private-human-followup-actions.md',lines.join('\n')+'\n','text/markdown');
+}
+
+function privateCaseBrief(){
+ if(!state?.casework)fail('Import an original exact-source Casework draft first.');
+ if(!confirm('PRIVATE: export original finding IDs, local owners, human evidence stages, blockers, unverified next actions and UTC discussions? Transfer only via an independently approved confidential channel.'))return;
+ const windows=plan();
+ const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069|\\]/g,' ').slice(0,1500);
+ const lines=['# PRIVATE LightUp original human Casework discussion and handoff pack','',
+ '**UNVERIFIED, OFFLINE HUMAN PLANNING ONLY. No finding has been patched, independently retested, authorized or given a grant by this export.**','',
+ 'Original canonical five-column source SHA-256: '+state.hash+' (unsigned, not identity, permission or client consent).',
+ 'Original Casework human row digest: '+state.caseworkDigest+' (unsigned).',
+ state.caseworkHashless?'WARNING: ORIGINAL Casework packet carried NO source SHA-256; only full original finding-row equality was checked, no proof of issuer or permission.':'Original Casework packet included matching original source SHA-256, still unsigned and non-authorizing.',
+ state.caseworkUpdate?'Previous LOCAL original Casework human snapshot SHA-256: '+state.caseworkUpdate.from_sha256:'No separately applied human Casework snapshot change recorded in this tab.',
+ 'Total original source findings: '+state.source.length,'',
+ ];
+ const high=f=>['critical','high'].includes(f.severity);
+ const attention=f=>{
+  const c=state.casework.get(f.finding_id),r=state.review.get(f.finding_id);
+  return high(f)||caseBlocked(c)||pastDue(c)||windowAfterHumanDue(f)||
+   state.caseworkChanges?.has(f.finding_id)||hasHumanHold(f,r)||!c.owner.trim();
+ };
+ const urgent=state.source.filter(f=>attention(f)||followupPastDue(f));
+ lines.push('## Human discussion priorities ('+urgent.length+' unverified item(s))','');
+ if(!urgent.length)lines.push('No local priority flags. This is not evidence of verified remediation or authorization.','');
+ for(const [slotKey,title] of [[0,'Unscheduled — human follow-up required'],...windows.map((w,i)=>[i+1,
+   'Proposed human window '+(i+1)+(w?' · '+w.start_utc+' · '+w.minutes+' minutes':' · NO validated UTC meeting')])]){
+  const group=state.source.filter(f=>(state.assignments.get(f.finding_id)||0)===slotKey);
+  lines.push('## '+title,'','**'+group.length+' original finding(s), '+group.filter(high).length+
+    ' critical/high; '+group.filter(f=>caseBlocked(state.casework.get(f.finding_id))).length+
+    ' locally blocked; '+group.filter(windowAfterHumanDue).length+
+    ' after local human due date. All are unverified.**','');
+  if(!group.length){lines.push('No human records assigned.','');continue;}
+  const byPriority=group.slice().sort((a,b)=>
+   Number(attention(b))-Number(attention(a))||
+   Number(high(b))-Number(high(a))||
+   a.finding_id.localeCompare(b.finding_id));
+  lines.push('| Original ID | Source severity / retest | Human owner and Casework state | Local due UTC | Human evidence review | Human follow-up stage / reminder | Private human flags | Human next action |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |');
+  for(const f of byPriority){
+   const c=state.casework.get(f.finding_id),r=state.review.get(f.finding_id);
+   const flags=[];
+   if(caseBlocked(c))flags.push('LOCAL BLOCKER');
+   if(pastDue(c))flags.push('LOCAL DUE PASSED');
+   if(windowAfterHumanDue(f))flags.push('SLOT AFTER LOCAL DUE');
+   if(!c.owner.trim())flags.push('NO HUMAN OWNER');
+   if(state.caseworkChanges?.has(f.finding_id))flags.push('LOCAL CASEWORK CHANGED: '+state.caseworkChanges.get(f.finding_id).join('/'));
+   if(hasHumanHold(f,r))flags.push('EVIDENCE REFERENCES/REVIEW INCOMPLETE');
+   if(followupPastDue(f))flags.push('HUMAN REMINDER PAST DUE');
+   if(high(f))flags.push('ORIGINAL CRITICAL/HIGH');
+   if(f.retest_status==='regression')flags.push('SOURCE RETEST REGRESSION');
+   lines.push('| '+[
+    f.finding_id,f.severity+' / '+f.retest_status,
+    (c.owner||'UNASSIGNED')+' / '+c.status,c.due_date||'',
+    r.stage+' / '+(r.reviewer||'no human reviewer'),
+    FOLLOW_LABELS[followupFor(f.finding_id).status]+' / '+(followupFor(f.finding_id).due_date||'no human reminder'),
+    flags.join('; ')||'No local human flags (NOT a verified fix)',
+    followupFor(f.finding_id).note||c.next_action||r.next_step||'HUMAN NEXT ACTION NOT RECORDED'
+   ].map(clean).join(' | ')+' |');
+  }
+  lines.push('');
+ }
+ lines.push('## Required human handoff checks','',
+ '- Confirm real client and exact original engagement, independent issuer and authorized confidential recipient.',
+ '- Reconcile any prior/current private human Casework drift and original source CSV changes.',
+ '- Assign human owners, review outstanding private follow-up statuses/reminders and collect genuine deployment, change, rollback and authorized retest references.',
+ '- Independently check that the proposed UTC discussion time is compatible with real approved change windows.',
+ '- All original product permission, source-owner review, actual operator/client consent and revocation checks remain external.',
+ '',
+ 'No network, privileged action, scanner, ticket update, scheduling API, release or independently verified remediation took place.');
+ output('lightup-private-original-casework-human-handoff.md',lines.join('\n')+'\n','text/markdown');
+}
+
+/* Original Casework v1 snapshot change control. Never writes to the original app
+ * or backfills verification, client consent, a grant or any other authority. */
+const CASE_FIELDS=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+function clearCaseworkPreview(message=''){
+ caseworkCandidate=null;
+ $('applyCasework').disabled=true;$('caseworkDiff').disabled=true;
+ $('caseworkChanges').replaceChildren();
+ $('caseworkSummary').textContent=message;
+}
+function compareCasework(oldRows,newRows){
+ const changed=new Map();
+ for(const f of state.source){
+  const id=f.finding_id,from=oldRows.get(id),to=newRows.get(id);
+  if(!from||!to)fail('Incomplete original Casework before/after membership.');
+  const fields=CASE_FIELDS.filter(k=>from[k]!==to[k]);
+  if(fields.length)changed.set(id,{from,to,fields});
+ }
+ return changed;
+}
+function caseworkImpact(changes){
+ let owner=0,status=0,deadline=0,blocker=0,action=0,urgent=0;
+ const source=new Map(state.source.map(f=>[f.finding_id,f]));
+ for(const [id,c] of changes){
+  if(c.fields.includes('owner'))owner++;
+  if(c.fields.includes('status'))status++;
+  if(c.fields.includes('due_date'))deadline++;
+  if(c.fields.includes('blocker'))blocker++;
+  if(c.fields.some(k=>['next_action','verification_plan','note'].includes(k)))action++;
+  if(['critical','high'].includes(source.get(id).severity))urgent++;
+ }
+ return {total:changes.size,owner,status,deadline,blocker,action,urgent};
+}
+async function previewCaseworkRevision(){
+ if(!state?.casework)fail('Import exact-source original Casework first.');
+ clearCaseworkPreview();
+ if(!$('confirmCasework').checked||!$('same').checked)
+  fail('Independently confirm the exact actual client and engagement before Casework snapshot comparison.');
+ const raw=strictJSON(await read($('nextCasework').files[0],2097152));
+ const newer=caseworkFile(raw,state.source,state.hash);
+ if(newer.sha256===state.caseworkDigest)fail('Original Casework is unchanged.');
+ const changes=compareCasework(state.casework,newer.rows);
+ if(!changes.size)fail('No original human Casework row changed.');
+ const impact=caseworkImpact(changes);
+ caseworkCandidate={source_sha256:state.hash,old_sha256:state.caseworkDigest,
+  plan:localPlanFingerprint(),input:$('nextCasework').files[0],next:newer.rows,digest:newer.sha256,
+  original_packet_hashless:newer.original_packet_hashless,changes,impact};
+ $('caseworkSummary').textContent=(newer.original_packet_hashless?'WARNING: original Casework packet contained no source SHA-256; full original five-column row equality was checked but issuer, consent and identity remain UNVERIFIED. ':'')+'Human-only original Casework preview: '+impact.total+
+  ' changed rows ('+impact.urgent+' critical/high); '+impact.owner+' owner, '+impact.status+
+  ' status, '+impact.deadline+' deadline, '+impact.blocker+' blocker, '+
+  impact.action+' action/notes changed. NO original source, notes, assignments or authorities changed yet.';
+ const table=el('table'),head=el('thead'),tr=el('tr');
+ for(const col of ['Original ID','Severity','Changed private human fields','Prior local owner/status/due','New local owner/status/due']){
+  tr.appendChild(el('th',col));
+ }
+ head.appendChild(tr);table.appendChild(head);
+ const body=el('tbody'),lookup=new Map(state.source.map(f=>[f.finding_id,f]));
+ for(const [id,c] of changes){
+  const row=el('tr');
+  for(const val of [id,lookup.get(id).severity,c.fields.join(', '),
+     caseLabel(c.from),caseLabel(c.to)])row.appendChild(el('td',val));
+  body.appendChild(row);
+ }
+ table.appendChild(body);$('caseworkChanges').appendChild(table);
+ $('applyCasework').disabled=false;$('caseworkDiff').disabled=false;
+}
+function assertCaseworkPreview(){
+ const p=caseworkCandidate;
+ if(!p||!state?.casework)fail('Preview a current original Casework snapshot first.');
+ if(!$('confirmCasework').checked||!$('same').checked)
+  fail('Independent exact-client and engagement confirmation withdrawn.');
+ if(p.source_sha256!==state.hash||p.old_sha256!==state.caseworkDigest||
+    p.plan!==localPlanFingerprint()||p.input!==$('nextCasework').files[0])
+  fail('Original Casework preview is stale; no partial update performed.');
+ return p;
+}
+function applyCaseworkRevision(){
+ const p=assertCaseworkPreview();
+ if(!confirm('Replace PRIVATE in-memory original Casework human rows with this complete newer ORIGINAL snapshot? Prior saved plans bound to previous Casework will not resume. No backend or permission is changed.'))return;
+ ensureHumanEditorSaved();
+ const revisedFollowups=new Map([...state.followup].map(([id,v])=>[id,{...v}]));
+ for(const id of p.changes.keys()){
+  const prior=revisedFollowups.get(id);
+  if(prior.status==='discussion_logged')
+   revisedFollowups.set(id,{...prior,status:'needs_discussion'});
+ }
+ state.followup=revisedFollowups;
+ lastFollowBulkSnapshot=null;$('bulkFollowUndo').disabled=true;
+ state.casework=p.next;state.caseworkDigest=p.digest;state.caseworkHashless=p.original_packet_hashless;
+ state.caseworkChanges=new Map([...p.changes].map(([id,c])=>[id,c.fields]));
+ state.caseworkUpdate={from_sha256:p.old_sha256,to_sha256:p.digest,source_sha256:state.hash,
+  ...p.impact};
+ lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ $('caseFilter').value='';$('ownerFilter').value='';
+ $('nextCasework').value='';$('confirmCasework').checked=false;
+ clearCaseworkPreview('Accepted newer ORIGINAL Casework snapshot into PRIVATE human planning only: '+
+   p.impact.total+' human row(s) changed. Previous discussion-logged stages on changed original human rows were returned to NEEDS DISCUSSION (notes kept, not approval). Evidence review and human window assignments are unmodified; saved old Casework plans will refuse to resume.');
+ render();
+}
+function privateCaseworkChanges(){
+ const p=assertCaseworkPreview();
+ if(!confirm('PRIVATE: export original finding IDs and old/new human owner, status, dates, blockers and actions for an independently approved confidential recipient?'))return;
+ const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069|\\]/g,' ').slice(0,1800);
+ const fields=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+ const lines=['# PRIVATE original Casework v1 human snapshot differences','',
+ '**NOT evidence, authenticated consent, remediation, an approval, execution or retest authority.**','',
+ 'Original five-column source SHA-256: '+state.hash,
+ 'Prior original Casework rows SHA-256: '+p.old_sha256,
+ (p.original_packet_hashless?'WARNING: newer original Casework packet had NO source fingerprint; full original source equality only.':'Newer original Casework packet contained matching canonical source SHA-256.'),
+ 'Newer original Casework rows SHA-256: '+p.digest,
+ 'Change summary: '+JSON.stringify(p.impact),'',
+ '| Original finding ID | Original severity | Private field | Previous human-only value | New human-only value |',
+ '| --- | --- | --- | --- | --- |'];
+ const severity=new Map(state.source.map(f=>[f.finding_id,f.severity]));
+ for(const [id,c] of p.changes){
+  for(const field of fields.filter(k=>c.fields.includes(k)))
+   lines.push('| '+[id,severity.get(id),field,c.from[field],c.to[field]].map(clean).join(' | ')+' |');
+ }
+ lines.push('','Compare human updates against the original independently approved source; do not infer remediation, consent or authority.');
+ output('lightup-private-original-casework-snapshot-delta.md',lines.join('\n')+'\n','text/markdown');
+}
+
+function emptyReview(){
+ return {stage:'missing',reviewer:'',next_step:'',evidence:Object.fromEntries(EVIDENCE.map(k=>[k,'']))};
+}
+function currentWindows(){
+ const w=[];
+ for(let i=0;i<HOURS;i++){
+  const date=$('date'+i).value,duration=Number($('duration'+i).value),label=$('label'+i).value.trim();
+  human(label,70);
+  if(!date){if(label)fail('Named window has no UTC date.');w.push(null);continue;}
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(date))fail('Invalid proposed UTC time.');
+  const stamp=new Date(date+'Z');
+  if(Number.isNaN(stamp.getTime())||stamp.toISOString().slice(0,16)!==date)fail('Impossible proposed UTC date.');
+  if(!Number.isInteger(duration)||duration<30||duration>480)fail('Window must be 30–480 minutes.');
+  w.push({slot:i+1,label:label||'Human review '+(i+1),start_utc:stamp.toISOString(),minutes:duration});
+ }
+ return w;
+}
+function readiness(f,r){
+ const lack=EVIDENCE.slice(0,4).filter(k=>!r.evidence[k]);
+ const concerns=[];
+ if(r.stage==='missing'||r.stage==='needs_changes')concerns.push('Local review '+r.stage);
+ if(lack.length)concerns.push(lack.length+' missing local references');
+ if(state?.casework){
+  const c=state.casework.get(f.finding_id);
+  if(state.caseworkChanges?.has(f.finding_id))concerns.push('Original Casework human plan changed; reconsider proposed discussion slot');
+  if(caseBlocked(c))concerns.push('Original local Casework blocked');
+  if(pastDue(c))concerns.push('Local Casework planning date passed');
+  if(windowAfterHumanDue(f))concerns.push('Proposed human slot AFTER local Casework due date');
+  if(c&&!c.owner.trim())concerns.push('Original Casework owner missing');
+ }
+ if(followupPastDue(f))concerns.push('Private HUMAN follow-up reminder past due');
+ if(f.retest_status==='regression')concerns.push('Source reports regression');
+ if(f.retest_status==='fixed')concerns.push('Source says fixed; not independently verified');
+ if(r.stage==='ready_for_authorized_retest')concerns.push('Retest still requires separate authority');
+ return concerns.length?concerns.join(' · '):'Human notes present; no verified remediation or approval';
+}
+function el(tag,txt){const n=document.createElement(tag);if(txt!==undefined)n.textContent=String(txt);return n;}
+
+function hasHumanHold(f,r){
+ return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);
+}
+
+
+/* A private human follow-up is not an original Casework record, verified fix,
+ * evidence verdict, approval, consent or authority to operate or retest. */
+const FOLLOW_STATES=['untriaged','awaiting_owner','awaiting_evidence','needs_discussion','discussion_logged'];
+const FOLLOW_LABELS={
+ untriaged:'Needs human triage',awaiting_owner:'Awaiting human owner',
+ awaiting_evidence:'Awaiting human evidence',needs_discussion:'Needs human discussion',
+ discussion_logged:'Human discussion logged — NOT approved'
+};
+function newFollowup(){return {status:'untriaged',due_date:'',note:''};}
+function followupValue(v){
+ keys(v,['status','due_date','note']);
+ if(!FOLLOW_STATES.includes(v.status)||typeof v.due_date!=='string')
+  fail('Unsupported private human follow-up status or reminder.');
+ if(v.due_date){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v.due_date))fail('Invalid human reminder date.');
+  const dt=new Date(v.due_date+'T00:00:00Z');
+  if(!Number.isFinite(dt.getTime())||dt.toISOString().slice(0,10)!==v.due_date)
+   fail('Impossible private human reminder date.');
+ }
+ meetingNote(v.note);
+ if(v.status==='discussion_logged'&&!v.note.trim())
+  fail('A human discussion note is required before marking discussion as LOGGED; this is not approval.');
+ return {status:v.status,due_date:v.due_date,note:v.note};
+}
+function followupFor(id){return state?.followup?.get(id)||newFollowup();}
+function followupPastDue(f){
+ const v=followupFor(f.finding_id);
+ return v.status!=='discussion_logged'&&Boolean(v.due_date&&v.due_date<new Date().toISOString().slice(0,10));
+}
+function humanFollowupOpen(f){return followupFor(f.finding_id).status!=='discussion_logged';}
+function unsavedHumanEditor(){
+ if(!state||!followupSelected||$('followupEditor').hidden)return false;
+ const prior=followupFor(followupSelected);
+ return $('followupStatus').value!==prior.status||$('followupDue').value!==prior.due_date||
+  $('followupNote').value!==prior.note;
+}
+function ensureHumanEditorSaved(){
+ if(unsavedHumanEditor())fail('Private human follow-up has unsaved changes. Save or close/discard before continuing.');
+}
+function openHumanEditor(id){
+ if(!state?.followup?.has(id))fail('Original finding not loaded.');
+ if(unsavedHumanEditor()){setStatus('Save or discard the current private human follow-up first.',true);return;}
+ followupSelected=id;
+ const f=state.source.find(f=>f.finding_id===id),v=followupFor(id);
+ $('followupTitle').textContent='PRIVATE human follow-up · '+id+' · original '+f.severity;
+ $('followupStatus').value=v.status;$('followupDue').value=v.due_date;$('followupNote').value=v.note;
+ $('followupEditor').hidden=false;
+ $('followupEditor').scrollIntoView({block:'nearest'});
+}
+function closeHumanEditor(force=false){
+ if(!force&&unsavedHumanEditor()&&!confirm('Discard unsaved PRIVATE human follow-up edits in this editor?'))return;
+ $('followupEditor').hidden=true;followupSelected=null;
+ $('followupNote').value='';$('followupDue').value='';$('followupStatus').value='untriaged';
+}
+function saveHumanFollowup(){
+ if(!state?.followup||!followupSelected||$('followupEditor').hidden)
+  fail('Select an original source finding before saving a private human follow-up.');
+ const value=followupValue({status:$('followupStatus').value,due_date:$('followupDue').value,note:$('followupNote').value});
+ state.followup.set(followupSelected,value);
+ lastFollowBulkSnapshot=null;$('bulkFollowUndo').disabled=true;
+ render();
+ setStatus('Saved human-only source-bound follow-up on original finding '+followupSelected+'. No verified remediation or grant.');
+}
+function bulkHumanFollowup(){
+ if(!state?.followup)fail('Original source required.');
+ ensureHumanEditorSaved();
+ const chosen=$('bulkFollowup').value;
+ if(!FOLLOW_STATES.includes(chosen))fail('Unknown human follow-up stage.');
+ const group=state.source.filter(f=>visibleFinding(f,state.review.get(f.finding_id)));
+ if(!group.length)fail('No original finding in the currently visible human group.');
+ if(chosen==='discussion_logged'&&group.some(f=>!followupFor(f.finding_id).note.trim()))
+  fail('Human discussion cannot be marked as logged in bulk without an existing private human note on EVERY selected finding.');
+ if(!confirm('Set UNVERIFIED HUMAN follow-up stage to "'+FOLLOW_LABELS[chosen]+'" for '+group.length+' visible original finding(s)? Existing private follow-up notes and dates are preserved. This does NOT approve a change.'))return;
+ lastFollowBulkSnapshot=new Map([...state.followup].map(([id,v])=>[id,{...v}]));
+ for(const f of group){
+  const v=followupFor(f.finding_id);
+  state.followup.set(f.finding_id,{...v,status:chosen});
+ }
+ $('bulkFollowUndo').disabled=false;
+ render();setStatus('Bulk-routed '+group.length+' original finding(s) to a private human follow-up stage. No source changes.');
+}
+function undoBulkHumanFollowup(){
+ if(!state||!lastFollowBulkSnapshot)fail('No private bulk human follow-up routing to undo.');
+ ensureHumanEditorSaved();
+ state.followup=lastFollowBulkSnapshot;lastFollowBulkSnapshot=null;
+ $('bulkFollowUndo').disabled=true;
+ render();setStatus('Undid last private human follow-up routing; original findings and Casework untouched.');
+}
+
+function ownerKey(c){return c?.owner.trim()?'named:'+c.owner.trim():'unassigned-owner';}
+
+function renderHumanFollowupQueue(){
+ const board=$('followupQueue');board.replaceChildren();
+ if(!state)return;
+ const today=new Date().toISOString().slice(0,10),
+  next7=new Date(Date.parse(today+'T00:00:00Z')+7*86400000).toISOString().slice(0,10);
+ const urgent=f=>['critical','high'].includes(f.severity);
+ const queue=state.source.filter(f=>{
+  const v=followupFor(f.finding_id);
+  return v.status!=='discussion_logged'&&
+   (v.status==='untriaged'||v.status==='needs_discussion'||(v.due_date&&v.due_date<=next7));
+ }).sort((a,b)=>{
+  const x=followupFor(a.finding_id),y=followupFor(b.finding_id);
+  const ux=x.due_date&&x.due_date<today?0:x.due_date&&x.due_date<=next7?1:x.status==='untriaged'?2:3,
+        uy=y.due_date&&y.due_date<today?0:y.due_date&&y.due_date<=next7?1:y.status==='untriaged'?2:3;
+  return ux-uy||Number(urgent(b))-Number(urgent(a))||
+   (x.due_date||'9999').localeCompare(y.due_date||'9999')||
+   a.finding_id.localeCompare(b.finding_id);
+ });
+ const totals=el('p','Human-only queue: '+queue.length+' next action(s), '+
+  queue.filter(f=>followupPastDue(f)).length+' UTC reminders past due · '+
+  queue.filter(urgent).length+' original critical/high. Showing first 18, sorted by human reminders then original severity.');
+ board.appendChild(totals);
+ if(!queue.length){board.appendChild(el('p','No local reminders or untriaged human actions. This does not verify remediation or authorize change.'));return;}
+ for(const f of queue.slice(0,18)){
+  const v=followupFor(f.finding_id),card=el('article');
+  card.className='item';
+  card.appendChild(el('h3',f.finding_id+' · original '+f.severity));
+  card.appendChild(el('p',FOLLOW_LABELS[v.status]+' · '+(v.due_date?v.due_date+' UTC':'no local reminder')+
+   (followupPastDue(f)?' · HUMAN REMINDER OVERDUE':'')));
+  const action=el('button','Open HUMAN follow-up');
+  action.addEventListener('click',()=>openHumanEditor(f.finding_id));card.appendChild(action);
+  board.appendChild(card);
+ }
+ if(queue.length>18){
+  const more=el('button','Filter complete open human follow-up list');
+  more.addEventListener('click',()=>{$('humanFilter').value='follow-open';render();});
+  board.appendChild(more);
+ }
+}
+
+function ownerWorkload(){
+ const board=$('ownerBoard'),selector=$('ownerFilter'),prior=selector.value;
+ board.replaceChildren();
+ selector.replaceChildren(new Option('All human owners',''));
+ if(!state?.casework){board.appendChild(el('p','Import an original exact-source private Casework v1 to view human owner groups.'));return;}
+ const groups=new Map();
+ for(const f of state.source){
+  const c=state.casework.get(f.finding_id),key=ownerKey(c);
+  if(!groups.has(key))groups.set(key,{key,label:c.owner.trim()||'(Human owner unassigned)',total:0,urgent:0,blocked:0,overdue:0,late:0,unscheduled:0});
+  const v=groups.get(key);v.total++;
+  v.followOpen=(v.followOpen||0)+Number(humanFollowupOpen(f));
+  v.followLate=(v.followLate||0)+Number(followupPastDue(f));
+  v.changed=(v.changed||0)+(state.caseworkChanges?.has(f.finding_id)?1:0);
+  if(['critical','high'].includes(f.severity))v.urgent++;
+  if(caseBlocked(c))v.blocked++;
+  if(pastDue(c))v.overdue++;
+  if(windowAfterHumanDue(f))v.late++;
+  if(!state.assignments.get(f.finding_id))v.unscheduled++;
+ }
+ const sorted=[...groups.values()].sort((a,b)=>b.urgent-a.urgent||b.blocked-a.blocked||a.label.localeCompare(b.label));
+ for(const group of sorted){
+  selector.appendChild(new Option(group.label,group.key));
+  const tile=el('article');tile.className='item';
+  tile.appendChild(el('h3',group.label));
+  tile.appendChild(el('p',group.total+' original findings · '+group.urgent+' critical/high · '+group.blocked+' local blockers · '+
+   group.overdue+' local overdue · '+group.late+' planned after local due · '+group.unscheduled+' unscheduled · '+(group.changed||0)+' original human rows changed recently · '+(group.followOpen||0)+' human follow-ups open · '+(group.followLate||0)+' reminders past due.'));
+  const btn=el('button','Filter to this human owner');
+  btn.addEventListener('click',()=>{selector.value=group.key;render();});
+  tile.appendChild(btn);board.appendChild(tile);
+ }
+ selector.value=groups.has(prior)?prior:'';
+}
+
+function visibleFinding(f,r){
+ const severity=$('filter').value,human=$('humanFilter').value,caseFilter=$('caseFilter').value,ownerFilter=$('ownerFilter').value;
+ if(severity&&severity!==f.severity)return false;
+ if(human==='gaps'&&!hasHumanHold(f,r))return false;
+ if(human==='complete'&&hasHumanHold(f,r))return false;
+ if(human==='regression'&&f.retest_status!=='regression')return false;
+ if(human==='critical'&&!['critical','high'].includes(f.severity))return false;
+ if(human==='follow-open'&&!humanFollowupOpen(f))return false;
+ if(human==='follow-overdue'&&!followupPastDue(f))return false;
+ if(human==='follow-discussed'&&followupFor(f.finding_id).status!=='discussion_logged')return false;
+ if(ownerFilter&&(!state?.casework||ownerKey(state.casework.get(f.finding_id))!==ownerFilter))return false;
+ if(caseFilter){
+  if(!state?.casework)return false;
+  const c=state.casework.get(f.finding_id);
+  if(caseFilter==='blocked'&&!caseBlocked(c))return false;
+  if(caseFilter==='overdue'&&!pastDue(c))return false;
+  if(caseFilter==='window-late'&&!windowAfterHumanDue(f))return false;
+  if(caseFilter==='casework-changed'&&!state.caseworkChanges?.has(f.finding_id))return false;
+  if(caseFilter==='no-owner'&&c?.owner.trim())return false;
+  if(caseFilter==='open'&&['completed','deferred'].includes(c?.status))return false;
+ }
+ return true;
+}
+function bulkApply(){
+ if(!state)fail('Original source is not loaded.');
+ ensureHumanEditorSaved();
+ const chosen=Number($('bulkWindow').value);
+ if(!Number.isInteger(chosen)||chosen<0||chosen>HOURS)fail('Invalid human window slot.');
+ const cohort=state.source.filter(f=>visibleFinding(f,state.review.get(f.finding_id)));
+ if(!cohort.length)fail('Current human filter has no source findings.');
+ if(!confirm('Apply a HUMAN-ONLY proposed window to '+cohort.length+' visible original finding(s)? This never changes source findings, notes, grants or retest statuses.'))return;
+ lastBulkSnapshot=new Map(state.assignments);
+ for(const f of cohort)state.assignments.set(f.finding_id,chosen);
+ $('bulkUndo').disabled=false;
+ render();setStatus('Applied one private human slot to '+cohort.length+' source records. No authorization or verified change.');
+}
+function bulkUndo(){
+ if(!state||!lastBulkSnapshot)fail('No previous local bulk assignment to undo.');
+ ensureHumanEditorSaved();
+ state.assignments=lastBulkSnapshot;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ render();setStatus('Most recent private bulk window selection undone. Original source and review notes unchanged.');
+}
+
+function render(){
+ if(!state)return;
+ const src=state.source,rows=$('findings');rows.replaceChildren();
+ renderHumanFollowupQueue();ownerWorkload();
+ let unassigned=0,holds=0;
+ for(const f of src){
+  const r=state.review.get(f.finding_id);
+  if(!state.assignments.has(f.finding_id))state.assignments.set(f.finding_id,0);
+  if(!state.assignments.get(f.finding_id))unassigned++;
+  if(r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]))holds++;
+  if(!visibleFinding(f,r))continue;
+  const tr=el('tr'),id=el('td',f.finding_id),severity=el('td',f.severity),source=el('td',f.retest_status),
+    stage=el('td',r.stage+' (human only)'),caseCell=el('td',caseLabel(state.casework?.get(f.finding_id))),changed=el('td',(state.caseworkChanges?.get(f.finding_id)||[]).join(', ')||'—'),followCell=el('td'),caveat=el('td',readiness(f,r)),slot=el('td');
+  const fv=followupFor(f.finding_id),edit=el('button','Edit human follow-up');
+  followCell.appendChild(el('div',FOLLOW_LABELS[fv.status]+(fv.due_date?' · '+fv.due_date+' UTC':'')));
+  edit.addEventListener('click',()=>openHumanEditor(f.finding_id));followCell.appendChild(edit);
+  if(r.stage==='needs_changes'||r.stage==='missing')caveat.className='hold';
+  const sel=el('select');sel.setAttribute('aria-label','Proposed human window for finding '+f.finding_id);
+  sel.appendChild(new Option('Unassigned',0));
+  for(let i=1;i<=HOURS;i++)sel.appendChild(new Option('Human window '+i,i));
+  sel.value=String(state.assignments.get(f.finding_id)||0);
+  sel.addEventListener('change',()=>{lastBulkSnapshot=null;$('bulkUndo').disabled=true;state.assignments.set(f.finding_id,Number(sel.value));render();});
+  slot.appendChild(sel);
+  for(const cell of [id,severity,source,stage,caseCell,changed,followCell,caveat,slot])tr.appendChild(cell);
+  rows.appendChild(tr);
+ }
+ $('total').textContent=src.length;
+ $('urgent').textContent=src.filter(f=>['critical','high'].includes(f.severity)).length;
+ $('unassigned').textContent=unassigned;$('holds').textContent=holds;
+ $('caseBlocked').textContent=state.casework?[...state.casework.values()].filter(caseBlocked).length:'—';
+ $('caseOverdue').textContent=state.casework?[...state.casework.values()].filter(pastDue).length:'—';
+ $('lateSlot').textContent=state.casework?src.filter(windowAfterHumanDue).length:'—';
+ $('caseChanged').textContent=state.caseworkChanges?.size||0;
+ $('followOpen').textContent=src.filter(humanFollowupOpen).length;
+ $('followOverdue').textContent=src.filter(followupPastDue).length;
+ const board=$('summary');board.replaceChildren();
+ try{
+  const windows=currentWindows();for(let i=0;i<HOURS;i++){
+   const assigned=src.filter(f=>state.assignments.get(f.finding_id)===i+1);
+   const risky=assigned.filter(f=>{const r=state.review.get(f.finding_id);return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);}).length;
+   const card=el('div');const head=el('h3','Window '+(i+1)+(windows[i]?' · '+windows[i].label:' · not scheduled'));
+   const late=assigned.filter(windowAfterHumanDue).length,blocked=assigned.filter(f=>caseBlocked(state.casework?.get(f.finding_id))).length;
+   const detail=el('p',assigned.length+' source finding(s); '+risky+' human-reference HOLD(s); '+assigned.filter(f=>['critical','high'].includes(f.severity)).length+' critical/high; '+blocked+' locally blocked; '+late+' after local due date. '+(windows[i]?windows[i].start_utc+' / '+windows[i].minutes+' min':'No UTC time.'));
+   card.append(head,detail);board.appendChild(card);
+  }
+ }catch(e){const warn=el('p',e.message);warn.className='hold';board.appendChild(warn);}
+}
+
+/* Never leave private original source IDs or earlier human notes in hidden DOM
+ * after a reset, failed import or replacement of any original input. */
+function purgeRenderedPrivateData(){
+ state=null;revisionCandidate=null;caseworkCandidate=null;lastBulkSnapshot=null;
+ lastFollowBulkSnapshot=null;closeHumanEditor(true);$('bulkFollowUndo').disabled=true;
+ $('results').hidden=true;$('bulkUndo').disabled=true;$('applyRevision').disabled=true;
+ $('applyCasework').disabled=true;$('caseworkDiff').disabled=true;$('caseworkChanges').replaceChildren();
+ $('caseworkSummary').textContent='';$('nextCasework').value='';$('confirmCasework').checked=false;
+ for(const id of ['findings','summary','ownerBoard','followupQueue'])$(id).replaceChildren();
+ $('ownerFilter').replaceChildren(new Option('All human owners',''));
+ for(const id of ['digest','revisionSummary'])$(id).textContent='';
+ $('note').value='';$('planFile').value='';$('nextCsv').value='';
+ $('confirmRevision').checked=false;
+ for(let i=0;i<HOURS;i++){
+  $('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';
+ }
+ for(const id of ['filter','caseFilter','humanFilter','bulkWindow','ownerFilter'])$(id).value=$(id).options[0].value;
+ for(const id of ['total','urgent','unassigned','holds','followOpen','followOverdue'])$(id).textContent='0';
+ $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';$('lateSlot').textContent='—';$('caseChanged').textContent='—';
+}
+function originalInputChanged(){
+ purgeRenderedPrivateData();$('same').checked=false;
+ setStatus('Original source or private review input changed: prior private workspace cleared. Re-confirm same exact client and engagement, then reload.');
+}
+
+async function load(){
+ /* Atomic import: always discard old state on a new attempt, never keep stale source on error. */
+ purgeRenderedPrivateData();
+ const file=$('csv').files[0],review=$('review').files[0],caseFile=$('casework').files[0];
+ if((review||caseFile)&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review/Casework join.');
+ const src=C.parseCSV(await read(file,1048576,true)),hash=await digest(src);
+ let notes=new Map(src.map(f=>[f.finding_id,emptyReview()]));
+ if(review)notes=reviewFile(strictJSON(await read(review,2097152)),src,hash);
+ const casework=caseFile?caseworkFile(strictJSON(await read(caseFile,2097152)),src,hash):null;
+ state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,
+  caseworkHashless:casework?.original_packet_hashless||false,
+  caseworkChanges:new Map(),caseworkUpdate:null,assignments:new Map(),
+  followup:new Map(src.map(f=>[f.finding_id,newFollowup()]))};
+ $('digest').textContent='Original canonical source SHA-256: '+hash+' · unsigned content correlation only; NOT identity or consent.';
+ $('results').hidden=false;render();
+ setStatus('Source loaded for private, unverified human planning. '+(state.caseworkHashless?'WARNING: original Casework packet was HASHLESS; full source rows match but independent issuer/consent not verified. ':'')+'No permissions or retest inferred.');
+}
+function output(name,text,type){
+ const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function plan(){
+ if(!state)fail('Load original source before export.');
+ ensureHumanEditorSaved();
+ const windows=currentWindows();
+ for(const f of state.source){const slot=state.assignments.get(f.finding_id)||0;
+  if(slot&&!windows[slot-1])fail('Assigned finding has no fully specified UTC window.');}
+ const active=windows.filter(Boolean).sort((a,b)=>a.start_utc.localeCompare(b.start_utc));
+ for(let i=1;i<active.length;i++){
+  const end=Date.parse(active[i-1].start_utc)+active[i-1].minutes*60000;
+  if(Date.parse(active[i].start_utc)<end)fail('Proposed UTC windows overlap: hold until human planning is corrected.');
+ }
+ meetingNote($('note').value);
+ return windows;
+}
+function stats(windows){
+ return windows.map((w,i)=>{
+  const findings=state.source.filter(f=>state.assignments.get(f.finding_id)===i+1);
+  const holds=findings.filter(f=>{const r=state.review.get(f.finding_id);
+   return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);}).length;
+  return {slot:i+1,window:w,findings:findings.length,critical_high:findings.filter(f=>['critical','high'].includes(f.severity)).length,local_review_holds:holds,
+   local_casework_blocked:findings.filter(f=>caseBlocked(state.casework?.get(f.finding_id))).length,
+   locally_past_due:findings.filter(f=>pastDue(state.casework?.get(f.finding_id))).length,
+   proposed_after_local_due:findings.filter(windowAfterHumanDue).length};
+ });
+}
+
+/* Private plan resume: full source, review and complete original membership,
+ * count/authority integrity checked BEFORE any in-memory state/UI mutations. */
+async function resumePlan(){
+ if(!state)fail('Load original source before resuming a private plan.');
+ ensureHumanEditorSaved();
+ if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
+ const raw=strictJSON(await read($('planFile').files[0],2097152));
+ const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256','casework_update','casework_packet_hashless',...FLAGS];
+ keys(raw,top,top.filter(x=>!['warning','source_refresh','casework_update','casework_packet_hashless'].includes(x)));
+ const refresh=raw.source_refresh||null;
+ if(refresh!==null){
+  keys(refresh,['from_sha256','to_sha256','added','changed','absent_unverified','unchanged']);
+  if(typeof refresh.from_sha256!=='string'||!/^[a-f0-9]{64}$/.test(refresh.from_sha256)||
+     refresh.from_sha256===raw.source_sha256||refresh.to_sha256!==state.hash||
+     !['added','changed','absent_unverified','unchanged'].every(k=>Number.isInteger(refresh[k])&&refresh[k]>=0&&refresh[k]<=350)||
+     refresh.added+refresh.changed+refresh.unchanged!==state.source.length)
+   fail('Invalid non-authorizing original source revision summary.');
+ }
+ if(raw.kind!=='lightup.remediation_human_change_windows'||raw.schema_version!==1||
+    raw.disposition!=='DRAFT_UNVERIFIED_HUMAN_COORDINATION'||
+    raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+    raw.source_sha256!==state.hash||FLAGS.some(k=>raw[k]!==false))
+  fail('Plan is not an exact non-authorizing original-source-bound draft.');
+ if(raw.casework_packet_hashless!==undefined&&raw.casework_packet_hashless!==state.caseworkHashless)
+  fail('Casework packet source-hash provenance changed; cannot resume previous private plan.');
+ if((raw.casework_sha256===undefined&&state.caseworkDigest!==null)||
+    (raw.casework_sha256!==undefined&&raw.casework_sha256!==state.caseworkDigest))
+  fail('Original Casework plan changed or was not loaded; refuse private resume.');
+ if(raw.casework_update!==undefined&&raw.casework_update!==null){
+  const cu=raw.casework_update,fields=['from_sha256','to_sha256','source_sha256','total','owner','status','deadline','blocker','action','urgent'];
+  keys(cu,fields);
+  if(cu.source_sha256!==state.hash||cu.to_sha256!==state.caseworkDigest||
+     typeof cu.from_sha256!=='string'||!/^[a-f0-9]{64}$/.test(cu.from_sha256)||cu.from_sha256===cu.to_sha256||
+     !fields.slice(3).every(k=>Number.isSafeInteger(cu[k])&&cu[k]>=0&&cu[k]<=350))
+   fail('Invalid human Casework snapshot-change summary.');
+ }
+ if(raw.warning!==undefined)human(raw.warning,800);
+ meetingNote(raw.meeting_note);
+ if(!Array.isArray(raw.windows)||raw.windows.length!==HOURS||
+    !Array.isArray(raw.assignments)||raw.assignments.length!==state.source.length)
+  fail('Incomplete proposed windows or source finding membership.');
+ const restoredWindows=[],scheduled=[];
+ for(let i=0;i<HOURS;i++){
+  const entry=raw.windows[i];
+  keys(entry,['slot','window','findings','critical_high','local_review_holds','local_casework_blocked','locally_past_due','proposed_after_local_due'],
+   ['slot','window','findings','critical_high','local_review_holds']);
+  for(const k of ['local_casework_blocked','locally_past_due','proposed_after_local_due'])
+   if(entry[k]!==undefined&&(!Number.isSafeInteger(entry[k])||entry[k]<0||entry[k]>350))fail('Malformed original Casework aggregate count.');
+  if(entry.slot!==i+1||!['findings','critical_high','local_review_holds'].every(k=>Number.isSafeInteger(entry[k])&&entry[k]>=0&&entry[k]<=350))
+   fail('Invalid private window summary.');
+  const w=entry.window;
+  if(w===null){restoredWindows.push(null);continue;}
+  keys(w,['slot','label','start_utc','minutes']);
+  if(w.slot!==i+1)fail('Window slot identity mismatch.');
+  human(w.label,70);
+  if(!w.label||typeof w.start_utc!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/.test(w.start_utc))
+   fail('Non-canonical proposed UTC start.');
+  const d=new Date(w.start_utc);
+  if(Number.isNaN(d.getTime())||d.toISOString()!==w.start_utc||
+     !Number.isInteger(w.minutes)||w.minutes<30||w.minutes>480)
+   fail('Invalid proposed UTC window.');
+  scheduled.push(w);restoredWindows.push(w);
+ }
+ scheduled.sort((a,b)=>a.start_utc.localeCompare(b.start_utc));
+ for(let i=1;i<scheduled.length;i++)
+  if(Date.parse(scheduled[i].start_utc)<Date.parse(scheduled[i-1].start_utc)+scheduled[i-1].minutes*60000)
+   fail('Proposed private windows overlap; do not apply stale plan.');
+ const idMap=new Map(state.source.map(f=>[f.finding_id,f]));
+ const imported=new Map(),restoredFollowup=new Map();
+ for(const row of raw.assignments){
+  keys(row,['finding_id','original_severity','original_retest_status','human_stage','human_reviewer',
+   'human_next_step','human_review_sha256','human_reference_gaps','proposed_window','casework_row_sha256',
+   'human_followup_status','human_followup_due','human_followup_note'],
+   ['finding_id','original_severity','original_retest_status','human_stage','human_reviewer','human_next_step','human_review_sha256','human_reference_gaps','proposed_window']);
+  if((row.casework_row_sha256===undefined&&state.casework!==null)||
+     (row.casework_row_sha256!==undefined&&row.casework_row_sha256!==(state.casework?localSha256(JSON.stringify(state.casework.get(row.finding_id))):null)))
+   fail('Original Casework row changed during private plan resume.');
+  const f=idMap.get(row.finding_id);
+  if(typeof row.finding_id!=='string'||!f||imported.has(row.finding_id)||
+     row.original_severity!==f.severity||row.original_retest_status!==f.retest_status)
+   fail('Private plan source finding identity drift or duplicate.');
+  const r=state.review.get(f.finding_id);
+  if(row.human_stage!==r.stage||row.human_reviewer!==r.reviewer||
+     row.human_next_step!==r.next_step||
+     row.human_review_sha256!==localSha256(JSON.stringify(r)))
+   fail('Private plan references stale or altered human review notes.');
+  const gaps=EVIDENCE.slice(0,4).filter(k=>!r.evidence[k]);
+  if(!Array.isArray(row.human_reference_gaps)||JSON.stringify(gaps)!==JSON.stringify(row.human_reference_gaps))
+   fail('Human evidence-gap baseline changed.');
+  if(!Number.isInteger(row.proposed_window)||row.proposed_window<0||row.proposed_window>HOURS||
+     (row.proposed_window>0&&!restoredWindows[row.proposed_window-1]))
+   fail('Invalid or unscheduled human window assignment.');
+  const group=['human_followup_status','human_followup_due','human_followup_note'];
+  const count=group.filter(k=>Object.prototype.hasOwnProperty.call(row,k)).length;
+  if(count!==0&&count!==group.length)fail('Partial private human follow-up row rejected.');
+  restoredFollowup.set(f.finding_id,count===0?newFollowup():
+   followupValue({status:row.human_followup_status,due_date:row.human_followup_due,note:row.human_followup_note}));
+  imported.set(f.finding_id,row.proposed_window);
+ }
+ if(imported.size!==idMap.size)fail('Private plan lacks complete original source membership.');
+ for(let i=0;i<HOURS;i++){
+  const findings=state.source.filter(f=>imported.get(f.finding_id)===i+1);
+  const holds=findings.filter(f=>{const r=state.review.get(f.finding_id);
+   return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);}).length;
+  const entry=raw.windows[i];
+  if(entry.findings!==findings.length||
+     entry.critical_high!==findings.filter(f=>['critical','high'].includes(f.severity)).length||
+     entry.local_review_holds!==holds||
+     (entry.local_casework_blocked!==undefined&&entry.local_casework_blocked!==findings.filter(f=>caseBlocked(state.casework?.get(f.finding_id))).length)||
+     (entry.locally_past_due!==undefined&&entry.locally_past_due!==findings.filter(f=>pastDue(state.casework?.get(f.finding_id))).length)||
+     (entry.proposed_after_local_due!==undefined&&entry.proposed_after_local_due!==findings.filter(f=>{
+      const c=state.casework?.get(f.finding_id),slot=imported.get(f.finding_id),w=slot&&restoredWindows[slot-1];
+      return Boolean(c?.due_date&&w&&!['completed','deferred'].includes(c.status)&&w.start_utc.slice(0,10)>c.due_date);
+     }).length))
+   fail('Private window aggregate contradicts original source/review records.');
+ }
+ /* All admissions are complete; apply the whole human draft in one step. */
+ closeHumanEditor(true);
+ state.followup=restoredFollowup;lastFollowBulkSnapshot=null;$('bulkFollowUndo').disabled=true;
+ state.assignments=imported;state.refreshSummary=refresh;
+ state.caseworkUpdate=raw.casework_update||null;
+ state.caseworkChanges=new Map();
+ clearCaseworkPreview('Private planning resumed; previous original Casework row-differences are not independently recreated from a saved plan. Preview both original snapshots again for a fresh delta.');
+ revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ for(let i=0;i<HOURS;i++){
+  const w=restoredWindows[i];$('date'+i).value=w?w.start_utc.slice(0,16):'';
+  $('label'+i).value=w?w.label:'';$('duration'+i).value=String(w?w.minutes:60);
+ }
+ $('note').value=raw.meeting_note;render();
+ setStatus('Private planning draft restored against exact original source and unchanged human review. No authority inferred.');
+}
+
+
+function localPlanFingerprint(){
+ if(!state)fail('No current original source.');
+ ensureHumanEditorSaved();
+ return localSha256(JSON.stringify({
+  source_sha256:state.hash,casework_sha256:state.caseworkDigest,
+  casework_packet_hashless:state.caseworkHashless,
+  casework_update:state.caseworkUpdate,
+  original_ids:state.source.map(f=>f.finding_id),
+  human:state.source.map(f=>state.review.get(f.finding_id)),
+  proposal:state.source.map(f=>state.assignments.get(f.finding_id)||0),
+  followups:state.source.map(f=>followupFor(f.finding_id)),
+  windows:Array.from({length:HOURS},(_,i)=>[$('label'+i).value,$('date'+i).value,$('duration'+i).value]),
+  meeting_note:$('note').value
+ }));
+}
+function clearRevisionPreview(message=''){
+ revisionCandidate=null;$('applyRevision').disabled=true;
+ if(message)$('revisionSummary').textContent=message;
+}
+async function previewSourceRevision(){
+ if(!state)fail('Load original authorized finding summary first.');
+ clearRevisionPreview();
+ if(!$('confirmRevision').checked)fail('Independent same original client and exact engagement confirmation required.');
+ const next=C.parseCSV(await read($('nextCsv').files[0],1048576,true));
+ const hash=await digest(next);
+ if(hash===state.hash)fail('Original source is unchanged; no revision needed.');
+ const diff=C.compareSource(state.source,next);
+ revisionCandidate={
+  base:state.hash,plan:localPlanFingerprint(),next,hash,diff
+ };
+ $('revisionSummary').textContent=
+   'Original source preview — '+diff.added.length+' new; '+diff.changed.length+' changed; '+
+   diff.unchanged.length+' exact unchanged; '+diff.missing.length+
+   ' absent (UNVERIFIED, NOT FIXED). No local source or assignments changed.';
+ $('applyRevision').disabled=false;
+}
+function applySourceRevision(){
+ const candidate=revisionCandidate;
+ if(!state||!candidate)fail('Preview a current original source revision first.');
+ if(!$('confirmRevision').checked)fail('Same actual client and engagement confirmation is required at application.');
+ if(candidate.base!==state.hash||candidate.plan!==localPlanFingerprint())
+  fail('Source or local human plan changed after preview; preview again. No partial carry performed.');
+ const {diff,next,hash}=candidate;
+ const keep=new Set(diff.unchanged),oldReview=state.review,oldSlots=state.assignments,oldFollowups=state.followup;
+ const notes=new Map(),slots=new Map(),nextFollowup=new Map();
+ for(const f of next){
+  notes.set(f.finding_id,keep.has(f.finding_id)?oldReview.get(f.finding_id):emptyReview());
+  slots.set(f.finding_id,keep.has(f.finding_id)?(oldSlots.get(f.finding_id)||0):0);
+  nextFollowup.set(f.finding_id,keep.has(f.finding_id)?{...oldFollowups.get(f.finding_id)}:newFollowup());
+ }
+ const summary={
+  from_sha256:state.hash,to_sha256:hash,
+  added:diff.added.length,changed:diff.changed.length,
+  absent_unverified:diff.missing.length,unchanged:diff.unchanged.length
+ };
+ /* Atomic swap only after the full original five-field comparator, digest,
+  * review/slot mapping and preview fingerprint have been accepted. */
+ closeHumanEditor(true);lastFollowBulkSnapshot=null;$('bulkFollowUndo').disabled=true;
+ state={source:next,hash,review:notes,assignments:slots,followup:nextFollowup,casework:null,caseworkDigest:null,
+  caseworkHashless:false,caseworkChanges:new Map(),caseworkUpdate:null,refreshSummary:summary};
+ $('nextCasework').value='';$('confirmCasework').checked=false;clearCaseworkPreview('Source revision invalidated prior Casework; import a new original snapshot.');
+ $('caseFilter').value='';$('ownerFilter').value='';
+ lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ $('digest').textContent='Current original canonical source SHA-256: '+hash+
+   ' · changed/new human notes and slots reset; absent source records are NOT fixed.';
+ $('nextCsv').value='';clearRevisionPreview('Applied original source revision to LOCAL human planning only. '+summary.unchanged+
+   ' unchanged original records retained prior private human notes and proposed slots; '+
+   (summary.added+summary.changed)+' new/changed records reset. '+summary.absent_unverified+
+   ' absent = UNVERIFIED (NOT a repaired finding).');
+ render();setStatus('Private planning carried only exact unchanged original source records. No grant, repair, retest or approval.');
+}
+
+function privateExport(){
+ if(!confirm('PRIVATE: export original finding IDs and unverified human notes for an independently approved confidential recipient?'))return;
+ const windows=plan(),detail=stats(windows);
+ const artifact={
+  kind:'lightup.remediation_human_change_windows',schema_version:1,
+  disposition:'DRAFT_UNVERIFIED_HUMAN_COORDINATION',source_contract:'lightup.finding_export._COLUMNS_v1',
+  source_sha256:state.hash,warning:'Unsigned and non-authorizing; source absence or scheduled stage never means verified remediation.',
+  windows:detail,meeting_note:meetingNote($('note').value),source_refresh:state.refreshSummary||null,
+  casework_sha256:state.caseworkDigest,casework_update:state.caseworkUpdate,
+  casework_packet_hashless:state.caseworkHashless,
+  assignments:state.source.map(f=>{
+   const r=state.review.get(f.finding_id);
+   return {finding_id:f.finding_id,original_severity:f.severity,original_retest_status:f.retest_status,
+    human_stage:r.stage,human_reviewer:r.reviewer,human_next_step:r.next_step,
+    human_review_sha256:localSha256(JSON.stringify(r)),
+    casework_row_sha256:state.casework?localSha256(JSON.stringify(state.casework.get(f.finding_id))):null,
+    human_reference_gaps:EVIDENCE.slice(0,4).filter(k=>!r.evidence[k]),
+    human_followup_status:followupFor(f.finding_id).status,
+    human_followup_due:followupFor(f.finding_id).due_date,
+    human_followup_note:followupFor(f.finding_id).note,
+    proposed_window:state.assignments.get(f.finding_id)||0};
+  })
+ };
+ for(const k of FLAGS)artifact[k]=false;
+ output('lightup-private-human-change-windows.json',JSON.stringify(artifact,null,2)+'\n','application/json');
+}
+function calendarExport(){
+ const windows=plan(),v=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LightUp//Human Draft Only//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+ const fmt=t=>t.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+ windows.filter(Boolean).forEach(w=>{
+  const date=new Date(w.start_utc),end=new Date(date.getTime()+w.minutes*60000);
+  v.push('BEGIN:VEVENT','UID:lightup-human-proposal-slot-'+w.slot+'@offline.invalid','DTSTAMP:19700101T000000Z',
+   'DTSTART:'+fmt(date),'DTEND:'+fmt(end),
+   'SUMMARY:LightUp hypothetical human review slot '+w.slot,
+   'DESCRIPTION:UNVERIFIED HUMAN PLANNING ONLY. No target data or permission. Confirm authorization and consent separately.',
+   'STATUS:TENTATIVE','END:VEVENT');
+ });
+ v.push('END:VCALENDAR');
+ output('lightup-identity-free-tentative-windows.ics',v.join('\r\n')+'\r\n','text/calendar');
+}
+function aggregateExport(){
+ const windows=plan();
+ const data=['window_slot,proposed_start_utc,minutes,source_findings,critical_high,local_reference_holds,locally_blocked_casework,locally_past_due,proposed_window_after_local_due,original_human_casework_rows_changed_since_last_snapshot,private_human_followups_open,private_human_followups_past_due,private_human_discussions_logged_not_approved'];
+ for(const row of stats(windows))data.push([row.slot,row.window?.start_utc||'',row.window?.minutes||0,row.findings,row.critical_high,row.local_review_holds,row.local_casework_blocked,row.locally_past_due,row.proposed_after_local_due,state.source.filter(f=>state.assignments.get(f.finding_id)===row.slot&&state.caseworkChanges?.has(f.finding_id)).length,...[f=>humanFollowupOpen(f),f=>followupPastDue(f),f=>followupFor(f.finding_id).status==='discussion_logged'].map(check=>state.source.filter(f=>state.assignments.get(f.finding_id)===row.slot&&check(f)).length)].join(','));
+ output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
+}
+function forget(){
+ purgeRenderedPrivateData();
+ for(const id of ['csv','review','casework'])$(id).value='';
+ $('same').checked=false;
+ setStatus('Loaded original data, hidden private tables and human planning inputs cleared from this tab.');
+}
+function init(){
+ for(let i=0;i<HOURS;i++){
+  const wrapper=el('div'),h=el('h3','Human window '+(i+1));
+  const name=el('label','Optional discussion label'),text=el('input');text.id='label'+i;text.maxLength=70;text.placeholder='Optional private planning label';name.appendChild(text);
+  const dateLabel=el('label','Proposed start (UTC)'),date=el('input');date.id='date'+i;date.type='datetime-local';dateLabel.appendChild(date);
+  const minLabel=el('label','Duration minutes'),min=el('input');min.id='duration'+i;min.type='number';min.min='30';min.max='480';min.step='30';min.value='60';minLabel.appendChild(min);
+  wrapper.append(h,name,dateLabel,minLabel);$('windows').appendChild(wrapper);
+  for(const input of [text,date,min])input.addEventListener('change',()=>{if(state)render();});
+ }
+ $('load').addEventListener('click',()=>load().catch(e=>{purgeRenderedPrivateData();setStatus(e.message,true);}));
+ $('followupSave').addEventListener('click',()=>{try{saveHumanFollowup();}catch(e){setStatus(e.message,true);}});
+ $('followupClose').addEventListener('click',()=>closeHumanEditor());
+ $('bulkFollowApply').addEventListener('click',()=>{try{bulkHumanFollowup();}catch(e){setStatus(e.message,true);}});
+ $('bulkFollowUndo').addEventListener('click',()=>{try{undoBulkHumanFollowup();}catch(e){setStatus(e.message,true);}});
+ $('forget').addEventListener('click',forget);
+ $('previewCasework').addEventListener('click',()=>previewCaseworkRevision().catch(e=>{clearCaseworkPreview(e.message);setStatus(e.message,true);}));
+ $('applyCasework').addEventListener('click',()=>{try{applyCaseworkRevision();}catch(e){setStatus(e.message,true);}});
+ $('caseworkDiff').addEventListener('click',()=>{try{privateCaseworkChanges();setStatus('PRIVATE original Casework human snapshot delta prepared for confidential handoff.');}catch(e){setStatus(e.message,true);}});
+ for(const id of ['nextCasework','confirmCasework'])$(id).addEventListener('change',()=>clearCaseworkPreview('Private original Casework selection changed; preview again.'));
+ for(const id of ['csv','review','casework'])$(id).addEventListener('change',originalInputChanged);
+ $('resume').addEventListener('click',()=>resumePlan().catch(e=>setStatus(e.message,true)));
+ $('previewRevision').addEventListener('click',()=>previewSourceRevision().catch(e=>{clearRevisionPreview(e.message);setStatus(e.message,true);}));
+ $('applyRevision').addEventListener('click',()=>{try{applySourceRevision();}catch(e){setStatus(e.message,true);}});
+ for(const id of ['nextCsv','confirmRevision'])$(id).addEventListener('change',()=>clearRevisionPreview('Source selection changed. Create a new preview.'));
+ $('filter').addEventListener('change',render);
+ $('caseFilter').addEventListener('change',render);
+ $('ownerFilter').addEventListener('change',render);
+ $('humanFilter').addEventListener('change',render);
+ $('bulkApply').addEventListener('click',()=>{try{bulkApply();}catch(e){setStatus(e.message,true);}});
+ $('bulkUndo').addEventListener('click',()=>{try{bulkUndo();}catch(e){setStatus(e.message,true);}});
+ $('caseBrief').addEventListener('click',()=>{try{privateCaseBrief();setStatus('Private original Casework human brief downloaded locally; still UNVERIFIED.');}catch(e){setStatus(e.message,true);}});
+ $('humanActionBrief').addEventListener('click',()=>{try{privateHumanActionSheet();setStatus('PRIVATE human-only action sheet prepared locally; independently confirm confidential recipient.');}catch(e){setStatus(e.message,true);}});
+ $('recalculate').addEventListener('click',()=>{try{plan();render();setStatus('Hypothetical windows checked for overlap; original authority remains HOLD.');}catch(e){setStatus(e.message,true);}});
+ for(const [id,fn] of [['private',privateExport],['calendar',calendarExport],['aggregate',aggregateExport]])
+  $(id).addEventListener('click',()=>{try{fn();setStatus('Local unsigned planning export prepared; not authorization or verified evidence.');}catch(e){setStatus(e.message,true);}});
+}
+init();
+})();
