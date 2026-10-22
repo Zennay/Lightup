@@ -25,10 +25,12 @@ MAX_URL_LENGTH = 8192
 
 
 def mask_url_query_names(source: str, secret_name) -> str:
-    """Hide values following recognized percent-decoded query/fragment names.
+    """Hide values after recognized query/fragment names.
 
-    Preserve original encoded name and punctuation. Ambiguous or overlong
-    input remains PRIVATE/HOLD; no general sanitisation guarantee.
+    Up to three bounded decode passes apply to parameter names only, so
+    nested-percent-encoded credential names are still withheld. Original
+    encoded names and punctuation are preserved; values are never decoded.
+    Ambiguous or overlong input remains PRIVATE/HOLD; no general guarantee.
     """
     if type(source) is not str or not source:
         return source
@@ -57,9 +59,21 @@ def mask_url_query_names(source: str, secret_name) -> str:
             if _BAD_PERCENT.search(name):
                 continue
             try:
-                decoded = unquote_plus(name, encoding="utf-8", errors="strict")
+                    decoded = unquote_plus(name, encoding="utf-8", errors="strict")
             except UnicodeError:
                 continue
+            # Decode only the parameter name, at most two more times. Values
+            # remain untouched and the original encoded name is preserved.
+            for _ in range(2):
+                if not re.search(r"(?i)%[0-9a-f]{2}", decoded) or _BAD_PERCENT.search(decoded):
+                    break
+                try:
+                    nested = unquote_plus(decoded, encoding="utf-8", errors="strict")
+                except UnicodeError:
+                    break
+                if nested == decoded:
+                    break
+                decoded = nested
             # Compare a canonical key only; preserve its original spelling in
             # the source copy while withholding the associated value. NFKC
             # catches compatibility characters, and removing format controls
