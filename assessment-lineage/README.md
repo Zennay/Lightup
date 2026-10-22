@@ -465,3 +465,8 @@ The original source catalog is sensitive. Local file selection does not upload i
 ### Offline source-byte binding
 
 The private HUMAN draft uses Web Crypto when available and a portable local SHA-256 fallback when `crypto.subtle` is unavailable in a `file://` browser context. This keeps exact-byte-bound review drafts usable offline. Digests are unsigned local consistency values, not authenticated source provenance, consent, authorization or release approval.
+
+
+### Latest local action wins for private source intake
+
+All asynchronous imports of the original PRIVATE Studio catalog, complete cohort reports, encrypted-workroom-free embedded PRIVATE original bundle and source-bound HUMAN review drafts are now generation-scoped. A newer file selection, Forget, fictional demo, a HUMAN stage/route/note edit, or a source display reorder/removal makes pending older file reads stale. Stale completions cannot publish an old source or restore earlier HUMAN planning after the operator's newer decision. The entire original file bundle still validates atomically before mutation; invalid or superseded inputs leave the existing private workroom untouched. Source hashes are local, unsigned byte binding only: no source authenticity, client consent or authorization is inferred.
