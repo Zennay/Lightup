@@ -588,3 +588,72 @@ remain unchanged. Repeat all focus flags to reopen the same private
 packet strictly with `--verify-output-dir`. Planning dates are
 unauthenticated HUMAN claims and must never be represented as
 confirmed deadlines, calendar bookings, real findings or consent.
+
+
+## 22 October 2026 — PRIVATE HUMAN capacity assumptions (offline)
+
+`--private-capacity-plan` publishes two additional **source-minimal, owner-only**
+artifacts from already admitted original HUMAN follow-up agenda rows. This
+is not staffing data, a scheduling service or authorization to do assessments.
+
+An operator explicitly supplies `--daily-capacity N` for the *hypothetical*
+maximum number of HUMAN discussion items a **neutral role** might handle
+on one *originally proposed review day*. One may override selected fixed roles
+with `--role-capacity ROLE=N`. All numbers must be integers **1–128**;
+unknown or repeated roles, missing/default-only numbers, or capacity options
+without `--private-capacity-plan` cause HOLD. No capacity is inferred from
+client data, employee identity, calendar bookings or source files.
+
+```bash
+mkdir -m 700 /private/assessment-capacity-room
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --focus-from 2026-10-26 \
+  --focus-through 2026-11-01 \
+  --private-capacity-plan \
+  --daily-capacity 4 \
+  --role-capacity reviewer=3 \
+  --role-capacity privacy=2 \
+  --private-home \
+  --private-day-brief \
+  --private-role-day-csv \
+  --output-dir /private/assessment-capacity-room \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+The resulting packet adds:
+
+- `assessment-portfolio-private-capacity.html` — **scriptless** CSP-pinned
+  role × originally proposed date overview, with source ordinal links to the
+  original PRIVATE workroom, explicit operator assumptions, and
+  `max(0, proposed HUMAN items - operator's declared limit)` displayed as
+  a hypothetical **excess**, not as a real schedule collision or shortage.
+- `assessment-portfolio-private-capacity.csv` — **PRIVATE** spreadsheet
+  grouping dates, neutral roles, declared item counts, proposed excess and
+  original source ordinals. It is not an anonymous export and is never
+  distributed automatically.
+
+Rows with no original proposed review day remain in an explicit
+UNSCHEDULED section and CSV rows with blank date and no capacity/excess;
+they are **not** silently assigned synthetic dates or treated as reviewed.
+A filter matching no original HUMAN rows produces an empty clearly
+non-authorizing capacity desk, not a completed-work statement. Source
+identities, targets, actual HUMAN notes and original private file paths are
+excluded; ordinal links remain sensitive planning metadata. Original
+private inputs and authentic provenance/consent never change.
+
+These two new outputs participate in the **same** bounded 1-MiB-per-file,
+owner-owned directory mode-0700, exclusive mode-0600 local publisher as
+the original canonical packet, and the existing exact-byte
+`--verify-output-dir` read-only reopen mechanism. Reopen with **identical
+source order, reference day, filters, proposed capacities and output flags**;
+changed assumptions intentionally produce a mismatch. When
+`--private-home` or a HUMAN worksheet is selected, the home links the exact
+two private capacity outputs through its fixed asset allowlist.
+
+This is an **operator-provided hypothetical limit** for discussing original
+HUMAN proposals, never an observed reviewer availability, an authenticated
+assignment, a security risk conclusion, approved scope, proof of consent,
+HUMAN GO, scan or launch. The original owner, privacy/security and hosted /
+permanently registered VPS CI gates and #177/#182/#829 remain binding.
