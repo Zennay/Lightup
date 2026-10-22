@@ -803,7 +803,7 @@ def publish_bundle(directory_fd, artifacts):
 
 def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
                      calendar=False, calendar_clusters=False, day_brief=False, role_day_csv=False,
-                     workbook=False, human_entries=None,
+                     home=False, workbook=False, human_entries=None,
                      previous_human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
@@ -853,7 +853,7 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
         result.append(("assessment-portfolio-private-HUMAN-delta.json",
                        human_workbook.render_private_comparison_json(
                            previous_human_entries, human_entries, reference_day.isoformat())))
-    if workbook or human_entries is not None:
+    if home or workbook or human_entries is not None:
         result.append(("assessment-portfolio-private-HUMAN-home.html",
                        human_workbook.render_private_home(
                            [name for name, _ in result], reference_day.isoformat())))
@@ -1016,6 +1016,7 @@ def run(args):
             calendar_clusters=args.private_calendar_clusters,
             day_brief=args.private_day_brief,
             role_day_csv=args.private_role_day_csv,
+            home=args.private_home,
             workbook=args.private_human_workbook, human_entries=human_entries,
             previous_human_entries=previous_entries,
         )
@@ -1070,6 +1071,8 @@ def main(argv=None):
                         help="Add a PRIVATE date-only tentative calendar, no invitations or alarms")
     parser.add_argument("--private-calendar-clusters", action="store_true",
                         help="Add one inert PRIVATE tentative role/day proposal per same-date HUMAN workload")
+    parser.add_argument("--private-home", action="store_true",
+                        help="Add source-bound scriptless PRIVATE start screen for any selected packet assets")
     parser.add_argument("--private-role-day-csv", action="store_true",
                         help="Add offline PRIVATE role/day staffing and source-ordinal spreadsheet CSV")
     parser.add_argument("--private-day-brief", action="store_true",
