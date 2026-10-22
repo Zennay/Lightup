@@ -10,6 +10,7 @@ import argparse
 import base64
 import hashlib
 import json
+import math
 import os
 import stat
 import sys
@@ -91,11 +92,19 @@ def reject_constant(value: str) -> None:
     fail()
 
 
+def finite_json_number(text: str) -> float:
+    """No Infinity/underflow-to-zero ambiguity in original numerical claims."""
+    number = float(text)
+    if not math.isfinite(number) or (number == 0.0 and any(ch in text.lower() for ch in "123456789")):
+        fail()
+    return number
+
+
 def admit_json(raw: bytes, catalog: bool) -> None:
     try:
         text = raw.decode("utf-8", errors="strict")
         obj = json.loads(text, object_pairs_hook=no_duplicate_keys,
-                         parse_constant=reject_constant)
+                         parse_constant=reject_constant, parse_float=finite_json_number)
     except (UnicodeError, ValueError, TypeError, RecursionError):
         fail()
     if type(obj) is not dict or any(obj.get(flag) is not False for flag in FLAGS):
@@ -123,7 +132,7 @@ def admit_private_draft(raw: bytes, catalog: bytes, reports: list[bytes]) -> Non
     try:
         obj = json.loads(raw.decode("utf-8", errors="strict"),
                          object_pairs_hook=no_duplicate_keys,
-                         parse_constant=reject_constant)
+                         parse_constant=reject_constant, parse_float=finite_json_number)
     except (UnicodeError, ValueError, TypeError, RecursionError):
         fail()
     if type(obj) is not dict or obj.get("status") != "PRIVATE_HUMAN_DRAFT_ONLY":
@@ -342,7 +351,7 @@ def main(argv: list[str]) -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main(sys.argv[1:]))
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, TypeError, OverflowError, RecursionError, UnicodeError) as error:
         print("HOLD: PRIVATE workroom cannot be created or reopened. Check owner-private 0600 source files, "
               "original canonical exports, output path and existing standalone.", file=sys.stderr)
         raise SystemExit(2) from None
