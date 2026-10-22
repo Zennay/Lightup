@@ -62,9 +62,17 @@ The result consists of exactly seven exclusive mode-0600 files:
 * `lightup-lab-human-next-actions-private.html`: offline CSP-hash pinned,
   owner-private, filterable and printable HUMAN action worklist. Filter
   source-minimal local original slots by voluntarily suggested role, receipt
-  presence or proposed HUMAN next action. Changes exist only in memory;
-  no endpoint URL, confidential note, reviewer name, browser storage or
-  network access. The workroom's local start page links to this view.
+  presence or proposed HUMAN next action. The page now shows visible action
+  counts and prints **only currently displayed rows**: filtering out a HUMAN
+  role or packet must never silently restore its hidden rows in a printout.
+  **Save displayed rows as PRIVATE CSV** explicitly downloads only the visible
+  source-minimal fixed-vocabulary rows. No endpoint URL, private note text,
+  reviewer name, original path or digest is included. The saved CSV and any
+  printed/PDF copy are **PRIVATE unencrypted recipient artifacts**: operator
+  must still authenticate recipients and confirm permission outside this tool.
+  Filters exist only in memory, not browser storage or network; the original
+  complete source worklist CSV is never modified. The workroom's local start
+  page links to this view.
 * `lightup-lab-human-return-reconciliation-counts.json`: source-free
   overall change counts, suggested-role workload, nonreturned slot totals
   by fixed suggested role/stage, and explicitly negative

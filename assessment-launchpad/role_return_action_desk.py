@@ -29,7 +29,8 @@ STYLE = (
     "border:1px solid #7d91a8;border-radius:.3rem;background:white}"
     "select:focus-visible,button:focus-visible{outline:3px solid #e0a940;outline-offset:2px}"
     "button{font:inherit;background:#1a426d;color:white;border:0;border-radius:.4rem;"
-    "padding:.65rem 1rem;font-weight:700;cursor:pointer}"
+    "padding:.65rem 1rem;font-weight:700;cursor:pointer;margin:.3rem .4rem .3rem 0}"
+    "button:disabled{opacity:.5;cursor:not-allowed}#printScope{font-size:.9rem}"
     "table{width:100%;border-collapse:collapse}th,td{border:1px solid #c1d0de;"
     "padding:.65rem;text-align:left}th{background:#e8f0fa}"
     "tr[hidden]{display:none}small{color:#435970}"
@@ -48,6 +49,13 @@ const replyFilter = document.getElementById("reply");
 const nextFilter = document.getElementById("next");
 const progress = document.getElementById("progress");
 const printButton = document.getElementById("print");
+const saveButton = document.getElementById("saveVisible");
+const printScope = document.getElementById("printScope");
+const summary = document.getElementById("summary");
+const fieldNames = ["original_slot","suggested_role","private_human_reply_status",
+  "latest_self_reported_human_stage","suggested_operator_next_step",
+  "private_note_changed"];
+let visibleRows = [];
 if (!Array.isArray(source) || source.length < 1 || source.length > 16) {
   progress.textContent = "No bounded original HUMAN action rows admitted.";
   return;
@@ -88,6 +96,8 @@ for (const row of source) {
 }
 function apply() {
   let visible = 0, awaiting = 0;
+  visibleRows = [];
+  const byAction = new Map();
   for (const {values,element} of lookup) {
     const keep = (roleFilter.value === "ALL" || roleFilter.value === values[1]) &&
       (replyFilter.value === "ALL" || replyFilter.value === values[2]) &&
@@ -95,17 +105,46 @@ function apply() {
     element.hidden = !keep;
     if (keep) {
       visible++;
+      visibleRows.push(values);
+      byAction.set(values[4], (byAction.get(values[4]) || 0) + 1);
       if (values[2] === "AWAITING_HUMAN_ROLE_REPLY") awaiting++;
     }
   }
   progress.textContent = visible + " of " + lookup.length +
     " original local HUMAN slots displayed · " + awaiting +
     " awaiting an original role reply in the selected view.";
+  const filters = [roleFilter, replyFilter, nextFilter].map(item =>
+    item.options[item.selectedIndex].textContent);
+  printScope.textContent = "PRIVATE selected view · " + filters.join(" · ") +
+    " · " + visible + " / " + lookup.length + " original local slots";
+  summary.textContent = [...byAction.entries()].sort().map(([key,count]) =>
+    key.replaceAll("_"," ") + ": " + count).join(" · ") || "No matching HUMAN actions.";
+  saveButton.disabled = printButton.disabled = visible === 0;
 }
 for (const item of [roleFilter,replyFilter,nextFilter]) {
   item.addEventListener("change",apply);
 }
 printButton.addEventListener("click",()=>window.print());
+// Fixed-enum, ordinal-only CSV: no endpoint, reviewer, note or local source path.
+// Explicit user action only. Never send data to a server or browser storage.
+function csvCell(value) {
+  const item = String(value);
+  if (!/^[A-Z_0-9]+$/.test(item)) throw Error("Noncanonical HUMAN export cell");
+  return item;
+}
+saveButton.addEventListener("click",()=>{
+  if (!visibleRows.length) return;
+  const data = [fieldNames.join(","),
+    ...visibleRows.map(row => row.map(csvCell).join(","))].join("\r\n") + "\r\n";
+  const objectUrl = URL.createObjectURL(new Blob([data],{type:"text/csv;charset=utf-8"}));
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = "lightup-PRIVATE-human-actions-selected.csv";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(objectUrl),1000);
+});
 apply();
 })();'''
 
@@ -144,14 +183,20 @@ def render(work):
         "voluntarily suggested role, received source-bound packet and HUMAN "
         "stage. Priority is operator-selected, not authenticated time."
         " No endpoint URLs, note text or reviewer identities are loaded."
-        " Browser filters exist in memory only.</p>"
+        " Browser filters exist in memory only. Printed pages and deliberate "
+        "CSV downloads contain only the currently displayed rows; the full "
+        "original CSV in the PRIVATE source directory remains unchanged. "
+        "CSV downloads are unencrypted PRIVATE files.</p>"
         "<section class='panel filters'>"
         "<label for='role'>Suggested HUMAN role<select id='role'></select></label>"
         "<label for='reply'>Role return<select id='reply'></select></label>"
         "<label for='next'>Suggested HUMAN action<select id='next'></select></label>"
         "</section><section class='panel'>"
         "<p id='progress' role='status' aria-live='polite'></p>"
-        "<button type='button' id='print'>Print source-minimal PRIVATE list</button>"
+        "<p id='summary' role='status' aria-live='polite'></p>"
+        "<p id='printScope'>PRIVATE selected HUMAN view</p>"
+        "<button type='button' id='print'>Print only displayed PRIVATE rows</button> "
+        "<button type='button' id='saveVisible'>Save displayed rows as PRIVATE CSV</button>"
         "<div class='tablewrap'><table><thead><tr><th>Original slot</th>"
         "<th>Suggested role</th><th>Returned packet</th><th>Last HUMAN stage</th>"
         "<th>Suggested next HUMAN action</th><th>PRIVATE note changed?</th>"

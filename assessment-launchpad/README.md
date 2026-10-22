@@ -393,3 +393,18 @@ The original resolved four-file overlap packet plus original chosen CSV and orig
 ## Offline HUMAN action desk
 
 Source-bound multi-role reconciliation now includes an operator-only, locally filterable and printable HTML next-action desk plus fixed-vocabulary CSV for every original slot, prioritizing missing replies without treating HUMAN_REVIEW as approval. The PRIVATE next-round home links directly to this view. See [ROLE_RECONCILIATION_GUIDE.md](ROLE_RECONCILIATION_GUIDE.md). No network, grants or scans.
+
+
+### PRIVATE HUMAN action desk: safe selected-row handoff
+
+For a role-return reconciliation packet (or the next-round workroom that
+embeds it), open `lightup-lab-human-next-actions-private.html` locally.
+Select a voluntary role, original reply status and suggested next action.
+The live counts update for the chosen view, **Print only displayed PRIVATE
+rows** excludes hidden source slots, and **Save displayed rows as PRIVATE
+CSV** downloads exactly those displayed fixed-enum/ordinal rows. The original
+full worklist and original source/returns remain unchanged. Neither print
+nor CSV contains original endpoint URLs or human notes, but even selected
+role/slot combinations may identify people; keep printouts and CSV private.
+No reviewer is authenticated, no recipient sharing is performed, and no
+consent, scan, grant or HUMAN GO is inferred.
