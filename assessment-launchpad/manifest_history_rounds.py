@@ -24,7 +24,7 @@ COUNTS = "lightup-human-timeline-counts-private.csv"
 STYLE = ("body{font:16px/1.5 system-ui,sans-serif;max-width:1040px;margin:2rem auto;"
          "padding:1rem;color:#152437}.hold{background:#fff3df;border-left:5px solid #96691a;"
          "padding:1rem}table{border-collapse:collapse;width:100%}th,td{padding:.55rem;"
-         "border:1px solid #bbcada;text-align:left}th{background:#e9f0f8}"
+         "border:1px solid #bbcada;text-align:left}th{background:#e9f0f8}.scroll{overflow-x:auto}"
          "small{color:#526174}")
 
 
@@ -111,7 +111,7 @@ def render_board(packet):
             " consent, remediation, authority or HUMAN GO.</p>"
             "<p>"+str(packet["round_count"])+" locally chained HUMAN rounds · "+
             str(packet["source_rows"])+" source rows.</p>"
-            "<div style='overflow-x:auto'><table><thead><tr>"+head+
+            "<div class='scroll'><table><thead><tr>"+head+
             "</tr></thead><tbody>"+"".join(rows)+"</tbody></table></div>"
             "<p><small>Private source-bound digests are in the JSON only. This HTML"
             " contains no URLs, original source paths, filenames, hashes or notes."
