@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Z1ts08waQ8fIHvYM23mnBg5i/DB+19NSc7MGjMzSKFs='; style-src 'sha256-iC9m6PUh4qkSTPditHJnCQiSpG60mrT7lDScBNA86M4='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6B+KL+euRpevCF6WaDN+C81E4q9MVHc7NS+63WxejIo='; style-src 'sha256-iC9m6PUh4qkSTPditHJnCQiSpG60mrT7lDScBNA86M4='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
@@ -128,23 +128,29 @@
   }
   function validate(entries = values()) {
     if (entries.length < 1 || entries.length > 16) return {error:"Enter 1–16 endpoint URLs."};
-    if (entries.some(value => !value || value !== value.trim() || value.length > 2048 ||
-        [...value].some(char => char.charCodeAt(0) < 33 || char.charCodeAt(0) === 127))) {
-      return {error:"Fill every row with bounded literal text; remove blank rows and whitespace."};
-    }
+    const malformedSlots = entries.map((value, index) => ({value, slot:index + 1})).filter(item =>
+      !item.value || item.value !== item.value.trim() || item.value.length > 2048 ||
+      [...item.value].some(char => char.charCodeAt(0) < 33 || char.charCodeAt(0) === 127));
+    if (malformedSlots.length) return {error:"Endpoint slots " +
+      malformedSlots.map(item => item.slot).join(", ") +
+      " must be non-empty, trimmed literal text of at most 2048 characters without controls."};
     if (manifestBytes(entries) > 16384) return {error:"Manifest exceeds the native CLI 16 KiB limit."};
-    if (new Set(entries).size !== entries.length) return {error:"Duplicate literal endpoint values are not allowed."};
-    for (const value of entries) {
+    const duplicateSlots = entries.map((value, index) =>
+      entries.indexOf(value) !== entries.lastIndexOf(value) ? index + 1 : null).filter(Boolean);
+    if (duplicateSlots.length) return {error:"Duplicate literal endpoint values at slots " +
+      duplicateSlots.join(", ") + "."};
+    const invalidSlots = [];
+    entries.forEach((value, index) => {
       try {
         const url = new URL(value);
         if ((url.protocol !== "http:" && url.protocol !== "https:") ||
-            !url.hostname || url.username || url.password || url.hash) {
-          return {error:"Use HTTP(S) URLs without credentials or fragments."};
+            !url.hostname || url.username || url.password || url.hash || value.includes("#")) {
+          invalidSlots.push(index + 1);
         }
-      } catch (_) {
-        return {error:"One or more entries are not syntactically valid HTTP(S) URLs."};
-      }
-    }
+      } catch (_) { invalidSlots.push(index + 1); }
+    });
+    if (invalidSlots.length) return {error:"Endpoint slots " + invalidSlots.join(", ") +
+      " must use valid HTTP(S) URLs without credentials or fragments."};
     return {entries};
   }
   function refresh() {
@@ -372,8 +378,10 @@
         "Use HTTP(S) URLs without credentials or fragments.": "Use literal HTTP(S) URLs without credentials or fragments.",
         "One or more entries are not syntactically valid HTTP(S) URLs.": "One or more endpoint lines are not valid HTTP(S) URLs."
       };
-      $("message").textContent = "Import refused; your existing editor was preserved. " +
-        (details[reason] || "The file could not be read as strict UTF-8. Use a bounded UTF-8 text manifest without BOM or NUL.");
+      const positionalReason = /^(?:Endpoint slots \d+(?:, \d+)* (?:must be non-empty, trimmed literal text of at most 2048 characters without controls|must use valid HTTP\(S\) URLs without credentials or fragments)\.|Duplicate literal endpoint values at slots \d+(?:, \d+)*\.)$/.test(reason);
+      const detail = details[reason] || (positionalReason ? reason :
+        "The file could not be read as strict UTF-8. Use a bounded UTF-8 text manifest without BOM or NUL.");
+      $("message").textContent = "Import refused; your existing editor was preserved. " + detail;
     }
   }
   $("chooseManifest").addEventListener("click", () => $("manifestImport").click());
