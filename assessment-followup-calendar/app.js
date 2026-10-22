@@ -99,6 +99,19 @@
     const val=new Date(y,m-1,d,h,mi,0,0);
     hold(val.getFullYear()===y && val.getMonth()===m-1 && val.getDate()===d &&
       val.getHours()===h && val.getMinutes()===mi && Number.isFinite(val.getTime()));
+    // The Date constructor silently chooses one of TWO local wall-clock instants
+    // when autumn DST repeats an hour. A HUMAN reminder must never pick one
+    // without an explicit offset, which this source-bound format does not carry.
+    const before=new Date(val.getTime()-6*3600000).getTimezoneOffset();
+    const after=new Date(val.getTime()+6*3600000).getTimezoneOffset();
+    if(after>before){
+      const alternate=new Date(val.getTime()+(after-before)*60000);
+      if(alternate.getFullYear()===y && alternate.getMonth()===m-1 &&
+          alternate.getDate()===d && alternate.getHours()===h &&
+          alternate.getMinutes()===mi){
+        throw Error("Ambiguous local HUMAN time during a clock change. Choose a non-repeated hour; no calendar event created (HOLD).");
+      }
+    }
     return val;
   }
   function admitSlot(day,time,duration,reminder){
@@ -106,6 +119,13 @@
     const date=eventDate(day,time);
     hold(DURATION.has(duration) && REMINDER.has(reminder));
     hold(Number.isFinite(date.getTime()+Number(duration)*60000));
+    // A HUMAN appointment spanning an actual UTC-offset transition cannot
+    // be represented faithfully by one local start + wall-clock duration.
+    // Fail closed rather than surprise the recipient with a shifted clock.
+    if(new Date(date.getTime()+Number(duration)*60000).getTimezoneOffset() !==
+        date.getTimezoneOffset()){
+      throw Error("HUMAN appointment crosses a clock change. Move its start time or duration before exporting (HOLD).");
+    }
     return {day,time,duration,reminder};
   }
   function newSeriesId(){const raw=new Uint8Array(16);crypto.getRandomValues(raw);return Array.from(raw,x=>x.toString(16).padStart(2,"0")).join("");}

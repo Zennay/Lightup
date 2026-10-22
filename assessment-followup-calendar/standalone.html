@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gF8t/Yh+RNOOmYxIyheUEuFqO7tTr/e/8zlHTH66/E0='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-n5yAhhMjA5c8ppJSEd1c9BvU9UNAP1MyKbKRTvCLETE='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -147,6 +147,19 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const val=new Date(y,m-1,d,h,mi,0,0);
     hold(val.getFullYear()===y && val.getMonth()===m-1 && val.getDate()===d &&
       val.getHours()===h && val.getMinutes()===mi && Number.isFinite(val.getTime()));
+    // The Date constructor silently chooses one of TWO local wall-clock instants
+    // when autumn DST repeats an hour. A HUMAN reminder must never pick one
+    // without an explicit offset, which this source-bound format does not carry.
+    const before=new Date(val.getTime()-6*3600000).getTimezoneOffset();
+    const after=new Date(val.getTime()+6*3600000).getTimezoneOffset();
+    if(after>before){
+      const alternate=new Date(val.getTime()+(after-before)*60000);
+      if(alternate.getFullYear()===y && alternate.getMonth()===m-1 &&
+          alternate.getDate()===d && alternate.getHours()===h &&
+          alternate.getMinutes()===mi){
+        throw Error("Ambiguous local HUMAN time during a clock change. Choose a non-repeated hour; no calendar event created (HOLD).");
+      }
+    }
     return val;
   }
   function admitSlot(day,time,duration,reminder){
@@ -154,6 +167,13 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const date=eventDate(day,time);
     hold(DURATION.has(duration) && REMINDER.has(reminder));
     hold(Number.isFinite(date.getTime()+Number(duration)*60000));
+    // A HUMAN appointment spanning an actual UTC-offset transition cannot
+    // be represented faithfully by one local start + wall-clock duration.
+    // Fail closed rather than surprise the recipient with a shifted clock.
+    if(new Date(date.getTime()+Number(duration)*60000).getTimezoneOffset() !==
+        date.getTimezoneOffset()){
+      throw Error("HUMAN appointment crosses a clock change. Move its start time or duration before exporting (HOLD).");
+    }
     return {day,time,duration,reminder};
   }
   function newSeriesId(){const raw=new Uint8Array(16);crypto.getRandomValues(raw);return Array.from(raw,x=>x.toString(16).padStart(2,"0")).join("");}
@@ -2680,7 +2700,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 <header><div class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME / PRIVATE / OFFLINE</div><h1>Human Follow-up Calendar</h1>
 <p>Turn an <strong>already-produced</strong> seven-column HUMAN worksheet into a private follow-up schedule and a deliberately optional calendar export. <strong>REVIEW ONLY · NO ASSESSMENT AUTHORITY.</strong></p></header>
 <main>
-<section class="notice"><strong>INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.</strong> Source severity is self-reported. Calendar reminders are HUMAN plans, never evidence of approval, verified risk, remediation, scope, current consent or permission to scan. Files remain PRIVATE, even without target names. Nothing is uploaded or stored by this application. Importing calendar entries into cloud calendars may disclose them; use an authorized PRIVATE calendar only.</section>
+<section class="notice"><strong>INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.</strong> Source severity is self-reported. Calendar reminders are HUMAN plans, never evidence of approval, verified risk, remediation, scope, current consent or permission to scan. DST gaps, repeated local hours and appointments crossing a clock change are rejected; move tentative times outside a clock transition. Files remain PRIVATE, even without target names. Nothing is uploaded or stored by this application. Importing calendar entries into cloud calendars may disclose them; use an authorized PRIVATE calendar only.</section>
 <section class="panel" aria-labelledby="importHeading"><h2 id="importHeading">1 · Open original HUMAN worksheet</h2>
 <p>Use <code>human-followup.csv</code> from the original PRIVATE Assessment Briefing (held PR #1672). Strict original 7-column order, max 2,048 rows / 1 MiB. Includes anonymous ordinal, source-reported severity, evidence-reference count and HUMAN-only follow-up fields; no original target or evidence required.</p>
 <div class="row"><label class="file">Original worksheet CSV <input id="worksheet" type="file" accept=".csv,text/csv"></label><span id="identity" class="subtle">No worksheet loaded</span></div>
