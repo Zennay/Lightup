@@ -85,6 +85,18 @@ def descriptor(value, expected_names: set[str], *, with_source: bool):
             raise Hold("HOLD: unsafe original source path in inventory")
     return name, size, sha
 
+def stream_digest(stream) -> str:
+    """Hash an already-open regular file without reopening its path."""
+    digestor = hashlib.sha256()
+    stream.seek(0)
+    while True:
+        chunk = stream.read(1024 * 1024)
+        if not chunk:
+            break
+        digestor.update(chunk)
+    return digestor.hexdigest()
+
+
 def file_digest(path: Path) -> str:
     digestor = hashlib.sha256()
     with path.open("rb") as source:
@@ -184,127 +196,143 @@ def verify(path: Path, expected_sha256: str = "",
         raise Hold("HOLD: explicit expected digest conflicts with sidecar")
     if sidecar_value:
         expected_sha256 = sidecar_value
-    try:
-        st = path.lstat()
-    except OSError:
-        raise Hold("HOLD: package path unavailable") from None
-    if (not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode) or
-            not 0 < st.st_size <= MAX_ARCHIVE):
-        raise Hold("HOLD: package must be a bounded ordinary regular file")
     if expected_sha256:
         if not isinstance(expected_sha256, str) or not HASH.fullmatch(expected_sha256):
             raise Hold("HOLD: expected SHA-256 must be 64 lowercase hexadecimal characters")
-        if file_digest(path) != expected_sha256:
-            raise Hold("HOLD: package bytes do not match the supplied expected SHA-256")
     try:
-        with ZipFile(path, "r") as archive:
-            infos = archive.infolist()
-            if not 1 <= len(infos) <= MAX_MEMBERS:
-                raise Hold("HOLD: unexpected archive member count")
-            by_name = {}
-            total = 0
-            for info in infos:
-                name = safe_member(info)
-                if name in by_name:
-                    raise Hold("HOLD: duplicate archive member name")
-                by_name[name] = info
-                total += info.file_size
-                if total > MAX_TOTAL:
-                    raise Hold("HOLD: expanded archive exceeds size bound")
-            if "manifest.json" not in by_name:
-                raise Hold("HOLD: inventory manifest is missing")
-            raw_manifest = archive.read(by_name["manifest.json"])
-            if len(raw_manifest) > 256 * 1024:
-                raise Hold("HOLD: inventory manifest exceeds size bound")
-            manifest = json.loads(raw_manifest.decode("utf-8", errors="strict"),
-                                  object_pairs_hook=unique_object)
-            if not isinstance(manifest, dict):
-                raise Hold("HOLD: inventory root must be an object")
-            common_required = {"schema", "status", "software_only",
-                               "sources_or_client_data_included", "original_app_count",
-                               "support_asset_count", "files", "operator_guide", *FLAGS}
-            has_assets = "package_assets" in manifest or "manifest_self_hash_excluded" in manifest
-            required = common_required | ({"package_assets", "manifest_self_hash_excluded"}
-                                           if has_assets else set())
-            if set(manifest) != required:
-                raise Hold("HOLD: unsupported manifest schema or fields")
-            schema = manifest["schema"]
-            if schema not in ("lightup.assessment_offline_software_kit.v1",
-                              "lightup.assessment_offline_software_kit.v2"):
-                raise Hold("HOLD: unsupported manifest version")
-            if schema == "lightup.assessment_offline_software_kit.v2" and not has_assets:
-                raise Hold("HOLD: v2 manifest lacks full package asset inventory")
-            if has_assets and manifest["manifest_self_hash_excluded"] is not True:
-                raise Hold("HOLD: manifest self-hash posture is missing")
-            if (manifest["status"] != "REVIEW_ONLY" or
-                    manifest["software_only"] is not True or
-                    manifest["sources_or_client_data_included"] is not False or
-                    any(manifest[flag] is not False for flag in FLAGS)):
-                raise Hold("HOLD: package posture or non-authority flags do not match")
-            files = manifest["files"]
-            assets = manifest.get("package_assets", [])
-            if (not isinstance(files, list) or not files or
-                    not isinstance(assets, list)):
-                raise Hold("HOLD: inventory collections are malformed")
-            file_names = set()
-            app_count = support_count = verified = 0
-            for item in files:
-                studio_names = {n for n in by_name if n.startswith("studios/")}
-                name, size, sha = descriptor(item, studio_names, with_source=True)
-                if not name.startswith("studios/") or name in file_names:
-                    raise Hold("HOLD: duplicate or non-studio software entry")
-                file_names.add(name)
-                if name.endswith(".html"):
-                    app_count += 1
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
+                     getattr(os, "O_CLOEXEC", 0))
+        with os.fdopen(fd, "rb") as package_stream:
+            before = os.fstat(package_stream.fileno())
+            path_before = path.lstat()
+            if (not stat.S_ISREG(before.st_mode) or
+                    not stat.S_ISREG(path_before.st_mode) or stat.S_ISLNK(path_before.st_mode) or
+                    (before.st_dev, before.st_ino) != (path_before.st_dev, path_before.st_ino) or
+                    not 0 < before.st_size <= MAX_ARCHIVE):
+                raise Hold("HOLD: package must be a bounded ordinary regular file")
+            identity_before = (before.st_dev, before.st_ino, before.st_size,
+                               before.st_mtime_ns, before.st_ctime_ns)
+            if expected_sha256 and stream_digest(package_stream) != expected_sha256:
+                raise Hold("HOLD: package bytes do not match the supplied expected SHA-256")
+            package_stream.seek(0)
+            with ZipFile(package_stream, "r") as archive:
+                infos = archive.infolist()
+                if not 1 <= len(infos) <= MAX_MEMBERS:
+                    raise Hold("HOLD: unexpected archive member count")
+                by_name = {}
+                total = 0
+                for info in infos:
+                    name = safe_member(info)
+                    if name in by_name:
+                        raise Hold("HOLD: duplicate archive member name")
+                    by_name[name] = info
+                    total += info.file_size
+                    if total > MAX_TOTAL:
+                        raise Hold("HOLD: expanded archive exceeds size bound")
+                if "manifest.json" not in by_name:
+                    raise Hold("HOLD: inventory manifest is missing")
+                raw_manifest = archive.read(by_name["manifest.json"])
+                if len(raw_manifest) > 256 * 1024:
+                    raise Hold("HOLD: inventory manifest exceeds size bound")
+                manifest = json.loads(raw_manifest.decode("utf-8", errors="strict"),
+                                      object_pairs_hook=unique_object)
+                if not isinstance(manifest, dict):
+                    raise Hold("HOLD: inventory root must be an object")
+                common_required = {"schema", "status", "software_only",
+                                   "sources_or_client_data_included", "original_app_count",
+                                   "support_asset_count", "files", "operator_guide", *FLAGS}
+                has_assets = "package_assets" in manifest or "manifest_self_hash_excluded" in manifest
+                required = common_required | ({"package_assets", "manifest_self_hash_excluded"}
+                                               if has_assets else set())
+                if set(manifest) != required:
+                    raise Hold("HOLD: unsupported manifest schema or fields")
+                schema = manifest["schema"]
+                if schema not in ("lightup.assessment_offline_software_kit.v1",
+                                  "lightup.assessment_offline_software_kit.v2"):
+                    raise Hold("HOLD: unsupported manifest version")
+                if schema == "lightup.assessment_offline_software_kit.v2" and not has_assets:
+                    raise Hold("HOLD: v2 manifest lacks full package asset inventory")
+                if has_assets and manifest["manifest_self_hash_excluded"] is not True:
+                    raise Hold("HOLD: manifest self-hash posture is missing")
+                if (manifest["status"] != "REVIEW_ONLY" or
+                        manifest["software_only"] is not True or
+                        manifest["sources_or_client_data_included"] is not False or
+                        any(manifest[flag] is not False for flag in FLAGS)):
+                    raise Hold("HOLD: package posture or non-authority flags do not match")
+                files = manifest["files"]
+                assets = manifest.get("package_assets", [])
+                if (not isinstance(files, list) or not files or
+                        not isinstance(assets, list)):
+                    raise Hold("HOLD: inventory collections are malformed")
+                file_names = set()
+                app_count = support_count = verified = 0
+                for item in files:
+                    studio_names = {n for n in by_name if n.startswith("studios/")}
+                    name, size, sha = descriptor(item, studio_names, with_source=True)
+                    if not name.startswith("studios/") or name in file_names:
+                        raise Hold("HOLD: duplicate or non-studio software entry")
+                    file_names.add(name)
+                    if name.endswith(".html"):
+                        app_count += 1
+                    else:
+                        support_count += 1
+                    content = archive.read(by_name[name])
+                    if len(content) != size or digest(content) != sha:
+                        raise Hold("HOLD: software asset bytes do not match manifest")
+                    verified += 1
+                asset_names = set()
+                for item in assets:
+                    name, size, sha = descriptor(item, PACKAGE_ASSETS, with_source=False)
+                    if name in asset_names:
+                        raise Hold("HOLD: duplicate package support asset")
+                    asset_names.add(name)
+                    content = archive.read(by_name[name])
+                    if len(content) != size or digest(content) != sha:
+                        raise Hold("HOLD: package support asset bytes do not match manifest")
+                    verified += 1
+                guide = manifest["operator_guide"]
+                if assets:
+                    if asset_names != PACKAGE_ASSETS:
+                        raise Hold("HOLD: package support inventory is incomplete")
+                    if guide != next(x for x in assets if x["filename"] == "GUIDE-LAB-PLANNING.md"):
+                        raise Hold("HOLD: operator guide inventory entries disagree")
                 else:
-                    support_count += 1
-                content = archive.read(by_name[name])
-                if len(content) != size or digest(content) != sha:
-                    raise Hold("HOLD: software asset bytes do not match manifest")
-                verified += 1
-            asset_names = set()
-            for item in assets:
-                name, size, sha = descriptor(item, PACKAGE_ASSETS, with_source=False)
-                if name in asset_names:
-                    raise Hold("HOLD: duplicate package support asset")
-                asset_names.add(name)
-                content = archive.read(by_name[name])
-                if len(content) != size or digest(content) != sha:
-                    raise Hold("HOLD: package support asset bytes do not match manifest")
-                verified += 1
-            guide = manifest["operator_guide"]
-            if assets:
-                if asset_names != PACKAGE_ASSETS:
+                    # Legacy v1 manifest: original guide/apps are hashed, but the
+                    # generated launcher and README are not independently inventoried.
+                    name, size, sha = descriptor(
+                        guide, {"GUIDE-LAB-PLANNING.md"}, with_source=False)
+                    content = archive.read(by_name[name])
+                    if len(content) != size or digest(content) != sha:
+                        raise Hold("HOLD: legacy operator guide does not match manifest")
+                    verified += 1
+                    print("LEGACY MANIFEST: START-HERE.html and README.txt have no individual hashes; " +
+                          "supply an independently trusted expected ZIP SHA-256 for whole-package matching.")
+                expected = {"manifest.json", "START-HERE.html", "README.txt",
+                            "GUIDE-LAB-PLANNING.md"} | file_names
+                if set(by_name) != expected:
+                    raise Hold("HOLD: unexpected or missing archive members")
+                if (assets and asset_names != PACKAGE_ASSETS):
                     raise Hold("HOLD: package support inventory is incomplete")
-                if guide != next(x for x in assets if x["filename"] == "GUIDE-LAB-PLANNING.md"):
-                    raise Hold("HOLD: operator guide inventory entries disagree")
-            else:
-                # Legacy v1 manifest: original guide/apps are hashed, but the
-                # generated launcher and README are not independently inventoried.
-                name, size, sha = descriptor(
-                    guide, {"GUIDE-LAB-PLANNING.md"}, with_source=False)
-                content = archive.read(by_name[name])
-                if len(content) != size or digest(content) != sha:
-                    raise Hold("HOLD: legacy operator guide does not match manifest")
-                verified += 1
-                print("LEGACY MANIFEST: START-HERE.html and README.txt have no individual hashes; " +
-                      "supply an independently trusted expected ZIP SHA-256 for whole-package matching.")
-            expected = {"manifest.json", "START-HERE.html", "README.txt",
-                        "GUIDE-LAB-PLANNING.md"} | file_names
-            if set(by_name) != expected:
-                raise Hold("HOLD: unexpected or missing archive members")
-            if (assets and asset_names != PACKAGE_ASSETS):
-                raise Hold("HOLD: package support inventory is incomplete")
-            if (type(manifest["original_app_count"]) is not int or
-                    manifest["original_app_count"] != app_count or
-                    type(manifest["support_asset_count"]) is not int or
-                    manifest["support_asset_count"] != support_count):
-                raise Hold("HOLD: declared studio/support counts do not match")
-            if source_root is not None:
-                compared = verify_source_checkout(source_root, files)
-                print("SOURCE CHECKOUT PARITY: " + str(compared) +
-                      " packaged software files match the explicit local checkout.")
-                print("This is local byte parity only; it does not authenticate authorship or provenance.")
+                if (type(manifest["original_app_count"]) is not int or
+                        manifest["original_app_count"] != app_count or
+                        type(manifest["support_asset_count"]) is not int or
+                        manifest["support_asset_count"] != support_count):
+                    raise Hold("HOLD: declared studio/support counts do not match")
+                if source_root is not None:
+                    compared = verify_source_checkout(source_root, files)
+                    print("SOURCE CHECKOUT PARITY: " + str(compared) +
+                          " packaged software files match the explicit local checkout.")
+                    print("This is local byte parity only; it does not authenticate authorship or provenance.")
+            after = os.fstat(package_stream.fileno())
+            path_after = path.lstat()
+            identity_after = (after.st_dev, after.st_ino, after.st_size,
+                              after.st_mtime_ns, after.st_ctime_ns)
+            if (identity_before != identity_after or
+                    (path_after.st_dev, path_after.st_ino) != (after.st_dev, after.st_ino) or
+                    not stat.S_ISREG(path_after.st_mode)):
+                raise Hold("HOLD: package changed while it was being verified")
+            if expected_sha256 and stream_digest(package_stream) != expected_sha256:
+                raise Hold("HOLD: package bytes changed during verification")
     except Hold:
         raise
     except (OSError, BadZipFile, UnicodeDecodeError, json.JSONDecodeError,
