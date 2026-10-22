@@ -270,6 +270,7 @@
       : "No cases match the current filters; filtered exports are disabled.";
     $("queue-export-csv").disabled = !sorted.length;
     $("queue-export-json").disabled = !sorted.length;
+    $("queue-export-html").disabled = !sorted.length;
     $("print-filtered").disabled = !sorted.length;
     $("no-matches").hidden = sorted.length > 0;
     for (const {c, i} of sorted) {
@@ -693,6 +694,61 @@
     $("queue-export-summary").textContent = "Exported " + output.case_count +
       " filtered case(s) as anonymous JSON. No raw scenario IDs or source evidence included.";
   }
+  function exportFilteredQueueHtml() {
+    if (!report) return;
+    const output = filteredQueueExport();
+    if (!output.case_count) {
+      $("queue-export-summary").textContent = "Nothing exported: no cases match the current filters.";
+      return;
+    }
+    const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"
+    })[char]);
+    const e = escapeHtml;
+    const filterSummary = [
+      "status: " + $("filter").selectedOptions[0].textContent,
+      "workstream: " + $("route-filter").selectedOptions[0].textContent,
+      "priority: " + $("priority-filter").selectedOptions[0].textContent,
+      "metric: " + (metricFocus || "All metrics")
+    ].join(" · ");
+    const bodyRows = output.cases.map(item => {
+      const movements = item.metric_changes.map(metric =>
+        e(metric.metric) + ": " + e(fmt(metric.baseline)) + " → " + e(fmt(metric.candidate)) +
+        " (Δ " + (metric.delta >= 0 ? "+" : "") + e(fmt(metric.delta)) + ")"
+      ).join("<br>") || "No selected metric changes.";
+      return "<tr>" + [
+        item.case, item.priority, item.source_status, item.routing_group, item.human_stage,
+        item.follow_up_date || "—", item.metric_regressions.join(", ") || "None",
+        movements, item.suggested_human_action
+      ].map((value, index) => "<td>" + (index === 7 ? value : e(value)) + "</td>").join("") + "</tr>";
+    }).join("\n");
+    const html = [
+      "<!doctype html>",
+      '<html lang="en"><head><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'none\'; style-src \'none\'; img-src \'none\'; connect-src \'none\'; object-src \'none\'; base-uri \'none\'; form-action \'none\'">',
+      "<title>LightUp filtered HUMAN follow-up queue</title></head><body><main>",
+      "<h1>Filtered HUMAN follow-up queue</h1>",
+      "<p>Source status: <strong>" + e(output.source_status) + "</strong>. Included cases: " +
+        e(output.case_count) + ". Source cases: " + e(report.cases.length) + ".</p>",
+      "<p>Filters: " + e(filterSummary) + "</p>",
+      "<p>Local source-byte SHA-256: " + e(output.source_sha256 || "unavailable") +
+        ". This digest is unsigned byte binding, not source authentication.</p>",
+      "<table><thead><tr><th>Case</th><th>Priority</th><th>Source status</th><th>Workstream</th>" +
+        "<th>HUMAN stage</th><th>Follow-up date</th><th>Flagged metrics</th><th>Selected metric evidence</th>" +
+        "<th>Suggested HUMAN action</th></tr></thead><tbody>",
+      bodyRows,
+      "</tbody></table>",
+      "<h2>Review boundary</h2><p>Private offline HUMAN planning only. Numeric values are source-reported and unverified. " +
+        "Authorization, consent, dispatch, release approval and scan permission are all false. " +
+        "This handoff does not establish source authenticity, reviewer identity, remediation or authorization.</p>",
+      "<p>Only cases matching the filters above are included. No raw scenario IDs, targets, source paths, notes or client/operator identifiers are included.</p>",
+      "</main></body></html>",""
+    ].join("\n");
+    download("lightup-human-follow-up-filtered-queue.html", html, "text/html;charset=utf-8");
+    $("queue-export-summary").textContent = "Exported " + output.case_count +
+      " filtered case(s) as a scriptless standalone HTML handoff.";
+  }
   function exportFilteredQueueCsv() {
     if (!report) return;
     const output = filteredQueueExport();
@@ -983,6 +1039,7 @@
   $("priority-filter").addEventListener("change", renderQueue);
   $("queue-export-csv").addEventListener("click", exportFilteredQueueCsv);
   $("queue-export-json").addEventListener("click", exportFilteredQueueJson);
+  $("queue-export-html").addEventListener("click", exportFilteredQueueHtml);
   $("route").addEventListener("change", e => {
     if (!report || selected < 0 || !ROUTES.has(e.target.value)) return;
     invalidateReads();
