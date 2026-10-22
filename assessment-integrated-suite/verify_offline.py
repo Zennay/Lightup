@@ -97,26 +97,32 @@ def stream_digest(stream) -> str:
     return digestor.hexdigest()
 
 
-def file_digest(path: Path) -> str:
-    digestor = hashlib.sha256()
-    with path.open("rb") as source:
-        while True:
-            chunk = source.read(1024 * 1024)
-            if not chunk:
-                break
-            digestor.update(chunk)
-    return digestor.hexdigest()
-
-
 def sidecar_digest(sidecar: Path, package: Path) -> str:
     sidecar = reject_symlink_components(sidecar)
     package = reject_symlink_components(package)
     try:
-        st = sidecar.lstat()
-        if (not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode) or
-                not 0 < st.st_size <= 4096):
-            raise Hold("HOLD: SHA-256 sidecar must be a bounded ordinary file")
-        raw = sidecar.read_bytes().decode("utf-8", errors="strict")
+        fd = os.open(sidecar, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) |
+                     getattr(os, "O_CLOEXEC", 0))
+        with os.fdopen(fd, "rb") as stream:
+            before = os.fstat(stream.fileno())
+            path_before = sidecar.lstat()
+            if (not stat.S_ISREG(before.st_mode) or
+                    not stat.S_ISREG(path_before.st_mode) or stat.S_ISLNK(path_before.st_mode) or
+                    (before.st_dev, before.st_ino) != (path_before.st_dev, path_before.st_ino) or
+                    not 0 < before.st_size <= 4096):
+                raise Hold("HOLD: SHA-256 sidecar must be a bounded ordinary file")
+            identity_before = (before.st_dev, before.st_ino, before.st_size,
+                               before.st_mtime_ns, before.st_ctime_ns)
+            raw_bytes = stream.read(4097)
+            after = os.fstat(stream.fileno())
+            path_after = sidecar.lstat()
+            identity_after = (after.st_dev, after.st_ino, after.st_size,
+                              after.st_mtime_ns, after.st_ctime_ns)
+            if (identity_before != identity_after or
+                    (path_after.st_dev, path_after.st_ino) != (after.st_dev, after.st_ino) or
+                    len(raw_bytes) != before.st_size or len(raw_bytes) > 4096):
+                raise Hold("HOLD: SHA-256 sidecar changed during read")
+        raw = raw_bytes.decode("utf-8", errors="strict")
     except Hold:
         raise
     except (OSError, UnicodeDecodeError):
