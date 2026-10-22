@@ -80,6 +80,24 @@ from the print output; the original lab verdict and current plan remain intact.
 The queue has separate CSV and JSON export actions that reuse the exact on-screen status, workstream, informational priority and metric filters. They export only the currently visible cases, in the same informational priority order, with anonymous ordinal labels, source-reported metric names, relevant numeric baseline/candidate/delta values (only the selected metric, or source-flagged metrics when no metric filter is active), local HUMAN stage/date/routing labels and static suggested follow-up guidance. CSV serializes the bounded numeric metric subset as a quoted JSON cell; the JSON handoff uses structured metric objects. The handoff records the selected filters, including the informational priority band, and literal false authorization, consent, dispatch, release, approval and scan flags. CSV cells use the existing formula-prefix guard. Raw scenario IDs, hostnames, client/operator names, source evidence and notes are excluded. An empty filtered view produces no file; the all-case exports remain available separately. This is an unsigned planning handoff, not proof of remediation, identity, permission or release.
 
 
+## Restore a filtered HUMAN queue from another local review
+
+**Import filtered queue JSON** restores only the included cases' HUMAN stage, workstream and
+follow-up date. The import is limited to an exact locally loaded original report byte digest,
+source kind and source verdict. It strictly rechecks the export contract, false authority
+flags, every included ordinal, canonical source-reported metric fields, filter membership,
+priority ordering, dates and uniqueness before applying anything. Duplicate, stale, malformed,
+incomplete or altered source-evidence rows cause HOLD with the current plan preserved.
+
+A filtered import is intentionally partial: cases absent from the handoff are left unchanged.
+The imported subset must match the filter declarations and canonical queue order; its mutable
+HUMAN status/workstream are validated against the saved filter values, not the recipient's
+current plan, so a reviewer can receive changes for cases whose local stage has since diverged.
+A successful import records the previous HUMAN plan in the existing one-step Undo snapshot.
+No original metric, source verdict, note, authorization, consent, dispatch or release state is
+imported. This remains an unsigned local byte-binding workflow, not reviewer authentication or
+proof that the source report is genuine.
+
 ## Standalone filtered HTML handoff
 
 The filtered queue now has a third export format: **Export filtered queue HTML**. It produces
