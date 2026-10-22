@@ -19,6 +19,8 @@ JS = """'use strict';
 const from=document.getElementById('from');
 const to=document.getElementById('to');
 const priority=document.getElementById('priority');
+const stage=document.getElementById('stage');
+const historyRows=Array.from(document.querySelectorAll('tr[data-stage-count]'));
 const output=document.getElementById('summary');
 const empty=document.getElementById('empty');
 const rows=Array.from(document.querySelectorAll('tr[data-from]'));
@@ -26,6 +28,7 @@ function update(){
  const start=Number(from.value),end=Number(to.value),group=priority.value;
  if(!Number.isInteger(start)||!Number.isInteger(end)||start>=end){
   rows.forEach(row=>{row.hidden=true;});
+  historyRows.forEach(row=>{row.hidden=true;});
   output.textContent='Select two different rounds in ascending manually supplied order.';
   empty.hidden=true;return;
  }
@@ -45,8 +48,13 @@ function update(){
   ' · edited follow-up fields: '+follow+
   '. These are self-reports, not verified progress.';
  empty.hidden=visible!==0;
+ historyRows.forEach(row=>{
+  row.hidden=Number(row.dataset.round)<start||Number(row.dataset.round)>end||
+   (group!=='all'&&row.dataset.priority!==group)||
+   (stage.value!=='all'&&row.dataset.stage!==stage.value);
+ });
 }
-[from,to,priority].forEach(el=>el.addEventListener('change',update));
+[from,to,priority,stage].forEach(el=>el.addEventListener('change',update));
 update();
 })();"""
 
@@ -55,7 +63,8 @@ def b64_sha(source: str) -> str:
     return base64.b64encode(hashlib.sha256(source.encode("utf-8")).digest()).decode("ascii")
 
 
-def build(rows: list[dict], rounds: int) -> bytes:
+def build(rows: list[dict], rounds: int, stage_counts: list[dict],
+          attention: list[dict]) -> bytes:
     if not 2 <= rounds <= 8 or len(rows) > 100:
         raise Hold("HOLD: aggregate HUMAN interval viewer refuses unbounded data")
     allowed = {"urgent", "soon", "routine"}
@@ -77,6 +86,31 @@ def build(rows: list[dict], rounds: int) -> bytes:
                     "human_priority", "operator_ordered_from_round",
                     "operator_ordered_to_round"})):
             raise Hold("HOLD: HUMAN browser data is not canonical bounded aggregate")
+    stages = {"blocked_human", "needs_more_information",
+              "no_human_response", "responded_claimed"}
+    if (type(stage_counts) is not list or len(stage_counts) != rounds * 12 or
+        type(attention) is not list or len(attention) != 9):
+        raise Hold("HOLD: incomplete HUMAN status trend is not canonical")
+    count_keys = {"operator_ordered_round", "human_priority", "human_stage",
+                  "human_rows"}
+    for item in stage_counts:
+        if (type(item) is not dict or set(item) != count_keys or
+            item["human_priority"] not in allowed or
+            item["human_stage"] not in stages or
+            type(item["operator_ordered_round"]) is not int or
+            not 1 <= item["operator_ordered_round"] <= rounds or
+            type(item["human_rows"]) is not int or
+            not 0 <= item["human_rows"] <= 64):
+            raise Hold("HOLD: unexpected HUMAN status trend")
+    for item in attention:
+        if (type(item) is not dict or
+            set(item) != {"human_priority", "human_stage", "human_rows"} or
+            item["human_priority"] not in allowed or
+            item["human_stage"] not in
+            {"blocked_human", "needs_more_information", "no_human_response"} or
+            type(item["human_rows"]) is not int or
+            not 0 <= item["human_rows"] <= 64):
+            raise Hold("HOLD: unexpected HUMAN attention summary")
     def selector(name: str, selected: int) -> str:
         return "<select id='" + name + "'>" + "".join(
             "<option value='" + str(i) + "'" +
@@ -100,6 +134,21 @@ def build(rows: list[dict], rounds: int) -> bytes:
         str(item["reply_changed_rows"]) + "</td><td>" +
         str(item["next_question_changed_rows"]) + "</td></tr>"
         for item in rows)
+    trend_table = "".join(
+        "<tr data-stage-count='yes' data-round='" +
+        str(item["operator_ordered_round"]) +
+        "' data-priority='" + h(item["human_priority"]) +
+        "' data-stage='" + h(item["human_stage"]) +
+        "'><td>" + str(item["operator_ordered_round"]) + "</td><td>" +
+        h(item["human_priority"]) + "</td><td>" +
+        h(item["human_stage"]) + "</td><td>" +
+        str(item["human_rows"]) + "</td></tr>"
+        for item in stage_counts)
+    attention_table = "".join(
+        "<tr><td>" + h(item["human_priority"]) + "</td><td>" +
+        h(item["human_stage"]) + "</td><td>" +
+        str(item["human_rows"]) + "</td></tr>"
+        for item in attention)
     policy = ("default-src 'none'; style-src 'sha256-" + b64_sha(CSS) +
               "'; script-src 'sha256-" + b64_sha(JS) +
               "'; connect-src 'none'; img-src 'none'; font-src 'none'; " +
@@ -127,13 +176,33 @@ def build(rows: list[dict], rounds: int) -> bytes:
         "<option value='urgent'>Urgent</option>"
         "<option value='soon'>Soon</option>"
         "<option value='routine'>Routine</option>"
+        "</select></label>"
+        "<label>Filter stage history<select id='stage'>"
+        "<option value='all'>All HUMAN stages</option>"
+        "<option value='blocked_human'>Blocked (HUMAN)</option>"
+        "<option value='needs_more_information'>Needs more information</option>"
+        "<option value='no_human_response'>No HUMAN response</option>"
+        "<option value='responded_claimed'>Responded (claimed)</option>"
         "</select></label></div><p id='summary' role='status'></p>"
         "<p id='empty' hidden>No recorded HUMAN group selected.</p>"
         "<table><thead><tr><th>Selected rounds</th><th>Priority</th>"
         "<th>Original HUMAN rows</th><th>End-stage changed</th>"
         "<th>Interim stage reverted</th><th>Reply changed</th>"
         "<th>Follow-up changed</th></tr></thead><tbody>" +
-        table + "</tbody></table></section><section><h2>Interpretation</h2>"
+        table + "</tbody></table></section>"
+        "<section><h2>HUMAN stage history within selected interval</h2>"
+        "<p>The stage filter above applies here. Counts are self-reported; "
+        "no verified findings, consent or assignments.</p><table><thead><tr>"
+        "<th>Manually supplied round</th><th>Priority</th><th>HUMAN stage</th>"
+        "<th>Rows</th></tr></thead><tbody>" + trend_table +
+        "</tbody></table></section>"
+        "<section><h2>Latest HUMAN attention counts (no task dispatch)</h2>"
+        "<p>Blocked, unanswered, and needing information are self-reported "
+        "states, not independent verification. Displayed across all priorities "
+        "regardless of the selectors.</p><table><thead><tr><th>Priority</th>"
+        "<th>HUMAN stage</th><th>Rows</th></tr></thead><tbody>" +
+        attention_table + "</tbody></table></section>"
+        "<section><h2>Interpretation</h2>"
         "<p>End-stage changes are the difference between selected first/last "
         "round status. Interim reversion counts mean at least one intermediate "
         "status differed although the endpoint status returned to its starting "

@@ -208,7 +208,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     for item in interval_rows:
         intervals_writer.writerow([item[key] for key in interval_header])
     intervals_raw = intervals_out.getvalue().encode("utf-8")
-    interactive_html = build_browser(interval_rows, rounds)
+    interactive_html = build_browser(interval_rows, rounds, counts, attention)
     matrix_rows = "".join(
         "<tr><td>" + str(row["operator_ordered_round"]) + "</td><td>" +
         h(row["human_priority"]) + "</td><td>" + h(row["human_stage"]) +

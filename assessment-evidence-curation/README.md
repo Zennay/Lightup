@@ -528,6 +528,10 @@ owner-only **0600** files (current v3 format):
   offline browser, with pinned inline CSS/JS Content-Security-Policy. Pick any
   two manually ordered HUMAN rounds and a priority, see complete counts,
   including otherwise-hidden intermediate stage reversals and text-edit counts.
+  A second independent filter shows **per-stage, per-priority counts for every
+  round in the selected interval** (blocked, needs information, no response
+  or claimed response). A separate unfiltered latest-round HUMAN attention
+  board remains visible, even when a stage filter hides history rows.
   Never uploads, contacts a network, saves browser data, runs a scan or
   makes permissions, consent, task, remediation or real-time claims.
 - `PRIVATE-HUMAN-priority-round-portfolio-receipt.json`: original source,
