@@ -621,6 +621,8 @@
     if (window.confirm("Dit is een PRIVATE, ongetekend overzicht. Afdrukken kan lokale printsporen maken. Alleen op een vertrouwde printer doorgaan?")) window.print();
   });
   $("clear").addEventListener("click", () => {
+    // Do not let a pending async source/vault operation re-add or report against a cleared workspace.
+    if (processing) return status("HOLD: lokale bron-/vaultverwerking loopt nog. Wacht tot deze klaar is voordat je de werkruimte wist; er is niets gewist.", true);
     if (entries.length && !window.confirm("Alle niet-opgeslagen HUMAN-keuzes uit dit tabblad wissen? Eerder gedownloade privébestanden worden niet gewist.")) return;
     entries = []; invalidateUndo(); resetDrift(); $("sources").value = ""; $("receipt").value = ""; $("compare").value = "";
     $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
