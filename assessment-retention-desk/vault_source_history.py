@@ -13,7 +13,7 @@ import sys
 
 from history import Hold, MAX_FILES, publish_private
 from source_history import compose_history, render_html
-from vault_history import decrypt_vault, original_sources
+from vault_history import MAX_ENVELOPE_BYTES, decrypt_vault_bytes, original_sources, read_bounded_regular
 
 
 def password_for(position: int) -> str:
@@ -70,18 +70,35 @@ def main() -> int:
     try:
         source_sets = source_sets_for(args.source_files, len(args.vaults))
         plans = []
+        expected_sets = []
+        vault_bytes = []
         for index, (vault_path, source_paths) in enumerate(zip(args.vaults, source_sets), 1):
-            expected = original_sources(source_paths)
+            expected = original_sources(source_paths, owner_private=True)
+            raw_vault = read_bounded_regular(
+                vault_path, MAX_ENVELOPE_BYTES, owner_private=True
+            )
             password = password_for(index)
             try:
-                plan = decrypt_vault(vault_path, password)
+                plan = decrypt_vault_bytes(raw_vault, password)
             finally:
                 password = ""
             observed = {(digest, row["bytes"]) for digest, row in plan.items()}
             if observed != expected:
                 raise Hold("encrypted HUMAN plan does not match its own selected original source bytes")
             plans.append(plan)
-        report = render_html(compose_history(plans))
+            expected_sets.append(expected)
+            vault_bytes.append(raw_vault)
+        report = render_html(compose_history(plans), original_bytes_rehashed=True)
+        # Re-admit every original input immediately before publishing. A changed
+        # source set or vault refuses the complete report; no partial dossier.
+        for source_paths, expected in zip(source_sets, expected_sets):
+            if original_sources(source_paths, owner_private=True) != expected:
+                raise Hold("original source bytes changed before lineage publication")
+        for vault_path, expected_raw in zip(args.vaults, vault_bytes):
+            if read_bounded_regular(
+                vault_path, MAX_ENVELOPE_BYTES, owner_private=True
+            ) != expected_raw:
+                raise Hold("encrypted vault bytes changed before lineage publication")
         publish_private(args.output, report)
     except (Hold, OSError, ValueError, TypeError, MemoryError, RecursionError, UnicodeError):
         parser.exit(
