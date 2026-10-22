@@ -146,10 +146,18 @@ def run(args):
             if shared == output_abs or shared == parent:
                 raise Hold("output directory must be separate from both source trees")
         if args.verify_output:
-            if set(os.listdir(output_fd)) != set(files):
+            found = set(os.listdir(output_fd))
+            expected = set(files)
+            original_receipt = json.loads(files[SUMMARY])
+            # Historical v2 source-board packets predate the new PRIVATE slot-map CSV.
+            # Reopen that exact already-admitted v2 shape read-only; publishing NEW
+            # bundles still requires every current file and its exact source bytes.
+            legacy_v2 = (original_receipt["schema"] == "lightup.offline-manifest-combine.v2"
+                         and found == expected - {SLOT_MAP})
+            if found != expected and not legacy_v2:
                 raise Hold("existing combined output contains missing or extra files")
-            for name, contents in files.items():
-                if read_private_bundle_item(output_fd, name, FILES[name]) != contents:
+            for name in found:
+                if read_private_bundle_item(output_fd, name, FILES[name]) != files[name]:
                     raise Hold("combined output drifted from exact re-admitted private sources")
         else:
             if os.listdir(output_fd):
