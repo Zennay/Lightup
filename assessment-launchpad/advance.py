@@ -25,6 +25,7 @@ from compare_review import NAMES as DELTA_FILES, make_artifacts as delta_artifac
 from workspace import private_child
 from history import output_artifacts as history_artifacts
 from role_handoff import assemble as handoff_artifacts
+from role_return_receipt import admit_return
 
 ROUND = "human-round"
 EDITOR = "human-editor"
@@ -189,9 +190,12 @@ def main(argv=None):
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--output-dir", help="new EMPTY current-user-owned 0700 root")
     target.add_argument("--verify-workroom-dir", help="read-only reopen exact current workroom")
-    parser.add_argument("--responses", help="new owner-only mode-0600 HUMAN JSON (creation only)")
-    parser.add_argument("--interactive", action="store_true",
-                        help="edit the previous HUMAN round on a PRIVATE local TTY in memory")
+    reply_mode = parser.add_mutually_exclusive_group()
+    reply_mode.add_argument("--responses", help="private full HUMAN JSON (creation only)")
+    reply_mode.add_argument("--interactive", action="store_true",
+                            help="local terminal HUMAN reply")
+    reply_mode.add_argument("--role-return-dir",
+                            help="private two-file role return and source receipt")
     parser.add_argument("--handoff-role", choices=ROLES,
                         help="optionally include a voluntary PRIVATE role-selected HUMAN handoff")
     parser.add_argument("--handoff-stage", choices=("ALL", *STAGES), default="ALL",
@@ -203,8 +207,9 @@ def main(argv=None):
         if (args.handoff_stage != "ALL" or args.handoff_slot) and args.handoff_role is None:
             raise Hold("selected HUMAN stage/slot requires a selected HANDOFF role")
         if args.output_dir:
-            if bool(args.responses) == bool(args.interactive):
-                raise Hold("creation requires either --responses OR private --interactive HUMAN input")
+            if sum(bool(c) for c in (args.responses, args.interactive,
+                                     args.role_return_dir)) != 1:
+                raise Hold("creation requires exactly one HUMAN input method")
         elif args.responses or args.interactive:
             raise Hold("read-only reopen cannot import or edit HUMAN responses")
         original, endpoints, digest = read_original_bundle(args.bundle_dir)
@@ -223,7 +228,10 @@ def main(argv=None):
         try:
             if args.output_dir and os.listdir(root_fd):
                 raise Hold("new PRIVATE HUMAN next-round workspace must be empty")
-            for source in (original, previous_dir, *earlier_dirs):
+            sources = (original, previous_dir, *earlier_dirs)
+            if args.role_return_dir:
+                sources = (*sources, os.path.abspath(args.role_return_dir))
+            for source in sources:
                 if os.path.commonpath((source, root_path)) in (source, root_path):
                     raise Hold("next-round output must be separate from original inputs")
             if args.output_dir:
@@ -231,6 +239,11 @@ def main(argv=None):
                     # The original prior round stays unchanged even when a
                     # HUMAN operator edits several rows and then aborts.
                     after = interactive_review(copy.deepcopy(before))
+                elif args.role_return_dir:
+                    if not earlier_rounds:
+                        raise Hold("role return requires one earlier original HUMAN round")
+                    _, after = admit_return(args.role_return_dir,
+                                            [*earlier_rounds, before], endpoints, digest)
                 else:
                     response_parent = os.path.dirname(os.path.abspath(os.fspath(args.responses)))
                     if os.path.commonpath((response_parent, root_path)) in (response_parent, root_path):
@@ -246,8 +259,15 @@ def main(argv=None):
                                    for old_path in args.earlier_round_dir]
                 if renewed_earlier != list(zip(earlier_dirs, earlier_rounds)):
                     raise Hold("older HUMAN rounds changed before publication")
-                again = (after if args.interactive else
-                         load_json(require_private_file(args.responses)))
+                if args.interactive:
+                    again = after
+                elif args.role_return_dir:
+                    _, again = admit_return(
+                        args.role_return_dir,
+                        [*(entry for _, entry in renewed_earlier), renewed_before],
+                        renewed_endpoints, renewed_digest)
+                else:
+                    again = load_json(require_private_file(args.responses))
                 validate_worksheet(again, renewed_digest, len(renewed_endpoints))
                 if ((renewed, renewed_endpoints, renewed_digest, renewed_previous, renewed_before, again)
                         != (original, endpoints, digest, previous_dir, before, after)):

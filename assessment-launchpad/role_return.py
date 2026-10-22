@@ -22,6 +22,7 @@ from review_desk import ROLES, STAGES, read_original_bundle, require_private_fil
 from history import admitted_rounds
 from role_handoff import NAMES as HANDOFF_NAMES, LIMIT, assemble, select
 from role_return_browser import NAME as EDITOR, render_editor
+from role_return_receipt import CONTEXT_FILE, receipt, canonical
 
 TEMPLATE = "lightup-lab-human-role-return-template.csv"
 RESPONSE = "lightup-lab-human-role-return-private.json"
@@ -181,11 +182,11 @@ def main(argv=None):
                 else:
                     work = interactive_reply(rounds, indices)
                 validate_worksheet(work, digest, len(endpoints))
-                payload = (json.dumps(work, ensure_ascii=False, sort_keys=True,
-                                      separators=(",", ":")) + "\n").encode("utf-8")
+                payload = canonical(work)
                 if len(payload) > 65536:
                     raise Hold("new owner-private HUMAN worksheet exceeds bound")
-                files = [(RESPONSE, payload)]
+                files = [(RESPONSE, payload), (CONTEXT_FILE, receipt(
+                    rounds, endpoints, digest, args.role, args.stage, args.slot, payload))]
             else:
                 files = [(TEMPLATE, template), (EDITOR, render_editor(template)),
                          (GUIDE, return_guide(args.role, len(indices)))]
