@@ -43,18 +43,56 @@ APPS = {
 class Hold(Exception):
     pass
 
+def reject_symlink_components(path: Path) -> Path:
+    """Refuse path traversal through any existing symlink component."""
+    candidate = path.absolute()
+    for component in (*reversed(candidate.parents), candidate):
+        try:
+            info = component.lstat()
+        except OSError:
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            raise Hold("HOLD: symbolic-link path component refused")
+    return candidate
+
+
+def guard_command_paths(args: argparse.Namespace) -> None:
+    """Apply the same path-component rule to every native command input."""
+    paths: list[str] = []
+    if args.command == "prepare":
+        paths.extend(args.source)
+        paths.append(args.private_parent)
+    elif args.command == "human-workpack":
+        paths.extend([args.private_session, args.private_parent])
+        if args.human_csv:
+            paths.append(args.human_csv)
+    elif args.command == "workpack-progress":
+        paths.extend([args.private_session, args.private_parent, *args.workpack])
+    elif args.command == "workpack-continue":
+        paths.extend([args.private_session, args.from_workpack, args.private_parent])
+    elif args.command == "verify-kit":
+        paths.append(args.package)
+        if args.sha256_file:
+            paths.append(args.sha256_file)
+    for value in paths:
+        reject_symlink_components(Path(value))
+
+
 def read_safe(path: Path, ceiling: int) -> None:
+    path = reject_symlink_components(path)
     st = path.lstat()
     if not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode) or not 0 < st.st_size <= ceiling:
         raise Hold("HOLD: required original file absent, unsafe or over limit")
 
+
 def source(name: str) -> str:
-    path = Path(name).absolute()
+    path = reject_symlink_components(Path(name))
     read_safe(path, 8 * 1024 * 1024)
     return str(path)
 
+
 def parent_dir(name: str) -> Path:
-    path = Path(name).absolute()
+    path = reject_symlink_components(Path(name))
     st = path.lstat()
     if not stat.S_ISDIR(st.st_mode) or stat.S_ISLNK(st.st_mode):
         raise Hold("HOLD: parent must be an existing private ordinary directory")
@@ -307,6 +345,7 @@ def main() -> int:
         print("REVIEW_ONLY: no authority to execute, scan or release")
         return 0
     try:
+        guard_command_paths(args)
         if args.command == "verify-kit":
             return verify_package(
                 Path(args.package).absolute(), args.expected_sha256,
