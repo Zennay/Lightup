@@ -384,3 +384,52 @@ result, consent, grant, scan, dispatch, network action or release is made.
 This feature remains **DRAFT/HOLD** until the existing parent workbench and this exact child head receive all required CI, source-owner, independent security/privacy review and authorization gates. No QA/regression suites are added by this change.
 
 The private routing CSV is sorted first by fixed neutral role, then proposed-date bucket, planned date and local ordinals. Every text field comes from an exact schema-admitted fixed vocabulary or generic question; role labels are suggestions, not verified people or assignments. Imported source dates are planning claims, not actual deadlines. No client IDs, target URLs, filenames, hashes or HUMAN notes are included.
+
+
+## Source-scoped PRIVATE calendar and role-day overview (22 October 2026)
+
+The opt-in original `--private-calendar` now computes local calendar UIDs from
+canonical re-admitted **original agenda contents** plus the original source slot,
+the HUMAN role/stage, date and explicit planning reference day. Previously two
+distinct local portfolio sources with the same positional ordinals, role and
+date could generate colliding calendar UIDs even though their original agendas
+were different. Stable source-scoped UIDs avoid that accidental cross-agenda
+replacement. They are **not** signatures, grants, trusted source IDs, or proof
+that a meeting happened. Changing the original content may intentionally
+create a new UID; operators should review stale copies in calendar apps.
+
+For a compact manual staffing overview, add `--private-calendar-clusters`.
+It creates **one tentative, transparent all-day proposal per suggested neutral
+role and proposed review date**, containing only item counts, agenda-slot
+counts and non-authorizing generic text. It never sends invitations, writes to
+a calendar service, schedules alarms, authenticates the proposed role, books
+a meeting, proves a finding, or treats missing entries as completed work.
+Unscheduled HUMAN rows are kept in the original PRIVATE workroom and omitted
+from calendars, never assigned invented dates.
+
+```bash
+mkdir -m 700 /private/new-human-calendar-room
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --private-explorer \
+  --private-calendar \
+  --private-calendar-clusters \
+  --output-dir /private/new-human-calendar-room \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+Two separate opt-in local files are generated when both flags are selected:
+`assessment-portfolio-private-proposals.ics` (per original HUMAN item)
+and `assessment-portfolio-private-role-day.ics` (per date + neutral role).
+Both are original-source-derived, remain owner-private mode 0600 in the same
+0700 private room, and are checked byte-for-byte by the **same** command with
+`--verify-output-dir`. They are distinct views of the *same* HUMAN proposals:
+**do not import both into the same active calendar** unless intentional, or
+duplicate visual proposals may appear. The cluster view is not a replacement
+for source-by-source review and contains no actual calendar commitments.
+No networking, target contact, browser persistence, grants or active assessment.
+Original CI, independent source/privacy/security review, true separate current
+client/operator consent with action-time revocation and explicit HUMAN GO
+remain mandatory before any authorized live functionality. This draft stays
+INCUBATE M3/M7 PLAN/LAB ONLY and MUST NOT be deployed.
