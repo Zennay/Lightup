@@ -383,6 +383,17 @@ def inspect(args):
             or row["sha256"] != sha256(data)
         ):
             reject("PRIVATE HOLD: ZIP bytes disagree with manifest")
+    if getattr(args, "compare_source", False):
+        if selected_schema != SCHEMA:
+            print("PRIVATE HOLD: historical archive cannot match the current source allowlist.")
+            print("Archive schema: " + selected_schema + "; current schema: " + SCHEMA)
+            return 3
+        mismatches = [name for name in NAMES if content[name] != read_source(name)]
+        if mismatches:
+            print("PRIVATE HOLD: archive/source drift in allowlisted files: " + ", ".join(mismatches))
+            return 3
+        print("Current source parity: exact match for " + str(len(NAMES)) +
+              " allowlisted files (unsigned).")
     print("PRIVATE REVIEW_ONLY: software archive internal file hashes and schema match")
     if selected_schema != SCHEMA:
         print("HISTORICAL " + selected_schema.rsplit(".", 1)[-1] +
@@ -403,6 +414,8 @@ def main():
     check.add_argument("--archive", required=True)
     check.add_argument("--sha256-sidecar", action="store_true",
                        help="Require and verify the adjacent .sha256 sidecar")
+    check.add_argument("--compare-source", action="store_true",
+                       help="Require exact current source parity; HOLD on stale/historical archives")
     args = parser.parse_args()
     try:
         return build(args) if args.action == "build" else inspect(args)
