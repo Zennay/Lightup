@@ -410,3 +410,16 @@ nor CSV contains original endpoint URLs or human notes, but even selected
 role/slot combinations may identify people; keep printouts and CSV private.
 No reviewer is authenticated, no recipient sharing is performed, and no
 consent, scan, grant or HUMAN GO is inferred.
+
+### Original-source re-admission for selected HUMAN action CSV
+
+Do **not** mistake the browser-selected CSV for an authenticated reviewer
+reply. `action_handoff.py` optionally converts this private browser selection
+into a fresh, four-file original-source-bound PRIVATE native handoff after
+checking all selected rows and order against the exact original five-file
+Launchpad bundle, original operator-ordered HUMAN rounds and original selected
+role-return packets. No new grants, targets, scans or reviewer identities.
+See `ROLE_RECONCILIATION_GUIDE.md` for the complete create/reopen commands.
+The downloaded browser CSV must first be moved into a private `0700` folder
+and set to mode `0600`. All outputs remain private mode `0600`; missing or
+modified original source bytes keep the workflow in HOLD.

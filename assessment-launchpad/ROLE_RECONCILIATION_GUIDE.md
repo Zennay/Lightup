@@ -144,3 +144,54 @@ These are offline HUMAN-only source-consistency operations, never scans
 or authorized assessment dispatches. Separate recipients, client and
 operator consent, security/privacy review and explicit HUMAN GO are
 **not** satisfied by a matching local source receipt.
+
+## Re-admit a filtered browser CSV into an original-source-bound PRIVATE packet
+
+The browser's **Save displayed rows as PRIVATE CSV** is deliberately an
+*unsigned* local download, not a reviewer credential or review clearance.
+For a bounded separate native handoff, put it in an owner-owned `0700` folder,
+set the downloaded file to `0600`, and use the NEW `action_handoff.py` CLI.
+This command checks every chosen exact row and their original worklist order
+against all original Launchpad, HUMAN rounds and selected-role return packets.
+A fabricated row, altered original role/status/action, duplicate, reordering,
+noncanonical CSV bytes or cross-source selection is HOLD. It never accepts a
+browser CSV as original evidence or a scope grant.
+
+```sh
+mkdir -m 700 ~/private-selected-human-input ~/private-selected-human-output
+mv ~/Downloads/lightup-PRIVATE-human-actions-selected.csv ~/private-selected-human-input/
+chmod 600 ~/private-selected-human-input/lightup-PRIVATE-human-actions-selected.csv
+python3 assessment-launchpad/action_handoff.py \
+  --bundle-dir ~/private-lab-launchpad \
+  --round-dir ~/private-human-round-01 \
+  --round-dir ~/private-human-round-02 \
+  --role-return-dir ~/private-owner-return-security \
+  --role-return-dir ~/private-owner-return-privacy \
+  --selected-csv ~/private-selected-human-input/lightup-PRIVATE-human-actions-selected.csv \
+  --output-dir ~/private-selected-human-output
+```
+
+This publishes exactly four new owner-only `0600` artifacts: original-ordinal
+PRIVATE selected CSV, scriptless hash-CSP PRIVATE HTML, a fixed-vocabulary
+PRIVATE counts JSON with every authority/consent/release flag explicitly false,
+and a local private usage guide. No endpoint, note, recipient name, path or
+source digest is included; tiny cohort combinations may still identify people.
+The separate source and output folders must not overlap. No file is overwritten.
+To reopen **the exact same** source-bound four-file packet without writing:
+
+```sh
+python3 assessment-launchpad/action_handoff.py \
+  --bundle-dir ~/private-lab-launchpad \
+  --round-dir ~/private-human-round-01 \
+  --round-dir ~/private-human-round-02 \
+  --role-return-dir ~/private-owner-return-security \
+  --role-return-dir ~/private-owner-return-privacy \
+  --selected-csv ~/private-selected-human-input/lightup-PRIVATE-human-actions-selected.csv \
+  --verify-output-dir ~/private-selected-human-output
+```
+
+All original five-file, four-file and two-file source packets are freshly
+admitted during creation and read-only reopen; creation also re-admits source
+and selection immediately before publication. The source bytes and local
+hashes are **unsigned local consistency only**, not cryptographic proof of
+reviewer identity, tenant consent, secure sharing, assessment or HUMAN GO.
