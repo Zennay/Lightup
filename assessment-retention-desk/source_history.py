@@ -8,10 +8,15 @@ proves a source, person, chronology, legal hold, remediation, consent or release
 from __future__ import annotations
 
 import argparse
+import csv
+import hashlib
 import html
+import io
+import json
 import os
 import stat
 import sys
+import zipfile
 
 from history import (
     CLASSIFICATIONS,
@@ -244,12 +249,134 @@ security/privacy/consent gates independently.</p>
             .replace("__DETAIL_ROWS__", "".join(detail_rows)))
 
 
+MAX_BUNDLE_BYTES = 32 * 1024 * 1024
+BUNDLE_SCHEMA = "lightup.private_human_source_set_lineage.v1"
+BUNDLE_ROWS = (
+    "digest_prefix", "bytes", "plan_number", "presence", "status",
+    "review_date", "custodian_declared", "classification", "hold_flag",
+    "changed_fields",
+)
+
+
+def render_csv(history: dict) -> bytes:
+    """Create a flat, source-minimal table; no paths, aliases or free-text fields."""
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\\n")
+    writer.writerow((
+        "plan_number", "source_sha256_prefix", "source_bytes", "membership_observation",
+        "human_stage", "proposed_review_date", "custodian_declared",
+        "human_sensitivity", "human_hold_declaration", "changed_human_field_names",
+    ))
+    for item in history["source_plan_rows"]:
+        writer.writerow((
+            item["plan_number"], item["digest_prefix"], item["bytes"], item["presence"],
+            STAGES.get(item["status"], ""), item["review_date"] or "",
+            "" if item["custodian_declared"] is None else str(item["custodian_declared"]).lower(),
+            CLASSIFICATIONS.get(item["classification"], ""),
+            HOLD_FLAGS.get(item["hold_flag"], ""),
+            ";".join(item["changed_fields"]),
+        ))
+    return output.getvalue().encode("utf-8")
+
+
+def render_json(history: dict, *, original_bytes_rehashed: bool = False) -> bytes:
+    """Export only enum/date/prefix/count metadata, never original free text or full digests."""
+    boundary = (
+        "ORIGINAL_SOURCE_BYTES_REHASHED_PER_SNAPSHOT"
+        if original_bytes_rehashed else "PLAN_DECLARATIONS_ONLY"
+    )
+    rows = [{key: row[key] for key in BUNDLE_ROWS}
+            for row in history["source_plan_rows"]]
+    document = {
+        "schema": BUNDLE_SCHEMA,
+        "status": "REVIEW_ONLY",
+        "evidence_boundary": boundary,
+        "manual_plan_order": True,
+        "chronology_authenticated": False,
+        "source_identity_authenticated": False,
+        "authorization_granted": False,
+        "consent_verified": False,
+        "remediation_proven": False,
+        "release_allowed": False,
+        "plan_count": history["plan_count"],
+        "source_union_count": history["source_union_count"],
+        "plan_summaries": history["plan_summaries"],
+        "source_plan_rows": rows,
+    }
+    return (json.dumps(
+        document, sort_keys=True, ensure_ascii=True, separators=(",", ":")
+    ) + "\\n").encode("utf-8")
+
+
+def render_bundle(history: dict, *, original_bytes_rehashed: bool = False) -> bytes:
+    """Create one bounded, deterministic, private ZIP with HTML, CSV, JSON and caveats."""
+    artifacts = [
+        ("source-set-lineage.html", render_html(
+            history, original_bytes_rehashed=original_bytes_rehashed
+        ).encode("utf-8")),
+        ("source-set-lineage.csv", render_csv(history)),
+        ("source-set-lineage.json", render_json(
+            history, original_bytes_rehashed=original_bytes_rehashed
+        )),
+        ("README.txt", (
+            "LIGHTUP PRIVATE HUMAN SOURCE-SET LINEAGE BUNDLE\\n"
+            "REVIEW_ONLY / HOLD — INCUBATE M3/M7 PLAN/LAB ONLY.\\n\\n"
+            "The HTML is scriptless. CSV and JSON include only private digest prefixes, byte sizes, "
+            "manually ordered plan numbers, membership observations, HUMAN enum/date metadata and "
+            "changed field names. No source paths, aliases, free-text actions, full source digests "
+            "or original source contents are included.\\n\\n"
+            "Evidence boundary: " + (
+                "original bytes were re-hashed separately for every encrypted plan and their complete "
+                "digest/size sets matched locally. This does not authenticate external identity."
+                if original_bytes_rehashed else
+                "source digest/size values are declarations from the selected plan receipts; original "
+                "assets were not re-opened by this workflow."
+            ) + "\\n"
+            "Plan order is manually selected, not authenticated chronology. Missing from a snapshot "
+            "does not mean deletion, remediation, revocation or clearance. Nothing in this bundle "
+            "proves a person, consent, legal retention, source identity, authorization or release. "
+            "No assessment, scan, client contact or other action is performed.\\n\\n"
+            "This bundle and its reports are sensitive and unsigned. The included manifest hashes "
+            "check local artifact byte integrity only; they are not signatures or provenance. Keep "
+            "the bundle in owner-private storage.\\n"
+        ).encode("utf-8")),
+    ]
+    manifest = [
+        "LIGHTUP PRIVATE REPORT ARTIFACT MANIFEST",
+        "UNSIGNED — local artifact integrity only; not source provenance or authorization.",
+    ]
+    for name, raw in artifacts:
+        manifest.append(hashlib.sha256(raw).hexdigest() + "  " + name)
+    artifacts.append(("MANIFEST.txt", ("\\n".join(manifest) + "\\n").encode("utf-8")))
+
+    buffer = io.BytesIO()
+    try:
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED,
+                             compresslevel=9, strict_timestamps=True) as archive:
+            for name, raw in artifacts:
+                info = zipfile.ZipInfo(name, date_time=(2026, 10, 22, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | 0o600) << 16
+                archive.writestr(info, raw, compress_type=zipfile.ZIP_DEFLATED,
+                                 compresslevel=9)
+    except (OSError, ValueError, RuntimeError, zipfile.BadZipFile) as exc:
+        raise Hold("private lineage bundle could not be composed") from exc
+    raw_bundle = buffer.getvalue()
+    if not 1 <= len(raw_bundle) <= MAX_BUNDLE_BYTES:
+        raise Hold("private lineage bundle exceeds the bounded archive size")
+    return raw_bundle
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Compare 2–12 PRIVATE HUMAN plans with changing source membership; read-only"
     )
-    parser.add_argument("--output", required=True,
-                        help="New HTML report inside an existing owner-private 0700 directory")
+    outputs = parser.add_mutually_exclusive_group(required=True)
+    outputs.add_argument("--output",
+                         help="New HTML report inside an existing owner-owned 0700 directory")
+    outputs.add_argument("--bundle-output",
+                         help="New private ZIP containing scriptless HTML, CSV, JSON and caveats")
     parser.add_argument("plans", nargs="+",
                         help="2–12 owner-private HUMAN plan JSON files in manually chosen order")
     args = parser.parse_args()
@@ -257,8 +384,11 @@ def main() -> int:
         parser.error("two to twelve original HUMAN plan files required")
     try:
         plans = [read_private_plan(path) for path in args.plans]
-        report = render_html(compose_history(plans))
-        publish_private(args.output, report)
+        history = compose_history(plans)
+        if args.bundle_output:
+            publish_private(args.bundle_output, render_bundle(history))
+        else:
+            publish_private(args.output, render_html(history))
     except (Hold, OSError, ValueError, TypeError, MemoryError, RecursionError, UnicodeError) as exc:
         parser.exit(2, "HOLD: PRIVATE source-set lineage not admitted; no report published.\n")
     print("REVIEW_ONLY: PRIVATE HUMAN source-set lineage report created; no authority or release.")
