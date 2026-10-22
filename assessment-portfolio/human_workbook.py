@@ -666,6 +666,204 @@ def render_private_comparison_html(previous, current, reference_date):
     return content.encode("utf-8")
 
 
+def human_timeline(rounds, reference_date):
+    """Summarize 2–8 operator-ordered PRIVATE HUMAN rounds without claiming chronology."""
+    if not isinstance(rounds, list) or not 2 <= len(rounds) <= 8:
+        raise Hold("HUMAN timeline requires 2–8 separately admitted rounds")
+    first = rounds[0]
+    expected = [
+        (item["agenda_slot"], item["source_slot"], item["source_stage"])
+        for item in first
+    ]
+    for entries in rounds:
+        if len(entries) != len(first):
+            raise Hold("HUMAN timeline rounds do not have the same admitted rows")
+        observed = [
+            (item["agenda_slot"], item["source_slot"], item["source_stage"])
+            for item in entries
+        ]
+        if observed != expected:
+            raise Hold("HUMAN timeline source ordinals or original stages differ")
+
+    row_views = []
+    for row_index, base in enumerate(first):
+        round_views = []
+        for round_index, entries in enumerate(rounds):
+            item = entries[row_index]
+            previous = rounds[round_index - 1][row_index] if round_index else None
+            status_changed = bool(previous is not None and
+                                  previous["human_status"] != item["human_status"])
+            role_changed = bool(previous is not None and
+                                previous["proposed_role"] != item["proposed_role"])
+            note_changed = bool(previous is not None and previous["note"] != item["note"])
+            round_views.append({
+                "round_ordinal": round_index + 1,
+                "human_status": item["human_status"],
+                "proposed_role": item["proposed_role"],
+                "changed_since_previous": status_changed or role_changed or note_changed,
+                "status_changed": status_changed,
+                "role_changed": role_changed,
+                "private_note_changed": note_changed,
+            })
+        row_views.append({
+            "agenda_slot": base["agenda_slot"],
+            "source_slot": base["source_slot"],
+            "original_stage": base["source_stage"],
+            "rounds": round_views,
+        })
+
+    round_summaries = []
+    transitions = []
+    for round_index, entries in enumerate(rounds):
+        status_counts = {value: 0 for value in STATUS}
+        role_counts = {value: 0 for value in ROLES}
+        for item in entries:
+            status_counts[item["human_status"]] += 1
+            role_counts[item["proposed_role"]] += 1
+        changed_rows = status_changes = role_changes = note_changes = 0
+        if round_index:
+            previous_entries = rounds[round_index - 1]
+            status_transitions = {
+                old_status: {new_status: 0 for new_status in STATUS}
+                for old_status in STATUS
+            }
+            for old, new in zip(previous_entries, entries):
+                status_changed = old["human_status"] != new["human_status"]
+                role_changed = old["proposed_role"] != new["proposed_role"]
+                note_changed = old["note"] != new["note"]
+                status_changes += status_changed
+                role_changes += role_changed
+                note_changes += note_changed
+                changed_rows += bool(status_changed or role_changed or note_changed)
+                status_transitions[old["human_status"]][new["human_status"]] += 1
+            transitions.append({
+                "from_round": round_index,
+                "to_round": round_index + 1,
+                "changed_human_rows": changed_rows,
+                "human_status_changes": status_changes,
+                "proposed_role_changes": role_changes,
+                "private_note_changes": note_changes,
+                "human_status_transition_counts": status_transitions,
+            })
+        round_summaries.append({
+            "round_ordinal": round_index + 1,
+            "row_count": len(entries),
+            "human_status_counts": status_counts,
+            "proposed_role_counts": role_counts,
+            "changed_human_rows_since_previous": changed_rows,
+        })
+
+    return {
+        "schema": "lightup.assessment_portfolio_human_timeline.v1",
+        "status": "PRIVATE_HUMAN_DISCUSSION_ONLY",
+        "reference_date": reference_date,
+        "row_count": len(first),
+        "round_count": len(rounds),
+        "round_order_is_operator_supplied_not_chronology": True,
+        "round_summaries": round_summaries,
+        "transitions": transitions,
+        "rows": row_views,
+        "private_not_anonymous": True,
+        "planning_not_permission": True,
+        **{key: False for key in AUTHORITY_FLAGS},
+    }
+
+
+def render_private_timeline_json(rounds, reference_date):
+    """PRIVATE ordinal-level multi-round timeline; no notes or source identifiers."""
+    return (json.dumps(
+        human_timeline(rounds, reference_date), indent=2, ensure_ascii=False
+    ) + "\n").encode("utf-8")
+
+
+def render_private_timeline_csv(rounds, reference_date):
+    summary = human_timeline(rounds, reference_date)
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\r\n")
+    writer.writerow((
+        "agenda_slot", "source_slot", "original_stage", "round_ordinal",
+        "human_status", "proposed_role", "changed_since_previous",
+        "status_changed", "role_changed", "private_note_changed",
+        "authority_status",
+    ))
+    for row in summary["rows"]:
+        for item in row["rounds"]:
+            writer.writerow((
+                row["agenda_slot"], row["source_slot"], row["original_stage"],
+                item["round_ordinal"], item["human_status"], item["proposed_role"],
+                str(item["changed_since_previous"]).lower(),
+                str(item["status_changed"]).lower(), str(item["role_changed"]).lower(),
+                str(item["private_note_changed"]).lower(), "REVIEW_ONLY",
+            ))
+    return output.getvalue().encode("utf-8")
+
+
+def render_private_timeline_html(rounds, reference_date):
+    summary = human_timeline(rounds, reference_date)
+    header = "".join("<th>Round " + str(index + 1) + "</th>"
+                     for index in range(summary["round_count"]))
+    table_rows = []
+    for row in summary["rows"]:
+        cells = [
+            "<td>A" + str(row["agenda_slot"]).zfill(2) + " / S" +
+            str(row["source_slot"]).zfill(2) + "</td>",
+            "<td>" + escape(row["original_stage"]) + "</td>",
+        ]
+        for item in row["rounds"]:
+            flags = []
+            if item["status_changed"]:
+                flags.append("stage changed")
+            if item["role_changed"]:
+                flags.append("role changed")
+            if item["private_note_changed"]:
+                flags.append("private note changed")
+            detail = " · " + ", ".join(flags) if flags else ""
+            cells.append(
+                "<td>" + escape(item["human_status"]) + "<br>Role: " +
+                escape(item["proposed_role"]) + detail + "</td>"
+            )
+        table_rows.append("<tr>" + "".join(cells) + "</tr>")
+    transition_rows = []
+    for item in summary["transitions"]:
+        transition_rows.append(
+            "<tr><td>Round " + str(item["from_round"]) + " → " +
+            str(item["to_round"]) + "</td><td>" +
+            str(item["changed_human_rows"]) + "</td><td>" +
+            str(item["human_status_changes"]) + "</td><td>" +
+            str(item["proposed_role_changes"]) + "</td><td>" +
+            str(item["private_note_changes"]) + "</td></tr>"
+        )
+    if not transition_rows:
+        transition_rows.append("<tr><td colspan='5'>No round transitions.</td></tr>")
+    content = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "
+        "script-src 'none'; style-src 'none'; connect-src 'none'; img-src 'none'; "
+        "form-action 'none'; base-uri 'none'\">"
+        "<title>PRIVATE HUMAN multi-round timeline</title></head><body>"
+        "<header><h1>PRIVATE HUMAN multi-round timeline</h1>"
+        "<p><strong>INCUBATE / PLAN-LAB ONLY / DRAFT-HOLD / NO AUTHORIZATION / NO SCAN</strong></p>"
+        "<p>Reference day: " + escape(reference_date) + ". " +
+        str(summary["round_count"]) + " rounds in manually supplied order. "
+        "This order is not authenticated chronology; no note contents, source identifiers "
+        "or targets are included. Small-cell counts and ordinals remain PRIVATE.</p></header>"
+        "<section><h2>Adjacent-round changes</h2><table border='1'><thead><tr>"
+        "<th>Operator-supplied transition</th><th>Rows with any HUMAN field change</th>"
+        "<th>Status changes</th><th>Proposed-role changes</th><th>Private-note changes</th>"
+        "</tr></thead><tbody>" + "".join(transition_rows) + "</tbody></table></section>"
+        "<section><h2>Source-ordinal timeline</h2><div><table border='1'><thead><tr>"
+        "<th>Original ordinal</th><th>Original stage</th>" + header +
+        "</tr></thead><tbody>" + "".join(table_rows) + "</tbody></table></div></section>"
+        "<footer><p>PRIVATE local planning only. A status, role, or note change does not "
+        "prove identity, consent, finding remediation, completion, chronology or permission. "
+        "No network, scan, grant, dispatch or release operation occurs.</p></footer>"
+        "</body></html>"
+    )
+    return content.encode("utf-8")
+
+
 PRIVATE_LABELS = {
     "assessment-portfolio-private.html": "Original PRIVATE cross-agenda human planning",
     "assessment-portfolio-private-routing.csv": "Original PRIVATE ordinal routing CSV",
@@ -687,6 +885,9 @@ PRIVATE_LABELS = {
     "assessment-portfolio-private-HUMAN-summary.json": "PRIVATE HUMAN status/role rollup",
     "assessment-portfolio-private-HUMAN-delta.html": "PRIVATE comparison of two human-selected discussion rounds",
     "assessment-portfolio-private-HUMAN-delta.json": "PRIVATE ordinal-level discussion change details",
+    "assessment-portfolio-private-HUMAN-timeline.html": "PRIVATE multi-round HUMAN discussion timeline",
+    "assessment-portfolio-private-HUMAN-timeline.json": "PRIVATE source-ordinal multi-round HUMAN history",
+    "assessment-portfolio-private-HUMAN-timeline.csv": "PRIVATE source-ordinal per-round HUMAN spreadsheet",
 }
 
 
