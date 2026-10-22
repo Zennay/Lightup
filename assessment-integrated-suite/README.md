@@ -1535,8 +1535,13 @@ python3 assessment-integrated-suite/package_offline.py \
   --output /path/to/NEW-software-only-kit.zip
 ~~~
 
-The output must not already exist. This command reads a fixed source-only list
-and cannot invoke any scan, model, network, customer ingestion or auto-publish.
+The output must not already exist. Before the ZIP is retained, the builder
+runs the native offline verifier against the completed archive and the same
+checkout's source-bound software files. Missing, changed or stale source files
+cause HOLD and the incomplete output is removed. This is a package-integrity
+step, not source authenticity or release approval. The command reads a fixed
+source-only list and cannot invoke any scan, model, network, customer ingestion
+or auto-publish.
 
 ## Offline original lab benchmark comparison, scenario/cohort HUMAN workroom
 
