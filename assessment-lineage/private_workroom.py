@@ -259,6 +259,49 @@ def private_receipt(catalog: bytes, reports: list[bytes], draft: bytes | None,
     return (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
 
 
+def private_source_board(receipt_bytes: bytes) -> bytes:
+    """Human-readable PRIVATE source-slot inventory, with no original raw input.
+
+    All displayed variable content is locally computed lower-case ASCII hex or
+    bounded integer slot ordinals. This is an unsigned continuity aid only.
+    """
+    receipt = json.loads(receipt_bytes.decode("utf-8"))
+    rows = [
+        ("Original private Lab Studio catalog", receipt["catalog_sha256"]),
+        *[(f"Original finished comparator source slot {idx:02d}", digest)
+          for idx, digest in enumerate(receipt["reports_sha256"], 1)],
+        ("Original private HUMAN draft", receipt["human_draft_sha256"] or "NOT INCLUDED"),
+        ("Generated PRIVATE workroom HTML", receipt["workroom_sha256"]),
+    ]
+    cells = "\n".join(
+        f"<tr><th scope=\"row\">{label}</th><td><code>{digest}</code></td></tr>"
+        for label, digest in rows
+    )
+    page = (
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<meta http-equiv=\"Content-Security-Policy\" content=\""
+        "default-src 'none'; base-uri 'none'; form-action 'none'; "
+        "connect-src 'none'; img-src 'none'; style-src 'none'; script-src 'none'\">"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        "<title>LightUp PRIVATE original-source inventory — REVIEW ONLY</title>"
+        "</head><body><main><h1>PRIVATE original-source inventory</h1>"
+        "<p><strong>HOLD · unsigned original data · HUMAN review only.</strong> "
+        "Not source identity, scope approval, consent, remediation, release or HUMAN GO.</p>"
+        "<p>Exactly " + str(receipt["report_count"]) + " human-ordered completed source slots. "
+        "Slot order is selected by the human operator, not authenticated chronology.</p>"
+        "<table border=\"1\"><caption>Confidential source-byte SHA-256 fingerprints</caption>"
+        "<thead><tr><th scope=\"col\">Original source slot</th><th scope=\"col\">"
+        "PRIVATE local byte digest (not a signature)</th></tr></thead><tbody>"
+        + cells + "</tbody></table>"
+        "<p>These SHA-256 values are sensitive source correlation data. "
+        "Keep this file owner-private 0600 in its 0700 directory; do not publish "
+        "or forward as an anonymous handoff. A matching hash does not prove "
+        "authorship, client/operator identity, permission, or an authentic finding.</p>"
+        "</main></body></html>\n"
+    )
+    return page.encode("utf-8")
+
+
 def read_private_report_selection(path: Path) -> list[Path]:
     """Admit an explicit operator-owned report ordering without target access."""
     raw = read_private(path, 16_384)
@@ -299,7 +342,11 @@ def main(argv: list[str]) -> int:
                         help="Re-admit original inputs and exactly reopen the existing PRIVATE HTML without writes")
     parser.add_argument("--private-receipt", action="store_true",
                         help="Also create or read-only reopen an owner-private byte-bound JSON source receipt")
+    parser.add_argument("--private-source-board", action="store_true",
+                        help="With --private-receipt, create/reopen a scriptless PRIVATE source-fingerprint table")
     args = parser.parse_args(argv)
+    if args.private_source_board and not args.private_receipt:
+        fail()
     if bool(args.report) == bool(args.reports_file):
         fail()
     report_paths = read_private_report_selection(args.reports_file) if args.reports_file else args.report
@@ -348,7 +395,15 @@ def main(argv: list[str]) -> int:
             os.path.realpath(source_path) for source_path in input_files
         }):
             fail()
-        outputs.append((receipt_path.name, private_receipt(catalog, reports, draft, private_html)))
+        receipt_bytes = private_receipt(catalog, reports, draft, private_html)
+        outputs.append((receipt_path.name, receipt_bytes))
+        if args.private_source_board:
+            board_path = output.with_suffix(".private-lineage-source-board.html")
+            if os.path.realpath(board_path) in {
+                os.path.realpath(source_path) for source_path in input_files
+            }:
+                fail()
+            outputs.append((board_path.name, private_source_board(receipt_bytes)))
     parent_fd, _ = open_parent_nofollow(output)
     created_names: list[str] = []
     try:
@@ -390,6 +445,8 @@ def main(argv: list[str]) -> int:
     print("PRIVATE offline HTML workroom created (original inputs unchanged).")
     if args.private_receipt:
         print("PRIVATE unsigned source-byte receipt created; NOT source authenticity or authority.")
+        if args.private_source_board:
+            print("PRIVATE scriptless source-slot board created; HOLD and local review only.")
     print("Not a scan, consent, authorization or production release.")
     return 0
 
