@@ -976,6 +976,14 @@ def read_private_agenda_manifest(path):
     return absolute, paths
 
 
+def read_private_human_history_manifest(path):
+    """Read a private ordered list of original-bound HUMAN response paths."""
+    absolute, paths = read_private_agenda_manifest(path)
+    if not 2 <= len(paths) <= 8:
+        raise Hold("HUMAN history list must contain 2–8 response paths")
+    return absolute, paths
+
+
 def run(args):
     if not hasattr(os, "O_NOFOLLOW"):
         raise Hold("platform lacks no-follow file support")
@@ -1006,23 +1014,33 @@ def run(args):
     selected_agendas = args.agendas
     if args.agendas_file:
         manifest_path, selected_agendas = read_private_agenda_manifest(args.agendas_file)
+    history_manifest_path = None
+    history_paths = args.human_history
+    if args.human_history_file:
+        if args.human_history:
+            raise Hold("choose --human-history or --human-history-file, not both")
+        history_manifest_path, history_paths = read_private_human_history_manifest(
+            args.human_history_file
+        )
     if not 2 <= len(selected_agendas) <= MAX_AGENDAS:
         raise Hold("select 2–12 original private agenda exports")
     admitted = [read_private_agenda(path) for path in selected_agendas]
     documents, rows, source_dirs = collect(admitted, reference_day)
     if manifest_path:
         source_dirs.add(os.path.dirname(manifest_path))
-    if args.human_history:
+    if history_paths:
         if args.human_responses or args.previous_human_responses:
             raise Hold("choose multi-round HUMAN history or pairwise HUMAN inputs, not both")
-        if not 2 <= len(args.human_history) <= 8:
+        if not 2 <= len(history_paths) <= 8:
             raise Hold("HUMAN history requires 2–8 separately saved rounds")
-        history_paths = [os.path.abspath(path) for path in args.human_history]
+        history_paths = [os.path.abspath(path) for path in history_paths]
         if len(set(history_paths)) != len(history_paths):
             raise Hold("HUMAN history paths must be unique and manually ordered")
-        # Every response room is private source input and must remain separate from output.
+        # Every response room and optional private path list remain separate from output.
         for path in history_paths:
             source_dirs.add(os.path.dirname(path))
+        if history_manifest_path:
+            source_dirs.add(os.path.dirname(history_manifest_path))
     else:
         if args.previous_human_responses and not args.human_responses:
             raise Hold("HUMAN comparison requires a current response source")
@@ -1133,6 +1151,12 @@ def run(args):
             _, reopened_paths = read_private_agenda_manifest(manifest_path)
             if reopened_paths != selected_agendas:
                 raise Hold("private selection list changed before publication")
+        if history_manifest_path:
+            _, reopened_history_paths = read_private_human_history_manifest(
+                history_manifest_path
+            )
+            if reopened_history_paths != history_paths:
+                raise Hold("private HUMAN history list changed before publication")
         if args.verify_output_dir:
             verify_existing_bundle(output_fd, outputs)
         else:
@@ -1197,6 +1221,8 @@ def main(argv=None):
                         help="Second earlier operator-selected PRIVATE HUMAN response for local delta (requires --human-responses)")
     parser.add_argument("--human-history", action="append", default=[], metavar="PRIVATE_HUMAN_JSON",
                         help="One owner-private 0600 source-bound HUMAN response; repeat 2–8 times in manual comparison order")
+    parser.add_argument("--human-history-file",
+                        help="Owner-private mode-0600 LF-delimited list of 2–8 absolute HUMAN response paths in manual order")
     parser.add_argument("--agendas-file", help="Owner-private mode-0600 LF-delimited list of 2–12 absolute agenda paths")
     parser.add_argument("agendas", nargs="*", help="2–12 original private JSON agenda exports (or use --agendas-file)")
     args = parser.parse_args(argv)
