@@ -19,14 +19,15 @@ deployment artifact.
 
 ## Native path safety
 
-The native suite now rejects an existing symbolic link anywhere in the path
-chain for source files, private output parents, saved HUMAN sessions/workpacks,
-and software-package or digest-sidecar inputs. This is a fail-closed preflight:
-use ordinary directories and regular files, with private output parents owned
-by the current user and restricted to mode 0700. A symlink refusal does not
-inspect or change the linked target. This check is not a race-free guarantee
-against a concurrent filesystem change, and does not establish source
-authenticity, authorization, consent or release readiness.
+The native suite and the standalone native ZIP verifier reject an existing
+symbolic link anywhere in the path chain for source files, private output
+parents, saved HUMAN sessions/workpacks, and software-package or digest-sidecar
+inputs. This is a fail-closed preflight: use ordinary directories and regular
+files, with private output parents owned by the current user and restricted to
+mode 0700. A symlink refusal does not inspect or change the linked target.
+This check is not a race-free guarantee against a concurrent filesystem change,
+and does not establish source authenticity, authorization, consent or release
+readiness.
 
 ## Previous portable software bundle — v27
 
