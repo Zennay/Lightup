@@ -430,7 +430,7 @@
       renderSourceManifest();
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
       drawQueue();renderAgenda();
-      for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics","pairChurn","pairChurnSummary","conflictTable","conflictSummary"])$(id).innerHTML="";
+      for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics","pairChurn","pairChurnSummary","conflictTable","conflictSummary","conflictMetricSummary"])$(id).innerHTML="";
       $("conflictCandidate").innerHTML="<option value=\"all\">Load reports first</option>";
       $("caseSelect").innerHTML='<option value="">Load reports first</option>';
       return;
@@ -510,6 +510,17 @@
       case_count:rows.length,
       cases_with_label_disagreement:rows.filter(row=>row.disagreements.length).length,
       cases_with_any_source_adverse_label:rows.filter(row=>row.adverseByCandidate.length).length,
+      metric_disagreement_counts:NAMES.map(name=>({
+        metric:name,
+        cases_with_any_source_adverse_label:rows.filter(row=>row.candidates.some(candidate=>candidate.item.metrics[name].regression)).length,
+        cases_with_cross_candidate_label_disagreement:rows.filter(row=>row.disagreements.some(item=>item.metric===name)).length,
+        source_adverse_case_counts_by_candidate:reports.map((_,i)=>({
+          candidate_slot:i+1,
+          case_count:rows.filter(row=>row.candidates[i].item.metrics[name].regression).length
+        })),
+        source_identity_authenticated:false,
+        ...fixedFlags()
+      })),
       cases:rows.map(row=>({
         case_ordinal:row.ordinal,
         source_adverse_metrics_by_candidate:row.adverseByCandidate.map(item=>({
@@ -553,6 +564,15 @@
     });
     const adverseCases=allRows.filter(row=>row.adverseByCandidate.length).length;
     const disagreementCases=allRows.filter(row=>row.disagreements.length).length;
+    $("conflictMetricSummary").innerHTML=table([
+      "Metric","Cases with any source-adverse label","Cases with cross-candidate label disagreement",
+      ...reports.map((_,i)=>"Candidate "+(i+1)+" · adverse cases")
+    ],NAMES.map(name=>{
+      const adverse=allRows.filter(row=>row.candidates.some(candidate=>candidate.item.metrics[name].regression)).length;
+      const disagreements=allRows.filter(row=>row.disagreements.some(item=>item.metric===name)).length;
+      return [nice(name),adverse,disagreements,
+        ...reports.map((_,i)=>allRows.filter(row=>row.candidates[i].item.metrics[name].regression).length)];
+    }));
     $("conflictSummary").textContent=shown.length+" of "+allRows.length+" anonymous cases shown · "+
       disagreementCases+" with cross-candidate source-label disagreements · "+adverseCases+
       " with at least one source-adverse label. Candidate slot order is manual file-selection order, not verified chronology.";
@@ -871,6 +891,15 @@
       table(["Original metric","Only first","Only second","Both","Neither"],
         crossover.metrics.map(r=>[nice(r.name),r.only_first,r.only_second,r.both,r.neither])):"";
     const conflictData=scenarioConflictExport();
+    const conflictMetricTable="<h2>Metric-level disagreement summary</h2>"+
+      "<p>Counts cover all imported anonymous cases and are independent of the on-screen filters.</p>"+
+      table(["Metric","Cases with any source-adverse label","Cases with cross-candidate label disagreement",
+        ...reports.map((_,i)=>"Candidate "+(i+1)+" · adverse cases")],
+        conflictData.metric_disagreement_counts.map(item=>[
+          nice(item.metric),item.cases_with_any_source_adverse_label,
+          item.cases_with_cross_candidate_label_disagreement,
+          ...item.source_adverse_case_counts_by_candidate.map(candidate=>candidate.case_count)
+        ]));
     const conflictTable="<h2>Scenario-level source-label disagreement review</h2>"+
       "<p>Anonymous case ordinals only. Different labels are a human reconciliation prompt, not proof that any candidate is correct.</p>"+
       table(["Case","Source-adverse metrics by candidate","Disagreeing metric labels"],
@@ -937,7 +966,7 @@
       "Dispatch allowed: false. Release allowed: false.</p>"+
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
-      advisory+conflictTable+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
+      advisory+conflictMetricTable+conflictTable+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
       agendaTable+crossoverTable+pairNumericTable+reviewHistorySection+currentDiscussionSection+
       "<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
