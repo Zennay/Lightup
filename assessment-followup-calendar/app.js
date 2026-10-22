@@ -36,7 +36,7 @@
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   let conflictProposal=null;
   let lastIcsSequence=0;
-  let recipientPage=0;
+  let recipientPage=0,recipientGroupPage=0,recipientGroupFocus=null;
   let recipientProposal=null;
   let recipientSelection=new Set();
   let recipientUndo=null;
@@ -177,20 +177,23 @@
   }
   function clearRecipientWorkspace(){
     recipientPreferenceSource="";recipientPolicyDirty=false;recipientPage=0;
+    recipientGroupPage=0;recipientGroupFocus=null;
     recipientProposal=null;recipientSelection.clear();recipientUndo=null;
     $("recipientZone").value="";$("recipientStart").value="09:00";
     $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
     $("recipientBlackouts").value="";
     $("recipientView").value="all";$("recipientQuery").value="";
     $("recipientPolicyImport").value="";
-    for(const id of ["recipientRows","recipientProposalRows"])
+    for(const id of ["recipientRows","recipientProposalRows","recipientGroupRows"])
       $(id).replaceChildren();
     $("recipientSummary").textContent="No PRIVATE HUMAN worksheet or alternate recipient zone loaded.";
     $("recipientRemainder").textContent="";
+    $("recipientGroupSummary").textContent="No HUMAN group preview loaded.";
     $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
     $("recipientPolicyStatus").textContent="Recipient preference not loaded; this is not authenticated availability.";
     for(const id of ["recipientExport","recipientPolicyExport",
-      "recipientPrev","recipientNext","recipientApply",
+      "recipientPrev","recipientNext","recipientGroupPrev","recipientGroupNext",
+      "recipientGroupClear","recipientApply",
       "recipientProposalExport","recipientProposalPrint","recipientUndo"])
       $(id).disabled=true;
     $("recipientProposalDetails").open=false;
@@ -574,9 +577,10 @@
         endConverted:fmt.format(end),status:recipientWindow(start,p.duration,clock)}];
     });
   }
-  function recipientFiltered(){
+  function recipientFiltered(source=recipientRows()){
     const status=$("recipientView").value,q=$("recipientQuery").value.trim().toLocaleLowerCase();
-    return recipientRows().filter(r=>
+    return source.filter(r=>
+      (recipientGroupFocus===null||r.group===recipientGroupFocus) &&
       (status==="all"||r.status===status) &&
       (!q||[String(r.ordinal),r.group].some(v=>v.toLocaleLowerCase().includes(q))));
   }
@@ -584,7 +588,7 @@
     return JSON.stringify([workroomFingerprint(),$("recipientZone").value,
       $("recipientView").value,$("recipientQuery").value,
       $("recipientStart").value,$("recipientEnd").value,$("recipientDays").value,
-      recipientBlackoutText()]);
+      recipientBlackoutText(),recipientGroupFocus]);
   }
   function renderRecipientProposal(){
     const body=$("recipientProposalRows");body.replaceChildren();
@@ -792,16 +796,63 @@
     changed=true;exportedPlan=false;render();
     inform("Last HUMAN cross-zone draft adjustment undone locally. Save the corrected PRIVATE workroom separately.");
   }
+  function renderRecipientGroups(source){
+    const groups=new Map();
+    for(const row of source){
+      if(!groups.has(row.group))groups.set(row.group,{group:row.group,total:0,
+        within_hours:0,outside_hours:0,weekend:0,
+        unavailable_date:0,clock_change:0});
+      const record=groups.get(row.group);
+      record.total++;record[row.status]++;
+    }
+    const ordered=[...groups.values()].sort((a,b)=>
+      (b.total-b.within_hours)-(a.total-a.within_hours)||
+      b.total-a.total||a.group.localeCompare(b.group));
+    const pages=Math.max(1,Math.ceil(ordered.length/32));
+    recipientGroupPage=Math.max(0,Math.min(recipientGroupPage,pages-1));
+    $("recipientGroupPrev").disabled=recipientGroupPage===0;
+    $("recipientGroupNext").disabled=recipientGroupPage===pages-1;
+    $("recipientGroupClear").disabled=recipientGroupFocus===null;
+    $("recipientGroupSummary").textContent=ordered.length+
+      " unverified HUMAN groups with scheduled appointments in this PRIVATE workroom · "+
+      "page "+(recipientGroupPage+1)+" of "+pages+
+      " · exact group focus: "+(recipientGroupFocus===null?"all":
+        recipientGroupFocus||"(unassigned)")+
+      ". Counts use source-reported group labels, NOT identities or verified availability.";
+    const body=$("recipientGroupRows");body.replaceChildren();
+    for(const row of ordered.slice(recipientGroupPage*32,recipientGroupPage*32+32)){
+      const tr=dom("tr"),focus=dom("button","Focus group","ghost");
+      focus.type="button";
+      focus.addEventListener("click",()=>{
+        recipientGroupFocus=row.group;recipientPage=0;
+        renderRecipientZone();$("recipientDesk").scrollIntoView({block:"start"});
+      });
+      for(const value of [row.group||"(unassigned)",row.total,
+        row.within_hours,row.outside_hours,row.weekend,
+        row.unavailable_date,row.clock_change])tr.append(dom("td",String(value)));
+      const cell=dom("td");cell.append(focus);tr.append(cell);body.append(tr);
+    }
+  }
   function renderRecipientZone(){
     if(!active)return;
     if(recipientUndo && recipientUndo.fingerprint!==workroomFingerprint())
       recipientUndo=null;
     $("recipientUndo").disabled=!recipientUndo;
-    if(recipientProposal)renderRecipientProposal();
     const body=$("recipientRows");body.replaceChildren();
     let data,all;
-    try{all=recipientRows();data=recipientFiltered();}
+    try{
+      if(recipientProposal)renderRecipientProposal();
+      all=recipientRows();data=recipientFiltered(all);
+      renderRecipientGroups(all);
+    }
     catch(_){
+      recipientProposal=null;recipientSelection.clear();
+      renderRecipientProposal();
+      $("recipientGroupRows").replaceChildren();
+      for(const id of ["recipientGroupClear","recipientGroupPrev","recipientGroupNext"])
+        $(id).disabled=true;
+      $("recipientGroupSummary").textContent=
+        "Invalid recipient IANA zone or HUMAN-declared date/window (HOLD).";
       $("recipientSummary").textContent="Invalid IANA zone or changed browser timezone (HOLD). No converted dates accepted.";
       $("recipientExport").disabled=true;
       $("recipientPrev").disabled=true;$("recipientNext").disabled=true;
@@ -3088,6 +3139,15 @@
     try{if(e.target.files?.length)await recipientPolicyImport(e.target.files[0]);}
     catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference import rejected (HOLD). Current HUMAN window and schedule retained.";}
     finally{e.target.value="";}
+  });
+  hook("recipientGroupClear","click",()=>{
+    recipientGroupFocus=null;recipientPage=0;renderRecipientZone();
+  });
+  hook("recipientGroupPrev","click",()=>{
+    recipientGroupPage=Math.max(0,recipientGroupPage-1);renderRecipientZone();
+  });
+  hook("recipientGroupNext","click",()=>{
+    recipientGroupPage++;renderRecipientZone();
   });
   hook("recipientZone","input",()=>{recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();});
   hook("recipientView","change",()=>{recipientPage=0;renderRecipientZone();});

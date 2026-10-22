@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZLQzH/NrMGK9fZoHliHZ/c+tDo9W0wRttyjYlcdUQ+4='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-59vxjxrpNecA1b/eNio/viTecK/qzeAvfMLxXX2KmJM='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -84,7 +84,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   let conflictProposal=null;
   let lastIcsSequence=0;
-  let recipientPage=0;
+  let recipientPage=0,recipientGroupPage=0,recipientGroupFocus=null;
   let recipientProposal=null;
   let recipientSelection=new Set();
   let recipientUndo=null;
@@ -225,20 +225,23 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   }
   function clearRecipientWorkspace(){
     recipientPreferenceSource="";recipientPolicyDirty=false;recipientPage=0;
+    recipientGroupPage=0;recipientGroupFocus=null;
     recipientProposal=null;recipientSelection.clear();recipientUndo=null;
     $("recipientZone").value="";$("recipientStart").value="09:00";
     $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
     $("recipientBlackouts").value="";
     $("recipientView").value="all";$("recipientQuery").value="";
     $("recipientPolicyImport").value="";
-    for(const id of ["recipientRows","recipientProposalRows"])
+    for(const id of ["recipientRows","recipientProposalRows","recipientGroupRows"])
       $(id).replaceChildren();
     $("recipientSummary").textContent="No PRIVATE HUMAN worksheet or alternate recipient zone loaded.";
     $("recipientRemainder").textContent="";
+    $("recipientGroupSummary").textContent="No HUMAN group preview loaded.";
     $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
     $("recipientPolicyStatus").textContent="Recipient preference not loaded; this is not authenticated availability.";
     for(const id of ["recipientExport","recipientPolicyExport",
-      "recipientPrev","recipientNext","recipientApply",
+      "recipientPrev","recipientNext","recipientGroupPrev","recipientGroupNext",
+      "recipientGroupClear","recipientApply",
       "recipientProposalExport","recipientProposalPrint","recipientUndo"])
       $(id).disabled=true;
     $("recipientProposalDetails").open=false;
@@ -622,9 +625,10 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
         endConverted:fmt.format(end),status:recipientWindow(start,p.duration,clock)}];
     });
   }
-  function recipientFiltered(){
+  function recipientFiltered(source=recipientRows()){
     const status=$("recipientView").value,q=$("recipientQuery").value.trim().toLocaleLowerCase();
-    return recipientRows().filter(r=>
+    return source.filter(r=>
+      (recipientGroupFocus===null||r.group===recipientGroupFocus) &&
       (status==="all"||r.status===status) &&
       (!q||[String(r.ordinal),r.group].some(v=>v.toLocaleLowerCase().includes(q))));
   }
@@ -632,7 +636,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     return JSON.stringify([workroomFingerprint(),$("recipientZone").value,
       $("recipientView").value,$("recipientQuery").value,
       $("recipientStart").value,$("recipientEnd").value,$("recipientDays").value,
-      recipientBlackoutText()]);
+      recipientBlackoutText(),recipientGroupFocus]);
   }
   function renderRecipientProposal(){
     const body=$("recipientProposalRows");body.replaceChildren();
@@ -840,16 +844,63 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     changed=true;exportedPlan=false;render();
     inform("Last HUMAN cross-zone draft adjustment undone locally. Save the corrected PRIVATE workroom separately.");
   }
+  function renderRecipientGroups(source){
+    const groups=new Map();
+    for(const row of source){
+      if(!groups.has(row.group))groups.set(row.group,{group:row.group,total:0,
+        within_hours:0,outside_hours:0,weekend:0,
+        unavailable_date:0,clock_change:0});
+      const record=groups.get(row.group);
+      record.total++;record[row.status]++;
+    }
+    const ordered=[...groups.values()].sort((a,b)=>
+      (b.total-b.within_hours)-(a.total-a.within_hours)||
+      b.total-a.total||a.group.localeCompare(b.group));
+    const pages=Math.max(1,Math.ceil(ordered.length/32));
+    recipientGroupPage=Math.max(0,Math.min(recipientGroupPage,pages-1));
+    $("recipientGroupPrev").disabled=recipientGroupPage===0;
+    $("recipientGroupNext").disabled=recipientGroupPage===pages-1;
+    $("recipientGroupClear").disabled=recipientGroupFocus===null;
+    $("recipientGroupSummary").textContent=ordered.length+
+      " unverified HUMAN groups with scheduled appointments in this PRIVATE workroom · "+
+      "page "+(recipientGroupPage+1)+" of "+pages+
+      " · exact group focus: "+(recipientGroupFocus===null?"all":
+        recipientGroupFocus||"(unassigned)")+
+      ". Counts use source-reported group labels, NOT identities or verified availability.";
+    const body=$("recipientGroupRows");body.replaceChildren();
+    for(const row of ordered.slice(recipientGroupPage*32,recipientGroupPage*32+32)){
+      const tr=dom("tr"),focus=dom("button","Focus group","ghost");
+      focus.type="button";
+      focus.addEventListener("click",()=>{
+        recipientGroupFocus=row.group;recipientPage=0;
+        renderRecipientZone();$("recipientDesk").scrollIntoView({block:"start"});
+      });
+      for(const value of [row.group||"(unassigned)",row.total,
+        row.within_hours,row.outside_hours,row.weekend,
+        row.unavailable_date,row.clock_change])tr.append(dom("td",String(value)));
+      const cell=dom("td");cell.append(focus);tr.append(cell);body.append(tr);
+    }
+  }
   function renderRecipientZone(){
     if(!active)return;
     if(recipientUndo && recipientUndo.fingerprint!==workroomFingerprint())
       recipientUndo=null;
     $("recipientUndo").disabled=!recipientUndo;
-    if(recipientProposal)renderRecipientProposal();
     const body=$("recipientRows");body.replaceChildren();
     let data,all;
-    try{all=recipientRows();data=recipientFiltered();}
+    try{
+      if(recipientProposal)renderRecipientProposal();
+      all=recipientRows();data=recipientFiltered(all);
+      renderRecipientGroups(all);
+    }
     catch(_){
+      recipientProposal=null;recipientSelection.clear();
+      renderRecipientProposal();
+      $("recipientGroupRows").replaceChildren();
+      for(const id of ["recipientGroupClear","recipientGroupPrev","recipientGroupNext"])
+        $(id).disabled=true;
+      $("recipientGroupSummary").textContent=
+        "Invalid recipient IANA zone or HUMAN-declared date/window (HOLD).";
       $("recipientSummary").textContent="Invalid IANA zone or changed browser timezone (HOLD). No converted dates accepted.";
       $("recipientExport").disabled=true;
       $("recipientPrev").disabled=true;$("recipientNext").disabled=true;
@@ -3137,6 +3188,15 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference import rejected (HOLD). Current HUMAN window and schedule retained.";}
     finally{e.target.value="";}
   });
+  hook("recipientGroupClear","click",()=>{
+    recipientGroupFocus=null;recipientPage=0;renderRecipientZone();
+  });
+  hook("recipientGroupPrev","click",()=>{
+    recipientGroupPage=Math.max(0,recipientGroupPage-1);renderRecipientZone();
+  });
+  hook("recipientGroupNext","click",()=>{
+    recipientGroupPage++;renderRecipientZone();
+  });
   hook("recipientZone","input",()=>{recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();});
   hook("recipientView","change",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientQuery","input",()=>{recipientPage=0;renderRecipientZone();});
@@ -3389,6 +3449,20 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <div class="row"><button id="recipientPrev" type="button" class="ghost" disabled>Previous matching reminders</button>
 <button id="recipientNext" type="button" class="ghost" disabled>Next matching reminders</button></div>
 <p class="subtle">The PRIVATE CSV includes original worksheet digest, anonymous original ordinals, unverified group labels and both local and converted times. Disclosure may reveal sensitive appointment patterns. Actual recipient locale and timezone rules are NOT authenticated. Never treat the converted date as accepted calendar delivery, scope or consent.</p>
+<details id="recipientGroupsDetails">
+<summary>PRIVATE HUMAN cross-zone group workload — exact group focus</summary>
+<p>Aggregated counts of already-scheduled original HUMAN ordinal proposals in the chosen recipient zone, grouped by unverified worksheet group labels. Source-reported groups are NOT authenticated recipient names, calendar permissions, availability or security findings. Focus one group to review its original ordinals; filters and PRIVATE schedule CSV then apply only to the chosen group.</p>
+<p id="recipientGroupSummary" class="subtle" role="status">No HUMAN group preview loaded.</p>
+<div class="row">
+<button id="recipientGroupClear" class="ghost" type="button" disabled>Clear exact group focus</button>
+<button id="recipientGroupPrev" class="ghost" type="button" disabled>Previous groups</button>
+<button id="recipientGroupNext" class="ghost" type="button" disabled>Next groups</button>
+</div>
+<div class="tablebox"><table><thead><tr><th>Unverified HUMAN group</th>
+<th>Planned</th><th>Within window</th><th>Outside hours</th>
+<th>Outside weekdays</th><th>Unavailable date</th><th>Recipient clock change</th>
+<th>Review group</th></tr></thead><tbody id="recipientGroupRows"></tbody></table></div>
+</details>
 <details id="recipientProposalDetails"><summary>Preview LOCAL HUMAN common-hours adjustment — no external calendar</summary>
 <p>For up to 12 currently filtered, not-human-blocked reminders outside the currently declared recipient local time window, search the next 30 local days for a later meeting satisfying BOTH manually declared recipient local availability and existing declared source-group weekday/blackout/window/cap rules. All proposals avoid already scheduled local appointments. A single unavailable ordinal blocks the complete preview. Then select only the ordinals you want to hand off or apply. Exact selected-only collision and declared-capacity gates run again before any local changes; the existing plan remains unchanged until separate HUMAN confirmation.</p>
 <div class="row">
