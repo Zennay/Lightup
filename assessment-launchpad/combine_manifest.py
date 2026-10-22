@@ -30,7 +30,7 @@ def canonical_lines(endpoints):
 
 
 def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
-            *, preview_only=False, more_paths=(), omit_sources=(), ack_omit=False):
+            *, preview_only=False, more_paths=(), omit_sources=(), ack_omit=False, include_source_map=False):
     if mode not in ("append", "replace"):
         raise Hold("explicit append or replace mode required")
     source_paths = (first_path, second_path, *more_paths)
@@ -75,15 +75,16 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
         "normalization_requires_ack":normalized,
         "replacement_requires_ack":mode == "replace",
     }
-    if len(opened) > 2 or omissions:
+    include_map = len(opened) > 2 or bool(omissions) or include_source_map
+    if include_map:
         counts.update(source_manifests=len(opened),
                       additional_endpoints=sum(len(row[2]) for row in opened[2:]))
     if omissions:
         counts.update(omitted_sources=len(omissions),
                       omitted_endpoints=sum(len(opened[i - 1][2]) for i in omissions))
-    receipt = dict(schema="lightup.offline-manifest-combine.v1" if len(opened) == 2 and not omissions
-                   else ("lightup.offline-manifest-combine.v3" if omissions
-                         else "lightup.offline-manifest-combine.v2"),
+    receipt = dict(schema=("lightup.offline-manifest-combine.v3" if omissions else
+                                "lightup.offline-manifest-combine.v2" if include_map else
+                                "lightup.offline-manifest-combine.v1"),
                    status="REVIEW_ONLY", mode=mode, counts=counts,
                    first_input_sha256=sha256(opened[0][1]).hexdigest(),
                    second_input_sha256=sha256(opened[1][1]).hexdigest(),
@@ -98,7 +99,7 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
     if omissions:
         receipt["omitted_source_ordinals"] = sorted(omissions)
         receipt["omission_acknowledged"] = bool(ack_omit)
-    if len(opened) > 2 or omissions:
+    if include_map:
         receipt["sources"] = [
             dict(ordinal=i, endpoints=len(lines), input_sha256=sha256(raw).hexdigest())
             for i, (_, raw, lines) in enumerate(opened, start=1)]
@@ -106,7 +107,7 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
     if len(receipt_bytes) > FILES[SUMMARY]:
         raise Hold("private source receipt exceeds bound")
     artifacts = {MANIFEST:canonical, SUMMARY:receipt_bytes}
-    if len(opened) > 2 or omissions:
+    if include_map:
         artifacts[BOARD] = render_board(receipt)
         artifacts[SLOT_MAP] = slot_map_csv(receipt)
     return originals, artifacts, counts
@@ -117,6 +118,7 @@ def run(args):
         args.first_manifest, args.second_manifest, args.mode,
         args.ack_normalization, args.ack_replace, more_paths=args.more_manifest,
         omit_sources=args.omit_source, ack_omit=args.ack_omit,
+        include_source_map=args.source_slot_map,
     )
     if bool(args.change_before_dir) != bool(args.change_output_dir):
         raise Hold("manifest change comparison requires both a saved before bundle and an isolated output directory")
@@ -294,6 +296,8 @@ def main(argv=None):
                         help="omit original PRIVATE source ordinal (repeatable, 1-based)")
     parser.add_argument("--ack-omit", action="store_true",
                         help="confirm intentional exclusion of original source files")
+    parser.add_argument("--source-slot-map", action="store_true",
+                        help="include a PRIVATE source ordinal/slot map even for a two-source bundle; repeat on exact reopen")
     parser.add_argument("--output-dir", help="separate existing private output directory (0700); omit only in dry-run")
     secondary = parser.add_mutually_exclusive_group()
     secondary.add_argument("--handoff-dir", help="optional second private 0700 directory for original preview bundle")
@@ -318,7 +322,8 @@ def main(argv=None):
             _, _, counts = prepare(args.first_manifest, args.second_manifest, args.mode,
                                    args.ack_normalization, args.ack_replace, preview_only=True,
                                    more_paths=args.more_manifest,
-                                   omit_sources=args.omit_source, ack_omit=args.ack_omit)
+                                   omit_sources=args.omit_source, ack_omit=args.ack_omit,
+                                   include_source_map=args.source_slot_map)
             print("MANIFEST_COMBINE_REVIEW_ONLY · mode=" + args.mode +
                   " · first=" + str(counts["first_endpoints"]) +
                   " · incoming=" + str(counts["second_endpoints"]) +
@@ -331,6 +336,7 @@ def main(argv=None):
                   " · result=" + str(counts["result_endpoints"]) +
                   " · normalization_ack_needed=" + str(counts["normalization_requires_ack"]).lower() +
                   " · replacement_ack_needed=" + str(counts["replacement_requires_ack"]).lower() +
+                  " · source_slot_map_would_publish=" + str(len((args.more_manifest or [])) > 0 or bool(args.omit_source) or args.source_slot_map).lower() +
                   " · no output, consent, authorization or assessment")
             return 0
         if not args.output_dir:
