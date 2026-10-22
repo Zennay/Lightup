@@ -14,6 +14,7 @@ import json
 import os
 import stat
 import sys
+import unicodedata
 
 AGENDA_SCHEMA = "lightup.archive_human_agenda.v1"
 PORTFOLIO_SCHEMA = "lightup.assessment_portfolio_aggregate.v1"
@@ -514,7 +515,9 @@ def read_private_agenda_manifest(path):
     if not raw.endswith(b"\n") or b"\r" in raw or b"\0" in raw:
         raise Hold("source list must be LF-delimited with no NUL or CR")
     try:
-        paths = raw.decode("utf-8", errors="strict").splitlines()
+        # Do not treat Unicode separators or bidi controls as hidden extra paths.
+        decoded = raw.decode("utf-8", errors="strict")
+        paths = decoded.split("\\n")[:-1]
     except UnicodeError as error:
         raise Hold("source list is not UTF-8") from error
     if not 2 <= len(paths) <= MAX_AGENDAS:
@@ -524,7 +527,8 @@ def read_private_agenda_manifest(path):
     for candidate in paths:
         if (not os.path.isabs(candidate) or os.path.normpath(candidate) != candidate
                 or not 1 <= len(candidate) <= 2048
-                or any(ord(ch) < 32 or ord(ch) == 127 for ch in candidate)):
+                or any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp")
+                       for ch in candidate)):
             raise Hold("invalid path in owner-private source list")
     return absolute, paths
 
@@ -566,6 +570,10 @@ def run(args):
             ]
         outputs = render_artifacts(documents, rows, reference_day, selection=selection)
         readmit_unchanged_sources(admitted)
+        if manifest_path:
+            _, reopened_paths = read_private_agenda_manifest(manifest_path)
+            if reopened_paths != selected_agendas:
+                raise Hold("private selection list changed before publication")
         if args.verify_output_dir:
             verify_existing_bundle(output_fd, outputs)
         else:
