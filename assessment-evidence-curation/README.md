@@ -657,3 +657,16 @@ The literal canonical subset is stored in the separate PRIVATE unsigned
 receipt, and **the exact same subset** must be supplied when reopening.
 This is a local data minimization filter, NOT recipient authentication,
 disclosure consent or authority to send information.
+
+### PRIVATE operator review grouping
+
+The local printed dossier orders original HUMAN rows by the original
+**urgent → soon → routine** priority, then labels each row by a fixed
+non-authorizing HUMAN follow-up category: **reopened after claimed response,
+unanswered in every round, latest blocked, latest needing more information,
+latest awaiting a reply, or claimed response requiring independent review**.
+The same fixed category and original ordinal appear in the row navigation
+and CSV, without adding client systems, evidence or arbitrary user text to
+the fixed-column export. These categories are only a HUMAN reading aid;
+they do not constitute validated risk severity, owner assignment, closure,
+recipient identity or permission to act.

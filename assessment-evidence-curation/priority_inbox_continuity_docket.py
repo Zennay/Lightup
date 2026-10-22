@@ -29,6 +29,14 @@ STAGES = ("no_human_response", "blocked_human",
           "needs_more_information", "responded_claimed")
 LIMIT = 512 * 1024
 FILTERS = ("attention", "reopened", "unanswered", "all")
+BUCKETS = (
+    ("reopened_after_claim", "Reopened after a claimed HUMAN response"),
+    ("no_response_all_rounds", "No HUMAN response in any round"),
+    ("blocked_human", "Latest HUMAN report: blocked"),
+    ("needs_more_information", "Latest HUMAN report: needs information"),
+    ("awaiting_human", "Latest HUMAN report: no response"),
+    ("response_claimed_review_only", "Claimed HUMAN response: independent review"),
+)
 
 
 def require(ok: bool) -> None:
@@ -105,6 +113,14 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
             raise Hold("HOLD: explicit original HUMAN ordinal is outside selected filter")
         if not qualifies:
             continue
+        bucket = (
+            "reopened_after_claim" if reopened else
+            "no_response_all_rounds" if unanswered else
+            "blocked_human" if stages[-1] == "blocked_human" else
+            "needs_more_information" if stages[-1] == "needs_more_information" else
+            "awaiting_human" if stages[-1] == "no_human_response" else
+            "response_claimed_review_only")
+        selected_counts["bucket_" + bucket] += 1
         selected_counts["selected"] += 1
         selected_counts["reopened"] += int(reopened)
         selected_counts["unanswered"] += int(unanswered)
@@ -112,7 +128,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         selected_counts["continuously_awaiting"] += int(continuous_attention)
         f = source["findings"][ordinal - 1]
         data_rows.append((
-            ordinal, original["priority"], f["severity"], len(f["evidence_ids"]),
+            ordinal, original["priority"], bucket, f["severity"], len(f["evidence_ids"]),
             stages[0], stages[-1], int(attention), int(reopened),
             int(unanswered), int(continuous_attention),
             sum(stages[i] != stages[i-1] for i in range(1, rounds)),
@@ -125,6 +141,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
             h(stage) + "</li>"
             for i, stage in enumerate(stages))
         cards.append(
+            (original["priority"], bucket, ordinal,
             "<article id='human-ordinal-" + str(ordinal) + "'><h2>Original "
             "HUMAN ordinal #" + str(ordinal) + " · " +
             h(original["priority"]) + "</h2><p><strong>Original reported "
@@ -141,15 +158,28 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
             "</pre><p><strong>HUMAN follow-up:</strong> __________ "
             "<strong>Independent verification:</strong> __________</p>"
             "<p>Nothing dispatched, verified, assigned or closed by this page."
-            "</p></article>")
+            "</p></article>"))
     header = (
         "original_human_ordinal", "original_human_priority",
+        "human_review_bucket_unverified",
         "source_reported_severity_unverified", "source_evidence_reference_count",
         "first_human_stage", "latest_human_stage", "latest_requires_human_attention",
         "reopened_after_claimed_response", "never_received_human_response",
         "attention_in_every_ordered_round", "adjacent_stage_changes",
         "latest_reply_changed_from_previous_round",
         "latest_followup_changed_from_previous_round")
+    rank = {name: i for i, (name, _) in enumerate(BUCKETS)}
+    cards.sort(key=lambda item: (PRIORITIES.index(item[0]), rank[item[1]], item[2]))
+    data_rows.sort(key=lambda item: (PRIORITIES.index(item[1]), rank[item[2]], item[0]))
+    grouped_sections = "".join(
+        "<section><h2>" + h(priority) + " · " + h(label) + " (" +
+        str(sum(card[0] == priority and card[1] == bucket for card in cards)) +
+        ")</h2>" + "".join(card[3] for card in cards
+                           if card[0] == priority and card[1] == bucket) +
+        "</section>"
+        for priority in PRIORITIES
+        for bucket, label in BUCKETS
+        if any(card[0] == priority and card[1] == bucket for card in cards))
     output = io.StringIO(newline="")
     writer = csv.writer(output, lineterminator="\r\n")
     writer.writerow(header)
@@ -158,7 +188,8 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     navigation = "".join(
         "<li><a href='#human-ordinal-" + str(row[0]) +
         "'>Original HUMAN ordinal #" + str(row[0]) + " (" +
-        h(row[1]) + ")</a></li>" for row in data_rows)
+        h(row[1]) + ", " + h(row[2]) + ")</a></li>"
+        for row in data_rows)
     body = (
         "<header><h1>LightUp · PRIVATE original-source HUMAN continuity docket</h1>"
         "<p class='notice'>REVIEW ONLY · HUMAN identity, reported finding, "
@@ -185,14 +216,15 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "was followed by latest attention; unanswered means all rounds "
         "reported no HUMAN response; all includes every originally selected "
         "HUMAN row. A claimed response never proves resolution.</p></header>"
-        "<section><h2>Private local review navigation</h2><ol>" +
+        "<section><h2>Private local review navigation · grouped by original "
+        "priority and HUMAN-reported attention category</h2><ol>" +
         navigation + "</ol></section>" +
-        ("".join(cards) if cards else
+        (grouped_sections if cards else
          "<section><h2>No original HUMAN rows matched the chosen filter</h2>"
          "<p>Nothing is verified or resolved as a result.</p></section>"))
     report = private_frame("PRIVATE HUMAN original-source follow-up", body)
     counts = {
-        "schema": "lightup.private_human_continuity_docket.v1",
+        "schema": "lightup.private_human_continuity_docket.v2",
         "status": "REVIEW_ONLY", "operator_filter": filter_mode,
         "original_selected_rows": len(selected),
         "explicit_operator_ordinal_filter_applied": bool(ordinal_selection),
@@ -205,7 +237,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     }
     counts_raw = json_bytes(counts)
     receipt = {
-        "schema": "lightup.private_human_continuity_docket_receipt.v1",
+        "schema": "lightup.private_human_continuity_docket_receipt.v2",
         "status": "REVIEW_ONLY", "operator_filter": filter_mode,
         "original_source_sha256_unsigned": source_sha,
         "original_human_worksheet_sha256_unsigned": worksheet_sha,
