@@ -476,3 +476,8 @@ Clock changes across devices/sessions are not authenticated chronology, and
 calendar clients may still interpret imports differently. This remains a
 local HUMAN planning aid, not evidence of a completed appointment, consent or
 remediation.
+
+
+## Latest-intent workspace replacement
+
+Original worksheet import, plan-only CSV restore, encrypted plan restore and complete encrypted workroom restore share a local latest-intent generation. Selecting a newer replacement or confirming Reset invalidates earlier pending file reads/decryptions. A stale completion cannot replace a newer workspace, overwrite its status, clear its file input or erase the newer operation's password fields. The original worksheet bytes are zeroed on superseded/cancelled/successful paths after the admitted copy is made. The complete current workspace is committed only after the selected file is fully admitted and the existing source/fingerprint checks pass. This is a local race guard, not source authentication or permission; no network, browser persistence, actual calendar write, assessment execution or authorization is introduced.
