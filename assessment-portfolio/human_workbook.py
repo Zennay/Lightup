@@ -312,6 +312,38 @@ def validate_response(doc, rows, reference_date):
     return entries
 
 
+def human_summary(entries, reference_date):
+    """Small-cell-sensitive PRIVATE HUMAN-only counts, never a public benchmark."""
+    by_status = {key: 0 for key in STATUS}
+    by_role = {key: 0 for key in ROLES}
+    by_status_role = {status: {role: 0 for role in ROLES} for status in STATUS}
+    notes = 0
+    for item in entries:
+        by_status[item["human_status"]] += 1
+        by_role[item["proposed_role"]] += 1
+        by_status_role[item["human_status"]][item["proposed_role"]] += 1
+        notes += bool(item["note"])
+    return {
+        "schema": "lightup.assessment_portfolio_human_summary.v1",
+        "status": "PRIVATE_HUMAN_DISCUSSION_ONLY",
+        "reference_date": reference_date,
+        "row_count": len(entries),
+        "human_notes_recorded": notes,
+        "human_status_counts": by_status,
+        "proposed_role_counts": by_role,
+        "status_by_proposed_role": by_status_role,
+        "private_not_anonymous": True,
+        "planning_not_permission": True,
+        **{flag: False for flag in AUTHORITY_FLAGS},
+    }
+
+
+def render_private_summary_json(entries, reference_date):
+    return (json.dumps(
+        human_summary(entries, reference_date), ensure_ascii=False, indent=2
+    ) + "\\n").encode("utf-8")
+
+
 def render_private_return(entries, reference_date):
     table = []
     for item in entries:
@@ -322,6 +354,23 @@ def render_private_return(entries, reference_date):
             item["note"] or "(no HUMAN note recorded)"
         )
         table.append("<tr>" + "".join("<td>" + escape(value) + "</td>" for value in values) + "</tr>")
+    summary = human_summary(entries, reference_date)
+    dashboard = (
+        "<h2>Private HUMAN discussion state</h2><table border='1'>"
+        "<thead><tr><th>HUMAN status</th>" +
+        "".join("<th>" + escape(role) + "</th>" for role in ROLES) +
+        "<th>Total</th></tr></thead><tbody>" +
+        "".join(
+            "<tr><th>" + escape(stage) + "</th>" +
+            "".join("<td>" + str(summary["status_by_proposed_role"][stage][role]) +
+                    "</td>" for role in ROLES) +
+            "<td>" + str(summary["human_status_counts"][stage]) + "</td></tr>"
+            for stage in STATUS
+        ) + "</tbody></table>"
+        "<p>PRIVATE local HUMAN notes: " + str(summary["human_notes_recorded"]) +
+        "; total rows: " + str(summary["row_count"]) +
+        ". Small-cell counts may reveal private planning context. Never publish as anonymous.</p>"
+    )
     body = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'none'; script-src 'none'; "
@@ -330,6 +379,7 @@ def render_private_return(entries, reference_date):
         "<p>INCUBATE / HOLD / HUMAN ONLY / NOT AUTHORIZED / NO TARGET / NO SCAN</p>"
         "<p>Reference day: " + escape(reference_date) + ". Ordinals are not authenticated chronology."
         " Fields are manually entered; none authenticates reviewer, consent or remediation.</p>"
+        + dashboard +
         "<table border='1'><thead><tr><th>Original ordinal</th><th>Original stage</th><th>HUMAN status</th>"
         "<th>Original role</th><th>Proposed role</th><th>Proposed date</th><th>PRIVATE HUMAN note</th>"
         "</tr></thead><tbody>" + "".join(table) + "</tbody></table>"
