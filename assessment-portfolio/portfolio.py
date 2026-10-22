@@ -635,7 +635,8 @@ def publish_bundle(directory_fd, artifacts):
 
 
 def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
-                     calendar=False, workbook=False, human_entries=None):
+                     calendar=False, workbook=False, human_entries=None,
+                     previous_human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
     A filtered handoff has an explicit v2 view contract; unchanged full
@@ -666,6 +667,15 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
                        human_workbook.render_private_csv(human_entries)))
         result.append(("assessment-portfolio-private-HUMAN-summary.json",
                        human_workbook.render_private_summary_json(human_entries, reference_day.isoformat())))
+    if previous_human_entries is not None:
+        if human_entries is None:
+            raise Hold("HUMAN comparison requires an original-bound current HUMAN worksheet")
+        result.append(("assessment-portfolio-private-HUMAN-delta.html",
+                       human_workbook.render_private_comparison_html(
+                           previous_human_entries, human_entries, reference_day.isoformat())))
+        result.append(("assessment-portfolio-private-HUMAN-delta.json",
+                       human_workbook.render_private_comparison_json(
+                           previous_human_entries, human_entries, reference_day.isoformat())))
     if any(len(data) > 1_048_576 for _, data in result):
         raise Hold("private portfolio artifact exceeds bounded 1 MiB publication limit")
     return result
@@ -767,9 +777,15 @@ def run(args):
     documents, rows, source_dirs = collect(admitted, reference_day)
     if manifest_path:
         source_dirs.add(os.path.dirname(manifest_path))
+    if args.previous_human_responses and not args.human_responses:
+        raise Hold("HUMAN comparison requires a current response source")
     if args.human_responses:
         # Keep source/return and output rooms separate before ANY publication.
         source_dirs.add(os.path.dirname(os.path.abspath(args.human_responses)))
+    if args.previous_human_responses:
+        if (os.path.abspath(args.previous_human_responses) == os.path.abspath(args.human_responses)):
+            raise Hold("HUMAN comparison sources cannot alias the same path")
+        source_dirs.add(os.path.dirname(os.path.abspath(args.previous_human_responses)))
     output_fd, output_path = open_output_directory(args.output_dir)
     try:
         for source_dir in source_dirs:
@@ -799,10 +815,19 @@ def run(args):
             human_entries = human_workbook.validate_response(
                 responses, rows, reference_day.isoformat()
             )
+        previous_bytes, previous_entries = None, None
+        if args.previous_human_responses:
+            previous_bytes, earlier = human_workbook.read_private_response(
+                args.previous_human_responses, open_directory_nofollow
+            )
+            previous_entries = human_workbook.validate_response(
+                earlier, rows, reference_day.isoformat()
+            )
         outputs = render_artifacts(
             documents, rows, reference_day, selection=selection,
             interactive=args.private_explorer, calendar=args.private_calendar,
             workbook=args.private_human_workbook, human_entries=human_entries,
+            previous_human_entries=previous_entries,
         )
         readmit_unchanged_sources(admitted)
         if args.human_responses:
@@ -811,6 +836,12 @@ def run(args):
             )
             if reopened != responses_raw:
                 raise Hold("HUMAN worksheet source changed before publication")
+        if args.previous_human_responses:
+            original, _ = human_workbook.read_private_response(
+                args.previous_human_responses, open_directory_nofollow
+            )
+            if original != previous_bytes:
+                raise Hold("previous HUMAN source changed before publication")
         if manifest_path:
             _, reopened_paths = read_private_agenda_manifest(manifest_path)
             if reopened_paths != selected_agendas:
@@ -847,6 +878,8 @@ def main(argv=None):
                         help="Add offline HUMAN discussion worksheet with local JSON download, no authority")
     parser.add_argument("--human-responses",
                         help="Owner-private 0600 saved HUMAN worksheet JSON for strict original-bound return")
+    parser.add_argument("--previous-human-responses",
+                        help="Second earlier operator-selected PRIVATE HUMAN response for local delta (requires --human-responses)")
     parser.add_argument("--agendas-file", help="Owner-private mode-0600 LF-delimited list of 2–12 absolute agenda paths")
     parser.add_argument("agendas", nargs="*", help="2–12 original private JSON agenda exports (or use --agendas-file)")
     args = parser.parse_args(argv)
