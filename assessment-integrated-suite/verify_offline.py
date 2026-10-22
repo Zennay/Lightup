@@ -27,6 +27,20 @@ PACKAGE_ASSETS = {"START-HERE.html", "README.txt", "GUIDE-LAB-PLANNING.md"}
 class Hold(Exception):
     pass
 
+
+def reject_symlink_components(path: Path) -> Path:
+    """Refuse path traversal through any existing symlink component."""
+    candidate = path.absolute()
+    for component in (*reversed(candidate.parents), candidate):
+        try:
+            info = component.lstat()
+        except OSError:
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            raise Hold("HOLD: symbolic-link path component refused")
+    return candidate
+
+
 def unique_object(pairs):
     result = {}
     for key, value in pairs:
@@ -82,6 +96,8 @@ def file_digest(path: Path) -> str:
 
 
 def sidecar_digest(sidecar: Path, package: Path) -> str:
+    sidecar = reject_symlink_components(sidecar)
+    package = reject_symlink_components(package)
     try:
         st = sidecar.lstat()
         if (not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode) or
@@ -103,6 +119,9 @@ def sidecar_digest(sidecar: Path, package: Path) -> str:
 
 def verify(path: Path, expected_sha256: str = "",
            sha256_file: Path | None = None) -> int:
+    path = reject_symlink_components(path)
+    if sha256_file is not None:
+        sha256_file = reject_symlink_components(sha256_file)
     sidecar_value = sidecar_digest(sha256_file, path) if sha256_file else ""
     if expected_sha256 and sidecar_value and expected_sha256 != sidecar_value:
         raise Hold("HOLD: explicit expected digest conflicts with sidecar")
