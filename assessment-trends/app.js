@@ -660,14 +660,20 @@
     metric.value=METRICS.includes(oldMetric)?oldMetric:METRICS[0];
     const pair=$("metricTransitionPair"),oldPair=pair.value;
     pair.replaceChildren();
+    const pairMatch=/^([1-9][0-9]*):([1-9][0-9]*)$/.exec(oldPair);
+    const validPair=!!pairMatch&&Number(pairMatch[1])<Number(pairMatch[2])&&
+      Number(pairMatch[2])<=snapshots.length;
     for(let previous=1;previous<snapshots.length;previous++){
-      const option=document.createElement("option");
-      option.value=String(previous);
-      option.textContent="Slot "+String(previous).padStart(2,"0")+" → slot "+
-        String(previous+1).padStart(2,"0");
-      pair.append(option);
+      for(let current=previous+1;current<=snapshots.length;current++){
+        const option=document.createElement("option");
+        option.value=previous+":"+current;
+        option.textContent="Slot "+String(previous).padStart(2,"0")+" → slot "+
+          String(current).padStart(2,"0")+
+          (current===previous+1?" · adjacent":" · direct pairwise comparison");
+        pair.append(option);
+      }
     }
-    pair.value=Number(oldPair)>=1&&Number(oldPair)<snapshots.length?oldPair:"1";
+    pair.value=validPair?oldPair:"1:2";
     const active=snapshots.length>=2;
     metric.disabled=!active;pair.disabled=!active;
     $("metricTransitionCaseFilter").disabled=!active;
@@ -675,9 +681,11 @@
   function transitionDrilldownRows(){
     if(snapshots.length<2||!scenarioIds.length)return [];
     const metric=$("metricTransitionMetric").value;
-    const previousSlot=Number($("metricTransitionPair").value);
-    const previous=snapshots[previousSlot-1],current=snapshots[previousSlot];
-    if(!previous||!current||!METRICS.includes(metric))return [];
+    const pairMatch=/^([1-9][0-9]*):([1-9][0-9]*)$/.exec($("metricTransitionPair").value);
+    if(!pairMatch)return [];
+    const previousSlot=Number(pairMatch[1]),currentSlot=Number(pairMatch[2]);
+    const previous=snapshots[previousSlot-1],current=snapshots[currentSlot-1];
+    if(!previous||!current||previousSlot>=currentSlot||!METRICS.includes(metric))return [];
     const filter=$("metricTransitionCaseFilter").value;
     const rows=[];
     scenarioIds.forEach((id,index)=>{
@@ -742,14 +750,16 @@
   }
   function transitionCasePayload(){
     const metric=$("metricTransitionMetric").value;
-    const previousSlot=Number($("metricTransitionPair").value);
+    const pairMatch=/^([1-9][0-9]*):([1-9][0-9]*)$/.exec($("metricTransitionPair").value);
+    admit(!!pairMatch);
+    const previousSlot=Number(pairMatch[1]),currentSlot=Number(pairMatch[2]);
     const filter=$("metricTransitionCaseFilter").value;
     const selectedRows=transitionDrilldownRows().map(row=>({
       anonymous_scenario_ordinal:row.ordinal,
       metric,
       review_group:family(metric),
       previous_manual_slot:previousSlot,
-      current_manual_slot:previousSlot+1,
+      current_manual_slot:currentSlot,
       state:row.state,
       previous_flag:row.previousFlag,
       current_flag:row.currentFlag,
@@ -760,10 +770,13 @@
       previous_source_status:row.previousStatus,
       current_source_status:row.currentStatus
     }));
-    return {schema:"lightup.assessment_trends_transition_case_handoff.v1",
+    const adjacent=currentSlot===previousSlot+1;
+    return {schema:"lightup.assessment_trends_transition_case_handoff.v2",
       status:summary().status,fictional_demo_only:fictional,
       manual_slot_order:true,manual_slot_count:snapshots.length,
-      previous_manual_slot:previousSlot,current_manual_slot:previousSlot+1,
+      previous_manual_slot:previousSlot,current_manual_slot:currentSlot,
+      selected_pair_adjacent:adjacent,
+      selected_pair_mode:adjacent?"adjacent":"non_adjacent_pairwise",
       selected_metric:metric,selected_state_filter:filter,
       authenticated_chronology:false,source_metrics_independently_verified:false,
       remediation_verified:false,...Object.fromEntries(FLAGS.map(name=>[name,false])),
@@ -791,7 +804,8 @@
       "</style></head><body><h1>LightUp · Anonymous transition cases</h1>"+
       "<p>These are local ordinal references only, not original scenario IDs. The manually selected slot order is not authenticated chronology; a flag absent from the current slot is not a verified fix.</p>"+
       "<p>Metric: "+esc(payload.selected_metric)+" · Group: "+esc(family(payload.selected_metric))+
-      " · State filter: "+esc(payload.selected_state_filter)+" · Slots: "+
+      " · State filter: "+esc(payload.selected_state_filter)+" · Pair mode: "+
+      esc(payload.selected_pair_mode)+" · Slots: "+
       payload.previous_manual_slot+" → "+payload.current_manual_slot+"</p>"+
       "<div class='hold'><strong>"+esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+
       payload.status+" · REVIEW ONLY / HOLD")+"</strong><p>fictional_demo_only="+payload.fictional_demo_only+
@@ -811,7 +825,8 @@
         JSON.stringify(payload,null,2)+"\n","application/json");return;
     }
     const columns=["schema","overall_status","fictional_demo_only","manual_slot_order","manual_slot_count",
-      "previous_manual_slot","current_manual_slot","selected_metric","selected_state_filter",
+      "previous_manual_slot","current_manual_slot","selected_pair_adjacent","selected_pair_mode",
+      "selected_metric","selected_state_filter",
       "authenticated_chronology","source_metrics_independently_verified","remediation_verified",...FLAGS,
       "anonymous_scenario_ordinal","metric","review_group","state","previous_flag","current_flag",
       "previous_candidate","current_candidate","previous_delta","current_delta",
