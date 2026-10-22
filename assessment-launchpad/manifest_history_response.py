@@ -127,16 +127,21 @@ def main(argv=None):
     source.add_argument("--stage", action="append", default=[],
                         help="direct HUMAN review for 1-based original changed-slot ROW:STAGE (repeatable)")
     parser.add_argument("--continue-from-return-dir",
-                        help="carry forward prior saved PRIVATE HUMAN stages when using --stage")
+                        help="source-bind this HUMAN return to an original saved PRIVATE HUMAN round")
+    parser.add_argument("--ack-csv-stage-replace", action="store_true",
+                        help="confirm that all imported CSV stages intentionally replace prior HUMAN round stages")
     dest = parser.add_mutually_exclusive_group(required=True)
     dest.add_argument("--output-dir", help="new separate empty PRIVATE 0700 result directory")
     dest.add_argument("--verify-output-dir", help="exact read-only reopen")
     parser.add_argument("--explain-hold", action="store_true", help="curated HOLD only; never source values")
     args = parser.parse_args(argv)
     try:
-        if args.continue_from_return_dir and args.answers_dir:
-            raise Hold("HUMAN continuation accepts ROW:STAGE edits, not imported CSV answers")
-        if args.continue_from_return_dir and not args.stage:
+        if args.ack_csv_stage_replace and not (
+                args.continue_from_return_dir and args.answers_dir):
+            raise Hold("CSV stage replacement acknowledgement requires prior HUMAN round and PRIVATE answers CSV")
+        if args.continue_from_return_dir and args.answers_dir and not args.ack_csv_stage_replace:
+            raise Hold("full CSV replacement of prior HUMAN stages requires explicit acknowledgement")
+        if args.continue_from_return_dir and not args.answers_dir and not args.stage:
             raise Hold("HUMAN continuation requires at least one explicit stage edit")
         verify_args = [part for path in args.plan_dir for part in ("--plan-dir", path)]
         verify_args += ["--verify-output-dir", args.history_dir]
@@ -150,6 +155,11 @@ def main(argv=None):
             os.close(source_fd)
         prior_abs = None
         prior_hash = None
+        prior_packet = None
+        if args.continue_from_return_dir:
+            import manifest_history_followup as followup
+            prior_abs, prior_packet, prior_hash = followup.read_response(
+                args.continue_from_return_dir, source_packet, history_bytes)
         if args.answers_dir:
             answers_abs, answers_raw, responses = admit_answers(
                 args.answers_dir, source_packet["human_review_queue"])
@@ -159,12 +169,7 @@ def main(argv=None):
             import manifest_history_editor as editor
             original = source_packet["human_review_queue"]
             selected = editor.admit_updates(args.stage, len(original))
-            baseline = original
-            if args.continue_from_return_dir:
-                import manifest_history_followup as followup
-                prior_abs, prior_packet, prior_hash = followup.read_response(
-                    args.continue_from_return_dir, source_packet, history_bytes)
-                baseline = prior_packet["responses"]
+            baseline = prior_packet["responses"] if prior_packet is not None else original
             responses = [{**row, "human_stage": selected.get(index, row["human_stage"])}
                          for index, row in enumerate(baseline, 1)]
             answers_raw = editor.emit_csv(responses)
