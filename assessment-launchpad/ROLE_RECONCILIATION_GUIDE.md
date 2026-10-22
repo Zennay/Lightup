@@ -164,6 +164,22 @@ The HTML and counts JSON summarize five dimensions—role, reply status,
 self-reported stage, proposed next action and note-change flag—without private
 note content. It never accepts a browser CSV as original evidence or a scope grant.
 
+First run the same source-bound admission without publishing any files:
+
+```sh
+python3 assessment-launchpad/action_handoff.py \
+  --bundle-dir ~/private-lab-launchpad \
+  --round-dir ~/private-human-round-01 \
+  --round-dir ~/private-human-round-02 \
+  --role-return-dir ~/private-owner-return-security \
+  --role-return-dir ~/private-owner-return-privacy \
+  --selected-csv ~/private-selected-human-input/lightup-PRIVATE-human-actions-selected.csv \
+  --preview-only
+```
+
+This reports only the selected/original slot counts and writes nothing. For
+actual publication, use a separate new empty mode-`0700` destination:
+
 ```sh
 mkdir -m 700 ~/private-selected-human-input ~/private-selected-human-output
 mv ~/Downloads/lightup-PRIVATE-human-actions-selected.csv ~/private-selected-human-input/

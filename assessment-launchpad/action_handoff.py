@@ -204,12 +204,19 @@ def main(argv=None):
                       help="new empty owner-owned mode-0700 destination, separate from every source")
     mode.add_argument("--verify-output-dir",
                       help="existing PRIVATE packet; exact read-only reopen, writes nothing")
+    mode.add_argument("--preview-only", action="store_true",
+                      help="admit all original sources and selected CSV, show counts, create no files")
     args = parser.parse_args(argv)
     try:
         source = admit_all(args)
         artifacts = render_artifacts(source[5], source[6])
         if any(not 0 < len(item) <= LIMIT for item in artifacts.values()):
             raise Hold("PRIVATE selected HUMAN handoff capacity exceeded")
+        if args.preview_only:
+            print("PRIVATE_HUMAN_SELECTED_ACTIONS_PREVIEW_ONLY — " +
+                  str(len(source[5])) + "/" + str(source[6]) +
+                  " original slots selected; no files written; REVIEW_ONLY; NO AUTHORITY")
+            return 0
         fd, destination = open_output_directory(args.output_dir or args.verify_output_dir)
         try:
             # Flatten every source directory explicitly; source[:4] contains
