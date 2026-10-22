@@ -722,42 +722,53 @@
         (filters.workstream === "all" || ROUTES.has(filters.workstream)) &&
         ["all","Critical drift","High drift","Review drift","No regression"].includes(filters.priority) &&
         (filters.metric === "all" || METRICS.includes(filters.metric)));
-      const expectedRows = report.cases.map((c,i)=>({c,i}))
-        .filter(({c})=>filters.workstream === "all" || c.route === filters.workstream)
-        .filter(({c})=>filters.priority === "all" || priority(c) === filters.priority)
-        .filter(({c})=>filters.metric === "all" || c.regressions.includes(filters.metric))
-        .filter(({c})=>filters.case_status === "all" ||
-          (filters.case_status === "regressed" && c.regressions.length > 0) ||
-          (filters.case_status === "open" && c.stage !== "reviewed") ||
-          (filters.case_status === "waiting" && c.stage === "waiting") ||
-          (filters.case_status === "reviewed" && c.stage === "reviewed"))
-        .sort((a,b)=>urgency(a.c)-urgency(b.c)||a.i-b.i);
       ensure(Array.isArray(saved.cases) && Number.isInteger(saved.case_count) &&
         saved.case_count === saved.cases.length && saved.cases.length > 0 &&
-        saved.cases.length === expectedRows.length && saved.cases.length <= report.cases.length);
+        saved.cases.length <= report.cases.length);
       const updates = [];
       const rowKeys = ["case","priority","source_status","metric_regressions","metric_changes",
         "human_stage","follow_up_date","routing_group","suggested_human_action"];
       const metricKeys = ["metric","baseline","candidate","delta","regression"];
-      for (let position = 0; position < expectedRows.length; position++) {
-        const row = saved.cases[position], current = expectedRows[position], c = current.c;
-        ensure(exactKeys(row, rowKeys) && row.case === label(current.i) &&
-          row.priority === priority(c) && row.source_status === c.status &&
+      const seenIndices = new Set();
+      let previousUrgency = -1, previousIndex = -1;
+      for (let position = 0; position < saved.cases.length; position++) {
+        const row = saved.cases[position];
+        ensure(exactKeys(row, rowKeys));
+        const match = typeof row.case === "string" ? row.case.match(/^Case ([0-9]{2,})$/) : null;
+        ensure(match);
+        const index = Number(match[1]) - 1;
+        ensure(Number.isSafeInteger(index) && index >= 0 && index < report.cases.length &&
+          !seenIndices.has(index) && row.case === label(index));
+        seenIndices.add(index);
+        const c = report.cases[index];
+        ensure(row.priority === priority(c) && row.source_status === c.status &&
           Array.isArray(row.metric_regressions) &&
           JSON.stringify(row.metric_regressions) === JSON.stringify(c.regressions.slice().sort()) &&
           Array.isArray(row.metric_changes) &&
-          row.metric_changes.every(metric => exactKeys(metric, metricKeys)));
+          row.metric_changes.every(metric => exactKeys(metric, metricKeys)) &&
+          STAGES.has(row.human_stage) && ROUTES.has(row.routing_group));
+        ensure((filters.case_status !== "regressed" || c.regressions.length > 0) &&
+          (filters.case_status !== "open" || row.human_stage !== "reviewed") &&
+          (filters.case_status !== "waiting" || row.human_stage === "waiting") &&
+          (filters.case_status !== "reviewed" || row.human_stage === "reviewed") &&
+          (filters.workstream === "all" || row.routing_group === filters.workstream) &&
+          (filters.priority === "all" || row.priority === filters.priority) &&
+          (filters.metric === "all" || c.regressions.includes(filters.metric)));
+        const currentUrgency = urgency(c);
+        ensure(currentUrgency > previousUrgency ||
+          (currentUrgency === previousUrgency && index > previousIndex));
+        previousUrgency = currentUrgency;
+        previousIndex = index;
         const expectedChanges = c.changes.filter(m=>filters.metric !== "all" ? m.name === filters.metric : m.regression)
           .map(m=>({metric:m.name,baseline:m.baseline,candidate:m.candidate,delta:m.delta,regression:m.regression}));
         ensure(JSON.stringify(row.metric_changes) === JSON.stringify(expectedChanges) &&
-          row.suggested_human_action === nextHumanAction(c) &&
-          STAGES.has(row.human_stage) && ROUTES.has(row.routing_group));
+          row.suggested_human_action === nextHumanAction(c));
         const due = row.follow_up_date;
         ensure(due === null || (typeof due === "string" &&
           /^\d{4}-\d{2}-\d{2}$/.test(due) &&
           !Number.isNaN(Date.parse(due + "T00:00:00Z")) &&
           new Date(due + "T00:00:00Z").toISOString().startsWith(due)));
-        updates.push({index:current.i,stage:row.human_stage,route:row.routing_group,due:due||""});
+        updates.push({index,stage:row.human_stage,route:row.routing_group,due:due||""});
       }
       ensure(currentRead(generation));
       invalidateReads();
