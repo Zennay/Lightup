@@ -399,7 +399,9 @@ Source-bound multi-role reconciliation now includes an operator-only, locally fi
 
 For a role-return reconciliation packet (or the next-round workroom that
 embeds it), open `lightup-lab-human-next-actions-private.html` locally.
-Select a voluntary role, original reply status and suggested next action.
+Select a voluntary role, original reply status, suggested next action,
+self-reported HUMAN stage and/or PRIVATE note-change flag. Clear all HUMAN
+filters restores the complete local view without altering source data.
 The live counts update for the chosen view, **Print only displayed PRIVATE
 rows** excludes hidden source slots, and **Save displayed rows as PRIVATE
 CSV** downloads exactly those displayed fixed-enum/ordinal rows. The original

@@ -62,7 +62,9 @@ The result consists of exactly seven exclusive mode-0600 files:
 * `lightup-lab-human-next-actions-private.html`: offline CSP-hash pinned,
   owner-private, filterable and printable HUMAN action worklist. Filter
   source-minimal local original slots by voluntarily suggested role, receipt
-  presence or proposed HUMAN next action. The page now shows visible action
+  presence, proposed HUMAN next action, self-reported HUMAN stage and whether
+  a PRIVATE note was changed. Clear all filters restores the complete local
+  view without touching the original packet. The page now shows visible action
   counts and prints **only currently displayed rows**: filtering out a HUMAN
   role or packet must never silently restore its hidden rows in a printout.
   **Save displayed rows as PRIVATE CSV** explicitly downloads only the visible

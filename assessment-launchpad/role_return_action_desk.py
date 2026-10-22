@@ -47,6 +47,9 @@ const root = document.getElementById("actionRows");
 const roleFilter = document.getElementById("role");
 const replyFilter = document.getElementById("reply");
 const nextFilter = document.getElementById("next");
+const stageFilter = document.getElementById("stage");
+const noteFilter = document.getElementById("note");
+const resetButton = document.getElementById("reset");
 const progress = document.getElementById("progress");
 const printButton = document.getElementById("print");
 const saveButton = document.getElementById("saveVisible");
@@ -70,6 +73,8 @@ function option(select, value, label) {
 option(roleFilter,"ALL","All suggested HUMAN roles");
 option(replyFilter,"ALL","All recipient return statuses");
 option(nextFilter,"ALL","All HUMAN next steps");
+option(stageFilter,"ALL","All self-reported HUMAN stages");
+option(noteFilter,"ALL","All private note change flags");
 for (const value of [...new Set(source.map(r=>r[1]))].sort()) {
   option(roleFilter,value,value.replaceAll("_"," "));
 }
@@ -78,6 +83,12 @@ for (const value of [...new Set(source.map(r=>r[2]))].sort()) {
 }
 for (const value of [...new Set(source.map(r=>r[4]))].sort()) {
   option(nextFilter,value,value.replaceAll("_"," "));
+}
+for (const value of [...new Set(source.map(r=>r[3]))].sort()) {
+  option(stageFilter,value,value.replaceAll("_"," "));
+}
+for (const value of [...new Set(source.map(r=>r[5]))].sort()) {
+  option(noteFilter,value,value.replaceAll("_"," "));
 }
 for (const row of source) {
   if (!Array.isArray(row) || row.length !== 6) {
@@ -101,7 +112,9 @@ function apply() {
   for (const {values,element} of lookup) {
     const keep = (roleFilter.value === "ALL" || roleFilter.value === values[1]) &&
       (replyFilter.value === "ALL" || replyFilter.value === values[2]) &&
-      (nextFilter.value === "ALL" || nextFilter.value === values[4]);
+      (nextFilter.value === "ALL" || nextFilter.value === values[4]) &&
+      (stageFilter.value === "ALL" || stageFilter.value === values[3]) &&
+      (noteFilter.value === "ALL" || noteFilter.value === values[5]);
     element.hidden = !keep;
     if (keep) {
       visible++;
@@ -113,7 +126,7 @@ function apply() {
   progress.textContent = visible + " of " + lookup.length +
     " original local HUMAN slots displayed · " + awaiting +
     " awaiting an original role reply in the selected view.";
-  const filters = [roleFilter, replyFilter, nextFilter].map(item =>
+  const filters = [roleFilter, replyFilter, nextFilter, stageFilter, noteFilter].map(item =>
     item.options[item.selectedIndex].textContent);
   printScope.textContent = "PRIVATE selected view · " + filters.join(" · ") +
     " · " + visible + " / " + lookup.length + " original local slots";
@@ -121,9 +134,12 @@ function apply() {
     key.replaceAll("_"," ") + ": " + count).join(" · ") || "No matching HUMAN actions.";
   saveButton.disabled = printButton.disabled = visible === 0;
 }
-for (const item of [roleFilter,replyFilter,nextFilter]) {
-  item.addEventListener("change",apply);
-}
+const allFilters = [roleFilter,replyFilter,nextFilter,stageFilter,noteFilter];
+for (const item of allFilters) item.addEventListener("change",apply);
+resetButton.addEventListener("click",()=>{
+  for (const item of allFilters) item.value = "ALL";
+  apply();
+});
 printButton.addEventListener("click",()=>window.print());
 // Fixed-enum, ordinal-only CSV: no endpoint, reviewer, note or local source path.
 // Explicit user action only. Never send data to a server or browser storage.
@@ -180,8 +196,9 @@ def render(work):
         "<p class='hold'>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD ·"
         " REVIEW_ONLY · NO AUTHORIZATION</p></header>"
         "<main><p>All original local HUMAN slots; filter proposed actions by "
-        "voluntarily suggested role, received source-bound packet and HUMAN "
-        "stage. Priority is operator-selected, not authenticated time."
+        "voluntarily suggested role, received source-bound packet, suggested "
+        "next action, self-reported stage and private-note-change marker. "
+        "Priority is operator-selected, not authenticated time."
         " No endpoint URLs, note text or reviewer identities are loaded."
         " Browser filters exist in memory only. Printed pages and deliberate "
         "CSV downloads contain only the currently displayed rows; the full "
@@ -191,7 +208,10 @@ def render(work):
         "<label for='role'>Suggested HUMAN role<select id='role'></select></label>"
         "<label for='reply'>Role return<select id='reply'></select></label>"
         "<label for='next'>Suggested HUMAN action<select id='next'></select></label>"
+        "<label for='stage'>Self-reported HUMAN stage<select id='stage'></select></label>"
+        "<label for='note'>PRIVATE note changed?<select id='note'></select></label>"
         "</section><section class='panel'>"
+        "<button type='button' id='reset'>Clear all HUMAN filters</button>"
         "<p id='progress' role='status' aria-live='polite'></p>"
         "<p id='summary' role='status' aria-live='polite'></p>"
         "<p id='printScope'>PRIVATE selected HUMAN view</p>"
