@@ -485,14 +485,66 @@ def readmit_unchanged_sources(admitted):
         if reopened != absolute or reread != raw:
             raise Hold("original private agenda changed after initial admission")
 
+def read_private_agenda_manifest(path):
+    """Private LF-delimited absolute source paths; does not read targets or run work."""
+    absolute = os.path.abspath(os.fspath(path))
+    parent_fd, _ = open_directory_nofollow(os.path.dirname(absolute))
+    try:
+        fd = os.open(
+            os.path.basename(absolute),
+            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=parent_fd,
+        )
+    finally:
+        os.close(parent_fd)
+    with os.fdopen(fd, "rb") as stream:
+        before = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
+                or stat.S_IMODE(before.st_mode) != 0o600 or before.st_nlink != 1
+                or not 0 < before.st_size <= 32768):
+            raise Hold("source list must be owner-private bounded regular text")
+        raw = stream.read(32769)
+        after = os.fstat(stream.fileno())
+        signature = lambda item: (
+            item.st_dev, item.st_ino, item.st_size, item.st_uid, item.st_mode,
+            item.st_nlink, item.st_mtime_ns, item.st_ctime_ns,
+        )
+        if len(raw) != before.st_size or signature(before) != signature(after):
+            raise Hold("source list changed during admission")
+    if not raw.endswith(b"\\n") or b"\\r" in raw or b"\\0" in raw:
+        raise Hold("source list must be LF-delimited with no NUL or CR")
+    try:
+        paths = raw.decode("utf-8", errors="strict").splitlines()
+    except UnicodeError as error:
+        raise Hold("source list is not UTF-8") from error
+    if not 2 <= len(paths) <= MAX_AGENDAS:
+        raise Hold("source list must contain 2–12 agenda paths")
+    if len(set(paths)) != len(paths):
+        raise Hold("duplicate paths in source list")
+    for candidate in paths:
+        if (not os.path.isabs(candidate) or os.path.normpath(candidate) != candidate
+                or not 1 <= len(candidate) <= 2048
+                or any(ord(ch) < 32 or ord(ch) == 127 for ch in candidate)):
+            raise Hold("invalid path in owner-private source list")
+    return absolute, paths
+
+
 def run(args):
     if not hasattr(os, "O_NOFOLLOW"):
         raise Hold("platform lacks no-follow file support")
     reference_day = parse_date(args.as_of)
-    if not 2 <= len(args.agendas) <= MAX_AGENDAS:
+    if bool(args.agendas_file) == bool(args.agendas):
+        raise Hold("choose either --agendas-file or 2–12 positional source agendas")
+    manifest_path = None
+    selected_agendas = args.agendas
+    if args.agendas_file:
+        manifest_path, selected_agendas = read_private_agenda_manifest(args.agendas_file)
+    if not 2 <= len(selected_agendas) <= MAX_AGENDAS:
         raise Hold("select 2–12 original private agenda exports")
-    admitted = [read_private_agenda(path) for path in args.agendas]
+    admitted = [read_private_agenda(path) for path in selected_agendas]
     documents, rows, source_dirs = collect(admitted, reference_day)
+    if manifest_path:
+        source_dirs.add(os.path.dirname(manifest_path))
     output_fd, output_path = open_output_directory(args.output_dir)
     try:
         for source_dir in source_dirs:
@@ -538,7 +590,8 @@ def main(argv=None):
                         help="Restrict PRIVATE human workroom to one non-authorizing HUMAN stage")
     parser.add_argument("--focus-bucket", choices=DATE_BUCKETS,
                         help="Restrict PRIVATE human workroom to one date bucket relative to --as-of")
-    parser.add_argument("agendas", nargs="+", help="2–12 original private JSON agenda exports")
+    parser.add_argument("--agendas-file", help="Owner-private mode-0600 LF-delimited list of 2–12 absolute agenda paths")
+    parser.add_argument("agendas", nargs="*", help="2–12 original private JSON agenda exports (or use --agendas-file)")
     args = parser.parse_args(argv)
     try:
         return run(args)
