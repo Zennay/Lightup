@@ -394,6 +394,12 @@ def read_private_bundle(path: str) -> bytes:
         if (not stat.S_ISDIR(parent.st_mode) or parent.st_uid != os.getuid()
                 or stat.S_IMODE(parent.st_mode) != 0o700):
             raise Hold("bundle inspection requires an existing owner-only 0700 parent")
+
+        def directory_identity(item):
+            return (item.st_dev, item.st_ino, item.st_uid, stat.S_IMODE(item.st_mode),
+                    item.st_nlink, item.st_mtime_ns, item.st_ctime_ns)
+
+        parent_identity = directory_identity(parent)
         before = os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False)
         if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
                 or stat.S_IMODE(before.st_mode) != 0o600 or before.st_nlink != 1
@@ -419,8 +425,11 @@ def read_private_bundle(path: str) -> bytes:
                 break
             chunks.append(block); total += len(block)
         after = os.fstat(fd)
-        if total != opened.st_size or total > MAX_BUNDLE_BYTES or identity(after) != identity(opened):
-            raise Hold("bundle changed or exceeded its bounded read")
+        parent_after = os.fstat(parent_fd)
+        if (total != opened.st_size or total > MAX_BUNDLE_BYTES
+                or identity(after) != identity(opened)
+                or directory_identity(parent_after) != parent_identity):
+            raise Hold("bundle or private parent changed during the bounded read")
         return b"".join(chunks)
     except Hold:
         raise
