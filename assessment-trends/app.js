@@ -393,6 +393,7 @@
       "Import snapshots to summarize numeric metric distributions.";
     $("metricDistributionCsv").disabled=!rows.length;
     $("metricDistributionJson").disabled=!rows.length;
+    $("metricDistributionBrief").disabled=!rows.length;
   }
   function metricTrendSummaryRows(){
     const groupFilter=$("metricDistributionGroup").value,flagFilter=$("metricTrendFlagFilter").value,rows=[];
@@ -522,8 +523,40 @@
       selected_group_filter:$("metricDistributionGroup").value,
       selected_flag_filter:$("metricDistributionFlagFilter").value,rows:metricDistributionRows()};
   }
+  function exportMetricDistributionHtml(payload){
+    const headers=["Manual slot","Metric","Review group","Scenarios","Flagged scenarios",
+      "Median candidate","Candidate Q1","Candidate Q3","Candidate IQR","Candidate min","Candidate max",
+      "Median delta","Delta Q1","Delta Q3","Delta IQR","Median candidate shift vs slot 01",
+      "Median delta shift vs slot 01","Source status"];
+    const values=payload.rows.map(r=>[r.manual_slot,r.metric,r.review_group,r.scenario_count,r.flagged_scenarios,
+      r.median_candidate,r.q1_candidate,r.q3_candidate,r.candidate_iqr,r.min_candidate,r.max_candidate,
+      r.median_delta,r.q1_delta,r.q3_delta,r.delta_iqr,r.median_candidate_shift_from_slot_01,
+      r.median_delta_shift_from_slot_01,r.source_snapshot_status]);
+    const table="<table><thead><tr>"+headers.map(v=>"<th scope='col'>"+esc(v)+"</th>").join("")+
+      "</tr></thead><tbody>"+values.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+
+      "</tr>").join("")+"</tbody></table>";
+    const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"+
+      `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'">`+
+      "<title>LightUp · Anonymous metric distribution</title><style>"+
+      "body{font:14px/1.5 system-ui,sans-serif;margin:2rem;color:#17202a}h1{font-size:1.6rem}"+
+      ".hold{border:1px solid #8a6d3b;padding:1rem;margin:1rem 0}table{border-collapse:collapse;width:100%;font-size:11px}"+
+      "th,td{border:1px solid #bbb;padding:.35rem;text-align:left;vertical-align:top}th{background:#eee}"+
+      "@media print{body{margin:0}table{font-size:8px}tr{break-inside:avoid}}"+
+      "</style></head><body><h1>LightUp · Anonymous metric distribution</h1>"+
+      "<p>Aggregate summaries of already-completed source reports. Quartiles use linear interpolation at (n−1)×p. Median shifts compare with manual slot 01, not authenticated chronology.</p>"+
+      "<p>Selected static group: "+esc(payload.selected_group_filter)+" · Flag filter: "+
+      esc(payload.selected_flag_filter)+" · Manual slots: "+snapshots.length+"</p>"+
+      "<div class='hold'><strong>"+esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+payload.status+" · REVIEW ONLY / HOLD")+"</strong><p>"+
+      "fictional_demo_only="+payload.fictional_demo_only+" · authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false · "+
+      "authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false</p></div>"+
+      table+"<p>No original scenario IDs, filenames, source hashes or HUMAN notes are included.</p></body></html>";
+    if(new Blob([html]).size>4*1024*1024)return;
+    download("assessment-trends-anonymous-metric-distribution-REVIEW-ONLY.html",html,"text/html");
+  }
   function exportMetricDistribution(format){
     const payload=metricDistributionPayload();if(!payload.rows.length)return;
+    if(format==="html"){exportMetricDistributionHtml(payload);return;}
     if(format==="json"){
       download("assessment-trends-anonymous-metric-distribution.json",
         JSON.stringify(payload,null,2)+"\n","application/json");return;
@@ -1257,7 +1290,7 @@
   }
   function render(){
     const active=snapshots.length>0;
-    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson",
+    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson","metricDistributionBrief",
       "metricTrendSummaryCsv","metricTrendSummaryJson","metricTrendSummaryBrief"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
     $("noteMetric").replaceChildren();
@@ -1276,7 +1309,7 @@
       ["metricHeatmap","metricDistribution","metricTrendSummary","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
       $("metricDistributionSummary").textContent="Import snapshots to summarize numeric metric distributions.";
       $("metricTrendSummaryText").textContent="Import snapshots to summarize median shifts and source-flag prevalence.";
-      $("metricDistributionCsv").disabled=$("metricDistributionJson").disabled=true;
+      $("metricDistributionCsv").disabled=$("metricDistributionJson").disabled=$("metricDistributionBrief").disabled=true;
       $("metricTrendSummaryCsv").disabled=$("metricTrendSummaryJson").disabled=$("metricTrendSummaryBrief").disabled=true;
       renderHumanWorkPlan();
     }
@@ -2162,6 +2195,7 @@
   $("metricTrendSummaryBrief").addEventListener("click",()=>exportMetricTrendSummary("html"));
   $("metricDistributionCsv").addEventListener("click",()=>exportMetricDistribution("csv"));
   $("metricDistributionJson").addEventListener("click",()=>exportMetricDistribution("json"));
+  $("metricDistributionBrief").addEventListener("click",()=>exportMetricDistribution("html"));
   for(const filter of ["reviewKind","reviewGroup","reviewSlot","reviewStage"]){
     $(filter).addEventListener("change",()=>{reviewOffset=0;renderReviewQueue();});
   }
