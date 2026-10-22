@@ -33,6 +33,9 @@
   let capacityEditorDirty = false, capacityEditingGroup = "";
   let workroomComparison = null, workroomComparePage = 0;
   let originalBytes = null;
+  let workspaceReplacementGeneration = 0;
+  const beginWorkspaceReplacement = () => ++workspaceReplacementGeneration;
+  const currentWorkspaceReplacement = ticket => ticket === workspaceReplacementGeneration;
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   let conflictProposal=null;
   let lastIcsSequence=0;
@@ -2091,7 +2094,7 @@
       if(raw)raw.fill(0);
     }
   }
-  async function restorePortableVault(file){
+  async function restorePortableVault(file,ticket){
     hold(crypto.subtle);
     const wasActive=active,priorSource=originalBytes;
     const snapshot=active?workroomFingerprint():null;
@@ -2100,6 +2103,7 @@
     let admitted=null;
     try{
       admitted=await readPortableVault(file,password);
+      if(!currentWorkspaceReplacement(ticket))return;
       hold(active===wasActive && originalBytes===priorSource &&
         (!active || snapshot===workroomFingerprint()));
       if(!confirm("Open encrypted PRIVATE ORIGINAL HUMAN worksheet ("+
@@ -2110,6 +2114,7 @@
         " All plaintext stays in browser memory. Original source is UNSIGNED;"+
         " possession of this vault does NOT verify its producer, client/operator consent,"+
         " security findings, scope or real calendar access. Continue?"))return;
+      if(!currentWorkspaceReplacement(ticket))return;
       hold(active===wasActive && originalBytes===priorSource &&
         (!active || snapshot===workroomFingerprint()));
       if(originalBytes)originalBytes.fill(0);
@@ -2153,7 +2158,7 @@
         " Original producer, consent and security claims remain UNVERIFIED. No external calendar changed.");
     }finally{
       if(admitted && originalBytes!==admitted.source)admitted.source.fill(0);
-      clearVaultPasswords();
+      if(currentWorkspaceReplacement(ticket))clearVaultPasswords();
     }
   }
   function portablePlanCSV(admitted){
@@ -2610,14 +2615,16 @@
       if(raw)raw.fill(0);
     }
   }
-  async function restoreEncryptedWorkroom(file){
+  async function restoreEncryptedWorkroom(file,ticket){
     hold(active && crypto.subtle);
     const initial=workroomFingerprint(),oldPlan=plan,oldSeries=seriesId;
     const password=$("handoffPassword").value;
     try{
       const admitted=await readEncryptedWorkroom(file,password);
+      if(!currentWorkspaceReplacement(ticket))return;
       hold(active && initial===workroomFingerprint() && oldPlan===plan && oldSeries===seriesId);
       if(!confirm("Replace ALL local HUMAN appointments and declared group availability with complete encrypted PRIVATE workroom? This authenticates neither identity, consent nor original risk; existing unsaved choices will be overwritten."))return;
+      if(!currentWorkspaceReplacement(ticket))return;
       hold(active && initial===workroomFingerprint() && oldPlan===plan && oldSeries===seriesId);
       publicationBaseline=null;changesPage=0;
       $("baselineStatus").textContent="No previous publication loaded.";
@@ -2627,7 +2634,7 @@
       page=0;agendaPage=0;backlogPage=0;
       capacityLoadEditor();render();
       inform("Complete PRIVATE HUMAN schedule and declared group rules restored from original worksheet-bound encrypted file; no authorization conferred.");
-    }finally{clearPasswords();}
+    }finally{if(currentWorkspaceReplacement(ticket))clearPasswords();}
   }
   async function decryptPrivatePlan(file,password){
     hold(active && crypto.subtle && password.length>=16 && password.length<=256);
@@ -2652,17 +2659,19 @@
       if(raw)raw.fill(0);
     }
   }
-  async function restoreEncryptedFile(file){
+  async function restoreEncryptedFile(file,ticket){
     hold(active && crypto.subtle);
     const fingerprint=workroomFingerprint(),oldPlan=plan;
     const password=$("handoffPassword").value;
     try{
       const admitted=await decryptPrivatePlan(file,password);
+      if(!currentWorkspaceReplacement(ticket))return;
       hold(active && fingerprint===workroomFingerprint() && plan===oldPlan);
       const replacingGroupPolicy=admitted.series!==seriesId;
       if(!confirm("Restore a separate encrypted PRIVATE plan-only file? All existing proposed HUMAN appointment dates will be replaced. "+
         (replacingGroupPolicy?"IMPORTANT: its calendar series differs, so ALL current declared group availability settings will reset to defaults. Save complete .luhw workroom first if needed. ":"Matching calendar series; saved local group rules will be retained. ")+
         "This file is not original source, identity, consent or security verification."))return;
+      if(!currentWorkspaceReplacement(ticket))return;
       hold(active && fingerprint===workroomFingerprint() && plan===oldPlan);
       publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
       const previousSeries=seriesId;
@@ -2672,7 +2681,7 @@
       else {capacityProposal=null;$("capacityApply").disabled=true;}
       render();
       inform("Encrypted PRIVATE calendar plan opened and exact original worksheet / timezone readmitted. No assessment authority.");
-    }finally{clearPasswords();}
+    }finally{if(currentWorkspaceReplacement(ticket))clearPasswords();}
   }
   async function readEncryptedBaseline(file){
     hold(active && crypto.subtle);
@@ -2689,19 +2698,23 @@
       renderChanges();inform("Encrypted prior HUMAN schedule opened for PRIVATE comparison, no current appointments changed.");
     }finally{$("baselinePassword").value="";}
   }
-  async function onOriginal(file){
+  async function onOriginal(file,ticket){
     const buffer=await bytes(file);
+    if(!currentWorkspaceReplacement(ticket)){buffer.fill(0);return;}
     const raw=decoder.decode(buffer);
     hold(!raw.startsWith("\uFEFF"));
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
+    if(!currentWorkspaceReplacement(ticket)){buffer.fill(0);return;}
     if(active && (changed||capacityDirty||capacityEditorDirty) &&
-      !confirm("Discard all unsaved PRIVATE HUMAN plan, group availability and group-editor changes?"))return;
+      !confirm("Discard all unsaved PRIVATE HUMAN plan, group availability and group-editor changes?")){buffer.fill(0);return;}
+    if(!currentWorkspaceReplacement(ticket)){buffer.fill(0);return;}
     publicationBaseline=null;changesPage=0;workroomComparison=null;
     $("workroomCompareRows").replaceChildren();
     $("baselineStatus").textContent="No previous publication loaded.";
     if(originalBytes)originalBytes.fill(0);
     originalBytes=new Uint8Array(buffer);
+    buffer.fill(0);
     items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
     monthAnchor=nowToday().slice(0,7);$("monthGroup").value="";
     backlogProposal=null;
@@ -2716,16 +2729,19 @@
     $("agendaHorizon").value="7";$("agendaQuery").value="";$("workloadQuery").value="";
     resetCapacity();render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
-  async function onRestore(file){
+  async function onRestore(file,ticket){
     hold(active);
     const snapshot=workroomFingerprint(),initialPlan=plan;
-    const raw=decoder.decode(await bytes(file));
+    const buffer=await bytes(file);
+    if(!currentWorkspaceReplacement(ticket)){buffer.fill(0);return;}
+    const raw=decoder.decode(buffer);buffer.fill(0);
     const imported=admitPlanText(raw);
     hold(active && snapshot===workroomFingerprint() && plan===initialPlan);
     const replacingGroupPolicy=imported.series!==seriesId;
     if(!confirm("Restore plan-only CSV and replace ALL local proposed HUMAN appointment dates? "+
       (replacingGroupPolicy?"IMPORTANT: this import changes calendar series and will RESET currently declared group availability to defaults. Save complete encrypted .luhw workroom first if needed. ":"Existing declared HUMAN group availability stays unchanged. ")+
       "Source SHA is unsigned and does not provide permission, identity, verified security status or actual calendar availability."))return;
+    if(!currentWorkspaceReplacement(ticket))return;
     hold(active && snapshot===workroomFingerprint() && plan===initialPlan);
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     const previousSeries=seriesId;
@@ -2873,8 +2889,20 @@
     download(JSON.stringify(data,null,2)+"\n","lightup-private-human-counts.json","application/json;charset=utf-8");
   }
   function hook(id,event,fn){$(id).addEventListener(event,fn);}
-  hook("worksheet","change",async e=>{try{if(e.target.files[0])await onOriginal(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
-  hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
+  hook("worksheet","change",async e=>{
+    const file=e.target.files[0];if(!file)return;
+    const ticket=beginWorkspaceReplacement();
+    try{await onOriginal(file,ticket);}
+    catch(err){if(currentWorkspaceReplacement(ticket))inform(err.message,true);}
+    finally{if(currentWorkspaceReplacement(ticket))e.target.value="";}
+  });
+  hook("restore","change",async e=>{
+    const file=e.target.files[0];if(!file)return;
+    const ticket=beginWorkspaceReplacement();
+    try{await onRestore(file,ticket);}
+    catch(err){if(currentWorkspaceReplacement(ticket))inform(err.message,true);}
+    finally{if(currentWorkspaceReplacement(ticket))e.target.value="";}
+  });
   hook("encryptedBaseline","change",async e=>{
     try{if(e.target.files[0])await readEncryptedBaseline(e.target.files[0]);}
     catch(_){$("baselinePassword").value="";inform("Encrypted historical PRIVATE plan denied (HOLD); existing planning and comparison remain unchanged.",true);}
@@ -2997,11 +3025,13 @@
     finally{e.target.value="";clearVaultPasswords();clearVaultRekeyFields();}
   });
   hook("restorePortableVault","change",async e=>{
-    try{if(e.target.files[0])await restorePortableVault(e.target.files[0]);}
-    catch(_){inform("Portable PRIVATE ORIGINAL HUMAN vault rejected (HOLD)."+
+    const file=e.target.files[0];if(!file)return;
+    const ticket=beginWorkspaceReplacement();
+    try{await restorePortableVault(file,ticket);}
+    catch(_){if(currentWorkspaceReplacement(ticket))inform("Portable PRIVATE ORIGINAL HUMAN vault rejected (HOLD)."+
       " Wrong password, corrupt/oversized data, unsupported version or invalid HUMAN"+
       " source/policy bindings. Prior browser workroom unchanged.",true);}
-    finally{e.target.value="";clearVaultPasswords();}
+    finally{if(currentWorkspaceReplacement(ticket)){e.target.value="";clearVaultPasswords();}}
   });
   hook("savePortableVault","click",async()=>{
     try{await savePortableVault();}
@@ -3014,21 +3044,26 @@
     catch(_){clearPasswords();inform("Complete encrypted PRIVATE HUMAN workroom export refused (HOLD).",true);}
   });
   hook("restoreWorkroom","change",async e=>{
-    try{if(e.target.files[0])await restoreEncryptedWorkroom(e.target.files[0]);}
-    catch(_){clearPasswords();inform("Complete workroom refused (HOLD), original source and schedule untouched.",true);}
-    finally{e.target.value="";}
+    const file=e.target.files[0];if(!file)return;
+    const ticket=beginWorkspaceReplacement();
+    try{await restoreEncryptedWorkroom(file,ticket);}
+    catch(_){if(currentWorkspaceReplacement(ticket)){clearPasswords();inform("Complete workroom refused (HOLD), original source and schedule untouched.",true);}}
+    finally{if(currentWorkspaceReplacement(ticket))e.target.value="";}
   });
   hook("encryptPlan","click",async()=>{
     try{await saveEncrypted();}catch(_){clearPasswords();inform("Encrypted PRIVATE plan export refused (HOLD).",true);}
   });
   hook("restoreEncrypted","change",async e=>{
-    try{if(e.target.files[0])await restoreEncryptedFile(e.target.files[0]);}
-    catch(_){clearPasswords();inform("Encrypted PRIVATE plan could not be admitted (HOLD). Original local plans untouched.",true);}
-    finally{e.target.value="";}
+    const file=e.target.files[0];if(!file)return;
+    const ticket=beginWorkspaceReplacement();
+    try{await restoreEncryptedFile(file,ticket);}
+    catch(_){if(currentWorkspaceReplacement(ticket)){clearPasswords();inform("Encrypted PRIVATE plan could not be admitted (HOLD). Original local plans untouched.",true);}}
+    finally{if(currentWorkspaceReplacement(ticket))e.target.value="";}
   });
   hook("reset","click",()=>{
     if((changed||capacityDirty||capacityEditorDirty||recipientPolicyDirty)&&
       !confirm("Discard unsaved PRIVATE plan, group availability, recipient window and editor field changes?"))return;
+    beginWorkspaceReplacement();
     publicationBaseline=null;changesPage=0;$("baselineStatus").textContent="No previous publication loaded.";
     clearRecipientWorkspace();$("recipientDesk").hidden=true;
     capacityRules=new Map();capacityDirty=false;capacityEditorDirty=false;capacityProposal=null;$("capacityApply").disabled=true;
