@@ -583,10 +583,18 @@
   function metricTransitionRows(){
     const chosenGroup=$("metricDistributionGroup").value;
     const chosenTransition=$("metricTransitionFilter").value;
+    const chosenScope=$("metricTransitionScope").value;
     const rows=[];
     if(snapshots.length<2||!scenarioIds.length)return rows;
-    for(let index=1;index<snapshots.length;index++){
-      const previous=snapshots[index-1],current=snapshots[index];
+    const pairs=[];
+    if(chosenScope==="all_pairs"){
+      for(let previous=1;previous<snapshots.length;previous++)
+        for(let current=previous+1;current<=snapshots.length;current++)pairs.push([previous,current]);
+    }else{
+      for(let current=2;current<=snapshots.length;current++)pairs.push([current-1,current]);
+    }
+    for(const [previousSlot,currentSlot] of pairs){
+      const previous=snapshots[previousSlot-1],current=snapshots[currentSlot-1];
       for(const name of METRICS){
         const group=family(name);
         if(chosenGroup!=="all"&&chosenGroup!==group)continue;
@@ -610,7 +618,7 @@
         };
         if(!matches[chosenTransition])continue;
         rows.push({
-          previous_manual_slot:index,current_manual_slot:index+1,
+          previous_manual_slot:previousSlot,current_manual_slot:currentSlot,
           metric:name,review_group:group,scenario_count:scenarioIds.length,
           previous_flagged_scenarios:flaggedToClear+flaggedBoth,
           current_flagged_scenarios:clearToFlagged+flaggedBoth,
@@ -640,10 +648,13 @@
         cell(r.flagged_to_clear_scenarios,r.flagged_to_clear_scenarios?"cell-adverse":"cell-neutral"),
         r.flagged_in_both_slots_scenarios,r.clear_in_both_slots_scenarios,r.changed_scenarios,
         r.net_flag_change,r.previous_source_status,r.current_source_status]));
+    const scope=$("metricTransitionScope").value;
+    const pairCount=scope==="all_pairs"?snapshots.length*(snapshots.length-1)/2:snapshots.length-1;
     $("metricTransitionSummary").textContent=rows.length?
-      "Showing "+rows.length+" metric/pair rows across "+(snapshots.length-1)+
-      " adjacent manual-slot pairs and "+scenarioIds.length+
-      " anonymous scenarios. Each scenario contributes to exactly one flag-state category. A flag absent in the next selected slot is not a verified fix; slot order is not authenticated chronology.":
+      "Showing "+rows.length+" metric/pair rows across "+pairCount+
+      (scope==="all_pairs"?" distinct manual-slot pairs (including non-adjacent comparisons)":" adjacent manual-slot pairs")+
+      " and "+scenarioIds.length+
+      " anonymous scenarios. Each scenario contributes to exactly one flag-state category. A flag absent in a later-selected slot is not a verified fix; slot order is not authenticated chronology.":
       snapshots.length>1?"No metric/slot-pair rows match the selected group and transition filters.":
       "Import at least two snapshots to summarize flag-state changes.";
     for(const id of ["metricTransitionCsv","metricTransitionJson","metricTransitionBrief"])
@@ -839,10 +850,15 @@
       lines.join("\n")+"\n","text/csv;charset=utf-8");
   }
   function metricTransitionPayload(){
-    return {schema:"lightup.assessment_trends_flag_transition_matrix.v1",
+    const selectedPairScope=$("metricTransitionScope").value;
+    const allPairs=snapshots.length*(snapshots.length-1)/2;
+    return {schema:"lightup.assessment_trends_flag_transition_matrix.v2",
       status:summary().status,fictional_demo_only:fictional,
       manual_slot_order:true,manual_slot_count:snapshots.length,
       adjacent_manual_slot_pairs:Math.max(0,snapshots.length-1),
+      all_manual_slot_pairs:Math.max(0,allPairs),
+      selected_pair_scope:selectedPairScope,
+      selected_pair_count:selectedPairScope==="all_pairs"?allPairs:Math.max(0,snapshots.length-1),
       authenticated_chronology:false,source_metrics_independently_verified:false,
       remediation_verified:false,...Object.fromEntries(FLAGS.map(name=>[name,false])),
       selected_group_filter:$("metricDistributionGroup").value,
@@ -871,9 +887,13 @@
       "th,td{border:1px solid #bbb;padding:.35rem;text-align:left;vertical-align:top}th{background:#eee}"+
       "@media print{body{margin:0}table{font-size:8px}tr{break-inside:avoid}}"+
       "</style></head><body><h1>LightUp · Anonymous flag-state transitions</h1>"+
-      "<p>Counts compare adjacent manually ordered snapshots only. The selected order is not authenticated chronology; a missing flag is not a verified fix.</p>"+
+      "<p>"+(payload.selected_pair_scope==="all_pairs"?
+        "Counts compare every distinct pair of manually ordered snapshots, including non-adjacent slots.":
+        "Counts compare adjacent manually ordered snapshots only.")+
+        " The selected order is not authenticated chronology; a missing flag is not a verified fix.</p>"+
       "<p>Static review group: "+esc(payload.selected_group_filter)+" · Transition filter: "+
-      esc(payload.selected_transition_filter)+" · Manual slots: "+payload.manual_slot_count+"</p>"+
+      esc(payload.selected_transition_filter)+" · Pair scope: "+esc(payload.selected_pair_scope)+
+      " ("+payload.selected_pair_count+" pairs) · Manual slots: "+payload.manual_slot_count+"</p>"+
       "<div class='hold'><strong>"+esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+
       payload.status+" · REVIEW ONLY / HOLD")+"</strong><p>fictional_demo_only="+payload.fictional_demo_only+
       " · authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false · "+
@@ -892,7 +912,8 @@
         JSON.stringify(payload,null,2)+"\n","application/json");return;
     }
     const columns=["schema","selected_group_filter","selected_transition_filter","manual_slot_order",
-      "manual_slot_count","adjacent_manual_slot_pairs","previous_manual_slot","current_manual_slot",
+      "manual_slot_count","adjacent_manual_slot_pairs","all_manual_slot_pairs","selected_pair_scope",
+      "selected_pair_count","previous_manual_slot","current_manual_slot",
       "metric","review_group","scenario_count","previous_flagged_scenarios","current_flagged_scenarios",
       "clear_to_flagged_scenarios","flagged_to_clear_scenarios","flagged_in_both_slots_scenarios",
       "clear_in_both_slots_scenarios","changed_scenarios","net_flag_change","previous_source_status",
@@ -2530,6 +2551,7 @@
   $("metricDistributionFlagFilter").addEventListener("change",renderMetricDistribution);
   $("metricTrendFlagFilter").addEventListener("change",renderMetricTrendSummary);
   $("metricTransitionFilter").addEventListener("change",renderMetricTransitions);
+  $("metricTransitionScope").addEventListener("change",renderMetricTransitions);
   for(const id of ["metricTransitionMetric","metricTransitionPair","metricTransitionCaseFilter"])
     $(id).addEventListener("change",renderMetricTransitionCases);
   $("metricTransitionCasesCsv").addEventListener("click",()=>exportTransitionCases("csv"));
