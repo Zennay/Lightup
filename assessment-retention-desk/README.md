@@ -199,3 +199,32 @@ Missing membership does **not** mean deletion, remediation, revocation or
 clearance; manual ordering does not prove chronology. Output is exclusive
 0600 in an existing owner-owned 0700 directory and remains sensitive, unsigned
 and non-authorizing. No scan, delete, grant, client contact or release occurs.
+
+
+## Encrypted multi-snapshot source-set lineage (no plaintext export)
+
+For teams that keep each HUMAN plan in its original encrypted `.lurt` vault,
+`vault_source_history.py` extends the same 2–12-snapshot lineage to changing
+source sets. Each vault is decrypted only in process memory, and each plan is
+matched to its own separately selected original source bytes before it enters
+the history. The report is produced only if every snapshot's complete
+SHA-256/size membership matches exactly.
+
+~~~sh
+python3 assessment-retention-desk/vault_source_history.py \
+  --output /private/operator/encrypted-source-history.html \
+  --source-file 1=/private/older/source-a.json \
+  --source-file 1=/private/older/source-b.json \
+  --source-file 2=/private/newer/source-a.json \
+  /private/operator/plan-before.lurt \
+  /private/operator/plan-after.lurt
+~~~
+
+Repeat `--source-file SNAPSHOT=PATH` for every original file in every
+snapshot; snapshot numbers follow the manually selected vault order. The
+native tool prompts separately for each vault password (never as a command-line
+argument), rejects missing/extra/changed source membership, and writes only a
+scriptless 0600 HTML report in an existing owner-owned 0700 directory. It does
+not write decrypted JSON or HUMAN notes to disk. Manual order is not verified
+chronology; source absence is not deletion, remediation, revocation or
+clearance. Digest prefixes and HUMAN stage/hold categories remain sensitive.
