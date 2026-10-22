@@ -76,3 +76,31 @@ The single-file artifact is generated deterministically from adjacent `index.htm
 **Active worker isolation:** entirely new `lab-design/` paths only. Do not modify original `labeval.py`, `labrun.py`, `scope.py`, auth, targets, scanners, grants, CI, runners or active PR #1515 comparator, #1576 reviewdesk, #1585 trajectory or #1592 candidate matrix. No QA/regression/tests are written or run.
 
 **Release boundary unchanged:** separately authenticated client and operator consent with action-time revocation, original security source-owner repairs #177/#182/#829, independent security/privacy, exact-HEAD complete original hosted plus permanently registered named VPS CI and explicit HUMAN GO are not established. **No merge, deploy, scans, grants, active handlers, retest, real targets or release.**
+
+
+## Native original-fixture catalog bundle
+
+The installed-fixture importer can also write a single PRIVATE ZIP, while
+keeping the existing canonical JSON export unchanged:
+
+~~~sh
+python3 lab-design/fixture_catalog.py \
+  --target 127.0.0.1 \
+  --bundle-output ./private/installed-fixtures.zip
+~~~
+
+The archive contains `catalog.json`, `manifest.json` and `README.txt`.
+The manifest records the catalog's SHA-256/size and bounded local fingerprints
+of `src/lightup/labfixtures.py` and `src/lightup/workers/http_baseline.py`.
+Those two source files are read through stable, no-follow regular-file
+descriptors before catalog extraction and again immediately before packaging;
+if either changes during the operation, the bundle is refused. The source
+files themselves are never copied into the archive.
+
+The catalog is still admitted through the original native `LabScenario`
+constructor and remains `DRAFT_ONLY`. No fixture, server, HTTP client, DNS,
+scanner, grant, consent or release is started or created. The ZIP and its
+entries are owner-only (0600); it contains private loopback targets and
+expected finding identities, so keep it in private storage. Hashes are unsigned
+local byte fingerprints, not proof of source identity, imported runtime,
+authorization or provenance. The output is exclusive and is never overwritten.
