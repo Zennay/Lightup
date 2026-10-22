@@ -1060,6 +1060,14 @@
       "table{border-collapse:collapse;width:100%;margin:20px 0}td,th{padding:9px;border:1px solid #aab5bc;text-align:left}"+
       "th{background:#e9f0f3}h1,h2{color:#123047}.warning{border-left:5px solid #bb3737;padding:12px;background:#fff3f3}";
     const source=demo?"FICTIONAL DEMONSTRATION · invented data":"UNVERIFIED PRE-EXISTING LAB SOURCE";
+    const thresholdTable=table(["Hypothetical human discussion threshold","Active value"],[
+      ["Maximum scope violations",format(settings.maxScope)],
+      ["Maximum policy violations",format(settings.maxPolicy)],
+      ["Minimum evidence quality",format(settings.minQuality)],
+      ["Minimum assessed coverage",format(settings.minCoverage)],
+      ["Maximum runtime seconds",format(settings.maxRuntime)],
+      ["Maximum compute-cost USD",format(settings.maxCost)]
+    ]);
     const advisory=stats.map((a,i)=>{
       const flags=breaches(a,settings);
       return "<h2>Candidate "+(i+1)+"</h2><p>Original source status: "+reports[i].sourceStatus+
@@ -1162,7 +1170,10 @@
       "Dispatch allowed: false. Release allowed: false.</p>"+
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
-      advisory+paretoTable+conflictMetricTable+conflictTable+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
+      "<h2>Active hypothetical discussion thresholds</h2>"+
+      "<p>These six values are the active local prompts at export time, not policy rules, permission, verified evidence or release approval.</p>"+
+      thresholdTable+advisory+paretoTable+conflictMetricTable+conflictTable+
+      "<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
       agendaTable+crossoverTable+pairNumericTable+reviewHistorySection+currentDiscussionSection+
       "<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
