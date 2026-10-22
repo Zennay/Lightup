@@ -582,8 +582,10 @@
       if(mode==="adverse")return hasAdverse;
       return hasAdverse||hasDisagreement;
     });
-    const adverseCases=allRows.filter(row=>row.adverseByCandidate.length).length;
-    const disagreementCases=allRows.filter(row=>row.disagreements.length).length;
+    const adverseCases=allRows.filter(row=>metricFocus==="all"?row.adverseByCandidate.length>0:
+      row.candidates.some(candidate=>candidate.item.metrics[metricFocus].regression)).length;
+    const disagreementCases=allRows.filter(row=>metricFocus==="all"?row.disagreements.length>0:
+      row.disagreements.some(item=>item.metric===metricFocus)).length;
     $("conflictMetricSummary").innerHTML=table([
       "Metric","Cases with any source-adverse label","Cases with cross-candidate label disagreement",
       ...reports.map((_,i)=>"Candidate "+(i+1)+" · adverse cases")
@@ -613,10 +615,10 @@
         metricDisagreements.map(item=>nice(item.metric)+" — adverse: Candidate "+item.adverseSlots.join(", ")+
           "; not adverse: Candidate "+item.nonAdverseSlots.join(", ")).join(" · "):
         "No cross-candidate label disagreement for the selected metric(s)";
-      const note=row.disagreements.length?
+      const note=metricDisagreements.length?
         "Source labels disagree; request original evidence and reconcile the classification.":
-        row.adverseByCandidate.length?
-          "Adverse labels are consistent across candidates for this case; review the underlying evidence.":
+        adverseRows.length?
+          "Adverse labels are consistent across candidates for the selected metric(s); review the underlying evidence.":
           "No source-labelled regression appears here; absence is not proof of safety.";
       return ["Lab case "+String(row.ordinal).padStart(2,"0"),adverse,disagreements,note];
     }));
