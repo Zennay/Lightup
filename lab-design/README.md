@@ -104,3 +104,8 @@ entries are owner-only (0600); it contains private loopback targets and
 expected finding identities, so keep it in private storage. Hashes are unsigned
 local byte fingerprints, not proof of source identity, imported runtime,
 authorization or provenance. The output is exclusive and is never overwritten.
+
+
+## Latest-intent atomic source admission
+
+Catalog replacement previews and append operations now use a local generation token around each asynchronous file read. Starting a newer import supersedes the older read; selecting original fixture profiles, clearing the staged preview, accepting/merging a preview, editing or reordering the current catalog, loading the fictional demo, or forgetting the workroom invalidates pending reads. A superseded completion cannot repopulate a forgotten/replaced staging panel, append old sources to a newer dataset, or overwrite the current status with a stale error. Replacement still commits only to the separate preview after the complete bounded catalog passes validation; append still validates the entire combined catalog before a single commit. The status line explicitly reports local reading while the current catalog remains unchanged. No browser persistence, network, target access, evaluation or permission is introduced.
