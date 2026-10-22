@@ -135,6 +135,19 @@ python3 assessment-portfolio/portfolio.py \
   --output-dir /private/local-human-workroom
 ```
 
+**PRIVATE cross-agenda coordination views:** Both the original static PRIVATE
+HTML and the optional interactive PRIVATE explorer now show a per-agenda HUMAN
+workload matrix, with neutral-role and proposed date-bucket counts, plus direct
+ordinal links to each agenda's first source item in the worklist. They also
+show same-proposed-day/same-neutral-role *attention clusters* (two or more
+rows) and links to each ordinal so one human can discuss competing proposals
+without paging between source files. This is **not** proof of a genuine
+individual schedule conflict, assignment, deadline, elapsed time,
+remediation, missing source resolution or authorization. These per-agenda
+details appear only in PRIVATE HTML, not the anonymous JSON/CSV.
+A filtered workroom calculates both PRIVATE views using only the admitted
+filtered subset and explains that absence of visible rows is not completion.
+
 **Interactive PRIVATE explorer**:
 `assessment-portfolio-private-explorer.html` opens without a web service and
 enhances the existing role-grouped work tables with client-side filtering by
