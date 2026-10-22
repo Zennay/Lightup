@@ -15,6 +15,7 @@ import os
 import stat
 import sys
 import unicodedata
+import human_workbook
 
 AGENDA_SCHEMA = "lightup.archive_human_agenda.v1"
 PORTFOLIO_SCHEMA = "lightup.assessment_portfolio_aggregate.v1"
@@ -633,7 +634,8 @@ def publish_bundle(directory_fd, artifacts):
         raise
 
 
-def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False, calendar=False):
+def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
+                     calendar=False, workbook=False, human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
     A filtered handoff has an explicit v2 view contract; unchanged full
@@ -654,6 +656,14 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
         result.append(("assessment-portfolio-private-explorer.html", render_interactive_html(summary, rows)))
     if calendar:
         result.append(("assessment-portfolio-private-proposals.ics", render_private_calendar(rows, reference_day)))
+    if workbook:
+        result.append(("assessment-portfolio-human-workbook.html",
+                       human_workbook.render_worksheet(rows, reference_day.isoformat())))
+    if human_entries is not None:
+        result.append(("assessment-portfolio-private-HUMAN-return.html",
+                       human_workbook.render_private_return(human_entries, reference_day.isoformat())))
+        result.append(("assessment-portfolio-private-HUMAN-return.csv",
+                       human_workbook.render_private_csv(human_entries)))
     if any(len(data) > 1_048_576 for _, data in result):
         raise Hold("private portfolio artifact exceeds bounded 1 MiB publication limit")
     return result
@@ -774,11 +784,29 @@ def run(args):
                 and (not args.focus_stage or row["stage"] == args.focus_stage)
                 and (not args.focus_bucket or row["date_bucket"] == args.focus_bucket)
             ]
+        responses_raw, human_entries = None, None
+        if args.human_responses:
+            # Explicit private HUMAN input; never edits original admitted agendas.
+            response_path = os.path.abspath(args.human_responses)
+            source_dirs.add(os.path.dirname(response_path))
+            responses_raw, responses = human_workbook.read_private_response(
+                response_path, open_directory_nofollow
+            )
+            human_entries = human_workbook.validate_response(
+                responses, rows, reference_day.isoformat()
+            )
         outputs = render_artifacts(
             documents, rows, reference_day, selection=selection,
             interactive=args.private_explorer, calendar=args.private_calendar,
+            workbook=args.private_human_workbook, human_entries=human_entries,
         )
         readmit_unchanged_sources(admitted)
+        if args.human_responses:
+            reopened, _ = human_workbook.read_private_response(
+                args.human_responses, open_directory_nofollow
+            )
+            if reopened != responses_raw:
+                raise Hold("HUMAN worksheet source changed before publication")
         if manifest_path:
             _, reopened_paths = read_private_agenda_manifest(manifest_path)
             if reopened_paths != selected_agendas:
@@ -811,12 +839,16 @@ def main(argv=None):
                         help="Add a CSP-pinned offline interactive PRIVATE HUMAN queue, no storage/network")
     parser.add_argument("--private-calendar", action="store_true",
                         help="Add a PRIVATE date-only tentative calendar, no invitations or alarms")
+    parser.add_argument("--private-human-workbook", action="store_true",
+                        help="Add offline HUMAN discussion worksheet with local JSON download, no authority")
+    parser.add_argument("--human-responses",
+                        help="Owner-private 0600 saved HUMAN worksheet JSON for strict original-bound return")
     parser.add_argument("--agendas-file", help="Owner-private mode-0600 LF-delimited list of 2–12 absolute agenda paths")
     parser.add_argument("agendas", nargs="*", help="2–12 original private JSON agenda exports (or use --agendas-file)")
     args = parser.parse_args(argv)
     try:
         return run(args)
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, KeyError,
+    except (Hold, human_workbook.Hold, OSError, ValueError, TypeError, UnicodeError, KeyError,
             OverflowError, RecursionError, csv.Error):
         print("ASSESSMENT_PORTFOLIO_HOLD — invalid, unsafe, or incompatible private source/output", file=sys.stderr)
         return 3
