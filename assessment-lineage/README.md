@@ -20,6 +20,22 @@ application code**, never uploaded private client/lab content, never
 scans or executes an assessment. It is not independent browser approval,
 original source-owner review or authorization to deploy.
 
+## Native source-admission failure handling
+
+The PRIVATE builder now rejects type-confused status and HUMAN-draft schema
+fields with its normal non-authorizing `HOLD` result rather than surfacing
+an input-dependent native exception. Nonfinite original JSON decimal numbers,
+including exponent overflow and nonzero values that underflow to binary
+floating zero, are refused before embedding source claims into the PRIVATE
+workroom. Genuine zero exponent representations remain admissible. There
+is no interpretation as detected security evidence and no modification of
+the original browser's stricter scenario/comparator validation.
+
+These are early local admission safeguards for untrusted originals, not proof
+of source authenticity, absence of vulnerabilities or permission to run an
+assessment. The native tool never executes a comparator, contacts a target,
+releases a claim, authorizes a grant or grants consent.
+
 ## One-file PRIVATE report selection (1–8 finished comparisons)
 
 The native offline `private_workroom.py` now accepts `--reports-file` as an
