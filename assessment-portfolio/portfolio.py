@@ -813,7 +813,8 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
                      calendar=False, calendar_clusters=False, day_brief=False, role_day_csv=False,
                      home=False, workbook=False, capacity_limits=None,
                      alternative_capacity_limits=None, capacity_browser_studio=False,
-                     human_entries=None, previous_human_entries=None):
+                     human_entries=None, previous_human_entries=None,
+                     human_history_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
     A filtered handoff has an explicit v2 view contract; unchanged full
@@ -874,7 +875,19 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
         result.append(("assessment-portfolio-private-HUMAN-delta.json",
                        human_workbook.render_private_comparison_json(
                            previous_human_entries, human_entries, reference_day.isoformat())))
-    if home or workbook or human_entries is not None:
+    if human_history_entries is not None:
+        if human_entries is not None or previous_human_entries is not None:
+            raise Hold("multi-round HUMAN history cannot be combined with pairwise HUMAN inputs")
+        result.append(("assessment-portfolio-private-HUMAN-timeline.html",
+                       human_workbook.render_private_timeline_html(
+                           human_history_entries, reference_day.isoformat())))
+        result.append(("assessment-portfolio-private-HUMAN-timeline.json",
+                       human_workbook.render_private_timeline_json(
+                           human_history_entries, reference_day.isoformat())))
+        result.append(("assessment-portfolio-private-HUMAN-timeline.csv",
+                       human_workbook.render_private_timeline_csv(
+                           human_history_entries, reference_day.isoformat())))
+    if home or workbook or human_entries is not None or human_history_entries is not None:
         result.append(("assessment-portfolio-private-HUMAN-home.html",
                        human_workbook.render_private_home(
                            [name for name, _ in result], reference_day.isoformat())))
@@ -999,15 +1012,27 @@ def run(args):
     documents, rows, source_dirs = collect(admitted, reference_day)
     if manifest_path:
         source_dirs.add(os.path.dirname(manifest_path))
-    if args.previous_human_responses and not args.human_responses:
-        raise Hold("HUMAN comparison requires a current response source")
-    if args.human_responses:
-        # Keep source/return and output rooms separate before ANY publication.
-        source_dirs.add(os.path.dirname(os.path.abspath(args.human_responses)))
-    if args.previous_human_responses:
-        if (os.path.abspath(args.previous_human_responses) == os.path.abspath(args.human_responses)):
-            raise Hold("HUMAN comparison sources cannot alias the same path")
-        source_dirs.add(os.path.dirname(os.path.abspath(args.previous_human_responses)))
+    if args.human_history:
+        if args.human_responses or args.previous_human_responses:
+            raise Hold("choose multi-round HUMAN history or pairwise HUMAN inputs, not both")
+        if not 2 <= len(args.human_history) <= 8:
+            raise Hold("HUMAN history requires 2–8 separately saved rounds")
+        history_paths = [os.path.abspath(path) for path in args.human_history]
+        if len(set(history_paths)) != len(history_paths):
+            raise Hold("HUMAN history paths must be unique and manually ordered")
+        # Every response room is private source input and must remain separate from output.
+        for path in history_paths:
+            source_dirs.add(os.path.dirname(path))
+    else:
+        if args.previous_human_responses and not args.human_responses:
+            raise Hold("HUMAN comparison requires a current response source")
+        if args.human_responses:
+            # Keep source/return and output rooms separate before ANY publication.
+            source_dirs.add(os.path.dirname(os.path.abspath(args.human_responses)))
+        if args.previous_human_responses:
+            if (os.path.abspath(args.previous_human_responses) == os.path.abspath(args.human_responses)):
+                raise Hold("HUMAN comparison sources cannot alias the same path")
+            source_dirs.add(os.path.dirname(os.path.abspath(args.previous_human_responses)))
     output_fd, output_path = open_output_directory(args.output_dir)
     try:
         for source_dir in source_dirs:
@@ -1049,6 +1074,19 @@ def run(args):
             human_entries = human_workbook.validate_response(
                 responses, rows, reference_day.isoformat()
             )
+        history_raw, history_entries = [], None
+        if args.human_history:
+            history_entries = []
+            for supplied_path in args.human_history:
+                response_path = os.path.abspath(supplied_path)
+                raw_response, response = human_workbook.read_private_response(
+                    response_path, open_directory_nofollow
+                )
+                entries = human_workbook.validate_response(
+                    response, rows, reference_day.isoformat()
+                )
+                history_raw.append((response_path, raw_response))
+                history_entries.append(entries)
         previous_bytes, previous_entries = None, None
         if args.previous_human_responses:
             previous_bytes, earlier = human_workbook.read_private_response(
@@ -1070,6 +1108,7 @@ def run(args):
             capacity_browser_studio=args.private_capacity_studio,
             human_entries=human_entries,
             previous_human_entries=previous_entries,
+            human_history_entries=history_entries,
         )
         readmit_unchanged_sources(admitted)
         if args.human_responses:
@@ -1084,6 +1123,12 @@ def run(args):
             )
             if original != previous_bytes:
                 raise Hold("previous HUMAN source changed before publication")
+        for history_path, original_bytes in history_raw:
+            reopened, _ = human_workbook.read_private_response(
+                history_path, open_directory_nofollow
+            )
+            if reopened != original_bytes:
+                raise Hold("HUMAN history source changed before publication")
         if manifest_path:
             _, reopened_paths = read_private_agenda_manifest(manifest_path)
             if reopened_paths != selected_agendas:
@@ -1150,6 +1195,8 @@ def main(argv=None):
                         help="Owner-private 0600 saved HUMAN worksheet JSON for strict original-bound return")
     parser.add_argument("--previous-human-responses",
                         help="Second earlier operator-selected PRIVATE HUMAN response for local delta (requires --human-responses)")
+    parser.add_argument("--human-history", action="append", default=[], metavar="PRIVATE_HUMAN_JSON",
+                        help="One owner-private 0600 source-bound HUMAN response; repeat 2–8 times in manual comparison order")
     parser.add_argument("--agendas-file", help="Owner-private mode-0600 LF-delimited list of 2–12 absolute agenda paths")
     parser.add_argument("agendas", nargs="*", help="2–12 original private JSON agenda exports (or use --agendas-file)")
     args = parser.parse_args(argv)
