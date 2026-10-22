@@ -65,11 +65,13 @@ software-only file hashes remain UNSIGNED, do NOT authenticate any original
 author/publisher, and do not prove independent security review, consent or
 permission. No scanner, active target, model, grants, network or deletion.
 
-The standalone editor source and generated `standalone.html` now include a
-portable SHA-256 fallback for local browsers without Web Crypto. The committed
-software ZIP is still the previous packaged snapshot and does not yet include
-that update; rebuild and inspect a fresh private ZIP before redistributing the
-bundle. No new ZIP or checksum is claimed in this change.
+The ledger editor (`browser_studio.py` / `standalone.html`) and owner-reply
+studio (`portfolio_owner_studio.js` / `portfolio-owner-studio.html`) now include
+a portable SHA-256 fallback for local browsers without Web Crypto. Both
+standalone files have their embedded scripts pinned by their CSP hashes. The
+committed software ZIP is still the previous packaged snapshot and does not yet
+include these updates; rebuild and inspect a fresh private ZIP before
+redistributing the bundle. No new ZIP or checksum is claimed in this change.
 
 Both features are also foreground console options 9 and 10.
 
