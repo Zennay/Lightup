@@ -460,3 +460,8 @@ portable quick start and boundaries.
 ## Private data handling
 
 The original source catalog is sensitive. Local file selection does not upload it, and the standalone does not send it to any server; downloaded aggregate handoffs avoid source identities but do not prove provenance. Use suitable private device storage, and independently review any source before ingestion. Private scenario IDs exist transiently in memory only to match against original source cases and are not displayed to an external audience. Anonymous **HOLD** means a human must reconcile genuine source evidence, not repeat the execution automatically.
+
+
+### Offline source-byte binding
+
+The private HUMAN draft uses Web Crypto when available and a portable local SHA-256 fallback when `crypto.subtle` is unavailable in a `file://` browser context. This keeps exact-byte-bound review drafts usable offline. Digests are unsigned local consistency values, not authenticated source provenance, consent, authorization or release approval.
