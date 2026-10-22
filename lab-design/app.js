@@ -413,6 +413,7 @@
   }
   async function importCatalog(file){
     const ticket=invalidateCatalogReads();
+    notify("status","Reading candidate catalog locally. Existing catalog remains unchanged until complete validation and HUMAN review.");
     try{
       fail(file&&file.size>0&&file.size<=262144);
       const bytes=await file.arrayBuffer();
@@ -430,6 +431,7 @@
   }
   async function appendCatalog(file){
     const ticket=invalidateCatalogReads();
+    notify("status","Reading selected append locally. Existing catalog remains unchanged until complete validation.");
     try{
       fail(!fictional&&items.length>=1&&items.length<32&&
         file&&file.size>0&&file.size<=262144);
