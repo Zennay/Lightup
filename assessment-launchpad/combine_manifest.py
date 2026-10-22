@@ -118,6 +118,13 @@ def run(args):
         args.ack_normalization, args.ack_replace, more_paths=args.more_manifest,
         omit_sources=args.omit_source, ack_omit=args.ack_omit,
     )
+    if bool(args.change_before_dir) != bool(args.change_output_dir):
+        raise Hold("manifest change comparison requires both a saved before bundle and an isolated output directory")
+    if args.change_before_dir:
+        # Admit the *saved* preceding bundle before writing anything.
+        # Comparison is a local consistency aid, never evidence of authorization.
+        import manifest_change_desk
+        manifest_change_desk.admit_saved_bundle(args.change_before_dir)
     output_fd, output_abs = open_output_directory(args.output_dir)
     extra_directory = args.handoff_dir or args.workspace_dir
     if extra_directory:
@@ -140,6 +147,21 @@ def run(args):
             os.close(output_fd)
             raise
     try:
+        if args.change_output_dir:
+            change_fd, change_abs = open_output_directory(args.change_output_dir)
+            try:
+                protected = [output_abs, os.path.abspath(args.change_before_dir)]
+                if extra_directory:
+                    protected.append(os.path.abspath(extra_directory))
+                protected.extend(os.path.dirname(original) for original in originals)
+                for source in protected:
+                    common = os.path.commonpath((change_abs, source))
+                    if common in (change_abs, source):
+                        raise Hold("private change output must be separate from source, handoff and combined directories")
+                if not args.verify_output and os.listdir(change_fd):
+                    raise Hold("private change output directory must be empty before publication")
+            finally:
+                os.close(change_fd)
         for original in originals:
             parent = os.path.dirname(original)
             shared = os.path.commonpath((output_abs, parent))
@@ -205,6 +227,16 @@ def run(args):
                 raise Hold("HUMAN workspace original lab manifest does not match combined source")
         finally:
             os.close(review_fd)
+    if args.change_before_dir:
+        # The independent comparison is published to a THIRD private directory.
+        # A failure leaves an already published combined/workspace packet private;
+        # it never grants authority, rolls back source files, or executes a scan.
+        change_args = ["--before-dir", args.change_before_dir,
+                       "--after-dir", args.output_dir,
+                       "--verify-output-dir" if args.verify_output else "--output-dir",
+                       args.change_output_dir]
+        if manifest_change_desk.main(change_args) != 0:
+            raise Hold("private manifest change comparison or exact reopen failed")
     status = "REOPENED_REVIEW_ONLY" if args.verify_output else "PUBLISHED_REVIEW_ONLY"
     print(status + " · " + str(counts["result_endpoints"]) +
           " isolated-lab endpoint slots · no assessment, consent, target contact or authorization")
@@ -226,6 +258,8 @@ def main(argv=None):
     secondary = parser.add_mutually_exclusive_group()
     secondary.add_argument("--handoff-dir", help="optional second private 0700 directory for original preview bundle")
     secondary.add_argument("--workspace-dir", help="optional second private 0700 directory for complete HUMAN-only workspace")
+    parser.add_argument("--change-before-dir", help="optional prior saved PRIVATE combined bundle to compare")
+    parser.add_argument("--change-output-dir", help="separate empty 0700 PRIVATE change-desk directory; verify with --verify-output")
     parser.add_argument("--ack-normalization", action="store_true", help="allow source comments/whitespace to be omitted")
     parser.add_argument("--ack-replace", action="store_true", help="explicitly accept discarding first manifest endpoints")
     parser.add_argument("--verify-output", action="store_true", help="read-only strict reopen against both original sources")
@@ -234,7 +268,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.dry_run:
-            if args.output_dir or args.handoff_dir or args.workspace_dir or args.verify_output:
+            if (args.output_dir or args.handoff_dir or args.workspace_dir or args.verify_output
+                    or args.change_before_dir or args.change_output_dir):
                 raise Hold("dry-run is read-only and cannot select publication or reopen directories")
             _, _, counts = prepare(args.first_manifest, args.second_manifest, args.mode,
                                    args.ack_normalization, args.ack_replace, preview_only=True,

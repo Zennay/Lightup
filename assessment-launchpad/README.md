@@ -65,6 +65,16 @@ This enforces exact bytes and rejects extra/missing/modified PRIVATE output file
 
 ## PRIVATE offline change desk for two already saved combined manifests
 
+### One-command saved-plan comparison (new optional offline step)
+
+The native `combine_manifest.py` now optionally generates the same **PRIVATE read-only literal change desk** while constructing a new combined plan. Supply `--change-before-dir` for a **previously saved and already admitted PRIVATE combine bundle** and `--change-output-dir` for a **third, empty owner-owned 0700 directory**:
+
+```sh
+python3 assessment-launchpad/combine_manifest.py --first-manifest ~/private-input-a/targets.txt --second-manifest ~/private-input-b/targets.txt --mode append --output-dir ~/private-combined-next --change-before-dir ~/private-combined-previous --change-output-dir ~/private-combined-delta
+```
+
+The source is inspected before publication and the saved *new* combined packet is independently admitted again before comparison. The difference artifacts are the existing `lightup-private-manifest-delta.json` and scriptless `lightup-private-manifest-delta.html`, with ordinal-only UNCHANGED/MOVED/REMOVED/ADDED descriptions. No endpoint, note, input path or target action appears in the comparison. To reopen all three bundles **without writing**, repeat the exact inputs with `--verify-output`; the previous and new combined bundles and the private change report must still match. A prior combine bundle (v1/v2/v3), current outputs, change output, optional handoff/workspace and source trees must remain separate. `--dry-run` does not accept comparison/output flags. Source and change outputs are separate private transactions: an error in later comparison may leave the earlier combined packet PRIVATE but must not be treated as a complete handoff. This is unsigned, planning-only local consistency, **not proof of original source authenticity, assessment authorization, consent, revocation status, remediation or HUMAN GO**.
+
 A separate additive `assessment-launchpad/manifest_change_desk.py` reads **two previously saved** owner-only PRIVATE combined-manifest bundle directories. It admits exactly the original v1 (two files), v2 (three-file legacy or complete current) or v3 (complete current) bundle file names via no-follow mode-0700 directory / mode-0600 file reads. It rechecks the canonical literal manifest, the unsigned stored canonical manifest digest and the **original pinned** URL/`LabScenario` scope policy, plus the saved PRIVATE multi-source HTML/slot-map bytes where present. It cannot authenticate original upstream source file identities (these source files are not necessarily available here); hashes are **local unsigned consistency, never consent or scope authority**.
 
 The human manually selects before/after order (not authenticated chronology). The desk compares 1–16 literal endpoint URL values internally and emits only ordinal-only rows tagged `UNCHANGED`, `MOVED`, `REMOVED` or `ADDED`. It does not embed raw URLs, filenames, source paths or HUMAN notes in the new artifacts. A changed position is not a vulnerability and a removed endpoint is **not** proof of a fix.
