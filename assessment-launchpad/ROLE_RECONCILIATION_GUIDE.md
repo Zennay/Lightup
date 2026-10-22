@@ -72,3 +72,44 @@ No network, model, target, grant, consent or active assessment is involved.
 Permanent CI, independent privacy/security, authentic client/operator consent
 with action-time revocation, original source owner, and explicit HUMAN GO remain
 mandatory for release.
+
+## Included automatically in the next-round PRIVATE workroom
+
+When you create the next round with `advance.py --role-return-dir`, the
+same source-bound reconciliation is now published **inside** that complete
+PRIVATE workroom, under `human-role-reconciliation/`, alongside the next
+HUMAN worksheet, editor, routing desk, delta and role handoff.
+
+The scriptless `OPEN-NEXT-ROUND-PRIVATE.html` landing screen now links
+directly to the reconciled role/slot changes. All reconciliation artifacts
+are regenerated from the exact original source rounds and original
+source-bound return packets **before publication**, and every file is
+verified during a read-only reopen.
+
+For this **role-return-based workroom**, read-only reopening requires the
+unchanged original role-return directories supplied again in precisely the
+same order. Omitting them is a HOLD because the aggregate report cannot
+independently prove its own provenance.
+
+```sh
+python3 assessment-launchpad/advance.py \
+  --bundle-dir ~/private-lab-launchpad \
+  --earlier-round-dir ~/private-human-round-01 \
+  --previous-round-dir ~/private-human-round-02 \
+  --role-return-dir ~/private-owner-return-security \
+  --role-return-dir ~/private-owner-return-privacy \
+  --output-dir ~/private-role-consolidated-round
+
+python3 assessment-launchpad/advance.py \
+  --bundle-dir ~/private-lab-launchpad \
+  --earlier-round-dir ~/private-human-round-01 \
+  --previous-round-dir ~/private-human-round-02 \
+  --role-return-dir ~/private-owner-return-security \
+  --role-return-dir ~/private-owner-return-privacy \
+  --verify-workroom-dir ~/private-role-consolidated-round
+```
+
+These are offline HUMAN-only source-consistency operations, never scans
+or authorized assessment dispatches. Separate recipients, client and
+operator consent, security/privacy review and explicit HUMAN GO are
+**not** satisfied by a matching local source receipt.

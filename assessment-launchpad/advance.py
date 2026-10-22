@@ -28,6 +28,7 @@ from role_handoff import assemble as handoff_artifacts
 from role_return_receipt import combine_returns, handoff_digest
 from role_return import selected_template, return_guide, TEMPLATE as RETURN_CSV, GUIDE as RETURN_GUIDE
 from role_return_browser import NAME as RETURN_EDITOR, render_editor as render_return_editor
+from role_return_reconcile import admitted_replies, render_files as reconciliation_files
 
 ROUND = "human-round"
 EDITOR = "human-editor"
@@ -36,6 +37,7 @@ DELTA = "human-changes"
 HISTORY = "human-history"
 HANDOFF = "human-selected-role"
 RETURN_FORM = "human-role-reply-form"
+RECONCILIATION = "human-role-reconciliation"
 GUIDE = "START-HERE-PRIVATE.txt"
 HOME = "OPEN-NEXT-ROUND-PRIVATE.html"
 SUBDIRS = (ROUND, EDITOR, ROUTING, DELTA, HISTORY)
@@ -47,7 +49,7 @@ STYLE = ("body{font:16px/1.55 system-ui,sans-serif;color:#17212f;"
          "a:focus-visible{outline:3px solid #dbad43;outline-offset:3px}"
          "small{color:#465467}")
 
-def render_home(source_count, changed, history_count, handoff_role=None, handoff_stage='ALL', handoff_slots=None):
+def render_home(source_count, changed, history_count, handoff_role=None, handoff_stage='ALL', handoff_slots=None, reconciled=False):
     h = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
@@ -105,6 +107,14 @@ def render_home(source_count, changed, history_count, handoff_role=None, handoff
          ". Other-role HUMAN notes are intentionally withheld. This is "
          "NOT identity authentication or permission.</small></p></section>"
          if handoff_role is not None else "") +
+        ("<section><h2>Returned HUMAN roles and changed planning</h2>"
+         "<a href='human-role-reconciliation/lightup-lab-human-return-reconciliation-private.html'>"
+         "Open original-bound PRIVATE HUMAN role reconciliation</a><p><small>"
+         "This source-minimal HUMAN-only desk shows local slot ordinals, "
+         "suggested roles and changed stages/notes WITHOUT original endpoint "
+         "URLs or PRIVATE note text. The roles are not authenticated, and this "
+         "report is not clearance, consent or verified chronology."
+         "</small></p></section>" if reconciled else "") +
         "<section><h2>Compare previous and current HUMAN planning</h2>"
         "<a href='human-changes/lightup-lab-human-delta-private.html'>"
         "Open source-free HUMAN delta</a><p><small>"
@@ -116,7 +126,7 @@ def render_home(source_count, changed, history_count, handoff_role=None, handoff
         "</p></body></html>"
     ).encode("utf-8")
 
-def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL', handoff_slots=None):
+def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL', handoff_slots=None, reconciled=False):
     return (
         "LightUp offline PRIVATE HUMAN next-round workroom\n"
         "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED\n"
@@ -144,6 +154,9 @@ def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL',
          (str(len(handoff_slots)) + " selected original slots\n"
           if handoff_slots else "none (all matching original slots)\n")
          if handoff_role is not None else "") +
+        ("human-role-reconciliation: exact original-bound role/slot change desk, "
+         "PRIVATE HTML/CSV and source-free HUMAN counts.\n"
+         if reconciled else "") +
         "All outputs are owner-only, unsigned, private, not client approval.\n"
         "To edit another round, download private JSON from the offline editor, "
         "put it in an owner-only mode-0700 folder and chmod 600, then use "
@@ -153,7 +166,7 @@ def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL',
         "with action-time revocation/HUMAN GO are independent mandatory gates.\n"
     ).encode("utf-8")
 
-def content_for(before, after, endpoints, earlier, handoff_role=None, handoff_stage='ALL', handoff_slots=None):
+def content_for(before, after, endpoints, earlier, handoff_role=None, handoff_stage='ALL', handoff_slots=None, reconciliation=None):
     artifacts = {
         ROUND: dict(make_artifacts(after, endpoints)),
         EDITOR: {EDITOR_FILE: render_editor(after)},
@@ -175,12 +188,14 @@ def content_for(before, after, endpoints, earlier, handoff_role=None, handoff_st
             RETURN_EDITOR: render_return_editor(template),
             RETURN_GUIDE: return_guide(handoff_role, len(indices)),
         }
+    if reconciliation is not None:
+        artifacts[RECONCILIATION] = reconciliation
     return artifacts
 
 def inspect_root(fd, root_path, before, endpoints, after, earlier,
-                 handoff_role=None, handoff_stage='ALL', handoff_slots=None):
+                 handoff_role=None, handoff_stage='ALL', handoff_slots=None, reconciliation=None):
     expected = content_for(before, after, endpoints, earlier, handoff_role,
-                           handoff_stage, handoff_slots)
+                           handoff_stage, handoff_slots, reconciliation)
     if set(os.listdir(fd)) != {*expected, GUIDE, HOME}:
         raise Hold("follow-up workroom missing canonical inventory")
     for dirname in expected:
@@ -198,9 +213,11 @@ def inspect_root(fd, root_path, before, endpoints, after, earlier,
     changes = sum(a != b for a, b in zip(before["human_rows"], after["human_rows"]))
     count = len(earlier) + 2
     if (read_private_bundle_item(fd, HOME, 32768) !=
-            render_home(len(endpoints), changes, count, handoff_role, handoff_stage, handoff_slots)
+            render_home(len(endpoints), changes, count, handoff_role, handoff_stage,
+                        handoff_slots, reconciliation is not None)
             or read_private_bundle_item(fd, GUIDE, 16384) !=
-            guide(len(endpoints), changes, count, handoff_role, handoff_stage, handoff_slots)):
+            guide(len(endpoints), changes, count, handoff_role, handoff_stage,
+                  handoff_slots, reconciliation is not None)):
         raise Hold("follow-up workroom navigation changed")
     return changes
 
@@ -235,8 +252,9 @@ def main(argv=None):
             if sum(bool(c) for c in (args.responses, args.interactive,
                                      args.role_return_dir)) != 1:
                 raise Hold("creation requires exactly one HUMAN input method")
-        elif args.responses or args.interactive or args.role_return_dir:
-            raise Hold("read-only reopen cannot import or edit HUMAN responses")
+        elif args.responses or args.interactive:
+            raise Hold("read-only reopen cannot edit HUMAN responses; "
+                       "original role-return dirs may be supplied for exact source re-admission")
         original, endpoints, digest = read_original_bundle(args.bundle_dir)
         previous_dir, before = read_round(args.previous_round_dir, digest, endpoints)
         if len(args.earlier_round_dir) > 6:
@@ -250,6 +268,7 @@ def main(argv=None):
             earlier_dirs.append(old_dir)
             earlier_rounds.append(old_round)
         root_fd, root_path = open_output_directory(args.output_dir or args.verify_workroom_dir)
+        reconciliation = None
         try:
             if args.output_dir and os.listdir(root_fd):
                 raise Hold("new PRIVATE HUMAN next-round workspace must be empty")
@@ -267,8 +286,13 @@ def main(argv=None):
                 elif args.role_return_dir:
                     if not earlier_rounds:
                         raise Hold("role return requires one earlier original HUMAN round")
+                    source_rounds = [*earlier_rounds, before]
+                    replies = admitted_replies(
+                        args.role_return_dir, source_rounds, endpoints, digest)
+                    reconciliation = reconciliation_files(
+                        replies, source_rounds, endpoints)
                     after = combine_returns(args.role_return_dir,
-                                            [*earlier_rounds, before], endpoints, digest)
+                                            source_rounds, endpoints, digest)
                 else:
                     response_parent = os.path.dirname(os.path.abspath(os.fspath(args.responses)))
                     if os.path.commonpath((response_parent, root_path)) in (response_parent, root_path):
@@ -293,13 +317,23 @@ def main(argv=None):
                         renewed_endpoints, renewed_digest)
                 else:
                     again = load_json(require_private_file(args.responses))
+                if args.role_return_dir:
+                    newer_source_rounds = [
+                        *(record for _, record in renewed_earlier), renewed_before]
+                    newer_replies = admitted_replies(
+                        args.role_return_dir, newer_source_rounds,
+                        renewed_endpoints, renewed_digest)
+                    if (newer_replies != replies or
+                            reconciliation_files(newer_replies, newer_source_rounds,
+                                                 renewed_endpoints) != reconciliation):
+                        raise Hold("selected HUMAN return packets changed before publication")
                 validate_worksheet(again, renewed_digest, len(renewed_endpoints))
                 if ((renewed, renewed_endpoints, renewed_digest, renewed_previous, renewed_before, again)
                         != (original, endpoints, digest, previous_dir, before, after)):
                     raise Hold("previous HUMAN or original source changed before publication")
                 expected = content_for(
                     before, after, endpoints, earlier_rounds, args.handoff_role,
-                    args.handoff_stage, args.handoff_slot)
+                    args.handoff_stage, args.handoff_slot, reconciliation)
                 # The standalone HISTORY producer has a fixed 512-KiB cap. The
                 # integrated pipeline must enforce the same cap BEFORE it creates
                 # any of the fresh workroom directories, or it could leave a
@@ -319,9 +353,11 @@ def main(argv=None):
                 changed = sum(a != b for a, b in zip(before["human_rows"], after["human_rows"]))
                 publish_bundle(root_fd, [
                     (GUIDE, guide(len(endpoints), changed, len(earlier_rounds) + 2,
-                                  args.handoff_role, args.handoff_stage, args.handoff_slot)),
+                                  args.handoff_role, args.handoff_stage, args.handoff_slot,
+                                  reconciliation is not None)),
                     (HOME, render_home(len(endpoints), changed, len(earlier_rounds) + 2,
-                                       args.handoff_role, args.handoff_stage, args.handoff_slot)),
+                                       args.handoff_role, args.handoff_stage, args.handoff_slot,
+                                       reconciliation is not None)),
                 ])
             else:
                 fd, _ = open_output_directory(os.path.join(root_path, ROUND))
@@ -331,9 +367,23 @@ def main(argv=None):
                     os.close(fd)
                 after = load_json(source)
                 validate_worksheet(after, digest, len(endpoints))
+                if args.role_return_dir:
+                    if not earlier_rounds:
+                        raise Hold("reopening a role-return workroom needs earlier source rounds")
+                    original_rounds = [*earlier_rounds, before]
+                    reopened_replies = admitted_replies(
+                        args.role_return_dir, original_rounds, endpoints, digest)
+                    rebuilt = combine_returns(
+                        args.role_return_dir, original_rounds, endpoints, digest)
+                    if rebuilt != after:
+                        raise Hold("original private HUMAN returns differ from published round")
+                    reconciliation = reconciliation_files(
+                        reopened_replies, original_rounds, endpoints)
+                elif RECONCILIATION in os.listdir(root_fd):
+                    raise Hold("provide the original --role-return-dir inputs to reopen this workroom")
             changed = inspect_root(root_fd, root_path, before, endpoints, after,
                                    earlier_rounds, args.handoff_role, args.handoff_stage,
-                                   args.handoff_slot)
+                                   args.handoff_slot, reconciliation)
         finally:
             os.close(root_fd)
         print("PRIVATE_HUMAN_NEXT_ROUND_" +
