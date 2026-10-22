@@ -337,17 +337,45 @@
       s.ever,s.persistent,s.maxStreak,s.reappeared,s.reappearanceEvents];});
     drawTable("metricHeatmap",headers,rows);
   }
+  const SCENARIO_PAGE=100;
+  let scenarioOffset=0;
+  function scenarioBoardRows(){
+    const filter=$("scenarioViewFilter").value;
+    const raw=$("scenarioSearch").value.trim();
+    const exactOrdinal=/^\\d{1,4}$/.test(raw)?Number(raw):null;
+    const query=raw.toLowerCase();
+    return scenarioIds.map((id,index)=>({id,ordinal:index+1,stats:scenarioStats(id)})).filter(item=>{
+      const label="Scenario "+String(item.ordinal).padStart(2,"0");
+      const matchesFilter=filter==="all"||
+        (filter==="hold"&&item.stats.status==="HOLD")||
+        (filter==="persistent"&&item.stats.persistent>0)||
+        (filter==="reappeared"&&item.stats.reappearedMetrics>0);
+      const matchesSearch=!raw||(exactOrdinal!==null?item.ordinal===exactOrdinal:label.toLowerCase().includes(query));
+      return matchesFilter&&matchesSearch;
+    });
+  }
   function renderScenarioBoard(){
+    const all=snapshots.length?scenarioBoardRows():[];
+    const maxOffset=Math.max(0,Math.floor((all.length-1)/SCENARIO_PAGE)*SCENARIO_PAGE);
+    scenarioOffset=Math.min(scenarioOffset,maxOffset);
+    const page=all.slice(scenarioOffset,scenarioOffset+SCENARIO_PAGE);
     const headers=["Anonymous scenario",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")+" flagged metrics"),
       "First flagged slot","Last flagged slot","Persistent metrics","Reappearing metrics",
       "Reappearance events","Longest metric streak","Overall source status"];
-    const rows=scenarioIds.map((id,i)=>{const s=scenarioStats(id);return [
-      "Scenario "+String(i+1).padStart(2,"0"),
-      ...s.counts.map(n=>cell(n,n?"cell-adverse":"cell-neutral")),
-      s.firstFlaggedSlot??"—",s.lastFlaggedSlot??"—",s.persistent,s.reappearedMetrics,
-      s.reappearanceEvents,s.longestMetricStreak,s.status
-    ];});
+    const rows=page.map(({ordinal,stats})=>[
+      "Scenario "+String(ordinal).padStart(2,"0"),
+      ...stats.counts.map(n=>cell(n,n?"cell-adverse":"cell-neutral")),
+      stats.firstFlaggedSlot??"—",stats.lastFlaggedSlot??"—",stats.persistent,stats.reappearedMetrics,
+      stats.reappearanceEvents,stats.longestMetricStreak,stats.status
+    ]);
     drawTable("scenarioHeatmap",headers,rows);
+    $("scenarioPrev").disabled=scenarioOffset===0;
+    $("scenarioNext").disabled=scenarioOffset+SCENARIO_PAGE>=all.length;
+    $("scenarioPageSummary").textContent=all.length?
+      "Showing "+(scenarioOffset+1)+"–"+Math.min(all.length,scenarioOffset+SCENARIO_PAGE)+
+        " of "+all.length+" anonymous scenarios matching the filter. Source order only; no missing flag is a verified fix.":
+      snapshots.length?"No anonymous scenarios match the selected filter.":
+        "Import snapshots to see anonymous scenario trajectories.";
   }
   function renderScenarioDetail(){
     const id=currentId();if(!id){drawTable("trajectoryTable",["Metric"],[]);return;}
@@ -1082,7 +1110,8 @@
     selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
     savedNoteOffset=0;$("savedNoteGroup").value="all";
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;workPlanOffset=0;
+    reviewOffset=0;workPlanOffset=0;scenarioOffset=0;
+    $("scenarioViewFilter").value="all";$("scenarioSearch").value="";
     $("workPlanGroup").value="all";$("workPlanStage").value="all";
     humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();render();renderPendingSources();
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
@@ -1093,7 +1122,8 @@
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
     savedNoteOffset=0;$("savedNoteGroup").value="all";
     sourceFingerprints=[];$("privateSessionFile").value="";
-    reviewOffset=0;workPlanOffset=0;
+    reviewOffset=0;workPlanOffset=0;scenarioOffset=0;
+    $("scenarioViewFilter").value="all";$("scenarioSearch").value="";
     $("workPlanGroup").value="all";$("workPlanStage").value="all";
     humanReviewStages.clear();resetReviewFilters();resetRevisionComparison();resetHumanTimeline();
     $("files").value="";$("message").textContent="All imported source data and local commentary forgotten from this workspace.";
@@ -1855,6 +1885,10 @@
       void importFiles(pendingSources);
     else $("message").textContent="Choose and order 3–12 original cohort JSON files before import.";
   });
+  $("scenarioViewFilter").addEventListener("change",()=>{scenarioOffset=0;renderScenarioBoard();});
+  $("scenarioSearch").addEventListener("input",()=>{scenarioOffset=0;renderScenarioBoard();});
+  $("scenarioPrev").addEventListener("click",()=>{scenarioOffset=Math.max(0,scenarioOffset-SCENARIO_PAGE);renderScenarioBoard();});
+  $("scenarioNext").addEventListener("click",()=>{scenarioOffset+=SCENARIO_PAGE;renderScenarioBoard();});
   $("scenarioSelect").addEventListener("change",()=>{
     selectedScenario=$("scenarioSelect").value;renderScenarioDetail();renderNotePanel();
     renderNotePacketControls();
