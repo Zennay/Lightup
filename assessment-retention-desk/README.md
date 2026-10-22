@@ -168,3 +168,34 @@ Output must be a **new**, non-existing file in an existing private directory. It
 ## Release boundary
 
 Per Notion: LightUp **INCUBATE/M3-M7 PLAN/LAB ONLY**, all new work **DRAFT/HOLD**. Existing original hosted CI plus permanent named VPS CI, independent security/privacy/browser review, original source-owner acceptance, #177/#182/#829, genuine separately authenticated current client/operator consent with action-time revocation and explicit HUMAN GO remain mandatory. No merge to main, deploy, scan, grant or live target work from this artifact.
+
+## Multi-snapshot source-set lineage (2–12 HUMAN plans)
+
+The native `source_history.py` extends the existing same-source `history.py`
+and two-plan `drift.py` workflows to **2–12 intentionally ordered plan
+snapshots whose source membership may differ**. It records when each source
+digest prefix is present, absent from a selected snapshot, or reappears after
+a gap; it also counts changes to HUMAN fields only when the source is present
+in both adjacent plans. A digest with conflicting declared byte lengths
+refuses the entire report.
+
+~~~sh
+mkdir -m 700 /private/operator
+python3 assessment-retention-desk/source_history.py \\
+  --output /private/operator/source-set-history.html \\
+  /private/operator/plan-01.json \\
+  /private/operator/plan-02.json \\
+  /private/operator/plan-03.json
+~~~
+
+Inputs must be bounded owner-private unlinked regular plan files; the original
+strict duplicate-key/schema/false-authority receipt parser remains authoritative.
+The new script does not open assessment assets or restore a previous plan. The
+scriptless report shows per-plan membership and stage counts plus one row per
+source/plan, retaining only a private digest prefix and byte size, HUMAN stage,
+proposed date, whether a custodian was declared, classification, hold category
+and changed field names. Aliases and free-text actions are never included.
+Missing membership does **not** mean deletion, remediation, revocation or
+clearance; manual ordering does not prove chronology. Output is exclusive
+0600 in an existing owner-owned 0700 directory and remains sensitive, unsigned
+and non-authorizing. No scan, delete, grant, client contact or release occurs.
