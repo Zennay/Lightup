@@ -17,6 +17,7 @@ import sys
 
 AGENDA_SCHEMA = "lightup.archive_human_agenda.v1"
 PORTFOLIO_SCHEMA = "lightup.assessment_portfolio_aggregate.v1"
+FOCUSED_SCHEMA = "lightup.assessment_portfolio_aggregate.v2"
 MAX_AGENDA = 128 * 1024
 MAX_AGENDAS = 12
 MAX_TOTAL = MAX_AGENDA * MAX_AGENDAS
@@ -312,6 +313,19 @@ def render_private_html(summary, rows):
             ("UNSCHEDULED", "No proposed date"),
         )
     )
+    selected_view = summary.get("view_selection")
+    view_note = (
+        "<p class='state'>PRIVATE FILTERED VIEW / HUMAN PLANNING ONLY: role " +
+        escape(selected_view["neutral_role"]) + " · stage " +
+        escape(selected_view["human_stage"]) + " · bucket " +
+        escape(selected_view["date_bucket"]) +
+        ". Counts and rows apply only to this explicit selection, not all admitted agendas.</p>"
+        if selected_view else ""
+    )
+    empty_note = (
+        "<p class='note'>No admitted HUMAN planning items match this selection. "
+        "No missing item is evidence of a resolved issue.</p>" if not rows else ""
+    )
     html = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -325,8 +339,8 @@ def render_private_html(summary, rows):
         "<p>Reference day: " + escape(summary["reference_date"]) +
         ". Compare only previously generated private human agendas. All source details remain local.</p>"
         "<div class='state'>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · " + status +
-        " · NOT AUTHORIZED</div></header>"
-        "<main><div class='cards'>" + cards + "</div>"
+        " · NOT AUTHORIZED</div>" + view_note + "</header>"
+        "<main><div class='cards'>" + cards + "</div>" + empty_note
         "<p class='note'>" + str(summary["agenda_count"]) + " selected agendas · " +
         str(summary["item_count"]) + " human-planning items. Input order is a local ordinal only, not authenticated chronology.</p></main>"
         + matrix + "".join(sections) +
@@ -419,9 +433,16 @@ def publish_bundle(directory_fd, artifacts):
         raise
 
 
-def render_artifacts(documents, rows, reference_day):
-    """Deterministic private product bytes used identically for create and reopen."""
+def render_artifacts(documents, rows, reference_day, *, selection=None):
+    """Deterministic private bytes used identically for create and reopen.
+
+    A filtered handoff has an explicit v2 view contract; unchanged full
+    portfolios retain the original v1 schema and original four-file format.
+    """
     summary = aggregate(documents, rows, reference_day)
+    if selection:
+        summary["schema"] = FOCUSED_SCHEMA
+        summary["view_selection"] = selection
     return [
         ("assessment-portfolio-private.html", render_private_html(summary, rows)),
         ("assessment-portfolio-private-routing.csv", render_private_routing_csv(rows)),
@@ -478,7 +499,20 @@ def run(args):
             common = os.path.commonpath((output_path, source_dir))
             if common in (output_path, source_dir):
                 raise Hold("output directory must be separate from source rooms")
-        outputs = render_artifacts(documents, rows, reference_day)
+        selection = None
+        if args.focus_role or args.focus_stage or args.focus_bucket:
+            selection = {
+                "neutral_role": args.focus_role or "ALL",
+                "human_stage": args.focus_stage or "ALL",
+                "date_bucket": args.focus_bucket or "ALL",
+            }
+            rows = [
+                row for row in rows
+                if (not args.focus_role or row["next_role"] == args.focus_role)
+                and (not args.focus_stage or row["stage"] == args.focus_stage)
+                and (not args.focus_bucket or row["date_bucket"] == args.focus_bucket)
+            ]
+        outputs = render_artifacts(documents, rows, reference_day, selection=selection)
         readmit_unchanged_sources(admitted)
         if args.verify_output_dir:
             verify_existing_bundle(output_fd, outputs)
@@ -498,6 +532,12 @@ def main(argv=None):
     parser.add_argument("--output-dir", required=True, help="Existing owner-only directory, mode 0700")
     parser.add_argument("--verify-output-dir", action="store_true",
                         help="Only reopen an existing four-file private bundle against original agendas; never write")
+    parser.add_argument("--focus-role", choices=ROLES,
+                        help="Create or reopen a PRIVATE workroom limited to one suggested neutral role")
+    parser.add_argument("--focus-stage", choices=STAGES,
+                        help="Restrict PRIVATE human workroom to one non-authorizing HUMAN stage")
+    parser.add_argument("--focus-bucket", choices=DATE_BUCKETS,
+                        help="Restrict PRIVATE human workroom to one date bucket relative to --as-of")
     parser.add_argument("agendas", nargs="+", help="2–12 original private JSON agenda exports")
     args = parser.parse_args(argv)
     try:
