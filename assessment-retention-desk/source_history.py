@@ -155,7 +155,7 @@ def compose_history(plans: list[dict]) -> dict:
     }
 
 
-def render_html(history: dict) -> str:
+def render_html(history: dict, *, original_bytes_rehashed: bool = False) -> str:
     esc = lambda value: html.escape(str(value), quote=True)
     summary_rows = []
     for item in history["plan_summaries"]:
@@ -221,12 +221,23 @@ remain sensitive and are not anonymous.</p>
 <p><strong>Interpretation:</strong> “New” and “absent” compare only adjacent selected snapshots.
 “Reappeared after gap” means a digest is present after being absent from at least one selected plan;
 it does not establish why. HUMAN field-change names reveal no alias or free-text content. The
-native tool validates local receipt bytes, not original asset identity, person, legal retention,
-verified consent, authorization, remediation or release. Follow the original source-owner and
+__SOURCE_BINDING_NOTE__ Follow the original source-owner and
 security/privacy/consent gates independently.</p>
 </body></html>"""
     stage_heads = "".join("<th scope='col'>" + esc(STAGES[stage]) + "</th>" for stage in STAGES)
-    return (page.replace("__PLANS__", esc(history["plan_count"]))
+    binding_note = (
+        "<strong>Encrypted workflow:</strong> for each vault, the separately selected original "
+        "source bytes were re-hashed and the complete SHA-256/size membership matched. This proves "
+        "local byte equality only, not external producer identity, person, legal retention, "
+        "verified consent, authorization, remediation or release."
+        if original_bytes_rehashed else
+        "<strong>Plaintext-plan workflow:</strong> this report compares the source digest/size "
+        "declarations inside the selected plan receipts; it does not re-open the original assets. "
+        "It does not authenticate producer identity, person, legal retention, verified consent, "
+        "authorization, remediation or release."
+    )
+    return (page.replace("__SOURCE_BINDING_NOTE__", binding_note)
+            .replace("__PLANS__", esc(history["plan_count"]))
             .replace("__SOURCES__", esc(history["source_union_count"]))
             .replace("__STAGE_HEAD__", stage_heads)
             .replace("__SUMMARY_ROWS__", "".join(summary_rows))
