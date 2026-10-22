@@ -1164,31 +1164,34 @@
 
   $("catalogFile").addEventListener("change",async e=>{
     const file=e.target.files?.[0];if(!file)return;e.target.value="";
+    const generation=startImport();
     try{
-      const imported=await read(file,MAX_CATALOG);
+      const imported=await read(file,MAX_CATALOG);admitCurrent(generation);
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
+      admitCurrent(generation);
       catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=imported.digest;
       reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
-    }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
+    }catch(_){if(generation===importGeneration)message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
   });
   $("reportFiles").addEventListener("change",async e=>{
     const files=[...(e.target.files||[])];e.target.value="";
     if(!files.length)return;
+    const generation=startImport();
     try{
       admit(catalog&&!fictional&&files.length>=1&&reports.length+files.length<=8);
       const add=[],digests=[];
       for(const file of files){
-        const imported=await read(file,MAX_REPORT);
+        const imported=await read(file,MAX_REPORT);admitCurrent(generation);
         add.push(parseReport(imported.result));digests.push(imported.digest);
       }
-      harmonize([...reports,...add]);
+      harmonize([...reports,...add]);admitCurrent(generation);
       reports=[...reports,...add];reportHashes=[...reportHashes,...digests];mismatchRevealed=false;clearPendingDraft();
       reopenHumanStages();render();
       message("Canonical summaries admitted; all human stages reopened for source review. "+
         "Private notes kept locally. Original benchmark data is not authenticated.");
-    }catch(_){message("HOLD: contradictory, duplicate, oversized or incompatible comparison source. Workspace preserved.",true);}
+    }catch(_){if(generation===importGeneration)message("HOLD: contradictory, duplicate, oversized or incompatible comparison source. Workspace preserved.",true);}
   });
   $("demo").addEventListener("click",()=>{
     if((catalog||reports.length)&&!confirm("Replace current PRIVATE workspace with invented example?"))return;
