@@ -13,6 +13,7 @@ import json
 import os
 import stat
 import sys
+import unicodedata
 from pathlib import Path
 
 FLAGS = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")
@@ -223,11 +224,38 @@ def create_bundle(catalog: bytes, reports: list[bytes], html: str,
     return html.replace("</body>", BUNDLE_MARKER + text + "</template>\n</body>")
 
 
+def read_private_report_selection(path: Path) -> list[Path]:
+    """Admit an explicit operator-owned report ordering without target access."""
+    raw = read_private(path, 16_384)
+    if not raw.endswith(b"\n") or b"\r" in raw or b"\0" in raw:
+        fail()
+    try:
+        text = raw.decode("utf-8", errors="strict")
+    except UnicodeError:
+        fail()
+    # A path separator cannot be a disguised Unicode line break or bidi mark.
+    paths = text.split("\n")[:-1]
+    if not 1 <= len(paths) <= SOURCE_LIMIT or len(set(paths)) != len(paths):
+        fail()
+    result = []
+    for name in paths:
+        if (not name.startswith(os.sep) or os.path.normpath(name) != name
+                or not 1 <= len(name) <= 2048 or any(
+                    unicodedata.category(char) in ("Cc", "Cf", "Zl", "Zp")
+                    for char in name
+                )):
+            fail()
+        result.append(Path(name))
+    return result
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="LightUp PRIVATE standalone original-source workroom")
     parser.add_argument("--catalog", required=True, type=Path, help="Original owner-private Lab Studio JSON")
-    parser.add_argument("--report", required=True, action="append", type=Path,
+    parser.add_argument("--report", action="append", type=Path,
                         help="Original owner-private completed comparator JSON (1–8)")
+    parser.add_argument("--reports-file", type=Path,
+                        help="One owner-private mode-0600 LF-delimited list of absolute completed report paths")
     parser.add_argument("--human-draft", type=Path,
                         help="Optional owner-private exact-source-bound human work draft v1/v2/v3")
     parser.add_argument("--output", required=True, type=Path,
@@ -235,9 +263,15 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--verify-existing", action="store_true",
                         help="Re-admit original inputs and exactly reopen the existing PRIVATE HTML without writes")
     args = parser.parse_args(argv)
-    if not 1 <= len(args.report) <= SOURCE_LIMIT:
+    if bool(args.report) == bool(args.reports_file):
         fail()
-    input_files = [args.catalog, *args.report, *([args.human_draft] if args.human_draft else [])]
+    report_paths = read_private_report_selection(args.reports_file) if args.reports_file else args.report
+    if not 1 <= len(report_paths) <= SOURCE_LIMIT:
+        fail()
+    input_files = [
+        args.catalog, *report_paths, *([args.human_draft] if args.human_draft else []),
+        *([args.reports_file] if args.reports_file else []),
+    ]
     if len({os.path.realpath(p) for p in input_files}) != len(input_files):
         fail()
     origin = Path(__file__).resolve().with_name("standalone.html")
@@ -247,7 +281,7 @@ def main(argv: list[str]) -> int:
     catalog = read_private(args.catalog, CATALOG_LIMIT)
     admit_json(catalog, True)
     reports = []
-    for p in args.report:
+    for p in report_paths:
         doc = read_private(p, REPORT_LIMIT)
         admit_json(doc, False)
         reports.append(doc)
@@ -258,11 +292,13 @@ def main(argv: list[str]) -> int:
     # Re-admit all original source bytes immediately before publication.
     for original_path, expected, limit in [
         (args.catalog, catalog, CATALOG_LIMIT),
-        *[(path, raw, REPORT_LIMIT) for path, raw in zip(args.report, reports)],
+        *[(path, raw, REPORT_LIMIT) for path, raw in zip(report_paths, reports)],
         *([(args.human_draft, draft, DRAFT_LIMIT)] if draft is not None else []),
     ]:
         if read_private(original_path, limit) != expected:
             fail()
+    if args.reports_file and read_private_report_selection(args.reports_file) != report_paths:
+        fail()
     output = args.output
     if output.suffix.lower() != ".html" or os.path.realpath(output) in {
         os.path.realpath(source_path) for source_path in input_files
