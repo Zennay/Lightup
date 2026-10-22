@@ -140,11 +140,21 @@ python3 assessment-portfolio/portfolio.py \
 enhances the existing role-grouped work tables with client-side filtering by
 neutral role, non-authorizing HUMAN stage, proposed date category, and fixed
 human-question/ordinal text. Visible-item totals update locally; clearing
-filters restores the original admitted table. JavaScript is an exact
-SHA-256 CSP-pinned fixed source string, with no network, external assets,
-browser persistence, automatic dispatch, scanner, storage, or permission
-creation. The original `assessment-portfolio-private.html` remains
-**scriptless** and still comes in the packet.
+filters restores the original admitted table. **Download visible rows (PRIVATE
+CSV)** produces a separate local spreadsheet handoff containing *only currently
+visible human-planning rows*, fixed admitted field values, and an explicit
+REVIEW_ONLY authority column. Text is quoted and spreadsheet-formula-like
+prefixes are neutralized. The downloaded CSV is explicitly **PRIVATE**,
+not the anonymous aggregate and not an instruction to contact any recipient.
+**Print visible PRIVATE queue** opens the browser's print dialog and excludes
+hidden roles/rows and the control panel; printing may still retain sensitive
+local planning metadata. Neither action changes original source documents,
+rounds or the server, and no file is uploaded. JavaScript and additional
+print styles are each exact SHA-256 CSP-pinned; there is no network, external
+asset, browser persistence, automatic dispatch, scanner or permission
+creation. Browser downloads and print require explicit clicks. The original
+`assessment-portfolio-private.html` remains **scriptless** and still comes
+in the packet.
 
 **Calendar of PRIVATE human proposals**:
 `assessment-portfolio-private-proposals.ics` contains only previously
