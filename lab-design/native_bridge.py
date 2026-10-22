@@ -12,12 +12,14 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import sys
 
 SCHEMA = "lightup.lab_design_catalog.v1"
 FLAGS = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")
 LEVELS = {"critical", "high", "medium", "low", "info"}
 TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", re.ASCII)
+MAX_CATALOG_BYTES = 262144
 LAB_V4 = tuple(ipaddress.ip_network(x) for x in
     ("127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"))
 LAB_V6 = tuple(ipaddress.ip_network(x) for x in
@@ -67,11 +69,32 @@ def private_ip(value: object) -> str:
     return str(address)
 
 
+def read_stable_catalog_bytes(path: Path) -> bytes:
+    """Read one bounded regular catalog without following a final symlink or accepting drift."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
+    try:
+        before = os.fstat(fd)
+        ensure(stat.S_ISREG(before.st_mode) and 0 < before.st_size <= MAX_CATALOG_BYTES)
+        raw = bytearray()
+        while True:
+            chunk = os.read(fd, min(65536, MAX_CATALOG_BYTES + 1 - len(raw)))
+            if not chunk:
+                break
+            raw.extend(chunk)
+            ensure(len(raw) <= MAX_CATALOG_BYTES)
+        after = os.fstat(fd)
+        ensure((before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
+                before.st_ctime_ns) == (after.st_dev, after.st_ino, after.st_size,
+                after.st_mtime_ns, after.st_ctime_ns))
+        ensure(len(raw) == before.st_size)
+        return bytes(raw)
+    finally:
+        os.close(fd)
+
+
 def read_catalog(path: Path) -> list[dict]:
     try:
-        ensure(path.is_file() and 0 < path.stat().st_size <= 262144)
-        raw = path.read_bytes()
-        ensure(len(raw) <= 262144)
+        raw = read_stable_catalog_bytes(path)
         obj = json.loads(raw.decode("utf-8", errors="strict"), object_pairs_hook=pairs_hook,
                          parse_constant=lambda _: (_ for _ in ()).throw(Hold("Invalid JSON")))
         ensure(exact(obj, {"schema", "status", "scenarios", *FLAGS}))
