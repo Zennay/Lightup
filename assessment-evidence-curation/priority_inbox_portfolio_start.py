@@ -23,6 +23,8 @@ FILES = (
      "Directional adjacent HUMAN status changes"),
     ("PRIVATE-HUMAN-priority-round-intervals.csv",
      "Every earlier/later HUMAN interval comparison"),
+    ("PRIVATE-HUMAN-priority-round-interval-stage-movements.csv",
+     "Every earlier/later HUMAN status movement with original priority"),
     ("PRIVATE-HUMAN-priority-round-portfolio-receipt.json",
      "UNSIGNED local source and output byte-digest receipt"),
 )

@@ -23,12 +23,14 @@ const stage=document.getElementById('stage');
 const historyRows=Array.from(document.querySelectorAll('tr[data-stage-count]'));
 const output=document.getElementById('summary');
 const empty=document.getElementById('empty');
-const rows=Array.from(document.querySelectorAll('tr[data-from]'));
+const rows=Array.from(document.querySelectorAll('tr[data-interval-summary]'));
+const movements=Array.from(document.querySelectorAll('tr[data-movement]'));
 function update(){
  const start=Number(from.value),end=Number(to.value),group=priority.value;
  if(!Number.isInteger(start)||!Number.isInteger(end)||start>=end){
   rows.forEach(row=>{row.hidden=true;});
   historyRows.forEach(row=>{row.hidden=true;});
+  movements.forEach(row=>{row.hidden=true;});
   output.textContent='Select two different rounds in ascending manually supplied order.';
   empty.hidden=true;return;
  }
@@ -48,6 +50,10 @@ function update(){
   ' · edited follow-up fields: '+follow+
   '. These are self-reports, not verified progress.';
  empty.hidden=visible!==0;
+ movements.forEach(row=>{
+  row.hidden=Number(row.dataset.from)!==start||Number(row.dataset.to)!==end||
+   (group!=='all'&&row.dataset.priority!==group);
+ });
  historyRows.forEach(row=>{
   row.hidden=Number(row.dataset.round)<start||Number(row.dataset.round)>end||
    (group!=='all'&&row.dataset.priority!==group)||
@@ -72,7 +78,7 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
         "operator_ordered_from_round", "operator_ordered_to_round",
         "human_priority", "stage_changed_rows", "reply_changed_rows",
         "next_question_changed_rows", "intermediate_stage_reverted_rows",
-        "human_rows_in_priority",
+        "human_rows_in_priority", "human_stage_movements",
     }
     for item in rows:
         if (type(item) is not dict or set(item) != required_keys or
@@ -84,10 +90,31 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
             any(type(item[key]) is not int or not 0 <= item[key] <= 64
                 for key in required_keys - {
                     "human_priority", "operator_ordered_from_round",
-                    "operator_ordered_to_round"})):
+                    "operator_ordered_to_round", "human_stage_movements"})):
             raise Hold("HOLD: HUMAN browser data is not canonical bounded aggregate")
     stages = {"blocked_human", "needs_more_information",
               "no_human_response", "responded_claimed"}
+    for item in rows:
+        flows = item["human_stage_movements"]
+        if type(flows) is not list or len(flows) > 16:
+            raise Hold("HOLD: unbounded HUMAN direction pairs")
+        seen = set()
+        for flow in flows:
+            if (type(flow) is not dict or
+                set(flow) != {"from_stage", "to_stage", "human_rows"} or
+                flow["from_stage"] not in stages or
+                flow["to_stage"] not in stages or
+                type(flow["human_rows"]) is not int or
+                not 1 <= flow["human_rows"] <= 64 or
+                (flow["from_stage"], flow["to_stage"]) in seen):
+                raise Hold("HOLD: invalid HUMAN directional movement")
+            seen.add((flow["from_stage"], flow["to_stage"]))
+        if (sum(f["human_rows"] for f in flows) !=
+                item["human_rows_in_priority"] or
+            sum(f["human_rows"] for f in flows
+                if f["from_stage"] != f["to_stage"]) !=
+                item["stage_changed_rows"]):
+            raise Hold("HOLD: HUMAN movement totals do not reconcile")
     if (type(stage_counts) is not list or len(stage_counts) != rounds * 12 or
         type(attention) is not list or len(attention) != 9):
         raise Hold("HOLD: incomplete HUMAN status trend is not canonical")
@@ -118,7 +145,7 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
             for i in range(1, rounds+1)) + "</select>"
 
     table = "".join(
-        "<tr data-from='" + str(item["operator_ordered_from_round"]) +
+        "<tr data-interval-summary='yes' data-from='" + str(item["operator_ordered_from_round"]) +
         "' data-to='" + str(item["operator_ordered_to_round"]) +
         "' data-priority='" + h(item["human_priority"]) +
         "' data-stage-changed='" + str(item["stage_changed_rows"]) +
@@ -134,6 +161,15 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
         str(item["reply_changed_rows"]) + "</td><td>" +
         str(item["next_question_changed_rows"]) + "</td></tr>"
         for item in rows)
+    movement_table = "".join(
+        "<tr data-movement='yes' data-from='" +
+        str(item["operator_ordered_from_round"]) +
+        "' data-to='" + str(item["operator_ordered_to_round"]) +
+        "' data-priority='" + h(item["human_priority"]) +
+        "'><td>" + h(item["human_priority"]) + "</td><td>" +
+        h(flow["from_stage"]) + "</td><td>" + h(flow["to_stage"]) +
+        "</td><td>" + str(flow["human_rows"]) + "</td></tr>"
+        for item in rows for flow in item["human_stage_movements"])
     trend_table = "".join(
         "<tr data-stage-count='yes' data-round='" +
         str(item["operator_ordered_round"]) +
@@ -190,6 +226,13 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
         "<th>Interim stage reverted</th><th>Reply changed</th>"
         "<th>Follow-up changed</th></tr></thead><tbody>" +
         table + "</tbody></table></section>"
+        "<section><h2>Directional HUMAN stage movements</h2>"
+        "<p>Earlier-to-later self-reported status counts for the selected "
+        "HUMAN rounds and original priority, including unchanged statuses. "
+        "These categories are not proven remediation or progress.</p>"
+        "<table><thead><tr><th>Priority</th><th>Earlier HUMAN stage</th>"
+        "<th>Later HUMAN stage</th><th>HUMAN rows</th></tr></thead>"
+        "<tbody>" + movement_table + "</tbody></table></section>"
         "<section><h2>HUMAN stage history within selected interval</h2>"
         "<p>The stage filter above applies here. Counts are self-reported; "
         "no verified findings, consent or assignments.</p><table><thead><tr>"

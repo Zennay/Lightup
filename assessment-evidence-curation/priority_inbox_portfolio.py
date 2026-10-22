@@ -30,6 +30,7 @@ COUNTS = "PRIVATE-HUMAN-priority-round-portfolio.json"
 CSV = "PRIVATE-HUMAN-priority-round-portfolio.csv"
 TRANSITIONS_CSV = "PRIVATE-HUMAN-priority-round-stage-transitions.csv"
 INTERVALS_CSV = "PRIVATE-HUMAN-priority-round-intervals.csv"
+MOVEMENTS_CSV = "PRIVATE-HUMAN-priority-round-interval-stage-movements.csv"
 BROWSER = "PRIVATE-HUMAN-priority-round-explorer.html"
 START = "PRIVATE-HUMAN-priority-round-start.html"
 RECEIPT = "PRIVATE-HUMAN-priority-round-portfolio-receipt.json"
@@ -131,11 +132,13 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                 before = ordered[first]
                 after = ordered[last]
                 changed_stage = changed_reply = changed_followup = reverted = 0
+                stage_movements = Counter()
                 for ordinal in ids:
                     old = before[ordinal]
                     new = after[ordinal]
                     left_stage = old["recipient_reported_stage"] or "no_human_response"
                     right_stage = new["recipient_reported_stage"] or "no_human_response"
+                    stage_movements[(left_stage, right_stage)] += 1
                     changed_stage += int(left_stage != right_stage)
                     changed_reply += int(old["recipient_human_reply"] !=
                                          new["recipient_human_reply"])
@@ -156,6 +159,9 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                     "intermediate_stage_reverted_rows": reverted,
                     "reply_changed_rows": changed_reply,
                     "next_question_changed_rows": changed_followup,
+                    "human_stage_movements": [
+                        {"from_stage": old, "to_stage": new, "human_rows": n}
+                        for (old, new), n in sorted(stage_movements.items())],
                 })
 
     attention = [
@@ -168,7 +174,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         for stage in ("blocked_human", "needs_more_information", "no_human_response")
     ]
     numeric = {
-        "schema": "lightup.private_human_cross_priority_portfolio.v3",
+        "schema": "lightup.private_human_cross_priority_portfolio.v4",
         "status": "REVIEW_ONLY",
         "operator_ordered_round_count": rounds,
         "selected_original_human_rows": len(selected),
@@ -210,6 +216,19 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     for item in interval_rows:
         intervals_writer.writerow([item[key] for key in interval_header])
     intervals_raw = intervals_out.getvalue().encode("utf-8")
+    movement_out = io.StringIO(newline="")
+    movement_writer = csv.writer(movement_out, lineterminator="\r\n")
+    movement_writer.writerow((
+        "operator_ordered_from_round", "operator_ordered_to_round",
+        "human_priority", "from_human_stage", "to_human_stage", "human_rows"))
+    for interval in interval_rows:
+        for change in interval["human_stage_movements"]:
+            movement_writer.writerow((
+                interval["operator_ordered_from_round"],
+                interval["operator_ordered_to_round"],
+                interval["human_priority"], change["from_stage"],
+                change["to_stage"], change["human_rows"]))
+    movements_raw = movement_out.getvalue().encode("utf-8")
     interactive_html = build_browser(interval_rows, rounds, counts, attention)
     start_html = build_start(rounds, len(selected), attention)
     matrix_rows = "".join(
@@ -273,7 +292,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     html = private_frame("PRIVATE HUMAN cross-priority round portfolio", body)
     counts_raw = json_bytes(numeric)
     receipt = {
-        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v3",
+        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v4",
         "status": "REVIEW_ONLY",
         "operator_ordered_round_count": rounds,
         "original_source_sha256_unsigned": source_sha,
@@ -286,12 +305,14 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "private_csv_sha256_unsigned": digest(csv_raw),
         "private_transition_csv_sha256_unsigned": digest(flows_csv_raw),
         "private_intervals_csv_sha256_unsigned": digest(intervals_raw),
+        "private_movements_csv_sha256_unsigned": digest(movements_raw),
         "private_explorer_html_sha256_unsigned": digest(interactive_html),
         "private_start_html_sha256_unsigned": digest(start_html),
         **UNTRUSTED_FLAGS,
     }
     files = {REPORT: html, COUNTS: counts_raw, CSV: csv_raw,
              TRANSITIONS_CSV: flows_csv_raw, INTERVALS_CSV: intervals_raw,
+             MOVEMENTS_CSV: movements_raw,
              BROWSER: interactive_html, START: start_html,
              RECEIPT: json_bytes(receipt)}
     require(all(0 < len(raw) <= LIMIT for raw in files.values()))
