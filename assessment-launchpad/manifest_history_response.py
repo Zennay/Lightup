@@ -130,16 +130,23 @@ def main(argv=None):
                         help="source-bind this HUMAN return to an original saved PRIVATE HUMAN round")
     parser.add_argument("--ack-csv-stage-replace", action="store_true",
                         help="confirm that all imported CSV stages intentionally replace prior HUMAN round stages")
-    dest = parser.add_mutually_exclusive_group(required=True)
+    dest = parser.add_mutually_exclusive_group()
     dest.add_argument("--output-dir", help="new separate empty PRIVATE 0700 result directory")
     dest.add_argument("--verify-output-dir", help="exact read-only reopen")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="read-only HUMAN stage-change preview; never publishes files")
     parser.add_argument("--explain-hold", action="store_true", help="curated HOLD only; never source values")
     args = parser.parse_args(argv)
     try:
+        if args.dry_run and (args.output_dir or args.verify_output_dir):
+            raise Hold("read-only HUMAN preview cannot publish or reopen outputs")
+        if not args.dry_run and not (args.output_dir or args.verify_output_dir):
+            raise Hold("select a PRIVATE publication/reopen output or read-only dry-run")
         if args.ack_csv_stage_replace and not (
                 args.continue_from_return_dir and args.answers_dir):
             raise Hold("CSV stage replacement acknowledgement requires prior HUMAN round and PRIVATE answers CSV")
-        if args.continue_from_return_dir and args.answers_dir and not args.ack_csv_stage_replace:
+        if args.continue_from_return_dir and args.answers_dir and not (
+                args.ack_csv_stage_replace or args.dry_run):
             raise Hold("full CSV replacement of prior HUMAN stages requires explicit acknowledgement")
         if args.continue_from_return_dir and not args.answers_dir and not args.stage:
             raise Hold("HUMAN continuation requires at least one explicit stage edit")
@@ -175,6 +182,20 @@ def main(argv=None):
             answers_raw = editor.emit_csv(responses)
             answers_abs = None
         stages = Counter(row["human_stage"] for row in responses)
+        prior_rows = (prior_packet["responses"] if prior_packet is not None else
+                      source_packet["human_review_queue"])
+        changed_rows = sum(
+            previous["human_stage"] != current["human_stage"]
+            for previous, current in zip(prior_rows, responses))
+        if args.dry_run:
+            print("HUMAN_STAGE_PREVIEW_REVIEW_ONLY"
+                  + " · original_rows=" + str(len(responses))
+                  + " · proposed_stage_changes=" + str(changed_rows)
+                  + " · prior_round=" + str(prior_hash is not None).lower()
+                  + " · csv_replace_ack_needed="
+                  + str(bool(prior_hash and args.answers_dir)).lower()
+                  + " · PRIVATE source values withheld; no publication, authority, consent or assessment")
+            return 0
         packet = {
             "schema": ("lightup.private-manifest-history-human-return.v2"
                        if prior_hash is not None else
