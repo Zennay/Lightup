@@ -368,6 +368,46 @@ Only these new isolated paths are owned: \`assessment-lineage/{app.js,index.html
 
 Files are untrusted and **not authenticated**, even if source format matches. Original source exact-head hosted and permanently registered named VPS CI, independent security/privacy review, real separate authenticated client and operator consent with action-time revocation, original authorization issue source fixes and explicit human GO all remain necessary before *any* merge, deployment or active target behavior. This isolated draft offers **no** such permission. No branch merge or production deployment is implied by GitHub “mergeable”.
 
+## Multi-snapshot PRIVATE receipt history (2–12)
+
+The native `receipt_history.py` extends the two-receipt comparison into one
+bounded history of **2–12 original canonical PRIVATE source receipts** from
+`private_workroom.py --private-receipt`. It reports each snapshot and every
+adjacent transition, including catalog/HUMAN-draft/workroom byte-change flags,
+source membership additions/absences, ambiguous duplicate fingerprints, and
+the selected report-slot movement when both adjacent snapshots have unique
+fingerprints. A separate source-presence matrix shows where each packet-local
+source label appears across all manually ordered snapshots.
+
+```bash
+umask 077
+mkdir -m 700 /private/lineage-history
+python3 assessment-lineage/receipt_history.py \
+  --output-dir /private/lineage-history \
+  /private/snapshot-01/review.private-lineage-receipt.json \
+  /private/snapshot-02/review.private-lineage-receipt.json \
+  /private/snapshot-03/review.private-lineage-receipt.json
+```
+
+The receipts must be distinct, canonical, owner-private mode-0600 regular
+files; the output directory must already exist, be owned by the current user,
+have exact mode 0700, and be outside every input directory. The output is a
+three-file packet: scriptless HTML, JSON and flat CSV. Files are exclusive
+0600 outputs; existing files are never overwritten. To verify a saved packet
+without writing, use the same ordered receipt list and add
+`--verify-existing`. Reordering receipts intentionally changes the result;
+the order is human-selected, not authenticated chronology.
+
+Full receipt/source hashes, source paths, raw source content, case IDs and
+private notes are omitted from the report. Packet-local labels still reveal
+correlation patterns and are **not anonymization**. Duplicate fingerprints
+make slot movement ambiguous; a source absent from a later snapshot is not
+proof of deletion, remediation, revocation or clearance. The tool reads only
+the receipt files, not the original lab/catalog/report files described by
+them, and invokes no comparator, scanner, target, network or external service.
+All consent, authorization and HUMAN GO flags remain false. This is a private
+review aid, not a source-authenticity or release certificate.
+
 ## Private data handling
 
 The original source catalog is sensitive. Local file selection does not upload it, and the standalone does not send it to any server; downloaded aggregate handoffs avoid source identities but do not prove provenance. Use suitable private device storage, and independently review any source before ingestion. Private scenario IDs exist transiently in memory only to match against original source cases and are not displayed to an external audience. Anonymous **HOLD** means a human must reconcile genuine source evidence, not repeat the execution automatically.
