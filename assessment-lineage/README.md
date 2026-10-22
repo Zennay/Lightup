@@ -20,6 +20,45 @@ application code**, never uploaded private client/lab content, never
 scans or executes an assessment. It is not independent browser approval,
 original source-owner review or authorization to deploy.
 
+## One-file PRIVATE report selection (1–8 finished comparisons)
+
+The native offline `private_workroom.py` now accepts `--reports-file` as an
+alternative to repeating `--report` on the command line. The file is a
+current-user-owned, exact mode-0600 regular UTF-8 text file, with one canonical
+**absolute** original completed-report path per LF-terminated line. The
+recorded order is a deliberately chosen **human view only**; it does not prove
+which original comparator report was created earlier.
+
+```bash
+umask 077
+cat > /private/lineage-original-report-selection.txt <<'EOF'
+/private/comparison-a/canonical-original.json
+/private/comparison-b/canonical-original.json
+EOF
+chmod 600 /private/lineage-original-report-selection.txt
+mkdir -m 700 /private/lineage-selected-workroom
+python3 assessment-lineage/private_workroom.py \
+  --catalog /private/source/original-lab-catalog.json \
+  --reports-file /private/lineage-original-report-selection.txt \
+  --output /private/lineage-selected-workroom/workroom.html
+```
+
+Use the **identical** `--reports-file` selection to later reopen that exact
+packet with `--verify-existing`. The tool requires **either** 1–8 individual
+`--report` options **or** one private `--reports-file`, not both.
+An empty or oversized list, duplicate/relative/noncanonical filenames,
+hidden bidi or control characters, symlinks, nonregular or hard-linked input,
+changed bytes, or missing/private-source permission causes HOLD. Each listed
+original completed report still goes through the unchanged original report
+admission, including original HUMAN-draft digest binding. The selection list
+is reread just before publishing or reopening; it is never embedded in the
+PRIVATE HTML as source filenames.
+
+This saves operator preparation time but grants no authority, identifies
+no true reviewer, creates no report itself, runs no evaluation and sends
+nothing to a target or service. Do not import an arbitrary source list from
+an untrusted recipient.
+
 ## Exact original-source PRIVATE workroom reopen (read-only)
 
 After building an owner-private workroom, the native builder can independently
