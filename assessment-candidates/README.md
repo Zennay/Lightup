@@ -109,3 +109,10 @@ The local SHA-256 byte binding prefers Web Crypto, then falls back to a portable
 ### Non-destructive local file operations
 
 All asynchronous report imports, candidate appends, PRIVATE HUMAN preference restores and multi-round comparisons use a **latest-intent-wins** local generation. Selecting another file, loading the fictional demo, forgetting all, changing thresholds, adopting a HUMAN proposal, or changing locally held HUMAN discussion work cancels older in-flight reads before they can publish results. Each complete validated import still commits atomically; a failed or superseded operation leaves the already visible reports and local HUMAN state intact. This is an offline local browser safety/usability boundary, not a check of assessment authenticity, permission or release readiness.
+
+
+### Candidate set management without losing the whole workbench
+
+With an imported 2–12 report cohort, **Replace candidate slot** atomically imports one already-finished compatible report into a chosen candidate position: it checks the same complete original schema, rejects duplicate snapshot/baseline mismatch and leaves all other source bytes, local aliases, selection of informational thresholds and Pareto dimensions unchanged. An invalid or identical replacement leaves the existing report set and HUMAN proposals unchanged. A valid replacement resets all prior source-bound HUMAN case proposals, reviewer-round comparisons, and batch undo because the underlying candidate set changed; private drafts must be freshly exported.
+
+With 3–12 imported reports, **Remove selected candidate** makes a local shortlist while preserving the required minimum of two source reports. Removal asks for explicit HUMAN confirmation and resets previous source-bound HUMAN proposals/drafts. Original local source files are never modified, no assessment is executed, and all authority flags remain false. File-dialog replacement and append obey the latest-intent rule documented above.
