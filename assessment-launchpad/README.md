@@ -74,6 +74,17 @@ python3 assessment-launchpad/manifest_history_desk.py --plan-dir ~/private-plan-
 python3 assessment-launchpad/manifest_history_desk.py --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two --plan-dir ~/private-plan-three --verify-output-dir ~/private-plan-history
 ```
 
+### PRIVATE HUMAN review return for manifest-history changes
+
+The optional standalone `manifest_history_response.py` completes the offline loop for the history queue. The operator copies **only** `lightup-manifest-history-review-queue-private.csv` from an original saved PRIVATE history bundle to a **separate private 0700 answers directory** (retaining the exact filename and mode-0600 ownership), edits ONLY its `human_stage` column, and selects one of the literal statuses `FOLLOW_UP_REQUIRED`, `NEEDS_CONTEXT`, `IN_REVIEW`, `QUESTION_PREPARED`, `PARKED` or `HUMAN_REVIEWED`. All plan-pair, change, source slot and destination slot columns must remain byte-literal CSV values and in the original source order. No notes, formulas, additional rows or unrecognized statuses can be imported.
+
+```sh
+python3 assessment-launchpad/manifest_history_response.py --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two --history-dir ~/private-plan-history --answers-dir ~/private-plan-answers --output-dir ~/private-human-return
+python3 assessment-launchpad/manifest_history_response.py --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two --history-dir ~/private-plan-history --answers-dir ~/private-plan-answers --verify-output-dir ~/private-human-return
+```
+
+Before HUMAN return publication, the native CLI re-verifies the saved history against the original pinned policy and source manifests, strictly matches the complete edited CSV against the ordinal queue, and re-opens all inputs. It publishes three exclusive mode-0600 files in a separate empty owner-owned 0700 directory: source-bound PRIVATE JSON containing unsigned source and answer hashes, scriptless CSP-pinned PRIVATE HUMAN status HTML (no URLs/paths/hashes) and an aggregate stage-count PRIVATE CSV. The previous source and HUMAN answer files are never overwritten. The stages are non-authorizing **human work notes only**: even `HUMAN_REVIEWED` is not approval, valid consent, verified remediation, revocation clearance or release authority. No active targets, scanner, DNS, model, auth or original source-owner code is touched.
+
 **One-command combine + history:** `combine_manifest.py` also accepts 1–7 repeated `--history-prior-dir` values plus one `--history-output-dir` to append its newly published combined plan as the final historical snapshot. It admits all prior saved PRIVATE bundles before publication; the new plan and history are written in **separate private transactions**. `--verify-output` reopens both without writing. This optional history may be requested alongside the independent change-desk and offline HUMAN workspace, but every destination must be separate from all source and output trees.
 
 ```sh
