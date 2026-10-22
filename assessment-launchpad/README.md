@@ -859,3 +859,11 @@ three-file shape byte-for-byte. For compatibility, it also continues to
 reopen older canonical native two-file JSON+HTML change-desk bundles
 read-only when both original source manifests reproduce their original
 bytes; it does not add the new CSV to an existing bundle or rewrite it.
+
+
+The change desk re-admits both original saved manifest bundles again at
+the output boundary, immediately before exact reopen or publication. If
+either canonical manifest's original bytes/slot list changed while the
+comparison was being prepared, it holds instead of publishing a stale delta.
+This is a local source-drift guard only; it does not make unsigned local
+receipts authentic or establish when an operator selected either snapshot.
