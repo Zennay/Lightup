@@ -341,7 +341,7 @@ def human_summary(entries, reference_date):
 def render_private_summary_json(entries, reference_date):
     return (json.dumps(
         human_summary(entries, reference_date), ensure_ascii=False, indent=2
-    ) + "\\n").encode("utf-8")
+    ) + "\n").encode("utf-8")
 
 
 def render_private_return(entries, reference_date):
@@ -439,7 +439,7 @@ def render_private_comparison_json(previous, current, reference_date):
     return (json.dumps(
         human_comparison(previous, current, reference_date),
         indent=2, ensure_ascii=False
-    ) + "\\n").encode("utf-8")
+    ) + "\n").encode("utf-8")
 
 
 def render_private_comparison_html(previous, current, reference_date):
