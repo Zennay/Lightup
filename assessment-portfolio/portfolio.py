@@ -765,6 +765,9 @@ def run(args):
     documents, rows, source_dirs = collect(admitted, reference_day)
     if manifest_path:
         source_dirs.add(os.path.dirname(manifest_path))
+    if args.human_responses:
+        # Keep source/return and output rooms separate before ANY publication.
+        source_dirs.add(os.path.dirname(os.path.abspath(args.human_responses)))
     output_fd, output_path = open_output_directory(args.output_dir)
     try:
         for source_dir in source_dirs:
@@ -788,7 +791,6 @@ def run(args):
         if args.human_responses:
             # Explicit private HUMAN input; never edits original admitted agendas.
             response_path = os.path.abspath(args.human_responses)
-            source_dirs.add(os.path.dirname(response_path))
             responses_raw, responses = human_workbook.read_private_response(
                 response_path, open_directory_nofollow
             )
