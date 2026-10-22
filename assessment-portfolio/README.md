@@ -32,6 +32,61 @@ python3 assessment-portfolio/portfolio.py \
 
 The directory must already exist, be owned by the current user and have mode `0700`. Existing output filenames cause HOLD rather than overwrite. If bundle publication fails part-way, newly created files are removed. Input paths are opened component-by-component without following symlinks; inputs must remain stable during the read.
 
+## Reopen and focused HUMAN workrooms
+
+Reopen an existing, private four-file packet without modifying any input or
+output. This reconstructs the original four canonical artifacts from the same
+admitted source agenda bytes, the **same** `--as-of` day and any original
+focus flags, and compares the complete output bytes with an exact inventory.
+Extra files, missing files, non-0600 files, hard links, symlinks, different
+content or changed original agenda bytes produce HOLD. Reopening cannot
+authenticate the original HUMAN or client claims: it only proves these local
+files match the currently re-admitted original input bytes.
+
+```bash
+python3 assessment-portfolio/portfolio.py \
+  --verify-output-dir \
+  --as-of 2026-10-21 \
+  --output-dir /private/new-assessment-portfolio \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+For an operator who needs a smaller **PRIVATE** task desk, use any combination
+of `--focus-role`, `--focus-stage` and `--focus-bucket`. All source
+agendas are still admitted in full; only the resulting HUMAN follow-up rows
+and their stage/role/date count summaries are filtered. No source detail or
+HUMAN note is ever added. Use a **new empty owner-only 0700** output directory,
+never the original full-portfolio directory.
+
+```bash
+mkdir -m 700 /private/reviewer-followup
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-21 \
+  --focus-role reviewer \
+  --focus-stage NEEDS_ORIGINAL_EVIDENCE \
+  --focus-bucket PAST_PLANNED_DATE \
+  --output-dir /private/reviewer-followup \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+The filtered four-file packet uses aggregate schema
+`lightup.assessment_portfolio_aggregate.v2` with an explicit `view_selection`
+in its counts-only JSON, while the **unchanged unfiltered** export continues
+to use v1. Every focused HTML view labels the exact selected role, stage and
+reference-date bucket. A selection matching no HUMAN items yields a clearly
+labelled empty private desk, **not** evidence that work is completed. Original
+source status claims are retained for context and are never promoted to
+verified approvals. Reopening the filtered packet requires the identical
+selection flags and source ordering along with `--verify-output-dir`.
+
+During creation the original agenda bytes are readmitted immediately before
+private publication. A changed original source aborts rather than publishing
+a stale derived packet. This is a local source-drift guard, **not** a trusted
+signature, contemporaneous reviewer identity, grant, proof of consent or
+permission to distribute the packet.
+
 ## Interpretation and safety
 
 - Input agenda exports are untrusted claims. Strict schema admission is not source authentication, reviewer authentication, customer identity, consent or security validation.
