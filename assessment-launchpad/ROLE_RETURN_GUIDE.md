@@ -63,7 +63,11 @@ it does not authenticate the sender.
 
 Edit **only** `proposed_human_stage` (NEEDS_INPUT, HUMAN_REVIEW, FOLLOW_UP)
 and `proposed_private_note` (maximum 400 characters, no unsafe control or
-format characters). Retain all rows in their original order and all other
+format characters). A **blank note retains** the original selected-role
+PRIVATE note without exposing it in the role-minimal return form; a single
+hyphen `-` explicitly **clears** it. Any other nonblank value replaces it.
+This is identical to the local TTY's Enter-to-retain / hyphen-to-clear
+behavior. Spreadsheet formula-like prefixes remain denied on CSV ingress. Retain all rows in their original order and all other
 fields unchanged. Do not use spreadsheet formulas. Keep the edited CSV
 offline in its own 0600 file under an owned 0700 directory.
 

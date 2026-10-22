@@ -91,10 +91,15 @@ def parse_reply(raw, rounds, role, fingerprint, indices):
             raise Hold("role-return changed source binding, slot order, role or stage")
         # Quoting CSV does not neutralize spreadsheet formula cells.
         normalized = unicodedata.normalize("NFKC", note).lstrip()
-        if normalized.startswith(("=", "+", "-", "@")):
+        if note not in ("", "-") and normalized.startswith(("=", "+", "-", "@")):
             raise Hold("PRIVATE HUMAN CSV note resembles a spreadsheet formula")
         new_worksheet["human_rows"][index]["stage"] = proposed
-        new_worksheet["human_rows"][index]["note"] = note
+        # An empty role-only export MUST NOT silently erase prior PRIVATE notes.
+        # Explicit '-' is the sole clear operation; nonempty means replacement.
+        if note == "-":
+            new_worksheet["human_rows"][index]["note"] = ""
+        elif note:
+            new_worksheet["human_rows"][index]["note"] = note
         # The role assignment is deliberately immutable in this role reply.
     return new_worksheet
 
@@ -130,7 +135,8 @@ def return_guide(role, selected_count):
         "This is a voluntarily selected role, NOT an authenticated reviewer.\n"
         "Selected role: " + role + "; selected source slots: " + str(selected_count) + "\n"
         "Use the offline PRIVATE browser editor or edit only proposed_human_stage "+
-        "and proposed_private_note in the CSV.\n"
+        "and proposed_private_note in the CSV. Empty notes RETAIN prior content;\n"
+        "a sole hyphen clears a prior private note intentionally.\n"
         "Keep all rows, their order and all other columns untouched.\n"
         "Proposed stages: " + ", ".join(STAGES) + ". Notes <=400 characters.\n"
         "Do not use spreadsheet formulas. Keep the CSV strictly PRIVATE and offline.\n"

@@ -13,7 +13,7 @@ function restrictedNote(value) {
   const forbidden = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2060-\u2069]/u;
   const normalized = value.normalize("NFKC").trimStart();
   return value.length > 400 || forbidden.test(value) ||
-    /^[=+@-]/u.test(normalized);
+    (value !== "-" && /^[=+@-]/u.test(normalized));
 }
 function decodeStrictCsv(input) {
   if (typeof input !== "string" || input.length < 1 ||

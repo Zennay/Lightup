@@ -72,7 +72,7 @@ for (const row of rows) {
   label.append(select);
   card.append(label);
   const noteLabel = document.createElement("label");
-  noteLabel.textContent = "New PRIVATE role-only HUMAN note (max 400 characters)";
+  noteLabel.textContent = "New PRIVATE note (blank = retain existing, '-' = clear; max 400 characters)";
   const note = document.createElement("textarea");
   note.maxLength = 400;
   note.autocomplete = "off";
