@@ -135,7 +135,7 @@ def render_counts(packet):
 def render_followups(packet):
     """Ordinal-only HUMAN next-review queue. Never an unremediated findings list."""
     out = StringIO(newline="")
-    writer = csv.writer(out, lineterminator="\\n")
+    writer = csv.writer(out, lineterminator="\n")
     writer.writerow(("original_row", "plan_pair_from", "plan_pair_to", "literal_change",
                      "before_slot", "after_slot", "last_human_stage", "stage_changes"))
     for row in packet["rows"]:
