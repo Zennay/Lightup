@@ -31,7 +31,7 @@ STYLE = ("body{font:16px/1.5 system-ui,sans-serif;color:#17212f;"
          ".hold{border-left:5px solid #94600c;background:#fff5de;padding:1rem}"
          "table{border-collapse:collapse;width:100%}"
          "th,td{padding:.6rem;border:1px solid #cbd5e1;text-align:left}"
-         "th{background:#e9f1fb}small{color:#59677a}")
+         "th{background:#e9f1fb}small{color:#59677a}a{color:#18467b;font-weight:750}")
 
 
 def admit_saved_bundle(path):
@@ -143,7 +143,9 @@ def render_html(packet):
             str(totals["REMOVED"]) + " · Added: " + str(totals["ADDED"]) + "</p>"
             "<table><thead><tr><th>Literal change</th><th>Before slot</th>"
             "<th>After slot</th></tr></thead><tbody>" + "".join(rows) +
-            "</tbody></table><p><small>PRIVATE, unsigned local consistency only."
+            "</tbody></table><p><a href='lightup-private-manifest-delta.csv'>"
+            "Download PRIVATE ordinal change CSV</a></p>"
+            "<p><small>PRIVATE, unsigned local consistency only."
             " No endpoint URLs, notes, filenames or original source paths are embedded."
             " The source bundles are not independently authenticated. Client/operator"
             " consent, scope approval, revocation and HUMAN GO remain required.</small>"
