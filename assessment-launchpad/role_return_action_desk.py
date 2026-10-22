@@ -38,9 +38,11 @@ STYLE = (
     ".slotselect input{width:1.1rem;height:1.1rem}"
     ".selectionpreview{margin:.8rem 0}.selectionpreview summary{cursor:pointer;font-weight:750;padding:.5rem 0}"
     ".selectionpreview table{min-width:760px}"
+    ".importpanel{border:1px dashed #7d91a8;border-radius:.5rem;padding:.9rem;margin:.8rem 0}"
+    ".importpanel input{font:inherit;max-width:100%;display:block;margin:.5rem 0}"
     "@media(max-width:690px){.filters{grid-template-columns:1fr}"
     ".tablewrap{overflow-x:auto}table{min-width:800px}}"
-    "@media print{.filters,button,.slotselect input,#selectionSummary,.selectionpreview{display:none}header,main{max-width:none}"
+    "@media print{.filters,button,.slotselect input,#selectionSummary,.selectionpreview,.importpanel{display:none}header,main{max-width:none}"
     "tr[hidden]{display:none}#printScope{display:block;font-weight:700}}"
 )
 SCRIPT = r'''(() => {
@@ -62,6 +64,12 @@ const deselectVisibleButton = document.getElementById("deselectVisible");
 const clearSelectionButton = document.getElementById("clearSelection");
 const selectionSummary = document.getElementById("selectionSummary");
 const selectionPreview = document.getElementById("selectionPreview");
+const importFile = document.getElementById("importSelection");
+const importStatus = document.getElementById("importStatus");
+const importPreview = document.getElementById("importPreview");
+const addImported = document.getElementById("addImported");
+const replaceImported = document.getElementById("replaceImported");
+let importSequence = 0, importedSlots = null;
 const selectedSlots = new Set();
 const printScope = document.getElementById("printScope");
 const summary = document.getElementById("summary");
@@ -126,6 +134,27 @@ for (const row of source) {
   root.append(tr);
   lookup.push({values:row,element:tr,checkbox});
 }
+function renderImportPreview() {
+  importPreview.replaceChildren();
+  if (!importedSlots) return;
+  const sourceOnly = [...selectedSlots].filter(slot => !importedSlots.has(slot));
+  const importedOnly = [...importedSlots].filter(slot => !selectedSlots.has(slot));
+  const shared = [...importedSlots].filter(slot => selectedSlots.has(slot));
+  const summary = document.createElement("p");
+  summary.textContent = "Source-matched PRIVATE draft · " + importedSlots.size +
+    " imported · " + shared.length + " already selected · " +
+    importedOnly.length + " import-only · " + sourceOnly.length + " current-only.";
+  importPreview.append(summary);
+  for (const [label,items] of [["Imported only",importedOnly],
+                                ["Current only",sourceOnly],["Both",shared]]) {
+    const line = document.createElement("p");
+    line.textContent = label + " original slot ordinals: " +
+      (items.length ? items.sort((a,b)=>a-b).join(", ") : "none");
+    importPreview.append(line);
+  }
+  addImported.disabled = importedOnly.length === 0;
+  replaceImported.disabled = sourceOnly.length !== 0 || importedOnly.length !== 0 ? false : true;
+}
 function apply() {
   let visible = 0, awaiting = 0, visibleSelected = 0;
   const byAction = new Map();
@@ -179,11 +208,68 @@ function apply() {
   deselectVisibleButton.disabled = visibleSelected === 0;
   clearSelectionButton.disabled = selectedSlots.size === 0;
   printButton.disabled = visible === 0;
+  renderImportPreview();
 }
 const allFilters = [roleFilter,replyFilter,nextFilter,stageFilter,noteFilter];
 for (const item of allFilters) item.addEventListener("change",apply);
 resetButton.addEventListener("click",()=>{
   for (const item of allFilters) item.value = "ALL";
+  apply();
+});
+function loadImported(raw) {
+  if (typeof raw !== "string" || !raw.endsWith("\r\n") ||
+      raw.includes("\uFEFF") || raw.includes("\u0000")) throw Error("Noncanonical PRIVATE CSV");
+  const lines = raw.slice(0,-2).split("\r\n");
+  if (lines.length < 2 || lines.length > source.length + 1 ||
+      lines[0] !== fieldNames.join(",")) throw Error("Wrong original-source CSV schema");
+  const originals = new Map(lookup.map(({values},i)=>[String(values[0]),
+    {line:values.map(csvCell).join(","),index:i}]));
+  const staged = new Set();
+  let previous = -1;
+  for (const line of lines.slice(1)) {
+    const fields = line.split(",");
+    if (fields.length !== 6) throw Error("Invalid fixed HUMAN CSV row");
+    const sourceRow = originals.get(fields[0]);
+    if (!sourceRow || sourceRow.line !== line || sourceRow.index <= previous)
+      throw Error("PRIVATE selected rows differ from original source or order");
+    previous = sourceRow.index;
+    staged.add(Number(fields[0]));
+  }
+  if (staged.size !== lines.length - 1) throw Error("Duplicate original slot");
+  return staged;
+}
+importFile.addEventListener("change",async()=>{
+  const ticket = ++importSequence;
+  importedSlots = null;
+  addImported.disabled = replaceImported.disabled = true;
+  importStatus.textContent = "Checking selected PRIVATE CSV against original local HUMAN source…";
+  importPreview.replaceChildren();
+  const file = importFile.files && importFile.files[0];
+  if (!file) { importStatus.textContent = "No PRIVATE CSV selected.";return; }
+  try {
+    if (!file.size || file.size > 8192) throw Error("PRIVATE CSV size outside bound");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (ticket !== importSequence) return;
+    const raw = new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    importedSlots = loadImported(raw);
+    importStatus.textContent = "Source-matched unsigned PRIVATE selection. Review differences before applying.";
+  } catch (_) {
+    if (ticket !== importSequence) return;
+    importedSlots = null;
+    importStatus.textContent = "HOLD: selected CSV rejected. Current selection unchanged.";
+  } finally {
+    if (ticket === importSequence) { importFile.value="";renderImportPreview(); }
+  }
+});
+addImported.addEventListener("click",()=>{
+  if (!importedSlots) return;
+  for (const slot of importedSlots) selectedSlots.add(slot);
+  apply();
+});
+replaceImported.addEventListener("click",()=>{
+  if (!importedSlots) return;
+  selectedSlots.clear();
+  for (const slot of importedSlots) selectedSlots.add(slot);
   apply();
 });
 selectVisibleButton.addEventListener("click",()=>{
@@ -283,6 +369,17 @@ def render(work):
         "<button type='button' id='print'>Print only displayed PRIVATE rows</button> "
         "<button type='button' id='saveSelected' disabled>Download selected rows as PRIVATE CSV</button>"
         "<p id='selectionSummary' role='status' aria-live='polite'>0 explicitly selected slots.</p>"
+        "<div class='importpanel'><h3>Reopen earlier PRIVATE selected HUMAN CSV</h3>"
+        "<p>Read the exact original-bound CSV locally; no selection is changed until "
+        "you explicitly choose Add or Replace. Manual source order is not chronology.</p>"
+        "<label for='importSelection'>Previously downloaded PRIVATE CSV"
+        "<input type='file' id='importSelection' accept='.csv,text/csv'></label>"
+        "<p id='importStatus' role='status' aria-live='polite'>No previous selection loaded.</p>"
+        "<div id='importPreview' aria-live='polite'></div>"
+        "<button type='button' id='addImported' disabled>Add imported selection</button> "
+        "<button type='button' id='replaceImported' disabled>Replace current selection</button>"
+        "<small>Unsigned, fixed-vocabulary local source match only: never reviewer "
+        "authentication, assessment authority, client consent or HUMAN GO.</small></div>"
         "<details class='selectionpreview'><summary>Review selected rows before CSV download</summary>"
         "<div id='selectionPreview' class='tablewrap' aria-live='polite'>No original slots selected yet.</div></details>"
         "<div class='tablewrap'><table><thead><tr><th>Select / original slot</th>"

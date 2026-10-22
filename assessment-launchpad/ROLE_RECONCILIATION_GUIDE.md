@@ -74,7 +74,14 @@ The result consists of exactly seven exclusive mode-0600 files:
   this preview is excluded from print. **Download selected rows as PRIVATE CSV**
   exports only explicitly selected fixed-vocabulary rows in original source order,
   including selections hidden by the current filter; printing remains limited
-  to the visible view. No endpoint URL, private note text, reviewer name,
+  to the visible view. **Reopen earlier PRIVATE selected HUMAN CSV** stages a
+  previously exported 8192-byte-bounded canonical UTF-8/CRLF selection against
+  the exact current six-column source worklist. A separate source-minimal
+  comparison previews imported-only, current-only and shared original slot
+  ordinals; no current selection is changed until **Add imported selection**
+  or **Replace current selection** is explicitly chosen. Unknown, edited,
+  duplicate, reordered or foreign-source rows HOLD, leaving current choices
+  unchanged. No local storage, network, recipient transfer or real review. No endpoint URL, private note text, reviewer name,
   original path or digest is included. The saved CSV and any
   printed/PDF copy are **PRIVATE unencrypted recipient artifacts**: operator
   must still authenticate recipients and confirm permission outside this tool.

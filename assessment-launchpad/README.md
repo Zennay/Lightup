@@ -410,7 +410,17 @@ prints the current filtered view; **Download selected rows as PRIVATE CSV**
 exports only explicitly selected fixed-enum/ordinal rows in original source
 order (the renderer refuses an out-of-order source list), including selections
 hidden by the current filter. The browser does not
-persist selections. The original worklist and source/returns remain unchanged.
+persist selections. To resume a previously saved selection, use **Reopen earlier
+PRIVATE selected HUMAN CSV** in the same offline action desk. The file is read
+locally (max 8192 bytes), strictly decoded as canonical UTF-8/CRLF and matched
+row-by-row, including every enum and source order, against the *current exact*
+original worklist. Altered source details, duplicate slots, unknown columns,
+noncanonical encodings or foreign selection documents HOLD without modifying
+the current selection. The staged preview shows **imported-only, current-only
+and shared original slot ordinals**; only an explicit **Add imported selection**
+or **Replace current selection** changes the in-memory queue. Importing a
+selection neither authenticates its source nor changes the original worklist
+and source/returns, does not write browser storage, and never sends data.
 Neither print nor CSV contains endpoint URLs or human notes, but role/slot
 combinations may identify people; keep printouts and CSV private.
 No reviewer is authenticated, no recipient sharing is performed, and no
