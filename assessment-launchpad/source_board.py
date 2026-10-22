@@ -9,7 +9,7 @@ STYLE = ("body{font:16px/1.5 system-ui,sans-serif;color:#17212f;"
          ".hold{padding:1rem;background:#fff3dd;border-left:5px solid #965e11}"
          "table{width:100%;border-collapse:collapse}th,td{padding:.7rem;"
          "border:1px solid #cbd5e1;text-align:left}th{background:#eaf1f9}"
-         "small{color:#536174}")
+         "small{color:#536174}a{color:#18467b;font-weight:750}")
 
 
 def render_board(receipt):
@@ -49,6 +49,8 @@ def render_board(receipt):
             "<th>Mode</th><th>Result slots</th></tr></thead><tbody>" +
             "".join(table_rows) + "</tbody></table><p>Total planned slots: " +
             str(receipt["counts"]["result_endpoints"]) + "</p>"
+            "<p><a href='lightup-manifest-source-slots-private.csv'>"
+            "Open PRIVATE source-local slot CSV</a></p>"
             "<p><small>PRIVATE, unsigned and local. Endpoint values, original file"
             " paths, names and hashes are absent. Small-group counts can still"
             " be sensitive. No source identity, consent, review approval, scan,"
