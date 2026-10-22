@@ -20,6 +20,8 @@
     "reviewer_plan_sha256", "resolutions", "disposition"];
   const DRAFT_ENTRY = ["ordinal", "field", "value"];
   let state = null, decisions = new Map(), page = 0, filter = "all";
+  // Async source/workspace operations must never replace newer in-memory HUMAN work.
+  let stateRevision = 0, loadGeneration = 0;
   const plain = o => o !== null && typeof o === "object" && !Array.isArray(o);
   const exact = (o, fields) => plain(o) && Object.keys(o).length === fields.length &&
     fields.every(k => Object.hasOwn(o,k));
@@ -191,6 +193,7 @@
       sel.addEventListener("change",()=>{
         if(sel.value)decisions.set(keyOf(x),sel.value);
         else decisions.delete(keyOf(x));
+        stateRevision++;
         updateSummary();
         if(filter!=="all")render(); else renderMatrix();
       });
@@ -283,6 +286,7 @@
   $("matrixPrevious").addEventListener("click",()=>{matrixPage=Math.max(0,matrixPage-1);renderMatrix();});
   $("matrixNext").addEventListener("click",()=>{matrixPage++;renderMatrix();});
   function reset() {
+    stateRevision++;loadGeneration++;
     state=null;decisions=new Map();page=0;
     $("reviewRows").replaceChildren();$("search").value="";
     $("export").disabled=true;$("encryptedExport").disabled=true;
@@ -420,6 +424,7 @@
     return {proposed,restored};
   }
   $("saveWorkspace").addEventListener("click",async()=>{
+    const revision=stateRevision;
     try{
       const payload=JSON.stringify(exportWholeWorkspace())+"\\n";
       const pass=window.prompt("Choose NEW local passphrase for the complete PRIVATE HUMAN reviewer workspace (12–256 characters). No recovery.");
@@ -429,42 +434,77 @@
       guard(pass===repeat,"Private workspace passwords do not match");
       if(!window.confirm("Encrypt all admitted original HUMAN plan content and current conflicts into one PRIVATE offline workspace? Source hashes and human choices remain sensitive. NO scan authority."))return;
       const sealed=await sealReviewerWorkspace(payload,pass);
+      if(revision!==stateRevision){
+        msg("HOLD · reviewer choices changed during encryption; stale workspace download cancelled.",true);
+        return;
+      }
       jsonFile("private-lightup-reviewer-workspace-encrypted.json",sealed);
     }catch(err){msg("HOLD · "+(err.message||"Could not seal PRIVATE reviewer workspace"),true);}
   });
   $("loadWorkspace").addEventListener("change",async ev=>{
+    const ticket=++loadGeneration, revision=stateRevision;
     try {
-      const file=ev.target.files[0],{raw}=await fileBytes(file,40*1024*1024);
+      const file=ev.target.files[0];
+      guard(file,"No PRIVATE reviewer workspace selected");
+      const {raw}=await fileBytes(file,40*1024*1024);
       const envelope=strictParse(raw);
       const pass=window.prompt("PRIVATE reviewer workspace LOCAL decryption passphrase:");
       guard(pass!==null,"PRIVATE reviewer workspace restore cancelled");
       const plaintext=await unsealReviewerWorkspace(envelope,pass);
       const revived=await admitWholeWorkspace(strictParse(plaintext));
+      if(ticket!==loadGeneration)return;
+      if(revision!==stateRevision){
+        msg("HOLD · current HUMAN decisions changed while the encrypted workspace was being opened. Existing review retained; reopen only after saving current work.",true);
+        return;
+      }
       if(!window.confirm("Replace this tab's in-memory HUMAN review with the fully admitted original-plan inventory and choices from the encrypted workspace?"))return;
-      state=revived.proposed;decisions=revived.restored;page=0;render();
+      if(ticket!==loadGeneration||revision!==stateRevision)return;
+      state=revived.proposed;decisions=revived.restored;stateRevision++;page=0;render();
       msg("Complete source-bound PRIVATE HUMAN reviewer workspace reopened locally. No authorization implied.");
-    }catch(err){msg("HOLD · "+(err.message||"Cannot admit encrypted PRIVATE reviewer workspace"),true);}
-    finally{ev.target.value="";}
+    }catch(err){
+      if(ticket!==loadGeneration)return;
+      msg("HOLD · "+(err.message||"Cannot admit encrypted PRIVATE reviewer workspace"),true);
+    }finally{ev.target.value="";}
   });
   $("files").addEventListener("change",async ev=>{
     const selected=Array.from(ev.target.files);
+    const ticket=++loadGeneration, revision=stateRevision;
     try {
-      if(state && !window.confirm("Replace the current PRIVATE in-memory HUMAN draft? Export it first if needed."))
-        return;
+      if(!selected.length)return;
+      if(state && !window.confirm("Replace the current PRIVATE in-memory HUMAN draft? Export it first if needed."))return;
       const proposed=await readPlans(selected);
-      state=proposed;decisions=new Map();page=0;render();
+      if(ticket!==loadGeneration)return;
+      if(revision!==stateRevision){
+        msg("HOLD · HUMAN choices changed while original reviewer plans were being read. Current review retained; select the batch again to replace intentionally.",true);
+        return;
+      }
+      state=proposed;decisions=new Map();stateRevision++;page=0;render();
       msg("Original PRIVATE reviewer batch admitted. Conflicting HUMAN choices remain HOLD until selected.");
-    }catch(err){msg("HOLD · "+(err.message||"Cannot admit original plans"),true);}
-    finally{ev.target.value="";}
+    }catch(err){
+      if(ticket!==loadGeneration)return;
+      msg("HOLD · "+(err.message||"Cannot admit original plans"),true);
+    }finally{ev.target.value="";}
   });
   $("loadDraft").addEventListener("change",async ev=>{
+    const ticket=++loadGeneration, revision=stateRevision;
     try {
-      const file=ev.target.files[0],{raw}=await fileBytes(file,MAX_DRAFT);
+      const file=ev.target.files[0];
+      guard(file,"No PRIVATE reviewer draft selected");
+      const {raw}=await fileBytes(file,MAX_DRAFT);
       const proposal=admitDraft(strictParse(raw));
+      if(ticket!==loadGeneration)return;
+      if(revision!==stateRevision){
+        msg("HOLD · HUMAN choices changed while the resume draft was being read. Current review retained; select the draft again to replace intentionally.",true);
+        return;
+      }
       if(!window.confirm("Replace current HUMAN conflict choices with those from this exact-source PRIVATE draft?"))return;
-      decisions=proposal;page=0;render();msg("PRIVATE draft resumed against exact original reviewer bytes.");
-    }catch(err){msg("HOLD · "+(err.message||"Invalid original-bound draft"),true);}
-    finally{ev.target.value="";}
+      if(ticket!==loadGeneration||revision!==stateRevision)return;
+      decisions=proposal;stateRevision++;page=0;render();
+      msg("PRIVATE draft resumed against exact original reviewer bytes.");
+    }catch(err){
+      if(ticket!==loadGeneration)return;
+      msg("HOLD · "+(err.message||"Invalid original-bound draft"),true);
+    }finally{ev.target.value="";}
   });
   $("export").addEventListener("click",()=>{
     try {
@@ -474,6 +514,7 @@
     }catch(err){msg("HOLD · "+err.message,true);}
   });
   $("encryptedExport").addEventListener("click",async()=>{
+    const revision=stateRevision;
     try {
       const plan=outputPlan();
       const first=window.prompt("Choose a NEW 12–256 character LOCAL passphrase for the original-format encrypted HUMAN plan. No password recovery.");
@@ -483,6 +524,10 @@
       guard(first===second,"Private encryption passphrases do not match");
       if(!window.confirm("Encrypt the original-format HUMAN plan locally using AES-256-GCM? Original source authenticity, permission and security findings remain unverified."))return;
       const encrypted=await encryptOriginalHumanPlan(JSON.stringify(plan)+"\\n",first);
+      if(revision!==stateRevision){
+        msg("HOLD · HUMAN choices changed during encryption; stale merged-plan download cancelled.",true);
+        return;
+      }
       jsonFile("private-lightup-merged-original-human-plan-encrypted.json",encrypted);
     }catch(err){msg("HOLD · "+(err.message||"Private encryption unavailable"),true);}
   });
