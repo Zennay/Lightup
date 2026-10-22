@@ -734,3 +734,38 @@ and will be refused by the current exact-byte read-only reopen unless the
 entire original source and original full HUMAN rounds are re-supplied to
 produce a **new v4 dossier**. No retrofit, in-place edit, or data disclosure
 grant is implied.
+
+### Readmit a saved HUMAN review CSV into a separate source-bound packet (34/35)
+
+Once a reviewer explicitly clicks **Save PRIVATE HUMAN review CSV locally** in
+the original **five-file** dossier's offline editor, **console 34** (or
+`priority_inbox_continuity_review.py`) admits that **existing**
+`PRIVATE-HUMAN-continuity-review-return.csv` against the **same original
+lab source, manifest, worksheet, full selection and all original HUMAN round
+handoffs/complete inboxes**. It also independently reopens the exact saved
+PRIVATE five-file dossier before accepting the CSV. The header must be
+canonical and every original ordinal selected in the docket must appear
+**once, in the same order**. The unsigned original dossier CSV digest, four
+fixed HUMAN-only disposition values and each <=500-character safe review
+note are required. Missing, extra, swapped or foreign rows, invalid notes
+or mismatched source/return bytes cause HOLD: no silent partial import.
+
+A new, separate owner-only 0700 directory receives exactly four 0600 files,
+each <=512 KiB: `PRIVATE-HUMAN-original-review-return.csv` is the admitted
+canonical human-note CSV; `PRIVATE-HUMAN-original-review-notes.html` is a
+scriptless human reading report of *only* accepted ordinals, reported
+priority/stage, untrusted disposition and operator-entered private note;
+`PRIVATE-HUMAN-original-review-counts.json` is a fixed-vocabulary summary;
+`PRIVATE-HUMAN-original-review-receipt.json` binds unsigned digests of
+the exact original dossier, manual returned CSV, generated private outputs
+and selected ordinal membership. This never edits the original source or
+inbox, and no HUMAN review disposition is a verified fix or authorization.
+
+Console **35** (or `priority_inbox_continuity_review_open.py`) readmits
+the same originals and the same exact return CSV, reconstructs the full
+four-file output, checks owner and 0700/0600 custody, exact file inventory,
+and byte equality **read-only**. New saves cannot replace old private rounds.
+Both workflows require the identical original dossier filter and optional
+`--human-ordinal` set. They do not contact recipients, open scopes, dispatch
+tasks, approve assets, grant client/operator consent or claim actual reviewer
+identity. Preserve original saved private return CSVs separately.

@@ -38,6 +38,8 @@ from priority_inbox_continuity_docket import (
     build as preview_continuity_docket, publish as publish_continuity_docket,
 )
 from priority_inbox_continuity_docket_open import reopen as reopen_continuity_docket
+from priority_inbox_continuity_review import publish as publish_continuity_review
+from priority_inbox_continuity_review_open import reopen as reopen_continuity_review
 from priority_inbox_diff import compare as compare_priority_inbox
 from priority_inbox_diff_open import reopen as reopen_priority_inbox_diff
 
@@ -105,9 +107,13 @@ WORKFLOWS = {
     "31": ("Publish separate PRIVATE original-source HUMAN continuity follow-up docket",
            "2–8 complete original HUMAN inboxes; explicit attention/reopened/unanswered/all filter"),
     "32": ("Read-only reopen PRIVATE source-bound HUMAN continuity follow-up docket",
-           "all original sources, HUMAN rounds, exact four private files and matching filter"),
+           "all original sources, HUMAN rounds, exact five private files and matching filter"),
     "33": ("Preview matching PRIVATE HUMAN follow-up rows (no file published)",
            "all complete original HUMAN rounds and explicit filter/ordinals; counts-only"),
+    "34": ("Ingest exact PRIVATE HUMAN review CSV to a new source-bound review packet",
+           "saved original FIVE-file PRIVATE docket and manually saved reviewer CSV"),
+    "35": ("Reopen saved PRIVATE source-bound HUMAN review packet, read-only",
+           "same original source, docket, HUMAN return CSV, exact owner-only four-file packet"),
 }
 
 
@@ -204,7 +210,7 @@ def run_workflow(choice: str) -> None:
         print("Original-source HUMAN priority rows checked: " + str(count) +
               "; NO verified remediation, recipient or consent")
         return
-    if choice in ("27", "28", "29", "30", "31", "32", "33"):
+    if choice in ("27", "28", "29", "30", "31", "32", "33", "34", "35"):
         source = ask_path("EXISTING original lab source JSON")
         manifest = ask_path("EXISTING original briefing manifest")
         worksheet = ask_path("EXISTING original HUMAN worksheet")
@@ -283,6 +289,26 @@ def run_workflow(choice: str) -> None:
                 print("NO FILE WRITTEN; " + str(count) +
                       " original HUMAN rows would be included in a PRIVATE "
                       "follow-up docket; no identity or authorization inferred")
+                return
+            if choice in ("34", "35"):
+                original_docket = ask_path("EXISTING original source-bound five-file PRIVATE docket")
+                review_file = ask_path("EXISTING manually saved PRIVATE HUMAN review-return CSV")
+                dest = ask_path("EXCLUSIVE NEW PRIVATE HUMAN review packet folder" if choice == "34"
+                                else "EXISTING PRIVATE HUMAN review packet folder")
+                print("This intake requires all original HUMAN source/rounds, exact docket and "
+                      "the manually entered untrusted HUMAN review; no consent/authority.")
+                if input("Enter exactly REVIEW ONLY for source-bound HUMAN review intake: ") != "REVIEW ONLY":
+                    raise Hold("HUMAN review intake declined")
+                if choice == "34":
+                    count = publish_continuity_review(
+                        *args, mode, ordinal_filter, original_docket, review_file, dest)
+                    print("PRIVATE source-bound HUMAN review packet created for " +
+                          str(count) + " original rows; no authority")
+                else:
+                    count = reopen_continuity_review(
+                        *args, mode, ordinal_filter, original_docket, review_file, dest)
+                    print("PRIVATE HUMAN review packet reopened read-only for " +
+                          str(count) + " rows; no bytes changed")
                 return
             saved = ask_path("EXCLUSIVE NEW separate PRIVATE follow-up folder" if choice == "31" else
                              "EXISTING separate PRIVATE follow-up folder")
@@ -638,7 +664,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–33]: ").strip()
+        choice = input("PRIVATE workflow [0–35]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
@@ -660,7 +686,7 @@ def main() -> int:
         print("\nPRIVATE HUMAN selection preview completed; no file published")
     else:
         print("\nEXISTING PRIVATE packet reopened; no new output" if choice in
-              ("11", "13", "15", "18", "20", "22", "24", "26", "28", "30", "32") else
+              ("11", "13", "15", "18", "20", "22", "24", "26", "28", "30", "32", "35") else
               "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 
