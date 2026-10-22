@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; img-src 'none'; font-src 'none'; style-src 'sha256-TlBP8LZcSi5wsKfXfShxRZFQenhSrVNR+GGo90/tsjE='; script-src 'sha256-S0unLfAnn2Wbkv0GwHhDhtF33utYKGBtk4qtYb9u58g='">
+<title>LightUp · Request binding change desk</title>
+<style>
+:root{font:16px/1.5 system-ui,-apple-system,sans-serif;color:#e9eef7;background:#09111f;color-scheme:dark}
+*{box-sizing:border-box}body{max-width:1240px;margin:auto;padding:32px 22px 80px}
+h1{font-size:clamp(1.7rem,4vw,3rem);letter-spacing:-.04em;margin:.4rem 0}h2{margin:0 0 12px}
+p{margin:.6rem 0 1rem}small,.muted{color:#bac6d7}header{border-bottom:1px solid #34445c;padding-bottom:28px;margin-bottom:22px}
+.kicker{font-size:.77rem;letter-spacing:.17em;text-transform:uppercase;color:#96d5f5;font-weight:700}
+.panel{background:#111f32;border:1px solid #314561;border-radius:16px;padding:20px;margin:18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.stat{background:#182b43;border-radius:12px;padding:16px}.stat strong{display:block;font-size:1.6rem}
+input[type=file]{display:block;margin:14px 0;max-width:100%}
+button,.action{background:#237bb7;color:white;border:0;border-radius:9px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;margin:5px 8px 5px 0}
+button.secondary{background:#344861}button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible{outline:3px solid #ffd168;outline-offset:3px}
+table{border-collapse:collapse;width:100%;min-width:850px}th,td{text-align:left;border-bottom:1px solid #33465d;padding:12px 10px;vertical-align:top}
+th{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#c8d7e9}
+.table-wrap{overflow-x:auto}.hold{color:#ffb19f;font-weight:700}.review{color:#a2e7d0;font-weight:700}
+.badge{display:inline-block;background:#263d53;border-radius:50px;padding:3px 10px;font-size:.8rem}
+.error{color:#ffd3c2;white-space:pre-wrap}label{display:inline-flex;align-items:center;gap:9px;padding:5px 0}
+#status[role=alert]{border-left:4px solid #ff986b;padding:12px 18px;background:#3c2730}
+#status[role=status]{border-left:4px solid #78ceac;padding:12px 18px;background:#1e3740}
+.chart{display:grid;gap:10px;height:auto;padding:10px 0}.chart-item{display:grid;grid-template-columns:minmax(130px,1fr) minmax(100px,3fr);gap:16px;align-items:center}.chart-item progress{width:100%;height:20px;accent-color:#509bbf}.review-checkbox{display:flex;align-items:center;gap:9px;padding:5px 0}
+.bar{min-width:25px;flex:1;max-width:100px;background:#509bbf;border-radius:5px 5px 0 0;position:relative}
+.bar span{position:absolute;top:-24px;font-size:.85rem}
+a{color:#9bdafc}
+#printbrief{display:none}
+@media print{body{color:#111;background:white;padding:10px;max-width:none}body > :not(#printbrief){display:none!important}#printbrief{display:block!important;color:#111;font:13px/1.5 system-ui,sans-serif}#printbrief table{min-width:0;width:100%;border-collapse:collapse}#printbrief th,#printbrief td{color:#111;border:1px solid #999;padding:6px;text-align:left}}
+</style></head>
+<body>
+<header><div class="kicker">LightUp / SCOPE-AUTHORIZATION / PRIVATE LOCAL REVIEW</div>
+<h1>Request binding · source change desk</h1>
+<p>Compare 2–12 original private <strong>single-selection</strong> operator JSON exports from request-binding readiness PR #1590. Source changes are evidence to revisit a human decision, <strong>not</strong> verified revocations, client signatures, grants or permission.</p>
+<div class="badge">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</div></header>
+<section class="panel" aria-labelledby="loadtitle">
+<h2 id="loadtitle">1 · Load existing original reports</h2>
+<p class="muted">All imported files must describe the same precise proposed scope selection (unsigned digest). Maximum 12 files, 2 MB each and 12 MB total. No files leave your browser; nothing is persisted. Private one-file operator bundles contain original sensitive data and must never be shared or uploaded.</p>
+<input id="files" type="file" accept=".json,application/json" multiple aria-label="Select 2 to 12 private original request binding JSON exports">
+<button id="import">Compare selected reports</button><button class="secondary" id="clear">Clear private workspace</button>
+<p id="status" role="status" aria-live="polite">No source documents loaded.</p>
+</section>
+<section id="workspace" hidden>
+<section class="panel" aria-labelledby="appendtitle"><h2 id="appendtitle">Append new original snapshots</h2><p>Keep your existing human discussion markers while adding 1–10 additional source reports. New files must have the exact same original proposed selection, and duplicates are held. Nothing is appended when even one file is invalid.</p><input id="extra" type="file" multiple accept=".json,application/json" aria-label="Append original source snapshots"><button id="append">Append original reports atomically</button></section>
+<section class="panel"><h2>2 · Evidence summary</h2><div class="grid" id="stats"></div>
+<p class="muted">The file order is chosen by the operator. It is not authenticated chronological order. A copied JSON report is untrusted even when originally created by an authenticated operator. Identical claimed original stored-row revision fingerprints must agree on stored request/risk/grant facts; time-dependent matching results may differ legitimately. Reauthenticate and re-export directly from the original database before making decisions.</p></section>
+<section class="panel"><h2>3 · Human-selected snapshot order</h2><p>Reorder source slots yourself for hypothetical comparisons; this never changes original records or establishes authenticated chronology. PRIVATE draft file bindings follow the chosen order.</p><button id="reverse" class="secondary">Reverse local source order</button><div class="table-wrap"><table><thead><tr><th>Slot</th><th>Original source review UTC</th><th>Stored source revision</th><th>Matching requests</th><th>Other requests</th><th>Historical grant rows</th><th>Human-only outcome</th><th>Manual order</th></tr></thead><tbody id="rows"></tbody></table></div>
+<h3>Administrative candidate count (not permissions)</h3><div id="chart" class="chart" aria-label="Candidate count by selected file slot"></div></section>
+<section class="panel"><h2>4 · Adjacent source-change reconciliation</h2>
+<p>Rows are compared only in the selected order. Different source SHA means original stored records differed <em>somewhere</em>; it cannot identify which persisted row changed without revisiting original authenticated source. Equal SHA is unsigned and cannot establish unchanged live state.</p>
+<div class="table-wrap"><table><thead><tr><th>Human selection</th><th>Original stored revision</th><th>Administrative candidates</th><th>Unapproved rows</th><th>Grant records</th><th>Human action</th></tr></thead><tbody id="transitions"></tbody></table></div></section>
+<section class="panel"><h2>5 · Request-record lineage (private, unsigned)</h2>
+<p>Compare original request-record pseudonyms inside memory to distinguish appeared, absent, unchanged and changed records. These pseudonyms are not authenticated signatures; absent entries may simply reflect the source export's 500-row cap, changed report order, or missing source evidence. No request identifier is exported.</p>
+<div class="grid"><label>Compare selected adjacent pair <select id="pair" aria-label="Adjacent source reports"></select></label>
+<label>Show records <select id="casetype"><option value="all">All original record differences</option><option value="changed">Changed only</option><option value="appeared">Appeared</option><option value="absent">Absent</option><option value="same">Unchanged</option></select></label></div>
+<div id="case-summary" class="grid"></div><div class="table-wrap"><table><thead><tr><th>Private pair-local row</th><th>Observed difference</th><th>Prior source row status</th><th>Later source row status</th><th>What changed</th><th>Source-owner mismatch reasons (before → after)</th><th>Human discussion route</th><th>Human discussion stage</th><th>Private follow-up note</th></tr></thead><tbody id="cases"></tbody></table></div>
+<p class="muted">Case notes and stages are private local human discussions, never modifications of source records. PRIVATE draft backup can save them; anonymous exports show only stage totals, never free-text notes.</p><div class="actions"><button id="caseprev" class="secondary">Previous records</button><span id="pageinfo" aria-live="polite"></span><button id="casenext" class="secondary">Next records</button></div>
+<p class="muted">Mismatch reason codes and human routing are derived only from the original operator exporter. They cannot establish whether the apparent difference is a real authorization change; any private discussion remains locally self-reported.</p>
+<p class="muted">A row in the first source is not proof of a person or authenticated request; a row in the second is not proof of consent, revocation, a new grant or correction. Row references are ephemeral within this selected pair only.</p></section>
+<section class="panel"><h2>6 · Source mismatch themes</h2><p>Fixed original source-owner explanation categories, grouped without request identities. These are discussion flags only, not authenticated policy verdicts or newly discovered risks.</p><div class="table-wrap"><table><thead><tr><th>Original reason</th><th>Human discussion owner</th><th>Per selected slot</th><th>Change: first → last</th></tr></thead><tbody id="reasonrows"></tbody></table></div></section>
+<section class="panel" id="triage"><h2>7 · Private cross-snapshot human triage queue</h2>
+<p>Every row below represents one <strong>copied, unsigned original-source request pseudonym</strong>, not a live authenticated case. Priorities are conservative discussion hints based on source-reported changes only. No score or human stage verifies approval, revocation, release or permission.</p>
+<div class="grid"><label>Human discussion priority <select id="queue-priority"><option value="all">All discussion priorities</option><option value="urgent">Priority: original identity / sensitive change</option><option value="review">Priority: changed / missing source</option><option value="routine">Other human discussion</option></select></label>
+<label>Local follow-up stage <select id="queue-stage"><option value="all">All stages</option><option value="open">Needs human follow-up</option><option value="documented_only">Discussion noted (not verified)</option><option value="unreviewed">Not reviewed</option><option value="client_followup">Client follow-up</option><option value="operator_followup">Operator follow-up</option><option value="security_source_review">Security/source review</option></select></label></div>
+<div class="actions"><label>Prepare local follow-up for currently filtered <strong>unreviewed</strong> cases <select id="bulk-team"><option value="security_source_review">Independent security/source discussion</option><option value="client_followup">Client evidence discussion</option><option value="operator_followup">Original operator discussion</option></select></label><button id="queue-bulk" class="secondary">Confirm bulk human discussion stage</button></div>
+<p class="muted">Bulk staging is purely local, requires explicit human confirmation and never overwrites another previously selected human stage or creates a grant, work order, permission or backend update.</p>
+<div class="actions"><button id="queue-export" class="secondary">Download anonymous filtered queue handoff</button></div>
+<div class="grid" id="queue-summary"></div>
+<div class="table-wrap"><table><thead><tr><th>Local anonymous case</th><th>Source observations</th><th>Priority (discussion only)</th><th>Last original category</th><th>First human question</th><th>Human stage</th><th>Open private case</th></tr></thead><tbody id="queue-rows"></tbody></table></div>
+<div class="actions"><button id="queue-prev" class="secondary">Previous cases</button><span id="queue-pageinfo" aria-live="polite"></span><button id="queue-next" class="secondary">Next cases</button></div>
+<p class="muted">A missing original row can mean an incomplete selection or source limit; a newly seen one does not prove a new client request. This queue never issues work orders or updates persisted LightUp records.</p></section>
+<section class="panel"><h2>8 · Human handoff</h2>
+<p>Mark private discussion items for yourself. These local checkmarks have no effect on source requests, grant state, revocation, scan, target or release.</p>
+<div id="review"></div>
+<div class="actions"><button id="exportjson">Download anonymous JSON brief</button><button id="exportcsv" class="secondary">Download anonymous CSV</button><button id="saveprivate" class="secondary">Save PRIVATE working draft</button><input type="file" id="restore" accept=".json" aria-label="Restore a private working draft"><button class="secondary" id="print">Print private aggregate</button></div>
+<p class="muted">PRIVATE draft stores fingerprints of original file bytes and your local follow-up checkmarks. Keep it in a restricted location. Aggregate exports omit original file names, tenant/client/engagement IDs, asset literals, source hashes, candidate record identities and human private notes.</p></section>
+</section>
+<section id="printbrief" aria-label="Privacy-minimal aggregate print brief"></section>
+<!-- Inert slot used ONLY by the operator's explicit local private capture bundle. The
+     public standalone never includes source rows here and can be shared. -->
+<template id="lightup-private-bundle"></template>
+<footer class="muted">Original grants and approved requests do not authenticate independent client/operator consent. Before any real access: original source owner, active-time revocation, independent security/privacy approval, exact-head hosted + permanent named VPS CI, and explicit HUMAN GO. This workspace does not issue grants, access targets, scan, dispatch, revoke or deploy.</footer>
+<script>
+"use strict";
+(function(){
+const FORMAT="lightup.request_binding_preparation.v1";
+const FALSE_KEYS=["client_consent_verified","operator_consent_verified","authorization_granted","execution_allowed","release_approved"];
+const STATUSES=["candidate_review_only","approved_but_not_compatible","not_administratively_approved"];
+const OUTCOMES=["REVIEW_ONLY_SINGLE_CANDIDATE","HOLD_AMBIGUOUS_CANDIDATES","HOLD_NO_CANDIDATE"];
+const ROUTES={NOT_ADMINISTRATIVELY_APPROVED:"Original client / operator",REQUEST_MODE_NOT_AUTHORIZED_ASSESSMENT:"Original request owner",SOURCE_ROLE_OR_TENANT_PROVENANCE_MISMATCH:"Security / identity owner",PROPOSED_RISK_NOT_COVERED:"Client / scope reviewer",PROPOSED_LITERAL_SCOPE_NOT_COVERED:"Client / scope reviewer",DECISION_CHRONOLOGY_INVALID:"Original operator / privacy",SOURCE_OWNER_OTHER_INTEGRITY_CHECK_REQUIRED:"Original source owner"};
+const CASE_STAGES={unreviewed:"Not reviewed",client_followup:"Client evidence discussion",operator_followup:"Operator source discussion",security_source_review:"Independent security/source review",documented_only:"Discussion noted (not verified)"};
+const ACTIONS=[
+  "Reauthenticate original operator and reopen source records",
+  "Confirm original client and operator identities independently",
+  "Review source revision differences with request/grant owner",
+  "Check current request scope, risk and decision provenance",
+  "Confirm separate consent and revocation-at-use with security",
+  "Keep activation, deployment, grants and real scanning on HOLD"
+];
+const $=id=>document.getElementById(id);
+let workspace=null, hashes=[];
+const fail=message=>{throw Error(message)};
+const exact=(o,keys,context)=>{
+  if(!o||typeof o!=="object"||Array.isArray(o)||Object.keys(o).some(k=>!keys.includes(k))||keys.some(k=>!Object.hasOwn(o,k))) fail(context+" schema mismatch");
+};
+const plain=(x)=>x!==null&&typeof x==="object"&&!Array.isArray(x);
+// JSON parser rejects duplicate object keys (including escape-equivalent keys), malformed input,
+// deep nesting and nonfinite values; JSON.parse alone would silently take the last duplicate key.
+function strictJSON(src){
+ let p=0,nodes=0;
+ function ws(){while(p<src.length&&/\s/.test(src[p]))p++}
+ function str(){
+   let start=p++;while(p<src.length){
+     if(src[p]==="\\"){p+=2;continue}
+     if(src[p++]==='"'){try{return JSON.parse(src.slice(start,p))}catch(_){fail("invalid JSON string or escaping")}}
+   }fail("incomplete JSON string");
+ }
+ function value(depth){
+  if(++nodes>60000||depth>36)fail("JSON complexity limit");
+  ws();let c=src[p];
+  if(c==='"')return str();
+  if(c==="{"){
+   p++;let ob=Object.create(null),seen=new Set();ws();if(src[p]==="}"){p++;return ob}
+   while(true){ws();if(src[p]!=='"')fail("invalid JSON object key");let key=str();
+    if(seen.has(key))fail("duplicate JSON key");seen.add(key);ws();
+    if(src[p++]!==":")fail("invalid JSON object");
+    ob[key]=value(depth+1);ws();let end=src[p++];
+    if(end==="}")return ob;if(end!==",")fail("invalid JSON separator");
+   }
+  }
+  if(c==="["){
+   p++;let arr=[];ws();if(src[p]==="]"){p++;return arr}
+   while(true){arr.push(value(depth+1));ws();let end=src[p++];if(end==="]")return arr;if(end!==",")fail("invalid JSON array")}
+  }
+  let tail=src.slice(p),m=/^(?:-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)/.exec(tail);
+  if(!m)fail("invalid JSON value");p+=m[0].length;
+  let v=JSON.parse(m[0]);if(typeof v==="number"&&!Number.isFinite(v))fail("nonfinite JSON number");return v;
+ }
+ let data=value(0);ws();if(p!==src.length)fail("trailing JSON content");return data;
+}
+function count(v,label,limit=500){if(!Number.isSafeInteger(v)||v<0||v>limit)fail(label+" invalid");return v}
+function sha(v){if(typeof v!=="string"||!/^[a-f0-9]{64}$/.test(v))fail("invalid unsigned source fingerprint");return v}
+function validate(obj,slot){
+ if(!plain(obj)||obj.format!==FORMAT||!OUTCOMES.includes(obj.disposition))fail("slot "+slot+" is not an original single-selection JSON export");
+ exact(obj.authority,FALSE_KEYS,"authority");for(const k of FALSE_KEYS)if(obj.authority[k]!==false)fail("authority must remain literally false");
+ if(!plain(obj.source)||obj.source.source_owner_ref!=="PR-1570")fail("missing original source owner");
+ let selection=sha(obj.source.request_selection_digest_unsigned),revision=sha(obj.source.source_revision_sha256_unsigned);
+ let stamp=obj.source.review_instant_utc;
+ if(typeof stamp!=="string"||stamp.length>60||!(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(stamp))||!Number.isFinite(Date.parse(stamp)))fail("invalid source review instant");
+ let risk=count(obj.source.requested_risk,"risk",4);if(risk<1)fail("invalid risk");
+ count(obj.source.proposed_asset_count,"asset count",80);
+ let s=obj.summary, candidates=obj.candidates;
+ if(!plain(s)||!Array.isArray(candidates)||candidates.length>500)fail("missing source rows or summary");
+ let total=count(s.recorded_requests,"request count");
+ if(total!==candidates.length)fail("source request count does not match rows");
+ let matched=0,other=0,notApproved=0,grants=0,seen=new Set(),reasons=Object.create(null),cases=[];
+ candidates.forEach((row,index)=>{
+  if(!plain(row)||!STATUSES.includes(row.request_source_status))fail("malformed original candidate");
+  if(row.ordinal!==index+1||typeof row.private_reference!=="string"||!/^[a-f0-9]{16}$/.test(row.private_reference)||seen.has(row.private_reference))fail("duplicate or inconsistent original candidate pseudonym");
+  seen.add(row.private_reference);
+  if(row.request_id!==null&&(typeof row.request_id!=="string"||row.request_id.length<1||row.request_id.length>180||/[\x00-\x1f\x7f]/.test(row.request_id)))fail("malformed optional original request identity");
+  if(typeof row.stored_status!=="string"||!["approved","submitted","under_review","rejected"].includes(row.stored_status))fail("unknown original persisted request status");
+  if(row.request_source_status==="not_administratively_approved" ? row.stored_status==="approved": row.stored_status!=="approved")fail("contradicting original decision and category");
+  if(row.requested_risk!==null&&(!Number.isSafeInteger(row.requested_risk)||row.requested_risk<1||row.requested_risk>4))fail("invalid original request risk");
+  count(row.previously_bound_grant_rows,"historical bound-grant count",100000);
+  if(!Array.isArray(row.review_flags_non_authorizing)||row.review_flags_non_authorizing.length>16)fail("malformed source reasons");
+  for(const reason of row.review_flags_non_authorizing){if(typeof reason!=="string"||!Object.hasOwn(ROUTES,reason))fail("unknown original source mismatch reason");reasons[reason]=(reasons[reason]||0)+1}
+  if(row.request_source_status===STATUSES[0] && row.review_flags_non_authorizing.length)fail("source matched candidate has contradicting mismatch reasons");
+  if(row.request_source_status===STATUSES[1] && (!row.review_flags_non_authorizing.length||row.review_flags_non_authorizing.includes("NOT_ADMINISTRATIVELY_APPROVED")))fail("inconsistent original approved request reasons");
+  if(row.request_source_status===STATUSES[2] && (row.review_flags_non_authorizing.length!==1||row.review_flags_non_authorizing[0]!=="NOT_ADMINISTRATIVELY_APPROVED"))fail("inconsistent original not-approved request reason");
+  if(row.request_source_status===STATUSES[0])matched++;
+  else if(row.request_source_status===STATUSES[1])other++;
+  else notApproved++;
+  cases.push({ref:row.private_reference,storedStatus:row.stored_status,category:row.request_source_status,
+    risk:row.requested_risk,bound:row.previously_bound_grant_rows,flags:row.review_flags_non_authorizing.slice().sort()});
+ });
+ if(matched!==count(s.approved_candidate_matches,"matched")||other!==count(s.approved_but_not_compatible,"nonmatching")||notApproved!==count(s.not_administratively_approved,"not approved"))fail("source summary category mismatch");
+ grants=count(s.prior_stored_grant_rows,"historical grants",100000);
+ if(count(s.unbound_legacy_grant_rows,"unbound grants",100000)>grants)fail("inconsistent legacy grants");
+ if(cases.reduce((sum,r)=>sum+r.bound,0)+s.unbound_legacy_grant_rows>grants)fail("original bound grant row count exceeds recorded grant rows");
+ if(!plain(s.mismatch_reason_counts_non_authorizing))fail("missing source reason counts");
+ const rkeys=Object.keys(s.mismatch_reason_counts_non_authorizing).sort(),expected=Object.keys(reasons).sort();
+ if(rkeys.join("|")!==expected.join("|")||rkeys.some(k=>s.mismatch_reason_counts_non_authorizing[k]!==reasons[k]))fail("source reason count mismatch");
+ const derived=matched===1?OUTCOMES[0]:matched>1?OUTCOMES[1]:OUTCOMES[2];
+ if(derived!==obj.disposition)fail("source administrative outcome contradicts original rows");
+ return {selection,revision,stamp,matched,other,notApproved,grants,total,legacy:s.unbound_legacy_grant_rows,outcome:derived,reasons,cases};
+}
+function note(message,alert){$("status").textContent=message;$("status").setAttribute("role",alert?"alert":"status")}
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function download(filename,mime,content){
+ const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function requireRevisionCoherence(reports){
+ // The original exporter fingerprints stored engagement/request/grant row values.
+ // Matching unsigned revision claims must describe matching persisted facts.
+ // Source-derived compatibility can still change with the review clock; never
+ // require source-computed candidate categories/reasons to stay identical.
+ const seen=new Map();
+ for(const r of reports){
+  const durable=JSON.stringify([r.total,r.grants,r.legacy,
+   r.cases.map(c=>[c.ref,c.storedStatus,c.risk,c.bound]).sort((a,b)=>a[0].localeCompare(b[0]))]);
+  if(seen.has(r.revision)&&seen.get(r.revision)!==durable)
+   fail("HOLD: copied snapshots claim one stored-source revision but disagree on original persisted request/grant facts");
+  seen.set(r.revision,durable);
+ }
+}
+function adjacentRecordChanges(left,right){
+ const old=new Map(left.cases.map(c=>[c.ref,c])),next=new Map(right.cases.map(c=>[c.ref,c]));
+ const all=[...new Set([...old.keys(),...next.keys()])].sort();
+ const rows=all.map((ref)=>{
+   const a=old.get(ref),b=next.get(ref);
+   const kind=!a?"appeared":!b?"absent":JSON.stringify([a.storedStatus,a.category,a.risk,a.bound,a.flags])===JSON.stringify([b.storedStatus,b.category,b.risk,b.bound,b.flags])?"same":"changed";
+   const fields=[];
+   if(a&&b){
+    if(a.storedStatus!==b.storedStatus)fields.push("original administrative status");
+    if(a.category!==b.category)fields.push("source match category");
+    if(a.risk!==b.risk)fields.push("recorded requested risk");
+    if(a.bound!==b.bound)fields.push("historical bound grant count");
+    if(a.flags.join("|")!==b.flags.join("|"))fields.push("source reported mismatch reasons");
+   }
+   return {ref,kind,previous:a||null,current:b||null,fields};
+ });
+ const summary={appeared:0,absent:0,same:0,changed:0};
+ rows.forEach(row=>summary[row.kind]++);
+ return {rows,summary};
+}
+function allPrivateRefs(){
+ return [...new Set(workspace.records.flatMap(r=>r.cases.map(c=>c.ref)))].sort();
+}
+function triageCases(){
+ const source=workspace.records,byRef=new Map();
+ for(const [slot,snapshot] of source.entries())for(const row of snapshot.cases){
+  if(!byRef.has(row.ref))byRef.set(row.ref,[]);
+  byRef.get(row.ref).push({slot,row});
+ }
+ return [...byRef.entries()].map(([ref,observations])=>{
+  const current=observations[observations.length-1],previous=observations[0];
+  const everMatched=observations.some(o=>o.row.category==="candidate_review_only");
+  const sensitive=observations.some(o=>o.row.flags.includes("SOURCE_ROLE_OR_TENANT_PROVENANCE_MISMATCH") ||
+    o.row.flags.includes("DECISION_CHRONOLOGY_INVALID"));
+  const changed=observations.slice(1).some((o,i)=>JSON.stringify([o.row.storedStatus,o.row.category,o.row.risk,o.row.bound,o.row.flags]) !==
+    JSON.stringify([observations[i].row.storedStatus,observations[i].row.category,observations[i].row.risk,observations[i].row.bound,observations[i].row.flags]));
+  const gaps=observations.length<source.length,hasGrant=observations.some(o=>o.row.bound>0),flags=current.row.flags;
+  // These are human discussion labels, NOT a risk calculation or security verdict.
+  const priority=(sensitive||(changed&&(everMatched||hasGrant)))?"urgent":(changed||gaps||flags.length>0)?"review":"routine";
+  const question=sensitive?"Ask original security/identity owner to recheck record lineage":
+    changed?"Reopen original source decisions and recorded grant lineage":
+    gaps?"Ask original operator whether missing row reflects source limits":
+    flags.length?("Discuss original source reason: "+flags[0]):"Reauthenticate original source before any action";
+  return {ref,seen:observations.length,first:previous.slot,last:current.slot,priority,changed,gaps,category:current.row.category,question,
+          stage:caseEntry(ref).stage};
+ }).sort((a,b)=>({urgent:0,review:1,routine:2}[a.priority]-{urgent:0,review:1,routine:2}[b.priority])
+  ||a.last-b.last||a.ref.localeCompare(b.ref));
+}
+function humanCaseworkTotals(){
+ const out=Object.fromEntries(Object.keys(CASE_STAGES).map(k=>[k,0]));
+ for(const ref of allPrivateRefs()){const entry=workspace.casework[ref];out[entry?.stage||"unreviewed"]++}
+ return out;
+}
+function payload(){
+ const reports=workspace.records;
+ return {format:"lightup.request_binding_history_aggregate.v1",status:"REVIEW_ONLY",authority:Object.fromEntries(FALSE_KEYS.map(k=>[k,false])),
+   selected_order_is_verified_chronology:false,
+   anonymous_adjacent_original_request_rows:reports.slice(1).map((r,i)=>({from_slot:i+1,to_slot:i+2,
+     // No row pseudonyms or identities ever cross the export boundary.
+     ...adjacentRecordChanges(reports[i],r).summary})),
+   snapshots:reports.map((r,i)=>({slot:i+1,candidates:r.matched,other_approved:r.other,not_approved:r.notApproved,stored_grants:r.grants,unbound_legacy_grants:r.legacy,stored_record_change_from_previous:i>0?r.revision!==reports[i-1].revision:null,source_mismatch_reason_counts:Object.fromEntries(Object.keys(ROUTES).map(k=>[k,r.reasons[k]||0]))})),
+   manual_follow_up:ACTIONS.map((task,i)=>({category:i+1,done_for_local_discussion_only:!!workspace.checks[i]})),
+   anonymous_human_casework_stage_totals:humanCaseworkTotals(),
+   anonymous_cross_snapshot_human_discussion_priorities:Object.fromEntries(["urgent","review","routine"].map(label=>
+     [label,triageCases().filter(c=>c.priority===label).length])),
+   caution:"Untrusted, unsigned offline snapshots; never authority, consent, revocation, permission, release or verified chronology."};
+}
+function moveOriginal(index,offset){
+ if(!workspace||!Number.isInteger(index)||![-1,1].includes(offset)||index+offset<0||index+offset>=workspace.records.length)return;
+ const other=index+offset;
+ [workspace.records[index],workspace.records[other]]=[workspace.records[other],workspace.records[index]];
+ if(hashes.length===workspace.records.length)[hashes[index],hashes[other]]=[hashes[other],hashes[index]];
+ workspace.pair=0;workspace.page=0;render();
+ note("Original file order changed only in private browser memory; selected order is not authenticated chronology.",false);
+}
+function render(){
+ const records=workspace.records;
+ $("workspace").hidden=false;
+ const revisions=new Set(records.map(x=>x.revision));
+ const transitions=records.slice(1).filter((x,i)=>x.revision!==records[i].revision).length;
+ const reportedFlags=Object.keys(ROUTES).filter(k=>records.some(r=>r.reasons[k]));
+ $("stats").innerHTML=[
+  ["Selected original exports",records.length],["Distinct reported source revisions",revisions.size],
+  ["Adjacent reported revisions changed",transitions],["Original mismatch themes",reportedFlags.length],["Administrative permission", "NONE"]
+ ].map(([title,val])=>'<div class="stat">'+esc(title)+'<strong>'+esc(val)+'</strong></div>').join("");
+ $("rows").innerHTML=records.map((r,i)=>'<tr><td>'+String(i+1)+'</td><td>'+esc(r.stamp)+'</td><td><span class="badge">unsigned · '+esc(r.revision.slice(0,10))+'…</span></td><td>'+r.matched+'</td><td>'+(r.other+r.notApproved)+'</td><td>'+r.grants+' ('+r.legacy+' unbound)</td><td><span class="'+(r.matched===1?"review":"hold")+'">'+esc(r.outcome)+'</span></td><td><button class="secondary" data-move="'+i+'" data-direction="-1" '+(i===0?'disabled':'')+' aria-label="Move source slot '+(i+1)+' earlier">↑</button><button class="secondary" data-move="'+i+'" data-direction="1" '+(i===records.length-1?'disabled':'')+' aria-label="Move source slot '+(i+1)+' later">↓</button></td></tr>').join("");
+ $("rows").querySelectorAll("button[data-move]").forEach(btn=>btn.addEventListener("click",()=>moveOriginal(Number(btn.dataset.move),Number(btn.dataset.direction))));
+ $("chart").innerHTML=records.map((r,i)=>'<div class="chart-item"><span>Slot '+(i+1)+' · '+r.matched+' administrative candidate(s)</span><progress aria-label="Administrative source candidates for selected slot '+(i+1)+'" value="'+r.matched+'" max="'+Math.max(1,...records.map(x=>x.matched))+'">'+r.matched+'</progress></div>').join("");
+ $("transitions").innerHTML=records.slice(1).map((r,i)=>{
+  const before=records[i],changed=before.revision!==r.revision;
+  const delta=(a,b)=>(b-a>0?"+":"")+String(b-a);
+  return '<tr><td>'+(i+1)+' → '+(i+2)+'</td><td class="'+(changed?"hold":"review")+'">'+(changed?"DIFFERENT stored rows":"SAME unsigned digest")+'</td><td>'+esc(delta(before.matched,r.matched))+'</td><td>'+esc(delta(before.notApproved,r.notApproved))+'</td><td>'+esc(delta(before.grants,r.grants))+'</td><td>'+(changed?"Reopen original authenticated source; do not infer a specific revocation.":"No proven live-state continuity; re-export if deciding now.")+'</td></tr>';
+ }).join("");
+ $("pair").innerHTML=records.slice(1).map((r,i)=>'<option value="'+i+'">Original report '+(i+1)+' → '+(i+2)+'</option>').join("");
+ if(!Number.isSafeInteger(workspace.pair)||workspace.pair>=records.length-1)workspace.pair=0;
+ $("pair").value=String(workspace.pair);
+ renderCases();
+ renderQueue();
+ $("reasonrows").innerHTML=reportedFlags.map(reason=>{const counts=records.map(r=>r.reasons[reason]||0),change=counts[counts.length-1]-counts[0];return "<tr><td><span class=\"badge\">"+esc(reason)+"</span></td><td>"+esc(ROUTES[reason])+"</td><td>"+counts.map((x,i)=>"Slot "+(i+1)+": "+x).join(" · ")+"</td><td>"+(change>0?"+":"")+change+" (not proof of a new permission or real chronology)</td></tr>"}).join("");
+ $("review").innerHTML=ACTIONS.map((task,i)=>'<label class="review-checkbox"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
+ $("review").querySelectorAll("input").forEach(el=>el.addEventListener("change",()=>workspace.checks[+el.dataset.action]=el.checked));
+}
+function visibleQueueCases(){
+ if(!workspace)return [];
+ const priority=$("queue-priority").value,stage=$("queue-stage").value;
+ return triageCases().filter(c=>(priority==="all"||c.priority===priority)&&
+   (stage==="all"||stage==="open"&&c.stage!=="documented_only"||c.stage===stage));
+}
+function renderQueue(){
+ if(!workspace)return;
+ const all=triageCases(),priority=$("queue-priority").value,stage=$("queue-stage").value;
+ const selected=visibleQueueCases();
+ const size=40,pages=Math.max(1,Math.ceil(selected.length/size));
+ workspace.queuePage=Math.min(workspace.queuePage||0,pages-1);
+ const start=workspace.queuePage*size,view=selected.slice(start,start+size);
+ $("queue-summary").innerHTML=[["Urgent human discussion",all.filter(c=>c.priority==="urgent").length],
+ ["Other source review",all.filter(c=>c.priority==="review").length],
+ ["Human discussions noted",all.filter(c=>c.stage==="documented_only").length]]
+ .map(([label,value])=>'<div class="stat">'+esc(label)+'<strong>'+value+'</strong></div>').join("");
+ $("queue-prev").disabled=workspace.queuePage===0;$("queue-next").disabled=workspace.queuePage>=pages-1;
+ $("queue-pageinfo").textContent="Showing "+(selected.length?start+1:0)+"–"+Math.min(start+size,selected.length)+" of "+selected.length+" private source cases";
+ $("queue-rows").innerHTML=view.map((row,index)=>{
+  const options=Object.entries(CASE_STAGES).map(([key,title])=>
+    '<option value="'+key+'" '+(row.stage===key?"selected":"")+'>'+esc(title)+'</option>').join("");
+  return '<tr><td>Case '+(start+index+1)+'</td><td>'+row.seen+' of '+workspace.records.length+
+   ' selected reports'+(row.gaps?'<br>Source membership incomplete':'')+
+   '</td><td><span class="badge">'+esc(row.priority.toUpperCase())+'</span></td><td>'+esc(row.category)+
+   '</td><td>'+esc(row.question)+'</td><td><select data-qstage="'+index+'" aria-label="Human-only stage for private case '+(start+index+1)+'">'+options+
+   '</select></td><td><button class="secondary" data-qopen="'+index+'">Open case details</button></td></tr>';
+ }).join("");
+ $("queue-rows").querySelectorAll("select[data-qstage]").forEach(control=>control.addEventListener("change",()=>{
+  const row=view[Number(control.dataset.qstage)];if(!row||!Object.hasOwn(CASE_STAGES,control.value))return;
+  caseEntry(row.ref).stage=control.value;renderQueue();
+ }));
+ $("queue-rows").querySelectorAll("button[data-qopen]").forEach(control=>control.addEventListener("click",()=>{
+  const row=view[Number(control.dataset.qopen)];if(!row)return;
+  const pair=Math.max(0,Math.min(workspace.records.length-2,row.last===0?0:row.last-1));
+  workspace.pair=pair;$("casetype").value="all";
+  const lines=adjacentRecordChanges(workspace.records[pair],workspace.records[pair+1]).rows;
+  const index=lines.findIndex(line=>line.ref===row.ref);
+  workspace.page=index<0?0:Math.floor(index/60);
+  $("pair").value=String(pair);renderCases();
+  document.querySelector("#cases").scrollIntoView({behavior:"smooth",block:"center"});
+ }));
+}
+$("queue-export").addEventListener("click",()=>{
+ if(!workspace)return;
+ const selected=visibleQueueCases(),priorities={urgent:0,review:0,routine:0};
+ const stages=Object.fromEntries(Object.keys(CASE_STAGES).map(k=>[k,0]));
+ const questions=Object.fromEntries([
+  ["recheck_original_security_identity",0],["reopen_original_request_grant",0],
+  ["check_missing_source_membership",0],["discuss_original_source_reason",0],
+  ["reauthenticate_source",0]
+ ]);
+ for(const item of selected){
+  priorities[item.priority]++;stages[caseEntry(item.ref).stage]++;
+  const k=item.question.startsWith("Ask original security/identity")?"recheck_original_security_identity":
+    item.changed?"reopen_original_request_grant":
+    item.gaps?"check_missing_source_membership":
+    item.question.startsWith("Discuss original source reason")?"discuss_original_source_reason":"reauthenticate_source";
+  questions[k]++;
+ }
+ const report={format:"lightup.request_binding_human_queue_aggregate.v1",
+  status:"REVIEW_ONLY",source_is_unsigned:true,verified_chronology:false,
+  client_consent_verified:false,operator_consent_verified:false,
+  authorization_granted:false,execution_allowed:false,release_approved:false,
+  applied_local_filter:{priority:$("queue-priority").value,stage:$("queue-stage").value},
+  source_selection_count:workspace.records.length,
+  human_discussion_only:{selected_count:selected.length,priority_counts:priorities,
+    self_reported_stages:stages,unverified_followup_themes:questions},
+  caveat:"This file includes only grouped counts; no client, engagement, asset, request pseudonym, source hash, note or permission. Original source must be reauthenticated before any real decision."};
+ download("lightup-private-queue-anonymous-handoff.json","application/json",JSON.stringify(report,null,2)+"\n");
+ note("Downloaded a FILTERED aggregate-only human queue handoff (not a permission, grant or authorization).",false);
+});
+$("queue-bulk").addEventListener("click",()=>{
+ if(!workspace)return;
+ const dest=$("bulk-team").value;
+ if(!["security_source_review","client_followup","operator_followup"].includes(dest))return;
+ const selected=visibleQueueCases().filter(row=>caseEntry(row.ref).stage==="unreviewed");
+ if(!selected.length){note("No unreviewed human discussion records in the selected filter.",false);return}
+ if(!window.confirm("Prepare "+selected.length+" original copied source cases for "+
+   CASE_STAGES[dest]+"? This is LOCAL HUMAN DISCUSSION ONLY: no work orders, database writes, grants or revocations."))
+   return;
+ selected.forEach(row=>{caseEntry(row.ref).stage=dest});
+ renderQueue();renderCases();
+ note("Prepared "+selected.length+" local HUMAN-ONLY discussion stages; original stored requests/grants unchanged.",false);
+});
+$("queue-priority").addEventListener("change",()=>{if(workspace){workspace.queuePage=0;renderQueue()}});
+$("queue-stage").addEventListener("change",()=>{if(workspace){workspace.queuePage=0;renderQueue()}});
+$("queue-prev").addEventListener("click",()=>{if(workspace&&workspace.queuePage>0){workspace.queuePage--;renderQueue()}});
+$("queue-next").addEventListener("click",()=>{if(workspace){workspace.queuePage++;renderQueue()}});
+function caseEntry(ref){
+ if(!Object.hasOwn(workspace.casework,ref))workspace.casework[ref]={stage:"unreviewed",note:""};
+ return workspace.casework[ref];
+}
+function renderCases(){
+ if(!workspace||workspace.records.length<2)return;
+ const selection=workspace.pair||0,previous=workspace.records[selection],current=workspace.records[selection+1];
+ const diff=adjacentRecordChanges(previous,current),display=$("casetype").value;
+ $("case-summary").innerHTML=Object.entries(diff.summary).map(([key,count])=>
+  '<div class="stat">'+esc(key.toUpperCase())+'<strong>'+count+'</strong></div>').join("");
+ const filtered=diff.rows.filter(row=>display==="all"||row.kind===display);
+ const size=60,pages=Math.max(1,Math.ceil(filtered.length/size));
+ workspace.page=Math.min(workspace.page||0,pages-1);
+ const start=workspace.page*size,visible=filtered.slice(start,start+size);
+ $("pageinfo").textContent="Showing "+(filtered.length?start+1:0)+"–"+Math.min(start+size,filtered.length)+" of "+filtered.length+" private source records";
+ $("caseprev").disabled=workspace.page===0;$("casenext").disabled=workspace.page>=pages-1;
+ $("cases").innerHTML=visible.map((row,index)=>{
+  const prev=row.previous,curr=row.current,local=caseEntry(row.ref);
+  const oldFlags=prev?prev.flags:[],newFlags=curr?curr.flags:[];
+  const flagsChanged=[...new Set([...oldFlags,...newFlags])].sort();
+  const humanRoute=[...new Set(flagsChanged.map(flag=>ROUTES[flag]).filter(Boolean))].sort();
+  const privateReasonText=(flags)=>flags.length?flags.join(", "):"None reported";
+  const options=Object.entries(CASE_STAGES).map(([code,label])=>'<option value="'+code+'" '+(local.stage===code?'selected':'')+'>'+esc(label)+'</option>').join("");
+  return '<tr><td>Pair-local row '+(start+index+1)+'</td><td><span class="badge">'+esc(row.kind.toUpperCase())+'</span></td><td>'+esc(prev?prev.storedStatus+" / "+prev.category:"Not in chosen earlier report")+'</td><td>'+esc(curr?curr.storedStatus+" / "+curr.category:"Not in chosen later report")+'</td><td>'+esc(row.fields.length?row.fields.join(", "):row.kind==="same"?"No changes visible in original candidate fields":"Reported membership differs")+'</td><td>'+esc(privateReasonText(oldFlags))+' → '+esc(privateReasonText(newFlags))+'</td><td>'+esc(humanRoute.length?humanRoute.join(" / "):"Original operator / source owner")+'</td><td><select aria-label="Private human review stage row '+(start+index+1)+'" data-record="'+index+'" data-field="stage">'+options+'</select></td><td><input type="text" maxlength="180" autocomplete="off" aria-label="Private human discussion note row '+(start+index+1)+'" data-record="'+index+'" data-field="note" value="'+esc(local.note)+'" placeholder="Optional private note; no credentials"></td></tr>';
+ }).join("");
+ $("cases").querySelectorAll("select, input").forEach(el=>el.addEventListener("change",()=>{
+  const record=visible[Number(el.dataset.record)];if(!record)return;
+  const value=el.value;if(el.dataset.field==="stage"){if(!Object.hasOwn(CASE_STAGES,value))return;caseEntry(record.ref).stage=value;renderQueue()}
+  else caseEntry(record.ref).note=value.slice(0,180);
+ }));
+ $("cases").querySelectorAll('input[data-field="note"]').forEach(el=>el.addEventListener("input",()=>{
+  const record=visible[Number(el.dataset.record)];if(record)caseEntry(record.ref).note=el.value.slice(0,180)
+ }));
+}
+$("reverse").addEventListener("click",()=>{if(!workspace)return;
+ workspace.records.reverse();
+ if(hashes.length===workspace.records.length)hashes.reverse();
+ workspace.pair=0;workspace.page=0;render();
+ note("All original source slots reversed locally. No permission or chronology claim.",false);
+});
+$("pair").addEventListener("change",()=>{if(workspace){workspace.pair=Number($("pair").value);workspace.page=0;renderCases()}});
+$("casetype").addEventListener("change",()=>{if(workspace){workspace.page=0;renderCases()}});
+$("caseprev").addEventListener("click",()=>{if(workspace&&workspace.page>0){workspace.page--;renderCases()}});
+$("casenext").addEventListener("click",()=>{if(workspace){workspace.page++;renderCases()}});
+async function fingerprints(byteBuffers){
+ if(!globalThis.crypto||!crypto.subtle)fail("private draft feature unavailable without WebCrypto");
+ return Promise.all(byteBuffers.map(async bytes=>{
+  const digest=await crypto.subtle.digest("SHA-256",bytes);
+  return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,"0")).join("");
+ }));
+}
+function decodeOriginal(bytes){
+ try{return new TextDecoder("utf-8",{fatal:true}).decode(bytes)}
+ catch(_){fail("original JSON is not valid UTF-8 bytes")}
+}
+async function acceptOriginalBytes(bytes){
+ if(!Array.isArray(bytes)||bytes.length<2||bytes.length>12)fail("bounded original private input requires 2–12 sources");
+ if(bytes.some(b=>!(b instanceof ArrayBuffer)||b.byteLength<1||b.byteLength>2000000)||
+    bytes.reduce((sum,b)=>sum+b.byteLength,0)>12000000)fail("source byte budget exceeded");
+ const raws=bytes.map(decodeOriginal);
+ const parsed=raws.map((v,i)=>validate(strictJSON(v),i+1));
+ if(new Set(parsed.map(v=>v.selection)).size!==1)fail("selected originals disagree on proposed source selection");
+ const fingerprint=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
+ if(new Set(parsed.map(fingerprint)).size!==parsed.length)fail("duplicated original snapshot metadata detected");
+ requireRevisionCoherence(parsed);
+ const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(bytes):[];
+ // Atomic replacement: old workspace stays untouched until EVERY original has
+ // been validated and all optional byte fingerprints have been computed.
+ workspace={records:parsed,checks:ACTIONS.map(()=>false),casework:Object.create(null),
+   pair:0,page:0,queuePage:0,sourceBytes:bytes.reduce((sum,b)=>sum+b.byteLength,0)};
+ hashes=localHashes;render();
+ return parsed.length;
+}
+$("import").addEventListener("click",async()=>{
+ try{
+  const chosen=Array.from($("files").files);
+  if(chosen.length<2||chosen.length>12)fail("Choose 2–12 original source JSON exports");
+  if(chosen.some(f=>f.size<1||f.size>2000000)||chosen.reduce((sum,f)=>sum+f.size,0)>12000000)
+    fail("bounded original source size exceeded");
+  const count=await acceptOriginalBytes(await Promise.all(chosen.map(f=>f.arrayBuffer())));
+  note(count+" originals loaded into PRIVATE review-only history desk; no authorization was granted.",false);
+ }catch(_){note("HOLD: original input could not be accepted. Previous private human review preserved.",true)}
+});
+async function loadPrivateBundle(){
+ const node=$("lightup-private-bundle");
+ if(!node||!node.content||!node.content.textContent.trim())return;
+ const encoded=node.content.textContent.trim();
+ // Clear inert sensitive embedded copies before parsing: no additional DOM
+ // persistence beyond in-memory parsed private reviews.
+ node.content.textContent="";
+ try{
+  if(encoded.length>16100000)fail("bounded private source bundle exceeded");
+  const parts=encoded.split(".");
+  if(parts.length<2||parts.length>12)fail("private bundle source-count mismatch");
+  const buffers=parts.map(part=>{
+   if(!/^[A-Za-z0-9+/]+={0,2}$/.test(part)||part.length>2800000)
+     fail("private embedded source encoding malformed");
+   const ascii=atob(part),out=new Uint8Array(ascii.length);
+   for(let i=0;i<ascii.length;i++)out[i]=ascii.charCodeAt(i);
+   return out.buffer;
+  });
+  const n=await acceptOriginalBytes(buffers);
+  note("PRIVATE BUNDLE: "+n+" originally captured, UNSIGNED, saved request-binding copies loaded locally. Never upload/share this confidential HTML. No authenticated current permission.",false);
+ }catch(_){note("HOLD: private embedded source copy was invalid. Browser workspace remains private; reauthenticate at origin.",true)}
+}
+$("append").addEventListener("click",async()=>{
+ try{
+  if(!workspace)fail("load an original comparison first");
+  const files=Array.from($("extra").files);
+  if(!files.length||files.length>10||workspace.records.length+files.length>12)fail("append would exceed the bounded 12-source workspace");
+  if(files.some(f=>f.size===0||f.size>2000000)||workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)>12000000)fail("total original source file limits exceeded");
+  const bytes=await Promise.all(files.map(f=>f.arrayBuffer()));
+  const raws=bytes.map(decodeOriginal);
+  const extras=raws.map((raw,i)=>validate(strictJSON(raw),workspace.records.length+i+1));
+  if(extras.some(x=>x.selection!==workspace.records[0].selection))fail("appended originals must share exact original proposed selection");
+  const key=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
+  const keys=workspace.records.map(key).concat(extras.map(key));
+  if(new Set(keys).size!==keys.length)fail("duplicate original snapshot metadata detected");
+  requireRevisionCoherence(workspace.records.concat(extras));
+  const moreHashes=(hashes.length===workspace.records.length&&globalThis.crypto&&crypto.subtle)?await fingerprints(bytes):[];
+  const newHashes=moreHashes.length===extras.length?hashes.concat(moreHashes):[];
+  // Human-only casework from an earlier copied source must not silently remain
+  // 'discussed' when an original pseudonymous row has since changed.
+  const currentCases=new Map(workspace.records.flatMap(r=>r.cases.map(c=>[c.ref,c])));
+  const changedLocal=[];
+  const newCases=Object.assign(Object.create(null),workspace.casework);
+  for(const snapshot of extras)for(const item of snapshot.cases){
+    const old=currentCases.get(item.ref);
+    if(old&&JSON.stringify([old.storedStatus,old.category,old.risk,old.bound,old.flags])!==
+      JSON.stringify([item.storedStatus,item.category,item.risk,item.bound,item.flags])){
+      const saved=newCases[item.ref];
+      if(saved&&saved.stage!=="unreviewed"&&saved.stage!=="security_source_review"){
+        newCases[item.ref]={stage:"security_source_review",note:saved.note};
+        changedLocal.push(item.ref);
+      }
+    }
+    currentCases.set(item.ref,item);
+  }
+  workspace={records:workspace.records.concat(extras),checks:workspace.checks.slice(),casework:newCases,pair:workspace.pair,page:workspace.page,sourceBytes:workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)};
+  hashes=newHashes;render();$("extra").value="";
+  note(extras.length+" source snapshots appended atomically; "+changedLocal.length+" private human casework entries returned to SOURCE REVIEW because original fields differed. Original database remains untouched.",false);
+ }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid append")+". Prior workspace and human stages preserved.",true)}
+});
+$("clear").addEventListener("click",()=>{workspace=null;hashes=[];$("files").value="";$("restore").value="";$("workspace").hidden=true;note("Private workspace cleared.",false)});
+$("exportjson").addEventListener("click",()=>{if(workspace)download("lightup-binding-history-anonymous.json","application/json",JSON.stringify(payload(),null,2)+"\n")});
+$("exportcsv").addEventListener("click",()=>{
+ if(!workspace)return;
+ const p=payload();
+ const rows=[["kind","source_slot","fixed_metric","count_or_status","next_slot","authority_all_false"]];
+ const add=(...fields)=>rows.push([...fields,"true"]);
+ for(const r of p.snapshots){
+   for(const [name,count]of Object.entries({administrative_candidates:r.candidates,other_approved:r.other_approved,
+     not_approved:r.not_approved,historical_grants:r.stored_grants,legacy_unbound_grants:r.unbound_legacy_grants}))
+     add("source",r.slot,name,count,"");
+   for(const [reason,count]of Object.entries(r.source_mismatch_reason_counts))if(count>0)add("original_reason",r.slot,reason,count,"");
+ }
+ for(const r of p.anonymous_adjacent_original_request_rows){
+   for(const name of ["appeared","absent","changed","same"])add("source_pair",r.from_slot,name,r[name],r.to_slot);
+ }
+ for(const [stage,count]of Object.entries(p.anonymous_human_casework_stage_totals))add("human_discussion","","stage_"+stage,count,"");
+ download("lightup-binding-history-anonymous.csv","text/csv",rows.map(r=>r.join(",")).join("\r\n")+"\r\n");
+});
+$("saveprivate").addEventListener("click",()=>{
+ if(!workspace)return;if(hashes.length!==workspace.records.length){note("HOLD · WebCrypto not available: no raw-byte-bound private draft.",true);return}
+ const records=allPrivateRefs(),casework=records.map(ref=>({stage:caseEntry(ref).stage,note:caseEntry(ref).note}));
+ const draft={format:"lightup.binding_history_private_draft.v2",authority:Object.fromEntries(FALSE_KEYS.map(k=>[k,false])),file_sha256:hashes,checks:workspace.checks.slice(),casework};
+ download("PRIVATE-lightup-binding-history-draft.json","application/json",JSON.stringify(draft,null,2)+"\n");
+});
+$("restore").addEventListener("change",async e=>{
+ try{
+  if(!workspace||hashes.length!==workspace.records.length)fail("first load the exact original source files in the same order, with WebCrypto available");
+  const f=e.target.files[0];if(!f||f.size>2000000)fail("invalid bounded PRIVATE draft");
+  const d=strictJSON(await f.text());
+  const legacy=d?.format==="lightup.binding_history_private_draft.v1";
+  if(!legacy&&d?.format!=="lightup.binding_history_private_draft.v2")fail("private draft version mismatch");
+  exact(d,legacy?["format","authority","file_sha256","checks"]:["format","authority","file_sha256","checks","casework"],"private draft");
+  exact(d.authority,FALSE_KEYS,"draft authority");
+  if(FALSE_KEYS.some(k=>d.authority[k]!==false)||!Array.isArray(d.file_sha256)||d.file_sha256.length!==hashes.length||d.file_sha256.some((h,i)=>h!==hashes[i]))fail("original source file bytes changed; refuse stale human stages");
+  if(!Array.isArray(d.checks)||d.checks.length!==ACTIONS.length||d.checks.some(x=>typeof x!=="boolean"))fail("invalid local human states");
+  let reconstructed=Object.create(null);
+  if(!legacy){
+    const refs=allPrivateRefs();
+    if(!Array.isArray(d.casework)||d.casework.length!==refs.length)fail("private casework source-record coverage mismatch");
+    d.casework.forEach((entry,i)=>{
+      exact(entry,["stage","note"],"private casework");
+      if(!Object.hasOwn(CASE_STAGES,entry.stage)||typeof entry.note!=="string"||entry.note.length>180||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(entry.note))fail("invalid bounded private discussion");
+      reconstructed[refs[i]]={stage:entry.stage,note:entry.note};
+    });
+  }
+  workspace.casework=reconstructed;workspace.checks=d.checks.slice();render();
+  note("PRIVATE discussion markers restored only against identical original source bytes (never authorization).",false);
+ }catch(err){note("HOLD · "+err.message+". Existing human stages preserved.",true)}finally{e.target.value=""}
+});
+function renderBrief(){
+ if(!workspace){$("printbrief").textContent="No source documents imported. No permission or release is implied.";return}
+ const p=payload();
+ const source=p.snapshots.map(r=>'<tr><td>'+r.slot+'</td><td>'+r.candidates+'</td><td>'+r.other_approved+'</td><td>'+r.not_approved+'</td><td>'+r.stored_grants+'</td><td>'+r.unbound_legacy_grants+'</td></tr>').join("");
+ const adjacent=p.anonymous_adjacent_original_request_rows.map(r=>'<tr><td>'+r.from_slot+' → '+r.to_slot+'</td><td>'+r.appeared+'</td><td>'+r.absent+'</td><td>'+r.changed+'</td><td>'+r.same+'</td></tr>').join("");
+ const stages=Object.entries(p.anonymous_human_casework_stage_totals).map(([code,n])=>'<tr><td>'+esc(CASE_STAGES[code])+'</td><td>'+n+'</td></tr>').join("");
+ $("printbrief").innerHTML='<h1>LightUp · Anonymous original-source review brief</h1><p>INCUBATE M3/M7 · DRAFT/HOLD · OFFLINE HUMAN DISCUSSION ONLY</p><p>No authentication, client consent, grant, revocation, verified chronology, scan, dispatch or release is proven by this print.</p><h2>Administrative source aggregates</h2><table><thead><tr><th>Local source slot</th><th>Candidate requests</th><th>Other approved</th><th>Not approved</th><th>Historical grants</th><th>Legacy unbound</th></tr></thead><tbody>'+source+'</tbody></table><h2>Adjacent private original-row changes (aggregate only)</h2><table><thead><tr><th>Local source slots</th><th>Appeared</th><th>Absent</th><th>Changed</th><th>Unchanged</th></tr></thead><tbody>'+adjacent+'</tbody></table><h2>Local human discussion only</h2><table><thead><tr><th>Self-reported stage</th><th>Count</th></tr></thead><tbody>'+stages+'</tbody></table><p>Source records are unsigned and may be stale. Export copies, original identifiers, pseudonyms, exact assets, source hashes and private notes intentionally absent from this print. All five authority flags false. Reauthenticate at source before real decisions.</p>';
+}
+window.addEventListener("beforeprint",renderBrief);
+$("print").addEventListener("click",()=>{if(workspace){renderBrief();window.print()}});
+void loadPrivateBundle();
+
+})();
+</script></body></html>
