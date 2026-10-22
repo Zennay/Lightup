@@ -1126,6 +1126,17 @@
       "No pending sources selected. Current admitted workspace remains unchanged.";
   }
 
+  function confirmWorkspaceReplacement(action,force){
+    const staged=[...scratch].filter(([key,value])=>
+      typeof value==="string"&&value.trim()&&notes.get(key)!==value).length;
+    const marked=humanReviewStages.size,saved=notes.size;
+    if(!force&&!marked&&!saved&&!staged)return true;
+    return window.confirm("PRIVATE HUMAN work replacement: "+action+"?\n\n"+
+      marked+" local HUMAN stage mark(s), "+saved+" saved HUMAN note(s) and "+
+      staged+" unsaved note draft(s) would be forgotten.\n"+
+      "This operation cannot be undone. Download an encrypted PRIVATE session first "+
+      "if you need continuity. No assessment, consent or approval is implied.");
+  }
   async function importFiles(list){
     const files=[...list],ticket=++sourceAdmissionTicket;
     sourceAdmissionBusy=true;renderPendingSources();
@@ -1145,6 +1156,11 @@
         if(ticket!==sourceAdmissionTicket)return;
       }
       const ids=harmonize(next);
+      if(ticket!==sourceAdmissionTicket)return;
+      if(!confirmWorkspaceReplacement("replace the current original source cohort",false)){
+        $("message").textContent="Replacement cancelled. Current HUMAN work and source snapshots remain intact.";
+        return;
+      }
       if(ticket!==sourceAdmissionTicket)return;
       snapshots=next;scenarioIds=ids;selectedScenario=ids[0];selectedMetric=METRICS[0];
       sourceFingerprints=nextFingerprints.every(v=>v!==null)?nextFingerprints:[];
@@ -1190,6 +1206,7 @@
       regressionInstances};
   }
   function demoLoad(){
+    if(!confirmWorkspaceReplacement("load fictional demo sources",false))return;
     ++sourceAdmissionTicket;sourceAdmissionBusy=false;
     snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
@@ -1203,6 +1220,7 @@
     $("message").textContent="FICTIONAL DEMO ONLY: invented data in memory; no source measurements or permissions.";
   }
   function forget(){
+    if(!confirmWorkspaceReplacement("forget all local sources and work",true))return;
     ++sourceAdmissionTicket;sourceAdmissionBusy=false;
     pendingSources=[];$("files").value="";
     snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
