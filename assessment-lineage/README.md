@@ -14,6 +14,26 @@ Download [standalone.html](standalone.html) and open it locally. It is an actual
 6. When all source memberships match, export aggregate-only JSON, spreadsheet-safe machine CSV or standalone **script-free HTML** private human handoff. Aggregates have original anonymous counts and all false authorization/consent/dispatch/release fields. They **never** include original scenario IDs, host/IP/URL, declared finding identifiers, source filenames, original raw JSON, client identity, uploaded source hashes or local notes. Human stages are not real staff assignments.
 7. **Explore invented demo** generates three fictional scenarios and two fictional completed reports entirely in memory for discovering the UI. Demo provenance is explicit in anonymous output and never presents source measurements as real. **Forget all local data** wipes original source and human stage state.
 
+### PRIVATE native workroom source and destination safety
+
+The optional `private_workroom.py` builder now requires every original catalog,
+completed report and optional PRIVATE HUMAN draft to be an owner-owned,
+**exact mode-0600 regular file with a single hard link**. It opens every parent
+directory component without following symlinks, refuses symbolic-link aliases
+and nonregular sources without blocking on a FIFO, bounds reads, and checks
+the file identity/metadata before and after reading. All original source
+bytes are admitted again immediately before publishing. A changed original
+causes HOLD, not an outdated workroom.
+
+Create an **existing, empty mode-0700 directory owned by the current user**
+for the resulting PRIVATE HTML (for example `mkdir -m 700 /private/lineage-room`).
+The output filename must be new and end in `.html`; publication uses
+`O_EXCL|O_NOFOLLOW`, mode 0600, and a pinned non-symlink parent directory.
+The builder does not create a public or anonymous export. Original source
+files and source-owner authorization controls remain untouched. These
+local checks are **not** proof of source authenticity, client consent,
+human approval or production readiness.
+
 ### Human review workload and privacy-safe continuity
 
 The private workboard now automatically ranks original **missing comparison case** HOLDs first, followed by source-reported scope/policy flags, findings/coverage, evidence/scoring, informational runtime/cost flags and no flagged source metric. Filter by flag family, original authored ground-truth mode (unscored / explicitly zero / planted) or local human discussion stage. The displayed row ordinal remains stable even when filtered or prioritized. **Confirm bulk stage for visible cases** asks human confirmation, changes only locally held human labels and supports one-step **Undo previous bulk change**. An individual stage change invalidates earlier bulk Undo. These are discussion labels only; no source results, claims, grants, staff assignments or permissions are modified.
