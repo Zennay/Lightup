@@ -181,10 +181,10 @@ refuses the entire report.
 
 ~~~sh
 mkdir -m 700 /private/operator
-python3 assessment-retention-desk/source_history.py \\
-  --output /private/operator/source-set-history.html \\
-  /private/operator/plan-01.json \\
-  /private/operator/plan-02.json \\
+python3 assessment-retention-desk/source_history.py \
+  --output /private/operator/source-set-history.html \
+  /private/operator/plan-01.json \
+  /private/operator/plan-02.json \
   /private/operator/plan-03.json
 ~~~
 
