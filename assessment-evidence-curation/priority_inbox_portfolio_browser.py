@@ -35,7 +35,7 @@ function update(){
   empty.hidden=true;return;
  }
  let visible=0,changed=0,reverted=0,reply=0,follow=0;
- let pending=0,entered=0,exited=0;
+ let pending=0,entered=0,exited=0,continuous=0,unanswered=0;
  rows.forEach(row=>{
   const ok=Number(row.dataset.from)===start&&Number(row.dataset.to)===end&&
    (group==='all'||row.dataset.priority===group);
@@ -45,16 +45,20 @@ function update(){
     follow+=Number(row.dataset.followChanged);
     pending+=Number(row.dataset.pending);
     entered+=Number(row.dataset.entered);
-    exited+=Number(row.dataset.exited);}
+    exited+=Number(row.dataset.exited);
+    continuous+=Number(row.dataset.continuous);
+    unanswered+=Number(row.dataset.unanswered);}
  });
  output.textContent='HUMAN group summaries: '+visible+
   ' · changed end-stage rows: '+changed+
   ' · reverted interim HUMAN stages: '+reverted+
   ' · edited reply fields: '+reply+
   ' · edited follow-up fields: '+follow+
-  ' · still awaiting HUMAN discussion: '+pending+
+  ' · attention at both endpoints: '+pending+
   ' · newly awaiting HUMAN discussion: '+entered+
   ' · no longer awaiting HUMAN discussion (self-reported): '+exited+
+  ' · attention in ALL selected intermediate rounds: '+continuous+
+  ' · no HUMAN response in ALL selected rounds: '+unanswered+
   '. These are self-reports, not verified progress.';
  empty.hidden=visible!==0;
  movements.forEach(row=>{
@@ -89,6 +93,8 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
         "human_attention_before_rows", "human_attention_after_rows",
         "human_attention_entered_rows", "human_attention_exited_rows",
         "human_attention_persisted_rows",
+        "human_attention_continuous_rows",
+        "human_unanswered_continuous_rows",
     }
     for item in rows:
         if (type(item) is not dict or set(item) != required_keys or
@@ -119,6 +125,11 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
                 (flow["from_stage"], flow["to_stage"]) in seen):
                 raise Hold("HOLD: invalid HUMAN directional movement")
             seen.add((flow["from_stage"], flow["to_stage"]))
+        if (item["human_unanswered_continuous_rows"] >
+                item["human_attention_continuous_rows"] or
+            item["human_attention_continuous_rows"] >
+                item["human_attention_persisted_rows"]):
+            raise Hold("HOLD: HUMAN all-round attention continuity inconsistent")
         if (item["human_attention_entered_rows"] +
                 item["human_attention_persisted_rows"] !=
                 item["human_attention_after_rows"] or
@@ -173,6 +184,8 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
         "' data-reverted='" + str(item["intermediate_stage_reverted_rows"]) +
         "' data-reply-changed='" + str(item["reply_changed_rows"]) +
         "' data-pending='" + str(item["human_attention_persisted_rows"]) +
+        "' data-continuous='" + str(item["human_attention_continuous_rows"]) +
+        "' data-unanswered='" + str(item["human_unanswered_continuous_rows"]) +
         "' data-entered='" + str(item["human_attention_entered_rows"]) +
         "' data-exited='" + str(item["human_attention_exited_rows"]) +
         "' data-follow-changed='" + str(item["next_question_changed_rows"]) +
@@ -186,7 +199,9 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
         str(item["next_question_changed_rows"]) + "</td><td>" +
         str(item["human_attention_persisted_rows"]) + "</td><td>" +
         str(item["human_attention_entered_rows"]) + "</td><td>" +
-        str(item["human_attention_exited_rows"]) + "</td></tr>"
+        str(item["human_attention_exited_rows"]) + "</td><td>" +
+        str(item["human_attention_continuous_rows"]) + "</td><td>" +
+        str(item["human_unanswered_continuous_rows"]) + "</td></tr>"
         for item in rows)
     movement_table = "".join(
         "<tr data-movement='yes' data-from='" +
@@ -253,7 +268,8 @@ def build(rows: list[dict], rounds: int, stage_counts: list[dict],
         "<th>Interim stage reverted</th><th>Reply changed</th>"
         "<th>Follow-up changed</th><th>Still awaiting HUMAN discussion</th>"
         "<th>New HUMAN attention</th><th>No longer needing HUMAN attention "
-        "(claimed)</th></tr></thead><tbody>" +
+        "(claimed)</th><th>Attention in every selected round</th>"
+        "<th>No reply in any selected round</th></tr></thead><tbody>" +
         table + "</tbody></table></section>"
         "<section><h2>Directional HUMAN stage movements</h2>"
         "<p>Earlier-to-later self-reported status counts for the selected "

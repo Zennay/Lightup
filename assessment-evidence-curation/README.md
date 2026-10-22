@@ -506,7 +506,7 @@ those original sources and creates the packet; action **30** opens an existing
 packet read-only and checks it against every unchanged original source.
 
 The single **NEW owner-only 0700 output folder** contains nine exclusive
-owner-only **0600** files (current v5 format):
+owner-only **0600** files (current v6 format):
 
 - `PRIVATE-HUMAN-priority-round-start.html`: **start here** with an owner-private
   scriptless landing page. Local-only links open the interactive browser, print
@@ -530,7 +530,13 @@ owner-only **0600** files (current v5 format):
   or more intervening HUMAN-reported status reversals and counts edited
   HUMAN reply/follow-up fields **without exporting their text**. The interval
   CSV and browser also show HUMAN attention before/after, newly requiring
-  discussion, no longer requiring discussion, and persistently pending.
+  discussion, no longer requiring discussion, and requiring discussion at
+  **both endpoints**. It separately counts those still requiring attention
+  in **every intervening manually ordered round**, and those with no HUMAN
+  response in **any** of the selected rounds. A claimed response in the
+  middle breaks the continuous-attention count even if both endpoints are
+  blocked. This prevents endpoint comparisons being mistaken for uninterrupted
+  HUMAN backlog.
   `responded_claimed` is the only *self-reported* state not counted as
   requiring HUMAN discussion; this is never a verified fix or authorization.
 - `PRIVATE-HUMAN-priority-round-interval-stage-movements.csv`: one
@@ -561,12 +567,12 @@ incorrect manually supplied round order. Use the matching flags with
 All original inboxes are fully re-admitted before any output is published;
 an incomplete priority group, duplicate inbox or missing original selected row
 causes HOLD rather than a misleading partial trend. **Each of all nine
-artifacts** is bounded to 512 KiB. The canonical v5 JSON additionally includes
+artifacts** is bounded to 512 KiB. The canonical v6 JSON additionally includes
 PRIVATE latest-round HUMAN attention summary (blocked, unreturned and
 needs-more-information) and complete original-source-free direct pairwise
-HUMAN interval metrics. Historical v1/v2/v3/v4 packets remain untouched and
-intentionally HOLD on current v5 read-only reopen; the original full source
-and all HUMAN rounds must be provided again for a new v5 packet.
+HUMAN interval metrics. Historical v1/v2/v3/v4/v5 packets remain untouched and
+intentionally HOLD on current v6 read-only reopen; the original full source
+and all HUMAN rounds must be provided again for a new v6 packet.
 
 Open `PRIVATE-HUMAN-priority-round-start.html` first: its eight relative
 links navigate to the other owner-private artifacts; nothing is published.
