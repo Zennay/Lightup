@@ -849,7 +849,7 @@ The native `manifest_change_desk.py` now publishes a third artifact,
 `UNCHANGED`, `MOVED`, `REMOVED` or `ADDED`, original integer slot
 ordinals and `REVIEW_ONLY`; removed slot values are blank. No endpoint
 URLs, source paths, source hashes, notes or free text are present in the CSV.
-It is a portable **PRIVATE** planning ledger, not a vulnerability report,
+The scriptless HTML comparison page links directly to this CSV for a local download. It is a portable **PRIVATE** planning ledger, not a vulnerability report,
 proof of chronology, or evidence that removal fixed a finding.
 
 New change-desk publications contain the existing source-bound JSON and
