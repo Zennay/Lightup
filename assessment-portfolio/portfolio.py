@@ -259,6 +259,40 @@ def aggregate(documents, rows, reference_day):
         **{key: False for key in FLAGS},
     }
 
+def render_private_agenda_matrix(summary, rows):
+    """Private per-source ordinal workload, excluded from anonymous aggregates."""
+    grouped = {slot: [] for slot in range(1, summary["agenda_count"] + 1)}
+    for row in rows:
+        if row["agenda_slot"] not in grouped:
+            raise Hold("private source ordinal outside admitted range")
+        grouped[row["agenda_slot"]].append(row)
+    cols = ("Agenda", "HUMAN items", *ROLES, *DATE_BUCKETS, "Open source ordinal")
+    head = "<thead><tr>" + "".join("<th>" + escape(value) + "</th>" for value in cols) + "</tr></thead>"
+    body = []
+    for slot, selected in grouped.items():
+        first = min(selected, key=lambda row: (row["source_slot"], ROLES.index(row["next_role"]))) if selected else None
+        link = (
+            "<a href='#agenda-" + str(slot) + "-slot-" + str(first["source_slot"]) +
+            "'>Go to source slot " + str(first["source_slot"]) + "</a>"
+            if first else "No rows in the current selection — NOT a completed assessment"
+        )
+        count_roles = Counter(row["next_role"] for row in selected)
+        count_dates = Counter(row["date_bucket"] for row in selected)
+        values = ["Agenda " + str(slot).zfill(2), str(len(selected))]
+        values.extend(str(count_roles[role]) for role in ROLES)
+        values.extend(str(count_dates[bucket]) for bucket in DATE_BUCKETS)
+        body.append("<tr>" + "".join("<td>" + escape(value) + "</td>" for value in values) +
+                    "<td>" + link + "</td></tr>")
+    return (
+        "<section><h2>PRIVATE per-agenda HUMAN attention</h2>"
+        "<p class='note'>Shows local original agenda ordinals, not source identities or authentic chronology."
+        " Values reflect only the current fixed selection and never prove remediation, consent or completion."
+        " The anonymous JSON/CSV exports do not contain per-agenda counts.</p>"
+        "<div class='tablewrap'><table>" + head + "<tbody>" + "".join(body) +
+        "</tbody></table></div></section>"
+    )
+
+
 def render_private_html(summary, rows):
     style_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     table_head = (
@@ -276,7 +310,8 @@ def render_private_html(summary, rows):
             row["agenda_slot"], row["source_slot"],
         ))
         body = "".join(
-            "<tr>" + "".join("<td>" + escape(str(value)) + "</td>" for value in (
+            "<tr id='agenda-" + str(row["agenda_slot"]) + "-slot-" + str(row["source_slot"]) + "'>" +
+            "".join("<td>" + escape(str(value)) + "</td>" for value in (
                 "Agenda " + str(row["agenda_slot"]).zfill(2),
                 "Slot " + str(row["source_slot"]).zfill(2),
                 row["source_kind"], row["stage"], row["next_role"],
@@ -344,7 +379,7 @@ def render_private_html(summary, rows):
         "<main><div class='cards'>" + cards + "</div>" + empty_note +
         "<p class='note'>" + str(summary["agenda_count"]) + " selected agendas · " +
         str(summary["item_count"]) + " human-planning items. Input order is a local ordinal only, not authenticated chronology.</p></main>"
-        + matrix + "".join(sections) +
+        + matrix + render_private_agenda_matrix(summary, rows) + "".join(sections) +
         "<section><h2>Boundary and interpretation</h2><p class='note'>Past proposed dates are discussion prompts, not legal deadlines,"
         " verified finding age, security severity, authorization expiry or proof of a missed action. Missing sources are not treated as fixed."
         " No original paths, filenames, hashes, target labels, client identities or HUMAN notes are shown. The source claims and suggested questions remain unverified."
