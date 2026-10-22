@@ -513,6 +513,7 @@
     const canReplace=active&&!demo&&sourceMeta.length===reports.length;
     $("replaceFile").disabled=!canReplace;
     $("replaceSlot").disabled=!canReplace;
+    $("removeCandidate").disabled=!(canReplace&&reports.length>2);
     if(canReplace){
       const control=$("replaceSlot"),old=control.value;
       if(control.options.length!==reports.length){
@@ -796,6 +797,29 @@
       if(generation===fileGeneration)setStatus(
         "HOLD: replacement is identical, malformed, duplicated or baseline-incompatible. Prior reports and HUMAN review preserved.",true);
     }
+  }
+  function removeCandidate(){
+    if(demo||reports.length<=2||sourceMeta.length!==reports.length)return;
+    const slot=Number($("replaceSlot").value);
+    if(!Number.isSafeInteger(slot)||slot<0||slot>=reports.length)return;
+    if(!window.confirm("Remove candidate "+(slot+1)+" from this local unverified cohort? "+
+      "The remaining source reports stay unchanged, but all local HUMAN proposals "+
+      "and previous source-bound private drafts must be reviewed again. "+
+      "This does not verify findings, authorize anything or delete any local files."))return;
+    cancelPendingFiles();
+    const oldCount=reports.length;
+    const next=reports.filter((_,i)=>i!==slot);
+    compatible(next);
+    const meta=sourceMeta.filter((_,i)=>i!==slot);
+    const hashes=sourceHashes.length===oldCount?
+      sourceHashes.filter((_,i)=>i!==slot):[];
+    clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;
+    reports=next;sourceMeta=meta;sourceHashes=hashes;
+    $("queueMessage").textContent="HUMAN discussion proposals cleared after changing the source set.";
+    $("draftMessage").textContent="Previous PRIVATE draft binding is no longer the current candidate selection; save a new draft.";
+    setStatus("Removed candidate "+(slot+1)+" from the local comparison. "+
+      next.length+" compatible unverified candidates remain; review proposals reset.");
+    render();
   }
   function fictional(){
     const ids=["fictional-case-A","fictional-case-B","fictional-case-C","fictional-case-D"];
@@ -1655,6 +1679,7 @@
     if(e.target.files.length)void replaceCandidate(e.target.files[0]);
     e.target.value="";
   });
+  $("removeCandidate").addEventListener("click",removeCandidate);
   $("demo").addEventListener("click",demoLoad);
   $("forget").addEventListener("click",forget);
   for(const id of ["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost",
