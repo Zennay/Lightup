@@ -11,6 +11,11 @@
 <div class="controls"><button id="originalProfiles" type="button">Load original fixture profiles</button><button id="demo">Load fictional demo</button><label class="pick">Import PRIVATE catalog<input type="file" accept=".json,application/json" id="load"></label>
 <label class="pick">Append PRIVATE catalog<input type="file" accept=".json,application/json" id="appendCatalog" disabled></label><button id="forget" class="outline">Forget all</button></div><p>Want native examples? From the LightUp repository root, run <code>python3 lab-design/fixture_catalog.py --output /private/path/fixture-design.json</code>, then import that PRIVATE JSON and explicitly accept it. This reads installed fixture definitions only — it does not start a fixture server.</p>
 <p id="status" role="status" aria-live="polite"></p>
+<div class="controls" aria-label="In-memory catalog history">
+<button id="undo" type="button" class="outline" disabled>Undo last change</button>
+<button id="redo" type="button" class="outline" disabled>Redo</button>
+</div>
+<p id="historyStatus" role="status" aria-live="polite">Undo/redo keeps up to 20 catalog changes in this tab's memory only. Forget all clears history.</p>
 <div id="stats" class="stats"></div><div id="staging" class="staged" hidden><h3>Replacement preview — not applied</h3>
 <p id="stageSummary"></p><div id="stageRows" class="tablewrap"></div>
 <div class="controls"><button id="mergeStage" type="button" class="outline">Apply selected changes (no deletion)</button><button id="acceptStage" type="button">Accept replacement (PRIVATE)</button><button id="rejectStage" type="button" class="outline">Discard imported candidate</button></div>
