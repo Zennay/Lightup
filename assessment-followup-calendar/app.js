@@ -29,6 +29,7 @@
   let reconcileSelection = new Set(), reconcileGroupSelection = new Set(), reconcileProposal = null;
   let conflictProposal=null;
   let lastIcsSequence=0;
+  let recipientPage=0;
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -431,50 +432,82 @@
     });
   }
   function recipientRows(){
-    const fmt=recipientFormatter();
+    const fmt=recipientFormatter(),target=fmt.resolvedOptions().timeZone;
+    const clock=new Intl.DateTimeFormat("en-US",{
+      timeZone:target,weekday:"short",year:"numeric",month:"2-digit",
+      day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+    });
+    const fields=date=>Object.fromEntries(clock.formatToParts(date)
+      .filter(part=>part.type!=="literal").map(part=>[part.type,part.value]));
     return items.flatMap(row=>{
       const p=plan.get(row.ordinal);if(!p)return [];
-      const original=eventDate(p.day,p.time);
+      const start=eventDate(p.day,p.time);
+      const end=new Date(start.getTime()+Number(p.duration)*60000);
+      const a=fields(start),b=fields(end);
+      const first=Number(a.hour)*60+Number(a.minute);
+      const last=Number(b.hour)*60+Number(b.minute);
+      const sameDate=a.year===b.year&&a.month===b.month&&a.day===b.day;
+      const weekend=["Sat","Sun"].includes(a.weekday)||["Sat","Sun"].includes(b.weekday);
+      const status=weekend?"weekend":
+        !sameDate||first<540||last>1020?"outside_hours":"within_hours";
       return [{ordinal:row.ordinal,group:row.group,day:p.day,time:p.time,
-        utc:original.toISOString(),converted:fmt.format(original)}];
+        utc:start.toISOString(),converted:fmt.format(start),
+        endConverted:fmt.format(end),status}];
     });
+  }
+  function recipientFiltered(){
+    const status=$("recipientView").value,q=$("recipientQuery").value.trim().toLocaleLowerCase();
+    return recipientRows().filter(r=>
+      (status==="all"||r.status===status) &&
+      (!q||[String(r.ordinal),r.group].some(v=>v.toLocaleLowerCase().includes(q))));
   }
   function renderRecipientZone(){
     if(!active)return;
     const body=$("recipientRows");body.replaceChildren();
-    let data;
-    try{data=recipientRows();}
+    let data,all;
+    try{all=recipientRows();data=recipientFiltered();}
     catch(_){
       $("recipientSummary").textContent="Invalid IANA zone or changed browser timezone (HOLD). No converted dates accepted.";
-      $("recipientExport").disabled=true;return;
+      $("recipientExport").disabled=true;
+      $("recipientPrev").disabled=true;$("recipientNext").disabled=true;
+      $("recipientRemainder").textContent="";return;
     }
+    const pages=Math.max(1,Math.ceil(data.length/35));
+    recipientPage=Math.max(0,Math.min(recipientPage,pages-1));
+    $("recipientPrev").disabled=recipientPage===0;
+    $("recipientNext").disabled=recipientPage>=pages-1;
     $("recipientExport").disabled=!data.length;
-    $("recipientSummary").textContent=data.length+" tentative HUMAN appointment proposals rendered locally in "+
-      recipientFormatter().resolvedOptions().timeZone+
-      ". Recipient identity, calendar availability and permission are NOT verified.";
-    for(const r of data.slice(0,35)){
+    const warns=all.filter(r=>r.status!=="within_hours").length;
+    $("recipientSummary").textContent=all.length+" tentative HUMAN proposals · "+
+      warns+" outside illustrative Monday–Friday 09:00–17:00 in "+
+      recipientFormatter().resolvedOptions().timeZone+" · "+data.length+
+      " matching filter. Illustrative hours are NOT authenticated recipient availability.";
+    for(const r of data.slice(recipientPage*35,recipientPage*35+35)){
       const tr=dom("tr"),b=dom("button","Edit #"+r.ordinal);
       b.type="button";b.addEventListener("click",()=>focusOrdinal(r.ordinal));
+      const notice=r.status==="weekend"?"Weekend":
+        r.status==="outside_hours"?"Outside 09–17":"Within 09–17";
       tr.append(dom("td","#"+r.ordinal),
         dom("td",r.day+" "+r.time+" / "+zone),
-        dom("td",r.converted),dom("td",r.group||"(unassigned)"));
+        dom("td",r.converted+" → "+r.endConverted),
+        dom("td",notice),dom("td",r.group||"(unassigned)"));
       const td=dom("td");td.append(b);tr.append(td);body.append(tr);
     }
-    $("recipientRemainder").textContent=data.length>35?
-      "Showing 35 of "+data.length+" private proposals. Export CSV for the complete schedule.":"";
+    $("recipientRemainder").textContent="Showing page "+(recipientPage+1)+" of "+pages+
+      " · "+data.length+" filtered private HUMAN proposals; no external calendar checked.";
   }
   function exportRecipientZone(){
     hold(active && /^[a-f0-9]{64}$/.test(hash));
-    const rows=recipientRows(),target=recipientFormatter().resolvedOptions().timeZone;
+    const rows=recipientFiltered(),target=recipientFormatter().resolvedOptions().timeZone;
     hold(rows.length>0 && rows.length<=MAX_ROWS);
     if(!confirm("Export PRIVATE unsigned HUMAN time-zone conversion for "+rows.length+
       " proposed reminders? Includes original worksheet digest, HUMAN group and private schedule. No consent, verified calendar delivery or security status is established."))return;
     const output=[["worksheet_sha256_unsigned","series_unsigned","source_zone",
       "display_zone_unverified","original_ordinal","human_group_unverified",
       "source_local_date","source_local_time","utc","other_zone_display",
-      "authorized","verified","consent"]];
+      "other_zone_end","illustrative_window_status","authorized","verified","consent"]];
     for(const row of rows)output.push([hash,seriesId,zone,target,row.ordinal,row.group,
-      row.day,row.time,row.utc,row.converted,"false","false","false"]);
+      row.day,row.time,row.utc,row.converted,row.endConverted,row.status,"false","false","false"]);
     download(makeCsv(output),"lightup-private-human-zone-handoff.csv","text/csv;charset=utf-8");
     inform("PRIVATE alternate-zone HUMAN schedule exported locally; no recipient or calendar contacted.");
   }
@@ -2672,7 +2705,11 @@
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
-  hook("recipientZone","input",renderRecipientZone);
+  hook("recipientZone","input",()=>{recipientPage=0;renderRecipientZone();});
+  hook("recipientView","change",()=>{recipientPage=0;renderRecipientZone();});
+  hook("recipientQuery","input",()=>{recipientPage=0;renderRecipientZone();});
+  hook("recipientPrev","click",()=>{recipientPage--;renderRecipientZone();});
+  hook("recipientNext","click",()=>{recipientPage++;renderRecipientZone();});
   hook("recipientExport","click",()=>{
     try{exportRecipientZone();}catch(_){inform("PRIVATE recipient-zone handoff not admitted (HOLD).",true);}
   });

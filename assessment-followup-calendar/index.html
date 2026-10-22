@@ -116,9 +116,21 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <div class="row"><label>Other HUMAN recipient timezone (unverified)
 <input id="recipientZone" type="text" maxlength="64" placeholder="e.g. Europe/London" autocomplete="off" spellcheck="false"></label>
 <button type="button" id="recipientExport" class="ghost" disabled>Export PRIVATE converted schedule (.csv)</button></div>
+<div class="toolbar">
+<label>Illustrative recipient workday status <select id="recipientView">
+<option value="all">All proposed HUMAN reminders</option>
+<option value="outside_hours">Outside 09:00–17:00 on weekdays</option>
+<option value="weekend">Weekend in selected zone</option>
+<option value="within_hours">Within illustrative weekday hours</option>
+</select></label>
+<label>HUMAN ordinal / group <input id="recipientQuery" type="search" maxlength="120" placeholder="PRIVATE local filter"></label>
+</div>
+<p class="subtle">For review only: Monday–Friday 09:00–17:00 is an illustrative time window, NOT a recipient's verified working hours, holidays or permission. End times include original proposed duration. Filters apply to the PRIVATE CSV export too.</p>
 <p id="recipientSummary" class="subtle" role="status" aria-live="polite">Type an IANA timezone to preview HUMAN reminders in another local zone.</p>
-<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone (start → end)</th><th>Illustrative window</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
 <p id="recipientRemainder" class="subtle"></p>
+<div class="row"><button id="recipientPrev" type="button" class="ghost" disabled>Previous matching reminders</button>
+<button id="recipientNext" type="button" class="ghost" disabled>Next matching reminders</button></div>
 <p class="subtle">The PRIVATE CSV includes original worksheet digest, anonymous original ordinals, unverified group labels and both local and converted times. Disclosure may reveal sensitive appointment patterns. Actual recipient locale and timezone rules are NOT authenticated. Never treat the converted date as accepted calendar delivery, scope or consent.</p>
 </section>
 <section id="week" class="panel" hidden aria-labelledby="weekHeading">

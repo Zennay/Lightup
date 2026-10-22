@@ -415,6 +415,8 @@ The new read-only clock-change desk lists tentative reminders within 12 hours of
 
 The **PRIVATE HUMAN alternate-timezone preview** accepts a manual browser-supported IANA timezone identifier such as Europe/London or America/New_York and displays the first 35 existing tentative appointments in that zone, with per-original-ordinal navigation. Conversion is read-only, uses the local OS Intl timezone data and does not change the stored source-zone plan, DST admission, event UID or existing calendar export. No network, remote calendar, verified recipient, time-zone proof or consent is involved.
 
+The alternate-zone desk now paginates all matching HUMAN ordinals (35 per page), searches group or ordinal, and lets the operator filter by weekday 09:00–17:00 local display, weekend or out-of-hours reminders. These hours are **illustrative only**, not an operator availability claim. Converted end times include the proposed HUMAN meeting duration. The PRIVATE CSV exports the exact filtered subset, including the neutral illustrative status.
+
 The explicit full owner-private CSV export includes the unsigned original HUMAN worksheet digest, series, original/source and requested display zones, ordinal, self-reported group, original local time, UTC instant, alternate local display and literal false authority/verification/consent flags. It is **not** an anonymous or safe-to-publish export; proposed appointment dates and unverified HUMAN group labels can reveal private work. Recipients must confirm their own actual zone and calendar entry separately.
 
 ## Calendar revision sequence for manual re-import
