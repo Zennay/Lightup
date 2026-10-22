@@ -263,6 +263,7 @@
       : "No cases match the current filters; filtered exports are disabled.";
     $("queue-export-csv").disabled = !sorted.length;
     $("queue-export-json").disabled = !sorted.length;
+    $("print-filtered").disabled = !sorted.length;
     $("no-matches").hidden = sorted.length > 0;
     for (const {c, i} of sorted) {
       const row = child(parent, "button", "", "case" + (i === selected ? " selected" : ""));
@@ -341,6 +342,41 @@
       }
     }
     child(box, "p", "Unsigned, unverified lab review data. No targets, case identities, actual permission or grant asserted.", "print-note");
+  }
+
+  function renderFilteredPrintBrief() {
+    const box = $("print-filtered-brief");
+    box.replaceChildren();
+    if (!report) return;
+    const rows = filteredQueueRows();
+    child(box, "h2", "Filtered HUMAN follow-up queue");
+    const filterSummary = [
+      "status: " + $("filter").selectedOptions[0].textContent,
+      "workstream: " + $("route-filter").selectedOptions[0].textContent,
+      "priority: " + $("priority-filter").selectedOptions[0].textContent,
+      "metric: " + (metricFocus || "All metrics")
+    ].join(" · ");
+    const regressionFlags = rows.reduce((sum, {c}) => sum + c.regressions.length, 0);
+    child(box, "p", "Source " + report.verdict + " | " + rows.length + " filtered cases of " +
+      report.cases.length + " total | " + regressionFlags +
+      " metric regression flags | AUTHORIZATION / CONSENT / RELEASE = FALSE", "print-note");
+    child(box, "p", "Filters applied: " + filterSummary, "print-note");
+    if (!rows.length) {
+      child(box, "p", "No cases match the current filters.", "print-note");
+      return;
+    }
+    const table = child(box, "table");
+    const head = child(table, "thead");
+    const headings = child(head, "tr");
+    ["Case", "Priority", "Source", "Workstream", "Follow-up stage", "Due", "Regressed metrics"]
+      .forEach(x => child(headings, "th", x));
+    const body = child(table, "tbody");
+    rows.forEach(({c, i}) => {
+      const tr = child(body, "tr");
+      [label(i), priority(c), c.status, c.route, stageText(c.stage),
+        c.due || "-", c.regressions.join(", ") || "None"].forEach(x => child(tr, "td", x));
+    });
+    child(box, "p", "Only cases matching the filters above are included. This is an unsigned HUMAN planning view, not evidence of remediation, identity, permission or release.", "print-note");
   }
 
   // Match source scenario identities internally; never export them.
@@ -474,7 +510,7 @@
     metricFocus=null;
     if(report) render();
   });
-  function render() { renderOverview(); renderLandscape(); renderQueue(); renderDetails(); renderPrintBrief(); }
+  function render() { renderOverview(); renderLandscape(); renderQueue(); renderDetails(); renderPrintBrief(); renderFilteredPrintBrief(); }
   function reset() {
     report = null; selected = -1; digest = null; sourceKind = null;
     clearHistorical(); clearPlanComparison(); metricFocus = null;
@@ -900,5 +936,20 @@
     download("lightup-human-follow-ups.ics",lines.join("\r\n")+"\r\n","text/calendar;charset=utf-8");
   }
   $("calendar").addEventListener("click", calendarDownload);
-  $("print").addEventListener("click", () => {if(report) window.print();});
+  $("print").addEventListener("click", () => {
+    if (!report) return;
+    document.body.classList.remove("print-filtered");
+    window.print();
+  });
+  $("print-filtered").addEventListener("click", () => {
+    if (!report || !filteredQueueRows().length) return;
+    renderFilteredPrintBrief();
+    document.body.classList.add("print-filtered");
+    const cleanup = () => {
+      document.body.classList.remove("print-filtered");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+  });
 })();
