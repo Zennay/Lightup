@@ -319,7 +319,7 @@ def main(argv=None):
                     or args.change_before_dir or args.change_output_dir
                     or args.history_prior_dir or args.history_output_dir):
                 raise Hold("dry-run is read-only and cannot select publication or reopen directories")
-            _, _, counts = prepare(args.first_manifest, args.second_manifest, args.mode,
+            _, dry_files, counts = prepare(args.first_manifest, args.second_manifest, args.mode,
                                    args.ack_normalization, args.ack_replace, preview_only=True,
                                    more_paths=args.more_manifest,
                                    omit_sources=args.omit_source, ack_omit=args.ack_omit,
@@ -338,6 +338,10 @@ def main(argv=None):
                   " · replacement_ack_needed=" + str(counts["replacement_requires_ack"]).lower() +
                   " · source_slot_map_would_publish=" + str(len((args.more_manifest or [])) > 0 or bool(args.omit_source) or args.source_slot_map).lower() +
                   " · no output, consent, authorization or assessment")
+            if SLOT_MAP in dry_files:
+                # Source-local ordinals only; never print endpoint values or private paths.
+                print("SOURCE_SLOT_MAP_REVIEW_ONLY")
+                print(dry_files[SLOT_MAP].decode("ascii"), end="")
             return 0
         if not args.output_dir:
             raise Hold("private output directory required for publication or reopen")
