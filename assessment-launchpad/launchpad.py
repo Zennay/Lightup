@@ -418,6 +418,8 @@ def main(argv=None):
     parser.add_argument("--output-dir", help="existing owner-private output directory, mode 0700")
     parser.add_argument("--verify-output-dir",
                         help="reopen a previously generated private bundle without executing the preview")
+    parser.add_argument("--explain-hold", action="store_true",
+                        help="print the curated non-sensitive HOLD reason; never prints paths, endpoint values or raw exceptions")
     args = parser.parse_args(argv)
     try:
         if args.verify_output_dir is not None:
@@ -427,9 +429,18 @@ def main(argv=None):
         if args.manifest is None or args.output_dir is None:
             raise Hold("creation needs a manifest and private output directory")
         return run(args)
-    except (Hold, OSError, ValueError, TypeError, ImportError, UnicodeError,
-            OverflowError, RecursionError):
+    except Hold as error:
         print("LAB_LAUNCHPAD_HOLD — private manifest or original lab gate was not admitted", file=sys.stderr)
+        if args.explain_hold:
+            # Hold messages above are deliberately curated and never interpolate source paths or endpoint values.
+            print("HOLD_REASON: " + str(error), file=sys.stderr)
+        return 3
+    except (OSError, ValueError, TypeError, ImportError, UnicodeError,
+            OverflowError, RecursionError):
+        # Raw exceptions can contain local paths or private data; never echo them, even in explain mode.
+        print("LAB_LAUNCHPAD_HOLD — private manifest or original lab gate was not admitted", file=sys.stderr)
+        if args.explain_hold:
+            print("HOLD_REASON: filesystem, parsing or source-admission error; raw details withheld", file=sys.stderr)
         return 3
 
 if __name__ == "__main__":
