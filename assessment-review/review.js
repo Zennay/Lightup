@@ -567,6 +567,8 @@
     clearHistorical(); clearPlanComparison(); metricFocus = null;
     $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all";
     $("cases").replaceChildren(); $("metrics").replaceChildren();
+    ["queue-export-csv","queue-export-json","queue-export-html","queue-import-button","print-filtered"]
+      .forEach(id => { $(id).disabled = true; });
     alert("Local workspace cleared. No browser storage was used.");
   }
   // file:// contexts may lack Web Crypto. This fallback hashes only locally
