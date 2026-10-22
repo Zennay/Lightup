@@ -680,6 +680,7 @@ PRIVATE_LABELS = {
     "assessment-portfolio-private-capacity.csv": "PRIVATE role/day capacity comparison CSV with source ordinals",
     "assessment-portfolio-private-capacity-comparison.html": "PRIVATE two-scenario HUMAN proposed role/day capacity desk",
     "assessment-portfolio-private-capacity-comparison.csv": "PRIVATE source-ordinal comparison of two manual capacity assumptions",
+    "assessment-portfolio-private-capacity-studio.html": "Memory-only PRIVATE HUMAN capacity scenario editing desk",
     "assessment-portfolio-human-workbook.html": "Edit and download PRIVATE HUMAN discussion worksheet",
     "assessment-portfolio-private-HUMAN-return.html": "PRIVATE HUMAN response and status-by-role dashboard",
     "assessment-portfolio-private-HUMAN-return.csv": "PRIVATE HUMAN detailed response CSV",
