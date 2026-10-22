@@ -590,6 +590,33 @@ def render_private_calendar(rows, reference_day, documents):
 
 
 
+
+def render_private_role_day_csv(rows):
+    """Offline human-staffing counts with optional source ordinals; PRIVATE only."""
+    groups = {}
+    for row in rows:
+        key = (row["review_date"], row["next_role"])
+        groups.setdefault(key, []).append(row)
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\r\n")
+    writer.writerow((
+        "original_proposed_day", "suggested_neutral_role", "human_items",
+        "distinct_original_agendas", "original_source_ordinals", "authority_status",
+    ))
+    for (day, role), members in sorted(groups.items(), key=lambda item: (
+        item[0][0] is None, item[0][0] or "9999-12-31", ROLES.index(item[0][1])
+    )):
+        ordinals = ";".join(
+            "A" + str(row["agenda_slot"]).zfill(2) + "/S" + str(row["source_slot"]).zfill(2)
+            for row in sorted(members, key=lambda value: (value["agenda_slot"], value["source_slot"]))
+        )
+        writer.writerow((
+            day or "", role, len(members),
+            len({row["agenda_slot"] for row in members}), ordinals, "REVIEW_ONLY",
+        ))
+    return output.getvalue().encode("utf-8")
+
+
 def render_private_day_brief(summary, rows):
     """Static source-free printable per-day HUMAN attention brief with local drilldown."""
     style_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
@@ -775,7 +802,8 @@ def publish_bundle(directory_fd, artifacts):
 
 
 def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
-                     calendar=False, calendar_clusters=False, day_brief=False, workbook=False, human_entries=None,
+                     calendar=False, calendar_clusters=False, day_brief=False, role_day_csv=False,
+                     workbook=False, human_entries=None,
                      previous_human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
@@ -800,6 +828,9 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
     if calendar_clusters:
         result.append(("assessment-portfolio-private-role-day.ics",
                        render_private_cluster_calendar(rows, reference_day, documents)))
+    if role_day_csv:
+        result.append(("assessment-portfolio-private-role-day.csv",
+                       render_private_role_day_csv(rows)))
     if day_brief:
         result.append(("assessment-portfolio-private-day-brief.html",
                        render_private_day_brief(summary, rows)))
@@ -984,6 +1015,7 @@ def run(args):
             interactive=args.private_explorer, calendar=args.private_calendar,
             calendar_clusters=args.private_calendar_clusters,
             day_brief=args.private_day_brief,
+            role_day_csv=args.private_role_day_csv,
             workbook=args.private_human_workbook, human_entries=human_entries,
             previous_human_entries=previous_entries,
         )
@@ -1038,6 +1070,8 @@ def main(argv=None):
                         help="Add a PRIVATE date-only tentative calendar, no invitations or alarms")
     parser.add_argument("--private-calendar-clusters", action="store_true",
                         help="Add one inert PRIVATE tentative role/day proposal per same-date HUMAN workload")
+    parser.add_argument("--private-role-day-csv", action="store_true",
+                        help="Add offline PRIVATE role/day staffing and source-ordinal spreadsheet CSV")
     parser.add_argument("--private-day-brief", action="store_true",
                         help="Add scriptless PRIVATE by-day and role printable HUMAN brief with original ordinal links")
     parser.add_argument("--private-human-workbook", action="store_true",
