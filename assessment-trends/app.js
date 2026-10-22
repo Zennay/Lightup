@@ -259,34 +259,63 @@
   }
   function cell(text,cls){return {text,cls};}
   function streak(values){let best=0,run=0;for(const value of values){if(value){run++;best=Math.max(best,run);}else run=0;}return best;}
+  function reappearanceCount(values){
+    let seen=false,previous=false,count=0;
+    for(const value of values){
+      if(value&&seen&&!previous)count++;
+      if(value)seen=true;
+      previous=value;
+    }
+    return count;
+  }
   function metricStats(name){
     const counts=snapshots.map(report=>scenarioIds.filter(id=>report.cases.get(id).metrics.get(name).regression).length);
-    let ever=0,persistent=0,maxStreak=0;
+    let ever=0,persistent=0,maxStreak=0,reappeared=0,reappearanceEvents=0;
     for(const id of scenarioIds){
       const values=snapshots.map(report=>report.cases.get(id).metrics.get(name).regression);
       if(values.some(Boolean))ever++;
-      const best=streak(values);if(best>=2)persistent++;maxStreak=Math.max(maxStreak,best);
+      const best=streak(values),returns=reappearanceCount(values);
+      if(best>=2)persistent++;
+      if(returns>0)reappeared++;
+      reappearanceEvents+=returns;
+      maxStreak=Math.max(maxStreak,best);
     }
-    return {counts,ever,persistent,maxStreak};
+    return {counts,ever,persistent,maxStreak,reappeared,reappearanceEvents};
   }
   function scenarioStats(id){
     const counts=snapshots.map(report=>report.cases.get(id).adverse.length);
-    let persistent=0;
-    for(const name of METRICS)if(streak(snapshots.map(report=>report.cases.get(id).metrics.get(name).regression))>=2)persistent++;
-    return {counts,persistent,status:counts.some(Boolean)?"HOLD":"REVIEW_ONLY"};
+    let persistent=0,reappearedMetrics=0,reappearanceEvents=0,longestMetricStreak=0;
+    for(const name of METRICS){
+      const values=snapshots.map(report=>report.cases.get(id).metrics.get(name).regression);
+      const best=streak(values),returns=reappearanceCount(values);
+      if(best>=2)persistent++;
+      if(returns>0)reappearedMetrics++;
+      reappearanceEvents+=returns;
+      longestMetricStreak=Math.max(longestMetricStreak,best);
+    }
+    const flaggedSlots=counts.flatMap((count,index)=>count>0?[index+1]:[]);
+    return {counts,persistent,reappearedMetrics,reappearanceEvents,longestMetricStreak,
+      firstFlaggedSlot:flaggedSlots.length?flaggedSlots[0]:null,
+      lastFlaggedSlot:flaggedSlots.length?flaggedSlots[flaggedSlots.length-1]:null,
+      status:counts.some(Boolean)?"HOLD":"REVIEW_ONLY"};
   }
   function summary(){
     const instances=snapshots.reduce((n,report)=>n+report.regressionInstances,0);
     const held=snapshots.filter(report=>report.status==="HOLD").length;
-    const persistent=METRICS.reduce((n,name)=>n+metricStats(name).persistent,0);
-    return {instances,held,persistent,status:held||instances?"HOLD":"REVIEW_ONLY"};
+    const metrics=METRICS.map(metricStats);
+    const persistent=metrics.reduce((n,item)=>n+item.persistent,0);
+    const reappearedPairs=metrics.reduce((n,item)=>n+item.reappeared,0);
+    const reappearanceEvents=metrics.reduce((n,item)=>n+item.reappearanceEvents,0);
+    return {instances,held,persistent,reappearedPairs,reappearanceEvents,
+      status:held||instances?"HOLD":"REVIEW_ONLY"};
   }
   function renderSummary(){
     const s=summary(),cards=[
       ["Selected snapshots",snapshots.length],
       ["Anonymous scenarios",scenarioIds.length],
       ["Source-reported regression instances",s.instances],
-      ["Persistent scenario/metric trajectories",s.persistent]
+      ["Persistent scenario/metric trajectories",s.persistent],
+      ["Reappearing scenario/metric pairs",s.reappearedPairs]
     ];
     const root=$("summaryCards");root.replaceChildren();
     cards.forEach(([label,value])=>{const card=document.createElement("div");card.className="card";
@@ -301,18 +330,22 @@
   }
   function renderMetricBoard(){
     const headers=["Metric","Review-priority group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
-      "Ever flagged cases","Persistent cases","Longest consecutive slots"];
+      "Ever flagged cases","Persistent cases","Longest consecutive slots",
+      "Cases with reappearing flags","Reappearance events"];
     const rows=METRICS.map(name=>{const s=metricStats(name);return [name,family(name),
       ...s.counts.map(n=>cell(n,n?"cell-adverse":"cell-neutral")),
-      s.ever,s.persistent,s.maxStreak];});
+      s.ever,s.persistent,s.maxStreak,s.reappeared,s.reappearanceEvents];});
     drawTable("metricHeatmap",headers,rows);
   }
   function renderScenarioBoard(){
     const headers=["Anonymous scenario",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")+" flagged metrics"),
-      "Persistent metrics","Overall source status"];
+      "First flagged slot","Last flagged slot","Persistent metrics","Reappearing metrics",
+      "Reappearance events","Longest metric streak","Overall source status"];
     const rows=scenarioIds.map((id,i)=>{const s=scenarioStats(id);return [
       "Scenario "+String(i+1).padStart(2,"0"),
-      ...s.counts.map(n=>cell(n,n?"cell-adverse":"cell-neutral")),s.persistent,s.status
+      ...s.counts.map(n=>cell(n,n?"cell-adverse":"cell-neutral")),
+      s.firstFlaggedSlot??"—",s.lastFlaggedSlot??"—",s.persistent,s.reappearedMetrics,
+      s.reappearanceEvents,s.longestMetricStreak,s.status
     ];});
     drawTable("scenarioHeatmap",headers,rows);
   }
@@ -1076,10 +1109,14 @@
         regressed_scenario_count:r.regressedScenarios.length,regression_instance_count:r.regressionInstances})),
       metric_persistence:METRICS.map(name=>{const st=metricStats(name);return {metric:name,
         review_priority_group:family(name),regressed_scenario_count_by_snapshot:st.counts,
-        ever_flagged_cases:st.ever,persistent_cases:st.persistent,longest_consecutive_slots:st.maxStreak};}),
+        ever_flagged_cases:st.ever,persistent_cases:st.persistent,longest_consecutive_slots:st.maxStreak,
+        cases_with_reappearing_flags:st.reappeared,reappearance_events:st.reappearanceEvents};}),
       scenario_trajectories:scenarioIds.map((id,i)=>{const st=scenarioStats(id);return {
         scenario_slot:i+1,source_reported_regressed_metric_count_by_snapshot:st.counts,
-        persistent_metric_count:st.persistent,overall_source_status:st.status};}),
+        persistent_metric_count:st.persistent,first_flagged_manual_slot:st.firstFlaggedSlot,
+        last_flagged_manual_slot:st.lastFlaggedSlot,reappearing_metric_count:st.reappearedMetrics,
+        reappearance_event_count:st.reappearanceEvents,longest_metric_flag_streak:st.longestMetricStreak,
+        overall_source_status:st.status};}),
       disclaimer:"Already-completed untrusted source comparisons only. Snapshot order is a human display preference, not authenticated chronology. No remediation, ground truth, consent, authorization, dispatch or release is established.",
       ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
     download("assessment-trends-anonymous-aggregate.json",JSON.stringify(out,null,2)+"\n","application/json");
@@ -1088,14 +1125,16 @@
   function exportCsv(){
     if(!snapshots.length)return;
     const header=["snapshot_slot","scenario_slot","metric","review_priority_group","baseline","candidate",
-      "delta","source_reported_regression","source_snapshot_status","fictional_demo_only",
-      "source_identity_authenticated","chronology_authenticated","authorized","consent_verified",
-      "dispatch_allowed","release_allowed","status"];
+      "delta","source_reported_regression","metric_reappearance_events","metric_longest_consecutive_flag_slots",
+      "source_snapshot_status","fictional_demo_only","source_identity_authenticated","chronology_authenticated",
+      "authorized","consent_verified","dispatch_allowed","release_allowed","status"];
     const rows=[header];
     snapshots.forEach((report,i)=>scenarioIds.forEach((id,j)=>METRICS.forEach(name=>{
       const m=report.cases.get(id).metrics.get(name);
+      const flagsBySlot=snapshots.map(item=>item.cases.get(id).metrics.get(name).regression);
       rows.push([i+1,j+1,name,family(name),m.baseline,m.candidate,m.delta,m.regression,
-        report.status,fictional?"true":"false","false","false","false","false","false","false","REVIEW_ONLY"]);
+        reappearanceCount(flagsBySlot),streak(flagsBySlot),report.status,fictional?"true":"false",
+        "false","false","false","false","false","false","REVIEW_ONLY"]);
     })));
     download("assessment-trends-anonymous-trajectories.csv",
       rows.map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
@@ -1109,24 +1148,37 @@
     if(!id||!snapshots.length)return [];
     const scenarioSlot=scenarioIds.indexOf(id)+1;
     if(scenarioSlot<1)return [];
+    const history=scenarioStats(id);
     return snapshots.flatMap((report,i)=>METRICS.map(metric=>{
       const m=report.cases.get(id).metrics.get(metric);
+      const flagsBySlot=snapshots.map(item=>item.cases.get(id).metrics.get(metric).regression);
       return {
         snapshot_slot:i+1,scenario_slot:scenarioSlot,metric,review_priority_group:family(metric),
         baseline:m.baseline,candidate:m.candidate,delta:m.delta,
-        source_reported_regression:m.regression,source_snapshot_status:report.status,
-        fictional_demo_only:fictional,source_identity_authenticated:false,
-        chronology_authenticated:false,authorized:false,consent_verified:false,
-        dispatch_allowed:false,release_allowed:false,status:"REVIEW_ONLY"
+        source_reported_regression:m.regression,
+        metric_reappearance_events:reappearanceCount(flagsBySlot),
+        metric_longest_consecutive_flag_slots:streak(flagsBySlot),
+        scenario_first_flagged_manual_slot:history.firstFlaggedSlot??"",
+        scenario_last_flagged_manual_slot:history.lastFlaggedSlot??"",
+        scenario_persistent_metric_count:history.persistent,
+        scenario_reappearing_metric_count:history.reappearedMetrics,
+        scenario_reappearance_event_count:history.reappearanceEvents,
+        scenario_longest_metric_flag_streak:history.longestMetricStreak,
+        source_snapshot_status:report.status,fictional_demo_only:fictional,
+        source_identity_authenticated:false,chronology_authenticated:false,
+        authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,status:"REVIEW_ONLY"
       };
     }));
   }
   function exportScenarioCsv(){
     const rows=selectedScenarioRows();if(!rows.length)return;
     const header=["snapshot_slot","scenario_slot","metric","review_priority_group","baseline","candidate",
-      "delta","source_reported_regression","source_snapshot_status","fictional_demo_only",
-      "source_identity_authenticated","chronology_authenticated","authorized","consent_verified",
-      "dispatch_allowed","release_allowed","status"];
+      "delta","source_reported_regression","metric_reappearance_events","metric_longest_consecutive_flag_slots",
+      "scenario_first_flagged_manual_slot","scenario_last_flagged_manual_slot",
+      "scenario_persistent_metric_count","scenario_reappearing_metric_count",
+      "scenario_reappearance_event_count","scenario_longest_metric_flag_streak",
+      "source_snapshot_status","fictional_demo_only","source_identity_authenticated","chronology_authenticated",
+      "authorized","consent_verified","dispatch_allowed","release_allowed","status"];
     download("assessment-trends-scenario-"+String(rows[0].scenario_slot).padStart(2,"0")+"-trajectory.csv",
       [header,...rows.map(row=>header.map(key=>row[key]))]
         .map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
@@ -1142,9 +1194,16 @@
       chronology_authenticated:false,source_identity_authenticated:false,
       fictional_demo_only:fictional,authorized:false,consent_verified:false,
       dispatch_allowed:false,release_allowed:false,
+      trajectory_summary:(()=>{const h=scenarioStats(currentId());return {
+        first_flagged_manual_slot:h.firstFlaggedSlot,last_flagged_manual_slot:h.lastFlaggedSlot,
+        persistent_metric_count:h.persistent,reappearing_metric_count:h.reappearedMetrics,
+        reappearance_event_count:h.reappearanceEvents,longest_metric_flag_streak:h.longestMetricStreak
+      };})(),
       trajectories:METRICS.map(metric=>{
         const subset=rows.filter(row=>row.metric===metric);
         return {metric,review_priority_group:family(metric),baseline:subset[0].baseline,
+          reappearance_event_count:subset[0].metric_reappearance_events,
+          longest_consecutive_flag_slots:subset[0].metric_longest_consecutive_flag_slots,
           slots:subset.map(row=>({snapshot_slot:row.snapshot_slot,candidate:row.candidate,delta:row.delta,
             source_reported_regression:row.source_reported_regression,source_snapshot_status:row.source_snapshot_status}))};
       }),
@@ -1170,6 +1229,17 @@
     const table="<table><thead><tr>"+headers.map(v=>"<th>"+esc(v)+"</th>").join("")+
       "</tr></thead><tbody>"+bodyRows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+
       "</tr>").join("")+"</tbody></table>";
+    const history=scenarioStats(currentId());
+    const historyRows=[
+      ["First flagged manual slot",history.firstFlaggedSlot??"None"],
+      ["Last flagged manual slot",history.lastFlaggedSlot??"None"],
+      ["Persistent metrics",history.persistent],
+      ["Metrics with reappearing flags",history.reappearedMetrics],
+      ["Reappearance events",history.reappearanceEvents],
+      ["Longest consecutive metric flag streak",history.longestMetricStreak]
+    ];
+    const historyTable="<table><thead><tr><th>Selected-scenario flag history</th><th>Source-reported count / slot</th></tr></thead><tbody>"+
+      historyRows.map(row=>"<tr>"+row.map(value=>"<td>"+esc(value)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
     const cssText="body{font:15px/1.5 system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#17212f}"+
       "h1{font-size:1.8rem}.hold{border:2px solid #9a5b18;padding:.8rem;background:#fff7ed}"+
       "table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #aab6c5;padding:.4rem;text-align:left}"+
@@ -1182,7 +1252,7 @@
       "<p class=\"eyebrow\">LIGHTUP / ASSESSMENT RUNTIME</p><h1>Anonymous scenario trajectory</h1>"+
       "<p class=\"hold\"><strong>REVIEW_ONLY · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></p>"+
       "<p>Selected anonymous scenario: "+esc(String(scenarioSlot).padStart(2,"0"))+
-      " · Snapshot slots: "+esc(String(snapshots.length))+".</p>"+table+
+      " · Snapshot slots: "+esc(String(snapshots.length))+".</p>"+historyTable+table+
       "<p class=\"note\">Slot order is manually selected, not authenticated chronology. Values and regression flags are source-reported from already-completed, untrusted comparison documents. A missing flag is not a verified fix. This brief contains no original scenario IDs, filenames, source hashes or HUMAN notes and grants no authorization, consent, dispatch or release approval.</p>"+
       "</body></html>";
     download("assessment-trends-scenario-"+String(scenarioSlot).padStart(2,"0")+"-brief.html",doc,"text/html");
@@ -1196,9 +1266,10 @@
     const css="body{font:15px system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#182336}"+
       "table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}th,td{border:1px solid #aab6c5;padding:.4rem;text-align:left}"+
       "th{background:#eef2f6}.hold{border:2px solid #9a5b18;padding:1rem}";
-    const rows=METRICS.map(name=>{const st=metricStats(name);return [name,family(name),...st.counts,st.ever,st.persistent,st.maxStreak];});
+    const rows=METRICS.map(name=>{const st=metricStats(name);return [name,family(name),...st.counts,
+      st.ever,st.persistent,st.maxStreak,st.reappeared,st.reappearanceEvents];});
     const headers=["Metric","Review-priority group",...snapshots.map((_,i)=>"Slot "+String(i+1).padStart(2,"0")),
-      "Ever flagged cases","Persistent cases","Longest run"];
+      "Ever flagged cases","Persistent cases","Longest run","Cases with reappearing flags","Reappearance events"];
     const table="<table><thead><tr>"+headers.map(v=>"<th>"+esc(v)+"</th>").join("")+
       "</tr></thead><tbody>"+rows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
     const eventColumns=["Manual slot","Initially flagged","First flagged","Consecutive",
@@ -1216,7 +1287,9 @@
       "<h1>LightUp Assessment Trends · anonymous aggregate brief</h1><div class='hold'><strong>"+
       (fictional?"FICTIONAL DEMO ONLY · ":"")+s.status+" · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong>"+
       "<p>"+snapshots.length+" manually ordered snapshots · "+scenarioIds.length+
-      " anonymous scenarios · "+s.instances+" source-reported regression instances. Order is not authenticated chronology.</p>"+
+      " anonymous scenarios · "+s.instances+" source-reported regression instances · "+
+      s.reappearedPairs+" scenario/metric pairs with reappearing flags ("+s.reappearanceEvents+
+      " reappearance events). Order is not authenticated chronology.</p>"+
       "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
       "<h2>Source status by manual snapshot slot</h2>"+sourceTable+
        "<h2>Metric persistence heatmap</h2>"+table+
