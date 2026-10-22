@@ -422,7 +422,7 @@
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
-    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","print"])$(id).disabled=!active;
+    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","exportConflictsCSV","print"])$(id).disabled=!active;
     $("appendFile").disabled=!(active&&!demo&&reports.length<12);
     $("saveDraft").disabled=!(active&&!demo&&sourceHashes.length===reports.length);
     $("draftFile").disabled=$("saveDraft").disabled;
@@ -430,7 +430,8 @@
       renderSourceManifest();
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
       drawQueue();renderAgenda();
-      for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics","pairChurn","pairChurnSummary"])$(id).innerHTML="";
+      for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics","pairChurn","pairChurnSummary","conflictTable","conflictSummary"])$(id).innerHTML="";
+      $("conflictCandidate").innerHTML="<option value=\"all\">Load reports first</option>";
       $("caseSelect").innerHTML='<option value="">Load reports first</option>';
       return;
     }
@@ -446,10 +447,11 @@
       "<p class='footnote'>No safety approval; separate human review required.</p></article>").join("");
     renderSourceManifest();
     renderMetricBoard(stats);
+    renderScenarioConflictExplorer();
     drawQueue();renderAgenda();
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
     catch(_){$("thresholdMessage").textContent="HOLD: invalid threshold — enter a bounded numerical value. No decision output.";
-      settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","print"])$(id).disabled=true;
+      settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","exportConflictsCSV","print"])$(id).disabled=true;
       $("thresholds").textContent="HOLD — invalid local thresholds";$("frontier").textContent="HOLD — invalid local thresholds";return;}
     $("thresholds").innerHTML=table(["Candidate","Source status","Human discussion triggers","Hard safety indicators"],
       stats.map((s,i)=>["Candidate "+(i+1),reports[i].sourceStatus,
@@ -474,6 +476,107 @@
     }
     const caseIndex=Math.max(0,ids.indexOf(selectedCase));selected.value=String(caseIndex);
     renderCase(ids[caseIndex]);
+  }
+
+  function scenarioConflictRows(){
+    if(!reports.length)return [];
+    const ids=[...reports[0].cases.keys()].sort();
+    return ids.map((id,index)=>{
+      const candidates=reports.map((report,i)=>{
+        const item=report.cases.get(id);
+        return {slot:i+1,item,adverseMetrics:NAMES.filter(name=>item.metrics[name].regression)};
+      });
+      const disagreements=NAMES.map(name=>{
+        const adverseSlots=candidates.filter(row=>row.item.metrics[name].regression).map(row=>row.slot);
+        const nonAdverseSlots=candidates.filter(row=>!row.item.metrics[name].regression).map(row=>row.slot);
+        return adverseSlots.length&&nonAdverseSlots.length?
+          {metric:name,adverseSlots,nonAdverseSlots}:null;
+      }).filter(Boolean);
+      return {ordinal:index+1,
+        adverseByCandidate:candidates.filter(row=>row.adverseMetrics.length)
+          .map(row=>({slot:row.slot,metrics:row.adverseMetrics})),
+        disagreements,candidates};
+    });
+  }
+  function scenarioConflictExport(){
+    const rows=scenarioConflictRows();
+    return {
+      schema:"lightup.lab_candidate_scenario_conflicts.v1",
+      status:"REVIEW_ONLY",
+      candidate_slots_are_manual_selection_order:true,
+      source_identity_authenticated:false,
+      temporal_order_authenticated:false,
+      fictional_demo_only:demo,
+      case_count:rows.length,
+      cases_with_label_disagreement:rows.filter(row=>row.disagreements.length).length,
+      cases_with_any_source_adverse_label:rows.filter(row=>row.adverseByCandidate.length).length,
+      cases:rows.map(row=>({
+        case_ordinal:row.ordinal,
+        source_adverse_metrics_by_candidate:row.adverseByCandidate.map(item=>({
+          candidate_slot:item.slot,metrics:item.metrics
+        })),
+        conflicting_metric_labels:row.disagreements.map(item=>({
+          metric:item.metric,adverse_candidate_slots:item.adverseSlots,
+          non_adverse_candidate_slots:item.nonAdverseSlots
+        })),
+        case_has_source_label_disagreement:row.disagreements.length>0,
+        source_status:"REVIEW_ONLY",
+        source_identity_authenticated:false,
+        temporal_order_authenticated:false,
+        ...fixedFlags()
+      })),
+      ...fixedFlags()
+    };
+  }
+  function renderScenarioConflictExplorer(){
+    if(!reports.length)return;
+    const selector=$("conflictCandidate"),old=selector.value;
+    if(selector.options.length!==reports.length+1){
+      selector.innerHTML="";
+      const all=document.createElement("option");all.value="all";all.textContent="All candidates";selector.append(all);
+      reports.forEach((_,i)=>{const option=document.createElement("option");
+        option.value=String(i);option.textContent="Candidate "+(i+1);selector.append(option);});
+      selector.value=old==="all"||Number.isSafeInteger(Number(old))&&Number(old)>=0&&Number(old)<reports.length?old:"all";
+    }
+    const focus=selector.value==="all"?null:Number(selector.value);
+    const mode=$("conflictMode").value||"conflicts";
+    const allRows=scenarioConflictRows();
+    const shown=allRows.filter(row=>{
+      const focused=focus===null?null:row.candidates[focus];
+      const hasAdverse=focus===null?row.adverseByCandidate.length>0:focused.adverseMetrics.length>0;
+      const hasDisagreement=row.disagreements.some(item=>focus===null||
+        item.adverseSlots.includes(focus+1)||item.nonAdverseSlots.includes(focus+1));
+      if(mode==="all")return true;
+      if(mode==="disagreement")return hasDisagreement;
+      if(mode==="adverse")return hasAdverse;
+      return hasAdverse||hasDisagreement;
+    });
+    const adverseCases=allRows.filter(row=>row.adverseByCandidate.length).length;
+    const disagreementCases=allRows.filter(row=>row.disagreements.length).length;
+    $("conflictSummary").textContent=shown.length+" of "+allRows.length+" anonymous cases shown · "+
+      disagreementCases+" with cross-candidate source-label disagreements · "+adverseCases+
+      " with at least one source-adverse label. Candidate slot order is manual file-selection order, not verified chronology.";
+    if(!shown.length){
+      $("conflictTable").innerHTML="<p class='empty'>No cases match the selected view. This is not evidence of safety or remediation.</p>";
+      return;
+    }
+    $("conflictTable").innerHTML=table([
+      "Anonymous case","Source-adverse metrics by candidate","Metrics with disagreeing source labels","HUMAN interpretation"
+    ],shown.map(row=>{
+      const adverse=row.adverseByCandidate.length?
+        row.adverseByCandidate.map(item=>"Candidate "+item.slot+": "+item.metrics.map(nice).join(", ")).join(" · "):
+        "No source-adverse label reported by any candidate";
+      const disagreements=row.disagreements.length?
+        row.disagreements.map(item=>nice(item.metric)+" — adverse: Candidate "+item.adverseSlots.join(", ")+
+          "; not adverse: Candidate "+item.nonAdverseSlots.join(", ")).join(" · "):
+        "No cross-candidate label disagreement";
+      const note=row.disagreements.length?
+        "Source labels disagree; request original evidence and reconcile the classification.":
+        row.adverseByCandidate.length?
+          "Adverse labels are consistent across candidates for this case; review the underlying evidence.":
+          "No source-labelled regression appears here; absence is not proof of safety.";
+      return ["Lab case "+String(row.ordinal).padStart(2,"0"),adverse,disagreements,note];
+    }));
   }
   function renderCase(id){
     if(!reports.length)return;
@@ -624,7 +727,7 @@
   }
   function exportJSON(){
     if(!reports.length||!settings)return;
-    const out={schema:"lightup.lab_candidate_matrix_review.v5",
+    const out={schema:"lightup.lab_candidate_matrix_review.v6",
       posture:"INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
       status:"REVIEW_ONLY",source_identity_authenticated:false,
       temporal_order_authenticated:false,fictional_demo_only:demo,
@@ -634,8 +737,37 @@
       source_based_discussion_agenda:agendaCounts(),
       selected_pair_flag_crossover:currentPairChurn(),
       human_review_round_history:reviewRoundExport(),
+      scenario_level_conflict_review:scenarioConflictExport(),
       candidates:metricRows(),...fixedFlags()};
     download("lightup-candidate-aggregate-REVIEW-ONLY.json",JSON.stringify(out,null,2)+"\n","application/json");
+  }
+
+  function exportScenarioConflictsCSV(){
+    if(!reports.length||!settings)return;
+    const header=["case_ordinal","metric","adverse_candidate_slots","non_adverse_candidate_slots",
+      "source_adverse_metrics_by_candidate","case_disposition","fictional_demo_only","report_status",
+      "source_identity_authenticated","temporal_order_authenticated",
+      "authorized","consent_verified","dispatch_allowed","release_allowed"];
+    const csvCell=value=>{
+      const text=String(value);
+      return /[",\\r\\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text;
+    };
+    const rows=scenarioConflictRows().flatMap(row=>{
+      const adverse=row.adverseByCandidate.map(item=>
+        "Candidate "+item.slot+"="+item.metrics.join("|")).join("; ");
+      const items=row.disagreements.length?row.disagreements:[null];
+      return items.map(item=>{
+        const disposition=item?"SOURCE_LABEL_DISAGREEMENT":
+          row.adverseByCandidate.length?"ADVERSE_LABELS_NO_CROSS_CANDIDATE_DISAGREEMENT":"NO_SOURCE_ADVERSE_LABELS";
+        return [row.ordinal,item?item.metric:"",
+          item?item.adverseSlots.join("|"):"",item?item.nonAdverseSlots.join("|"):"",
+          adverse,disposition,demo?"true":"false","REVIEW_ONLY",
+          "false","false","false","false","false","false"];
+      });
+    });
+    download("lightup-candidate-scenario-conflicts-REVIEW-ONLY.csv",
+      [header,...rows].map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n","text/csv");
+    setStatus("Scenario review ledger exported locally. Candidate labels remain unverified; all authority flags are false.");
   }
   function exportCSV(){
     if(!reports.length||!settings)return;
@@ -738,6 +870,21 @@
       "<p>Case-level original source regression-flag counts only; no proven order, review, fix or safety.</p>"+
       table(["Original metric","Only first","Only second","Both","Neither"],
         crossover.metrics.map(r=>[nice(r.name),r.only_first,r.only_second,r.both,r.neither])):"";
+    const conflictData=scenarioConflictExport();
+    const conflictTable="<h2>Scenario-level source-label disagreement review</h2>"+
+      "<p>Anonymous case ordinals only. Different labels are a human reconciliation prompt, not proof that any candidate is correct.</p>"+
+      table(["Case","Source-adverse metrics by candidate","Disagreeing metric labels"],
+        conflictData.cases.map(row=>[
+          "Lab case "+String(row.case_ordinal).padStart(2,"0"),
+          row.source_adverse_metrics_by_candidate.length?
+            row.source_adverse_metrics_by_candidate.map(item=>"Candidate "+item.candidate_slot+": "+item.metrics.map(nice).join(", ")).join(" · "):
+            "No source-adverse labels reported",
+          row.conflicting_metric_labels.length?
+            row.conflicting_metric_labels.map(item=>nice(item.metric)+" — adverse: Candidate "+
+              item.adverse_candidate_slots.join(", ")+"; not adverse: Candidate "+
+              item.non_adverse_candidate_slots.join(", ")).join(" · "):
+            "No cross-candidate label disagreement"
+        ]));
     const metricTable=table(["Metric",...data.map(r=>"Candidate "+r.candidate_slot+" · total")],
       NAMES.map(n=>[nice(n),...data.map(r=>format(r.metrics[n].candidate_total))]));
     const pairNumericTable=crossover?
@@ -790,7 +937,7 @@
       "Dispatch allowed: false. Release allowed: false.</p>"+
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
-      advisory+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
+      advisory+conflictTable+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
       agendaTable+crossoverTable+pairNumericTable+reviewHistorySection+currentDiscussionSection+
       "<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
@@ -1302,6 +1449,7 @@
   for(const id of ["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost",
     "dimQuality","dimCoverage","dimRuntime","dimCost"])$(id).addEventListener("change",render);
   for(const id of ["pairA","pairB"])$(id).addEventListener("change",render);
+  for(const id of ["conflictCandidate","conflictMode"])$(id).addEventListener("change",renderScenarioConflictExplorer);
   $("caseSelect").addEventListener("change",e=>{if(!reports.length)return;
     const ids=[...reports[0].cases.keys()].sort(),i=Number(e.target.value);
     if(Number.isSafeInteger(i)&&i>=0&&i<ids.length){selectedCase=ids[i];renderCase(selectedCase);}
@@ -1314,6 +1462,7 @@
   $("exportHTML").addEventListener("click",exportHTML);
   $("exportCaseCSV").addEventListener("click",exportPrivateCaseCSV);
   $("exportPairCSV").addEventListener("click",exportSelectedPairCSV);
+  $("exportConflictsCSV").addEventListener("click",exportScenarioConflictsCSV);
   $("print").addEventListener("click",()=>{if(reports.length&&settings)window.print();});
   render();
 })();
