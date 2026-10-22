@@ -621,6 +621,7 @@
     return rows;
   }
   function renderMetricTransitions(){
+    syncTransitionDrilldownControls();
     const rows=metricTransitionRows();
     drawTable("metricTransitionTable",
       ["Previous manual slot","Current manual slot","Metric","Static review group","Scenarios",
@@ -641,6 +642,94 @@
       "Import at least two snapshots to summarize flag-state changes.";
     for(const id of ["metricTransitionCsv","metricTransitionJson","metricTransitionBrief"])
       $(id).disabled=!rows.length;
+    renderMetricTransitionCases();
+  }
+  function syncTransitionDrilldownControls(){
+    const metric=$("metricTransitionMetric"),oldMetric=metric.value;
+    metric.replaceChildren();
+    for(const name of METRICS){
+      const option=document.createElement("option");
+      option.value=name;option.textContent=name;metric.append(option);
+    }
+    metric.value=METRICS.includes(oldMetric)?oldMetric:METRICS[0];
+    const pair=$("metricTransitionPair"),oldPair=pair.value;
+    pair.replaceChildren();
+    for(let previous=1;previous<snapshots.length;previous++){
+      const option=document.createElement("option");
+      option.value=String(previous);
+      option.textContent="Slot "+String(previous).padStart(2,"0")+" → slot "+
+        String(previous+1).padStart(2,"0");
+      pair.append(option);
+    }
+    pair.value=Number(oldPair)>=1&&Number(oldPair)<snapshots.length?oldPair:"1";
+    const active=snapshots.length>=2;
+    metric.disabled=!active;pair.disabled=!active;
+    $("metricTransitionCaseFilter").disabled=!active;
+  }
+  function transitionDrilldownRows(){
+    if(snapshots.length<2||!scenarioIds.length)return [];
+    const metric=$("metricTransitionMetric").value;
+    const previousSlot=Number($("metricTransitionPair").value);
+    const previous=snapshots[previousSlot-1],current=snapshots[previousSlot];
+    if(!previous||!current||!METRICS.includes(metric))return [];
+    const filter=$("metricTransitionCaseFilter").value;
+    const rows=[];
+    scenarioIds.forEach((id,index)=>{
+      const before=previous.cases.get(id).metrics.get(metric);
+      const after=current.cases.get(id).metrics.get(metric);
+      const state=!before.regression&&after.regression?"clear_to_flagged":
+        before.regression&&!after.regression?"flagged_to_clear":
+        before.regression&&after.regression?"flagged_both":"clear_both";
+      const changed=state==="clear_to_flagged"||state==="flagged_to_clear";
+      if(filter==="changed"&&!changed)return;
+      if(filter!=="changed"&&filter!==state)return;
+      rows.push({id,ordinal:index+1,state,previousCandidate:before.candidate,
+        currentCandidate:after.candidate,previousDelta:before.delta,currentDelta:after.delta,
+        previousFlag:before.regression,currentFlag:after.regression,
+        previousStatus:previous.status,currentStatus:current.status});
+    });
+    return rows;
+  }
+  function renderMetricTransitionCases(){
+    const root=$("metricTransitionCases"),rows=transitionDrilldownRows();
+    root.replaceChildren();
+    if(snapshots.length<2){
+      $("metricTransitionCasesSummary").textContent="Import at least two snapshots to inspect the scenarios behind a flag-state transition.";
+      return;
+    }
+    $("metricTransitionCasesSummary").textContent=rows.length?
+      "Showing "+rows.length+" anonymous scenarios for "+$("metricTransitionMetric").value+
+      " · "+$("metricTransitionPair").selectedOptions[0].textContent+
+      " · "+$("metricTransitionCaseFilter").selectedOptions[0].textContent+
+      ". Original scenario IDs remain hidden. Opening a row changes only the local scenario selection.":
+      "No scenarios match this metric, manual-slot pair and flag-state category.";
+    const table=document.createElement("table"),head=document.createElement("thead"),header=document.createElement("tr");
+    for(const label of ["Anonymous scenario","Flag state","Previous candidate","Current candidate",
+      "Previous Δ","Current Δ","Previous source status","Current source status","Inspect"]){
+      const th=document.createElement("th");th.scope="col";th.textContent=label;header.append(th);
+    }
+    head.append(header);table.append(head);
+    const body=document.createElement("tbody");
+    for(const row of rows){
+      const tr=document.createElement("tr");
+      const values=["Scenario "+String(row.ordinal).padStart(2,"0"),
+        row.state==="clear_to_flagged"?"CLEAR → FLAGGED":
+          row.state==="flagged_to_clear"?"FLAGGED → CLEAR · NOT A VERIFIED FIX":
+          row.state==="flagged_both"?"FLAGGED IN BOTH SLOTS":"CLEAR IN BOTH SLOTS",
+        fmt(row.previousCandidate),fmt(row.currentCandidate),fmt(row.previousDelta),fmt(row.currentDelta),
+        row.previousStatus,row.currentStatus];
+      for(const value of values){const td=document.createElement("td");td.textContent=String(value);tr.append(td);}
+      const action=document.createElement("td"),button=document.createElement("button");
+      button.type="button";button.textContent="Open trajectory";
+      button.setAttribute("aria-label","Open anonymous scenario "+row.ordinal+" trajectory");
+      button.addEventListener("click",()=>{
+        selectedScenario=row.id;$("scenarioSelect").value=row.id;
+        renderScenarioDetail();renderNotePanel();renderNotePacketControls();
+        $("scenarioSelect").focus();
+      });
+      action.append(button);tr.append(action);body.append(tr);
+    }
+    table.append(body);root.append(table);
   }
   function metricTransitionPayload(){
     return {schema:"lightup.assessment_trends_flag_transition_matrix.v1",
@@ -1443,10 +1532,12 @@
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","metricDistribution","metricTrendSummary","metricTransitionTable","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","metricDistribution","metricTrendSummary","metricTransitionTable","metricTransitionCases","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
       $("metricDistributionSummary").textContent="Import snapshots to summarize numeric metric distributions.";
       $("metricTrendSummaryText").textContent="Import snapshots to summarize median shifts and source-flag prevalence.";
       $("metricTransitionSummary").textContent="Import at least two snapshots to summarize flag-state changes.";
+      $("metricTransitionCasesSummary").textContent="Import at least two snapshots to inspect the scenarios behind a flag-state transition.";
+      $("metricTransitionMetric").disabled=$("metricTransitionPair").disabled=$("metricTransitionCaseFilter").disabled=true;
       $("metricDistributionCsv").disabled=$("metricDistributionJson").disabled=$("metricDistributionBrief").disabled=true;
       $("metricTrendSummaryCsv").disabled=$("metricTrendSummaryJson").disabled=$("metricTrendSummaryBrief").disabled=true;
       $("metricTransitionCsv").disabled=$("metricTransitionJson").disabled=$("metricTransitionBrief").disabled=true;
@@ -2330,6 +2421,8 @@
   $("metricDistributionFlagFilter").addEventListener("change",renderMetricDistribution);
   $("metricTrendFlagFilter").addEventListener("change",renderMetricTrendSummary);
   $("metricTransitionFilter").addEventListener("change",renderMetricTransitions);
+  for(const id of ["metricTransitionMetric","metricTransitionPair","metricTransitionCaseFilter"])
+    $(id).addEventListener("change",renderMetricTransitionCases);
   $("metricTransitionCsv").addEventListener("click",()=>exportMetricTransitions("csv"));
   $("metricTransitionJson").addEventListener("click",()=>exportMetricTransitions("json"));
   $("metricTransitionBrief").addEventListener("click",()=>exportMetricTransitions("html"));

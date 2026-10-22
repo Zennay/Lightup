@@ -105,6 +105,27 @@
     <button id="metricTransitionJson" type="button" class="secondary" disabled>Export filtered flag transitions JSON</button>
     <button id="metricTransitionBrief" type="button" class="ghost" disabled>Export script-free printable transition brief</button>
   </div>
+  <h4>Inspect the scenarios behind a transition</h4>
+  <p>This local-only drilldown identifies which anonymous scenarios contribute to one metric's state change across an adjacent manual-slot pair. Choose a metric, slot pair and flag-state category, then open a scenario directly in the existing trajectory view. Scenario IDs remain private to the current tab; this drilldown has no export, network or authorization behavior.</p>
+  <div class="queue-controls">
+    <label>Metric to inspect
+      <select id="metricTransitionMetric" disabled><option>Import snapshots first</option></select>
+    </label>
+    <label>Adjacent manual-slot pair
+      <select id="metricTransitionPair" disabled><option>Import at least two snapshots</option></select>
+    </label>
+    <label>Flag-state category
+      <select id="metricTransitionCaseFilter" disabled>
+        <option value="changed">Flag state changed in either direction</option>
+        <option value="clear_to_flagged">Clear → flagged</option>
+        <option value="flagged_to_clear">Flagged → clear (not a verified fix)</option>
+        <option value="flagged_both">Flagged in both slots</option>
+        <option value="clear_both">Clear in both slots</option>
+      </select>
+    </label>
+  </div>
+  <p id="metricTransitionCasesSummary" class="message" role="status" aria-live="polite">Import at least two snapshots to inspect the scenarios behind a flag-state transition.</p>
+  <div id="metricTransitionCases" class="tablewrap" role="region" aria-label="Local anonymous scenario drilldown for one metric transition" tabindex="0"><p class="empty">No transition details yet.</p></div>
   <p class="footnote">Both distribution views are aggregate-only: no original scenario IDs, filenames, source hashes or HUMAN notes. All authority/verification flags stay false; manual slot numbers never assert chronology.</p>
   <p class="footnote">Exports contain fixed metric labels, manual slot numbers, aggregate numeric values and literal false authority fields only. They exclude original scenario IDs, filenames, uploaded source hashes and HUMAN notes. A static review group is a display aid, not a severity judgment.</p>
 </section>
