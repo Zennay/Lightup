@@ -299,3 +299,8 @@ small cohort, so the archive remains sensitive. Plan order is manual, and
 neither export mode authorizes retention changes, assessment, client contact,
 scanning, grants or release. The ZIP's entry modes are 0600; extract and store
 it only in owner-private storage.
+
+
+## Clear guard during asynchronous local admission
+
+The Clear action now refuses to run while a source-byte ingest, HUMAN receipt import/comparison, or encrypted-vault operation is active. Those operations read files asynchronously; clearing midway could otherwise be followed by a late ingest completion that appends the just-cleared source identities back into the workroom, or a stale comparison error/status replacing the clear state. The operator receives an explicit HOLD and can clear after the local operation completes. No partial clear occurs, no files are uploaded, and downloaded private files are never deleted by the workroom.
