@@ -680,3 +680,15 @@ follow-up questions and replies in a **sibling** folder, never beneath the
 counts-only portfolio. This prevents local relative links and accidental
 folder sharing from silently mixing confidential HUMAN notes into otherwise
 aggregate-only output. No files are moved or removed to repair a violation.
+
+### Counts-first preview before PRIVATE dossier publication
+
+**Console action 33** (or native
+`priority_inbox_continuity_docket.py --preview-only` without
+`--output-dir`) independently re-admits **all** original source, selection,
+complete inboxes and HUMAN returns with the same explicit
+`--filter` and optional `--human-ordinal` values. It computes how many
+original HUMAN rows would be included in a source-rich PRIVATE dossier and
+prints **only the selected row count**. No dossier, scratch export, preview
+HTML or file is published. This is a convenient no-write selection review,
+not a security, identity, consent or independent remediation verdict.

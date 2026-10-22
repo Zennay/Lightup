@@ -34,7 +34,9 @@ from priority_inbox_stage_brief_timeline import publish as publish_stage_priorit
 from priority_inbox_stage_brief_timeline_open import reopen as reopen_stage_priority_timeline
 from priority_inbox_portfolio import publish as publish_priority_portfolio
 from priority_inbox_portfolio_open import reopen as reopen_priority_portfolio
-from priority_inbox_continuity_docket import publish as publish_continuity_docket
+from priority_inbox_continuity_docket import (
+    build as preview_continuity_docket, publish as publish_continuity_docket,
+)
 from priority_inbox_continuity_docket_open import reopen as reopen_continuity_docket
 from priority_inbox_diff import compare as compare_priority_inbox
 from priority_inbox_diff_open import reopen as reopen_priority_inbox_diff
@@ -104,6 +106,8 @@ WORKFLOWS = {
            "2–8 complete original HUMAN inboxes; explicit attention/reopened/unanswered/all filter"),
     "32": ("Read-only reopen PRIVATE source-bound HUMAN continuity follow-up docket",
            "all original sources, HUMAN rounds, exact four private files and matching filter"),
+    "33": ("Preview matching PRIVATE HUMAN follow-up rows (no file published)",
+           "all complete original HUMAN rounds and explicit filter/ordinals; counts-only"),
 }
 
 
@@ -200,7 +204,7 @@ def run_workflow(choice: str) -> None:
         print("Original-source HUMAN priority rows checked: " + str(count) +
               "; NO verified remediation, recipient or consent")
         return
-    if choice in ("27", "28", "29", "30", "31", "32"):
+    if choice in ("27", "28", "29", "30", "31", "32", "33"):
         source = ask_path("EXISTING original lab source JSON")
         manifest = ask_path("EXISTING original briefing manifest")
         worksheet = ask_path("EXISTING original HUMAN worksheet")
@@ -273,6 +277,13 @@ def run_workflow(choice: str) -> None:
                                              ordinal_filter)) or
                 len(set(ordinal_filter)) != len(ordinal_filter)):
                 raise Hold("HOLD: repeated, noncanonical or out-of-bound ordinal")
+            if choice == "33":
+                count = preview_continuity_docket(
+                    *args, mode, ordinal_filter)[1]
+                print("NO FILE WRITTEN; " + str(count) +
+                      " original HUMAN rows would be included in a PRIVATE "
+                      "follow-up docket; no identity or authorization inferred")
+                return
             saved = ask_path("EXCLUSIVE NEW separate PRIVATE follow-up folder" if choice == "31" else
                              "EXISTING separate PRIVATE follow-up folder")
             print("CAUTION: unlike the aggregate portfolio this docket includes PRIVATE "
@@ -627,7 +638,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–30]: ").strip()
+        choice = input("PRIVATE workflow [0–33]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
@@ -645,8 +656,12 @@ def main() -> int:
         # Do not print local filesystem path names or exception messages.
         print("\nHOLD: Private local file access rejected", file=sys.stderr)
         return 3
-    print("\nEXISTING PRIVATE packet reopened; no new output" if choice in ("11", "13", "15", "18", "20", "22", "24", "26", "28", "30", "32") else
-          "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
+    if choice == "33":
+        print("\nPRIVATE HUMAN selection preview completed; no file published")
+    else:
+        print("\nEXISTING PRIVATE packet reopened; no new output" if choice in
+              ("11", "13", "15", "18", "20", "22", "24", "26", "28", "30", "32") else
+              "\nNEW PRIVATE output prepared; HUMAN REVIEW ONLY / NO target execution")
     return 2
 
 

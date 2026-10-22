@@ -285,8 +285,12 @@ def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Create a separately saved PRIVATE HUMAN source-bound follow-up docket")
     for key in ("source", "manifest", "worksheet", "selection-receipt",
-                "selection", "curated-packet", "output-dir"):
+                "selection", "curated-packet"):
         parser.add_argument("--" + key, required=True)
+    parser.add_argument("--output-dir",
+                        help="exclusive NEW PRIVATE folder (required unless --preview-only)")
+    parser.add_argument("--preview-only", action="store_true",
+                        help="readmit all original sources, count matches; create no file")
     parser.add_argument("--private-handoff", action="append", required=True)
     parser.add_argument("--round-inbox", action="append", required=True)
     parser.add_argument("--round-returned-csv", action="append", required=True)
@@ -305,17 +309,26 @@ def main() -> int:
                 len(a.round_returned_csv) == n * groups)
         returns = [a.round_returned_csv[i:i+groups]
                    for i in range(0, n * groups, groups)]
-        count = publish(a.source, a.manifest, a.worksheet,
-                        a.selection_receipt, a.selection, a.curated_packet,
-                        a.private_handoff, returns, a.round_inbox, a.filter,
-                        a.human_ordinal or [], a.output_dir)
+        args = (a.source, a.manifest, a.worksheet, a.selection_receipt,
+                a.selection, a.curated_packet, a.private_handoff, returns,
+                a.round_inbox, a.filter, a.human_ordinal or [])
+        if a.preview_only:
+            count = build(*args)[1]
+        else:
+            require(bool(a.output_dir))
+            count = publish(*args, a.output_dir)
     except (Hold, OSError, ValueError, KeyError, TypeError, UnicodeError,
             OverflowError, MemoryError, RecursionError, csv.Error):
         print("HOLD: original-source private follow-up refused; no output changed",
               file=sys.stderr)
         return 3
-    print("PRIVATE source-bound HUMAN follow-up docket created for " +
-          str(count) + " original rows; no release, task or authority.")
+    if a.preview_only:
+        print("READ-ONLY PRIVATE source-bound HUMAN follow-up preview: " +
+              str(count) + " original rows match; NO dossier created, "
+              "NO recipient verification or authority.")
+    else:
+        print("PRIVATE source-bound HUMAN follow-up docket created for " +
+              str(count) + " original rows; no release, task or authority.")
     return 2
 
 
