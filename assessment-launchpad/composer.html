@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-schcPW/h4+DysSIrZ6AVwEd2BTQaLJcYYTCqB59NYmo='; style-src 'sha256-kF8dZh9yHMP5XMAKKFRjc6omDgt1CC6BiZdU+V44fOk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-INoHIxX1JSm4YaPSLhRLcMNrZ6+K1suQTGXYxV5E1Zs='; style-src 'sha256-O3DeetiOr2PGN3ROfFkBTV3Nijv/R3hXW54fTkzzKgw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
-<style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}textarea,select{width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem}textarea{min-height:10rem;resize:vertical}label{font-weight:650}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
+<style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}.row-actions select{width:auto;max-width:9rem;padding:.45rem}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}textarea,select{width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem}textarea{min-height:10rem;resize:vertical}label{font-weight:650}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
 <body>
 <header class="hero">
@@ -18,7 +18,7 @@
 <main>
   <section class="panel">
     <h2>Endpoint manifest</h2>
-    <p>Add 1–16 distinct literal HTTP(S) URLs, append or replace from a private local manifest or pasted batch, and reorder endpoint slots. Import does not upload source bytes. Use display-only masking for screen reviews; exported manifests still include all private URL values. Browser checks are only a convenience; the native CLI re-runs the original URL validator and original <code>LabScenario</code> private/loopback scope policy before it creates the preview command.</p>
+    <p>Add 1–16 distinct literal HTTP(S) URLs, append or replace from a private local manifest or pasted batch, and move any endpoint directly to its desired ordinal slot (or use earlier/later arrows). Import does not upload source bytes. Use display-only masking for screen reviews; exported manifests still include all private URL values. Browser checks are only a convenience; the native CLI re-runs the original URL validator and original <code>LabScenario</code> private/loopback scope policy before it creates the preview command.</p>
     <div id="endpointList" aria-label="Local endpoint manifest"></div>
     <p class="count" id="endpointCount">0 / 16 slots</p>
     <p class="count" id="manifestSize" role="status" aria-live="polite">Estimated manifest size: 0 / 16384 bytes</p>
@@ -88,6 +88,21 @@
       const text = "Endpoint slot " + String(index + 1).padStart(2, "0");
       row.querySelector("label").firstChild.textContent = text;
       row.querySelector("input").setAttribute("aria-label", text);
+      const selector = row.querySelector(".slot-target");
+      if (selector) {
+        const slots = list.querySelectorAll(".endpoint").length;
+        if (selector.options.length !== slots) {
+          selector.replaceChildren();
+          for (let position = 1; position <= slots; position++) {
+            const option = document.createElement("option");
+            option.value = String(position);
+            option.textContent = "Slot " + String(position).padStart(2, "0");
+            selector.append(option);
+          }
+        }
+        selector.value = String(index + 1);
+        selector.setAttribute("aria-label", "Move " + text.toLowerCase() + " to position");
+      }
     });
   }
   function addRow(value = "") {
@@ -133,7 +148,24 @@
       if (row.nextElementSibling) list.insertBefore(row.nextElementSibling, row);
       refresh();
     });
-    buttons.append(up, down, remove);
+    const slotTarget = document.createElement("select");
+    slotTarget.className = "slot-target";
+    slotTarget.setAttribute("aria-label", "Move endpoint to position");
+    slotTarget.addEventListener("change", () => {
+      const position = Number(slotTarget.value);
+      const rows = [...list.querySelectorAll(".endpoint")];
+      if (!Number.isInteger(position) || position < 1 || position > rows.length) {
+        refresh();
+        return;
+      }
+      // Retain the actual input element, listeners and private value while moving the row.
+      const remainder = rows.filter(other => other !== row);
+      remainder.splice(position - 1, 0, row);
+      list.replaceChildren(...remainder);
+      refresh();
+      input.focus();
+    });
+    buttons.append(up, down, slotTarget, remove);
     label.append(input);
     row.append(label, buttons);
     list.append(row);
