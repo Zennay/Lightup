@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-lHPrsRwJJTIfLdjF0/qXgcy4mG8pfJH9V9aca8ILuoc='; style-src 'sha256-iC9m6PUh4qkSTPditHJnCQiSpG60mrT7lDScBNA86M4='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-RX1AJ8CCNrPeILfm0C5Z5/Z+qU5e4hqCBKRJrAz5iWk='; style-src 'sha256-iC9m6PUh4qkSTPditHJnCQiSpG60mrT7lDScBNA86M4='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
@@ -25,6 +25,7 @@
     <div class="controls">
       <button id="addEndpoint" type="button" class="secondary">Add endpoint</button>
       <button id="chooseManifest" type="button" class="secondary">Import existing manifest</button>
+      <button id="undoAppliedImport" type="button" class="secondary" disabled>Undo last applied import</button>
       <input id="manifestImport" type="file" accept=".txt,text/plain" hidden>
       <button id="downloadManifest" type="button" disabled>Download private text manifest</button>
     </div>
@@ -60,6 +61,7 @@
   let rowSequence = 0;
   let importSequence = 0;
   let pendingImport = null;
+  let undoAppliedImport = null;
   function values() {
     return [...list.querySelectorAll(".endpoint input")].map(input => input.value);
   }
@@ -152,6 +154,10 @@
     $("manifestSize").textContent = "Estimated manifest size: " + currentBytes +
       " / 16384 bytes" + (currentBytes > 16384 ? " · exceeds limit by " +
       (currentBytes - 16384) + " bytes" : " · " + (16384 - currentBytes) + " bytes remaining");
+    const currentValues = values();
+    $("undoAppliedImport").disabled = !undoAppliedImport ||
+      currentValues.length !== undoAppliedImport.applied.length ||
+      !currentValues.every((value, index) => value === undoAppliedImport.applied[index]);
     $("downloadManifest").disabled = !checked.entries;
     $("message").textContent = checked.error || "Ready to export a local text manifest. Native original-scope validation has not run.";
     if (pendingImport) renderImportPreview();
@@ -186,7 +192,7 @@
       return;
     }
     const current = values();
-    const proposed = pendingImport;
+    const proposed = pendingImport.entries;
     let unchanged = 0, changed = 0, reordered = 0, added = 0, removed = 0;
     for (let index = 0; index < Math.max(current.length, proposed.length); index++) {
       const hasCurrent = index < current.length;
@@ -210,7 +216,11 @@
         " · proposed: " + (hasProposed ? (newValue || "(blank)") : "(none)");
       rows.append(line);
     }
-    summary.textContent = "Current " + current.length + (current.length === 1 ? " slot" : " slots") +
+    summary.textContent = "Imported source " + pendingImport.sourceBytes + " bytes / " +
+      pendingImport.sourceLines + " lines; " + pendingImport.blankLines + " blank and " +
+      pendingImport.commentLines + " comment lines omitted; " + pendingImport.trimmedLines +
+      " endpoint lines trimmed. Canonical proposed output: " + manifestBytes(proposed) + " bytes. " +
+      "Current " + current.length + (current.length === 1 ? " slot" : " slots") +
       " / " + manifestBytes(current) + " bytes · proposed " + proposed.length +
       (proposed.length === 1 ? " slot" : " slots") + " / " + manifestBytes(proposed) + " bytes" +
       " · " + unchanged + " unchanged · " + reordered + " reordered slots · " +
@@ -223,7 +233,7 @@
   }
   function downloadProposedManifest() {
     if (!pendingImport) return;
-    const checked = validate(pendingImport);
+    const checked = validate(pendingImport.entries);
     if (!checked.entries) {
       $("message").textContent = checked.error;
       return;
@@ -248,15 +258,36 @@
   }
   function applyManifestImport() {
     if (!pendingImport) return;
-    const entries = pendingImport.slice();
+    const entries = pendingImport.entries.slice();
+    const metadata = pendingImport;
+    undoAppliedImport = {previous: values(), applied: entries.slice()};
     pendingImport = null;
     renderImportPreview();
     list.replaceChildren();
     rowSequence = 0;
     entries.forEach(item => addRow(item));
     refresh();
-    $("message").textContent = "Applied " + entries.length +
-      " imported local endpoint slots. Native original scope validation has NOT run.";
+    $("message").textContent = "Applied " + entries.length + " imported local endpoint slots from " +
+      metadata.sourceBytes + " source bytes; " + metadata.blankLines + " blank and " +
+      metadata.commentLines + " comment lines were omitted and " + metadata.trimmedLines +
+      " endpoint lines trimmed. Undo is available until you edit the imported manifest. Native original scope validation has NOT run.";
+  }
+  function restorePreviousImport() {
+    if (!undoAppliedImport) return;
+    const current = values();
+    if (current.length !== undoAppliedImport.applied.length ||
+        !current.every((value, index) => value === undoAppliedImport.applied[index])) {
+      $("message").textContent = "Undo refused because the editor changed after the import; current edits were preserved.";
+      refresh();
+      return;
+    }
+    const previous = undoAppliedImport.previous.slice();
+    undoAppliedImport = null;
+    list.replaceChildren();
+    rowSequence = 0;
+    previous.forEach(item => addRow(item));
+    refresh();
+    $("message").textContent = "Restored the editor contents from before the last applied import. No browser storage was used; native scope validation has NOT run.";
   }
   async function importManifest() {
     const ticket = ++importSequence;
@@ -272,13 +303,19 @@
         .decode(await file.arrayBuffer());
       if (ticket !== importSequence) return;
       if (text.startsWith("\uFEFF") || text.includes("\u0000")) throw Error("BOM or NUL");
-      const entries = text.split(/\r\n|\r|\n|\u0085|\u2028|\u2029/)
-        .filter(line => line.trim() && !line.trimStart().startsWith("#"))
-        .map(line => line.trim());
+      const sourceLines = text.split(/\r\n|\r|\n|\u0085|\u2028|\u2029/);
+      if (sourceLines.length > 1 && sourceLines[sourceLines.length - 1] === "" &&
+          /(?:\r\n|\r|\n|\u0085|\u2028|\u2029)$/.test(text)) sourceLines.pop();
+      const blankLines = sourceLines.filter(line => !line.trim()).length;
+      const commentLines = sourceLines.filter(line => line.trim() && line.trimStart().startsWith("#")).length;
+      const endpointLines = sourceLines.filter(line => line.trim() && !line.trimStart().startsWith("#"));
+      const trimmedLines = endpointLines.filter(line => line !== line.trim()).length;
+      const entries = endpointLines.map(line => line.trim());
       const checked = validate(entries);
       if (!checked.entries) throw Error(checked.error);
-      // Stage the complete import; current editor rows change only on explicit Apply.
-      pendingImport = entries.slice();
+      // Stage parsed entries and transparent normalization counts; current rows change only on Apply.
+      pendingImport = {entries: entries.slice(), sourceBytes: file.size, sourceLines: sourceLines.length,
+        blankLines, commentLines, trimmedLines};
       renderImportPreview();
       $("message").textContent = "Review the proposed import below. Current editor remains unchanged until Apply.";
     } catch (_) {
@@ -289,6 +326,7 @@
   }
   $("chooseManifest").addEventListener("click", () => $("manifestImport").click());
   $("manifestImport").addEventListener("change", importManifest);
+  $("undoAppliedImport").addEventListener("click", restorePreviousImport);
   $("addEndpoint").addEventListener("click", () => addRow(""));
   $("downloadManifest").addEventListener("click", downloadManifest);
   $("downloadProposedManifest").addEventListener("click", downloadProposedManifest);
