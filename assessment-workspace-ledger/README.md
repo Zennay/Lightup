@@ -65,6 +65,12 @@ software-only file hashes remain UNSIGNED, do NOT authenticate any original
 author/publisher, and do not prove independent security review, consent or
 permission. No scanner, active target, model, grants, network or deletion.
 
+The standalone editor source and generated `standalone.html` now include a
+portable SHA-256 fallback for local browsers without Web Crypto. The committed
+software ZIP is still the previous packaged snapshot and does not yet include
+that update; rebuild and inspect a fresh private ZIP before redistributing the
+bundle. No new ZIP or checksum is claimed in this change.
+
 Both features are also foreground console options 9 and 10.
 
 ## Ready-to-use actual offline HUMAN browser application
@@ -128,8 +134,11 @@ review is UNBOUND to the complete ledger, requires explicit human confirmation
 before importing as an UNTRUSTED draft, and requires a manual review of every
 proposed stage/owner/question. Export a NEW six-column source-bound CSV,
 then perform the normal PRIVATE ingress/finalization procedure. The legacy
-draft is NOT automatically approved or independently source-proven. If the
-offline browser cannot compute the ledger SHA-256, v2 export fails closed.
+draft is NOT automatically approved or independently source-proven. The standalone editor uses Web Crypto when available and a bundled portable
+SHA-256 implementation in local `file://` contexts where Web Crypto is absent.
+This digest is unsigned byte-binding only; it does not authenticate the producer.
+If both digest paths fail, v2 export fails closed. The native finalizer remains
+authoritative.
 
 ## Owner-private ingress from a browser Downloads HUMAN-review.csv
 
