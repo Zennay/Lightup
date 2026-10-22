@@ -36,7 +36,7 @@ python3 assessment-launchpad/role_return_reconcile.py \
   --output-dir ~/private-human-reconciliation
 ```
 
-The result consists of exactly four exclusive mode-0600 files:
+The result consists of exactly five exclusive mode-0600 files:
 
 * `lightup-lab-human-return-reconciliation-private.html`: offline,
   scriptless, SHA-256 CSP-pinned table of suggested role, original **local
@@ -45,8 +45,15 @@ The result consists of exactly four exclusive mode-0600 files:
   or authenticated reviewer identities. It must still be kept PRIVATE.
 * `lightup-lab-human-return-reconciliation-private.csv`: the same
   fixed-vocabulary ordinal/role/stage change matrix, no note text.
+* `lightup-lab-human-unreturned-private.csv`: each original local slot that
+  did NOT receive a selected-role return in the submitted collection, with
+  the last voluntary suggested HUMAN role and HUMAN stage; neither URLs nor
+  private note content are included. An earlier HUMAN_REVIEW stage is **not**
+  evidence that a human has returned anything. The PRIVATE HTML includes
+  a separate attention table for these unreturned slots.
 * `lightup-lab-human-return-reconciliation-counts.json`: source-free
-  overall change counts, suggested-role workload and explicitly negative
+  overall change counts, suggested-role workload, nonreturned slot totals
+  by fixed suggested role/stage, and explicitly negative
   identity/authorization/HUMAN-GO flags. Small cohorts may be identifiable.
 * `START-HERE-RECONCILIATION-PRIVATE.txt`: use and safety restrictions.
 

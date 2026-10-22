@@ -24,6 +24,7 @@ from role_return_receipt import admit_return
 FILES = (
     "lightup-lab-human-return-reconciliation-private.html",
     "lightup-lab-human-return-reconciliation-private.csv",
+    "lightup-lab-human-unreturned-private.csv",
     "lightup-lab-human-return-reconciliation-counts.json",
     "START-HERE-RECONCILIATION-PRIVATE.txt",
 )
@@ -89,6 +90,21 @@ def render_files(replies, rounds, endpoints):
             "pending_human_followup_count": pending,
         })
     records.sort(key=lambda entry: entry[0])
+    selected = {row[0] for row in records}
+    unreturned = [
+        (index, row["role"], row["stage"])
+        for index, row in enumerate(before, 1) if index not in selected
+    ]
+    # Even a HUMAN_REVIEW stage is not proof that anyone replied.
+    missing_sink = io.StringIO(newline="")
+    missing_csv = csv.writer(missing_sink, lineterminator="\n")
+    missing_csv.writerow(("original_slot", "latest_suggested_role",
+                          "last_self_reported_human_stage"))
+    missing_csv.writerows(unreturned)
+    missing_html = "".join(
+        "<tr>" + "".join("<td>" + escape(str(cell)) + "</td>" for cell in row)
+        + "</tr>" for row in unreturned
+    )
     sink = io.StringIO(newline="")
     writer = csv.writer(sink, lineterminator="\n")
     writer.writerow(("original_slot", "suggested_human_role", "prior_human_stage",
@@ -106,7 +122,13 @@ def render_files(replies, rounds, endpoints):
         "operator_ordered_round_count": len(rounds),
         "return_packet_count": len(replies),
         "selected_original_slot_count": len(records),
-        "nonselected_original_slot_count": len(endpoints) - len(records),
+        "nonselected_original_slot_count": len(unreturned),
+        "nonreturned_last_self_reported_stages": {
+            key: sum(item[2] == key for item in unreturned) for key in STAGES
+        },
+        "nonreturned_last_suggested_roles": {
+            key: sum(item[1] == key for item in unreturned) for key in ROLES
+        },
         "changed_human_stage_count": sum(row[4] == "YES" for row in records),
         "changed_private_note_count": sum(row[5] == "YES" for row in records),
         "role_packets": counts,
@@ -137,6 +159,14 @@ def render_files(replies, rounds, endpoints):
         "<tr><th>Original slot</th><th>Suggested role</th><th>Prior HUMAN stage</th>"
         "<th>Proposed HUMAN stage</th><th>Stage changed</th><th>Note changed</th>"
         "</tr></thead><tbody>" + table + "</tbody></table></section>"
+        "<section><h2>HUMAN slots WITHOUT a returned role packet</h2>"
+        "<p>" + str(len(unreturned)) + " original source slots have NO locally "
+        "admitted selected-role return in this collection. A prior HUMAN_REVIEW "
+        "stage does not mean a reviewer responded. Suggested roles are unverified "
+        "and never authorize an assessment.</p>"
+        "<table><thead><tr><th>Original slot</th><th>Last suggested HUMAN role</th>"
+        "<th>Last self-reported HUMAN stage</th></tr></thead><tbody>" +
+        missing_html + "</tbody></table></section>"
         "<p>Only exact source-bound local HUMAN self-reports were combined; "
         "this is not recipient authentication, remediation proof, scope approval, "
         "client or operator consent, action-time revocation, a scan permit "
@@ -148,7 +178,9 @@ def render_files(replies, rounds, endpoints):
         "PLAN/LAB ONLY · REVIEW_ONLY · DRAFT/HOLD · NO AUTHORIZATION\n"
         "This is an UNSIGNED local source-bound HUMAN self-report summary.\n"
         "Every source packet was re-admitted against the exact original source.\n"
-        "The original slot-by-role CSV does NOT contain endpoint URLs or note text.\n"
+        "Both original-ordinal CSV files omit endpoint URLs and private note text.\n"
+        "The UNRETURNED CSV lists local original slots not selected by any return.\n"
+        "An older HUMAN stage, including HUMAN_REVIEW, never proves response.\n"
         "Small cohorts, roles and ordinal combinations may remain identifying.\n"
         "Counts-only JSON provides no real proof of review, consent or safety.\n"
         "Use the original private role returns with advance.py --role-return-dir\n"
@@ -157,7 +189,9 @@ def render_files(replies, rounds, endpoints):
     ).encode("utf-8")
     json_bytes = (json.dumps(summary, ensure_ascii=False, sort_keys=True,
                              separators=(",", ":")) + "\n").encode("utf-8")
-    return dict(zip(FILES, (html, sink.getvalue().encode("utf-8"), json_bytes, guide)))
+    return dict(zip(FILES, (
+        html, sink.getvalue().encode("utf-8"),
+        missing_sink.getvalue().encode("utf-8"), json_bytes, guide)))
 
 
 def main(argv=None):
