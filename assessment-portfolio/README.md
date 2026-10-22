@@ -203,6 +203,29 @@ artifact is bounded to 1 MiB. Focused workrooms generate explorer/calendar
 rows from **only the selected HUMAN rows**, and the counts-only exports
 still identify the chosen explicit view filter.
 
+## A single PRIVATE local HUMAN start screen
+
+Whenever the operator explicitly requests a `--private-human-workbook` or
+supplies `--human-responses`, the packet also includes
+`assessment-portfolio-private-HUMAN-home.html`, a **scriptless,
+source-reconstructed, CSP-SHA256-pinned local navigation screen**. It links
+only the exact original and optional PRIVATE packet artifacts that were
+actually created: original agenda view, routing CSV, counts-only source
+summaries, interactive exploration, tentative calendar, HUMAN worksheet,
+later PRIVATE HUMAN status-by-role return, and optionally the two-round
+HUMAN change desk. The links are restricted to a fixed in-repository
+filename vocabulary, relative to the existing owner-private 0700 folder.
+
+Open this PRIVATE home directly from disk. It never calls a service, creates
+a grant, forwards files, dispatches a review or claims production consent.
+Original client inputs remain outside this directory. There are no
+authenticated recipients or real deadlines in this menu. Packet publication
+and read-only `--verify-output-dir` include the home page's exact bytes,
+so an unexpected/missing private navigation target fails the original
+canonical inventory gate. Original four-file-only portfolio runs still
+create precisely the same four files as before; the home is **opt-in
+through the HUMAN workflow**, not an unsolicited artifact.
+
 ## Complete PRIVATE HUMAN worksheet round trip (opt-in)
 
 The original cross-agenda planning report is intentionally **not** an
@@ -314,8 +337,8 @@ python3 assessment-portfolio/portfolio.py \
 ```
 
 The output includes all canonical original four portfolio outputs, the
-three PRIVATE HUMAN return artifacts for the later-supplied round, and
-two additional owner-private files:
+three PRIVATE HUMAN return artifacts for the later-supplied round, its
+scriptless PRIVATE HUMAN navigation home, and two additional owner-private files:
 `assessment-portfolio-private-HUMAN-delta.html` and
 `assessment-portfolio-private-HUMAN-delta.json`. They present only
 **source ordinals**, changes in HUMAN-only status, changes in suggested role,
