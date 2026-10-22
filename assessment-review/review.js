@@ -375,8 +375,20 @@
       const tr = child(body, "tr");
       [label(i), priority(c), c.status, c.route, stageText(c.stage),
         c.due || "-", c.regressions.join(", ") || "None"].forEach(x => child(tr, "td", x));
+      const evidenceRow = child(body, "tr", undefined, "print-evidence-row");
+      const evidenceCell = child(evidenceRow, "td");
+      evidenceCell.colSpan = 7;
+      const evidence = c.changes.filter(m => c.regressions.includes(m.name)).map(m =>
+        nice(m.name) + ": baseline " + fmt(m.baseline) + " → candidate " + fmt(m.candidate) +
+        " (Δ " + (m.delta >= 0 ? "+" : "") + fmt(m.delta) + ")"
+      );
+      child(evidenceCell, "strong", "Metric evidence: ");
+      child(evidenceCell, "span", evidence.join(" · ") || "No source-flagged metric regressions.");
+      child(evidenceCell, "br");
+      child(evidenceCell, "strong", "Suggested next HUMAN action: ");
+      child(evidenceCell, "span", nextHumanAction(c));
     });
-    child(box, "p", "Only cases matching the filters above are included. This is an unsigned HUMAN planning view, not evidence of remediation, identity, permission or release.", "print-note");
+    child(box, "p", "Only cases matching the filters above are included. Numeric values are source-reported, unverified observations. This is an unsigned HUMAN planning view, not evidence of remediation, identity, permission or release.", "print-note");
   }
 
   // Match source scenario identities internally; never export them.
