@@ -235,7 +235,8 @@ def main(argv=None):
             os.close(fd)
         print("PRIVATE_HUMAN_SELECTED_ACTIONS_" +
               ("REOPENED" if args.verify_output_dir else "CREATED") +
-              " — REVIEW_ONLY; NO AUTHORITY")
+              " — " + str(len(source[5])) + "/" + str(source[6]) +
+              " original slots selected; REVIEW_ONLY; NO AUTHORITY")
         return 0
     except (Hold, OSError, ValueError, TypeError, UnicodeError, csv.Error, OverflowError):
         print("PRIVATE_HUMAN_SELECTED_ACTIONS_HOLD — source or selection rejected",
