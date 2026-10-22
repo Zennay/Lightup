@@ -121,13 +121,13 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                      filter_mode == "attention" and attention or
                      filter_mode == "reopened" and reopened or
                      filter_mode == "unanswered" and unanswered)
-        stages_count[stages[-1]] += 1
         if ordinal_selection and ordinal not in ordinal_selection:
             continue
         if ordinal_selection and not qualifies:
             raise Hold("HOLD: explicit original HUMAN ordinal is outside selected filter")
         if not qualifies:
             continue
+        stages_count[stages[-1]] += 1
         bucket = (
             "reopened_after_claim" if reopened else
             "no_response_all_rounds" if unanswered else
@@ -212,8 +212,8 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "chronology are NOT verified. This is an operator-created local print "
         "dossier, not an assignment, recipient handoff, scan or approval.</p>"
         "<p><strong>Explicit HUMAN source-detail disclosure filter:</strong> " +
-        h(filter_mode) + " · " + str(len(data_rows)) + " selected original "
-        "rows from " + str(len(selected)) + " original HUMAN selections, "
+        h(filter_mode) + " · " + str(len(data_rows)) + " included original "
+        "HUMAN rows, "
         "across " + str(rounds) + " manually ordered complete HUMAN rounds. " +
         ("Explicit original ordinal selection: " +
          ", ".join(str(i) for i in sorted(ordinal_selection)) + "."
@@ -239,20 +239,19 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
          "<p>Nothing is verified or resolved as a result.</p></section>"))
     report = private_frame("PRIVATE HUMAN original-source follow-up", body)
     counts = {
-        "schema": "lightup.private_human_continuity_docket.v2",
+        "schema": "lightup.private_human_continuity_docket.v3",
         "status": "REVIEW_ONLY", "operator_filter": filter_mode,
-        "original_selected_rows": len(selected),
         "explicit_operator_ordinal_filter_applied": bool(ordinal_selection),
         "docket_rows": len(data_rows),
         "ordered_complete_rounds": rounds,
-        "reported_latest_stage_counts_all_original_rows": dict(sorted(stages_count.items())),
+        "reported_latest_stage_counts_included_rows": dict(sorted(stages_count.items())),
         "docket_unverified_summary": dict(sorted(selected_counts.items())),
         "round_order_authenticated": False,
         **UNTRUSTED_FLAGS,
     }
     counts_raw = json_bytes(counts)
     receipt = {
-        "schema": "lightup.private_human_continuity_docket_receipt.v2",
+        "schema": "lightup.private_human_continuity_docket_receipt.v3",
         "status": "REVIEW_ONLY", "operator_filter": filter_mode,
         "original_source_sha256_unsigned": source_sha,
         "original_human_worksheet_sha256_unsigned": worksheet_sha,

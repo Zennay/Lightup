@@ -692,3 +692,16 @@ original HUMAN rows would be included in a source-rich PRIVATE dossier and
 prints **only the selected row count**. No dossier, scratch export, preview
 HTML or file is published. This is a convenient no-write selection review,
 not a security, identity, consent or independent remediation verdict.
+
+
+### Subset-private HUMAN stage counts (v3)
+
+The separate PRIVATE follow-up dossier now counts HUMAN stage categories
+**only for records actually included after both operator filter AND explicit
+original ordinal selection**. The counts JSON and printed HTML no longer
+reveal totals/stage distributions for other unselected original HUMAN rows.
+The read-only reopen regenerates the exact same v3 source-bound bytes. The
+original source/selection hashes necessarily remain in its owner-private,
+UNSIGNED custody receipt and are not recipient or disclosure authorization.
+Earlier v1/v2 PRIVATE follow-up folders remain unmodified and will HOLD
+under v3 reopen rather than silently being rewritten.
