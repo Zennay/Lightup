@@ -41,12 +41,12 @@
 </section>
 <section class="panel">
   <div class="section-head"><h2>03 / Metric persistence heatmap</h2><span class="tag">Source-reported flags</span></div>
-  <p>Cells show how many anonymous scenarios carry a source-reported regression flag for that metric in each manually selected snapshot. Review-priority grouping is a static display aid, not an independently assessed security severity. “Persistent” means the same scenario/metric is flagged in at least two consecutive slots.</p>
+  <p>Cells show how many anonymous scenarios carry a source-reported regression flag for that metric in each manually selected snapshot. Review-priority grouping is a static display aid, not an independently assessed security severity. “Persistent” means the same scenario/metric is flagged in at least two consecutive slots. “Reappearing” means a flag returns after at least one unflagged manual slot; it does not establish a fix or recurrence in authenticated time.</p>
   <div id="metricHeatmap" class="tablewrap"><p class="empty">No admitted metrics yet.</p></div>
 </section>
 <section class="panel">
   <div class="section-head"><h2>04 / Anonymous scenario trajectories</h2><span class="tag">IDs hidden</span></div>
-  <p>Each scenario has a stable local ordinal. The workspace validates the original IDs privately to confirm exact membership, but never displays or exports them.</p>
+  <p>Each scenario has a stable local ordinal. The workspace validates the original IDs privately to confirm exact membership, but never displays or exports them. The trajectory table now also shows the first/last flagged manual slot, persistent metrics, metrics whose flags reappeared after a gap, total reappearance events and the longest consecutive flag streak. These are source-reported summaries over manually selected slots, not a verified remediation or chronology verdict.</p>
   <label>Inspect anonymous scenario
     <select id="scenarioSelect" disabled><option>Import snapshots first</option></select>
   </label>
