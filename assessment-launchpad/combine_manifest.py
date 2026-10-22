@@ -9,7 +9,7 @@ import os
 from types import SimpleNamespace
 
 import launchpad
-from source_board import render_board
+from source_board import render_board, slot_map_csv
 
 from launchpad import (
     Hold, MAX_ENDPOINTS, MAX_MANIFEST_BYTES, open_output_directory,
@@ -20,7 +20,8 @@ from launchpad import (
 MANIFEST = "lightup-lab-targets.txt"
 SUMMARY = "lightup-manifest-combine-private.json"
 BOARD = "lightup-manifest-source-board-private.html"
-FILES = {MANIFEST: MAX_MANIFEST_BYTES, SUMMARY: 4096, BOARD: 16384}
+SLOT_MAP = "lightup-manifest-source-slots-private.csv"
+FILES = {MANIFEST: MAX_MANIFEST_BYTES, SUMMARY: 4096, BOARD: 16384, SLOT_MAP: 16384}
 MAX_SOURCES = 8
 
 
@@ -107,6 +108,7 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
     artifacts = {MANIFEST:canonical, SUMMARY:receipt_bytes}
     if len(opened) > 2 or omissions:
         artifacts[BOARD] = render_board(receipt)
+        artifacts[SLOT_MAP] = slot_map_csv(receipt)
     return originals, artifacts, counts
 
 

@@ -55,3 +55,22 @@ def render_board(receipt):
             " grant, dispatch, model, target interaction or HUMAN GO is asserted."
             "</small></p></body></html>")
     return html.encode("utf-8")
+
+
+def slot_map_csv(receipt):
+    """Fixed-vocabulary source-local -> resulting ordinal mapping, no private URL data."""
+    omitted = set(receipt.get("omitted_source_ordinals", ()))
+    output = ["source_ordinal,source_slot,result_slot,selection,review_state"]
+    position = 1
+    for row in receipt["sources"]:
+        ordinal = row["ordinal"]
+        included = ordinal not in omitted and (receipt["mode"] == "append" or ordinal > 1)
+        for source_slot in range(1, row["endpoints"] + 1):
+            result_slot = str(position) if included else ""
+            output.append(",".join((str(ordinal), str(source_slot), result_slot,
+                                    "RETAINED" if included else "DISCARDED", "REVIEW_ONLY")))
+            if included:
+                position += 1
+    if position - 1 != receipt["counts"]["result_endpoints"]:
+        raise ValueError("declared result count and slot map differ")
+    return ("\n".join(output) + "\n").encode("ascii")
