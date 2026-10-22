@@ -202,8 +202,24 @@
     const better=dims.some(([_,key,dir])=>dir*a[key]>dir*b[key]);
     return atLeast&&better;
   }
-  function renderMetricBoard(stats){
-    const shared=stats[0];
+  function paretoSummary(){
+    const dims=dimensions().map(([,key])=>key);
+    if(!dims.length)return {schema:"lightup.lab_candidate_pareto_summary.v1",status:"NOT_COMPUTED",
+      selected_dimensions:[],candidates:[],disclaimer:"No informational dimensions were selected.",
+      source_identity_authenticated:false,...fixedFlags()};
+    const stats=reports.map(aggregates);
+    return {schema:"lightup.lab_candidate_pareto_summary.v1",status:"REVIEW_ONLY",
+      selected_dimensions:dims,
+      disclaimer:"Descriptive Pareto dominance over selected unverified lab metrics only. Scope, policy and adverse flags are separate and cannot be traded away. No safety, permission or release verdict.",
+      candidates:stats.map((stat,i)=>{
+        const dominatedBy=stats.map((other,j)=>j!==i&&dominates(other,stat,dimensions())?j+1:null).filter(Boolean);
+        return {candidate_slot:i+1,position:dominatedBy.length?"NUMERICALLY_DOMINATED":"NOT_NUMERICALLY_DOMINATED",
+          dominated_by_candidate_slots:dominatedBy,source_adverse_case_count:stat.affected,
+          scope_flags:stat.scope,policy_flags:stat.policy,status:"REVIEW_ONLY",
+          source_identity_authenticated:false,...fixedFlags()};
+      }),source_identity_authenticated:false,...fixedFlags()};
+  }
+  function renderMetricBoard(stats){    const shared=stats[0];
     $("metricBoard").innerHTML=table(["Original metric","Common baseline aggregate",
       ...stats.map((_,i)=>"Candidate "+(i+1)+" · total / adverse cases")],
       NAMES.map(n=>[nice(n),format(shared.total[n].baseline),
@@ -755,6 +771,7 @@
       dimensions:dimensions().map(x=>x[1]),review_thresholds:settings,
       human_discussion_summary:discussionSummary(),
       source_based_discussion_agenda:agendaCounts(),
+      pareto_tradeoff_summary:paretoSummary(),
       selected_pair_flag_crossover:currentPairChurn(),
       human_review_round_history:reviewRoundExport(),
       scenario_level_conflict_review:scenarioConflictExport(),
@@ -791,14 +808,19 @@
   }
   function exportCSV(){
     if(!reports.length||!settings)return;
+    const pareto=paretoSummary(),paretoBySlot=new Map(pareto.candidates.map(row=>[row.candidate_slot,row]));
     const head=["candidate_slot","source_status","regressed_cases","metric_regressions",
       "threshold_discussions","scope_flags","policy_flags","fictional_demo_only","report_status",
       "private_discussions_documented","private_discussions_in_progress",
-      ...NAMES.map(n=>n+"_total"),"authorized","consent_verified","dispatch_allowed","release_allowed"];
+      ...NAMES.map(n=>n+"_total"),"pareto_position","dominated_by_candidate_slots","pareto_dimensions",
+      "authorized","consent_verified","dispatch_allowed","release_allowed"];
     const rows=metricRows().map(r=>[r.candidate_slot,r.source_status,r.regressed_cases,
       r.metric_regressions,r.threshold_discussions,r.scope_flags,r.policy_flags,
       demo?"true":"false","REVIEW_ONLY",discussionSummary().stages.documented,
-      discussionSummary().stages.in_discussion,...NAMES.map(n=>r.metrics[n].candidate_total),"false","false","false","false"]);
+      discussionSummary().stages.in_discussion,...NAMES.map(n=>r.metrics[n].candidate_total),
+      paretoBySlot.get(r.candidate_slot)?.position||"NOT_COMPUTED",
+      (paretoBySlot.get(r.candidate_slot)?.dominated_by_candidate_slots||[]).join("|"),
+      pareto.selected_dimensions.join("|"),"false","false","false","false"]);
     download("lightup-candidate-aggregate-REVIEW-ONLY.csv",
       head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
   }
@@ -891,6 +913,16 @@
       table(["Original metric","Only first","Only second","Both","Neither"],
         crossover.metrics.map(r=>[nice(r.name),r.only_first,r.only_second,r.both,r.neither])):"";
     const conflictData=scenarioConflictExport();
+    const pareto=paretoSummary();
+    const paretoTable="<h2>Illustrative Pareto tradeoff summary</h2>"+
+      "<p>Selected informational dimensions: "+(pareto.selected_dimensions.join(", ")||"none")+"; status: "+pareto.status+". "+
+      "Dominance is descriptive only. Scope, policy and adverse source flags remain separate and cannot be canceled by efficiency gains.</p>"+
+      (pareto.candidates.length?table(["Candidate","Descriptive position","Dominated by candidate slots",
+        "Source-adverse cases","Scope flags","Policy flags"],pareto.candidates.map(row=>[
+          "Candidate "+row.candidate_slot,row.position,
+          row.dominated_by_candidate_slots.length?row.dominated_by_candidate_slots.join(", "):"None reported",
+          row.source_adverse_case_count,row.scope_flags,row.policy_flags
+        ])):"<p>No Pareto position computed. Select one or more informational dimensions in the app first.</p>");
     const conflictMetricTable="<h2>Metric-level disagreement summary</h2>"+
       "<p>Counts cover all imported anonymous cases and are independent of the on-screen filters.</p>"+
       table(["Metric","Cases with any source-adverse label","Cases with cross-candidate label disagreement",
@@ -966,7 +998,7 @@
       "Dispatch allowed: false. Release allowed: false.</p>"+
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
-      advisory+conflictMetricTable+conflictTable+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
+      advisory+paretoTable+conflictMetricTable+conflictTable+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
       agendaTable+crossoverTable+pairNumericTable+reviewHistorySection+currentDiscussionSection+
       "<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
