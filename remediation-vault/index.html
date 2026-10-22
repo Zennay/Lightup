@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="@@CSP@@">
+<title>LightUp | Private Remediation Handoff Vault</title><style>@@STYLE@@</style></head>
+<body><header class="shell"><div class="eyebrow">LIGHTUP / PRIVATE WORKSPACE <span>INCUBATE · M3/M7</span></div>
+<h1>Remediation <em>Handoff Vault</em></h1>
+<p class="lede">Encrypt original human coordination exports into one portable file. Unlock later, entirely in this browser. No account, upload, browser storage or connection to a target.</p>
+<div class="flags"><span>● OFFLINE ONLY</span><span>◉ AES-256-GCM</span><span>◌ HUMAN REVIEW</span><span>✕ NO EXECUTION AUTHORITY</span></div></header>
+<main class="shell">
+<section class="warning"><strong>PRIVATE HUMAN TRANSFER — NOT PERMISSION.</strong> Files, their source, recipient and exact client engagement must already be independently authenticated and authorized. Vault integrity does not validate findings, consent, fixes, retest decisions or scope. Do not send through an unapproved channel. Downloaded files remain sensitive.</section>
+<div class="grid">
+<section class="panel" aria-labelledby="createTitle"><div class="panel-head"><span class="step">01</span><div><div class="tag">PACK / ENCRYPT</div><h2 id="createTitle">Prepare private handoff</h2></div></div>
+<label for="files">Original PRIVATE coordination exports</label>
+<input id="files" type="file" multiple accept=".json,.csv,.md,.txt">
+<div class="helper">1–8 existing files, max 2 MiB each and 6 MiB total. Original bytes retained; no finding, owner or authority status is inferred.</div>
+<div id="filelist" class="filelist" aria-live="polite"></div>
+<label for="label">Private handoff label (inside encryption)</label><input id="label" maxlength="100" placeholder="Optional human reference, not an authority ID" autocomplete="off">
+<label for="secret">Private passphrase</label><input id="secret" type="password" minlength="12" maxlength="256" autocomplete="new-password" placeholder="12+ characters; share separately">
+<div class="helper">PBKDF2-SHA256 · 310,000 iterations · unique 16-byte salt; authenticated AES-256-GCM with a unique 12-byte nonce. Losing the passphrase makes this packet inaccessible.</div>
+<label class="confirm"><input type="checkbox" id="ack"><span>I have independently checked the original client, exact engagement, intended recipient and permitted private channel. This is not a grant or permission to act.</span></label>
+<button id="pack" class="primary" type="button">Encrypt &amp; download .vault.json <span>↗</span></button>
+<div class="receipt">
+<div class="tag">OPTIONAL CIPHERTEXT TRANSFER RECEIPT</div>
+<p class="helper">Download the SHA-256 and size of the already encrypted file, with no source names, labels or passwords. This UNSIGNED receipt helps compare exact transferred ciphertext bytes, not the sender's identity or consent.</p>
+<div class="helper" id="receiptDigest">No encrypted packet prepared.</div>
+<button id="receiptDownload" class="secondary" type="button" disabled>Download unsigned fingerprint receipt</button>
+</div>
+</section>
+<section class="panel" aria-labelledby="restoreTitle"><div class="panel-head"><span class="step">02</span><div><div class="tag">UNLOCK / RESTORE</div><h2 id="restoreTitle">Reopen private handoff</h2></div></div>
+<label for="vaultfile">Local encrypted vault file</label>
+<input id="vaultfile" type="file" accept=".json">
+<div class="helper">Only canonical version 1 LightUp encrypted packets can be unlocked. Missing, modified or unsupported packets are refused without partial downloads.</div>
+<label for="receiptfile">Optional separate unsigned transfer receipt (.receipt.json)</label>
+<input id="receiptfile" type="file" accept=".json">
+<p id="receiptVerify" class="helper">No receipt selected.</p>
+<label for="unlock">Passphrase received through a separate channel</label><input id="unlock" type="password" minlength="12" maxlength="256" autocomplete="off" placeholder="Enter private passphrase">
+<button id="restore" class="primary" type="button">Unlock &amp; inspect manifest <span>↘</span></button>
+<div class="receipt"><span class="tag">RECOVERED LOCALLY</span><p id="summary">Nothing unlocked.</p><p id="vaultDetails" class="helper"></p>
+<p class="helper">Use each checkbox to select the minimum original files for your next private encrypted handoff. Manual plaintext download buttons are separate and optional.</p><div id="restored" class="filelist" aria-live="polite"></div>
+<button id="copy" class="secondary" type="button">Copy anonymous count only</button>
+<div class="rekey">
+<div class="tag">RE-ENCRYPT RECOVERED PACKET</div>
+<p class="helper">Create a fresh, independent encrypted packet without writing recovered plaintext to disk. This cannot revoke previously shared vault copies.</p>
+<label for="rekeysecret">New private passphrase</label><input id="rekeysecret" type="password" minlength="12" maxlength="256" autocomplete="new-password" placeholder="New 12+ character passphrase">
+<label class="confirm"><input type="checkbox" id="rekeyack"><span>I independently reconfirmed recipient, exact engagement and private transfer channel for this new packet.</span></label>
+<button id="rekey" class="primary" type="button">Re-encrypt unlocked files ↗</button>
+</div></div>
+</section></div>
+<section class="panel compare-panel" aria-labelledby="compareTitle">
+<div class="panel-head"><span class="step">03</span><div><div class="tag">LOCAL SOURCE REVISION VIEW</div><h2 id="compareTitle">Compare two private handoffs</h2></div></div>
+<p class="helper">First unlock the baseline vault in step 02. Then choose a second separately received encrypted vault (possibly a different passphrase). Classify original file bytes as unchanged, changed, added or absent. No contents are sent anywhere; an absent file never proves a finding was fixed.</p>
+<div class="compare-controls">
+<div><label for="comparefile">Second encrypted PRIVATE .vault.json</label><input type="file" id="comparefile" accept=".json"></div>
+<div><label for="comparepass">Second private passphrase</label><input type="password" id="comparepass" minlength="12" maxlength="256" autocomplete="off"></div></div>
+<label class="confirm"><input type="checkbox" id="compareack"><span>I separately verified both packets concern the identical real client and exact engagement. Their contents are untrusted human artifacts, not authoritative security status.</span></label>
+<button class="primary" id="compare" type="button">Compare original file versions locally ↗</button>
+<div class="receipt"><span class="tag">PRIVATE COMPARISON</span><p id="compareStats">No private comparison loaded.</p><div id="compareRows" class="filelist" aria-live="polite"></div>
+<button id="compareExport" type="button" class="secondary" disabled>Download anonymous counts only</button>
+<label class="confirm"><input id="comparePrivateAck" type="checkbox"><span>I have separately verified the exact recipient, client, engagement and private channel for this confidential file-level comparison. File hashes or names are NOT evidence of permission or repaired findings.</span></label>
+<button id="comparePrivateExport" type="button" class="secondary" disabled>Download PRIVATE source-bound file-change index</button>
+</div>
+</section>
+<div class="footer-actions"><div><span class="tag">SESSION CONTROL</span><p>All selected and recovered bytes remain only in current browser memory until you deliberately save them. This application uses no localStorage, cookies, IndexedDB or network access.</p></div><button id="clear" class="secondary" type="button">Clear private session</button></div>
+<p role="status" id="status" aria-live="polite" class="status">Ready. No private material selected.</p>
+<section class="footnote"><div><strong>What's protected</strong><p>Content, original filenames and optional human label are inside encrypted ciphertext. Tampering and wrong passphrases fail authenticated decryption; exact SHA-256 per file and bound lengths are also checked on restore.</p></div><div><strong>What isn't protected</strong><p>File size, presence of a vault, plaintext after manual restore/download, a weak passphrase, compromised devices, browser extensions or recipients. Cryptographic integrity is not an independent source or authorization check.</p></div><div><strong>Release policy</strong><p>LightUp remains INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. This offline workspace never scans, approves, grants, executes, sends, retests, deploys or contacts clients.</p></div></section>
+</main><footer class="shell last">LIGHTUP / REMEDIATION HANDOFF VAULT <span>PRIVATE · NO TARGETS · NO CLAIM OF VERIFIED REMEDIATION</span></footer>
+<script>@@APP@@</script></body></html>

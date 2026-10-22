@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-H7AQpIFxUjtWdJlt240kEwGNXIZx6Q84RCdJXBotDRg=' 'sha256-fm8TaJaQLe0tvKN5yOGEL9FYf3FXnwG6BF9ERPLaBMU='; style-src 'sha256-EY60WrUPL3pRa1jEEujE4zKnTsY+crrVBzxYTHrao8E='; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Private Human Dependency Board</title><style>:root{font:16px/1.52 system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;background:#101625;color:#edf3ff}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1200px;padding:24px;margin:auto}header{padding-top:45px}h1{font-size:clamp(2rem,4vw,3.1rem);margin:10px 0}h2{font-size:1.34rem;margin:0 0 10px}.brand{letter-spacing:.14em;color:#a2c1fc;font-size:.76rem;font-weight:800}p{color:#bdcbe0}.hold{color:#ffd49b;background:#392a1e;border:1px solid #977347;display:inline-block;padding:8px 13px;border-radius:8px}.panel{padding:22px;margin:20px 0;background:#1b2740;border:1px solid #3b4d6e;border-radius:16px}label{display:block;margin:15px 0;font-weight:600}.check{display:flex;gap:10px;font-weight:450;align-items:flex-start}.check input{width:19px;height:19px;flex:none;margin-top:4px}input:not([type=checkbox]),textarea,select{display:block;width:100%;margin-top:5px;padding:9px;background:#0d182c;color:#f2f6ff;border:1px solid #637792;border-radius:8px;font:inherit}textarea{resize:vertical}button{font:inherit;background:#adcbff;color:#0d1a35;border:0;border-radius:8px;padding:10px 17px;font-weight:780;cursor:pointer}button:disabled{opacity:.35;cursor:not-allowed}.secondary{background:#475877;color:#fff}.actions{display:flex;flex-wrap:wrap;gap:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px}.stat{background:#293956;border:1px solid #465c81;padding:15px;border-radius:10px}.stat strong{font-size:1.8rem;display:block}.stat span{font-size:.83rem;color:#c6d3ea}.tablewrap{overflow:auto;margin:14px 0}table{width:100%;border-collapse:collapse;min-width:740px;text-align:left}td,th{padding:11px;border-bottom:1px solid #435574;vertical-align:top;overflow-wrap:anywhere}th{font-size:.8rem;color:#abc3ff;text-transform:uppercase}td{font-size:.87rem}td button{padding:5px 11px}.danger{color:#ffbaa5}.muted{color:#aabbd1}footer{font-size:.82rem;color:#a9b8ce;padding-bottom:40px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #afcaff;outline-offset:2px}@media(max-width:600px){header,main,footer{padding:14px}.panel{padding:15px}}</style></head>
+<body><header><div class="brand">LIGHTUP / OFFLINE HUMAN COORDINATION</div><h1>Remediation Dependency Board</h1>
+<p>See which human repair plans are blocked by other human work. Review impact and tentative effort, without changing original findings, retests, permissions or deadlines.</p>
+<strong class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></header>
+<main><section class="panel"><h2>1. Load original Casework privately</h2>
+<p>First obtain the original Casework v1 JSON for one exact client and engagement through existing separately authenticated and authorized LightUp export. This browser does not prove its origin or current consent.</p>
+<label>Original PRIVATE Casework v1 JSON<input id="source" type="file" accept=".json,application/json"></label>
+<label class="check"><input type="checkbox" id="source-ack"> I independently confirmed the actual client, engagement and approved PRIVATE handling channel. This file is not an authorization or a verified repair.</label>
+<p id="source-message" role="status" aria-live="polite">No private source loaded.</p></section>
+<section id="workspace" hidden><div id="stats" class="stats"></div>
+<section class="panel"><h2>2. Define human prerequisites</h2><p>Select original findings by exact ID. “A must finish before B” is only a HUMAN planning note, not an active scan dependency or evidence of an approved change window.</p>
+<div class="grid"><label>Prerequisite human finding A<select id="from"></select></label><label>Dependent human finding B<select id="to"></select></label></div>
+<label>Why does B depend on A? (private human explanation)<textarea id="reason" rows="2" maxlength="600"></textarea></label>
+<button id="link-add" type="button">Add reviewed human link</button><p id="link-message" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Human prerequisite</th><th>Dependent finding</th><th>Human reason</th><th>Remove</th></tr></thead><tbody id="links"></tbody></table></div></section>
+<section class="panel"><h2>3. Assign non-contractual effort estimates</h2>
+<p>Enter explicit human estimates of 1–90 calendar days. The initial 1-day values are editable placeholders, never automatically accepted SLAs or approved retest windows.</p>
+<div class="tablewrap"><table><thead><tr><th>Original finding</th><th>Severity</th><th>Human owner / stage</th><th>Human effort estimate</th></tr></thead><tbody id="efforts"></tbody></table></div></section>
+<section class="panel"><h2>4. Review dependencies and estimated critical path</h2>
+<div class="grid"><label>Optional human start date<input id="start" type="date" min="2020-01-01" max="2099-01-01"></label>
+<label>Exact human owner/team<select id="owner-filter"><option value="all">All original human owners</option></select></label>
+<label>View <select id="filter"><option value="all">All original findings</option><option value="waiting">Waiting on other HUMAN tasks</option><option value="ready">Human work potentially ready</option><option value="critical">Critical path (human estimates)</option><option value="urgent">Original high/critical findings</option></select></label></div>
+<button id="review" type="button">Recalculate local dependency map</button>
+<p id="review-message" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original finding</th><th>HUMAN status</th><th>Waiting on</th><th>Proposed path duration</th><th>Optional indicative date</th></tr></thead><tbody id="results"></tbody></table></div><section class="insights"><h3>Human bottlenecks and proposed next work</h3><p>Computed only from local human dependencies. A “ready” human task is NOT authorization to assess, change a target or retest.</p>
+<div class="tablewrap"><table><thead><tr><th>Potential bottleneck</th><th>Dependent human plans</th><th>Human readiness</th><th>Current owner</th></tr></thead><tbody id="bottlenecks"></tbody></table></div>
+<h3>Human due-date contradictions</h3><p>Highlights a prerequisite with a later human due date than its dependent plan. No deadline is automatically changed.</p>
+<div class="tablewrap"><table><thead><tr><th>Prerequisite</th><th>Dependent</th><th>Human prerequisite due</th><th>Dependent due</th></tr></thead><tbody id="contradictions"></tbody></table></div>
+<h3>Illustrative critical-path date warnings</h3><p>Only available when a human planning start date has been explicitly entered; rough estimates are NOT contractual deadlines or verified fix dates.</p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Existing human due</th><th>Indicative dependency end</th></tr></thead><tbody id="late-scenarios"></tbody></table></div></section></section>
+<section class="panel"><h2>5. Export only approved private human handoffs</h2>
+<p>Exports contain source identifiers, estimates, human planning and (for CSV) source summary metadata. Download locally; external recipients and calendars require a separately approved confidential channel. No automatic upload or authentication.</p>
+<label class="check"><input type="checkbox" id="export-ack"> I explicitly confirmed the private destination for source finding IDs and human coordination. Neither an unsigned hash nor this file proves consent, client identity or verified remediation.</label>
+<label>PRIVATE CSV action scope<select id="csv-scope"><option value="all">All original human work</option><option value="filtered">Current owner and work filters</option></select></label>
+<div class="actions"><button id="export-json" disabled type="button">Save PRIVATE source-bound dependency draft</button>
+<button id="export-csv" disabled type="button">Save PRIVATE human action CSV</button>
+<button id="clear" class="secondary" type="button">Clear private memory</button></div>
+<label>Reopen source-bound PRIVATE dependency JSON<input id="reopen" type="file" accept=".json,application/json"></label>
+<p id="export-message" role="status" aria-live="polite"></p></section></section>
+</main><footer>Browser-only · no network, browser storage, scanner, grant, consent, original source modification, verified retest or authorized production deployment.</footer>
+<script>/* LightUp local casework. Parsing/presentation only; never authenticates source or authorizes assessments. */
+(function(global){
+'use strict';
+const EXPECTED=['finding_id','title','severity','retest_status','remediation'];
+const SEVERITY=['critical','high','medium','low','info'];
+const RETEST=['not_tested','fix_pending','fixed','regression'];
+const PROGRESS=['unassigned','planned','in_progress','blocked','ready_for_retest','deferred','completed'];
+const MAX_BYTES=1048576,MAX_ROWS=350,MAX_CELL=6000;
+function sizeOf(text){return new TextEncoder().encode(text).length;}
+function parseCSV(text){
+ if(typeof text!=='string'||sizeOf(text)>MAX_BYTES)throw Error('CSV exceeds 1 MiB.');
+ if(text.charCodeAt(0)===0xfeff)text=text.slice(1);
+ const rows=[];let row=[],field='',quoted=false,closed=false;
+ for(let i=0;i<text.length;i++){
+  const c=text[i];
+  if(quoted){
+   if(c==='"' && text[i+1]==='"'){field+='"';i++;}
+   else if(c==='"') {quoted=false;closed=true;}
+   else field+=c;
+  }else if(c==='"'){
+   if(field!==''||closed)throw Error('Malformed quoted CSV field.');
+   quoted=true;
+  }else if(c===','){
+   row.push(field);field='';closed=false;
+  }else if(c==='\r'||c==='\n'){
+   if(c==='\r'&&text[i+1]==='\n')i++;
+   row.push(field);field='';closed=false;
+   if(row.length>1||row[0]!=='')rows.push(row);
+   row=[];
+   if(rows.length>MAX_ROWS+1)throw Error('Too many findings.');
+  }else{
+   if(closed)throw Error('Malformed CSV after closing quote.');
+   field+=c;
+  }
+  if(field.length>MAX_CELL)throw Error('An imported CSV cell is too long.');
+ }
+ if(quoted)throw Error('Unclosed CSV quote.');
+ if(row.length||field!==''||closed){row.push(field);if(row.length>1||row[0]!=='')rows.push(row);}
+ if(!rows.length)throw Error('No CSV header found.');
+ if(rows[0].length!==EXPECTED.length || rows[0].some((v,i)=>v!==EXPECTED[i]))
+  throw Error('Expected the five-column LightUp findings summary CSV export.');
+ if(rows.length===1)throw Error('CSV export contains no findings.');
+ if(rows.length-1>MAX_ROWS)throw Error('Too many findings.');
+ const seen=new Set();
+ return rows.slice(1).map((values,index)=>{
+  if(values.length!==EXPECTED.length)throw Error('Malformed CSV row '+(index+2)+'.');
+  const [finding_id,title,severity,retest_status,remediation]=values;
+  if(!finding_id.trim()||finding_id.length>160||seen.has(finding_id))
+   throw Error('Invalid or duplicate finding ID at row '+(index+2)+'.');
+  if(!title.trim()||!remediation.trim()||!SEVERITY.includes(severity)||!RETEST.includes(retest_status))
+   throw Error('Malformed finding data at row '+(index+2)+'.');
+  seen.add(finding_id);
+  return {finding_id,title,severity,retest_status,remediation};
+ });
+}
+function normalizeSource(findings){
+ if(!Array.isArray(findings)||!findings.length||findings.length>MAX_ROWS)throw Error('Unsupported findings list.');
+ const seen=new Set();
+ return findings.map(x=>{
+  if(!x||typeof x!=='object'||Array.isArray(x))throw Error('Malformed finding.');
+  const y={};
+  for(const col of EXPECTED){
+   if(typeof x[col]!=='string'||x[col].length>MAX_CELL)throw Error('Invalid finding '+col+'.');
+   y[col]=x[col];
+  }
+  if(!y.finding_id.trim()||y.finding_id.length>160||seen.has(y.finding_id)||
+   !y.title.trim()||!y.remediation.trim()||!SEVERITY.includes(y.severity)||!RETEST.includes(y.retest_status))
+   throw Error('Invalid source finding.');
+  seen.add(y.finding_id);return y;
+ });
+}
+function newCase(f){
+ return {finding_id:f.finding_id,owner:'',status:f.retest_status==='fixed'?'completed':'unassigned',
+   due_date:null,next_action:'',verification_plan:'',blocker:'',note:'',updated_utc:null};
+}
+function cleanCase(x,existingIds){
+ if(!x||typeof x!=='object'||Array.isArray(x)||typeof x.finding_id!=='string'||
+    !existingIds.has(x.finding_id))throw Error('Case refers to unknown finding.');
+ const c={finding_id:x.finding_id};
+ for(const [key,max] of [['owner',120],['next_action',1800],['verification_plan',1600],['blocker',1200],['note',1600]]){
+  if(typeof x[key]!=='string'||x[key].length>max)throw Error('Invalid case field '+key+'.');
+  c[key]=x[key];
+ }
+ if(!PROGRESS.includes(x.status))throw Error('Unknown remediation status.');
+ c.status=x.status;
+ if(x.due_date!==null && (typeof x.due_date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.due_date)||
+  Number.isNaN(Date.parse(x.due_date+'T00:00:00Z'))||
+  new Date(x.due_date+'T00:00:00Z').toISOString().slice(0,10)!==x.due_date))
+   throw Error('Invalid case due date.');
+ c.due_date=x.due_date;
+ if(x.updated_utc!==null && (typeof x.updated_utc!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(x.updated_utc)||
+ Number.isNaN(Date.parse(x.updated_utc))))throw Error('Invalid case update timestamp.');
+ c.updated_utc=x.updated_utc;return c;
+}
+async function digest(findings){
+ const normalized=normalizeSource(findings);
+ const canonical=JSON.stringify(normalized.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
+ if(!global.crypto||!global.crypto.subtle)return null;
+ const hash=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical));
+ return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function makePacket(findings,cases,sourceHash){
+ const source=normalizeSource(findings),ids=new Set(source.map(x=>x.finding_id));
+ if(!Array.isArray(cases)||cases.length!==source.length)throw Error('Casework count mismatch.');
+ const seen=new Set(),clean=cases.map(x=>{
+  const y=cleanCase(x,ids);
+  if(seen.has(y.finding_id))throw Error('Duplicate casework entry.');
+  seen.add(y.finding_id);return y;
+ });
+ return {
+  kind:'lightup.remediation_casework_draft',schema_version:1,disposition:'LOCAL_CLIENT_PLANNING',
+  authenticated:false,tenant_verified:false,source_authorized:false,assessment_authorized:false,
+  grant:false,client_consent:false,operator_consent:false,execution:false,scan:false,
+  audit_verdict:false,retest_verified:false,release:false,
+  source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash||null,
+  findings:source,cases:clean,
+  instructions:'This file contains unverified local notes and exported summaries. Do not treat any row or status as proof of remediation, verified retest, authentication or grant.'
+ };
+}
+function loadPacket(packet){
+ if(!packet||typeof packet!=='object'||Array.isArray(packet)||packet.kind!=='lightup.remediation_casework_draft'||
+   packet.schema_version!==1||packet.disposition!=='LOCAL_CLIENT_PLANNING'||
+   packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+   !['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent',
+     'operator_consent','execution','scan','audit_verdict','retest_verified','release']
+      .every(k=>Object.prototype.hasOwnProperty.call(packet,k)&&packet[k]===false))
+  throw Error('Not a supported non-authorizing LightUp casework draft.');
+ const source=normalizeSource(packet.findings),ids=new Set(source.map(x=>x.finding_id));
+ if(!Array.isArray(packet.cases)||packet.cases.length!==source.length)throw Error('Casework incomplete.');
+ const seen=new Set(),cases=packet.cases.map(x=>{
+  const y=cleanCase(x,ids);if(seen.has(y.finding_id))throw Error('Duplicate case.');seen.add(y.finding_id);return y;
+ });
+ if(packet.source_sha256!==null && (typeof packet.source_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.source_sha256)))
+  throw Error('Invalid source fingerprint.');
+ return {findings:source,cases,source_sha256:packet.source_sha256||null};
+}
+function rank(x){return SEVERITY.indexOf(x.severity);}
+function metrics(findings,cases,today){
+ const byId=new Map(cases.map(x=>[x.finding_id,x]));
+ const totals={findings:findings.length,critical_or_high:0,open:0,blocked:0,overdue:0,ready_for_retest:0,source_fixed:0};
+ for(const finding of findings){
+  const c=byId.get(finding.finding_id);
+  if(rank(finding)<=1)totals.critical_or_high++;
+  if(finding.retest_status==='fixed')totals.source_fixed++;
+  if(c&&c.status!=='completed'&&c.status!=='deferred')totals.open++;
+  if(c&&c.status==='blocked')totals.blocked++;
+  if(c&&c.status==='ready_for_retest')totals.ready_for_retest++;
+  if(c&&c.due_date&&c.due_date<today&&c.status!=='completed'&&c.status!=='deferred')totals.overdue++;
+ }
+ return totals;
+}
+function csvCell(raw){
+ let s=String(raw??'');
+ const probe=s.replace(/^[\s\x00-\x1f]+/,'');
+ if(/^[=+\-@]/.test(probe))s="'"+s;
+ return '"'+s.replace(/"/g,'""')+'"';
+}
+function exportActionsCSV(findings,cases){
+ const byId=new Map(cases.map(c=>[c.finding_id,c]));
+ const columns=['finding_id','severity','title','source_retest_status','casework_status','assigned_owner','due_date','next_action','verification_plan','blocker'];
+ const rows=findings.map(f=>{
+  const c=byId.get(f.finding_id);
+  return [f.finding_id,f.severity,f.title,f.retest_status,c.status,c.owner,c.due_date||'',c.next_action,c.verification_plan,c.blocker];
+ });
+ return String.fromCharCode(0xFEFF)+[columns,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
+}
+
+/* Re-import review: changing finding payload is not automatically a confirmed retest.
+ * The caller must explicitly confirm the same independently verified account/engagement.
+ * Only byte-for-byte unchanged source findings retain unverified local casework notes. */
+function compareSource(before,after){
+ const old=normalizeSource(before),incoming=normalizeSource(after);
+ const a=new Map(old.map(item=>[item.finding_id,item]));
+ const b=new Map(incoming.map(item=>[item.finding_id,item]));
+ const compare=(x,y)=>EXPECTED.every(k=>x[k]===y[k]);
+ const added=[],missing=[],changed=[],unchanged=[];
+ for(const item of incoming){
+  const prev=a.get(item.finding_id);
+  if(!prev)added.push(item.finding_id);
+  else if(compare(prev,item))unchanged.push(item.finding_id);
+  else changed.push({finding_id:item.finding_id,
+    changed_fields:EXPECTED.filter(k=>prev[k]!==item[k])});
+ }
+ for(const item of old)if(!b.has(item.finding_id))missing.push(item.finding_id);
+ return {added,missing,changed,unchanged,
+  warning:'Missing findings are NOT proof of remediation; changed source findings reset their local plans. Independently verify same client and engagement first.'};
+}
+function reconcileSource(before,existingCases,after){
+ const diff=compareSource(before,after);
+ const oldCases=new Map(existingCases.map(c=>[c.finding_id,c]));
+ const allowed=new Set(diff.unchanged);
+ const source=normalizeSource(after);
+ const merged=source.map(f=>allowed.has(f.finding_id)&&oldCases.has(f.finding_id) ?
+  cleanCase(oldCases.get(f.finding_id),new Set(source.map(item=>item.finding_id))) : newCase(f));
+ return {findings:source,cases:merged,change_summary:diff};
+}
+
+global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,normalizeSource,newCase,cleanCase,digest,makePacket,loadPacket,metrics,exportActionsCSV,SEVERITY,RETEST,PROGRESS,MAX_BYTES});
+})(window);
+</script><script>/* LightUp private human dependency planning — NEVER assessment or remediation authority. */
+(function(g){'use strict';
+const AUTH=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+const SRC=['finding_id','title','severity','retest_status','remediation'];
+const CASE=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+const IN=['kind','schema_version','disposition','source_contract','source_sha256','findings','cases','instructions',...AUTH];
+const DEP=['kind','schema_version','disposition','source_sha256','casework_sha256','links','efforts','instructions',...AUTH];
+function stop(s){throw Error(s);}
+function shape(x,fields,name){if(!x||typeof x!=='object'||Array.isArray(x))stop('Invalid '+name);const allowed=new Set(fields),keys=Object.keys(x);if(keys.length!==allowed.size||keys.some(k=>!allowed.has(k)))stop('Missing or unknown '+name+' field.');}
+async function sha(s){if(!g.crypto||!g.crypto.subtle)stop('Secure SHA-256 unavailable. Private handoff HELD.');const a=new Uint8Array(await g.crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));return Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');}
+function canonical(w){const sort=arr=>arr.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0);return JSON.stringify([sort(w.findings),sort(w.cases)]);}
+async function original(packet){
+ shape(packet,IN,'original Casework');for(const k of AUTH)if(packet[k]!==false)stop('Casework claims authority.');
+ if(!Array.isArray(packet.findings)||!Array.isArray(packet.cases))stop('Missing original findings and Casework.');
+ for(const f of packet.findings)shape(f,SRC,'source finding');for(const c of packet.cases)shape(c,CASE,'source Casework');
+ const clean=g.LightUpCasework.loadPacket(packet);
+ const digest=await g.LightUpCasework.digest(clean.findings);
+ if(!digest||clean.source_sha256&&clean.source_sha256!==digest)stop('Original source SHA mismatch.');
+ const w={...clean,source_sha256:digest};
+ w.casework_sha256=await sha(canonical(w));return w;
+}
+function clean(w,links,efforts){
+ if(!w||!Array.isArray(w.findings)||!w.findings.length||w.findings.length>350||!Array.isArray(w.cases)||w.cases.length!==w.findings.length)stop('Incomplete original source.');
+ const ids=new Set(w.findings.map(x=>x.finding_id));if(ids.size!==w.findings.length)stop('Duplicate original ID.');
+ if(!Array.isArray(links)||links.length>1200)stop('Too many dependency links.');
+ const seen=new Set(),out=new Map([...ids].map(id=>[id,[]])),indeg=new Map([...ids].map(id=>[id,0]));
+ const edges=links.map(e=>{shape(e,['from','to','reason'],'dependency');if(!ids.has(e.from)||!ids.has(e.to)||e.from===e.to)stop('Unknown or self-dependent finding.');if(typeof e.reason!=='string'||e.reason.length>600||/[\x00-\x1f\x7f-\x9f]/.test(e.reason))stop('Invalid reason.');const k=JSON.stringify([e.from,e.to]);if(seen.has(k))stop('Duplicate dependency.');seen.add(k);out.get(e.from).push(e.to);indeg.set(e.to,indeg.get(e.to)+1);return {from:e.from,to:e.to,reason:e.reason};});
+ if(!Array.isArray(efforts)||efforts.length!==ids.size)stop('Incomplete human effort estimates.');
+ const durations=new Map();
+ for(const e of efforts){shape(e,['finding_id','days'],'effort');if(!ids.has(e.finding_id)||durations.has(e.finding_id)||!Number.isInteger(e.days)||e.days<1||e.days>90)stop('Invalid human effort.');durations.set(e.finding_id,e.days);}
+ const ready=[...ids].filter(id=>!indeg.get(id)).sort(),order=[];
+ while(ready.length){const id=ready.shift();order.push(id);for(const next of out.get(id)){indeg.set(next,indeg.get(next)-1);if(indeg.get(next)===0){ready.push(next);ready.sort();}}}
+ if(order.length!==ids.size)stop('Circular dependency — no change applied.');
+ return {links:edges,efforts:[...durations].map(([finding_id,days])=>({finding_id,days})),order,durations};
+}
+function empty(w){return clean(w,[],w.findings.map(f=>({finding_id:f.finding_id,days:1})));}
+function graph(w,links,efforts,start){
+ const p=clean(w,links,efforts),find=new Map(w.findings.map(f=>[f.finding_id,f])),human=new Map(w.cases.map(c=>[c.finding_id,c]));
+ const parents=new Map([...find.keys()].map(id=>[id,[]]));for(const e of p.links)parents.get(e.to).push(e.from);
+ const finish=new Map(),longest=new Map(),rows=[];
+ for(const id of p.order){let offset=0,prev=null;for(const from of parents.get(id)){if(finish.get(from)>offset){offset=finish.get(from);prev=from;}}const end=offset+p.durations.get(id);finish.set(id,end);longest.set(id,prev);const f=find.get(id),c=human.get(id);const waiting=parents.get(id).filter(ref=>human.get(ref).status!=='completed');rows.push({finding_id:id,title:f.title,severity:f.severity,original_retest:f.retest_status,owner:c.owner,human_status:c.status,human_due:c.due_date,waiting,prerequisites:parents.get(id),effort_days:p.durations.get(id),path_days:end,human_ready:!waiting.length&&!['completed','deferred'].includes(c.status)});}
+ let end=0,tip=null;for(const [id,d] of finish){if(d>end){end=d;tip=id;}}
+ const critical=[];while(tip){critical.unshift(tip);tip=longest.get(tip);}
+ let dates=null;if(start){if(typeof start!=='string'||!/^20\d{2}-\d{2}-\d{2}$/.test(start))stop('Invalid optional human planning start.');const ms=Date.parse(start+'T00:00:00Z');if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==start||start>'2099-01-01')stop('Unsupported planning anchor.');dates={};for(const row of rows){const d=new Date(ms+row.path_days*86400000);if(d.getUTCFullYear()>2100)stop('Human estimate exceeds calendar range.');dates[row.finding_id]=d.toISOString().slice(0,10);}}
+ return {rows,critical,estimated_days:end,dates,summary:{total:rows.length,links:p.links.length,waiting:rows.filter(x=>x.waiting.length).length,ready:rows.filter(x=>x.human_ready).length,critical_high_waiting:rows.filter(x=>x.waiting.length&&['critical','high'].includes(x.severity)).length}};
+}
+function packet(w,links,efforts){const p=clean(w,links,efforts);return {kind:'lightup.private_human_dependency_draft',schema_version:1,disposition:'LOCAL_HUMAN_PLANNING_ONLY',source_sha256:w.source_sha256,casework_sha256:w.casework_sha256,links:p.links,efforts:p.efforts,instructions:'Unverified private human estimates only; no verified remediation, consent, grant, scanner, retest, tenant or authorization.',...Object.fromEntries(AUTH.map(k=>[k,false]))};}
+function restore(w,raw){shape(raw,DEP,'private dependencies');if(raw.kind!=='lightup.private_human_dependency_draft'||raw.schema_version!==1||raw.disposition!=='LOCAL_HUMAN_PLANNING_ONLY'||raw.source_sha256!==w.source_sha256||raw.casework_sha256!==w.casework_sha256||typeof raw.instructions!=='string'||raw.instructions.length>1500||AUTH.some(k=>raw[k]!==false))stop('Private human dependency packet conflicts with current original source or human notes.');return clean(w,raw.links,raw.efforts);}
+/* Derived human-first recommendations; original source and due dates are read-only. */
+function guidance(work,links,efforts,start){
+ const graphResult=graph(work,links,efforts,start);
+ const byId=new Map(graphResult.rows.map(row=>[row.finding_id,row]));
+ const children=new Map(graphResult.rows.map(row=>[row.finding_id,[]]));
+ for(const link of links)children.get(link.from).push(link.to);
+ const downstream=id=>{
+  const visited=new Set(),stack=children.get(id).slice();
+  while(stack.length){const n=stack.pop();if(visited.has(n))continue;visited.add(n);stack.push(...children.get(n));}
+  return visited.size;
+ };
+ const rank=['critical','high','medium','low','info'];
+ const bottlenecks=graphResult.rows
+  .filter(row=>row.human_status!=='completed'&&row.human_status!=='deferred')
+  .map(row=>({...row,downstream_count:downstream(row.finding_id)}))
+  .sort((a,b)=>b.downstream_count-a.downstream_count||rank.indexOf(a.severity)-rank.indexOf(b.severity)||a.finding_id.localeCompare(b.finding_id));
+ const dates=new Map(work.cases.map(c=>[c.finding_id,c.due_date]));
+ const contradictions=links.filter(link=>dates.get(link.from)&&dates.get(link.to)&&dates.get(link.from)>dates.get(link.to))
+  .map(link=>({...link,human_prerequisite_due:dates.get(link.from),human_dependent_due:dates.get(link.to)}));
+ const hypotheticalLate=graphResult.dates?graphResult.rows
+  .filter(row=>row.human_due&&graphResult.dates[row.finding_id]>row.human_due)
+  .map(row=>({finding_id:row.finding_id,existing_human_due:row.human_due,indicative_chain_date:graphResult.dates[row.finding_id]})):[];
+ return {bottlenecks,contradictions,hypotheticalLate};
+}
+g.LightUpHumanDependencies=Object.freeze({original,clean,empty,graph,packet,restore,guidance});
+})(window);
+</script><script>/* LightUp human dependency board UI: all local, source-bound, no execution authority. */
+(function(g){'use strict';
+const $=id=>document.getElementById(id),E=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);return n;};
+const SEV=['critical','high','medium','low','info'],LIMIT=2097152;
+let state=null,links=[],efforts=[],dirty=false,revision=0,ownerLabels=[];
+function stop(s){throw Error(s);}
+function parseStrict(raw){
+ if(typeof raw!=='string'||new TextEncoder().encode(raw).length>LIMIT)stop('PRIVATE JSON exceeds 2 MiB.');
+ let i=0,steps=0;
+ const ws=()=>{while(/[ \t\r\n]/.test(raw[i]||'!')&&i<raw.length)i++;};
+ function string(){
+  const begin=i;if(raw[i++]!=='"')stop('Expected JSON string.');
+  while(i<raw.length){let c=raw[i++];if(c==='"')return JSON.parse(raw.slice(begin,i));
+   if(c==='\\'){let e=raw[i++];if(e==='u'){if(!/^[0-9a-fA-F]{4}$/.test(raw.slice(i,i+4)))stop('Invalid Unicode escape.');i+=4;}else if(!'"\\/bfnrt'.includes(e))stop('Invalid escape.');}
+   else if(c.charCodeAt(0)<32)stop('Invalid JSON control.');}
+  stop('Unterminated JSON string.');
+ }
+ function value(depth){
+  if(++steps>60000||depth>40)stop('JSON exceeds bounds.');ws();const c=raw[i];
+  if(c==='"')return string();
+  if(c==='{'){i++;const result=Object.create(null),seen=new Set();ws();if(raw[i]==='}'){i++;return result;}
+   while(true){ws();const key=string();if(seen.has(key))stop('Duplicate JSON field.');seen.add(key);ws();if(raw[i++]!==':')stop('Expected colon.');result[key]=value(depth+1);ws();if(raw[i]==='}'){i++;return result;}if(raw[i++]!==',')stop('Expected comma.');}
+  }
+  if(c==='['){i++;const result=[];ws();if(raw[i]===']'){i++;return result;}while(true){result.push(value(depth+1));ws();if(raw[i]===']'){i++;return result;}if(raw[i++]!==',')stop('Expected comma.');}}
+  for(const [k,v] of [['true',true],['false',false],['null',null]])if(raw.startsWith(k,i)){i+=k.length;return v;}
+  const match=raw.slice(i).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
+  if(match){i+=match[0].length;const n=Number(match[0]);if(!Number.isFinite(n))stop('Invalid JSON numeric field.');return n;}
+  stop('Malformed JSON value.');
+ }
+ const result=value(0);ws();if(i!==raw.length)stop('Unexpected trailing JSON.');return result;
+}
+function saveFile(name,data,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=E('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function findById(id){return state.findings.find(f=>f.finding_id===id);}
+function humanById(id){return state.cases.find(c=>c.finding_id===id);}
+function putSelect(select){select.replaceChildren();for(const f of state.findings){let option=E('option',f.finding_id+' — '+f.title.slice(0,56));option.value=f.finding_id;select.append(option);}}
+function renderOwnerFilter(){
+ const select=$('owner-filter'),old=select.value;
+ ownerLabels=[...new Set(state.cases.map(c=>c.owner).filter(x=>typeof x==='string'&&x.trim().length))].sort();
+ select.replaceChildren();
+ const add=(value,title)=>{const option=E('option',title);option.value=value;select.append(option);};
+ add('all','All original human owners');add('unassigned','(Unassigned human work)');
+ ownerLabels.forEach((owner,i)=>add('id:'+i,owner));
+ if([...select.options].some(x=>x.value===old))select.value=old;
+}
+function visibleRow(row,critical){
+ const owner=$('owner-filter').value;
+ if(owner==='unassigned'&&row.owner.trim())return false;
+ if(owner.startsWith('id:')&&ownerLabels[Number(owner.slice(3))]!==row.owner)return false;
+ const filter=$('filter').value;
+ if(filter==='waiting'&&!row.waiting.length)return false;
+ if(filter==='ready'&&!row.human_ready)return false;
+ if(filter==='critical'&&!critical.has(row.finding_id))return false;
+ if(filter==='urgent'&&!['critical','high'].includes(row.severity))return false;
+ return true;
+}
+function metrics(graph){
+ const data=[['Original findings',graph.summary.total],['Human dependency links',graph.summary.links],['Waiting on human work',graph.summary.waiting],['Human work potentially ready',graph.summary.ready],['Critical/high waiting',graph.summary.critical_high_waiting],['Longest estimated chain (days)',graph.estimated_days]];
+ const host=$('stats');host.replaceChildren();for(const [label,n] of data){const card=E('div');card.className='stat';card.append(E('strong',n),E('span',label));host.append(card);}
+}
+function td(row,value){row.append(E('td',value));}
+function drawLinks(){
+ const body=$('links');body.replaceChildren();
+ for(const l of links){const tr=E('tr');td(tr,l.from);td(tr,l.to);td(tr,l.reason);
+  const cell=E('td'),button=E('button','Remove');button.type='button';button.className='secondary';
+  button.addEventListener('click',()=>{const next=links.filter(x=>x!==l);try{g.LightUpHumanDependencies.clean(state,next,efforts);links=next;dirty=true;revision++;render();$('link-message').textContent='Human dependency removed locally.';}catch(e){$('link-message').textContent='HOLD: '+e.message;}});
+  cell.append(button);tr.append(cell);body.append(tr);
+ }
+ if(!links.length){const tr=E('tr'),cell=E('td','No human dependency links recorded.');cell.colSpan=4;tr.append(cell);body.append(tr);}
+}
+function drawEfforts(){
+ const body=$('efforts');body.replaceChildren();
+ for(const f of state.findings){const tr=E('tr'),c=humanById(f.finding_id);
+  td(tr,f.finding_id);td(tr,f.severity);td(tr,(c.owner||'Unassigned')+' / '+c.status);
+  const cell=E('td'),input=E('input');input.type='number';input.min='1';input.max='90';input.step='1';input.value=efforts.find(e=>e.finding_id===f.finding_id).days;
+  input.setAttribute('aria-label','Human estimated days for '+f.finding_id);
+  input.addEventListener('change',()=>{
+   const n=Number(input.value);const candidate=efforts.map(e=>e.finding_id===f.finding_id?{finding_id:e.finding_id,days:n}:e);
+   try{g.LightUpHumanDependencies.clean(state,links,candidate);efforts=candidate;dirty=true;revision++;drawGraph();$('review-message').textContent='Human effort updated locally; not an SLA.';}
+   catch(err){input.value=efforts.find(e=>e.finding_id===f.finding_id).days;$('review-message').textContent='HOLD: '+err.message;}
+  });cell.append(input);tr.append(cell);body.append(tr);
+ }
+}
+function renderGuidance(view,critical){
+ const body=$('bottlenecks');body.replaceChildren();
+ const shown=view.bottlenecks.filter(x=>visibleRow(x,critical)).slice(0,20);
+ for(const item of shown){
+  const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.downstream_count);
+  td(tr,item.human_ready?'Potentially ready for HUMAN planning':'Needs prerequisite / on hold');
+  td(tr,item.owner||'(unassigned)');body.append(tr);
+ }
+ if(!shown.length){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
+ const blocked=$('contradictions');blocked.replaceChildren();
+ for(const x of view.contradictions){
+  const row=E('tr');td(row,x.from);td(row,x.to);td(row,x.human_prerequisite_due);td(row,x.human_dependent_due);blocked.append(row);
+ }
+ if(!view.contradictions.length){const row=E('tr'),cell=E('td','No contradiction among existing human due dates.');cell.colSpan=4;row.append(cell);blocked.append(row);}
+ const scenarios=$('late-scenarios');scenarios.replaceChildren();
+ for(const x of view.hypotheticalLate){
+  const row=E('tr');td(row,x.finding_id);td(row,x.existing_human_due);td(row,x.indicative_chain_date);scenarios.append(row);
+ }
+ if(!view.hypotheticalLate.length){const row=E('tr'),cell=E('td','No indicative conflict, or no human planning start date selected.');cell.colSpan=3;row.append(cell);scenarios.append(row);}
+}
+function drawGraph(){
+ const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);renderGuidance(g.LightUpHumanDependencies.guidance(state,links,efforts,$('start').value||null),new Set(graph.critical));
+ const body=$('results');body.replaceChildren();const filter=$('filter').value,critical=new Set(graph.critical);
+ let n=0;
+ for(const item of graph.rows){
+  if(!visibleRow(item,critical))continue;
+  const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.human_status+(critical.has(item.finding_id)?' · longest path':''));
+  td(tr,item.waiting.length?item.waiting.join(', '):'None');td(tr,item.path_days+' calendar days');
+  td(tr,graph.dates?graph.dates[item.finding_id]:'Not proposed');body.append(tr);n++;
+ }
+ if(!n){const tr=E('tr'),cell=E('td','No original findings match this human filter.');cell.colSpan=5;tr.append(cell);body.append(tr);}
+ $('review-message').textContent='Local planning only: '+graph.summary.waiting+' human tasks waiting, '+graph.critical.length+' on longest estimated chain. No original finding or human Casework was changed.';
+ $('export-json').disabled=!$('export-ack').checked;$('export-csv').disabled=!$('export-ack').checked;
+ return graph;
+}
+function render(){if(!state)return;drawLinks();drawEfforts();drawGraph();}
+async function importOriginal(file){
+ if(!file||file.size>LIMIT||!$('source-ack').checked)stop('Choose ≤2 MiB original Casework and confirm private client/engagement.');
+ const token=revision,packet=parseStrict(await file.text()),work=await g.LightUpHumanDependencies.original(packet);
+ if(token!==revision)stop('Private workspace changed during import.');
+ state=work;const blank=g.LightUpHumanDependencies.empty(state);links=blank.links;efforts=blank.efforts;dirty=false;revision++;
+ $('workspace').hidden=false;$('export-ack').checked=false;$('start').value='';$('filter').value='all';
+ putSelect($('from'));putSelect($('to'));renderOwnerFilter();render();
+ $('source-message').textContent=state.findings.length+' original findings loaded from PRIVATE historical Casework. Current consent and identity are unverified.';
+}
+function clear(){state=null;links=[];efforts=[];dirty=false;revision++;$('workspace').hidden=true;for(const name of ['source','reopen'])$(name).value='';$('source-ack').checked=false;$('export-ack').checked=false;$('source-message').textContent='Private workspace cleared from memory. Previously downloaded files remain outside this browser.';}
+$('source').addEventListener('change',async e=>{
+ if(dirty&&!g.confirm('Discard unsaved PRIVATE human graph? Export privately before replacing the original Casework.')){e.target.value='';return;}
+ try{await importOriginal(e.target.files[0]);}catch(err){$('source-message').textContent='HOLD: '+err.message;}
+});
+$('link-add').addEventListener('click',()=>{
+ if(!state||!$('source-ack').checked)return;
+ const next=[...links,{from:$('from').value,to:$('to').value,reason:$('reason').value}];
+ try{g.LightUpHumanDependencies.clean(state,next,efforts);links=next;dirty=true;revision++;$('reason').value='';render();$('link-message').textContent='Original-ID human prerequisite recorded in memory.';}
+ catch(err){$('link-message').textContent='HOLD: '+err.message;}
+});
+for(const name of ['filter','start','owner-filter'])$(name).addEventListener('change',()=>{if(state){try{drawGraph();}catch(err){$('review-message').textContent='HOLD: '+err.message;}}});
+$('review').addEventListener('click',()=>{if(state){try{drawGraph();}catch(err){$('review-message').textContent='HOLD: '+err.message;}}});
+$('export-ack').addEventListener('change',()=>{const ok=!!state&&$('source-ack').checked&&$('export-ack').checked;$('export-json').disabled=!ok;$('export-csv').disabled=!ok;});
+$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked)$('export-ack').checked=false;$('export-json').disabled=!$('source-ack').checked||!$('export-ack').checked;$('export-csv').disabled=$('export-json').disabled;});
+$('export-json').addEventListener('click',()=>{
+ if(!state||!$('source-ack').checked||!$('export-ack').checked)return;
+ try{const data=g.LightUpHumanDependencies.packet(state,links,efforts);
+ if(!g.confirm('Export PRIVATE original finding IDs and human dependencies to the independently approved destination? No permission or remediation is verified.'))return;
+ saveFile('lightup-PRIVATE-human-dependencies.json',JSON.stringify(data,null,2)+'\n','application/json;charset=utf-8');
+ dirty=false;$('export-message').textContent='PRIVATE source-bound human dependency draft exported.';}
+ catch(e){$('export-message').textContent='HOLD: '+e.message;}
+});
+function safeCsv(value){
+ let s=String(value??'');
+ const invisible=/^[\s\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]*/u;
+ if(/^[=+\-@]/.test(s.replace(invisible,'')))s="'"+s;
+ return '"'+s.replace(/"/g,'""')+'"';
+}
+$('export-csv').addEventListener('click',()=>{
+ if(!state||!$('source-ack').checked||!$('export-ack').checked)return;
+ try{const v=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);
+ if(!g.confirm('Export PRIVATE original finding IDs and HUMAN status/effort/waiting dependencies to the approved destination?'))return;
+ const table=[['finding_id','source_severity','source_retest','human_stage','human_owner','human_due','waiting_for_human_ids','estimated_chain_days','indicative_local_date']];
+ for(const x of v.rows){if($('csv-scope').value==='filtered'&&!visibleRow(x,new Set(v.critical)))continue;table.push([x.finding_id,x.severity,x.original_retest,x.human_status,x.owner,x.human_due||'',x.waiting.join('; '),x.path_days,v.dates?.[x.finding_id]||'']);}if(table.length<2)stop('No original human tasks match the selected PRIVATE CSV handoff scope.');
+ saveFile('lightup-PRIVATE-human-dependency-board.csv',table.map(r=>r.map(safeCsv).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
+ $('export-message').textContent='PRIVATE tentative human action CSV exported. No verified fix, SLA or authorized retest.';}
+ catch(e){$('export-message').textContent='HOLD: '+e.message;}
+});
+$('reopen').addEventListener('change',async e=>{
+ try{if(!state||!$('source-ack').checked)stop('Open original Casework first.');
+ const current=state,token=revision,file=e.target.files[0];if(!file||file.size>LIMIT)stop('Private dependency draft exceeds 2 MiB.');
+ const packet=parseStrict(await file.text());if(token!==revision||state!==current)stop('Source changed while reading private graph.');
+ const clean=g.LightUpHumanDependencies.restore(state,packet);
+ if(!g.confirm('Replace local HUMAN estimates and prerequisite links from an unsigned, source-bound PRIVATE draft?'))return;
+ links=clean.links;efforts=clean.efforts;dirty=true;revision++;render();$('export-message').textContent='Private human dependency draft reopened. Original findings untouched.';}
+ catch(err){$('export-message').textContent='HOLD: '+err.message;}
+ e.target.value='';
+});
+$('clear').addEventListener('click',()=>{if(dirty&&!g.confirm('Discard unsaved PRIVATE human dependencies?'))return;clear();});
+g.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+})(window);</script></body></html>
