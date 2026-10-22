@@ -567,11 +567,15 @@
     }
     const focus=selector.value==="all"?null:Number(selector.value);
     const mode=$("conflictMode").value||"conflicts";
+    const metricFocus=$("conflictMetric").value||"all";
     const allRows=scenarioConflictRows();
     const shown=allRows.filter(row=>{
       const focused=focus===null?null:row.candidates[focus];
-      const hasAdverse=focus===null?row.adverseByCandidate.length>0:focused.adverseMetrics.length>0;
-      const hasDisagreement=row.disagreements.some(item=>focus===null||
+      const metricDisagreements=row.disagreements.filter(item=>metricFocus==="all"||item.metric===metricFocus);
+      const hasAdverse=focus===null?
+        (metricFocus==="all"?row.adverseByCandidate.length>0:row.candidates.some(candidate=>candidate.item.metrics[metricFocus].regression)):
+        (metricFocus==="all"?focused.adverseMetrics.length>0:focused.item.metrics[metricFocus].regression);
+      const hasDisagreement=metricDisagreements.some(item=>focus===null||
         item.adverseSlots.includes(focus+1)||item.nonAdverseSlots.includes(focus+1));
       if(mode==="all")return true;
       if(mode==="disagreement")return hasDisagreement;
@@ -589,9 +593,10 @@
       return [nice(name),adverse,disagreements,
         ...reports.map((_,i)=>allRows.filter(row=>row.candidates[i].item.metrics[name].regression).length)];
     }));
-    $("conflictSummary").textContent=shown.length+" of "+allRows.length+" anonymous cases shown · "+
-      disagreementCases+" with cross-candidate source-label disagreements · "+adverseCases+
-      " with at least one source-adverse label. Candidate slot order is manual file-selection order, not verified chronology.";
+    $("conflictSummary").textContent=shown.length+" of "+allRows.length+" anonymous cases shown · metric focus: "+
+      (metricFocus==="all"?"all 15 metrics":nice(metricFocus))+" · "+disagreementCases+
+      " cases with cross-candidate source-label disagreements · "+adverseCases+
+      " cases with at least one source-adverse label. Candidate slot order is manual file-selection order, not verified chronology.";
     if(!shown.length){
       $("conflictTable").innerHTML="<p class='empty'>No cases match the selected view. This is not evidence of safety or remediation.</p>";
       return;
@@ -599,13 +604,15 @@
     $("conflictTable").innerHTML=table([
       "Anonymous case","Source-adverse metrics by candidate","Metrics with disagreeing source labels","HUMAN interpretation"
     ],shown.map(row=>{
-      const adverse=row.adverseByCandidate.length?
-        row.adverseByCandidate.map(item=>"Candidate "+item.slot+": "+item.metrics.map(nice).join(", ")).join(" · "):
-        "No source-adverse label reported by any candidate";
-      const disagreements=row.disagreements.length?
-        row.disagreements.map(item=>nice(item.metric)+" — adverse: Candidate "+item.adverseSlots.join(", ")+
+      const adverseRows=row.adverseByCandidate.map(item=>({slot:item.slot,metrics:item.metrics.filter(name=>metricFocus==="all"||name===metricFocus)})).filter(item=>item.metrics.length);
+      const adverse=adverseRows.length?
+        adverseRows.map(item=>"Candidate "+item.slot+": "+item.metrics.map(nice).join(", ")).join(" · "):
+        "No source-adverse label reported for the selected metric(s)";
+      const metricDisagreements=row.disagreements.filter(item=>metricFocus==="all"||item.metric===metricFocus);
+      const disagreements=metricDisagreements.length?
+        metricDisagreements.map(item=>nice(item.metric)+" — adverse: Candidate "+item.adverseSlots.join(", ")+
           "; not adverse: Candidate "+item.nonAdverseSlots.join(", ")).join(" · "):
-        "No cross-candidate label disagreement";
+        "No cross-candidate label disagreement for the selected metric(s)";
       const note=row.disagreements.length?
         "Source labels disagree; request original evidence and reconcile the classification.":
         row.adverseByCandidate.length?
@@ -1510,7 +1517,7 @@
   for(const id of ["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost",
     "dimQuality","dimCoverage","dimRuntime","dimCost"])$(id).addEventListener("change",render);
   for(const id of ["pairA","pairB"])$(id).addEventListener("change",render);
-  for(const id of ["conflictCandidate","conflictMode"])$(id).addEventListener("change",renderScenarioConflictExplorer);
+  for(const id of ["conflictCandidate","conflictMode","conflictMetric"])$(id).addEventListener("change",renderScenarioConflictExplorer);
   $("caseSelect").addEventListener("change",e=>{if(!reports.length)return;
     const ids=[...reports[0].cases.keys()].sort(),i=Number(e.target.value);
     if(Number.isSafeInteger(i)&&i>=0&&i<ids.length){selectedCase=ids[i];renderCase(selectedCase);}
