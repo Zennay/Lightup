@@ -446,3 +446,21 @@ worklist. The native summary reports counts by all five HUMAN dimensions
 (role, reply status, self-reported stage, next action and note-change flag),
 not note content. All outputs remain private mode `0600`; missing or modified
 original source bytes keep the workflow in HOLD.
+
+### Two PRIVATE selected-action CSVs → original-source-bound change dossier
+
+`action_selection_compare.py` adds a complete offline **HUMAN selection
+membership** workflow: compare two separately downloaded PRIVATE selected
+CSV snapshots against the *same* freshly re-admitted original Launchpad source,
+2–8 manually ordered HUMAN rounds and 1–5 role returns. Both six-field CSVs
+must be an exact, unique, original-order subset of the original worklist.
+It classifies original local slots as newly selected, no longer selected or
+selected in both, and creates an owner-only four-file packet (scriptless
+network-denied CSP HTML, source-minimal CSV, fixed-vocabulary counts JSON and
+handling guide). Breakdown by suggested HUMAN role/next action is also
+included. Use `--preview-only` for write-free counts or `--verify-output-dir`
+for read-only reopen. No target URLs, source digests, notes or reviewer
+identities are exported. Even private ordinals and role combinations may be
+identifying. **Manual selection order does not prove event chronology;
+removed selection is not a remediated finding.** Full create/reopen commands:
+[ACTION_SELECTION_COMPARISON_GUIDE.md](ACTION_SELECTION_COMPARISON_GUIDE.md).

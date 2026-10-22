@@ -228,3 +228,16 @@ admitted during creation and read-only reopen; creation also re-admits source
 and selection immediately before publication. The source bytes and local
 hashes are **unsigned local consistency only**, not cryptographic proof of
 reviewer identity, tenant consent, secure sharing, assessment or HUMAN GO.
+
+## Source-bound comparison of two PRIVATE HUMAN selection drafts
+
+After locally exporting and separately keeping two PRIVATE selected-action
+CSV snapshots, `action_selection_compare.py` reopens both against the SAME
+complete original packet/rounds/role returns, then reports original-local
+membership changes. The standalone native HTML/CSV/JSON + guide are new
+exclusive owner-private 0600 artifacts under an existing separate 0700 folder.
+No earlier source or selection is overwritten. It also offers a write-free
+five-count `--preview-only` and exact read-only `--verify-output-dir` reopen.
+Breakdowns by fixed suggested HUMAN roles/actions are unsigned suggestions,
+not authority, chronology or remediation status. For full commands and
+privacy handling, see [ACTION_SELECTION_COMPARISON_GUIDE.md](ACTION_SELECTION_COMPARISON_GUIDE.md).
