@@ -446,28 +446,31 @@
   }
 
   async function loadHistorical(file) {
-    clearHistorical();
+    const generation = beginRead();
     try {
       ensure(report && report.kind === "cohort" && file &&
         file.size > 0 && file.size <= 524288 &&
         file.name.toLowerCase().endsWith(".json"));
       const raw = await file.text();
+      ensure(currentRead(generation));
       ensure(new TextEncoder().encode(raw).length <= 524288);
       const next = readReport(parseStrictJson(raw));
-      trend = compareHistorical(next);
+      const nextTrend = compareHistorical(next);
+      ensure(currentRead(generation));
+      trend = nextTrend;
       $("trend-status").textContent = "Informational comparison only. Original source " +
         report.verdict + ", follow-up source " + next.verdict +
         ". Neither verdict permits assessment activity.";
       renderHistorical();
     } catch (_) {
-      clearHistorical();
-      $("trend-status").textContent = "HOLD: source scenario set or metric baseline mismatch, or unsupported local report. No partial comparison retained.";
+      if (currentRead(generation)) $("trend-status").textContent =
+        "HOLD: source scenario set or metric baseline mismatch, or unsupported local report. Previous historical comparison preserved.";
     }
   }
   $("trend-file").addEventListener("change", e => {
     if(e.target.files[0]) loadHistorical(e.target.files[0]);
   });
-  $("trend-clear").addEventListener("click", clearHistorical);
+  $("trend-clear").addEventListener("click", () => {invalidateReads();clearHistorical();});
   $("trend-csv").addEventListener("click", () => {
     if (!trend) return;
     const cols=["case","newly_reported_regressions","no_longer_flagged_unverified",
@@ -839,8 +842,7 @@
     if (report) renderPrintBrief();
   }
   async function compareSavedPlans() {
-    planDelta = null;
-    renderPlanComparison();
+    const generation = beginRead();
     try {
       const beforeFile = $("plan-before-file").files[0];
       const afterFile = $("plan-after-file").files[0];
@@ -850,6 +852,7 @@
         beforeFile.size > 0 && beforeFile.size <= 131072 &&
         afterFile.size > 0 && afterFile.size <= 131072);
       const [beforeRaw, afterRaw] = await Promise.all([beforeFile.text(),afterFile.text()]);
+      ensure(currentRead(generation));
       const before = readSavedPlan(beforeRaw), after = readSavedPlan(afterRaw);
       ensure(before.length === after.length && before.length === report.cases.length);
       const rows = [], fields = ["stage","route","due"];
@@ -866,15 +869,15 @@
         dateChanges += Number(left.due !== right.due);
         rows.push({case:left.case, changed, before:left, after:right});
       }
+      ensure(currentRead(generation));
       planDelta = {rows,stageChanges,routeChanges,dateChanges};
       renderPlanComparison();
       $("plan-status").textContent = rows.length ?
         "Comparison complete. Only HUMAN planning-field differences are shown; order and labels are unverified." :
         "No HUMAN planning-field differences. Both saved plans match the same current original source.";
     } catch (_) {
-      planDelta = null;
-      renderPlanComparison();
-      $("plan-status").textContent = "HOLD: one saved plan is malformed, has duplicate JSON keys, or is not bound to this exact original source. No partial comparison retained.";
+      if (currentRead(generation)) $("plan-status").textContent =
+        "HOLD: one saved plan is malformed, has duplicate JSON keys, or is not bound to the exact source. Previous comparison preserved.";
     }
   }
   function clearPlanComparison(clearFiles = true) {
@@ -888,7 +891,7 @@
   }
 
   $("plan-compare").addEventListener("click", compareSavedPlans);
-  $("plan-clear").addEventListener("click", () => clearPlanComparison());
+  $("plan-clear").addEventListener("click", () => {invalidateReads();clearPlanComparison();});
   ["plan-before-file","plan-after-file"].forEach(id => $(id).addEventListener("change", () => {
     planDelta = null;
     renderPlanComparison();
