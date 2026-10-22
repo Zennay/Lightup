@@ -365,3 +365,8 @@ The existing native advance.py next-round builder can include a selected role ha
 The resulting human-selected-role folder contains the four private files and the scriptless local OPEN-NEXT-ROUND-PRIVATE.html navigation now links the dossier. Without --handoff-role no dossier is created. A subsequent --verify-workroom-dir must be run with identical --handoff-role, --handoff-stage and any --handoff-slot values; otherwise the complete-workroom admission fails.
 
 IMPORTANT: Human roles are unsigned self-reports, not verified identities or server-side access control. A privacy-reduced file is not automatically safe to distribute: an operator must authenticate and authorize recipients separately. This product does not issue consent, grants, assessment scope, clearance, completed findings, remediation, real chronology, security permissions or HUMAN GO. No active target, model or scan actions occur. Existing source-owner, CI/permanent VPS, independent security/privacy, actual client/operator consent and action-time revocation/HUMAN GO release gates remain mandatory.
+
+
+## Returning role-filtered HUMAN replies
+
+See [ROLE_RETURN_GUIDE.md](ROLE_RETURN_GUIDE.md) for the complete offline role-specific CSV or non-echoing terminal reply -> source-bound owner-only HUMAN worksheet -> native advance workflow. Voluntary roles are not authenticated, and no scope/consent/target action occurs.
