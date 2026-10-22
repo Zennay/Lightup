@@ -440,6 +440,7 @@
         if(value.length>40||!(/^[\x20-\x7e]*$/.test(value))){
           input.value=entry.alias||"";return;
         }
+        cancelPendingFiles();
         entry.alias=value;input.value=value;
         const label=$("cardLabel"+i);
         if(label)label.textContent=value?" · "+value:"";
@@ -1409,6 +1410,7 @@
     if(!window.confirm("Replace current LOCAL anonymous HUMAN discussion suggestions "+
       "with all suggestions from the LAST manually selected PRIVATE draft? "+
       "This does not alter original lab data, evidence, consent or security findings."))return;
+    cancelPendingFiles();
     const ids=queueIds(),next=new Map();
     reviewRounds.after.forEach((row,i)=>{
       if(row.route!=="unrouted"||row.stage!=="needs_review")
@@ -1427,6 +1429,7 @@
     if(!window.confirm("Apply last-round LOCAL HUMAN proposals to exactly "+count+
       " selected anonymous cases and preserve other local discussion states? "+
       "No real assignments, security findings or consent are changed."))return;
+    cancelPendingFiles();
     const ids=queueIds(),next=new Map(discussions);
     for(const ordinal of reviewRounds.selected){
       if(!Number.isSafeInteger(ordinal)||ordinal<1||ordinal>ids.length)return;
@@ -1502,6 +1505,7 @@
     if(!visible.length)return;
     if(!window.confirm("Update only "+visible.length+
        " visible anonymized lab case discussions? No real assignment or authorization."))return;
+    cancelPendingFiles();
     const previous=new Map(discussions);
     for(const id of visible){
       const current=queueSettings(id);
@@ -1517,6 +1521,7 @@
   });
   $("undoBulk").addEventListener("click",()=>{
     if(batchUndo===null)return;
+    cancelPendingFiles();
     discussions=batchUndo;batchUndo=null;
     $("queueMessage").textContent="Last local batch reversed. No source findings changed.";
     drawQueue();
@@ -1531,6 +1536,7 @@
     const id=queueIds()[queueFocus];if(!id)return;
     const route=$("queueRoute").value,stage=$("queueStage").value;
     if(!DISCUSSION_ROUTES.includes(route)||!DISCUSSION_STAGES.includes(stage))return;
+    cancelPendingFiles();
     batchUndo=null;
     if(route==="unrouted"&&stage==="needs_review")discussions.delete(id);
     else discussions.set(id,{route,stage});
@@ -1545,6 +1551,7 @@
   $("resetQueue").addEventListener("click",()=>{
     if(!discussions.size)return;
     if(!window.confirm("Discard all local human discussion stages and proposed groups?"))return;
+    cancelPendingFiles();
     discussions.clear();batchUndo=null;$("queueMessage").textContent="Local human discussion suggestions forgotten.";
     drawQueue();
   });
@@ -1598,8 +1605,12 @@
   $("demo").addEventListener("click",demoLoad);
   $("forget").addEventListener("click",forget);
   for(const id of ["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost",
-    "dimQuality","dimCoverage","dimRuntime","dimCost"])$(id).addEventListener("change",render);
-  for(const id of ["pairA","pairB"])$(id).addEventListener("change",render);
+    "dimQuality","dimCoverage","dimRuntime","dimCost"])$(id).addEventListener("change",()=>{
+      cancelPendingFiles();render();
+    });
+  for(const id of ["pairA","pairB"])$(id).addEventListener("change",()=>{
+    cancelPendingFiles();render();
+  });
   for(const id of ["conflictCandidate","conflictMode","conflictMetric"])$(id).addEventListener("change",renderScenarioConflictExplorer);
   $("caseSelect").addEventListener("change",e=>{if(!reports.length)return;
     const ids=[...reports[0].cases.keys()].sort(),i=Number(e.target.value);
