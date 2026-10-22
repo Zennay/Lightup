@@ -477,6 +477,7 @@
       recipientProposal=null;
     $("recipientApply").disabled=!recipientProposal||!recipientSelection.size;
     $("recipientProposalExport").disabled=!recipientProposal||!recipientSelection.size;
+    $("recipientProposalPrint").disabled=!recipientProposal||!recipientSelection.size;
     if(!recipientProposal){
       $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
       return;
@@ -577,6 +578,41 @@
     download(makeCsv(rows),"lightup-private-human-common-hours-proposals.csv",
       "text/csv;charset=utf-8");
     inform("Selected PRIVATE HUMAN planning proposals saved locally, not applied or sent.");
+  }
+  function printRecipientProposal(){
+    hold(active&&recipientProposal&&!capacityEditorDirty &&
+      recipientProposal.identity===recipientProposalIdentity());
+    const selected=[...recipientProposal.slots].filter(([ordinal])=>
+      recipientSelection.has(ordinal));
+    hold(selected.length>0&&selected.length<=12);
+    if(!confirm("Download a PRIVATE SCRIPTLESS HTML review sheet for "+selected.length+
+      " selected, unapplied HUMAN proposals? It includes tentative dates, source hash and HUMAN group labels. Print/share only via an approved PRIVATE channel; this does NOT establish consent, scope or calendar delivery."))return;
+    hold(recipientProposal&&recipientProposal.identity===recipientProposalIdentity());
+    const cells=selected.map(([ordinal,next])=>{
+      const old=plan.get(ordinal),row=items[ordinal-1];
+      hold(old&&row&&row.ordinal===ordinal);
+      return "<tr><td>#"+ordinal+"</td><td>"+htmlEsc(old.day+" "+old.time)+
+        "</td><td>"+htmlEsc(next.day+" "+next.time)+
+        "</td><td>"+htmlEsc(next.duration+" min")+"</td><td>"+
+        htmlEsc(row.group||"(unassigned)")+"</td></tr>";
+    }).join("");
+    const content=['<!doctype html><html lang="en"><head><meta charset="utf-8">',
+      '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; connect-src &#39;none&#39;; img-src &#39;none&#39;; object-src &#39;none&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;">',
+      '<title>PRIVATE HUMAN timezone proposal review</title></head><body>',
+      '<h1>PRIVATE HUMAN proposed schedule changes</h1>',
+      '<p>REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD. Unsigned HUMAN proposals, not source authentication, verified risk, calendar acceptance, consent, scope approval or permission to scan.</p>',
+      '<p><strong>Original worksheet SHA256 (unsigned):</strong> '+htmlEsc(hash)+
+        '<br><strong>Private calendar series (unsigned):</strong> '+htmlEsc(seriesId)+
+        '<br><strong>Source local zone:</strong> '+htmlEsc(zone)+
+        '<br><strong>Alternate display zone (unverified):</strong> '+
+          htmlEsc(recipientFormatter().resolvedOptions().timeZone)+'</p>',
+      '<p>Illustrative alternate-zone Monday–Friday 09:00–17:00 only. Source-group hours and blackouts are HUMAN-declared, not independently verified. Appointments have NOT been changed or exported to an external calendar.</p>',
+      '<table border="1"><thead><tr><th>Ordinal</th><th>Previous source-zone proposal</th><th>Next source-zone proposal</th><th>Duration</th><th>Unverified HUMAN group</th></tr></thead><tbody>',
+      cells,'</tbody></table><p>Authority: FALSE · Consent: FALSE · Verification: FALSE · Applied: FALSE.</p>',
+      '<p>Review original private HUMAN worksheet/plan and approve separately before local changes. Retain PRIVATE; original HUMANS may reveal confidential schedule metadata.</p>',
+      '</body></html>'].join("\n");
+    download(content,"lightup-private-human-common-hours-review.html","text/html;charset=utf-8");
+    inform("PRIVATE scriptless HUMAN proposal review HTML downloaded; no dates applied or remote services contacted.");
   }
   function applyRecipientProposal(){
     hold(active&&recipientProposal&&!capacityEditorDirty &&
@@ -2895,6 +2931,10 @@
     try{applyRecipientProposal();}
     catch(err){recipientProposal=null;renderRecipientProposal();
       inform("PRIVATE HUMAN cross-zone move refused without changes (HOLD).",true);}
+  });
+  hook("recipientProposalPrint","click",()=>{
+    try{printRecipientProposal();}
+    catch(_){inform("PRIVATE HUMAN print handoff refused (HOLD).",true);}
   });
   hook("recipientProposalExport","click",()=>{
     try{exportRecipientProposal();}
