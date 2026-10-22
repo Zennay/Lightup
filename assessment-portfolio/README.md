@@ -521,3 +521,33 @@ targets, grant privileges, dispatch work or schedule scanners. Client/operator
 consent, action-time revocation, independent privacy/security/source-owner
 review, original #177/#182/#829 gates, hosted and permanently named VPS CI and
 explicit HUMAN GO remain independent prerequisites for any future release.
+
+
+### Optional PRIVATE start screen even without a HUMAN worksheet
+
+The native `--private-home` flag now explicitly publishes
+`assessment-portfolio-private-HUMAN-home.html` for **any** selected
+portfolio packet, even when the browser HUMAN editor was not requested.
+It links only the precisely generated original/private artifacts using
+the fixed filename allowlist; it neither imports source files nor
+performs any requests, target work, share or dispatch. The previously
+supported automatic start page with `--private-human-workbook` or
+`--human-responses` is unchanged. With no `--private-home` and no
+HUMAN workflow selected, the original four-file output remains
+unchanged.
+
+```bash
+mkdir -m 700 /private/portfolio-briefing-home
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --private-home \
+  --private-day-brief \
+  --private-role-day-csv \
+  --output-dir /private/portfolio-briefing-home \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+Read-only reopening must repeat `--private-home` and the complete exact
+selection. This is local PRIVATE navigation, not independently authenticated
+source provenance, authorized disclosure or a production dashboard.
