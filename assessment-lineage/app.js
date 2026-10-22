@@ -35,6 +35,12 @@
   let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), noteScratch=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
   let mismatchRevealed=false,undoRouteBatch=null;
   let catalogHash=null, reportHashes=[];
+  // Each async PRIVATE local intake belongs to one current user decision.
+  // Old file completions cannot resurrect forgotten source data or old HUMAN plans.
+  let importGeneration=0;
+  const startImport=()=>++importGeneration;
+  const cancelOldImports=()=>{importGeneration++;};
+  const admitCurrent=generation=>admit(generation===importGeneration);
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
   function exact(v,keys){return v!==null && typeof v==="object" && !Array.isArray(v) &&
     Object.keys(v).length===keys.length && keys.every(k=>Object.hasOwn(v,k));}
@@ -808,9 +814,11 @@
     }catch(_){message("HOLD: private draft needs readable original source bytes and a local SHA-256 digest.",true);}
   }
   async function restorePrivateDraft(file){
+    const generation=startImport();
     try{
       privateSourceBound();
-      const input=await read(file,65536),draft=input.result;
+      const input=await read(file,65536);admitCurrent(generation);
+      const draft=input.result;
       const version=draft?.schema;
       const withPlan=version==="lightup.assessment_lineage_private_draft.v3";
       const withNotes=withPlan||version==="lightup.assessment_lineage_private_draft.v2";
@@ -847,11 +855,12 @@
       const nextActions=withPlan?new Map(catalog.flatMap((s,i)=>
         draft.next_human_actions[i]!=="none_recorded"?
           [[s.id,draft.next_human_actions[i]]]:[])):new Map();
+      admitCurrent(generation);
       reviews=nextReviews;humanNotes=nextNotes;noteScratch=new Map();
       humanRoutes=nextRoutes;humanActions=nextActions;undoBatch=null;undoRouteBatch=null;render();
       message("PRIVATE stages, notes and proposed human plans restored for original "+
         "exact source bytes. Legacy v1/v2 drafts have no proposed plans.");
-    }catch(_){message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
+    }catch(_){if(generation===importGeneration)message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
   }
 
 
@@ -1024,7 +1033,7 @@
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
+  function forget(){cancelOldImports();catalog=null;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();
     if(privateTemplate instanceof HTMLTemplateElement){
       privateTemplate.content.replaceChildren();
@@ -1037,6 +1046,7 @@
     message("Private source, notes, human plans and embedded draft cleared from the active browser document.");
   }
   function makeDemo(){
+    cancelOldImports();
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
     catalog=names.map((id,i)=>({id,mode:i===0?"unscored":i===1?
       "declared_zero":"planted",planted:i===0?null:i===1?0:2,
@@ -1099,21 +1109,25 @@
     if((catalog||reports.length)&&!confirm(
       "Clear current private work and replace it with the original source files "+
       "inside this PRIVATE HTML? This does not scan, grant or evaluate."))return;
+    const generation=startImport();
     try{
       const raw=privateTemplate.content.textContent;
       admit(typeof raw==="string"&&raw.length>0&&raw.length<=5_000_000);
       const bundle=parse(raw),hasDraft=exactBundleShape(bundle);
       const sourceCatalog=await read(decodedPrivateFile(bundle.catalog_b64,0,MAX_CATALOG),
         MAX_CATALOG);
+      admitCurrent(generation);
       const nextCatalog=parseCatalog(sourceCatalog.result),nextReports=[],nextHashes=[];
       for(let i=0;i<bundle.reports_b64.length;i++){
         const imported=await read(decodedPrivateFile(bundle.reports_b64[i],i+1,MAX_REPORT),
           MAX_REPORT);
+        admitCurrent(generation);
         nextReports.push(parseReport(imported.result));
         nextHashes.push(imported.digest);
       }
       harmonize(nextReports);
-      // All source files are fully canonical and mutually consistent before ANY mutation.
+      // All source files and the original generation must still be current.
+      admitCurrent(generation);
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
       reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;undoRouteBatch=null;fictional=false;
       clearPendingDraft();
@@ -1132,7 +1146,7 @@
       message("Private originals loaded from inert offline HTML. No network, scanner, "+
         "authenticated consent or grants used.");
     }catch(_){
-      message("HOLD: embedded PRIVATE original source rejected. "+
+      if(generation===importGeneration)message("HOLD: embedded PRIVATE original source rejected. "+
         "Existing review workspace preserved.",true);
     }
   }
