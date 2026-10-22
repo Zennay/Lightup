@@ -73,8 +73,10 @@ python3 assessment-launchpad/role_return.py \
   --output-dir ~/private-owner-role-return
 ```
 
-The owner-private output `lightup-lab-human-role-return-private.json`
-is a *full* canonical HUMAN worksheet. Nonselected rows and their notes
+The owner-private output has exactly TWO files: `lightup-lab-human-role-return-private.json`
+(a *full* canonical HUMAN worksheet) and `lightup-lab-human-role-return-context.json`
+(a source-bound, unsigned receipt of the exact source rounds, role, selected
+slots, original handoff and owner worksheet). Nonselected rows and their notes
 are preserved unchanged; only the exact selected role's stage and note
 may change. **Never distribute this full worksheet to the role recipient**:
 it necessarily contains notes from other roles. All source and reply
@@ -100,9 +102,24 @@ mkdir -m 700 ~/private-next-human-round
 python3 assessment-launchpad/advance.py \
   --bundle-dir ~/private-lab-launchpad \
   --previous-round-dir ~/private-human-round-02 \
-  --responses ~/private-owner-role-return/lightup-lab-human-role-return-private.json \
+  --earlier-round-dir ~/private-human-round-01 \
+  --role-return-dir ~/private-owner-role-return \
   --output-dir ~/private-next-human-round
 ```
+
+The --role-return-dir importer additionally re-opens both original files,
+all earlier source rounds and the exact selected-role handoff fingerprint,
+and refuses changes to non-selected rows, suggested role, ordinals or other
+source metadata. This source consistency check is not a cryptographic
+identity signature or recipient authentication. For existing unbound
+external JSON, --responses remains a distinct manual HUMAN input mode.
+
+When --handoff-role is selected in advance.py, its next-round workroom
+now automatically contains BOTH the original selected-role handoff and the
+new human-role-reply-form folder with role-minimal PRIVATE offline editor,
+blank-note CSV and private guide. The local navigation screen links directly
+to the role reply editor. Import its edited CSV into a new owner-only directory
+with role_return.py, before starting the following --role-return-dir cycle.
 
 The original rounds remain unchanged. The resulting workroom contains
 the next PRIVATE HUMAN round, editor, routing, history, and follow-up

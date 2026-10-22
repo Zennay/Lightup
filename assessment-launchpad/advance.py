@@ -25,7 +25,9 @@ from compare_review import NAMES as DELTA_FILES, make_artifacts as delta_artifac
 from workspace import private_child
 from history import output_artifacts as history_artifacts
 from role_handoff import assemble as handoff_artifacts
-from role_return_receipt import admit_return
+from role_return_receipt import admit_return, handoff_digest
+from role_return import selected_template, return_guide, TEMPLATE as RETURN_CSV, GUIDE as RETURN_GUIDE
+from role_return_browser import NAME as RETURN_EDITOR, render_editor as render_return_editor
 
 ROUND = "human-round"
 EDITOR = "human-editor"
@@ -33,6 +35,7 @@ ROUTING = "human-routing"
 DELTA = "human-changes"
 HISTORY = "human-history"
 HANDOFF = "human-selected-role"
+RETURN_FORM = "human-role-reply-form"
 GUIDE = "START-HERE-PRIVATE.txt"
 HOME = "OPEN-NEXT-ROUND-PRIVATE.html"
 SUBDIRS = (ROUND, EDITOR, ROUTING, DELTA, HISTORY)
@@ -86,7 +89,15 @@ def render_home(source_count, changed, history_count, handoff_role=None, handoff
         "This is not authorization or verified security evidence.</small></p></section>" +
         ("<section><h2>Selected PRIVATE role handoff</h2>"
          "<a href='human-selected-role/lightup-lab-role-handoff-private.html'>"
-         "Open voluntarily filtered HUMAN role packet</a><p><small>"
+         "Open voluntarily filtered HUMAN role packet</a><p>"
+         "<a href='human-role-reply-form/lightup-lab-human-role-return-editor.html'>"
+         "Open selected-role offline response editor</a></p><p><small>"
+         "The PRIVATE response form includes only selected source ordinals, "
+         "fixed HUMAN stages and a source fingerprint, without original "
+         "endpoints, previous notes, or other-role data. A generated "
+         "download MUST be re-admitted on the owner's device using "
+         "role_return.py before a subsequent advance; it is never "
+         "a clearance or authenticated review.</small></p><p><small>"
          "Selected suggested HUMAN role: " + escape(handoff_role or "") +
          "; latest HUMAN stage: " + escape(handoff_stage) +
          "; explicit private slot subset: " +
@@ -123,6 +134,10 @@ def guide(count, changed, history_count, handoff_role=None, handoff_stage='ALL',
         "PRIVATE by default, counts-only management overview.\n" +
         ("human-selected-role: PRIVATE selected role-specific notes and local URL subset; "
          "other-role HUMAN notes withheld.\n"
+         "human-role-reply-form: offline selected-role private browser editor,"
+         " role-only blank-note CSV and a private return guide.\n"
+         "Owner must re-admit the CSV through role_return.py before"
+         " next-round --role-return-dir.\n"
          "Selected HUMAN role: " + handoff_role +
          "; selected latest HUMAN stage: " + handoff_stage + "\n"
          "Explicit slot subset: " +
@@ -147,9 +162,19 @@ def content_for(before, after, endpoints, earlier, handoff_role=None, handoff_st
         HISTORY: dict(history_artifacts([*earlier, before, after], endpoints)),
     }
     if handoff_role is not None:
+        rounds = [*earlier, before, after]
         artifacts[HANDOFF] = dict(
-            handoff_artifacts([*earlier, before, after], endpoints, handoff_role,
+            handoff_artifacts(rounds, endpoints, handoff_role,
                               handoff_stage, handoff_slots))
+        fingerprint = handoff_digest(rounds, endpoints, handoff_role,
+                                     handoff_stage, handoff_slots)
+        template, indices = selected_template(rounds, handoff_role,
+                                               handoff_stage, handoff_slots, fingerprint)
+        artifacts[RETURN_FORM] = {
+            RETURN_CSV: template,
+            RETURN_EDITOR: render_return_editor(template),
+            RETURN_GUIDE: return_guide(handoff_role, len(indices)),
+        }
     return artifacts
 
 def inspect_root(fd, root_path, before, endpoints, after, earlier,
