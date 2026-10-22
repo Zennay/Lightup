@@ -192,7 +192,8 @@ def verify_source_checkout(source_root: Path, files: list[dict]) -> int:
 
 def verify(path: Path, expected_sha256: str = "",
            sha256_file: Path | None = None,
-           source_root: Path | None = None) -> int:
+           source_root: Path | None = None,
+           return_manifest: bool = False) -> int | dict:
     path = reject_symlink_components(path)
     if source_root is not None:
         source_root = reject_symlink_components(source_root)
@@ -352,7 +353,110 @@ def verify(path: Path, expected_sha256: str = "",
         print("The reference proves no provenance unless obtained independently from a trusted channel.")
     print("REVIEW_ONLY: no source authenticity, trusted origin, consent, permission, " +
           "finding verification, remediation or release is established.")
+    if return_manifest:
+        return manifest
     return 0
+
+
+def comparison_inventory(manifest: dict) -> dict[tuple[str, str], dict]:
+    """Build an unambiguous source-path/support-name index from a verified manifest."""
+    inventory = {}
+    for item in manifest["files"]:
+        identity = ("software", item["source_path"])
+        if identity in inventory:
+            raise Hold("HOLD: ambiguous duplicate software source path in comparison inventory")
+        inventory[identity] = {
+            "filename": item["filename"],
+            "bytes": item["bytes"],
+            "sha256_unsigned": item["sha256_unsigned"],
+        }
+    support = manifest.get("package_assets", [])
+    if not support:
+        support = [manifest["operator_guide"]]
+    for item in support:
+        identity = ("support", item["filename"])
+        if identity in inventory:
+            raise Hold("HOLD: ambiguous duplicate support asset in comparison inventory")
+        inventory[identity] = {
+            "filename": item["filename"],
+            "bytes": item["bytes"],
+            "sha256_unsigned": item["sha256_unsigned"],
+        }
+    return inventory
+
+
+def compare_packages(package: Path, comparison_package: Path,
+                     expected_sha256: str = "",
+                     sha256_file: Path | None = None,
+                     source_root: Path | None = None) -> int:
+    """Verify two complete packages, then print a local-only inventory delta."""
+    package = reject_symlink_components(package)
+    comparison_package = reject_symlink_components(comparison_package)
+    if package == comparison_package:
+        raise Hold("HOLD: comparison requires two distinct package paths")
+    try:
+        current_stat, previous_stat = package.stat(), comparison_package.stat()
+    except OSError:
+        raise Hold("HOLD: both comparison packages must exist") from None
+    if (current_stat.st_dev, current_stat.st_ino) == (previous_stat.st_dev, previous_stat.st_ino):
+        raise Hold("HOLD: comparison package paths resolve to the same file")
+    current_manifest = verify(
+        package, expected_sha256, sha256_file, source_root, return_manifest=True
+    )
+    previous_manifest = verify(comparison_package, return_manifest=True)
+    if not isinstance(current_manifest, dict) or not isinstance(previous_manifest, dict):
+        raise Hold("HOLD: verified package inventory was not available for comparison")
+    current = comparison_inventory(current_manifest)
+    previous = comparison_inventory(previous_manifest)
+    changes = {"software": {"ADDED": 0, "REMOVED": 0, "CHANGED": 0, "UNCHANGED": 0},
+               "support": {"ADDED": 0, "REMOVED": 0, "CHANGED": 0, "UNCHANGED": 0}}
+    details = []
+    for identity in sorted(set(previous) | set(current)):
+        old = previous.get(identity)
+        new = current.get(identity)
+        category, logical_name = identity
+        if old is None:
+            state = "ADDED"
+            details.append((state, category, logical_name, "", new))
+        elif new is None:
+            state = "REMOVED"
+            details.append((state, category, logical_name, old, ""))
+        elif old == new:
+            state = "UNCHANGED"
+        else:
+            state = "CHANGED"
+            details.append((state, category, logical_name, old, new))
+        changes[category][state] += 1
+
+    print("PACKAGE INVENTORY COMPARISON — LOCAL REVIEW ONLY")
+    print("Baseline: " + comparison_package.name + " (" +
+          str(previous_manifest["schema"]) + ")")
+    print("Candidate: " + package.name + " (" + str(current_manifest["schema"]) + ")")
+    for category, label in (("software", "Software"), ("support", "Package support assets")):
+        counts = changes[category]
+        print(label + ": " + ", ".join(
+            str(counts[state]) + " " + state.lower()
+            for state in ("ADDED", "CHANGED", "REMOVED", "UNCHANGED")
+        ))
+    for state, category, logical_name, old, new in details:
+        label = category + " " + logical_name
+        if state == "CHANGED":
+            print("CHANGED " + label + ": " + old["filename"] + " (" +
+                  str(old["bytes"]) + " bytes) -> " + new["filename"] + " (" +
+                  str(new["bytes"]) + " bytes)")
+        elif state == "ADDED":
+            print("ADDED " + label + ": " + new["filename"] + " (" +
+                  str(new["bytes"]) + " bytes)")
+        else:
+            print("REMOVED " + label + ": " + old["filename"] + " (" +
+                  str(old["bytes"]) + " bytes)")
+    if not details:
+        print("No software or package-support inventory differences.")
+    print("Both ZIPs passed local inventory integrity checks. This comparison does not " +
+          "authenticate origin, authorship, provenance, consent, authorization or release.")
+    print("No ZIP was extracted and no files were written.")
+    return 0
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -365,14 +469,19 @@ def main() -> int:
                         help="optional standard sha256sum sidecar bound to the package filename")
     parser.add_argument("--source-root", default="",
                         help="optional local checkout root; fail if packaged software bytes are stale")
+    parser.add_argument("--compare-package", default="",
+                        help="optional second verified ZIP; print software/support inventory differences without extracting")
     args = parser.parse_args()
     try:
-        return verify(
-            Path(args.package).absolute(),
-            args.expected_sha256,
-            Path(args.sha256_file).absolute() if args.sha256_file else None,
-            Path(args.source_root).absolute() if args.source_root else None,
-        )
+        package = Path(args.package).absolute()
+        sha256_file = Path(args.sha256_file).absolute() if args.sha256_file else None
+        source_root = Path(args.source_root).absolute() if args.source_root else None
+        if args.compare_package:
+            return compare_packages(
+                package, Path(args.compare_package).absolute(),
+                args.expected_sha256, sha256_file, source_root
+            )
+        return verify(package, args.expected_sha256, sha256_file, source_root)
     except (Hold, OSError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: cannot read package",
               file=sys.stderr)
