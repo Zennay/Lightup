@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Twenty offline source-bound and local packet workflows in one user menu.
+Offline source-bound and local packet workflows in one foreground menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -34,6 +34,8 @@ from priority_inbox_stage_brief_timeline import publish as publish_stage_priorit
 from priority_inbox_stage_brief_timeline_open import reopen as reopen_stage_priority_timeline
 from priority_inbox_portfolio import publish as publish_priority_portfolio
 from priority_inbox_portfolio_open import reopen as reopen_priority_portfolio
+from priority_inbox_continuity_docket import publish as publish_continuity_docket
+from priority_inbox_continuity_docket_open import reopen as reopen_continuity_docket
 from priority_inbox_diff import compare as compare_priority_inbox
 from priority_inbox_diff_open import reopen as reopen_priority_inbox_diff
 
@@ -98,6 +100,10 @@ WORKFLOWS = {
            "every original priority, complete HUMAN returns and saved source-reopened inboxes"),
     "30": ("Reopen PRIVATE all-priority HUMAN portfolio against every original round",
            "same original source, full HUMAN rounds and exact nine-file PRIVATE portfolio"),
+    "31": ("Publish separate PRIVATE original-source HUMAN continuity follow-up docket",
+           "2–8 complete original HUMAN inboxes; explicit attention/reopened/unanswered/all filter"),
+    "32": ("Read-only reopen PRIVATE source-bound HUMAN continuity follow-up docket",
+           "all original sources, HUMAN rounds, exact four private files and matching filter"),
 }
 
 
@@ -194,7 +200,7 @@ def run_workflow(choice: str) -> None:
         print("Original-source HUMAN priority rows checked: " + str(count) +
               "; NO verified remediation, recipient or consent")
         return
-    if choice in ("27", "28", "29", "30"):
+    if choice in ("27", "28", "29", "30", "31", "32"):
         source = ask_path("EXISTING original lab source JSON")
         manifest = ask_path("EXISTING original briefing manifest")
         worksheet = ask_path("EXISTING original HUMAN worksheet")
@@ -234,7 +240,7 @@ def run_workflow(choice: str) -> None:
                 count = reopen_stage_priority_timeline(*args, stage, priority, saved)
                 print("PRIVATE timeline reopened against exact source and every inbox: " +
                       str(count) + " ordinals; no authorization")
-        else:
+        elif choice in ("29", "30"):
             saved = ask_path("EXCLUSIVE NEW PRIVATE portfolio folder" if choice == "29" else
                              "EXISTING saved PRIVATE portfolio folder")
             print("Portfolio contains aggregate stage/priorities only; still PRIVATE.")
@@ -248,6 +254,25 @@ def run_workflow(choice: str) -> None:
                 count = reopen_priority_portfolio(*args, saved)
                 print("Source-bound HUMAN portfolio reopened from all original rounds: " +
                       str(count) + " rows; no authority")
+        else:
+            mode = input("Original HUMAN follow-up filter [attention/reopened/unanswered/all]: ").strip()
+            if mode not in ("attention", "reopened", "unanswered", "all"):
+                raise Hold("HOLD: choose one explicit original-HUMAN continuity filter")
+            saved = ask_path("EXCLUSIVE NEW separate PRIVATE follow-up folder" if choice == "31" else
+                             "EXISTING separate PRIVATE follow-up folder")
+            print("CAUTION: unlike the aggregate portfolio this docket includes PRIVATE "
+                  "original HUMAN questions and latest replies; no recipient or disclosure "
+                  "authorization is inferred.")
+            if input("Enter exactly REVIEW ONLY for the explicit PRIVATE follow-up: ") != "REVIEW ONLY":
+                raise Hold("HUMAN declined source-specific PRIVATE follow-up")
+            if choice == "31":
+                count = publish_continuity_docket(*args, mode, saved)
+                print("PRIVATE HUMAN follow-up docket created for " + str(count) +
+                      " source-bound original rows, no assignment or authority")
+            else:
+                count = reopen_continuity_docket(*args, mode, saved)
+                print("PRIVATE original HUMAN follow-up reopened from all original rounds: " +
+                      str(count) + " rows; nothing changed")
         return
     if choice in ("25", "26"):
         source = ask_path("EXISTING original lab source JSON")

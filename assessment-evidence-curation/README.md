@@ -588,3 +588,54 @@ approval for external disclosure. Tiny cohorts can still be identifiable:
 **these are PRIVATE artifacts**, not anonymous/public data. No scans, models,
 notifications, grants, tasks, new QA suites or CI bypass are part of this flow.
 The branch remains **DRAFT/HOLD**, not main or live.
+
+## Separate PRIVATE original-source HUMAN continuity follow-up (console 31/32)
+
+The all-priority portfolio above remains **aggregate-only**. For a usable
+HUMAN follow-up dossier with original selected HUMAN questions, the
+manually ordered status history and **only the latest HUMAN round's** private
+reply and next question, use **console 31**. It creates an entirely **separate**
+owner-only PRIVATE directory, NEVER the aggregate portfolio's folder.
+Console **32** independently reopens all original source and output bytes,
+without repair or modifying previously saved material.
+
+The native CLI `priority_inbox_continuity_docket.py` takes the exact same
+original source, manifest, worksheet, selection receipt/CSV, original curated
+packet, 1–3 unique original priority handoffs, 2–8 unique complete original
+HUMAN inbox folders and round-major matching complete HUMAN return CSVs
+as the portfolio. Add `--filter attention` and `--output-dir NEW-PRIVATE-DOCKET`.
+
+Explicit filters: `attention` (default) selects latest HUMAN status
+blocked, needs-more-information or no reply; `reopened` selects only
+latest-attention rows that earlier claimed a HUMAN response; `unanswered`
+selects rows with no HUMAN response in **every** supplied round; `all`
+includes every original HUMAN row, including claimed replies. More permissive
+filters intentionally disclose more PRIVATE original HUMAN information.
+A claimed response is NEVER independent verification or remediation.
+
+The exclusive new 0700 directory has four 0600 files (all <=512 KiB):
+`PRIVATE-HUMAN-continuity-followup.html` is CSP-pinned scriptless
+PRIVATE original HUMAN question/latest reply/stage history with blank
+HUMAN-review prompts; `PRIVATE-HUMAN-continuity-followup.csv` contains
+only fixed original ordinal, priority, reported severity, evidence-reference
+**count** and HUMAN continuity flags (NO original question/reply text);
+`PRIVATE-HUMAN-continuity-counts.json` contains source-minimal numerical
+summaries; and `PRIVATE-HUMAN-continuity-receipt.json` binds exact original
+source/selection, every original inbox and complete return, the included
+original ordinals and all produced bytes with **UNSIGNED hashes**. The HTML
+does not contain original targets, evidence bodies or original finding IDs.
+
+Use `priority_inbox_continuity_docket_open.py` with all the same original
+args and **identical --filter**; replace `--output-dir` with
+`--private-docket-dir EXISTING-PRIVATE-DOCKET`. Missing/extra/modified bytes,
+unsafe owner or permissions, or source, HUMAN reply, handoff or round-order
+drift cause HOLD. Output is never silently repaired or overwritten.
+
+**Confidentiality:** unlike the aggregate-only portfolio, this HTML contains
+PRIVATE original HUMAN questions and latest answers and can identify client
+assets. NEVER publish or send the docket to recipients automatically, never
+merge it into the aggregate folder, and require separate, current HUMAN
+disclosure authorization for any transfer. HUMAN identity, chronology,
+finding/remediation, client/operator consent and recipient authorization
+remain UNVERIFIED. No targets, scans, messages, task assignments, grants,
+deployments or automated workflow actions are performed.
