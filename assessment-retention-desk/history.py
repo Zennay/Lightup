@@ -245,8 +245,10 @@ def publish_private(output, contents):
         parent_stat = parent.lstat()
     except OSError as exc:
         raise Hold("output parent is not available") from exc
-    if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_mode & 0o077:
-        raise Hold("output must use an existing non-symlink private 0700 directory")
+    if (not stat.S_ISDIR(parent_stat.st_mode)
+            or parent_stat.st_uid != os.getuid()
+            or stat.S_IMODE(parent_stat.st_mode) != 0o700):
+        raise Hold("output must use an existing owner-owned exact mode-0700 private directory")
     if path.exists() or path.is_symlink():
         raise Hold("output exists; exclusive non-overwriting destination required")
     temporary = None
