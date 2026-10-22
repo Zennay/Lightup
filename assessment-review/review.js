@@ -25,7 +25,8 @@
   let report = null, selected = -1, digest = null, sourceKind = null, trend = null, metricFocus = null, planDelta = null;
   // User choice is authoritative: stale local file completions cannot clear
   // or silently replace a newer HUMAN planning workspace.
-  let lastHumanUndo = null;
+  const HUMAN_HISTORY_LIMIT = 20;
+  let humanUndoHistory = [], humanRedoHistory = [];
   let readGeneration = 0;
   const beginRead = () => ++readGeneration;
   const invalidateReads = () => { readGeneration++; };
@@ -534,36 +535,68 @@
     metricFocus=null;
     if(report) render();
   });
-  // An in-memory single-step HUMAN-only undo never mutates original metrics
-  // and can never restore state across changed original source bytes.
-  function rememberHumanEdit() {
-    if (!report || !digest) return;
-    lastHumanUndo = {source:digest,rows:report.cases.map(c=>({
+  // Bounded, source-byte-bound HUMAN-only history. Snapshots contain no source metrics.
+  function humanPlanningSnapshot() {
+    return {source:digest,rows:report.cases.map(c=>({
       stage:c.stage,route:c.route,due:c.due||""
     }))};
   }
-  function undoHumanEdit() {
-    if (!report || !lastHumanUndo || lastHumanUndo.source!==digest ||
-        lastHumanUndo.rows.length!==report.cases.length) return;
+  function updateHumanHistoryControls() {
+    const undo=$("undo-human"),redo=$("redo-human"),status=$("human-history-status");
+    if(!undo||!redo||!status)return;
+    const validCount=stack=>{
+      let count=0;
+      for(let i=stack.length-1;i>=0;i--){
+        const entry=stack[i];
+        if(!report||!digest||entry.source!==digest||entry.rows.length!==report.cases.length)break;
+        count++;
+      }
+      return count;
+    };
+    const undoCount=validCount(humanUndoHistory),redoCount=validCount(humanRedoHistory);
+    undo.disabled=!undoCount;redo.disabled=!redoCount;
+    undo.textContent=undoCount?"Undo HUMAN change ("+undoCount+")":"Undo last HUMAN change";
+    redo.textContent=redoCount?"Redo HUMAN change ("+redoCount+")":"Redo last HUMAN change";
+    status.textContent="Undo: "+undoCount+" · Redo: "+redoCount+
+      " · up to "+HUMAN_HISTORY_LIMIT+" HUMAN planning edits in this tab's memory only; loading another report or Clear resets history.";
+  }
+  function rememberHumanEdit() {
+    if (!report || !digest) return;
+    humanUndoHistory.push(humanPlanningSnapshot());
+    if(humanUndoHistory.length>HUMAN_HISTORY_LIMIT)humanUndoHistory.shift();
+    humanRedoHistory=[];
+    updateHumanHistoryControls();
+  }
+  function restoreHumanHistory(source,destination,label) {
+    if(!report||!digest||!source.length)return;
+    const previous=source[source.length-1];
+    if(previous.source!==digest||previous.rows.length!==report.cases.length){
+      source.length=0;updateHumanHistoryControls();return;
+    }
+    const current=humanPlanningSnapshot(),restored=source.pop();
+    destination.push(current);
+    if(destination.length>HUMAN_HISTORY_LIMIT)destination.shift();
     invalidateReads();
-    lastHumanUndo.rows.forEach((row,i)=>{
+    restored.rows.forEach((row,i)=>{
       report.cases[i].stage=row.stage;
       report.cases[i].route=row.route;
       report.cases[i].due=row.due;
     });
-    lastHumanUndo=null;
     render();
-    alert("The last local HUMAN planning edit was reversed. Source findings, report status and authorization remain unchanged.", "good");
+    alert(label+" applied to local HUMAN planning. Source findings, report status and authorization remain unchanged.", "good");
   }
+  function undoHumanEdit(){restoreHumanHistory(humanUndoHistory,humanRedoHistory,"Undo");}
+  function redoHumanEdit(){restoreHumanHistory(humanRedoHistory,humanUndoHistory,"Redo");}
   function render() {
     renderOverview();renderLandscape();renderQueue();renderDetails();
     renderPrintBrief();renderFilteredPrintBrief();
-    $("undo-human").disabled=!(report&&lastHumanUndo&&lastHumanUndo.source===digest);
+    updateHumanHistoryControls();
   }
   function reset(invalidate = true) {
     if (invalidate) invalidateReads();
     report = null; selected = -1; digest = null; sourceKind = null;
-    lastHumanUndo = null;
+    humanUndoHistory = []; humanRedoHistory = [];
+    updateHumanHistoryControls();
     clearHistorical(); clearPlanComparison(); metricFocus = null;
     $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all";
     $("cases").replaceChildren(); $("metrics").replaceChildren();
@@ -1104,6 +1137,15 @@
   $("file").addEventListener("change", async e => {if(e.target.files[0]) await load(e.target.files[0]);});
 
   $("undo-human").addEventListener("click",undoHumanEdit);
+  $("redo-human").addEventListener("click",redoHumanEdit);
+  document.addEventListener("keydown",event=>{
+    if(!(event.ctrlKey||event.metaKey)||event.altKey)return;
+    const target=event.target;
+    if(target&&(/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)||target.isContentEditable))return;
+    const key=event.key.toLowerCase();
+    if(key==="z"){event.preventDefault();if(event.shiftKey)redoHumanEdit();else undoHumanEdit();}
+    else if(key==="y"){event.preventDefault();redoHumanEdit();}
+  });
   $("batch-triage").addEventListener("click", () => {
     if (!report) return;
     const pending = report.cases.filter(c => c.regressions.length && c.stage === "todo");
