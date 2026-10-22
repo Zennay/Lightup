@@ -1,0 +1,26 @@
+
+:root{font-family:system-ui,-apple-system,sans-serif;color:#162c41;background:#f3f6fa}
+*{box-sizing:border-box}body{margin:0}header{background:#11283d;color:#fff;padding:1.5rem max(1rem,calc((100vw - 1120px)/2))}
+header p{color:#bfcfdc}main{max-width:1120px;margin:auto;padding:1.2rem;display:grid;gap:1.1rem}
+section{background:white;border:1px solid #cbd7e3;padding:1.2rem;border-radius:12px;min-width:0}
+h1,h2,h3{margin:.2rem 0 .8rem}h1{font-size:1.8rem}h2{font-size:1.15rem}
+p,li{line-height:1.48}label{display:block;font-weight:600;margin:.5rem 0 .25rem}
+input,select,textarea,button{font:inherit}input,select,textarea{border:1px solid #95abc0;border-radius:7px;padding:.5rem;max-width:100%;width:100%;background:white;color:#152738}
+input[type=file]{background:#f4f7fa}input[type=checkbox]{width:auto}
+textarea{min-height:75px;resize:vertical}button{border:1px solid #365e82;background:#edf4fb;border-radius:7px;color:#102d49;padding:.55rem .85rem;cursor:pointer;font-weight:600}
+button:disabled{opacity:.45;cursor:default}button.primary{color:white;background:#164c7a}
+button.danger{color:#832521;border-color:#c2aaaa;background:#fff6f3}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e6a43c;outline-offset:2px}
+.grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(245px,1fr))}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.6rem 0}
+.notice{padding:.7rem;border-left:4px solid #296d97;background:#eef7fa;white-space:pre-wrap}
+.notice[data-error=true]{border-color:#a22c2c;background:#fff0ed}
+.warning{border-left:4px solid #aa6833;padding:.65rem;background:#fff6eb}
+.pill{font-size:.8rem;border:1px solid #8da7bb;border-radius:18px;padding:.25rem .6rem;white-space:nowrap}
+.meta{font-size:.86rem;color:#496278;overflow-wrap:anywhere}
+.step{border:1px solid #d4e0ea;border-left:5px solid #326e96;border-radius:9px;padding:1rem;margin:.8rem 0}
+.step h3{font-size:1rem}.two{display:grid;gap:.7rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.listrow{display:flex;gap:.5rem;justify-content:space-between;align-items:center;padding:.4rem;border-bottom:1px solid #e5edf2}
+ol{padding-left:1.5rem}small{color:#566c7e}
+footer{text-align:center;color:#466074;padding:1rem}
+[hidden]{display:none!important}
