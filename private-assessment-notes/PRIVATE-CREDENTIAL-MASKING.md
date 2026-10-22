@@ -491,3 +491,8 @@ finalisation, grant, source-owner verification, scan or client disclosure.
 `har-review-revision-reopen` re-admits both source-bound workflows,
 the exact original human status packet and every immutable output
 byte without changing the prior or new materials. Both return HOLD.
+
+
+### Bounded nested percent-encoded credential names
+
+The inert URL query/fragment and cURL form-key masks now recognize credential field names hidden behind up to three percent-encoding layers (for example, `%2561pi_key` and `%252561pi_key`). Canonicalization applies only to field names used for matching; the original spelling and punctuation are preserved, and payload/query values are never decoded. cURL key matching remains limited to ASCII letters, digits, underscore and hyphen plus the existing NFKC/format-control normalization. This is deliberately bounded, local-only masking—not general URL sanitization, source authentication, or a safe-to-share certification. Deeper, malformed or ambiguous encodings are not promised to be recognized; retain PRIVATE/HOLD when uncertain.
