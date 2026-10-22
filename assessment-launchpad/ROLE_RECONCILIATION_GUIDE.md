@@ -67,13 +67,17 @@ The result consists of exactly seven exclusive mode-0600 files:
   view without touching the original packet. The page now shows visible action
   counts and prints **only currently displayed rows**: filtering out a HUMAN
   role or packet must never silently restore its hidden rows in a printout.
-  **Save displayed rows as PRIVATE CSV** explicitly downloads only the visible
-  source-minimal fixed-vocabulary rows. No endpoint URL, private note text,
-  reviewer name, original path or digest is included. The saved CSV and any
+  Tick individual original slots or use **Select displayed slots** to add the
+  visible rows without clearing earlier selections. **Clear all selections**
+  resets the in-memory queue. **Download selected rows as PRIVATE CSV** exports
+  only explicitly selected fixed-vocabulary rows in original source order,
+  including selections hidden by the current filter; printing remains limited
+  to the visible view. No endpoint URL, private note text, reviewer name,
+  original path or digest is included. The saved CSV and any
   printed/PDF copy are **PRIVATE unencrypted recipient artifacts**: operator
   must still authenticate recipients and confirm permission outside this tool.
-  Filters exist only in memory, not browser storage or network; the original
-  complete source worklist CSV is never modified. The workroom's local start
+  Filters and explicit slot selections exist only in memory, not browser storage
+  or network; the original complete source worklist CSV is never modified. The workroom's local start
   page links to this view.
 * `lightup-lab-human-return-reconciliation-counts.json`: source-free
   overall change counts, suggested-role workload, nonreturned slot totals
@@ -147,7 +151,7 @@ operator consent, security/privacy review and explicit HUMAN GO are
 
 ## Re-admit a filtered browser CSV into an original-source-bound PRIVATE packet
 
-The browser's **Save displayed rows as PRIVATE CSV** is deliberately an
+The browser's **Download selected rows as PRIVATE CSV** is deliberately an
 *unsigned* local download, not a reviewer credential or review clearance.
 For a bounded separate native handoff, put it in an owner-owned `0700` folder,
 set the downloaded file to `0600`, and use the NEW `action_handoff.py` CLI.

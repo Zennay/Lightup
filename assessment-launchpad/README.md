@@ -402,12 +402,16 @@ embeds it), open `lightup-lab-human-next-actions-private.html` locally.
 Select a voluntary role, original reply status, suggested next action,
 self-reported HUMAN stage and/or PRIVATE note-change flag. Clear all HUMAN
 filters restores the complete local view without altering source data.
-The live counts update for the chosen view, **Print only displayed PRIVATE
-rows** excludes hidden source slots, and **Save displayed rows as PRIVATE
-CSV** downloads exactly those displayed fixed-enum/ordinal rows. The original
-full worklist and original source/returns remain unchanged. Neither print
-nor CSV contains original endpoint URLs or human notes, but even selected
-role/slot combinations may identify people; keep printouts and CSV private.
+The live counts update for the chosen view. Tick individual original slots,
+then use **Select displayed slots** to add all rows currently visible without
+clearing earlier selections; selections survive filter changes in memory only.
+**Clear all selections** resets the queue. **Print only displayed PRIVATE rows**
+prints the current filtered view; **Download selected rows as PRIVATE CSV**
+exports only explicitly selected fixed-enum/ordinal rows in original source
+order, including selections hidden by the current filter. The browser does not
+persist selections. The original worklist and source/returns remain unchanged.
+Neither print nor CSV contains endpoint URLs or human notes, but role/slot
+combinations may identify people; keep printouts and CSV private.
 No reviewer is authenticated, no recipient sharing is performed, and no
 consent, scan, grant or HUMAN GO is inferred.
 

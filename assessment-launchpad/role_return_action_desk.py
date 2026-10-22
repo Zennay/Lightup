@@ -34,9 +34,11 @@ STYLE = (
     "table{width:100%;border-collapse:collapse}th,td{border:1px solid #c1d0de;"
     "padding:.65rem;text-align:left}th{background:#e8f0fa}"
     "tr[hidden]{display:none}small{color:#435970}"
+    ".slotselect{display:flex;align-items:center;gap:.45rem;white-space:nowrap}"
+    ".slotselect input{width:1.1rem;height:1.1rem}"
     "@media(max-width:690px){.filters{grid-template-columns:1fr}"
     ".tablewrap{overflow-x:auto}table{min-width:800px}}"
-    "@media print{.filters,button{display:none}header,main{max-width:none}"
+    "@media print{.filters,button,.slotselect input{display:none}header,main{max-width:none}"
     "tr[hidden]{display:none}#printScope{display:block;font-weight:700}}"
 )
 SCRIPT = r'''(() => {
@@ -52,13 +54,16 @@ const noteFilter = document.getElementById("note");
 const resetButton = document.getElementById("reset");
 const progress = document.getElementById("progress");
 const printButton = document.getElementById("print");
-const saveButton = document.getElementById("saveVisible");
+const saveButton = document.getElementById("saveSelected");
+const selectVisibleButton = document.getElementById("selectVisible");
+const clearSelectionButton = document.getElementById("clearSelection");
+const selectionSummary = document.getElementById("selectionSummary");
+const selectedSlots = new Set();
 const printScope = document.getElementById("printScope");
 const summary = document.getElementById("summary");
 const fieldNames = ["original_slot","latest_suggested_role","private_human_reply_status",
   "latest_self_reported_human_stage","suggested_operator_next_step",
   "private_note_changed"];
-let visibleRows = [];
 if (!Array.isArray(source) || source.length < 1 || source.length > 16) {
   progress.textContent = "No bounded original HUMAN action rows admitted.";
   return;
@@ -97,28 +102,41 @@ for (const row of source) {
     return;
   }
   const tr = document.createElement("tr");
-  for (const value of row) {
+  const slotCell = document.createElement("td");
+  const label = document.createElement("label");
+  label.className = "slotselect";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.setAttribute("aria-label","Select original slot " + row[0]);
+  checkbox.addEventListener("change",()=>{
+    if (checkbox.checked) selectedSlots.add(row[0]);
+    else selectedSlots.delete(row[0]);
+    apply();
+  });
+  label.append(checkbox,document.createTextNode(String(row[0])));
+  slotCell.append(label); tr.append(slotCell);
+  for (const value of row.slice(1)) {
     const td = document.createElement("td");
-    td.textContent = String(value).replaceAll("_"," ");
-    tr.append(td);
+    td.textContent = String(value).replaceAll("_"," "); tr.append(td);
   }
   root.append(tr);
-  lookup.push({values:row,element:tr});
+  lookup.push({values:row,element:tr,checkbox});
 }
 function apply() {
-  let visible = 0, awaiting = 0;
-  visibleRows = [];
+  let visible = 0, awaiting = 0, visibleSelected = 0;
   const byAction = new Map();
-  for (const {values,element} of lookup) {
+  for (const {values,element,checkbox} of lookup) {
     const keep = (roleFilter.value === "ALL" || roleFilter.value === values[1]) &&
       (replyFilter.value === "ALL" || replyFilter.value === values[2]) &&
       (nextFilter.value === "ALL" || nextFilter.value === values[4]) &&
       (stageFilter.value === "ALL" || stageFilter.value === values[3]) &&
       (noteFilter.value === "ALL" || noteFilter.value === values[5]);
     element.hidden = !keep;
+    const checked = selectedSlots.has(values[0]);
+    checkbox.checked = checked;
     if (keep) {
+      if (checked) visibleSelected++;
       visible++;
-      visibleRows.push(values);
       byAction.set(values[4], (byAction.get(values[4]) || 0) + 1);
       if (values[2] === "AWAITING_HUMAN_ROLE_REPLY") awaiting++;
     }
@@ -126,13 +144,18 @@ function apply() {
   progress.textContent = visible + " of " + lookup.length +
     " original local HUMAN slots displayed · " + awaiting +
     " awaiting an original role reply in the selected view.";
+  selectionSummary.textContent = selectedSlots.size + " explicitly selected original slots · " +
+    visibleSelected + " selected in the current view. Selection stays in memory only.";
   const filters = [roleFilter, replyFilter, nextFilter, stageFilter, noteFilter].map(item =>
     item.options[item.selectedIndex].textContent);
   printScope.textContent = "PRIVATE selected view · " + filters.join(" · ") +
     " · " + visible + " / " + lookup.length + " original local slots";
   summary.textContent = [...byAction.entries()].sort().map(([key,count]) =>
     key.replaceAll("_"," ") + ": " + count).join(" · ") || "No matching HUMAN actions.";
-  saveButton.disabled = printButton.disabled = visible === 0;
+  saveButton.disabled = selectedSlots.size === 0;
+  selectVisibleButton.disabled = visible === 0;
+  clearSelectionButton.disabled = selectedSlots.size === 0;
+  printButton.disabled = visible === 0;
 }
 const allFilters = [roleFilter,replyFilter,nextFilter,stageFilter,noteFilter];
 for (const item of allFilters) item.addEventListener("change",apply);
@@ -140,6 +163,11 @@ resetButton.addEventListener("click",()=>{
   for (const item of allFilters) item.value = "ALL";
   apply();
 });
+selectVisibleButton.addEventListener("click",()=>{
+  for (const {values,element} of lookup) if (!element.hidden) selectedSlots.add(values[0]);
+  apply();
+});
+clearSelectionButton.addEventListener("click",()=>{selectedSlots.clear();apply();});
 printButton.addEventListener("click",()=>window.print());
 // Fixed-enum, ordinal-only CSV: no endpoint, reviewer, note or local source path.
 // Explicit user action only. Never send data to a server or browser storage.
@@ -149,9 +177,10 @@ function csvCell(value) {
   return item;
 }
 saveButton.addEventListener("click",()=>{
-  if (!visibleRows.length) return;
+  const selectedRows = lookup.filter(({values})=>selectedSlots.has(values[0])).map(({values})=>values);
+  if (!selectedRows.length) return;
   const data = [fieldNames.join(","),
-    ...visibleRows.map(row => row.map(csvCell).join(","))].join("\r\n") + "\r\n";
+    ...selectedRows.map(row => row.map(csvCell).join(","))].join("\r\n") + "\r\n";
   const objectUrl = URL.createObjectURL(new Blob([data],{type:"text/csv;charset=utf-8"}));
   const link = document.createElement("a");
   link.href = objectUrl;
@@ -200,8 +229,10 @@ def render(work):
         "next action, self-reported stage and private-note-change marker. "
         "Priority is operator-selected, not authenticated time."
         " No endpoint URLs, note text or reviewer identities are loaded."
-        " Browser filters exist in memory only. Printed pages and deliberate "
-        "CSV downloads contain only the currently displayed rows; the full "
+        " Browser filters and explicit slot selections exist in memory only. "
+        "Printed pages contain displayed rows; CSV downloads contain only "
+        "explicitly selected original slots, including selected rows hidden "
+        "by current filters. The full "
         "original CSV in the PRIVATE source directory remains unchanged. "
         "CSV downloads are unencrypted PRIVATE files.</p>"
         "<section class='panel filters'>"
@@ -215,9 +246,12 @@ def render(work):
         "<p id='progress' role='status' aria-live='polite'></p>"
         "<p id='summary' role='status' aria-live='polite'></p>"
         "<p id='printScope'>PRIVATE selected HUMAN view</p>"
+        "<button type='button' id='selectVisible'>Select displayed slots</button> "
+        "<button type='button' id='clearSelection'>Clear all selections</button> "
         "<button type='button' id='print'>Print only displayed PRIVATE rows</button> "
-        "<button type='button' id='saveVisible'>Save displayed rows as PRIVATE CSV</button>"
-        "<div class='tablewrap'><table><thead><tr><th>Original slot</th>"
+        "<button type='button' id='saveSelected' disabled>Download selected rows as PRIVATE CSV</button>"
+        "<p id='selectionSummary' role='status' aria-live='polite'>0 explicitly selected slots.</p>"
+        "<div class='tablewrap'><table><thead><tr><th>Select / original slot</th>"
         "<th>Suggested role</th><th>Returned packet</th><th>Last HUMAN stage</th>"
         "<th>Suggested next HUMAN action</th><th>PRIVATE note changed?</th>"
         "</tr></thead><tbody id='actionRows'></tbody></table></div></section>"
