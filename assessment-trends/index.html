@@ -44,6 +44,25 @@
   <div class="section-head"><h2>03 / Metric persistence heatmap</h2><span class="tag">Source-reported flags</span></div>
   <p>Cells show how many anonymous scenarios carry a source-reported regression flag for that metric in each manually selected snapshot. Review-priority grouping is a static display aid, not an independently assessed security severity. “Persistent” means the same scenario/metric is flagged in at least two consecutive slots. “Reappearing” means a flag returns after at least one unflagged manual slot; it does not establish a fix or recurrence in authenticated time.</p>
   <div id="metricHeatmap" class="tablewrap"><p class="empty">No admitted metrics yet.</p></div>
+  <h3>Cohort-level numeric distribution by manual slot</h3>
+  <p>Each row summarizes source-reported candidate and delta values across all anonymous scenarios for one metric in one manually ordered slot. Median and range describe the supplied reports only; they are not authenticated time trends, independently validated measurements or remediation evidence.</p>
+  <label>Filter numeric distribution by static review group
+    <select id="metricDistributionGroup">
+      <option value="all">All static review groups</option>
+      <option value="P1 · Scope / policy">P1 · Scope / policy</option>
+      <option value="P2 · Findings">P2 · Findings</option>
+      <option value="P3 · Coverage">P3 · Coverage</option>
+      <option value="P4 · Evidence / scoring">P4 · Evidence / scoring</option>
+      <option value="Info · Operations">Info · Operations</option>
+    </select>
+  </label>
+  <p id="metricDistributionSummary" class="message" role="status" aria-live="polite">Import snapshots to summarize numeric metric distributions.</p>
+  <div id="metricDistribution" class="tablewrap" role="region" aria-label="Cohort-level numeric distributions by manual slot" tabindex="0"><p class="empty">No numeric distributions yet.</p></div>
+  <div class="controls no-print">
+    <button id="metricDistributionCsv" type="button" disabled>Export filtered metric distributions CSV</button>
+    <button id="metricDistributionJson" type="button" class="secondary" disabled>Export filtered metric distributions JSON</button>
+  </div>
+  <p class="footnote">Exports contain fixed metric labels, manual slot numbers, aggregate numeric values and literal false authority fields only. They exclude original scenario IDs, filenames, uploaded source hashes and HUMAN notes. A static review group is a display aid, not a severity judgment.</p>
 </section>
 <section class="panel">
   <div class="section-head"><h2>04 / Anonymous scenario trajectories</h2><span class="tag">IDs hidden</span></div>

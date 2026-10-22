@@ -337,6 +337,67 @@
       s.ever,s.persistent,s.maxStreak,s.reappeared,s.reappearanceEvents];});
     drawTable("metricHeatmap",headers,rows);
   }
+  function median(values){
+    const sorted=[...values].sort((a,b)=>a-b),middle=Math.floor(sorted.length/2);
+    return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
+  }
+  function metricDistributionRows(){
+    const chosen=$("metricDistributionGroup").value,rows=[];
+    snapshots.forEach((report,index)=>METRICS.forEach(name=>{
+      const group=family(name);if(chosen!=="all"&&chosen!==group)return;
+      const values=scenarioIds.map(id=>report.cases.get(id).metrics.get(name));
+      const candidates=values.map(v=>v.candidate).sort((a,b)=>a-b);
+      const deltas=values.map(v=>v.delta).sort((a,b)=>a-b);
+      rows.push({manual_slot:index+1,metric:name,review_group:group,scenario_count:values.length,
+        flagged_scenarios:values.filter(v=>v.regression).length,
+        median_candidate:median(candidates),min_candidate:candidates[0],max_candidate:candidates.at(-1),
+        median_delta:median(deltas),min_delta:deltas[0],max_delta:deltas.at(-1),
+        source_snapshot_status:report.status});
+    }));
+    return rows;
+  }
+  function renderMetricDistribution(){
+    const rows=metricDistributionRows();
+    drawTable("metricDistribution",
+      ["Manual slot","Metric","Static review group","Scenarios","Flagged scenarios",
+       "Median candidate","Candidate min","Candidate max","Median Δ","Δ min","Δ max","Source status"],
+      rows.map(r=>[r.manual_slot,r.metric,r.review_group,r.scenario_count,
+        cell(r.flagged_scenarios,r.flagged_scenarios?"cell-adverse":"cell-neutral"),
+        fmt(r.median_candidate),fmt(r.min_candidate),fmt(r.max_candidate),
+        fmt(r.median_delta),fmt(r.min_delta),fmt(r.max_delta),r.source_snapshot_status]));
+    $("metricDistributionSummary").textContent=rows.length?
+      "Showing "+rows.length+" aggregate metric/slot rows across "+scenarioIds.length+
+      " anonymous scenarios. Median uses the middle value(s); ranges are descriptive only. Order is manual, not chronology.":
+      snapshots.length?"No metrics match the selected static review group.":
+      "Import snapshots to summarize numeric metric distributions.";
+    $("metricDistributionCsv").disabled=!rows.length;
+    $("metricDistributionJson").disabled=!rows.length;
+  }
+  function metricDistributionPayload(){
+    return {schema:"lightup.assessment_trends_metric_distribution.v1",status:summary().status,
+      fictional_demo_only:fictional,manual_slot_order:true,authenticated_chronology:false,
+      source_metrics_independently_verified:false,remediation_verified:false,
+      authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,
+      selected_group_filter:$("metricDistributionGroup").value,rows:metricDistributionRows()};
+  }
+  function exportMetricDistribution(format){
+    const payload=metricDistributionPayload();if(!payload.rows.length)return;
+    if(format==="json"){
+      download("assessment-trends-anonymous-metric-distribution.json",
+        JSON.stringify(payload,null,2)+"\n","application/json");return;
+    }
+    const columns=["schema","selected_group_filter","manual_slot_order","manual_slot","metric","review_group",
+      "scenario_count","flagged_scenarios","median_candidate","min_candidate","max_candidate",
+      "median_delta","min_delta","max_delta","source_snapshot_status","overall_status",
+      "fictional_demo_only","authenticated_chronology","source_metrics_independently_verified",
+      "remediation_verified",...FLAGS];
+    const lines=[columns.map(csvField).join(","),...payload.rows.map(row=>columns.map(key=>
+      csvField(key==="overall_status"?payload.status:
+        Object.prototype.hasOwnProperty.call(row,key)?row[key]:
+        Object.prototype.hasOwnProperty.call(payload,key)?payload[key]:false)).join(","))];
+    download("assessment-trends-anonymous-metric-distribution.csv",lines.join("\n")+"\n","text/csv;charset=utf-8");
+  }
+
   const SCENARIO_PAGE=100;
   let scenarioOffset=0;
   function scenarioBoardRows(){
@@ -1053,7 +1114,7 @@
   }
   function render(){
     const active=snapshots.length>0;
-    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson"])$(id).disabled=!active;
+    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
     $("noteMetric").replaceChildren();
     METRICS.forEach(name=>{const option=document.createElement("option");option.value=name;option.textContent=name;$("noteMetric").append(option);});
@@ -1062,13 +1123,15 @@
     scenarioIds.forEach((id,i)=>{const option=document.createElement("option");option.value=id;
       option.textContent="Scenario "+String(i+1).padStart(2,"0");$("scenarioSelect").append(option);});
     if(active){selectedScenario=scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];$("scenarioSelect").value=selectedScenario;
-      renderSummary();renderMetricBoard();renderScenarioBoard();renderScenarioDetail();
+      renderSummary();renderMetricBoard();renderMetricDistribution();renderScenarioBoard();renderScenarioDetail();
       renderReviewQueue();renderHumanWorkPlan();renderPrintBrief();}
     else{
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","metricDistribution","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      $("metricDistributionSummary").textContent="Import snapshots to summarize numeric metric distributions.";
+      $("metricDistributionCsv").disabled=$("metricDistributionJson").disabled=true;
       renderHumanWorkPlan();
     }
     if(!active){updateStageBatchControls();$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
@@ -1943,6 +2006,9 @@
       option.textContent=slot==="all"?"All manual slots":"Slot "+slot;selector.append(option);
     }
   }
+  $("metricDistributionGroup").addEventListener("change",renderMetricDistribution);
+  $("metricDistributionCsv").addEventListener("click",()=>exportMetricDistribution("csv"));
+  $("metricDistributionJson").addEventListener("click",()=>exportMetricDistribution("json"));
   for(const filter of ["reviewKind","reviewGroup","reviewSlot","reviewStage"]){
     $(filter).addEventListener("change",()=>{reviewOffset=0;renderReviewQueue();});
   }
