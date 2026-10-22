@@ -192,3 +192,106 @@ def render_private_capacity(rows, reference_day, limits, roles):
         ("assessment-portfolio-private-capacity.html", html.encode("utf-8")),
         ("assessment-portfolio-private-capacity.csv", buffer.getvalue().encode("utf-8")),
     )
+
+
+def render_private_capacity_comparison(rows, reference_day, current_limits,
+                                       alternative_limits, roles):
+    """Two explicitly supplied HUMAN capacity *assumptions*, not actual schedules."""
+    records, undated = collect(rows, current_limits, roles)
+    out = io.StringIO(newline="")
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow((
+        "original_proposed_day", "suggested_neutral_role", "human_items",
+        "first_declared_daily_limit", "first_items_above_assumption",
+        "alternative_declared_daily_limit", "alternative_items_above_assumption",
+        "alternative_minus_first_excess", "original_source_ordinals",
+        "authority_status",
+    ))
+    rows_html = []
+    first_total = other_total = 0
+    for record in records:
+        role, day = record["role"], record["day"]
+        demand = record["items"]
+        first_over = max(0, demand - current_limits[role])
+        other_over = max(0, demand - alternative_limits[role])
+        first_total += first_over
+        other_total += other_over
+        source = ";".join(
+            "A" + str(item["agenda_slot"]).zfill(2) + "/S" +
+            str(item["source_slot"]).zfill(2) for item in record["members"]
+        )
+        links = " ".join(
+            "<a href='assessment-portfolio-private.html#agenda-" +
+            str(item["agenda_slot"]) + "-slot-" + str(item["source_slot"]) +
+            "'>A" + str(item["agenda_slot"]).zfill(2) + "/S" +
+            str(item["source_slot"]).zfill(2) + "</a>"
+            for item in record["members"]
+        )
+        diff = other_over - first_over
+        rows_html.append(
+            "<tr><td>" + escape(day) + "</td><td>" + escape(role) +
+            "</td><td>" + str(demand) + "</td><td>" + str(current_limits[role]) +
+            "</td><td>" + str(first_over) + "</td><td>" +
+            str(alternative_limits[role]) + "</td><td>" + str(other_over) +
+            "</td><td>" + str(diff) + "</td><td>" + links + "</td></tr>"
+        )
+        writer.writerow((
+            day, role, demand, current_limits[role], first_over,
+            alternative_limits[role], other_over, diff, source, "REVIEW_ONLY",
+        ))
+    undated_total = sum(len(items) for items in undated.values())
+    # An undated source never becomes a made-up daily capacity charge.
+    for role in roles:
+        items = sorted(undated.get(role, []),
+                       key=lambda row: (row["agenda_slot"], row["source_slot"]))
+        if not items:
+            continue
+        source = ";".join(
+            "A" + str(item["agenda_slot"]).zfill(2) + "/S" +
+            str(item["source_slot"]).zfill(2) for item in items
+        )
+        writer.writerow(("", role, len(items), "", "", "", "", "", source, "REVIEW_ONLY"))
+    style_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
+    html = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "
+        "style-src 'sha256-" + style_hash + "'; script-src 'none'; "
+        "connect-src 'none'; img-src 'none'; form-action 'none'; base-uri 'none'\">"
+        "<title>LightUp PRIVATE HUMAN capacity assumption comparison</title>"
+        "<style>" + STYLE + "</style></head><body>"
+        "<header><h1>Two operator-declared HUMAN capacity scenarios</h1>"
+        "<p class='hold'>INCUBATE M3/M7 · PLAN/LAB ONLY · REVIEW ONLY · NOT AUTHORIZED</p>"
+        "<p>Planning reference " + escape(reference_day.isoformat()) +
+        ". Total source-derived items above manually stated per-role/day "
+        "assumptions: first " + str(first_total) + ", alternative " +
+        str(other_total) + ", arithmetic difference " + str(other_total - first_total) +
+        ". " + str(undated_total) + " original items have no proposed day "
+        "and were not charged to either daily limit.</p>"
+        "<p class='note'>Only original, optionally focused source rows are counted. "
+        "The numbers compare TWO hypothetical HUMAN discussion capacities, "
+        "not actual availability, confirmed meetings, completed fixes or authorization. "
+        "A lower number is not a validated operational improvement.</p></header>"
+        "<section><h2>Original proposed day x neutral role</h2>" +
+        ("<div class='scroll'><table><thead><tr><th>Proposed day</th><th>Role</th>"
+         "<th>Items</th><th>First limit</th><th>First above</th><th>Alternative limit</th>"
+         "<th>Alternative above</th><th>Alternative minus first</th>"
+         "<th>Original ordinals</th></tr></thead><tbody>" + "".join(rows_html) +
+         "</tbody></table></div>" if rows_html
+         else "<p>No dated original HUMAN items match this selection. Not completion.</p>") +
+        "</section><section><h2>Original assumptions by fixed role</h2><ul>" +
+        "".join(
+            "<li>" + escape(role) + ": first " + str(current_limits[role]) +
+            ", alternative " + str(alternative_limits[role]) +
+            " proposed items per role/day</li>" for role in roles
+        ) +
+        "</ul></section><footer class='note'>PRIVATE local arithmetic only; "
+        "no network, model, scan, grant, source identity, client/operator consent "
+        "or live dispatch.</footer></body></html>"
+    )
+    return (
+        ("assessment-portfolio-private-capacity-comparison.html", html.encode("utf-8")),
+        ("assessment-portfolio-private-capacity-comparison.csv",
+         out.getvalue().encode("utf-8")),
+    )
