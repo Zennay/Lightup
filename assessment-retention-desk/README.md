@@ -6,6 +6,17 @@
 
 Plaintext HUMAN plan imports, source-free plan comparisons, and encrypted-vault envelopes are decoded from the original bytes with fatal UTF-8 handling. Malformed byte sequences and UTF-8 BOMs fail closed before JSON parsing or any restore/compare action. This prevents silent U+FFFD replacement from changing imported HUMAN fields while leaving the existing exact source SHA/size binding and all-or-nothing restore rules intact.
 
+## Encrypted-envelope self-check before download
+
+Before an encrypted `.lurt` export or password-rotation file is offered for download,
+the browser now reopens the newly generated envelope in memory using the same password,
+runs the existing strict envelope/decryption checks, and requires the recovered UTF-8
+plan text to equal the original string exactly. A decryption, contract, or byte-content
+mismatch raises HOLD before download. No temporary file, browser storage, or network
+request is used for this self-check. It confirms only that this local browser can reopen
+its own new envelope; it does not authenticate the source, producer, client, consent,
+retention decision or authorization.
+
 ## Direct usable offline application
 
 **[Save the complete standalone HTML file](standalone.html)** from the branch to
