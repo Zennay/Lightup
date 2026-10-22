@@ -787,8 +787,8 @@ python3 assessment-launchpad/combine_manifest.py \
 ```
 
 Open `lightup-manifest-source-board-private.html` for the source-level
-retained/discarded view and `lightup-manifest-source-slots-private.csv`
-for every source-local slot, its resulting slot (blank when discarded),
+retained/discarded view; it links directly to `lightup-manifest-source-slots-private.csv`.
+The CSV lists every source-local slot, its resulting slot (blank when discarded),
 fixed-vocabulary selection state and `REVIEW_ONLY` label. The CSV and HTML
 contain no endpoint values, source filenames, paths, free text or source
 hashes. The unsigned private JSON receipt remains sensitive and is not an
