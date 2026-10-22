@@ -225,6 +225,7 @@ def render(work):
     if not 1 <= len(work) <= 16:
         raise Hold("HUMAN next-action browser accepts 1-16 original local slots")
     seen = set()
+    source_slots = []
     for row in work:
         if (not isinstance(row, tuple) or len(row) != 6 or
                 type(row[0]) is not int or row[0] < 1 or row[0] > 16 or
@@ -233,6 +234,9 @@ def render(work):
                 row[4] not in NEXT or row[5] not in NOTES):
             raise Hold("HUMAN action browser source is not fixed original metadata")
         seen.add(row[0])
+        source_slots.append(row[0])
+    if source_slots != sorted(source_slots):
+        raise Hold("HUMAN action browser must preserve original source slot order")
     encoded = base64.b64encode(json.dumps(work, ensure_ascii=True,
                                           separators=(",", ":")).encode("utf-8")).decode("ascii")
     script = SCRIPT.replace("__ROWS64__", json.dumps(encoded))

@@ -408,7 +408,8 @@ clearing earlier selections; selections survive filter changes in memory only.
 **Deselect displayed slots** removes only the visible rows from the queue; **Clear all selections** resets the queue. Open **Review selected rows before CSV download** to inspect the exact selected source ordinals and fixed HUMAN labels, including rows hidden by filters; that preview is never printed. **Print only displayed PRIVATE rows**
 prints the current filtered view; **Download selected rows as PRIVATE CSV**
 exports only explicitly selected fixed-enum/ordinal rows in original source
-order, including selections hidden by the current filter. The browser does not
+order (the renderer refuses an out-of-order source list), including selections
+hidden by the current filter. The browser does not
 persist selections. The original worklist and source/returns remain unchanged.
 Neither print nor CSV contains endpoint URLs or human notes, but role/slot
 combinations may identify people; keep printouts and CSV private.
