@@ -31,15 +31,15 @@ def disjoint_roots(roots):
 
 
 def run(args):
-    if not 2 <= len(args.round_dir) <= MAX_OLD_ROUNDS:
-        raise Hold("next-round builder requires 2 to 7 original saved HUMAN rounds")
+    if not 1 <= len(args.round_dir) <= MAX_OLD_ROUNDS:
+        raise Hold("next-round builder requires 1 to 7 original saved HUMAN rounds")
     if not args.stage:
         raise Hold("next-round HUMAN continuation needs explicitly chosen ROW:STAGE edits")
     previous_paths = args.round_dir
     # Re-admit the *complete* original HUMAN chain; this is local unsigned
     # provenance, never identity, approved scope or operator authority.
     plan_paths, history_root, _, rounds, original = timeline.admit_sources(
-        args.plan_dir, args.history_dir, previous_paths)
+        args.plan_dir, args.history_dir, previous_paths, min_rounds=1)
     old_roots = [*(plan[0] for plan in plan_paths), history_root,
                  *(round_[0] for round_ in rounds)]
     private_plan_args = [part for path in args.plan_dir for part in ("--plan-dir", path)]
@@ -105,7 +105,7 @@ def main(argv=None):
     parser.add_argument("--history-dir", required=True,
                         help="original source-bound PRIVATE manifest-history directory")
     parser.add_argument("--round-dir", action="append", required=True,
-                        help="2–7 ordered original saved HUMAN returns; first must be v1, rest exact v2 successors")
+                        help="1–7 ordered original saved HUMAN returns; first must be v1, rest exact v2 successors")
     parser.add_argument("--stage", action="append", default=[],
                         help="one explicit 1-based original HUMAN row edit, e.g. 3:IN_REVIEW; repeatable")
     parser.add_argument("--output-dir", help="new, separate PRIVATE 0700 next HUMAN return directory")
