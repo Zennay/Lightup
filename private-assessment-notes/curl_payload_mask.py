@@ -48,11 +48,11 @@ FIELD_BOUNDARY_GUARD = "_LIGHTUP_PRIVATE_CURL_FIELD_BOUNDARY_"
 def _field_key(name: str) -> str:
     """Canonicalise only a field name for credential matching.
 
-    Decode percent escapes only when they represent ASCII letters, digits,
-    underscore or hyphen. NFKC folds compatibility spellings, and Unicode
-    format controls are ignored for matching. The original key is retained in
-    output; the value is withheld. Never decode payload values or use a URI,
-    shell or network parser here.
+    Decode at most three bounded layers of percent-encoded ASCII letters,
+    digits, underscore or hyphen. NFKC folds compatibility spellings, and
+    Unicode format controls are ignored for matching. The original key is
+    retained in output; the value is withheld. Never decode payload values
+    or use a URI, shell or network parser here.
     """
     def decode_ascii_name_char(match: re.Match[str]) -> str:
         character = chr(int(match.group(1), 16))
@@ -60,7 +60,16 @@ def _field_key(name: str) -> str:
             return character
         return match.group(0)
 
-    canonical = _PERCENT_ASCII_FIELD_CHAR.sub(decode_ascii_name_char, name)
+    canonical = name
+    # Bound nested name-only percent decoding. Expose an encoded percent only
+    # when another two-hex escape follows; values and original key spelling
+    # are never decoded or rewritten.
+    for _ in range(3):
+        exposed = re.sub(r"(?i)%25(?=[0-9a-f]{2})", "%", canonical)
+        decoded = _PERCENT_ASCII_FIELD_CHAR.sub(decode_ascii_name_char, exposed)
+        if decoded == canonical:
+            break
+        canonical = decoded
     canonical = unicodedata.normalize("NFKC", canonical)
     return "".join(character for character in canonical
                    if unicodedata.category(character) != "Cf")
