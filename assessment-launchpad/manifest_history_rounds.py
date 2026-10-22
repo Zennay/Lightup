@@ -33,9 +33,9 @@ STYLE = ("body{font:16px/1.5 system-ui,sans-serif;max-width:1040px;margin:2rem a
          ".metric strong{display:block;font-size:1.5rem}.metric span{font-size:.8rem}")
 
 
-def admit_sources(plan_paths, history_dir, round_paths):
-    if not 2 <= len(round_paths) <= MAX_ROUNDS:
-        raise Hold("select between 2 and 8 ordered PRIVATE HUMAN review rounds")
+def admit_sources(plan_paths, history_dir, round_paths, *, min_rounds=2):
+    if min_rounds not in (1, 2) or not min_rounds <= len(round_paths) <= MAX_ROUNDS:
+        raise Hold("select permitted ordered PRIVATE HUMAN review round count")
     args = [item for path in plan_paths for item in ("--plan-dir", path)]
     if history.main(args + ["--verify-output-dir", history_dir]) != 0:
         raise Hold("saved PRIVATE plan history rejected")
