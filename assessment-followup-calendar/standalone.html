@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ctqHCQZRb6BsMTsS6tTmRtl08MDx/xiWKFmkr6zxMV8='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZLQzH/NrMGK9fZoHliHZ/c+tDo9W0wRttyjYlcdUQ+4='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -63,9 +63,13 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   const MAX_BYTES = 1024*1024, MAX_ROWS = 2048, PAGE = 35;
   const CAP_HEAD = ["worksheet_sha256_unsigned","private_calendar_series_id","time_zone",
     "human_owner_group","weekdays_iso","local_start","local_end","maximum_daily","blackout_dates"];
-  const RECIPIENT_POLICY_HEAD=["worksheet_sha256_unsigned","private_calendar_series_unsigned",
+  const RECIPIENT_POLICY_HEAD_V1=["worksheet_sha256_unsigned","private_calendar_series_unsigned",
     "source_local_zone","recipient_iana_zone_unverified","human_window_start",
     "human_window_end","human_days","authorized","verified","consent"];
+  const RECIPIENT_POLICY_HEAD=["worksheet_sha256_unsigned","private_calendar_series_unsigned",
+    "source_local_zone","recipient_iana_zone_unverified","human_window_start",
+    "human_window_end","human_days","recipient_blackout_dates_unverified",
+    "authorized","verified","consent"];
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
@@ -224,6 +228,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     recipientProposal=null;recipientSelection.clear();recipientUndo=null;
     $("recipientZone").value="";$("recipientStart").value="09:00";
     $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
+    $("recipientBlackouts").value="";
     $("recipientView").value="all";$("recipientQuery").value="";
     $("recipientPolicyImport").value="";
     for(const id of ["recipientRows","recipientProposalRows"])
@@ -520,7 +525,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const rule=recipientHoursRule();
     if(!confirm("Save a PRIVATE, UNSIGNED recipient-window preference CSV bound to this exact HUMAN worksheet and opaque calendar series? It does NOT verify recipient identity, working hours, client/operator consent, findings or assessment authority."))return;
     const rows=[RECIPIENT_POLICY_HEAD,[hash,seriesId,zone,target,rule.from,rule.to,
-      rule.days,"false","false","false"]];
+      rule.days,recipientBlackoutText(),"false","false","false"]];
     download(makeCsv(rows),"lightup-private-human-recipient-window.csv",
       "text/csv;charset=utf-8");
     recipientPolicyDirty=false;
@@ -529,9 +534,14 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   async function recipientPolicyImport(file){
     hold(active&&file&&file.size>0&&file.size<=4096);
     const snapshot=workroomFingerprint(),raw=decoder.decode(await bytes(file));
-    const rows=csv(raw,RECIPIENT_POLICY_HEAD.length);
-    hold(rows.length===2&&JSON.stringify(rows[0])===JSON.stringify(RECIPIENT_POLICY_HEAD));
-    const [original,series,source,target,start,end,days,authorized,verified,consent]=rows[1];
+    let rows,legacy=false;
+    try{rows=csv(raw,RECIPIENT_POLICY_HEAD.length);}
+    catch(_){rows=csv(raw,RECIPIENT_POLICY_HEAD_V1.length);legacy=true;}
+    const expected=legacy?RECIPIENT_POLICY_HEAD_V1:RECIPIENT_POLICY_HEAD;
+    hold(rows.length===2&&JSON.stringify(rows[0])===JSON.stringify(expected));
+    const [original,series,source,target,start,end,days]=rows[1];
+    const unavailability=legacy?"":rows[1][7];
+    const [authorized,verified,consent]=rows[1].slice(legacy?7:8);
     hold(original===hash&&series===seriesId&&source===zone&&
       /^[A-Za-z0-9_+./-]{1,64}$/.test(target)&&
       [authorized,verified,consent].every(value=>value==="false"));
@@ -539,11 +549,13 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       .resolvedOptions().timeZone;
     hold(!!canonical);
     recipientHoursRule(start,end,days);
+    hold(unavailability===[...recipientBlackouts(unavailability)].sort().join(";"));
     hold(snapshot===workroomFingerprint()&&recipientPreferenceSource===hash+"|"+seriesId);
-    if(!confirm("Restore the HUMAN-declared recipient timezone and working window from this PRIVATE unsigned file? Current recipient preview settings will be replaced; source worksheet, saved reminders, consent and external calendars will NOT change."))return;
+    if(!confirm("Restore the HUMAN-declared recipient timezone, working window and unavailable dates from this PRIVATE unsigned file? Current recipient preview settings will be replaced; source worksheet, saved reminders, consent and external calendars will NOT change."))return;
     hold(snapshot===workroomFingerprint());
     $("recipientZone").value=canonical;$("recipientStart").value=start;
     $("recipientEnd").value=end;$("recipientDays").value=days;
+    $("recipientBlackouts").value=unavailability.replaceAll(";",", ");
     recipientPage=0;recipientPolicyDirty=false;
     renderRecipientZone();
     $("recipientPolicyStatus").textContent="PRIVATE HUMAN recipient window restored against matching original SHA, series and timezone. Recipient availability remains UNVERIFIED.";
@@ -552,7 +564,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const target=recipientFormatter().resolvedOptions().timeZone;
     return new Intl.DateTimeFormat("en-US",{
       timeZone:target,weekday:"short",year:"numeric",month:"2-digit",
-      day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+      day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23",
+      timeZoneName:"shortOffset"
     });
   }
   function recipientHoursRule(from=$("recipientStart").value,
@@ -566,6 +579,21 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       last<=1260 && first+30<=last && first%15===0 && last%15===0);
     return {from,to,first,last,days};
   }
+  function recipientBlackouts(raw=$("recipientBlackouts").value){
+    hold(typeof raw==="string"&&raw.length<=700);
+    const entries=raw.trim()?raw.trim().split(/[\s,;]+/):[];
+    hold(entries.length<=60&&new Set(entries).size===entries.length);
+    for(const day of entries){
+      hold(/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(day));
+      const [y,m,d]=day.split("-").map(Number),parsed=new Date(Date.UTC(y,m-1,d));
+      hold(parsed.getUTCFullYear()===y&&parsed.getUTCMonth()===m-1&&
+        parsed.getUTCDate()===d);
+    }
+    return new Set(entries);
+  }
+  function recipientBlackoutText(){
+    return [...recipientBlackouts()].sort().join(";");
+  }
   function recipientWindow(start,duration,clock){
     const fields=date=>Object.fromEntries(clock.formatToParts(date)
       .filter(part=>part.type!=="literal").map(part=>[part.type,part.value]));
@@ -573,6 +601,11 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const rule=recipientHoursRule(),first=Number(a.hour)*60+Number(a.minute);
     const last=Number(b.hour)*60+Number(b.minute);
     const sameDate=a.year===b.year&&a.month===b.month&&a.day===b.day;
+    const blackouts=recipientBlackouts();
+    if(a.timeZoneName!==b.timeZoneName)return "clock_change";
+    const startDay=a.year+"-"+a.month+"-"+a.day,
+      endDay=b.year+"-"+b.month+"-"+b.day;
+    if(blackouts.has(startDay)||blackouts.has(endDay))return "unavailable_date";
     return rule.days==="weekdays" &&
       (["Sat","Sun"].includes(a.weekday)||["Sat","Sun"].includes(b.weekday))?
       "weekend":!sameDate||first<rule.first||last>rule.last?
@@ -598,7 +631,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   function recipientProposalIdentity(){
     return JSON.stringify([workroomFingerprint(),$("recipientZone").value,
       $("recipientView").value,$("recipientQuery").value,
-      $("recipientStart").value,$("recipientEnd").value,$("recipientDays").value]);
+      $("recipientStart").value,$("recipientEnd").value,$("recipientDays").value,
+      recipientBlackoutText()]);
   }
   function renderRecipientProposal(){
     const body=$("recipientProposalRows");body.replaceChildren();
@@ -695,6 +729,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       "recipient_zone_unverified","original_ordinal","human_group_unverified",
       "previous_local_date","previous_local_time","proposed_local_date",
       "proposed_local_time","duration_minutes","reminder_minutes",
+      "recipient_declared_start","recipient_declared_end",
+      "recipient_declared_days","recipient_declared_unavailable_dates",
       "authority","consent","verified","applied"]];
     const target=recipientFormatter().resolvedOptions().timeZone;
     for(const [ordinal,next] of selected){
@@ -702,6 +738,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       hold(old&&row&&row.ordinal===ordinal);
       rows.push([hash,seriesId,zone,target,ordinal,row.group,old.day,old.time,
         next.day,next.time,next.duration,next.reminder,
+        recipientHoursRule().from,recipientHoursRule().to,
+        recipientHoursRule().days,recipientBlackoutText(),
         "false","false","false","false"]);
     }
     download(makeCsv(rows),"lightup-private-human-common-hours-proposals.csv",
@@ -737,7 +775,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
           htmlEsc(recipientFormatter().resolvedOptions().timeZone)+'</p>',
       '<p>HUMAN-declared alternate-zone window: '+htmlEsc(recipientHoursRule().from)+
         '–'+htmlEsc(recipientHoursRule().to)+' ('+
-        htmlEsc(recipientHoursRule().days)+'). All availability is unverified; no external calendar contact.</p>',
+        htmlEsc(recipientHoursRule().days)+
+        '). Unavailable local dates (HUMAN only): '+htmlEsc(recipientBlackoutText()||"(none declared)")+
+        '. All availability is unverified; no external calendar contact.</p>',
       '<table border="1"><thead><tr><th>Ordinal</th><th>Previous source-zone proposal</th><th>Next source-zone proposal</th><th>Duration</th><th>Unverified HUMAN group</th></tr></thead><tbody>',
       cells,'</tbody></table><p>Authority: FALSE · Consent: FALSE · Verification: FALSE · Applied: FALSE.</p>',
       '<p>Review original private HUMAN worksheet/plan and approve separately before local changes. Retain PRIVATE; original HUMANS may reveal confidential schedule metadata.</p>',
@@ -829,7 +869,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     for(const r of data.slice(recipientPage*35,recipientPage*35+35)){
       const tr=dom("tr"),b=dom("button","Edit #"+r.ordinal);
       b.type="button";b.addEventListener("click",()=>focusOrdinal(r.ordinal));
-      const notice=r.status==="weekend"?"Outside declared weekdays":
+      const notice=r.status==="clock_change"?"Recipient local clock change":
+        r.status==="unavailable_date"?"Recipient unavailable local date":
+        r.status==="weekend"?"Outside declared weekdays":
         r.status==="outside_hours"?"Outside declared hours":"Within declared window";
       tr.append(dom("td","#"+r.ordinal),
         dom("td",r.day+" "+r.time+" / "+zone),
@@ -850,11 +892,12 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       "display_zone_unverified","original_ordinal","human_group_unverified",
       "source_local_date","source_local_time","utc","other_zone_display",
       "other_zone_end","human_declared_window_start","human_declared_window_end",
-      "human_declared_days","window_status_unverified","authorized","verified","consent"]];
+      "human_declared_days","human_unavailable_dates_unverified",
+      "window_status_unverified","authorized","verified","consent"]];
     for(const row of rows)output.push([hash,seriesId,zone,target,row.ordinal,row.group,
       row.day,row.time,row.utc,row.converted,row.endConverted,
       recipientHoursRule().from,recipientHoursRule().to,recipientHoursRule().days,
-      row.status,"false","false","false"]);
+      recipientBlackoutText(),row.status,"false","false","false"]);
     download(makeCsv(output),"lightup-private-human-zone-handoff.csv","text/csv;charset=utf-8");
     inform("PRIVATE alternate-zone HUMAN schedule exported locally; no recipient or calendar contacted.");
   }
@@ -3082,6 +3125,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   for(const input of ["recipientStart","recipientEnd","recipientDays"]){
     hook(input,"change",()=>{recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();});
   }
+  hook("recipientBlackouts","input",()=>{
+    recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();
+  });
   hook("recipientPolicyExport","click",()=>{
     try{recipientPolicyExport();}
     catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference export held. No external contact or file created."; }
@@ -3322,17 +3368,23 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <label>HUMAN-declared days <select id="recipientDays"><option value="weekdays">Monday–Friday</option><option value="all">All seven weekdays</option></select></label>
 </div>
 <div class="toolbar">
+<label>Unverified recipient unavailable local dates (max 60, YYYY-MM-DD; separate by comma, spaces or newlines)<br>
+<textarea id="recipientBlackouts" rows="2" maxlength="700" spellcheck="false" placeholder="2026-12-25, 2026-12-26"></textarea></label>
+</div>
+<div class="toolbar">
 <label>Recipient local window status <select id="recipientView">
 <option value="all">All proposed HUMAN reminders</option>
 <option value="outside_hours">Outside declared daily hours</option>
 <option value="weekend">Outside declared weekday policy</option>
+<option value="unavailable_date">Recipient local unavailable date</option>
+<option value="clock_change">Recipient local clock-change overlap</option>
 <option value="within_hours">Within declared recipient time window</option>
 </select></label>
 <label>HUMAN ordinal / group <input id="recipientQuery" type="search" maxlength="120" placeholder="PRIVATE local filter"></label>
 </div>
-<p class="subtle">For review only: 09:00–17:00 Monday–Friday is the DEFAULT manually adjustable HUMAN availability proposal, NOT independently verified recipient working hours, holidays or permission. No overnight windows; 15-minute increments, 06:00–21:00 range. End times include original proposed duration. Filters apply to the PRIVATE CSV export too.</p>
+<p class="subtle">For review only: 09:00–17:00 Monday–Friday is the DEFAULT manually adjustable HUMAN availability proposal, NOT independently verified recipient working hours, holidays or permission. No overnight windows; 15-minute increments, 06:00–21:00 range. Up to 60 manually declared unavailable recipient-local dates are applied at BOTH the start and end of each tentative appointment. End times include original proposed duration. Filters apply to the PRIVATE CSV export too.</p>
 <p id="recipientSummary" class="subtle" role="status" aria-live="polite">Type an IANA timezone to preview HUMAN reminders in another local zone.</p>
-<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone (start → end)</th><th>HUMAN-declared window</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone (start → end)</th><th>HUMAN-declared window / unavailable dates / clock change</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
 <p id="recipientRemainder" class="subtle"></p>
 <div class="row"><button id="recipientPrev" type="button" class="ghost" disabled>Previous matching reminders</button>
 <button id="recipientNext" type="button" class="ghost" disabled>Next matching reminders</button></div>

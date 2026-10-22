@@ -15,9 +15,13 @@
   const MAX_BYTES = 1024*1024, MAX_ROWS = 2048, PAGE = 35;
   const CAP_HEAD = ["worksheet_sha256_unsigned","private_calendar_series_id","time_zone",
     "human_owner_group","weekdays_iso","local_start","local_end","maximum_daily","blackout_dates"];
-  const RECIPIENT_POLICY_HEAD=["worksheet_sha256_unsigned","private_calendar_series_unsigned",
+  const RECIPIENT_POLICY_HEAD_V1=["worksheet_sha256_unsigned","private_calendar_series_unsigned",
     "source_local_zone","recipient_iana_zone_unverified","human_window_start",
     "human_window_end","human_days","authorized","verified","consent"];
+  const RECIPIENT_POLICY_HEAD=["worksheet_sha256_unsigned","private_calendar_series_unsigned",
+    "source_local_zone","recipient_iana_zone_unverified","human_window_start",
+    "human_window_end","human_days","recipient_blackout_dates_unverified",
+    "authorized","verified","consent"];
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
@@ -176,6 +180,7 @@
     recipientProposal=null;recipientSelection.clear();recipientUndo=null;
     $("recipientZone").value="";$("recipientStart").value="09:00";
     $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
+    $("recipientBlackouts").value="";
     $("recipientView").value="all";$("recipientQuery").value="";
     $("recipientPolicyImport").value="";
     for(const id of ["recipientRows","recipientProposalRows"])
@@ -472,7 +477,7 @@
     const rule=recipientHoursRule();
     if(!confirm("Save a PRIVATE, UNSIGNED recipient-window preference CSV bound to this exact HUMAN worksheet and opaque calendar series? It does NOT verify recipient identity, working hours, client/operator consent, findings or assessment authority."))return;
     const rows=[RECIPIENT_POLICY_HEAD,[hash,seriesId,zone,target,rule.from,rule.to,
-      rule.days,"false","false","false"]];
+      rule.days,recipientBlackoutText(),"false","false","false"]];
     download(makeCsv(rows),"lightup-private-human-recipient-window.csv",
       "text/csv;charset=utf-8");
     recipientPolicyDirty=false;
@@ -481,9 +486,14 @@
   async function recipientPolicyImport(file){
     hold(active&&file&&file.size>0&&file.size<=4096);
     const snapshot=workroomFingerprint(),raw=decoder.decode(await bytes(file));
-    const rows=csv(raw,RECIPIENT_POLICY_HEAD.length);
-    hold(rows.length===2&&JSON.stringify(rows[0])===JSON.stringify(RECIPIENT_POLICY_HEAD));
-    const [original,series,source,target,start,end,days,authorized,verified,consent]=rows[1];
+    let rows,legacy=false;
+    try{rows=csv(raw,RECIPIENT_POLICY_HEAD.length);}
+    catch(_){rows=csv(raw,RECIPIENT_POLICY_HEAD_V1.length);legacy=true;}
+    const expected=legacy?RECIPIENT_POLICY_HEAD_V1:RECIPIENT_POLICY_HEAD;
+    hold(rows.length===2&&JSON.stringify(rows[0])===JSON.stringify(expected));
+    const [original,series,source,target,start,end,days]=rows[1];
+    const unavailability=legacy?"":rows[1][7];
+    const [authorized,verified,consent]=rows[1].slice(legacy?7:8);
     hold(original===hash&&series===seriesId&&source===zone&&
       /^[A-Za-z0-9_+./-]{1,64}$/.test(target)&&
       [authorized,verified,consent].every(value=>value==="false"));
@@ -491,11 +501,13 @@
       .resolvedOptions().timeZone;
     hold(!!canonical);
     recipientHoursRule(start,end,days);
+    hold(unavailability===[...recipientBlackouts(unavailability)].sort().join(";"));
     hold(snapshot===workroomFingerprint()&&recipientPreferenceSource===hash+"|"+seriesId);
-    if(!confirm("Restore the HUMAN-declared recipient timezone and working window from this PRIVATE unsigned file? Current recipient preview settings will be replaced; source worksheet, saved reminders, consent and external calendars will NOT change."))return;
+    if(!confirm("Restore the HUMAN-declared recipient timezone, working window and unavailable dates from this PRIVATE unsigned file? Current recipient preview settings will be replaced; source worksheet, saved reminders, consent and external calendars will NOT change."))return;
     hold(snapshot===workroomFingerprint());
     $("recipientZone").value=canonical;$("recipientStart").value=start;
     $("recipientEnd").value=end;$("recipientDays").value=days;
+    $("recipientBlackouts").value=unavailability.replaceAll(";",", ");
     recipientPage=0;recipientPolicyDirty=false;
     renderRecipientZone();
     $("recipientPolicyStatus").textContent="PRIVATE HUMAN recipient window restored against matching original SHA, series and timezone. Recipient availability remains UNVERIFIED.";
@@ -504,7 +516,8 @@
     const target=recipientFormatter().resolvedOptions().timeZone;
     return new Intl.DateTimeFormat("en-US",{
       timeZone:target,weekday:"short",year:"numeric",month:"2-digit",
-      day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+      day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23",
+      timeZoneName:"shortOffset"
     });
   }
   function recipientHoursRule(from=$("recipientStart").value,
@@ -518,6 +531,21 @@
       last<=1260 && first+30<=last && first%15===0 && last%15===0);
     return {from,to,first,last,days};
   }
+  function recipientBlackouts(raw=$("recipientBlackouts").value){
+    hold(typeof raw==="string"&&raw.length<=700);
+    const entries=raw.trim()?raw.trim().split(/[\s,;]+/):[];
+    hold(entries.length<=60&&new Set(entries).size===entries.length);
+    for(const day of entries){
+      hold(/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(day));
+      const [y,m,d]=day.split("-").map(Number),parsed=new Date(Date.UTC(y,m-1,d));
+      hold(parsed.getUTCFullYear()===y&&parsed.getUTCMonth()===m-1&&
+        parsed.getUTCDate()===d);
+    }
+    return new Set(entries);
+  }
+  function recipientBlackoutText(){
+    return [...recipientBlackouts()].sort().join(";");
+  }
   function recipientWindow(start,duration,clock){
     const fields=date=>Object.fromEntries(clock.formatToParts(date)
       .filter(part=>part.type!=="literal").map(part=>[part.type,part.value]));
@@ -525,6 +553,11 @@
     const rule=recipientHoursRule(),first=Number(a.hour)*60+Number(a.minute);
     const last=Number(b.hour)*60+Number(b.minute);
     const sameDate=a.year===b.year&&a.month===b.month&&a.day===b.day;
+    const blackouts=recipientBlackouts();
+    if(a.timeZoneName!==b.timeZoneName)return "clock_change";
+    const startDay=a.year+"-"+a.month+"-"+a.day,
+      endDay=b.year+"-"+b.month+"-"+b.day;
+    if(blackouts.has(startDay)||blackouts.has(endDay))return "unavailable_date";
     return rule.days==="weekdays" &&
       (["Sat","Sun"].includes(a.weekday)||["Sat","Sun"].includes(b.weekday))?
       "weekend":!sameDate||first<rule.first||last>rule.last?
@@ -550,7 +583,8 @@
   function recipientProposalIdentity(){
     return JSON.stringify([workroomFingerprint(),$("recipientZone").value,
       $("recipientView").value,$("recipientQuery").value,
-      $("recipientStart").value,$("recipientEnd").value,$("recipientDays").value]);
+      $("recipientStart").value,$("recipientEnd").value,$("recipientDays").value,
+      recipientBlackoutText()]);
   }
   function renderRecipientProposal(){
     const body=$("recipientProposalRows");body.replaceChildren();
@@ -647,6 +681,8 @@
       "recipient_zone_unverified","original_ordinal","human_group_unverified",
       "previous_local_date","previous_local_time","proposed_local_date",
       "proposed_local_time","duration_minutes","reminder_minutes",
+      "recipient_declared_start","recipient_declared_end",
+      "recipient_declared_days","recipient_declared_unavailable_dates",
       "authority","consent","verified","applied"]];
     const target=recipientFormatter().resolvedOptions().timeZone;
     for(const [ordinal,next] of selected){
@@ -654,6 +690,8 @@
       hold(old&&row&&row.ordinal===ordinal);
       rows.push([hash,seriesId,zone,target,ordinal,row.group,old.day,old.time,
         next.day,next.time,next.duration,next.reminder,
+        recipientHoursRule().from,recipientHoursRule().to,
+        recipientHoursRule().days,recipientBlackoutText(),
         "false","false","false","false"]);
     }
     download(makeCsv(rows),"lightup-private-human-common-hours-proposals.csv",
@@ -689,7 +727,9 @@
           htmlEsc(recipientFormatter().resolvedOptions().timeZone)+'</p>',
       '<p>HUMAN-declared alternate-zone window: '+htmlEsc(recipientHoursRule().from)+
         '–'+htmlEsc(recipientHoursRule().to)+' ('+
-        htmlEsc(recipientHoursRule().days)+'). All availability is unverified; no external calendar contact.</p>',
+        htmlEsc(recipientHoursRule().days)+
+        '). Unavailable local dates (HUMAN only): '+htmlEsc(recipientBlackoutText()||"(none declared)")+
+        '. All availability is unverified; no external calendar contact.</p>',
       '<table border="1"><thead><tr><th>Ordinal</th><th>Previous source-zone proposal</th><th>Next source-zone proposal</th><th>Duration</th><th>Unverified HUMAN group</th></tr></thead><tbody>',
       cells,'</tbody></table><p>Authority: FALSE · Consent: FALSE · Verification: FALSE · Applied: FALSE.</p>',
       '<p>Review original private HUMAN worksheet/plan and approve separately before local changes. Retain PRIVATE; original HUMANS may reveal confidential schedule metadata.</p>',
@@ -781,7 +821,9 @@
     for(const r of data.slice(recipientPage*35,recipientPage*35+35)){
       const tr=dom("tr"),b=dom("button","Edit #"+r.ordinal);
       b.type="button";b.addEventListener("click",()=>focusOrdinal(r.ordinal));
-      const notice=r.status==="weekend"?"Outside declared weekdays":
+      const notice=r.status==="clock_change"?"Recipient local clock change":
+        r.status==="unavailable_date"?"Recipient unavailable local date":
+        r.status==="weekend"?"Outside declared weekdays":
         r.status==="outside_hours"?"Outside declared hours":"Within declared window";
       tr.append(dom("td","#"+r.ordinal),
         dom("td",r.day+" "+r.time+" / "+zone),
@@ -802,11 +844,12 @@
       "display_zone_unverified","original_ordinal","human_group_unverified",
       "source_local_date","source_local_time","utc","other_zone_display",
       "other_zone_end","human_declared_window_start","human_declared_window_end",
-      "human_declared_days","window_status_unverified","authorized","verified","consent"]];
+      "human_declared_days","human_unavailable_dates_unverified",
+      "window_status_unverified","authorized","verified","consent"]];
     for(const row of rows)output.push([hash,seriesId,zone,target,row.ordinal,row.group,
       row.day,row.time,row.utc,row.converted,row.endConverted,
       recipientHoursRule().from,recipientHoursRule().to,recipientHoursRule().days,
-      row.status,"false","false","false"]);
+      recipientBlackoutText(),row.status,"false","false","false"]);
     download(makeCsv(output),"lightup-private-human-zone-handoff.csv","text/csv;charset=utf-8");
     inform("PRIVATE alternate-zone HUMAN schedule exported locally; no recipient or calendar contacted.");
   }
@@ -3034,6 +3077,9 @@
   for(const input of ["recipientStart","recipientEnd","recipientDays"]){
     hook(input,"change",()=>{recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();});
   }
+  hook("recipientBlackouts","input",()=>{
+    recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();
+  });
   hook("recipientPolicyExport","click",()=>{
     try{recipientPolicyExport();}
     catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference export held. No external contact or file created."; }
