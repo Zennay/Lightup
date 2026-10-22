@@ -754,6 +754,7 @@
       }
       selector.value=reviews.get(item.id)||"needs_review";
       selector.addEventListener("change",()=>{
+        cancelOldImports();
         reviews.set(item.id,selector.value);undoBatch=null;
         render();message("Private human stage updated in memory only.");
       });
@@ -1206,6 +1207,7 @@
   for(const id of ["boardStatus","boardRoute"])$(id).addEventListener("change",renderHumanActionBoard);
   $("inspectCase").addEventListener("change",renderInspector);
   $("privateCaseNote").addEventListener("input",()=>{
+    cancelOldImports();
     const index=Number($("inspectCase").value);
     if(!catalog||!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
     const id=catalog[index].id,raw=$("privateCaseNote").value;
@@ -1216,18 +1218,18 @@
       "Not included in any output until Save note is clicked.":
       "PRIVATE note matches saved local version.";
   });
-  $("saveCaseNote").addEventListener("click",saveCaseNote);
-  $("saveHumanPlan").addEventListener("click",setHumanPlan);
-  $("adoptSourceHint").addEventListener("click",adoptSourceHint);
+  $("saveCaseNote").addEventListener("click",()=>{cancelOldImports();saveCaseNote();});
+  $("saveHumanPlan").addEventListener("click",()=>{cancelOldImports();setHumanPlan();});
+  $("adoptSourceHint").addEventListener("click",()=>{cancelOldImports();adoptSourceHint();});
   $("revealMismatch").addEventListener("click",toggleMismatch);
   $("sourceOrder").addEventListener("change",renderSourceOrder);
-  $("sourceEarlier").addEventListener("click",()=>chooseSource(-1));
-  $("sourceLater").addEventListener("click",()=>chooseSource(1));
-  $("removeSource").addEventListener("click",removeSource);
-  $("applyStage").addEventListener("click",humanBulk);
-  $("undoStage").addEventListener("click",undoHumanBulk);
-  $("suggestRoutes").addEventListener("click",bulkSuggestHumanRoutes);
-  $("undoRoute").addEventListener("click",undoHumanRoutes);
+  $("sourceEarlier").addEventListener("click",()=>{cancelOldImports();chooseSource(-1);});
+  $("sourceLater").addEventListener("click",()=>{cancelOldImports();chooseSource(1);});
+  $("removeSource").addEventListener("click",()=>{cancelOldImports();removeSource();});
+  $("applyStage").addEventListener("click",()=>{cancelOldImports();humanBulk();});
+  $("undoStage").addEventListener("click",()=>{cancelOldImports();undoHumanBulk();});
+  $("suggestRoutes").addEventListener("click",()=>{cancelOldImports();bulkSuggestHumanRoutes();});
+  $("undoRoute").addEventListener("click",()=>{cancelOldImports();undoHumanRoutes();});
   $("exportDraft").addEventListener("click",exportPrivateDraft);
   $("exportPrivateActionBrief").addEventListener("click",exportPrivateActionBrief);
   $("restoreDraft").addEventListener("change",async e=>{
