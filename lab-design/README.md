@@ -45,7 +45,7 @@ The fixture catalog accepts only a strict numeric **loopback address** (default 
 
 ## Native offline Python bridge
 
-The distinct opt-in `lab-design/native_bridge.py` uses the original `src/lightup/labeval.py` dataclasses without modifying them. It validates the same catalog shape through Python's standard-library `ipaddress`, constructs the original **LabScenario** and **ExpectedFinding** objects **in memory** and prints only redacted counts. It imports **no LabEvaluationHarness**, starts no run, performs no target IO, and cannot verify real asset ownership or consent. Use from the repository root:
+The distinct opt-in `lab-design/native_bridge.py` uses the original `src/lightup/labeval.py` dataclasses without modifying them. It validates the same catalog shape through Python's standard-library `ipaddress`, constructs the original **LabScenario** and **ExpectedFinding** objects **in memory** and prints only redacted counts. Catalog intake now uses one bounded regular-file descriptor with final-component `O_NOFOLLOW` and nonblocking open; it rejects read-time size/metadata drift and refuses final symlinks or non-regular files before JSON parsing. This is path-integrity protection, not proof of author identity or consent. It imports **no LabEvaluationHarness**, starts no run, performs no target IO, and cannot verify real asset ownership or consent. Use from the repository root:
 
 ```bash
 python3 lab-design/native_bridge.py lab-design/fictional-example.json
