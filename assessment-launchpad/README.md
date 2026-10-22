@@ -121,6 +121,20 @@ The optional direct-stage route and the imported `--answers-dir` route are mutua
 
 Before HUMAN return publication, the native CLI re-verifies the saved history against the original pinned policy and source manifests, strictly matches the complete edited CSV against the ordinal queue, and re-opens all inputs. It publishes three exclusive mode-0600 files in a separate empty owner-owned 0700 directory: source-bound PRIVATE JSON containing unsigned source and answer hashes, scriptless CSP-pinned PRIVATE HUMAN status HTML (no URLs/paths/hashes) and an aggregate stage-count PRIVATE CSV. The previous source and HUMAN answer files are never overwritten. The stages are non-authorizing **human work notes only**: even `HUMAN_REVIEWED` is not approval, valid consent, verified remediation, revocation clearance or release authority. No active targets, scanner, DNS, model, auth or original source-owner code is touched.
 
+### Read-only HUMAN stage preview before publishing
+
+`manifest_history_response.py --dry-run` can now reopen the exact original PRIVATE history and proposed HUMAN stage source without writing an output file. It reports only the number of original changed-slot rows, the number of HUMAN status changes relative to the original or preceding saved return, whether a prior source-bound round exists and whether the full-CSV stage replacement will require acknowledgement. It does not disclose endpoint values, private paths, notes, source hashes, client identity or authorization data. The **preview does not authorize publication** and can be used before approving a full CSV replacement:
+
+```sh
+python3 assessment-launchpad/manifest_history_response.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --continue-from-return-dir ~/private-human-return-one \
+  --answers-dir ~/private-edited-answers --dry-run
+```
+
+For publication, use the same inputs with a separate empty owner-private `--output-dir` and `--ack-csv-stage-replace`. Preview never substitutes for the strict native original-source gate, current client/operator permission or the original security/privacy/HUMAN GO gates.
+
 ### Resume HUMAN review through the offline browser, without losing the source-bound chain
 
 The local standalone `history_review_editor.html` now accepts an **optional saved PRIVATE HUMAN return JSON** after the original source history queue CSV is imported. Select exactly `lightup-manifest-history-human-return-private.json` from the previously saved v1/v2 HUMAN return. The browser checks the strict return envelope, false authority flags, row count, original ordinal identities and stage counts, and then asks for explicit confirmation before replacing its current in-memory HUMAN stage labels. It does not contact a server, store data, validate digital signatures or independently authenticate the original plan history. The original native source read/reopen remains mandatory.
