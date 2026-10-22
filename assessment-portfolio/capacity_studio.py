@@ -37,10 +37,12 @@ const table = document.getElementById("scenario-rows");
 const message = document.getElementById("message");
 const summary = document.getElementById("summary");
 const download = document.getElementById("download-current");
+const downloadJSON = document.getElementById("download-json");
 const printButton = document.getElementById("print-studio");
 const undatedList = document.getElementById("undated-list");
 const settings = {};
 let currentRows = [];
+let currentJson = null;
 const make = (tag, value) => {
   const node = document.createElement(tag);
   if (value !== undefined) node.textContent = String(value);
@@ -102,12 +104,15 @@ function refresh() {
     table.replaceChildren();
     summary.textContent = "INVALID ASSUMPTIONS · no scenario counts displayed.";
     currentRows = [];
+    currentJson = null;
     printButton.disabled = true;
     download.disabled = true;
+    downloadJSON.disabled = true;
     return;
   }
   const fragment = document.createDocumentFragment();
   const exportRows = [];
+  const jsonRows = [];
   let firstExcess = 0, alternateExcess = 0;
   for (const entry of payload.groups) {
     const a = Math.max(0, entry.count - first[entry.role]);
@@ -128,6 +133,21 @@ function refresh() {
       "A" + String(original[0]).padStart(2,"0") +
       "/S" + String(original[1]).padStart(2,"0")).join(";");
     exportRows.push([...cells, ids, "REVIEW_ONLY"]);
+    jsonRows.push({
+      proposed_day: entry.date,
+      suggested_neutral_role: entry.role,
+      human_items: entry.count,
+      first_declared_daily_limit: first[entry.role],
+      first_items_above_assumption: a,
+      alternative_declared_daily_limit: alternate[entry.role],
+      alternative_items_above_assumption: b,
+      alternative_minus_first_excess: b - a,
+      source_agenda_count: new Set(entry.ordinals.map(original => original[0])).size,
+      original_source_ordinals: entry.ordinals.map(original => ({
+        agenda_slot: original[0], source_slot: original[1]
+      })),
+      status: "REVIEW_ONLY"
+    });
   }
   for (const group of payload.undated_rows) {
     const source = group.ordinals.map(original =>
@@ -135,9 +155,51 @@ function refresh() {
       "/S" + String(original[1]).padStart(2, "0")).join(";");
     exportRows.push(["", group.role, group.ordinals.length,
       "", "", "", "", "", source, "REVIEW_ONLY"]);
+    jsonRows.push({
+      proposed_day: null,
+      suggested_neutral_role: group.role,
+      human_items: group.ordinals.length,
+      first_declared_daily_limit: null,
+      first_items_above_assumption: null,
+      alternative_declared_daily_limit: null,
+      alternative_items_above_assumption: null,
+      alternative_minus_first_excess: null,
+      source_agenda_count: new Set(group.ordinals.map(original => original[0])).size,
+      original_source_ordinals: group.ordinals.map(original => ({
+        agenda_slot: original[0], source_slot: original[1]
+      })),
+      status: "REVIEW_ONLY"
+    });
   }
   table.replaceChildren(fragment);
   currentRows = exportRows;
+  currentJson = {
+    schema: "lightup.human_capacity_scenario_private.v1",
+    posture: "INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
+    status: "REVIEW_ONLY",
+    reference_date: payload.reference_date,
+    roles: payload.roles.slice(),
+    first_declared_daily_limit_by_role: {...first},
+    alternative_declared_daily_limit_by_role: {...alternate},
+    summary: {
+      first_items_above_declared_limits: firstExcess,
+      alternative_items_above_declared_limits: alternateExcess,
+      arithmetic_difference: alternateExcess - firstExcess,
+      undated_items: payload.undated_count
+    },
+    rows: jsonRows,
+    original_source_ordinals_included: true,
+    source_filenames_included: false,
+    source_hashes_included: false,
+    original_case_ids_included: false,
+    human_notes_included: false,
+    planning_not_permission: true,
+    authorized: false,
+    consent_verified: false,
+    dispatch_allowed: false,
+    release_allowed: false,
+    disclaimer: "PRIVATE HUMAN-only hypothetical capacity arithmetic. Ordinals are source-local pointers, not identities. This is not a booking, staffing verdict, verified finding, consent or permission."
+  };
   summary.textContent = "First scenario: " + firstExcess +
     " proposed HUMAN items above declared limits; alternative: " + alternateExcess +
     "; arithmetic difference: " + (alternateExcess - firstExcess) +
@@ -146,6 +208,7 @@ function refresh() {
   message.textContent = "PREVIEW ONLY · local hypothetical arithmetic, not a booking, " +
     "staffing verdict, consent or permission. Changes are not saved.";
   download.disabled = false;
+  downloadJSON.disabled = false;
   printButton.disabled = false;
 }
 document.getElementById("reset-studio").addEventListener("click", () => {
@@ -176,6 +239,19 @@ download.addEventListener("click", () => {
   setTimeout(() => URL.revokeObjectURL(object), 5000);
   message.textContent = "PRIVATE CSV downloaded locally. No source file, " +
     "calendar entry, identity, consent or permission was changed.";
+});
+downloadJSON.addEventListener("click", () => {
+  if (downloadJSON.disabled || !currentJson) return;
+  const data = JSON.stringify(currentJson, null, 2) + "\n";
+  if (new TextEncoder().encode(data).length > 1048576) {
+    message.textContent = "HOLD: selected PRIVATE JSON exceeds 1 MiB."; return;
+  }
+  const object = URL.createObjectURL(new Blob([data], {type: "application/json;charset=utf-8"}));
+  const anchor = document.createElement("a");
+  anchor.href = object; anchor.download = "lightup-PRIVATE-HUMAN-capacity-scenarios.json";
+  anchor.rel = "noopener"; anchor.click();
+  setTimeout(() => URL.revokeObjectURL(object), 5000);
+  message.textContent = "PRIVATE JSON downloaded locally. It includes proposed assumptions and source-local ordinals only; no filenames, source hashes, identities or HUMAN notes.";
 });
 refresh();
 '''.strip()
@@ -248,7 +324,8 @@ def render(rows, reference_day, first_limits, alternative_limits, roles):
         "<div id='capacity-fields' class='controls'></div>"
         "<p><button type='button' id='reset-studio'>Restore original assumptions</button>"
         "<button type='button' id='print-studio'>Print PRIVATE scenario</button>"
-        "<button type='button' id='download-current'>Download PRIVATE scenario CSV</button></p>"
+        "<button type='button' id='download-current'>Download PRIVATE scenario CSV</button>"
+        "<button type='button' id='download-json'>Download PRIVATE scenario JSON</button></p>"
         "<p id='message' role='status' aria-live='polite'></p>"
         "<p id='summary' class='metrics' aria-live='polite'></p></section>"
         "<section><h2>Original proposed date and role groups</h2>"
