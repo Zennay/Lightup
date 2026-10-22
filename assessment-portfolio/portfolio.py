@@ -418,7 +418,7 @@ def render_private_calendar(rows, reference_day):
         # All emitted vocabulary/ordinals are bounded ASCII. RFC 5545 continuation.
         if not line.isascii() or any(ord(c) < 32 or ord(c) > 126 for c in line):
             raise Hold("unexpected calendar text outside fixed ASCII vocabulary")
-        return "\\r\\n ".join(line[index:index + 74] for index in range(0, len(line), 74))
+        return "\r\n ".join(line[index:index + 74] for index in range(0, len(line), 74))
 
     lines = [
         "BEGIN:VCALENDAR", "VERSION:2.0",
@@ -454,12 +454,12 @@ def render_private_calendar(rows, reference_day):
             "SUMMARY:LightUp PRIVATE proposed HUMAN discussion (not a deadline)",
             "DESCRIPTION:Unverified proposal only. Agenda " + str(row["agenda_slot"]) +
             " / source slot " + str(row["source_slot"]) + ". Role " + row["next_role"] +
-            ". Stage " + row["stage"] + ". No consent\\\\nNo grant\\\\nNo scan or dispatch.",
+            ". Stage " + row["stage"] + ". No consent\\nNo grant\\nNo scan or dispatch.",
             "END:VEVENT",
         ]
         lines.extend(event)
     lines.append("END:VCALENDAR")
-    return ("\\r\\n".join(fold(line) for line in lines) + "\\r\\n").encode("ascii")
+    return ("\r\n".join(fold(line) for line in lines) + "\r\n").encode("ascii")
 
 
 def render_counts_csv(summary):
