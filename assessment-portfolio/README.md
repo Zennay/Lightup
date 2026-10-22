@@ -203,6 +203,87 @@ artifact is bounded to 1 MiB. Focused workrooms generate explorer/calendar
 rows from **only the selected HUMAN rows**, and the counts-only exports
 still identify the chosen explicit view filter.
 
+## Complete PRIVATE HUMAN worksheet round trip (opt-in)
+
+The original cross-agenda planning report is intentionally **not** an
+assessment, consent gate, signed approval or authoritatively assigned task.
+To turn previously admitted private agenda items into a human-only discussion
+follow-up **without changing the original files**, generate an extra
+`assessment-portfolio-human-workbook.html` from the same canonical source
+agendas using the explicit `--private-human-workbook` flag:
+
+```bash
+mkdir -m 700 /private/portfolio-human-original
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --agendas-file /private/agenda-selection.txt \
+  --private-human-workbook \
+  --output-dir /private/portfolio-human-original
+```
+
+Open that PRIVATE workbook locally. Its CSP SHA-256-pinned JavaScript runs
+entirely inside the browser, requires **no server or network**, and provides
+one editable human-only discussion status, a suggested neutral role and a
+single-line PRIVATE HUMAN note (maximum 160 characters) per source ordinal.
+The statuses are only `PENDING_HUMAN`, `DISCUSSING`,
+`AWAITING_ORIGINAL`, and `DOCUMENTED_DISCUSSION`; there is intentionally
+**no approved, resolved, verified, consent, granted or dispatched state**.
+The fixed original stage/role, date and source ordinals are visible but
+**not editable**. The screen shows unsaved local changes and an explicit
+**Download private HUMAN response JSON** action. Closing the tab discards
+unsaved work; there is no cookie, localStorage, external asset or telemetry.
+
+**Resume local HUMAN work** by selecting a previously downloaded private
+worksheet JSON in the same original HTML. The browser admits the whole
+document atomically against the original row binding, strict fixed source
+fields and allowed HUMAN values; an invalid imported file leaves the
+currently edited screen unchanged. The local browser is only an editor and
+does **not** authenticate the author or replace the original native input
+gate. Never include passwords, target credentials, private customer data or
+vulnerability reports in its notes.
+
+To publish a separate follow-up, save the downloaded browser JSON as a
+**single-hard-link, current-user-owned, exact mode-0600 private source file**
+in a secure location **outside** the destination directory. Most browsers
+do not guarantee mode 0600 on downloads, so review local file handling and
+secure its permissions before native admission:
+
+```bash
+chmod 600 /private/human-input/lightup-PRIVATE-HUMAN-worksheet.json
+mkdir -m 700 /private/human-return-new
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --agendas-file /private/agenda-selection.txt \
+  --human-responses /private/human-input/lightup-PRIVATE-HUMAN-worksheet.json \
+  --output-dir /private/human-return-new
+```
+
+This produces the unchanged original four packet files **plus** an
+owner-private mode-0600 scriptless `assessment-portfolio-private-HUMAN-return.html`
+and `assessment-portfolio-private-HUMAN-return.csv`. The HUMAN return
+contains only source ordinals, fixed original stages/proposed dates and the
+locally entered HUMAN-only proposed role/status/note. Original source
+paths, target details, raw agenda IDs and hashes never enter either return.
+PRIVATE HUMAN notes can themselves be sensitive and are never added to the
+anonymous JSON/CSV. The native module strictly rejects malformed JSON,
+duplicate keys, unknown fields, modified fixed source rows, incompatible
+row-reference digests, unsafe note/control text, unknown roles/statuses,
+unexpected authority flags and duplicate/changed/unsafe input files.
+Every source is re-admitted immediately before publication. No original
+agenda is changed or marked completed.
+
+The previously used command plus **identical** source order, reference
+day, optional `--focus-*` selection and exact same flags with
+`--verify-output-dir` reopens the complete packet **without writing**.
+Note that `--private-human-workbook` is also independently optional during
+this return: include it on the final command only if the follow-up packet
+should also contain a brand-new blank worksheet; otherwise it contains just
+the canonical four original outputs and two private HUMAN returns.
+Do not place the HUMAN response source in its destination room. The
+HUMAN return is **planning evidence only**: no real sign-off, source
+identity verification, consent, action-time revocation, assessment execution,
+issue resolution or release approval is conferred by these files.
+
 ## Interpretation and safety
 
 - Input agenda exports are untrusted claims. Strict schema admission is not source authentication, reviewer authentication, customer identity, consent or security validation.
