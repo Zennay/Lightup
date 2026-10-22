@@ -106,6 +106,19 @@ python3 assessment-launchpad/manifest_history_response.py --plan-dir ~/private-p
 python3 assessment-launchpad/manifest_history_response.py --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two --history-dir ~/private-plan-history --answers-dir ~/private-plan-answers --verify-output-dir ~/private-human-return
 ```
 
+**One-command HUMAN return (no answers directory):** `manifest_history_response.py` additionally accepts explicit repeatable `--stage ROW:STAGE` in place of `--answers-dir`. This derives every untouched row straight from the originally admitted history queue, applies only explicitly chosen HUMAN stage labels, and creates the complete three-file source-bound PRIVATE return in one directory. For example:
+
+```sh
+mkdir -m 700 ~/private-direct-human-return
+python3 assessment-launchpad/manifest_history_response.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --stage 1:NEEDS_CONTEXT --stage 2:IN_REVIEW \
+  --output-dir ~/private-direct-human-return
+```
+
+The optional direct-stage route and the imported `--answers-dir` route are mutually exclusive. The native output has the same strict original-source read-only reopen behavior (use identical `--stage` values with `--verify-output-dir`); both produce unsigned REVIEW_ONLY HUMAN records. Reviewers may instead use the accessible local browser studio or the native 0600 queue publisher before running the original return CLI.
+
 Before HUMAN return publication, the native CLI re-verifies the saved history against the original pinned policy and source manifests, strictly matches the complete edited CSV against the ordinal queue, and re-opens all inputs. It publishes three exclusive mode-0600 files in a separate empty owner-owned 0700 directory: source-bound PRIVATE JSON containing unsigned source and answer hashes, scriptless CSP-pinned PRIVATE HUMAN status HTML (no URLs/paths/hashes) and an aggregate stage-count PRIVATE CSV. The previous source and HUMAN answer files are never overwritten. The stages are non-authorizing **human work notes only**: even `HUMAN_REVIEWED` is not approval, valid consent, verified remediation, revocation clearance or release authority. No active targets, scanner, DNS, model, auth or original source-owner code is touched.
 
 **One-command combine + history:** `combine_manifest.py` also accepts 1–7 repeated `--history-prior-dir` values plus one `--history-output-dir` to append its newly published combined plan as the final historical snapshot. It admits all prior saved PRIVATE bundles before publication; the new plan and history are written in **separate private transactions**. `--verify-output` reopens both without writing. This optional history may be requested alongside the independent change-desk and offline HUMAN workspace, but every destination must be separate from all source and output trees.

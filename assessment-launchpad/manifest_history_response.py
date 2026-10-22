@@ -122,7 +122,10 @@ def main(argv=None):
     parser.add_argument("--plan-dir", action="append", default=[], required=True,
                         help="each original saved PRIVATE combined plan, in exact history order")
     parser.add_argument("--history-dir", required=True, help="original exact PRIVATE 4-file history bundle")
-    parser.add_argument("--answers-dir", required=True, help="separate owner-private 0700 directory with one edited 0600 queue CSV")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--answers-dir", help="separate owner-private 0700 directory with one edited 0600 queue CSV")
+    source.add_argument("--stage", action="append", default=[],
+                        help="direct HUMAN review for 1-based original changed-slot ROW:STAGE (repeatable)")
     dest = parser.add_mutually_exclusive_group(required=True)
     dest.add_argument("--output-dir", help="new separate empty PRIVATE 0700 result directory")
     dest.add_argument("--verify-output-dir", help="exact read-only reopen")
@@ -139,8 +142,20 @@ def main(argv=None):
             history_bytes = read_private_bundle_item(source_fd, history.SUMMARY, LIMIT)
         finally:
             os.close(source_fd)
-        answers_abs, answers_raw, responses = admit_answers(
-            args.answers_dir, source_packet["human_review_queue"])
+        if args.answers_dir:
+            answers_abs, answers_raw, responses = admit_answers(
+                args.answers_dir, source_packet["human_review_queue"])
+        else:
+            # Explicit row/stage instructions can create a complete source-bound
+            # HUMAN return directly, without writing an intermediate answers CSV.
+            # Native HISTORY_EDITOR output uses the same canonical CSV encoding.
+            import manifest_history_editor as editor
+            original = source_packet["human_review_queue"]
+            selected = editor.admit_updates(args.stage, len(original))
+            responses = [{**row, "human_stage": selected.get(index, row["human_stage"])}
+                         for index, row in enumerate(original, 1)]
+            answers_raw = editor.emit_csv(responses)
+            answers_abs = None
         stages = Counter(row["human_stage"] for row in responses)
         packet = {
             "schema": "lightup.private-manifest-history-human-return.v1",
@@ -165,7 +180,10 @@ def main(argv=None):
             raise Hold("PRIVATE HUMAN return exceeds output bound")
         fd, output = open_output_directory(args.output_dir or args.verify_output_dir)
         try:
-            for source in [*(item[0] for item in plans), history_abs, answers_abs]:
+            protected_sources = [*(item[0] for item in plans), history_abs]
+            if answers_abs is not None:
+                protected_sources.append(answers_abs)
+            for source in protected_sources:
                 shared = os.path.commonpath((source, output))
                 if shared in (source, output):
                     raise Hold("PRIVATE HUMAN return output must be separate from all source trees")
@@ -183,9 +201,11 @@ def main(argv=None):
                     reopened, current, _ = history.admit_saved_bundle(path)
                     if reopened != source or current != raw:
                         raise Hold("original PRIVATE plan changed before HUMAN return publication")
-                _, answer_now, _ = admit_answers(args.answers_dir, source_packet["human_review_queue"])
-                if answer_now != answers_raw:
-                    raise Hold("PRIVATE HUMAN edits changed before return publication")
+                if args.answers_dir:
+                    _, answer_now, _ = admit_answers(
+                        args.answers_dir, source_packet["human_review_queue"])
+                    if answer_now != answers_raw:
+                        raise Hold("PRIVATE HUMAN edits changed before return publication")
                 if history.main(verify_args) != 0:
                     raise Hold("original PRIVATE history changed before HUMAN return publication")
                 history_check_fd, _ = open_output_directory(args.history_dir)
