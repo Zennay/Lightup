@@ -39,6 +39,7 @@ A second, locally generated **PRIVATE browser editor** provides one-choice-per-
 conflicting-slot dropdowns, a progress indicator and a one-click source-bound
 CSV download. All input suggestions are fixed to exact original return packet
 numbers and the original stage/role, never arbitrary filenames or approval.
+The browser can resume an earlier PRIVATE choice CSV in memory. Every original slot, source-set fingerprint, eligible source packet and explicit decision must match before any edit is restored. An invalid file leaves all in-memory choices untouched.
 It has no network access, browser storage, original endpoint URL or previous
 PRIVATE note text. Its inline script/style CSP hashes are generated from the
 exact local producer. The browser download may lack 0600 permissions: move it

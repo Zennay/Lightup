@@ -7,6 +7,7 @@ from __future__ import annotations
 import base64
 from hashlib import sha256
 import json
+from pathlib import Path
 
 NAME = "lightup-lab-human-conflict-editor-private.html"
 STYLE = (
@@ -41,6 +42,7 @@ if (!Array.isArray(rows) || rows.length < 1 || rows.length > 16 ||
   return;
 }
 const chosen = new Map();
+const selectors = new Map();
 let previousSlot = 0;
 for (const row of rows) {
   if (!Number.isSafeInteger(row.slot) || row.slot <= previousSlot ||
@@ -81,6 +83,7 @@ for (const row of rows) {
   label.append(select);
   section.append(label);
   container.append(section);
+  selectors.set(row.slot, select);
 }
 function updateProgress() {
   progress.textContent = chosen.size + " of " + rows.length +
@@ -119,6 +122,7 @@ button.addEventListener("click",()=> {
     + "inside a 0700 owner-only directory, then re-admit using "
     + "role_return_conflicts.py --decision-file. Browser values grant no authority.";
 });
+__RESUME_JS__
 })();'''
 
 
@@ -128,7 +132,10 @@ def render(rows, fingerprint):
         {"fingerprint": fingerprint, "rows": rows},
         sort_keys=True, ensure_ascii=True, separators=(",", ":")
     ).encode("utf-8")).decode("ascii")
-    js = SCRIPT.replace("__SOURCE64__", json.dumps(encoded))
+    resume_js = Path(__file__).with_name("role_return_conflict_resume.js").read_text(
+        encoding="utf-8")
+    js = (SCRIPT.replace("__SOURCE64__", json.dumps(encoded))
+                .replace("__RESUME_JS__", resume_js))
     css_digest = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     js_digest = base64.b64encode(sha256(js.encode("utf-8")).digest()).decode("ascii")
     return (
@@ -148,6 +155,8 @@ def render(rows, fingerprint):
         "role-return packet numbers, in the same order provided on the native "
         "command line. No endpoint URLs or old PRIVATE note text are included. "
         "No automatic precedence, browser storage, network or models.</p>"
+        "<label for='resume'>Resume earlier PRIVATE conflict-choice CSV</label>"
+        "<input id='resume' type='file' accept='.csv,text/csv'>"
         "<p id='progress' role='status' aria-live='polite'></p>"
         "<div id='choices'></div><button id='save' disabled type='button'>"
         "Download PRIVATE explicit decisions CSV</button>"
