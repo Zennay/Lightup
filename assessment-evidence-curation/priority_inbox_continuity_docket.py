@@ -10,6 +10,7 @@ import argparse
 from collections import Counter
 import csv
 import io
+import os
 import sys
 
 from curate import Hold, digest
@@ -42,6 +43,20 @@ BUCKETS = (
 def require(ok: bool) -> None:
     if not ok:
         raise Hold("HOLD: original-source PRIVATE HUMAN follow-up data invalid")
+
+
+def require_outside_aggregate_folder(destination: str) -> None:
+    """Prevent confidential original HUMAN text from nesting in a counts-only pack."""
+    parent = os.path.dirname(os.path.realpath(os.path.abspath(destination)))
+    while True:
+        if os.path.lexists(os.path.join(
+                parent, "PRIVATE-HUMAN-priority-round-portfolio.json")):
+            raise Hold("HOLD: source-bearing HUMAN docket must be outside the "
+                       "aggregate-only PRIVATE HUMAN portfolio")
+        next_parent = os.path.dirname(parent)
+        if next_parent == parent:
+            break
+        parent = next_parent
 
 
 def build(source_path: str, manifest_path: str, worksheet_path: str,
@@ -259,6 +274,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
 
 def publish(*args) -> int:
     (*sources, dest) = args
+    require_outside_aggregate_folder(dest)
     ensure_output_outside_inputs(dest, [sources[5], *sources[6], *sources[8]])
     files, count = build(*sources)
     publish_new(dest, files)

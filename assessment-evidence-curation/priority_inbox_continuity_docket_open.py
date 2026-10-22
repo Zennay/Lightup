@@ -11,7 +11,9 @@ import sys
 from curate import Hold
 from packet_open import read_private
 from priority_inbox import ensure_output_outside_inputs
-from priority_inbox_continuity_docket import LIMIT, FILTERS, build
+from priority_inbox_continuity_docket import (
+    LIMIT, FILTERS, build, require_outside_aggregate_folder,
+)
 
 
 def require(ok: bool) -> None:
@@ -23,6 +25,7 @@ def reopen(source: str, manifest: str, worksheet: str, selection_receipt: str,
            selection: str, curated: str, handoffs: list[str],
            replies: list[list[str]], inboxes: list[str], filter_mode: str,
            human_ordinals: list[int], private_docket_dir: str) -> int:
+    require_outside_aggregate_folder(private_docket_dir)
     ensure_output_outside_inputs(
         private_docket_dir, [curated, *handoffs, *inboxes])
     expected, count = build(

@@ -670,3 +670,13 @@ and CSV, without adding client systems, evidence or arbitrary user text to
 the fixed-column export. These categories are only a HUMAN reading aid;
 they do not constitute validated risk severity, owner assignment, closure,
 recipient identity or permission to act.
+
+### Do not nest original HUMAN text in an aggregate-only directory
+
+Both PRIVATE docket publication and source-exact reopening **HOLD** if the
+target sits inside an existing PRIVATE all-priority numerical portfolio tree
+(marked by `PRIVATE-HUMAN-priority-round-portfolio.json`). Keep source-rich
+follow-up questions and replies in a **sibling** folder, never beneath the
+counts-only portfolio. This prevents local relative links and accidental
+folder sharing from silently mixing confidential HUMAN notes into otherwise
+aggregate-only output. No files are moved or removed to repair a violation.
