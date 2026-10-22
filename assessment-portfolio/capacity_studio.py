@@ -37,6 +37,8 @@ const table = document.getElementById("scenario-rows");
 const message = document.getElementById("message");
 const summary = document.getElementById("summary");
 const download = document.getElementById("download-current");
+const printButton = document.getElementById("print-studio");
+const undatedList = document.getElementById("undated-list");
 const settings = {};
 let currentRows = [];
 const make = (tag, value) => {
@@ -81,11 +83,26 @@ const link = (source) => {
     source[0] + "-slot-" + source[1];
   return anchor;
 };
+for (const group of payload.undated_rows) {
+  const item = make("p", group.role + ": " + group.ordinals.length +
+    " original undated HUMAN proposals — ");
+  for (const [index, original] of group.ordinals.entries()) {
+    if (index) item.append(document.createTextNode(", "));
+    item.append(link(original));
+  }
+  undatedList.append(item);
+}
+if (!payload.undated_rows.length)
+  undatedList.append(make("p", "No undated items visible in this selected view. Not completion."));
 function refresh() {
   const first = limits(0), alternate = limits(1);
   if (!first || !alternate) {
     message.textContent = "HOLD: Enter integer limits 1–128 for every neutral role. " +
-      "The last visible table remains a stale proposal until the inputs are corrected.";
+      "No preview or export is available until inputs are corrected.";
+    table.replaceChildren();
+    summary.textContent = "INVALID ASSUMPTIONS · no scenario counts displayed.";
+    currentRows = [];
+    printButton.disabled = true;
     download.disabled = true;
     return;
   }
@@ -112,16 +129,24 @@ function refresh() {
       "/S" + String(original[1]).padStart(2,"0")).join(";");
     exportRows.push([...cells, ids, "REVIEW_ONLY"]);
   }
+  for (const group of payload.undated_rows) {
+    const source = group.ordinals.map(original =>
+      "A" + String(original[0]).padStart(2, "0") +
+      "/S" + String(original[1]).padStart(2, "0")).join(";");
+    exportRows.push(["", group.role, group.ordinals.length,
+      "", "", "", "", "", source, "REVIEW_ONLY"]);
+  }
   table.replaceChildren(fragment);
   currentRows = exportRows;
   summary.textContent = "First scenario: " + firstExcess +
     " proposed HUMAN items above declared limits; alternative: " + alternateExcess +
     "; arithmetic difference: " + (alternateExcess - firstExcess) +
-    ". Unscheduled original items: " + payload.undated +
+    ". Unscheduled original items: " + payload.undated_count +
     " (never charged to either daily limit).";
   message.textContent = "PREVIEW ONLY · local hypothetical arithmetic, not a booking, " +
     "staffing verdict, consent or permission. Changes are not saved.";
   download.disabled = false;
+  printButton.disabled = false;
 }
 document.getElementById("reset-studio").addEventListener("click", () => {
   for (const role of payload.roles) {
@@ -178,7 +203,13 @@ def render(rows, reference_day, first_limits, alternative_limits, roles):
         "first": first_limits,
         "alternative": alternative_limits,
         "groups": grouped,
-        "undated": sum(map(len, undated.values())),
+        "undated_count": sum(map(len, undated.values())),
+        "undated_rows": [
+            {"role": role, "ordinals": [[item["agenda_slot"], item["source_slot"]]
+                                      for item in sorted(undated.get(role, []),
+                                      key=lambda row: (row["agenda_slot"], row["source_slot"]))]}
+            for role in roles if undated.get(role)
+        ],
         "planning_not_permission": True,
         "authorized": False,
         "consent_verified": False,
@@ -229,6 +260,10 @@ def render(rows, reference_day, first_limits, alternative_limits, roles):
         "<p class='hint'>A smaller arithmetic excess does not prove real "
         "staffing availability, security risk, completed remediation or "
         "authorization. Undated proposals are never allocated to a date.</p></section>"
+        "<section><h2>Original HUMAN items without proposed date</h2>"
+        "<div id='undated-list'></div><p class='hint'>Undated original records "
+        "are excluded from both daily capacity assumptions, but remain visible "
+        "and included in the optional PRIVATE CSV export.</p></section>"
         "<script id='source-data' type='application/json'>" + seed_text + "</script>"
         "<script>" + JS + "</script></body></html>"
     )
