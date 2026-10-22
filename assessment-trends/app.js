@@ -394,6 +394,89 @@
     $("metricDistributionCsv").disabled=!rows.length;
     $("metricDistributionJson").disabled=!rows.length;
   }
+  function metricTrendSummaryRows(){
+    const groupFilter=$("metricDistributionGroup").value,flagFilter=$("metricTrendFlagFilter").value,rows=[];
+    if(!snapshots.length||!scenarioIds.length)return rows;
+    for(const name of METRICS){
+      const group=family(name);if(groupFilter!=="all"&&groupFilter!==group)continue;
+      const slots=snapshots.map((report,index)=>{
+        const values=scenarioIds.map(id=>report.cases.get(id).metrics.get(name));
+        return {slot:index+1,medianCandidate:median(values.map(v=>v.candidate)),
+          medianDelta:median(values.map(v=>v.delta)),flagged:values.filter(v=>v.regression).length};
+      });
+      const flaggedSlots=slots.filter(slot=>slot.flagged>0).length;
+      if(flagFilter==="flagged"&&flaggedSlots===0)continue;
+      if(flagFilter==="clear"&&flaggedSlots!==0)continue;
+      const first=slots[0],last=slots[slots.length-1];
+      let peakCandidate={slot:first.slot,shift:0},peakDelta={slot:first.slot,shift:0};
+      for(const slot of slots){
+        const cs=slot.medianCandidate-first.medianCandidate,ds=slot.medianDelta-first.medianDelta;
+        if(Math.abs(cs)>Math.abs(peakCandidate.shift))peakCandidate={slot:slot.slot,shift:cs};
+        if(Math.abs(ds)>Math.abs(peakDelta.shift))peakDelta={slot:slot.slot,shift:ds};
+      }
+      const maxFlagged=Math.max(...slots.map(slot=>slot.flagged));
+      rows.push({metric:name,review_group:group,scenario_count:scenarioIds.length,
+        first_manual_slot:first.slot,last_manual_slot:last.slot,
+        first_median_candidate:first.medianCandidate,last_median_candidate:last.medianCandidate,
+        net_median_candidate_shift:last.medianCandidate-first.medianCandidate,
+        max_abs_median_candidate_shift:peakCandidate.shift,max_candidate_shift_slot:peakCandidate.slot,
+        first_median_delta:first.medianDelta,last_median_delta:last.medianDelta,
+        net_median_delta_shift:last.medianDelta-first.medianDelta,
+        max_abs_median_delta_shift:peakDelta.shift,max_delta_shift_slot:peakDelta.slot,
+        max_flagged_scenarios:maxFlagged,max_flagged_percent:maxFlagged/scenarioIds.length*100,
+        slots_with_flagged_scenarios:flaggedSlots,
+        flagged_scenario_slot_observations:slots.reduce((sum,slot)=>sum+slot.flagged,0)});
+    }
+    return rows;
+  }
+  function renderMetricTrendSummary(){
+    const rows=metricTrendSummaryRows();
+    drawTable("metricTrendSummary",
+      ["Metric","Static review group","Scenarios","First median candidate","Last median candidate",
+       "Net median candidate shift","Largest candidate median shift vs slot 01","Slot",
+       "First median Δ","Last median Δ","Net median Δ shift","Largest median Δ shift vs slot 01","Slot",
+       "Max flagged scenarios","Max flagged %","Slots with any flags","Flagged scenario-slot observations"],
+      rows.map(r=>[r.metric,r.review_group,r.scenario_count,fmt(r.first_median_candidate),
+        fmt(r.last_median_candidate),fmt(r.net_median_candidate_shift),fmt(r.max_abs_median_candidate_shift),
+        r.max_candidate_shift_slot,fmt(r.first_median_delta),fmt(r.last_median_delta),
+        fmt(r.net_median_delta_shift),fmt(r.max_abs_median_delta_shift),r.max_delta_shift_slot,
+        r.max_flagged_scenarios,fmt(r.max_flagged_percent)+"%",r.slots_with_flagged_scenarios,
+        r.flagged_scenario_slot_observations]));
+    $("metricTrendSummaryText").textContent=rows.length?
+      "Showing "+rows.length+" metric-level summaries across "+snapshots.length+
+      " manual slots and "+scenarioIds.length+" anonymous scenarios. Endpoint and peak shifts are descriptive only; no slot chronology or remediation is authenticated.":
+      snapshots.length?"No metrics match the selected group/flag filters.":"Import snapshots to summarize median shifts and source-flag prevalence.";
+    $("metricTrendSummaryCsv").disabled=!rows.length;
+    $("metricTrendSummaryJson").disabled=!rows.length;
+  }
+  function metricTrendSummaryPayload(){
+    return {schema:"lightup.assessment_trends_metric_trend_summary.v1",status:summary().status,
+      fictional_demo_only:fictional,manual_slot_order:true,manual_slot_count:snapshots.length,
+      authenticated_chronology:false,source_metrics_independently_verified:false,
+      remediation_verified:false,authorized:false,consent_verified:false,dispatch_allowed:false,
+      release_allowed:false,selected_group_filter:$("metricDistributionGroup").value,
+      selected_flag_filter:$("metricTrendFlagFilter").value,rows:metricTrendSummaryRows()};
+  }
+  function exportMetricTrendSummary(format){
+    const payload=metricTrendSummaryPayload();if(!payload.rows.length)return;
+    if(format==="json"){
+      download("assessment-trends-anonymous-metric-trend-summary.json",
+        JSON.stringify(payload,null,2)+"\n","application/json");return;
+    }
+    const columns=["schema","selected_group_filter","selected_flag_filter","manual_slot_order","manual_slot_count",
+      "metric","review_group","scenario_count","first_manual_slot","last_manual_slot",
+      "first_median_candidate","last_median_candidate","net_median_candidate_shift",
+      "max_abs_median_candidate_shift","max_candidate_shift_slot","first_median_delta","last_median_delta",
+      "net_median_delta_shift","max_abs_median_delta_shift","max_delta_shift_slot","max_flagged_scenarios",
+      "max_flagged_percent","slots_with_flagged_scenarios","flagged_scenario_slot_observations",
+      "overall_status","fictional_demo_only","authenticated_chronology","source_metrics_independently_verified",
+      "remediation_verified",...FLAGS];
+    const lines=[columns.map(csvField).join(","),...payload.rows.map(row=>columns.map(key=>
+      csvField(key==="overall_status"?payload.status:
+        Object.prototype.hasOwnProperty.call(row,key)?row[key]:
+        Object.prototype.hasOwnProperty.call(payload,key)?payload[key]:false)).join(","))];
+    download("assessment-trends-anonymous-metric-trend-summary.csv",lines.join("\n")+"\n","text/csv;charset=utf-8");
+  }
   function metricDistributionPayload(){
     return {schema:"lightup.assessment_trends_metric_distribution.v1",status:summary().status,
       fictional_demo_only:fictional,manual_slot_order:true,authenticated_chronology:false,
@@ -1137,7 +1220,8 @@
   }
   function render(){
     const active=snapshots.length>0;
-    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson"])$(id).disabled=!active;
+    for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson",
+      "metricTrendSummaryCsv","metricTrendSummaryJson"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
     $("noteMetric").replaceChildren();
     METRICS.forEach(name=>{const option=document.createElement("option");option.value=name;option.textContent=name;$("noteMetric").append(option);});
@@ -1146,15 +1230,17 @@
     scenarioIds.forEach((id,i)=>{const option=document.createElement("option");option.value=id;
       option.textContent="Scenario "+String(i+1).padStart(2,"0");$("scenarioSelect").append(option);});
     if(active){selectedScenario=scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];$("scenarioSelect").value=selectedScenario;
-      renderSummary();renderMetricBoard();renderMetricDistribution();renderScenarioBoard();renderScenarioDetail();
+      renderSummary();renderMetricBoard();renderMetricDistribution();renderMetricTrendSummary();renderScenarioBoard();renderScenarioDetail();
       renderReviewQueue();renderHumanWorkPlan();renderPrintBrief();}
     else{
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","metricDistribution","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","metricDistribution","metricTrendSummary","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
       $("metricDistributionSummary").textContent="Import snapshots to summarize numeric metric distributions.";
+      $("metricTrendSummaryText").textContent="Import snapshots to summarize median shifts and source-flag prevalence.";
       $("metricDistributionCsv").disabled=$("metricDistributionJson").disabled=true;
+      $("metricTrendSummaryCsv").disabled=$("metricTrendSummaryJson").disabled=true;
       renderHumanWorkPlan();
     }
     if(!active){updateStageBatchControls();$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
@@ -2029,8 +2115,13 @@
       option.textContent=slot==="all"?"All manual slots":"Slot "+slot;selector.append(option);
     }
   }
-  for(const id of ["metricDistributionGroup","metricDistributionFlagFilter"])
-    $(id).addEventListener("change",renderMetricDistribution);
+  $("metricDistributionGroup").addEventListener("change",()=>{
+    renderMetricDistribution();renderMetricTrendSummary();
+  });
+  $("metricDistributionFlagFilter").addEventListener("change",renderMetricDistribution);
+  $("metricTrendFlagFilter").addEventListener("change",renderMetricTrendSummary);
+  $("metricTrendSummaryCsv").addEventListener("click",()=>exportMetricTrendSummary("csv"));
+  $("metricTrendSummaryJson").addEventListener("click",()=>exportMetricTrendSummary("json"));
   $("metricDistributionCsv").addEventListener("click",()=>exportMetricDistribution("csv"));
   $("metricDistributionJson").addEventListener("click",()=>exportMetricDistribution("json"));
   for(const filter of ["reviewKind","reviewGroup","reviewSlot","reviewStage"]){

@@ -69,6 +69,22 @@
     <button id="metricDistributionCsv" type="button" disabled>Export filtered metric distributions CSV</button>
     <button id="metricDistributionJson" type="button" class="secondary" disabled>Export filtered metric distributions JSON</button>
   </div>
+  <h3>Compact metric-level trend summary</h3>
+  <p>Collapse all selected manual slots into one row per metric. First/last medians show the endpoints; net shifts compare the first and last displayed slots; maximum absolute median shifts identify the largest observed deviation from slot 01. Flag prevalence is summarized across all selected slots. This is a navigation aid over untrusted reports, not authenticated chronology or a severity ranking.</p>
+  <label>Filter metrics by source flags across all selected slots
+    <select id="metricTrendFlagFilter">
+      <option value="all">All metrics in selected group</option>
+      <option value="flagged">At least one flagged scenario in any slot</option>
+      <option value="clear">No flagged scenarios in any slot</option>
+    </select>
+  </label>
+  <p id="metricTrendSummaryText" class="message" role="status" aria-live="polite">Import snapshots to summarize median shifts and source-flag prevalence.</p>
+  <div id="metricTrendSummary" class="tablewrap" role="region" aria-label="Compact per-metric trend summary" tabindex="0"><p class="empty">No trend summaries yet.</p></div>
+  <div class="controls no-print">
+    <button id="metricTrendSummaryCsv" type="button" disabled>Export metric trend summary CSV</button>
+    <button id="metricTrendSummaryJson" type="button" class="secondary" disabled>Export metric trend summary JSON</button>
+  </div>
+  <p class="footnote">Both distribution views are aggregate-only: no original scenario IDs, filenames, source hashes or HUMAN notes. All authority/verification flags stay false; manual slot numbers never assert chronology.</p>
   <p class="footnote">Exports contain fixed metric labels, manual slot numbers, aggregate numeric values and literal false authority fields only. They exclude original scenario IDs, filenames, uploaded source hashes and HUMAN notes. A static review group is a display aid, not a severity judgment.</p>
 </section>
 <section class="panel">
