@@ -15,11 +15,13 @@ from launchpad import Hold, open_output_directory, read_private_bundle_item
 from review_desk import load_json, require_private_file, validate_worksheet
 from role_return_conflicts import (RESOLVED, LIMIT, read_packets,
                                    source_set_digest, resolve_files)
+from role_return_action_desk import NAME as ACTION_HTML, render as render_actions
 
 FOLDER = "human-manual-conflict-review"
 HTML = "lightup-lab-human-conflict-choices-private.html"
 CSV = "lightup-lab-human-conflict-decisions-private.csv"
 CONTEXT = "lightup-lab-human-conflict-source-context.json"
+ACTION_CSV = "lightup-lab-human-manual-conflict-actions-private.csv"
 GUIDE = "START-HERE-MANUAL-CONFLICT-PRIVATE.txt"
 STYLE = (
     "body{max-width:1000px;padding:1rem;margin:1.4rem auto;"
@@ -79,6 +81,36 @@ def render_decisions(ledger: bytes, role_by_slot: dict[int, str]) -> bytes:
     ).encode("utf-8")
 
 
+def human_actions(packets, rounds, worksheet):
+    covered = {index for _directory, _work, indices in packets for index in indices}
+    choices = {
+        "NEEDS_INPUT": "COLLECT_MISSING_HUMAN_INPUT",
+        "HUMAN_REVIEW": "SCHEDULE_HUMAN_REVIEW",
+        "FOLLOW_UP": "FOLLOW_UP_WITH_HUMAN_OWNER",
+    }
+    rows = []
+    for index, (prior, after) in enumerate(
+            zip(rounds[-1]["human_rows"], worksheet["human_rows"])):
+        received = index in covered
+        rows.append((
+            index + 1, prior["role"],
+            "ROLE_REPLY_RECEIVED" if received else "AWAITING_HUMAN_ROLE_REPLY",
+            after["stage"],
+            choices[after["stage"]] if received else "REQUEST_HUMAN_ROLE_REPLY",
+            ("YES" if after["note"] != prior["note"] else "NO")
+            if received else "NOT_RETURNED",
+        ))
+    rows.sort(key=lambda row: (0 if row[2] == "AWAITING_HUMAN_ROLE_REPLY" else 1,
+                               0 if row[3] == "NEEDS_INPUT" else 1, row[0]))
+    sink = io.StringIO(newline="")
+    writer = csv.writer(sink, lineterminator="\n")
+    writer.writerow(("original_slot", "suggested_human_role",
+                     "private_human_reply_status", "latest_human_stage",
+                     "suggested_operator_next_step", "private_note_changed"))
+    writer.writerows(rows)
+    return rows, sink.getvalue().encode("utf-8")
+
+
 def admit_manual_resolution(result_dir, decision_file, return_dirs,
                             rounds, endpoints, digest):
     """Re-admit all original inputs AND exact complete resolved four-file packet."""
@@ -105,20 +137,23 @@ def admit_manual_resolution(result_dir, decision_file, return_dirs,
     role_by_slot = {index: record["role"]
                     for index, record in enumerate(rounds[-1]["human_rows"], start=1)}
     html = render_decisions(expected[CSV], role_by_slot)
+    actions, action_csv = human_actions(packets, rounds, worksheet)
+    action_html = render_actions(actions)
     guide = (
         "LIGHTUP PRIVATE HUMAN MANUAL CONFLICT REVIEW\n"
         "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO AUTHORITY\n"
         "The owner selected one original role-return packet per conflicted slot.\n"
         "All other slots preserve original or uniquely selected HUMAN content.\n"
         "This directory contains ONLY an ordinal/role summary, an exact owner\n"
-        "choice ledger and source context, not the full private HUMAN worksheet.\n"
+        "choice ledger and source context, plus a source-minimal owner action\n"
+        "worklist (private HTML and CSV), not a duplicate full HUMAN worksheet.\n"
         "Source and receipt do NOT prove recipient identity or consent.\n"
         "Re-open the workroom with all original return dirs, original manual\n"
         "choice CSV and exact original conflict result dir, in the same order.\n"
         "No scan, assessment, authorization, network or HUMAN GO occurred.\n"
     ).encode("utf-8")
     artifacts = {HTML: html, CSV: expected[CSV], CONTEXT: expected[RESOLVED[1]],
-                 GUIDE: guide}
+                 ACTION_HTML: action_html, ACTION_CSV: action_csv, GUIDE: guide}
     if any(not 0 < len(item) <= LIMIT for item in artifacts.values()):
         raise Hold("source-bound manual conflict review exceeded PRIVATE file capacity")
     return absolute, worksheet, artifacts

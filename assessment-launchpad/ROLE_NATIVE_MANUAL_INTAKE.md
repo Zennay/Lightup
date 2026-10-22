@@ -57,6 +57,11 @@ original-source history and delta artifacts, plus the new
   HUMAN stage and PRIVATE-note-changed yes/no.
 * The original byte-bound owner PRIVATE decision ledger CSV.
 * The original source-bound context JSON with SHA-256 fingerprints.
+* A new CSP hash-pinned, offline, printable PRIVATE HUMAN next-action HTML
+  with local filters for suggested role, response status and suggested action.
+* An owner-private source-minimal action CSV showing every original slot,
+  prioritizing missing HUMAN replies and preserving fixed, non-authorizing
+  self-reported stage-derived actions without endpoint URLs or note text.
 * An owner PRIVATE text guide.
 
 The full source-bound HUMAN worksheet, including every selected and
@@ -65,7 +70,8 @@ rather than being duplicated inside the manual decision review. Never host
 or forward the full workroom or recipient notes.
 
 The local `OPEN-NEXT-ROUND-PRIVATE.html` landing page links to the new
-conflict decision desk. It is an operator record of which submitted
+conflict decision desk and the new local action-worklist screen. The
+decision desk is an operator record of which submitted
 self-reported packet was chosen, **not** evidence of identity, permission,
 client/operator consent, remediation success or HUMAN GO.
 

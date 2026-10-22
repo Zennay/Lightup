@@ -120,7 +120,9 @@ def render_home(source_count, changed, history_count, handoff_role=None, handoff
          "</small></p></section>" if reconciled else "") +
         ("<section><h2>Owner-resolved HUMAN source conflicts</h2>"
          "<a href='human-manual-conflict-review/lightup-lab-human-conflict-choices-private.html'>"
-         "Open PRIVATE manual original-packet decision desk</a><p><small>"
+         "Open PRIVATE manual original-packet decision desk</a><p>"
+         "<a href='human-manual-conflict-review/lightup-lab-human-next-actions-private.html'>"
+         "Open filtered HUMAN next actions after manual resolution</a></p><p><small>"
          "Each overlap was explicitly chosen from original role-return packets."
          " No auto precedence, recipient identity, real security review,"
          " authorization or HUMAN GO. PRIVATE source-bound records only."
