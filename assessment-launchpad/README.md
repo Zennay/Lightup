@@ -63,6 +63,19 @@ Re-open later read-only against the same two unchanged source files, modes and a
 
 This enforces exact bytes and rejects extra/missing/modified PRIVATE output files. For the **next original-source-bound handoff**, use the resulting `~/private-combined-manifest/lightup-lab-targets.txt` as the `--manifest` input to `launchpad.py`, with a **new separate empty** user-owned mode-0700 output directory; the merge command never executes a preview command. All source-owner, security/privacy, exact-head CI, independently authenticated current client/operator consent with revocation-at-use and explicit HUMAN GO release gates remain untouched.
 
+## PRIVATE offline change desk for two already saved combined manifests
+
+A separate additive `assessment-launchpad/manifest_change_desk.py` reads **two previously saved** owner-only PRIVATE combined-manifest bundle directories. It admits exactly the original v1 (two files), v2 (three-file legacy or complete current) or v3 (complete current) bundle file names via no-follow mode-0700 directory / mode-0600 file reads. It rechecks the canonical literal manifest, the unsigned stored canonical manifest digest and the **original pinned** URL/`LabScenario` scope policy, plus the saved PRIVATE multi-source HTML/slot-map bytes where present. It cannot authenticate original upstream source file identities (these source files are not necessarily available here); hashes are **local unsigned consistency, never consent or scope authority**.
+
+The human manually selects before/after order (not authenticated chronology). The desk compares 1–16 literal endpoint URL values internally and emits only ordinal-only rows tagged `UNCHANGED`, `MOVED`, `REMOVED` or `ADDED`. It does not embed raw URLs, filenames, source paths or HUMAN notes in the new artifacts. A changed position is not a vulnerability and a removed endpoint is **not** proof of a fix.
+
+Create an independent **empty**, owner-owned mode-0700 directory and run:
+
+    mkdir -m 700 ~/private-lab-manifest-change
+    python3 assessment-launchpad/manifest_change_desk.py --before-dir ~/private-original-lab-plan --after-dir ~/private-updated-lab-plan --output-dir ~/private-lab-manifest-change
+
+Two no-overwrite PRIVATE mode-0600 artifacts appear: `lightup-private-manifest-delta.json` (strict source-bound unsigned SHA256 manifest digests and per-slot ordinal changes; all authority flags false) and `lightup-private-manifest-delta.html` (scriptless exact-CSP local printable change desk). Only counts appear on the terminal. Small-group count and slot transitions can still reveal sensitive patterns; do not publish these outputs. For a **read-only exact reopen**, use the same original two source directories with `--verify-output-dir ~/private-lab-manifest-change` instead of `--output-dir`; missing, modified or unexpected files fail closed. No DNS, model, network, target, command execution, grant, consent, scan or release occurs. Source-owner/privacy/security reviews, original CI, current authenticated independent consent with action-time revocation and HUMAN GO remain mandatory.
+
 ## Native validator-backed handoff
 
 Requires a checkout of this launchpad PR branch, which contains both `assessment-launchpad/` and the original source files at the frozen source pin, with the existing project Python dependencies. Checking out the pinned ancestor commit **alone will not work** because that older commit does not contain the launchpad. Create an owner-only output directory separate from the manifest directory:
