@@ -21,6 +21,7 @@ from priority_reply import UNTRUSTED_FLAGS
 from response import accepted_original, admit_returned_reply
 from revision import private_frame
 from priority_inbox_portfolio_browser import build as build_browser
+from priority_inbox_portfolio_start import build as build_start
 
 PRIORITIES = ("urgent", "soon", "routine")
 STAGE_KEYS = ("no_human_response",) + tuple(key for key, _ in STAGES if key != "no_human_response")
@@ -30,6 +31,7 @@ CSV = "PRIVATE-HUMAN-priority-round-portfolio.csv"
 TRANSITIONS_CSV = "PRIVATE-HUMAN-priority-round-stage-transitions.csv"
 INTERVALS_CSV = "PRIVATE-HUMAN-priority-round-intervals.csv"
 BROWSER = "PRIVATE-HUMAN-priority-round-explorer.html"
+START = "PRIVATE-HUMAN-priority-round-start.html"
 RECEIPT = "PRIVATE-HUMAN-priority-round-portfolio-receipt.json"
 LIMIT = 512 * 1024
 
@@ -209,6 +211,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         intervals_writer.writerow([item[key] for key in interval_header])
     intervals_raw = intervals_out.getvalue().encode("utf-8")
     interactive_html = build_browser(interval_rows, rounds, counts, attention)
+    start_html = build_start(rounds, len(selected), attention)
     matrix_rows = "".join(
         "<tr><td>" + str(row["operator_ordered_round"]) + "</td><td>" +
         h(row["human_priority"]) + "</td><td>" + h(row["human_stage"]) +
@@ -284,11 +287,12 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "private_transition_csv_sha256_unsigned": digest(flows_csv_raw),
         "private_intervals_csv_sha256_unsigned": digest(intervals_raw),
         "private_explorer_html_sha256_unsigned": digest(interactive_html),
+        "private_start_html_sha256_unsigned": digest(start_html),
         **UNTRUSTED_FLAGS,
     }
     files = {REPORT: html, COUNTS: counts_raw, CSV: csv_raw,
              TRANSITIONS_CSV: flows_csv_raw, INTERVALS_CSV: intervals_raw,
-             BROWSER: interactive_html,
+             BROWSER: interactive_html, START: start_html,
              RECEIPT: json_bytes(receipt)}
     require(all(0 < len(raw) <= LIMIT for raw in files.values()))
     return files, len(selected)

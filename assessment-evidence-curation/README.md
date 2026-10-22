@@ -505,9 +505,14 @@ inboxes and 1–64 original selected HUMAN rows. Console action **29** prompts f
 those original sources and creates the packet; action **30** opens an existing
 packet read-only and checks it against every unchanged original source.
 
-The single **NEW owner-only 0700 output folder** contains seven exclusive
+The single **NEW owner-only 0700 output folder** contains eight exclusive
 owner-only **0600** files (current v3 format):
 
+- `PRIVATE-HUMAN-priority-round-start.html`: **start here** with an owner-private
+  scriptless landing page. Local-only links open the interactive browser, print
+  report, complete numerical CSV and JSON files and unsigned receipt. Latest
+  HUMAN attention counts are visible immediately without browser execution.
+  No source details, recipient dispatch, hosted assets or external links.
 - `PRIVATE-HUMAN-priority-round-portfolio.html`: static, script-free,
   print-ready current/prior HUMAN stage and priority count tables and adjacent
   human-edit summaries; no original ordinal, target, source hashes or HUMAN text.
@@ -545,7 +550,7 @@ incorrect manually supplied round order. Use the matching flags with
 
 All original inboxes are fully re-admitted before any output is published;
 an incomplete priority group, duplicate inbox or missing original selected row
-causes HOLD rather than a misleading partial trend. **Each of all seven
+causes HOLD rather than a misleading partial trend. **Each of all eight
 artifacts** is bounded to 512 KiB. The canonical v3 JSON additionally includes
 PRIVATE latest-round HUMAN attention summary (blocked, unreturned and
 needs-more-information) and complete original-source-free direct pairwise
@@ -553,6 +558,8 @@ HUMAN interval metrics. Historical v1/v2 packets remain untouched and
 intentionally HOLD on current v3 read-only reopen; the original full source
 and all HUMAN rounds must be provided again for a new v3 packet.
 
+Open `PRIVATE-HUMAN-priority-round-start.html` first: its seven relative
+links navigate to the other owner-private artifacts; nothing is published.
 Open the generated explorer HTML *locally*, not via a hosted web service.
 It renders aggregate **numeric self-reported** differences only. A status
 returning to its previous value after a different intermediate HUMAN stage is
