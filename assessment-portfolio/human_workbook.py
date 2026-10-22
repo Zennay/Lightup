@@ -676,6 +676,8 @@ PRIVATE_LABELS = {
     "assessment-portfolio-private-role-day.ics": "PRIVATE grouped tentative role/day calendar; import may disclose planning",
     "assessment-portfolio-private-day-brief.html": "PRIVATE printable source-ordinal role/day attention brief",
     "assessment-portfolio-private-role-day.csv": "PRIVATE proposed role/day spreadsheet with source ordinals",
+    "assessment-portfolio-private-capacity.html": "PRIVATE HUMAN workload vs operator-assumed daily role limits",
+    "assessment-portfolio-private-capacity.csv": "PRIVATE role/day capacity comparison CSV with source ordinals",
     "assessment-portfolio-human-workbook.html": "Edit and download PRIVATE HUMAN discussion worksheet",
     "assessment-portfolio-private-HUMAN-return.html": "PRIVATE HUMAN response and status-by-role dashboard",
     "assessment-portfolio-private-HUMAN-return.csv": "PRIVATE HUMAN detailed response CSV",
