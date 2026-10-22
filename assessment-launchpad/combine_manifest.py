@@ -144,7 +144,7 @@ def run(args):
                 _, raw, _ = open_private_input(original)
                 if sha256(raw).hexdigest() != expected_digest:
                     raise Hold("source manifest changed before publication")
-            publish_bundle(output_fd, [(name, files[name]) for name in FILES])
+            publish_bundle(output_fd, list(files.items()))
     finally:
         os.close(output_fd)
     if args.handoff_dir:
