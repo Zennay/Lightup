@@ -261,7 +261,7 @@ BUNDLE_ROWS = (
 def render_csv(history: dict) -> bytes:
     """Create a flat, source-minimal table; no paths, aliases or free-text fields."""
     output = io.StringIO(newline="")
-    writer = csv.writer(output, lineterminator="\\n")
+    writer = csv.writer(output, lineterminator="\n")
     writer.writerow((
         "plan_number", "source_sha256_prefix", "source_bytes", "membership_observation",
         "human_stage", "proposed_review_date", "custodian_declared",
@@ -305,7 +305,7 @@ def render_json(history: dict, *, original_bytes_rehashed: bool = False) -> byte
     }
     return (json.dumps(
         document, sort_keys=True, ensure_ascii=True, separators=(",", ":")
-    ) + "\\n").encode("utf-8")
+    ) + "\n").encode("utf-8")
 
 
 def render_bundle(history: dict, *, original_bytes_rehashed: bool = False) -> bytes:
@@ -319,26 +319,26 @@ def render_bundle(history: dict, *, original_bytes_rehashed: bool = False) -> by
             history, original_bytes_rehashed=original_bytes_rehashed
         )),
         ("README.txt", (
-            "LIGHTUP PRIVATE HUMAN SOURCE-SET LINEAGE BUNDLE\\n"
-            "REVIEW_ONLY / HOLD — INCUBATE M3/M7 PLAN/LAB ONLY.\\n\\n"
+            "LIGHTUP PRIVATE HUMAN SOURCE-SET LINEAGE BUNDLE\n"
+            "REVIEW_ONLY / HOLD — INCUBATE M3/M7 PLAN/LAB ONLY.\n\n"
             "The HTML is scriptless. CSV and JSON include only private digest prefixes, byte sizes, "
             "manually ordered plan numbers, membership observations, HUMAN enum/date metadata and "
             "changed field names. No source paths, aliases, free-text actions, full source digests "
-            "or original source contents are included.\\n\\n"
+            "or original source contents are included.\n\n"
             "Evidence boundary: " + (
                 "original bytes were re-hashed separately for every encrypted plan and their complete "
                 "digest/size sets matched locally. This does not authenticate external identity."
                 if original_bytes_rehashed else
                 "source digest/size values are declarations from the selected plan receipts; original "
                 "assets were not re-opened by this workflow."
-            ) + "\\n"
+            ) + "\n"
             "Plan order is manually selected, not authenticated chronology. Missing from a snapshot "
             "does not mean deletion, remediation, revocation or clearance. Nothing in this bundle "
             "proves a person, consent, legal retention, source identity, authorization or release. "
-            "No assessment, scan, client contact or other action is performed.\\n\\n"
+            "No assessment, scan, client contact or other action is performed.\n\n"
             "This bundle and its reports are sensitive and unsigned. The included manifest hashes "
             "check local artifact byte integrity only; they are not signatures or provenance. Keep "
-            "the bundle in owner-private storage.\\n"
+            "the bundle in owner-private storage.\n"
         ).encode("utf-8")),
     ]
     manifest = [
@@ -347,7 +347,7 @@ def render_bundle(history: dict, *, original_bytes_rehashed: bool = False) -> by
     ]
     for name, raw in artifacts:
         manifest.append(hashlib.sha256(raw).hexdigest() + "  " + name)
-    artifacts.append(("MANIFEST.txt", ("\\n".join(manifest) + "\\n").encode("utf-8")))
+    artifacts.append(("MANIFEST.txt", ("\n".join(manifest) + "\n").encode("utf-8")))
 
     buffer = io.BytesIO()
     try:
