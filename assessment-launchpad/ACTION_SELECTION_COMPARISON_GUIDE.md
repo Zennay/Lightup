@@ -34,6 +34,10 @@ python3 assessment-launchpad/action_selection_compare.py \
 Preview prints counts and fixed-vocabulary aggregates only. No source slot
 rows, endpoint URL, private note text, source path or SHA enters this output.
 A browser-local selection-diff preview is also available before Apply/Replace.
+The browser action desk separately offers **Download PRIVATE selection
+differences CSV** using fixed source-local labels; this browser-only CSV is
+informational and does **not** replace either original selected-action CSV
+required by this native original-source-bound comparator.
 
 To create the four-file PRIVATE native packet, repeat the same command but
 replace `--preview-only` with

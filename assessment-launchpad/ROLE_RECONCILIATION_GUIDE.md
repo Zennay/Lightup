@@ -79,7 +79,12 @@ The result consists of exactly seven exclusive mode-0600 files:
   the exact current six-column source worklist. A separate source-minimal
   comparison previews imported-only, current-only and shared original slot
   ordinals; no current selection is changed until **Add imported selection**
-  or **Replace current selection** is explicitly chosen. Unknown, edited,
+  or **Replace current selection** is explicitly chosen. A separate explicit
+  **Download PRIVATE selection differences CSV** uses only fixed HUMAN enum
+  fields and original local slot ordinals to show `NEWLY_SELECTED`,
+  `NO_LONGER_SELECTED` and `UNCHANGED_SELECTION` for current vs imported choices.
+  This is not an original source-selected CSV, not an authenticated review and
+  is not accepted by the native selected-action packet input. Unknown, edited,
   duplicate, reordered or foreign-source rows HOLD, leaving current choices
   unchanged. No local storage, network, recipient transfer or real review. No endpoint URL, private note text, reviewer name,
   original path or digest is included. The saved CSV and any

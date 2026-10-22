@@ -69,6 +69,7 @@ const importStatus = document.getElementById("importStatus");
 const importPreview = document.getElementById("importPreview");
 const addImported = document.getElementById("addImported");
 const replaceImported = document.getElementById("replaceImported");
+const saveDiff = document.getElementById("saveDiff");
 let importSequence = 0, importedSlots = null;
 const selectedSlots = new Set();
 const printScope = document.getElementById("printScope");
@@ -136,6 +137,7 @@ for (const row of source) {
 }
 function renderImportPreview() {
   importPreview.replaceChildren();
+  saveDiff.disabled = !importedSlots;
   if (!importedSlots) return;
   const sourceOnly = [...selectedSlots].filter(slot => !importedSlots.has(slot));
   const importedOnly = [...importedSlots].filter(slot => !selectedSlots.has(slot));
@@ -241,7 +243,7 @@ function loadImported(raw) {
 importFile.addEventListener("change",async()=>{
   const ticket = ++importSequence;
   importedSlots = null;
-  addImported.disabled = replaceImported.disabled = true;
+  addImported.disabled = replaceImported.disabled = saveDiff.disabled = true;
   importStatus.textContent = "Checking selected PRIVATE CSV against original local HUMAN source…";
   importPreview.replaceChildren();
   const file = importFile.files && importFile.files[0];
@@ -271,6 +273,25 @@ replaceImported.addEventListener("click",()=>{
   selectedSlots.clear();
   for (const slot of importedSlots) selectedSlots.add(slot);
   apply();
+});
+saveDiff.addEventListener("click",()=>{
+  if (!importedSlots) return;
+  // Before = current explicit selection, after = imported CSV. Unsigned user order,
+  // not true event time. Emit original-local fixed labels, never source text.
+  const headings = [fieldNames[0],"selection_change",...fieldNames.slice(1)];
+  const rows = lookup.filter(({values})=>
+    selectedSlots.has(values[0]) || importedSlots.has(values[0])).map(({values})=>{
+      const before = selectedSlots.has(values[0]), after = importedSlots.has(values[0]);
+      const change = before && after ? "UNCHANGED_SELECTION" :
+        after ? "NEWLY_SELECTED" : "NO_LONGER_SELECTED";
+      return [values[0],change,...values.slice(1)].map(csvCell).join(",");
+    });
+  const raw = [headings.join(","),...rows].join("\r\n") + "\r\n";
+  const url = URL.createObjectURL(new Blob([raw],{type:"text/csv;charset=utf-8"}));
+  const link=document.createElement("a");link.href=url;
+  link.download="lightup-PRIVATE-human-selection-changes.csv";
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 selectVisibleButton.addEventListener("click",()=>{
   for (const {values,element} of lookup) if (!element.hidden) selectedSlots.add(values[0]);
@@ -377,7 +398,8 @@ def render(work):
         "<p id='importStatus' role='status' aria-live='polite'>No previous selection loaded.</p>"
         "<div id='importPreview' aria-live='polite'></div>"
         "<button type='button' id='addImported' disabled>Add imported selection</button> "
-        "<button type='button' id='replaceImported' disabled>Replace current selection</button>"
+        "<button type='button' id='replaceImported' disabled>Replace current selection</button> "
+        "<button type='button' id='saveDiff' disabled>Download PRIVATE selection differences CSV</button>"
         "<small>Unsigned, fixed-vocabulary local source match only: never reviewer "
         "authentication, assessment authority, client consent or HUMAN GO.</small></div>"
         "<details class='selectionpreview'><summary>Review selected rows before CSV download</summary>"

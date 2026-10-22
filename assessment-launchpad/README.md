@@ -418,7 +418,13 @@ original worklist. Altered source details, duplicate slots, unknown columns,
 noncanonical encodings or foreign selection documents HOLD without modifying
 the current selection. The staged preview shows **imported-only, current-only
 and shared original slot ordinals**; only an explicit **Add imported selection**
-or **Replace current selection** changes the in-memory queue. Importing a
+or **Replace current selection** changes the in-memory queue. The separate
+**Download PRIVATE selection differences CSV** button locally exports the
+current-versus-imported source-ordered original slot membership difference:
+`NEWLY_SELECTED`, `NO_LONGER_SELECTED`, or `UNCHANGED_SELECTION` plus fixed HUMAN
+role/status/action fields. It is a **PRIVATE unsigned ordinal-only comparison**,
+not an original selected-action CSV; it must not be passed as input to the
+native `action_handoff.py` or as proof of a real completed review. Importing a
 selection neither authenticates its source nor changes the original worklist
 and source/returns, does not write browser storage, and never sends data.
 Neither print nor CSV contains endpoint URLs or human notes, but role/slot
