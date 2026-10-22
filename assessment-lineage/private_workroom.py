@@ -231,7 +231,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--human-draft", type=Path,
                         help="Optional owner-private exact-source-bound human work draft v1/v2/v3")
     parser.add_argument("--output", required=True, type=Path,
-                        help="NEW never-overwritten local PRIVATE HTML workroom")
+                        help="New or --verify-existing owner-private HTML workroom")
+    parser.add_argument("--verify-existing", action="store_true",
+                        help="Re-admit original inputs and exactly reopen the existing PRIVATE HTML without writes")
     args = parser.parse_args(argv)
     if not 1 <= len(args.report) <= SOURCE_LIMIT:
         fail()
@@ -262,7 +264,9 @@ def main(argv: list[str]) -> int:
         if read_private(original_path, limit) != expected:
             fail()
     output = args.output
-    if output.suffix.lower() != ".html":
+    if output.suffix.lower() != ".html" or os.path.realpath(output) in {
+        os.path.realpath(source_path) for source_path in input_files
+    }:
         fail()
     parent_fd, name = open_parent_nofollow(output)
     created = False
@@ -271,6 +275,11 @@ def main(argv: list[str]) -> int:
         if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
                 or stat.S_IMODE(info.st_mode) != 0o700):
             fail()
+        if args.verify_existing:
+            if read_private(output, len(private_html)) != private_html:
+                fail()
+            print("PRIVATE ORIGINAL-SOURCE-BOUND WORKROOM MATCHES — REVIEW_ONLY; NOT AUTHORIZED")
+            return 0
         fd = os.open(
             name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600,
             dir_fd=parent_fd,
@@ -298,6 +307,6 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main(sys.argv[1:]))
     except (OSError, ValueError) as error:
-        print("HOLD: no private workroom produced. Check owner-private 0600 source files, "
+        print("HOLD: PRIVATE workroom cannot be created or reopened. Check owner-private 0600 source files, "
               "original canonical exports, output path and existing standalone.", file=sys.stderr)
         raise SystemExit(2) from None
