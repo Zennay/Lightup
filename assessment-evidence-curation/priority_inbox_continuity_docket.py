@@ -196,6 +196,9 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     rank = {name: i for i, (name, _) in enumerate(BUCKETS)}
     cards.sort(key=lambda item: (PRIORITIES.index(item[0]), rank[item[1]], item[2]))
     data_rows.sort(key=lambda item: (PRIORITIES.index(item[1]), rank[item[2]], item[0]))
+    studio_by_ordinal = {row["ordinal"]: row for row in studio_rows}
+    require(len(studio_by_ordinal) == len(studio_rows) == len(data_rows))
+    studio_rows = [studio_by_ordinal[row[0]] for row in data_rows]
     grouped_sections = "".join(
         "<section><h2>" + h(priority) + " · " + h(label) + " (" +
         str(sum(card[0] == priority and card[1] == bucket for card in cards)) +

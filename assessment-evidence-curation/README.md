@@ -769,3 +769,15 @@ Both workflows require the identical original dossier filter and optional
 `--human-ordinal` set. They do not contact recipients, open scopes, dispatch
 tasks, approve assets, grant client/operator consent or claim actual reviewer
 identity. Preserve original saved private return CSVs separately.
+
+
+### Review editor and exact original CSV order
+
+The PRIVATE browser editor renders its selected HUMAN records in the **same
+canonical, fixed original priority/review-bucket/ordinal order** as
+`PRIVATE-HUMAN-continuity-followup.csv`. Its downloaded review-return CSV
+therefore exactly matches the source-bound reviewer intake's required row
+order, including selections spanning multiple original priorities and
+reopened/unanswered/blocked stages. This is a functional round-trip guarantee,
+not an automatic reviewer approval, authority or consent. Missing/extra or
+out-of-order rows remain HOLD on import rather than being silently shuffled.
