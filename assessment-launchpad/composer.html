@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-IvZAmzJHztVVd/nDqcFw3nnIxDqq1vRLc4CxLGB/snE='; style-src 'sha256-kF8dZh9yHMP5XMAKKFRjc6omDgt1CC6BiZdU+V44fOk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xfVZORK8JocKRqhSjyMyJ1y1kfJjKxeIx76yxcstaJA='; style-src 'sha256-kF8dZh9yHMP5XMAKKFRjc6omDgt1CC6BiZdU+V44fOk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}textarea,select{width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem}textarea{min-height:10rem;resize:vertical}label{font-weight:650}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
@@ -18,10 +18,12 @@
 <main>
   <section class="panel">
     <h2>Endpoint manifest</h2>
-    <p>Add 1–16 distinct literal HTTP(S) URLs, import an existing local manifest, and reorder endpoint slots. Import does not upload source bytes. Use display-only masking for screen reviews; exported manifests still include all private URL values. Browser checks are only a convenience; the native CLI re-runs the original URL validator and original <code>LabScenario</code> private/loopback scope policy before it creates the preview command.</p>
+    <p>Add 1–16 distinct literal HTTP(S) URLs, append or replace from a private local manifest or pasted batch, and reorder endpoint slots. Import does not upload source bytes. Use display-only masking for screen reviews; exported manifests still include all private URL values. Browser checks are only a convenience; the native CLI re-runs the original URL validator and original <code>LabScenario</code> private/loopback scope policy before it creates the preview command.</p>
     <div id="endpointList" aria-label="Local endpoint manifest"></div>
     <p class="count" id="endpointCount">0 / 16 slots</p>
     <p class="count" id="manifestSize" role="status" aria-live="polite">Estimated manifest size: 0 / 16384 bytes</p>
+    <label for="fileMode">File import action</label>
+    <select id="fileMode"><option value="replace">Replace current draft with imported manifest</option><option value="append">Append imported manifest after filled draft slots</option></select>
     <div class="controls">
       <button id="addEndpoint" type="button" class="secondary">Add endpoint</button>
       <button id="chooseManifest" type="button" class="secondary">Import existing manifest</button>
@@ -435,12 +437,14 @@
     renderImportPreview();
     if (!file) return;
     const baseline = values();
+    const mode = $("fileMode").value;
     try {
       if (file.size < 1 || file.size > 16384) throw Error("Too large or empty");
       // Decode strictly, preserving BOM so noncanonical imports fail closed.
       const text = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true})
         .decode(await file.arrayBuffer());
-      if (ticket !== importSequence || values().length !== baseline.length ||
+      if (ticket !== importSequence || $("fileMode").value !== mode ||
+          values().length !== baseline.length ||
           !values().every((value, index) => value === baseline[index])) {
         $("message").textContent = "Draft changed during file read; file import cancelled and edits preserved.";
         return;
@@ -453,14 +457,23 @@
       const commentLines = sourceLines.filter(line => line.trim() && line.trimStart().startsWith("#")).length;
       const endpointLines = sourceLines.filter(line => line.trim() && !line.trimStart().startsWith("#"));
       const trimmedLines = endpointLines.filter(line => line !== line.trim()).length;
-      const entries = endpointLines.map(line => line.trim());
+      const sourceEntries = endpointLines.map(line => line.trim());
+      const sourceCheck = validate(sourceEntries);
+      if (!sourceCheck.entries) throw Error(sourceCheck.error);
+      if (mode !== "replace" && mode !== "append") throw Error("Invalid file mode");
+      const filledCurrent = baseline.filter(value => value !== "");
+      if (mode === "append" && filledCurrent.length && !validate(filledCurrent).entries)
+        throw Error("Invalid current draft");
+      const entries = mode === "append" ? filledCurrent.concat(sourceEntries) : sourceEntries;
       const checked = validate(entries);
       if (!checked.entries) throw Error(checked.error);
-      // Stage parsed entries and transparent normalization counts; current rows change only on Apply.
-      const requiresAck = blankLines > 0 || commentLines > 0 || trimmedLines > 0;
+      // Stage against an exact editor snapshot. Re-admit the complete combined proposal.
+      const skippedDraft = mode === "append" && filledCurrent.length !== baseline.length;
+      const requiresAck = blankLines > 0 || commentLines > 0 || trimmedLines > 0 || skippedDraft;
       pendingImport = {entries: entries.slice(), sourceBytes: file.size, sourceLines: sourceLines.length,
         blankLines, commentLines, trimmedLines, requiresAck, normalizationAcknowledged: !requiresAck,
-        baseline: baseline.slice(), sourceKind:"Imported local file"};
+        baseline: baseline.slice(), skippedDraft,
+        sourceKind: mode === "append" ? "Imported local file (append)" : "Imported local file (replace)"};
       renderImportPreview();
       $("message").textContent = "Review the proposed import below. Current editor remains unchanged until Apply.";
     } catch (error) {
@@ -468,6 +481,8 @@
       const reason = error && typeof error.message === "string" ? error.message : "";
       const details = {
         "Too large or empty": "Choose a non-empty file no larger than 16 KiB.",
+        "Invalid file mode": "Choose replace or append before selecting the file.",
+        "Invalid current draft": "Complete and correct the current endpoint slots before appending a file.",
         "BOM or NUL": "UTF-8 BOM and NUL characters are not accepted.",
         "Enter 1–16 endpoint URLs.": "Include between 1 and 16 endpoint lines.",
         "Fill every row with bounded literal text; remove blank rows and whitespace.": "Remove empty endpoint values and leading/trailing endpoint whitespace.",
@@ -520,6 +535,15 @@
   $("previewBulk").addEventListener("click", previewPastedBatch);
   $("chooseManifest").addEventListener("click", () => $("manifestImport").click());
   $("manifestImport").addEventListener("change", importManifest);
+  $("fileMode").addEventListener("change", () => {
+    importSequence++;
+    if (pendingImport && pendingImport.sourceKind &&
+        pendingImport.sourceKind.startsWith("Imported local file")) {
+      pendingImport = null;
+      renderImportPreview();
+      $("message").textContent = "File import mode changed; earlier proposal cancelled. Choose the local file again.";
+    }
+  });
   $("normalizationAck").addEventListener("change", () => {
     if (!pendingImport) return;
     pendingImport.normalizationAcknowledged = $("normalizationAck").checked;
