@@ -8,7 +8,7 @@ All imported report-derived text and table headings are HTML-escaped before rend
 
 ## Open immediately
 
-Download [standalone.html](standalone.html) and open it in a modern local browser. There are no external dependencies, HTTP calls, install steps, accounts, browser storage, cookies, persistence, registered service workers, target interaction, execution commands or backend. `index.html` also works alongside `app.js` and `style.css`. The self-contained release is rebuilt by `python3 assessment-candidates/build_standalone.py` using Python's standard library, with a restrictive CSP hashing the original inline script and CSS. The current bundled artifact is **115,023 bytes** (SHA-256 `442cecbbb92bf8c14ff3385eba666706f6b77a3200abf35af6f06c731d1242e6`); its CSP script/style hashes are pinned to the exact embedded bytes.
+Download [standalone.html](standalone.html) and open it in a modern local browser. There are no external dependencies, HTTP calls, install steps, accounts, browser storage, cookies, persistence, registered service workers, target interaction, execution commands or backend. `index.html` also works alongside `app.js` and `style.css`. The self-contained release is rebuilt by `python3 assessment-candidates/build_standalone.py` using Python's standard library, with a restrictive CSP hashing the original inline script and CSS. The current bundled artifact is **124,725 bytes** (SHA-256 `b0b6cfc563b48d121e57fb8f02de993641e53793e451cf22e9cead82d8cbb8c2`); its CSP script/style hashes are pinned to the exact embedded bytes.
 
 Click **Explore fictional demo** to view four made-up candidate outputs for four invented lab cases. They are unmistakably labeled fictional in the screen and exported JSON, and no assessment is performed.
 
