@@ -133,6 +133,44 @@ python3 assessment-lineage/private_workroom.py \
   --private-receipt --verify-existing
 ```
 
+### Optional scriptless PRIVATE source inventory
+
+Add `--private-source-board` **together with** `--private-receipt`
+to create an additional readable offline file
+`review.private-lineage-source-board.html`, alongside
+`review.private-lineage-receipt.json` and `review.html`.
+The table contains one neutral original catalog row, one numbered row for each
+human-selected completed report (01–08), an optional HUMAN-draft row and
+the produced private HTML row. It displays local full SHA-256 values **only**
+(no source paths, hostnames, finding IDs, notes, commands, client data or
+embedded scripts). Its restrictive CSP forbids script, style and network
+content. Rows are locally computed from original bytes and are not independent
+original evidence.
+
+```bash
+python3 assessment-lineage/private_workroom.py \
+  --catalog /private/source/catalog.json \
+  --reports-file /private/source/report-selection.txt \
+  --output /private/lineage-room/review.html \
+  --private-receipt --private-source-board
+
+# Later, prove the three locally saved original bytes still match source inputs:
+python3 assessment-lineage/private_workroom.py \
+  --catalog /private/source/catalog.json \
+  --reports-file /private/source/report-selection.txt \
+  --output /private/lineage-room/review.html \
+  --private-receipt --private-source-board --verify-existing
+```
+
+All three artifacts are strictly private; no automatic recipient handoff or
+network transfer exists. The full SHA-256 values are sensitive source
+correlation metadata. These packets do not confirm source authorship, actual
+HUMAN chronology, operator identity, client consent, scanner eligibility,
+remediation, release or a real security finding. `--verify-existing` is
+read-only; a missing/changed HTML, receipt, table or original source results
+in HOLD. Without both opt-in flags, the normal single-workroom behavior
+remains unchanged.
+
 The source receipt stores only canonical private SHA-256 byte digests, original
 report order/count, optional HUMAN-draft presence and the resulting HTML byte
 digest. It never adds the original file paths, private source values or HUMAN
