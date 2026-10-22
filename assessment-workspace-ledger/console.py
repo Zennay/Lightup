@@ -664,12 +664,16 @@ def handle_action(action):
             finalize=(action == "12")
         ))
     if action == "9":
+        output = prompt("Absolute new source-only software ZIP path in owner-private folder")
+        sidecar = prompt("Create detached adjacent .sha256 sidecar? [y/N]", False).lower()
         return package.build(argparse.Namespace(
-            output=prompt("Absolute new source-only software ZIP path in owner-private folder")
+            output=output, sha256_sidecar=sidecar in ("y", "yes")
         ))
     if action == "10":
+        archive = prompt("Absolute existing LightUp source-only software ZIP")
+        sidecar = prompt("Verify adjacent .sha256 sidecar? [y/N]", False).lower()
         return package.inspect(argparse.Namespace(
-            archive=prompt("Absolute existing LightUp source-only software ZIP")
+            archive=archive, sha256_sidecar=sidecar in ("y", "yes")
         ))
     if action == "8":
         return human_revisions.run(argparse.Namespace(
