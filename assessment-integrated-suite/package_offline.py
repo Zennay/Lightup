@@ -13,6 +13,7 @@ import sys
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from suite import APPS, Hold, ROOT, read_safe
+from verify_offline import Hold as VerifyHold, verify as verify_package
 from build_route_standalone import build as build_standalone_route
 from build_attention_standalone import build as build_standalone_attention
 
@@ -382,6 +383,12 @@ def build(destination: Path) -> int:
                     package.writestr(zip_info(name), raw)
             output.flush()
             os.fsync(output.fileno())
+        try:
+            # Verify the finished ZIP and source-bound studio bytes before keeping it.
+            # This is a build-integrity check, not QA or proof of trusted provenance.
+            verify_package(destination, source_root=ROOT)
+        except VerifyHold:
+            raise Hold("HOLD: generated offline ZIP failed native inventory/source-parity verification") from None
         completed = True
         print(f"SOFTWARE-ONLY / REVIEW_ONLY: portable offline kit contains {len(files)} offline HUMAN studios + {len(originals)-len(files)} local support assets.")
         print("LOCAL ZIP: " + str(destination))
