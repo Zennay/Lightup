@@ -407,6 +407,8 @@ consent, and cryptographic review remains an original release prerequisite.
 
 Proposed appointments are now admitted only when the current browser/OS local time is unambiguous: nonexistent spring-forward hours, repeated autumn hours and appointment durations crossing an offset transition fail closed. If the system timezone changes during an open workroom, local time conversion holds until the operator reloads the intended original workroom. The operating system's timezone data is not independently attested.
 
+All existing automatic HUMAN weekday, group-capacity, single-slot and conflict-resolution proposers now skip invalid DST/local-clock slots and look for another admitted time within their existing bounded horizon instead of aborting a complete proposal at the first invalid candidate. They still respect original capacity, source and manual confirmation gates.
+
 The new read-only clock-change desk lists tentative reminders within 12 hours of an OS-reported offset transition. Review individual original HUMAN ordinals, or deliberately download an unsigned PRIVATE source-bound CSV with original worksheet hash, series, timezone, ordinal, unverified group, proposed local/UTC time and explicit false authority/verification/consent flags. Even aggregate HUMAN schedules may reveal sensitive metadata; never share with an unapproved recipient. This tool does not inspect external calendar imports.
 
 ## Calendar revision sequence for manual re-import

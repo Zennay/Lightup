@@ -255,6 +255,7 @@
     }
   }
   function resolveConflicts(){
+    assertLocalZone();
     hold(active && !capacityEditorDirty);
     const before=collisionIds();
     if(!before.size){
@@ -305,7 +306,8 @@
           try{startAt=eventDate(day,time).getTime();}catch(_){continue;}
           const until=startAt+Number(previous.duration)*60000;
           if(startAt<=now || busy.some(e=>startAt<e.end&&e.start<until))continue;
-          found=admitSlot(day,time,previous.duration,previous.reminder);
+          try{found=admitSlot(day,time,previous.duration,previous.reminder);}
+          catch(_){continue;} // Skip clock-shift-unsafe slot, seek the next free HUMAN slot.
           break;
         }
       }
@@ -494,6 +496,7 @@
     return flags;
   }
   function proposeLocalAlternative(ordinal){
+    assertLocalZone();
     hold(active && Number.isSafeInteger(ordinal));
     const row=items[ordinal-1],old=plan.get(ordinal);
     hold(row && row.ordinal===ordinal && old);
@@ -530,7 +533,9 @@
         try{proposed=eventDate(day,time).getTime();}catch(_){continue;}
         if(proposed<=earliest)continue;
         if(occupied.some(other=>proposed<other.end&&other.start<proposed+duration*60000))continue;
-        result=admitSlot(day,time,old.duration,reminder);break;
+        try{result=admitSlot(day,time,old.duration,reminder);}
+        catch(_){continue;} // A wall-time transition is not a valid alternative.
+        break;
       }
     }
     if(!result){
@@ -804,6 +809,7 @@
     });
   }
   function proposalForUnscheduled(ordinal,fromDay,scheduled=plan){
+    assertLocalZone();
     hold(active && Number.isSafeInteger(ordinal) && ordinal>=1&&ordinal<=items.length);
     const row=items[ordinal-1];
     hold(row.ordinal===ordinal && !scheduled.has(ordinal) && row.stage!=="blocked");
@@ -832,7 +838,8 @@
         let candidate;
         try{candidate=eventDate(day,time).getTime();}catch(_){continue;}
         if(candidate<=now || existing.some(e=>candidate<e.end && e.start<candidate+30*60000))continue;
-        return admitSlot(day,time,"30","15");
+        try{return admitSlot(day,time,"30","15");}
+        catch(_){continue;} // Try a later, unambiguous private reminder.
       }
     }
     return null;
@@ -1217,6 +1224,7 @@
     capacityMessage("PRIVATE group availability reloaded with unsaved changes. Download policy or encrypted whole workroom to preserve it.");
   }
   function capacityPreview(){
+    assertLocalZone();
     hold(active && capacityGroups().length>0 && capacityGroups().length<=256);
     const from=$("capacityFirst").value;
     eventDate(from,"12:00");hold(from>=nowToday());
@@ -1270,11 +1278,16 @@
         const endMin=Number(rule.end.slice(0,2))*60+Number(rule.end.slice(3,5));
         for(let minute=startMin;minute+30<=endMin && count<rule.maximum && queue.length && proposed.size<128;minute+=30){
           const time=String(Math.floor(minute/60)).padStart(2,"0")+":"+String(minute%60).padStart(2,"0");
-          const instant=eventDate(day,time).getTime(),last=instant+30*60000;
+          let slot,instant;
+          try{
+            slot=admitSlot(day,time,"30","15");
+            instant=eventDate(day,time).getTime();
+          }catch(_){continue;} // Never propose nonexistent/repeated/clock-crossing times.
+          const last=instant+30*60000;
           if(instant<=Date.now())continue;
           const busy=taken.get(day)||[];
           if(busy.some(event=>instant<event.end && event.start<last))continue;
-          const row=queue.shift(),slot={day,time,duration:"30",reminder:"15"};
+          const row=queue.shift();
           proposed.set(row.ordinal,slot);
           busy.push({ordinal:row.ordinal,start:instant,end:last});
           taken.set(day,busy);count++;daily.set(key,count);
@@ -2640,6 +2653,7 @@
     changed=true;exportedPlan=false;render();inform(candidates.length+" HUMAN reminder dates changed in local memory only.");
   }
   function suggestDates(){
+    assertLocalZone();
     hold(active);
     const first=$("suggestDate").value,perDay=Number($("suggestDaily").value);
     hold(Number.isSafeInteger(perDay) && perDay>=4 && perDay<=16);
@@ -2668,9 +2682,13 @@
           const hour=9+Math.floor(slot*40/60),minute=(slot*40)%60;
           const time=String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
           if(reserved.has(time))continue;
-          const candidate=eventDate(key,time).getTime(),end=candidate+30*60000;
+          let suggestion,candidate;
+          try{
+            suggestion=admitSlot(key,time,"30","15");
+            candidate=eventDate(key,time).getTime();
+          }catch(_){continue;}
+          const end=candidate+30*60000;
           if(occupied.some(o=>candidate<o.end && o.start<end))continue;
-          const suggestion=admitSlot(key,time,"30","15");
           const ordinal=unscheduled[index].ordinal;
           proposal.set(ordinal,suggestion);
           occupied.push({ordinal,start:candidate,end});
