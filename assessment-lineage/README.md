@@ -198,6 +198,59 @@ PLAN/LAB ONLY · DRAFT/HOLD, subject to existing mandatory CI, source-owner,
 security/privacy, separately authenticated client/operator consent and
 action-time revocation, and explicit HUMAN GO before any main merge/release.
 
+## Compare two PRIVATE source receipts without original data disclosure
+
+The standalone native `compare_receipts.py` is an offline *operator-only*
+continuity desk for two separately generated ORIGINAL PRIVATE receipt files,
+such as a source selection from an earlier and later **human-chosen review
+session**. This does not prove the sessions were created in that order.
+
+```bash
+umask 077
+mkdir -m 700 /private/lineage-human-continuity-delta
+python3 assessment-lineage/compare_receipts.py \
+  --before /private/lineage-room-a/review.private-lineage-receipt.json \
+  --after /private/lineage-room-b/review.private-lineage-receipt.json \
+  --output-dir /private/lineage-human-continuity-delta
+
+# Read-only reopening: original receipts and both outputs must still match:
+python3 assessment-lineage/compare_receipts.py \
+  --before /private/lineage-room-a/review.private-lineage-receipt.json \
+  --after /private/lineage-room-b/review.private-lineage-receipt.json \
+  --output-dir /private/lineage-human-continuity-delta --verify-existing
+```
+
+**Delivered files:** `lightup-private-lineage-source-delta.json` and
+`lightup-private-lineage-source-delta.html`, both owner-only mode 0600
+inside an existing separate, initially empty mode-0700 private directory.
+The local HTML is scriptless with a network-denying CSP. It distinguishes
+original catalog byte changes, HUMAN-draft changes, generated HTML changes,
+source slot changes, previous-only and new-only original positions and uniquely
+fingerprinted source movements. It refuses to infer a unique move when
+multiple original sources share a digest. Source ordering is chosen by the
+human and is **not** authenticated chronology. Disappearance is **not** a fix;
+a new original position is **not** a verified new finding.
+
+Input receipts must be byte-exact canonical
+`lightup.private_lineage_receipt.v1` original outputs with literally false
+authority/consent/identity/HUMAN GO fields, no duplicate keys and exactly
+1–8 plausible original report digests. Inputs are owner-owned private 0600,
+no symlink/hardlink aliases or parent-symlink traversal. Neither delta
+artifact contains original SHA-256 values, report paths, target/client data,
+original finding IDs or PRIVATE HUMAN notes. The output **remains PRIVATE**
+because small ordinal/boolean differences may reveal sensitive work patterns.
+Publishing refuses a nonempty destination; failure cleans up only its own
+new files. `--verify-existing` strictly re-admits both original receipts,
+demands exactly the expected two private outputs and compares reconstructed
+file bytes without writing.
+
+This comparison is an unsigned, local HUMAN continuity aid, not proof of
+real original source authenticity, chronological progression, assessment,
+consent, approval, remediation, security clearance, or release. No QA suite,
+scanner or network is invoked. The existing source-owner, mandatory CI,
+privacy/security review, separate current authenticated client/operator
+consent with action-time revocation, and explicit HUMAN GO still gate release.
+
 ## Open the working product
 
 Download [standalone.html](standalone.html) and open it locally. It is an actual single-file HTML application with its own static JavaScript and stylesheet SHA-256 pinned in the Content Security Policy, with all connections, images, external scripts, forms, frames and workers disabled. Alternatively open [index.html](index.html) alongside its sibling [app.js](app.js) and [style.css](style.css). The app does **not** run a backend, send telemetry or persist files/cookies/localStorage. Closing the tab forgets all private state.
