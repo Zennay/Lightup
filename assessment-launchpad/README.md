@@ -406,10 +406,13 @@ The live counts update for the chosen view. Tick individual original slots,
 then use **Select displayed slots** to add all rows currently visible without
 clearing earlier selections; selections survive filter changes in memory only.
 **Deselect displayed slots** removes only the visible rows from the queue; **Clear all selections** resets the queue. Open **Review selected rows before CSV download** to inspect the exact selected source ordinals and fixed HUMAN labels, including rows hidden by filters; that preview is never printed. **Print only displayed PRIVATE rows**
-prints the current filtered view; **Download selected rows as PRIVATE CSV**
-exports only explicitly selected fixed-enum/ordinal rows in original source
-order (the renderer refuses an out-of-order source list), including selections
-hidden by the current filter. The browser does not
+prints the current filtered view. **Download all selected PRIVATE rows**
+exports the entire explicitly checked fixed-enum/ordinal queue, including
+hidden rows; **Download selected-and-visible PRIVATE rows** exports only the
+intersection of checked rows and currently displayed filters, useful for
+preparing a minimal single-role handoff. Both files preserve original source
+order, fixed schema and no endpoint/note text. The renderer refuses out-of-order
+original slot lists. The browser does not
 persist selections. To resume a previously saved selection, use **Reopen earlier
 PRIVATE selected HUMAN CSV** in the same offline action desk. The file is read
 locally (max 8192 bytes), strictly decoded as canonical UTF-8/CRLF and matched
@@ -448,7 +451,12 @@ browser CSV must first be moved into a private `0700` folder
 and set to mode `0600`. Its six-column header must remain exactly
 `original_slot,latest_suggested_role,private_human_reply_status,latest_self_reported_human_stage,suggested_operator_next_step,private_note_changed`;
 rows must be an ordered, unique subset of the freshly reconstructed original
-worklist. The native summary reports counts by all five HUMAN dimensions
+worklist. The native handoff optionally accepts `--suggested-role SECURITY_REVIEWER`
+(or another original fixed role) to emit only matching selected rows after
+first admitting the **complete** original source and selected CSV. It fails
+closed if the filtered queue is empty. The fixed role is a HUMAN proposal, not
+a verified recipient; the owner must still authenticate any recipient.
+The native summary reports counts by all five HUMAN dimensions
 (role, reply status, self-reported stage, next action and note-change flag),
 not note content. All outputs remain private mode `0600`; missing or modified
 original source bytes keep the workflow in HOLD.

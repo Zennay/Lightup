@@ -59,6 +59,7 @@ const resetButton = document.getElementById("reset");
 const progress = document.getElementById("progress");
 const printButton = document.getElementById("print");
 const saveButton = document.getElementById("saveSelected");
+const saveVisibleSelected = document.getElementById("saveVisibleSelected");
 const selectVisibleButton = document.getElementById("selectVisible");
 const deselectVisibleButton = document.getElementById("deselectVisible");
 const clearSelectionButton = document.getElementById("clearSelection");
@@ -206,6 +207,7 @@ function apply() {
   summary.textContent = [...byAction.entries()].sort().map(([key,count]) =>
     key.replaceAll("_"," ") + ": " + count).join(" · ") || "No matching HUMAN actions.";
   saveButton.disabled = selectedSlots.size === 0;
+  saveVisibleSelected.disabled = visibleSelected === 0;
   selectVisibleButton.disabled = visible === 0;
   deselectVisibleButton.disabled = visibleSelected === 0;
   clearSelectionButton.disabled = selectedSlots.size === 0;
@@ -310,19 +312,24 @@ function csvCell(value) {
   if (!/^[A-Z_0-9]+$/.test(item)) throw Error("Noncanonical HUMAN export cell");
   return item;
 }
-saveButton.addEventListener("click",()=>{
-  const selectedRows = lookup.filter(({values})=>selectedSlots.has(values[0])).map(({values})=>values);
-  if (!selectedRows.length) return;
+function downloadSourceSelected(rows, filename) {
+  if (!rows.length) return;
   const data = [fieldNames.join(","),
-    ...selectedRows.map(row => row.map(csvCell).join(","))].join("\r\n") + "\r\n";
+    ...rows.map(row => row.map(csvCell).join(","))].join("\r\n") + "\r\n";
   const objectUrl = URL.createObjectURL(new Blob([data],{type:"text/csv;charset=utf-8"}));
   const link = document.createElement("a");
-  link.href = objectUrl;
-  link.download = "lightup-PRIVATE-human-actions-selected.csv";
-  document.body.append(link);
-  link.click();
-  link.remove();
+  link.href = objectUrl; link.download = filename;
+  document.body.append(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(objectUrl),1000);
+}
+saveButton.addEventListener("click",()=>{
+  const rows = lookup.filter(({values})=>selectedSlots.has(values[0])).map(({values})=>values);
+  downloadSourceSelected(rows,"lightup-PRIVATE-human-actions-selected.csv");
+});
+saveVisibleSelected.addEventListener("click",()=>{
+  const rows = lookup.filter(({values,element})=>
+    selectedSlots.has(values[0]) && !element.hidden).map(({values})=>values);
+  downloadSourceSelected(rows,"lightup-PRIVATE-human-actions-selected-visible.csv");
 });
 apply();
 })();'''
@@ -388,7 +395,8 @@ def render(work):
         "<button type='button' id='deselectVisible'>Deselect displayed slots</button> "
         "<button type='button' id='clearSelection'>Clear all selections</button> "
         "<button type='button' id='print'>Print only displayed PRIVATE rows</button> "
-        "<button type='button' id='saveSelected' disabled>Download selected rows as PRIVATE CSV</button>"
+        "<button type='button' id='saveSelected' disabled>Download all selected PRIVATE rows</button> "
+        "<button type='button' id='saveVisibleSelected' disabled>Download selected-and-visible PRIVATE rows</button>"
         "<p id='selectionSummary' role='status' aria-live='polite'>0 explicitly selected slots.</p>"
         "<div class='importpanel'><h3>Reopen earlier PRIVATE selected HUMAN CSV</h3>"
         "<p>Read the exact original-bound CSV locally; no selection is changed until "

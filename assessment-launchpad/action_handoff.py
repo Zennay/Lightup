@@ -14,7 +14,7 @@ import sys
 
 from launchpad import Hold, open_output_directory, publish_bundle, read_private_bundle_item
 from history import admitted_rounds
-from review_desk import read_original_bundle
+from review_desk import read_original_bundle, ROLES
 from role_return_reconcile import admitted_replies, render_files
 
 WORK_CSV = "lightup-lab-human-role-worklist-private.csv"
@@ -95,7 +95,7 @@ def selected_source_rows(source_csv, selection_raw):
     return chosen, len(source) - 1
 
 
-def render_artifacts(rows, total):
+def render_artifacts(rows, total, role_filter="ALL"):
     body = "".join("<tr>" + "".join(
         "<td>" + escape(item.replace("_", " ")) + "</td>" for item in row
     ) + "</tr>" for row in rows)
@@ -128,6 +128,11 @@ def render_artifacts(rows, total):
         "human_go": False,
         "release_allowed": False,
     }
+    if role_filter != "ALL":
+        scope["operator_role_filter"] = role_filter
+    role_message = (" Operator-selected proposed role filter: " +
+                    escape(role_filter.replace("_", " ")) +
+                    ". This is not a verified role assignment.") if role_filter != "ALL" else ""
     style_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     html = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
@@ -144,7 +149,8 @@ def render_artifacts(rows, total):
         + str(len(rows)) + " of " + str(total)
         + " original local source slots deliberately selected. "
         + "Original slot order is a worklist order, not verified event chronology. "
-        + "Roles and statuses are unauthenticated HUMAN self-reports.</p>"
+        + "Roles and statuses are unauthenticated HUMAN self-reports."
+        + role_message + "</p>"
         + "<p>No target URLs, note text, source path, source digests or recipient "
         + "identities are embedded. Role/slot combinations can remain identifying. "
         + "Treat every generated file as unencrypted PRIVATE data.</p>"
@@ -163,7 +169,9 @@ def render_artifacts(rows, total):
         "This handoff includes only operator-selected local ordinal/enumeration rows.\n"
         "It is PRIVATE unencrypted data; verify recipients independently.\n"
         "The selected CSV was admitted against original HUMAN role returns.\n"
-        "No endpoint URL, PRIVATE note, client asset or source digest is copied.\n"
+        + ("Optional proposed-role filtering never authenticates a recipient.\n"
+           if role_filter != "ALL" else "")
+        + "No endpoint URL, PRIVATE note, client asset or source digest is copied.\n"
         "Reopen with the same original bundle, rounds, returns and CSV bytes.\n"
         "No assessment, grant, consent, release or HUMAN GO is performed.\n"
     ).encode("utf-8")
@@ -199,6 +207,8 @@ def main(argv=None):
                         help="original selected-role return packet; repeat 1-5")
     parser.add_argument("--selected-csv", required=True,
                         help="browser-exported CSV; owner-only 0700 parent, file mode 0600")
+    parser.add_argument("--suggested-role", choices=ROLES,
+                        help="optional recipient-minimal original suggested HUMAN role only")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--output-dir",
                       help="new empty owner-owned mode-0700 destination, separate from every source")
@@ -209,12 +219,16 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         source = admit_all(args)
-        artifacts = render_artifacts(source[5], source[6])
+        scoped_rows = [row for row in source[5] if
+                       args.suggested_role is None or row[1] == args.suggested_role]
+        if not scoped_rows:
+            raise Hold("no exact original selected HUMAN slots in chosen suggested role")
+        artifacts = render_artifacts(scoped_rows, source[6], args.suggested_role or "ALL")
         if any(not 0 < len(item) <= LIMIT for item in artifacts.values()):
             raise Hold("PRIVATE selected HUMAN handoff capacity exceeded")
         if args.preview_only:
             print("PRIVATE_HUMAN_SELECTED_ACTIONS_PREVIEW_ONLY — " +
-                  str(len(source[5])) + "/" + str(source[6]) +
+                  str(len(scoped_rows)) + "/" + str(source[6]) +
                   " original slots selected; no files written; REVIEW_ONLY; NO AUTHORITY")
             preview = json.loads(artifacts[PRIVATE_SUMMARY].decode("utf-8"))
             print("Selected HUMAN dimension counts only (no slot rows, notes, targets or paths):")
@@ -246,7 +260,7 @@ def main(argv=None):
             os.close(fd)
         print("PRIVATE_HUMAN_SELECTED_ACTIONS_" +
               ("REOPENED" if args.verify_output_dir else "CREATED") +
-              " — " + str(len(source[5])) + "/" + str(source[6]) +
+              " — " + str(len(scoped_rows)) + "/" + str(source[6]) +
               " original slots selected; REVIEW_ONLY; NO AUTHORITY")
         return 0
     except (Hold, OSError, ValueError, TypeError, UnicodeError, csv.Error, OverflowError):

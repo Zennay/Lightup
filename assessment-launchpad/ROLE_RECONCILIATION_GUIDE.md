@@ -71,10 +71,12 @@ The result consists of exactly seven exclusive mode-0600 files:
   visible rows without clearing earlier selections. **Deselect displayed slots** removes only visible rows; **Clear all selections**
   resets the in-memory queue. Open **Review selected rows before CSV download**
   to inspect every selected ordinal/enum row, including rows hidden by filters;
-  this preview is excluded from print. **Download selected rows as PRIVATE CSV**
-  exports only explicitly selected fixed-vocabulary rows in original source order,
-  including selections hidden by the current filter; printing remains limited
-  to the visible view. **Reopen earlier PRIVATE selected HUMAN CSV** stages a
+  this preview is excluded from print. **Download all selected PRIVATE rows**
+  exports every explicitly selected original row, including ones hidden by
+  filters. **Download selected-and-visible PRIVATE rows** exports only rows
+  that are both checked and currently displayed, minimizing cross-role
+  disclosure. Both downloads keep original source order; printing remains
+  limited to the visible view. **Reopen earlier PRIVATE selected HUMAN CSV** stages a
   previously exported 8192-byte-bounded canonical UTF-8/CRLF selection against
   the exact current six-column source worklist. A separate source-minimal
   comparison previews imported-only, current-only and shared original slot
@@ -165,7 +167,7 @@ operator consent, security/privacy review and explicit HUMAN GO are
 
 ## Re-admit a filtered browser CSV into an original-source-bound PRIVATE packet
 
-The browser's **Download selected rows as PRIVATE CSV** is deliberately an
+The browser's **Download all selected PRIVATE rows** (or selected-and-visible-only export) is deliberately an
 *unsigned* local download, not a reviewer credential or review clearance.
 For a bounded separate native handoff, put it in an owner-owned `0700` folder,
 set the downloaded file to `0600`, and use the NEW `action_handoff.py` CLI.
@@ -174,6 +176,12 @@ against all original Launchpad, HUMAN rounds and selected-role return packets.
 A fabricated row, altered original role/status/action, duplicate, reordering,
 noncanonical CSV bytes or cross-source selection is HOLD. The six-column
 header exactly matches the source worklist, including `latest_suggested_role`.
+The native CLI additionally accepts `--suggested-role SECURITY_REVIEWER`
+(or any other original fixed suggested role) to filter the output packet *only
+after* admitting the complete original sources and full selected CSV. If no
+selected rows match, it HOLDS. Preview, publication and read-only reopen must
+use the same filter. This is an unverified HUMAN role suggestion, not recipient
+authentication, permission or real scope authorization.
 The HTML and counts JSON summarize five dimensions—role, reply status,
 self-reported stage, proposed next action and note-change flag—without private
 note content. It never accepts a browser CSV as original evidence or a scope grant.
