@@ -73,7 +73,7 @@ python3 assessment-portfolio/portfolio.py \
 
 The filtered four-file packet uses aggregate schema
 `lightup.assessment_portfolio_aggregate.v2` with an explicit `view_selection`
-in its counts-only JSON, while the **unchanged unfiltered** export continues
+in its counts-only JSON, plus explicit view-selection rows in its counts CSV, while the **unchanged unfiltered** export continues
 to use v1. Every focused HTML view labels the exact selected role, stage and
 reference-date bucket. A selection matching no HUMAN items yields a clearly
 labelled empty private desk, **not** evidence that work is completed. Original
@@ -94,8 +94,8 @@ a local **0600** UTF-8 text file with exactly one absolute original agenda path
 per LF-terminated line, in the intended **manual** agenda order. All source
 files still require their own mode-0600/no-symlink/no-hard-link admission; the
 list does not grant authority or execute any assessment. Relative paths, blank
-lines, duplicate paths, CRLF, embedded NUL, symlinks, oversized lists and
-changed list contents cause HOLD.
+lines, duplicate paths, CRLF, embedded NUL, hidden Unicode control/bidi
+marks, symlinks, oversized lists and changed list contents cause HOLD.
 
 ```bash
 umask 077
