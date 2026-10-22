@@ -14,9 +14,11 @@ import html
 import io
 import json
 import os
+from pathlib import Path
 import stat
 import sys
 import zipfile
+import zlib
 
 from history import (
     CLASSIFICATIONS,
@@ -26,8 +28,11 @@ from history import (
     MAX_RECEIPT_BYTES,
     STAGES,
     Hold,
+    no_constant,
+    no_duplicates,
     parse_receipt_bytes,
     publish_private,
+    review_date,
 )
 
 
@@ -368,18 +373,300 @@ def render_bundle(history: dict, *, original_bytes_rehashed: bool = False) -> by
     return raw_bundle
 
 
+BUNDLE_MEMBERS = (
+    "source-set-lineage.html", "source-set-lineage.csv",
+    "source-set-lineage.json", "README.txt", "MANIFEST.txt",
+)
+BUNDLE_ARTIFACTS = BUNDLE_MEMBERS[:-1]
+MAX_BUNDLE_UNPACKED = 64 * 1024 * 1024
+
+
+def read_private_bundle(path: str) -> bytes:
+    """Read a bundle only from an owner-private 0700 parent and 0600 file."""
+    target = Path(path)
+    parent_fd = fd = None
+    try:
+        parent_fd = os.open(
+            target.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0),
+        )
+        parent = os.fstat(parent_fd)
+        if (not stat.S_ISDIR(parent.st_mode) or parent.st_uid != os.getuid()
+                or stat.S_IMODE(parent.st_mode) != 0o700):
+            raise Hold("bundle inspection requires an existing owner-only 0700 parent")
+        before = os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False)
+        if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
+                or stat.S_IMODE(before.st_mode) != 0o600 or before.st_nlink != 1
+                or not 1 <= before.st_size <= MAX_BUNDLE_BYTES):
+            raise Hold("bundle must be a bounded owner-only 0600 unlinked regular file")
+        fd = os.open(
+            target.name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=parent_fd,
+        )
+        opened = os.fstat(fd)
+
+        def identity(item):
+            return (item.st_dev, item.st_ino, item.st_uid, stat.S_IMODE(item.st_mode),
+                    item.st_nlink, item.st_size, item.st_mtime_ns, item.st_ctime_ns)
+
+        if not stat.S_ISREG(opened.st_mode) or identity(opened) != identity(before):
+            raise Hold("bundle changed between directory admission and open")
+        chunks, total = [], 0
+        while total <= MAX_BUNDLE_BYTES:
+            block = os.read(fd, min(65_536, MAX_BUNDLE_BYTES + 1 - total))
+            if not block:
+                break
+            chunks.append(block); total += len(block)
+        after = os.fstat(fd)
+        if total != opened.st_size or total > MAX_BUNDLE_BYTES or identity(after) != identity(opened):
+            raise Hold("bundle changed or exceeded its bounded read")
+        return b"".join(chunks)
+    except Hold:
+        raise
+    except OSError as exc:
+        raise Hold("could not safely read the private lineage bundle") from exc
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if parent_fd is not None:
+            os.close(parent_fd)
+
+
+def validate_bundle_projection(document: object) -> dict:
+    """Admit the strict source-minimal JSON projection inside a bundle."""
+    top = {
+        "schema", "status", "evidence_boundary", "manual_plan_order",
+        "chronology_authenticated", "source_identity_authenticated",
+        "authorization_granted", "consent_verified", "remediation_proven",
+        "release_allowed", "plan_count", "source_union_count",
+        "plan_summaries", "source_plan_rows",
+    }
+    if (type(document) is not dict or set(document) != top
+            or document["schema"] != BUNDLE_SCHEMA or document["status"] != "REVIEW_ONLY"
+            or document["evidence_boundary"] not in (
+                "PLAN_DECLARATIONS_ONLY", "ORIGINAL_SOURCE_BYTES_REHASHED_PER_SNAPSHOT")
+            or document["manual_plan_order"] is not True
+            or any(document[key] is not False for key in (
+                "chronology_authenticated", "source_identity_authenticated",
+                "authorization_granted", "consent_verified", "remediation_proven", "release_allowed"))):
+        raise Hold("bundle JSON does not match the non-authorizing lineage schema")
+    count, union = document["plan_count"], document["source_union_count"]
+    summaries, rows = document["plan_summaries"], document["source_plan_rows"]
+    if (type(count) is not int or not 2 <= count <= MAX_FILES
+            or type(union) is not int or not 1 <= union <= MAX_FILES * MAX_FILES
+            or type(summaries) is not list or len(summaries) != count
+            or type(rows) is not list or len(rows) != count * union):
+        raise Hold("bundle JSON counts or row cardinalities are invalid")
+    summary_keys = {
+        "plan_number", "source_count", "added_since_previous", "absent_since_previous",
+        "continuing_rows_unchanged", "continuing_rows_with_human_changes", "stage_counts",
+    }
+    previous_fields = ("added_since_previous", "absent_since_previous",
+                       "continuing_rows_unchanged", "continuing_rows_with_human_changes")
+    for index, item in enumerate(summaries, 1):
+        if (type(item) is not dict or set(item) != summary_keys
+                or type(item["plan_number"]) is not int or item["plan_number"] != index
+                or type(item["source_count"]) is not int or not 1 <= item["source_count"] <= MAX_FILES
+                or type(item["stage_counts"]) is not dict or set(item["stage_counts"]) != set(STAGES)
+                or any(type(v) is not int or v < 0 for v in item["stage_counts"].values())
+                or sum(item["stage_counts"].values()) != item["source_count"]):
+            raise Hold("bundle per-plan summary is invalid")
+        if index == 1:
+            if any(item[key] is not None for key in previous_fields):
+                raise Hold("baseline plan unexpectedly declares a prior interval")
+        elif any(type(item[key]) is not int or item[key] < 0 for key in previous_fields):
+            raise Hold("bundle interval counts are invalid")
+
+    presence_values = {
+        "PRESENT_IN_BASELINE", "ABSENT_FROM_BASELINE", "PRESENT_IN_ADJACENT_PLANS",
+        "REAPPEARED_AFTER_GAP", "NEW_IN_SELECTED_PLAN", "ABSENT_FROM_SELECTED_PLAN", "ABSENT",
+    }
+    seen, indexed = {}, {}
+    previous_order = ("", 0)
+    for item in rows:
+        if (type(item) is not dict or set(item) != set(BUNDLE_ROWS)
+                or type(item["digest_prefix"]) is not str or len(item["digest_prefix"]) != 20
+                or any(ch not in "0123456789abcdef" for ch in item["digest_prefix"])
+                or type(item["bytes"]) is not int or not 1 <= item["bytes"] <= 8 * 1024 * 1024
+                or type(item["plan_number"]) is not int or not 1 <= item["plan_number"] <= count
+                or item["presence"] not in presence_values or type(item["status"]) is not str
+                or (item["status"] and item["status"] not in STAGES)
+                or type(item["review_date"]) is not str
+                or (item["review_date"] and not review_date(item["review_date"]))
+                or type(item["changed_fields"]) is not list
+                or any(type(v) is not str or v not in HUMAN_FIELDS for v in item["changed_fields"])
+                or len(set(item["changed_fields"])) != len(item["changed_fields"])):
+            raise Hold("bundle source-plan row has invalid shape")
+        key = (item["digest_prefix"], item["plan_number"])
+        if key in indexed or key < previous_order:
+            raise Hold("bundle source-plan rows are duplicate or out of canonical order")
+        previous_order = key
+        indexed[key] = item
+        prefix = item["digest_prefix"]
+        if prefix in seen and seen[prefix] != item["bytes"]:
+            raise Hold("bundle digest prefix has conflicting byte lengths")
+        seen[prefix] = item["bytes"]
+        present = bool(item["status"])
+        if present:
+            if (item["presence"] not in {"PRESENT_IN_BASELINE", "PRESENT_IN_ADJACENT_PLANS",
+                    "REAPPEARED_AFTER_GAP", "NEW_IN_SELECTED_PLAN"}
+                    or type(item["custodian_declared"]) is not bool
+                    or item["classification"] not in CLASSIFICATIONS
+                    or item["hold_flag"] not in HOLD_FLAGS):
+                raise Hold("present source row is missing canonical HUMAN enums")
+        elif (item["presence"] not in {"ABSENT_FROM_BASELINE", "ABSENT_FROM_SELECTED_PLAN", "ABSENT"}
+                or item["custodian_declared"] is not None or item["review_date"] != ""
+                or item["classification"] != "" or item["hold_flag"] != ""
+                or item["changed_fields"]):
+            raise Hold("absent source row unexpectedly carries HUMAN metadata")
+        if item["plan_number"] == 1 and item["changed_fields"]:
+            raise Hold("baseline source row cannot declare interval changes")
+    if len(seen) != union or any(sum((prefix, slot) in indexed for slot in range(1, count + 1)) != count
+                                 for prefix in seen):
+        raise Hold("bundle source-union count or per-source coverage is invalid")
+
+    for prefix in seen:
+        for slot in range(1, count + 1):
+            row = indexed[(prefix, slot)]
+            present, prior = bool(row["status"]), indexed[(prefix, slot - 1)] if slot > 1 else None
+            previous_present = bool(prior and prior["status"])
+            if slot == 1:
+                expected = "PRESENT_IN_BASELINE" if present else "ABSENT_FROM_BASELINE"
+            elif present and previous_present:
+                expected = "PRESENT_IN_ADJACENT_PLANS"
+            elif present:
+                expected = ("REAPPEARED_AFTER_GAP" if any(
+                    indexed[(prefix, earlier)]["status"] for earlier in range(1, slot - 1)
+                ) else "NEW_IN_SELECTED_PLAN")
+            elif previous_present:
+                expected = "ABSENT_FROM_SELECTED_PLAN"
+            else:
+                expected = "ABSENT"
+            if row["presence"] != expected or (not (present and previous_present) and row["changed_fields"]):
+                raise Hold("bundle membership observation or interval field list is inconsistent")
+
+    for slot, summary in enumerate(summaries, 1):
+        current = [indexed[(prefix, slot)] for prefix in seen]
+        counts = {stage: sum(row["status"] == stage for row in current) for stage in STAGES}
+        if summary["source_count"] != sum(bool(row["status"]) for row in current) or summary["stage_counts"] != counts:
+            raise Hold("bundle per-plan summary disagrees with source rows")
+        if slot > 1:
+            prior = [indexed[(prefix, slot - 1)] for prefix in seen]
+            added = sum(bool(now["status"]) and not bool(old["status"]) for now, old in zip(current, prior))
+            absent = sum(bool(old["status"]) and not bool(now["status"]) for now, old in zip(current, prior))
+            changed = sum(bool(now["status"]) and bool(old["status"]) and bool(now["changed_fields"])
+                          for now, old in zip(current, prior))
+            unchanged = sum(bool(now["status"]) and bool(old["status"]) and not now["changed_fields"]
+                            for now, old in zip(current, prior))
+            if (summary["added_since_previous"], summary["absent_since_previous"],
+                summary["continuing_rows_unchanged"], summary["continuing_rows_with_human_changes"]) != (
+                added, absent, unchanged, changed):
+                raise Hold("bundle interval summary disagrees with source rows")
+    return document
+
+
+def inspect_bundle_bytes(raw: bytes) -> dict:
+    """Reopen a lineage ZIP without extraction; verify privacy, manifest and report agreement."""
+    if not raw or len(raw) > MAX_BUNDLE_BYTES:
+        raise Hold("empty or oversized private bundle")
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw), "r") as archive:
+            infos = archive.infolist()
+            if ([item.filename for item in infos] != list(BUNDLE_MEMBERS)
+                    or archive.comment):
+                raise Hold("bundle members are missing, duplicated, reordered or unexpected")
+            total = 0
+            artifacts = {}
+            for info in infos:
+                mode = info.external_attr >> 16
+                if (info.is_dir() or info.create_system != 3
+                        or mode != (stat.S_IFREG | 0o600)
+                        or info.compress_type != zipfile.ZIP_DEFLATED
+                        or info.flag_bits & 1 or info.extra or info.comment
+                        or not 1 <= info.file_size <= MAX_BUNDLE_UNPACKED):
+                    raise Hold("bundle entry is not a bounded regular 0600 artifact")
+                total += info.file_size
+                if total > MAX_BUNDLE_UNPACKED:
+                    raise Hold("bundle expands beyond the total size limit")
+                value = archive.read(info)
+                if len(value) != info.file_size:
+                    raise Hold("bundle artifact length does not match ZIP metadata")
+                artifacts[info.filename] = value
+    except Hold:
+        raise
+    except (OSError, ValueError, RuntimeError, zipfile.BadZipFile, zipfile.LargeZipFile, EOFError, zlib.error) as exc:
+        raise Hold("bundle ZIP could not be read safely") from exc
+
+    try:
+        lines = artifacts["MANIFEST.txt"].decode("utf-8", "strict").splitlines()
+    except UnicodeError as exc:
+        raise Hold("bundle manifest is not UTF-8") from exc
+    expected_lines = [
+        "LIGHTUP PRIVATE REPORT ARTIFACT MANIFEST",
+        "UNSIGNED — local artifact integrity only; not source provenance or authorization.",
+    ]
+    expected_lines.extend(hashlib.sha256(artifacts[name]).hexdigest() + "  " + name
+                          for name in BUNDLE_ARTIFACTS)
+    if lines != expected_lines:
+        raise Hold("bundle manifest does not match every included artifact")
+
+    try:
+        document = json.loads(artifacts["source-set-lineage.json"].decode("utf-8", "strict"),
+                              object_pairs_hook=no_duplicates, parse_constant=no_constant)
+    except (UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        raise Hold("bundle JSON is not canonical strict UTF-8 JSON") from exc
+    document = validate_bundle_projection(document)
+    history = {
+        "plan_count": document["plan_count"],
+        "source_union_count": document["source_union_count"],
+        "plan_summaries": document["plan_summaries"],
+        "source_plan_rows": document["source_plan_rows"],
+    }
+    expected = render_bundle(
+        history,
+        original_bytes_rehashed=document["evidence_boundary"] == "ORIGINAL_SOURCE_BYTES_REHASHED_PER_SNAPSHOT",
+    )
+    try:
+        with zipfile.ZipFile(io.BytesIO(expected), "r") as archive:
+            expected_artifacts = {name: archive.read(name) for name in BUNDLE_MEMBERS}
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        raise Hold("canonical bundle reconstruction failed") from exc
+    if any(artifacts[name] != expected_artifacts[name] for name in BUNDLE_MEMBERS):
+        raise Hold("bundle HTML/CSV/JSON/README do not match the canonical projection")
+    return document
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Compare 2–12 PRIVATE HUMAN plans with changing source membership; read-only"
+        description="Compare 2–12 PRIVATE HUMAN plans or inspect a private lineage bundle; read-only"
     )
-    outputs = parser.add_mutually_exclusive_group(required=True)
+    outputs = parser.add_mutually_exclusive_group(required=False)
+    outputs.add_argument("--inspect-bundle",
+                         help="Read-only integrity and schema inspection of an existing private lineage ZIP")
     outputs.add_argument("--output",
                          help="New HTML report inside an existing owner-owned 0700 directory")
     outputs.add_argument("--bundle-output",
                          help="New private ZIP containing scriptless HTML, CSV, JSON and caveats")
-    parser.add_argument("plans", nargs="+",
+    parser.add_argument("plans", nargs="*",
                         help="2–12 owner-private HUMAN plan JSON files in manually chosen order")
     args = parser.parse_args()
+    if args.inspect_bundle:
+        if args.plans:
+            parser.error("--inspect-bundle does not accept plan arguments")
+        try:
+            document = inspect_bundle_bytes(read_private_bundle(args.inspect_bundle))
+        except (Hold, OSError, ValueError, TypeError, MemoryError, RecursionError, UnicodeError) as exc:
+            parser.exit(2, "HOLD: PRIVATE lineage bundle not admitted; no files extracted or written.\n")
+        print("REVIEW_ONLY: private lineage bundle is internally consistent; no files extracted or written.")
+        print("Plans: " + str(document["plan_count"]) + " · source identities: " +
+              str(document["source_union_count"]) + " · rows: " +
+              str(len(document["source_plan_rows"])))
+        print("Declared evidence boundary: " + document["evidence_boundary"] +
+              ". Manifest hashes are unsigned integrity checks, not provenance or authorization.")
+        return 0
+    if not args.output and not args.bundle_output:
+        parser.error("choose --output, --bundle-output or --inspect-bundle")
     if not 2 <= len(args.plans) <= MAX_FILES:
         parser.error("two to twelve original HUMAN plan files required")
     try:

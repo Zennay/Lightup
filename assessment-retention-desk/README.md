@@ -263,7 +263,23 @@ python3 assessment-retention-desk/vault_source_history.py \
 
 The bounded ZIP contains the scriptless HTML, a complete flat CSV, a
 machine-readable JSON projection, privacy/evidence-boundary notes and an
-unsigned manifest with hashes of the report artifacts. The manifest protects
+unsigned manifest with hashes of the report artifacts. To inspect a received
+bundle before opening or forwarding it, place it in an existing owner-only
+0700 directory with file mode 0600 and run:
+
+~~~sh
+python3 assessment-retention-desk/source_history.py \
+  --inspect-bundle /private/operator/source-set-history.zip
+~~~
+
+Inspection is read-only and does not extract files or open original assessment
+sources. It rejects links, non-private permissions, duplicate/reordered ZIP
+members, unsafe archive entries, manifest/hash mismatches, non-canonical JSON,
+inconsistent membership/summary counts and HTML/CSV/README that do not match
+the admitted JSON projection. A successful result establishes only that the
+unsigned local bundle is internally consistent; it does not authenticate the
+publisher, original source bytes, reviewer, chronology, consent or permission.
+ The manifest protects
 against accidental local byte changes only; it is not a signature or source
 provenance. The exports deliberately omit original source paths, aliases,
 free-text actions, full source digests and source contents. Digest prefixes,
