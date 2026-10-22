@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import sys
 
-from review import Hold, exact_string, private_publish, private_read, require, pairs, reject_constant
+from review import Hold, exact_human_note, exact_string, private_publish, private_read, require, pairs, reject_constant
 from triage import (STAGES, admit_session, canonical, durable_replace, fresh_original_bytes,
                     make_session, now_utc, selected_sources, single_host_lock, sha)
 
@@ -80,7 +80,7 @@ def read_worksheet(path: Path, reference: dict) -> tuple[list[dict], list[dict]]
                 "Noncanonical HUMAN ordinal")
         require(type(item["new_stage"]) is str and item["new_stage"] in STAGES,
                 "Invalid HUMAN-only proposed stage")
-        exact_string(item["new_human_note"], 1200, "PRIVATE HUMAN proposed note")
+        exact_human_note(item["new_human_note"], 1200, "PRIVATE HUMAN proposed note")
         if item["new_stage"] != original["baseline_stage"] or (
                 item["new_human_note"] != original["baseline_human_note"]):
             updates.append({

@@ -51,6 +51,18 @@ def exact_string(value: object, limit: int, name: str, mandatory: bool = False) 
     return value
 
 
+HIDDEN_NOTE_CONTROLS = re.compile(
+    r"[\x80-\x9f\u200b\u200e\u200f\u202a-\u202e\u2060-\u206f\ufeff]"
+)
+
+
+def exact_human_note(value: object, limit: int, name: str) -> str:
+    exact_string(value, limit, name)
+    require(HIDDEN_NOTE_CONTROLS.search(value) is None,
+            "Invalid " + name + ": remove invisible direction/format controls")
+    return value
+
+
 def pairs(items: list[tuple[str, object]]) -> dict:
     out = {}
     for key, value in items:
@@ -158,7 +170,7 @@ def parse_packet_data(raw: bytes) -> dict:
         except ValueError as exc:
             raise Hold("Invalid local timestamp") from exc
         exact_string(row["human_reviewer"], 120, "human reviewer")
-        exact_string(row["human_note"], 1200, "private HUMAN note")
+        exact_human_note(row["human_note"], 1200, "private HUMAN note")
         require(type(row["human_stage"]) is str and row["human_stage"] in STAGES,
                 "Unknown HUMAN stage")
         key = (row["finding_id"], row["sha256"])

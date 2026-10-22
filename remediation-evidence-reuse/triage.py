@@ -20,7 +20,7 @@ import secrets
 import stat
 import sys
 
-from review import (FLAGS, Hold, analyze, exact_string, pairs, parse_packet_data,
+from review import (FLAGS, Hold, analyze, exact_human_note, exact_string, pairs, parse_packet_data,
                     private_publish, private_read, proposed_actions, reject_constant,
                     require)
 
@@ -135,7 +135,7 @@ def admit_session(raw: bytes, expected: dict) -> dict:
                 "Unknown HUMAN question identity")
         require(type(row["stage"]) is str and row["stage"] in STAGES,
                 "Invalid HUMAN-only stage")
-        exact_string(row["human_note"], 1200, "PRIVATE HUMAN note")
+        exact_human_note(row["human_note"], 1200, "PRIVATE HUMAN note")
         stamp = row["updated_utc"]
         require(stamp is None or (type(stamp) is str and len(stamp) <= 40 and
                 stamp.endswith("Z")), "Invalid local HUMAN update timestamp")
@@ -284,7 +284,7 @@ def run(args: argparse.Namespace) -> int:
                 require(sys.stdin.isatty() and sys.stderr.isatty(),
                         "PRIVATE note prompts require an interactive terminal to prevent echo/log exposure")
                 note = getpass.getpass("PRIVATE HUMAN note (never used as source evidence): ")
-                exact_string(note, 1200, "PRIVATE HUMAN note")
+                exact_human_note(note, 1200, "PRIVATE HUMAN note")
                 item["human_note"] = note
             if args.clear_note:
                 item["human_note"] = ""
