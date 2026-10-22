@@ -26,7 +26,11 @@ STYLE = ("body{font:16px/1.5 system-ui,sans-serif;max-width:1040px;margin:2rem a
          "padding:1rem;color:#152437}.hold{background:#fff3df;border-left:5px solid #96691a;"
          "padding:1rem}table{border-collapse:collapse;width:100%}th,td{padding:.55rem;"
          "border:1px solid #bbcada;text-align:left}th{background:#e9f0f8}.scroll{overflow-x:auto}"
-         "small{color:#526174}")
+         "small{color:#526174}summary{cursor:pointer;font-weight:700;padding:.6rem 0}"
+         ".cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));"
+         "gap:.75rem;margin:1.5rem 0}.metric{border:1px solid #bfd0df;"
+         "border-radius:.5rem;padding:1rem;background:#f5f8ff}"
+         ".metric strong{display:block;font-size:1.5rem}.metric span{font-size:.8rem}")
 
 
 def admit_sources(plan_paths, history_dir, round_paths):
@@ -98,6 +102,35 @@ def render_board(packet):
                  str(row["after_slot"]) if row["after_slot"] is not None else "—",
                  *row["human_stages"])
         rows.append("<tr>"+"".join("<td>"+escape(cell)+"</td>" for cell in cells)+"</tr>")
+    active = ("FOLLOW_UP_REQUIRED", "NEEDS_CONTEXT", "IN_REVIEW", "QUESTION_PREPARED")
+    final_counts = packet["round_stage_counts"][-1]
+    next_rows = []
+    for row in packet["rows"]:
+        current = row["human_stages"][-1]
+        if current not in active:
+            continue
+        values = (str(row["original_row"]),
+                  str(row["from_plan"]) + " → " + str(row["to_plan"]),
+                  row["literal_change"], current)
+        next_rows.append("<tr>" + "".join("<td>" + escape(value) + "</td>"
+                                         for value in values) + "</tr>")
+    progress_cards = "".join(
+        "<div class='metric'><strong>" + str(final_counts[stage]) + "</strong>"
+        "<span>" + escape(stage.replace("_", " ").title()) + "</span></div>"
+        for stage in response.STAGES
+    )
+    active_count = sum(final_counts[stage] for stage in active)
+    newest_change = packet["changed_rows_per_transition"][-1]
+    next_html = (
+        "<details open><summary>HUMAN follow-up queue (" + str(active_count) + ")</summary>"
+        "<p>These are unsigned HUMAN work notes, not vulnerabilities or remediation claims.</p>"
+        "<div class='scroll'><table><thead><tr><th>Original row</th><th>Plan pair</th>"
+        "<th>Literal change</th><th>Current HUMAN stage</th></tr></thead><tbody>"
+        + ("".join(next_rows) if next_rows else
+           "<tr><td colspan='4'>No active HUMAN follow-up labels in the last round."
+           " PARKED and HUMAN_REVIEWED are not approval or remediation.</td></tr>")
+        + "</tbody></table></div></details>"
+    )
     return ("<!doctype html><html lang='en'><head><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             "<meta name='referrer' content='no-referrer'>"
@@ -111,7 +144,11 @@ def render_board(packet):
             " All rounds are unsigned HUMAN work notes, not authenticated chronology,"
             " consent, remediation, authority or HUMAN GO.</p>"
             "<p>"+str(packet["round_count"])+" locally chained HUMAN rounds · "+
-            str(packet["source_rows"])+" source rows.</p>"
+            str(packet["source_rows"])+" source rows · "+str(newest_change)+
+            " HUMAN stage changes in the last recorded transition.</p>"
+            "<h2>Current HUMAN stage workload</h2><div class='cards'>"+
+            progress_cards+"</div>"+next_html+
+            "<h2>HUMAN stage timeline (all original rows)</h2>"
             "<div class='scroll'><table><thead><tr>"+head+
             "</tr></thead><tbody>"+"".join(rows)+"</tbody></table></div>"
             "<p><small>Private source-bound digests are in the JSON only. This HTML"
