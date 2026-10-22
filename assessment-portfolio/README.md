@@ -260,10 +260,18 @@ python3 assessment-portfolio/portfolio.py \
 
 This produces the unchanged original four packet files **plus** an
 owner-private mode-0600 scriptless `assessment-portfolio-private-HUMAN-return.html`
-and `assessment-portfolio-private-HUMAN-return.csv`. The HUMAN return
+and `assessment-portfolio-private-HUMAN-return.csv`, plus a separate\nmode-0600 `assessment-portfolio-private-HUMAN-summary.json`. The HUMAN return
 contains only source ordinals, fixed original stages/proposed dates and the
 locally entered HUMAN-only proposed role/status/note. Original source
 paths, target details, raw agenda IDs and hashes never enter either return.
+The additional PRIVATE summary gives a compact HUMAN-status × proposed-role
+workload matrix, aggregate proposed role/status counts and a count of local
+HUMAN notes. The scriptless PRIVATE return HTML shows the same grouped
+matrix before the detailed rows. Even small-cell counts may reveal local
+planning context, so **neither PRIVATE rollup is an anonymous export**.
+It never claims a completed remediation, verified finding, authenticated
+reviewer or clearance; approval/consent/dispatch flags remain false.
+
 PRIVATE HUMAN notes can themselves be sensitive and are never added to the
 anonymous JSON/CSV. The native module strictly rejects malformed JSON,
 duplicate keys, unknown fields, modified fixed source rows, incompatible
@@ -278,7 +286,7 @@ day, optional `--focus-*` selection and exact same flags with
 Note that `--private-human-workbook` is also independently optional during
 this return: include it on the final command only if the follow-up packet
 should also contain a brand-new blank worksheet; otherwise it contains just
-the canonical four original outputs and two private HUMAN returns.
+the canonical four original outputs and three private HUMAN returns.
 Do not place the HUMAN response source in its destination room. The
 HUMAN return is **planning evidence only**: no real sign-off, source
 identity verification, consent, action-time revocation, assessment execution,
