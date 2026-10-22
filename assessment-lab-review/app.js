@@ -17,6 +17,9 @@ const METRIC_LABELS=[
  ["compute_cost_usd","Compute cost (reported USD)"],["false_positive_rate","False-positive rate (reported ratio 0–1)"]
 ];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
+const MAX_PRIVATE_CLEAR=4*1024*1024, MAX_PRIVATE_ENVELOPE=8*1024*1024;
+const PRIVATE_REVIEW_ENVELOPE="lightup.private_lab_human_review_encrypted.v1";
+const PRIVATE_REVIEW_KDF_ITERATIONS=310000;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",searchTerm="",sortMode="source",lastBulkUndo=null;
 const selectedForHandoff=new Set();
 const validText=(s,limit=1000)=>typeof s==="string"&&s.length<=limit&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
@@ -137,6 +140,79 @@ async function sha256(bytes){
  require_(!!(globalThis.crypto&&crypto.subtle));
  const value=await crypto.subtle.digest("SHA-256",bytes);
  return [...new Uint8Array(value)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function privateCryptoAvailable(){
+ return !!(globalThis.crypto&&crypto.subtle&&typeof crypto.getRandomValues==="function");
+}
+function bytesToBase64(bytes){
+ let binary="";
+ for(let offset=0;offset<bytes.length;offset+=0x8000)
+  binary+=String.fromCharCode(...bytes.subarray(offset,Math.min(bytes.length,offset+0x8000)));
+ return btoa(binary);
+}
+function base64ToBytes(text,maxBytes,exactBytes=null){
+ require_(typeof text==="string"&&text.length>0&&
+  text.length<=Math.ceil(maxBytes/3)*4+4&&/^[A-Za-z0-9+/]+={0,2}$/.test(text));
+ let binary;
+ try{binary=atob(text);}catch(_){require_(false);}
+ require_(binary.length>0&&binary.length<=maxBytes&&
+  (exactBytes===null||binary.length===exactBytes));
+ const bytes=Uint8Array.from(binary,char=>char.charCodeAt(0));
+ require_(bytesToBase64(bytes)===text);
+ return bytes;
+}
+async function derivePrivateReviewKey(passphrase,salt,usage){
+ require_(privateCryptoAvailable()&&typeof passphrase==="string"&&passphrase.length>=14&&passphrase.length<=256);
+ const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(passphrase),
+  "PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:PRIVATE_REVIEW_KDF_ITERATIONS,hash:"SHA-256"},
+  material,{name:"AES-GCM",length:256},false,[usage]);
+}
+async function encryptedPrivateReviewText(passphrase){
+ require_(source&&sourceHash&&privateCryptoAvailable());
+ const clearText=JSON.stringify(privatePayload(),null,2)+"\\n";
+ const clearBytes=new TextEncoder().encode(clearText);
+ require_(clearBytes.byteLength>0&&clearBytes.byteLength<=MAX_PRIVATE_CLEAR);
+ const salt=crypto.getRandomValues(new Uint8Array(16));
+ const iv=crypto.getRandomValues(new Uint8Array(12));
+ const key=await derivePrivateReviewKey(passphrase,salt,"encrypt");
+ const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv,
+  additionalData:new TextEncoder().encode(PRIVATE_REVIEW_ENVELOPE),tagLength:128},key,clearBytes);
+ const envelope={schema:PRIVATE_REVIEW_ENVELOPE,status:"PRIVATE_ENCRYPTED",
+  cipher:"AES-256-GCM",kdf:"PBKDF2-HMAC-SHA256",iterations:PRIVATE_REVIEW_KDF_ITERATIONS,
+  salt_b64:bytesToBase64(salt),iv_b64:bytesToBase64(iv),
+  ciphertext_b64:bytesToBase64(new Uint8Array(ciphertext)),private_unsigned:true,
+  source_authenticated:false,ground_truth_verified:false,client_consent_verified:false,
+  operator_consent_verified:false,...noAuthority()};
+ const output=JSON.stringify(envelope,null,2)+"\\n";
+ require_(new TextEncoder().encode(output).byteLength<=MAX_PRIVATE_ENVELOPE);
+ return output;
+}
+async function openEncryptedPrivateReview(file,passphrase){
+ require_(source&&sourceHash&&privateCryptoAvailable()&&file&&file.size>0&&file.size<=MAX_PRIVATE_ENVELOPE);
+ const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+ const envelope=parseStrict(raw);
+ const keys=["schema","status","cipher","kdf","iterations","salt_b64","iv_b64",
+  "ciphertext_b64","private_unsigned","source_authenticated","ground_truth_verified",
+  "client_consent_verified","operator_consent_verified",...FLAGS];
+ require_(exact(envelope,keys)&&envelope.schema===PRIVATE_REVIEW_ENVELOPE&&
+  envelope.status==="PRIVATE_ENCRYPTED"&&envelope.cipher==="AES-256-GCM"&&
+  envelope.kdf==="PBKDF2-HMAC-SHA256"&&envelope.iterations===PRIVATE_REVIEW_KDF_ITERATIONS&&
+  envelope.private_unsigned===true&&
+  ["source_authenticated","ground_truth_verified","client_consent_verified","operator_consent_verified",...FLAGS]
+   .every(key=>envelope[key]===false));
+ const salt=base64ToBytes(envelope.salt_b64,16,16);
+ const iv=base64ToBytes(envelope.iv_b64,12,12);
+ const ciphertext=base64ToBytes(envelope.ciphertext_b64,MAX_PRIVATE_ENVELOPE);
+ require_(ciphertext.byteLength>=17);
+ const key=await derivePrivateReviewKey(passphrase,salt,"decrypt");
+ const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv,
+  additionalData:new TextEncoder().encode(PRIVATE_REVIEW_ENVELOPE),tagLength:128},key,ciphertext);
+ require_(clear.byteLength>0&&clear.byteLength<=MAX_PRIVATE_CLEAR);
+ const clearText=new TextDecoder("utf-8",{fatal:true}).decode(clear);
+ const payload=parseStrict(clearText);
+ require_(clearText===JSON.stringify(payload,null,2)+"\\n");
+ return applyPrivatePayload(payload);
 }
 function initialNote(){return {stage:"needs_review",group:"unassigned",next_action:"",blocker:""};}
 function status(msg,error=false){$("message").textContent=msg;$("message").dataset.error=String(error);}
@@ -329,10 +405,8 @@ async function importSource(file){
  $("workspace").hidden=false;updateSummary();render();
  status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
 }
-async function resume(file){
- require_(source&&file&&file.size>0&&file.size<=1024*1024);
- const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
- const v=parseStrict(raw);
+function admitPrivatePayload(v){
+ require_(source&&sourceHash);
  require_(exact(v,["schema","source_sha256","source_finding_count","notes","status",
   "source_authenticated","ground_truth_verified","client_consent_verified","operator_consent_verified",...FLAGS]));
  require_(v.schema==="lightup.private_lab_human_review.v1"&&v.status==="REVIEW_ONLY"&&
@@ -340,13 +414,23 @@ async function resume(file){
   ["source_authenticated","ground_truth_verified","client_consent_verified",
    "operator_consent_verified",...FLAGS].every(k=>v[k]===false));
  require_(Array.isArray(v.notes)&&v.notes.length===notes.length);
- const next=v.notes.map((row,i)=>{
+ return v.notes.map((row,i)=>{
   require_(exact(row,["ordinal","stage","group","next_action","blocker"])&&row.ordinal===i+1);
   const n={stage:row.stage,group:row.group,next_action:row.next_action,blocker:row.blocker};
   require_(admitNote(n));return n;
  });
- if(dirty&&!confirm("Replace existing unsaved human notes with this matching private return?"))return;
- notes=next;dirty=false;lastBulkUndo=null;updateSummary();render();status("Exact source-bound human notes restored. No security evidence was authenticated.");
+}
+function applyPrivatePayload(v){
+ const next=admitPrivatePayload(v);
+ if(dirty&&!confirm("Replace existing unsaved human notes with this matching private return?"))return false;
+ notes=next;dirty=false;lastBulkUndo=null;updateSummary();render();
+ status("Exact source-bound human notes restored. No security evidence was authenticated.");
+ return true;
+}
+async function resume(file){
+ require_(source&&file&&file.size>0&&file.size<=MAX_PRIVATE_CLEAR);
+ const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+ return applyPrivatePayload(parseStrict(raw));
 }
 
 function visibleOrdinals(){
