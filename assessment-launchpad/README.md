@@ -121,6 +121,24 @@ The optional direct-stage route and the imported `--answers-dir` route are mutua
 
 Before HUMAN return publication, the native CLI re-verifies the saved history against the original pinned policy and source manifests, strictly matches the complete edited CSV against the ordinal queue, and re-opens all inputs. It publishes three exclusive mode-0600 files in a separate empty owner-owned 0700 directory: source-bound PRIVATE JSON containing unsigned source and answer hashes, scriptless CSP-pinned PRIVATE HUMAN status HTML (no URLs/paths/hashes) and an aggregate stage-count PRIVATE CSV. The previous source and HUMAN answer files are never overwritten. The stages are non-authorizing **human work notes only**: even `HUMAN_REVIEWED` is not approval, valid consent, verified remediation, revocation clearance or release authority. No active targets, scanner, DNS, model, auth or original source-owner code is touched.
 
+### Resume HUMAN review through the offline browser, without losing the source-bound chain
+
+The local standalone `history_review_editor.html` now accepts an **optional saved PRIVATE HUMAN return JSON** after the original source history queue CSV is imported. Select exactly `lightup-manifest-history-human-return-private.json` from the previously saved v1/v2 HUMAN return. The browser checks the strict return envelope, false authority flags, row count, original ordinal identities and stage counts, and then asks for explicit confirmation before replacing its current in-memory HUMAN stage labels. It does not contact a server, store data, validate digital signatures or independently authenticate the original plan history. The original native source read/reopen remains mandatory.
+
+After reviewing and exporting the complete six-column PRIVATE CSV, store the file in an owner-only `0700` answers directory with mode-`0600`. To **continue** the original saved HUMAN round (rather than accidentally create a new v1 root), pass the existing return directory along with the edited CSV and explicit full-stage-replacement acknowledgement:
+
+```sh
+mkdir -m 700 ~/private-human-return-next
+python3 assessment-launchpad/manifest_history_response.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --continue-from-return-dir ~/private-human-return-one \
+  --answers-dir ~/private-edited-answers --ack-csv-stage-replace \
+  --output-dir ~/private-human-return-next
+```
+
+This writes a fresh v2 HUMAN return, pins the old source-bound JSON digest and imports the exact original-order CSV row identities. **CSV stage replacement is all-or-nothing**, so the acknowledgement must be explicit: without it the CLI fails closed to prevent silent resetting of prior stage labels. The browser does not produce approval, remediation proofs, source authenticity, verified consent or HUMAN GO. Running the same options with `--verify-output-dir` reopens the completed output without writing.
+
 ### Continue an existing PRIVATE HUMAN round without resetting prior work
 
 `manifest_history_response.py` can now **carry forward every previous HUMAN status** from a separately saved and strictly admitted PRIVATE return, and change only the specified rows in a new private result:
