@@ -252,7 +252,17 @@ The statuses are only `PENDING_HUMAN`, `DISCUSSING`,
 `AWAITING_ORIGINAL`, and `DOCUMENTED_DISCUSSION`; there is intentionally
 **no approved, resolved, verified, consent, granted or dispatched state**.
 The fixed original stage/role, date and source ordinals are visible but
-**not editable**. The screen shows unsaved local changes and an explicit
+**not editable**. The worksheet now includes local filters by current HUMAN
+discussion state and proposed role, plus a fixed-field search. Select individual
+rows or select all rows visible under the current filter; then preview the exact
+number of selected rows and stage/role fields that would change. Applying a
+batch requires explicit confirmation and changes only selected visible HUMAN
+fields. Original agenda fields and private notes are untouched. One-step Undo
+restores the previous HUMAN stage/role values only until another individual
+HUMAN edit or a source-bound worksheet restore invalidates it. Filtering clears
+the selection so hidden rows cannot be accidentally included. These controls
+are local planning conveniences, not evidence, assignment, approval or
+authorization. The screen shows unsaved local changes and an explicit
 **Download private HUMAN response JSON** action. Closing the tab discards
 unsaved work; there is no cookie, localStorage, external asset or telemetry.
 

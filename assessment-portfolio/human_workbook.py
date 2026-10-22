@@ -30,11 +30,46 @@ boot.remove();
 const rows = document.querySelector("#humanRows");
 const stages = ["PENDING_HUMAN", "DISCUSSING", "AWAITING_ORIGINAL", "DOCUMENTED_DISCUSSION"];
 const roles = ["unassigned", "source_owner", "reviewer", "privacy", "operator"];
+const selectedRows = new Set();
+const rowNodes = [];
+let batchUndo = null;
+const state = document.getElementById("savedState");
+const progress = document.getElementById("humanProgress");
+const batchSummary = document.getElementById("batchSummary");
 const plain = (label, value) => {
   const cell = document.createElement("td"); cell.textContent = String(value); return cell;
 };
-for (const entry of data.entries) {
+const clearSelection = () => {
+  selectedRows.clear();
+  for (const row of rowNodes) {
+    const checkbox = row.querySelector("input[type=checkbox]");
+    if (checkbox) checkbox.checked = false;
+  }
+  syncSelectionUi();
+  updateBatchControls();
+};
+const syncSelectionUi = () => {
+  const visible = rowNodes.map((row, index) => ({row, index})).filter(item => !item.row.hidden);
+  const count = visible.filter(item => selectedRows.has(item.index)).length;
+  const master = document.getElementById("selectVisibleRows");
+  master.checked = visible.length > 0 && count === visible.length;
+  master.indeterminate = count > 0 && count < visible.length;
+  document.getElementById("clearSelectedRows").disabled = selectedRows.size === 0;
+};
+for (const [index, entry] of data.entries.entries()) {
   const tr = document.createElement("tr");
+  tr.dataset.rowIndex = String(index);
+  const chooseCell = document.createElement("td");
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.setAttribute("aria-label", "Select HUMAN row agenda " + entry.agenda_slot +
+    " source slot " + entry.source_slot);
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked && !tr.hidden) selectedRows.add(index);
+    else selectedRows.delete(index);
+    syncSelectionUi(); updateBatchControls();
+  });
+  chooseCell.append(checkbox); tr.append(chooseCell);
   tr.append(plain("slot", "A" + String(entry.agenda_slot).padStart(2, "0") + "/S" +
     String(entry.source_slot).padStart(2, "0")));
   tr.append(plain("date", entry.proposed_review_date || "unscheduled"));
@@ -42,38 +77,161 @@ for (const entry of data.entries) {
   tr.append(plain("status", entry.source_stage));
   for (const [key, options] of [["human_status", stages], ["proposed_role", roles]]) {
     const td = document.createElement("td");
-    const select = document.createElement("select"); select.setAttribute("aria-label", key);
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", key + " for agenda " + entry.agenda_slot +
+      " source slot " + entry.source_slot);
     for (const value of options) {
       const option = document.createElement("option"); option.value = value;
       option.textContent = value; select.append(option);
     }
-    select.value = entry[key]; select.addEventListener("change", () => entry[key] = select.value);
+    select.value = entry[key];
+    select.addEventListener("change", () => {
+      entry[key] = select.value; batchUndo = null; filterRows();
+      state.textContent = "Individual HUMAN edit made. Previous batch Undo is no longer available.";
+      reportProgress(); updateBatchControls();
+    });
     td.append(select); tr.append(td);
   }
   const noteCell = document.createElement("td");
   const note = document.createElement("input"); note.type = "text"; note.maxLength = 160;
   note.placeholder = "PRIVATE HUMAN note; never enter secrets"; note.value = entry.note;
-  note.setAttribute("aria-label", "Private non-authorizing human note");
-  note.addEventListener("input", () => {entry.note = note.value;});
+  note.setAttribute("aria-label", "Private non-authorizing HUMAN note for agenda " +
+    entry.agenda_slot + " source slot " + entry.source_slot);
+  note.addEventListener("input", () => {
+    entry.note = note.value; batchUndo = null; filterRows();
+    state.textContent = "Individual HUMAN edit made. Previous batch Undo is no longer available.";
+    reportProgress(); updateBatchControls();
+  });
   noteCell.append(note); tr.append(noteCell);
-  rows.append(tr);
+  rows.append(tr); rowNodes.push(tr);
 }
-const state = document.getElementById("savedState");
-const progress = document.getElementById("humanProgress");
 const reportProgress = () => {
   const changes = data.entries.filter((entry, index) =>
     entry.human_status !== original.entries[index].human_status ||
-    entry.proposed_role !== original.entries[index].proposed_role || entry.note.length > 0
+    entry.proposed_role !== original.entries[index].proposed_role ||
+    entry.note !== original.entries[index].note
   ).length;
   const nonempty = data.entries.filter(entry => entry.note.length > 0).length;
   progress.textContent = changes + " of " + data.entries.length +
-    " local HUMAN discussions changed; " + nonempty + " PRIVATE notes. Unverified and unsaved until explicit download.";
+    " local HUMAN discussions changed; " + nonempty +
+    " PRIVATE notes. Unverified and unsaved until explicit download.";
 };
-rows.addEventListener("input", reportProgress);
-rows.addEventListener("change", reportProgress);
 const exactKeys = (one, two) => JSON.stringify(Object.keys(one).sort()) ===
   JSON.stringify(Object.keys(two).sort());
-document.getElementById("restoreWorksheet").addEventListener("change", async event => {
+const filterRows = () => {
+  const statusFilter = document.getElementById("filterHumanStatus").value;
+  const roleFilter = document.getElementById("filterProposedRole").value;
+  const query = document.getElementById("filterHumanSearch").value.trim().toLocaleLowerCase();
+  clearSelection();
+  for (const [index, row] of rowNodes.entries()) {
+    const entry = data.entries[index];
+    const haystack = [entry.agenda_slot, entry.source_slot, entry.source_kind,
+      entry.source_stage, entry.source_next_role, entry.proposed_review_date || "",
+      entry.date_bucket, entry.human_status, entry.proposed_role].join(" ").toLocaleLowerCase();
+    row.hidden = !!((statusFilter && entry.human_status !== statusFilter) ||
+      (roleFilter && entry.proposed_role !== roleFilter) ||
+      (query && !haystack.includes(query)));
+  }
+  syncSelectionUi(); updateBatchControls();
+  document.getElementById("visibleHumanRows").textContent =
+    rowNodes.filter(row => !row.hidden).length + " of " + rowNodes.length +
+    " HUMAN rows visible. Filtering is local and does not change source rows.";
+};
+const updateBatchControls = () => {
+  const selected = [...selectedRows].filter(index => rowNodes[index] && !rowNodes[index].hidden);
+  const targetStage = document.getElementById("batchHumanStatus").value;
+  const targetRole = document.getElementById("batchProposedRole").value;
+  const changes = selected.filter(index => {
+    const entry = data.entries[index];
+    return (targetStage && entry.human_status !== targetStage) ||
+      (targetRole && entry.proposed_role !== targetRole);
+  });
+  const stageChanges = changes.filter(index => targetStage &&
+    data.entries[index].human_status !== targetStage).length;
+  const roleChanges = changes.filter(index => targetRole &&
+    data.entries[index].proposed_role !== targetRole).length;
+  document.getElementById("applyHumanBatch").disabled =
+    !selected.length || !changes.length || (!targetStage && !targetRole);
+  const canUndo = !!batchUndo && batchUndo.binding === original.source_row_binding &&
+    batchUndo.changes.every(change => data.entries[change.index].human_status === change.afterStatus &&
+      data.entries[change.index].proposed_role === change.afterRole);
+  document.getElementById("undoHumanBatch").disabled = !canUndo;
+  if (batchUndo && !canUndo) batchUndo = null;
+  batchSummary.textContent = selected.length
+    ? changes.length + " of " + selected.length + " selected visible rows would change" +
+      (targetStage ? "; " + stageChanges + " HUMAN stage change(s)" : "") +
+      (targetRole ? "; " + roleChanges + " proposed-role change(s)" : "") +
+      ". Nothing changes until you confirm. Unselected rows, notes and original source fields are excluded."
+    : "Select individual visible rows or use the table header checkbox. Choose a target HUMAN stage and/or role to preview.";
+};
+const applyHumanBatch = () => {
+  const selected = [...selectedRows].filter(index => rowNodes[index] && !rowNodes[index].hidden);
+  const targetStage = document.getElementById("batchHumanStatus").value;
+  const targetRole = document.getElementById("batchProposedRole").value;
+  if (!selected.length || (!targetStage && !targetRole)) return;
+  const changes = selected.filter(index => {
+    const entry = data.entries[index];
+    return (targetStage && entry.human_status !== targetStage) ||
+      (targetRole && entry.proposed_role !== targetRole);
+  }).map(index => {
+    const entry = data.entries[index];
+    return {index, beforeStatus: entry.human_status, beforeRole: entry.proposed_role,
+      afterStatus: targetStage || entry.human_status, afterRole: targetRole || entry.proposed_role};
+  });
+  if (!changes.length) return;
+  const stageCount = changes.filter(change => change.beforeStatus !== change.afterStatus).length;
+  const roleCount = changes.filter(change => change.beforeRole !== change.afterRole).length;
+  if (!window.confirm("Apply HUMAN-only changes to " + changes.length + " of " + selected.length +
+    " selected visible rows? This changes " + stageCount + " stage(s) and " + roleCount +
+    " proposed role(s). Notes and original source fields stay unchanged. This is not approval, evidence or authorization.")) return;
+  for (const change of changes) {
+    const entry = data.entries[change.index]; entry.human_status = change.afterStatus;
+    entry.proposed_role = change.afterRole;
+    const selects = rowNodes[change.index].querySelectorAll("select");
+    selects[0].value = entry.human_status; selects[1].value = entry.proposed_role;
+  }
+  batchUndo = {binding: original.source_row_binding, changes};
+  filterRows(); reportProgress(); updateBatchControls();
+  state.textContent = "Applied " + changes.length +
+    " explicitly selected HUMAN row(s). One-step Undo is available until another HUMAN edit or source restore.";
+};
+const undoHumanBatch = () => {
+  if (!batchUndo || batchUndo.binding !== original.source_row_binding) return;
+  if (!batchUndo.changes.every(change =>
+    data.entries[change.index].human_status === change.afterStatus &&
+    data.entries[change.index].proposed_role === change.afterRole)) {
+    batchUndo = null; updateBatchControls();
+    state.textContent = "Undo expired because HUMAN values changed after the batch.";
+    return;
+  }
+  for (const change of batchUndo.changes) {
+    const entry = data.entries[change.index]; entry.human_status = change.beforeStatus;
+    entry.proposed_role = change.beforeRole;
+    const selects = rowNodes[change.index].querySelectorAll("select");
+    selects[0].value = entry.human_status; selects[1].value = entry.proposed_role;
+  }
+  batchUndo = null; filterRows(); reportProgress(); updateBatchControls();
+  state.textContent = "Last HUMAN batch reverted in memory. Original source fields and notes were never changed.";
+};
+document.getElementById("selectVisibleRows").addEventListener("change", () => {
+  for (const [index, row] of rowNodes.entries()) {
+    if (row.hidden) continue;
+    const checkbox = row.querySelector("input[type=checkbox]");
+    if (document.getElementById("selectVisibleRows").checked) {
+      selectedRows.add(index); checkbox.checked = true;
+    } else { selectedRows.delete(index); checkbox.checked = false; }
+  }
+  syncSelectionUi(); updateBatchControls();
+});
+document.getElementById("clearSelectedRows").addEventListener("click", clearSelection);
+for (const id of ["filterHumanStatus", "filterProposedRole", "filterHumanSearch"])
+  document.getElementById(id).addEventListener(id === "filterHumanSearch" ? "input" : "change", filterRows);
+for (const id of ["batchHumanStatus", "batchProposedRole"])
+  document.getElementById(id).addEventListener("change", updateBatchControls);
+document.getElementById("applyHumanBatch").addEventListener("click", applyHumanBatch);
+document.getElementById("undoHumanBatch").addEventListener("click", undoHumanBatch);
+const restore = document.getElementById("restoreWorksheet");
+restore.addEventListener("change", async event => {
   const file = event.target.files && event.target.files[0];
   event.target.value = "";
   if (!file) return;
@@ -93,7 +251,7 @@ document.getElementById("restoreWorksheet").addEventListener("change", async eve
   const immutable = ["agenda_slot", "source_slot", "source_kind", "source_stage",
     "source_next_role", "proposed_review_date", "date_bucket"];
   const safeNote = note => typeof note === "string" && note.length <= 160 &&
-    !/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/u.test(note);
+    !/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u2069]/u.test(note);
   const valid = imported.entries.every((entry, index) => entry &&
     typeof entry === "object" && !Array.isArray(entry) &&
     exactKeys(entry, original.entries[index]) &&
@@ -114,10 +272,10 @@ document.getElementById("restoreWorksheet").addEventListener("change", async eve
     selects[1].value = entry.proposed_role;
     tr.querySelector("input[type=text]").value = entry.note;
   });
-  reportProgress();
+  batchUndo = null; clearSelection(); filterRows(); reportProgress();
   state.textContent = "PRIVATE HUMAN worksheet reopened locally. Native source/JSON admission is still required before a new bundle.";
 });
-reportProgress();
+reportProgress(); filterRows();
 document.getElementById("saveWorksheet").addEventListener("click", () => {
   for (const entry of data.entries) {
     if (entry.note.length > 160 || /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/u.test(entry.note)) {
@@ -134,9 +292,9 @@ document.getElementById("saveWorksheet").addEventListener("click", () => {
   link.download = "lightup-PRIVATE-HUMAN-worksheet.json"; link.rel = "noopener";
   link.click(); setTimeout(() => URL.revokeObjectURL(uri), 5000);
   state.textContent = "PRIVATE HUMAN worksheet downloaded locally. Original agenda unchanged; return requires native strict readmission.";
-});
-'''.strip()
+});'''.strip()
 CSS = """body{background:#f3f5f8;color:#1b2837;font:16px/1.45 system-ui,sans-serif;margin:0 auto;max-width:1200px;padding:1.5rem}h1{margin:.25rem 0}header,section{background:#fff;border:1px solid #ccd5df;border-radius:8px;padding:1rem;margin-bottom:1rem}.hold{border-left:5px solid #9b5012;padding:.8rem;background:#fff8ea;font-weight:700}.table{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.84rem}th,td{border:1px solid #dbe2e9;text-align:left;vertical-align:top;padding:.5rem}th{background:#e8edf4}input[type=text]{min-width:190px;max-width:250px}select,input[type=text],button{font:inherit;padding:.4rem;border-radius:4px;border:1px solid #9eabb9}button{cursor:pointer;background:#e2f0ff}p small{color:#566477}@media print{button,input[type=text]{display:none}}"""
+CSS += """ .human-batch-tools{background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:.8rem;margin:.8rem 0}.human-batch-row{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;margin:.45rem 0}.human-batch-row label{font-weight:650}.human-batch-tools input[type=search]{min-width:190px;max-width:300px}.human-batch-tools button:disabled{opacity:.5;cursor:not-allowed}#batchSummary,#visibleHumanRows{font-size:.9rem;color:#334155;margin:.45rem 0}[hidden]{display:none!important}@media print{.human-batch-tools,#selectVisibleRows,tbody input[type=checkbox]{display:none!important}}"""
 
 
 class Hold(ValueError):
@@ -234,7 +392,31 @@ def render_worksheet(rows, reference_date):
         " Do not enter secrets, original targets or customer identifiers.</p></header>"
         "<section><p>Local reference day: " + escape(reference_date) + " · rows " +
         str(len(seed["entries"])) + " · original ordinal order only, not chronology.</p>"
-        "<div class='table'><table><thead><tr><th>Source ordinal</th><th>Proposed day</th>"
+        "<div class='human-batch-tools'><h2>Filter and batch HUMAN discussion</h2>"
+        "<div class='human-batch-row'><label for='filterHumanStatus'>Current HUMAN state</label>"
+        "<select id='filterHumanStatus'><option value=''>All states</option>"
+        "<option>PENDING_HUMAN</option><option>DISCUSSING</option><option>AWAITING_ORIGINAL</option>"
+        "<option>DOCUMENTED_DISCUSSION</option></select>"
+        "<label for='filterProposedRole'>Proposed role</label><select id='filterProposedRole'>"
+        "<option value=''>All roles</option><option>unassigned</option><option>source_owner</option>"
+        "<option>reviewer</option><option>privacy</option><option>operator</option></select>"
+        "<label for='filterHumanSearch'>Search fixed row fields</label>"
+        "<input id='filterHumanSearch' type='search' maxlength='100' autocomplete='off' "
+        "placeholder='Agenda/source ordinal, kind or stage'></div>"
+        "<div class='human-batch-row'><label for='batchHumanStatus'>Set HUMAN state</label>"
+        "<select id='batchHumanStatus'><option value=''>Leave unchanged</option>"
+        "<option>PENDING_HUMAN</option><option>DISCUSSING</option><option>AWAITING_ORIGINAL</option>"
+        "<option>DOCUMENTED_DISCUSSION</option></select>"
+        "<label for='batchProposedRole'>Set proposed role</label><select id='batchProposedRole'>"
+        "<option value=''>Leave unchanged</option><option>unassigned</option><option>source_owner</option>"
+        "<option>reviewer</option><option>privacy</option><option>operator</option></select>"
+        "<button type='button' id='applyHumanBatch' disabled>Preview &amp; confirm selected changes</button>"
+        "<button type='button' id='undoHumanBatch' disabled>Undo last batch</button>"
+        "<button type='button' id='clearSelectedRows' disabled>Clear selection</button></div>"
+        "<p id='visibleHumanRows' role='status' aria-live='polite'></p>"
+        "<p id='batchSummary' role='status' aria-live='polite'>Select visible rows and choose a proposed HUMAN change.</p></div>"
+        "<div class='table'><table><thead><tr><th><input id='selectVisibleRows' type='checkbox' "
+        "aria-label='Select all visible HUMAN rows'></th><th>Source ordinal</th><th>Proposed day</th>"
         "<th>Original role suggestion</th><th>Original HUMAN stage</th>"
         "<th>New HUMAN discussion state</th><th>Proposed role</th><th>PRIVATE note (max 160)</th>"
         "</tr></thead><tbody id='humanRows'></tbody></table></div>"
