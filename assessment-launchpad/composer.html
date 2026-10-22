@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-INoHIxX1JSm4YaPSLhRLcMNrZ6+K1suQTGXYxV5E1Zs='; style-src 'sha256-O3DeetiOr2PGN3ROfFkBTV3Nijv/R3hXW54fTkzzKgw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-N49TL1/ebrFuQXtiCUi7DXe60kQ0qY44klOXaLvKc/Y='; style-src 'sha256-O3DeetiOr2PGN3ROfFkBTV3Nijv/R3hXW54fTkzzKgw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}.row-actions select{width:auto;max-width:9rem;padding:.45rem}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}textarea,select{width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem}textarea{min-height:10rem;resize:vertical}label{font-weight:650}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
@@ -22,16 +22,17 @@
     <div id="endpointList" aria-label="Local endpoint manifest"></div>
     <p class="count" id="endpointCount">0 / 16 slots</p>
     <p class="count" id="manifestSize" role="status" aria-live="polite">Estimated manifest size: 0 / 16384 bytes</p>
+    <p class="note">Choose up to eight PRIVATE local manifest files in the file picker. File selection order is local and unauthenticated; each file is checked separately, then the combined result is reviewed before Apply. Only the native CLI can enforce original lab scope.</p>
     <label for="fileMode">File import action</label>
     <select id="fileMode"><option value="replace">Replace current draft with imported manifest</option><option value="append">Append imported manifest after filled draft slots</option></select>
     <div class="controls">
       <button id="addEndpoint" type="button" class="secondary">Add endpoint</button>
       <button id="cleanDraft" type="button" class="secondary">Review draft cleanup</button>
-      <button id="chooseManifest" type="button" class="secondary">Import existing manifest</button>
+      <button id="chooseManifest" type="button" class="secondary">Import 1–8 manifest files</button>
       <button id="showBulk" type="button" class="secondary" aria-expanded="false" aria-controls="bulkPanel">Paste multiple endpoints</button>
       <button id="toggleMask" type="button" class="secondary" aria-pressed="false">Hide endpoint values</button>
       <button id="undoAppliedImport" type="button" class="secondary" disabled>Undo last applied import</button>
-      <input id="manifestImport" type="file" accept=".txt,text/plain" hidden>
+      <input id="manifestImport" type="file" accept=".txt,text/plain" multiple hidden>
       <button id="downloadManifest" type="button" disabled>Download private text manifest</button>
     </div>
     <p id="message" class="message" role="status" aria-live="polite">Add a local lab URL to begin.</p>
@@ -497,33 +498,49 @@
   }
   async function importManifest() {
     const ticket = ++importSequence;
-    const input = $("manifestImport"), file = input.files && input.files[0];
+    const input = $("manifestImport"), files = Array.from(input.files || []);
     input.value = "";
     pendingImport = null;
     renderImportPreview();
-    if (!file) return;
+    if (!files.length) return;
     const baseline = values();
     const mode = $("fileMode").value;
     try {
-      if (file.size < 1 || file.size > 16384) throw Error("Too large or empty");
-      // Decode strictly, preserving BOM so noncanonical imports fail closed.
-      const text = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true})
-        .decode(await file.arrayBuffer());
+      if (files.length > 8) throw Error("Too many files");
+      const sourceTexts = [];
+      let sourceBytes = 0;
+      for (const file of files) {
+        if (file.size < 1 || file.size > 16384) throw Error("Too large or empty");
+        sourceBytes += file.size;
+        // Strict bounded UTF-8 decode; original bytes never leave the local browser.
+        const text = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true})
+          .decode(await file.arrayBuffer());
+        if (ticket !== importSequence) return;
+        if (text.startsWith("\uFEFF") || text.includes("\u0000")) throw Error("BOM or NUL");
+        sourceTexts.push(text);
+      }
       if (ticket !== importSequence || $("fileMode").value !== mode ||
           values().length !== baseline.length ||
           !values().every((value, index) => value === baseline[index])) {
-        $("message").textContent = "Draft changed during file read; file import cancelled and edits preserved.";
+        $("message").textContent = "Draft changed during file read; import cancelled and edits preserved.";
         return;
       }
-      if (text.startsWith("\uFEFF") || text.includes("\u0000")) throw Error("BOM or NUL");
-      const sourceLines = text.split(/\r\n|\r|\n|\u0085|\u2028|\u2029/);
-      if (sourceLines.length > 1 && sourceLines[sourceLines.length - 1] === "" &&
-          /(?:\r\n|\r|\n|\u0085|\u2028|\u2029)$/.test(text)) sourceLines.pop();
-      const blankLines = sourceLines.filter(line => !line.trim()).length;
-      const commentLines = sourceLines.filter(line => line.trim() && line.trimStart().startsWith("#")).length;
-      const endpointLines = sourceLines.filter(line => line.trim() && !line.trimStart().startsWith("#"));
-      const trimmedLines = endpointLines.filter(line => line !== line.trim()).length;
-      const sourceEntries = endpointLines.map(line => line.trim());
+      let sourceLinesCount = 0, blankLines = 0, commentLines = 0, trimmedLines = 0;
+      const sourceEntries = [];
+      for (const text of sourceTexts) {
+        const lines = text.split(/\r\n|\r|\n|\u0085|\u2028|\u2029/);
+        if (lines.length > 1 && lines[lines.length - 1] === "" &&
+            /(?:\r\n|\r|\n|\u0085|\u2028|\u2029)$/.test(text)) lines.pop();
+        sourceLinesCount += lines.length;
+        blankLines += lines.filter(line => !line.trim()).length;
+        commentLines += lines.filter(line => line.trim() && line.trimStart().startsWith("#")).length;
+        const endpoints = lines.filter(line => line.trim() && !line.trimStart().startsWith("#"));
+        trimmedLines += endpoints.filter(line => line !== line.trim()).length;
+        const admitted = endpoints.map(line => line.trim());
+        const sourceCheck = validate(admitted);
+        if (!sourceCheck.entries) throw Error(sourceCheck.error);
+        sourceEntries.push(...admitted);
+      }
       const sourceCheck = validate(sourceEntries);
       if (!sourceCheck.entries) throw Error(sourceCheck.error);
       if (mode !== "replace" && mode !== "append") throw Error("Invalid file mode");
@@ -536,17 +553,18 @@
       // Stage against an exact editor snapshot. Re-admit the complete combined proposal.
       const skippedDraft = mode === "append" && filledCurrent.length !== baseline.length;
       const requiresAck = blankLines > 0 || commentLines > 0 || trimmedLines > 0 || skippedDraft;
-      pendingImport = {entries: entries.slice(), sourceBytes: file.size, sourceLines: sourceLines.length,
+      pendingImport = {entries: entries.slice(), sourceBytes, sourceLines: sourceLinesCount,
         blankLines, commentLines, trimmedLines, requiresAck, normalizationAcknowledged: !requiresAck,
         baseline: baseline.slice(), skippedDraft,
-        sourceKind: mode === "append" ? "Imported local file (append)" : "Imported local file (replace)"};
+        sourceKind: "Imported " + files.length + " local file(s) (" + mode + ")"};
       renderImportPreview();
       $("message").textContent = "Review the proposed import below. Current editor remains unchanged until Apply.";
     } catch (error) {
       if (ticket !== importSequence) return;
       const reason = error && typeof error.message === "string" ? error.message : "";
       const details = {
-        "Too large or empty": "Choose a non-empty file no larger than 16 KiB.",
+        "Too large or empty": "Each local file must be non-empty and at most 16 KiB.",
+        "Too many files": "Choose no more than eight local source manifests.",
         "Invalid file mode": "Choose replace or append before selecting the file.",
         "Invalid current draft": "Complete and correct the current endpoint slots before appending a file.",
         "BOM or NUL": "UTF-8 BOM and NUL characters are not accepted.",
@@ -605,7 +623,7 @@
   $("fileMode").addEventListener("change", () => {
     importSequence++;
     if (pendingImport && pendingImport.sourceKind &&
-        pendingImport.sourceKind.startsWith("Imported local file")) {
+        pendingImport.sourceKind.startsWith("Imported ")) {
       pendingImport = null;
       renderImportPreview();
       $("message").textContent = "File import mode changed; earlier proposal cancelled. Choose the local file again.";
