@@ -29,7 +29,7 @@ def canonical_lines(endpoints):
 
 
 def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
-            *, preview_only=False, more_paths=()):
+            *, preview_only=False, more_paths=(), omit_sources=(), ack_omit=False):
     if mode not in ("append", "replace"):
         raise Hold("explicit append or replace mode required")
     source_paths = (first_path, second_path, *more_paths)
@@ -39,13 +39,23 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
     originals = tuple(item[0] for item in opened)
     if len(set(originals)) != len(originals):
         raise Hold("original PRIVATE manifest paths must be distinct")
+    omissions = tuple(omit_sources)
+    if len(omissions) != len(set(omissions)) or any(
+            ordinal < 1 or ordinal > len(opened) for ordinal in omissions):
+        raise Hold("omit-source ordinal is repeated or outside the selected input series")
+    if omissions and not ack_omit and not preview_only:
+        raise Hold("source omission requires explicit acknowledgement")
+    if mode == "replace" and 1 in omissions:
+        raise Hold("first source is already discarded in replace mode")
     normalized = any(raw != canonical_lines(lines) for _, raw, lines in opened)
     if normalized and not ack_normalization and not preview_only:
         raise Hold("source whitespace or comments would be omitted; acknowledge normalization")
     if mode == "replace" and not ack_replace and not preview_only:
         raise Hold("replacement requires explicit acknowledgement")
-    merged = [item for _, _, lines in
-              (opened if mode == "append" else opened[1:]) for item in lines]
+    selected = [(ordinal, lines) for ordinal, (_, _, lines) in
+                enumerate(opened, 1)
+                if ordinal not in omissions and (mode == "append" or ordinal != 1)]
+    merged = [item for _, lines in selected for item in lines]
     if not 1 <= len(merged) <= MAX_ENDPOINTS:
         raise Hold("combined manifest exceeds 16 endpoint slots")
     if len(set(merged)) != len(merged):
@@ -59,16 +69,20 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
         "first_endpoints":len(opened[0][2]),
         "second_endpoints":len(opened[1][2]),
         "result_endpoints":len(merged),
-        "retained_first_endpoints":len(opened[0][2]) if mode == "append" else 0,
-        "discarded_first_endpoints":0 if mode == "append" else len(opened[0][2]),
+        "retained_first_endpoints":len(opened[0][2]) if mode == "append" and 1 not in omissions else 0,
+        "discarded_first_endpoints":0 if mode == "append" and 1 not in omissions else len(opened[0][2]),
         "normalization_requires_ack":normalized,
         "replacement_requires_ack":mode == "replace",
     }
-    if len(opened) > 2:
+    if len(opened) > 2 or omissions:
         counts.update(source_manifests=len(opened),
                       additional_endpoints=sum(len(row[2]) for row in opened[2:]))
-    receipt = dict(schema="lightup.offline-manifest-combine.v1" if len(opened) == 2
-                   else "lightup.offline-manifest-combine.v2",
+    if omissions:
+        counts.update(omitted_sources=len(omissions),
+                      omitted_endpoints=sum(len(opened[i - 1][2]) for i in omissions))
+    receipt = dict(schema="lightup.offline-manifest-combine.v1" if len(opened) == 2 and not omissions
+                   else ("lightup.offline-manifest-combine.v3" if omissions
+                         else "lightup.offline-manifest-combine.v2"),
                    status="REVIEW_ONLY", mode=mode, counts=counts,
                    first_input_sha256=sha256(opened[0][1]).hexdigest(),
                    second_input_sha256=sha256(opened[1][1]).hexdigest(),
@@ -80,7 +94,10 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
                    dispatch_allowed=False, release_allowed=False,
                    human_go=False, client_identity_verified=False,
                    operator_identity_verified=False)
-    if len(opened) > 2:
+    if omissions:
+        receipt["omitted_source_ordinals"] = sorted(omissions)
+        receipt["omission_acknowledged"] = bool(ack_omit)
+    if len(opened) > 2 or omissions:
         receipt["sources"] = [
             dict(ordinal=i, endpoints=len(lines), input_sha256=sha256(raw).hexdigest())
             for i, (_, raw, lines) in enumerate(opened, start=1)]
@@ -88,7 +105,7 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace,
     if len(receipt_bytes) > FILES[SUMMARY]:
         raise Hold("private source receipt exceeds bound")
     artifacts = {MANIFEST:canonical, SUMMARY:receipt_bytes}
-    if len(opened) > 2:
+    if len(opened) > 2 or omissions:
         artifacts[BOARD] = render_board(receipt)
     return originals, artifacts, counts
 
@@ -97,6 +114,7 @@ def run(args):
     originals, files, counts = prepare(
         args.first_manifest, args.second_manifest, args.mode,
         args.ack_normalization, args.ack_replace, more_paths=args.more_manifest,
+        omit_sources=args.omit_source, ack_omit=args.ack_omit,
     )
     output_fd, output_abs = open_output_directory(args.output_dir)
     extra_directory = args.handoff_dir or args.workspace_dir
@@ -190,6 +208,10 @@ def main(argv=None):
     parser.add_argument("--more-manifest", action="append", default=[],
                         help="additional owner-private 0600 manifest (repeat up to six times)")
     parser.add_argument("--mode", choices=("append", "replace"), required=True)
+    parser.add_argument("--omit-source", type=int, action="append", default=[],
+                        help="omit original PRIVATE source ordinal (repeatable, 1-based)")
+    parser.add_argument("--ack-omit", action="store_true",
+                        help="confirm intentional exclusion of original source files")
     parser.add_argument("--output-dir", help="separate existing private output directory (0700); omit only in dry-run")
     secondary = parser.add_mutually_exclusive_group()
     secondary.add_argument("--handoff-dir", help="optional second private 0700 directory for original preview bundle")
@@ -206,12 +228,15 @@ def main(argv=None):
                 raise Hold("dry-run is read-only and cannot select publication or reopen directories")
             _, _, counts = prepare(args.first_manifest, args.second_manifest, args.mode,
                                    args.ack_normalization, args.ack_replace, preview_only=True,
-                                   more_paths=args.more_manifest)
+                                   more_paths=args.more_manifest,
+                                   omit_sources=args.omit_source, ack_omit=args.ack_omit)
             print("MANIFEST_COMBINE_REVIEW_ONLY · mode=" + args.mode +
                   " · first=" + str(counts["first_endpoints"]) +
                   " · incoming=" + str(counts["second_endpoints"]) +
                   " · sources=" + str(counts.get("source_manifests", 2)) +
                   " · extra_endpoints=" + str(counts.get("additional_endpoints", 0)) +
+                  " · omitted_sources=" + str(counts.get("omitted_sources", 0)) +
+                  " · omission_ack_needed=" + str(bool(args.omit_source)).lower() +
                   " · retained=" + str(counts["retained_first_endpoints"]) +
                   " · discarded=" + str(counts["discarded_first_endpoints"]) +
                   " · result=" + str(counts["result_endpoints"]) +

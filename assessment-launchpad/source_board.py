@@ -20,7 +20,8 @@ def render_board(receipt):
     for row in rows:
         ordinal = row["ordinal"]
         count = row["endpoints"]
-        included = receipt["mode"] == "append" or ordinal > 1
+        included = (ordinal not in receipt.get("omitted_source_ordinals", [])
+                    and (receipt["mode"] == "append" or ordinal > 1))
         slots = (str(position) if count == 1 else
                  str(position) + "–" + str(position + count - 1)) if included else "—"
         if included:
