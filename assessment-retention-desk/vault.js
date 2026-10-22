@@ -88,6 +88,13 @@
     const encoded = JSON.stringify(envelope);
     if (new TextEncoder().encode(encoded).length > MAX_ENVELOPE_BYTES)
       throw Error("Versleutelde envelope overschrijdt 256 KiB.");
+    // Do not offer an encrypted download until the exact envelope opens with this key.
+    // The plaintext is compared in memory only; no file or browser storage is written.
+    const reopened = await decryptEnvelope(
+      new Blob([encoded], {type:"application/json;charset=utf-8"}), pass
+    );
+    if (reopened !== raw)
+      throw Error("Lokale zelfcontrole van de versleutelde HUMAN-planning is mislukt; export geweigerd.");
     return encoded;
   }
   function clearPasswords() {
