@@ -207,6 +207,13 @@ def main(argv=None):
                 common = os.path.commonpath((output_abs, source))
                 if common in (output_abs, source):
                     raise Hold("change output must remain separate from both source directories")
+            # Re-admit both source bundles at the output boundary; a manifest
+            # changed while the comparison was being prepared must never be published.
+            _, latest_before_raw, latest_before = admit_saved_bundle(args.before_dir)
+            _, latest_after_raw, latest_after = admit_saved_bundle(args.after_dir)
+            if (latest_before_raw != before_raw or latest_after_raw != after_raw
+                    or latest_before != before or latest_after != after):
+                raise Hold("original private manifest changed during change-desk preparation")
             if args.verify_output_dir:
                 found = set(os.listdir(fd))
                 legacy_names = set(contents) - {DELTA_CSV}
