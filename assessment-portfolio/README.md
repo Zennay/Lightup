@@ -159,9 +159,13 @@ visible human-planning rows*, fixed admitted field values, and an explicit
 REVIEW_ONLY authority column. Text is quoted and spreadsheet-formula-like
 prefixes are neutralized. The downloaded CSV is explicitly **PRIVATE**,
 not the anonymous aggregate and not an instruction to contact any recipient.
-**Print visible PRIVATE queue** opens the browser's print dialog and excludes
-hidden roles/rows and the control panel; printing may still retain sensitive
-local planning metadata. Neither action changes original source documents,
+**Print visible PRIVATE queue** opens the browser's print dialog and prints
+only the role sections/rows visible under the current local filters, together
+with an explicit print-only filter-context summary and HOLD disclaimer.
+The PRIVATE whole-portfolio summary, per-agenda workload and same-day cluster
+matrices are deliberately **excluded from filtered print**, as they may carry
+unfiltered planning details. Printing may still retain sensitive local
+planning metadata. Neither action changes original source documents,
 rounds or the server, and no file is uploaded. JavaScript and additional
 print styles are each exact SHA-256 CSP-pinned; there is no network, external
 asset, browser persistence, automatic dispatch, scanner or permission
