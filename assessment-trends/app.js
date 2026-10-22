@@ -436,7 +436,15 @@
       (chosenStage==="all"||humanStage(e)===chosenStage));
   }
   // A bounded HUMAN-only visible-page edit; neither a source verdict nor approval.
-  let stageBatchUndo=null;
+  let stageBatchUndo=null,stageSelectionDataset=null,stageSelectionContext="";
+  const selectedStageEvents=new Set();
+  function syncStageSelectionContext(){
+    const context=[reviewOffset,$("reviewKind").value,$("reviewGroup").value,
+      $("reviewSlot").value,$("reviewStage").value].join("|");
+    if(stageSelectionDataset!==snapshots||stageSelectionContext!==context)
+      selectedStageEvents.clear();
+    stageSelectionDataset=snapshots;stageSelectionContext=context;
+  }
   function sameStageMap(left,right){
     return left.size===right.size&&[...left].every(([key,value])=>right.get(key)===value);
   }
@@ -445,30 +453,35 @@
   }
   function updateStageBatchControls(){
     const chosen=$("reviewBulkStage").value,rows=visibleReviewRows();
+    const selected=rows.filter(event=>selectedStageEvents.has(humanStageKey(event)));
     const changed=HUMAN_STAGES.includes(chosen)?
-      rows.filter(event=>humanStage(event)!==chosen).length:0;
+      selected.filter(event=>humanStage(event)!==chosen).length:0;
+    $("reviewBulkSelectAll").disabled=!rows.length;
+    $("reviewBulkSelectAll").checked=!!rows.length&&selected.length===rows.length;
+    $("reviewBulkSelectAll").indeterminate=selected.length>0&&selected.length<rows.length;
     $("reviewBulkApply").disabled=changed===0;
     const canUndo=!!stageBatchUndo&&stageBatchUndo.dataset===snapshots&&
       sameStageMap(stageBatchUndo.after,humanReviewStages);
     $("reviewBulkUndo").disabled=!canUndo;
     if(stageBatchUndo&&!canUndo)stageBatchUndo=null;
     if(changed)
-      $("reviewBulkStatus").textContent=changed+" of "+rows.length+
-        " visible filtered events would change to "+chosen+
-        ". Nothing has changed yet; other pages are excluded.";
+      $("reviewBulkStatus").textContent=changed+" of "+selected.length+
+        " selected events on this visible page would change to "+chosen+
+        ". Nothing has changed yet; unselected events and other pages are excluded.";
     else if(rows.length)
       $("reviewBulkStatus").textContent="Visible page: "+rows.length+
-        " events. Select a different HUMAN stage to preview a change; other pages excluded.";
+        " events, "+selected.length+" selected. Select row checkboxes and a different HUMAN stage.";
     else
       $("reviewBulkStatus").textContent="No visible events to change; existing HUMAN marks stay untouched.";
   }
   function applyStageBatch(){
-    const stage=$("reviewBulkStage").value,rows=visibleReviewRows();
+    const stage=$("reviewBulkStage").value,rows=visibleReviewRows().filter(
+      event=>selectedStageEvents.has(humanStageKey(event)));
     if(!HUMAN_STAGES.includes(stage)||!rows.length)return;
     const changes=rows.filter(event=>humanStage(event)!==stage);
     if(!changes.length)return;
     if(!window.confirm("Apply HUMAN-only self-report "+stage+" to "+changes.length+
-      " changed events on this visible page (of "+rows.length+" shown)? Other pages"+
+      " changed selected events on this visible page (of "+rows.length+" selected)? Unselected events and other pages"+
       " are untouched. This does NOT verify any finding, remediation, consent or approval."))return;
     const before=new Map(humanReviewStages),dataset=snapshots;
     for(const event of changes){
@@ -477,6 +490,7 @@
       else humanReviewStages.set(key,stage);
     }
     stageBatchUndo={dataset,before,after:new Map(humanReviewStages)};
+    selectedStageEvents.clear();
     renderReviewQueue();renderHumanWorkPlan();
     $("reviewBulkStatus").textContent="Applied "+changes.length+
       " local HUMAN marks. Undo is available until another stage edit or source replacement.";
@@ -526,6 +540,7 @@
     else $("reviewSummary").replaceChildren();
     const rows=snapshots.length?reviewSelection():[];
     reviewOffset=Math.min(reviewOffset,Math.max(0,Math.floor((rows.length-1)/REVIEW_PAGE)*REVIEW_PAGE));
+    syncStageSelectionContext();
     $("reviewExportCsv").disabled=!rows.length;
     $("reviewExportJson").disabled=!rows.length;
     for(const id of ["reviewExportStages","reviewExportStageCsv","reviewExportStageBrief"])
@@ -545,7 +560,7 @@
     updateStageBatchControls();
     if(!rows.length)return;
     const table=document.createElement("table"),head=document.createElement("thead"),tr=document.createElement("tr");
-    for(const name of ["Manual slot","Anonymous case","Metric","Review group","Source-reported change",
+    for(const name of ["Select","Manual slot","Anonymous case","Metric","Review group","Source-reported change",
       "Candidate","Δ","Source status","Human stage · self-report only","Human follow-up"]){
       const th=document.createElement("th");th.scope="col";th.textContent=name;tr.append(th);
     }
@@ -553,6 +568,18 @@
     const body=document.createElement("tbody");
     for(const event of rows.slice(reviewOffset,reviewOffset+REVIEW_PAGE)){
       const line=document.createElement("tr");
+      const selectCell=document.createElement("td"),checkbox=document.createElement("input");
+      checkbox.type="checkbox";
+      checkbox.checked=selectedStageEvents.has(humanStageKey(event));
+      checkbox.setAttribute("aria-label","Select HUMAN batch event scenario "+
+        event.scenarioSlot+" metric "+event.metric+" manual slot "+event.snapshotSlot);
+      checkbox.addEventListener("change",()=>{
+        const key=humanStageKey(event);
+        if(checkbox.checked)selectedStageEvents.add(key);
+        else selectedStageEvents.delete(key);
+        updateStageBatchControls();
+      });
+      selectCell.append(checkbox);line.append(selectCell);
       for(const value of [event.snapshotSlot,"Scenario "+String(event.scenarioSlot).padStart(2,"0"),
         event.metric,event.group,REVIEW_KINDS[event.kind],fmt(event.candidate),fmt(event.delta),
         event.sourceStatus]){
@@ -565,6 +592,7 @@
       }
       stageSelect.value=humanStage(event);
       stageSelect.addEventListener("change",()=>{
+        selectedStageEvents.clear();
         const key=humanStageKey(event);
         stageBatchUndo=null;
         if(stageSelect.value==="UNREVIEWED")humanReviewStages.delete(key);
@@ -1494,6 +1522,7 @@
       if(!window.confirm("Exact ordered source bytes matched. Replace the CURRENT local HUMAN marks and saved notes with this PRIVATE unsigned file? Unsaved scratch text will be discarded. Matching bytes are not proof of source authenticity.")){
         $("sessionMessage").textContent="PRIVATE restore cancelled. Existing HUMAN work left unchanged.";return;
       }
+      stageBatchUndo=null;selectedStageEvents.clear();
       humanReviewStages.clear();for(const [key,value] of newStages)humanReviewStages.set(key,value);
       notes.clear();for(const [key,value] of newNotes)notes.set(key,value);
       scratch.clear();reviewOffset=0;render();
@@ -1924,6 +1953,15 @@
   $("reviewExportStages").addEventListener("click",()=>exportHumanStages("json"));
   $("reviewExportStageCsv").addEventListener("click",()=>exportHumanStages("csv"));
   $("reviewExportStageBrief").addEventListener("click",()=>exportHumanStages("html"));
+  $("reviewBulkSelectAll").addEventListener("change",()=>{
+    const rows=visibleReviewRows();
+    for(const event of rows){
+      const key=humanStageKey(event);
+      if($("reviewBulkSelectAll").checked)selectedStageEvents.add(key);
+      else selectedStageEvents.delete(key);
+    }
+    renderReviewQueue();
+  });
   $("reviewBulkStage").addEventListener("change",updateStageBatchControls);
   $("reviewBulkApply").addEventListener("click",applyStageBatch);
   $("reviewBulkUndo").addEventListener("click",undoStageBatch);

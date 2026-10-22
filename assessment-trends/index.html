@@ -107,7 +107,7 @@
   <p id="reviewHumanSummary" class="message" role="status" aria-live="polite">No local HUMAN stages.</p>
   <p id="reviewCount" class="message" role="status" aria-live="polite">Import snapshots to see local source-flag transitions.</p>
   <div class="queue-controls" aria-label="HUMAN-only visible-page stage editor">
-    <label>Batch HUMAN stage for the current visible page (maximum 100 rows)
+    <label>Batch HUMAN stage for explicitly selected rows on the visible page (maximum 100)
       <select id="reviewBulkStage">
         <option value="">Choose a HUMAN self-report stage…</option>
         <option value="UNREVIEWED">UNREVIEWED (clear local mark)</option>
@@ -116,12 +116,13 @@
         <option value="HUMAN_NOTED">HUMAN_NOTED</option>
       </select>
     </label>
+    <label><input id="reviewBulkSelectAll" type="checkbox" disabled> Select all events on this visible page</label>
     <div class="controls">
-      <button id="reviewBulkApply" type="button" disabled>Preview &amp; confirm visible-page changes</button>
+      <button id="reviewBulkApply" type="button" disabled>Preview &amp; confirm selected-row changes</button>
       <button id="reviewBulkUndo" type="button" class="secondary" disabled>Undo last batch</button>
     </div>
   </div>
-  <p id="reviewBulkStatus" class="message" role="status" aria-live="polite">Batch edits affect only the visible, filtered page after explicit HUMAN confirmation. This is not an approval, remediation finding or permission.</p>
+  <p id="reviewBulkStatus" class="message" role="status" aria-live="polite">Choose visible row checkboxes before applying a batch; only those selected rows change after confirmation. This is not an approval, remediation finding or permission.</p>
   <div id="reviewTable" class="tablewrap" role="region" aria-label="Paginated anonymous change events" tabindex="0"></div>
   <div class="controls">
     <button id="reviewPrev" type="button" class="secondary" disabled>Previous 100</button>
@@ -132,7 +133,7 @@
     <button id="reviewExportStageCsv" type="button" class="ghost" disabled>Export PRIVATE HUMAN CSV</button>
     <button id="reviewExportStageBrief" type="button" class="ghost" disabled>Export PRIVATE printable HUMAN brief</button>
   </div>
-  <p class="footnote">Visible-page batch changes apply to a maximum of 100 filtered rows only after confirmation. Undo restores the previous local HUMAN stage map only if no later stage change or source replacement occurred. These marks are never verified evidence or approvals.</p>
+  <p class="footnote">Only explicitly selected checkboxes on the current filtered page (maximum 100) can be batch-changed after confirmation. Undo restores the previous local HUMAN stage map only if no later stage change or source replacement occurred. These marks are never verified evidence or approvals.</p>
   <p class="footnote">HUMAN stages are only local, unsigned self-reports; they reset when another snapshot batch is admitted, demo is loaded or data are forgotten. HUMAN stages and note text are never included in anonymous reports. The separately confirmed PRIVATE JSON, CSV and script-free HTML exports record only manual ordinals and stages; it cannot authenticate the original source and must not be imported against a different cohort.</p>
   <p class="footnote">Export contains only manually ordered anonymous slots, fixed metric/group labels, numeric candidate/delta, source flags and literal false authority fields. No original IDs, uploaded content, filenames, hashes or HUMAN notes. The order is neither independently authenticated chronology nor a verified security result.</p>
 </section>
