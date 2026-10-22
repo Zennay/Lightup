@@ -355,8 +355,7 @@ def render_private_html(summary, rows):
 
 # Fixed JavaScript enhances only the already admitted PRIVATE table rows.
 # It performs no fetch, worker, storage, evaluation, submission or export.
-INTERACTIVE_SCRIPT = "\"use strict\";\nconst panel = document.getElementById(\"privateFilterPanel\");\nif (panel) {\n  const sections = Array.from(document.querySelectorAll(\"section\")).filter(\n    section => (section.querySelector(\"h2\")?.textContent || \"\").startsWith(\"Neutral role:\")\n  );\n  const entries = sections.flatMap(section =>\n    Array.from(section.querySelectorAll(\"tbody tr\")).map(row => ({ section, row, cells: Array.from(row.cells, cell => cell.textContent || \"\") }))\n  );\n  const role = document.getElementById(\"localRole\");\n  const stage = document.getElementById(\"localStage\");\n  const bucket = document.getElementById(\"localBucket\");\n  const search = document.getElementById(\"localSearch\");\n  const counter = document.getElementById(\"visibleHumanItems\");\n  const update = () => {\n    let visible = 0;\n    for (const item of entries) {\n      const found = (!role.value || item.cells[4] === role.value)\n        && (!stage.value || item.cells[3] === stage.value)\n        && (!bucket.value || item.cells[6] === bucket.value)\n        && (!search.value.trim() || item.cells.join(\" \").toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase()));\n      item.row.hidden = !found;\n      if (found) visible++;\n    }\n    for (const section of sections) {\n      section.hidden = !Array.from(section.querySelectorAll(\"tbody tr\")).some(row => !row.hidden);\n    }\n    counter.textContent = String(visible) + \" of \" + String(entries.length) + \" private HUMAN planning rows shown. These are not assigned or authorized actions.\";\n  };\n  for (const control of [role, stage, bucket, search]) control.addEventListener(\"input\", update);\n  document.getElementById(\"resetLocalFilters\").addEventListener(\"click\", () => {\n    role.value = \"\"; stage.value = \"\"; bucket.value = \"\"; search.value = \"\"; update(); search.focus();\n  });\n  update();\n}"
-
+INTERACTIVE_SCRIPT = "\"use strict\";\nconst panel = document.getElementById(\"privateFilterPanel\");\nif (panel) {\n  const roleSections = Array.from(document.querySelectorAll(\"section\")).filter(\n    section => (section.querySelector(\"h2\")?.textContent || \"\").startsWith(\"Neutral role:\")\n  );\n  const entries = roleSections.flatMap(section =>\n    Array.from(section.querySelectorAll(\"tbody tr\")).map(row => ({\n      section, row, cells: Array.from(row.cells, cell => cell.textContent || \"\")\n    }))\n  );\n  const controls = {\n    role: document.getElementById(\"localRole\"),\n    stage: document.getElementById(\"localStage\"),\n    bucket: document.getElementById(\"localBucket\"),\n    query: document.getElementById(\"localSearch\")\n  };\n  const counter = document.getElementById(\"visibleHumanItems\");\n  const shown = () => entries.filter(item => !item.row.hidden && !item.section.hidden);\n  const update = () => {\n    let visible = 0;\n    for (const item of entries) {\n      const accepted = (!controls.role.value || item.cells[4] === controls.role.value)\n        && (!controls.stage.value || item.cells[3] === controls.stage.value)\n        && (!controls.bucket.value || item.cells[6] === controls.bucket.value)\n        && (!controls.query.value.trim() ||\n            item.cells.join(\" \").toLocaleLowerCase().includes(controls.query.value.trim().toLocaleLowerCase()));\n      item.row.hidden = !accepted;\n      if (accepted) visible++;\n    }\n    for (const section of roleSections)\n      section.hidden = !Array.from(section.querySelectorAll(\"tbody tr\")).some(row => !row.hidden);\n    counter.textContent = visible + \" of \" + entries.length\n      + \" private HUMAN planning rows shown. Filtering is only a view, never an approval.\";\n    document.getElementById(\"exportVisibleHumanRows\").disabled = visible === 0;\n  };\n  for (const input of Object.values(controls)) input.addEventListener(\"input\", update);\n  document.getElementById(\"resetLocalFilters\").addEventListener(\"click\", () => {\n    for (const input of Object.values(controls)) input.value = \"\";\n    update();\n    controls.query.focus();\n  });\n  const csvCell = value => {\n    // Fixed schema rows, but defensively protect exports against formula interpretation.\n    let text = String(value).replace(/[\\u0000-\\u001f\\u007f-\\u009f\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2069]/g, \" \");\n    if (/^[\\s\\u00a0]*[=+\\-@]/u.test(text)) text = \"'\" + text;\n    return '\"' + text.replace(/\"/g, '\"\"') + '\"';\n  };\n  document.getElementById(\"exportVisibleHumanRows\").addEventListener(\"click\", () => {\n    const rows = shown();\n    if (!rows.length) return;\n    const header = [\n      \"agenda_slot\", \"source_slot\", \"source_kind\", \"human_stage\", \"neutral_role\",\n      \"proposed_review_date\", \"date_bucket\", \"suggested_human_question\", \"authority_status\"\n    ];\n    const values = rows.map(item => [...item.cells.map((cell, index) =>\n      index === 0 ? cell.replace(/^Agenda /, \"\") :\n      index === 1 ? cell.replace(/^Slot /, \"\") :\n      index === 5 && cell === \"Not specified\" ? \"\" : cell\n    ), \"REVIEW_ONLY\"]);\n    const lines = [header, ...values].map(row => row.map(csvCell).join(\",\")).join(\"\\r\\n\") + \"\\r\\n\";\n    const blob = new Blob([lines], { type: \"text/csv;charset=utf-8\" });\n    const url = URL.createObjectURL(blob);\n    const link = document.createElement(\"a\");\n    link.href = url;\n    link.download = \"lightup-PRIVATE-visible-HUMAN-rows.csv\";\n    link.rel = \"noopener\";\n    link.click();\n    setTimeout(() => URL.revokeObjectURL(url), 5000);\n  });\n  document.getElementById(\"printVisibleHumanRows\").addEventListener(\"click\", () => window.print());\n  update();\n}"
 
 def render_interactive_html(summary, rows):
     """Optional CSP-pinned local reviewer UI, never an authority or target workflow."""
@@ -370,7 +369,7 @@ def render_interactive_html(summary, rows):
     controls = (
         "<section id='privateFilterPanel' aria-label='Local private HUMAN planning filters'>"
         "<h2>Explore the PRIVATE human work queue</h2>"
-        "<p class='note'>Refine only this local copy. Nothing is sent, saved, approved or assigned.</p>"
+        "<p class='note'>This private screen only filters previously admitted rows. No data is uploaded, stored or approved.</p>"
         "<label for='localRole'>Suggested role</label><select id='localRole'>" + options(ROLES) + "</select> "
         "<label for='localStage'>HUMAN stage</label><select id='localStage'>" + options(STAGES) + "</select> "
         "<label for='localBucket'>Proposed date</label><select id='localBucket'>" + options(DATE_BUCKETS) + "</select> "
@@ -378,12 +377,34 @@ def render_interactive_html(summary, rows):
         "autocomplete='off' placeholder='Fixed questions or slot ordinals'> "
         "<button type='button' id='resetLocalFilters'>Clear local filters</button>"
         "<p id='visibleHumanItems' role='status' aria-live='polite'></p>"
+        "<button type='button' id='exportVisibleHumanRows'>Download visible rows (PRIVATE CSV)</button> "
+        "<button type='button' id='printVisibleHumanRows'>Print visible PRIVATE queue</button>"
+        "<p class='note'><strong>PRIVATE ONLY:</strong> downloads and print may retain local sensitive planning metadata."
+        " No original URL, client identity, free-text HUMAN notes, permission or assessment result is included.</p>"
         "</section>"
     )
-    if from_base.count("<main>") != 1 or from_base.count("script-src 'none'") != 1:
+    extra_css = (
+        "#privateFilterPanel label{display:inline-block;margin:.4rem .35rem .25rem 0;font-weight:650}"
+        "#privateFilterPanel select,#privateFilterPanel input,#privateFilterPanel button{"
+        "border:1px solid #a9b5c4;background:#fff;color:#17212f;border-radius:.35rem;"
+        "font:inherit;padding:.4rem .55rem;margin:.2rem}"
+        "#privateFilterPanel button{cursor:pointer;background:#eef2f6}"
+        "#privateFilterPanel button:disabled{opacity:.5;cursor:not-allowed}"
+        "[hidden]{display:none!important}"
+        "@media print{#privateFilterPanel{display:none!important}section[hidden],tr[hidden]{display:none!important}}"
+    )
+    inline_style = STYLE + extra_css
+    style_from = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
+    style_to = base64.b64encode(sha256(inline_style.encode("utf-8")).digest()).decode("ascii")
+    if (from_base.count("<main>") != 1 or from_base.count("script-src 'none'") != 1
+            or from_base.count("<style>" + STYLE + "</style>") != 1
+            or from_base.count("sha256-" + style_from) != 1
+            or from_base.count("</body>") != 1):
         raise Hold("unexpected private HTML template")
     from_base = from_base.replace("<main>", controls + "<main>", 1)
     from_base = from_base.replace("script-src 'none'", "script-src 'sha256-" + script_hash + "'", 1)
+    from_base = from_base.replace("<style>" + STYLE + "</style>", "<style>" + inline_style + "</style>", 1)
+    from_base = from_base.replace("sha256-" + style_from, "sha256-" + style_to, 1)
     return from_base.replace("</body>", "<script>" + INTERACTIVE_SCRIPT + "</script></body>", 1).encode("utf-8")
 
 
