@@ -389,6 +389,27 @@ python3 assessment-lineage/receipt_history.py \
   /private/snapshot-03/review.private-lineage-receipt.json
 ```
 
+For repeatable command lines and safer manual ordering, the same tool also
+accepts a separate `--receipts-file` instead of positional paths. The list
+must be an owner-private mode-0600 regular file with one canonical absolute
+receipt path per LF-terminated line (2–12 lines, no duplicate paths, controls,
+bidi marks or disguised line breaks). The exact selection-list bytes and
+ordering are re-admitted immediately before publication and read-only reopen;
+the list itself is never copied into the output packet.
+
+```bash
+umask 077
+cat > /private/lineage-history-selection.txt <<'EOF'
+/private/snapshot-01/review.private-lineage-receipt.json
+/private/snapshot-02/review.private-lineage-receipt.json
+/private/snapshot-03/review.private-lineage-receipt.json
+EOF
+chmod 600 /private/lineage-history-selection.txt
+python3 assessment-lineage/receipt_history.py \
+  --receipts-file /private/lineage-history-selection.txt \
+  --output-dir /private/lineage-history
+```
+
 The receipts must be distinct, canonical, owner-private mode-0600 regular
 files; the output directory must already exist, be owned by the current user,
 have exact mode 0700, and be outside every input directory. The output is a
