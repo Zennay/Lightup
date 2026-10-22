@@ -17,6 +17,7 @@ import sys
 import unicodedata
 import human_workbook
 import capacity
+import capacity_studio
 
 AGENDA_SCHEMA = "lightup.archive_human_agenda.v1"
 PORTFOLIO_SCHEMA = "lightup.assessment_portfolio_aggregate.v1"
@@ -811,7 +812,7 @@ def publish_bundle(directory_fd, artifacts):
 def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
                      calendar=False, calendar_clusters=False, day_brief=False, role_day_csv=False,
                      home=False, workbook=False, capacity_limits=None,
-                     alternative_capacity_limits=None,
+                     alternative_capacity_limits=None, capacity_browser_studio=False,
                      human_entries=None, previous_human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
@@ -846,6 +847,11 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
             raise Hold("alternative capacity requires original declared capacity")
         result.extend(capacity.render_private_capacity_comparison(
             rows, reference_day, capacity_limits, alternative_capacity_limits, ROLES))
+    if capacity_browser_studio:
+        if capacity_limits is None:
+            raise Hold("capacity scenario browser requires operator-declared PRIVATE limit")
+        result.append(capacity_studio.render(rows, reference_day,
+                                             capacity_limits, alternative_capacity_limits, ROLES))
     if day_brief:
         result.append(("assessment-portfolio-private-day-brief.html",
                        render_private_day_brief(summary, rows)))
@@ -970,6 +976,8 @@ def run(args):
     )
     if alternative_capacity_limits is not None and capacity_limits is None:
         raise Hold("alternative capacity scenario requires the original PRIVATE capacity plan")
+    if args.private_capacity_studio and capacity_limits is None:
+        raise Hold("private capacity scenario studio needs original declared capacity")
     if bool(args.focus_from) != bool(args.focus_through):
         raise Hold("planning window needs both first and last proposed dates")
     if args.focus_day and args.focus_from:
@@ -1059,6 +1067,7 @@ def run(args):
             workbook=args.private_human_workbook,
             capacity_limits=capacity_limits,
             alternative_capacity_limits=alternative_capacity_limits,
+            capacity_browser_studio=args.private_capacity_studio,
             human_entries=human_entries,
             previous_human_entries=previous_entries,
         )
@@ -1125,6 +1134,8 @@ def main(argv=None):
                         help="Operator-declared 1–128 HUMAN proposals per neutral role and proposed day")
     parser.add_argument("--role-capacity", action="append", default=[], metavar="ROLE=N",
                         help="Optional explicit daily HUMAN item assumption for a fixed neutral role")
+    parser.add_argument("--private-capacity-studio", action="store_true",
+                        help="Add hash-CSP-pinned offline PRIVATE browser capacity scenario editor (requires declared capacity)")
     parser.add_argument("--alternate-daily-capacity", type=int,
                         help="Optional second explicit 1–128 proposed items/day scenario (requires original PRIVATE capacity plan)")
     parser.add_argument("--alternate-role-capacity", action="append", default=[], metavar="ROLE=N",
