@@ -35,7 +35,7 @@ def run(args):
         raise Hold("next-round builder requires 1 to 7 original saved HUMAN rounds")
     if args.answers_dir and args.stage:
         raise Hold("HUMAN continuation requires either PRIVATE CSV or chosen stages, not both")
-    if not args.answers_dir and not args.stage:
+    if not args.answers_dir and not args.stage and not args.show_pending:
         raise Hold("next-round HUMAN continuation requires PRIVATE CSV or ROW:STAGE edits")
     if args.ack_csv_stage_replace and not args.answers_dir:
         raise Hold("CSV replacement acknowledgement requires a PRIVATE answers directory")
@@ -46,6 +46,23 @@ def run(args):
     # provenance, never identity, approved scope or operator authority.
     plan_paths, history_root, _, rounds, original = timeline.admit_sources(
         args.plan_dir, args.history_dir, previous_paths, min_rounds=1)
+    if args.show_pending:
+        if (args.stage or args.answers_dir or args.output_dir or args.timeline_dir
+                or args.delta_dir or args.dry_run or args.verify_output
+                or args.ack_csv_stage_replace):
+            raise Hold("PRIVATE HUMAN pending queue display cannot edit, publish or reopen anything")
+        last = rounds[-1][1]["responses"]
+        outstanding = ("FOLLOW_UP_REQUIRED", "NEEDS_CONTEXT",
+                       "IN_REVIEW", "QUESTION_PREPARED")
+        rows = [(i, row) for i, row in enumerate(last, 1)
+                if row["human_stage"] in outstanding]
+        print("PRIVATE_HUMAN_PENDING_REVIEW_ONLY · active_rows=" + str(len(rows))
+              + " · source_rows=" + str(len(last)) + " · unsigned, no authority")
+        for index, item in rows:
+            print("row=" + str(index) + " · pair=" + str(item["from_ordinal"])
+                  + "->" + str(item["to_ordinal"]) + " · literal_change="
+                  + item["change"] + " · stage=" + item["human_stage"])
+        return 0
     old_roots = [*(plan[0] for plan in plan_paths), history_root,
                  *(round_[0] for round_ in rounds)]
     if args.answers_dir:
@@ -119,7 +136,7 @@ def main(argv=None):
                         help="original source-bound PRIVATE manifest-history directory")
     parser.add_argument("--round-dir", action="append", required=True,
                         help="1–7 ordered original saved HUMAN returns; first must be v1, rest exact v2 successors")
-    source = parser.add_mutually_exclusive_group(required=True)
+    source = parser.add_mutually_exclusive_group()
     source.add_argument("--stage", action="append", default=[],
                         help="one explicit 1-based original HUMAN row edit, e.g. 3:IN_REVIEW; repeatable")
     source.add_argument("--answers-dir", help="PRIVATE 0700 owner-only directory containing the one complete edited 0600 browser CSV")
@@ -128,6 +145,8 @@ def main(argv=None):
     parser.add_argument("--output-dir", help="new, separate PRIVATE 0700 next HUMAN return directory")
     parser.add_argument("--timeline-dir", help="optional separate PRIVATE 0700 updated timeline directory")
     parser.add_argument("--delta-dir", help="optional separate PRIVATE 0700 previous/new stage-delta directory")
+    parser.add_argument("--show-pending", action="store_true",
+                        help="display only current HUMAN follow-up row ordinals and stages, no target values")
     parser.add_argument("--dry-run", action="store_true",
                         help="only print source-bound counts and needed HUMAN review; no publication")
     parser.add_argument("--verify-output", action="store_true",
