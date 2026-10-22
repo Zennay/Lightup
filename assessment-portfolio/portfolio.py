@@ -585,6 +585,72 @@ def render_private_calendar(rows, reference_day, documents):
     return ("\r\n".join(fold(line) for line in lines) + "\r\n").encode("ascii")
 
 
+
+def render_private_day_brief(summary, rows):
+    """Static source-free printable per-day HUMAN attention brief with local drilldown."""
+    style_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
+    groups = {}
+    for row in rows:
+        groups.setdefault((row["review_date"], row["next_role"]), []).append(row)
+    sections = []
+    ordered = sorted(groups.items(), key=lambda item: (
+        item[0][0] is None, item[0][0] or "9999-12-31",
+        ROLES.index(item[0][1])
+    ))
+    for (proposed_date, role), members in ordered:
+        row_links = []
+        for row in sorted(members, key=lambda item: (item["agenda_slot"], item["source_slot"])):
+            number = "A" + str(row["agenda_slot"]).zfill(2) + "/S" + str(row["source_slot"]).zfill(2)
+            anchor = ("assessment-portfolio-private.html#agenda-" +
+                      str(row["agenda_slot"]) + "-slot-" + str(row["source_slot"]))
+            row_links.append(
+                "<li><a href='" + anchor + "'>" + number + "</a> · " +
+                escape(row["stage"]) + " · " + escape(row["source_kind"]) +
+                " · " + escape(row["suggested_human_question"]) + "</li>"
+            )
+        headings = "No date proposed" if proposed_date is None else "Original proposed day: " + proposed_date
+        sections.append(
+            "<section><h2>" + escape(headings) + " · neutral role " + escape(role) + "</h2>"
+            "<p class='note'>" + str(len(members)) + " HUMAN items from " +
+            str(len({row["agenda_slot"] for row in members})) +
+            " original agenda slots. No appointment or reviewer assignment is implied.</p>"
+            "<ol>" + "".join(row_links) + "</ol></section>"
+        )
+    selected = summary.get("view_selection")
+    scope = (
+        "Filtered: " + escape(selected["neutral_role"]) + " / " +
+        escape(selected["human_stage"]) + " / " +
+        escape(selected["date_bucket"]) if selected else "All admitted HUMAN items"
+    )
+    empty = (
+        "<section><h2>Empty proposed work queue</h2>"
+        "<p>No rows match this view. This is NOT a completion or approval verdict.</p></section>"
+        if not sections else ""
+    )
+    html = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "
+        "style-src 'sha256-" + style_hash + "'; script-src 'none'; "
+        "connect-src 'none'; form-action 'none'; base-uri 'none'\">"
+        "<title>LightUp PRIVATE HUMAN day brief</title><style>" + STYLE + "</style>"
+        "</head><body><header class='hero'><div class='kicker'>PRIVATE / OFFLINE / HUMAN ONLY</div>"
+        "<h1>Human role-day attention brief</h1>"
+        "<p>Planning reference " + escape(summary["reference_date"]) + " · " + scope +
+        " · " + str(len(rows)) + " proposed human items.</p>"
+        "<div class='state'>INCUBATE M3/M7 · " + escape(summary["status"]) +
+        " · REVIEW ONLY · NOT AUTHORIZED</div>"
+        "<p class='note'>Dates and neutral roles are unsigned source claims, NOT scheduled meetings, "
+        "authorizations, real findings or proof of remediation. Open links only within "
+        "the same PRIVATE owner-only bundle. No network or active action.</p></header>"
+        "<main>" + "".join(sections) + empty + "</main>"
+        "<footer>LightUp private planning draft; no approved client scope, grant, "
+        "verified consent, scanner invocation or release.</footer></body></html>"
+    )
+    return html.encode("utf-8")
+
+
 def render_private_cluster_calendar(rows, reference_day, documents):
     """One transparent all-day proposal per role/day; no meeting or authority."""
     fingerprints = source_calendar_fingerprints(documents)
@@ -700,7 +766,7 @@ def publish_bundle(directory_fd, artifacts):
 
 
 def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
-                     calendar=False, calendar_clusters=False, workbook=False, human_entries=None,
+                     calendar=False, calendar_clusters=False, day_brief=False, workbook=False, human_entries=None,
                      previous_human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
@@ -725,6 +791,9 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
     if calendar_clusters:
         result.append(("assessment-portfolio-private-role-day.ics",
                        render_private_cluster_calendar(rows, reference_day, documents)))
+    if day_brief:
+        result.append(("assessment-portfolio-private-day-brief.html",
+                       render_private_day_brief(summary, rows)))
     if workbook:
         result.append(("assessment-portfolio-human-workbook.html",
                        human_workbook.render_worksheet(rows, reference_day.isoformat())))
@@ -899,6 +968,7 @@ def run(args):
             documents, rows, reference_day, selection=selection,
             interactive=args.private_explorer, calendar=args.private_calendar,
             calendar_clusters=args.private_calendar_clusters,
+            day_brief=args.private_day_brief,
             workbook=args.private_human_workbook, human_entries=human_entries,
             previous_human_entries=previous_entries,
         )
@@ -949,6 +1019,8 @@ def main(argv=None):
                         help="Add a PRIVATE date-only tentative calendar, no invitations or alarms")
     parser.add_argument("--private-calendar-clusters", action="store_true",
                         help="Add one inert PRIVATE tentative role/day proposal per same-date HUMAN workload")
+    parser.add_argument("--private-day-brief", action="store_true",
+                        help="Add scriptless PRIVATE by-day and role printable HUMAN brief with original ordinal links")
     parser.add_argument("--private-human-workbook", action="store_true",
                         help="Add offline HUMAN discussion worksheet with local JSON download, no authority")
     parser.add_argument("--human-responses",
