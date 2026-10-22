@@ -133,11 +133,24 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                 after = ordered[last]
                 changed_stage = changed_reply = changed_followup = reverted = 0
                 stage_movements = Counter()
+                human_attention_before = human_attention_after = 0
+                human_attention_entered = human_attention_exited = 0
+                human_attention_persisted = 0
                 for ordinal in ids:
                     old = before[ordinal]
                     new = after[ordinal]
                     left_stage = old["recipient_reported_stage"] or "no_human_response"
                     right_stage = new["recipient_reported_stage"] or "no_human_response"
+                    is_attention_before = left_stage != "responded_claimed"
+                    is_attention_after = right_stage != "responded_claimed"
+                    human_attention_before += int(is_attention_before)
+                    human_attention_after += int(is_attention_after)
+                    human_attention_entered += int(
+                        not is_attention_before and is_attention_after)
+                    human_attention_exited += int(
+                        is_attention_before and not is_attention_after)
+                    human_attention_persisted += int(
+                        is_attention_before and is_attention_after)
                     stage_movements[(left_stage, right_stage)] += 1
                     changed_stage += int(left_stage != right_stage)
                     changed_reply += int(old["recipient_human_reply"] !=
@@ -155,6 +168,11 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                     "operator_ordered_to_round": last + 1,
                     "human_priority": priority,
                     "human_rows_in_priority": len(ids),
+                    "human_attention_before_rows": human_attention_before,
+                    "human_attention_after_rows": human_attention_after,
+                    "human_attention_entered_rows": human_attention_entered,
+                    "human_attention_exited_rows": human_attention_exited,
+                    "human_attention_persisted_rows": human_attention_persisted,
                     "stage_changed_rows": changed_stage,
                     "intermediate_stage_reverted_rows": reverted,
                     "reply_changed_rows": changed_reply,
@@ -174,7 +192,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         for stage in ("blocked_human", "needs_more_information", "no_human_response")
     ]
     numeric = {
-        "schema": "lightup.private_human_cross_priority_portfolio.v4",
+        "schema": "lightup.private_human_cross_priority_portfolio.v5",
         "status": "REVIEW_ONLY",
         "operator_ordered_round_count": rounds,
         "selected_original_human_rows": len(selected),
@@ -209,7 +227,10 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     intervals_writer = csv.writer(intervals_out, lineterminator="\r\n")
     interval_header = (
         "operator_ordered_from_round", "operator_ordered_to_round",
-        "human_priority", "human_rows_in_priority", "stage_changed_rows",
+        "human_priority", "human_rows_in_priority",
+        "human_attention_before_rows", "human_attention_after_rows",
+        "human_attention_entered_rows", "human_attention_exited_rows",
+        "human_attention_persisted_rows", "stage_changed_rows",
         "intermediate_stage_reverted_rows", "reply_changed_rows",
         "next_question_changed_rows")
     intervals_writer.writerow(interval_header)
@@ -292,7 +313,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     html = private_frame("PRIVATE HUMAN cross-priority round portfolio", body)
     counts_raw = json_bytes(numeric)
     receipt = {
-        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v4",
+        "schema": "lightup.private_human_cross_priority_portfolio_receipt.v5",
         "status": "REVIEW_ONLY",
         "operator_ordered_round_count": rounds,
         "original_source_sha256_unsigned": source_sha,
