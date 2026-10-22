@@ -517,7 +517,7 @@ def read_private_agenda_manifest(path):
     try:
         # Do not treat Unicode separators or bidi controls as hidden extra paths.
         decoded = raw.decode("utf-8", errors="strict")
-        paths = decoded.split("\\n")[:-1]
+        paths = decoded.split("\n")[:-1]
     except UnicodeError as error:
         raise Hold("source list is not UTF-8") from error
     if not 2 <= len(paths) <= MAX_AGENDAS:
