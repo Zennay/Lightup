@@ -20,12 +20,14 @@ from launchpad import Hold, open_output_directory, publish_bundle, read_private_
 from review_desk import STAGES, ROLES, read_original_bundle
 from history import admitted_rounds
 from role_return_receipt import admit_return
+from role_return_action_desk import NAME as ACTION_DESK, render as render_action_desk
 
 FILES = (
     "lightup-lab-human-return-reconciliation-private.html",
     "lightup-lab-human-return-reconciliation-private.csv",
     "lightup-lab-human-unreturned-private.csv",
     "lightup-lab-human-role-worklist-private.csv",
+    ACTION_DESK,
     "lightup-lab-human-return-reconciliation-counts.json",
     "START-HERE-RECONCILIATION-PRIVATE.txt",
 )
@@ -233,7 +235,8 @@ def render_files(replies, rounds, endpoints):
     return dict(zip(FILES, (
         html, sink.getvalue().encode("utf-8"),
         missing_sink.getvalue().encode("utf-8"),
-        work_sink.getvalue().encode("utf-8"), json_bytes, guide)))
+        work_sink.getvalue().encode("utf-8"),
+        render_action_desk(work), json_bytes, guide)))
 
 
 def main(argv=None):

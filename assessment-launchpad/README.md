@@ -388,3 +388,8 @@ If two original private selected-role returns claim the same local slot, advance
 ## Direct owner PRIVATE manual conflict handoff to next HUMAN round
 
 The original resolved four-file overlap packet plus original chosen CSV and original source-bound role returns can now be imported with advance.py --conflict-resolved-dir, --conflict-decision-file and repeated --conflict-return-dir. Preserves a scriptless local provenance desk inside human-manual-conflict-review without duplicating the complete PRIVATE notes worksheet. See [ROLE_NATIVE_MANUAL_INTAKE.md](ROLE_NATIVE_MANUAL_INTAKE.md). No assessment authorization, real identity or scan.
+
+
+## Offline HUMAN action desk
+
+Source-bound multi-role reconciliation now includes an operator-only, locally filterable and printable HTML next-action desk plus fixed-vocabulary CSV for every original slot, prioritizing missing replies without treating HUMAN_REVIEW as approval. The PRIVATE next-round home links directly to this view. See [ROLE_RECONCILIATION_GUIDE.md](ROLE_RECONCILIATION_GUIDE.md). No network, grants or scans.

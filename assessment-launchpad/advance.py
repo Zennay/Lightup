@@ -110,7 +110,9 @@ def render_home(source_count, changed, history_count, handoff_role=None, handoff
          if handoff_role is not None else "") +
         ("<section><h2>Returned HUMAN roles and changed planning</h2>"
          "<a href='human-role-reconciliation/lightup-lab-human-return-reconciliation-private.html'>"
-         "Open original-bound PRIVATE HUMAN role reconciliation</a><p><small>"
+         "Open original-bound PRIVATE HUMAN role reconciliation</a><p>"
+         "<a href='human-role-reconciliation/lightup-lab-human-next-actions-private.html'>"
+         "Open PRIVATE filtered HUMAN next-action desk</a></p><p><small>"
          "This source-minimal HUMAN-only desk shows local slot ordinals, "
          "suggested roles and changed stages/notes WITHOUT original endpoint "
          "URLs or PRIVATE note text. The roles are not authenticated, and this "
