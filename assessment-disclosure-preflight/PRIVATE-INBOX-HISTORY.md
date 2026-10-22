@@ -253,3 +253,44 @@ and ordering**, including all original slots, original HOLD counts, selected
 round bounds, endpoint-versus-intermediate HUMAN edit flags and explicit
 false authority columns. They remain distinct unsigned local outputs: only
 the native path re-admits every original private source and stored report.
+
+
+### Compare every pair of saved HUMAN rounds in one private packet
+
+When 2–8 complete revisions need a broader review, use
+`private_inbox_interval_matrix.py` to produce every possible earlier/later
+pair from the same already-admitted original board and worksheets. For
+three manually ordered revisions, the matrix contains 1→2, 1→3 and 2→3;
+for eight it is bounded to 28 pairs. Each pair retains every original slot,
+including unchanged slots and changes later reversed. A pair summary counts
+stage/role endpoint differences separately from any intermediate edits.
+
+~~~sh
+mkdir -m 700 ./owner-private-interval-matrix
+python3 assessment-disclosure-preflight/private_inbox_interval_matrix.py build \\
+  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \\
+  --revision ./owner-private-sheets/first.csv \\
+  --revision ./owner-private-sheets/second.csv \\
+  --revision ./owner-private-sheets/third.csv \\
+  --private-output-dir ./owner-private-interval-matrix
+~~~
+
+The resulting `PRIVATE-HUMAN-original-interval-matrix.html` is scriptless
+and printable; the CSV is a flat complete-slot-by-interval view; the JSON
+contains the same source-minimal pair summaries and detail. All three files
+are published together as owner-only 0600 files in a new, empty owner-owned
+0700 directory outside every original input tree. The matrix builder admits
+the original board and all complete worksheets, rejects duplicate revision
+bytes, rereads all original bytes before publication, and refuses partial
+input, membership drift or unsafe local custody. Use the identical command
+with `reopen` instead of `build` to verify a saved matrix read-only without
+rewriting it.
+
+The matrix does not expose HUMAN question/next-action contents, source paths,
+board hashes, targets or reviewer identities. Its per-interval edit flags
+mean **at least one edit occurred**, not that final text differs. Round order
+is a manual choice, not authenticated chronology. The reports remain sensitive
+and unsigned; small cohorts or role/stage combinations may be identifying.
+This tool never starts assessments, scans, grants, contacts clients, verifies
+consent, proves remediation or authorizes release. Exit 2 means REVIEW_ONLY;
+exit 3 means HOLD.
