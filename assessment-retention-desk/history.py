@@ -251,12 +251,23 @@ def publish_private(output, contents):
         raise Hold("output must use an existing owner-owned exact mode-0700 private directory")
     if path.exists() or path.is_symlink():
         raise Hold("output exists; exclusive non-overwriting destination required")
+    if isinstance(contents, str):
+        try:
+            raw_contents = contents.encode("utf-8", "strict")
+        except UnicodeError as exc:
+            raise Hold("private output contains invalid UTF-8") from exc
+    elif isinstance(contents, bytes):
+        raw_contents = contents
+    else:
+        raise Hold("private output must be UTF-8 text or already-built bytes")
+    if not raw_contents:
+        raise Hold("empty private output refused")
     temporary = None
     try:
         fd, temporary = tempfile.mkstemp(prefix=".lightup-private-", suffix=".pending", dir=parent)
         os.fchmod(fd, 0o600)
         with os.fdopen(fd, "wb") as stream:
-            stream.write(contents.encode("utf-8", "strict"))
+            stream.write(raw_contents)
             stream.flush()
             os.fsync(stream.fileno())
         os.link(temporary, path)  # hard-link publishes complete 0600 bytes only, O_EXCL by pathname
