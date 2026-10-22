@@ -41,7 +41,10 @@ to check the archive inventory without extracting any files. Add
 entry with the exact source-bound file bytes in that explicit local checkout.
 This catches a stale but internally consistent ZIP. A successful verification
 establishes local byte integrity/parity only, not authenticity, trusted origin,
-consent, security findings, permission or release.
+consent, security findings, permission or release. The native ZIP builder emits
+an adjacent `.sha256` sidecar; pass `--sha256-file /path/to/package.zip.sha256`
+to the verifier for convenient byte matching. A sidecar delivered with the ZIP
+is not an independent trust anchor.
 Individual studios independently re-admit any PRIVATE local HUMAN/source data.
 Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
