@@ -85,18 +85,18 @@ def build_private_bundle(catalog_payload: bytes, source_bytes: dict[str, bytes])
     }
     manifest_payload = (json.dumps(
         manifest, indent=2, sort_keys=True, ensure_ascii=True
-    ) + "\\n").encode("utf-8")
+    ) + "\n").encode("utf-8")
     readme = (
-        "LIGHTUP PRIVATE INSTALLED-FIXTURE CATALOG BUNDLE\\n"
-        "DRAFT_ONLY / PLAN-LAB ONLY / REVIEW_ONLY.\\n\\n"
+        "LIGHTUP PRIVATE INSTALLED-FIXTURE CATALOG BUNDLE\n"
+        "DRAFT_ONLY / PLAN-LAB ONLY / REVIEW_ONLY.\n\n"
         "catalog.json contains original fixture profile declarations, numeric loopback target "
-        "context and expected finding identities. Treat it as sensitive private material.\\n"
+        "context and expected finding identities. Treat it as sensitive private material.\n"
         "manifest.json contains local SHA-256 fingerprints and byte lengths for the catalog and "
         "the observed source files. These hashes are unsigned local integrity references only; "
-        "they do not authenticate source identity, the imported runtime, a person or authority.\\n"
+        "they do not authenticate source identity, the imported runtime, a person or authority.\n"
         "No fixture server, DNS lookup, HTTP client, scanner, grant, consent or release is started "
-        "or created by this bundle. The catalog remains DRAFT_ONLY.\\n"
-        "Keep this archive in private storage; archive entries are owner-only (0600).\\n"
+        "or created by this bundle. The catalog remains DRAFT_ONLY.\n"
+        "Keep this archive in private storage; archive entries are owner-only (0600).\n"
     ).encode("utf-8")
     entries = [
         ("catalog.json", catalog_payload),
@@ -170,7 +170,7 @@ def main() -> int:
         names = args.profile or sorted(PROFILES)
         source_before = source_snapshot() if args.bundle_output else None
         catalog = build_catalog(args.target, names)
-        payload = (json.dumps(catalog, indent=2, sort_keys=True) + "\\n").encode("utf-8")
+        payload = (json.dumps(catalog, indent=2, sort_keys=True) + "\n").encode("utf-8")
         ensure(0 < len(payload) <= 262144)
         # Construct original dataclasses only. No runnable fixture is constructed or started.
         build_native_catalog(catalog["scenarios"])
