@@ -116,6 +116,12 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <div class="row"><label>Other HUMAN recipient timezone (unverified)
 <input id="recipientZone" type="text" maxlength="64" placeholder="e.g. Europe/London" autocomplete="off" spellcheck="false"></label>
 <button type="button" id="recipientExport" class="ghost" disabled>Export PRIVATE converted schedule (.csv)</button></div>
+<div class="row">
+<button type="button" id="recipientPolicyExport" class="ghost">Save PRIVATE source-bound recipient window (.csv)</button>
+<label class="file">Restore PRIVATE recipient window (.csv)
+<input id="recipientPolicyImport" type="file" accept=".csv,text/csv"></label>
+</div>
+<p id="recipientPolicyStatus" class="subtle" role="status" aria-live="polite">Optional recipient hours and timezone are not included in the original HUMAN plan backup; save this separate PRIVATE unsigned source-bound file to reopen them later.</p>
 <div class="toolbar">
 <label>HUMAN-declared recipient local start <input id="recipientStart" type="time" min="06:00" max="20:30" step="900" value="09:00"></label>
 <label>HUMAN-declared recipient local end <input id="recipientEnd" type="time" min="06:30" max="21:00" step="900" value="17:00"></label>

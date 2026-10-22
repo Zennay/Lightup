@@ -15,6 +15,9 @@
   const MAX_BYTES = 1024*1024, MAX_ROWS = 2048, PAGE = 35;
   const CAP_HEAD = ["worksheet_sha256_unsigned","private_calendar_series_id","time_zone",
     "human_owner_group","weekdays_iso","local_start","local_end","maximum_daily","blackout_dates"];
+  const RECIPIENT_POLICY_HEAD=["worksheet_sha256_unsigned","private_calendar_series_unsigned",
+    "source_local_zone","recipient_iana_zone_unverified","human_window_start",
+    "human_window_end","human_days","authorized","verified","consent"];
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
@@ -33,6 +36,7 @@
   let recipientProposal=null;
   let recipientSelection=new Set();
   let recipientUndo=null;
+  let recipientPreferenceSource="",recipientPolicyDirty=false;
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -169,6 +173,16 @@
   }
   function render(){
     if(!active)return;
+    // Do not carry manually declared recipient availability into a different
+    // source worksheet or a newly imported PRIVATE calendar-series identity.
+    const binding=hash+"|"+seriesId;
+    if(recipientPreferenceSource!==binding){
+      recipientPreferenceSource=binding;recipientPolicyDirty=false;
+      recipientProposal=null;recipientSelection.clear();recipientUndo=null;
+      $("recipientZone").value="";$("recipientStart").value="09:00";
+      $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
+      $("recipientView").value="all";$("recipientQuery").value="";
+    }
     const due=items.filter(r=>plan.has(r.ordinal)).length;
     const late=items.filter(r=>{const p=plan.get(r.ordinal);return p && eventDate(p.day,p.time)<new Date();}).length;
     $("summary").textContent=`${items.length} original HUMAN rows · ${due} scheduled · ${items.length-due} unscheduled · ${late} past scheduled time · ${changed?"unsaved edits":"no unsaved plan edits"}.`;
@@ -434,6 +448,40 @@
       hour:"2-digit",minute:"2-digit",hourCycle:"h23",timeZoneName:"shortOffset"
     });
   }
+  function recipientPolicyExport(){
+    hold(active&&recipientPreferenceSource===hash+"|"+seriesId);
+    const target=recipientFormatter().resolvedOptions().timeZone;
+    const rule=recipientHoursRule();
+    if(!confirm("Save a PRIVATE, UNSIGNED recipient-window preference CSV bound to this exact HUMAN worksheet and opaque calendar series? It does NOT verify recipient identity, working hours, client/operator consent, findings or assessment authority."))return;
+    const rows=[RECIPIENT_POLICY_HEAD,[hash,seriesId,zone,target,rule.from,rule.to,
+      rule.days,"false","false","false"]];
+    download(makeCsv(rows),"lightup-private-human-recipient-window.csv",
+      "text/csv;charset=utf-8");
+    recipientPolicyDirty=false;
+    $("recipientPolicyStatus").textContent="PRIVATE source-bound HUMAN recipient preference downloaded locally; keep it private with the saved original plan.";
+  }
+  async function recipientPolicyImport(file){
+    hold(active&&file&&file.size>0&&file.size<=4096);
+    const snapshot=workroomFingerprint(),raw=decoder.decode(await bytes(file));
+    const rows=csv(raw,RECIPIENT_POLICY_HEAD.length);
+    hold(rows.length===2&&JSON.stringify(rows[0])===JSON.stringify(RECIPIENT_POLICY_HEAD));
+    const [original,series,source,target,start,end,days,authorized,verified,consent]=rows[1];
+    hold(original===hash&&series===seriesId&&source===zone&&
+      /^[A-Za-z0-9_+./-]{1,64}$/.test(target)&&
+      [authorized,verified,consent].every(value=>value==="false"));
+    const canonical=new Intl.DateTimeFormat("en-GB",{timeZone:target})
+      .resolvedOptions().timeZone;
+    hold(!!canonical);
+    recipientHoursRule(start,end,days);
+    hold(snapshot===workroomFingerprint()&&recipientPreferenceSource===hash+"|"+seriesId);
+    if(!confirm("Restore the HUMAN-declared recipient timezone and working window from this PRIVATE unsigned file? Current recipient preview settings will be replaced; source worksheet, saved reminders, consent and external calendars will NOT change."))return;
+    hold(snapshot===workroomFingerprint());
+    $("recipientZone").value=canonical;$("recipientStart").value=start;
+    $("recipientEnd").value=end;$("recipientDays").value=days;
+    recipientPage=0;recipientPolicyDirty=false;
+    renderRecipientZone();
+    $("recipientPolicyStatus").textContent="PRIVATE HUMAN recipient window restored against matching original SHA, series and timezone. Recipient availability remains UNVERIFIED.";
+  }
   function recipientClock(){
     const target=recipientFormatter().resolvedOptions().timeZone;
     return new Intl.DateTimeFormat("en-US",{
@@ -441,13 +489,13 @@
       day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
     });
   }
-  function recipientHoursRule(){
+  function recipientHoursRule(from=$("recipientStart").value,
+      to=$("recipientEnd").value,days=$("recipientDays").value){
     const toMinutes=value=>{
       hold(/^([01]\d|2[0-3]):[0-5]\d$/.test(value));
       return Number(value.slice(0,2))*60+Number(value.slice(3,5));
     };
-    const from=$("recipientStart").value,to=$("recipientEnd").value;
-    const first=toMinutes(from),last=toMinutes(to),days=$("recipientDays").value;
+    const first=toMinutes(from),last=toMinutes(to);
     hold(["weekdays","all"].includes(days) && first>=360 &&
       last<=1260 && first+30<=last && first%15===0 && last%15===0);
     return {from,to,first,last,days};
@@ -2965,9 +3013,18 @@
     renderRecipientProposal();
     $("recipientProposalDetails").open=false;inform("Unapplied HUMAN proposals discarded.");});
   for(const input of ["recipientStart","recipientEnd","recipientDays"]){
-    hook(input,"change",()=>{recipientPage=0;renderRecipientZone();});
+    hook(input,"change",()=>{recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();});
   }
-  hook("recipientZone","input",()=>{recipientPage=0;renderRecipientZone();});
+  hook("recipientPolicyExport","click",()=>{
+    try{recipientPolicyExport();}
+    catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference export held. No external contact or file created."; }
+  });
+  hook("recipientPolicyImport","change",async e=>{
+    try{if(e.target.files?.length)await recipientPolicyImport(e.target.files[0]);}
+    catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference import rejected (HOLD). Current HUMAN window and schedule retained.";}
+    finally{e.target.value="";}
+  });
+  hook("recipientZone","input",()=>{recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();});
   hook("recipientView","change",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientQuery","input",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientPrev","click",()=>{recipientPage--;renderRecipientZone();});
@@ -3073,6 +3130,6 @@
   hook("savePlan","click",()=>{try{hold(active);planExport();}catch(err){inform(err.message,true);}});
   hook("calendar","click",()=>{try{calendarExport();}catch(err){inform(err.message,true);}});
   hook("summaryExport","click",()=>{try{hold(active);countsExport();}catch(err){inform(err.message,true);}});
-  window.addEventListener("beforeunload",e=>{if(changed||capacityDirty||capacityEditorDirty){e.preventDefault();e.returnValue="";}});
+  window.addEventListener("beforeunload",e=>{if(changed||capacityDirty||capacityEditorDirty||recipientPolicyDirty){e.preventDefault();e.returnValue="";}});
   $("tz").textContent=zone;
 })();

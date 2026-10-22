@@ -435,6 +435,14 @@ A separate visible old/new ordinal table and explicit HUMAN confirmation are req
 
 An operator may edit the target display-zone weekday policy (Monday–Friday or all seven days) and daily start/end hours; 15-minute increments, 06:00–21:00 and a minimum 30-minute interval are enforced, with no overnight interpretation. This default replaces a hard-coded illustrative 09:00–17:00 assumption across the PRIVATE zone triage, end-inclusive proposed reminder status, bounded rescheduling preview and exact revalidation. Changing any declared recipient window invalidates pending cross-zone proposals before apply. The selected-only PRIVATE CSV and scriptless HTML include the HUMAN-declared, explicitly unverified window; neither the requested zone nor the hours authenticate a person, their availability, consent or calendar delivery. This additional local control is not part of the original source-bound saved plan; re-enter it when reopening a session.
 
+## PRIVATE source-bound recipient preference save/reopen
+
+A new opt-in **Save PRIVATE source-bound recipient window (.csv)** stores exactly one bounded HUMAN-declared recipient IANA timezone, day policy, and start/end window with the **unsigned exact original worksheet SHA-256, opaque private calendar-series ID, and original local timezone**. Its three authority/verification/consent fields must be literal `false`. It is **separate** from the encrypted original `.luhw` and `.luhv` plan artifacts; the recipient's identity/real availability has not been independently authenticated.
+
+To reopen, first import the same exact source HUMAN worksheet and its saved v2 plan (so the original SHA, private series and local source timezone match), then select **Restore PRIVATE recipient window (.csv)**. Only the exact two-row canonical header/schema under a 4 KiB bound is admitted; malformed, mismatched, BOM-prefixed, duplicate, oversized, unsupported timezone/hour/day or authority-claiming imports fail without changing the existing workroom or the recipient settings. The actual original HUMAN schedule, declared source-group rules and external calendars remain untouched. On a different source or calendar series, old manually declared recipient settings automatically reset rather than leaking across sources.
+
+Recipient preference changes trigger an unsaved-local-workroom navigation warning until their private CSV is exported or a matching private preference file is reloaded. Keep this **cleartext** CSV private; unlike the encrypted workroom it is not password-protected. The original source-bound plan must still be saved separately to retain private event identities.
+
 ## Calendar revision sequence for manual re-import
 
 All three ICS output paths (complete plan, selected group, and changed/cancelled

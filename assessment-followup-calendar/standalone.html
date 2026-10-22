@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-2ezsnv0vQdtbm12dE0TMazwfd1c5zQMsUgCpgD4bBvU='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-b4Rxn29HTrEMJJ1V8qTxHbs3swOySkka4ultpnlBDCs='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -63,6 +63,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   const MAX_BYTES = 1024*1024, MAX_ROWS = 2048, PAGE = 35;
   const CAP_HEAD = ["worksheet_sha256_unsigned","private_calendar_series_id","time_zone",
     "human_owner_group","weekdays_iso","local_start","local_end","maximum_daily","blackout_dates"];
+  const RECIPIENT_POLICY_HEAD=["worksheet_sha256_unsigned","private_calendar_series_unsigned",
+    "source_local_zone","recipient_iana_zone_unverified","human_window_start",
+    "human_window_end","human_days","authorized","verified","consent"];
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
@@ -81,6 +84,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let recipientProposal=null;
   let recipientSelection=new Set();
   let recipientUndo=null;
+  let recipientPreferenceSource="",recipientPolicyDirty=false;
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -217,6 +221,16 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   }
   function render(){
     if(!active)return;
+    // Do not carry manually declared recipient availability into a different
+    // source worksheet or a newly imported PRIVATE calendar-series identity.
+    const binding=hash+"|"+seriesId;
+    if(recipientPreferenceSource!==binding){
+      recipientPreferenceSource=binding;recipientPolicyDirty=false;
+      recipientProposal=null;recipientSelection.clear();recipientUndo=null;
+      $("recipientZone").value="";$("recipientStart").value="09:00";
+      $("recipientEnd").value="17:00";$("recipientDays").value="weekdays";
+      $("recipientView").value="all";$("recipientQuery").value="";
+    }
     const due=items.filter(r=>plan.has(r.ordinal)).length;
     const late=items.filter(r=>{const p=plan.get(r.ordinal);return p && eventDate(p.day,p.time)<new Date();}).length;
     $("summary").textContent=`${items.length} original HUMAN rows · ${due} scheduled · ${items.length-due} unscheduled · ${late} past scheduled time · ${changed?"unsaved edits":"no unsaved plan edits"}.`;
@@ -482,6 +496,40 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       hour:"2-digit",minute:"2-digit",hourCycle:"h23",timeZoneName:"shortOffset"
     });
   }
+  function recipientPolicyExport(){
+    hold(active&&recipientPreferenceSource===hash+"|"+seriesId);
+    const target=recipientFormatter().resolvedOptions().timeZone;
+    const rule=recipientHoursRule();
+    if(!confirm("Save a PRIVATE, UNSIGNED recipient-window preference CSV bound to this exact HUMAN worksheet and opaque calendar series? It does NOT verify recipient identity, working hours, client/operator consent, findings or assessment authority."))return;
+    const rows=[RECIPIENT_POLICY_HEAD,[hash,seriesId,zone,target,rule.from,rule.to,
+      rule.days,"false","false","false"]];
+    download(makeCsv(rows),"lightup-private-human-recipient-window.csv",
+      "text/csv;charset=utf-8");
+    recipientPolicyDirty=false;
+    $("recipientPolicyStatus").textContent="PRIVATE source-bound HUMAN recipient preference downloaded locally; keep it private with the saved original plan.";
+  }
+  async function recipientPolicyImport(file){
+    hold(active&&file&&file.size>0&&file.size<=4096);
+    const snapshot=workroomFingerprint(),raw=decoder.decode(await bytes(file));
+    const rows=csv(raw,RECIPIENT_POLICY_HEAD.length);
+    hold(rows.length===2&&JSON.stringify(rows[0])===JSON.stringify(RECIPIENT_POLICY_HEAD));
+    const [original,series,source,target,start,end,days,authorized,verified,consent]=rows[1];
+    hold(original===hash&&series===seriesId&&source===zone&&
+      /^[A-Za-z0-9_+./-]{1,64}$/.test(target)&&
+      [authorized,verified,consent].every(value=>value==="false"));
+    const canonical=new Intl.DateTimeFormat("en-GB",{timeZone:target})
+      .resolvedOptions().timeZone;
+    hold(!!canonical);
+    recipientHoursRule(start,end,days);
+    hold(snapshot===workroomFingerprint()&&recipientPreferenceSource===hash+"|"+seriesId);
+    if(!confirm("Restore the HUMAN-declared recipient timezone and working window from this PRIVATE unsigned file? Current recipient preview settings will be replaced; source worksheet, saved reminders, consent and external calendars will NOT change."))return;
+    hold(snapshot===workroomFingerprint());
+    $("recipientZone").value=canonical;$("recipientStart").value=start;
+    $("recipientEnd").value=end;$("recipientDays").value=days;
+    recipientPage=0;recipientPolicyDirty=false;
+    renderRecipientZone();
+    $("recipientPolicyStatus").textContent="PRIVATE HUMAN recipient window restored against matching original SHA, series and timezone. Recipient availability remains UNVERIFIED.";
+  }
   function recipientClock(){
     const target=recipientFormatter().resolvedOptions().timeZone;
     return new Intl.DateTimeFormat("en-US",{
@@ -489,13 +537,13 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
     });
   }
-  function recipientHoursRule(){
+  function recipientHoursRule(from=$("recipientStart").value,
+      to=$("recipientEnd").value,days=$("recipientDays").value){
     const toMinutes=value=>{
       hold(/^([01]\d|2[0-3]):[0-5]\d$/.test(value));
       return Number(value.slice(0,2))*60+Number(value.slice(3,5));
     };
-    const from=$("recipientStart").value,to=$("recipientEnd").value;
-    const first=toMinutes(from),last=toMinutes(to),days=$("recipientDays").value;
+    const first=toMinutes(from),last=toMinutes(to);
     hold(["weekdays","all"].includes(days) && first>=360 &&
       last<=1260 && first+30<=last && first%15===0 && last%15===0);
     return {from,to,first,last,days};
@@ -3013,9 +3061,18 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     renderRecipientProposal();
     $("recipientProposalDetails").open=false;inform("Unapplied HUMAN proposals discarded.");});
   for(const input of ["recipientStart","recipientEnd","recipientDays"]){
-    hook(input,"change",()=>{recipientPage=0;renderRecipientZone();});
+    hook(input,"change",()=>{recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();});
   }
-  hook("recipientZone","input",()=>{recipientPage=0;renderRecipientZone();});
+  hook("recipientPolicyExport","click",()=>{
+    try{recipientPolicyExport();}
+    catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference export held. No external contact or file created."; }
+  });
+  hook("recipientPolicyImport","change",async e=>{
+    try{if(e.target.files?.length)await recipientPolicyImport(e.target.files[0]);}
+    catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference import rejected (HOLD). Current HUMAN window and schedule retained.";}
+    finally{e.target.value="";}
+  });
+  hook("recipientZone","input",()=>{recipientPolicyDirty=true;recipientPage=0;renderRecipientZone();});
   hook("recipientView","change",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientQuery","input",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientPrev","click",()=>{recipientPage--;renderRecipientZone();});
@@ -3121,7 +3178,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("savePlan","click",()=>{try{hold(active);planExport();}catch(err){inform(err.message,true);}});
   hook("calendar","click",()=>{try{calendarExport();}catch(err){inform(err.message,true);}});
   hook("summaryExport","click",()=>{try{hold(active);countsExport();}catch(err){inform(err.message,true);}});
-  window.addEventListener("beforeunload",e=>{if(changed||capacityDirty||capacityEditorDirty){e.preventDefault();e.returnValue="";}});
+  window.addEventListener("beforeunload",e=>{if(changed||capacityDirty||capacityEditorDirty||recipientPolicyDirty){e.preventDefault();e.returnValue="";}});
   $("tz").textContent=zone;
 })();
 </script>
@@ -3234,6 +3291,12 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <div class="row"><label>Other HUMAN recipient timezone (unverified)
 <input id="recipientZone" type="text" maxlength="64" placeholder="e.g. Europe/London" autocomplete="off" spellcheck="false"></label>
 <button type="button" id="recipientExport" class="ghost" disabled>Export PRIVATE converted schedule (.csv)</button></div>
+<div class="row">
+<button type="button" id="recipientPolicyExport" class="ghost">Save PRIVATE source-bound recipient window (.csv)</button>
+<label class="file">Restore PRIVATE recipient window (.csv)
+<input id="recipientPolicyImport" type="file" accept=".csv,text/csv"></label>
+</div>
+<p id="recipientPolicyStatus" class="subtle" role="status" aria-live="polite">Optional recipient hours and timezone are not included in the original HUMAN plan backup; save this separate PRIVATE unsigned source-bound file to reopen them later.</p>
 <div class="toolbar">
 <label>HUMAN-declared recipient local start <input id="recipientStart" type="time" min="06:00" max="20:30" step="900" value="09:00"></label>
 <label>HUMAN-declared recipient local end <input id="recipientEnd" type="time" min="06:30" max="21:00" step="900" value="17:00"></label>
