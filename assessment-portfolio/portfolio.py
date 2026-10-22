@@ -664,6 +664,8 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
                        human_workbook.render_private_return(human_entries, reference_day.isoformat())))
         result.append(("assessment-portfolio-private-HUMAN-return.csv",
                        human_workbook.render_private_csv(human_entries)))
+        result.append(("assessment-portfolio-private-HUMAN-summary.json",
+                       human_workbook.render_private_summary_json(human_entries, reference_day.isoformat())))
     if any(len(data) > 1_048_576 for _, data in result):
         raise Hold("private portfolio artifact exceeds bounded 1 MiB publication limit")
     return result
