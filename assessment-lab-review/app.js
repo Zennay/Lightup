@@ -170,7 +170,7 @@ async function derivePrivateReviewKey(passphrase,salt,usage){
 }
 async function encryptedPrivateReviewText(passphrase){
  require_(source&&sourceHash&&privateCryptoAvailable());
- const clearText=JSON.stringify(privatePayload(),null,2)+"\\n";
+ const clearText=JSON.stringify(privatePayload(),null,2)+"\n";
  const clearBytes=new TextEncoder().encode(clearText);
  require_(clearBytes.byteLength>0&&clearBytes.byteLength<=MAX_PRIVATE_CLEAR);
  const salt=crypto.getRandomValues(new Uint8Array(16));
@@ -184,7 +184,7 @@ async function encryptedPrivateReviewText(passphrase){
   ciphertext_b64:bytesToBase64(new Uint8Array(ciphertext)),private_unsigned:true,
   source_authenticated:false,ground_truth_verified:false,client_consent_verified:false,
   operator_consent_verified:false,...noAuthority()};
- const output=JSON.stringify(envelope,null,2)+"\\n";
+ const output=JSON.stringify(envelope,null,2)+"\n";
  require_(new TextEncoder().encode(output).byteLength<=MAX_PRIVATE_ENVELOPE);
  return output;
 }
@@ -211,7 +211,7 @@ async function openEncryptedPrivateReview(file,passphrase){
  require_(clear.byteLength>0&&clear.byteLength<=MAX_PRIVATE_CLEAR);
  const clearText=new TextDecoder("utf-8",{fatal:true}).decode(clear);
  const payload=parseStrict(clearText);
- require_(clearText===JSON.stringify(payload,null,2)+"\\n");
+ require_(clearText===JSON.stringify(payload,null,2)+"\n");
  return applyPrivatePayload(payload);
 }
 function initialNote(){return {stage:"needs_review",group:"unassigned",next_action:"",blocker:""};}
