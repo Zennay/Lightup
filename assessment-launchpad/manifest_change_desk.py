@@ -9,6 +9,7 @@ from hashlib import sha256
 import json
 import os
 import io
+import stat
 from html import escape
 
 from combine_manifest import (
@@ -24,7 +25,32 @@ from source_board import render_board, slot_map_csv
 DELTA_JSON = "lightup-private-manifest-delta.json"
 DELTA_HTML = "lightup-private-manifest-delta.html"
 DELTA_CSV = "lightup-private-manifest-delta.csv"
-OUTPUT_LIMIT = 16384
+DELTA_EDITOR = "manifest_change_review.html"
+OUTPUT_LIMIT = 32768
+
+def read_review_editor():
+    """Read the adjacent pinned offline editor as a bounded stable regular file."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), DELTA_EDITOR)
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        before = os.fstat(fd)
+        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= OUTPUT_LIMIT:
+            raise Hold("offline HUMAN follow-up editor is not a bounded regular file")
+        data = bytearray()
+        while len(data) <= OUTPUT_LIMIT:
+            chunk = os.read(fd, min(4096, OUTPUT_LIMIT + 1 - len(data)))
+            if not chunk:
+                break
+            data.extend(chunk)
+        after = os.fstat(fd)
+        if (len(data) != before.st_size or after.st_size != before.st_size
+                or after.st_ino != before.st_ino or after.st_mtime_ns != before.st_mtime_ns):
+            raise Hold("offline HUMAN follow-up editor changed while being read")
+        return bytes(data)
+    finally:
+        os.close(fd)
+
+
 
 STYLE = ("body{font:16px/1.5 system-ui,sans-serif;color:#17212f;"
          "max-width:950px;margin:2rem auto;padding:1rem}"
@@ -115,7 +141,7 @@ def compare(before, after):
     return changes, totals
 
 
-def render_html(packet):
+def render_html(packet, *, include_editor=True):
     hash_value = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     rows = []
     for item in packet["changes"]:
@@ -123,6 +149,11 @@ def render_html(packet):
         last = str(item["after_slot"]) if item["after_slot"] is not None else "—"
         rows.append("<tr><td>" + escape(item["state"]) + "</td><td>" + first +
                     "</td><td>" + last + "</td></tr>")
+    editor_link = (
+        "<p><a href='manifest_change_review.html'>Open the offline HUMAN follow-up editor</a> "
+        "and import the PRIVATE ordinal change CSV.</p>"
+        if include_editor else ""
+    )
     totals = packet["totals"]
     html = ("<!doctype html><html lang='en'><head><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -144,7 +175,7 @@ def render_html(packet):
             "<table><thead><tr><th>Literal change</th><th>Before slot</th>"
             "<th>After slot</th></tr></thead><tbody>" + "".join(rows) +
             "</tbody></table><p><a href='lightup-private-manifest-delta.csv'>"
-            "Download PRIVATE ordinal change CSV</a></p>"
+            "Download PRIVATE ordinal change CSV</a></p>" + editor_link +
             "<p><small>PRIVATE, unsigned local consistency only."
             " No endpoint URLs, notes, filenames or original source paths are embedded."
             " The source bundles are not independently authenticated. Client/operator"
@@ -218,16 +249,32 @@ def main(argv=None):
                 raise Hold("original private manifest changed during change-desk preparation")
             if args.verify_output_dir:
                 found = set(os.listdir(fd))
-                legacy_names = set(contents) - {DELTA_CSV}
-                if found not in (set(contents), legacy_names):
+                current_names = set(contents)
+                full_names = current_names | {DELTA_EDITOR}
+                legacy_three_names = current_names
+                legacy_two_names = current_names - {DELTA_CSV}
+                if found not in (full_names, legacy_three_names, legacy_two_names):
                     raise Hold("saved change output has missing or extra files")
-                # Preserve exact read-only reopening of older native two-file bundles.
+                expected = dict(contents)
+                if found == full_names:
+                    expected[DELTA_EDITOR] = read_review_editor()
+                else:
+                    # Older two/three-file packets predate the editor link and
+                    # remain strictly read-only reopenable byte-for-byte.
+                    expected[DELTA_HTML] = render_html(packet, include_editor=False)
                 for name in found:
-                    if read_private_bundle_item(fd, name, OUTPUT_LIMIT) != contents[name]:
+                    if read_private_bundle_item(fd, name, OUTPUT_LIMIT) != expected[name]:
                         raise Hold("source-bound change desk bytes drifted")
             else:
                 if os.listdir(fd):
                     raise Hold("change output directory must be empty")
+                editor_bytes = read_review_editor()
+                contents[DELTA_EDITOR] = editor_bytes
+                if any(not 0 < len(data) <= OUTPUT_LIMIT for data in contents.values()):
+                    raise Hold("private change desk or editor exceeds output bound")
+                # Re-admit the exact editor bytes immediately before publishing.
+                if read_review_editor() != editor_bytes:
+                    raise Hold("offline HUMAN follow-up editor changed before publication")
                 publish_bundle(fd, list(contents.items()))
         finally:
             os.close(fd)
