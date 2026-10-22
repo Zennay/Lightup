@@ -104,3 +104,8 @@ The locally selected informational Pareto dimensions now travel with all three e
 These positions describe only the selected unverified lab metrics. Source-adverse case counts and scope/policy flags remain separate and visible; efficiency gains never cancel adverse or scope/policy signals. A Pareto position is not a safety, quality, authorization or release verdict, and all authority flags remain false.
 
 The local SHA-256 byte binding prefers Web Crypto, then falls back to a portable in-browser SHA-256 implementation when local `file://` contexts do not expose `crypto.subtle`. This keeps source-bound private HUMAN draft save/reopen available without network access. The digest remains unsigned local byte consistency only, not source authentication, reviewer identity, consent or authorization.
+
+
+### Non-destructive local file operations
+
+All asynchronous report imports, candidate appends, PRIVATE HUMAN preference restores and multi-round comparisons use a **latest-intent-wins** local generation. Selecting another file, loading the fictional demo, forgetting all, changing thresholds, adopting a HUMAN proposal, or changing locally held HUMAN discussion work cancels older in-flight reads before they can publish results. Each complete validated import still commits atomically; a failed or superseded operation leaves the already visible reports and local HUMAN state intact. This is an offline local browser safety/usability boundary, not a check of assessment authenticity, permission or release readiness.
