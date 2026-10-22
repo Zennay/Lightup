@@ -38,7 +38,7 @@ STYLE = (
     ".slotselect input{width:1.1rem;height:1.1rem}"
     "@media(max-width:690px){.filters{grid-template-columns:1fr}"
     ".tablewrap{overflow-x:auto}table{min-width:800px}}"
-    "@media print{.filters,button,.slotselect input{display:none}header,main{max-width:none}"
+    "@media print{.filters,button,.slotselect input,#selectionSummary{display:none}header,main{max-width:none}"
     "tr[hidden]{display:none}#printScope{display:block;font-weight:700}}"
 )
 SCRIPT = r'''(() => {
