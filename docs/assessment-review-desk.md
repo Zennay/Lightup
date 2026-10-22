@@ -80,6 +80,22 @@ from the print output; the original lab verdict and current plan remain intact.
 The queue has separate CSV and JSON export actions that reuse the exact on-screen status, workstream, informational priority and metric filters. They export only the currently visible cases, in the same informational priority order, with anonymous ordinal labels, source-reported metric names, relevant numeric baseline/candidate/delta values (only the selected metric, or source-flagged metrics when no metric filter is active), local HUMAN stage/date/routing labels and static suggested follow-up guidance. CSV serializes the bounded numeric metric subset as a quoted JSON cell; the JSON handoff uses structured metric objects. The handoff records the selected filters, including the informational priority band, and literal false authorization, consent, dispatch, release, approval and scan flags. CSV cells use the existing formula-prefix guard. Raw scenario IDs, hostnames, client/operator names, source evidence and notes are excluded. An empty filtered view produces no file; the all-case exports remain available separately. This is an unsigned planning handoff, not proof of remediation, identity, permission or release.
 
 
+## Standalone filtered HTML handoff
+
+The filtered queue now has a third export format: **Export filtered queue HTML**. It produces
+one self-contained, scriptless HTML document containing only the cases matching the current
+status, workstream, priority and metric filters. The handoff includes the source-reported
+status, anonymous ordinal, local HUMAN stage/date/route, selected metric movements and
+suggested next HUMAN action. It includes the unsigned local source-byte digest so the
+operator can keep the handoff associated with the exact imported bytes.
+
+The downloaded document has a restrictive no-network/no-script Content Security Policy,
+no external assets and no executable code. Dynamic text is HTML-escaped before serialization.
+Raw scenario IDs, target names, source paths, private notes and client/operator identifiers
+are omitted. Empty filters produce no file. The handoff explicitly keeps authorization,
+consent, dispatch, release approval and scan permission false; it is a review aid, not a
+signed record or proof of remediation.
+
 ## Filtered queue printing
 
 The new **Print filtered queue** action uses the exact current status, workstream, priority-band and metric filters used by the visible queue and filtered CSV/JSON handoffs. It prints only the matching anonymous case rows plus a plain-language summary of the filters and counts, followed by source-reported baseline/candidate/delta values for each flagged metric and the static suggested next HUMAN action. In this mode the all-case brief, overview cards, historical comparisons, saved-plan delta and selected-case details are suppressed, preventing unrelated cases from being included in a filtered printout. **Print brief** remains the separate all-case report action and retains any active saved-plan delta. Printing changes no review state and exports no raw scenario IDs, hostnames, source evidence or private notes; all statuses remain unauthenticated HUMAN planning only.
