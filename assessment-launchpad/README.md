@@ -373,3 +373,8 @@ See [ROLE_RETURN_GUIDE.md](ROLE_RETURN_GUIDE.md) for the complete offline role-s
 
 
 Owner-only multi-recipient workflow: advance.py accepts up to five repeatable --role-return-dir inputs from disjoint selected HUMAN roles. See ROLE_RETURN_GUIDE.md for original round ordering, overlap refusal, private receipts, the browser editor and source-bound import. This is never consent or authorization.
+
+
+## PRIVATE HUMAN return reconciliation desk
+
+Native offline per-role/ordinal change desk and source-free aggregate workload across 1–5 disjoint original role replies: [ROLE_RECONCILIATION_GUIDE.md](ROLE_RECONCILIATION_GUIDE.md). Separate exact source-bound CLI role_return_reconcile.py, scriptless CSP-pinned HTML, private CSV, aggregate JSON, deterministic owner-only read-only reopen. This is NOT recipient authentication or a grant.
