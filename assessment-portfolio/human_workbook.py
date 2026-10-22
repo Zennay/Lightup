@@ -51,7 +51,7 @@ for (const entry of data.entries) {
     td.append(select); tr.append(td);
   }
   const noteCell = document.createElement("td");
-  const note = document.createElement("textarea"); note.maxLength = 160; note.rows = 2;
+  const note = document.createElement("input"); note.type = "text"; note.maxLength = 160;
   note.placeholder = "PRIVATE HUMAN note; never enter secrets"; note.value = entry.note;
   note.setAttribute("aria-label", "Private non-authorizing human note");
   note.addEventListener("input", () => {entry.note = note.value;});
@@ -112,7 +112,7 @@ document.getElementById("restoreWorksheet").addEventListener("change", async eve
     const selects = tr.querySelectorAll("select");
     selects[0].value = entry.human_status;
     selects[1].value = entry.proposed_role;
-    tr.querySelector("textarea").value = entry.note;
+    tr.querySelector("input[type=text]").value = entry.note;
   });
   reportProgress();
   state.textContent = "PRIVATE HUMAN worksheet reopened locally. Native source/JSON admission is still required before a new bundle.";
@@ -136,7 +136,7 @@ document.getElementById("saveWorksheet").addEventListener("click", () => {
   state.textContent = "PRIVATE HUMAN worksheet downloaded locally. Original agenda unchanged; return requires native strict readmission.";
 });
 '''.strip()
-CSS = """body{background:#f3f5f8;color:#1b2837;font:16px/1.45 system-ui,sans-serif;margin:0 auto;max-width:1200px;padding:1.5rem}h1{margin:.25rem 0}header,section{background:#fff;border:1px solid #ccd5df;border-radius:8px;padding:1rem;margin-bottom:1rem}.hold{border-left:5px solid #9b5012;padding:.8rem;background:#fff8ea;font-weight:700}.table{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.84rem}th,td{border:1px solid #dbe2e9;text-align:left;vertical-align:top;padding:.5rem}th{background:#e8edf4}textarea{min-width:190px;max-width:250px}select,textarea,button{font:inherit;padding:.4rem;border-radius:4px;border:1px solid #9eabb9}button{cursor:pointer;background:#e2f0ff}p small{color:#566477}@media print{button,textarea{display:none}}"""
+CSS = """body{background:#f3f5f8;color:#1b2837;font:16px/1.45 system-ui,sans-serif;margin:0 auto;max-width:1200px;padding:1.5rem}h1{margin:.25rem 0}header,section{background:#fff;border:1px solid #ccd5df;border-radius:8px;padding:1rem;margin-bottom:1rem}.hold{border-left:5px solid #9b5012;padding:.8rem;background:#fff8ea;font-weight:700}.table{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.84rem}th,td{border:1px solid #dbe2e9;text-align:left;vertical-align:top;padding:.5rem}th{background:#e8edf4}input[type=text]{min-width:190px;max-width:250px}select,input[type=text],button{font:inherit;padding:.4rem;border-radius:4px;border:1px solid #9eabb9}button{cursor:pointer;background:#e2f0ff}p small{color:#566477}@media print{button,input[type=text]{display:none}}"""
 
 
 class Hold(ValueError):
