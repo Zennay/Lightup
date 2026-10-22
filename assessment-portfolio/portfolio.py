@@ -511,7 +511,7 @@ def read_private_agenda_manifest(path):
         )
         if len(raw) != before.st_size or signature(before) != signature(after):
             raise Hold("source list changed during admission")
-    if not raw.endswith(b"\\n") or b"\\r" in raw or b"\\0" in raw:
+    if not raw.endswith(b"\n") or b"\r" in raw or b"\0" in raw:
         raise Hold("source list must be LF-delimited with no NUL or CR")
     try:
         paths = raw.decode("utf-8", errors="strict").splitlines()
