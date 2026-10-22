@@ -472,7 +472,10 @@ It classifies original local slots as newly selected, no longer selected or
 selected in both. Optional `--suggested-role SECURITY_REVIEWER` (or another
 fixed role) narrows output to that original proposed HUMAN role, **after** both
 complete selections and all source packets are admitted; the operator still
-must authenticate recipients. Default output is unchanged. Creates an owner-only four-file packet (scriptless
+must authenticate recipients. Role-only output separates filtered before/after
+counts from all-role totals. Default output is unchanged. The browser action desk
+also offers a selected-role-only difference CSV when one role is selected and a
+prior selection is loaded. Creates an owner-only four-file packet (scriptless
 network-denied CSP HTML, source-minimal CSV, fixed-vocabulary counts JSON and
 handling guide). Breakdown by suggested HUMAN role/next action is also
 included. Use `--preview-only` for write-free counts or `--verify-output-dir`

@@ -113,13 +113,26 @@ def summarize(before, after, total):
     return classified, data
 
 
-def render(before, after, total, role_filter=None):
+def render(before, after, total, role_filter=None, all_role_counts=None):
     rows, summary = summarize(before, after, total)
+    role_note = ""
     if role_filter is not None:
-        summary["operator_suggested_role_filter"] = role_filter
-    role_note = ("<p>Restricted to suggested HUMAN role: " +
-                 escape(role_filter.replace("_", " ")) +
-                 ". This is NOT verified recipient identity.</p>") if role_filter else ""
+        if all_role_counts is None:
+            raise Hold("role-only output needs original all-role counts")
+        summary.update({
+            "operator_suggested_role_filter": role_filter,
+            "before_selected_all_roles_count": all_role_counts[0],
+            "after_selected_all_roles_count": all_role_counts[1],
+            "role_filtered_slot_count": len(rows),
+            "role_filter_applied_after_full_source_admission": True,
+            "role_filter_verifies_recipient_identity": False,
+        })
+        role_note = ("<p>Restricted to suggested HUMAN role: " +
+                     escape(role_filter.replace("_", " ")) +
+                     ". Before/after cards are role-only counts; all-role totals are " +
+                     str(all_role_counts[0]) + " before and " +
+                     str(all_role_counts[1]) + " after. This is NOT verified " +
+                     "recipient identity or role assignment.</p>")
     cards = "".join("<div><strong>" + escape(label.replace("_", " ")) +
                     "</strong><br>" + str(summary[key]) + "</div>"
                     for label, key in (
@@ -209,7 +222,7 @@ def main(argv=None):
     parser.add_argument("--before-csv", required=True)
     parser.add_argument("--after-csv", required=True)
     parser.add_argument("--suggested-role", choices=ROLES,
-                        help="optional source-verified proposed HUMAN role-only packet")
+                        help="optional source-bound proposed HUMAN role-only packet; never authenticates a recipient")
     output = parser.add_mutually_exclusive_group(required=True)
     output.add_argument("--output-dir", help="new empty owner-only 0700 folder")
     output.add_argument("--verify-output-dir", help="read-only reopen of prior 4-file packet")
@@ -219,12 +232,14 @@ def main(argv=None):
     try:
         source = read_sources(args)
         before, after = source[2:4]
+        all_role_counts = (len(before), len(after))
         if args.suggested_role is not None:
             before = [row for row in before if row[1] == args.suggested_role]
             after = [row for row in after if row[1] == args.suggested_role]
             if not before and not after:
                 raise Hold("no exact original selected HUMAN slots in proposed role")
-        payload, summary = render(before, after, source[4], args.suggested_role)
+        payload, summary = render(before, after, source[4], args.suggested_role,
+                                 all_role_counts if args.suggested_role is not None else None)
         if args.preview_only:
             print(json.dumps(summary, sort_keys=True, separators=(",", ":")))
             return 0

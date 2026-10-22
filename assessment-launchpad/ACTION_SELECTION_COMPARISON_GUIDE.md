@@ -38,13 +38,16 @@ role-minimal comparison: **both complete original selected CSV files and all
 source packets are still admitted first**; only the separately published
 change rows, role/action aggregates and counted selected slots are filtered.
 This never verifies the proposed recipient identity. An empty selected-role
-comparison is HOLD. Repeat the identical optional role for preview, output
-and read-only reopen; default/unfiltered output remains byte-compatible.
-A browser-local selection-diff preview is also available before Apply/Replace.
-The browser action desk separately offers **Download PRIVATE selection
-differences CSV** using fixed source-local labels; this browser-only CSV is
-informational and does **not** replace either original selected-action CSV
-required by this native original-source-bound comparator.
+comparison is HOLD. The role-only JSON and HTML report this-role before/after
+counts separately from the original all-role totals. Repeat the identical
+optional role for preview, output and read-only reopen; default/unfiltered
+output remains byte-compatible. A browser-local selection-diff preview is also
+available before Apply/Replace. With a prior CSV loaded and one suggested role
+selected, the browser action desk offers **Download selected-role-only
+differences CSV**. It includes only slots in that role occurring in either
+selection; other display filters do not narrow it. The all-role export remains
+available. Neither browser export replaces the original selected-action CSVs
+required by this native source-bound comparator.
 
 To create the four-file PRIVATE native packet, repeat the same command but
 replace `--preview-only` with

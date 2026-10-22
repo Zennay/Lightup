@@ -71,6 +71,7 @@ const importPreview = document.getElementById("importPreview");
 const addImported = document.getElementById("addImported");
 const replaceImported = document.getElementById("replaceImported");
 const saveDiff = document.getElementById("saveDiff");
+const saveRoleDiff = document.getElementById("saveRoleDiff");
 let importSequence = 0, importedSlots = null;
 const selectedSlots = new Set();
 const printScope = document.getElementById("printScope");
@@ -139,6 +140,9 @@ for (const row of source) {
 function renderImportPreview() {
   importPreview.replaceChildren();
   saveDiff.disabled = !importedSlots;
+  saveRoleDiff.disabled = !importedSlots || roleFilter.value === "ALL" ||
+    !lookup.some(({values})=>values[1] === roleFilter.value &&
+      (selectedSlots.has(values[0]) || importedSlots.has(values[0])));
   if (!importedSlots) return;
   const sourceOnly = [...selectedSlots].filter(slot => !importedSlots.has(slot));
   const importedOnly = [...importedSlots].filter(slot => !selectedSlots.has(slot));
@@ -276,25 +280,31 @@ replaceImported.addEventListener("click",()=>{
   for (const slot of importedSlots) selectedSlots.add(slot);
   apply();
 });
-saveDiff.addEventListener("click",()=>{
+function downloadSelectionDiff(roleOnly) {
   if (!importedSlots) return;
-  // Before = current explicit selection, after = imported CSV. Unsigned user order,
-  // not true event time. Emit original-local fixed labels, never source text.
+  const role = roleOnly ? roleFilter.value : null;
+  if (roleOnly && (!role || role === "ALL")) return;
+  // Unsigned operator order is not chronology; emit fixed labels, never source text.
   const headings = [fieldNames[0],"selection_change",...fieldNames.slice(1)];
-  const rows = lookup.filter(({values})=>
-    selectedSlots.has(values[0]) || importedSlots.has(values[0])).map(({values})=>{
+  const rows = lookup.filter(({values})=>(!role || values[1] === role) &&
+    (selectedSlots.has(values[0]) || importedSlots.has(values[0]))).map(({values})=>{
       const before = selectedSlots.has(values[0]), after = importedSlots.has(values[0]);
       const change = before && after ? "UNCHANGED_SELECTION" :
         after ? "NEWLY_SELECTED" : "NO_LONGER_SELECTED";
       return [values[0],change,...values.slice(1)].map(csvCell).join(",");
     });
+  if (!rows.length) return;
   const raw = [headings.join(","),...rows].join("\r\n") + "\r\n";
   const url = URL.createObjectURL(new Blob([raw],{type:"text/csv;charset=utf-8"}));
   const link=document.createElement("a");link.href=url;
-  link.download="lightup-PRIVATE-human-selection-changes.csv";
+  link.download = role ? "lightup-PRIVATE-human-selection-changes-" +
+    role.toLowerCase().replaceAll("_","-") + ".csv" :
+    "lightup-PRIVATE-human-selection-changes.csv";
   document.body.append(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
-});
+}
+saveDiff.addEventListener("click",()=>downloadSelectionDiff(false));
+saveRoleDiff.addEventListener("click",()=>downloadSelectionDiff(true));
 selectVisibleButton.addEventListener("click",()=>{
   for (const {values,element} of lookup) if (!element.hidden) selectedSlots.add(values[0]);
   apply();
@@ -377,7 +387,7 @@ def render(work):
         " Browser filters and explicit slot selections exist in memory only. "
         "Printed pages contain displayed rows; CSV downloads contain only "
         "explicitly selected original slots, including selected rows hidden "
-        "by current filters. The full "
+        "by current filters. The role-only difference export excludes all other roles; other display filters do not narrow it. The full "
         "original CSV in the PRIVATE source directory remains unchanged. "
         "CSV downloads are unencrypted PRIVATE files.</p>"
         "<section class='panel filters'>"
@@ -407,9 +417,10 @@ def render(work):
         "<div id='importPreview' aria-live='polite'></div>"
         "<button type='button' id='addImported' disabled>Add imported selection</button> "
         "<button type='button' id='replaceImported' disabled>Replace current selection</button> "
-        "<button type='button' id='saveDiff' disabled>Download PRIVATE selection differences CSV</button>"
-        "<small>Unsigned, fixed-vocabulary local source match only: never reviewer "
-        "authentication, assessment authority, client consent or HUMAN GO.</small></div>"
+        "<button type='button' id='saveDiff' disabled>Download all-role PRIVATE selection differences CSV</button>"
+        "<button type='button' id='saveRoleDiff' disabled>Download selected-role-only differences CSV</button>"
+        "<small>Selected-role-only export requires one suggested role and excludes every other role, even if its rows are selected. "
+        "This is not verified role assignment, reviewer authentication, consent or HUMAN GO.</small></div>"
         "<details class='selectionpreview'><summary>Review selected rows before CSV download</summary>"
         "<div id='selectionPreview' class='tablewrap' aria-live='polite'>No original slots selected yet.</div></details>"
         "<div class='tablewrap'><table><thead><tr><th>Select / original slot</th>"
