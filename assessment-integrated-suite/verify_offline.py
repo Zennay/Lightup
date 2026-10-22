@@ -262,9 +262,17 @@ def main() -> int:
         description="Verify legacy v1 or current v2 LightUp software-only ZIP bytes without extracting")
     parser.add_argument("--package", required=True,
                         help="path to an existing offline software ZIP")
+    parser.add_argument("--expected-sha256", default="",
+                        help="optional expected ZIP digest from a separately trusted channel")
+    parser.add_argument("--sha256-file", default="",
+                        help="optional standard sha256sum sidecar bound to the package filename")
     args = parser.parse_args()
     try:
-        return verify(Path(args.package).absolute())
+        return verify(
+            Path(args.package).absolute(),
+            args.expected_sha256,
+            Path(args.sha256_file).absolute() if args.sha256_file else None,
+        )
     except (Hold, OSError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: cannot read package",
               file=sys.stderr)
