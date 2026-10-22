@@ -372,6 +372,55 @@ approved, that a person consented, or that an assessment may run**. This
 is merely HUMAN planning comparison in an offline lab draft. No review
 result, consent, grant, scan, dispatch, network action or release is made.
 
+## Multi-round PRIVATE HUMAN timeline (2–8 operator-supplied rounds)
+
+The opt-in \`--human-history\` workflow combines **2–8 separately saved original-bound
+PRIVATE HUMAN worksheet responses** against the same fully admitted original agenda
+selection, source ordering, reference day and any identical focus filters. Repeat
+\`--human-history\` once per input. Each response must be a current-user-owned regular
+file with exact mode \`0600\`, a single hard link, bounded stable contents, a valid
+original-row binding and only the fixed HUMAN status/role vocabulary. Repeated
+paths, changed source rows, incompatible reference days, unsafe inputs or output
+inside any input room cause HOLD before publication.
+
+\`\`\`bash
+mkdir -m 700 /private/human-timeline-room
+python3 assessment-portfolio/portfolio.py \\
+  --as-of 2026-10-22 \\
+  --agendas-file /private/agenda-selection.txt \\
+  --human-history /private/human-input/round-earlier.json \\
+  --human-history /private/human-input/round-middle.json \\
+  --human-history /private/human-input/round-later.json \\
+  --private-home \\
+  --output-dir /private/human-timeline-room
+\`\`\`
+
+The packet retains the canonical four portfolio outputs and adds three owner-private
+mode-\`0600\` artifacts: \`assessment-portfolio-private-HUMAN-timeline.html\` (scriptless
+local side-by-side history), \`assessment-portfolio-private-HUMAN-timeline.json\`
+(structured ordinal-level transitions and per-round summaries), and
+\`assessment-portfolio-private-HUMAN-timeline.csv\` (one row per original ordinal and
+operator-supplied round). A scriptless private home links the exact files created.
+The timeline reports status/role changes and whether a private note changed, but it
+never copies note contents, input paths, filenames, hashes, targets or client
+identifiers into the timeline. The CSV and timeline are **PRIVATE, not anonymous**;
+ordinals and small-cell counts can reveal local planning context.
+
+Round 1, Round 2, and so on reflect **only the explicit command-line order chosen by
+the operator**. The feature does not infer or authenticate chronology from timestamps,
+filenames or notes. It cannot establish reviewer identity, source authenticity,
+consent, remediation, task completion, approval, a grant or permission to scan.
+Original agenda and HUMAN response bytes are re-admitted before publication. Existing
+output names are never overwritten; read-only \`--verify-output-dir\` must repeat the
+same original sources and order, reference day, focus flags, response paths and
+optional output flags.
+
+\`--human-history\` is mutually exclusive with the pairwise \`--human-responses\` /
+\`--previous-human-responses\` delta workflow. This remains offline **INCUBATE M3/M7
+PLAN/LAB ONLY / DRAFT-HOLD**; all original CI, source-owner, independent
+security/privacy review, #177/#182/#829 and separate current consent/action-time
+revocation/HUMAN GO gates remain binding.
+
 ## Interpretation and safety
 
 - Input agenda exports are untrusted claims. Strict schema admission is not source authentication, reviewer authentication, customer identity, consent or security validation.
