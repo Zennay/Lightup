@@ -56,7 +56,9 @@
 <label>Case view<select id="conflictMode"><option value="conflicts">Adverse or disagreeing labels</option><option value="disagreement">Cross-candidate label disagreements</option><option value="adverse">Any source-adverse label</option><option value="all">All anonymous cases</option></select></label>
 </div>
 <p id="conflictSummary" class="eyebrow" aria-live="polite">Import compatible reports to compare source labels. Nothing is sent or saved automatically.</p>
-<div id="conflictTable" class="tablewrap"></div>
+<h3>Metric-level disagreement frequency</h3><p class="footnote">This summary covers all imported cases regardless of the case-view filter and shows per-candidate counts without ranking or approval.</p>
+<div id="conflictMetricSummary" class="tablewrap"></div>
+<h3>Case-by-case explanations</h3><div id="conflictTable" class="tablewrap"></div>
 <div class="controls"><button id="exportConflictsCSV" type="button" class="ghost" disabled>Export scenario conflict ledger (CSV)</button></div>
 <p class="footnote">Exports use anonymous case ordinals and fixed metric names only; they omit source case IDs, filenames, aliases and hashes. A missing disagreement or adverse label is not proof of a fix. Candidate slots follow manual file-selection order, not verified chronology. All authority flags remain false.</p></section>
 <section class="panel" id="casework"><div class="section-head"><h2>07 / Cross-candidate human review queue</h2><span class="eyebrow">Anonymous cases · local discussion only</span></div>
