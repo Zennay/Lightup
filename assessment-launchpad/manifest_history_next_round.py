@@ -33,8 +33,14 @@ def disjoint_roots(roots):
 def run(args):
     if not 1 <= len(args.round_dir) <= MAX_OLD_ROUNDS:
         raise Hold("next-round builder requires 1 to 7 original saved HUMAN rounds")
-    if not args.stage:
-        raise Hold("next-round HUMAN continuation needs explicitly chosen ROW:STAGE edits")
+    if args.answers_dir and args.stage:
+        raise Hold("HUMAN continuation requires either PRIVATE CSV or chosen stages, not both")
+    if not args.answers_dir and not args.stage:
+        raise Hold("next-round HUMAN continuation requires PRIVATE CSV or ROW:STAGE edits")
+    if args.ack_csv_stage_replace and not args.answers_dir:
+        raise Hold("CSV replacement acknowledgement requires a PRIVATE answers directory")
+    if args.answers_dir and not (args.ack_csv_stage_replace or args.dry_run):
+        raise Hold("PRIVATE browser CSV stage replacement needs explicit acknowledgement")
     previous_paths = args.round_dir
     # Re-admit the *complete* original HUMAN chain; this is local unsigned
     # provenance, never identity, approved scope or operator authority.
@@ -42,13 +48,20 @@ def run(args):
         args.plan_dir, args.history_dir, previous_paths, min_rounds=1)
     old_roots = [*(plan[0] for plan in plan_paths), history_root,
                  *(round_[0] for round_ in rounds)]
+    if args.answers_dir:
+        old_roots.append(private_dir(args.answers_dir)[0])
     private_plan_args = [part for path in args.plan_dir for part in ("--plan-dir", path)]
     latest = previous_paths[-1]
     return_args = private_plan_args + [
         "--history-dir", args.history_dir,
         "--continue-from-return-dir", latest,
-        *[piece for stage in args.stage for piece in ("--stage", stage)],
     ]
+    if args.answers_dir:
+        return_args += ["--answers-dir", args.answers_dir]
+        if args.ack_csv_stage_replace and not args.dry_run:
+            return_args += ["--ack-csv-stage-replace"]
+    else:
+        return_args += [piece for stage in args.stage for piece in ("--stage", stage)]
     if args.dry_run:
         if args.output_dir or args.timeline_dir or args.delta_dir or args.verify_output:
             raise Hold("next-round preview cannot select output/reopen directories")
@@ -92,7 +105,7 @@ def run(args):
             raise Hold("PRIVATE HUMAN history timeline rejected")
     print(("NEXT_HUMAN_ROUND_REOPENED" if args.verify_output else
            "NEXT_HUMAN_ROUND_PUBLISHED") + " · new_round_ordinal=" + str(len(rounds) + 1)
-          + " · changed-row choices=" + str(len(args.stage))
+          + " · input_mode=" + ("PRIVATE_CSV" if args.answers_dir else "ROW_STAGES")
           + " · REVIEW_ONLY; no source mutation, permission, scan or HUMAN GO")
     return 0
 
@@ -106,8 +119,12 @@ def main(argv=None):
                         help="original source-bound PRIVATE manifest-history directory")
     parser.add_argument("--round-dir", action="append", required=True,
                         help="1–7 ordered original saved HUMAN returns; first must be v1, rest exact v2 successors")
-    parser.add_argument("--stage", action="append", default=[],
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--stage", action="append", default=[],
                         help="one explicit 1-based original HUMAN row edit, e.g. 3:IN_REVIEW; repeatable")
+    source.add_argument("--answers-dir", help="PRIVATE 0700 owner-only directory containing the one complete edited 0600 browser CSV")
+    parser.add_argument("--ack-csv-stage-replace", action="store_true",
+                        help="explicitly confirm full prior HUMAN stage replacement when importing PRIVATE CSV")
     parser.add_argument("--output-dir", help="new, separate PRIVATE 0700 next HUMAN return directory")
     parser.add_argument("--timeline-dir", help="optional separate PRIVATE 0700 updated timeline directory")
     parser.add_argument("--delta-dir", help="optional separate PRIVATE 0700 previous/new stage-delta directory")
