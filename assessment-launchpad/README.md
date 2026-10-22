@@ -74,6 +74,12 @@ python3 assessment-launchpad/manifest_history_desk.py --plan-dir ~/private-plan-
 python3 assessment-launchpad/manifest_history_desk.py --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two --plan-dir ~/private-plan-three --verify-output-dir ~/private-plan-history
 ```
 
+**One-command combine + history:** `combine_manifest.py` also accepts 1–7 repeated `--history-prior-dir` values plus one `--history-output-dir` to append its newly published combined plan as the final historical snapshot. It admits all prior saved PRIVATE bundles before publication; the new plan and history are written in **separate private transactions**. `--verify-output` reopens both without writing. This optional history may be requested alongside the independent change-desk and offline HUMAN workspace, but every destination must be separate from all source and output trees.
+
+```sh
+python3 assessment-launchpad/combine_manifest.py --first-manifest ~/private-input-a/targets.txt --second-manifest ~/private-input-b/targets.txt --mode append --output-dir ~/private-plan-three --history-prior-dir ~/private-plan-one --history-prior-dir ~/private-plan-two --history-output-dir ~/private-plan-series
+```
+
 The destination must be a **different existing, empty, owner-owned 0700 directory**; the four mode-0600 files are exclusive/no-overwrite and admit exact source-bound read-only reopen. Operator ordering does **not** establish trustworthy chronology, and neither local hash equality nor a missing endpoint means a vulnerability is fixed or any action is approved. Keep all four files PRIVATE; even anonymous ordinal counts may be commercially sensitive. No live scan, DNS, model, original source ownership changes, consent, revocation or HUMAN GO is performed.
 
 ### One-command saved-plan comparison (new optional offline step)

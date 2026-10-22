@@ -120,11 +120,16 @@ def run(args):
     )
     if bool(args.change_before_dir) != bool(args.change_output_dir):
         raise Hold("manifest change comparison requires both a saved before bundle and an isolated output directory")
-    if args.change_before_dir:
-        # Admit the *saved* preceding bundle before writing anything.
-        # Comparison is a local consistency aid, never evidence of authorization.
+    if bool(args.history_prior_dir) != bool(args.history_output_dir):
+        raise Hold("manifest history requires prior bundles and a separate private output directory")
+    if len(args.history_prior_dir) > 7:
+        raise Hold("history may contain at most seven prior saved source bundles")
+    if args.change_before_dir or args.history_prior_dir:
+        # Admit all prior saved bundles before writing any combined output.
+        # Local source integrity is not independent authority or chronology.
         import manifest_change_desk
-        manifest_change_desk.admit_saved_bundle(args.change_before_dir)
+        for prior in ([args.change_before_dir] if args.change_before_dir else []) + args.history_prior_dir:
+            manifest_change_desk.admit_saved_bundle(prior)
     output_fd, output_abs = open_output_directory(args.output_dir)
     extra_directory = args.handoff_dir or args.workspace_dir
     if extra_directory:
@@ -151,6 +156,9 @@ def run(args):
             change_fd, change_abs = open_output_directory(args.change_output_dir)
             try:
                 protected = [output_abs, os.path.abspath(args.change_before_dir)]
+                protected.extend(os.path.abspath(path) for path in args.history_prior_dir)
+                if args.history_output_dir:
+                    protected.append(os.path.abspath(args.history_output_dir))
                 if extra_directory:
                     protected.append(os.path.abspath(extra_directory))
                 protected.extend(os.path.dirname(original) for original in originals)
@@ -162,6 +170,26 @@ def run(args):
                     raise Hold("private change output directory must be empty before publication")
             finally:
                 os.close(change_fd)
+        if args.history_output_dir:
+            history_fd, history_abs = open_output_directory(args.history_output_dir)
+            try:
+                protected = [output_abs]
+                if args.change_before_dir:
+                    protected.append(os.path.abspath(args.change_before_dir))
+                if extra_directory:
+                    protected.append(os.path.abspath(extra_directory))
+                if args.change_output_dir:
+                    protected.append(os.path.abspath(args.change_output_dir))
+                protected.extend(os.path.abspath(path) for path in args.history_prior_dir)
+                protected.extend(os.path.dirname(original) for original in originals)
+                for source in protected:
+                    common = os.path.commonpath((history_abs, source))
+                    if common in (history_abs, source):
+                        raise Hold("private history output must be separate from all source and output trees")
+                if not args.verify_output and os.listdir(history_fd):
+                    raise Hold("private history output directory must be empty before publication")
+            finally:
+                os.close(history_fd)
         for original in originals:
             parent = os.path.dirname(original)
             shared = os.path.commonpath((output_abs, parent))
@@ -237,6 +265,18 @@ def run(args):
                        args.change_output_dir]
         if manifest_change_desk.main(change_args) != 0:
             raise Hold("private manifest change comparison or exact reopen failed")
+    if args.history_prior_dir:
+        # The already-written canonical combined packet is the final history plan.
+        # This is a separate isolated PRIVATE transaction, never a live workflow.
+        import manifest_history_desk
+        history_args = [part for path in (*args.history_prior_dir, args.output_dir)
+                        for part in ("--plan-dir", path)]
+        history_args.extend([
+            "--verify-output-dir" if args.verify_output else "--output-dir",
+            args.history_output_dir,
+        ])
+        if manifest_history_desk.main(history_args) != 0:
+            raise Hold("private history publication or read-only reopen failed")
     status = "REOPENED_REVIEW_ONLY" if args.verify_output else "PUBLISHED_REVIEW_ONLY"
     print(status + " · " + str(counts["result_endpoints"]) +
           " isolated-lab endpoint slots · no assessment, consent, target contact or authorization")
@@ -260,6 +300,9 @@ def main(argv=None):
     secondary.add_argument("--workspace-dir", help="optional second private 0700 directory for complete HUMAN-only workspace")
     parser.add_argument("--change-before-dir", help="optional prior saved PRIVATE combined bundle to compare")
     parser.add_argument("--change-output-dir", help="separate empty 0700 PRIVATE change-desk directory; verify with --verify-output")
+    parser.add_argument("--history-prior-dir", action="append", default=[],
+                        help="prior saved PRIVATE combine bundle (repeat up to 7); current output becomes final plan")
+    parser.add_argument("--history-output-dir", help="additional separate empty PRIVATE 0700 history directory")
     parser.add_argument("--ack-normalization", action="store_true", help="allow source comments/whitespace to be omitted")
     parser.add_argument("--ack-replace", action="store_true", help="explicitly accept discarding first manifest endpoints")
     parser.add_argument("--verify-output", action="store_true", help="read-only strict reopen against both original sources")
@@ -269,7 +312,8 @@ def main(argv=None):
     try:
         if args.dry_run:
             if (args.output_dir or args.handoff_dir or args.workspace_dir or args.verify_output
-                    or args.change_before_dir or args.change_output_dir):
+                    or args.change_before_dir or args.change_output_dir
+                    or args.history_prior_dir or args.history_output_dir):
                 raise Hold("dry-run is read-only and cannot select publication or reopen directories")
             _, _, counts = prepare(args.first_manifest, args.second_manifest, args.mode,
                                    args.ack_normalization, args.ack_replace, preview_only=True,
