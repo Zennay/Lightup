@@ -353,6 +353,40 @@ def render_private_html(summary, rows):
     )
     return html.encode("utf-8")
 
+# Fixed JavaScript enhances only the already admitted PRIVATE table rows.
+# It performs no fetch, worker, storage, evaluation, submission or export.
+INTERACTIVE_SCRIPT = "\"use strict\";\nconst panel = document.getElementById(\"privateFilterPanel\");\nif (panel) {\n  const sections = Array.from(document.querySelectorAll(\"section\")).filter(\n    section => (section.querySelector(\"h2\")?.textContent || \"\").startsWith(\"Neutral role:\")\n  );\n  const entries = sections.flatMap(section =>\n    Array.from(section.querySelectorAll(\"tbody tr\")).map(row => ({ section, row, cells: Array.from(row.cells, cell => cell.textContent || \"\") }))\n  );\n  const role = document.getElementById(\"localRole\");\n  const stage = document.getElementById(\"localStage\");\n  const bucket = document.getElementById(\"localBucket\");\n  const search = document.getElementById(\"localSearch\");\n  const counter = document.getElementById(\"visibleHumanItems\");\n  const update = () => {\n    let visible = 0;\n    for (const item of entries) {\n      const found = (!role.value || item.cells[4] === role.value)\n        && (!stage.value || item.cells[3] === stage.value)\n        && (!bucket.value || item.cells[6] === bucket.value)\n        && (!search.value.trim() || item.cells.join(\" \").toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase()));\n      item.row.hidden = !found;\n      if (found) visible++;\n    }\n    for (const section of sections) {\n      section.hidden = !Array.from(section.querySelectorAll(\"tbody tr\")).some(row => !row.hidden);\n    }\n    counter.textContent = String(visible) + \" of \" + String(entries.length) + \" private HUMAN planning rows shown. These are not assigned or authorized actions.\";\n  };\n  for (const control of [role, stage, bucket, search]) control.addEventListener(\"input\", update);\n  document.getElementById(\"resetLocalFilters\").addEventListener(\"click\", () => {\n    role.value = \"\"; stage.value = \"\"; bucket.value = \"\"; search.value = \"\"; update(); search.focus();\n  });\n  update();\n}"
+
+
+def render_interactive_html(summary, rows):
+    """Optional CSP-pinned local reviewer UI, never an authority or target workflow."""
+    from_base = render_private_html(summary, rows).decode("utf-8")
+    script_hash = base64.b64encode(sha256(INTERACTIVE_SCRIPT.encode("utf-8")).digest()).decode("ascii")
+    def options(values):
+        return "<option value=''>All</option>" + "".join(
+            "<option value='" + escape(value) + "'>" + escape(value) + "</option>"
+            for value in values
+        )
+    controls = (
+        "<section id='privateFilterPanel' aria-label='Local private HUMAN planning filters'>"
+        "<h2>Explore the PRIVATE human work queue</h2>"
+        "<p class='note'>Refine only this local copy. Nothing is sent, saved, approved or assigned.</p>"
+        "<label for='localRole'>Suggested role</label><select id='localRole'>" + options(ROLES) + "</select> "
+        "<label for='localStage'>HUMAN stage</label><select id='localStage'>" + options(STAGES) + "</select> "
+        "<label for='localBucket'>Proposed date</label><select id='localBucket'>" + options(DATE_BUCKETS) + "</select> "
+        "<label for='localSearch'>Search private table</label><input id='localSearch' type='search' maxlength='120' "
+        "autocomplete='off' placeholder='Fixed questions or slot ordinals'> "
+        "<button type='button' id='resetLocalFilters'>Clear local filters</button>"
+        "<p id='visibleHumanItems' role='status' aria-live='polite'></p>"
+        "</section>"
+    )
+    if from_base.count("<main>") != 1 or from_base.count("script-src 'none'") != 1:
+        raise Hold("unexpected private HTML template")
+    from_base = from_base.replace("<main>", controls + "<main>", 1)
+    from_base = from_base.replace("script-src 'none'", "script-src 'sha256-" + script_hash + "'", 1)
+    return from_base.replace("</body>", "<script>" + INTERACTIVE_SCRIPT + "</script></body>", 1).encode("utf-8")
+
+
 def render_private_routing_csv(rows):
     """Explicit PRIVATE per-item human handoff. Never an anonymous public export.
 
@@ -437,7 +471,7 @@ def publish_bundle(directory_fd, artifacts):
         raise
 
 
-def render_artifacts(documents, rows, reference_day, *, selection=None):
+def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False):
     """Deterministic private bytes used identically for create and reopen.
 
     A filtered handoff has an explicit v2 view contract; unchanged full
@@ -447,13 +481,18 @@ def render_artifacts(documents, rows, reference_day, *, selection=None):
     if selection:
         summary["schema"] = FOCUSED_SCHEMA
         summary["view_selection"] = selection
-    return [
+    result = [
         ("assessment-portfolio-private.html", render_private_html(summary, rows)),
         ("assessment-portfolio-private-routing.csv", render_private_routing_csv(rows)),
         ("assessment-portfolio-anonymous.json",
          (json.dumps(summary, ensure_ascii=False, indent=2) + "\n").encode("utf-8")),
         ("assessment-portfolio-anonymous.csv", render_counts_csv(summary)),
     ]
+    if interactive:
+        result.append(("assessment-portfolio-private-explorer.html", render_interactive_html(summary, rows)))
+    if any(len(data) > 1_048_576 for _, data in result):
+        raise Hold("private portfolio artifact exceeds bounded 1 MiB publication limit")
+    return result
 
 
 def verify_existing_bundle(directory_fd, expected):
@@ -571,7 +610,7 @@ def run(args):
                 and (not args.focus_stage or row["stage"] == args.focus_stage)
                 and (not args.focus_bucket or row["date_bucket"] == args.focus_bucket)
             ]
-        outputs = render_artifacts(documents, rows, reference_day, selection=selection)
+        outputs = render_artifacts(documents, rows, reference_day, selection=selection, interactive=args.private_explorer)
         readmit_unchanged_sources(admitted)
         if manifest_path:
             _, reopened_paths = read_private_agenda_manifest(manifest_path)
@@ -601,6 +640,8 @@ def main(argv=None):
                         help="Restrict PRIVATE human workroom to one non-authorizing HUMAN stage")
     parser.add_argument("--focus-bucket", choices=DATE_BUCKETS,
                         help="Restrict PRIVATE human workroom to one date bucket relative to --as-of")
+    parser.add_argument("--private-explorer", action="store_true",
+                        help="Add a CSP-pinned offline interactive PRIVATE HUMAN queue, no storage/network")
     parser.add_argument("--agendas-file", help="Owner-private mode-0600 LF-delimited list of 2–12 absolute agenda paths")
     parser.add_argument("agendas", nargs="*", help="2–12 original private JSON agenda exports (or use --agendas-file)")
     args = parser.parse_args(argv)
