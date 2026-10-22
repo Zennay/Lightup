@@ -74,6 +74,29 @@ python3 assessment-launchpad/manifest_history_desk.py --plan-dir ~/private-plan-
 python3 assessment-launchpad/manifest_history_desk.py --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two --plan-dir ~/private-plan-three --verify-output-dir ~/private-plan-history
 ```
 
+### Private HUMAN stage editing — accessible browser studio or native CLI
+
+Open `assessment-launchpad/history_review_editor.html` **locally**, with no server or network connection. This standalone, responsive editor has a strict SHA-256-hash CSP, no CDN, external assets, storage, telemetry, cookies, localStorage or fetch. Import the exact `lightup-manifest-history-review-queue-private.csv` emitted by the history desk. Review changed slot ordinals in a filterable table, assign one of six explicit HUMAN follow-up stages per row or to an expressly confirmed subset, undo the latest edit and download the complete original-order six-column PRIVATE CSV. No URL, original filename or source digest is displayed or exported; all review state remains transient in the browser. Even an empty original queue can be saved unmodified. Import rejects oversized (>64 KiB), malformed, duplicate or out-of-sequence source slot rows; the native verifier still owns final original-source validation.
+
+Browser downloads cannot enforce POSIX file mode: move the downloaded CSV into a dedicated private `0700` answers folder and use `chmod 600` before calling `manifest_history_response.py`. Never open/share this private CSV as a public preview.
+
+**Browserless alternative:** use `manifest_history_editor.py` to publish the same exact PRIVATE CSV directly as a mode-`0600` file, with no manual file permissions or row editing. Its `--stage N:STAGE` selects the Nth (1-based) original changed-slot row, retains the entire source order and all immutable identity columns, and changes **only** that row's HUMAN stage. It requires original saved bundles and exact private history, a new separate empty owner-owned mode-`0700` answers directory, and supports read-only reopen with the same source and stage choices:
+
+```sh
+mkdir -m 700 ~/private-plan-answers
+python3 assessment-launchpad/manifest_history_editor.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --stage 1:NEEDS_CONTEXT --stage 2:IN_REVIEW \
+  --output-dir ~/private-plan-answers
+python3 assessment-launchpad/manifest_history_response.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --answers-dir ~/private-plan-answers --output-dir ~/private-human-return
+```
+
+The browser and CLI are two **alternative** ways of preparing the original ordinal queue. Neither establishes real chronology, genuine client/operator authority, true scope provenance or permission to scan; a PRIVATE HUMAN stage is never remediation proof or a security release gate.
+
 ### PRIVATE HUMAN review return for manifest-history changes
 
 The optional standalone `manifest_history_response.py` completes the offline loop for the history queue. The operator copies **only** `lightup-manifest-history-review-queue-private.csv` from an original saved PRIVATE history bundle to a **separate private 0700 answers directory** (retaining the exact filename and mode-0600 ownership), edits ONLY its `human_stage` column, and selects one of the literal statuses `FOLLOW_UP_REQUIRED`, `NEEDS_CONTEXT`, `IN_REVIEW`, `QUESTION_PREPARED`, `PARKED` or `HUMAN_REVIEWED`. All plan-pair, change, source slot and destination slot columns must remain byte-literal CSV values and in the original source order. No notes, formulas, additional rows or unrecognized statuses can be imported.
