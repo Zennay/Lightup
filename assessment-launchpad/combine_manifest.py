@@ -90,20 +90,21 @@ def run(args):
         args.ack_normalization, args.ack_replace,
     )
     output_fd, output_abs = open_output_directory(args.output_dir)
-    if args.handoff_dir:
+    extra_directory = args.handoff_dir or args.workspace_dir
+    if extra_directory:
         try:
-            handoff_fd, handoff_abs = open_output_directory(args.handoff_dir)
+            handoff_fd, handoff_abs = open_output_directory(extra_directory)
             try:
                 shared = os.path.commonpath((output_abs, handoff_abs))
                 if shared in (output_abs, handoff_abs):
-                    raise Hold("handoff directory must be separate from combined output directory")
+                    raise Hold("secondary private directory must be separate from combined output directory")
                 for original in originals:
                     source_parent = os.path.dirname(original)
                     source_shared = os.path.commonpath((handoff_abs, source_parent))
                     if source_shared in (handoff_abs, source_parent):
-                        raise Hold("handoff directory must be separate from private source trees")
+                        raise Hold("secondary private directory must be separate from private source trees")
                 if not args.verify_output and os.listdir(handoff_fd):
-                    raise Hold("handoff output directory must be empty before publication")
+                    raise Hold("secondary output directory must be empty before publication")
             finally:
                 os.close(handoff_fd)
         except Exception:
@@ -150,6 +151,22 @@ def run(args):
             # If this second publication fails, the separate combined source remains owner-private.
             launchpad.run(SimpleNamespace(manifest=os.path.join(output_abs, MANIFEST),
                                            output_dir=args.handoff_dir))
+    if args.workspace_dir:
+        # Reuse the existing original-source-bound HUMAN workspace; no subprocess,
+        # scanner, model, DNS, grant or command execution is involved.
+        import workspace
+        workspace_args = (["--verify-workspace-dir", args.workspace_dir]
+                          if args.verify_output else
+                          ["--workspace-dir", args.workspace_dir,
+                           "--manifest", os.path.join(output_abs, MANIFEST)])
+        if workspace.main(workspace_args) != 0:
+            raise Hold("existing private HUMAN workspace admission failed")
+        review_fd, _ = open_output_directory(os.path.join(args.workspace_dir, workspace.BUNDLE_DIR))
+        try:
+            if read_private_bundle_item(review_fd, MANIFEST, MAX_MANIFEST_BYTES) != files[MANIFEST]:
+                raise Hold("HUMAN workspace original lab manifest does not match combined source")
+        finally:
+            os.close(review_fd)
     status = "REOPENED_REVIEW_ONLY" if args.verify_output else "PUBLISHED_REVIEW_ONLY"
     print(status + " · " + str(counts["result_endpoints"]) +
           " isolated-lab endpoint slots · no assessment, consent, target contact or authorization")
@@ -162,7 +179,9 @@ def main(argv=None):
     parser.add_argument("--second-manifest", required=True, help="incoming source manifest (0600)")
     parser.add_argument("--mode", choices=("append", "replace"), required=True)
     parser.add_argument("--output-dir", help="separate existing private output directory (0700); omit only in dry-run")
-    parser.add_argument("--handoff-dir", help="optional second separate empty 0700 directory for complete PREVIEW-ONLY launchpad bundle")
+    secondary = parser.add_mutually_exclusive_group()
+    secondary.add_argument("--handoff-dir", help="optional second private 0700 directory for original preview bundle")
+    secondary.add_argument("--workspace-dir", help="optional second private 0700 directory for complete HUMAN-only workspace")
     parser.add_argument("--ack-normalization", action="store_true", help="allow source comments/whitespace to be omitted")
     parser.add_argument("--ack-replace", action="store_true", help="explicitly accept discarding first manifest endpoints")
     parser.add_argument("--verify-output", action="store_true", help="read-only strict reopen against both original sources")
@@ -171,7 +190,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.dry_run:
-            if args.output_dir or args.handoff_dir or args.verify_output:
+            if args.output_dir or args.handoff_dir or args.workspace_dir or args.verify_output:
                 raise Hold("dry-run is read-only and cannot select publication or reopen directories")
             _, _, counts = prepare(args.first_manifest, args.second_manifest, args.mode,
                                    args.ack_normalization, args.ack_replace, preview_only=True)
