@@ -15,9 +15,14 @@
 <h3>PRIVATE received-content review</h3>
 <p>Content is shown only after the receipt has matched, and only on this local page. It may still contain confidential information. No changes, grants, copies or transmissions are made. You must review it yourself.</p>
 <div id="recipientHints" class="warnings" aria-live="polite">No readable matched content.</div>
+<label for="receivedSearch">Find in received redacted text (case-sensitive, local only)</label>
+<input id="receivedSearch" type="search" maxlength="120" autocomplete="off" disabled placeholder="Search only the received redacted copy">
+<div class="actions"><button id="receivedFindPrev" type="button" class="secondary" disabled>Previous match</button><span id="receivedFindStatus" role="status" aria-live="polite">No active search.</span><button id="receivedFindNext" type="button" class="secondary" disabled>Next match</button></div>
 <label for="receivedPreview">Complete received text, presented in 8,000-character pages</label>
 <textarea id="receivedPreview" readonly spellcheck="false" rows="12" aria-label="Matched received text"></textarea>
 <div class="actions"><button id="receivedPrev" type="button" class="secondary" disabled>Previous page</button><span id="receivedPage" role="status">No pages</span><button id="receivedNext" type="button" class="secondary" disabled>Next page</button></div>
+<div class="actions"><label for="receivedPageJump">Go directly to page</label><input id="receivedPageJump" type="number" min="1" step="1" disabled aria-label="Page number to display"><button id="goReceivedPage" type="button" class="secondary" disabled>Open page</button></div>
+<p class="note">Search and page jumps show only the already matched redacted copy. A jump marks only the displayed page as viewed; every page must still be displayed before a HUMAN reply can be exported.</p>
 </div>
 <div class="recipient-review">
 <h3>PRIVATE HUMAN follow-up (non-authorizing)</h3>

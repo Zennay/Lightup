@@ -30,3 +30,9 @@ select:focus{outline:3px solid #3a82db;outline-offset:2px}
 .reader-search .actions{align-items:center;margin-bottom:0}
 #reviewFindStatus{font-size:.88rem;color:#475a79}
 @media(max-width:700px){.pem-control{padding:14px}.reader-search .actions button{width:auto;flex:1}}
+
+/* Bounded recipient navigation for large redacted files; never indexes source originals. */
+.recipient-review input[type=search]{font:inherit;width:100%;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}
+.recipient-review input[type=number]{font:inherit;width:7rem;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}
+.recipient-review .actions label{margin:0;align-self:center}
+#receivedFindStatus{overflow-wrap:anywhere;max-width:100%}

@@ -7,6 +7,9 @@
   let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0, revision = 0;
   const message = (id,text) => { e[id].textContent = text; };
   const chars = text => [...text].length;
+  // Reject visually deceptive invisible direction controls in PRIVATE notes;
+  // preserve ordinary multilingual joiners and line breaks.
+  const unsafeHumanText = value => /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/u.test(value);
   const hash = async bytes => {
     if (!crypto?.subtle) throw Error("WebCrypto is unavailable");
     return [...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(v=>v.toString(16).padStart(2,"0")).join("");
@@ -381,7 +384,7 @@
          (current.highRisk && reply.human_followup!=="needs_more_masking") ||
          !["needs_more_masking","needs_context","read_only_notes"].includes(reply.human_followup) ||
          typeof reply.human_note!=="string" || reply.human_note.length>800 ||
-         /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(reply.human_note) ||
+         unsafeHumanText(reply.human_note) ||
          hints(reply.human_note).some(([name])=>["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].includes(name)) ||
          !["sender_authenticated","client_consent","operator_consent",
            "revocation_at_use_verified","scanning_permitted","release_approved"].every(k=>reply[k]===false)){

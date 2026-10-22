@@ -4,6 +4,55 @@
   const e=id=>document.getElementById(id), enc=new TextDecoder("utf-8",{fatal:true});
 
   let operation=0, receivedText=null, viewPage=0, viewedPages=new Set(), matched=null;
+  let searchMatches=[], searchIndex=-1;
+  function updateFindStatus(message){
+    const available=receivedText!==null&&searchMatches.length>0;
+    e("receivedFindPrev").disabled=e("receivedFindNext").disabled=!available;
+    e("receivedFindStatus").textContent=message||(available?
+      "Match "+(searchIndex+1)+" of "+searchMatches.length+" in the received redacted copy.":
+      "No active matches. This is not a privacy-safety finding.");
+  }
+  function navigateMatch(direction){
+    if(receivedText===null||!searchMatches.length)return;
+    searchIndex=(searchIndex+direction+searchMatches.length)%searchMatches.length;
+    const position=searchMatches[searchIndex];
+    showPage(Math.floor(position/8000));
+    const within=position-viewPage*8000;
+    e("receivedPreview").focus();
+    e("receivedPreview").setSelectionRange(within,within+e("receivedSearch").value.length);
+    updateFindStatus();
+  }
+  e("receivedSearch").addEventListener("input",()=>{
+    searchMatches=[];searchIndex=-1;
+    const needle=e("receivedSearch").value;
+    if(receivedText===null){updateFindStatus("Compare matching files before searching.");return;}
+    if(needle.length<2||needle.length>120||/[\x00-\x1f\x7f-\x9f]/u.test(needle)){
+      updateFindStatus("Enter a 2–120 character search without control characters.");return;
+    }
+    let offset=0,next;
+    while((next=receivedText.indexOf(needle,offset))!==-1){
+      searchMatches.push(next);offset=next+needle.length;
+      if(searchMatches.length>500){
+        searchMatches=[];searchIndex=-1;
+        updateFindStatus("HOLD: more than 500 matches. Narrow the local search.");
+        return;
+      }
+    }
+    if(searchMatches.length){searchIndex=-1;navigateMatch(1);}
+    else updateFindStatus("No matches in the received redacted copy.");
+  });
+  e("receivedFindPrev").addEventListener("click",()=>navigateMatch(-1));
+  e("receivedFindNext").addEventListener("click",()=>navigateMatch(1));
+  e("goReceivedPage").addEventListener("click",()=>{
+    if(receivedText===null)return;
+    const total=Math.max(1,Math.ceil(receivedText.length/8000));
+    const target=Number(e("receivedPageJump").value);
+    if(!Number.isSafeInteger(target)||target<1||target>total){
+      e("receivedPage").textContent="HOLD: enter a page from 1 to "+total+".";
+      return;
+    }
+    showPage(target-1);
+  });
   function showPage(target){
     if(receivedText===null)return;
     const total=Math.max(1,Math.ceil(receivedText.length/8000));
@@ -13,6 +62,10 @@
     e("receivedPrev").disabled=viewPage===0;
     e("receivedNext").disabled=viewPage===total-1;
     e("receivedPage").textContent="Page "+(viewPage+1)+" / "+total+" · "+viewedPages.size+" viewed";
+    e("receivedSearch").disabled=false;
+    e("receivedPageJump").disabled=e("goReceivedPage").disabled=false;
+    e("receivedPageJump").min="1";e("receivedPageJump").max=String(total);
+    e("receivedPageJump").value=String(viewPage+1);
     humanGate();
   }
   e("receivedPrev").addEventListener("click",()=>showPage(viewPage-1));
@@ -42,9 +95,14 @@
     e("humanOutcome").value="";e("humanNote").value="";e("humanAck").checked=false;
     e("exportHuman").disabled=true;
     e("humanStatus").textContent="No matched received file is available for human feedback.";
-    receivedText=null;viewPage=0;viewedPages=new Set();
+    receivedText=null;viewPage=0;viewedPages=new Set();searchMatches=[];searchIndex=-1;
     e("receivedPreview").value="";
     e("receivedPrev").disabled=e("receivedNext").disabled=true;
+    e("receivedSearch").value="";e("receivedSearch").disabled=true;
+    e("receivedFindPrev").disabled=e("receivedFindNext").disabled=true;
+    e("receivedFindStatus").textContent="No active search.";
+    e("receivedPageJump").value="";e("receivedPageJump").disabled=true;
+    e("goReceivedPage").disabled=true;
     e("receivedPage").textContent="No pages";
     e("recipientHints").textContent="No matched content to inspect.";
     e("recipientHints").className="warnings";
@@ -92,13 +150,23 @@
   }
 
   const HUMAN_OUTCOMES=["needs_more_masking","needs_context","read_only_notes"];
+  // Block invisible direction/format controls in HUMAN notes without rewriting text.
+  const unsafeHumanText=value=>/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/u.test(value);
   function humanGate() {
     const total=receivedText===null?0:Math.max(1,Math.ceil(receivedText.length/8000));
-    const cleanNote=e("humanNote").value.length<=800 &&
-      !/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(e("humanNote").value);
+    const note=e("humanNote").value;
+    const unsafeNote=unsafeHumanText(note);
+    const cleanNote=note.length<=800&&!unsafeNote;
     const stage=e("humanOutcome").value;
-    const suspiciousNote=sourceHints(e("humanNote").value).some(([name])=>["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].includes(name));
-    if(suspiciousNote)e("humanStatus").textContent="HOLD: PRIVATE follow-up note appears to contain a credential, token or private-key marker. Remove it before export.";
+    const suspiciousNote=sourceHints(note).some(([name])=>["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].includes(name));
+    if(unsafeNote)
+      e("humanStatus").textContent="HOLD: PRIVATE follow-up note contains hidden direction or control characters. Remove them before export.";
+    else if(suspiciousNote)
+      e("humanStatus").textContent="HOLD: PRIVATE follow-up note appears to contain a credential, token or private-key marker. Remove it before export.";
+    else if(matched?.highRisk)
+      e("humanStatus").textContent="HOLD: only a request for more masking may be exported.";
+    else if(matched)
+      e("humanStatus").textContent="Read every page, select HUMAN follow-up and explicitly confirm. Heuristic note checks are not comprehensive.";
     const ok=!!matched && viewedPages.size===total && e("humanAck").checked &&
       HUMAN_OUTCOMES.includes(stage) && cleanNote && !suspiciousNote &&
       (!matched.highRisk || stage==="needs_more_masking");
