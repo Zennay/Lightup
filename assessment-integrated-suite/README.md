@@ -18,8 +18,21 @@ python3 assessment-integrated-suite/verify_offline.py --package assessment-integ
 
 Use `--expected-sha256` instead when the expected digest came from a separately
 trusted channel. The detached sidecar is published in the same repository and
-is not an independent trust anchor. The package is unsigned, REVIEW_ONLY and
-not a deployment artifact.
+is not an independent trust anchor.
+
+To detect a stale software bundle against a particular local checkout, run
+from that checkout's root and add `--source-root .`:
+
+    python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip --source-root .
+    python3 assessment-integrated-suite/verify_offline.py --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip --source-root .
+
+This optional mode compares every source-bound software entry with its declared
+relative source path in the explicitly selected checkout and fails closed on
+missing, unsafe, changed or mismatched files. It does not extract the ZIP.
+Generated launcher/guide assets are still covered by package inventory checks,
+not by checkout source parity. A matching checkout proves byte parity only,
+not authorship, provenance, consent or authorization. The package is unsigned,
+REVIEW_ONLY and not a deployment artifact.
 
 ## Native path safety
 
