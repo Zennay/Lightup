@@ -34,6 +34,35 @@ not by checkout source parity. A matching checkout proves byte parity only,
 not authorship, provenance, consent or authorization. The package is unsigned,
 REVIEW_ONLY and not a deployment artifact.
 
+## Compare two verified offline toolkit versions
+
+The integrated `verify-kit` command and standalone verifier can compare a candidate
+software ZIP against an earlier local ZIP without extracting either package. Both
+archives must pass the existing bounded inventory and byte-integrity checks first.
+The report lists added, removed and changed software entries by their safe relative
+source path, plus changes to fixed package-support assets. It prints no client
+records and writes no report file.
+
+```bash
+python3 assessment-integrated-suite/suite.py verify-kit \
+  --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip \
+  --compare-package /private/releases/LightUp-Assessment-Offline-Toolkit-v27.zip
+```
+
+The standalone equivalent is:
+
+```bash
+python3 assessment-integrated-suite/verify_offline.py \
+  --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip \
+  --compare-package /private/releases/LightUp-Assessment-Offline-Toolkit-v27.zip
+```
+
+Optional `--expected-sha256`, `--sha256-file`, and `--source-root` apply to the
+candidate `--package`; the comparison baseline is still checked against its own
+internal manifest. A valid manifest or a digest stored beside the same ZIP does not
+authenticate who created it or where it came from. This is a local inventory diff,
+not a release approval, source-owner review or authorization to use the kit.
+
 ## Native path safety
 
 The native suite and the standalone native ZIP verifier reject an existing
