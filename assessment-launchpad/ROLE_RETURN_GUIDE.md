@@ -38,7 +38,15 @@ python3 assessment-launchpad/role_return.py \
 Alongside the template, the producer now emits a source-minimal standalone
 `lightup-lab-human-role-return-editor.html`. Open that owner-private file
 locally in a browser to edit only selected HUMAN stages and new notes, then
-choose **Download PRIVATE role-return CSV**. This editor contains no endpoint
+choose **Download PRIVATE role-return CSV**. The same standalone editor can
+**Resume an earlier PRIVATE CSV draft** from a local file: it strictly checks
+the source fingerprint, exact header, row order, original slots, role, previous
+stage, fixed proposed stage, bounded notes and formula-safe content *before*
+applying any change. Invalid drafts leave all current in-memory edits untouched.
+The editor displays selected HUMAN slot count and local changed-row progress.
+Neither draft input nor edits are saved in browser storage or sent to a server.
+The CSP hash pins both the renderer and the independent source-bundled local
+resume implementation. A restored draft still requires native re-admission. This editor contains no endpoint
 URLs, old notes, other roles, external assets, network access or browser
 storage. Its inline code/styles are SHA-256 CSP-pinned. Move the browser's
 CSV download into a separate current-user-owned 0700 directory, chmod 600,

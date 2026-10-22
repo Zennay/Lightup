@@ -10,6 +10,7 @@ import csv
 from hashlib import sha256
 import io
 import json
+from pathlib import Path
 
 NAME = "lightup-lab-human-role-return-editor.html"
 
@@ -40,6 +41,7 @@ if (!Array.isArray(rows) || rows.length < 1 || rows.length > 16 ||
   message.textContent = "Invalid local template. Re-create using the native CLI.";
   return;
 }
+__RESUME_JS__
 let previousSlot = 0;
 for (const row of rows) {
   if (!Number.isSafeInteger(row.slot) || row.slot <= previousSlot ||
@@ -66,7 +68,7 @@ for (const row of rows) {
     select.append(option);
   }
   select.value = row.prior;
-  select.addEventListener("change", () => {row.proposed = select.value;});
+  select.addEventListener("change", () => {row.proposed = select.value; statusSummary();});
   label.append(select);
   card.append(label);
   const noteLabel = document.createElement("label");
@@ -75,20 +77,19 @@ for (const row of rows) {
   note.maxLength = 400;
   note.autocomplete = "off";
   note.setAttribute("aria-label","PRIVATE note for slot " + row.slot);
-  note.addEventListener("input", () => {row.note = note.value;});
+  note.addEventListener("input", () => {row.note = note.value; statusSummary();});
   noteLabel.append(note);
   card.append(noteLabel);
   root.append(card);
+  editors.push({stage:select,note});
 }
+statusSummary();
 button.disabled = false;
 function csvCell(value) {
   return '"' + String(value).replaceAll('"','""') + '"';
 }
 button.addEventListener("click", () => {
-  const controls = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2060-\u2069]/u;
-  const formula = note => /^[=+@-]/u.test(note.normalize("NFKC").trimStart());
-  if (rows.some(row => row.note.length > 400 || controls.test(row.note) ||
-                       formula(row.note))) {
+  if (rows.some(row => restrictedNote(row.note))) {
     message.textContent = "A PRIVATE note has unsafe controls, formula-like prefix, or exceeds 400 characters.";
     return;
   }
@@ -139,7 +140,9 @@ def render_editor(csv_template: bytes) -> bytes:
                      for record in raw_rows]}
     encoded = base64.b64encode(json.dumps(
         data, ensure_ascii=True, separators=(",", ":")).encode("utf-8")).decode("ascii")
-    script = SCRIPT.replace("__DATA__", json.dumps(encoded))
+    resume_js = Path(__file__).with_name("role_return_resume.js").read_text(encoding="utf-8")
+    script = (SCRIPT.replace("__DATA__", json.dumps(encoded))
+                    .replace("__RESUME_JS__", resume_js))
     css_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     js_hash = base64.b64encode(sha256(script.encode("utf-8")).digest()).decode("ascii")
     html = (
@@ -159,6 +162,9 @@ def render_editor(csv_template: bytes) -> bytes:
         "fingerprint. No endpoint URLs, previous PRIVATE notes or other roles "
         "are included. This is not reviewer authentication, client consent, "
         "security clearance, or HUMAN GO.</p>"
+        "<label for='resume'>Resume an earlier PRIVATE CSV draft</label>"
+        "<input type='file' id='resume' accept='.csv,text/csv'>"
+        "<p id='progress' role='status' aria-live='polite'></p>"
         "<div id='rows'></div><button type='button' id='download' disabled>"
         "Download PRIVATE role-return CSV</button>"
         "<p id='message' role='status' aria-live='polite'></p>"
