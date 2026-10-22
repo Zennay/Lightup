@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import base64
 from collections import Counter
-from datetime import date
+from datetime import date, timedelta
 from hashlib import sha256
 from html import escape
 import csv
@@ -412,6 +412,56 @@ def render_private_routing_csv(rows):
     return stream.getvalue().encode("utf-8")
 
 
+def render_private_calendar(rows, reference_day):
+    """Opt-in inert PRIVATE proposed HUMAN date notes; never calendar invites."""
+    def fold(line):
+        # All emitted vocabulary/ordinals are bounded ASCII. RFC 5545 continuation.
+        if not line.isascii() or any(ord(c) < 32 or ord(c) > 126 for c in line):
+            raise Hold("unexpected calendar text outside fixed ASCII vocabulary")
+        return "\\r\\n ".join(line[index:index + 74] for index in range(0, len(line), 74))
+
+    lines = [
+        "BEGIN:VCALENDAR", "VERSION:2.0",
+        "PRODID:-//LightUp//Private Human Discussion Proposals v1//EN",
+        "CALSCALE:GREGORIAN",
+        "X-WR-CALNAME:LightUp PRIVATE proposed HUMAN discussions",
+        "X-LIGHTUP-AUTHORIZED:FALSE",
+        "X-LIGHTUP-REVIEW-ONLY:TRUE",
+    ]
+    stamp = reference_day.strftime("%Y%m%d") + "T000000Z"
+    for row in sorted(rows, key=lambda value: (
+        value["review_date"] or "9999-12-31",
+        value["agenda_slot"], value["source_slot"],
+    )):
+        if row["review_date"] is None:
+            continue  # No invented dates or scheduled events for UNSCHEDULED.
+        start = parse_date(row["review_date"])
+        end = start + timedelta(days=1)  # All-day end is exclusive, per RFC 5545.
+        identity = (
+            str(row["agenda_slot"]) + "/" + str(row["source_slot"]) + "/" +
+            row["review_date"] + "/" + row["next_role"] + "/" + row["stage"] +
+            "/" + reference_day.isoformat()
+        )
+        uid = sha256(identity.encode("ascii")).hexdigest() + "@offline.lightup.invalid"
+        event = [
+            "BEGIN:VEVENT",
+            "UID:" + uid,
+            "DTSTAMP:" + stamp,
+            "DTSTART;VALUE=DATE:" + start.strftime("%Y%m%d"),
+            "DTEND;VALUE=DATE:" + end.strftime("%Y%m%d"),
+            "STATUS:TENTATIVE",
+            "TRANSP:TRANSPARENT",
+            "SUMMARY:LightUp PRIVATE proposed HUMAN discussion (not a deadline)",
+            "DESCRIPTION:Unverified proposal only. Agenda " + str(row["agenda_slot"]) +
+            " / source slot " + str(row["source_slot"]) + ". Role " + row["next_role"] +
+            ". Stage " + row["stage"] + ". No consent\\\\nNo grant\\\\nNo scan or dispatch.",
+            "END:VEVENT",
+        ]
+        lines.extend(event)
+    lines.append("END:VCALENDAR")
+    return ("\\r\\n".join(fold(line) for line in lines) + "\\r\\n").encode("ascii")
+
+
 def render_counts_csv(summary):
     stream = io.StringIO(newline="")
     writer = csv.writer(stream, lineterminator="\r\n")
@@ -471,7 +521,7 @@ def publish_bundle(directory_fd, artifacts):
         raise
 
 
-def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False):
+def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False, calendar=False):
     """Deterministic private bytes used identically for create and reopen.
 
     A filtered handoff has an explicit v2 view contract; unchanged full
@@ -490,6 +540,8 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
     ]
     if interactive:
         result.append(("assessment-portfolio-private-explorer.html", render_interactive_html(summary, rows)))
+    if calendar:
+        result.append(("assessment-portfolio-private-proposals.ics", render_private_calendar(rows, reference_day)))
     if any(len(data) > 1_048_576 for _, data in result):
         raise Hold("private portfolio artifact exceeds bounded 1 MiB publication limit")
     return result
@@ -610,7 +662,10 @@ def run(args):
                 and (not args.focus_stage or row["stage"] == args.focus_stage)
                 and (not args.focus_bucket or row["date_bucket"] == args.focus_bucket)
             ]
-        outputs = render_artifacts(documents, rows, reference_day, selection=selection, interactive=args.private_explorer)
+        outputs = render_artifacts(
+            documents, rows, reference_day, selection=selection,
+            interactive=args.private_explorer, calendar=args.private_calendar,
+        )
         readmit_unchanged_sources(admitted)
         if manifest_path:
             _, reopened_paths = read_private_agenda_manifest(manifest_path)
@@ -633,7 +688,7 @@ def main(argv=None):
     parser.add_argument("--as-of", required=True, help="Explicit planning reference day YYYY-MM-DD")
     parser.add_argument("--output-dir", required=True, help="Existing owner-only directory, mode 0700")
     parser.add_argument("--verify-output-dir", action="store_true",
-                        help="Only reopen an existing four-file private bundle against original agendas; never write")
+                        help="Read-only exact reopen of a previously created PRIVATE bundle and chosen options")
     parser.add_argument("--focus-role", choices=ROLES,
                         help="Create or reopen a PRIVATE workroom limited to one suggested neutral role")
     parser.add_argument("--focus-stage", choices=STAGES,
@@ -642,6 +697,8 @@ def main(argv=None):
                         help="Restrict PRIVATE human workroom to one date bucket relative to --as-of")
     parser.add_argument("--private-explorer", action="store_true",
                         help="Add a CSP-pinned offline interactive PRIVATE HUMAN queue, no storage/network")
+    parser.add_argument("--private-calendar", action="store_true",
+                        help="Add a PRIVATE date-only tentative calendar, no invitations or alarms")
     parser.add_argument("--agendas-file", help="Owner-private mode-0600 LF-delimited list of 2–12 absolute agenda paths")
     parser.add_argument("agendas", nargs="*", help="2–12 original private JSON agenda exports (or use --agendas-file)")
     args = parser.parse_args(argv)
