@@ -205,10 +205,12 @@ and non-authorizing. No scan, delete, grant, client contact or release occurs.
 
 For teams that keep each HUMAN plan in its original encrypted `.lurt` vault,
 `vault_source_history.py` extends the same 2–12-snapshot lineage to changing
-source sets. Each vault is decrypted only in process memory, and each plan is
-matched to its own separately selected original source bytes before it enters
-the history. The report is produced only if every snapshot's complete
-SHA-256/size membership matches exactly.
+source sets. Each vault and original source must be an owner-owned, unlinked
+regular file with owner-only permissions. Each plan is decrypted only in
+process memory and matched to its own separately selected original source
+bytes. All vault and source bytes are re-admitted immediately before report
+publication; any drift refuses the complete report. The report is produced
+only if every snapshot's complete SHA-256/size membership matches exactly.
 
 ~~~sh
 python3 assessment-retention-desk/vault_source_history.py \
