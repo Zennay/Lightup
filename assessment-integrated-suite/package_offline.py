@@ -36,9 +36,12 @@ integrity references; they do not authenticate source provenance.
 The portable manifest uses schema v2 and lists exact byte lengths and
 SHA-256 digests for every studio, support asset, START-HERE.html, this
 README.txt and the operator guide. It does not hash itself. Use verify_offline.py from the original native checkout
-to check the archive inventory without extracting any files. A successful
-verification establishes local archive byte integrity only, not authenticity,
-trusted origin, consent, security findings, permission or release.
+to check the archive inventory without extracting any files. Add
+`--source-root /path/to/trusted-checkout` to compare every packaged software
+entry with the exact source-bound file bytes in that explicit local checkout.
+This catches a stale but internally consistent ZIP. A successful verification
+establishes local byte integrity/parity only, not authenticity, trusted origin,
+consent, security findings, permission or release.
 Individual studios independently re-admit any PRIVATE local HUMAN/source data.
 Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
