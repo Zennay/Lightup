@@ -271,6 +271,7 @@
     $("queue-export-csv").disabled = !sorted.length;
     $("queue-export-json").disabled = !sorted.length;
     $("queue-export-html").disabled = !sorted.length;
+    $("queue-import-button").disabled = !(report && digest);
     $("print-filtered").disabled = !sorted.length;
     $("no-matches").hidden = sorted.length > 0;
     for (const {c, i} of sorted) {
@@ -694,6 +695,87 @@
     $("queue-export-summary").textContent = "Exported " + output.case_count +
       " filtered case(s) as anonymous JSON. No raw scenario IDs or source evidence included.";
   }
+  async function importFilteredQueue(file) {
+    const generation = beginRead();
+    if (!report || !digest) {
+      alert("HOLD · Load the exact original report first; filtered planning is bound to its local source-byte digest.", "error");
+      return;
+    }
+    try {
+      ensure(file && file.name.toLowerCase().endsWith(".json") &&
+        file.size > 0 && file.size <= 131072);
+      const raw = await file.text();
+      ensure(currentRead(generation));
+      const saved = parseStrictJson(raw, 131072);
+      ensure(exactKeys(saved, ["schema","source_sha256","source_kind","source_status","filters",
+        "authorized","consent_verified","dispatch_allowed","release_allowed","release_approved",
+        "scan_allowed","review_only","case_count","cases","warning"]));
+      ensure(saved.schema === "lightup-offline-human-triage-filtered-v1" &&
+        saved.source_sha256 === digest && saved.source_kind === sourceKind &&
+        saved.source_status === report.verdict && saved.release_approved === false &&
+        saved.scan_allowed === false && saved.review_only === true &&
+        boolFalseAuthority(saved) &&
+        saved.warning === "FILTERED UNSIGNED OFFLINE HUMAN PLANNING ONLY. No source identity, remediation, consent or execution authority is asserted." &&
+        exactKeys(saved.filters, ["case_status","workstream","priority","metric"]));
+      const filters = saved.filters;
+      ensure(["all","regressed","open","waiting","reviewed"].includes(filters.case_status) &&
+        (filters.workstream === "all" || ROUTES.has(filters.workstream)) &&
+        ["all","Critical drift","High drift","Review drift","No regression"].includes(filters.priority) &&
+        (filters.metric === "all" || METRICS.includes(filters.metric)));
+      const expectedRows = report.cases.map((c,i)=>({c,i}))
+        .filter(({c})=>filters.workstream === "all" || c.route === filters.workstream)
+        .filter(({c})=>filters.priority === "all" || priority(c) === filters.priority)
+        .filter(({c})=>filters.metric === "all" || c.regressions.includes(filters.metric))
+        .filter(({c})=>filters.case_status === "all" ||
+          (filters.case_status === "regressed" && c.regressions.length > 0) ||
+          (filters.case_status === "open" && c.stage !== "reviewed") ||
+          (filters.case_status === "waiting" && c.stage === "waiting") ||
+          (filters.case_status === "reviewed" && c.stage === "reviewed"))
+        .sort((a,b)=>urgency(a.c)-urgency(b.c)||a.i-b.i);
+      ensure(Array.isArray(saved.cases) && Number.isInteger(saved.case_count) &&
+        saved.case_count === saved.cases.length && saved.cases.length > 0 &&
+        saved.cases.length === expectedRows.length && saved.cases.length <= report.cases.length);
+      const updates = [];
+      const rowKeys = ["case","priority","source_status","metric_regressions","metric_changes",
+        "human_stage","follow_up_date","routing_group","suggested_human_action"];
+      const metricKeys = ["metric","baseline","candidate","delta","regression"];
+      for (let position = 0; position < expectedRows.length; position++) {
+        const row = saved.cases[position], current = expectedRows[position], c = current.c;
+        ensure(exactKeys(row, rowKeys) && row.case === label(current.i) &&
+          row.priority === priority(c) && row.source_status === c.status &&
+          Array.isArray(row.metric_regressions) &&
+          JSON.stringify(row.metric_regressions) === JSON.stringify(c.regressions.slice().sort()) &&
+          Array.isArray(row.metric_changes) &&
+          row.metric_changes.every(metric => exactKeys(metric, metricKeys)));
+        const expectedChanges = c.changes.filter(m=>filters.metric !== "all" ? m.name === filters.metric : m.regression)
+          .map(m=>({metric:m.name,baseline:m.baseline,candidate:m.candidate,delta:m.delta,regression:m.regression}));
+        ensure(JSON.stringify(row.metric_changes) === JSON.stringify(expectedChanges) &&
+          row.suggested_human_action === nextHumanAction(c) &&
+          STAGES.has(row.human_stage) && ROUTES.has(row.routing_group));
+        const due = row.follow_up_date;
+        ensure(due === null || (typeof due === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(due) &&
+          !Number.isNaN(Date.parse(due + "T00:00:00Z")) &&
+          new Date(due + "T00:00:00Z").toISOString().startsWith(due)));
+        updates.push({index:current.i,stage:row.human_stage,route:row.routing_group,due:due||""});
+      }
+      ensure(currentRead(generation));
+      invalidateReads();
+      rememberHumanEdit();
+      updates.forEach(row=>Object.assign(report.cases[row.index],
+        {stage:row.stage,route:row.route,due:row.due}));
+      render();
+      $("queue-export-summary").textContent = "Imported source-bound HUMAN planning for " +
+        updates.length + " filtered case(s); other cases and original findings were unchanged. No authorization imported.";
+      alert("Filtered HUMAN planning restored for the exact same local source bytes. Original metrics, source verdict and authority remain unchanged.", "good");
+    } catch (_) {
+      if (currentRead(generation)) {
+        $("queue-export-summary").textContent = "HOLD: filtered planning was not imported; the current HUMAN workspace was preserved.";
+        alert("HOLD · Filtered planning is malformed, stale, incomplete, changed or not bound to this exact original report. Previous HUMAN workspace preserved.", "error");
+      }
+    }
+  }
+
   function exportFilteredQueueHtml() {
     if (!report) return;
     const output = filteredQueueExport();
@@ -1040,6 +1122,14 @@
   $("queue-export-csv").addEventListener("click", exportFilteredQueueCsv);
   $("queue-export-json").addEventListener("click", exportFilteredQueueJson);
   $("queue-export-html").addEventListener("click", exportFilteredQueueHtml);
+  $("queue-import-button").addEventListener("click", () => {
+    if (report && digest) $("queue-import-file").click();
+  });
+  $("queue-import-file").addEventListener("change", async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (file) await importFilteredQueue(file);
+  });
   $("route").addEventListener("change", e => {
     if (!report || selected < 0 || !ROUTES.has(e.target.value)) return;
     invalidateReads();
