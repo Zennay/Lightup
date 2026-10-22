@@ -651,8 +651,8 @@
     const scope=$("metricTransitionScope").value;
     const pairCount=scope==="all_pairs"?snapshots.length*(snapshots.length-1)/2:snapshots.length-1;
     $("metricTransitionSummary").textContent=rows.length?
-      "Showing "+rows.length+" metric/pair rows across "+pairCount+
-      (scope==="all_pairs"?" distinct manual-slot pairs (including non-adjacent comparisons)":" adjacent manual-slot pairs")+
+      "Showing "+rows.length+" metric/pair rows within a scope of "+pairCount+
+      (scope==="all_pairs"?" possible distinct manual-slot pairs (including non-adjacent comparisons)":" adjacent manual-slot pairs")+
       " and "+scenarioIds.length+
       " anonymous scenarios. Each scenario contributes to exactly one flag-state category. A flag absent in a later-selected slot is not a verified fix; slot order is not authenticated chronology.":
       snapshots.length>1?"No metric/slot-pair rows match the selected group and transition filters.":
