@@ -235,7 +235,13 @@
   function currentId(){return scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];}
   function slot(id){return scenarioIds.indexOf(id)+1;}
   function fmt(n){return Number(n).toLocaleString("en-US",{maximumFractionDigits:6});}
-  function csvField(v){return '"'+String(v).replace(/"/g,'""')+'"';}
+  function csvField(v){
+    const raw=String(v).replace(/[\r\n]/g," ");
+    // Keep actual numeric cells numeric; guard only string cells that spreadsheets
+    // could interpret as formulas, including values preceded by whitespace.
+    const safe=typeof v==="string"&&/^[\s\uFEFF]*[=+\-@]/.test(raw)?"'"+raw:raw;
+    return '"'+safe.replace(/"/g,'""')+'"';
+  }
   function download(name,content,type){
     const url=URL.createObjectURL(new Blob([content],{type}));
     const a=document.createElement("a");a.href=url;a.download=name;
