@@ -565,7 +565,7 @@ def render_private_calendar(rows, reference_day, documents):
         start = parse_date(row["review_date"])
         end = start + timedelta(days=1)  # All-day end is exclusive, per RFC 5545.
         identity = (
-            fingerprints[row["agenda_slot"] - 1] + "/" +
+            str(row["agenda_slot"]) + "/" + fingerprints[row["agenda_slot"] - 1] + "/" +
             str(row["source_slot"]) + "/" + row["review_date"] + "/" + row["next_role"] + "/" + row["stage"] +
             "/" + reference_day.isoformat()
         )
@@ -681,7 +681,7 @@ def render_private_cluster_calendar(rows, reference_day, documents):
         start = parse_date(day)
         end = start + timedelta(days=1)
         identities = sorted(
-            fingerprints[row["agenda_slot"] - 1] + ":" +
+            str(row["agenda_slot"]) + ":" + fingerprints[row["agenda_slot"] - 1] + ":" +
             str(row["source_slot"]) + ":" + row["stage"]
             for row in members
         )
