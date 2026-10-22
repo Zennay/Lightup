@@ -53,7 +53,7 @@ OUTSIDE the checkout, without overwriting prior software:
 
 Inspect any locally saved ZIP with no network or extraction:
 
-    python3 assessment-workspace-ledger/package.py inspect --archive /private/software/NEW-LightUp-Workspace-Ledger.zip --sha256-sidecar
+    python3 assessment-workspace-ledger/package.py inspect --archive /private/software/NEW-LightUp-Workspace-Ledger.zip --sha256-sidecar --compare-source
 
 Build requires a trusted original checkout with the fixed source files present
 as ordinary bounded regular files, and writes one exclusive mode 0600
@@ -64,6 +64,10 @@ it created. The sidecar records the exact archive SHA-256 and filename; it is
 unsigned byte consistency, not publisher authentication. Inspection can use
 the same `--sha256-sidecar` flag to require a stable, owner-owned, single-link,
 mode-0600 sidecar whose digest and filename match the exact archive bytes.
+Add `--compare-source` to compare every archived allowlisted file byte-for-byte
+with the current checkout. Historical package schemas or any source drift
+return HOLD and list only the affected software filenames. This is a local
+freshness check, not publisher authentication or approval.
 It never reads existing customer kit directories or operational data.
 Inspection rejects unsafe/unknown/reordered/duplicate ZIP members,
 unsupported encodings, oversized entries, malformed or authority-claiming
