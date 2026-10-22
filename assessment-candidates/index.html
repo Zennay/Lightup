@@ -9,7 +9,7 @@
 <nav class="quicknav" aria-label="Offline workspace sections">
 <a href="#sources">Sources</a><a href="#summary">Candidates</a>
 <a href="#metrics">Metric comparison</a><a href="#thresholdPanel">Discussion rules</a>
-<a href="#frontierPanel">Tradeoffs</a><a href="#casePanel">Case metrics</a>
+<a href="#frontierPanel">Tradeoffs</a><a href="#casePanel">Case metrics</a><a href="#conflictsPanel">Scenario conflicts</a>
 <a href="#casework">Human queue</a><a href="#roundsPanel">Review rounds</a><a href="#agendaPanel">Discussion agenda</a><a href="#exportsPanel">Private handoffs</a>
 </nav>
 <section class="panel"><div class="section-head"><h2 id="sources">01 / Local sources</h2><span class="eyebrow">No network · no persistence</span></div>
@@ -49,7 +49,17 @@
 <div id="frontier" class="tablewrap"></div></section>
 <section class="panel" id="casePanel"><div class="section-head"><h2>05 / Anonymized case inspection</h2><span class="eyebrow">Case identity stays private</span></div>
 <p>Inspect the same lab case across candidates without revealing the original case ID or target. Imported source-reported data is not independently validated evidence.</p><div class="controls"><label>Case<select id="caseSelect"><option value="">Load reports first</option></select></label><label>Metric<select id="metricSelect"></select></label></div><div id="caseDetail" class="tablewrap"></div></section>
-<section class="panel" id="casework"><div class="section-head"><h2>06 / Cross-candidate human review queue</h2><span class="eyebrow">Anonymous cases · local discussion only</span></div>
+<section class="panel" id="conflictsPanel"><div class="section-head"><h2>06 / Scenario-level conflict explorer</h2><span class="eyebrow">Cross-candidate reconciliation · REVIEW ONLY</span></div>
+<p>Find anonymous cases where imported candidate reports disagree on the same metric’s source-reported regression label. The table also surfaces adverse metrics that are consistent across candidates. These are explanations for HUMAN reconciliation—not verified findings, chronology, remediation, or safety conclusions.</p>
+<div class="settings">
+<label>Candidate focus<select id="conflictCandidate"><option value="all">All candidates</option></select></label>
+<label>Case view<select id="conflictMode"><option value="conflicts">Adverse or disagreeing labels</option><option value="disagreement">Cross-candidate label disagreements</option><option value="adverse">Any source-adverse label</option><option value="all">All anonymous cases</option></select></label>
+</div>
+<p id="conflictSummary" class="eyebrow" aria-live="polite">Import compatible reports to compare source labels. Nothing is sent or saved automatically.</p>
+<div id="conflictTable" class="tablewrap"></div>
+<div class="controls"><button id="exportConflictsCSV" type="button" class="ghost" disabled>Export scenario conflict ledger (CSV)</button></div>
+<p class="footnote">Exports use anonymous case ordinals and fixed metric names only; they omit source case IDs, filenames, aliases and hashes. A missing disagreement or adverse label is not proof of a fix. Candidate slots follow manual file-selection order, not verified chronology. All authority flags remain false.</p></section>
+<section class="panel" id="casework"><div class="section-head"><h2>07 / Cross-candidate human review queue</h2><span class="eyebrow">Anonymous cases · local discussion only</span></div>
 <p>See which original lab cases have adverse source metrics in which candidates. The operations topic instead shows <strong>informational numerical changes</strong> (runtime, cost and operational counters), never safety regressions. Under the all-metrics view, cases with source-reported scope/policy flags appear first. Filter by metric family, candidate slot and locally chosen discussion stage. Labels are human preparation only: no named reviewer, ticket, scan, authorization or real assignment.</p>
 <div class="settings">
 <label>Lab candidate focus<select id="queueCandidate"><option value="all">All candidates</option></select></label>
@@ -66,9 +76,9 @@
 <div class="controls"><button id="applyBulk" type="button" class="secondary" disabled>Apply to visible cases with confirmation</button><button id="undoBulk" type="button" class="ghost" disabled>Undo last local batch</button></div></fieldset>
 <p id="queueMessage" role="status" aria-live="polite"></p><div id="queueSummary" class="statline"></div><div id="queueRows" class="tablewrap"></div>
 <p class="footnote">A local discussion stage does not prove the source finding was fixed, reviewed by a real person, authorized, consented to, safe, or ready for release. Case ordinals are never included in public aggregate exports.</p></section>
-<section class="panel" id="agendaPanel"><div class="section-head"><h2>07 / Original lab discussion agenda</h2><span class="eyebrow">Human evidence requests · no safety verdict</span></div>
+<section class="panel" id="agendaPanel"><div class="section-head"><h2>08 / Original lab discussion agenda</h2><span class="eyebrow">Human evidence requests · no safety verdict</span></div>
 <p>Four fixed discussion areas summarize original source-reported differences across all locally selected lab candidates. These prompts do not assert root causes, independently verified findings, approvals or remediation. Select an area to filter the anonymous human queue.</p><div id="agendaCards" class="cards"></div></section>
-<section class="panel" id="exportsPanel"><div class="section-head"><h2>08 / Aggregate handoffs</h2><span class="eyebrow">Privacy-minimal · review only</span></div>
+<section class="panel" id="exportsPanel"><div class="section-head"><h2>09 / Aggregate handoffs</h2><span class="eyebrow">Privacy-minimal · review only</span></div>
 <p>Exports contain fixed metric names, aggregate figures and numbered candidate slots only. No filenames, case IDs, targets, source bytes or permission claims.</p><div class="controls"><button id="exportCSV" type="button" disabled>Export aggregate CSV</button><button id="exportJSON" type="button" class="secondary" disabled>Export review-only JSON</button><button id="exportHTML" type="button" class="secondary" disabled>Download script-free briefing</button><button id="exportCaseCSV" type="button" class="secondary" disabled>Export PRIVATE anonymous case register</button><button id="print" type="button" class="ghost" disabled>Print private review</button></div>
 <div class="panel-inset"><h3>Optional private save/resume</h3><p>Re-import the identical original JSON files in the same selection order before restoring. Private unsigned preference drafts contain source-byte fingerprints and local review settings; never share as a public result or permission.</p>
 <div class="controls"><button id="saveDraft" type="button" class="secondary" disabled>Save PRIVATE preferences</button>
