@@ -93,7 +93,12 @@
     setTimeout(()=>URL.revokeObjectURL(url),30000);
   }
   const nowToday=() => {const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");};
+  function assertLocalZone(){
+    if((Intl.DateTimeFormat().resolvedOptions().timeZone||"")!==zone)
+      throw Error("Local timezone changed; reopen PRIVATE HUMAN workroom in intended timezone (HOLD).");
+  }
   function eventDate(day,time) {
+    assertLocalZone();
     hold(/^20\d\d-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(day) && /^([01]\d|2[0-3]):[0-5]\d$/.test(time));
     const [y,m,d]=day.split("-").map(Number),[h,mi]=time.split(":").map(Number);
     const val=new Date(y,m-1,d,h,mi,0,0);
@@ -191,6 +196,7 @@
       body.append(tr);
     });
     renderAgenda();
+    renderTransitionDesk();
     renderWeek();
     renderMonth();
     renderBacklog();
@@ -369,6 +375,47 @@
     plan=projected;changed=true;exportedPlan=false;agendaPage=0;
     conflictProposal=null;render();
     inform("Applied "+slots.size+" reviewed HUMAN-only local conflict proposals. Save complete PRIVATE workroom; external appointments unchanged.");
+  }
+  function nearClockChanges(){
+    assertLocalZone();
+    return items.flatMap(row=>{
+      const slot=plan.get(row.ordinal);if(!slot)return [];
+      const date=eventDate(slot.day,slot.time),t=date.getTime();
+      if(new Date(t-12*3600000).getTimezoneOffset()===
+        new Date(t+12*3600000).getTimezoneOffset())return [];
+      return [{ordinal:row.ordinal,group:row.group,slot,
+        utc:date.toISOString(),offset:-date.getTimezoneOffset()}];
+    }).sort((a,b)=>a.utc.localeCompare(b.utc)||a.ordinal-b.ordinal);
+  }
+  function renderTransitionDesk(){
+    const rows=nearClockChanges(),body=$("transitionRows");
+    $("transitionDesk").hidden=false;
+    $("transitionSummary").textContent=rows.length+
+      " HUMAN reminders within 12 hours of an OS-reported clock change in "+zone+
+      ". Times are tentative, not independently confirmed with any recipient or calendar.";
+    $("exportTransitions").disabled=!rows.length;body.replaceChildren();
+    for(const r of rows.slice(0,24)){
+      const tr=dom("tr"),b=dom("button","Edit #"+r.ordinal);
+      b.type="button";b.addEventListener("click",()=>focusOrdinal(r.ordinal));
+      tr.append(dom("td","#"+r.ordinal),
+        dom("td",r.slot.day+" "+r.slot.time+" · UTC offset "+r.offset+" min"),
+        dom("td",r.group||"(unassigned)"));
+      const cell=dom("td");cell.append(b);tr.append(cell);body.append(tr);
+    }
+    $("transitionRemainder").textContent=rows.length>24?
+      "Showing first 24 of "+rows.length+"; review all in PRIVATE CSV.":"";
+  }
+  function exportTransitionDesk(){
+    hold(active && /^[a-f0-9]{64}$/.test(hash));
+    const rows=nearClockChanges();hold(rows.length>0&&rows.length<=MAX_ROWS);
+    if(!confirm("Export PRIVATE local HUMAN clock-change proposal CSV? Contains unsigned original worksheet hash, ordinal, human group, date/time. Never public; does NOT verify consent, calendar sync, risk or authority."))return;
+    const values=[["worksheet_sha256_unsigned","series_unsigned","timezone","ordinal",
+      "human_group_unverified","day","time","utc","offset_minutes",
+      "authorized","verified","consent"]];
+    for(const r of rows)values.push([hash,seriesId,zone,r.ordinal,r.group,
+      r.slot.day,r.slot.time,r.utc,r.offset,"false","false","false"]);
+    download(makeCsv(values),"lightup-private-human-clock-change-review.csv","text/csv;charset=utf-8");
+    inform("PRIVATE HUMAN clock-change review CSV downloaded locally; no target or calendar contacted.");
   }
   function renderAgenda(){
     if(!active)return;
@@ -2553,6 +2600,9 @@
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
+  hook("exportTransitions","click",()=>{
+    try{exportTransitionDesk();}catch(e){inform(e.message,true);}
+  });
   hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
   hook("workloadQuery","input",()=>{workloadPage=0;renderWorkload();});

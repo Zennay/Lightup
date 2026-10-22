@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-n5yAhhMjA5c8ppJSEd1c9BvU9UNAP1MyKbKRTvCLETE='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-woIhUjZ5PNQ8Vt6HfT1x36n9INapIezuf5+yndWn1Qk='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -141,7 +141,12 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     setTimeout(()=>URL.revokeObjectURL(url),30000);
   }
   const nowToday=() => {const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");};
+  function assertLocalZone(){
+    if((Intl.DateTimeFormat().resolvedOptions().timeZone||"")!==zone)
+      throw Error("Local timezone changed; reopen PRIVATE HUMAN workroom in intended timezone (HOLD).");
+  }
   function eventDate(day,time) {
+    assertLocalZone();
     hold(/^20\d\d-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(day) && /^([01]\d|2[0-3]):[0-5]\d$/.test(time));
     const [y,m,d]=day.split("-").map(Number),[h,mi]=time.split(":").map(Number);
     const val=new Date(y,m-1,d,h,mi,0,0);
@@ -239,6 +244,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       body.append(tr);
     });
     renderAgenda();
+    renderTransitionDesk();
     renderWeek();
     renderMonth();
     renderBacklog();
@@ -417,6 +423,47 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     plan=projected;changed=true;exportedPlan=false;agendaPage=0;
     conflictProposal=null;render();
     inform("Applied "+slots.size+" reviewed HUMAN-only local conflict proposals. Save complete PRIVATE workroom; external appointments unchanged.");
+  }
+  function nearClockChanges(){
+    assertLocalZone();
+    return items.flatMap(row=>{
+      const slot=plan.get(row.ordinal);if(!slot)return [];
+      const date=eventDate(slot.day,slot.time),t=date.getTime();
+      if(new Date(t-12*3600000).getTimezoneOffset()===
+        new Date(t+12*3600000).getTimezoneOffset())return [];
+      return [{ordinal:row.ordinal,group:row.group,slot,
+        utc:date.toISOString(),offset:-date.getTimezoneOffset()}];
+    }).sort((a,b)=>a.utc.localeCompare(b.utc)||a.ordinal-b.ordinal);
+  }
+  function renderTransitionDesk(){
+    const rows=nearClockChanges(),body=$("transitionRows");
+    $("transitionDesk").hidden=false;
+    $("transitionSummary").textContent=rows.length+
+      " HUMAN reminders within 12 hours of an OS-reported clock change in "+zone+
+      ". Times are tentative, not independently confirmed with any recipient or calendar.";
+    $("exportTransitions").disabled=!rows.length;body.replaceChildren();
+    for(const r of rows.slice(0,24)){
+      const tr=dom("tr"),b=dom("button","Edit #"+r.ordinal);
+      b.type="button";b.addEventListener("click",()=>focusOrdinal(r.ordinal));
+      tr.append(dom("td","#"+r.ordinal),
+        dom("td",r.slot.day+" "+r.slot.time+" · UTC offset "+r.offset+" min"),
+        dom("td",r.group||"(unassigned)"));
+      const cell=dom("td");cell.append(b);tr.append(cell);body.append(tr);
+    }
+    $("transitionRemainder").textContent=rows.length>24?
+      "Showing first 24 of "+rows.length+"; review all in PRIVATE CSV.":"";
+  }
+  function exportTransitionDesk(){
+    hold(active && /^[a-f0-9]{64}$/.test(hash));
+    const rows=nearClockChanges();hold(rows.length>0&&rows.length<=MAX_ROWS);
+    if(!confirm("Export PRIVATE local HUMAN clock-change proposal CSV? Contains unsigned original worksheet hash, ordinal, human group, date/time. Never public; does NOT verify consent, calendar sync, risk or authority."))return;
+    const values=[["worksheet_sha256_unsigned","series_unsigned","timezone","ordinal",
+      "human_group_unverified","day","time","utc","offset_minutes",
+      "authorized","verified","consent"]];
+    for(const r of rows)values.push([hash,seriesId,zone,r.ordinal,r.group,
+      r.slot.day,r.slot.time,r.utc,r.offset,"false","false","false"]);
+    download(makeCsv(values),"lightup-private-human-clock-change-review.csv","text/csv;charset=utf-8");
+    inform("PRIVATE HUMAN clock-change review CSV downloaded locally; no target or calendar contacted.");
   }
   function renderAgenda(){
     if(!active)return;
@@ -2601,6 +2648,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
+  hook("exportTransitions","click",()=>{
+    try{exportTransitionDesk();}catch(e){inform(e.message,true);}
+  });
   hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
   hook("workloadQuery","input",()=>{workloadPage=0;renderWorkload();});
@@ -2788,6 +2838,15 @@ One unsuitable appointment blocks the entire preview. No real staff calendar is 
 is updated or cancelled, and no authority or security result is inferred.</p></div>
 <p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
 <div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
+</section>
+<section id="transitionDesk" class="panel" hidden aria-labelledby="transitionHeading">
+<h2 id="transitionHeading">3a · PRIVATE HUMAN clock-change review</h2>
+<p>Local proposed reminders close to an OS-reported clock change. These are HUMAN planning warnings, not verified recipient/calendar conflicts or approved security risk. Ambiguous or missing hours and appointments spanning a clock change are rejected. Nothing is uploaded.</p>
+<p id="transitionSummary" class="subtle" role="status" aria-live="polite"></p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Tentative local time</th><th>Unverified HUMAN group</th><th>Edit</th></tr></thead><tbody id="transitionRows"></tbody></table></div>
+<p id="transitionRemainder" class="subtle"></p>
+<button id="exportTransitions" type="button" class="ghost" disabled>Export PRIVATE clock-change review (.csv)</button>
+<p class="subtle">PRIVATE unsigned source-bound file; proposed times and HUMAN groups may be confidential. Authority, verification and consent always false.</p>
 </section>
 <section id="week" class="panel" hidden aria-labelledby="weekHeading">
 <h2 id="weekHeading">3a · PRIVATE HUMAN week board</h2>

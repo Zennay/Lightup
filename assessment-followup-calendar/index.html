@@ -101,6 +101,15 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
 <div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
 </section>
+<section id="transitionDesk" class="panel" hidden aria-labelledby="transitionHeading">
+<h2 id="transitionHeading">3a · PRIVATE HUMAN clock-change review</h2>
+<p>Local proposed reminders close to an OS-reported clock change. These are HUMAN planning warnings, not verified recipient/calendar conflicts or approved security risk. Ambiguous or missing hours and appointments spanning a clock change are rejected. Nothing is uploaded.</p>
+<p id="transitionSummary" class="subtle" role="status" aria-live="polite"></p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Tentative local time</th><th>Unverified HUMAN group</th><th>Edit</th></tr></thead><tbody id="transitionRows"></tbody></table></div>
+<p id="transitionRemainder" class="subtle"></p>
+<button id="exportTransitions" type="button" class="ghost" disabled>Export PRIVATE clock-change review (.csv)</button>
+<p class="subtle">PRIVATE unsigned source-bound file; proposed times and HUMAN groups may be confidential. Authority, verification and consent always false.</p>
+</section>
 <section id="week" class="panel" hidden aria-labelledby="weekHeading">
 <h2 id="weekHeading">3a · PRIVATE HUMAN week board</h2>
 <p>Seven days of tentative local HUMAN reminders. Open any ordinal in the planning desk. Overlap means a local time collision, not a verified security finding or external calendar conflict. PRIVATE owner labels are unverified.</p>
