@@ -525,8 +525,18 @@ def render_private_routing_csv(rows):
     return stream.getvalue().encode("utf-8")
 
 
-def render_private_calendar(rows, reference_day):
+def source_calendar_fingerprints(documents):
+    """Stable source-scoped local identities; never authenticates source authorship."""
+    return [
+        sha256(json.dumps(document, sort_keys=True, ensure_ascii=False,
+                          separators=(",", ":")).encode("utf-8")).hexdigest()
+        for document in documents
+    ]
+
+
+def render_private_calendar(rows, reference_day, documents):
     """Opt-in inert PRIVATE proposed HUMAN date notes; never calendar invites."""
+    fingerprints = source_calendar_fingerprints(documents)
     def fold(line):
         # All emitted vocabulary/ordinals are bounded ASCII. RFC 5545 continuation.
         if not line.isascii() or any(ord(c) < 32 or ord(c) > 126 for c in line):
@@ -551,8 +561,8 @@ def render_private_calendar(rows, reference_day):
         start = parse_date(row["review_date"])
         end = start + timedelta(days=1)  # All-day end is exclusive, per RFC 5545.
         identity = (
-            str(row["agenda_slot"]) + "/" + str(row["source_slot"]) + "/" +
-            row["review_date"] + "/" + row["next_role"] + "/" + row["stage"] +
+            fingerprints[row["agenda_slot"] - 1] + "/" +
+            str(row["source_slot"]) + "/" + row["review_date"] + "/" + row["next_role"] + "/" + row["stage"] +
             "/" + reference_day.isoformat()
         )
         uid = sha256(identity.encode("ascii")).hexdigest() + "@offline.lightup.invalid"
@@ -573,6 +583,61 @@ def render_private_calendar(rows, reference_day):
         lines.extend(event)
     lines.append("END:VCALENDAR")
     return ("\r\n".join(fold(line) for line in lines) + "\r\n").encode("ascii")
+
+
+def render_private_cluster_calendar(rows, reference_day, documents):
+    """One transparent all-day proposal per role/day; no meeting or authority."""
+    fingerprints = source_calendar_fingerprints(documents)
+    clusters = {}
+    for row in rows:
+        if row["review_date"] is not None:
+            key = (row["review_date"], row["next_role"])
+            clusters.setdefault(key, []).append(row)
+    lines = [
+        "BEGIN:VCALENDAR", "VERSION:2.0",
+        "PRODID:-//LightUp//Private HUMAN role-day proposals v1//EN",
+        "CALSCALE:GREGORIAN",
+        "X-WR-CALNAME:LightUp PRIVATE HUMAN role-day proposals",
+        "X-LIGHTUP-REVIEW-ONLY:TRUE",
+        "X-LIGHTUP-AUTHORIZED:FALSE",
+    ]
+    stamp = reference_day.strftime("%Y%m%d") + "T000000Z"
+    for (day, role), members in sorted(clusters.items()):
+        start = parse_date(day)
+        end = start + timedelta(days=1)
+        identities = sorted(
+            fingerprints[row["agenda_slot"] - 1] + ":" +
+            str(row["source_slot"]) + ":" + row["stage"]
+            for row in members
+        )
+        identity = "/".join((reference_day.isoformat(), day, role, *identities))
+        uid = sha256(("lightup-human-role-day-v1:" + identity).encode("ascii")).hexdigest()
+        unique_agendas = len({row["agenda_slot"] for row in members})
+        lines.extend((
+            "BEGIN:VEVENT",
+            "UID:" + uid + "@offline.lightup.invalid",
+            "DTSTAMP:" + stamp,
+            "DTSTART;VALUE=DATE:" + start.strftime("%Y%m%d"),
+            "DTEND;VALUE=DATE:" + end.strftime("%Y%m%d"),
+            "STATUS:TENTATIVE",
+            "TRANSP:TRANSPARENT",
+            "SUMMARY:LightUp PRIVATE HUMAN role-day proposal (not booked)",
+            "DESCRIPTION:Unverified HUMAN planning only. Role " + role +
+            ". Items " + str(len(members)) + ". Agenda slots " +
+            str(unique_agendas) +
+            ". Refer to PRIVATE original workroom. No permission or confirmed meeting.",
+            "END:VEVENT",
+        ))
+    lines.append("END:VCALENDAR")
+    # Only source-admitted fixed ASCII vocabulary, neutral roles and YYYYMMDD
+    # are emitted; fold physical lines to RFC 5545's 75-octet boundary.
+    for line in lines:
+        if not line.isascii() or any(ord(char) < 32 or ord(char) > 126 for char in line):
+            raise Hold("unexpected role-day calendar text")
+    return ("\r\n".join(
+        "\r\n ".join(line[i:i + 74] for i in range(0, len(line), 74))
+        for line in lines
+    ) + "\r\n").encode("ascii")
 
 
 def render_counts_csv(summary):
@@ -635,7 +700,7 @@ def publish_bundle(directory_fd, artifacts):
 
 
 def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
-                     calendar=False, workbook=False, human_entries=None,
+                     calendar=False, calendar_clusters=False, workbook=False, human_entries=None,
                      previous_human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
@@ -656,7 +721,10 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
     if interactive:
         result.append(("assessment-portfolio-private-explorer.html", render_interactive_html(summary, rows)))
     if calendar:
-        result.append(("assessment-portfolio-private-proposals.ics", render_private_calendar(rows, reference_day)))
+        result.append(("assessment-portfolio-private-proposals.ics", render_private_calendar(rows, reference_day, documents)))
+    if calendar_clusters:
+        result.append(("assessment-portfolio-private-role-day.ics",
+                       render_private_cluster_calendar(rows, reference_day, documents)))
     if workbook:
         result.append(("assessment-portfolio-human-workbook.html",
                        human_workbook.render_worksheet(rows, reference_day.isoformat())))
@@ -830,6 +898,7 @@ def run(args):
         outputs = render_artifacts(
             documents, rows, reference_day, selection=selection,
             interactive=args.private_explorer, calendar=args.private_calendar,
+            calendar_clusters=args.private_calendar_clusters,
             workbook=args.private_human_workbook, human_entries=human_entries,
             previous_human_entries=previous_entries,
         )
@@ -878,6 +947,8 @@ def main(argv=None):
                         help="Add a CSP-pinned offline interactive PRIVATE HUMAN queue, no storage/network")
     parser.add_argument("--private-calendar", action="store_true",
                         help="Add a PRIVATE date-only tentative calendar, no invitations or alarms")
+    parser.add_argument("--private-calendar-clusters", action="store_true",
+                        help="Add one inert PRIVATE tentative role/day proposal per same-date HUMAN workload")
     parser.add_argument("--private-human-workbook", action="store_true",
                         help="Add offline HUMAN discussion worksheet with local JSON download, no authority")
     parser.add_argument("--human-responses",
