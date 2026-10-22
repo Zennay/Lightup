@@ -105,6 +105,61 @@ digital signature, verified original authorship, customer authorization,
 independent HUMAN review or release permission. It does not contact any
 target, network, scanner or external service.
 
+## PRIVATE source-byte receipt and exact two-file reopen
+
+Use optional `--private-receipt` to create an additional, **owner-private**
+`*.private-lineage-receipt.json` next to the original PRIVATE HTML workroom.
+This is useful when a human operator needs to reconcile which exact original
+offline Studio catalog, ordered 1–8 original finished comparisons and optional
+exact-source HUMAN draft were used to assemble a particular review desk.
+Default single-file behavior is unchanged.
+
+```bash
+umask 077
+mkdir -m 700 /private/lineage-original-review-room
+python3 assessment-lineage/private_workroom.py \
+  --catalog /private/source/catalog.json \
+  --reports-file /private/source/report-selection.txt \
+  --human-draft /private/source/private-human-draft.json \
+  --output /private/lineage-original-review-room/review.html \
+  --private-receipt
+
+# Later: read-only exact reopen of both original private artifacts.
+python3 assessment-lineage/private_workroom.py \
+  --catalog /private/source/catalog.json \
+  --reports-file /private/source/report-selection.txt \
+  --human-draft /private/source/private-human-draft.json \
+  --output /private/lineage-original-review-room/review.html \
+  --private-receipt --verify-existing
+```
+
+The source receipt stores only canonical private SHA-256 byte digests, original
+report order/count, optional HUMAN-draft presence and the resulting HTML byte
+digest. It never adds the original file paths, private source values or HUMAN
+notes to anonymous exports. Its four authorization/consent/dispatch/release
+flags and separate identity/origin/HUMAN GO fields are literally **false**.
+The receipt **contains sensitive source-correlation hashes**: keep it mode
+0600 under the same owner-only 0700 directory and never upload it as an
+anonymous result. A local unsigned digest only demonstrates consistency with
+available input bytes; it is **not** a signature, original authorship proof,
+operator/client authentication, authorization, independent privacy/security
+review, or evidence of a real finding or remediation.
+
+Without `--verify-existing`, both destination filenames must be new.
+The tool uses exclusive no-overwrite creation and 0600 modes; if a second
+artifact fails to publish, only files it just created are removed. Existing
+files remain untouched. With `--verify-existing`, both original inputs are
+re-admitted and both artifacts' exact bytes are checked without any write.
+Changing report order, original file bytes, HUMAN draft, checked-in offline
+workroom renderer, HTML or receipt yields HOLD. Omitting `--private-receipt`
+retains the existing single-HTML create and reopen behavior.
+
+This feature does not invoke comparison, scan, network, model, grant, consent,
+dispatch, release or active target access. Project remains INCUBATE M3/M7
+PLAN/LAB ONLY · DRAFT/HOLD, subject to existing mandatory CI, source-owner,
+security/privacy, separately authenticated client/operator consent and
+action-time revocation, and explicit HUMAN GO before any main merge/release.
+
 ## Open the working product
 
 Download [standalone.html](standalone.html) and open it locally. It is an actual single-file HTML application with its own static JavaScript and stylesheet SHA-256 pinned in the Content Security Policy, with all connections, images, external scripts, forms, frames and workers disabled. Alternatively open [index.html](index.html) alongside its sibling [app.js](app.js) and [style.css](style.css). The app does **not** run a backend, send telemetry or persist files/cookies/localStorage. Closing the tab forgets all private state.
