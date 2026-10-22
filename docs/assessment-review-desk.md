@@ -88,3 +88,10 @@ The new **Print filtered queue** action uses the exact current status, workstrea
 ### Local source-byte digest availability
 
 The review desk prefers Web Crypto for source-byte SHA-256 and falls back to a portable local implementation when `crypto.subtle` is unavailable in a `file://` browser context. This keeps saved HUMAN review export/restore usable offline. The digest is unsigned local byte binding only: it does not authenticate source origin, reviewer identity, client/operator consent, authorization or release.
+
+
+## Atomic and non-destructive local review imports
+
+Opening a new original offline JSON comparison first validates the entire bounded canonical report and its local source-byte SHA-256 before replacing the current HUMAN review workspace. An invalid, oversized, incompatible or superseded file **no longer erases** the original loaded report, current HUMAN follow-up stages, print view or source-bound saved plan. Only a successful source replacement intentionally clears old review/history state. Choosing a newer file, pressing Clear, changing a HUMAN follow-up or clearing a saved comparison cancels stale pending local reads.
+
+Likewise, import of a historical follow-up and comparison of two saved HUMAN plans is transaction-like: malformed or stale files cannot replace a previously accepted historical comparison/plan delta. A saved HUMAN follow-up restore is source-byte-bound and rechecks that no newer local user action superseded it before applying any per-case planning fields. No source authenticity, authorization or consent is inferred from this local file workflow.
