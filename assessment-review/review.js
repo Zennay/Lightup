@@ -25,6 +25,7 @@
   let report = null, selected = -1, digest = null, sourceKind = null, trend = null, metricFocus = null, planDelta = null;
   // User choice is authoritative: stale local file completions cannot clear
   // or silently replace a newer HUMAN planning workspace.
+  let lastHumanUndo = null;
   let readGeneration = 0;
   const beginRead = () => ++readGeneration;
   const invalidateReads = () => { readGeneration++; };
@@ -531,10 +532,36 @@
     metricFocus=null;
     if(report) render();
   });
-  function render() { renderOverview(); renderLandscape(); renderQueue(); renderDetails(); renderPrintBrief(); renderFilteredPrintBrief(); }
+  // An in-memory single-step HUMAN-only undo never mutates original metrics
+  // and can never restore state across changed original source bytes.
+  function rememberHumanEdit() {
+    if (!report || !digest) return;
+    lastHumanUndo = {source:digest,rows:report.cases.map(c=>({
+      stage:c.stage,route:c.route,due:c.due||""
+    }))};
+  }
+  function undoHumanEdit() {
+    if (!report || !lastHumanUndo || lastHumanUndo.source!==digest ||
+        lastHumanUndo.rows.length!==report.cases.length) return;
+    invalidateReads();
+    lastHumanUndo.rows.forEach((row,i)=>{
+      report.cases[i].stage=row.stage;
+      report.cases[i].route=row.route;
+      report.cases[i].due=row.due;
+    });
+    lastHumanUndo=null;
+    render();
+    alert("The last local HUMAN planning edit was reversed. Source findings, report status and authorization remain unchanged.", "good");
+  }
+  function render() {
+    renderOverview();renderLandscape();renderQueue();renderDetails();
+    renderPrintBrief();renderFilteredPrintBrief();
+    $("undo-human").disabled=!(report&&lastHumanUndo&&lastHumanUndo.source===digest);
+  }
   function reset(invalidate = true) {
     if (invalidate) invalidateReads();
     report = null; selected = -1; digest = null; sourceKind = null;
+    lastHumanUndo = null;
     clearHistorical(); clearPlanComparison(); metricFocus = null;
     $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all";
     $("cases").replaceChildren(); $("metrics").replaceChildren();
@@ -775,6 +802,7 @@
         updates.push({stage: row.human_stage, due: due || "", route: v2 ? row.routing_group : "unassigned"});
       }
       ensure(currentRead(generation));
+      rememberHumanEdit();
       updates.forEach((step,i) => Object.assign(report.cases[i], step));
       alert("Saved human follow-up restored for the exact same local report. No approval imported.", "good");
       render();
@@ -924,6 +952,7 @@
   });
   $("file").addEventListener("change", async e => {if(e.target.files[0]) await load(e.target.files[0]);});
 
+  $("undo-human").addEventListener("click",undoHumanEdit);
   $("batch-triage").addEventListener("click", () => {
     if (!report) return;
     const pending = report.cases.filter(c => c.regressions.length && c.stage === "todo");
@@ -934,6 +963,7 @@
     if (!window.confirm("Move " + pending.length +
        " new regressed lab cases to human investigation? This is NOT assessment authorization.")) return;
     invalidateReads();
+    rememberHumanEdit();
     pending.forEach(c => {
       c.stage = "investigating";
       if (c.route === "unassigned") {
@@ -956,12 +986,14 @@
   $("route").addEventListener("change", e => {
     if (!report || selected < 0 || !ROUTES.has(e.target.value)) return;
     invalidateReads();
+    rememberHumanEdit();
     report.cases[selected].route = e.target.value;
     render();
   });
   $("stage").addEventListener("change", e => {
     if (!report || selected < 0 || !STAGES.has(e.target.value)) return;
     invalidateReads();
+    rememberHumanEdit();
     report.cases[selected].stage = e.target.value; render();
   });
   $("due").addEventListener("change", e => {
@@ -969,7 +1001,9 @@
     const value = e.target.value;
     if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {e.target.value = ""; return;}
     invalidateReads();
+    rememberHumanEdit();
     report.cases[selected].due = value; renderOverview();
+    $("undo-human").disabled = false;
   });
   $("export-json").addEventListener("click", () => {
     if (!report) return;
