@@ -20,6 +20,7 @@ from priority_inbox_open import reopen_expected
 from priority_reply import UNTRUSTED_FLAGS
 from response import accepted_original, admit_returned_reply
 from revision import private_frame
+from priority_inbox_continuity_studio import NAME as STUDIO, build as build_studio
 
 HTML = "PRIVATE-HUMAN-continuity-followup.html"
 CSV = "PRIVATE-HUMAN-continuity-followup.csv"
@@ -102,7 +103,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         inbox_hashes.append(digest(files[RECEIPT_OUT]))
         reply_hashes.append(digest(files[FINAL]))
 
-    cards, data_rows = [], []
+    cards, data_rows, studio_rows = [], [], []
     stages_count = Counter()
     selected_counts = Counter()
     for original in sorted(selected, key=lambda r: (PRIORITIES.index(r["priority"]),
@@ -142,6 +143,15 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         selected_counts["attention"] += int(attention)
         selected_counts["continuously_awaiting"] += int(continuous_attention)
         f = source["findings"][ordinal - 1]
+        studio_rows.append({
+            "ordinal": ordinal,
+            "priority": original["priority"],
+            "bucket": bucket,
+            "question": original["question"],
+            "latest_stage": stages[-1],
+            "latest_reply": latest["recipient_human_reply"],
+            "next_question": latest["recipient_human_next_question"],
+        })
         data_rows.append((
             ordinal, original["priority"], bucket, f["severity"], len(f["evidence_ids"]),
             stages[0], stages[-1], int(attention), int(reopened),
@@ -200,6 +210,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     writer.writerow(header)
     writer.writerows(data_rows)
     table = output.getvalue().encode("utf-8")
+    studio = build_studio(studio_rows, digest(table))
     navigation = "".join(
         "<li><a href='#human-ordinal-" + str(row[0]) +
         "'>Original HUMAN ordinal #" + str(row[0]) + " (" +
@@ -231,6 +242,11 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "was followed by latest attention; unanswered means all rounds "
         "reported no HUMAN response; all includes every originally selected "
         "HUMAN row. A claimed response never proves resolution.</p></header>"
+        "<section><h2>PRIVATE HUMAN editor (locally saved CSV only)</h2>"
+        "<p><a href='" + STUDIO + "'>Open standalone PRIVATE HUMAN review "
+        "editor</a> to record non-authorizing human notes and save a local "
+        "CSV. The original dossier and all source replies stay immutable. "
+        "This is an unsigned, unapproved HUMAN draft.</p></section>"
         "<section><h2>Private local review navigation · grouped by original "
         "priority and HUMAN-reported attention category</h2><ol>" +
         navigation + "</ol></section>" +
@@ -239,7 +255,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
          "<p>Nothing is verified or resolved as a result.</p></section>"))
     report = private_frame("PRIVATE HUMAN original-source follow-up", body)
     counts = {
-        "schema": "lightup.private_human_continuity_docket.v3",
+        "schema": "lightup.private_human_continuity_docket.v4",
         "status": "REVIEW_ONLY", "operator_filter": filter_mode,
         "explicit_operator_ordinal_filter_applied": bool(ordinal_selection),
         "docket_rows": len(data_rows),
@@ -251,7 +267,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     }
     counts_raw = json_bytes(counts)
     receipt = {
-        "schema": "lightup.private_human_continuity_docket_receipt.v3",
+        "schema": "lightup.private_human_continuity_docket_receipt.v4",
         "status": "REVIEW_ONLY", "operator_filter": filter_mode,
         "original_source_sha256_unsigned": source_sha,
         "original_human_worksheet_sha256_unsigned": worksheet_sha,
@@ -260,12 +276,13 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "all_round_complete_human_csv_sha256_unsigned": reply_hashes,
         "private_html_sha256_unsigned": digest(report),
         "private_csv_sha256_unsigned": digest(table),
+        "private_studio_html_sha256_unsigned": digest(studio),
         "private_counts_sha256_unsigned": digest(counts_raw),
         "explicit_operator_original_ordinals": sorted(ordinal_selection),
         "selected_original_ordinals": [r[0] for r in data_rows],
         **UNTRUSTED_FLAGS,
     }
-    files = {HTML: report, CSV: table, COUNTS: counts_raw,
+    files = {HTML: report, CSV: table, STUDIO: studio, COUNTS: counts_raw,
              RECEIPT: json_bytes(receipt)}
     require(all(0 < len(raw) <= LIMIT for raw in files.values()))
     return files, len(data_rows)

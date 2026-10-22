@@ -613,12 +613,20 @@ includes every original HUMAN row, including claimed replies. More permissive
 filters intentionally disclose more PRIVATE original HUMAN information.
 A claimed response is NEVER independent verification or remediation.
 
-The exclusive new 0700 directory has four 0600 files (all <=512 KiB):
+The exclusive new 0700 directory has five 0600 files (all <=512 KiB):
 `PRIVATE-HUMAN-continuity-followup.html` is CSP-pinned scriptless
 PRIVATE original HUMAN question/latest reply/stage history with blank
 HUMAN-review prompts; `PRIVATE-HUMAN-continuity-followup.csv` contains
 only fixed original ordinal, priority, reported severity, evidence-reference
 **count** and HUMAN continuity flags (NO original question/reply text);
+`PRIVATE-HUMAN-continuity-review-studio.html` is a standalone CSP-hash-pinned
+offline local HUMAN reviewer editor containing **only the already selected
+original PRIVATE questions and latest replies**. It offers fixed review
+dispositions and a max-500-character HUMAN note per selected original ordinal,
+and uses explicit local browser download to save
+`PRIVATE-HUMAN-continuity-review-return.csv`. The exported CSV includes a
+local **unsigned** digest of the bound dossier's fixed CSV; it is not a
+trusted signature, grant or verified resolution and is never auto-sent;
 `PRIVATE-HUMAN-continuity-counts.json` contains source-minimal numerical
 summaries; and `PRIVATE-HUMAN-continuity-receipt.json` binds exact original
 source/selection, every original inbox and complete return, the included
@@ -705,3 +713,24 @@ original source/selection hashes necessarily remain in its owner-private,
 UNSIGNED custody receipt and are not recipient or disclosure authorization.
 Earlier v1/v2 PRIVATE follow-up folders remain unmodified and will HOLD
 under v3 reopen rather than silently being rewritten.
+
+
+### Offline PRIVATE HUMAN reviewer input (v4)
+
+Open `PRIVATE-HUMAN-continuity-followup.html` locally, then follow the
+**PRIVATE HUMAN review editor** link to
+`PRIVATE-HUMAN-continuity-review-studio.html` in the *same saved directory*.
+For the exact same already selected original HUMAN rows, an operator can
+choose a fixed disposition (pending discussion, request more information,
+independent review, or no action proposed) and enter a short private review
+note. The browser creates a **separate manually downloaded PRIVATE CSV** on
+explicit click; no automatic save, upload, remote calls, browser persistence,
+target operation or task assignment occurs. Preserve these downloads as
+confidential operator drafts. An unsigned CSV anchor relates it to the
+source-bound original dossier but does not identify/authenticate the author.
+
+Original saved docket folders generated before this v4 addition are immutable
+and will be refused by the current exact-byte read-only reopen unless the
+entire original source and original full HUMAN rounds are re-supplied to
+produce a **new v4 dossier**. No retrofit, in-place edit, or data disclosure
+grant is implied.
