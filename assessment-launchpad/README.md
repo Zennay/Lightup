@@ -121,6 +121,24 @@ The optional direct-stage route and the imported `--answers-dir` route are mutua
 
 Before HUMAN return publication, the native CLI re-verifies the saved history against the original pinned policy and source manifests, strictly matches the complete edited CSV against the ordinal queue, and re-opens all inputs. It publishes three exclusive mode-0600 files in a separate empty owner-owned 0700 directory: source-bound PRIVATE JSON containing unsigned source and answer hashes, scriptless CSP-pinned PRIVATE HUMAN status HTML (no URLs/paths/hashes) and an aggregate stage-count PRIVATE CSV. The previous source and HUMAN answer files are never overwritten. The stages are non-authorizing **human work notes only**: even `HUMAN_REVIEWED` is not approval, valid consent, verified remediation, revocation clearance or release authority. No active targets, scanner, DNS, model, auth or original source-owner code is touched.
 
+### Continue an existing PRIVATE HUMAN round without resetting prior work
+
+`manifest_history_response.py` can now **carry forward every previous HUMAN status** from a separately saved and strictly admitted PRIVATE return, and change only the specified rows in a new private result:
+
+```sh
+mkdir -m 700 ~/private-human-return-next
+python3 assessment-launchpad/manifest_history_response.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --continue-from-return-dir ~/private-human-return-one \
+  --stage 3:NEEDS_CONTEXT --stage 5:HUMAN_REVIEWED \
+  --output-dir ~/private-human-return-next
+```
+
+The original source plans/history and **all three files** of the prior HUMAN return are read without mutation and matched to the same original ordinal source list. Every untouched stage is carried forward; duplicates/unknown stages/missing original rows fail closed. This continuation uses a new `lightup.private-manifest-history-human-return.v2` PRIVATE receipt containing the **unsigned SHA-256 of the exact prior return JSON** plus an explicit unsigned-local-consistency label; original v1 returns remain readable. It is never a signed review chain or identity proof. Exact `--verify-output-dir` accepts the same continuation source and stages to reopen a new PRIVATE result without writing. Source and destination trees must be separate.
+
+The original source/auth/consent/revocation/HUMAN GO requirements are unchanged. A copied status, including `HUMAN_REVIEWED`, is always a non-authorizing HUMAN work note and never authorizes assessment or verifies remediation.
+
 ### Compare two PRIVATE HUMAN follow-up rounds on the same manifest history
 
 `manifest_history_followup.py` completes the offline multi-round workflow. Given **exactly the same original ordered saved plans and original PRIVATE history**, it reopens two separately saved three-file HUMAN return bundles, validates their original row identities, byte-canonical private JSON, exact scriptless HTML and counts, source-history digest binding and all false authority flags. The inputs may be returned through either the stage CLI or previously edited PRIVATE CSV; locally stored input digests remain unsigned and cannot independently prove who edited the responses.

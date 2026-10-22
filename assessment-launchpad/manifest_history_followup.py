@@ -50,8 +50,18 @@ def read_response(path, original, history_bytes):
             raise Hold("PRIVATE HUMAN return is not canonical JSON") from error
         if not isinstance(packet, dict):
             raise Hold("PRIVATE HUMAN return is not an object")
-        if (packet.get("schema") != "lightup.private-manifest-history-human-return.v1"
-                or packet.get("status") != "REVIEW_ONLY"
+        schema = packet.get("schema")
+        if schema not in ("lightup.private-manifest-history-human-return.v1",
+                          "lightup.private-manifest-history-human-return.v2"):
+            raise Hold("unknown PRIVATE HUMAN return schema")
+        if schema.endswith(".v2"):
+            if (not isinstance(packet.get("previous_return_sha256"), str)
+                    or not HEX.fullmatch(packet["previous_return_sha256"])
+                    or packet.get("source_continuity_claim") != "UNSIGNED_LOCAL_CONSISTENCY_ONLY"):
+                raise Hold("continued PRIVATE HUMAN round source reference malformed")
+        elif "previous_return_sha256" in packet or "source_continuity_claim" in packet:
+            raise Hold("legacy PRIVATE HUMAN return cannot claim a previous round")
+        if (packet.get("status") != "REVIEW_ONLY"
                 or packet.get("history_sha256") != sha256(history_bytes).hexdigest()
                 or packet.get("plan_count") != original["plan_count"]):
             raise Hold("PRIVATE HUMAN return history source binding drifted")

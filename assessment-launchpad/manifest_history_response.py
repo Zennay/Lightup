@@ -126,12 +126,18 @@ def main(argv=None):
     source.add_argument("--answers-dir", help="separate owner-private 0700 directory with one edited 0600 queue CSV")
     source.add_argument("--stage", action="append", default=[],
                         help="direct HUMAN review for 1-based original changed-slot ROW:STAGE (repeatable)")
+    parser.add_argument("--continue-from-return-dir",
+                        help="carry forward prior saved PRIVATE HUMAN stages when using --stage")
     dest = parser.add_mutually_exclusive_group(required=True)
     dest.add_argument("--output-dir", help="new separate empty PRIVATE 0700 result directory")
     dest.add_argument("--verify-output-dir", help="exact read-only reopen")
     parser.add_argument("--explain-hold", action="store_true", help="curated HOLD only; never source values")
     args = parser.parse_args(argv)
     try:
+        if args.continue_from_return_dir and args.answers_dir:
+            raise Hold("HUMAN continuation accepts ROW:STAGE edits, not imported CSV answers")
+        if args.continue_from_return_dir and not args.stage:
+            raise Hold("HUMAN continuation requires at least one explicit stage edit")
         verify_args = [part for path in args.plan_dir for part in ("--plan-dir", path)]
         verify_args += ["--verify-output-dir", args.history_dir]
         if history.main(verify_args) != 0:
@@ -142,23 +148,32 @@ def main(argv=None):
             history_bytes = read_private_bundle_item(source_fd, history.SUMMARY, LIMIT)
         finally:
             os.close(source_fd)
+        prior_abs = None
+        prior_hash = None
         if args.answers_dir:
             answers_abs, answers_raw, responses = admit_answers(
                 args.answers_dir, source_packet["human_review_queue"])
         else:
-            # Explicit row/stage instructions can create a complete source-bound
-            # HUMAN return directly, without writing an intermediate answers CSV.
-            # Native HISTORY_EDITOR output uses the same canonical CSV encoding.
+            # Preserve the source-bound HUMAN stages from an original saved
+            # return and modify only explicitly selected row ordinals.
             import manifest_history_editor as editor
             original = source_packet["human_review_queue"]
             selected = editor.admit_updates(args.stage, len(original))
+            baseline = original
+            if args.continue_from_return_dir:
+                import manifest_history_followup as followup
+                prior_abs, prior_packet, prior_hash = followup.read_response(
+                    args.continue_from_return_dir, source_packet, history_bytes)
+                baseline = prior_packet["responses"]
             responses = [{**row, "human_stage": selected.get(index, row["human_stage"])}
-                         for index, row in enumerate(original, 1)]
+                         for index, row in enumerate(baseline, 1)]
             answers_raw = editor.emit_csv(responses)
             answers_abs = None
         stages = Counter(row["human_stage"] for row in responses)
         packet = {
-            "schema": "lightup.private-manifest-history-human-return.v1",
+            "schema": ("lightup.private-manifest-history-human-return.v2"
+                       if prior_hash is not None else
+                       "lightup.private-manifest-history-human-return.v1"),
             "status": "REVIEW_ONLY",
             "history_sha256": sha256(history_bytes).hexdigest(),
             "answers_sha256": sha256(answers_raw).hexdigest(),
@@ -171,6 +186,9 @@ def main(argv=None):
             "revocation_checked": False, "human_go": False,
             "assessment_executed": False, "release_allowed": False,
         }
+        if prior_hash is not None:
+            packet["previous_return_sha256"] = prior_hash
+            packet["source_continuity_claim"] = "UNSIGNED_LOCAL_CONSISTENCY_ONLY"
         files = {
             RESPONSE: (json.dumps(packet, sort_keys=True, separators=(",", ":")) + "\n").encode(),
             HTML: render_html(packet),
@@ -183,6 +201,8 @@ def main(argv=None):
             protected_sources = [*(item[0] for item in plans), history_abs]
             if answers_abs is not None:
                 protected_sources.append(answers_abs)
+            if prior_abs is not None:
+                protected_sources.append(prior_abs)
             for source in protected_sources:
                 shared = os.path.commonpath((source, output))
                 if shared in (source, output):
@@ -206,6 +226,11 @@ def main(argv=None):
                         args.answers_dir, source_packet["human_review_queue"])
                     if answer_now != answers_raw:
                         raise Hold("PRIVATE HUMAN edits changed before return publication")
+                if prior_abs is not None:
+                    _, _, current_hash = followup.read_response(
+                        args.continue_from_return_dir, source_packet, history_bytes)
+                    if current_hash != prior_hash:
+                        raise Hold("original PRIVATE HUMAN round changed before continuation publication")
                 if history.main(verify_args) != 0:
                     raise Hold("original PRIVATE history changed before HUMAN return publication")
                 history_check_fd, _ = open_output_directory(args.history_dir)
