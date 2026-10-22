@@ -2,6 +2,10 @@
 
 **Stage: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** [Product issue #1591](https://github.com/Zennay/Lightup/issues/1591). This is a private offline human discussion instrument, **not an assessment scanner, production release recommendation, client consent verifier, safety verdict or grant service**. The four output fields `authorized`, `consent_verified`, `dispatch_allowed` and `release_allowed` are always false.
 
+## Safe rendering of imported candidate data
+
+All imported report-derived text and table headings are HTML-escaped before rendering. Only locally constructed ordinal-only queue and review-round controls use an explicit trusted-HTML wrapper; imported report strings never enter that path. The standalone `standalone.html` is rebuilt from the exact current `app.js` and `style.css`, with strict no-network CSP hashes regenerated for the updated bytes.
+
 ## Open immediately
 
 Download [standalone.html](standalone.html) and open it in a modern local browser. There are no external dependencies, HTTP calls, install steps, accounts, browser storage, cookies, persistence, registered service workers, target interaction, execution commands or backend. `index.html` also works alongside `app.js` and `style.css`. The self-contained release is rebuilt by `python3 assessment-candidates/build_standalone.py` using Python's standard library, with a restrictive CSP hashing the original inline script and CSS. The current bundled artifact is **115,023 bytes** (SHA-256 `442cecbbb92bf8c14ff3385eba666706f6b77a3200abf35af6f06c731d1242e6`); its CSP script/style hashes are pinned to the exact embedded bytes.
