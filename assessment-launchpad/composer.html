@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CgghBgCEOqs/EtT3ILUbnmGD8GdknRJbYE5EzxvD3vE='; style-src 'sha256-SRby5AWw31bWIWdCDO6JrYkj8NcbQNFs2WutL2xk+/c='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-AQLJ2wgpWHqNPtEuFlyfqPWgFfRWweBhSO6XwUJyYKc='; style-src 'sha256-iC9m6PUh4qkSTPditHJnCQiSpG60mrT7lDScBNA86M4='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
-<style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
+<style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
 <body>
 <header class="hero">
@@ -29,6 +29,16 @@
     </div>
     <p id="message" class="message" role="status" aria-live="polite">Add a local lab URL to begin.</p>
   </section>
+  <section class="panel" id="importPreviewPanel" hidden>
+    <h2>Review imported manifest before applying</h2>
+    <p id="importPreviewSummary" role="status" aria-live="polite"></p>
+    <div id="importPreviewRows"></div>
+    <div class="controls">
+      <button id="applyManifestImport" type="button" disabled>Apply imported manifest</button>
+      <button id="cancelManifestImport" type="button" class="secondary">Cancel import</button>
+    </div>
+    <p class="note">The current editor stays unchanged until Apply. Previewed URLs remain local to this page; no network request or browser storage is used.</p>
+  </section>
   <section class="panel">
     <h2>What happens next</h2>
     <ol>
@@ -46,6 +56,8 @@
   const $ = id => document.getElementById(id);
   const list = $("endpointList");
   let rowSequence = 0;
+  let importSequence = 0;
+  let pendingImport = null;
   function values() {
     return [...list.querySelectorAll(".endpoint input")].map(input => input.value);
   }
@@ -134,6 +146,7 @@
     $("endpointCount").textContent = String(list.querySelectorAll("input").length) + " / 16 slots";
     $("downloadManifest").disabled = !checked.entries;
     $("message").textContent = checked.error || "Ready to export a local text manifest. Native original-scope validation has not run.";
+    if (pendingImport) renderImportPreview();
   }
   function downloadManifest() {
     const checked = validate();
@@ -153,28 +166,86 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     $("message").textContent = "Private local text manifest downloaded. Move it to a private directory and set mode 0600 before the native CLI; the browser cannot set file permissions.";
   }
+  function renderImportPreview() {
+    const panel = $("importPreviewPanel");
+    const summary = $("importPreviewSummary");
+    const rows = $("importPreviewRows");
+    rows.replaceChildren();
+    if (!pendingImport) {
+      panel.hidden = true;
+      $("applyManifestImport").disabled = true;
+      return;
+    }
+    const current = values();
+    const proposed = pendingImport;
+    let unchanged = 0, changed = 0, added = 0, removed = 0;
+    for (let index = 0; index < Math.max(current.length, proposed.length); index++) {
+      const hasCurrent = index < current.length;
+      const hasProposed = index < proposed.length;
+      const oldValue = hasCurrent ? current[index] : null;
+      const newValue = hasProposed ? proposed[index] : null;
+      let status;
+      if (hasCurrent && hasProposed && oldValue === newValue) { status = "UNCHANGED"; unchanged++; }
+      else if (!hasCurrent) { status = "ADDED"; added++; }
+      else if (!hasProposed) { status = "REMOVED"; removed++; }
+      else { status = "CHANGED"; changed++; }
+      const line = document.createElement("p");
+      line.className = "import-diff";
+      line.textContent = "Slot " + String(index + 1).padStart(2, "0") + " · " + status +
+        " · current: " + (hasCurrent ? (oldValue || "(blank)") : "(none)") +
+        " · proposed: " + (hasProposed ? (newValue || "(blank)") : "(none)");
+      rows.append(line);
+    }
+    summary.textContent = "Current " + current.length + (current.length === 1 ? " slot" : " slots") +
+      " · proposed " + proposed.length + (proposed.length === 1 ? " slot" : " slots") +
+      " · " + unchanged + " unchanged · " + changed + " changed · " +
+      added + " added · " + removed + " removed. Native scope validation has not run.";
+    panel.hidden = false;
+    $("applyManifestImport").disabled = false;
+  }
+  function cancelManifestImport() {
+    importSequence++;
+    pendingImport = null;
+    renderImportPreview();
+    $("message").textContent = "Import cancelled; the current editor was preserved.";
+  }
+  function applyManifestImport() {
+    if (!pendingImport) return;
+    const entries = pendingImport.slice();
+    pendingImport = null;
+    renderImportPreview();
+    list.replaceChildren();
+    rowSequence = 0;
+    entries.forEach(item => addRow(item));
+    refresh();
+    $("message").textContent = "Applied " + entries.length +
+      " imported local endpoint slots. Native original scope validation has NOT run.";
+  }
   async function importManifest() {
+    const ticket = ++importSequence;
     const input = $("manifestImport"), file = input.files && input.files[0];
     input.value = "";
+    pendingImport = null;
+    renderImportPreview();
     if (!file) return;
     try {
       if (file.size < 1 || file.size > 16384) throw Error("Too large or empty");
       // Decode strictly, preserving BOM so noncanonical imports fail closed.
       const text = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true})
         .decode(await file.arrayBuffer());
+      if (ticket !== importSequence) return;
       if (text.startsWith("\uFEFF") || text.includes("\u0000")) throw Error("BOM or NUL");
       const entries = text.split(/\r\n|\r|\n|\u0085|\u2028|\u2029/)
         .filter(line => line.trim() && !line.trimStart().startsWith("#"))
         .map(line => line.trim());
       const checked = validate(entries);
       if (!checked.entries) throw Error(checked.error);
-      // All-or-nothing: no rows change until the complete input is admitted.
-      list.replaceChildren();
-      entries.forEach(item => addRow(item));
-      refresh();
-      $("message").textContent = "Imported " + entries.length +
-        " local endpoint slots. Native original scope validation has NOT run.";
+      // Stage the complete import; current editor rows change only on explicit Apply.
+      pendingImport = entries.slice();
+      renderImportPreview();
+      $("message").textContent = "Review the proposed import below. Current editor remains unchanged until Apply.";
     } catch (_) {
+      if (ticket !== importSequence) return;
       $("message").textContent = "Import refused; your existing editor was preserved. " +
         "Use a bounded canonical UTF-8 text manifest without BOM, NUL or duplicates.";
     }
@@ -183,6 +254,8 @@
   $("manifestImport").addEventListener("change", importManifest);
   $("addEndpoint").addEventListener("click", () => addRow(""));
   $("downloadManifest").addEventListener("click", downloadManifest);
+  $("applyManifestImport").addEventListener("click", applyManifestImport);
+  $("cancelManifestImport").addEventListener("click", cancelManifestImport);
   addRow("");
 })();</script>
 </body>
