@@ -107,7 +107,7 @@ def compose_history(plans: list[dict]) -> dict:
             "plan_number": index + 1,
             "source_count": len(plan),
             "added_since_previous": added,
-            "absent_from_current_selection": absent,
+            "absent_since_previous": absent,
             "continuing_rows_unchanged": unchanged,
             "continuing_rows_with_human_changes": changed,
             "stage_counts": counts,
@@ -127,7 +127,7 @@ def compose_history(plans: list[dict]) -> dict:
                 appeared_before = any(digest in earlier for earlier in plans[:index - 1])
                 presence = "REAPPEARED_AFTER_GAP" if appeared_before else "NEW_IN_SELECTED_PLAN"
             elif prior:
-                presence = "ABSENT_FROM_CURRENT_SELECTION"
+                presence = "ABSENT_FROM_SELECTED_PLAN"
             else:
                 presence = "ABSENT"
             changed_fields = [
@@ -163,7 +163,7 @@ def render_html(history: dict) -> str:
             "<td>" + esc(item[key] if item[key] is not None else "—") + "</td>"
             for key in (
                 "plan_number", "source_count", "added_since_previous",
-                "absent_from_current_selection", "continuing_rows_unchanged",
+                "absent_since_previous", "continuing_rows_unchanged",
                 "continuing_rows_with_human_changes",
             )
         ) + "".join(
