@@ -292,6 +292,53 @@ HUMAN return is **planning evidence only**: no real sign-off, source
 identity verification, consent, action-time revocation, assessment execution,
 issue resolution or release approval is conferred by these files.
 
+## Compare two source-bound PRIVATE HUMAN discussion rounds
+
+The same CLI can now compare **two independently saved private HUMAN responses**
+against the **same original 2–12 agendas**, the same manually selected
+reference day, the same source order and any identical `--focus-*` filters.
+The earlier/later ordering is strictly **provided by the human operator**;
+neither a source timestamp nor a file name is treated as authentic chronology.
+Both HUMAN response files must be separately owner-owned mode 0600, regular,
+single-linked, unchanged on bounded re-read, and kept outside the new
+destination room.
+
+```bash
+mkdir -m 700 /private/human-delta-room
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --agendas-file /private/agenda-selection.txt \
+  --previous-human-responses /private/human-input/round-earlier.json \
+  --human-responses /private/human-input/round-current.json \
+  --output-dir /private/human-delta-room
+```
+
+The output includes all canonical original four portfolio outputs, the
+three PRIVATE HUMAN return artifacts for the later-supplied round, and
+two additional owner-private files:
+`assessment-portfolio-private-HUMAN-delta.html` and
+`assessment-portfolio-private-HUMAN-delta.json`. They present only
+**source ordinals**, changes in HUMAN-only status, changes in suggested role,
+and whether note bytes differed. Neither delta contains the earlier or later
+note text, any original raw source identifiers or target data. The scriptless
+HTML highlights only changed source ordinals; the private JSON also includes
+bounded aggregate stage-transition counts. These are **PRIVATE**, not
+anonymous handoffs; small ordinal sets may reveal planning context.
+
+The tool re-admits both source-bound HUMAN JSON documents against all original
+canonical fixed agenda rows before publication and re-reads both before the
+final no-overwrite output. It rejects different source selection/order or
+reference day, modified original fields, extra columns, unknown statuses,
+unsafe notes, contradictory authority flags or drifted original sources.
+Use `--verify-output-dir` with **the identical command, original input,
+flags and file paths** to reopen the complete output read-only.
+
+A changed HUMAN status, suggested reviewer role, documented discussion or
+changed note **never proves that a finding was fixed, that a request is
+approved, that a person consented, or that an assessment may run**. This
+is merely HUMAN planning comparison in an offline lab draft. No review
+result, consent, grant, scan, dispatch, network action or release is made.
+
 ## Interpretation and safety
 
 - Input agenda exports are untrusted claims. Strict schema admission is not source authentication, reviewer authentication, customer identity, consent or security validation.
