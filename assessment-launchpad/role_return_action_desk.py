@@ -159,6 +159,28 @@ function renderImportPreview() {
       (items.length ? items.sort((a,b)=>a-b).join(", ") : "none");
     importPreview.append(line);
   }
+  if (roleFilter.value !== "ALL") {
+    const role = roleFilter.value;
+    const roleCurrent = [...selectedSlots].filter(slot => lookup.some(({values}) =>
+      values[0] === slot && values[1] === role));
+    const roleImported = [...importedSlots].filter(slot => lookup.some(({values}) =>
+      values[0] === slot && values[1] === role));
+    const roleUnion = lookup.filter(({values}) => values[1] === role &&
+      (selectedSlots.has(values[0]) || importedSlots.has(values[0]))).map(({values}) => values[0]);
+    const detail = document.createElement("p");
+    detail.textContent = "Proposed role-only export · " + role.replaceAll("_", " ") +
+      " · " + roleCurrent.length + " current · " + roleImported.length +
+      " imported · " + roleUnion.length + " rows. Recipient identity is not verified.";
+    importPreview.append(detail);
+    for (const [label,items] of [["Role-only imported",roleImported.filter(slot=>!selectedSlots.has(slot))],
+      ["Role-only current",roleCurrent.filter(slot=>!importedSlots.has(slot))],
+      ["Role-only in both",roleUnion.filter(slot=>selectedSlots.has(slot)&&importedSlots.has(slot))]]) {
+      const line = document.createElement("p");
+      line.textContent = label + " original slot ordinals: " +
+        (items.length ? items.sort((a,b)=>a-b).join(", ") : "none");
+      importPreview.append(line);
+    }
+  }
   addImported.disabled = importedOnly.length === 0;
   replaceImported.disabled = sourceOnly.length !== 0 || importedOnly.length !== 0 ? false : true;
 }

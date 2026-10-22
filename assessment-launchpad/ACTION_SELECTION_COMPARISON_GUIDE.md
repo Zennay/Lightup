@@ -45,8 +45,9 @@ output remains byte-compatible. A browser-local selection-diff preview is also
 available before Apply/Replace. With a prior CSV loaded and one suggested role
 selected, the browser action desk offers **Download selected-role-only
 differences CSV**. It includes only slots in that role occurring in either
-selection; other display filters do not narrow it. The all-role export remains
-available. Neither browser export replaces the original selected-action CSVs
+selection; the import preview shows role-only current/imported counts and slot
+ordinals before export. Other display filters do not narrow the role-only export.
+The all-role export remains available. Neither browser export replaces the original selected-action CSVs
 required by this native source-bound comparator.
 
 To create the four-file PRIVATE native packet, repeat the same command but

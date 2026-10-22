@@ -475,7 +475,8 @@ complete selections and all source packets are admitted; the operator still
 must authenticate recipients. Role-only output separates filtered before/after
 counts from all-role totals. Default output is unchanged. The browser action desk
 also offers a selected-role-only difference CSV when one role is selected and a
-prior selection is loaded. Creates an owner-only four-file packet (scriptless
+prior selection is loaded; the preview shows role-only current/imported counts
+and ordinal changes before export. Creates an owner-only four-file packet (scriptless
 network-denied CSP HTML, source-minimal CSV, fixed-vocabulary counts JSON and
 handling guide). Breakdown by suggested HUMAN role/next action is also
 included. Use `--preview-only` for write-free counts or `--verify-output-dir`
