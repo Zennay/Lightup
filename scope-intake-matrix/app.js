@@ -42,6 +42,7 @@
   let humanUndo = [];
   let lastComparison = null;
   let membershipPreview = null;
+  let draftRevision = 0, draftImportTicket = 0, draftCompareTicket = 0;
 
   function blankDocument() {
     return {
@@ -403,6 +404,8 @@
     $("notice").classList.toggle("danger-text", isError);
   }
   function refresh(preserveBulkUndo = false) {
+    // Monotonic guard for async file reads and encryption; no stale snapshot may replace/export current edits.
+    draftRevision++;
     clearTriagePreview(preserveBulkUndo);
     // Any actual proposal mutation makes the previously rendered comparison stale.
     $("compare-section").hidden = true;
@@ -513,7 +516,7 @@
     }
   }
 
-  async function encryptPrivatePayload(payload, fileName) {
+  async function encryptPrivatePayload(payload, fileName, expectedRevision = null) {
     try {
       requireCrypto();
       const pwd = passphraseInput(true);
@@ -522,14 +525,18 @@
       const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
       const nonce = globalThis.crypto.getRandomValues(new Uint8Array(12));
       const aad = new TextEncoder().encode(PURPOSE);
-      const key = await derivePrivateKey(pwd, salt);
       const plain = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
       try {
         if (plain.length > MAX_BYTES) throw Error("Draft exceeds original 64 KiB source limit.");
+        const key = await derivePrivateKey(pwd, salt);
+        if (expectedRevision !== null && expectedRevision !== draftRevision)
+          throw Error("Draft changed during encryption; stale snapshot discarded. Encrypt the current draft again.");
         const bytes = new Uint8Array(await globalThis.crypto.subtle.encrypt(
           {name: "AES-GCM", iv: nonce, additionalData: aad, tagLength: 128}, key, plain
         ));
         try {
+          if (expectedRevision !== null && expectedRevision !== draftRevision)
+            throw Error("Draft changed during encryption; stale snapshot discarded. Encrypt the current draft again.");
           const envelope = {
             schema: ENCRYPTED_SCHEMA, posture: "PREPARATION_ONLY", cipher: "AES-256-GCM",
             kdf: "PBKDF2-SHA256", iterations: KDF_ROUNDS,
@@ -548,14 +555,14 @@
     }
   }
 
-
   async function encryptWorkroom() {
     const issues = validate(state);
     if (issues.length) {
       announce("Complete the PRIVATE draft before encryption: " + issues[0], true);
       return;
     }
-    await encryptPrivatePayload(snapshot(), "lightup-scope-PRIVATE-encrypted.luie");
+    const revision = draftRevision;
+    await encryptPrivatePayload(snapshot(), "lightup-scope-PRIVATE-encrypted.luie", revision);
   }
 
   async function rekeyPrivateFile(file) {
@@ -1029,15 +1036,26 @@
     return decodeOwnExport(raw);
   }
   async function importDraft(file, encrypted = false) {
+    const ticket = ++draftImportTicket;
+    const startingRevision = draftRevision;
     try {
       const next = encrypted ? await decryptWorkroom(file) : await readFile(file);
+      if (ticket !== draftImportTicket) return;
+      if (startingRevision !== draftRevision) {
+        announce("OPEN CANCELLED: the current PRIVATE draft changed while the file was being read. Current edits were retained; select the file again to replace intentionally.", true);
+        return;
+      }
       if (!confirm("Replace all current unsaved PRIVATE draft data with the selected validated file?")) return;
+      if (ticket !== draftImportTicket || startingRevision !== draftRevision) return;
       state = next;
       $("filter").value = ""; $("status-filter").value = "all";
       $("compare-section").hidden = true;
       syncForm(); updateTriageValues(); renderRows(); refresh();
       announce("PRIVATE draft opened locally after full strict admission. Still DRAFT/HOLD.");
-    } catch (error) { announce("OPEN REJECTED: " + error.message + " Existing draft was retained.", true); }
+    } catch (error) {
+      if (ticket !== draftImportTicket) return;
+      announce("OPEN REJECTED: " + error.message + " Existing draft was retained.", true);
+    }
   }
   function proposedScopeImpact(before, after) {
     const oldRows = new Map(before.rows.map(row => [row.asset, row]));
@@ -1136,8 +1154,17 @@
   }
 
   async function compareDraft(file, encrypted = false) {
+    const ticket = ++draftCompareTicket;
+    const startingRevision = draftRevision;
+    lastComparison = null;
+    $("compare-section").hidden = true;
     try {
       const before = encrypted ? await decryptWorkroom(file) : await readFile(file);
+      if (ticket !== draftCompareTicket) return;
+      if (startingRevision !== draftRevision) {
+        announce("COMPARISON CANCELLED: the current PRIVATE draft changed while the selected file was being read. Compare again against the current draft.", true);
+        return;
+      }
       const problems = validate(state);
       if (problems.length) throw Error("Complete current draft before comparing: " + problems[0]);
       const oldAssets = new Map(before.rows.map(row => [row.asset, row]));
@@ -1165,7 +1192,10 @@
       $("changed").textContent = changed.join("\n") || "(none)";
       $("compare-section").hidden = false;
       announce("Literal PRIVATE draft comparison only. Additions are NOT approved and removals are NOT verified revocations.");
-    } catch (error) { announce("COMPARISON REJECTED: " + error.message + " No draft was modified.", true); }
+    } catch (error) {
+      if (ticket !== draftCompareTicket) return;
+      announce("COMPARISON REJECTED: " + error.message + " No draft was modified.", true);
+    }
   }
 
   function init() {
