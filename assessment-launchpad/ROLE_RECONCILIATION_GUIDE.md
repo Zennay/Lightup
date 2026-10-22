@@ -69,8 +69,10 @@ The result consists of exactly seven exclusive mode-0600 files:
   role or packet must never silently restore its hidden rows in a printout.
   Tick individual original slots or use **Select displayed slots** to add the
   visible rows without clearing earlier selections. **Deselect displayed slots** removes only visible rows; **Clear all selections**
-  resets the in-memory queue. **Download selected rows as PRIVATE CSV** exports
-  only explicitly selected fixed-vocabulary rows in original source order,
+  resets the in-memory queue. Open **Review selected rows before CSV download**
+  to inspect every selected ordinal/enum row, including rows hidden by filters;
+  this preview is excluded from print. **Download selected rows as PRIVATE CSV**
+  exports only explicitly selected fixed-vocabulary rows in original source order,
   including selections hidden by the current filter; printing remains limited
   to the visible view. No endpoint URL, private note text, reviewer name,
   original path or digest is included. The saved CSV and any

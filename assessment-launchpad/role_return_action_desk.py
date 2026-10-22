@@ -36,9 +36,11 @@ STYLE = (
     "tr[hidden]{display:none}small{color:#435970}"
     ".slotselect{display:flex;align-items:center;gap:.45rem;white-space:nowrap}"
     ".slotselect input{width:1.1rem;height:1.1rem}"
+    ".selectionpreview{margin:.8rem 0}.selectionpreview summary{cursor:pointer;font-weight:750;padding:.5rem 0}"
+    ".selectionpreview table{min-width:760px}"
     "@media(max-width:690px){.filters{grid-template-columns:1fr}"
     ".tablewrap{overflow-x:auto}table{min-width:800px}}"
-    "@media print{.filters,button,.slotselect input,#selectionSummary{display:none}header,main{max-width:none}"
+    "@media print{.filters,button,.slotselect input,#selectionSummary,.selectionpreview{display:none}header,main{max-width:none}"
     "tr[hidden]{display:none}#printScope{display:block;font-weight:700}}"
 )
 SCRIPT = r'''(() => {
@@ -59,6 +61,7 @@ const selectVisibleButton = document.getElementById("selectVisible");
 const deselectVisibleButton = document.getElementById("deselectVisible");
 const clearSelectionButton = document.getElementById("clearSelection");
 const selectionSummary = document.getElementById("selectionSummary");
+const selectionPreview = document.getElementById("selectionPreview");
 const selectedSlots = new Set();
 const printScope = document.getElementById("printScope");
 const summary = document.getElementById("summary");
@@ -147,6 +150,24 @@ function apply() {
     " awaiting an original role reply in the selected view.";
   selectionSummary.textContent = selectedSlots.size + " explicitly selected original slots · " +
     visibleSelected + " selected in the current view. Selection stays in memory only.";
+  const selectedRows = lookup.filter(({values})=>selectedSlots.has(values[0])).map(({values})=>values);
+  selectionPreview.replaceChildren();
+  if (!selectedRows.length) selectionPreview.textContent = "No original slots selected yet.";
+  else {
+    const table = document.createElement("table");
+    const labels = ["Original slot","Suggested role","Reply status","Self-reported stage",
+      "Suggested next action","PRIVATE note changed?"];
+    const head = document.createElement("tr");
+    for (const value of labels) { const th=document.createElement("th");th.textContent=value;head.append(th); }
+    const thead=document.createElement("thead");thead.append(head);table.append(thead);
+    const tbody=document.createElement("tbody");
+    for (const row of selectedRows) {
+      const tr=document.createElement("tr");
+      for (const value of row) { const td=document.createElement("td");td.textContent=String(value).replaceAll("_"," ");tr.append(td); }
+      tbody.append(tr);
+    }
+    table.append(tbody);selectionPreview.append(table);
+  }
   const filters = [roleFilter, replyFilter, nextFilter, stageFilter, noteFilter].map(item =>
     item.options[item.selectedIndex].textContent);
   printScope.textContent = "PRIVATE selected view · " + filters.join(" · ") +
@@ -258,6 +279,8 @@ def render(work):
         "<button type='button' id='print'>Print only displayed PRIVATE rows</button> "
         "<button type='button' id='saveSelected' disabled>Download selected rows as PRIVATE CSV</button>"
         "<p id='selectionSummary' role='status' aria-live='polite'>0 explicitly selected slots.</p>"
+        "<details class='selectionpreview'><summary>Review selected rows before CSV download</summary>"
+        "<div id='selectionPreview' class='tablewrap' aria-live='polite'>No original slots selected yet.</div></details>"
         "<div class='tablewrap'><table><thead><tr><th>Select / original slot</th>"
         "<th>Suggested role</th><th>Returned packet</th><th>Last HUMAN stage</th>"
         "<th>Suggested next HUMAN action</th><th>PRIVATE note changed?</th>"
