@@ -9,6 +9,8 @@
   const FLAGS=()=>({authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false});
   const RE_TOKEN=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   let items=[],editing=-1,fictional=false,staged=null;
+  let catalogReadGeneration=0;
+  const invalidateCatalogReads=()=>++catalogReadGeneration;
   const selectedStage=new Set();
   const fail=condition=>{if(!condition)throw Error("Invalid or incompatible PRIVATE lab catalog");};
   const exact=(x,keys)=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&
@@ -306,6 +308,7 @@
   }
   function saveForm(event){
     event.preventDefault();
+    invalidateCatalogReads();
     try{
       const row=formScenario();const next=[...items];
       fail(editing<0?next.length<32:editing<next.length);
@@ -323,7 +326,8 @@
     clearStage();items=items.filter((_,i)=>i!==editing);resetEditor();render();
     notify("status","Selected scenario deleted from local memory.");
   }
-  function clearStage(){
+  function clearStage(invalidate=true){
+    if(invalidate)invalidateCatalogReads();
     selectedStage.clear();staged=null;$("staging").hidden=true;$("stageRows").replaceChildren();
     $("stageSummary").textContent="";
   }
@@ -408,33 +412,46 @@
     notify("status","Explicitly accepted staged PRIVATE catalog. No target contacted.");
   }
   async function importCatalog(file){
+    const ticket=invalidateCatalogReads();
     try{
       fail(file&&file.size>0&&file.size<=262144);
-      const bytes=await file.arrayBuffer();fail(bytes.byteLength<=262144);
+      const bytes=await file.arrayBuffer();
+      if(ticket!==catalogReadGeneration)return;
+      fail(bytes.byteLength>0&&bytes.byteLength<=262144);
       const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const next=validateCatalog(parseJSON(raw));
+      if(ticket!==catalogReadGeneration)return;
       staged=next;showStage();
       notify("status","Validated candidate imported for HUMAN comparison only; existing catalog unchanged.");
-    }catch(_){notify("status","HOLD: malformed, oversized, public-target or forged-authority catalog. Existing work preserved.",true);}
+    }catch(_){
+      if(ticket===catalogReadGeneration)
+        notify("status","HOLD: malformed, oversized, public-target or forged-authority catalog. Existing work preserved.",true);
+    }
   }
   async function appendCatalog(file){
+    const ticket=invalidateCatalogReads();
     try{
       fail(!fictional&&items.length>=1&&items.length<32&&
         file&&file.size>0&&file.size<=262144);
       const bytes=await file.arrayBuffer();
+      if(ticket!==catalogReadGeneration)return;
       fail(bytes.byteLength>0&&bytes.byteLength<=262144);
       const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const incoming=validateCatalog(parseJSON(source));
+      if(ticket!==catalogReadGeneration)return;
       const together=[...items,...incoming];
       const next=validateCatalog(documentCatalog(together));
-      clearStage();items=next;render();
+      if(ticket!==catalogReadGeneration)return;
+      clearStage(false);items=next;render();
       notify("status","Appended "+incoming.length+
         " privately authored scenarios. Existing editor work preserved; no target accessed.");
     }catch(_){
-      notify("status","HOLD: duplicated ID, invalid source or over-capacity append. Prior catalog preserved.",true);
+      if(ticket===catalogReadGeneration)
+        notify("status","HOLD: duplicated ID, invalid source or over-capacity append. Prior catalog preserved.",true);
     }
   }
   function originalProfiles(){
+    invalidateCatalogReads();
     try{
       const pack=globalThis.LightUpOriginalFixturePack;
       fail(pack&&pack.version==="lightup.installed_fixture_pack.v1"&&
