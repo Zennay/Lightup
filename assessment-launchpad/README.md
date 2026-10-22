@@ -809,6 +809,12 @@ python3 assessment-launchpad/combine_manifest.py \
   --verify-output
 ```
 
+A write-free `--dry-run --source-slot-map` also prints the same bounded
+source-local → result-slot CSV to stdout after full native source admission,
+so operators can review retained/discarded ordinal mapping before selecting
+a publication directory. Multi-source and omission previews already include
+this ordinal-only mapping; the dry-run creates no files.
+
 The explicit flag participates in the exact output shape: omitting it on
 reopen will HOLD if the original bundle contains the map, and adding it
 will HOLD if the original bundle was published in the legacy two-file
