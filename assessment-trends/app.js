@@ -347,7 +347,7 @@
     return sorted[lower]+(sorted[upper]-sorted[lower])*(position-lower);
   }
   function metricDistributionRows(){
-    const chosen=$("metricDistributionGroup").value,rows=[];
+    const chosen=$("metricDistributionGroup").value,flagFilter=$("metricDistributionFlagFilter").value,rows=[];
     const reference=new Map(METRICS.map(name=>{
       const values=scenarioIds.map(id=>snapshots[0].cases.get(id).metrics.get(name));
       return [name,{candidate:median(values.map(v=>v.candidate)),delta:median(values.map(v=>v.delta))}];
@@ -355,13 +355,16 @@
     snapshots.forEach((report,index)=>METRICS.forEach(name=>{
       const group=family(name);if(chosen!=="all"&&chosen!==group)return;
       const values=scenarioIds.map(id=>report.cases.get(id).metrics.get(name));
+      const flagged=values.filter(v=>v.regression).length;
+      if(flagFilter==="flagged"&&flagged===0)return;
+      if(flagFilter==="clear"&&flagged!==0)return;
       const candidates=values.map(v=>v.candidate).sort((a,b)=>a-b);
       const deltas=values.map(v=>v.delta).sort((a,b)=>a-b);
       const cq1=quantile(candidates,.25),cq3=quantile(candidates,.75);
       const dq1=quantile(deltas,.25),dq3=quantile(deltas,.75);
       const mc=median(candidates),md=median(deltas),base=reference.get(name);
       rows.push({manual_slot:index+1,metric:name,review_group:group,scenario_count:values.length,
-        flagged_scenarios:values.filter(v=>v.regression).length,median_candidate:mc,
+        flagged_scenarios:flagged,median_candidate:mc,
         q1_candidate:cq1,q3_candidate:cq3,candidate_iqr:cq3-cq1,
         min_candidate:candidates[0],max_candidate:candidates[candidates.length-1],
         median_delta:md,q1_delta:dq1,q3_delta:dq3,delta_iqr:dq3-dq1,
@@ -385,7 +388,7 @@
     $("metricDistributionSummary").textContent=rows.length?
       "Showing "+rows.length+" aggregate metric/slot rows across "+scenarioIds.length+
       " anonymous scenarios. Quartiles use linear interpolation at (n−1)×p; IQR is Q3−Q1. Median shifts compare against manual slot 01 only. These summaries are descriptive; order is not chronology.":
-      snapshots.length?"No metrics match the selected static review group.":
+      snapshots.length?"No metrics match the selected review-group and source-flag filters.":
       "Import snapshots to summarize numeric metric distributions.";
     $("metricDistributionCsv").disabled=!rows.length;
     $("metricDistributionJson").disabled=!rows.length;
@@ -395,7 +398,8 @@
       fictional_demo_only:fictional,manual_slot_order:true,authenticated_chronology:false,
       source_metrics_independently_verified:false,remediation_verified:false,
       authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,
-      selected_group_filter:$("metricDistributionGroup").value,rows:metricDistributionRows()};
+      selected_group_filter:$("metricDistributionGroup").value,
+      selected_flag_filter:$("metricDistributionFlagFilter").value,rows:metricDistributionRows()};
   }
   function exportMetricDistribution(format){
     const payload=metricDistributionPayload();if(!payload.rows.length)return;
@@ -403,7 +407,7 @@
       download("assessment-trends-anonymous-metric-distribution.json",
         JSON.stringify(payload,null,2)+"\n","application/json");return;
     }
-    const columns=["schema","selected_group_filter","manual_slot_order","manual_slot","metric","review_group",
+    const columns=["schema","selected_group_filter","selected_flag_filter","manual_slot_order","manual_slot","metric","review_group",
       "scenario_count","flagged_scenarios","median_candidate","q1_candidate","q3_candidate","candidate_iqr",
       "min_candidate","max_candidate","median_delta","q1_delta","q3_delta","delta_iqr",
       "median_candidate_shift_from_slot_01","median_delta_shift_from_slot_01","min_delta","max_delta",
@@ -2024,7 +2028,8 @@
       option.textContent=slot==="all"?"All manual slots":"Slot "+slot;selector.append(option);
     }
   }
-  $("metricDistributionGroup").addEventListener("change",renderMetricDistribution);
+  for(const id of ["metricDistributionGroup","metricDistributionFlagFilter"])
+    $(id).addEventListener("change",renderMetricDistribution);
   $("metricDistributionCsv").addEventListener("click",()=>exportMetricDistribution("csv"));
   $("metricDistributionJson").addEventListener("click",()=>exportMetricDistribution("json"));
   for(const filter of ["reviewKind","reviewGroup","reviewSlot","reviewStage"]){

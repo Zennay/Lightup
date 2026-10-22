@@ -45,7 +45,7 @@
   <p>Cells show how many anonymous scenarios carry a source-reported regression flag for that metric in each manually selected snapshot. Review-priority grouping is a static display aid, not an independently assessed security severity. “Persistent” means the same scenario/metric is flagged in at least two consecutive slots. “Reappearing” means a flag returns after at least one unflagged manual slot; it does not establish a fix or recurrence in authenticated time.</p>
   <div id="metricHeatmap" class="tablewrap"><p class="empty">No admitted metrics yet.</p></div>
   <h3>Cohort-level numeric distribution by manual slot</h3>
-  <p>Each row summarizes source-reported candidate and delta values across all anonymous scenarios for one metric in one manually ordered slot. Median and range describe the supplied reports only; they are not authenticated time trends, independently validated measurements or remediation evidence.</p>
+  <p>Each row summarizes source-reported candidate and delta values across all anonymous scenarios for one metric in one manually ordered slot. Median, quartiles, IQR and slot-01 median shifts describe supplied reports only; they are not authenticated time trends, independently validated measurements or remediation evidence.</p>
   <label>Filter numeric distribution by static review group
     <select id="metricDistributionGroup">
       <option value="all">All static review groups</option>
@@ -54,6 +54,13 @@
       <option value="P3 · Coverage">P3 · Coverage</option>
       <option value="P4 · Evidence / scoring">P4 · Evidence / scoring</option>
       <option value="Info · Operations">Info · Operations</option>
+    </select>
+  </label>
+  <label>Filter by source-reported regression flags
+    <select id="metricDistributionFlagFilter">
+      <option value="all">All metric/slot rows</option>
+      <option value="flagged">At least one flagged scenario</option>
+      <option value="clear">No flagged scenarios</option>
     </select>
   </label>
   <p id="metricDistributionSummary" class="message" role="status" aria-live="polite">Import snapshots to summarize numeric metric distributions.</p>
