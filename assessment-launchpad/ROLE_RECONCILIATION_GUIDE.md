@@ -154,8 +154,11 @@ set the downloaded file to `0600`, and use the NEW `action_handoff.py` CLI.
 This command checks every chosen exact row and their original worklist order
 against all original Launchpad, HUMAN rounds and selected-role return packets.
 A fabricated row, altered original role/status/action, duplicate, reordering,
-noncanonical CSV bytes or cross-source selection is HOLD. It never accepts a
-browser CSV as original evidence or a scope grant.
+noncanonical CSV bytes or cross-source selection is HOLD. The six-column
+header exactly matches the source worklist, including `latest_suggested_role`.
+The HTML and counts JSON summarize five dimensions—role, reply status,
+self-reported stage, proposed next action and note-change flag—without private
+note content. It never accepts a browser CSV as original evidence or a scope grant.
 
 ```sh
 mkdir -m 700 ~/private-selected-human-input ~/private-selected-human-output
