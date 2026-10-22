@@ -11,6 +11,42 @@
   let items=[],editing=-1,fictional=false,staged=null;
   let catalogReadGeneration=0;
   const invalidateCatalogReads=()=>++catalogReadGeneration;
+  const HISTORY_LIMIT=20;
+  let undoHistory=[],redoHistory=[];
+  const cloneCatalogRows=rows=>rows.map(row=>({...row,targets:[...row.targets],
+    expected_findings:row.expected_findings===null?null:
+      row.expected_findings.map(f=>({...f}))}));
+  const catalogSnapshot=()=>({items:cloneCatalogRows(items),fictional});
+  function updateHistoryControls(){
+    const undo=$("undo"),redo=$("redo"),status=$("historyStatus");
+    if(!undo||!redo||!status)return;
+    undo.disabled=!undoHistory.length;redo.disabled=!redoHistory.length;
+    undo.textContent=undoHistory.length?"Undo ("+undoHistory.length+")":"Undo last change";
+    redo.textContent=redoHistory.length?"Redo ("+redoHistory.length+")":"Redo";
+    status.textContent="Undo: "+undoHistory.length+" · Redo: "+redoHistory.length+
+      " · last "+HISTORY_LIMIT+" catalog changes stay in this tab's memory only; Forget all clears history.";
+  }
+  function rememberCatalogChange(){
+    undoHistory.push(catalogSnapshot());
+    if(undoHistory.length>HISTORY_LIMIT)undoHistory.shift();
+    redoHistory=[];updateHistoryControls();
+  }
+  function editorHasDraft(){
+    return editing>=0||["scenarioId","scenarioName","targets","description","findings"]
+      .some(id=>$(id).value.length>0);
+  }
+  function restoreCatalogHistory(source,destination,label){
+    if(!source.length)return;
+    if((editorHasDraft()||staged)&&!confirm(
+      "Undo/redo discards unsaved editor input and any staged import. Continue?"))return;
+    const restored=source.pop();
+    destination.push(catalogSnapshot());
+    if(destination.length>HISTORY_LIMIT)destination.shift();
+    invalidateCatalogReads();
+    items=cloneCatalogRows(restored.items);fictional=restored.fictional;
+    clearStage(false);resetEditor();render();updateHistoryControls();
+    notify("status",label+" restored the local catalog. Staged imports were discarded; no disk history or execution.");
+  }
   const selectedStage=new Set();
   const fail=condition=>{if(!condition)throw Error("Invalid or incompatible PRIVATE lab catalog");};
   const exact=(x,keys)=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&
@@ -229,6 +265,7 @@
     }catch(_){notify("status","HOLD: filtered source subset failed canonical admission.",true);}
   }
   function render(){
+    updateHistoryControls();
     const v=catalogSummary();
     $("stats").innerHTML="";
     $("printSummary").textContent="REVIEW ONLY / DRAFT_ONLY / no permissions. Scored scenarios: "+
@@ -281,7 +318,7 @@
     if(index<0||index>=items.length||target<0||target>=items.length)return;
     const next=[...items];[next[index],next[target]]=[next[target],next[index]];
     validateCatalog(documentCatalog(next));
-    clearStage();items=next;
+    rememberCatalogChange();clearStage();items=next;
     if(editing===index)editing=target;
     else if(editing===target)editing=index;
     render();notify("status","PRIVATE lab scenario order changed; no runtime execution.");
@@ -303,7 +340,7 @@
       expected_findings:null});
     const next=[...items,replica];
     validateCatalog(documentCatalog(next));
-    clearStage();items=next;render();
+    rememberCatalogChange();clearStage();items=next;render();
     notify("status","PRIVATE copy created as UNSCORED. Review and enter fresh ground truth before using.");
   }
   function saveForm(event){
@@ -314,7 +351,9 @@
       fail(editing<0?next.length<32:editing<next.length);
       fail(!next.some((old,index)=>old.scenario_id===row.scenario_id&&index!==editing));
       if(editing<0)next.push(row);else next[editing]=row;
-      validateCatalog(documentCatalog(next));clearStage();items=next;
+      validateCatalog(documentCatalog(next));
+      if(JSON.stringify(next)!==JSON.stringify(items))rememberCatalogChange();
+      clearStage();items=next;
       notify("editorStatus","Saved private lab scenario (NO EXECUTION).");
       resetEditor();notify("status","Catalog edited locally; exports remain DRAFT_ONLY.");
       render();
@@ -323,7 +362,7 @@
   function deleteScenario(){
     if(editing<0||!items[editing])return;
     if(!confirm("Delete this private lab scenario from local memory?"))return;
-    clearStage();items=items.filter((_,i)=>i!==editing);resetEditor();render();
+    rememberCatalogChange();clearStage();items=items.filter((_,i)=>i!==editing);resetEditor();render();
     notify("status","Selected scenario deleted from local memory.");
   }
   function clearStage(invalidate=true){
@@ -398,7 +437,7 @@
       if(!confirm("Apply "+selectedStage.size+
         " selected private scenario additions/updates, without deleting existing rows?"))return;
       const count=selectedStage.size;
-      clearStage();items=result;resetEditor();render();
+      rememberCatalogChange();clearStage();items=result;resetEditor();render();
       notify("status","Applied "+count+
         " selected source entries. All other private scenarios retained; no execution.");
     }catch(_){
@@ -408,6 +447,7 @@
   function acceptStage(){
     if(!staged)return;
     if(items.length&&!confirm("Replace the current PRIVATE catalog with the reviewed source?"))return;
+    if(JSON.stringify(staged)!==JSON.stringify(items)||fictional)rememberCatalogChange();
     items=staged;fictional=false;clearStage();resetEditor();render();
     notify("status","Explicitly accepted staged PRIVATE catalog. No target contacted.");
   }
@@ -444,7 +484,7 @@
       const together=[...items,...incoming];
       const next=validateCatalog(documentCatalog(together));
       if(ticket!==catalogReadGeneration)return;
-      clearStage(false);items=next;render();
+      rememberCatalogChange();clearStage(false);items=next;render();
       notify("status","Appended "+incoming.length+
         " privately authored scenarios. Existing editor work preserved; no target accessed.");
     }catch(_){
@@ -488,13 +528,16 @@
         description:"Invented private IPv4 example; metrics unspecified.",
         targets:["10.20.0.7"],expected_findings:null}
     ];
-    clearStage();items=validateCatalog(documentCatalog(next));fictional=true;resetEditor();render();
+    const demoCatalog=validateCatalog(documentCatalog(next));
+    if(JSON.stringify(demoCatalog)!==JSON.stringify(items)||!fictional)rememberCatalogChange();
+    clearStage();items=demoCatalog;fictional=true;resetEditor();render();
     notify("status","FICTIONAL DEMO ONLY: invented addresses and findings. No system accessed.");
   }
   function forget(){
     if(items.length&&!confirm("Forget all PRIVATE lab scenarios from this browser session? Download a private backup first."))return;
-    clearStage();items=[];fictional=false;resetEditor();$("load").value="";
-    render();notify("status","Catalog forgotten from this browser session.");
+    clearStage();items=[];fictional=false;undoHistory=[];redoHistory=[];
+    resetEditor();$("load").value="";render();updateHistoryControls();
+    notify("status","Catalog and in-memory undo/redo history forgotten from this browser session.");
   }
   function download(name,source,type){
     const url=URL.createObjectURL(new Blob([source],{type}));
@@ -635,5 +678,15 @@
   $("brief").addEventListener("click",saveBrief);
   $("runbook").addEventListener("click",saveRunbook);
   $("print").addEventListener("click",()=>{if(items.length)window.print();});
+  $("undo").addEventListener("click",()=>restoreCatalogHistory(undoHistory,redoHistory,"Undo"));
+  $("redo").addEventListener("click",()=>restoreCatalogHistory(redoHistory,undoHistory,"Redo"));
+  document.addEventListener("keydown",event=>{
+    if(!(event.ctrlKey||event.metaKey)||event.altKey)return;
+    const target=event.target;
+    if(target&&(/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)||target.isContentEditable))return;
+    const key=event.key.toLowerCase();
+    if(key==="z"){event.preventDefault();restoreCatalogHistory(event.shiftKey?redoHistory:undoHistory,event.shiftKey?undoHistory:redoHistory,event.shiftKey?"Redo":"Undo");}
+    else if(key==="y"){event.preventDefault();restoreCatalogHistory(redoHistory,undoHistory,"Redo");}
+  });
   toggleFindingMode();render();
 })();
