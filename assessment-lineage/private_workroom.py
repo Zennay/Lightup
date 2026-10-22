@@ -234,6 +234,31 @@ def create_bundle(catalog: bytes, reports: list[bytes], html: str,
     return html.replace("</body>", BUNDLE_MARKER + text + "</template>\n</body>")
 
 
+def private_receipt(catalog: bytes, reports: list[bytes], draft: bytes | None,
+                    workroom: bytes) -> bytes:
+    """Canonical PRIVATE unsigned byte-binding for human source reconciliation.
+
+    Digests can correlate confidential original reports. Never publish this
+    owner-private receipt as an anonymous result or interpret it as authority.
+    """
+    receipt = {
+        "schema": "lightup.private_lineage_receipt.v1",
+        "status": "PRIVATE_REVIEW_ONLY",
+        **{flag: False for flag in FLAGS},
+        "catalog_sha256": hashlib.sha256(catalog).hexdigest(),
+        "reports_sha256": [hashlib.sha256(raw).hexdigest() for raw in reports],
+        "human_draft_sha256": hashlib.sha256(draft).hexdigest() if draft is not None else None,
+        "workroom_sha256": hashlib.sha256(workroom).hexdigest(),
+        "report_count": len(reports),
+        "human_draft_present": draft is not None,
+        "origin_verified": False,
+        "operator_identity_verified": False,
+        "client_consent_verified": False,
+        "human_go": False,
+    }
+    return (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+
+
 def read_private_report_selection(path: Path) -> list[Path]:
     """Admit an explicit operator-owned report ordering without target access."""
     raw = read_private(path, 16_384)
@@ -272,6 +297,8 @@ def main(argv: list[str]) -> int:
                         help="New or --verify-existing owner-private HTML workroom")
     parser.add_argument("--verify-existing", action="store_true",
                         help="Re-admit original inputs and exactly reopen the existing PRIVATE HTML without writes")
+    parser.add_argument("--private-receipt", action="store_true",
+                        help="Also create or read-only reopen an owner-private byte-bound JSON source receipt")
     args = parser.parse_args(argv)
     if bool(args.report) == bool(args.reports_file):
         fail()
@@ -314,37 +341,55 @@ def main(argv: list[str]) -> int:
         os.path.realpath(source_path) for source_path in input_files
     }:
         fail()
-    parent_fd, name = open_parent_nofollow(output)
-    created = False
+    receipt_path = output.with_suffix(".private-lineage-receipt.json")
+    outputs = [(output.name, private_html)]
+    if args.private_receipt:
+        if (receipt_path == output or os.path.realpath(receipt_path) in {
+            os.path.realpath(source_path) for source_path in input_files
+        }):
+            fail()
+        outputs.append((receipt_path.name, private_receipt(catalog, reports, draft, private_html)))
+    parent_fd, _ = open_parent_nofollow(output)
+    created_names: list[str] = []
     try:
         info = os.fstat(parent_fd)
         if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
                 or stat.S_IMODE(info.st_mode) != 0o700):
             fail()
         if args.verify_existing:
-            if read_private(output, len(private_html)) != private_html:
-                fail()
-            print("PRIVATE ORIGINAL-SOURCE-BOUND WORKROOM MATCHES — REVIEW_ONLY; NOT AUTHORIZED")
+            for filename, expected in outputs:
+                if read_private(output.with_name(filename), len(expected)) != expected:
+                    fail()
+            print("PRIVATE ORIGINAL-SOURCE-BOUND WORKROOM"
+                  + (" AND RECEIPT" if args.private_receipt else "")
+                  + " MATCH — REVIEW_ONLY; NOT AUTHORIZED")
             return 0
-        fd = os.open(
-            name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600,
-            dir_fd=parent_fd,
-        )
-        created = True
+        # Both artifacts are exclusive, owner-only and must remain together.
+        # If publication of the second fails, discard only files created here.
+        # Pre-existing sources or output files are never overwritten or removed.
         try:
-            with os.fdopen(fd, "wb", closefd=True) as stream:
-                os.fchmod(stream.fileno(), 0o600)
-                stream.write(private_html)
-                stream.flush()
-                os.fsync(stream.fileno())
+            for filename, content in outputs:
+                fd = os.open(
+                    filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                    0o600, dir_fd=parent_fd,
+                )
+                created_names.append(filename)
+                with os.fdopen(fd, "wb", closefd=True) as stream:
+                    os.fchmod(stream.fileno(), 0o600)
+                    stream.write(content)
+                    stream.flush()
+                    os.fsync(stream.fileno())
             os.fsync(parent_fd)
         except BaseException:
-            if created:
-                os.unlink(name, dir_fd=parent_fd)
+            for filename in reversed(created_names):
+                os.unlink(filename, dir_fd=parent_fd)
+            os.fsync(parent_fd)
             raise
     finally:
         os.close(parent_fd)
     print("PRIVATE offline HTML workroom created (original inputs unchanged).")
+    if args.private_receipt:
+        print("PRIVATE unsigned source-byte receipt created; NOT source authenticity or authority.")
     print("Not a scan, consent, authorization or production release.")
     return 0
 
