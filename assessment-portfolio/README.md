@@ -551,3 +551,40 @@ python3 assessment-portfolio/portfolio.py \
 Read-only reopening must repeat `--private-home` and the complete exact
 selection. This is local PRIVATE navigation, not independently authenticated
 source provenance, authorized disclosure or a production dashboard.
+
+
+### Bounded original HUMAN date window (91 days maximum)
+
+For a weekly/monthly operator-planning packet, select inclusive
+`--focus-from YYYY-MM-DD --focus-through YYYY-MM-DD`. Both bounds are
+required; reversed windows, an interval over 91 calendar days,
+out-of-policy dates and mixing the window with `--focus-day` produce
+HOLD **before any private output is created**. These dates are filters
+on original human-*proposed* review dates, never inserted into the
+source agenda. Rows without an original proposal stay in the complete
+source admission but are excluded from this deliberately dated view.
+An empty result means no matching HUMAN proposals, NOT that work has
+been completed or authorized.
+
+```bash
+mkdir -m 700 /private/next-week-human-work
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --focus-from 2026-10-26 \
+  --focus-through 2026-11-01 \
+  --private-home \
+  --private-day-brief \
+  --private-role-day-csv \
+  --private-calendar-clusters \
+  --output-dir /private/next-week-human-work \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+The focused v2 aggregate adds explicit `proposed_date_from` and
+`proposed_date_through` selection markers only when the range is
+requested. The original unfiltered v1 and old focused v2 markers
+remain unchanged. Repeat all focus flags to reopen the same private
+packet strictly with `--verify-output-dir`. Planning dates are
+unauthenticated HUMAN claims and must never be represented as
+confirmed deadlines, calendar bookings, real findings or consent.
