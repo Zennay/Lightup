@@ -35,6 +35,17 @@ python3 assessment-launchpad/role_return.py \
   --output-dir ~/private-role-return-form
 ```
 
+Alongside the template, the producer now emits a source-minimal standalone
+`lightup-lab-human-role-return-editor.html`. Open that owner-private file
+locally in a browser to edit only selected HUMAN stages and new notes, then
+choose **Download PRIVATE role-return CSV**. This editor contains no endpoint
+URLs, old notes, other roles, external assets, network access or browser
+storage. Its inline code/styles are SHA-256 CSP-pinned. Move the browser's
+CSV download into a separate current-user-owned 0700 directory, chmod 600,
+and import it through the **native** `--reply-file` gate. The browser cannot
+validate identity, consent, scope or original input bytes and its downloads
+are not permission-restricted by default.
+
 The private `lightup-lab-human-role-return-template.csv` contains only
 selected original slot numbers, that role, fixed HUMAN stage values, a
 source-binding SHA-256 fingerprint and **blank** proposed note cells.

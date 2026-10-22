@@ -21,6 +21,7 @@ from launchpad import Hold, FLAGS, open_output_directory, publish_bundle, read_p
 from review_desk import ROLES, STAGES, read_original_bundle, require_private_file, validate_worksheet
 from history import admitted_rounds
 from role_handoff import NAMES as HANDOFF_NAMES, LIMIT, assemble, select
+from role_return_browser import NAME as EDITOR, render_editor
 
 TEMPLATE = "lightup-lab-human-role-return-template.csv"
 RESPONSE = "lightup-lab-human-role-return-private.json"
@@ -122,7 +123,8 @@ def return_guide(role, selected_count):
         "LIGHTUP PRIVATE HUMAN ROLE RETURN — REVIEW_ONLY / DRAFT-HOLD\n"
         "This is a voluntarily selected role, NOT an authenticated reviewer.\n"
         "Selected role: " + role + "; selected source slots: " + str(selected_count) + "\n"
-        "Edit ONLY proposed_human_stage and proposed_private_note in the CSV.\n"
+        "Use the offline PRIVATE browser editor or edit only proposed_human_stage "+
+        "and proposed_private_note in the CSV.\n"
         "Keep all rows, their order and all other columns untouched.\n"
         "Proposed stages: " + ", ".join(STAGES) + ". Notes <=400 characters.\n"
         "Do not use spreadsheet formulas. Keep the CSV strictly PRIVATE and offline.\n"
@@ -185,7 +187,10 @@ def main(argv=None):
                     raise Hold("new owner-private HUMAN worksheet exceeds bound")
                 files = [(RESPONSE, payload)]
             else:
-                files = [(TEMPLATE, template), (GUIDE, return_guide(args.role, len(indices)))]
+                files = [(TEMPLATE, template), (EDITOR, render_editor(template)),
+                         (GUIDE, return_guide(args.role, len(indices)))]
+            if any(not 0 < len(blob) <= 65536 for _, blob in files):
+                raise Hold("PRIVATE role-return output exceeds exact reopen capacity")
             # Re-admit source inputs immediately before exclusive publication.
             latest_original, latest_endpoints, latest_digest = read_original_bundle(args.bundle_dir)
             latest_dirs, latest_rounds = admitted_rounds(args.round_dir, latest_digest, latest_endpoints)
