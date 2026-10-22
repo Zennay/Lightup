@@ -28,25 +28,45 @@ MAX_TOTAL_SOURCE_BYTES = 64 * 1024 * 1024
 SHA = re.compile(r"^[0-9a-f]{64}$")
 
 
-def read_bounded_regular(path: str, budget: int) -> bytes:
-    """Prevent symlink/dir reads and reject files larger than the explicit cap."""
+def read_bounded_regular(path: str, budget: int, *, owner_private: bool = False) -> bytes:
+    """Read one bounded regular file and reject path/descriptor or mid-read drift."""
     p = Path(path)
     try:
-        if not stat.S_ISREG(p.lstat().st_mode):
+        path_meta = p.lstat()
+        if not stat.S_ISREG(path_meta.st_mode):
             raise Hold("PRIVATE input must be a regular file (links rejected)")
         fd = os.open(p, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0))
         try:
-            meta = os.fstat(fd)
-            if not stat.S_ISREG(meta.st_mode) or meta.st_size < 1 or meta.st_size > budget:
-                raise Hold("PRIVATE file is empty or exceeds bounded original admission")
+            before = os.fstat(fd)
+            if ((path_meta.st_dev, path_meta.st_ino) != (before.st_dev, before.st_ino)
+                    or not stat.S_ISREG(before.st_mode)
+                    or before.st_size < 1 or before.st_size > budget):
+                raise Hold("PRIVATE file is empty, changed or exceeds bounded original admission")
+            if owner_private and (
+                before.st_uid != os.getuid()
+                or before.st_nlink != 1
+                or not before.st_mode & stat.S_IRUSR
+                or before.st_mode & 0o077
+                or before.st_mode & 0o7000
+            ):
+                raise Hold("PRIVATE file must be owner-owned, unlinked and owner-only")
             with os.fdopen(fd, "rb", closefd=False) as stream:
                 raw = stream.read(budget + 1)
+            after = os.fstat(fd)
+            before_identity = (
+                before.st_dev, before.st_ino, before.st_size, before.st_mode,
+                before.st_uid, before.st_nlink, before.st_mtime_ns, before.st_ctime_ns,
+            )
+            after_identity = (
+                after.st_dev, after.st_ino, after.st_size, after.st_mode,
+                after.st_uid, after.st_nlink, after.st_mtime_ns, after.st_ctime_ns,
+            )
+            if len(raw) != before.st_size or before_identity != after_identity:
+                raise Hold("PRIVATE input changed or exceeded its bounded read")
         finally:
             os.close(fd)
     except OSError as exc:
-        raise Hold("cannot open PRIVATE regular input") from exc
-    if not 1 <= len(raw) <= budget:
-        raise Hold("PRIVATE input size changed or exceeded boundary")
+        raise Hold("cannot securely read PRIVATE regular input") from exc
     return raw
 
 
@@ -76,8 +96,14 @@ def decode_base64(value: object) -> bytes:
 
 
 def decrypt_vault(path: str, password: str) -> dict[str, dict]:
-    """Return original-validated HUMAN rows only, in memory, from exact AES-GCM."""
-    raw = read_bounded_regular(path, MAX_ENVELOPE_BYTES)
+    """Read a bounded local envelope, then validate/decrypt its exact bytes."""
+    return decrypt_vault_bytes(read_bounded_regular(path, MAX_ENVELOPE_BYTES), password)
+
+
+def decrypt_vault_bytes(raw: bytes, password: str) -> dict[str, dict]:
+    """Return original-validated HUMAN rows only from the exact supplied envelope bytes."""
+    if not isinstance(raw, bytes) or not 1 <= len(raw) <= MAX_ENVELOPE_BYTES:
+        raise Hold("PRIVATE encrypted envelope outside bounded size")
     try:
         envelope = json.loads(raw.decode("utf-8", "strict"),
                               object_pairs_hook=no_duplicates, parse_constant=no_constant)
@@ -112,14 +138,14 @@ def decrypt_vault(path: str, password: str) -> dict[str, dict]:
     return parse_receipt_bytes(plain)
 
 
-def original_sources(paths: list[str]) -> set[tuple[str, int]]:
+def original_sources(paths: list[str], *, owner_private: bool = False) -> set[tuple[str, int]]:
     """Recompute original SHA-256 bytes, no paths/content in output."""
     if not 1 <= len(paths) <= MAX_FILES:
         raise Hold("provide between one and twelve original source files")
     identities: set[tuple[str, int]] = set()
     cumulative = 0
     for path in paths:
-        original = read_bounded_regular(path, MAX_SOURCE_BYTES)
+        original = read_bounded_regular(path, MAX_SOURCE_BYTES, owner_private=owner_private)
         cumulative += len(original)
         if cumulative > MAX_TOTAL_SOURCE_BYTES:
             raise Hold("aggregate original sources exceed 64 MiB")
