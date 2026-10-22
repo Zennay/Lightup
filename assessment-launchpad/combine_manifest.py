@@ -25,7 +25,7 @@ def canonical_lines(endpoints):
     return ("\n".join(endpoints) + "\n").encode("utf-8")
 
 
-def prepare(first_path, second_path, mode, ack_normalization, ack_replace):
+def prepare(first_path, second_path, mode, ack_normalization, ack_replace, *, preview_only=False):
     if mode not in ("append", "replace"):
         raise Hold("explicit append or replace mode required")
     first_abs, first_raw, first = open_private_input(first_path)
@@ -36,9 +36,9 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace):
         first_raw != canonical_lines(first) or
         second_raw != canonical_lines(second)
     )
-    if normalized and not ack_normalization:
+    if normalized and not ack_normalization and not preview_only:
         raise Hold("source whitespace or comments would be omitted; acknowledge normalization")
-    if mode == "replace" and not ack_replace:
+    if mode == "replace" and not ack_replace and not preview_only:
         raise Hold("replacement requires explicit acknowledgement of removed first manifest")
     merged = first + second if mode == "append" else second
     if not 1 <= len(merged) <= MAX_ENDPOINTS:
@@ -58,6 +58,8 @@ def prepare(first_path, second_path, mode, ack_normalization, ack_replace):
         "result_endpoints": len(merged),
         "retained_first_endpoints": len(first) if mode == "append" else 0,
         "discarded_first_endpoints": 0 if mode == "append" else len(first),
+        "normalization_requires_ack": normalized,
+        "replacement_requires_ack": mode == "replace",
     }
     receipt = {
         "schema": "lightup.offline-manifest-combine.v1",
@@ -159,19 +161,38 @@ def main(argv=None):
     parser.add_argument("--first-manifest", required=True, help="existing source manifest (0600)")
     parser.add_argument("--second-manifest", required=True, help="incoming source manifest (0600)")
     parser.add_argument("--mode", choices=("append", "replace"), required=True)
-    parser.add_argument("--output-dir", required=True, help="separate existing private output directory (0700)")
+    parser.add_argument("--output-dir", help="separate existing private output directory (0700); omit only in dry-run")
     parser.add_argument("--handoff-dir", help="optional second separate empty 0700 directory for complete PREVIEW-ONLY launchpad bundle")
     parser.add_argument("--ack-normalization", action="store_true", help="allow source comments/whitespace to be omitted")
     parser.add_argument("--ack-replace", action="store_true", help="explicitly accept discarding first manifest endpoints")
     parser.add_argument("--verify-output", action="store_true", help="read-only strict reopen against both original sources")
+    parser.add_argument("--dry-run", action="store_true", help="show counts only after original scope admission, without creating files")
     parser.add_argument("--explain-hold", action="store_true", help="print curated reasons; never endpoint/path values")
     args = parser.parse_args(argv)
     try:
+        if args.dry_run:
+            if args.output_dir or args.handoff_dir or args.verify_output:
+                raise Hold("dry-run is read-only and cannot select publication or reopen directories")
+            _, _, counts = prepare(args.first_manifest, args.second_manifest, args.mode,
+                                   args.ack_normalization, args.ack_replace, preview_only=True)
+            print("MANIFEST_COMBINE_REVIEW_ONLY · mode=" + args.mode +
+                  " · first=" + str(counts["first_endpoints"]) +
+                  " · incoming=" + str(counts["second_endpoints"]) +
+                  " · retained=" + str(counts["retained_first_endpoints"]) +
+                  " · discarded=" + str(counts["discarded_first_endpoints"]) +
+                  " · result=" + str(counts["result_endpoints"]) +
+                  " · normalization_ack_needed=" + str(counts["normalization_requires_ack"]).lower() +
+                  " · replacement_ack_needed=" + str(counts["replacement_requires_ack"]).lower() +
+                  " · no output, consent, authorization or assessment")
+            return 0
+        if not args.output_dir:
+            raise Hold("private output directory required for publication or reopen")
         return run(args)
     except Hold as error:
         report_hold("LAB_MANIFEST_COMBINE_HOLD — private source or original lab policy not admitted", error, args.explain_hold)
-    except (OSError, ValueError, TypeError, ImportError, UnicodeError, OverflowError, RecursionError) as error:
-        report_hold("LAB_MANIFEST_COMBINE_HOLD — filesystem or source parsing rejected", error, args.explain_hold)
+    except Exception:
+        # Never leak exception messages, paths, endpoints or stack traces for unexpected failures.
+        report_hold("LAB_MANIFEST_COMBINE_HOLD — filesystem or source parsing rejected", None, args.explain_hold)
     return 3
 
 

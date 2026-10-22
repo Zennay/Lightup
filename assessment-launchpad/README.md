@@ -25,6 +25,12 @@ Example, with two distinct local PRIVATE source files and an existing **empty** 
     mkdir -m 700 ~/private-combined-manifest
     python3 assessment-launchpad/combine_manifest.py --first-manifest ~/private-input-a/targets.txt --second-manifest ~/private-input-b/targets.txt --mode append --output-dir ~/private-combined-manifest --explain-hold
 
+**Read-only rehearsal before publication:** The same inputs support `--dry-run` with no `--output-dir`, `--handoff-dir` or `--verify-output`; neither acknowledgment flag is required in read-only mode. It re-admits both owner-private sources through the original pinned lab scope gates and prints only fixed-vocabulary counts (first/incoming/retained/discarded/result) plus whether normalization and replacement acknowledgement will be required during real publication, without displaying endpoint URLs, input paths, source hashes or private notes. No output directories or files are touched. Example:
+
+    python3 assessment-launchpad/combine_manifest.py --first-manifest ~/private-input-a/targets.txt --second-manifest ~/private-input-b/targets.txt --mode replace --dry-run --explain-hold
+
+Only the **actual publication** requires `--ack-replace` for replacement and `--ack-normalization` for lossy comment/blank-line/whitespace changes. A dry-run is not execution authority, consent, proof of source identity or an authorization check for real targets. Unexpected source failures are converted to a redacted HOLD without printing raw exceptions.
+
 Two exclusive no-overwrite owner-only files are created: `lightup-lab-targets.txt` (canonical actual PRIVATE endpoint URLs, mode 0600) and `lightup-manifest-combine-private.json` (PRIVATE unsigned input/output SHA-256 consistency digests and original-policy admission counts, no endpoint literals). Those digests are **not signatures, identity authentication or consent**; even the aggregate counts may identify small engagements. The CLI prints counts only, no URLs, paths or exception details. If validation fails, nothing is published. The output directory must not contain existing files.
 
 Re-open later read-only against the same two unchanged source files, modes and acknowledgements:
