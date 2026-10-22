@@ -382,6 +382,9 @@ def render_counts_csv(summary):
     stream = io.StringIO(newline="")
     writer = csv.writer(stream, lineterminator="\r\n")
     writer.writerow(("dimension", "value", "count"))
+    if "view_selection" in summary:
+        for dimension in ("neutral_role", "human_stage", "date_bucket"):
+            writer.writerow(("view_selection", dimension, summary["view_selection"][dimension]))
     writer.writerow(("summary", "agenda_count", summary["agenda_count"]))
     writer.writerow(("summary", "item_count", summary["item_count"]))
     for key, count in summary["claimed_status_counts"].items():
