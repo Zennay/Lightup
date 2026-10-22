@@ -348,6 +348,7 @@
   }
   function metricDistributionRows(){
     const chosen=$("metricDistributionGroup").value,flagFilter=$("metricDistributionFlagFilter").value,rows=[];
+    if(!snapshots.length||!scenarioIds.length)return rows;
     const reference=new Map(METRICS.map(name=>{
       const values=scenarioIds.map(id=>snapshots[0].cases.get(id).metrics.get(name));
       return [name,{candidate:median(values.map(v=>v.candidate)),delta:median(values.map(v=>v.delta))}];
