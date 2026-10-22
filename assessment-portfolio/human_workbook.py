@@ -277,7 +277,7 @@ def render_private_return(entries, reference_date):
 
 def render_private_csv(entries):
     output = io.StringIO(newline="")
-    writer = csv.writer(output, lineterminator="\\r\\n")
+    writer = csv.writer(output, lineterminator="\r\n")
     writer.writerow((
         "agenda_slot", "source_slot", "human_status", "proposed_role",
         "proposed_date", "private_human_note", "authority_status"
@@ -285,7 +285,7 @@ def render_private_csv(entries):
     for item in entries:
         # Notes must never be treated as spreadsheet formulas, even with Unicode whitespace.
         note = item["note"]
-        if note.lstrip().startswith(("=", "+", "-", "@")):
+        if "".join(ch for ch in note if not unicodedata.category(ch).startswith("Z")).lstrip().startswith(("=", "+", "-", "@")):
             note = "'" + note
         writer.writerow((
             item["agenda_slot"], item["source_slot"], item["human_status"],
