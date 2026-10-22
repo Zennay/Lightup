@@ -418,6 +418,52 @@ def publish_bundle(directory_fd, artifacts):
             pass
         raise
 
+
+def render_artifacts(documents, rows, reference_day):
+    """Deterministic private product bytes used identically for create and reopen."""
+    summary = aggregate(documents, rows, reference_day)
+    return [
+        ("assessment-portfolio-private.html", render_private_html(summary, rows)),
+        ("assessment-portfolio-private-routing.csv", render_private_routing_csv(rows)),
+        ("assessment-portfolio-anonymous.json",
+         (json.dumps(summary, ensure_ascii=False, indent=2) + "\n").encode("utf-8")),
+        ("assessment-portfolio-anonymous.csv", render_counts_csv(summary)),
+    ]
+
+
+def verify_existing_bundle(directory_fd, expected):
+    """Read only: require exact inventory, owner-only regular files and original bytes."""
+    names = {name for name, _ in expected}
+    if set(os.listdir(directory_fd)) != names:
+        raise Hold("private bundle inventory differs from canonical originals")
+    for name, canonical in expected:
+        fd = os.open(
+            name, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=directory_fd,
+        )
+        with os.fdopen(fd, "rb") as stream:
+            before = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
+                    or stat.S_IMODE(before.st_mode) != 0o600 or before.st_nlink != 1
+                    or before.st_size != len(canonical)):
+                raise Hold("private bundle file has unsafe metadata or changed size")
+            observed = stream.read(len(canonical) + 1)
+            after = os.fstat(stream.fileno())
+            signature = lambda info: (
+                info.st_dev, info.st_ino, info.st_size, info.st_mode,
+                info.st_uid, info.st_nlink, info.st_mtime_ns, info.st_ctime_ns,
+            )
+            if signature(before) != signature(after) or observed != canonical:
+                raise Hold("private bundle bytes differ from original canonical source")
+
+
+def readmit_unchanged_sources(admitted):
+    """Reopen original sources immediately before publication/reopen, fail on drift."""
+    for absolute, raw, _ in admitted:
+        reopened, reread, _ = read_private_agenda(absolute)
+        if reopened != absolute or reread != raw:
+            raise Hold("original private agenda changed after initial admission")
+
 def run(args):
     if not hasattr(os, "O_NOFOLLOW"):
         raise Hold("platform lacks no-follow file support")
@@ -432,18 +478,15 @@ def run(args):
             common = os.path.commonpath((output_path, source_dir))
             if common in (output_path, source_dir):
                 raise Hold("output directory must be separate from source rooms")
-        summary = aggregate(documents, rows, reference_day)
-        outputs = [
-            ("assessment-portfolio-private.html", render_private_html(summary, rows)),
-            ("assessment-portfolio-private-routing.csv", render_private_routing_csv(rows)),
-            ("assessment-portfolio-anonymous.json",
-             (json.dumps(summary, ensure_ascii=False, indent=2) + "\n").encode("utf-8")),
-            ("assessment-portfolio-anonymous.csv", render_counts_csv(summary)),
-        ]
-        publish_bundle(output_fd, outputs)
+        outputs = render_artifacts(documents, rows, reference_day)
+        readmit_unchanged_sources(admitted)
+        if args.verify_output_dir:
+            verify_existing_bundle(output_fd, outputs)
+        else:
+            publish_bundle(output_fd, outputs)
     finally:
         os.close(output_fd)
-    print("ASSESSMENT_PORTFOLIO_CREATED agendas=" + str(len(documents)) +
+    print(("ASSESSMENT_PORTFOLIO_VERIFIED" if args.verify_output_dir else "ASSESSMENT_PORTFOLIO_CREATED") + " agendas=" + str(len(documents)) +
           " items=" + str(len(rows)) + " — PLANNING ONLY; NOT AUTHORIZED")
     return 0
 
@@ -453,6 +496,8 @@ def main(argv=None):
     )
     parser.add_argument("--as-of", required=True, help="Explicit planning reference day YYYY-MM-DD")
     parser.add_argument("--output-dir", required=True, help="Existing owner-only directory, mode 0700")
+    parser.add_argument("--verify-output-dir", action="store_true",
+                        help="Only reopen an existing four-file private bundle against original agendas; never write")
     parser.add_argument("agendas", nargs="+", help="2–12 original private JSON agenda exports")
     args = parser.parse_args(argv)
     try:
