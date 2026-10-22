@@ -1273,3 +1273,18 @@ This is *format compatibility only*: the browser export is unsigned and is
 never accepted as proof of original-source file custody, verified identity,
 review, consent or release. Use the native source-bound build/reopen to
 establish local original/private bytes independently.
+
+
+## All-pairs PRIVATE HUMAN interval matrix
+
+For 2–8 complete saved HUMAN revisions of the same original private inbox
+board, `private_inbox_interval_matrix.py` creates a single local matrix of
+every earlier/later pair (up to 28). The scriptless HTML, complete-slot CSV
+and JSON are published together under the same owner-private 0700/0600
+custody rules as the original interval dossier. The matrix distinguishes
+endpoint stage/role changes from intermediate edits and includes unchanged
+original slots. It exposes no question/next-action text and grants no
+authority; manually selected round order is not authenticated chronology.
+
+See [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md) for the build and
+read-only reopen commands, exact input requirements and privacy boundaries.
