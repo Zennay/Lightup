@@ -121,6 +121,27 @@ The optional direct-stage route and the imported `--answers-dir` route are mutua
 
 Before HUMAN return publication, the native CLI re-verifies the saved history against the original pinned policy and source manifests, strictly matches the complete edited CSV against the ordinal queue, and re-opens all inputs. It publishes three exclusive mode-0600 files in a separate empty owner-owned 0700 directory: source-bound PRIVATE JSON containing unsigned source and answer hashes, scriptless CSP-pinned PRIVATE HUMAN status HTML (no URLs/paths/hashes) and an aggregate stage-count PRIVATE CSV. The previous source and HUMAN answer files are never overwritten. The stages are non-authorizing **human work notes only**: even `HUMAN_REVIEWED` is not approval, valid consent, verified remediation, revocation clearance or release authority. No active targets, scanner, DNS, model, auth or original source-owner code is touched.
 
+### One-command next HUMAN round with optional timeline and delta
+
+For an existing exact 2–7-round local HUMAN chain, `manifest_history_next_round.py` now joins the source-bound native operations into **one explicit offline command**. It re-admits the original PRIVATE plan history and all prior v1/v2 HUMAN rounds, checks the unsigned previous-round linkage, carries forward unmodified HUMAN stages and changes only selected `--stage ROW:STAGE` choices. It then creates a **new PRIVATE HUMAN return** and can independently generate the two-round stage comparison and an updated 3–8-round timeline with a follow-up CSV. No original source or prior HUMAN round is overwritten.
+
+```sh
+mkdir -m 700 ~/private-human-next ~/private-human-next-delta ~/private-human-next-timeline
+python3 assessment-launchpad/manifest_history_next_round.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --round-dir ~/private-human-return-one \
+  --round-dir ~/private-human-return-two \
+  --stage 2:NEEDS_CONTEXT --stage 3:IN_REVIEW \
+  --output-dir ~/private-human-next \
+  --delta-dir ~/private-human-next-delta \
+  --timeline-dir ~/private-human-next-timeline
+```
+
+Use the same original inputs with `--dry-run` and **no output directories** to see only changed-row counts and the next HUMAN round ordinal; no files are published. To reopen all three finished PRIVATE outputs without rewriting them, repeat the original arguments with `--verify-output`. Every requested destination must exist, belong to the current user, have mode `0700`, and be separate from each other and all original source trees; publication uses mode-`0600` exclusive files.
+
+**These are independent PRIVATE publications, not a single atomic cross-directory transaction.** If later delta or timeline publication fails, the already published HUMAN return is still only an isolated unsigned PRIVATE review artifact; it is not a completed combined packet and cannot authorize any release or assessment. The stage vocabulary is non-authorizing, and source-owner/privacy/security, independently authenticated client/operator consent (including action-time revocation), required CI and explicit HUMAN GO remain unchanged.
+
 ### Read-only HUMAN stage preview before publishing
 
 `manifest_history_response.py --dry-run` can now reopen the exact original PRIVATE history and proposed HUMAN stage source without writing an output file. It reports only the number of original changed-slot rows, the number of HUMAN status changes relative to the original or preceding saved return, whether a prior source-bound round exists and whether the full-CSV stage replacement will require acknowledgement. It does not disclose endpoint values, private paths, notes, source hashes, client identity or authorization data. The **preview does not authorize publication** and can be used before approving a full CSV replacement:
