@@ -817,6 +817,10 @@ The local cURL form masker canonicalises field names only before matching known 
 
 This closes known obfuscation gaps for a bounded set of credential names; it is not complete redaction, secret detection, anonymisation or permission to share. Unknown keys, malformed payloads and irregular encodings remain PRIVATE/HOLD and require independent HUMAN review.
 
+### URL query-name obfuscation in PRIVATE note copies
+
+The local URL query masker also canonicalises parameter names before comparing them with its bounded credential-name list. It recognises Unicode compatibility spellings (for example, full-width Latin letters) and ignores embedded Unicode format controls during matching, while preserving the original key spelling and withholding only the associated value. Percent-encoded names continue to be decoded locally for matching only; payload values are not decoded. Query scanning remains bounded and heuristic, never a complete URL parser or privacy PASS.
+
 ### Manually mask remaining sensitive text without changing original packets
 
 The operator can also request a **second, explicitly HUMAN-directed literal

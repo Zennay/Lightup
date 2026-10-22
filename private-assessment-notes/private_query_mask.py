@@ -6,6 +6,7 @@ authentication, PII detection, consent, or safe-to-share certification.
 from __future__ import annotations
 
 import re
+import unicodedata
 from urllib.parse import unquote_plus
 
 # Literal URL schemes only. No network, DNS, browser, or subprocess.
@@ -14,7 +15,7 @@ _URL_START = re.compile(
     r"postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|rediss)://"
 )
 _PARAM = re.compile(
-    r"(?P<separator>[?&#;])(?P<name>[A-Za-z0-9_.%+~-]{1,256})="
+    r"(?P<separator>[?&#;])(?P<name>[^?&#;=\s\"'<>()\[\]{}\\]{1,256})="
     r"(?P<value>[^&#;\s\"'<>()\[\]{}]{0,4096})"
 )
 _BAD_PERCENT = re.compile(r"%(?![a-fA-F0-9]{2})")
@@ -59,7 +60,14 @@ def mask_url_query_names(source: str, secret_name) -> str:
                 decoded = unquote_plus(name, encoding="utf-8", errors="strict")
             except UnicodeError:
                 continue
-            if secret_name.fullmatch(decoded):
+            # Compare a canonical key only; preserve its original spelling in
+            # the source copy while withholding the associated value. NFKC
+            # catches compatibility characters, and removing format controls
+            # prevents zero-width/bidi characters from hiding known names.
+            canonical = unicodedata.normalize("NFKC", decoded)
+            canonical = "".join(character for character in canonical
+                                if unicodedata.category(character) != "Cf")
+            if secret_name.fullmatch(canonical):
                 a, b = match.span("value")
                 replacements.append((start + a, start + b))
     result = source
