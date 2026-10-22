@@ -29,11 +29,20 @@ python3 assessment-launchpad/role_return_conflicts.py \
   --output-dir ~/private-role-conflicts
 ```
 
-The result contains exactly three 0600 files. The **PRIVATE HTML** displays
+The result contains exactly four 0600 files. The **PRIVATE HTML** displays
 every conflicting ordinal, the 1-based input packet number in the order of
 `--role-return-dir`, the suggested role, the old/proposed non-authorizing
 HUMAN stage, and whether a private note changed. It deliberately omits
 endpoint URLs, private note text, paths and authenticated identities.
+
+A second, locally generated **PRIVATE browser editor** provides one-choice-per-
+conflicting-slot dropdowns, a progress indicator and a one-click source-bound
+CSV download. All input suggestions are fixed to exact original return packet
+numbers and the original stage/role, never arbitrary filenames or approval.
+It has no network access, browser storage, original endpoint URL or previous
+PRIVATE note text. Its inline script/style CSP hashes are generated from the
+exact local producer. The browser download may lack 0600 permissions: move it
+to an owned 0700 folder, chmod 600 and use the original native input gate.
 
 The **PRIVATE choice CSV** includes a source-set SHA-256 fingerprint, an
 ordinal, the eligible packet numbers, and a blank `chosen_packet_number`.

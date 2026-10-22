@@ -20,10 +20,12 @@ from launchpad import FLAGS, Hold, open_output_directory, publish_bundle, read_p
 from review_desk import read_original_bundle, require_private_file, validate_worksheet
 from history import admitted_rounds
 from role_return_receipt import admit_return, canonical
+from role_return_conflict_editor import NAME as EDITOR_FILE, render as render_editor
 
 PREPARE = (
     "lightup-lab-human-conflict-choice-template.csv",
     "lightup-lab-human-conflict-review-private.html",
+    EDITOR_FILE,
     "START-HERE-CONFLICT-PRIVATE.txt",
 )
 RESOLVED = (
@@ -89,16 +91,22 @@ def prepare_files(rounds, packets, fingerprint):
     writer = csv.writer(sink, lineterminator="\n")
     writer.writerow(HEADER)
     rows = []
+    editor_rows = []
     original = rounds[-1]["human_rows"]
     for slot in sorted(overlaps):
         options = overlaps[slot]
         writer.writerow((fingerprint, slot + 1, "|".join(map(str, options)), ""))
+        editor_options = []
         for number in options:
             proposed = packets[number - 1][1]["human_rows"][slot]
             prior = original[slot]
             rows.append((slot + 1, number, prior["role"], prior["stage"],
                          proposed["stage"],
                          "YES" if proposed["note"] != prior["note"] else "NO"))
+            editor_options.append({"packet": number, "role": prior["role"],
+                                   "stage": proposed["stage"],
+                                   "noteChanged": proposed["note"] != prior["note"]})
+        editor_rows.append({"slot": slot + 1, "options": editor_options})
     tr = "".join(
         "<tr>" + "".join("<td>" + escape(str(cell)) + "</td>" for cell in row)
         + "</tr>" for row in rows
@@ -132,7 +140,8 @@ def prepare_files(rounds, packets, fingerprint):
         "</body></html>"
     ).encode("utf-8")
     return dict(zip(PREPARE, (
-        sink.getvalue().encode("utf-8"), html, guide(False))))
+        sink.getvalue().encode("utf-8"), html,
+        render_editor(editor_rows, fingerprint), guide(False))))
 
 
 def guide(resolved):
@@ -144,6 +153,8 @@ def guide(resolved):
         "The operator MUST consciously select exactly one original packet\n"
         "for EACH overlapping source slot; no automatic precedence is allowed.\n"
         "Never rewrite original packets. Overlap choice proves no consent or fix.\n"
+        "Use the source-minimal offline browser choice editor OR manually edit CSV.\n"
+        "The browser saves an explicit bounded CSV for native --decision-file.\n"
         "No endpoint values, private note text or source path appears in the\n"
         "choice CSV or HTML; final full worksheet is OWNER-PRIVATE and contains\n"
         "every role's original PRIVATE note, so NEVER forward it to recipients.\n"
