@@ -21,6 +21,8 @@ class ExecutionRequest:
     requested_risk: RiskLevel
     authorization: AuthorizationGrant | None = None
     is_lab: bool = False
+    client_id: str | None = None
+    engagement_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,16 @@ class ExecutionPolicy:
         grant = request.authorization
         if grant is None:
             return PolicyDecision(False, "active target interaction requires authorization")
+        if not request.client_id or not request.engagement_id:
+            return PolicyDecision(
+                False, "active target interaction requires client and engagement binding"
+            )
+        if grant.client_id != request.client_id:
+            return PolicyDecision(False, "authorization client does not match execution client")
+        if grant.engagement_id != request.engagement_id:
+            return PolicyDecision(
+                False, "authorization engagement does not match execution engagement"
+            )
         if not grant.is_current():
             return PolicyDecision(False, "authorization is not currently valid")
         if request.requested_risk > grant.scope.max_risk:
