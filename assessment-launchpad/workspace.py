@@ -301,6 +301,8 @@ def main(argv=None):
                         help="create private source input by guided original-validator terminal admission")
     parser.add_argument("--input-dir",
                         help="an existing EMPTY owner-only mode-0700 source directory for guided input")
+    parser.add_argument("--explain-hold", action="store_true",
+                        help="print the curated non-sensitive HOLD reason; never prints paths, endpoint values or raw exceptions")
     args = parser.parse_args(argv)
     try:
         if args.verify_workspace_dir:
@@ -326,10 +328,19 @@ def main(argv=None):
               " — UNSIGNED LOCAL CONSISTENCY; NO AUTHORIZATION, "
               "TARGET ACTIVITY OR COMMAND EXECUTION")
         return 0
-    except (Hold, OSError, ValueError, TypeError, UnicodeError, ImportError,
+    except Hold as error:
+        print("PRIVATE_HUMAN_WORKSPACE_HOLD — private packet not admitted; "
+              "do not use any partial output as valid", file=sys.stderr)
+        if args.explain_hold:
+            # Workspace and composed Launchpad/HUMAN Hold messages are curated and do not interpolate private values.
+            print("HOLD_REASON: " + str(error), file=sys.stderr)
+        return 3
+    except (OSError, ValueError, TypeError, UnicodeError, ImportError,
             OverflowError, EOFError, KeyboardInterrupt):
         print("PRIVATE_HUMAN_WORKSPACE_HOLD — private packet not admitted; "
               "do not use any partial output as valid", file=sys.stderr)
+        if args.explain_hold:
+            print("HOLD_REASON: filesystem, parsing or source-admission error; raw details withheld", file=sys.stderr)
         return 3
 
 if __name__ == "__main__":
