@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-UmA3CyinJWwSDPEaO2HPhht0rRjNmcP3I7IpFeJxauE='; style-src 'sha256-GdLEigU6fEfKD+wX/IxytPwLBP/KQSwgEfrkQIJ9CcY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5UP69Fc2Z9IfAh5bezTfOFz+Ky7E0UJEcgDut+MqR3g='; style-src 'sha256-GdLEigU6fEfKD+wX/IxytPwLBP/KQSwgEfrkQIJ9CcY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
 <title>LightUp · Offline Lab Lineage Desk</title>
 <style>:root{color-scheme:dark;--bg:#081523;--panel:#14263b;--ink:#edf6ff;--muted:#b3c5d5;--line:#3b526b;--link:#8fd8ff;--hold:#ffce8a}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,Segoe UI,sans-serif}
@@ -107,6 +107,12 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
   let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), noteScratch=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
   let mismatchRevealed=false,undoRouteBatch=null;
   let catalogHash=null, reportHashes=[];
+  // Each async PRIVATE local intake belongs to one current user decision.
+  // Old file completions cannot resurrect forgotten source data or old HUMAN plans.
+  let importGeneration=0;
+  const startImport=()=>++importGeneration;
+  const cancelOldImports=()=>{importGeneration++;};
+  const admitCurrent=generation=>admit(generation===importGeneration);
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
   function exact(v,keys){return v!==null && typeof v==="object" && !Array.isArray(v) &&
     Object.keys(v).length===keys.length && keys.every(k=>Object.hasOwn(v,k));}
@@ -820,6 +826,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       }
       selector.value=reviews.get(item.id)||"needs_review";
       selector.addEventListener("change",()=>{
+        cancelOldImports();
         reviews.set(item.id,selector.value);undoBatch=null;
         render();message("Private human stage updated in memory only.");
       });
@@ -880,9 +887,11 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     }catch(_){message("HOLD: private draft needs readable original source bytes and a local SHA-256 digest.",true);}
   }
   async function restorePrivateDraft(file){
+    const generation=startImport();
     try{
       privateSourceBound();
-      const input=await read(file,65536),draft=input.result;
+      const input=await read(file,65536);admitCurrent(generation);
+      const draft=input.result;
       const version=draft?.schema;
       const withPlan=version==="lightup.assessment_lineage_private_draft.v3";
       const withNotes=withPlan||version==="lightup.assessment_lineage_private_draft.v2";
@@ -919,11 +928,12 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       const nextActions=withPlan?new Map(catalog.flatMap((s,i)=>
         draft.next_human_actions[i]!=="none_recorded"?
           [[s.id,draft.next_human_actions[i]]]:[])):new Map();
+      admitCurrent(generation);
       reviews=nextReviews;humanNotes=nextNotes;noteScratch=new Map();
       humanRoutes=nextRoutes;humanActions=nextActions;undoBatch=null;undoRouteBatch=null;render();
       message("PRIVATE stages, notes and proposed human plans restored for original "+
         "exact source bytes. Legacy v1/v2 drafts have no proposed plans.");
-    }catch(_){message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
+    }catch(_){if(generation===importGeneration)message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
   }
 
 
@@ -1096,7 +1106,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
+  function forget(){cancelOldImports();catalog=null;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();
     if(privateTemplate instanceof HTMLTemplateElement){
       privateTemplate.content.replaceChildren();
@@ -1109,6 +1119,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     message("Private source, notes, human plans and embedded draft cleared from the active browser document.");
   }
   function makeDemo(){
+    cancelOldImports();
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
     catalog=names.map((id,i)=>({id,mode:i===0?"unscored":i===1?
       "declared_zero":"planted",planted:i===0?null:i===1?0:2,
@@ -1171,21 +1182,25 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     if((catalog||reports.length)&&!confirm(
       "Clear current private work and replace it with the original source files "+
       "inside this PRIVATE HTML? This does not scan, grant or evaluate."))return;
+    const generation=startImport();
     try{
       const raw=privateTemplate.content.textContent;
       admit(typeof raw==="string"&&raw.length>0&&raw.length<=5_000_000);
       const bundle=parse(raw),hasDraft=exactBundleShape(bundle);
       const sourceCatalog=await read(decodedPrivateFile(bundle.catalog_b64,0,MAX_CATALOG),
         MAX_CATALOG);
+      admitCurrent(generation);
       const nextCatalog=parseCatalog(sourceCatalog.result),nextReports=[],nextHashes=[];
       for(let i=0;i<bundle.reports_b64.length;i++){
         const imported=await read(decodedPrivateFile(bundle.reports_b64[i],i+1,MAX_REPORT),
           MAX_REPORT);
+        admitCurrent(generation);
         nextReports.push(parseReport(imported.result));
         nextHashes.push(imported.digest);
       }
       harmonize(nextReports);
-      // All source files are fully canonical and mutually consistent before ANY mutation.
+      // All source files and the original generation must still be current.
+      admitCurrent(generation);
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
       reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;undoRouteBatch=null;fictional=false;
       clearPendingDraft();
@@ -1204,7 +1219,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       message("Private originals loaded from inert offline HTML. No network, scanner, "+
         "authenticated consent or grants used.");
     }catch(_){
-      message("HOLD: embedded PRIVATE original source rejected. "+
+      if(generation===importGeneration)message("HOLD: embedded PRIVATE original source rejected. "+
         "Existing review workspace preserved.",true);
     }
   }
@@ -1222,31 +1237,34 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
 
   $("catalogFile").addEventListener("change",async e=>{
     const file=e.target.files?.[0];if(!file)return;e.target.value="";
+    const generation=startImport();
     try{
-      const imported=await read(file,MAX_CATALOG);
+      const imported=await read(file,MAX_CATALOG);admitCurrent(generation);
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
+      admitCurrent(generation);
       catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=imported.digest;
       reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
-    }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
+    }catch(_){if(generation===importGeneration)message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
   });
   $("reportFiles").addEventListener("change",async e=>{
     const files=[...(e.target.files||[])];e.target.value="";
     if(!files.length)return;
+    const generation=startImport();
     try{
       admit(catalog&&!fictional&&files.length>=1&&reports.length+files.length<=8);
       const add=[],digests=[];
       for(const file of files){
-        const imported=await read(file,MAX_REPORT);
+        const imported=await read(file,MAX_REPORT);admitCurrent(generation);
         add.push(parseReport(imported.result));digests.push(imported.digest);
       }
-      harmonize([...reports,...add]);
+      harmonize([...reports,...add]);admitCurrent(generation);
       reports=[...reports,...add];reportHashes=[...reportHashes,...digests];mismatchRevealed=false;clearPendingDraft();
       reopenHumanStages();render();
       message("Canonical summaries admitted; all human stages reopened for source review. "+
         "Private notes kept locally. Original benchmark data is not authenticated.");
-    }catch(_){message("HOLD: contradictory, duplicate, oversized or incompatible comparison source. Workspace preserved.",true);}
+    }catch(_){if(generation===importGeneration)message("HOLD: contradictory, duplicate, oversized or incompatible comparison source. Workspace preserved.",true);}
   });
   $("demo").addEventListener("click",()=>{
     if((catalog||reports.length)&&!confirm("Replace current PRIVATE workspace with invented example?"))return;
@@ -1261,6 +1279,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
   for(const id of ["boardStatus","boardRoute"])$(id).addEventListener("change",renderHumanActionBoard);
   $("inspectCase").addEventListener("change",renderInspector);
   $("privateCaseNote").addEventListener("input",()=>{
+    cancelOldImports();
     const index=Number($("inspectCase").value);
     if(!catalog||!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
     const id=catalog[index].id,raw=$("privateCaseNote").value;
@@ -1271,18 +1290,18 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       "Not included in any output until Save note is clicked.":
       "PRIVATE note matches saved local version.";
   });
-  $("saveCaseNote").addEventListener("click",saveCaseNote);
-  $("saveHumanPlan").addEventListener("click",setHumanPlan);
-  $("adoptSourceHint").addEventListener("click",adoptSourceHint);
+  $("saveCaseNote").addEventListener("click",()=>{cancelOldImports();saveCaseNote();});
+  $("saveHumanPlan").addEventListener("click",()=>{cancelOldImports();setHumanPlan();});
+  $("adoptSourceHint").addEventListener("click",()=>{cancelOldImports();adoptSourceHint();});
   $("revealMismatch").addEventListener("click",toggleMismatch);
   $("sourceOrder").addEventListener("change",renderSourceOrder);
-  $("sourceEarlier").addEventListener("click",()=>chooseSource(-1));
-  $("sourceLater").addEventListener("click",()=>chooseSource(1));
-  $("removeSource").addEventListener("click",removeSource);
-  $("applyStage").addEventListener("click",humanBulk);
-  $("undoStage").addEventListener("click",undoHumanBulk);
-  $("suggestRoutes").addEventListener("click",bulkSuggestHumanRoutes);
-  $("undoRoute").addEventListener("click",undoHumanRoutes);
+  $("sourceEarlier").addEventListener("click",()=>{cancelOldImports();chooseSource(-1);});
+  $("sourceLater").addEventListener("click",()=>{cancelOldImports();chooseSource(1);});
+  $("removeSource").addEventListener("click",()=>{cancelOldImports();removeSource();});
+  $("applyStage").addEventListener("click",()=>{cancelOldImports();humanBulk();});
+  $("undoStage").addEventListener("click",()=>{cancelOldImports();undoHumanBulk();});
+  $("suggestRoutes").addEventListener("click",()=>{cancelOldImports();bulkSuggestHumanRoutes();});
+  $("undoRoute").addEventListener("click",()=>{cancelOldImports();undoHumanRoutes();});
   $("exportDraft").addEventListener("click",exportPrivateDraft);
   $("exportPrivateActionBrief").addEventListener("click",exportPrivateActionBrief);
   $("restoreDraft").addEventListener("change",async e=>{
