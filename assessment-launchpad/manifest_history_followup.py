@@ -36,6 +36,14 @@ HEX = re.compile(r"[0-9a-f]{64}\Z")
 ROW_KEYS = ("from_ordinal", "to_ordinal", "change", "before_slot",
             "after_slot", "human_stage")
 
+RESPONSE_FIELDS = frozenset((
+    "schema", "status", "history_sha256", "answers_sha256",
+    "plan_count", "row_count", "responses", "stage_counts", *FLAGS,
+))
+CONTINUED_FIELDS = RESPONSE_FIELDS | {
+    "previous_return_sha256", "source_continuity_claim",
+}
+
 
 def read_response(path, original, history_bytes):
     fd, absolute = open_output_directory(path)
@@ -54,6 +62,9 @@ def read_response(path, original, history_bytes):
         if schema not in ("lightup.private-manifest-history-human-return.v1",
                           "lightup.private-manifest-history-human-return.v2"):
             raise Hold("unknown PRIVATE HUMAN return schema")
+        allowed = CONTINUED_FIELDS if schema.endswith(".v2") else RESPONSE_FIELDS
+        if set(packet) != allowed:
+            raise Hold("PRIVATE HUMAN return contains unknown, missing or non-schema fields")
         if schema.endswith(".v2"):
             if (not isinstance(packet.get("previous_return_sha256"), str)
                     or not HEX.fullmatch(packet["previous_return_sha256"])
