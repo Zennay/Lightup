@@ -16,6 +16,23 @@ Open `composer.html` locally. It is one standalone file with a strict hash-pinne
 
 Browser downloads cannot set file permissions. Before using the native CLI, move the downloaded file to a private directory and set mode `0600`. Use this PR branch (not the older source-only pinned ancestor), for example `git fetch origin chatgpt/lightup-assessment-launchpad-20261021-gpt6` followed by `git switch --detach FETCH_HEAD` in a disposable trusted checkout. The CLI refuses any modified original pinned validator or CLI bytes.
 
+## Native no-browser PRIVATE manifest merge and reopen
+
+Operators without a graphical browser can combine **two already private owner-owned mode-0600 text manifests** with the same original pinned lab URL and LabScenario scope policy. The additional `combine_manifest.py` command runs fully locally (no network, resolver, model, subprocess, assessment, consent or grant). The explicit mode is either `append` (retain all first entries, then all second entries; reject ANY duplicate or resulting >16 slots/16 KiB) or `replace` (use only the second list, requiring `--ack-replace`). No endpoint is silently dropped or deduplicated. Blank lines, comments, CRLF or whitespace require `--ack-normalization` before publication. The whole result is re-admitted through the original pinned validator.
+
+Example, with two distinct local PRIVATE source files and an existing **empty** user-owned mode-0700 output directory, separate from both source trees:
+
+    mkdir -m 700 ~/private-combined-manifest
+    python3 assessment-launchpad/combine_manifest.py --first-manifest ~/private-input-a/targets.txt --second-manifest ~/private-input-b/targets.txt --mode append --output-dir ~/private-combined-manifest --explain-hold
+
+Two exclusive no-overwrite owner-only files are created: `lightup-lab-targets.txt` (canonical actual PRIVATE endpoint URLs, mode 0600) and `lightup-manifest-combine-private.json` (PRIVATE unsigned input/output SHA-256 consistency digests and original-policy admission counts, no endpoint literals). Those digests are **not signatures, identity authentication or consent**; even the aggregate counts may identify small engagements. The CLI prints counts only, no URLs, paths or exception details. If validation fails, nothing is published. The output directory must not contain existing files.
+
+Re-open later read-only against the same two unchanged source files, modes and acknowledgements:
+
+    python3 assessment-launchpad/combine_manifest.py --first-manifest ~/private-input-a/targets.txt --second-manifest ~/private-input-b/targets.txt --mode append --output-dir ~/private-combined-manifest --verify-output --explain-hold
+
+This enforces exact bytes and rejects extra/missing/modified PRIVATE output files. For the **next original-source-bound handoff**, use the resulting `~/private-combined-manifest/lightup-lab-targets.txt` as the `--manifest` input to `launchpad.py`, with a **new separate empty** user-owned mode-0700 output directory; the merge command never executes a preview command. All source-owner, security/privacy, exact-head CI, independently authenticated current client/operator consent with revocation-at-use and explicit HUMAN GO release gates remain untouched.
+
 ## Native validator-backed handoff
 
 Requires a checkout of this launchpad PR branch, which contains both `assessment-launchpad/` and the original source files at the frozen source pin, with the existing project Python dependencies. Checking out the pinned ancestor commit **alone will not work** because that older commit does not contain the launchpad. Create an owner-only output directory separate from the manifest directory:
