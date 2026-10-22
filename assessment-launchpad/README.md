@@ -121,6 +121,20 @@ The optional direct-stage route and the imported `--answers-dir` route are mutua
 
 Before HUMAN return publication, the native CLI re-verifies the saved history against the original pinned policy and source manifests, strictly matches the complete edited CSV against the ordinal queue, and re-opens all inputs. It publishes three exclusive mode-0600 files in a separate empty owner-owned 0700 directory: source-bound PRIVATE JSON containing unsigned source and answer hashes, scriptless CSP-pinned PRIVATE HUMAN status HTML (no URLs/paths/hashes) and an aggregate stage-count PRIVATE CSV. The previous source and HUMAN answer files are never overwritten. The stages are non-authorizing **human work notes only**: even `HUMAN_REVIEWED` is not approval, valid consent, verified remediation, revocation clearance or release authority. No active targets, scanner, DNS, model, auth or original source-owner code is touched.
 
+### Browse open HUMAN work from the native CLI, without disclosing endpoint values
+
+`manifest_history_next_round.py --show-pending` reads the same exact original PRIVATE source plans, their saved source-bound history and **1–7 ordered saved HUMAN returns**, then prints only the 1-based original queue row ordinal, plan-pair ordinals, literal ADDED/REMOVED/MOVED tag and last HUMAN follow-up stage for rows marked FOLLOW_UP_REQUIRED, NEEDS_CONTEXT, IN_REVIEW or QUESTION_PREPARED. This helps an operator choose explicit `--stage ROW:STAGE` values for the next round without opening a private endpoint manifest, copying paths into logs or manually counting CSV lines.
+
+```sh
+python3 assessment-launchpad/manifest_history_next_round.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --round-dir ~/private-human-return-one \
+  --show-pending
+```
+
+The command rejects any edit, output or preview flags mixed with `--show-pending`, creates no files and never executes an assessment. It shows all active HUMAN follow-up labels in original queue order, including zero rows. PARKED or HUMAN_REVIEWED are omitted from the active worklist but neither state represents remediation or clearance; authentic source-owner and consent/security/HUMAN GO gates remain mandatory.
+
 ### One-command next HUMAN round with optional timeline and delta
 
 For an existing exact 1–7-round local HUMAN chain, `manifest_history_next_round.py` now joins the source-bound native operations into **one explicit offline command**. It re-admits the original PRIVATE plan history and all prior v1/v2 HUMAN rounds, checks the unsigned previous-round linkage, carries forward unmodified HUMAN stages and changes only selected `--stage ROW:STAGE` choices. It then creates a **new PRIVATE HUMAN return** and can independently generate the two-round stage comparison and an updated 2–8-round timeline with a follow-up CSV. No original source or prior HUMAN round is overwritten.
