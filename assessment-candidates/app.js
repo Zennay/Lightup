@@ -750,7 +750,7 @@
       "authorized","consent_verified","dispatch_allowed","release_allowed"];
     const csvCell=value=>{
       const text=String(value);
-      return /[",\\r\\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text;
+      return /[",\r\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text;
     };
     const rows=scenarioConflictRows().flatMap(row=>{
       const adverse=row.adverseByCandidate.map(item=>
