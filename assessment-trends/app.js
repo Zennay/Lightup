@@ -435,6 +435,62 @@
       (chosenSlot==="all"||Number(chosenSlot)===e.snapshotSlot)&&
       (chosenStage==="all"||humanStage(e)===chosenStage));
   }
+  // A bounded HUMAN-only visible-page edit; neither a source verdict nor approval.
+  let stageBatchUndo=null;
+  function sameStageMap(left,right){
+    return left.size===right.size&&[...left].every(([key,value])=>right.get(key)===value);
+  }
+  function visibleReviewRows(){
+    return snapshots.length?reviewSelection().slice(reviewOffset,reviewOffset+REVIEW_PAGE):[];
+  }
+  function updateStageBatchControls(){
+    const chosen=$("reviewBulkStage").value,rows=visibleReviewRows();
+    const changed=HUMAN_STAGES.includes(chosen)?
+      rows.filter(event=>humanStage(event)!==chosen).length:0;
+    $("reviewBulkApply").disabled=changed===0;
+    const canUndo=!!stageBatchUndo&&stageBatchUndo.dataset===snapshots&&
+      sameStageMap(stageBatchUndo.after,humanReviewStages);
+    $("reviewBulkUndo").disabled=!canUndo;
+    if(stageBatchUndo&&!canUndo)stageBatchUndo=null;
+    if(changed)
+      $("reviewBulkStatus").textContent=changed+" of "+rows.length+
+        " visible filtered events would change to "+chosen+
+        ". Nothing has changed yet; other pages are excluded.";
+    else if(rows.length)
+      $("reviewBulkStatus").textContent="Visible page: "+rows.length+
+        " events. Select a different HUMAN stage to preview a change; other pages excluded.";
+    else
+      $("reviewBulkStatus").textContent="No visible events to change; existing HUMAN marks stay untouched.";
+  }
+  function applyStageBatch(){
+    const stage=$("reviewBulkStage").value,rows=visibleReviewRows();
+    if(!HUMAN_STAGES.includes(stage)||!rows.length)return;
+    const changes=rows.filter(event=>humanStage(event)!==stage);
+    if(!changes.length)return;
+    if(!window.confirm("Apply HUMAN-only self-report "+stage+" to "+changes.length+
+      " changed events on this visible page (of "+rows.length+" shown)? Other pages"+
+      " are untouched. This does NOT verify any finding, remediation, consent or approval."))return;
+    const before=new Map(humanReviewStages),dataset=snapshots;
+    for(const event of changes){
+      const key=humanStageKey(event);
+      if(stage==="UNREVIEWED")humanReviewStages.delete(key);
+      else humanReviewStages.set(key,stage);
+    }
+    stageBatchUndo={dataset,before,after:new Map(humanReviewStages)};
+    renderReviewQueue();renderHumanWorkPlan();
+    $("reviewBulkStatus").textContent="Applied "+changes.length+
+      " local HUMAN marks. Undo is available until another stage edit or source replacement.";
+  }
+  function undoStageBatch(){
+    if(!stageBatchUndo||stageBatchUndo.dataset!==snapshots||
+      !sameStageMap(stageBatchUndo.after,humanReviewStages))return;
+    const previous=stageBatchUndo.before;
+    stageBatchUndo=null;
+    humanReviewStages.clear();
+    for(const [key,value] of previous)humanReviewStages.set(key,value);
+    renderReviewQueue();renderHumanWorkPlan();
+    $("reviewBulkStatus").textContent="Last visible-page batch reverted. Source data and HUMAN notes unchanged.";
+  }
   function reviewTallies(rows){
     return Object.keys(REVIEW_KINDS).map(kind=>({kind,count:rows.filter(e=>e.kind===kind).length}));
   }
@@ -486,6 +542,7 @@
       "Displaying "+(reviewOffset+1)+"–"+Math.min(rows.length,reviewOffset+REVIEW_PAGE)+" of "+
       rows.length+" anonymous source-flag events. Manual order only; no fix or permission inferred.":
       snapshots.length?"No source-flag transitions match these filters.":"Import snapshots to see local source-flag transitions.";
+    updateStageBatchControls();
     if(!rows.length)return;
     const table=document.createElement("table"),head=document.createElement("thead"),tr=document.createElement("tr");
     for(const name of ["Manual slot","Anonymous case","Metric","Review group","Source-reported change",
@@ -509,6 +566,7 @@
       stageSelect.value=humanStage(event);
       stageSelect.addEventListener("change",()=>{
         const key=humanStageKey(event);
+        stageBatchUndo=null;
         if(stageSelect.value==="UNREVIEWED")humanReviewStages.delete(key);
         else humanReviewStages.set(key,stageSelect.value);
         renderReviewQueue();renderHumanWorkPlan();
@@ -985,7 +1043,7 @@
       ["metricHeatmap","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
       renderHumanWorkPlan();
     }
-    if(!active){$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
+    if(!active){updateStageBatchControls();$("reviewCount").textContent="Import snapshots to see local source-flag transitions.";
       $("reviewPrev").disabled=true;$("reviewNext").disabled=true;
       for(const id of ["reviewExportStages","reviewExportStageCsv","reviewExportStageBrief"])
         $(id).disabled=true;
@@ -1866,6 +1924,9 @@
   $("reviewExportStages").addEventListener("click",()=>exportHumanStages("json"));
   $("reviewExportStageCsv").addEventListener("click",()=>exportHumanStages("csv"));
   $("reviewExportStageBrief").addEventListener("click",()=>exportHumanStages("html"));
+  $("reviewBulkStage").addEventListener("change",updateStageBatchControls);
+  $("reviewBulkApply").addEventListener("click",applyStageBatch);
+  $("reviewBulkUndo").addEventListener("click",undoStageBatch);
   resetReviewFilters();
   $("timelineImport").addEventListener("click",()=>{void importHumanTimeline();});
   $("timelineExportJson").addEventListener("click",()=>exportHumanTimeline("json"));
