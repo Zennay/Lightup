@@ -14,6 +14,7 @@ import json
 import os
 import stat
 import sys
+import unicodedata
 from pathlib import Path
 
 from compare_receipts import decode_receipt
@@ -22,6 +23,7 @@ from private_workroom import FLAGS, open_parent_nofollow, read_private
 MIN_RECEIPTS = 2
 MAX_RECEIPTS = 12
 MAX_INPUT = 8_192
+MAX_SELECTION = 32_768
 MAX_JSON = 65_536
 MAX_HTML = 65_536
 MAX_CSV = 262_144
@@ -44,6 +46,47 @@ def stable_receipts(paths: list[Path]) -> tuple[list[bytes], list[dict]]:
     if any(read_private(path, MAX_INPUT) != raw for path, raw in zip(paths, raw_values)):
         hold()
     return raw_values, receipts
+
+
+def read_receipt_selection(path: Path) -> tuple[bytes, list[Path]]:
+    """Read a private, LF-delimited, manually ordered list of original receipt paths."""
+    raw = read_private(path, MAX_SELECTION)
+    if not raw.endswith(b"\n") or b"\r" in raw or b"\0" in raw:
+        hold()
+    try:
+        text = raw.decode("utf-8", errors="strict")
+    except UnicodeError:
+        hold()
+    names = text.split("\n")[:-1]
+    if (not MIN_RECEIPTS <= len(names) <= MAX_RECEIPTS
+            or len(set(names)) != len(names)):
+        hold()
+    paths = []
+    for name in names:
+        if (not name.startswith(os.sep) or os.path.normpath(name) != name
+                or not 1 <= len(name) <= 2_048 or any(
+                    unicodedata.category(char) in ("Cc", "Cf", "Zl", "Zp")
+                    for char in name
+                )):
+            hold()
+        paths.append(Path(name))
+    if len({os.path.realpath(path) for path in paths}) != len(paths):
+        hold()
+    return raw, paths
+
+
+def confirm_original_inputs(
+    paths: list[Path], expected: list[bytes],
+    selection_path: Path | None = None, selection_raw: bytes | None = None,
+) -> None:
+    if any(read_private(path, MAX_INPUT) != raw for path, raw in zip(paths, expected)):
+        hold()
+    if selection_path is not None:
+        if selection_raw is None:
+            hold()
+        current_raw, current_paths = read_receipt_selection(selection_path)
+        if current_raw != selection_raw or current_paths != paths:
+            hold()
 
 
 def compose_history(receipts: list[dict]) -> dict:
@@ -350,12 +393,23 @@ def main(argv: list[str]) -> int:
                      help="Existing owner-owned exact-mode-0700 directory outside all receipt directories")
     cli.add_argument("--verify-existing", action="store_true",
                      help="Reopen the exact existing three-file packet read-only")
-    cli.add_argument("receipts", nargs="+",
+    cli.add_argument("--receipts-file", type=Path,
+                     help="Owner-private mode-0600 LF-delimited list of 2–12 canonical absolute receipt paths")
+    cli.add_argument("receipts", nargs="*",
                      help="2–12 owner-private canonical receipt JSON files in manually selected order")
     args = cli.parse_args(argv)
-    paths = [Path(value) for value in args.receipts]
-    if not MIN_RECEIPTS <= len(paths) <= MAX_RECEIPTS:
-        cli.error("two to twelve original PRIVATE receipt files are required")
+    if bool(args.receipts_file) == bool(args.receipts):
+        cli.error("supply either positional receipt paths or --receipts-file, not both")
+    selection_path = args.receipts_file
+    selection_raw = None
+    if selection_path is not None:
+        selection_raw, paths = read_receipt_selection(selection_path)
+        if os.path.realpath(selection_path) in {os.path.realpath(path) for path in paths}:
+            cli.error("receipt-selection file must be separate from the listed receipts")
+    else:
+        paths = [Path(value) for value in args.receipts]
+        if not MIN_RECEIPTS <= len(paths) <= MAX_RECEIPTS:
+            cli.error("two to twelve original PRIVATE receipt files are required")
     raw_receipts, receipts = stable_receipts(paths)
     history = compose_history(receipts)
     outputs = {
@@ -363,7 +417,8 @@ def main(argv: list[str]) -> int:
         OUTPUT_HTML: render_html(history),
         OUTPUT_CSV: csv_bytes(history),
     }
-    output_fd, existing = safe_output_dir(args.output_dir, paths)
+    safety_inputs = paths + ([selection_path] if selection_path is not None else [])
+    output_fd, existing = safe_output_dir(args.output_dir, safety_inputs)
     created: list[str] = []
     try:
         if args.verify_existing:
@@ -372,16 +427,12 @@ def main(argv: list[str]) -> int:
             for name, expected in outputs.items():
                 if read_private(args.output_dir / name, len(expected)) != expected:
                     hold()
-            if any(read_private(path, MAX_INPUT) != raw
-                   for path, raw in zip(paths, raw_receipts)):
-                hold()
+            confirm_original_inputs(paths, raw_receipts, selection_path, selection_raw)
             print("PRIVATE receipt-history packet matches exact selected original receipts; REVIEW_ONLY.")
             return 0
         if existing:
             hold()
-        if any(read_private(path, MAX_INPUT) != raw
-               for path, raw in zip(paths, raw_receipts)):
-            hold()
+        confirm_original_inputs(paths, raw_receipts, selection_path, selection_raw)
         try:
             for name, content in outputs.items():
                 fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
