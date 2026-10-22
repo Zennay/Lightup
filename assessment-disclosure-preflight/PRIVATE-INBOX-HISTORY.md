@@ -267,11 +267,11 @@ stage/role endpoint differences separately from any intermediate edits.
 
 ~~~sh
 mkdir -m 700 ./owner-private-interval-matrix
-python3 assessment-disclosure-preflight/private_inbox_interval_matrix.py build \\
-  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \\
-  --revision ./owner-private-sheets/first.csv \\
-  --revision ./owner-private-sheets/second.csv \\
-  --revision ./owner-private-sheets/third.csv \\
+python3 assessment-disclosure-preflight/private_inbox_interval_matrix.py build \
+  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \
+  --revision ./owner-private-sheets/first.csv \
+  --revision ./owner-private-sheets/second.csv \
+  --revision ./owner-private-sheets/third.csv \
   --private-output-dir ./owner-private-interval-matrix
 ~~~
 
