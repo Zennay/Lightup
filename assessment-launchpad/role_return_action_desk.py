@@ -36,7 +36,7 @@ STYLE = (
     "@media(max-width:690px){.filters{grid-template-columns:1fr}"
     ".tablewrap{overflow-x:auto}table{min-width:800px}}"
     "@media print{.filters,button{display:none}header,main{max-width:none}"
-    "tr[hidden]{display:table-row}}"
+    "tr[hidden]{display:none}#printScope{display:block;font-weight:700}}"
 )
 SCRIPT = r'''(() => {
 "use strict";
