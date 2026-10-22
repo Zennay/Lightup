@@ -21,6 +21,7 @@ LIMIT = 65536
 SUMMARY = "lightup-manifest-history-private.json"
 HTML = "lightup-manifest-history-private.html"
 CSV = "lightup-manifest-history-counts-private.csv"
+QUEUE = "lightup-manifest-history-review-queue-private.csv"
 STYLE = (
     "body{font:16px/1.5 system-ui,sans-serif;max-width:950px;margin:2rem auto;"
     "padding:1rem;color:#182439}h1{font-size:1.7rem}"
@@ -38,10 +39,20 @@ def prepare(paths):
     if len(set(absolute for absolute, _, _ in plans)) != len(plans):
         raise Hold("saved PRIVATE source bundle directories must be distinct")
     rows = []
+    queue = []
     for index in range(1, len(plans)):
         _, _, before = plans[index - 1]
         _, _, after = plans[index]
-        _, counts = compare(before, after)
+        changes, counts = compare(before, after)
+        for change in changes:
+            if change["state"] != "UNCHANGED":
+                queue.append({
+                    "from_ordinal": index, "to_ordinal": index + 1,
+                    "change": change["state"],
+                    "before_slot": change["before_slot"],
+                    "after_slot": change["after_slot"],
+                    "human_stage": "FOLLOW_UP_REQUIRED",
+                })
         rows.append({
             "from_ordinal": index, "to_ordinal": index + 1,
             "before_count": len(before), "after_count": len(after),
@@ -55,6 +66,8 @@ def prepare(paths):
         "plan_count": len(plans),
         "source_manifest_sha256": [sha256(raw).hexdigest() for _, raw, _ in plans],
         "transitions": rows,
+        "human_review_queue": queue,
+        "human_review_queue_count": len(queue),
         "first_to_last": {
             "before_count": len(plans[0][2]), "after_count": len(plans[-1][2]),
             "unchanged": net_counts["UNCHANGED"], "moved": net_counts["MOVED"],
@@ -76,6 +89,15 @@ def render_html(packet):
     rows = "".join("<tr>" + "".join("<td>" + escape(str(row[name])) + "</td>"
                                       for name in cols) + "</tr>"
                    for row in packet["transitions"])
+    queue_rows = "".join(
+        "<tr><td>" + str(row["from_ordinal"]) + " → " + str(row["to_ordinal"]) +
+        "</td><td>" + escape(row["change"]) + "</td><td>" +
+        (str(row["before_slot"]) if row["before_slot"] is not None else "—") +
+        "</td><td>" +
+        (str(row["after_slot"]) if row["after_slot"] is not None else "—") +
+        "</td><td>HUMAN follow-up required</td></tr>"
+        for row in packet["human_review_queue"]
+    )
     net = packet["first_to_last"]
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
@@ -96,6 +118,14 @@ def render_html(packet):
         "<table><thead><tr>" +
         "".join("<th scope='col'>" + escape(label) + "</th>" for label in heading) +
         "</tr></thead><tbody>" + rows + "</tbody></table>"
+        "<details><summary>Ordinal HUMAN follow-up queue (" +
+        str(packet["human_review_queue_count"]) + " changes)</summary>"
+        "<p>These rows are suggestions for PRIVATE HUMAN review, not actual"
+        " findings, authorization or remediation status. Each row refers only"
+        " to the two local snapshots selected by the operator.</p>"
+        "<table><thead><tr><th>Plan pair</th><th>Literal change</th>"
+        "<th>Before slot</th><th>After slot</th><th>Stage</th></tr></thead>"
+        "<tbody>" + queue_rows + "</tbody></table></details>"
         "<h2>First-to-last literal change</h2><p>Unchanged " +
         str(net["unchanged"]) + " · Moved " + str(net["moved"]) +
         " · Removed " + str(net["removed"]) + " · Added " + str(net["added"]) +
@@ -119,6 +149,17 @@ def render_csv(packet):
     return output.getvalue().encode("utf-8")
 
 
+def render_queue_csv(packet):
+    output = StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    cols = ("from_ordinal", "to_ordinal", "change", "before_slot",
+            "after_slot", "human_stage")
+    writer.writerow(cols)
+    for row in packet["human_review_queue"]:
+        writer.writerow([row[name] if row[name] is not None else "" for name in cols])
+    return output.getvalue().encode("utf-8")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Summarize 2–8 previously saved PRIVATE combined manifests; no assessment.")
@@ -135,6 +176,7 @@ def main(argv=None):
             SUMMARY: (json.dumps(packet, sort_keys=True, separators=(",", ":")) + "\n").encode(),
             HTML: render_html(packet),
             CSV: render_csv(packet),
+            QUEUE: render_queue_csv(packet),
         }
         if any(not 0 < len(value) <= LIMIT for value in files.values()):
             raise Hold("PRIVATE history output exceeds byte limit")

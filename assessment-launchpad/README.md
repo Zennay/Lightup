@@ -67,14 +67,14 @@ This enforces exact bytes and rejects extra/missing/modified PRIVATE output file
 
 ### Multi-plan PRIVATE lab history desk (2–8 snapshots)
 
-The standalone, networkless `manifest_history_desk.py` builds an operator-ordered review of **2–8 already saved PRIVATE combined-manifest bundles**. Every input is reopened through the original pinned lab URL/LabScenario policy and its exact canonical saved source/receipt/slot map admission. The script compares consecutive plans and also first-to-last literal endpoint equality, publishing a scriptless CSP-hashed **PRIVATE HTML transition table**, a PRIVATE machine-readable JSON with unsigned per-source SHA-256 digests, and a PRIVATE numeric counts CSV. The HTML and CSV never contain URLs, source paths, file names, original notes or digests.
+The standalone, networkless `manifest_history_desk.py` builds an operator-ordered review of **2–8 already saved PRIVATE combined-manifest bundles**. Every input is reopened through the original pinned lab URL/LabScenario policy and its exact canonical saved source/receipt/slot map admission. The script compares consecutive plans and also first-to-last literal endpoint equality, publishing a scriptless CSP-hashed **PRIVATE HTML transition table**, a PRIVATE machine-readable JSON with unsigned per-source SHA-256 digests, a PRIVATE numeric counts CSV, and a separate ordinal-only PRIVATE HUMAN follow-up CSV. A collapsible HTML review queue lists only changed per-plan slots (MOVED/REMOVED/ADDED), never treats a literal change as remediation or approval. The HTML and CSVs never contain URLs, source paths, file names, original notes or digests.
 
 ```sh
 python3 assessment-launchpad/manifest_history_desk.py --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two --plan-dir ~/private-plan-three --output-dir ~/private-plan-history
 python3 assessment-launchpad/manifest_history_desk.py --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two --plan-dir ~/private-plan-three --verify-output-dir ~/private-plan-history
 ```
 
-The destination must be a **different existing, empty, owner-owned 0700 directory**; the three mode-0600 files are exclusive/no-overwrite and admit exact source-bound read-only reopen. Operator ordering does **not** establish trustworthy chronology, and neither local hash equality nor a missing endpoint means a vulnerability is fixed or any action is approved. Keep all three files PRIVATE; even anonymous ordinal counts may be commercially sensitive. No live scan, DNS, model, original source ownership changes, consent, revocation or HUMAN GO is performed.
+The destination must be a **different existing, empty, owner-owned 0700 directory**; the four mode-0600 files are exclusive/no-overwrite and admit exact source-bound read-only reopen. Operator ordering does **not** establish trustworthy chronology, and neither local hash equality nor a missing endpoint means a vulnerability is fixed or any action is approved. Keep all four files PRIVATE; even anonymous ordinal counts may be commercially sensitive. No live scan, DNS, model, original source ownership changes, consent, revocation or HUMAN GO is performed.
 
 ### One-command saved-plan comparison (new optional offline step)
 
