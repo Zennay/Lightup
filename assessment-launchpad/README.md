@@ -849,16 +849,22 @@ The native `manifest_change_desk.py` now publishes a third artifact,
 `UNCHANGED`, `MOVED`, `REMOVED` or `ADDED`, original integer slot
 ordinals and `REVIEW_ONLY`; removed slot values are blank. No endpoint
 URLs, source paths, source hashes, notes or free text are present in the CSV.
-The scriptless HTML comparison page links directly to this CSV for a local download. It is a portable **PRIVATE** planning ledger, not a vulnerability report,
-proof of chronology, or evidence that removal fixed a finding.
+The scriptless HTML comparison page links directly to this CSV and to a self-contained
+copy of `manifest_change_review.html` for a local HUMAN follow-up workflow. It is a
+portable **PRIVATE** planning ledger, not a vulnerability report, proof of chronology,
+or evidence that removal fixed a finding.
 
-New change-desk publications contain the existing source-bound JSON and
-scriptless HTML plus this CSV, all exclusive mode-0600 files inside the
-owner-owned mode-0700 output directory. Exact reopen admits the complete
-three-file shape byte-for-byte. For compatibility, it also continues to
-reopen older canonical native two-file JSON+HTML change-desk bundles
-read-only when both original source manifests reproduce their original
-bytes; it does not add the new CSV to an existing bundle or rewrite it.
+New change-desk publications contain four exclusive mode-0600 artifacts inside the
+owner-owned mode-0700 output directory: source-bound JSON, scriptless HTML, ordinal-only
+CSV and the exact CSP-pinned offline HUMAN follow-up editor. The generated HTML opens
+the editor locally; import the adjacent CSV, assign fixed follow-up stages, and export
+the full ledger. The editor can re-import its own five-column export to resume stages.
+All HUMAN stages remain separate from the unchanged `REVIEW_ONLY` source status.
+
+Exact reopen admits the complete four-file shape byte-for-byte. For compatibility,
+older canonical native three-file JSON+HTML+CSV bundles and two-file JSON+HTML bundles
+remain read-only reopenable using their original scriptless HTML shape; they are not
+rewritten to add the editor. The editor is copied only into newly published bundles.
 
 
 The change desk re-admits both original saved manifest bundles again at
@@ -871,7 +877,7 @@ receipts authentic or establish when an operator selected either snapshot.
 
 ### Browser HUMAN follow-up editor for manifest-change CSV
 
-Open `assessment-launchpad/manifest_change_review.html` directly in a browser (no server required). Select the `lightup-private-manifest-delta.csv` produced by `manifest_change_desk.py`. The page validates the fixed native CSV header, REVIEW_ONLY source marker, bounded slot ordinals, row count and allowed transition shapes, then lets a human assign one fixed follow-up stage per ordinal row:
+Open `assessment-launchpad/manifest_change_review.html` directly in a browser (no server required), or use the self-contained copy included in a newly generated change-desk output directory. Select the adjacent `lightup-private-manifest-delta.csv` produced by `manifest_change_desk.py`. The page validates the fixed native CSV header, REVIEW_ONLY source marker, bounded slot ordinals, row count and allowed transition shapes, then lets a human assign one fixed follow-up stage per ordinal row:
 
 - `NOT_REVIEWED`
 - `REVIEWED`
