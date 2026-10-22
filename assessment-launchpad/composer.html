@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JFx7eS4SClb1fRQyTZ1wGzVcGJJYZSHYhMw5FTzWgiM='; style-src 'sha256-kF8dZh9yHMP5XMAKKFRjc6omDgt1CC6BiZdU+V44fOk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-IvZAmzJHztVVd/nDqcFw3nnIxDqq1vRLc4CxLGB/snE='; style-src 'sha256-kF8dZh9yHMP5XMAKKFRjc6omDgt1CC6BiZdU+V44fOk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}textarea,select{width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem}textarea{min-height:10rem;resize:vertical}label{font-weight:650}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
@@ -18,7 +18,7 @@
 <main>
   <section class="panel">
     <h2>Endpoint manifest</h2>
-    <p>Add 1–16 distinct literal HTTP(S) URLs, import an existing local manifest, and reorder endpoint slots. Import does not upload source bytes. Browser checks are only a convenience; the native CLI re-runs the original URL validator and original <code>LabScenario</code> private/loopback scope policy before it creates the preview command.</p>
+    <p>Add 1–16 distinct literal HTTP(S) URLs, import an existing local manifest, and reorder endpoint slots. Import does not upload source bytes. Use display-only masking for screen reviews; exported manifests still include all private URL values. Browser checks are only a convenience; the native CLI re-runs the original URL validator and original <code>LabScenario</code> private/loopback scope policy before it creates the preview command.</p>
     <div id="endpointList" aria-label="Local endpoint manifest"></div>
     <p class="count" id="endpointCount">0 / 16 slots</p>
     <p class="count" id="manifestSize" role="status" aria-live="polite">Estimated manifest size: 0 / 16384 bytes</p>
@@ -26,6 +26,7 @@
       <button id="addEndpoint" type="button" class="secondary">Add endpoint</button>
       <button id="chooseManifest" type="button" class="secondary">Import existing manifest</button>
       <button id="showBulk" type="button" class="secondary" aria-expanded="false" aria-controls="bulkPanel">Paste multiple endpoints</button>
+      <button id="toggleMask" type="button" class="secondary" aria-pressed="false">Hide endpoint values</button>
       <button id="undoAppliedImport" type="button" class="secondary" disabled>Undo last applied import</button>
       <input id="manifestImport" type="file" accept=".txt,text/plain" hidden>
       <button id="downloadManifest" type="button" disabled>Download private text manifest</button>
@@ -38,6 +39,7 @@
     <label for="bulkMode">How to combine with current slots</label>
     <select id="bulkMode"><option value="replace">Replace entire current draft</option><option value="append">Append after filled current slots</option></select>
     <label for="bulkText">Private endpoint lines</label>
+    <p id="bulkMaskNotice" class="warning" hidden>Private pasted values are concealed in display-only mode. Select “Show endpoint values” to edit them. The text remains in local browser memory.</p>
     <textarea id="bulkText" spellcheck="false" autocomplete="off" maxlength="16384" placeholder="http://127.0.0.1:18080/&#10;http://127.0.0.1:18081/"></textarea>
     <p class="note" id="bulkBudget" aria-live="polite">Pasted text: 0 / 16384 bytes.</p>
     <div class="controls"><button id="previewBulk" type="button">Review pasted batch</button><button id="closeBulk" class="secondary" type="button">Close without applying</button></div>
@@ -74,6 +76,7 @@
   let importSequence = 0;
   let pendingImport = null;
   let undoAppliedImport = null;
+  let masked = false;
   function values() {
     return [...list.querySelectorAll(".endpoint input")].map(input => input.value);
   }
@@ -95,7 +98,7 @@
     const label = document.createElement("label");
     label.textContent = "Endpoint slot " + String(rowSequence).padStart(2, "0");
     const input = document.createElement("input");
-    input.type = "text";
+    input.type = masked ? "password" : "text";
     input.autocomplete = "off";
     input.spellcheck = false;
     input.maxLength = 2048;
@@ -199,6 +202,7 @@
       $("message").textContent = checked.error;
       return;
     }
+    if (masked && !window.confirm("This private manifest download includes all hidden endpoint URLs in plain text. Continue?")) return;
     const blob = new Blob([checked.entries.join("\n") + "\n"], {type:"text/plain;charset=utf-8"});
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -252,8 +256,8 @@
       const line = document.createElement("p");
       line.className = "import-diff";
       line.textContent = "Slot " + String(index + 1).padStart(2, "0") + " · " + status +
-        " · current: " + (hasCurrent ? (oldValue || "(blank)") : "(none)") +
-        " · proposed: " + (hasProposed ? (newValue || "(blank)") : "(none)");
+        " · current: " + (hasCurrent ? (oldValue ? (masked ? "(hidden)" : oldValue) : "(blank)") : "(none)") +
+        " · proposed: " + (hasProposed ? (newValue ? (masked ? "(hidden)" : newValue) : "(blank)") : "(none)");
       rows.append(line);
     }
     const moved = current.filter((value, index) => value &&
@@ -296,6 +300,7 @@
       $("message").textContent = checked.error;
       return;
     }
+    if (masked && !window.confirm("This private manifest download includes all hidden endpoint URLs in plain text. Continue?")) return;
     const blob = new Blob([checked.entries.join("\n") + "\n"], {type:"text/plain;charset=utf-8"});
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -477,6 +482,17 @@
       $("message").textContent = "Import refused; your existing editor was preserved. " + detail;
     }
   }
+  $("toggleMask").addEventListener("click", () => {
+    masked = !masked;
+    [...list.querySelectorAll(".endpoint input")].forEach(input => {
+      input.type = masked ? "password" : "text";
+    });
+    $("bulkText").hidden = masked;
+    $("bulkMaskNotice").hidden = !masked;
+    $("toggleMask").textContent = masked ? "Show endpoint values" : "Hide endpoint values";
+    $("toggleMask").setAttribute("aria-pressed", String(masked));
+    renderImportPreview();
+  });
   $("showBulk").addEventListener("click", () => {
     const open = $("bulkPanel").hidden;
     if (open) {
