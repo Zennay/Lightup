@@ -121,6 +121,22 @@ The optional direct-stage route and the imported `--answers-dir` route are mutua
 
 Before HUMAN return publication, the native CLI re-verifies the saved history against the original pinned policy and source manifests, strictly matches the complete edited CSV against the ordinal queue, and re-opens all inputs. It publishes three exclusive mode-0600 files in a separate empty owner-owned 0700 directory: source-bound PRIVATE JSON containing unsigned source and answer hashes, scriptless CSP-pinned PRIVATE HUMAN status HTML (no URLs/paths/hashes) and an aggregate stage-count PRIVATE CSV. The previous source and HUMAN answer files are never overwritten. The stages are non-authorizing **human work notes only**: even `HUMAN_REVIEWED` is not approval, valid consent, verified remediation, revocation clearance or release authority. No active targets, scanner, DNS, model, auth or original source-owner code is touched.
 
+### Compare two PRIVATE HUMAN follow-up rounds on the same manifest history
+
+`manifest_history_followup.py` completes the offline multi-round workflow. Given **exactly the same original ordered saved plans and original PRIVATE history**, it reopens two separately saved three-file HUMAN return bundles, validates their original row identities, byte-canonical private JSON, exact scriptless HTML and counts, source-history digest binding and all false authority flags. The inputs may be returned through either the stage CLI or previously edited PRIVATE CSV; locally stored input digests remain unsigned and cannot independently prove who edited the responses.
+
+```sh
+mkdir -m 700 ~/private-human-stage-delta
+python3 assessment-launchpad/manifest_history_followup.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --before-return-dir ~/private-human-return-one \
+  --after-return-dir ~/private-human-return-two \
+  --output-dir ~/private-human-stage-delta
+```
+
+The resulting separate PRIVATE `0700` directory contains three no-overwrite mode-`0600` files: `lightup-human-history-stage-delta-private.json` with unsigned digests and original row-bound HUMAN stage transitions, a scriptless SHA-CSP HTML follow-up table without URLs/paths/hashes, and a stage counts CSV without targets. It reports **only literal HUMAN stage changes** (including zero changes) and does not infer improvement, fixes, risk, validation, approval or genuine chronological ordering. Use the same original plans/history/rounds plus `--verify-output-dir` instead of `--output-dir` for exact read-only reopen. Every original lab authority and release gate remains unchanged.
+
 **One-command combine + history:** `combine_manifest.py` also accepts 1–7 repeated `--history-prior-dir` values plus one `--history-output-dir` to append its newly published combined plan as the final historical snapshot. It admits all prior saved PRIVATE bundles before publication; the new plan and history are written in **separate private transactions**. `--verify-output` reopens both without writing. This optional history may be requested alongside the independent change-desk and offline HUMAN workspace, but every destination must be separate from all source and output trees.
 
 ```sh
