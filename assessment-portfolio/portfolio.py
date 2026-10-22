@@ -293,6 +293,51 @@ def render_private_agenda_matrix(summary, rows):
     )
 
 
+def render_private_schedule_clusters(rows):
+    """Original human date proposals grouped privately, never calendar collision proof."""
+    groups = {}
+    for row in rows:
+        if row["review_date"] is not None:
+            key = (row["review_date"], row["next_role"])
+            groups.setdefault(key, []).append(row)
+    heavy = [
+        (key, members) for key, members in sorted(groups.items())
+        if len(members) >= 2
+    ]
+    table = []
+    for (planned_day, role), members in heavy:
+        agendas = len({item["agenda_slot"] for item in members})
+        ordinal_links = ", ".join(
+            "<a href='#agenda-" + str(item["agenda_slot"]) + "-slot-" +
+            str(item["source_slot"]) + "'>A" + str(item["agenda_slot"]).zfill(2) +
+            " / S" + str(item["source_slot"]).zfill(2) + "</a>"
+            for item in sorted(members, key=lambda record: (
+                record["agenda_slot"], record["source_slot"]
+            ))
+        )
+        table.append(
+            "<tr><td>" + escape(planned_day) + "</td><td>" + escape(role) + "</td>"
+            "<td>" + str(len(members)) + "</td><td>" + str(agendas) + "</td>"
+            "<td>" + ordinal_links + "</td></tr>"
+        )
+    body = (
+        "<div class='tablewrap'><table><thead><tr><th>Human proposed day</th>"
+        "<th>Suggested neutral role</th><th>Human agenda items</th>"
+        "<th>Different agenda slots</th><th>PRIVATE ordinal drilldown</th>"
+        "</tr></thead><tbody>" + "".join(table) + "</tbody></table></div>"
+        if table else "<p class='note'>No same-role / same-date proposal clusters in this current selection."
+        " This does not mean work is completed.</p>"
+    )
+    return (
+        "<section><h2>PRIVATE same-day HUMAN attention clusters</h2>"
+        "<p class='note'>At least two original items have the same proposed date and neutral role."
+        " This is a local planning observation only; it does not establish that any person is assigned,"
+        " that meetings overlap, deadlines exist, or a security finding is validated."
+        " Only source ordinals appear here, never original source identities or target values.</p>"
+        + body + "</section>"
+    )
+
+
 def render_private_html(summary, rows):
     style_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     table_head = (
@@ -379,7 +424,7 @@ def render_private_html(summary, rows):
         "<main><div class='cards'>" + cards + "</div>" + empty_note +
         "<p class='note'>" + str(summary["agenda_count"]) + " selected agendas · " +
         str(summary["item_count"]) + " human-planning items. Input order is a local ordinal only, not authenticated chronology.</p></main>"
-        + matrix + render_private_agenda_matrix(summary, rows) + "".join(sections) +
+        + matrix + render_private_agenda_matrix(summary, rows) + render_private_schedule_clusters(rows) + "".join(sections) +
         "<section><h2>Boundary and interpretation</h2><p class='note'>Past proposed dates are discussion prompts, not legal deadlines,"
         " verified finding age, security severity, authorization expiry or proof of a missed action. Missing sources are not treated as fixed."
         " No original paths, filenames, hashes, target labels, client identities or HUMAN notes are shown. The source claims and suggested questions remain unverified."
