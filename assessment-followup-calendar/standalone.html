@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-l6rvEHy20dQLZcbPR+gy200mqITY+Ex44NbuoVfsdiw='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7Cjhyo4wgsVIFGBYMSlFBy5kMO6hXCoEWqlHR6C8SQw='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -80,6 +80,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let recipientPage=0;
   let recipientProposal=null;
   let recipientSelection=new Set();
+  let recipientUndo=null;
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -657,13 +658,34 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     }
     if(!confirm("Apply exactly "+changedSlots.size+" PRIVATE HUMAN draft reminder moves? These are NON-authorizing proposals using ONLY illustrative recipient 09–17 hours and locally declared source-group availability. Previously exported external appointments are NOT updated or cancelled."))return;
     hold(recipientProposal&&recipientProposal.identity===recipientProposalIdentity());
+    const priorSlots=new Map([...changedSlots].map(([ordinal])=>
+      [ordinal,{...plan.get(ordinal)}]));
     plan=simulated;recipientProposal=null;recipientSelection.clear();
+    recipientUndo={fingerprint:workroomFingerprint(),before:priorSlots};
     changed=true;exportedPlan=false;
     page=0;agendaPage=0;render();$("recipientProposalDetails").open=false;
     inform("PRIVATE HUMAN planning moved locally. Save a new source-bound plan and manually reconcile any previous calendar imports.");
   }
+  function undoRecipientProposal(){
+    assertLocalZone();
+    hold(active&&recipientUndo&&recipientUndo.fingerprint===workroomFingerprint());
+    const previous=new Map(recipientUndo.before),restore=new Map(plan);
+    hold(previous.size>0&&previous.size<=12);
+    for(const [ordinal,slot] of previous){
+      hold(items[ordinal-1]?.ordinal===ordinal&&plan.has(ordinal));
+      restore.set(ordinal,admitSlot(slot.day,slot.time,slot.duration,slot.reminder));
+    }
+    if(!confirm("Undo exactly "+previous.size+" last PRIVATE HUMAN cross-zone draft moves? Only local tentative appointments will revert; externally exported calendars and recipient communications remain unchanged."))return;
+    hold(recipientUndo&&recipientUndo.fingerprint===workroomFingerprint());
+    plan=restore;recipientUndo=null;recipientProposal=null;recipientSelection.clear();
+    changed=true;exportedPlan=false;render();
+    inform("Last HUMAN cross-zone draft adjustment undone locally. Save the corrected PRIVATE workroom separately.");
+  }
   function renderRecipientZone(){
     if(!active)return;
+    if(recipientUndo && recipientUndo.fingerprint!==workroomFingerprint())
+      recipientUndo=null;
+    $("recipientUndo").disabled=!recipientUndo;
     if(recipientProposal)renderRecipientProposal();
     const body=$("recipientRows");body.replaceChildren();
     let data,all;
@@ -2907,6 +2929,11 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
+  hook("recipientUndo","click",()=>{
+    try{undoRecipientProposal();}
+    catch(_){recipientUndo=null;$("recipientUndo").disabled=true;
+      inform("Last HUMAN adjustment cannot be undone after a workroom change (HOLD).",true);}
+  });
   hook("recipientPrepare","click",()=>{
     try{prepareRecipientProposal();}
     catch(err){recipientProposal=null;renderRecipientProposal();
@@ -3166,6 +3193,7 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <button id="recipientApply" type="button" disabled>Apply SELECTED HUMAN draft moves (confirm)</button>
 <button id="recipientProposalExport" type="button" class="ghost" disabled>Export selected PRIVATE proposals (.csv)</button>
 <button id="recipientDiscard" type="button" class="ghost">Discard preview</button>
+<button id="recipientUndo" type="button" class="ghost" disabled>Undo last HUMAN draft adjustment</button>
 </div>
 <p id="recipientProposalSummary" class="subtle" role="status">No pending HUMAN common-hours proposal.</p>
 <div class="tablebox"><table><thead><tr><th>Include?</th><th>Original ordinal</th><th>Current local proposal</th><th>Alternative local proposal</th><th>Unverified group</th></tr></thead>

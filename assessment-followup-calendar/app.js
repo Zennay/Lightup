@@ -32,6 +32,7 @@
   let recipientPage=0;
   let recipientProposal=null;
   let recipientSelection=new Set();
+  let recipientUndo=null;
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -609,13 +610,34 @@
     }
     if(!confirm("Apply exactly "+changedSlots.size+" PRIVATE HUMAN draft reminder moves? These are NON-authorizing proposals using ONLY illustrative recipient 09–17 hours and locally declared source-group availability. Previously exported external appointments are NOT updated or cancelled."))return;
     hold(recipientProposal&&recipientProposal.identity===recipientProposalIdentity());
+    const priorSlots=new Map([...changedSlots].map(([ordinal])=>
+      [ordinal,{...plan.get(ordinal)}]));
     plan=simulated;recipientProposal=null;recipientSelection.clear();
+    recipientUndo={fingerprint:workroomFingerprint(),before:priorSlots};
     changed=true;exportedPlan=false;
     page=0;agendaPage=0;render();$("recipientProposalDetails").open=false;
     inform("PRIVATE HUMAN planning moved locally. Save a new source-bound plan and manually reconcile any previous calendar imports.");
   }
+  function undoRecipientProposal(){
+    assertLocalZone();
+    hold(active&&recipientUndo&&recipientUndo.fingerprint===workroomFingerprint());
+    const previous=new Map(recipientUndo.before),restore=new Map(plan);
+    hold(previous.size>0&&previous.size<=12);
+    for(const [ordinal,slot] of previous){
+      hold(items[ordinal-1]?.ordinal===ordinal&&plan.has(ordinal));
+      restore.set(ordinal,admitSlot(slot.day,slot.time,slot.duration,slot.reminder));
+    }
+    if(!confirm("Undo exactly "+previous.size+" last PRIVATE HUMAN cross-zone draft moves? Only local tentative appointments will revert; externally exported calendars and recipient communications remain unchanged."))return;
+    hold(recipientUndo&&recipientUndo.fingerprint===workroomFingerprint());
+    plan=restore;recipientUndo=null;recipientProposal=null;recipientSelection.clear();
+    changed=true;exportedPlan=false;render();
+    inform("Last HUMAN cross-zone draft adjustment undone locally. Save the corrected PRIVATE workroom separately.");
+  }
   function renderRecipientZone(){
     if(!active)return;
+    if(recipientUndo && recipientUndo.fingerprint!==workroomFingerprint())
+      recipientUndo=null;
+    $("recipientUndo").disabled=!recipientUndo;
     if(recipientProposal)renderRecipientProposal();
     const body=$("recipientRows");body.replaceChildren();
     let data,all;
@@ -2859,6 +2881,11 @@
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
+  hook("recipientUndo","click",()=>{
+    try{undoRecipientProposal();}
+    catch(_){recipientUndo=null;$("recipientUndo").disabled=true;
+      inform("Last HUMAN adjustment cannot be undone after a workroom change (HOLD).",true);}
+  });
   hook("recipientPrepare","click",()=>{
     try{prepareRecipientProposal();}
     catch(err){recipientProposal=null;renderRecipientProposal();
