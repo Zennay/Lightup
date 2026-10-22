@@ -25,7 +25,7 @@ GUIDE = "START-HERE-SELECTED-HUMAN-ACTIONS-PRIVATE.txt"
 FILES = (PRIVATE_CSV, PRIVATE_HTML, PRIVATE_SUMMARY, GUIDE)
 LIMIT = 65536
 HEADER = (
-    "original_slot", "suggested_role", "private_human_reply_status",
+    "original_slot", "latest_suggested_role", "private_human_reply_status",
     "latest_self_reported_human_stage", "suggested_operator_next_step",
     "private_note_changed",
 )
@@ -35,6 +35,9 @@ STYLE = (
     "h1{font-size:2rem}.hold{background:#fff1dd;padding:1rem;"
     "border-left:5px solid #985917;font-weight:750}"
     "table{border-collapse:collapse;width:100%;background:white}"
+    ".summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.8rem}"
+    ".summary section{background:white;border:1px solid #c4d3e2;border-radius:.4rem;padding:.6rem}"
+    ".summary h2{font-size:1rem}.summary ul{padding-left:1.2rem}"
     "th,td{padding:.7rem;border:1px solid #c4d3e2;text-align:left}"
     "th{background:#e5effb}.tablewrap{overflow-x:auto}"
     "@media(max-width:700px){table{min-width:920px}}"
@@ -96,16 +99,27 @@ def render_artifacts(rows, total):
     body = "".join("<tr>" + "".join(
         "<td>" + escape(item.replace("_", " ")) + "</td>" for item in row
     ) + "</tr>" for row in rows)
+    dimensions = (("Suggested roles", 1), ("Original reply status", 2),
+                  ("Self-reported HUMAN stage", 3), ("Suggested HUMAN next action", 4),
+                  ("PRIVATE note changed", 5))
+    dimension_counts = {
+        label: {value: sum(row[index] == value for row in rows)
+                for value in sorted({row[index] for row in rows})}
+        for label, index in dimensions
+    }
+    summary_html = "<div class='summary'>" + "".join(
+        "<section><h2>" + escape(label) + "</h2><ul>" + "".join(
+            "<li>" + escape(value.replace("_", " ")) + ": <strong>" + str(count)
+            + "</strong></li>" for value, count in counts.items()
+        ) + "</ul></section>" for label, counts in dimension_counts.items()
+    ) + "</div>"
     scope = {
         "schema": "lightup.assessment_launchpad_private_human_selected_actions.v1",
         "status": "REVIEW_ONLY",
         "original_local_slot_count": total,
         "selected_local_slot_count": len(rows),
         "unselected_local_slot_count": total - len(rows),
-        "suggested_role_counts": {name: sum(row[1] == name for row in rows)
-                                  for name in sorted({row[1] for row in rows})},
-        "proposed_human_action_counts": {name: sum(row[4] == name for row in rows)
-                                         for name in sorted({row[4] for row in rows})},
+        "selected_action_counts": dimension_counts,
         "identity_authenticated": False,
         "source_authority_authenticated": False,
         "client_operator_consent_verified": False,
@@ -134,6 +148,7 @@ def render_artifacts(rows, total):
         + "<p>No target URLs, note text, source path, source digests or recipient "
         + "identities are embedded. Role/slot combinations can remain identifying. "
         + "Treat every generated file as unencrypted PRIVATE data.</p>"
+        + summary_html
         + "<div class='tablewrap'><table><thead><tr>"
         + "".join("<th>" + escape(name.replace("_", " ")) + "</th>" for name in HEADER)
         + "</tr></thead><tbody>" + body + "</tbody></table></div>"
@@ -191,9 +206,13 @@ def main(argv=None):
             raise Hold("PRIVATE selected HUMAN handoff capacity exceeded")
         fd, destination = open_output_directory(args.output_dir or args.verify_output_dir)
         try:
-            if any(os.path.commonpath((folder, destination)) in (folder, destination)
-                   for folder in source[:4]):
-                raise Hold("PRIVATE handoff destination overlaps original source")
+            # Flatten every source directory explicitly; source[:4] contains
+            # tuples as well as paths and would fail before admission can finish.
+            source_dirs = [source[0], *source[1], *source[2], source[3]]
+            for folder in source_dirs:
+                common = os.path.commonpath((folder, destination))
+                if common in (folder, destination):
+                    raise Hold("PRIVATE handoff destination overlaps original source")
             if args.verify_output_dir:
                 if set(os.listdir(fd)) != set(FILES) or any(
                     read_private_bundle_item(fd, name, LIMIT) != artifacts[name]

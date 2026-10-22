@@ -55,7 +55,7 @@ const printButton = document.getElementById("print");
 const saveButton = document.getElementById("saveVisible");
 const printScope = document.getElementById("printScope");
 const summary = document.getElementById("summary");
-const fieldNames = ["original_slot","suggested_role","private_human_reply_status",
+const fieldNames = ["original_slot","latest_suggested_role","private_human_reply_status",
   "latest_self_reported_human_stage","suggested_operator_next_step",
   "private_note_changed"];
 let visibleRows = [];

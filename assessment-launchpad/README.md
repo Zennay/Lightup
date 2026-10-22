@@ -421,5 +421,10 @@ Launchpad bundle, original operator-ordered HUMAN rounds and original selected
 role-return packets. No new grants, targets, scans or reviewer identities.
 See `ROLE_RECONCILIATION_GUIDE.md` for the complete create/reopen commands.
 The downloaded browser CSV must first be moved into a private `0700` folder
-and set to mode `0600`. All outputs remain private mode `0600`; missing or
-modified original source bytes keep the workflow in HOLD.
+and set to mode `0600`. Its six-column header must remain exactly
+`original_slot,latest_suggested_role,private_human_reply_status,latest_self_reported_human_stage,suggested_operator_next_step,private_note_changed`;
+rows must be an ordered, unique subset of the freshly reconstructed original
+worklist. The native summary reports counts by all five HUMAN dimensions
+(role, reply status, self-reported stage, next action and note-change flag),
+not note content. All outputs remain private mode `0600`; missing or modified
+original source bytes keep the workflow in HOLD.
