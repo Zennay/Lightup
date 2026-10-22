@@ -639,3 +639,21 @@ disclosure authorization for any transfer. HUMAN identity, chronology,
 finding/remediation, client/operator consent and recipient authorization
 remain UNVERIFIED. No targets, scans, messages, task assignments, grants,
 deployments or automated workflow actions are performed.
+
+### Optional minimum-necessary original-ordinal disclosure
+
+For an especially sensitive review, restrict the **separate PRIVATE** docket
+to up to **16 explicitly named original HUMAN selected ordinals**, instead
+of copying every row matching the status filter. In console 31/32, enter
+comma-separated original ordinals without spaces (e.g. `2,5,11`) or leave
+blank to include all status-filter matches. In either native CLI, repeat
+`--human-ordinal 2 --human-ordinal 5 --human-ordinal 11`.
+
+The subset is checked against the **complete original selection** after
+independent readmission of every original source and every saved complete
+HUMAN round. Unknown, duplicate, nonpositive or nonmatching-filter ordinal
+inputs are **HOLD**; no quietly broadened or partially admitted disclosure.
+The literal canonical subset is stored in the separate PRIVATE unsigned
+receipt, and **the exact same subset** must be supplied when reopening.
+This is a local data minimization filter, NOT recipient authentication,
+disclosure consent or authority to send information.

@@ -39,7 +39,8 @@ def require(ok: bool) -> None:
 def build(source_path: str, manifest_path: str, worksheet_path: str,
           selection_receipt: str, selection_path: str, curated_dir: str,
           handoffs: list[str], round_replies: list[list[str]],
-          round_inboxes: list[str], filter_mode: str
+          round_inboxes: list[str], filter_mode: str,
+          human_ordinals: list[int] | None = None
           ) -> tuple[dict[str, bytes], int]:
     rounds = len(round_inboxes)
     require(filter_mode in FILTERS and 2 <= rounds <= 8 and
@@ -53,6 +54,12 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
     require(all(item["priority"] in PRIORITIES for item in selected))
     by_id = {item["ordinal"]: item for item in selected}
     require(len(by_id) == len(selected))
+    ordinals = [] if human_ordinals is None else human_ordinals
+    require(type(ordinals) is list and len(ordinals) <= 16 and
+            all(type(ordinal) is int and ordinal > 0 for ordinal in ordinals)
+            and len(set(ordinals)) == len(ordinals) and
+            all(ordinal in by_id for ordinal in ordinals))
+    ordinal_selection = set(ordinals)
     ordered = []
     inbox_hashes, reply_hashes = [], []
     for returns, inbox in zip(round_replies, round_inboxes):
@@ -92,6 +99,10 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
                      filter_mode == "reopened" and reopened or
                      filter_mode == "unanswered" and unanswered)
         stages_count[stages[-1]] += 1
+        if ordinal_selection and ordinal not in ordinal_selection:
+            continue
+        if ordinal_selection and not qualifies:
+            raise Hold("HOLD: explicit original HUMAN ordinal is outside selected filter")
         if not qualifies:
             continue
         selected_counts["selected"] += 1
@@ -157,7 +168,12 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "<p><strong>Explicit HUMAN source-detail disclosure filter:</strong> " +
         h(filter_mode) + " · " + str(len(data_rows)) + " selected original "
         "rows from " + str(len(selected)) + " original HUMAN selections, "
-        "across " + str(rounds) + " manually ordered complete HUMAN rounds.</p>"
+        "across " + str(rounds) + " manually ordered complete HUMAN rounds. " +
+        ("Explicit original ordinal selection: " +
+         ", ".join(str(i) for i in sorted(ordinal_selection)) + "."
+         if ordinal_selection else
+         "No explicit ordinal restriction: filtered original selection.") +
+        "</p>"
         "<p>Contains PRIVATE original questions and latest recipient texts. "
         "These can identify clients. NEVER publish this alongside the "
         "aggregate-only portfolio or share without separate current "
@@ -179,6 +195,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "schema": "lightup.private_human_continuity_docket.v1",
         "status": "REVIEW_ONLY", "operator_filter": filter_mode,
         "original_selected_rows": len(selected),
+        "explicit_operator_ordinal_filter_applied": bool(ordinal_selection),
         "docket_rows": len(data_rows),
         "ordered_complete_rounds": rounds,
         "reported_latest_stage_counts_all_original_rows": dict(sorted(stages_count.items())),
@@ -198,6 +215,7 @@ def build(source_path: str, manifest_path: str, worksheet_path: str,
         "private_html_sha256_unsigned": digest(report),
         "private_csv_sha256_unsigned": digest(table),
         "private_counts_sha256_unsigned": digest(counts_raw),
+        "explicit_operator_original_ordinals": sorted(ordinal_selection),
         "selected_original_ordinals": [r[0] for r in data_rows],
         **UNTRUSTED_FLAGS,
     }
@@ -225,6 +243,8 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--round-inbox", action="append", required=True)
     parser.add_argument("--round-returned-csv", action="append", required=True)
     parser.add_argument("--filter", choices=FILTERS, default="attention")
+    parser.add_argument("--human-ordinal", action="append", type=int,
+                        help="limit PRIVATE dossier to this exact original selected ordinal; repeat max 16")
     return parser.parse_args()
 
 
@@ -240,7 +260,7 @@ def main() -> int:
         count = publish(a.source, a.manifest, a.worksheet,
                         a.selection_receipt, a.selection, a.curated_packet,
                         a.private_handoff, returns, a.round_inbox, a.filter,
-                        a.output_dir)
+                        a.human_ordinal or [], a.output_dir)
     except (Hold, OSError, ValueError, KeyError, TypeError, UnicodeError,
             OverflowError, MemoryError, RecursionError, csv.Error):
         print("HOLD: original-source private follow-up refused; no output changed",

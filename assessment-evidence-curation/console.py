@@ -258,6 +258,21 @@ def run_workflow(choice: str) -> None:
             mode = input("Original HUMAN follow-up filter [attention/reopened/unanswered/all]: ").strip()
             if mode not in ("attention", "reopened", "unanswered", "all"):
                 raise Hold("HOLD: choose one explicit original-HUMAN continuity filter")
+            chosen_ordinals = input(
+                "Limit disclosure to up to 16 explicit original HUMAN ordinals "
+                "[comma-separated, blank = all matching filter]: ").strip()
+            try:
+                ordinal_filter = (
+                    [int(part) for part in chosen_ordinals.split(",")]
+                    if chosen_ordinals else [])
+            except ValueError:
+                raise Hold("HOLD: original HUMAN ordinal must be an exact integer") from None
+            if (len(ordinal_filter) > 16 or
+                any(str(part) != str(ordinal) or ordinal <= 0
+                    for part, ordinal in zip(chosen_ordinals.split(","),
+                                             ordinal_filter)) or
+                len(set(ordinal_filter)) != len(ordinal_filter)):
+                raise Hold("HOLD: repeated, noncanonical or out-of-bound ordinal")
             saved = ask_path("EXCLUSIVE NEW separate PRIVATE follow-up folder" if choice == "31" else
                              "EXISTING separate PRIVATE follow-up folder")
             print("CAUTION: unlike the aggregate portfolio this docket includes PRIVATE "
@@ -266,11 +281,11 @@ def run_workflow(choice: str) -> None:
             if input("Enter exactly REVIEW ONLY for the explicit PRIVATE follow-up: ") != "REVIEW ONLY":
                 raise Hold("HUMAN declined source-specific PRIVATE follow-up")
             if choice == "31":
-                count = publish_continuity_docket(*args, mode, saved)
+                count = publish_continuity_docket(*args, mode, ordinal_filter, saved)
                 print("PRIVATE HUMAN follow-up docket created for " + str(count) +
                       " source-bound original rows, no assignment or authority")
             else:
-                count = reopen_continuity_docket(*args, mode, saved)
+                count = reopen_continuity_docket(*args, mode, ordinal_filter, saved)
                 print("PRIVATE original HUMAN follow-up reopened from all original rounds: " +
                       str(count) + " rows; nothing changed")
         return

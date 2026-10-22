@@ -22,12 +22,13 @@ def require(ok: bool) -> None:
 def reopen(source: str, manifest: str, worksheet: str, selection_receipt: str,
            selection: str, curated: str, handoffs: list[str],
            replies: list[list[str]], inboxes: list[str], filter_mode: str,
-           private_docket_dir: str) -> int:
+           human_ordinals: list[int], private_docket_dir: str) -> int:
     ensure_output_outside_inputs(
         private_docket_dir, [curated, *handoffs, *inboxes])
     expected, count = build(
         source, manifest, worksheet, selection_receipt,
-        selection, curated, handoffs, replies, inboxes, filter_mode)
+        selection, curated, handoffs, replies, inboxes, filter_mode,
+        human_ordinals)
     require(all(0 < len(raw) <= LIMIT for raw in expected.values()))
     fd = -1
     try:
@@ -58,6 +59,8 @@ def main() -> int:
     p.add_argument("--round-inbox", action="append", required=True)
     p.add_argument("--round-returned-csv", action="append", required=True)
     p.add_argument("--filter", choices=FILTERS, default="attention")
+    p.add_argument("--human-ordinal", action="append", type=int,
+                   help="same exact original selected ordinal as original PRIVATE package")
     a = p.parse_args()
     try:
         n = len(a.round_inbox)
@@ -69,7 +72,7 @@ def main() -> int:
         count = reopen(
             a.source, a.manifest, a.worksheet, a.selection_receipt,
             a.selection, a.curated_packet, a.private_handoff, replies,
-            a.round_inbox, a.filter, a.private_docket_dir)
+            a.round_inbox, a.filter, a.human_ordinal or [], a.private_docket_dir)
     except (Hold, OSError, ValueError, KeyError, TypeError, UnicodeError,
             OverflowError, MemoryError, RecursionError, csv.Error):
         print("HOLD: PRIVATE HUMAN follow-up not source-identical; no files modified",
