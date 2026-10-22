@@ -25,6 +25,7 @@ PINNED_VALIDATOR_BLOBS = {
 }
 MAX_MANIFEST_BYTES = 16_384
 MAX_ENDPOINTS = 16
+MAX_PINNED_SOURCE_BYTES = 2 * 1024 * 1024
 FLAGS = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")
 STYLE = """body{font:15px/1.5 system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem;color:#17212f}h1{font-size:1.8rem}.state{border:2px solid #9a5b18;background:#fff7ed;padding:.8rem;font-weight:750}.card{border:1px solid #dbe1e8;border-radius:.5rem;padding:.8rem;margin:.8rem 0}code,pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f9;padding:.35rem}pre{padding:1rem;border:1px solid #cbd5e1;border-radius:.4rem}.note{font-size:.9rem;color:#536174}li{margin:.35rem 0}@media print{body{margin:0;max-width:none}pre{font-size:9pt}}"""
 
@@ -96,13 +97,59 @@ def open_private_input(path):
 def git_blob_sha(data):
     return sha1(b"blob " + str(len(data)).encode("ascii") + b"\x00" + data).hexdigest()
 
+def read_stable_pinned_source(path):
+    """Read one original source file through no-follow descriptors and reject read-time drift."""
+    parent_fd = None
+    source_fd = None
+    try:
+        parent_fd, _ = open_directory_nofollow(path.parent)
+        source_fd = os.open(
+            path.name,
+            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0)
+            | getattr(os, "O_CLOEXEC", 0),
+            dir_fd=parent_fd,
+        )
+        before = os.fstat(source_fd)
+        if (not stat.S_ISREG(before.st_mode)
+                or not 0 < before.st_size <= MAX_PINNED_SOURCE_BYTES):
+            raise Hold("pinned original validator source is not a bounded regular file")
+        content = bytearray()
+        with os.fdopen(source_fd, "rb", closefd=False) as stream:
+            while True:
+                chunk = stream.read(min(65_536, MAX_PINNED_SOURCE_BYTES + 1 - len(content)))
+                if not chunk:
+                    break
+                content.extend(chunk)
+                if len(content) > MAX_PINNED_SOURCE_BYTES:
+                    raise Hold("pinned original validator source exceeds its size bound")
+        after = os.fstat(source_fd)
+        identity_before = (
+            before.st_dev, before.st_ino, before.st_size, before.st_mode,
+            before.st_uid, before.st_gid, before.st_nlink,
+            before.st_mtime_ns, before.st_ctime_ns,
+        )
+        identity_after = (
+            after.st_dev, after.st_ino, after.st_size, after.st_mode,
+            after.st_uid, after.st_gid, after.st_nlink,
+            after.st_mtime_ns, after.st_ctime_ns,
+        )
+        if len(content) != before.st_size or identity_before != identity_after:
+            raise Hold("pinned original validator source changed during admission")
+        return bytes(content)
+    except Hold:
+        raise
+    except (OSError, TypeError, ValueError) as error:
+        raise Hold("pinned original validator source could not be admitted") from error
+    finally:
+        if source_fd is not None:
+            os.close(source_fd)
+        if parent_fd is not None:
+            os.close(parent_fd)
+
+
 def load_original_gates():
     for relative, expected in PINNED_VALIDATOR_BLOBS.items():
-        path = ROOT / relative
-        try:
-            actual = git_blob_sha(path.read_bytes())
-        except OSError as error:
-            raise Hold("pinned original validator source is unavailable") from error
+        actual = git_blob_sha(read_stable_pinned_source(ROOT / relative))
         if actual != expected:
             raise Hold("pinned original validator source drift")
     if str(SRC) not in sys.path:
@@ -110,6 +157,22 @@ def load_original_gates():
     try:
         from lightup.labrun import _admit_explicit_lab_url
         from lightup.labeval import LabScenario
+        expected_modules = {
+            "lightup.labrun": ROOT / "src/lightup/labrun.py",
+            "lightup.labeval": ROOT / "src/lightup/labeval.py",
+        }
+        for name, expected_path in expected_modules.items():
+            module = sys.modules.get(name)
+            if (module is None or not isinstance(getattr(module, "__file__", None), str)
+                    or os.path.abspath(module.__file__) != os.path.abspath(os.fspath(expected_path))):
+                raise Hold("pinned original lab validator loaded from an unexpected source path")
+        # Re-admit every pinned source after import so ordinary concurrent source
+        # changes cannot leave the preview bound only to an earlier file snapshot.
+        for relative, expected in PINNED_VALIDATOR_BLOBS.items():
+            if git_blob_sha(read_stable_pinned_source(ROOT / relative)) != expected:
+                raise Hold("pinned original validator source drifted during import")
+    except Hold:
+        raise
     except Exception as error:
         raise Hold("pinned original lab validators could not be loaded") from error
     return _admit_explicit_lab_url, LabScenario
