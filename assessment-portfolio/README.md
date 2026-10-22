@@ -87,6 +87,37 @@ a stale derived packet. This is a local source-drift guard, **not** a trusted
 signature, contemporaneous reviewer identity, grant, proof of consent or
 permission to distribute the packet.
 
+### Source-list mode for large PRIVATE agendas
+
+Instead of repeating 2–12 private source filenames on the command line, create
+a local **0600** UTF-8 text file with exactly one absolute original agenda path
+per LF-terminated line, in the intended **manual** agenda order. All source
+files still require their own mode-0600/no-symlink/no-hard-link admission; the
+list does not grant authority or execute any assessment. Relative paths, blank
+lines, duplicate paths, CRLF, embedded NUL, symlinks, oversized lists and
+changed list contents cause HOLD.
+
+```bash
+umask 077
+cat > /private/agenda-selection.txt <<'EOF'
+/private/agenda-room-a/agenda.json
+/private/agenda-room-b/agenda.json
+EOF
+chmod 600 /private/agenda-selection.txt
+mkdir -m 700 /private/selected-workroom
+python3 assessment-portfolio/portfolio.py \
+  --agendas-file /private/agenda-selection.txt \
+  --as-of 2026-10-21 \
+  --output-dir /private/selected-workroom
+```
+
+The `--agendas-file` input and positional source paths are **mutually
+exclusive**. Creation and read-only `--verify-output-dir` accept the same
+selection-list form, and the list's parent folder cannot contain output.
+Operator-selected list order is never interpreted as authentic chronology.
+The manifest is sensitive because it contains local private paths: it is
+never written into the four derived portfolio artifacts.
+
 ## Interpretation and safety
 
 - Input agenda exports are untrusted claims. Strict schema admission is not source authentication, reviewer authentication, customer identity, consent or security validation.
