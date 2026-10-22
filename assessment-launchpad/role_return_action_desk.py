@@ -56,6 +56,7 @@ const progress = document.getElementById("progress");
 const printButton = document.getElementById("print");
 const saveButton = document.getElementById("saveSelected");
 const selectVisibleButton = document.getElementById("selectVisible");
+const deselectVisibleButton = document.getElementById("deselectVisible");
 const clearSelectionButton = document.getElementById("clearSelection");
 const selectionSummary = document.getElementById("selectionSummary");
 const selectedSlots = new Set();
@@ -154,6 +155,7 @@ function apply() {
     key.replaceAll("_"," ") + ": " + count).join(" · ") || "No matching HUMAN actions.";
   saveButton.disabled = selectedSlots.size === 0;
   selectVisibleButton.disabled = visible === 0;
+  deselectVisibleButton.disabled = visibleSelected === 0;
   clearSelectionButton.disabled = selectedSlots.size === 0;
   printButton.disabled = visible === 0;
 }
@@ -165,6 +167,10 @@ resetButton.addEventListener("click",()=>{
 });
 selectVisibleButton.addEventListener("click",()=>{
   for (const {values,element} of lookup) if (!element.hidden) selectedSlots.add(values[0]);
+  apply();
+});
+deselectVisibleButton.addEventListener("click",()=>{
+  for (const {values,element} of lookup) if (!element.hidden) selectedSlots.delete(values[0]);
   apply();
 });
 clearSelectionButton.addEventListener("click",()=>{selectedSlots.clear();apply();});
@@ -247,6 +253,7 @@ def render(work):
         "<p id='summary' role='status' aria-live='polite'></p>"
         "<p id='printScope'>PRIVATE selected HUMAN view</p>"
         "<button type='button' id='selectVisible'>Select displayed slots</button> "
+        "<button type='button' id='deselectVisible'>Deselect displayed slots</button> "
         "<button type='button' id='clearSelection'>Clear all selections</button> "
         "<button type='button' id='print'>Print only displayed PRIVATE rows</button> "
         "<button type='button' id='saveSelected' disabled>Download selected rows as PRIVATE CSV</button>"

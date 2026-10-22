@@ -405,7 +405,7 @@ filters restores the complete local view without altering source data.
 The live counts update for the chosen view. Tick individual original slots,
 then use **Select displayed slots** to add all rows currently visible without
 clearing earlier selections; selections survive filter changes in memory only.
-**Clear all selections** resets the queue. **Print only displayed PRIVATE rows**
+**Deselect displayed slots** removes only the visible rows from the queue; **Clear all selections** resets the queue. **Print only displayed PRIVATE rows**
 prints the current filtered view; **Download selected rows as PRIVATE CSV**
 exports only explicitly selected fixed-enum/ordinal rows in original source
 order, including selections hidden by the current filter. The browser does not
