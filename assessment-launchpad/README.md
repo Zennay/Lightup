@@ -26,6 +26,10 @@ Open `composer.html` locally. It is one standalone file with a strict hash-pinne
 
 Browser downloads cannot set file permissions. Before using the native CLI, move the downloaded file to a private directory and set mode `0600`. Use this PR branch (not the older source-only pinned ancestor), for example `git fetch origin chatgpt/lightup-assessment-launchpad-20261021-gpt6` followed by `git switch --detach FETCH_HEAD` in a disposable trusted checkout. The CLI refuses any modified original pinned validator or CLI bytes.
 
+## Original validator source-pin admission
+
+The native Launchpad opens each pinned original source file through no-follow directory/file descriptors, requires a bounded regular file, and rejects symlinks or metadata drift during the read. It checks the expected Git blob digest before importing the original URL and `LabScenario` validators, verifies those modules resolve to the expected repository paths, then re-reads all pinned source files and checks their digests again. Any missing, oversized, non-regular, drifting or changed source produces HOLD before a manifest handoff is accepted. These are local integrity checks, not a signed source identity, consent, authorization or release claim.
+
 ## Native no-browser PRIVATE manifest merge and reopen
 
 Operators without a graphical browser can combine **two already private owner-owned mode-0600 text manifests** with the same original pinned lab URL and LabScenario scope policy. The additional `combine_manifest.py` command runs fully locally (no network, resolver, model, subprocess, assessment, consent or grant). The explicit mode is either `append` (retain all first entries, then all second entries; reject ANY duplicate or resulting >16 slots/16 KiB) or `replace` (use only the second list, requiring `--ack-replace`). No endpoint is silently dropped or deduplicated. Blank lines, comments, CRLF or whitespace require `--ack-normalization` before publication. The whole result is re-admitted through the original pinned validator.
