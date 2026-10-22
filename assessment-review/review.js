@@ -529,6 +529,9 @@
         priority: priority(c),
         source_status: c.status,
         metric_regressions: c.regressions.slice().sort(),
+        metric_changes: c.changes.filter(m => metricFocus ? m.name === metricFocus : m.regression)
+          .map(m => ({metric:m.name,baseline:m.baseline,candidate:m.candidate,
+            delta:m.delta,regression:m.regression})),
         human_stage: c.stage,
         follow_up_date: c.due || null,
         routing_group: c.route,
@@ -556,7 +559,7 @@
       $("queue-export-summary").textContent = "Nothing exported: no cases match the current filters.";
       return;
     }
-    const columns = ["case","priority","source_status","metric_regressions","human_stage",
+    const columns = ["case","priority","source_status","metric_regressions","metric_changes","human_stage",
       "follow_up_date","routing_group","suggested_human_action","source_sha256","source_kind",
       "overall_source_status","filter_case_status","filter_workstream","filter_metric",
       "authorized","consent_verified","dispatch_allowed","release_allowed","release_approved","scan_allowed"];
@@ -564,6 +567,7 @@
     for (const item of output.cases) {
       const row = {...item,
         metric_regressions: item.metric_regressions.join(";"),
+        metric_changes: JSON.stringify(item.metric_changes),
         follow_up_date: item.follow_up_date || "",
         source_sha256: output.source_sha256 || "",
         source_kind: output.source_kind,
