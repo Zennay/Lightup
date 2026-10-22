@@ -49,18 +49,25 @@ runtime documents/scripts and the current original standalone.html. Rebuild
 a new deterministic ZIP in an existing owner-private 0700 output folder
 OUTSIDE the checkout, without overwriting prior software:
 
-    python3 assessment-workspace-ledger/package.py build --output /private/software/NEW-LightUp-Workspace-Ledger.zip
+    python3 assessment-workspace-ledger/package.py build --output /private/software/NEW-LightUp-Workspace-Ledger.zip --sha256-sidecar
 
 Inspect any locally saved ZIP with no network or extraction:
 
-    python3 assessment-workspace-ledger/package.py inspect --archive /private/software/NEW-LightUp-Workspace-Ledger.zip
+    python3 assessment-workspace-ledger/package.py inspect --archive /private/software/NEW-LightUp-Workspace-Ledger.zip --sha256-sidecar
 
 Build requires a trusted original checkout with the fixed source files present
 as ordinary bounded regular files, and writes one exclusive mode 0600
-software-only ZIP. It never reads existing customer kit directories or
-operational data. Inspection rejects unsafe/unknown/reordered/duplicate ZIP
-members, unsupported encodings, oversized entries, malformed or
-authority-claiming manifests and any SHA256/byte-length mismatch. The bounded
+software-only ZIP. With `--sha256-sidecar`, it also writes an adjacent
+exclusive mode 0600 `<archive>.sha256` file in the same owner-private folder.
+If the sidecar cannot be written, the builder removes only the archive inode
+it created. The sidecar records the exact archive SHA-256 and filename; it is
+unsigned byte consistency, not publisher authentication. Inspection can use
+the same `--sha256-sidecar` flag to require a stable, owner-owned, single-link,
+mode-0600 sidecar whose digest and filename match the exact archive bytes.
+It never reads existing customer kit directories or operational data.
+Inspection rejects unsafe/unknown/reordered/duplicate ZIP members,
+unsupported encodings, oversized entries, malformed or authority-claiming
+manifests and any internal SHA256/byte-length mismatch. The bounded
 software-only file hashes remain UNSIGNED, do NOT authenticate any original
 author/publisher, and do not prove independent security review, consent or
 permission. No scanner, active target, model, grants, network or deletion.
