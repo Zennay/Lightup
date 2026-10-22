@@ -401,6 +401,10 @@ def render_private_html(summary, rows):
         escape(selected_view["neutral_role"]) + " · stage " +
         escape(selected_view["human_stage"]) + " · bucket " +
         escape(selected_view["date_bucket"]) +
+        (" · exact day " + escape(selected_view["proposed_review_day"])
+         if "proposed_review_day" in selected_view else "") +
+        (" · source kind " + escape(selected_view["source_kind"])
+         if "source_kind" in selected_view else "") +
         ". Counts and rows apply only to this explicit selection, not all admitted agendas.</p>"
         if selected_view else ""
     )
@@ -620,7 +624,12 @@ def render_private_day_brief(summary, rows):
     scope = (
         "Filtered: " + escape(selected["neutral_role"]) + " / " +
         escape(selected["human_stage"]) + " / " +
-        escape(selected["date_bucket"]) if selected else "All admitted HUMAN items"
+        escape(selected["date_bucket"]) +
+        (" / proposed day " + escape(selected["proposed_review_day"])
+         if "proposed_review_day" in selected else "") +
+        (" / kind " + escape(selected["source_kind"])
+         if "source_kind" in selected else "")
+        if selected else "All admitted HUMAN items"
     )
     empty = (
         "<section><h2>Empty proposed work queue</h2>"
@@ -711,8 +720,8 @@ def render_counts_csv(summary):
     writer = csv.writer(stream, lineterminator="\r\n")
     writer.writerow(("dimension", "value", "count"))
     if "view_selection" in summary:
-        for dimension in ("neutral_role", "human_stage", "date_bucket"):
-            writer.writerow(("view_selection", dimension, summary["view_selection"][dimension]))
+        for dimension, chosen in summary["view_selection"].items():
+            writer.writerow(("view_selection", dimension, chosen))
     writer.writerow(("summary", "agenda_count", summary["agenda_count"]))
     writer.writerow(("summary", "item_count", summary["item_count"]))
     for key, count in summary["claimed_status_counts"].items():
@@ -934,17 +943,23 @@ def run(args):
             if common in (output_path, source_dir):
                 raise Hold("output directory must be separate from source rooms")
         selection = None
-        if args.focus_role or args.focus_stage or args.focus_bucket:
+        if args.focus_role or args.focus_stage or args.focus_bucket or args.focus_day or args.focus_kind:
             selection = {
                 "neutral_role": args.focus_role or "ALL",
                 "human_stage": args.focus_stage or "ALL",
                 "date_bucket": args.focus_bucket or "ALL",
             }
+            if args.focus_day:
+                selection["proposed_review_day"] = parse_date(args.focus_day).isoformat()
+            if args.focus_kind:
+                selection["source_kind"] = args.focus_kind
             rows = [
                 row for row in rows
                 if (not args.focus_role or row["next_role"] == args.focus_role)
                 and (not args.focus_stage or row["stage"] == args.focus_stage)
                 and (not args.focus_bucket or row["date_bucket"] == args.focus_bucket)
+                and (not args.focus_day or row["review_date"] == selection["proposed_review_day"])
+                and (not args.focus_kind or row["source_kind"] == args.focus_kind)
             ]
         responses_raw, human_entries = None, None
         if args.human_responses:
@@ -1013,6 +1028,10 @@ def main(argv=None):
                         help="Restrict PRIVATE human workroom to one non-authorizing HUMAN stage")
     parser.add_argument("--focus-bucket", choices=DATE_BUCKETS,
                         help="Restrict PRIVATE human workroom to one date bucket relative to --as-of")
+    parser.add_argument("--focus-day", metavar="YYYY-MM-DD",
+                        help="Restrict HUMAN planning to one exact originally proposed date")
+    parser.add_argument("--focus-kind", choices=KINDS,
+                        help="Restrict PRIVATE HUMAN workroom to one original fixed source kind")
     parser.add_argument("--private-explorer", action="store_true",
                         help="Add a CSP-pinned offline interactive PRIVATE HUMAN queue, no storage/network")
     parser.add_argument("--private-calendar", action="store_true",
