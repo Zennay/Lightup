@@ -898,7 +898,8 @@
       payload.status+" · REVIEW ONLY / HOLD")+"</strong><p>fictional_demo_only="+payload.fictional_demo_only+
       " · authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false · "+
       "authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
-      table+"<p>Every scenario is counted in exactly one category per metric and adjacent slot pair. "+
+      table+"<p>Every scenario is counted in exactly one category per metric and "+
+      (payload.selected_pair_scope==="all_pairs"?"selected manual-slot pair. ":"adjacent slot pair. ")+
       "No original scenario IDs, filenames, source hashes or HUMAN notes are included.</p></body></html>";
     if(new Blob([html]).size>4*1024*1024)return;
     download("assessment-trends-anonymous-flag-transitions-REVIEW-ONLY.html",html,"text/html");
