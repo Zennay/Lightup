@@ -2,6 +2,24 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** [Product issue #1596](https://github.com/Zennay/Lightup/issues/1596). This is a separate, strictly offline, private **human review** workspace. It is **not** a lab runner, evidence authenticator, scanner, tool dispatcher, access-grant issuer, consent validator, release system, or authority to touch a target.
 
+## Standalone source integrity during regeneration
+
+`python3 assessment-lineage/build_standalone.py` regenerates the one-file
+offline application from the checked-in `index.html`, `app.js` and
+`style.css` only. Exact singleton script/style source markers and forbidden
+HTML closing tags are checked with explicit fail-closed exceptions, **including
+when Python runs with optimization enabled** (where `assert` normally
+disappears). The regenerated app contains exact SHA-256 CSP script/style
+source pins and preserves all no-network/no-worker policy.
+
+The builder now writes to a temporary sibling file, fsyncs the complete
+public-code artifact and atomically replaces `standalone.html` only after
+source validation and complete publication; an interrupted build does not
+truncate the previous standalone file. This builds only **public offline
+application code**, never uploaded private client/lab content, never
+scans or executes an assessment. It is not independent browser approval,
+original source-owner review or authorization to deploy.
+
 ## Open the working product
 
 Download [standalone.html](standalone.html) and open it locally. It is an actual single-file HTML application with its own static JavaScript and stylesheet SHA-256 pinned in the Content Security Policy, with all connections, images, external scripts, forms, frames and workers disabled. Alternatively open [index.html](index.html) alongside its sibling [app.js](app.js) and [style.css](style.css). The app does **not** run a backend, send telemetry or persist files/cookies/localStorage. Closing the tab forgets all private state.
