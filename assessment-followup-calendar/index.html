@@ -117,23 +117,28 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <input id="recipientZone" type="text" maxlength="64" placeholder="e.g. Europe/London" autocomplete="off" spellcheck="false"></label>
 <button type="button" id="recipientExport" class="ghost" disabled>Export PRIVATE converted schedule (.csv)</button></div>
 <div class="toolbar">
-<label>Illustrative recipient workday status <select id="recipientView">
+<label>HUMAN-declared recipient local start <input id="recipientStart" type="time" min="06:00" max="20:30" step="900" value="09:00"></label>
+<label>HUMAN-declared recipient local end <input id="recipientEnd" type="time" min="06:30" max="21:00" step="900" value="17:00"></label>
+<label>HUMAN-declared days <select id="recipientDays"><option value="weekdays">Monday–Friday</option><option value="all">All seven weekdays</option></select></label>
+</div>
+<div class="toolbar">
+<label>Recipient local window status <select id="recipientView">
 <option value="all">All proposed HUMAN reminders</option>
-<option value="outside_hours">Outside 09:00–17:00 on weekdays</option>
-<option value="weekend">Weekend in selected zone</option>
-<option value="within_hours">Within illustrative weekday hours</option>
+<option value="outside_hours">Outside declared daily hours</option>
+<option value="weekend">Outside declared weekday policy</option>
+<option value="within_hours">Within declared recipient time window</option>
 </select></label>
 <label>HUMAN ordinal / group <input id="recipientQuery" type="search" maxlength="120" placeholder="PRIVATE local filter"></label>
 </div>
-<p class="subtle">For review only: Monday–Friday 09:00–17:00 is an illustrative time window, NOT a recipient's verified working hours, holidays or permission. End times include original proposed duration. Filters apply to the PRIVATE CSV export too.</p>
+<p class="subtle">For review only: 09:00–17:00 Monday–Friday is the DEFAULT manually adjustable HUMAN availability proposal, NOT independently verified recipient working hours, holidays or permission. No overnight windows; 15-minute increments, 06:00–21:00 range. End times include original proposed duration. Filters apply to the PRIVATE CSV export too.</p>
 <p id="recipientSummary" class="subtle" role="status" aria-live="polite">Type an IANA timezone to preview HUMAN reminders in another local zone.</p>
-<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone (start → end)</th><th>Illustrative window</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone (start → end)</th><th>HUMAN-declared window</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
 <p id="recipientRemainder" class="subtle"></p>
 <div class="row"><button id="recipientPrev" type="button" class="ghost" disabled>Previous matching reminders</button>
 <button id="recipientNext" type="button" class="ghost" disabled>Next matching reminders</button></div>
 <p class="subtle">The PRIVATE CSV includes original worksheet digest, anonymous original ordinals, unverified group labels and both local and converted times. Disclosure may reveal sensitive appointment patterns. Actual recipient locale and timezone rules are NOT authenticated. Never treat the converted date as accepted calendar delivery, scope or consent.</p>
 <details id="recipientProposalDetails"><summary>Preview LOCAL HUMAN common-hours adjustment — no external calendar</summary>
-<p>For up to 12 currently filtered, not-human-blocked reminders outside illustrative recipient weekday 09:00–17:00, search the next 30 local days for a later meeting satisfying BOTH illustrative recipient business hours and existing declared source-group weekday/blackout/window/cap rules. All proposals avoid already scheduled local appointments. A single unavailable ordinal blocks the complete preview. Then select only the ordinals you want to hand off or apply. Exact selected-only collision and declared-capacity gates run again before any local changes; the existing plan remains unchanged until separate HUMAN confirmation.</p>
+<p>For up to 12 currently filtered, not-human-blocked reminders outside the currently declared recipient local time window, search the next 30 local days for a later meeting satisfying BOTH manually declared recipient local availability and existing declared source-group weekday/blackout/window/cap rules. All proposals avoid already scheduled local appointments. A single unavailable ordinal blocks the complete preview. Then select only the ordinals you want to hand off or apply. Exact selected-only collision and declared-capacity gates run again before any local changes; the existing plan remains unchanged until separate HUMAN confirmation.</p>
 <div class="row">
 <button id="recipientPrepare" type="button">Prepare HUMAN common-hours moves</button>
 <button id="recipientApply" type="button" disabled>Apply SELECTED HUMAN draft moves (confirm)</button>

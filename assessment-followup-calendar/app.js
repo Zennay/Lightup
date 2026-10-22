@@ -441,14 +441,28 @@
       day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
     });
   }
+  function recipientHoursRule(){
+    const toMinutes=value=>{
+      hold(/^([01]\d|2[0-3]):[0-5]\d$/.test(value));
+      return Number(value.slice(0,2))*60+Number(value.slice(3,5));
+    };
+    const from=$("recipientStart").value,to=$("recipientEnd").value;
+    const first=toMinutes(from),last=toMinutes(to),days=$("recipientDays").value;
+    hold(["weekdays","all"].includes(days) && first>=360 &&
+      last<=1260 && first+30<=last && first%15===0 && last%15===0);
+    return {from,to,first,last,days};
+  }
   function recipientWindow(start,duration,clock){
     const fields=date=>Object.fromEntries(clock.formatToParts(date)
       .filter(part=>part.type!=="literal").map(part=>[part.type,part.value]));
     const a=fields(start),end=new Date(start.getTime()+Number(duration)*60000),b=fields(end);
-    const first=Number(a.hour)*60+Number(a.minute),last=Number(b.hour)*60+Number(b.minute);
+    const rule=recipientHoursRule(),first=Number(a.hour)*60+Number(a.minute);
+    const last=Number(b.hour)*60+Number(b.minute);
     const sameDate=a.year===b.year&&a.month===b.month&&a.day===b.day;
-    return ["Sat","Sun"].includes(a.weekday)||["Sat","Sun"].includes(b.weekday)?
-      "weekend":!sameDate||first<540||last>1020?"outside_hours":"within_hours";
+    return rule.days==="weekdays" &&
+      (["Sat","Sun"].includes(a.weekday)||["Sat","Sun"].includes(b.weekday))?
+      "weekend":!sameDate||first<rule.first||last>rule.last?
+      "outside_hours":"within_hours";
   }
   function recipientRows(){
     const fmt=recipientFormatter(),clock=recipientClock();
@@ -469,7 +483,8 @@
   }
   function recipientProposalIdentity(){
     return JSON.stringify([workroomFingerprint(),$("recipientZone").value,
-      $("recipientView").value,$("recipientQuery").value]);
+      $("recipientView").value,$("recipientQuery").value,
+      $("recipientStart").value,$("recipientEnd").value,$("recipientDays").value]);
   }
   function renderRecipientProposal(){
     const body=$("recipientProposalRows");body.replaceChildren();
@@ -606,7 +621,9 @@
         '<br><strong>Source local zone:</strong> '+htmlEsc(zone)+
         '<br><strong>Alternate display zone (unverified):</strong> '+
           htmlEsc(recipientFormatter().resolvedOptions().timeZone)+'</p>',
-      '<p>Illustrative alternate-zone Monday–Friday 09:00–17:00 only. Source-group hours and blackouts are HUMAN-declared, not independently verified. Appointments have NOT been changed or exported to an external calendar.</p>',
+      '<p>HUMAN-declared alternate-zone window: '+htmlEsc(recipientHoursRule().from)+
+        '–'+htmlEsc(recipientHoursRule().to)+' ('+
+        htmlEsc(recipientHoursRule().days)+'). All availability is unverified; no external calendar contact.</p>',
       '<table border="1"><thead><tr><th>Ordinal</th><th>Previous source-zone proposal</th><th>Next source-zone proposal</th><th>Duration</th><th>Unverified HUMAN group</th></tr></thead><tbody>',
       cells,'</tbody></table><p>Authority: FALSE · Consent: FALSE · Verification: FALSE · Applied: FALSE.</p>',
       '<p>Review original private HUMAN worksheet/plan and approve separately before local changes. Retain PRIVATE; original HUMANS may reveal confidential schedule metadata.</p>',
@@ -644,7 +661,7 @@
       hold(weekAvailabilityFlags(row,slot,daily).length===0 &&
         recipientWindow(eventDate(slot.day,slot.time),slot.duration,recipientClock())==="within_hours");
     }
-    if(!confirm("Apply exactly "+changedSlots.size+" PRIVATE HUMAN draft reminder moves? These are NON-authorizing proposals using ONLY illustrative recipient 09–17 hours and locally declared source-group availability. Previously exported external appointments are NOT updated or cancelled."))return;
+    if(!confirm("Apply exactly "+changedSlots.size+" PRIVATE HUMAN draft reminder moves? These are NON-authorizing proposals using ONLY current HUMAN-declared recipient hours and locally declared source-group availability. Previously exported external appointments are NOT updated or cancelled."))return;
     hold(recipientProposal&&recipientProposal.identity===recipientProposalIdentity());
     const priorSlots=new Map([...changedSlots].map(([ordinal])=>
       [ordinal,{...plan.get(ordinal)}]));
@@ -691,14 +708,15 @@
     $("recipientExport").disabled=!data.length;
     const warns=all.filter(r=>r.status!=="within_hours").length;
     $("recipientSummary").textContent=all.length+" tentative HUMAN proposals · "+
-      warns+" outside illustrative Monday–Friday 09:00–17:00 in "+
+      warns+" outside HUMAN-declared "+recipientHoursRule().from+"–"+
+      recipientHoursRule().to+" ("+recipientHoursRule().days+") in "+
       recipientFormatter().resolvedOptions().timeZone+" · "+data.length+
       " matching filter. Illustrative hours are NOT authenticated recipient availability.";
     for(const r of data.slice(recipientPage*35,recipientPage*35+35)){
       const tr=dom("tr"),b=dom("button","Edit #"+r.ordinal);
       b.type="button";b.addEventListener("click",()=>focusOrdinal(r.ordinal));
-      const notice=r.status==="weekend"?"Weekend":
-        r.status==="outside_hours"?"Outside 09–17":"Within 09–17";
+      const notice=r.status==="weekend"?"Outside declared weekdays":
+        r.status==="outside_hours"?"Outside declared hours":"Within declared window";
       tr.append(dom("td","#"+r.ordinal),
         dom("td",r.day+" "+r.time+" / "+zone),
         dom("td",r.converted+" → "+r.endConverted),
@@ -717,9 +735,12 @@
     const output=[["worksheet_sha256_unsigned","series_unsigned","source_zone",
       "display_zone_unverified","original_ordinal","human_group_unverified",
       "source_local_date","source_local_time","utc","other_zone_display",
-      "other_zone_end","illustrative_window_status","authorized","verified","consent"]];
+      "other_zone_end","human_declared_window_start","human_declared_window_end",
+      "human_declared_days","window_status_unverified","authorized","verified","consent"]];
     for(const row of rows)output.push([hash,seriesId,zone,target,row.ordinal,row.group,
-      row.day,row.time,row.utc,row.converted,row.endConverted,row.status,"false","false","false"]);
+      row.day,row.time,row.utc,row.converted,row.endConverted,
+      recipientHoursRule().from,recipientHoursRule().to,recipientHoursRule().days,
+      row.status,"false","false","false"]);
     download(makeCsv(output),"lightup-private-human-zone-handoff.csv","text/csv;charset=utf-8");
     inform("PRIVATE alternate-zone HUMAN schedule exported locally; no recipient or calendar contacted.");
   }
@@ -2943,6 +2964,9 @@
   hook("recipientDiscard","click",()=>{recipientProposal=null;recipientSelection.clear();
     renderRecipientProposal();
     $("recipientProposalDetails").open=false;inform("Unapplied HUMAN proposals discarded.");});
+  for(const input of ["recipientStart","recipientEnd","recipientDays"]){
+    hook(input,"change",()=>{recipientPage=0;renderRecipientZone();});
+  }
   hook("recipientZone","input",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientView","change",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientQuery","input",()=>{recipientPage=0;renderRecipientZone();});
