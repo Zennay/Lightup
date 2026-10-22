@@ -312,8 +312,13 @@ def build(destination: Path) -> int:
     st = parent.lstat()
     if not stat.S_ISDIR(st.st_mode) or stat.S_ISLNK(st.st_mode):
         raise Hold("HOLD: software destination parent must be an ordinary directory")
+    sidecar = destination.with_name(destination.name + ".sha256")
+    if "\n" in destination.name or "\r" in destination.name or "\\" in destination.name:
+        raise Hold("HOLD: package filename cannot be represented safely in a checksum sidecar")
     if destination.exists() or destination.is_symlink():
         raise Hold("HOLD: existing destination will never be replaced")
+    if sidecar.exists() or sidecar.is_symlink():
+        raise Hold("HOLD: existing checksum sidecar will never be replaced")
     originals = []
     manifest = []
     total = 0
@@ -373,8 +378,10 @@ def build(destination: Path) -> int:
         },
         **{flag: False for flag in FALSE_FLAGS},
     }, indent=2, ensure_ascii=False, sort_keys=True).encode("utf-8") + b"\n"
-    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                 getattr(os, "O_NOFOLLOW", 0), 0o600)
     completed = False
+    sidecar_created = False
     try:
         with os.fdopen(fd, "wb") as output:
             with ZipFile(output, mode="w", compression=ZIP_DEFLATED, compresslevel=9) as package:
@@ -392,14 +399,28 @@ def build(destination: Path) -> int:
             verify_package(destination, source_root=ROOT)
         except VerifyHold:
             raise Hold("HOLD: generated offline ZIP failed native inventory/source-parity verification") from None
+        zip_digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+        checksum = (zip_digest + "  " + destination.name + "\n").encode("utf-8")
+        sidecar_fd = os.open(sidecar, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                             getattr(os, "O_NOFOLLOW", 0), 0o600)
+        sidecar_created = True
+        with os.fdopen(sidecar_fd, "wb") as output:
+            os.fchmod(output.fileno(), 0o600)
+            output.write(checksum)
+            output.flush()
+            os.fsync(output.fileno())
         completed = True
         print(f"SOFTWARE-ONLY / REVIEW_ONLY: portable offline kit contains {len(files)} offline HUMAN studios + {len(originals)-len(files)} local support assets.")
         print("LOCAL ZIP: " + str(destination))
-        print("Unsigned SHA-256: " + hashlib.sha256(destination.read_bytes()).hexdigest())
+        print("Unsigned SHA-256: " + zip_digest)
+        print("SHA-256 sidecar: " + str(sidecar))
+        print("Sidecar is a convenience copy, not an independent trust anchor.")
         return 2
     finally:
         if not completed:
             destination.unlink(missing_ok=True)
+            if sidecar_created:
+                sidecar.unlink(missing_ok=True)
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Create software-only offline PRIVATE LightUp product ZIP")
