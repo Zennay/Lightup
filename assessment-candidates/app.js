@@ -863,6 +863,7 @@
       candidate_slot:i+1,source_status:r.sourceStatus,lab_case_count:ids.length,
       regressed_cases:stats[i].affected,metric_regressions:stats[i].regressionEvents,
       threshold_discussions:breaches(stats[i],settings).length,
+      threshold_discussion_reasons:breaches(stats[i],settings),
       scope_flags:stats[i].scope,policy_flags:stats[i].policy,
       metrics:Object.fromEntries(NAMES.map(n=>[n,{baseline_total:stats[i].total[n].baseline,
         candidate_total:stats[i].total[n].candidate,regressed_case_count:stats[i].total[n].adverse}])),
@@ -969,12 +970,17 @@
     if(!reports.length||!settings)return;
     const pareto=paretoSummary(),paretoBySlot=new Map(pareto.candidates.map(row=>[row.candidate_slot,row]));
     const head=["candidate_slot","source_status","regressed_cases","metric_regressions",
-      "threshold_discussions","scope_flags","policy_flags","fictional_demo_only","report_status",
+      "threshold_discussions","threshold_max_scope","threshold_max_policy",
+      "threshold_min_evidence_quality","threshold_min_assessed_coverage",
+      "threshold_max_runtime_seconds","threshold_max_compute_cost_usd","threshold_discussion_reasons",
+      "scope_flags","policy_flags","fictional_demo_only","report_status",
       "private_discussions_documented","private_discussions_in_progress",
       ...NAMES.map(n=>n+"_total"),"pareto_position","dominated_by_candidate_slots","pareto_dimensions",
       "authorized","consent_verified","dispatch_allowed","release_allowed"];
     const rows=metricRows().map(r=>[r.candidate_slot,r.source_status,r.regressed_cases,
-      r.metric_regressions,r.threshold_discussions,r.scope_flags,r.policy_flags,
+      r.metric_regressions,r.threshold_discussions,settings.maxScope,settings.maxPolicy,
+      settings.minQuality,settings.minCoverage,settings.maxRuntime,settings.maxCost,
+      r.threshold_discussion_reasons.join("; "),r.scope_flags,r.policy_flags,
       demo?"true":"false","REVIEW_ONLY",discussionSummary().stages.documented,
       discussionSummary().stages.in_discussion,...NAMES.map(n=>r.metrics[n].candidate_total),
       paretoBySlot.get(r.candidate_slot)?.position||"NOT_COMPUTED",
