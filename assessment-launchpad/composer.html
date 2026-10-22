@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-N49TL1/ebrFuQXtiCUi7DXe60kQ0qY44klOXaLvKc/Y='; style-src 'sha256-O3DeetiOr2PGN3ROfFkBTV3Nijv/R3hXW54fTkzzKgw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nFFi80zGa/muqa6yIv7RQGNem2rHlpfBWy+jbMpmYg4='; style-src 'sha256-O3DeetiOr2PGN3ROfFkBTV3Nijv/R3hXW54fTkzzKgw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}.row-actions select{width:auto;max-width:9rem;padding:.45rem}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}textarea,select{width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem}textarea{min-height:10rem;resize:vertical}label{font-weight:650}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
@@ -78,6 +78,7 @@
   const list = $("endpointList");
   let rowSequence = 0;
   let importSequence = 0;
+  let draftRevision = 0;
   let pendingImport = null;
   let undoAppliedImport = null;
   let masked = false;
@@ -131,6 +132,7 @@
     remove.addEventListener("click", () => {
       if (list.querySelectorAll("input").length === 1) input.value = "";
       else row.remove();
+      draftRevision++;
       refresh();
     });
     const buttons = document.createElement("div");
@@ -139,14 +141,20 @@
     up.type = "button"; up.className = "secondary"; up.textContent = "↑";
     up.setAttribute("aria-label", "Move endpoint earlier");
     up.addEventListener("click", () => {
-      if (row.previousElementSibling) list.insertBefore(row, row.previousElementSibling);
+      if (row.previousElementSibling) {
+        list.insertBefore(row, row.previousElementSibling);
+        draftRevision++;
+      }
       refresh();
     });
     const down = document.createElement("button");
     down.type = "button"; down.className = "secondary"; down.textContent = "↓";
     down.setAttribute("aria-label", "Move endpoint later");
     down.addEventListener("click", () => {
-      if (row.nextElementSibling) list.insertBefore(row.nextElementSibling, row);
+      if (row.nextElementSibling) {
+        list.insertBefore(row.nextElementSibling, row);
+        draftRevision++;
+      }
       refresh();
     });
     const slotTarget = document.createElement("select");
@@ -163,6 +171,7 @@
       const remainder = rows.filter(other => other !== row);
       remainder.splice(position - 1, 0, row);
       list.replaceChildren(...remainder);
+      draftRevision++;
       refresh();
       input.focus();
     });
@@ -170,7 +179,7 @@
     label.append(input);
     row.append(label, buttons);
     list.append(row);
-    input.addEventListener("input", refresh);
+    input.addEventListener("input", () => { draftRevision++; refresh(); });
     refresh();
   }
   function manifestBytes(entries = values()) {
@@ -378,6 +387,7 @@
     pendingImport = null;
     renderImportPreview();
     list.replaceChildren();
+    draftRevision++;
     rowSequence = 0;
     entries.forEach(item => addRow(item));
     undoAppliedImport = {previous, applied: entries.slice()};
@@ -399,6 +409,7 @@
     const previous = undoAppliedImport.previous.slice();
     undoAppliedImport = null;
     list.replaceChildren();
+    draftRevision++;
     rowSequence = 0;
     previous.forEach(item => addRow(item));
     refresh();
@@ -504,6 +515,7 @@
     renderImportPreview();
     if (!files.length) return;
     const baseline = values();
+    const baselineRevision = draftRevision;
     const mode = $("fileMode").value;
     try {
       if (files.length > 8) throw Error("Too many files");
@@ -520,7 +532,7 @@
         sourceTexts.push(text);
       }
       if (ticket !== importSequence || $("fileMode").value !== mode ||
-          values().length !== baseline.length ||
+          draftRevision !== baselineRevision || values().length !== baseline.length ||
           !values().every((value, index) => value === baseline[index])) {
         $("message").textContent = "Draft changed during file read; import cancelled and edits preserved.";
         return;
@@ -635,7 +647,7 @@
     renderImportPreview();
   });
   $("undoAppliedImport").addEventListener("click", restorePreviousImport);
-  $("addEndpoint").addEventListener("click", () => addRow(""));
+  $("addEndpoint").addEventListener("click", () => { draftRevision++; addRow(""); });
   $("downloadManifest").addEventListener("click", downloadManifest);
   $("downloadProposedManifest").addEventListener("click", downloadProposedManifest);
   $("applyManifestImport").addEventListener("click", applyManifestImport);
