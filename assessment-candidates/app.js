@@ -31,6 +31,12 @@
     operations:["human_interventions","tool_calls","runtime_seconds","compute_cost_usd"]};
   let discussions=new Map(),queueFocus=0,batchUndo=null;
   let reviewRounds=null; // Two explicit PRIVATE HUMAN drafts; no data leaves the browser.
+  // Every local file read belongs to one generation. New intent (including
+  // Forget or Demo) cancels previously pending reads before they can commit.
+  let fileGeneration=0;
+  const beginFileRead=()=>++fileGeneration;
+  const cancelPendingFiles=()=>{fileGeneration++;};
+  const assertCurrentFile=generation=>assert(generation===fileGeneration);
 
 
   // Unlike JSON.parse, reject repeated JSON keys (including escaped aliases) at every depth.
@@ -697,36 +703,40 @@
     $("caseDetail").innerHTML=table(["Candidate","Baseline","Candidate metric","Change","Reported classification"],rows);
   }
   async function importFiles(files){
+    const generation=beginFileRead();
     try{
       assert(files.length>=2&&files.length<=12);
       const next=[],hashes=[],meta=[];
       for(const file of files){
         assert(file.size>0&&file.size<=262144);
         const bytes=await file.arrayBuffer();
+        assertCurrentFile(generation);
         assert(bytes.byteLength>0&&bytes.byteLength<=262144);
         const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
-        const sha=await hashBytes(bytes);hashes.push(sha);
+        const sha=await hashBytes(bytes);assertCurrentFile(generation);hashes.push(sha);
         meta.push({bytes:bytes.byteLength,sha,alias:""});
         next.push(decodeReport(strictJSON(source)));
       }
-      compatible(next);clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
+      compatible(next);assertCurrentFile(generation);
+      clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
       reports=next;sourceMeta=meta;sourceHashes=hashes.every(h=>typeof h==="string")?hashes:[];demo=false;selectedCase="";
-      $("draftMessage").textContent=sourceHashes.length?"Private restore available only for identical source bytes.":"WebCrypto unavailable: private draft save/restore disabled.";
+      $("draftMessage").textContent=sourceHashes.length?"Private restore available only for identical source bytes.":"HOLD: source-byte digest unavailable; private draft save/restore disabled.";
       setStatus("Accepted "+next.length+" compatible, unverified lab comparison files. All remain non-authorizing.");
       render();
-    }catch(_){setStatus("HOLD: at least one source is malformed, mismatched, repeated or oversized. Existing workspace preserved.",true);}
+    }catch(_){if(generation===fileGeneration)setStatus("HOLD: at least one source is malformed, mismatched, repeated or oversized. Existing workspace preserved.",true);}
   }
   async function appendCandidate(file){
+    const generation=beginFileRead();
     try{
       assert(reports.length>=2&&reports.length<12&&!demo&&file&&
         file.size>0&&file.size<=262144);
-      const bytes=await file.arrayBuffer();
+      const bytes=await file.arrayBuffer();assertCurrentFile(generation);
       assert(bytes.byteLength>0&&bytes.byteLength<=262144);
       const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const candidate=decodeReport(strictJSON(source));
       const newReports=[...reports,candidate];
       compatible(newReports);
-      const hash=await hashBytes(bytes);
+      const hash=await hashBytes(bytes);assertCurrentFile(generation);
       const newHashes=sourceHashes.length===reports.length&&hash?
         [...sourceHashes,hash]:[];
       clearReviewRounds();reports=newReports;sourceHashes=newHashes;
@@ -736,7 +746,7 @@
         "Private draft save disabled: original hashes unavailable.";
       setStatus("One compatible, previously finished unverified lab candidate appended. All source safety flags preserved.");
       render();
-    }catch(_){setStatus("HOLD: incompatible, duplicate, malformed or oversized append. Existing workspace preserved.",true);}
+    }catch(_){if(generation===fileGeneration)setStatus("HOLD: incompatible, duplicate, malformed or oversized append. Existing workspace preserved.",true);}
   }
   function fictional(){
     const ids=["fictional-case-A","fictional-case-B","fictional-case-C","fictional-case-D"];
@@ -767,6 +777,7 @@
     });
   }
   function demoLoad(){
+    cancelPendingFiles();
     try{const next=fictional().map(decodeReport);compatible(next);clearReviewRounds();discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
       reports=next;sourceMeta=[];sourceHashes=[];demo=true;
       $("draftMessage").textContent="Private source-bound drafts are unavailable for fictional demo.";
@@ -1145,10 +1156,13 @@
     }catch(_){$("draftMessage").textContent="HOLD: invalid local review selection, private draft not saved.";}
   }
   async function restoreDraft(file){
+    const generation=beginFileRead();
     try{
       assert(file&&file.size>0&&file.size<=32768);
-      const source=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
-      const x=checkDraft(strictJSON(source));
+      const bytes=await file.arrayBuffer();assertCurrentFile(generation);
+      assert(bytes.byteLength>0&&bytes.byteLength<=32768);
+      const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      const x=checkDraft(strictJSON(source));assertCurrentFile(generation);
       // Atomic validation already completed before changing live review state.
       const ids=queueIds(),next=new Map();
       for(const row of x.discussions||[])next.set(ids[row.ordinal-1],
@@ -1163,7 +1177,7 @@
       $("metricSelect").value=x.focus.metric;
       render();
       $("draftMessage").textContent="PRIVATE source-bound settings and discussion state restored. No grant, consent or permission created.";
-    }catch(_){$("draftMessage").textContent="HOLD: changed, malformed or incompatible PRIVATE draft. Workspace unchanged.";}
+    }catch(_){if(generation===fileGeneration)$("draftMessage").textContent="HOLD: changed, malformed or incompatible PRIVATE draft. Workspace unchanged.";}
   }
 
   // Offline, separately chosen, unsigned HUMAN discussion rounds from identical
@@ -1267,13 +1281,14 @@
         nice(rows[ordinal-1].stage)]));
   }
   async function compareReviewRounds(files){
+    const generation=beginFileRead();
     try{
       assert(files.length>=2&&files.length<=8&&!demo&&reports.length>=2&&
         sourceHashes.length===reports.length);
       const drafts=[];
       for(const file of files){
         assert(file&&file.size>0&&file.size<=32768);
-        const bytes=await file.arrayBuffer();
+        const bytes=await file.arrayBuffer();assertCurrentFile(generation);
         assert(bytes.byteLength>0&&bytes.byteLength<=32768);
         const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
         const draft=checkDraft(strictJSON(raw));
@@ -1295,7 +1310,8 @@
         if(transitions)diff.push({ordinal:i+1,before:before[i],after:after[i],
           transitions});
       }
-      // All admission and source binding above must succeed before replacing view.
+      // Only the latest complete source-bound selection may replace the live view.
+      assertCurrentFile(generation);
       reviewRounds={hashes:[...sourceHashes],before,after,diff,
         snapshots,selected:new Set(),focused:0,
         rounds:drafts.length,totalTransitions,settingChanges};
@@ -1304,7 +1320,8 @@
         "Only ordinal discussion changes shown. No identity, consent or reviewer chronology verified.";
       displayReviewRounds();
     }catch(_){
-      $("roundsMessage").textContent="HOLD: original source bytes, HUMAN schema or size mismatch. "+
+      if(generation===fileGeneration)$("roundsMessage").textContent=
+        "HOLD: original source bytes, HUMAN schema or size mismatch. "+
         "Prior local comparison and workspace are unchanged.";
     }
   }
@@ -1423,6 +1440,7 @@
     render();
   }
   function forget(){
+    cancelPendingFiles();
     clearReviewRounds();
     reports=[];sourceMeta=[];sourceHashes=[];demo=false;selectedCase="";settings=null;
     discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
