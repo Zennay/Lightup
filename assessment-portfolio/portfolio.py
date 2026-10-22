@@ -405,6 +405,9 @@ def render_private_html(summary, rows):
          if "proposed_review_day" in selected_view else "") +
         (" · source kind " + escape(selected_view["source_kind"])
          if "source_kind" in selected_view else "") +
+        (" · day window " + escape(selected_view["proposed_date_from"]) + " to " +
+         escape(selected_view["proposed_date_through"])
+         if "proposed_date_from" in selected_view else "") +
         ". Counts and rows apply only to this explicit selection, not all admitted agendas.</p>"
         if selected_view else ""
     )
@@ -655,7 +658,10 @@ def render_private_day_brief(summary, rows):
         (" / proposed day " + escape(selected["proposed_review_day"])
          if "proposed_review_day" in selected else "") +
         (" / kind " + escape(selected["source_kind"])
-         if "source_kind" in selected else "")
+         if "source_kind" in selected else "") +
+        (" / proposed window " + escape(selected["proposed_date_from"]) + " to " +
+         escape(selected["proposed_date_through"])
+         if "proposed_date_from" in selected else "")
         if selected else "All admitted HUMAN items"
     )
     empty = (
@@ -946,6 +952,15 @@ def run(args):
     if not hasattr(os, "O_NOFOLLOW"):
         raise Hold("platform lacks no-follow file support")
     reference_day = parse_date(args.as_of)
+    if bool(args.focus_from) != bool(args.focus_through):
+        raise Hold("planning window needs both first and last proposed dates")
+    if args.focus_day and args.focus_from:
+        raise Hold("select either one original proposed date or a date window")
+    first_day = last_day = None
+    if args.focus_from:
+        first_day, last_day = parse_date(args.focus_from), parse_date(args.focus_through)
+        if first_day > last_day or (last_day - first_day).days > 90:
+            raise Hold("planning window must be ordered and no longer than 91 days")
     if bool(args.agendas_file) == bool(args.agendas):
         raise Hold("choose either --agendas-file or 2–12 positional source agendas")
     manifest_path = None
@@ -974,7 +989,8 @@ def run(args):
             if common in (output_path, source_dir):
                 raise Hold("output directory must be separate from source rooms")
         selection = None
-        if args.focus_role or args.focus_stage or args.focus_bucket or args.focus_day or args.focus_kind:
+        if (args.focus_role or args.focus_stage or args.focus_bucket or args.focus_day
+            or args.focus_kind or first_day is not None):
             selection = {
                 "neutral_role": args.focus_role or "ALL",
                 "human_stage": args.focus_stage or "ALL",
@@ -984,6 +1000,9 @@ def run(args):
                 selection["proposed_review_day"] = parse_date(args.focus_day).isoformat()
             if args.focus_kind:
                 selection["source_kind"] = args.focus_kind
+            if first_day is not None:
+                selection["proposed_date_from"] = first_day.isoformat()
+                selection["proposed_date_through"] = last_day.isoformat()
             rows = [
                 row for row in rows
                 if (not args.focus_role or row["next_role"] == args.focus_role)
@@ -991,6 +1010,8 @@ def run(args):
                 and (not args.focus_bucket or row["date_bucket"] == args.focus_bucket)
                 and (not args.focus_day or row["review_date"] == selection["proposed_review_day"])
                 and (not args.focus_kind or row["source_kind"] == args.focus_kind)
+                and (first_day is None or (row["review_date"] is not None and
+                     first_day.isoformat() <= row["review_date"] <= last_day.isoformat()))
             ]
         responses_raw, human_entries = None, None
         if args.human_responses:
@@ -1063,6 +1084,10 @@ def main(argv=None):
                         help="Restrict PRIVATE human workroom to one date bucket relative to --as-of")
     parser.add_argument("--focus-day", metavar="YYYY-MM-DD",
                         help="Restrict HUMAN planning to one exact originally proposed date")
+    parser.add_argument("--focus-from", metavar="YYYY-MM-DD",
+                        help="Include original HUMAN review dates from this day (requires --focus-through)")
+    parser.add_argument("--focus-through", metavar="YYYY-MM-DD",
+                        help="Include original HUMAN review dates through this day (max 91 calendar days)")
     parser.add_argument("--focus-kind", choices=KINDS,
                         help="Restrict PRIVATE HUMAN workroom to one original fixed source kind")
     parser.add_argument("--private-explorer", action="store_true",
