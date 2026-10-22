@@ -25,6 +25,7 @@ MAX_NOTE = 160
 JS = r'''"use strict";
 const boot = document.getElementById("worksheet-seed");
 const data = JSON.parse(boot.textContent);
+const original = JSON.parse(JSON.stringify(data));
 boot.remove();
 const rows = document.querySelector("#humanRows");
 const stages = ["PENDING_HUMAN", "DISCUSSING", "AWAITING_ORIGINAL", "DOCUMENTED_DISCUSSION"];
@@ -58,6 +59,65 @@ for (const entry of data.entries) {
   rows.append(tr);
 }
 const state = document.getElementById("savedState");
+const progress = document.getElementById("humanProgress");
+const reportProgress = () => {
+  const changes = data.entries.filter((entry, index) =>
+    entry.human_status !== original.entries[index].human_status ||
+    entry.proposed_role !== original.entries[index].proposed_role || entry.note.length > 0
+  ).length;
+  const nonempty = data.entries.filter(entry => entry.note.length > 0).length;
+  progress.textContent = changes + " of " + data.entries.length +
+    " local HUMAN discussions changed; " + nonempty + " PRIVATE notes. Unverified and unsaved until explicit download.";
+};
+rows.addEventListener("input", reportProgress);
+rows.addEventListener("change", reportProgress);
+const exactKeys = (one, two) => JSON.stringify(Object.keys(one).sort()) ===
+  JSON.stringify(Object.keys(two).sort());
+document.getElementById("restoreWorksheet").addEventListener("change", async event => {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = "";
+  if (!file) return;
+  if (file.size < 1 || file.size > 262144) {
+    state.textContent = "HOLD: PRIVATE worksheet file exceeds accepted byte limits."; return;
+  }
+  let imported;
+  try { imported = JSON.parse(await file.text()); }
+  catch (_) { state.textContent = "HOLD: PRIVATE HUMAN JSON cannot be read."; return; }
+  if (!imported || typeof imported !== "object" || Array.isArray(imported) ||
+      !exactKeys(imported, original) || !Array.isArray(imported.entries) ||
+      imported.entries.length !== original.entries.length ||
+      !Object.keys(original).filter(key => key !== "entries").every(key =>
+        JSON.stringify(imported[key]) === JSON.stringify(original[key]))) {
+    state.textContent = "HOLD: original source binding or HUMAN worksheet envelope changed."; return;
+  }
+  const immutable = ["agenda_slot", "source_slot", "source_kind", "source_stage",
+    "source_next_role", "proposed_review_date", "date_bucket"];
+  const safeNote = note => typeof note === "string" && note.length <= 160 &&
+    !/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/u.test(note);
+  const valid = imported.entries.every((entry, index) => entry &&
+    typeof entry === "object" && !Array.isArray(entry) &&
+    exactKeys(entry, original.entries[index]) &&
+    immutable.every(key => entry[key] === original.entries[index][key]) &&
+    stages.includes(entry.human_status) && roles.includes(entry.proposed_role) &&
+    safeNote(entry.note));
+  if (!valid) {
+    state.textContent = "HOLD: row values or HUMAN-only fields are invalid."; return;
+  }
+  // Whole document accepted atomically; never apply an invalid partial import.
+  imported.entries.forEach((entry, index) => {
+    Object.assign(data.entries[index], {
+      human_status: entry.human_status, proposed_role: entry.proposed_role, note: entry.note
+    });
+    const tr = rows.children[index];
+    const selects = tr.querySelectorAll("select");
+    selects[0].value = entry.human_status;
+    selects[1].value = entry.proposed_role;
+    tr.querySelector("textarea").value = entry.note;
+  });
+  reportProgress();
+  state.textContent = "PRIVATE HUMAN worksheet reopened locally. Native source/JSON admission is still required before a new bundle.";
+});
+reportProgress();
 document.getElementById("saveWorksheet").addEventListener("click", () => {
   for (const entry of data.entries) {
     if (entry.note.length > 160 || /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/u.test(entry.note)) {
@@ -178,6 +238,9 @@ def render_worksheet(rows, reference_date):
         "<th>Original role suggestion</th><th>Original HUMAN stage</th>"
         "<th>New HUMAN discussion state</th><th>Proposed role</th><th>PRIVATE note (max 160)</th>"
         "</tr></thead><tbody id='humanRows'></tbody></table></div>"
+        "<p id='humanProgress' role='status' aria-live='polite'></p>"
+        "<label for='restoreWorksheet'>Reopen earlier PRIVATE HUMAN draft (source-bound, no upload)</label> "
+        "<input id='restoreWorksheet' type='file' accept='.json,application/json'> "
         "<button type='button' id='saveWorksheet'>Download private HUMAN response JSON</button>"
         "<p id='savedState' role='status' aria-live='polite'></p></section>"
         "<footer>No network, cookies, local storage, actual assignment, scan, grant or release.</footer>"
