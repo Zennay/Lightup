@@ -657,3 +657,60 @@ HUMAN proposals, never an observed reviewer availability, an authenticated
 assignment, a security risk conclusion, approved scope, proof of consent,
 HUMAN GO, scan or launch. The original owner, privacy/security and hosted /
 permanently registered VPS CI gates and #177/#182/#829 remain binding.
+
+
+## Alternative declared-capacity scenario (PRIVATE HUMAN comparison)
+
+The capacity desk can now compare **two separately and explicitly entered**
+neutral-role/day workload assumptions over the **same** original PRIVATE
+agenda selection. Pass `--alternate-daily-capacity N` (1–128 proposed
+HUMAN discussion items/role/day), optionally followed by individual
+`--alternate-role-capacity ROLE=N` overrides. Alternative overrides
+without a second default or a second scenario without the
+`--private-capacity-plan` base are rejected before any output.
+
+```bash
+mkdir -m 700 /private/role-day-scenario-review
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-22 \
+  --focus-from 2026-10-26 \
+  --focus-through 2026-11-01 \
+  --private-home \
+  --private-capacity-plan \
+  --daily-capacity 3 \
+  --role-capacity privacy=2 \
+  --alternate-daily-capacity 5 \
+  --alternate-role-capacity privacy=3 \
+  --output-dir /private/role-day-scenario-review \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+Besides the original PRIVATE capacity overview and CSV, this creates:
+
+- `assessment-portfolio-private-capacity-comparison.html` —
+  printable, **scriptless CSP-hash-pinned** first-vs-alternative assumption
+  table for each originally proposed date and neutral role, with original
+  source-ordinal links and aggregate arithmetic difference.
+- `assessment-portfolio-private-capacity-comparison.csv` —
+  PRIVATE date/role/ordinal values, both manually entered limits, both
+  counts above those limits and their mathematical difference. This is a
+  human-only spreadsheet, **not** a counts-only anonymous export.
+
+Source rows without original proposed dates remain excluded from both
+daily counts and are displayed as undated totals; they are never assigned
+invented deadlines. Neither scenario proves real reviewer availability,
+assignments, authentic client consent, actual improvement, work completion,
+a security finding or authority to run a scan. An apparently smaller
+arithmetic excess is **not** independent operational validation.
+
+Both alternative artifacts are present only with an explicit alternative
+scenario, remain exclusive owner-private mode 0600 in the 0700 output
+directory, and are included in the original byte-for-byte
+`--verify-output-dir` reopen. Reopening requires **the exact same first
+and alternative capacity flags**. The existing scriptless PRIVATE home
+includes both files under fixed names and never posts to a service.
+This draft remains INCUBATE M3/M7 · PLAN/LAB ONLY / DRAFT-HOLD until
+original source-owner, security/privacy, hosted/named-runner CI,
+#177/#182/#829, authenticated separate current client/operator consent,
+revocation-at-action and explicit HUMAN GO requirements are satisfied.
