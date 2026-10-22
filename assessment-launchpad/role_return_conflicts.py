@@ -31,6 +31,7 @@ PREPARE = (
 RESOLVED = (
     "lightup-lab-human-conflict-resolved-private.json",
     "lightup-lab-human-conflict-source-context.json",
+    "lightup-lab-human-conflict-decisions-private.csv",
     "START-HERE-CONFLICT-PRIVATE.txt",
 )
 HEADER = ("source_set_sha256", "original_slot", "eligible_packet_numbers", "chosen_packet_number")
@@ -150,6 +151,7 @@ def guide(resolved):
         "LIGHTUP PRIVATE HUMAN RETURN OVERLAP — " + mode + "\n"
         "INCUBATE M3/M7 · DRAFT/HOLD · REVIEW_ONLY · NO AUTHORIZATION\n"
         "All original PRIVATE inputs and reviewer roles are UNSIGNED.\n"
+        "Resolved output includes an ordinal-only PRIVATE decision ledger CSV.\n"
         "The operator MUST consciously select exactly one original packet\n"
         "for EACH overlapping source slot; no automatic precedence is allowed.\n"
         "Never rewrite original packets. Overlap choice proves no consent or fix.\n"
@@ -197,6 +199,20 @@ def resolve_files(rounds, endpoints, digest, packets, fingerprint, decisions):
             packets[chosen - 1][1]["human_rows"][slot])
     validate_worksheet(full, digest, len(endpoints))
     source = canonical(full)
+    # Explicit ordinal choice is owner-private and deterministic. No endpoint
+    # values, note text, recipient identity or paths enter this decision ledger.
+    journal = io.StringIO(newline="")
+    ledger = csv.writer(journal, lineterminator="\n")
+    ledger.writerow(("original_slot", "manually_selected_packet_number",
+                     "eligible_original_packet_numbers", "chosen_human_stage",
+                     "private_note_changed"))
+    for slot in sorted(choice_map):
+        picked = choice_map[slot]
+        original = rounds[-1]["human_rows"][slot]
+        chosen = full["human_rows"][slot]
+        ledger.writerow((slot + 1, picked, "|".join(map(str, grouped[slot])),
+                         chosen["stage"], "YES" if original["note"] != chosen["note"] else "NO"))
+    ledger_bytes = journal.getvalue().encode("utf-8")
     context = canonical({
         "schema": "lightup.assessment_launchpad_private_human_conflict_context.v1",
         "status": "REVIEW_ONLY",
@@ -205,13 +221,14 @@ def resolve_files(rounds, endpoints, digest, packets, fingerprint, decisions):
         "manual_conflict_count": len(choice_map),
         "source_packet_count": len(packets),
         "manual_choice_sha256": sha256(decisions).hexdigest(),
+        "private_decision_ledger_sha256": sha256(ledger_bytes).hexdigest(),
         "owner_worksheet_sha256": sha256(source).hexdigest(),
         "identity_verified": False,
         "authorization_granted": False,
         "human_go": False,
         **{key: False for key in FLAGS},
     })
-    return dict(zip(RESOLVED, (source, context, guide(True))))
+    return dict(zip(RESOLVED, (source, context, ledger_bytes, guide(True))))
 
 
 def main(argv=None):

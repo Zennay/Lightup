@@ -111,3 +111,17 @@ No target interaction, network call, scanner, model, grant, authorization,
 remediation verification or deployment occurs. Original separate real client
 and operator consent, action-time revocation, independent privacy/security
 review, permanent CI, source-owner and HUMAN GO remain release requirements.
+
+## Permanent PRIVATE HUMAN decision ledger
+
+A fully resolved conflict result now includes exactly four owner-private 0600
+files: the full canonical HUMAN worksheet, source-bound context JSON, a new
+lightup-lab-human-conflict-decisions-private.csv ledger, and the owner guide.
+The ledger shows the local ordinal, manually chosen original packet number,
+all eligible original packet numbers, chosen self-reported HUMAN stage, and
+whether the PRIVATE note changed. No original URL, note text, recipient
+identity or source path is present in the ledger. The context stores its
+SHA-256 fingerprint, and read-only reopen regenerates and compares the
+complete four-file packet against the unchanged original source and manually
+selected reply CSV. These are local UNSIGNED provenance facts, not consent,
+authentication, a remediation verdict or HUMAN GO.
