@@ -110,7 +110,7 @@ def admit_json(raw: bytes, catalog: bool) -> None:
     else:
         if set(obj) != {"status", "regressed_scenarios", "comparisons", *FLAGS}:
             fail()
-        if obj["status"] not in {"HOLD", "REVIEW_ONLY"}:
+        if type(obj["status"]) is not str or obj["status"] not in {"HOLD", "REVIEW_ONLY"}:
             fail()
         if type(obj["comparisons"]) is not list or not 1 <= len(obj["comparisons"]) <= 64:
             fail()
@@ -129,7 +129,7 @@ def admit_private_draft(raw: bytes, catalog: bytes, reports: list[bytes]) -> Non
     if type(obj) is not dict or obj.get("status") != "PRIVATE_HUMAN_DRAFT_ONLY":
         fail()
     version = obj.get("schema")
-    if version not in {"lightup.assessment_lineage_private_draft.v1",
+    if type(version) is not str or version not in {"lightup.assessment_lineage_private_draft.v1",
                        "lightup.assessment_lineage_private_draft.v2",
                        "lightup.assessment_lineage_private_draft.v3"}:
         fail()
