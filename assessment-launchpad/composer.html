@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-UOh/NPgrqLu5BMi2hS9AW24/Cs5tQiSXJvRLmVpYQtE='; style-src 'sha256-iC9m6PUh4qkSTPditHJnCQiSpG60mrT7lDScBNA86M4='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Z1ts08waQ8fIHvYM23mnBg5i/DB+19NSc7MGjMzSKFs='; style-src 'sha256-iC9m6PUh4qkSTPditHJnCQiSpG60mrT7lDScBNA86M4='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
 <title>LightUp · Isolated Lab Launchpad</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
 </head>
@@ -359,10 +359,21 @@
         blankLines, commentLines, trimmedLines, requiresAck, normalizationAcknowledged: !requiresAck};
       renderImportPreview();
       $("message").textContent = "Review the proposed import below. Current editor remains unchanged until Apply.";
-    } catch (_) {
+    } catch (error) {
       if (ticket !== importSequence) return;
+      const reason = error && typeof error.message === "string" ? error.message : "";
+      const details = {
+        "Too large or empty": "Choose a non-empty file no larger than 16 KiB.",
+        "BOM or NUL": "UTF-8 BOM and NUL characters are not accepted.",
+        "Enter 1–16 endpoint URLs.": "Include between 1 and 16 endpoint lines.",
+        "Fill every row with bounded literal text; remove blank rows and whitespace.": "Remove empty endpoint values and leading/trailing endpoint whitespace.",
+        "Manifest exceeds the native CLI 16 KiB limit.": "The canonical endpoint manifest exceeds the native CLI 16 KiB limit.",
+        "Duplicate literal endpoint values are not allowed.": "Remove duplicate endpoint values.",
+        "Use HTTP(S) URLs without credentials or fragments.": "Use literal HTTP(S) URLs without credentials or fragments.",
+        "One or more entries are not syntactically valid HTTP(S) URLs.": "One or more endpoint lines are not valid HTTP(S) URLs."
+      };
       $("message").textContent = "Import refused; your existing editor was preserved. " +
-        "Use a bounded canonical UTF-8 text manifest without BOM, NUL or duplicates.";
+        (details[reason] || "The file could not be read as strict UTF-8. Use a bounded UTF-8 text manifest without BOM or NUL.");
     }
   }
   $("chooseManifest").addEventListener("click", () => $("manifestImport").click());
