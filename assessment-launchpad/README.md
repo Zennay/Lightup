@@ -139,6 +139,23 @@ The original source plans/history and **all three files** of the prior HUMAN ret
 
 The original source/auth/consent/revocation/HUMAN GO requirements are unchanged. A copied status, including `HUMAN_REVIEWED`, is always a non-authorizing HUMAN work note and never authorizes assessment or verifies remediation.
 
+### Full PRIVATE HUMAN review timeline across 2–8 chained rounds
+
+`manifest_history_rounds.py` extends the two-round comparison into an ordered **2–8-round HUMAN review timeline**, without rerecording original findings or contacting targets. It re-admits all original PRIVATE combined-plan bundles and their saved source-bound history, then independently reopens every complete PRIVATE HUMAN return (receipt, scriptless print HTML and counts). The **first round must be the original v1 return**; each subsequent v2 continuation must contain the exact unsigned SHA-256 of the immediately preceding return. Missing rounds, incorrect ordering and altered saved source bytes fail closed. This verifies **local byte consistency only**, not the operator's identity, trustworthy chronology or approval.
+
+```sh
+mkdir -m 700 ~/private-human-timeline
+python3 assessment-launchpad/manifest_history_rounds.py \
+  --plan-dir ~/private-plan-one --plan-dir ~/private-plan-two \
+  --history-dir ~/private-plan-history \
+  --round-dir ~/private-human-return-one \
+  --round-dir ~/private-human-return-two \
+  --round-dir ~/private-human-return-three \
+  --output-dir ~/private-human-timeline
+```
+
+The separate empty owner-private 0700 output directory receives three exclusive mode-0600 artifacts: `lightup-human-timeline-private.json` (source-bound unsigned per-round digests, original ordinal identities and all stage transitions), `lightup-human-timeline-private.html` (a scriptless SHA-CSP-pinned, horizontally scrollable HUMAN stage table with no URLs, paths, file names or source hashes) and `lightup-human-timeline-counts-private.csv` (per-round HUMAN stage and transition counts). Reopen without writing by replacing `--output-dir` with `--verify-output-dir` and keeping **exactly** the same original plan/history/round arguments. Even an all-HUMAN_REVIEWED series proves neither remediation nor approval; the source-owner, independent security/privacy, actual separate authenticated client/operator consent, action-time revocation and HUMAN GO gates remain intact. No scanning, DNS, subprocess, model, grant or target execution is performed.
+
 ### Compare two PRIVATE HUMAN follow-up rounds on the same manifest history
 
 `manifest_history_followup.py` completes the offline multi-round workflow. Given **exactly the same original ordered saved plans and original PRIVATE history**, it reopens two separately saved three-file HUMAN return bundles, validates their original row identities, byte-canonical private JSON, exact scriptless HTML and counts, source-history digest binding and all false authority flags. The inputs may be returned through either the stage CLI or previously edited PRIVATE CSV; locally stored input digests remain unsigned and cannot independently prove who edited the responses.
