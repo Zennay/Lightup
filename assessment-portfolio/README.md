@@ -118,6 +118,64 @@ Operator-selected list order is never interpreted as authentic chronology.
 The manifest is sensitive because it contains local private paths: it is
 never written into the four derived portfolio artifacts.
 
+## Offline interactive HUMAN explorer and tentative calendar
+
+The original four-file workroom remains unchanged by default. You may
+explicitly add either or both PRIVATE artifacts to a **new** mode-0700 workroom
+with `--private-explorer` and `--private-calendar`. Never use these options
+to overwrite an existing packet: all outputs use exclusive mode-0600 writes.
+
+```bash
+mkdir -m 700 /private/local-human-workroom
+python3 assessment-portfolio/portfolio.py \
+  --agendas-file /private/agenda-selection.txt \
+  --as-of 2026-10-22 \
+  --private-explorer \
+  --private-calendar \
+  --output-dir /private/local-human-workroom
+```
+
+**Interactive PRIVATE explorer**:
+`assessment-portfolio-private-explorer.html` opens without a web service and
+enhances the existing role-grouped work tables with client-side filtering by
+neutral role, non-authorizing HUMAN stage, proposed date category, and fixed
+human-question/ordinal text. Visible-item totals update locally; clearing
+filters restores the original admitted table. JavaScript is an exact
+SHA-256 CSP-pinned fixed source string, with no network, external assets,
+browser persistence, automatic dispatch, scanner, storage, or permission
+creation. The original `assessment-portfolio-private.html` remains
+**scriptless** and still comes in the packet.
+
+**Calendar of PRIVATE human proposals**:
+`assessment-portfolio-private-proposals.ics` contains only previously
+entered proposed dates and fixed-vocabulary ordinal/role/stage labels.
+Undated proposals are **not given invented deadlines** or calendar entries.
+Each dated entry is an all-day, tentative, transparent (nonblocking)
+HUMAN discussion reminder. There are no attendees, meeting invites,
+alarms, organizer fields, target addresses, actual client names, case IDs,
+HUMAN notes, original paths or scanner instructions. The calendar's
+deterministic DTSTAMP uses the explicit `--as-of` reference day at midnight
+UTC **only as a technical reproducibility marker**: it does not prove
+when any real meeting, original assessment or human decision occurred.
+
+The CLI never connects to a calendar or synchronizes the file. **Importing
+a private .ics into a third-party calendar may send planning metadata to
+that provider**. Review recipients, privacy and synchronization settings
+outside this tool before choosing to import it. It does not create consent,
+a real deadline, an assignment, a work order, or permission to scan.
+
+With neither option there are exactly four output files; selecting one
+adds exactly one, selecting both adds two. All have the same owner-only
+permissions, exclusive publication, full canonical read-only reopen and
+original-source-drift safeguards. To reopen exactly the same optional
+packet, repeat its original source selection/order, reference day, optional
+focus flags, `--private-explorer`, `--private-calendar`, and add
+`--verify-output-dir`. Missing, extra, changed or owner-unsafe outputs
+cause HOLD; no regeneration silently overwrites them. Every individual
+artifact is bounded to 1 MiB. Focused workrooms generate explorer/calendar
+rows from **only the selected HUMAN rows**, and the counts-only exports
+still identify the chosen explicit view filter.
+
 ## Interpretation and safety
 
 - Input agenda exports are untrusted claims. Strict schema admission is not source authentication, reviewer authentication, customer identity, consent or security validation.
