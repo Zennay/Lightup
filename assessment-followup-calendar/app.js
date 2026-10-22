@@ -30,6 +30,7 @@
   let conflictProposal=null;
   let lastIcsSequence=0;
   let recipientPage=0;
+  let recipientProposal=null;
   const decoder = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}); // Preserve U+FEFF so each admission boundary can reject a leading BOM.
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -431,28 +432,31 @@
       hour:"2-digit",minute:"2-digit",hourCycle:"h23",timeZoneName:"shortOffset"
     });
   }
-  function recipientRows(){
-    const fmt=recipientFormatter(),target=fmt.resolvedOptions().timeZone;
-    const clock=new Intl.DateTimeFormat("en-US",{
+  function recipientClock(){
+    const target=recipientFormatter().resolvedOptions().timeZone;
+    return new Intl.DateTimeFormat("en-US",{
       timeZone:target,weekday:"short",year:"numeric",month:"2-digit",
       day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
     });
+  }
+  function recipientWindow(start,duration,clock){
     const fields=date=>Object.fromEntries(clock.formatToParts(date)
       .filter(part=>part.type!=="literal").map(part=>[part.type,part.value]));
+    const a=fields(start),end=new Date(start.getTime()+Number(duration)*60000),b=fields(end);
+    const first=Number(a.hour)*60+Number(a.minute),last=Number(b.hour)*60+Number(b.minute);
+    const sameDate=a.year===b.year&&a.month===b.month&&a.day===b.day;
+    return ["Sat","Sun"].includes(a.weekday)||["Sat","Sun"].includes(b.weekday)?
+      "weekend":!sameDate||first<540||last>1020?"outside_hours":"within_hours";
+  }
+  function recipientRows(){
+    const fmt=recipientFormatter(),clock=recipientClock();
     return items.flatMap(row=>{
       const p=plan.get(row.ordinal);if(!p)return [];
       const start=eventDate(p.day,p.time);
       const end=new Date(start.getTime()+Number(p.duration)*60000);
-      const a=fields(start),b=fields(end);
-      const first=Number(a.hour)*60+Number(a.minute);
-      const last=Number(b.hour)*60+Number(b.minute);
-      const sameDate=a.year===b.year&&a.month===b.month&&a.day===b.day;
-      const weekend=["Sat","Sun"].includes(a.weekday)||["Sat","Sun"].includes(b.weekday);
-      const status=weekend?"weekend":
-        !sameDate||first<540||last>1020?"outside_hours":"within_hours";
       return [{ordinal:row.ordinal,group:row.group,day:p.day,time:p.time,
         utc:start.toISOString(),converted:fmt.format(start),
-        endConverted:fmt.format(end),status}];
+        endConverted:fmt.format(end),status:recipientWindow(start,p.duration,clock)}];
     });
   }
   function recipientFiltered(){
@@ -461,8 +465,114 @@
       (status==="all"||r.status===status) &&
       (!q||[String(r.ordinal),r.group].some(v=>v.toLocaleLowerCase().includes(q))));
   }
+  function recipientProposalIdentity(){
+    return JSON.stringify([workroomFingerprint(),$("recipientZone").value,
+      $("recipientView").value,$("recipientQuery").value]);
+  }
+  function renderRecipientProposal(){
+    const body=$("recipientProposalRows");body.replaceChildren();
+    if(recipientProposal && recipientProposal.identity!==recipientProposalIdentity())
+      recipientProposal=null;
+    $("recipientApply").disabled=!recipientProposal;
+    if(!recipientProposal){
+      $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
+      return;
+    }
+    $("recipientProposalSummary").textContent=recipientProposal.slots.size+
+      " tentative HUMAN moves prepared; current plan and external calendars unchanged.";
+    for(const [ordinal,slot] of recipientProposal.slots){
+      const row=items[ordinal-1],old=plan.get(ordinal),tr=dom("tr");
+      tr.append(dom("td","#"+ordinal),dom("td",old.day+" "+old.time),
+        dom("td",slot.day+" "+slot.time),dom("td",row.group||"(unassigned)"));
+      body.append(tr);
+    }
+  }
+  function prepareRecipientProposal(){
+    assertLocalZone();hold(active&&!capacityEditorDirty);
+    const identity=recipientProposalIdentity(),clock=recipientClock();
+    const candidates=recipientFiltered().filter(r=>r.status!=="within_hours" &&
+      items[r.ordinal-1]?.stage!=="blocked").slice(0,12);
+    hold(candidates.length>0);
+    const simulated=new Map(plan),changes=new Map();
+    for(const row of candidates){
+      const ordinal=row.ordinal,source=items[ordinal-1],previous=simulated.get(ordinal);
+      const policy=capacityRules.get(source.group)||capacityDefaultRule();
+      const duration=Number(previous.duration);
+      const busy=eventIntervals(simulated).filter(event=>event.ordinal!==ordinal);
+      const groupDaily=new Map();
+      for(const other of items){
+        if(other.ordinal===ordinal||other.group!==source.group)continue;
+        const slot=simulated.get(other.ordinal);
+        if(slot)groupDaily.set(slot.day,(groupDaily.get(slot.day)||0)+1);
+      }
+      const first=previous.day>nowToday()?previous.day:nowToday();
+      const dayZero=eventDate(first,"12:00"),oldInstant=eventDate(previous.day,previous.time).getTime();
+      let found=null;
+      const minutes=value=>Number(value.slice(0,2))*60+Number(value.slice(3,5));
+      for(let offset=0;offset<30&&!found;offset++){
+        const dayDate=new Date(dayZero.getTime());dayDate.setDate(dayZero.getDate()+offset);
+        const day=dayString(dayDate);
+        if(!day.startsWith("20"))break;
+        if(!policy.days.includes(dayDate.getDay())||policy.blackouts.includes(day)||
+          (groupDaily.get(day)||0)>=policy.maximum)continue;
+        for(let minute=Math.ceil(minutes(policy.start)/15)*15;
+            minute+duration<=minutes(policy.end);minute+=15){
+          const time=String(Math.floor(minute/60)).padStart(2,"0")+":"+
+            String(minute%60).padStart(2,"0");
+          let slot,start;
+          try{
+            slot=admitSlot(day,time,previous.duration,previous.reminder);
+            start=eventDate(day,time);
+          }catch(_){continue;}
+          const ts=start.getTime(),end=ts+duration*60000;
+          if(ts<=oldInstant||ts<=Date.now()||
+            recipientWindow(start,duration,clock)!=="within_hours"||
+            busy.some(event=>ts<event.end&&event.start<end))continue;
+          found=slot;break;
+        }
+      }
+      if(!found)throw Error("No full HUMAN common-hours proposal for an ordinal within the bounded 30-day horizon (HOLD).");
+      simulated.set(ordinal,found);changes.set(ordinal,found);
+    }
+    hold(identity===recipientProposalIdentity());
+    recipientProposal={identity,slots:changes};
+    renderRecipientProposal();$("recipientProposalDetails").open=true;
+    inform("Prepared "+changes.size+" review-only HUMAN cross-zone moves; inspect before confirmation.");
+  }
+  function applyRecipientProposal(){
+    hold(active&&recipientProposal&&!capacityEditorDirty &&
+      recipientProposal.identity===recipientProposalIdentity());
+    const changedSlots=recipientProposal.slots,simulated=new Map(plan);
+    hold(changedSlots.size>0&&changedSlots.size<=12);
+    for(const [ordinal,slot] of changedSlots){
+      const row=items[ordinal-1],previous=simulated.get(ordinal);
+      hold(row&&row.ordinal===ordinal&&previous&&row.stage!=="blocked");
+      const admitted=admitSlot(slot.day,slot.time,slot.duration,slot.reminder);
+      hold(eventDate(admitted.day,admitted.time)>eventDate(previous.day,previous.time));
+      simulated.set(ordinal,admitted);
+    }
+    const collisions=collisionIds(simulated),prior=collisionIds();
+    hold(Array.from(collisions).every(ordinal=>prior.has(ordinal)));
+    const daily=new Map();
+    for(const row of items){
+      const slot=simulated.get(row.ordinal);if(!slot)continue;
+      const key=JSON.stringify([row.group,slot.day]);
+      daily.set(key,(daily.get(key)||0)+1);
+    }
+    for(const [ordinal,slot] of changedSlots){
+      const row=items[ordinal-1];
+      hold(weekAvailabilityFlags(row,slot,daily).length===0 &&
+        recipientWindow(eventDate(slot.day,slot.time),slot.duration,recipientClock())==="within_hours");
+    }
+    if(!confirm("Apply exactly "+changedSlots.size+" PRIVATE HUMAN draft reminder moves? These are NON-authorizing proposals using ONLY illustrative recipient 09–17 hours and locally declared source-group availability. Previously exported external appointments are NOT updated or cancelled."))return;
+    hold(recipientProposal&&recipientProposal.identity===recipientProposalIdentity());
+    plan=simulated;recipientProposal=null;changed=true;exportedPlan=false;
+    page=0;agendaPage=0;render();$("recipientProposalDetails").open=false;
+    inform("PRIVATE HUMAN planning moved locally. Save a new source-bound plan and manually reconcile any previous calendar imports.");
+  }
   function renderRecipientZone(){
     if(!active)return;
+    if(recipientProposal)renderRecipientProposal();
     const body=$("recipientRows");body.replaceChildren();
     let data,all;
     try{all=recipientRows();data=recipientFiltered();}
@@ -2705,6 +2815,18 @@
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
+  hook("recipientPrepare","click",()=>{
+    try{prepareRecipientProposal();}
+    catch(err){recipientProposal=null;renderRecipientProposal();
+      inform("No complete HUMAN cross-zone proposal: "+err.message,true);}
+  });
+  hook("recipientApply","click",()=>{
+    try{applyRecipientProposal();}
+    catch(err){recipientProposal=null;renderRecipientProposal();
+      inform("PRIVATE HUMAN cross-zone move refused without changes (HOLD).",true);}
+  });
+  hook("recipientDiscard","click",()=>{recipientProposal=null;renderRecipientProposal();
+    $("recipientProposalDetails").open=false;inform("Unapplied HUMAN proposals discarded.");});
   hook("recipientZone","input",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientView","change",()=>{recipientPage=0;renderRecipientZone();});
   hook("recipientQuery","input",()=>{recipientPage=0;renderRecipientZone();});

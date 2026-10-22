@@ -419,6 +419,12 @@ The alternate-zone desk now paginates all matching HUMAN ordinals (35 per page),
 
 The explicit full owner-private CSV export includes the unsigned original HUMAN worksheet digest, series, original/source and requested display zones, ordinal, self-reported group, original local time, UTC instant, alternate local display and literal false authority/verification/consent flags. It is **not** an anonymous or safe-to-publish export; proposed appointment dates and unverified HUMAN group labels can reveal private work. Recipients must confirm their own actual zone and calendar entry separately.
 
+## HUMAN common-hours adjustment (local preview and explicit apply)
+
+The alternate-zone desk now includes an optional **complete PRIVATE HUMAN draft adjustment**. It only considers the first 12 currently filtered original HUMAN ordinals already scheduled outside the *illustrative* recipient weekday 09:00–17:00 window, excludes original HUMAN-blocked rows, and searches for later source-zone slots within a bounded 30-day local horizon. Candidate reminders must pass the existing full local-date/DST admission gate, original declared source-group weekdays/hours/blackout dates/daily caps, no-new-overlap check against all other scheduled local appointments, and the illustrative recipient window for the entire original duration. The whole preview HOLDS if even one selected ordinal has no admissible candidate; there are **no partial edits**.
+
+A separate visible old/new ordinal table and explicit HUMAN confirmation are required before applying the **whole batch** to the browser-only PRIVATE draft. The proposal is invalidated by source, plan, availability policy, requested IANA zone or filter change; apply re-admits the proposed slots and local constraints and rejects newly created conflicts. Changes set the draft as unsaved and require a new PRIVATE source-bound plan export. Previous .ics calendar exports, externally imported meetings and human recipient agreements are **not** changed or cancelled. The illustrative workday cannot establish recipient identity, actual availability, scope, consent, verified urgency or security release.
+
 ## Calendar revision sequence for manual re-import
 
 All three ICS output paths (complete plan, selected group, and changed/cancelled
