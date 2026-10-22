@@ -811,6 +811,7 @@ def publish_bundle(directory_fd, artifacts):
 def render_artifacts(documents, rows, reference_day, *, selection=None, interactive=False,
                      calendar=False, calendar_clusters=False, day_brief=False, role_day_csv=False,
                      home=False, workbook=False, capacity_limits=None,
+                     alternative_capacity_limits=None,
                      human_entries=None, previous_human_entries=None):
     """Deterministic private bytes used identically for create and reopen.
 
@@ -840,6 +841,11 @@ def render_artifacts(documents, rows, reference_day, *, selection=None, interact
                        render_private_role_day_csv(rows)))
     if capacity_limits is not None:
         result.extend(capacity.render_private_capacity(rows, reference_day, capacity_limits, ROLES))
+    if alternative_capacity_limits is not None:
+        if capacity_limits is None:
+            raise Hold("alternative capacity requires original declared capacity")
+        result.extend(capacity.render_private_capacity_comparison(
+            rows, reference_day, capacity_limits, alternative_capacity_limits, ROLES))
     if day_brief:
         result.append(("assessment-portfolio-private-day-brief.html",
                        render_private_day_brief(summary, rows)))
@@ -958,6 +964,12 @@ def run(args):
     capacity_limits = capacity.configure(
         args.private_capacity_plan, args.daily_capacity, args.role_capacity, ROLES,
     )
+    alternative_capacity_limits = capacity.configure(
+        args.alternate_daily_capacity is not None or bool(args.alternate_role_capacity),
+        args.alternate_daily_capacity, args.alternate_role_capacity, ROLES,
+    )
+    if alternative_capacity_limits is not None and capacity_limits is None:
+        raise Hold("alternative capacity scenario requires the original PRIVATE capacity plan")
     if bool(args.focus_from) != bool(args.focus_through):
         raise Hold("planning window needs both first and last proposed dates")
     if args.focus_day and args.focus_from:
@@ -1045,7 +1057,9 @@ def run(args):
             role_day_csv=args.private_role_day_csv,
             home=args.private_home,
             workbook=args.private_human_workbook,
-            capacity_limits=capacity_limits, human_entries=human_entries,
+            capacity_limits=capacity_limits,
+            alternative_capacity_limits=alternative_capacity_limits,
+            human_entries=human_entries,
             previous_human_entries=previous_entries,
         )
         readmit_unchanged_sources(admitted)
@@ -1111,6 +1125,10 @@ def main(argv=None):
                         help="Operator-declared 1–128 HUMAN proposals per neutral role and proposed day")
     parser.add_argument("--role-capacity", action="append", default=[], metavar="ROLE=N",
                         help="Optional explicit daily HUMAN item assumption for a fixed neutral role")
+    parser.add_argument("--alternate-daily-capacity", type=int,
+                        help="Optional second explicit 1–128 proposed items/day scenario (requires original PRIVATE capacity plan)")
+    parser.add_argument("--alternate-role-capacity", action="append", default=[], metavar="ROLE=N",
+                        help="Optional neutral role override for the second manual capacity scenario")
     parser.add_argument("--private-role-day-csv", action="store_true",
                         help="Add offline PRIVATE role/day staffing and source-ordinal spreadsheet CSV")
     parser.add_argument("--private-day-brief", action="store_true",
