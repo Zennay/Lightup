@@ -197,6 +197,7 @@
     });
     renderAgenda();
     renderTransitionDesk();
+    if($("recipientZone").value.trim())renderRecipientZone();
     renderWeek();
     renderMonth();
     renderBacklog();
@@ -418,6 +419,64 @@
       r.slot.day,r.slot.time,r.utc,r.offset,"false","false","false"]);
     download(makeCsv(values),"lightup-private-human-clock-change-review.csv","text/csv;charset=utf-8");
     inform("PRIVATE HUMAN clock-change review CSV downloaded locally; no target or calendar contacted.");
+  }
+  // Display-only conversion of tentative HUMAN reminders using the
+  // browser's installed IANA timezone database. No recipient is authenticated.
+  function recipientFormatter(){
+    const name=$("recipientZone").value.trim();
+    hold(name.length>0 && name.length<=64 && /^[A-Za-z0-9_+./-]+$/.test(name));
+    return new Intl.DateTimeFormat("en-GB",{
+      timeZone:name,year:"numeric",month:"2-digit",day:"2-digit",
+      hour:"2-digit",minute:"2-digit",hourCycle:"h23",timeZoneName:"shortOffset"
+    });
+  }
+  function recipientRows(){
+    const fmt=recipientFormatter();
+    return items.flatMap(row=>{
+      const p=plan.get(row.ordinal);if(!p)return [];
+      const original=eventDate(p.day,p.time);
+      return [{ordinal:row.ordinal,group:row.group,day:p.day,time:p.time,
+        utc:original.toISOString(),converted:fmt.format(original)}];
+    });
+  }
+  function renderRecipientZone(){
+    if(!active)return;
+    const body=$("recipientRows");body.replaceChildren();
+    let data;
+    try{data=recipientRows();}
+    catch(_){
+      $("recipientSummary").textContent="Invalid IANA zone or changed browser timezone (HOLD). No converted dates accepted.";
+      $("recipientExport").disabled=true;return;
+    }
+    $("recipientExport").disabled=!data.length;
+    $("recipientSummary").textContent=data.length+" tentative HUMAN appointment proposals rendered locally in "+
+      recipientFormatter().resolvedOptions().timeZone+
+      ". Recipient identity, calendar availability and permission are NOT verified.";
+    for(const r of data.slice(0,35)){
+      const tr=dom("tr"),b=dom("button","Edit #"+r.ordinal);
+      b.type="button";b.addEventListener("click",()=>focusOrdinal(r.ordinal));
+      tr.append(dom("td","#"+r.ordinal),
+        dom("td",r.day+" "+r.time+" / "+zone),
+        dom("td",r.converted),dom("td",r.group||"(unassigned)"));
+      const td=dom("td");td.append(b);tr.append(td);body.append(tr);
+    }
+    $("recipientRemainder").textContent=data.length>35?
+      "Showing 35 of "+data.length+" private proposals. Export CSV for the complete schedule.":"";
+  }
+  function exportRecipientZone(){
+    hold(active && /^[a-f0-9]{64}$/.test(hash));
+    const rows=recipientRows(),target=recipientFormatter().resolvedOptions().timeZone;
+    hold(rows.length>0 && rows.length<=MAX_ROWS);
+    if(!confirm("Export PRIVATE unsigned HUMAN time-zone conversion for "+rows.length+
+      " proposed reminders? Includes original worksheet digest, HUMAN group and private schedule. No consent, verified calendar delivery or security status is established."))return;
+    const output=[["worksheet_sha256_unsigned","series_unsigned","source_zone",
+      "display_zone_unverified","original_ordinal","human_group_unverified",
+      "source_local_date","source_local_time","utc","other_zone_display",
+      "authorized","verified","consent"]];
+    for(const row of rows)output.push([hash,seriesId,zone,target,row.ordinal,row.group,
+      row.day,row.time,row.utc,row.converted,"false","false","false"]);
+    download(makeCsv(output),"lightup-private-human-zone-handoff.csv","text/csv;charset=utf-8");
+    inform("PRIVATE alternate-zone HUMAN schedule exported locally; no recipient or calendar contacted.");
   }
   function renderAgenda(){
     if(!active)return;
@@ -2613,6 +2672,10 @@
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
+  hook("recipientZone","input",renderRecipientZone);
+  hook("recipientExport","click",()=>{
+    try{exportRecipientZone();}catch(_){inform("PRIVATE recipient-zone handoff not admitted (HOLD).",true);}
+  });
   hook("exportTransitions","click",()=>{
     try{exportTransitionDesk();}catch(e){inform(e.message,true);}
   });

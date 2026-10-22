@@ -411,6 +411,12 @@ All existing automatic HUMAN weekday, group-capacity, single-slot and conflict-r
 
 The new read-only clock-change desk lists tentative reminders within 12 hours of an OS-reported offset transition. Review individual original HUMAN ordinals, or deliberately download an unsigned PRIVATE source-bound CSV with original worksheet hash, series, timezone, ordinal, unverified group, proposed local/UTC time and explicit false authority/verification/consent flags. Even aggregate HUMAN schedules may reveal sensitive metadata; never share with an unapproved recipient. This tool does not inspect external calendar imports.
 
+## PRIVATE alternate IANA timezone HUMAN handoff
+
+The **PRIVATE HUMAN alternate-timezone preview** accepts a manual browser-supported IANA timezone identifier such as Europe/London or America/New_York and displays the first 35 existing tentative appointments in that zone, with per-original-ordinal navigation. Conversion is read-only, uses the local OS Intl timezone data and does not change the stored source-zone plan, DST admission, event UID or existing calendar export. No network, remote calendar, verified recipient, time-zone proof or consent is involved.
+
+The explicit full owner-private CSV export includes the unsigned original HUMAN worksheet digest, series, original/source and requested display zones, ordinal, self-reported group, original local time, UTC instant, alternate local display and literal false authority/verification/consent flags. It is **not** an anonymous or safe-to-publish export; proposed appointment dates and unverified HUMAN group labels can reveal private work. Recipients must confirm their own actual zone and calendar entry separately.
+
 ## Calendar revision sequence for manual re-import
 
 All three ICS output paths (complete plan, selected group, and changed/cancelled

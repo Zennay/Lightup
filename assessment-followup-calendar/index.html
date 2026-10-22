@@ -110,6 +110,17 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <button id="exportTransitions" type="button" class="ghost" disabled>Export PRIVATE clock-change review (.csv)</button>
 <p class="subtle">PRIVATE unsigned source-bound file; proposed times and HUMAN groups may be confidential. Authority, verification and consent always false.</p>
 </section>
+<section id="recipientDesk" class="panel" aria-labelledby="recipientHeading">
+<h2 id="recipientHeading">3b · PRIVATE HUMAN alternate-timezone preview</h2>
+<p>View proposed local HUMAN reminders as wall-clock times in another manually chosen IANA timezone, with the current browser's OS timezone rules. This is read-only: it does not adjust the original private plan, verify a real recipient, detect external availability, contact a server or send an appointment.</p>
+<div class="row"><label>Other HUMAN recipient timezone (unverified)
+<input id="recipientZone" type="text" maxlength="64" placeholder="e.g. Europe/London" autocomplete="off" spellcheck="false"></label>
+<button type="button" id="recipientExport" class="ghost" disabled>Export PRIVATE converted schedule (.csv)</button></div>
+<p id="recipientSummary" class="subtle" role="status" aria-live="polite">Type an IANA timezone to preview HUMAN reminders in another local zone.</p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
+<p id="recipientRemainder" class="subtle"></p>
+<p class="subtle">The PRIVATE CSV includes original worksheet digest, anonymous original ordinals, unverified group labels and both local and converted times. Disclosure may reveal sensitive appointment patterns. Actual recipient locale and timezone rules are NOT authenticated. Never treat the converted date as accepted calendar delivery, scope or consent.</p>
+</section>
 <section id="week" class="panel" hidden aria-labelledby="weekHeading">
 <h2 id="weekHeading">3a · PRIVATE HUMAN week board</h2>
 <p>Seven days of tentative local HUMAN reminders. Open any ordinal in the planning desk. Overlap means a local time collision, not a verified security finding or external calendar conflict. PRIVATE owner labels are unverified.</p>

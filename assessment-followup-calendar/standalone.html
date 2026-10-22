@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-pVf0a9nndMp/2TVDZzYcse2C7SQ8FD60/iPLM7dEMVQ='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-jfdt010l1GvFRhXfKT5MnuRzvxv644Qw5zW9DZMAZ6E='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -245,6 +245,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     });
     renderAgenda();
     renderTransitionDesk();
+    if($("recipientZone").value.trim())renderRecipientZone();
     renderWeek();
     renderMonth();
     renderBacklog();
@@ -466,6 +467,64 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       r.slot.day,r.slot.time,r.utc,r.offset,"false","false","false"]);
     download(makeCsv(values),"lightup-private-human-clock-change-review.csv","text/csv;charset=utf-8");
     inform("PRIVATE HUMAN clock-change review CSV downloaded locally; no target or calendar contacted.");
+  }
+  // Display-only conversion of tentative HUMAN reminders using the
+  // browser's installed IANA timezone database. No recipient is authenticated.
+  function recipientFormatter(){
+    const name=$("recipientZone").value.trim();
+    hold(name.length>0 && name.length<=64 && /^[A-Za-z0-9_+./-]+$/.test(name));
+    return new Intl.DateTimeFormat("en-GB",{
+      timeZone:name,year:"numeric",month:"2-digit",day:"2-digit",
+      hour:"2-digit",minute:"2-digit",hourCycle:"h23",timeZoneName:"shortOffset"
+    });
+  }
+  function recipientRows(){
+    const fmt=recipientFormatter();
+    return items.flatMap(row=>{
+      const p=plan.get(row.ordinal);if(!p)return [];
+      const original=eventDate(p.day,p.time);
+      return [{ordinal:row.ordinal,group:row.group,day:p.day,time:p.time,
+        utc:original.toISOString(),converted:fmt.format(original)}];
+    });
+  }
+  function renderRecipientZone(){
+    if(!active)return;
+    const body=$("recipientRows");body.replaceChildren();
+    let data;
+    try{data=recipientRows();}
+    catch(_){
+      $("recipientSummary").textContent="Invalid IANA zone or changed browser timezone (HOLD). No converted dates accepted.";
+      $("recipientExport").disabled=true;return;
+    }
+    $("recipientExport").disabled=!data.length;
+    $("recipientSummary").textContent=data.length+" tentative HUMAN appointment proposals rendered locally in "+
+      recipientFormatter().resolvedOptions().timeZone+
+      ". Recipient identity, calendar availability and permission are NOT verified.";
+    for(const r of data.slice(0,35)){
+      const tr=dom("tr"),b=dom("button","Edit #"+r.ordinal);
+      b.type="button";b.addEventListener("click",()=>focusOrdinal(r.ordinal));
+      tr.append(dom("td","#"+r.ordinal),
+        dom("td",r.day+" "+r.time+" / "+zone),
+        dom("td",r.converted),dom("td",r.group||"(unassigned)"));
+      const td=dom("td");td.append(b);tr.append(td);body.append(tr);
+    }
+    $("recipientRemainder").textContent=data.length>35?
+      "Showing 35 of "+data.length+" private proposals. Export CSV for the complete schedule.":"";
+  }
+  function exportRecipientZone(){
+    hold(active && /^[a-f0-9]{64}$/.test(hash));
+    const rows=recipientRows(),target=recipientFormatter().resolvedOptions().timeZone;
+    hold(rows.length>0 && rows.length<=MAX_ROWS);
+    if(!confirm("Export PRIVATE unsigned HUMAN time-zone conversion for "+rows.length+
+      " proposed reminders? Includes original worksheet digest, HUMAN group and private schedule. No consent, verified calendar delivery or security status is established."))return;
+    const output=[["worksheet_sha256_unsigned","series_unsigned","source_zone",
+      "display_zone_unverified","original_ordinal","human_group_unverified",
+      "source_local_date","source_local_time","utc","other_zone_display",
+      "authorized","verified","consent"]];
+    for(const row of rows)output.push([hash,seriesId,zone,target,row.ordinal,row.group,
+      row.day,row.time,row.utc,row.converted,"false","false","false"]);
+    download(makeCsv(output),"lightup-private-human-zone-handoff.csv","text/csv;charset=utf-8");
+    inform("PRIVATE alternate-zone HUMAN schedule exported locally; no recipient or calendar contacted.");
   }
   function renderAgenda(){
     if(!active)return;
@@ -2661,6 +2720,10 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   hook("weekGroup","change",renderWeek);
   hook("weekConflicts","change",renderWeek);
   hook("weekConstraints","change",renderWeek);
+  hook("recipientZone","input",renderRecipientZone);
+  hook("recipientExport","click",()=>{
+    try{exportRecipientZone();}catch(_){inform("PRIVATE recipient-zone handoff not admitted (HOLD).",true);}
+  });
   hook("exportTransitions","click",()=>{
     try{exportTransitionDesk();}catch(e){inform(e.message,true);}
   });
@@ -2865,6 +2928,17 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <p id="transitionRemainder" class="subtle"></p>
 <button id="exportTransitions" type="button" class="ghost" disabled>Export PRIVATE clock-change review (.csv)</button>
 <p class="subtle">PRIVATE unsigned source-bound file; proposed times and HUMAN groups may be confidential. Authority, verification and consent always false.</p>
+</section>
+<section id="recipientDesk" class="panel" aria-labelledby="recipientHeading">
+<h2 id="recipientHeading">3b · PRIVATE HUMAN alternate-timezone preview</h2>
+<p>View proposed local HUMAN reminders as wall-clock times in another manually chosen IANA timezone, with the current browser's OS timezone rules. This is read-only: it does not adjust the original private plan, verify a real recipient, detect external availability, contact a server or send an appointment.</p>
+<div class="row"><label>Other HUMAN recipient timezone (unverified)
+<input id="recipientZone" type="text" maxlength="64" placeholder="e.g. Europe/London" autocomplete="off" spellcheck="false"></label>
+<button type="button" id="recipientExport" class="ghost" disabled>Export PRIVATE converted schedule (.csv)</button></div>
+<p id="recipientSummary" class="subtle" role="status" aria-live="polite">Type an IANA timezone to preview HUMAN reminders in another local zone.</p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
+<p id="recipientRemainder" class="subtle"></p>
+<p class="subtle">The PRIVATE CSV includes original worksheet digest, anonymous original ordinals, unverified group labels and both local and converted times. Disclosure may reveal sensitive appointment patterns. Actual recipient locale and timezone rules are NOT authenticated. Never treat the converted date as accepted calendar delivery, scope or consent.</p>
 </section>
 <section id="week" class="panel" hidden aria-labelledby="weekHeading">
 <h2 id="weekHeading">3a · PRIVATE HUMAN week board</h2>
