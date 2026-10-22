@@ -376,8 +376,13 @@ bounded history of **2–12 original canonical PRIVATE source receipts** from
 adjacent transition, including catalog/HUMAN-draft/workroom byte-change flags,
 source membership additions/absences, ambiguous duplicate fingerprints, and
 the selected report-slot movement when both adjacent snapshots have unique
-fingerprints. A separate source-presence matrix shows where each packet-local
-source label appears across all manually ordered snapshots.
+fingerprints. It distinguishes sources first seen anywhere in the selected
+sequence from a source that reappears after being absent in an intervening
+snapshot. The source-presence matrix now identifies each reappearance slot,
+the longest consecutive presence streak and the longest gap between appearances;
+the CSV carries the same per-slot fields for filtering and handoff. These labels
+describe only the operator-selected sequence, never authenticated chronology
+or the reason for absence.
 
 ```bash
 umask 077

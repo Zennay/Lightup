@@ -108,6 +108,10 @@ def compose_history(receipts: list[dict]) -> dict:
         previous_sources = previous["reports_sha256"] if previous else []
         current_unique = set(current)
         previous_unique = set(previous_sources)
+        seen_before_current = set().union(*(set(item["reports_sha256"]) for item in receipts[:index]))
+        seen_before_previous = set().union(*(set(item["reports_sha256"]) for item in receipts[:index - 1]))
+        first_seen = current_unique - seen_before_current
+        reappeared = ((current_unique - previous_unique) & seen_before_previous) if previous else set()
         duplicates = len(current_unique) != len(current)
         snapshots.append({
             "manual_plan_number": index + 1,
@@ -127,6 +131,8 @@ def compose_history(receipts: list[dict]) -> dict:
             "new_unique_sources_from_previous": (
                 len(current_unique - previous_unique) if previous else None
             ),
+            "first_seen_unique_sources": len(first_seen),
+            "reappeared_unique_sources_from_previous": len(reappeared),
             "absent_unique_sources_from_previous": (
                 len(previous_unique - current_unique) if previous else None
             ),
@@ -145,8 +151,13 @@ def compose_history(receipts: list[dict]) -> dict:
         after = receipts[index]
         old = before["reports_sha256"]
         new = after["reports_sha256"]
-        old_unique = len(set(old)) == len(old)
-        new_unique = len(set(new)) == len(new)
+        old_unique_set, new_unique_set = set(old), set(new)
+        seen_before_current = set().union(*(set(item["reports_sha256"]) for item in receipts[:index]))
+        seen_before_previous = set().union(*(set(item["reports_sha256"]) for item in receipts[:index - 1]))
+        first_seen = new_unique_set - seen_before_current
+        reappeared = (new_unique_set - old_unique_set) & seen_before_previous
+        old_unique = len(old_unique_set) == len(old)
+        new_unique = len(new_unique_set) == len(new)
         unique = old_unique and new_unique
         old_positions = {digest: slot for slot, digest in enumerate(old, 1)}
         new_positions = {digest: slot for slot, digest in enumerate(new, 1)}
@@ -168,8 +179,12 @@ def compose_history(receipts: list[dict]) -> dict:
             "report_slot_order_changed": old != new,
             "before_report_slots": len(old),
             "after_report_slots": len(new),
-            "new_unique_sources": len(set(new) - set(old)),
-            "absent_unique_sources": len(set(old) - set(new)),
+            "new_unique_sources": len(new_unique_set - old_unique_set),
+            "first_seen_unique_sources": len(first_seen),
+            "reappeared_unique_sources": len(reappeared),
+            "first_seen_source_labels": [labels[digest] for digest in sorted(first_seen)],
+            "reappeared_source_labels": [labels[digest] for digest in sorted(reappeared)],
+            "absent_unique_sources": len(old_unique_set - new_unique_set),
             "old_only_slots": old_only,
             "new_only_slots": new_only,
             "duplicate_source_fingerprints": not unique,
@@ -192,19 +207,32 @@ def compose_history(receipts: list[dict]) -> dict:
             ]
             positions_by_snapshot.append(positions)
         present = [index + 1 for index, positions in enumerate(positions_by_snapshot) if positions]
+        reappeared_slots = [
+            right for left, right in zip(present, present[1:]) if right - left > 1
+        ]
+        longest_streak = current_streak = 0
+        for positions in positions_by_snapshot:
+            if positions:
+                current_streak += 1
+                longest_streak = max(longest_streak, current_streak)
+            else:
+                current_streak = 0
         source_rows.append({
             "source_label": labels[digest],
             "manual_snapshots_present": present,
             "slots_by_manual_snapshot": positions_by_snapshot,
+            "reappeared_after_gap_in_snapshots": reappeared_slots,
             "duplicate_within_snapshots": [
                 index + 1 for index, positions in enumerate(positions_by_snapshot)
                 if len(positions) > 1
             ],
             "first_selected_snapshot": present[0],
             "last_selected_snapshot": present[-1],
-            "gaps_between_selected_snapshots": sum(
-                1 for left, right in zip(present, present[1:]) if right - left > 1
+            "longest_consecutive_presence_streak": longest_streak,
+            "longest_absence_gap_between_appearances": max(
+                (right - left - 1 for left, right in zip(present, present[1:])), default=0
             ),
+            "gaps_between_selected_snapshots": len(reappeared_slots),
         })
 
     return {
@@ -240,14 +268,27 @@ def csv_bytes(history: dict) -> bytes:
     writer = csv.writer(output, lineterminator="\n")
     writer.writerow((
         "source_label", "manual_snapshot_number", "present", "selected_slots",
+        "first_seen_here", "reappeared_after_gap", "consecutive_presence_streak_ending_here",
+        "longest_consecutive_presence_streak", "longest_absence_gap_between_appearances",
         "duplicate_within_snapshot", "first_selected_snapshot", "last_selected_snapshot",
         "gaps_between_selected_snapshots",
     ))
     for source in history["source_presence_history"]:
+        present_slots = set(source["manual_snapshots_present"])
+        reappeared_slots = set(source["reappeared_after_gap_in_snapshots"])
         for snapshot, slots in enumerate(source["slots_by_manual_snapshot"], 1):
+            streak = 0
+            cursor = snapshot
+            while cursor in present_slots:
+                streak += 1
+                cursor -= 1
             writer.writerow((
                 source["source_label"], snapshot, "true" if slots else "false",
                 ";".join(str(slot) for slot in slots) if slots else "",
+                "true" if snapshot == source["first_selected_snapshot"] else "false",
+                "true" if snapshot in reappeared_slots else "false",
+                streak, source["longest_consecutive_presence_streak"],
+                source["longest_absence_gap_between_appearances"],
                 "true" if len(slots) > 1 else "false",
                 source["first_selected_snapshot"], source["last_selected_snapshot"],
                 source["gaps_between_selected_snapshots"],
@@ -277,7 +318,9 @@ def render_html(history: dict) -> bytes:
         ("human_draft_bytes_changed_from_previous", "HUMAN draft changed"),
         ("workroom_bytes_changed_from_previous", "Workroom changed"),
         ("report_slot_order_changed_from_previous", "Report slots/order changed"),
-        ("new_unique_sources_from_previous", "New source fingerprints"),
+        ("new_unique_sources_from_previous", "New or returning sources vs prior"),
+        ("first_seen_unique_sources", "First seen in selected order"),
+        ("reappeared_unique_sources_from_previous", "Reappeared after a gap"),
         ("absent_unique_sources_from_previous", "Absent source fingerprints"),
         ("duplicate_source_fingerprints", "Duplicate fingerprints"),
     )
@@ -288,7 +331,11 @@ def render_html(history: dict) -> bytes:
         ("human_draft_bytes_changed", "HUMAN draft changed"),
         ("workroom_bytes_changed", "Workroom changed"),
         ("report_slot_order_changed", "Slots/order changed"),
-        ("new_unique_sources", "New source fingerprints"),
+        ("new_unique_sources", "New or returning sources vs prior"),
+        ("first_seen_unique_sources", "First-seen sources"),
+        ("reappeared_unique_sources", "Reappeared after a gap"),
+        ("first_seen_source_labels", "First-seen packet-local labels"),
+        ("reappeared_source_labels", "Reappeared packet-local labels"),
         ("absent_unique_sources", "Absent source fingerprints"),
         ("old_only_slots", "Prior-only slots"),
         ("new_only_slots", "Later-only slots"),
@@ -299,9 +346,12 @@ def render_html(history: dict) -> bytes:
         ("source_label", "Packet-local source label"),
         ("manual_snapshots_present", "Snapshots present"),
         ("slots_by_manual_snapshot", "Selected slots per snapshot"),
+        ("reappeared_after_gap_in_snapshots", "Reappeared after a gap"),
         ("duplicate_within_snapshots", "Duplicate slots within snapshot"),
         ("first_selected_snapshot", "First selected snapshot"),
         ("last_selected_snapshot", "Last selected snapshot"),
+        ("longest_consecutive_presence_streak", "Longest consecutive presence streak"),
+        ("longest_absence_gap_between_appearances", "Longest absence gap between appearances"),
         ("gaps_between_selected_snapshots", "Gaps"),
     )
 
