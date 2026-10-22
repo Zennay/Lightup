@@ -10,7 +10,7 @@ import stat
 import subprocess
 import sys
 import tempfile
-from verify_offline import Hold as VerifyHold, verify as verify_package
+from verify_offline import Hold as VerifyHold, compare_packages, verify as verify_package
 
 ROOT = Path(__file__).resolve().parent.parent
 INSPECTOR = ROOT / "src/lightup/lab_inspect.py"
@@ -72,6 +72,8 @@ def guard_command_paths(args: argparse.Namespace) -> None:
         paths.extend([args.private_session, args.from_workpack, args.private_parent])
     elif args.command == "verify-kit":
         paths.append(args.package)
+        if args.compare_package:
+            paths.append(args.compare_package)
         if args.sha256_file:
             paths.append(args.sha256_file)
         if args.source_root:
@@ -338,6 +340,8 @@ def main() -> int:
                         help="optional standard sha256sum sidecar bound to the package filename")
     verify.add_argument("--source-root", default="",
                         help="optional local checkout root; fail if packaged software bytes are stale")
+    verify.add_argument("--compare-package", default="",
+                        help="optional second verified ZIP; print software/support inventory differences without extracting")
     args = cli.parse_args()
     if args.command == "catalog":
         for label, component in (("source inspector", INSPECTOR), ("PRIVATE briefing", BRIEF),
@@ -351,10 +355,14 @@ def main() -> int:
     try:
         guard_command_paths(args)
         if args.command == "verify-kit":
-            return verify_package(
-                Path(args.package).absolute(), args.expected_sha256,
-                Path(args.sha256_file).absolute() if args.sha256_file else None,
-                Path(args.source_root).absolute() if args.source_root else None)
+            package = Path(args.package).absolute()
+            sha256_file = Path(args.sha256_file).absolute() if args.sha256_file else None
+            source_root = Path(args.source_root).absolute() if args.source_root else None
+            if args.compare_package:
+                return compare_packages(
+                    package, Path(args.compare_package).absolute(),
+                    args.expected_sha256, sha256_file, source_root)
+            return verify_package(package, args.expected_sha256, sha256_file, source_root)
         if args.command == "human-workpack":
             return private_human_workpack(args)
         if args.command == "workpack-progress":
