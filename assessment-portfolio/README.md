@@ -809,8 +809,13 @@ Locally adjust the first and alternative hypothetical HUMAN items/day
 for each fixed neutral role (integers 1–128). The browser recalculates
 both arithmetic scenario totals immediately, presents original row
 drilldowns, permits printing the PRIVATE screen and explicitly
-downloading a bounded PRIVATE comparison CSV. Invalid entries make the
-download unavailable rather than silently defaulting to a limit.
+downloading a bounded PRIVATE comparison CSV or structured PRIVATE JSON
+handoff. The JSON includes the reference date, first/alternative role
+limits, arithmetic summary, and date/role group counts with original
+source-local ordinals. Undated rows remain null-dated and receive no
+invented capacity. The JSON excludes source filenames, source hashes,
+identities and HUMAN notes. Invalid entries make both downloads
+unavailable rather than silently defaulting to a limit.
 The original native PRIVATE baseline/comparison artifacts are **not**
 overwritten by browser-memory edits. Reset restores exactly the initial
 native-assumed values; closing the page discards edits.
@@ -839,5 +844,6 @@ are not silently omitted and do not consume invented day limits. If a
 human enters an invalid scenario limit, the studio clears its last
 calculated table and summary and disables both print and export until
 **every** fixed-role input is valid again; it never silently saves or
-exports a stale scenario. The native source-bound 0600 artifacts are
+exports a stale scenario, and both CSV/JSON exports remain disabled. The
+native source-bound 0600 artifacts are
 unchanged by local edits.
