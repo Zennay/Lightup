@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-vKvwHasHpbO5TaQhDMGMj+H6YGSQZn58PUdRSRDi+Pw='; style-src 'sha256-Z86EWCsmp921yiknM24sV/J5cDBtMzCMIXfXf+2DsWk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; font-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__REHASH_ME__'; style-src 'sha256-Z86EWCsmp921yiknM24sV/J5cDBtMzCMIXfXf+2DsWk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; font-src 'none'">
 <title>LightUp · PRIVATE HUMAN Review</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0b111c;color:#e9f1ff}
@@ -66,6 +66,8 @@ td select{width:100%;min-width:175px}
 <h2>01 / Load local PRIVATE queue</h2>
 <label for="csvfile">Choose <code>lightup-manifest-history-review-queue-private.csv</code> from a saved history bundle.</label>
 <input class="file" type="file" id="csvfile" accept=".csv,text/csv">
+<label for="priorfile">Optional: resume stages from a saved PRIVATE HUMAN return JSON (native source re-admission remains mandatory).</label>
+<input class="file" type="file" id="priorfile" accept=".json,application/json" disabled>
 <div class="actionrow"><button id="download" class="primary" disabled>Download PRIVATE HUMAN return CSV</button><button id="undo" class="secondary" disabled>Undo most recent edit</button><button id="clear" class="secondary" disabled>Forget imported data</button></div>
 <p id="status" class="status" role="status" aria-live="polite">No file imported. Everything stays in browser memory.</p>
 </section>
@@ -85,12 +87,14 @@ td select{width:100%;min-width:175px}
 "use strict";
 (() => {
   const NAME = "lightup-manifest-history-review-queue-private.csv";
+  const PRIOR = "lightup-manifest-history-human-return-private.json";
+  const AUTH_FLAGS = ["source_authenticated","authorized","client_consent_verified","operator_consent_verified","revocation_checked","human_go","assessment_executed","release_allowed"];
   const HEADER = ["from_ordinal","to_ordinal","change","before_slot","after_slot","human_stage"];
   const STAGES = ["FOLLOW_UP_REQUIRED","NEEDS_CONTEXT","IN_REVIEW","QUESTION_PREPARED","PARKED","HUMAN_REVIEWED"];
   const KINDS = new Set(["MOVED","REMOVED","ADDED"]);
   const MAX_BYTES = 65536, MAX_ROWS = 224;
   const $ = id => document.getElementById(id);
-  let entries = [], undo = null, epoch = 0, hasSource = false;
+  let entries = [], undo = null, epoch = 0, hasSource = false, priorImported = false;
   const say = (msg, bad = false) => {
     $("status").textContent = msg;
     $("status").className = bad ? "status error" : "status";
@@ -139,6 +143,35 @@ td select{width:100%;min-width:175px}
     });
     return parsed;
   }
+  function admitPrior(text) {
+    let packet;
+    try { packet = JSON.parse(text); } catch (_) { throw Error("Malformed PRIVATE HUMAN JSON."); }
+    if (!packet || typeof packet !== "object" || Array.isArray(packet)) throw Error("Expected PRIVATE HUMAN JSON object.");
+    const keys = ["schema","status","history_sha256","answers_sha256","plan_count","row_count","responses","stage_counts",...AUTH_FLAGS];
+    const schema = packet.schema;
+    if (!["lightup.private-manifest-history-human-return.v1","lightup.private-manifest-history-human-return.v2"].includes(schema)) throw Error("Unknown HUMAN return version.");
+    if (schema.endsWith(".v2")) keys.push("previous_return_sha256","source_continuity_claim");
+    if (Object.keys(packet).length !== keys.length || Object.keys(packet).some(k => !keys.includes(k))) throw Error("Unknown or missing HUMAN return fields.");
+    if (AUTH_FLAGS.some(key => packet[key] !== false) || packet.status !== "REVIEW_ONLY") throw Error("Imported return asserts authority.");
+    if (schema.endsWith(".v2") && (packet.source_continuity_claim !== "UNSIGNED_LOCAL_CONSISTENCY_ONLY" || !/^[a-f0-9]{64}$/.test(packet.previous_return_sha256))) throw Error("Invalid private predecessor reference.");
+    if (!/^[a-f0-9]{64}$/.test(packet.history_sha256) || !/^[a-f0-9]{64}$/.test(packet.answers_sha256)) throw Error("Malformed local source digest.");
+    if (packet.row_count !== entries.length || !Array.isArray(packet.responses) || packet.responses.length !== entries.length) throw Error("Prior HUMAN return row count differs from loaded queue.");
+    if (!Number.isInteger(packet.plan_count) || packet.plan_count < 2 || packet.plan_count > 8) throw Error("Invalid plan count.");
+    const counts = Object.fromEntries(STAGES.map(stage => [stage,0]));
+    const adopted = packet.responses.map((row,i) => {
+      if (!row || typeof row !== "object" || Array.isArray(row) || Object.keys(row).length !== HEADER.length || Object.keys(row).some(key => !HEADER.includes(key))) throw Error("Invalid HUMAN return row shape.");
+      const originals = entries[i], keys = [row.from_ordinal,row.to_ordinal,row.change,row.before_slot,row.after_slot];
+      for (let k = 0; k < 5; k++) {
+        const value = keys[k] === null ? "" : String(keys[k]);
+        if (value !== originals[k]) throw Error("Prior HUMAN row identities disagree with original imported queue.");
+      }
+      if (!STAGES.includes(row.human_stage)) throw Error("Prior HUMAN stage is not allowed.");
+      counts[row.human_stage]++;
+      return [...originals.slice(0,5), row.human_stage];
+    });
+    if (!packet.stage_counts || typeof packet.stage_counts !== "object" || Array.isArray(packet.stage_counts) || Object.keys(packet.stage_counts).length !== STAGES.length || STAGES.some(stage => packet.stage_counts[stage] !== counts[stage])) throw Error("Prior HUMAN stage counts disagree with source rows.");
+    return adopted;
+  }
   const csvField = value => {
     const s = String(value);
     return /[",\r\n]/.test(s) ? '"' + s.replaceAll('"','""') + '"' : s;
@@ -161,7 +194,7 @@ td select{width:100%;min-width:175px}
   function render() {
     const loaded = hasSource;
     $("work").classList.toggle("hidden",!loaded);
-    $("download").disabled = !loaded; $("clear").disabled = !loaded; $("undo").disabled = undo === null;
+    $("download").disabled = !loaded; $("clear").disabled = !loaded; $("undo").disabled = undo === null; $("priorfile").disabled = !loaded;
     $("total").textContent = loaded ? String(entries.length) : "—";
     $("pending").textContent = loaded ? String(entries.filter(e => e[5] === "FOLLOW_UP_REQUIRED").length) : "—";
     $("reviewed").textContent = loaded ? String(entries.filter(e => e[5] === "HUMAN_REVIEWED").length) : "—";
@@ -186,7 +219,7 @@ td select{width:100%;min-width:175px}
     body.append(fragment);
   }
   function forget() {
-    entries = [];hasSource=false;undo = null;epoch++;$("csvfile").value = "";$("filter").value = "ALL";$("kind").value="ALL";say("Imported data cleared from browser memory.");render();
+    entries = [];hasSource=false;priorImported=false;undo = null;epoch++;$("csvfile").value = "";$("priorfile").value = "";$("filter").value = "ALL";$("kind").value="ALL";say("Imported data cleared from browser memory.");render();
   }
   $("csvfile").addEventListener("change", async event => {
     const file = event.target.files[0];
@@ -199,11 +232,25 @@ td select{width:100%;min-width:175px}
       const text = new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const incoming = admit(text);
       if (ticket !== epoch) return;
-      entries = incoming;hasSource=true;undo = null;$("filter").value="ALL";$("kind").value="ALL";
+      entries = incoming;hasSource=true;priorImported=false;undo = null;$("filter").value="ALL";$("kind").value="ALL";
       say("Loaded "+entries.length+" changed slots locally. All changes are unsigned HUMAN notes.");
       render();
     } catch (e) { if(ticket===epoch) say("Import rejected: "+e.message,true); }
     event.target.value = "";
+  });
+  $("priorfile").addEventListener("change", async event => {
+    const file = event.target.files[0], ticket = ++epoch;
+    if (!file || !hasSource) return;
+    if (file.name !== PRIOR || !file.size || file.size > MAX_BYTES) { say("Select the original PRIVATE HUMAN return JSON (at most 64 KiB).",true);event.target.value="";return; }
+    try {
+      const text = new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      if (ticket !== epoch || !hasSource) return;
+      const stages = admitPrior(text);
+      if (!window.confirm("Replace all current HUMAN stage labels with stages from this unsigned saved PRIVATE return? Native original-source verification will still be required.")) return;
+      undo = snapshot();entries = stages;priorImported=true;render();
+      say("Previous HUMAN stages imported as UNSIGNED local data. To create a linked new round use the native --continue-from-return-dir and --ack-csv-stage-replace options.");
+    } catch (err) { if (ticket === epoch) say("Previous round rejected: " + err.message,true); }
+    finally { event.target.value = ""; }
   });
   $("download").addEventListener("click", () => {
     if (!hasSource) return;
@@ -211,7 +258,7 @@ td select{width:100%;min-width:175px}
     const url = URL.createObjectURL(blob);
     const link=make("a");link.href=url;link.download=NAME;document.body.append(link);link.click();link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
-    say("PRIVATE CSV downloaded. Browser downloads cannot enforce Unix mode 0600; use the native PRIVATE file workflow.");
+    say("PRIVATE CSV downloaded. Browser downloads cannot enforce Unix mode 0600. " + (priorImported ? "For v2 continuation, use native --continue-from-return-dir plus --answers-dir and explicit --ack-csv-stage-replace." : "Use the native PRIVATE source-bound publication workflow."));
   });
   $("undo").addEventListener("click",() => {if(!undo)return;entries=undo;undo=null;render();say("Latest HUMAN edit undone in memory.");});
   $("clear").addEventListener("click",forget);
