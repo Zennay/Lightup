@@ -388,6 +388,102 @@ def render_private_return(entries, reference_date):
     return body.encode("utf-8")
 
 
+def human_comparison(previous, current, reference_date):
+    """Order-only HUMAN discussion comparison. No verified chronology or remediation."""
+    if len(previous) != len(current):
+        raise Hold("HUMAN comparison rows do not match")
+    transitions = {stage: {next_stage: 0 for next_stage in STATUS} for stage in STATUS}
+    role_changes = 0
+    note_changes = 0
+    status_changes = 0
+    changed = []
+    for old, new in zip(previous, current):
+        before = old["human_status"]
+        after = new["human_status"]
+        transitions[before][after] += 1
+        role_changed = old["proposed_role"] != new["proposed_role"]
+        note_changed = old["note"] != new["note"]
+        stage_changed = before != after
+        role_changes += role_changed
+        note_changes += note_changed
+        status_changes += stage_changed
+        if stage_changed or role_changed or note_changed:
+            changed.append({
+                "agenda_slot": new["agenda_slot"],
+                "source_slot": new["source_slot"],
+                "old_status": before,
+                "new_status": after,
+                "old_role": old["proposed_role"],
+                "new_role": new["proposed_role"],
+                "note_changed": bool(note_changed),
+            })
+    return {
+        "schema": "lightup.assessment_portfolio_human_delta.v1",
+        "status": "PRIVATE_HUMAN_DISCUSSION_ONLY",
+        "reference_date": reference_date,
+        "row_count": len(current),
+        "changed_human_rows": len(changed),
+        "human_status_changes": status_changes,
+        "proposed_role_changes": role_changes,
+        "private_note_changes": note_changes,
+        "human_status_transition_counts": transitions,
+        "changed": changed,
+        "private_not_anonymous": True,
+        "operator_order_not_chronology": True,
+        **{key: False for key in AUTHORITY_FLAGS},
+    }
+
+
+def render_private_comparison_json(previous, current, reference_date):
+    # PRIVATE ordinal-level comparison, never a public/anonymous rollup.
+    return (json.dumps(
+        human_comparison(previous, current, reference_date),
+        indent=2, ensure_ascii=False
+    ) + "\\n").encode("utf-8")
+
+
+def render_private_comparison_html(previous, current, reference_date):
+    summary = human_comparison(previous, current, reference_date)
+    rows = []
+    for change in summary["changed"]:
+        values = (
+            "A" + str(change["agenda_slot"]).zfill(2) + " / S" +
+            str(change["source_slot"]).zfill(2),
+            change["old_status"], change["new_status"],
+            change["old_role"], change["new_role"],
+            "YES — PRIVATE note bytes differed" if change["note_changed"] else "NO"
+        )
+        rows.append("<tr>" + "".join("<td>" + escape(v) + "</td>" for v in values) +
+                    "</tr>")
+    if not rows:
+        rows.append("<tr><td colspan='6'>No changed HUMAN fields were found in the selected local pair."
+                    " This does not prove completion or remediation.</td></tr>")
+    content = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none';"
+        "script-src 'none'; style-src 'none'; connect-src 'none'; base-uri 'none'\">"
+        "<title>PRIVATE HUMAN discussion comparison</title></head><body>"
+        "<h1>PRIVATE HUMAN discussion changes</h1>"
+        "<p>INCUBATE / PLAN-LAB ONLY / HUMAN ONLY / HOLD / NO AUTHORIZATION</p>"
+        "<p>Local reference day: " + escape(reference_date) +
+        ". The source order is a HUMAN-selected comparison, never proven chronological."
+        " No source identifiers, targets or note contents are shown.</p>"
+        "<p>Changed row ordinals: " + str(summary["changed_human_rows"]) +
+        "; status changes: " + str(summary["human_status_changes"]) +
+        "; proposed-role changes: " + str(summary["proposed_role_changes"]) +
+        "; private-note changes: " + str(summary["private_note_changes"]) + ".</p>"
+        "<table border='1'><thead><tr><th>Original ordinal</th>"
+        "<th>Earlier supplied HUMAN status</th><th>Later supplied HUMAN status</th>"
+        "<th>Earlier proposed role</th><th>Later proposed role</th>"
+        "<th>PRIVATE note changed?</th></tr></thead><tbody>" +
+        "".join(rows) + "</tbody></table>"
+        "<p>A documented discussion is not permission, an authenticated sign-off,"
+        " a verified finding, or evidence of remediation. No network or active work.</p>"
+        "</body></html>"
+    )
+    return content.encode("utf-8")
+
+
 def render_private_csv(entries):
     output = io.StringIO(newline="")
     writer = csv.writer(output, lineterminator="\r\n")
