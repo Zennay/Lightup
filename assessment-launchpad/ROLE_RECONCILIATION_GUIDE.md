@@ -181,7 +181,10 @@ The native CLI additionally accepts `--suggested-role SECURITY_REVIEWER`
 after* admitting the complete original sources and full selected CSV. If no
 selected rows match, it HOLDS. Preview, publication and read-only reopen must
 use the same filter. This is an unverified HUMAN role suggestion, not recipient
-authentication, permission or real scope authorization.
+authentication, permission or real scope authorization. The role-filtered
+preview, HTML and JSON separate rows included for the proposed role from the
+full all-role selection, selected rows omitted from other roles, and slots
+truly unselected across all roles; the all-role default remains unchanged.
 The HTML and counts JSON summarize five dimensions—role, reply status,
 self-reported stage, proposed next action and note-change flag—without private
 note content. It never accepts a browser CSV as original evidence or a scope grant.

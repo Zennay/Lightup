@@ -458,7 +458,10 @@ closed if the filtered queue is empty. The fixed role is a HUMAN proposal, not
 a verified recipient; the owner must still authenticate any recipient.
 The native summary reports counts by all five HUMAN dimensions
 (role, reply status, self-reported stage, next action and note-change flag),
-not note content. All outputs remain private mode `0600`; missing or modified
+not note content. With `--suggested-role`, preview/HTML/JSON distinguish the
+selected rows for that proposed role, the full all-role selection, rows omitted
+because they belong to other roles, and slots truly unselected across all roles.
+All outputs remain private mode `0600`; missing or modified
 original source bytes keep the workflow in HOLD.
 
 ### Two PRIVATE selected-action CSVs → original-source-bound change dossier

@@ -95,7 +95,7 @@ def selected_source_rows(source_csv, selection_raw):
     return chosen, len(source) - 1
 
 
-def render_artifacts(rows, total, role_filter="ALL"):
+def render_artifacts(rows, total, role_filter="ALL", all_role_selected_count=None):
     body = "".join("<tr>" + "".join(
         "<td>" + escape(item.replace("_", " ")) + "</td>" for item in row
     ) + "</tr>" for row in rows)
@@ -129,10 +129,29 @@ def render_artifacts(rows, total, role_filter="ALL"):
         "release_allowed": False,
     }
     if role_filter != "ALL":
-        scope["operator_role_filter"] = role_filter
+        if (all_role_selected_count is None or
+                not len(rows) <= all_role_selected_count <= total):
+            raise Hold("role-only handoff needs consistent all-role selection counts")
+        scope["unselected_local_slot_count"] = total - len(rows)
+        scope.update({
+            "operator_role_filter": role_filter,
+            "selected_local_slot_count_all_roles": all_role_selected_count,
+            "selected_other_role_count": all_role_selected_count - len(rows),
+            "unselected_local_slot_count_all_roles": total - all_role_selected_count,
+            "role_filter_applied_after_full_source_admission": True,
+            "role_filter_verifies_recipient_identity": False,
+        })
     role_message = (" Operator-selected proposed role filter: " +
-                    escape(role_filter.replace("_", " ")) +
-                    ". This is not a verified role assignment.") if role_filter != "ALL" else ""
+                    escape(role_filter.replace("_", " ")) + ". " +
+                    str(all_role_selected_count - len(rows)) +
+                    " selected rows from other roles are omitted; this is not a verified role assignment.") if role_filter != "ALL" else ""
+    selection_message = (str(len(rows)) + " of " + str(total) +
+                         " original local source slots deliberately selected.")
+    if role_filter != "ALL":
+        selection_message = (str(len(rows)) + " selected rows in this proposed role; " +
+            str(all_role_selected_count) + " selected across all roles; " +
+            str(total - all_role_selected_count) + " unselected across all roles, out of " +
+            str(total) + " original local source slots.")
     style_hash = base64.b64encode(sha256(STYLE.encode("utf-8")).digest()).decode("ascii")
     html = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
@@ -146,8 +165,7 @@ def render_artifacts(rows, total, role_filter="ALL"):
         + STYLE + "</style></head><body><h1>PRIVATE selected HUMAN action handoff</h1>"
         + "<p class='hold'>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · "
         + "REVIEW_ONLY · NO AUTHORIZATION</p><p>"
-        + str(len(rows)) + " of " + str(total)
-        + " original local source slots deliberately selected. "
+        + selection_message + " "
         + "Original slot order is a worklist order, not verified event chronology. "
         + "Roles and statuses are unauthenticated HUMAN self-reports."
         + role_message + "</p>"
@@ -219,17 +237,26 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         source = admit_all(args)
+        all_role_selected_count = len(source[5])
         scoped_rows = [row for row in source[5] if
                        args.suggested_role is None or row[1] == args.suggested_role]
         if not scoped_rows:
             raise Hold("no exact original selected HUMAN slots in chosen suggested role")
-        artifacts = render_artifacts(scoped_rows, source[6], args.suggested_role or "ALL")
+        role_filter = args.suggested_role or "ALL"
+        artifacts = render_artifacts(scoped_rows, source[6], role_filter,
+            all_role_selected_count if args.suggested_role is not None else None)
+        selection_status = (str(len(scoped_rows)) + "/" + str(source[6]) +
+                            " original slots selected")
+        if args.suggested_role is not None:
+            selection_status = (str(len(scoped_rows)) + " selected for " +
+                args.suggested_role.replace("_", " ") + "; " +
+                str(all_role_selected_count) + " selected across all roles; " +
+                str(source[6] - all_role_selected_count) + " unselected across all roles")
         if any(not 0 < len(item) <= LIMIT for item in artifacts.values()):
             raise Hold("PRIVATE selected HUMAN handoff capacity exceeded")
         if args.preview_only:
             print("PRIVATE_HUMAN_SELECTED_ACTIONS_PREVIEW_ONLY — " +
-                  str(len(scoped_rows)) + "/" + str(source[6]) +
-                  " original slots selected; no files written; REVIEW_ONLY; NO AUTHORITY")
+                  selection_status + "; no files written; REVIEW_ONLY; NO AUTHORITY")
             preview = json.loads(artifacts[PRIVATE_SUMMARY].decode("utf-8"))
             print("Selected HUMAN dimension counts only (no slot rows, notes, targets or paths):")
             print(json.dumps(preview["selected_action_counts"], sort_keys=True,
@@ -260,8 +287,7 @@ def main(argv=None):
             os.close(fd)
         print("PRIVATE_HUMAN_SELECTED_ACTIONS_" +
               ("REOPENED" if args.verify_output_dir else "CREATED") +
-              " — " + str(len(scoped_rows)) + "/" + str(source[6]) +
-              " original slots selected; REVIEW_ONLY; NO AUTHORITY")
+              " — " + selection_status + "; REVIEW_ONLY; NO AUTHORITY")
         return 0
     except (Hold, OSError, ValueError, TypeError, UnicodeError, csv.Error, OverflowError):
         print("PRIVATE_HUMAN_SELECTED_ACTIONS_HOLD — source or selection rejected",
