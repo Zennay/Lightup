@@ -241,8 +241,10 @@
     if (!report) return [];
     const filter = $("filter").value;
     const routeFilter = $("route-filter").value;
+    const priorityFilter = $("priority-filter").value;
     return report.cases.map((c, i) => ({c, i}))
       .filter(({c}) => routeFilter === "all" || c.route === routeFilter)
+      .filter(({c}) => priorityFilter === "all" || priority(c) === priorityFilter)
       .filter(({c}) => !metricFocus || c.regressions.includes(metricFocus))
       .filter(({c}) => filter === "all" ||
         (filter === "regressed" && c.regressions.length > 0) ||
@@ -514,6 +516,7 @@
       filters: {
         case_status: $("filter").value,
         workstream: $("route-filter").value,
+        priority: $("priority-filter").value,
         metric: metricFocus || "all"
       },
       authorized: false,
@@ -561,7 +564,7 @@
     }
     const columns = ["case","priority","source_status","metric_regressions","metric_changes","human_stage",
       "follow_up_date","routing_group","suggested_human_action","source_sha256","source_kind",
-      "overall_source_status","filter_case_status","filter_workstream","filter_metric",
+      "overall_source_status","filter_case_status","filter_workstream","filter_priority","filter_metric",
       "authorized","consent_verified","dispatch_allowed","release_allowed","release_approved","scan_allowed"];
     const lines = [columns.map(csvCell).join(",")];
     for (const item of output.cases) {
@@ -574,6 +577,7 @@
         overall_source_status: output.source_status,
         filter_case_status: output.filters.case_status,
         filter_workstream: output.filters.workstream,
+        filter_priority: output.filters.priority,
         filter_metric: output.filters.metric,
         authorized: false,
         consent_verified: false,
@@ -829,6 +833,7 @@
   $("clear").addEventListener("click", reset);
   $("filter").addEventListener("change", renderQueue);
   $("route-filter").addEventListener("change", renderQueue);
+  $("priority-filter").addEventListener("change", renderQueue);
   $("queue-export-csv").addEventListener("click", exportFilteredQueueCsv);
   $("queue-export-json").addEventListener("click", exportFilteredQueueJson);
   $("route").addEventListener("change", e => {
