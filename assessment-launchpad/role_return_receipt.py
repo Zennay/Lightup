@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 import json
+import copy
 import os
 
 from launchpad import FLAGS, Hold, open_output_directory, read_private_bundle_item
@@ -92,4 +93,28 @@ def admit_return(directory, rounds, endpoints, digest):
     if reply_raw != canonical(work) or receipt_raw != receipt(
             rounds, endpoints, digest, role, stage, selected, reply_raw):
         raise Hold("original role-return receipt or worksheet bytes drifted")
-    return absolute, work
+    return absolute, work, tuple(indices)
+
+
+def combine_returns(directories, rounds, endpoints, digest):
+    """Compose disjoint role-only replies without allowing cross-role edits.
+
+    All responses must originate from the same source round manifest. The
+    source-bound receipts are unsigned and never constitute identity or consent.
+    """
+    if not 1 <= len(directories) <= 5:
+        raise Hold("one through five original selected-role packets are supported")
+    merged = copy.deepcopy(rounds[-1])
+    seen_dirs, selected_indices = set(), set()
+    for directory in directories:
+        absolute, response, indices = admit_return(directory, rounds, endpoints, digest)
+        if absolute in seen_dirs:
+            raise Hold("duplicate original role return")
+        seen_dirs.add(absolute)
+        if selected_indices.intersection(indices):
+            raise Hold("HUMAN role returns claim overlapping original slots")
+        selected_indices.update(indices)
+        for index in indices:
+            merged["human_rows"][index] = copy.deepcopy(response["human_rows"][index])
+    validate_worksheet(merged, digest, len(endpoints))
+    return merged

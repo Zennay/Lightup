@@ -86,8 +86,10 @@ function csvCell(value) {
 }
 button.addEventListener("click", () => {
   const controls = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2060-\u2069]/u;
-  if (rows.some(row => row.note.length > 400 || controls.test(row.note))) {
-    message.textContent = "A PRIVATE note has disallowed characters or exceeds 400 characters.";
+  const formula = note => /^[=+@-]/u.test(note.normalize("NFKC").trimStart());
+  if (rows.some(row => row.note.length > 400 || controls.test(row.note) ||
+                       formula(row.note))) {
+    message.textContent = "A PRIVATE note has unsafe controls, formula-like prefix, or exceeds 400 characters.";
     return;
   }
   const lines = [decoded.header.map(csvCell).join(",")];

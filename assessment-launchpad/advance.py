@@ -25,7 +25,7 @@ from compare_review import NAMES as DELTA_FILES, make_artifacts as delta_artifac
 from workspace import private_child
 from history import output_artifacts as history_artifacts
 from role_handoff import assemble as handoff_artifacts
-from role_return_receipt import admit_return, handoff_digest
+from role_return_receipt import combine_returns, handoff_digest
 from role_return import selected_template, return_guide, TEMPLATE as RETURN_CSV, GUIDE as RETURN_GUIDE
 from role_return_browser import NAME as RETURN_EDITOR, render_editor as render_return_editor
 
@@ -219,8 +219,8 @@ def main(argv=None):
     reply_mode.add_argument("--responses", help="private full HUMAN JSON (creation only)")
     reply_mode.add_argument("--interactive", action="store_true",
                             help="local terminal HUMAN reply")
-    reply_mode.add_argument("--role-return-dir",
-                            help="private two-file role return and source receipt")
+    reply_mode.add_argument("--role-return-dir", action="append", default=[],
+                            help="one to five disjoint source-bound owner-private role returns")
     parser.add_argument("--handoff-role", choices=ROLES,
                         help="optionally include a voluntary PRIVATE role-selected HUMAN handoff")
     parser.add_argument("--handoff-stage", choices=("ALL", *STAGES), default="ALL",
@@ -235,7 +235,7 @@ def main(argv=None):
             if sum(bool(c) for c in (args.responses, args.interactive,
                                      args.role_return_dir)) != 1:
                 raise Hold("creation requires exactly one HUMAN input method")
-        elif args.responses or args.interactive:
+        elif args.responses or args.interactive or args.role_return_dir:
             raise Hold("read-only reopen cannot import or edit HUMAN responses")
         original, endpoints, digest = read_original_bundle(args.bundle_dir)
         previous_dir, before = read_round(args.previous_round_dir, digest, endpoints)
@@ -255,7 +255,7 @@ def main(argv=None):
                 raise Hold("new PRIVATE HUMAN next-round workspace must be empty")
             sources = (original, previous_dir, *earlier_dirs)
             if args.role_return_dir:
-                sources = (*sources, os.path.abspath(args.role_return_dir))
+                sources = (*sources, *(os.path.abspath(d) for d in args.role_return_dir))
             for source in sources:
                 if os.path.commonpath((source, root_path)) in (source, root_path):
                     raise Hold("next-round output must be separate from original inputs")
@@ -267,7 +267,7 @@ def main(argv=None):
                 elif args.role_return_dir:
                     if not earlier_rounds:
                         raise Hold("role return requires one earlier original HUMAN round")
-                    _, after = admit_return(args.role_return_dir,
+                    after = combine_returns(args.role_return_dir,
                                             [*earlier_rounds, before], endpoints, digest)
                 else:
                     response_parent = os.path.dirname(os.path.abspath(os.fspath(args.responses)))
@@ -287,7 +287,7 @@ def main(argv=None):
                 if args.interactive:
                     again = after
                 elif args.role_return_dir:
-                    _, again = admit_return(
+                    again = combine_returns(
                         args.role_return_dir,
                         [*(entry for _, entry in renewed_earlier), renewed_before],
                         renewed_endpoints, renewed_digest)

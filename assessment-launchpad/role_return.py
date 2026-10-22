@@ -16,6 +16,7 @@ import io
 import json
 import os
 import sys
+import unicodedata
 
 from launchpad import Hold, FLAGS, open_output_directory, publish_bundle, read_private_bundle_item
 from review_desk import ROLES, STAGES, read_original_bundle, require_private_file, validate_worksheet
@@ -88,6 +89,10 @@ def parse_reply(raw, rounds, role, fingerprint, indices):
                 or reported_role != role or prior != previous[index]["stage"]
                 or proposed not in STAGES):
             raise Hold("role-return changed source binding, slot order, role or stage")
+        # Quoting CSV does not neutralize spreadsheet formula cells.
+        normalized = unicodedata.normalize("NFKC", note).lstrip()
+        if normalized.startswith(("=", "+", "-", "@")):
+            raise Hold("PRIVATE HUMAN CSV note resembles a spreadsheet formula")
         new_worksheet["human_rows"][index]["stage"] = proposed
         new_worksheet["human_rows"][index]["note"] = note
         # The role assignment is deliberately immutable in this role reply.

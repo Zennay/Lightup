@@ -132,3 +132,30 @@ changes grants, verifies a remediation, or starts an assessment.
 All existing source-owner, CI, permanent VPS, privacy/security,
 separate client/operator consent, action-time revocation and HUMAN GO
 gates remain mandatory.
+
+## Consolidate several independent HUMAN roles in one next round
+
+The next-round operator may repeat --role-return-dir up to five times to
+combine separate replies from independent selected HUMAN roles without serial
+editing. Every reply must bind the same original source, the same manually
+ordered earlier rounds, and the same immediately previous HUMAN round.
+Each return must be the canonical TWO-file native recipient-import packet.
+Selections must be disjoint **even if one recipient made no edits**; duplicate
+or overlapping original ordinals always HOLD the entire publication.
+
+    mkdir -m 700 ~/private-role-consolidated-round
+    python3 assessment-launchpad/advance.py \
+      --bundle-dir ~/private-lab-launchpad \
+      --earlier-round-dir ~/private-human-round-01 \
+      --previous-round-dir ~/private-human-round-02 \
+      --role-return-dir ~/private-owner-return-security \
+      --role-return-dir ~/private-owner-return-privacy \
+      --output-dir ~/private-role-consolidated-round
+
+The reconciler admits the original full source for **each** independent return,
+then copies ONLY its explicitly selected stage and private note into one new
+PRIVATE HUMAN worksheet. All unselected roles' notes remain original. Source
+fingerprints, the complete worksheet and receipts are re-admitted again
+immediately before publication. Conflicting recipients are NOT automatically
+resolved; choose a new manual HUMAN round instead. No inferred identity,
+authentication, consent, trusted chronology, remediation, or HUMAN GO.

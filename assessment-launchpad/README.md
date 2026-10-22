@@ -370,3 +370,6 @@ IMPORTANT: Human roles are unsigned self-reports, not verified identities or ser
 ## Returning role-filtered HUMAN replies
 
 See [ROLE_RETURN_GUIDE.md](ROLE_RETURN_GUIDE.md) for the complete offline role-specific CSV or non-echoing terminal reply -> source-bound owner-only HUMAN worksheet -> native advance workflow. Voluntary roles are not authenticated, and no scope/consent/target action occurs.
+
+
+Owner-only multi-recipient workflow: advance.py accepts up to five repeatable --role-return-dir inputs from disjoint selected HUMAN roles. See ROLE_RETURN_GUIDE.md for original round ordering, overlap refusal, private receipts, the browser editor and source-bound import. This is never consent or authorization.
