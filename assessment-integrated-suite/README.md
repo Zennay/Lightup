@@ -10,12 +10,16 @@ browser studio HTML pages, two local support JS assets, launcher, README and
 operator guide. It integrates the current candidate-matrix scriptless HTML,
 aggregate JSON schema v5 and long-form PRIVATE HUMAN round-history CSV.
 
-Verify without extracting files:
+Verify without extracting files through the integrated suite:
 python3 assessment-integrated-suite/suite.py verify-kit --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip --sha256-file assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip.sha256
 
-The detached sidecar is published in the same repository and is not an
-independent trust anchor. The package is unsigned, REVIEW_ONLY and not a
-deployment artifact.
+The standalone verifier accepts the same optional checksum inputs:
+python3 assessment-integrated-suite/verify_offline.py --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip --sha256-file assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip.sha256
+
+Use `--expected-sha256` instead when the expected digest came from a separately
+trusted channel. The detached sidecar is published in the same repository and
+is not an independent trust anchor. The package is unsigned, REVIEW_ONLY and
+not a deployment artifact.
 
 ## Native path safety
 
