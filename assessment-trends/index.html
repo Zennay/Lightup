@@ -105,6 +105,25 @@
     <button id="coverageUnknownJson" type="button" class="secondary" disabled>Export unknown-coverage JSON</button>
     <button id="coverageUnknownBrief" type="button" class="ghost" disabled>Export script-free unknown-coverage brief</button>
   </div>
+  <h3>Compare unknown coverage between any two manual slots</h3>
+  <p>Choose any two distinct displayed slots to inspect per-scenario unknown-coverage values and changes. This is an uncertainty comparison only: an increase is not reclassified as a regression, and a decrease does not prove remediation. Rows use anonymous scenario ordinals, never original scenario IDs.</p>
+  <div class="controls">
+    <label>From manual slot<select id="coverageUnknownPairFrom" disabled><option value="1">Slot 01</option></select></label>
+    <label>To manual slot<select id="coverageUnknownPairTo" disabled><option value="2">Slot 02</option></select></label>
+    <label>Scenario change filter<select id="coverageUnknownPairFilter" disabled>
+      <option value="all">All scenarios</option>
+      <option value="increased">Increased unknown coverage</option>
+      <option value="decreased">Decreased unknown coverage</option>
+      <option value="unchanged">Unchanged unknown coverage</option>
+    </select></label>
+  </div>
+  <p id="coverageUnknownPairSummary" class="message" role="status" aria-live="polite">Import snapshots to compare unknown coverage for any two distinct manual slots.</p>
+  <div id="coverageUnknownPairTable" class="tablewrap" role="region" aria-label="Anonymous per-scenario unknown-coverage comparison" tabindex="0"><p class="empty">No pairwise coverage comparison yet.</p></div>
+  <div class="controls no-print">
+    <button id="coverageUnknownPairCsv" type="button" disabled>Export pairwise unknown coverage CSV</button>
+    <button id="coverageUnknownPairJson" type="button" class="secondary" disabled>Export pairwise unknown coverage JSON</button>
+    <button id="coverageUnknownPairBrief" type="button" class="ghost" disabled>Export script-free pairwise coverage brief</button>
+  </div>
   <h3>Manual-slot flag-state transition matrix</h3>
   <p>For every selected metric/slot pair, classify each anonymous scenario as clear in both, flagged in both, clear → flagged, or flagged → clear. The default matrix compares adjacent slots; switch to all distinct manual-slot pairs to compare non-adjacent endpoints directly. This separates new source-reported flags from flags that are no longer reported without implying a verified fix. The selected order is a display order, not authenticated chronology. The static review-group filter above also applies here.</p>
   <label>Compare pair scope
