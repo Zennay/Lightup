@@ -19,6 +19,20 @@ All four files are created with mode `0600`. The private HTML does not embed sou
 
 Use a local Python 3.11+ environment with the standard library only. Agenda input files must be owner-owned regular files with mode `0600`, no symlink/hard-link alias, and at most 128 KiB each. Duplicate agenda bytes, duplicate JSON keys, unknown fields, inconsistent count maps, mismatched date buckets, unknown stage/role/source-kind values, changed inputs and any true authorization/consent/dispatch/release flag fail the entire batch before outputs are published.
 
+### Read-only preview (no output directory)
+
+Use `--preview-only` to admit the same original agenda files, apply the selected focus filters and validate any selected HUMAN returns, but **never open/create an output directory or write files**. It prints only aggregate counts by neutral role, date bucket and HUMAN stage, plus the number/total byte size of the artifacts that would be rendered. It does not print source paths, source hashes, original IDs, target labels or per-agenda rows.
+
+```bash
+python3 assessment-portfolio/portfolio.py \\
+  --as-of 2026-10-23 \\
+  --preview-only \\
+  /private/agenda-room-a/agenda.json \\
+  /private/agenda-room-b/agenda.json
+```
+
+All existing strict source admission and source re-admission still apply. A successful preview is only a local planning summary; it is not an authorization, approval, consent or evidence of completed remediation. For a private workroom or exact reopen, use the separate explicit output-directory workflow below.
+
 Create a new, separate owner-only output directory; do not place it inside any original source room:
 
 ```bash
