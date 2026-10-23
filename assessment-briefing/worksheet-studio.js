@@ -284,8 +284,22 @@
     if ((dirty||rows.length) && !confirm("Forget all local PRIVATE worksheet data? Downloaded files are unaffected.")) return;
     discardReply("Incoming HUMAN proposal cleared.");
     rows=[];dirty=false;lastBulk=null;sourceSize=0;originalName="";sourceFileSha="";
-    $("fileInput").value="";$("workroom").hidden=true;
-    $("tableBody").replaceChildren();message("Private workroom cleared from application memory (best effort). Downloaded files remain on disk.");
+    // Forget must clear staged file handles and typed passphrases too, even if
+    // a user typed credentials but never started the encrypt/decrypt action.
+    ["fileInput","encryptedInput","encryptPass","encryptPassConfirm","decryptPass"].forEach(id=>{
+      $(id).value="";
+    });
+    $("workroom").hidden=true;
+    $("tableBody").replaceChildren();
+    $("summary").replaceChildren();
+    $("completionFill").style.width="0%";
+    $("sourceName").textContent="PRIVATE worksheet";
+    $("sourceStatus").textContent="";
+    $("displayCount").textContent="";
+    $("pageLabel").textContent="";
+    $("dirtyStatus").textContent="";
+    $("replyPage").textContent="";
+    message("Private workroom, staged file handles and passphrase fields cleared from application memory (best effort). Downloaded files remain on disk.");
   }
   /* Independent HUMAN peer worksheet inbox (not producer or reviewer authentication). */
   function discardReply(reason="Incoming HUMAN proposals discarded.") {
