@@ -195,6 +195,68 @@
   }
   const countRegressions = () => report.cases.reduce((n, c) => n + c.regressions.length, 0);
   const unknownCoverage = c => c.changes.find(m => m.name === "coverage_unknown")?.candidate || 0;
+
+  function coverageStats(cases) {
+    const values = cases.map(c => c.changes.find(m => m.name === "coverage_unknown"))
+      .filter(m => m && Number.isFinite(m.candidate))
+      .map(m => m.candidate)
+      .sort((a,b) => a-b);
+    if (!values.length) return null;
+    const middle = Math.floor(values.length / 2);
+    const median = values.length % 2 ? values[middle] : (values[middle-1] + values[middle]) / 2;
+    const nearestRank = p => values[Math.max(0, Math.ceil(p * values.length) - 1)];
+    return {
+      observed: values.length,
+      totalCases: cases.length,
+      positive: values.filter(v => v > 0).length,
+      total: values.reduce((sum,v) => sum + v, 0),
+      median,
+      q1: nearestRank(0.25),
+      q3: nearestRank(0.75),
+      min: values[0],
+      max: values[values.length-1]
+    };
+  }
+
+  function coverageSummaryText(cases) {
+    const s = coverageStats(cases);
+    if (!s) return "No complete candidate-side coverage_unknown values were provided; missing values are not treated as zero.";
+    const percent = (100 * s.positive / s.observed).toFixed(1);
+    return "Source-reported candidate-side unknown coverage: above zero in " +
+      s.positive + "/" + s.observed + " reported values (" + percent + "%); total " +
+      fmt(s.total) + ", median " + fmt(s.median) + ", Q1–Q3 " + fmt(s.q1) + "–" +
+      fmt(s.q3) + ", IQR " + fmt(s.q3-s.q1) + ", range " + fmt(s.min) + "–" +
+      fmt(s.max) + ". " + (s.totalCases-s.observed) +
+      " case(s) without a reported value excluded. This is uncertainty context, not a regression or release verdict.";
+  }
+
+  function renderCoverageSummary(cases) {
+    const parent = $("coverage-summary");
+    parent.replaceChildren();
+    const s = coverageStats(cases);
+    if (!s) {
+      child(parent, "p", coverageSummaryText(cases), "muted-copy");
+      return;
+    }
+    const percent = (100 * s.positive / s.observed).toFixed(1) + "%";
+    const entries = [
+      ["Reported values", s.observed + " / " + s.totalCases],
+      ["Values above zero", s.positive + " (" + percent + ")"],
+      ["Total", fmt(s.total)],
+      ["Median", fmt(s.median)],
+      ["Q1–Q3", fmt(s.q1) + "–" + fmt(s.q3)],
+      ["IQR", fmt(s.q3-s.q1)],
+      ["Range", fmt(s.min) + "–" + fmt(s.max)]
+    ];
+    entries.forEach(([name,value]) => {
+      const card = child(parent, "div", undefined, "coverage-stat");
+      child(card, "small", name);
+      child(card, "strong", value);
+    });
+    child(parent, "p", (s.totalCases-s.observed) +
+      " case(s) without a reported coverage_unknown value are excluded. Candidate-side source data only; not verified coverage or a regression verdict.",
+      "coverage-note");
+  }
   const priority = c => !c.regressions.length ? "No regression" :
     c.regressions.some(x => x === "scope_violations" || x === "policy_violations") ? "Critical drift" :
     c.regressions.some(x => ["missed_findings", "invalid_findings", "valid_findings"].includes(x)) ? "High drift" : "Review drift";
@@ -345,6 +407,7 @@
     child(box, "p", "Source " + report.verdict + " | " +
       report.cases.length + " cases | " + countRegressions() +
       " metric regressions | AUTHORIZATION / CONSENT / RELEASE = FALSE", "print-note");
+    child(box, "p", coverageSummaryText(report.cases), "print-note");
     const table = child(box, "table");
     const head = child(table, "thead");
     const headings = child(head, "tr");
@@ -401,6 +464,7 @@
       report.cases.length + " total | " + regressionFlags +
       " metric regression flags | AUTHORIZATION / CONSENT / RELEASE = FALSE", "print-note");
     child(box, "p", "Filters applied: " + filterSummary, "print-note");
+    child(box, "p", coverageSummaryText(rows.map(({c}) => c)), "print-note");
     if (!rows.length) {
       child(box, "p", "No cases match the current filters.", "print-note");
       return;
@@ -529,6 +593,7 @@
     })).filter(x=>x.count>0).sort((a,b)=>b.count-a.count ||
       a.name.localeCompare(b.name));
     const uncertaintyCount=report.cases.filter(c=>unknownCoverage(c)>0).length;
+    renderCoverageSummary(report.cases);
     if (!counts.length&&!uncertaintyCount) {
       child(parent,"p","No source-reported metric regression or unknown-coverage value above zero in this accepted report.","muted-copy");
     }
