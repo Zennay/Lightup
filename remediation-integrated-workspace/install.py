@@ -592,21 +592,25 @@ def build(dest: Path) -> None:
                                  os.O_EXCL | os.O_NOFOLLOW |
                                  getattr(os, "O_CLOEXEC", 0),
                                  0o600, dir_fd=directory_fd)
+            with os.fdopen(archive_fd, "w+b") as archive_stream:
+                os.fchmod(archive_stream.fileno(), 0o600)
+                with zipfile.ZipFile(archive_stream, "w",
+                                     compression=zipfile.ZIP_DEFLATED,
+                                     compresslevel=8) as z:
+                    for name, data in sorted(written.items()):
+                        info = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
+                        info.compress_type = zipfile.ZIP_DEFLATED
+                        info.external_attr = 0o100600 << 16
+                        info.create_system = 3
+                        z.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=8)
+                archive_stream.flush()
+                os.fsync(archive_stream.fileno())
+            # Persist the new ZIP directory entry as well as its contents,
+            # using the SAME pinned private parent fd held since O_EXCL.
+            # Without fsync(dir), a crash can lose the name after fsync(file).
+            os.fsync(directory_fd)
         finally:
             os.close(directory_fd)
-        with os.fdopen(archive_fd, "w+b") as archive_stream:
-            os.fchmod(archive_stream.fileno(), 0o600)
-            with zipfile.ZipFile(archive_stream, "w",
-                                 compression=zipfile.ZIP_DEFLATED,
-                                 compresslevel=8) as z:
-                for name, data in sorted(written.items()):
-                    info = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
-                    info.compress_type = zipfile.ZIP_DEFLATED
-                    info.external_attr = 0o100600 << 16
-                    info.create_system = 3
-                    z.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=8)
-            archive_stream.flush()
-            os.fsync(archive_stream.fileno())
         archive_raw = read_owner_file(archive, ceiling=MAX_TOTAL)
         entries["software-only.zip"] = {"sha256": digest(archive_raw),
                                          "bytes": len(archive_raw)}
