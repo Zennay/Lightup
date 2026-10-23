@@ -179,6 +179,22 @@ def _csv(board: dict) -> bytes:
     return stream.getvalue().encode("utf-8")
 
 
+def _priority_route_loads(board: dict):
+    """Count open HUMAN rows by source-reported priority, date and route."""
+    counts = Counter(
+        (row["priority"], row["follow_up_date"] or "undated",
+         row["routing_group"])
+        for row in board["rows"] if row["human_stage"] != "reviewed"
+    )
+    priority_order = {name: index for index, name in enumerate(PRIORITIES)}
+    route_order = {name: index for index, name in enumerate(ROUTES)}
+    return sorted(
+        ((priority, day, route, count)
+         for (priority, day, route), count in counts.items()),
+        key=lambda item: (priority_order[item[0]], item[1], route_order[item[2]]),
+    )
+
+
 def _summary_csv(board: dict) -> bytes:
     """Export fixed-vocabulary aggregate and date/route load rows."""
     stream = StringIO(newline="")
@@ -206,6 +222,11 @@ def _summary_csv(board: dict) -> bytes:
             "" if item["declared_capacity"] is None else item["declared_capacity"],
             "" if item["above_declared_capacity"] is None else item["above_declared_capacity"],
             reference, overdue,
+        ))
+    for priority, day, route, count in _priority_route_loads(board):
+        writer.writerow((
+            "priority_route_date_load", priority, count, day, route, count,
+            "", "", reference, overdue,
         ))
     return stream.getvalue().encode("utf-8")
 
@@ -239,6 +260,18 @@ def _html(board: dict) -> bytes:
             for key in ("follow_up_date", "routing_group", "open_items",
                         "above_declared_capacity")
         ) for item in board["route_date_loads"]
+    )
+    priority_load_rows = "".join(
+        "<tr><td>%s</td><td>%s</td><td>%d</td></tr>" %
+        (escape(priority), escape(day), count)
+        for priority, day, route, count in _priority_route_loads(board)
+        for _ in (None,)
+    )
+    # Keep the route visible in the table while preserving fixed vocabulary.
+    priority_load_rows = "".join(
+        "<tr><td>%s</td><td>%s</td><td>%s</td><td>%d</td></tr>" %
+        (escape(priority), escape(day), escape(route), count)
+        for priority, day, route, count in _priority_route_loads(board)
     )
     overdue_text = (
         "Not computed: no explicit reference date supplied."
@@ -276,6 +309,9 @@ def _html(board: dict) -> bytes:
         "<h2>Open row load by date and route</h2><table><thead><tr>"
         "<th>Date</th><th>Route</th><th>Open</th><th>Above hypothetical limit</th>"
         "</tr></thead><tbody>%s</tbody></table>"
+        "<h2>Open load by source priority, date and route</h2><table><thead><tr>"
+        "<th>Source priority</th><th>Date</th><th>Route</th><th>Open</th>"
+        "</tr></thead><tbody>%s</tbody></table>"
         "<h2>All HUMAN review rows</h2><table><thead><tr>%s</tr></thead>"
         "<tbody>%s</tbody></table>"
         "<p>PRIVATE offline export: keep dates/counts confidential. No source"
@@ -285,7 +321,7 @@ def _html(board: dict) -> bytes:
          board["human_work_rows"], board["open_work_rows"],
          board["reviewed_rows"], board["undated_open_rows"],
          escape(overdue_text), priority_rows, stage_rows, route_rows,
-         load_rows, header, body)
+         load_rows, priority_load_rows, header, body)
     return content.encode("utf-8")
 
 def _render(board: dict) -> bytes:
