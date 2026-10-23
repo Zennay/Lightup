@@ -580,11 +580,15 @@ def home() -> bytes:
     import landing
     return landing.render()
 
-def exclusive_publish(stage: Path, destination: Path) -> None:
-    """Linux renameat2(NO_REPLACE), as original native PRIVATE workspace publisher.
+def exclusive_publish(stage: Path, destination: Path,
+                      *, expected_identity: tuple[int, int] | None = None) -> None:
+    """Publish only the original staged inode with Linux NO_REPLACE.
 
-    Never fall back to a replace-capable rename if exclusive publication
-    is unsupported; an independently created target must remain untouched.
+    Current native callers supply the device/inode obtained at original
+    private creation; older independently owned workflows can still use
+    the existing no-replace API until their original owners integrate it.
+    This catches accidental or substituted staged entries at publication,
+    not malicious same-user changes between filesystem operations.
     """
     libc = ctypes.CDLL(None, use_errno=True)
     operation = getattr(libc, "renameat2", None)
@@ -601,6 +605,21 @@ def exclusive_publish(stage: Path, destination: Path) -> None:
     # This avoids following a replaced parent symlink during the final rename.
     fd = open_private_dir_fd(destination.parent)
     try:
+        if expected_identity is not None:
+            require(type(expected_identity) is tuple and
+                    len(expected_identity) == 2 and
+                    all(type(v) is int and v >= 0 for v in expected_identity),
+                    "Original staging inode identity must be exact")
+            original = os.stat(stage.name, dir_fd=fd, follow_symlinks=False)
+            private_mode = (stat.S_ISDIR(original.st_mode)
+                            and stat.S_IMODE(original.st_mode) == 0o700)
+            private_file = (stat.S_ISREG(original.st_mode)
+                            and stat.S_IMODE(original.st_mode) == 0o600
+                            and original.st_nlink == 1)
+            require((original.st_dev, original.st_ino) == expected_identity
+                    and original.st_uid == os.getuid()
+                    and (private_mode or private_file),
+                    "Original private publishing stage was replaced or became unsafe")
         rc = operation(fd, os.fsencode(stage.name), fd,
                        os.fsencode(destination.name), 1)
         if rc:
@@ -706,7 +725,7 @@ def build(dest: Path) -> None:
         # exclusive publication; any HOLD removes this unpublished stage.
         verify(stage, compare_checkout=True)
         require(not dest.exists(), "Destination appeared during build")
-        exclusive_publish(stage, dest)
+        exclusive_publish(stage, dest, expected_identity=stage_identity)
         print("PRIVATE offline integrated workspace:", dest)
         print("Open locally:", dest / "index.html")
         print("Software-only archive:", dest / "software-only.zip")
@@ -780,7 +799,7 @@ def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
         write_file(stage / "REVIEW_ONLY.html", report_html)
         require(not output.exists() and not output.is_symlink(),
                 "Private report destination appeared during publication")
-        exclusive_publish(stage, output)
+        exclusive_publish(stage, output, expected_identity=stage_identity)
     finally:
         cleanup_private_stage(stage, stage_identity)
     print("PRIVATE reproducibility passport:", output)
