@@ -18,6 +18,7 @@ import shutil
 import stat
 import struct
 import sys
+import unicodedata
 import zipfile
 import zlib
 
@@ -90,14 +91,15 @@ def require_operator_path(path: Path) -> None:
     require(isinstance(path, Path) and path.is_absolute(), 
             "HOLD: expected a literal absolute HUMAN operator path")
     name = os.fspath(path)
+    # Unicode general categories catch invisible marks overlooked by a
+    # blacklist: Cf (ZWSP, soft hyphen, word joiner, bidi controls),
+    # Cc (including C1 terminal controls), Cs (surrogates), and actual
+    # line/paragraph separators. Printable Unicode names remain allowed.
+    disallowed = {"Cc", "Cf", "Cs", "Zl", "Zp"}
     require(0 < len(name) <= 1024 and
-            all((0x20 <= ord(ch) <= 0x7e or ord(ch) >= 0xa0)
-                and ch not in ("\u061c", "\u200e", "\u200f", "\ufeff")
-                and not ("\u202a" <= ch <= "\u202e")
-                and not ("\u2066" <= ch <= "\u2069")
-                for ch in name) and
+            all(unicodedata.category(ch) not in disallowed for ch in name) and
             all(part not in (".", "..") for part in path.parts[1:]),
-            "Operator path contains terminal controls, bidi marks, or unsafe segments")
+            "Operator path contains invisible format/control marks or unsafe segments")
 
 
 def digest(payload: bytes) -> str:
