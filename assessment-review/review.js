@@ -401,6 +401,102 @@
     }
   }
 
+  // HUMAN-only date classification uses an explicitly chosen local date.
+  // It intentionally does not read the system clock or schedule real work.
+  function validLocalDay(value) {
+    if (typeof value !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+    const parsed = new Date(value + "T00:00:00Z");
+    return Number.isFinite(parsed.getTime()) &&
+      parsed.toISOString().slice(0,10) === value;
+  }
+  function planningRows(cases, reference) {
+    if (!validLocalDay(reference)) return [];
+    const groups = ["before", "same", "after", "undated"];
+    return cases.map(({c,i}) => {
+      if (c.stage === "reviewed") return null;
+      const due = validLocalDay(c.due) ? c.due : "";
+      const bucket = !due ? "undated" : due < reference ? "before" :
+        due === reference ? "same" : "after";
+      return {c,i,due,bucket};
+    }).filter(Boolean).sort((a,b) =>
+      groups.indexOf(a.bucket)-groups.indexOf(b.bucket) ||
+      a.due.localeCompare(b.due) || urgency(a.c)-urgency(b.c) || a.i-b.i);
+  }
+  function planningSummary(cases) {
+    const reference = $("asof-day").value;
+    if (!validLocalDay(reference)) return "";
+    const rows = planningRows(cases.map((c,i) => ({c,i})),reference);
+    const count = bucket => rows.filter(row => row.bucket === bucket).length;
+    const reviewed = cases.filter(c => c.stage === "reviewed").length;
+    return "HUMAN proposals relative to manually selected " + reference +
+      ": earlier " + count("before") + ", same day " + count("same") +
+      ", later " + count("after") + ", undated " + count("undated") +
+      "; " + reviewed + " human-reviewed label(s) excluded. " +
+      "Not real due/overdue verification, booking, consent or approval.";
+  }
+  function renderPlanningCalendar() {
+    const summary = $("planning-summary"), body = $("planning-rows");
+    summary.replaceChildren();body.replaceChildren();
+    const reference = $("asof-day").value;
+    const admitted = !!report && validLocalDay(reference);
+    $("planning-export").disabled = !admitted;
+    if (!report) {
+      child(summary,"p","Import a canonical lab comparison to view HUMAN planning dates.","muted-copy");
+      return;
+    }
+    if (!admitted) {
+      child(summary,"p","Choose an explicit reference date. No clock-derived overdue claims or automatic actions are made.","muted-copy");
+      return;
+    }
+    const rows = planningRows(report.cases.map((c,i)=>({c,i})),reference);
+    const reviewed = report.cases.filter(c=>c.stage==="reviewed").length;
+    const labels = [
+      ["before","Before chosen day"],["same","On chosen day"],
+      ["after","After chosen day"],["undated","No proposed date"]
+    ];
+    const cards=child(summary,"div",undefined,"timeline-stats");
+    labels.forEach(([bucket,name])=>{
+      const card=child(cards,"div",undefined,"timeline-stat");
+      child(card,"small",name);
+      child(card,"strong",String(rows.filter(r=>r.bucket===bucket).length));
+    });
+    child(summary,"p","As of "+reference+": "+rows.length+
+      " open HUMAN planning item(s), "+reviewed+" human-reviewed label(s) excluded. "+
+      "These are locally proposed dates, not authenticated obligations, real scheduling, remediation or release.","muted-copy");
+    if (!rows.length) {
+      const tr=child(body,"tr"),td=child(tr,"td","No open HUMAN planning items.");
+      td.colSpan=6;
+    } else rows.forEach(({c,i,due,bucket})=>{
+      const tr=child(body,"tr"),first=child(tr,"td");
+      const button=child(first,"button",label(i),"timeline-link");
+      button.type="button";
+      button.addEventListener("click",()=>{
+        selected=i;render();$("case-title").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      [bucket==="before"?"Before reference":bucket==="same"?"On reference":
+        bucket==="after"?"After reference":"Undated",due||"—",
+        stageText(c.stage),c.route,priority(c)].forEach(x=>child(tr,"td",x));
+    });
+  }
+  function exportPlanningCalendarCsv() {
+    if (!report || !validLocalDay($("asof-day").value)) return;
+    const reference=$("asof-day").value;
+    const headings=["case","reference_day","relative_proposed_day","follow_up_date",
+      "human_stage","human_workstream","source_priority","source_regression_count",
+      "source_unknown_coverage","authorized","consent_verified",
+      "dispatch_allowed","release_allowed","review_only"];
+    const lines=[headings.map(csvCell).join(",")];
+    planningRows(report.cases.map((c,i)=>({c,i})),reference).forEach(({c,i,due,bucket})=>{
+      const row=[label(i),reference,bucket,due,c.stage,c.route,priority(c),
+        c.regressions.length,unknownCoverage(c),false,false,false,false,true];
+      lines.push(row.map(csvCell).join(","));
+    });
+    download("lightup-human-date-planning.csv",
+      lines.join("\\r\\n")+"\\r\\n","text/csv;charset=utf-8");
+    child($("planning-summary"),"p","Private anonymous HUMAN date-plan CSV exported. "+
+      "Source case identities, actual owners and permissions are excluded.","muted-copy");
+  }
+
   function renderPrintBrief() {
     const box = $("print-brief"); box.replaceChildren();
     child(box, "h2", "All-case human follow-up brief");
@@ -408,6 +504,8 @@
       report.cases.length + " cases | " + countRegressions() +
       " metric regressions | AUTHORIZATION / CONSENT / RELEASE = FALSE", "print-note");
     child(box, "p", coverageSummaryText(report.cases), "print-note");
+    if (validLocalDay($("asof-day").value))
+      child(box, "p", planningSummary(report.cases), "print-note");
     const table = child(box, "table");
     const head = child(table, "thead");
     const headings = child(head, "tr");
@@ -465,6 +563,8 @@
       " metric regression flags | AUTHORIZATION / CONSENT / RELEASE = FALSE", "print-note");
     child(box, "p", "Filters applied: " + filterSummary, "print-note");
     child(box, "p", coverageSummaryText(rows.map(({c}) => c)), "print-note");
+    if (validLocalDay($("asof-day").value))
+      child(box, "p", planningSummary(rows.map(({c}) => c)), "print-note");
     if (!rows.length) {
       child(box, "p", "No cases match the current filters.", "print-note");
       return;
@@ -701,12 +801,13 @@
   function redoHumanEdit(){restoreHumanHistory(humanRedoHistory,humanUndoHistory,"Redo");}
   function render() {
     renderOverview();renderLandscape();renderQueue();renderDetails();
-    renderPrintBrief();renderFilteredPrintBrief();
+    renderPlanningCalendar();renderPrintBrief();renderFilteredPrintBrief();
     updateHumanHistoryControls();
   }
   function reset(invalidate = true) {
     if (invalidate) invalidateReads();
     report = null; selected = -1; digest = null; sourceKind = null;
+    $("asof-day").value = "";
     humanUndoHistory = []; humanRedoHistory = [];
     updateHumanHistoryControls();
     clearHistorical(); clearPlanComparison(); metricFocus = null;
@@ -714,6 +815,7 @@
     $("cases").replaceChildren(); $("metrics").replaceChildren();
     ["queue-export-csv","queue-export-json","queue-export-html","queue-import-button","print-filtered"]
       .forEach(id => { $(id).disabled = true; });
+    renderPlanningCalendar();
     alert("Local workspace cleared. No browser storage was used.");
   }
   // file:// contexts may lack Web Crypto. This fallback hashes only locally
@@ -1303,6 +1405,11 @@
       " human investigations. Original report HOLD and security flags are unchanged.", "good");
     render();
   });
+  $("asof-day").addEventListener("change", () => {
+    renderPlanningCalendar();
+    if (report) {renderPrintBrief();renderFilteredPrintBrief();}
+  });
+  $("planning-export").addEventListener("click",exportPlanningCalendarCsv);
   $("clear").addEventListener("click", reset);
   $("filter").addEventListener("change", renderQueue);
   $("route-filter").addEventListener("change", renderQueue);
@@ -1338,7 +1445,7 @@
     if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {e.target.value = ""; return;}
     invalidateReads();
     rememberHumanEdit();
-    report.cases[selected].due = value; renderOverview();
+    report.cases[selected].due = value; render();
     $("undo-human").disabled = false;
   });
   $("export-json").addEventListener("click", () => {
