@@ -12,6 +12,22 @@ This branch includes existing original product assets unchanged from:
 
 All **79 original software assets** are pinned by source-lock.json against the exact upstream source HEADs 6246550821039b829dc10ded95a1432c0653786f and 264bf15929e1f36699ea4114b91c5c313e55eea7. Original branch files are not rewritten. Their owners retain review authority.
 
+## Bounded private staging cleanup
+
+Native source-only publication always uses one of three internally generated
+staging namespaces: `.lightup-suite-`, `.lightup-receiver-`, or
+`.lightup-integrity-`, followed by precisely 24 lowercase hexadecimal
+characters. The original cleanup routine is now **fail-closed**: it
+rejects any other pathname *before* invoking recursive deletion, and checks
+that the current staged inode is a real directory owned by the current
+user with exact 0700 permissions. Linux cleanup remains relative to a
+verified, pinned private parent directory descriptor and refuses an
+unexpected symlink. A completed no-replace rename leaves no stage to
+remove. This prevents accidental deletion of a separately created PRIVATE
+passport or received source directory when a caller passes the wrong
+path, but does not authorize any software publication, assert provenance
+or replace external filesystem isolation.
+
 ## One-command offline installation
 
 On an authorized trusted Linux machine with Python 3, inside a copy of this branch create a private parent directory first:
