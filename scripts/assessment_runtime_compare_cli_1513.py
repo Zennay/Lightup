@@ -1,6 +1,6 @@
 """Opt-in read-only JSON lab benchmark comparison, never an execution gate.
 
-Usage: python scripts/assessment_runtime_compare_cli_1513.py base.json next.json
+Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text] base.json next.json
 Returns 2 REVIEW_ONLY or 3 HOLD; never 0. Only explicit local files are read.
 """
 from __future__ import annotations
@@ -232,23 +232,86 @@ def _output(result):
     }
 
 
+def _display_text(result) -> str:
+    """Render a local human summary without source identifiers or input paths."""
+    lines = [
+        "LightUp assessment-runtime comparison",
+        f"Status: {result.status}",
+        "Input mode: explicit local files only; source provenance is unauthenticated.",
+        "REVIEW_ONLY is not a pass, remediation proof, consent or release approval.",
+    ]
+    if result.changes:
+        for change in result.changes:
+            flag = "FLAGGED" if change.regression else "not flagged"
+            lines.append(
+                f"  {change.name}: baseline={change.baseline} "
+                f"candidate={change.candidate} delta={change.delta} [{flag}]"
+            )
+    else:
+        lines.append(
+            "No metric details emitted; input admission or comparison consistency "
+            "did not permit a complete comparison."
+        )
+    if result.regressions:
+        lines.append("Source-reported adverse metrics: " + ", ".join(result.regressions))
+    else:
+        lines.append("Source-reported adverse metrics: none reported")
+    lines.extend([
+        "Authority: authorized=false; consent_verified=false; "
+        "dispatch_allowed=false; release_allowed=false.",
+        "No target, network, handler, grant, state write or deployment was used.",
+    ])
+    return "\n".join(lines)
+
+
 def main(argv=None):
-    args = sys.argv[1:] if argv is None else argv
+    args = list(sys.argv[1:] if argv is None else argv)
+    output_format = "json"
+    format_seen = False
+    malformed = False
+    positional = []
+    index = 0
+    while index < len(args):
+        item = args[index]
+        if item == "--format":
+            if (
+                format_seen or index + 1 >= len(args)
+                or args[index + 1] not in ("json", "text")
+            ):
+                malformed = True
+                index += 2 if index + 1 < len(args) else 1
+            else:
+                output_format = args[index + 1]
+                format_seen = True
+                index += 2
+        elif item.startswith("--"):
+            malformed = True
+            index += 1
+        else:
+            positional.append(item)
+            index += 1
+
     result = None
-    if len(args) == 2:
+    if len(positional) == 2 and not malformed:
         try:
-            baseline, baseline_context = _parse_case(args[0])
-            candidate, candidate_context = _parse_case(args[1])
+            baseline, baseline_context = _parse_case(positional[0])
+            candidate, candidate_context = _parse_case(positional[1])
             result = compare_lab_evaluations(
                 baseline, candidate, baseline_context, candidate_context,
             )
-        except (OSError, ValueError, TypeError, KeyError, OverflowError, UnicodeError, RecursionError):
+        except (
+            OSError, ValueError, TypeError, KeyError, OverflowError,
+            UnicodeError, RecursionError,
+        ):
             pass
     if result is None:
         # A rejected packet never reflects caller-supplied metadata or paths.
         from lightup.ai.assessment_runtime_diff_1513 import LabComparison
         result = LabComparison("HOLD")
-    print(json.dumps(_output(result), sort_keys=True, separators=(",", ":")))
+    if output_format == "text":
+        print(_display_text(result))
+    else:
+        print(json.dumps(_output(result), sort_keys=True, separators=(",", ":")))
     return 2 if result.status == "REVIEW_ONLY" else 3
 
 
