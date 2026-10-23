@@ -595,6 +595,7 @@ function createHumanBoard(api) {
       plans=prepared.map(note=>({...note}));changed=false;lastBulk=null;
       historyResolutions.clear();clearHistory();page=0;render();
     },
+    choicesFingerprint:()=>JSON.stringify(plans),
     hasEdits:()=>changed&&plans.some(p=>!isDefault(p)),
     stageTotals:()=>plans.length?{...counts().stage}:null};
 }

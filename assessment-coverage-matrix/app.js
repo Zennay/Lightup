@@ -15,6 +15,7 @@
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
   let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
   let rawOriginalBytes = [], originalByteTotal = 0;
+  let originalSessionEpoch=0; // Monotonic, prevents an old async import from replacing newer originals.
   let matrixPage = 0;
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
@@ -447,6 +448,7 @@
   function commitOriginalBatch(prepared,privateHumanNotes=null) {
     // All potentially invalid external ORIGINAL and HUMAN bytes were admitted
     // before this synchronous commit changes any visible application state.
+    originalSessionEpoch++;
     sources=prepared.next;sourceDigests=prepared.nextDigests;
     originalByteTotal=prepared.bytes.reduce((sum,b)=>sum+b.byteLength,0);
     // Retain an exact-byte copy only when the operator can use full-vault export.
@@ -477,12 +479,18 @@
     const notes=humanBoard.validateVaultPlan(plan,prepared.newRows,prepared.nextDigests);
     return {...prepared,notes};
   }
+  const sessionSnapshot=()=>({originalEpoch:originalSessionEpoch,
+    humanChoices:humanBoard.choicesFingerprint()});
+  const sessionStillCurrent=snapshot=>snapshot.originalEpoch===originalSessionEpoch &&
+    snapshot.humanChoices===humanBoard.choicesFingerprint();
   const workspaceVault=createPrivateWorkspaceVault({
     $,fail,shape,int,parseStrict,message,download,
     getRawFiles:()=>rawOriginalBytes,
     getOriginalCount:()=>sources.length,
     getOriginalByteTotal:()=>originalByteTotal,
     getPrivatePlan:()=>humanBoard.exportVaultPlan(),
+    getSessionSnapshot:sessionSnapshot,
+    sessionStillCurrent,
     prepareFullWorkspace,
     commitFullWorkspace:prepared=>commitOriginalBatch(prepared,prepared.notes)
   });
@@ -491,6 +499,7 @@
     if(files.length<2||files.length>8){
       message("Select 2–8 existing original PRIVATE lab JSON files in your chosen display order.",true);return;
     }
+    const openingSession=sessionSnapshot();
     $("load").disabled=true;
     message("Reading explicit local originals. Nothing is uploaded or scanned.");
     try {
@@ -500,9 +509,14 @@
             "Original PRIVATE source file outside the 8 MiB bound");
           return new Uint8Array(await file.arrayBuffer());
         })));
+      fail(sessionStillCurrent(openingSession),
+        "Local original sources or HUMAN choices changed while the import was being read");
       if(sources.length&&!confirm("Replace current original PRIVATE results and all HUMAN planning choices?")) {
         message("Original file replacement cancelled. Current private workroom kept.");return;
       }
+      fail(sessionStillCurrent(openingSession),
+        "Local original sources or HUMAN choices changed before replacement");
+      workspaceVault.discardPreview();
       commitOriginalBatch(prepared);
       message("Original PRIVATE result batch structurally admitted. Source statements are unverified; no target contact or upload.");
     } catch(error) {
@@ -515,6 +529,8 @@
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
+    originalSessionEpoch++;
+    workspaceVault.discardPreview();
     sources=[];rows=[];visible=[];selected=null;sourceDigests=[];rawOriginalBytes=[];
     originalByteTotal=0;matrixPage=0;
     humanBoard.clearAll();
