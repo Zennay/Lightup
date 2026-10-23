@@ -253,6 +253,7 @@ readonly spellcheck="false" placeholder="Vul eerst de benodigde absolute paden i
 <div class="tools">
 <button type="button" id="copy" disabled>Kopieer terminalcommando</button>
 <button type="button" id="prepare-receive" class="secondary" hidden disabled>Vul ontvangstcommando in</button>
+<button type="button" id="prepare-checksum" class="secondary" hidden disabled>Vul checksumopdracht in</button>
 <button type="button" id="reset" class="secondary">Wis ingevoerde paden</button>
 </div>
 <p id="message" class="message" aria-live="polite"></p>
