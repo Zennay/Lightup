@@ -322,7 +322,77 @@ def build(dest: Path) -> None:
         if stage.exists():
             shutil.rmtree(stage)
 
-def verify(folder: Path, *, compare_checkout: bool = False) -> None:
+def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
+                              verified: dict[str, bytes], checkout_compared: bool) -> None:
+    """Create a separate private reproducibility passport, never a consent receipt."""
+    require(output.is_absolute() and output.parent == output.parent.resolve(strict=True)
+            and not output.exists() and not output.is_symlink(),
+            "Choose an unused literal absolute private report directory")
+    owner_dir(output.parent)
+    require(output != ROOT and ROOT not in output.parents
+            and output != folder and folder not in output.parents
+            and output not in folder.parents
+            and output not in ROOT.parents,
+            "Integrity report must remain outside source checkout and installed suite")
+    manifest = canonical(receipt)
+    report = {
+        "kind": "lightup.offline_software_reproducibility_passport",
+        "version": 1,
+        "disposition": "HUMAN_ONLY_DRAFT_HOLD",
+        "source_heads": receipt["source_heads"],
+        "installed_software_file_count": len(verified) - 1,
+        "pinned_original_file_count": len(catalog()[1]["files"]),
+        "manifest_sha256_unsigned": digest(manifest),
+        "software_archive_sha256_unsigned": digest(verified["software-only.zip"]),
+        "compared_to_explicit_checkout": checkout_compared,
+        "authority_granted": False,
+        "client_consent": False,
+        "scan_authorized": False,
+        "verified_evidence": False,
+        "verified_remediation": False,
+        "release_approved": False,
+        "warning": WARNING,
+    }
+    def value(label: str, field: str) -> str:
+        return ("<dt>" + html.escape(label) + "</dt><dd>" +
+                html.escape(str(report[field]), quote=True) + "</dd>")
+    import html
+    body = "".join((
+        value("Installed software count", "installed_software_file_count"),
+        value("Pinned original file count", "pinned_original_file_count"),
+        value("Unsigned package SHA-256", "software_archive_sha256_unsigned"),
+        value("Unsigned manifest SHA-256", "manifest_sha256_unsigned"),
+        value("Exact checkout compared", "compared_to_explicit_checkout"),
+    ))
+    page = ("""<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<title>LightUp — private offline software passport</title>
+<style>body{font:16px/1.6 system-ui;background:#f4f7fb;color:#15263b;max-width:750px;margin:35px auto;padding:20px}main{background:white;border:1px solid #ccd6e1;border-radius:15px;padding:28px}dt{font-weight:700;margin-top:18px}dd{overflow-wrap:anywhere;margin:0}strong{color:#952c1d}</style>
+<main><h1>LightUp private offline software passport</h1>
+<p><strong>REVIEW ONLY — NOT AUTHORIZATION</strong></p><p>This passport records
+only local software byte consistency. It does not contain tenant evidence,
+original findings, reviewer identity or source filenames.</p><dl>""" +
+        body + """</dl><p>Hash matching does not authenticate the software producer,
+client/operator consent, scanning permission, verified remediation or
+release approval. Independent review remains mandatory.</p></main></html>""")
+    stage = output.parent / (".lightup-integrity-" + secrets.token_hex(12))
+    os.mkdir(stage, 0o700)
+    try:
+        write_file(stage / "REVIEW_ONLY.json", canonical(report))
+        write_file(stage / "REVIEW_ONLY.html", page.encode("utf-8"))
+        require(not output.exists() and not output.is_symlink(),
+                "Private report destination appeared during publication")
+        exclusive_publish(stage, output)
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+    print("PRIVATE reproducibility passport:", output)
+    print("Unsigned digests do not establish authenticity, consent or release.")
+
+
+def verify(folder: Path, *, compare_checkout: bool = False,
+           report_dir: Path | None = None) -> None:
     owner_dir(folder)
     receipt = parse(read_owner_file(folder / "manifest.json"))
     require(set(receipt) == {"kind", "version", "disposition", "authority_granted",
@@ -416,6 +486,8 @@ def verify(folder: Path, *, compare_checkout: bool = False) -> None:
             compared += 1
         print(f"CHECKOUT PARITY: {compared} original and integrated software files match exact local checkout bytes.")
         print("Checkout parity is not producer identity or independent approval.")
+    if report_dir is not None:
+        publish_integrity_receipt(folder, report_dir, receipt, verified, compare_checkout)
     print("REVIEW_ONLY: offline suite and software archive locally consistent.")
     print("Local hashes are not signatures, authenticated consent or release approval.")
 
@@ -428,6 +500,8 @@ def main() -> int:
     p_verify.add_argument("--workspace", required=True, type=Path)
     p_verify.add_argument("--compare-checkout", action="store_true",
                           help="also compare installed software with the exact current local checkout")
+    p_verify.add_argument("--report-dir", type=Path,
+                          help="optionally write a NEW 0700 private scriptless integrity passport")
     p_recv = sub.add_parser("receive", help="Safely reconstruct pinned software-only ZIP offline")
     p_recv.add_argument("--archive", required=True, type=Path)
     p_recv.add_argument("--output-dir", required=True, type=Path)
@@ -439,7 +513,8 @@ def main() -> int:
             from receiver import receive
             receive(args.archive, args.output_dir)
         else:
-            verify(args.workspace, compare_checkout=args.compare_checkout)
+            verify(args.workspace, compare_checkout=args.compare_checkout,
+                   report_dir=args.report_dir)
         return 2  # REVIEW_ONLY; not a release success signal.
     except (Hold, OSError, KeyError, TypeError, zipfile.BadZipFile, ValueError) as exc:
         print("HOLD:", str(exc), file=sys.stderr)
