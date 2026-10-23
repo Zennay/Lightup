@@ -484,8 +484,7 @@
     else if (sort === "flagged_observations") rows.sort((a,b)=>compareNumber(a,b,"flagged_scenario_slot_observations"));
     else if (sort === "candidate_shift") rows.sort((a,b)=>compareNumber(a,b,"max_abs_median_candidate_shift"));
     else if (sort === "delta_shift") rows.sort((a,b)=>compareNumber(a,b,"max_abs_median_delta_shift"));
-    else if (sort === "flagged_slots") rows.sort((a,b)=>compareNumber(a,b,"slots_with_flagged_scenarios") ||
-      compareNumber(a,b,"flagged_scenario_slot_observations"));
+    else if (sort === "flagged_slots") rows.sort((a,b)=>compareNumber(a,b,"slots_with_flagged_scenarios"));
     else rows.sort((a,b)=>metricOrder.get(a.metric)-metricOrder.get(b.metric));
     return rows;
   }
