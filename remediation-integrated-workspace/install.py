@@ -92,6 +92,39 @@ def parse(raw: bytes) -> dict:
     require(type(obj) is dict and canonical(obj) == raw, "Noncanonical descriptor")
     return obj
 
+def open_literal_read_fd(path: Path, *, private_parent: bool = False) -> int:
+    """Pin every directory component before opening the final file.
+
+    O_NOFOLLOW on the final pathname alone still follows swapped parent
+    directory symlinks. Traverse each directory via dir_fd/O_DIRECTORY and
+    O_NOFOLLOW, keeping the selected chain descriptor-bound. O_NONBLOCK on the
+    last file also prevents a race-replaced FIFO from blocking before fstat.
+    Linux-only, matching this suite's exclusive Linux publisher.
+    """
+    require(path.is_absolute() and len(path.parts) >= 2
+            and all(part not in (".", "..") for part in path.parts[1:]),
+            "A literal absolute file path is required")
+    flags = (os.O_RDONLY | os.O_NOFOLLOW | os.O_DIRECTORY |
+             getattr(os, "O_CLOEXEC", 0))
+    fd = os.open("/", flags)
+    try:
+        for part in path.parts[1:-1]:
+            next_fd = os.open(part, flags, dir_fd=fd)
+            os.close(fd)
+            fd = next_fd
+        if private_parent:
+            parent = os.fstat(fd)
+            require(stat.S_ISDIR(parent.st_mode) and
+                    parent.st_uid == os.getuid() and
+                    parent.st_mode & 0o077 == 0,
+                    "Private source parent must be owner-only")
+        return os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW |
+                       getattr(os, "O_CLOEXEC", 0) | os.O_NONBLOCK,
+                       dir_fd=fd)
+    finally:
+        os.close(fd)
+
+
 def read_checkout_source(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
     """Admit a fixed local software file via one no-follow descriptor.
 
@@ -107,7 +140,7 @@ def read_checkout_source(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
     before = path.lstat()
     require(stat.S_ISREG(before.st_mode) and before.st_nlink == 1
             and 0 <= before.st_size <= ceiling, "Unsafe or oversized checkout source")
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0))
+    fd = open_literal_read_fd(path)
     try:
         current = os.fstat(fd)
         identity = (current.st_dev, current.st_ino, current.st_size,
@@ -209,7 +242,7 @@ def read_owner_file(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
     require(stat.S_ISREG(s.st_mode) and s.st_uid == os.getuid()
             and s.st_nlink == 1 and s.st_mode & 0o077 == 0,
             "Not an owner-only single-link file")
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0))
+    fd = open_literal_read_fd(path, private_parent=True)
     try:
         fs = os.fstat(fd)
         identity = (fs.st_dev, fs.st_ino, fs.st_size, fs.st_mtime_ns, fs.st_ctime_ns)
