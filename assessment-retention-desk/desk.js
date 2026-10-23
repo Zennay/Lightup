@@ -100,7 +100,8 @@
     };
     const weeks = Array.from({length:4},(_,i)=>({
       code:"week_"+(i+1),label:"Week "+(i+1)+" · "+iso(addDays(monday,i*7))+" t/m "+
-        iso(addDays(monday,i*7+6)),count:0,attention:0,scheduled:true
+        iso(addDays(monday,i*7+6)),start:iso(addDays(monday,i*7)),
+      end:iso(addDays(monday,i*7+6)),count:0,attention:0,scheduled:true
     }));
     const before={code:"overdue",label:"Voorlopig verstreken (vóór vandaag)",count:0,attention:0,scheduled:false};
     const after={code:"later",label:"Latere reviewmomenten",count:0,attention:0,scheduled:false};
@@ -127,7 +128,9 @@
     $("capacity-export").disabled=processing||!entries.length||!view||!view.total;
     if(!view){
       $("capacity-summary").textContent="HOLD: kies voor beide fictieve scenario's een geheel getal van 1 t/m 12.";
-      root.append(text("tr",""));
+      const tr=document.createElement("tr");
+      const td=text("td","Ongeldige fictieve weekcapaciteit: kies twee gehele waarden van 1 t/m 12.");
+      td.colSpan=5;tr.append(td);root.append(tr);
       return;
     }
     const planned=view.rows.filter(r=>r.scheduled).reduce((n,r)=>n+r.count,0);
@@ -154,11 +157,12 @@
     if(!report || !report.total)return status("HOLD: ongeldige capaciteit of lege gekozen selectie.",true);
     if(!window.confirm("PRIVATE export met alleen datumweek-/aantalgroepen en fictieve scenario-capaciteit? Kleine groepen en voorgestelde datums kunnen indirect vertrouwelijk zijn. Geen namen, SHA, notities, echte agenda-afspraken, verwijdering of consent. Alleen lokaal downloaden?"))
       return status("PRIVATE capaciteitsplan niet geëxporteerd.");
-    const rows=["period,count,human_attention,scenario_a_capacity,scenario_a_shortfall,scenario_b_capacity,scenario_b_shortfall"];
+    const rows=["reference_day,selection,period,week_start,week_end,count,human_attention,scenario_a_capacity,scenario_a_shortfall,scenario_b_capacity,scenario_b_shortfall"];
     for(const row of report.rows){
       const aGap=row.scheduled?Math.max(0,row.count-report.a):0;
       const bGap=row.scheduled?Math.max(0,row.count-report.b):0;
-      rows.push([row.code,row.count,row.attention,row.scheduled?report.a:"",aGap,
+      rows.push([report.today,report.scope,row.code,row.start||"",row.end||"",
+        row.count,row.attention,row.scheduled?report.a:"",aGap,
         row.scheduled?report.b:"",bGap].join(","));
     }
     download("lightup-private-human-capacity-scenarios.csv","text/csv;charset=utf-8",
