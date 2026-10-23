@@ -22,7 +22,19 @@ On an authorized trusted Linux machine with Python 3, inside a copy of this bran
 
 The installer returns 2 = REVIEW_ONLY after local success, or 3 = HOLD on failure. Use an unused directory name. Open integrated-workspace-v1/index.html locally.
 
-The new **private, 0700** folder contains the original 79 software-only files, a CSP/scriptless index linking four complete offline original application screens, source-lock.json, software-only.zip, and a SHA-256 manifest. The ZIP is ordered reproducibly and contains software, the installer, operator guide and landing page, but **no tenant data, evidence, login, credentials, private source workrooms or HUMAN notes**. All installed files are 0600. The ZIP is **created as a private 0600 single-link
+The new **private, 0700** folder contains the original 79 software-only files, a CSP/scriptless index linking four complete offline original application screens, source-lock.json, software-only.zip, and a SHA-256 manifest. The ZIP is ordered reproducibly and contains software, the installer, operator guide and landing page, but **no tenant data, evidence, login, credentials, private source workrooms or HUMAN notes**. Source-only installation and reconstruction now also create all **nested 0700
+software directories** using the same anchored private directory-descriptor
+approach as individual file creation. `ensure_private_subdirs` descends
+one component at a time with Linux `mkdir(dir_fd=...)` and
+`open(O_DIRECTORY|O_NOFOLLOW)`, checking exact current-user ownership and
+0700 mode even if the component already existed. The original
+absolute-path `Path.mkdir(parents=True)` is no longer used for the 79
+pinned source files or 25 integrated tools in builder and recipient. A
+symlink or unexpected permission at an intermediate package directory
+fails closed; this is local filesystem integrity, not producer identity
+or consent.
+
+All installed files are 0600. The ZIP is **created as a private 0600 single-link
 file from the first write**, using exclusive nofollow creation against the
 pinned private staging-directory descriptor; no temporary default-umask
 ZIP is opened by pathname and chmod'ed later. The completed archive is
