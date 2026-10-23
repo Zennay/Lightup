@@ -148,11 +148,11 @@ def render() -> bytes:
 Dit scherm bereidt alleen een opdracht voor; er wordt niets automatisch uitgevoerd.</p>
 <div class="state"><span class="dot"></span> INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</div>
 </header>
-<div class="notice" role="note"><strong>Geen uitvoerings- of vrijgavebevoegdheid.</strong>
-De browser leest geen bestanden en voert geen commando's uit.
-Alleen de bestaande native Python-tools kunnen na expliciete operatoractie
-bronbestanden controleren en nieuwe private lokale output publiceren.
-Versleuteling en checksums bewijzen geen identiteit, echte toestemming of fix.</div>
+<div class="notice" role="note"><strong>Alleen lokale controle. Geen toestemming of vrijgave.</strong>
+De browser leest uitsluitend bestanden die je zelf selecteert voor een lokale
+SHA-256-vergelijking. Er wordt niets geüpload of automatisch uitgevoerd.
+Nieuwe privébestanden worden alleen door de native Python-tools gemaakt na
+jouw expliciete opdracht. Een checksum bewijst geen afzender, toestemming of herstel.</div>
 <section class="journey" aria-label="Gids voor echte PRIVATE bronvrije overdracht">
 <h2>Drie stappen, van pakket tot beoordeling</h2>
 <p>Drie onafhankelijke lokale HUMAN-stappen. De pakketoverdracht tussen machines
@@ -195,9 +195,9 @@ autocomplete="off" maxlength="64" placeholder="64 kleine hexadecimale tekens">
 <input id="packet-expected-size" type="text" inputmode="numeric"
 autocomplete="off" maxlength="12" placeholder="Bijvoorbeeld 102400">
 <p id="packet-expected-result" aria-live="polite" role="status"></p>
-<small>Vergelijk met het afzonderlijk ontvangen bronhouder-fingerprint.
-Dit is een ONDERTEKEND: nee / REVIEW_ONLY hulpmiddel; SHA op zichzelf
-bewijst nooit de identiteit van de bronhouder of toestemming.</small>
+<small>Vergelijk met het afzonderlijk ontvangen controlebestand.
+Dit bewijs is niet digitaal ondertekend. Een gelijke SHA-256 bewijst
+geen afzender of toestemming.</small>
 </div>
 
 <p id="packet-comparison" class="fingerprint-comparison" aria-live="polite"></p>
@@ -242,7 +242,7 @@ placeholder="Bijv. encryptie, HUMAN, archief" autocomplete="off">
 <p id="purpose" class="muted">Alleen oorspronkelijke bronpakketten en expliciete HUMAN-selecties.</p>
 <div id="fields"></div>
 <p id="special" class="hint"></p>
-<div class="step">02 / PRIVÉCOMMANDo</div>
+<div class="step">02 / PRIVÉCOMMANDO</div>
 <p>Dit commando is uitsluitend een <strong>lokale voorbereiding</strong>.
 Plak het pas na eigen controle in een geautoriseerde, privé Linux-terminal
 in de root van de geïnstalleerde offline suite.
