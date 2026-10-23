@@ -2,6 +2,8 @@
 
 ## Current product update · explicit-reference HUMAN date board · 23 October 2026
 
+The printed local date board retains the anonymous case ordinal text while hiding interactive controls. All dates are still human-proposed and no real scheduling is asserted.
+
 The offline Review Desk now includes a local date-planning board for existing HUMAN proposals. Choose the **reference day manually**; the application deliberately does not infer "today", overdue severity, reminders or real deadlines from the device clock.
 
 - It classifies all **not-human-reviewed** cases by proposed follow-up day: before the chosen reference, on it, after it, or undated. Human-reviewed labels are counted separately and excluded from the open follow-up board.
@@ -24,7 +26,7 @@ The offline human triage desk now sorts the filtered scenario queue by source-pr
 
 Filtered queue JSON is now schema v3 and records the selected sort. Its importer accepts legacy v1/v2 packets under their original validation and priority-order rules, and validates v3 row order before restoring only HUMAN planning fields. Unknown coverage remains an uncertainty signal, not a regression reclassification or authorization signal.
 
-Current standalone artifact: **103,487 bytes**, SHA-256 `033f30b990489eb442fde685d006c5d8cc900c058f246622c04c98fde384ed1e`. It embeds the exact current JavaScript and CSS and pins their hashes in the restrictive no-network CSP.
+Current standalone artifact: **103,607 bytes**, SHA-256 `28f19da9f561211e8bae0b2888892df135c211ff6ac73eef50e73ff70599df12`. It embeds the exact current JavaScript and CSS and pins their hashes in the restrictive no-network CSP.
 
 **Release boundary:** INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.
 Human preparation tool only, not a scan, source authenticity verifier, benchmark release gate, authorization service, consent collection, grant issuance or deployment route.
