@@ -182,6 +182,26 @@ an existing output cause `3=HOLD`, without installing anything. The native
 does **not** reserve the name or grant permission. The offline HUMAN desk
 and command composer offer this optional planned output field.
 
+### Optional original software checksum preview in offline browser
+
+The standalone `operator.html` now has a separate **PRIVATE software-only
+ZIP byte comparison** section. An authorized HUMAN selects exactly one local
+`.zip` of **1–15,000,000 bytes** and its separate exact **65-byte**
+`.sha256` file (64 lowercase hex bytes plus a single LF), then selects
+**Vergelijk exacte lokale bytes**. The browser uses native local WebCrypto
+SHA-256 to compare the original ZIP bytes to the checksum; malformed
+receipts, mismatching hashes, oversized ZIPs and absent local crypto return
+**HOLD**, with no upload, network fallback, storage, replacement or install.
+A changed file selection or explicit **Wis resultaat** invalidates old
+comparison results; work stays in local browser memory.
+
+This is an **advisory SHA-256 equality preview only**. It cannot verify a
+ZIP structure, original software source lock, human sender identity,
+review, consent, current authorization, genuine revocation or HUMAN GO.
+Use the native `inspect-archive --expected-sha256-file` and `receive`
+with independently approved original/private inputs afterward; the browser
+does not silently publish any asset or start an authorized scan.
+
 ### PRIVATE original software checksum issuance
 
 An authorized software publisher can now generate the original **65-byte
