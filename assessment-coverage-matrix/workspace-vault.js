@@ -3,7 +3,8 @@
  * No assessment execution, no grant, no network, no browser persistence. */
 function createPrivateWorkspaceVault(api) {
   const {$,fail,shape,int,parseStrict,message,download,getRawFiles,getOriginalCount,getOriginalByteTotal,
-    getPrivatePlan,getSessionSnapshot,sessionStillCurrent,
+    getPrivatePlan,getCurrentDigests,getCurrentRowCount,commitNotesOnly,
+    getSessionSnapshot,sessionStillCurrent,
     prepareFullWorkspace,commitFullWorkspace} = api;
   const cryptoBox=createPrivatePlanCrypto();
   const MAX_SOURCE_TOTAL=24*1024*1024; // bounded, intentionally smaller than the 8x8MiB import limit
@@ -41,12 +42,19 @@ function createPrivateWorkspaceVault(api) {
       originals.length<=8&&originals.every(x=>x instanceof Uint8Array)&&
       originals.every(x=>x.length>0&&x.length<=8*1024*1024);
   }
+  function sameOriginals() {
+    if(!pending)return false;
+    const before=getCurrentDigests(),next=pending.prepared.nextDigests;
+    return before.length===next.length&&getCurrentRowCount()===pending.prepared.newRows.length&&
+      before.every((value,index)=>value===next[index]);
+  }
   function update() {
     const sources=getRawFiles(),total=getOriginalByteTotal();
     const allowed=available()&&total<=MAX_SOURCE_TOTAL;
     $("vaultSave").disabled=busy||!allowed;
     $("vaultOpen").disabled=busy||!cryptoBox.supported();
     $("vaultApply").disabled=busy||!pending;
+    $("vaultApplyNotes").disabled=busy||!pending||!sameOriginals();
     $("vaultDiscard").disabled=busy||!pending;
     $("vaultAvailable").textContent=!cryptoBox.supported()
       ?"Browser WebCrypto is unavailable. Encrypted PRIVATE workspace import/export disabled."
@@ -137,7 +145,9 @@ function createPrivateWorkspaceVault(api) {
         decoded.reduce((sum,b)=>sum+b.length,0)+" total source bytes · "+
         prepared.newRows.length+" source-declared groups · "+humanCount+
         " non-default HUMAN planning rows. Existing originals and notes remain unchanged. "+
-        "Use APPLY to replace or DISCARD to release the staged workroom.";
+        (sameOriginals()?" Same-original HUMAN-only restore is available.":
+          " Current source bytes/order are different or absent; HUMAN-only restore unavailable.")+
+        " Use full APPLY to replace originals and choices, or DISCARD to release staging.";
       message("PRIVATE encrypted workroom fully decrypted and source-bound. Preview staged only; nothing replaced or authorized.");
     } catch(error) {
       message("Complete PRIVATE workspace HOLD: "+error.message+
@@ -167,9 +177,29 @@ function createPrivateWorkspaceVault(api) {
     message("Exact-source PRIVATE originals and HUMAN choices now open locally. No network, grant, scan, authenticated identity or release.");
     update();
   }
+  function applyNotesOnly(){
+    if(busy||!pending)return;
+    const selected=pending;
+    if(selected.operation!==operationEpoch||!sessionStillCurrent(selected.session)||!sameOriginals()){
+      discardPreview();
+      message("PRIVATE HUMAN restore HOLD: active original bytes, source order or HUMAN session changed.",true);
+      return;
+    }
+    if(!confirm("Restore ONLY the admitted HUMAN choices against the exact currently opened ORIGINAL source bytes and original row order? Current originals remain unchanged; existing HUMAN choices are replaced. This is not consent, verification or authorization."))return;
+    if(selected.operation!==operationEpoch||!sessionStillCurrent(selected.session)||!sameOriginals()){
+      discardPreview();
+      message("PRIVATE HUMAN restore HOLD: originals or decisions changed before application.",true);
+      return;
+    }
+    const notes=selected.prepared.notes;
+    discardPreview(); // Best-effort clear of staged PRIVATE input bytes before restoring choices.
+    commitNotesOnly(notes);
+    message("Source-bound HUMAN decisions restored onto EXACT unchanged original bytes. Current originals retained; no authenticated authority or assessment.");
+  }
   $("vaultSave").addEventListener("click",save);
   $("vaultOpen").addEventListener("click",open);
   $("vaultApply").addEventListener("click",applyPreview);
+  $("vaultApplyNotes").addEventListener("click",applyNotesOnly);
   $("vaultDiscard").addEventListener("click",()=>{
     discardPreview();
     message("Staged decrypted PRIVATE preview discarded; active workspace kept unchanged.");
