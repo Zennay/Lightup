@@ -61,13 +61,11 @@
       for (const value of values) {
         if (field.repeat && value === "") continue;
         if (value !== value.trim()) throw Error("Geen spaties rondom paden: " + field.flag);
-        if ([...value].some(ch => {
-          const cp = ch.codePointAt(0);
-          return cp === 0x061c || cp === 0x200e || cp === 0x200f ||
-                 cp === 0xfeff || cp >= 0x202a && cp <= 0x202e ||
-                 cp >= 0x2066 && cp <= 0x2069;
-        })) {
-          throw Error("Verwijder onzichtbare tekens die de richting van een pad veranderen: " + field.flag);
+        // Match native Unicode Cc/Cf/Cs/Zl/Zp admission. Beyond bidi
+        // overrides this rejects hidden ZWSP, soft hyphen, word joiner,
+        // C1 controls and Unicode line separators before a command is shown.
+        if (/[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(value)) {
+          throw Error("Verwijder onzichtbare opmaak- of controletekens uit dit pad: " + field.flag);
         }
         if (!value.startsWith("/") || value.startsWith("//") ||
             value.includes("\r") || value.includes("\0") || /[\x00-\x1f\x7f]/.test(value)) {
