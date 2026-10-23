@@ -284,7 +284,7 @@
         "Only checked visible rows are included. This does not execute anything."))return;
       download(fictional?"lightup-FICTIONAL-lab-scenario-selected.json":
         "lightup-PRIVATE-lab-scenario-selected.json",
-        JSON.stringify(payload,null,2)+"\\n","application/json");
+        JSON.stringify(payload,null,2)+"\n","application/json");
       notify("exportStatus","Downloaded "+result.length+" selected "+kind+
         " scenario(s). Only checked visible rows were included; protect private target addresses and findings.");
     }catch(_){
@@ -466,6 +466,43 @@
     selectedStage.clear();staged=null;$("staging").hidden=true;$("stageRows").replaceChildren();
     $("stageSummary").textContent="";
   }
+  function stageFieldValue(key,value){
+    if(key==="expected_findings"&&value===null)
+      return "UNSCORED — null (no expected findings declared)";
+    if(key==="expected_findings"&&Array.isArray(value)&&value.length===0)
+      return "EXPLICIT ZERO — [] (zero expected findings declared)";
+    return JSON.stringify(value,null,2);
+  }
+  function appendStageValue(parent,label,key,value){
+    const box=document.createElement("div");box.className="source-diff-value";
+    const title=document.createElement("strong");title.textContent=label;
+    const pre=document.createElement("pre");pre.textContent=stageFieldValue(key,value);
+    box.append(title,pre);parent.append(box);
+  }
+  function renderStageFieldPreview(before,proposed,status){
+    const details=document.createElement("details");details.className="source-diff";
+    const summary=document.createElement("summary");
+    summary.textContent=status==="ADDED"?"Inspect proposed values":
+      status==="CHANGED"?"Inspect exact before / proposed values":
+      status.startsWith("ABSENT")?"Inspect retained current values":"No field changes";
+    details.append(summary);
+    if(status==="UNCHANGED")return details;
+    const fields=["name","description","targets","expected_findings"];
+    for(const field of fields){
+      if(status==="ADDED"&&proposed){
+        appendStageValue(details,"Proposed · "+field,field,proposed[field]);
+      }else if(status==="CHANGED"&&before&&proposed&&
+          JSON.stringify(before[field])!==JSON.stringify(proposed[field])){
+        const pair=document.createElement("div");pair.className="source-diff-pair";
+        appendStageValue(pair,"Current · "+field,field,before[field]);
+        appendStageValue(pair,"Proposed · "+field,field,proposed[field]);
+        details.append(pair);
+      }else if(status.startsWith("ABSENT")&&before){
+        appendStageValue(details,"Retained current · "+field,field,before[field]);
+      }
+    }
+    return details;
+  }
   function showStage(){
     if(!staged){clearStage();return;}
     selectedStage.clear();
@@ -479,36 +516,42 @@
         status==="UNCHANGED"?"Same declared source fields":
         ["name","description","targets","expected_findings"].filter(key=>
           JSON.stringify(old[key])!==JSON.stringify(row[key])).join(", ")+" changed";
-      changes.push([id,status,detail]);
+      changes.push({id,status,detail,before:old||null,proposed:row});
     }
-    for(const id of earlier.keys())if(!after.has(id))
-      changes.push([id,"ABSENT (not fixed)","Absent from imported source; retained by selective merge"]);
+    for(const [id,row] of earlier)if(!after.has(id))
+      changes.push({id,status:"ABSENT (not fixed)",
+        detail:"Absent from imported source; retained by selective merge",before:row,proposed:null});
     $("staging").hidden=false;
     $("mergeStage").disabled=fictional;
     $("stageSummary").textContent="Current "+items.length+" scenarios → proposed "+
-      staged.length+". "+changes.filter(([,s])=>s==="ADDED").length+" added; "+
-      changes.filter(([,s])=>s==="CHANGED").length+" changed; "+
-      changes.filter(([,s])=>s.startsWith("ABSENT")).length+" absent. "+
+      staged.length+". "+changes.filter(c=>c.status==="ADDED").length+" added; "+
+      changes.filter(c=>c.status==="CHANGED").length+" changed; "+
+      changes.filter(c=>c.status.startsWith("ABSENT")).length+" absent. "+
       (fictional?"Selective merge disabled for fictional demo. ":"")+
       "No imported row is applied automatically.";
     const table=document.createElement("table");
-    table.innerHTML="<thead><tr><th>Select</th><th>PRIVATE ID</th><th>Change</th><th>Source fields</th></tr></thead>";
+    table.innerHTML="<thead><tr><th>Select</th><th>PRIVATE ID</th><th>Change</th><th>Source fields · exact preview</th></tr></thead>";
     const body=document.createElement("tbody");
-    for(const [id,status,detail] of changes.sort(([a],[b])=>a.localeCompare(b))){
-      const row=document.createElement("tr"),td=document.createElement("td");
+    for(const change of changes.sort((a,b)=>a.id.localeCompare(b.id))){
+      const {id,status,detail,before,proposed}=change;
+      const row=document.createElement("tr"),selectCell=document.createElement("td");
       if((status==="ADDED"||status==="CHANGED")&&!fictional){
         const input=document.createElement("input");
         input.type="checkbox";input.title="Select PRIVATE scenario for local merge";
         input.addEventListener("change",()=>{
           if(input.checked)selectedStage.add(id);else selectedStage.delete(id);
         });
-        td.append(input);
-      }else td.textContent="—";
-      row.append(td);
-      for(const value of [id,status,detail]){
+        selectCell.append(input);
+      }else selectCell.textContent="—";
+      row.append(selectCell);
+      for(const value of [id,status]){
         const cell=document.createElement("td");cell.textContent=value;row.append(cell);
       }
-      body.append(row);
+      const sourceCell=document.createElement("td");
+      const sourceSummary=document.createElement("span");sourceSummary.textContent=detail;
+      sourceCell.append(sourceSummary);
+      if(status!=="UNCHANGED")sourceCell.append(renderStageFieldPreview(before,proposed,status));
+      row.append(sourceCell);body.append(row);
     }
     table.append(body);$("stageRows").replaceChildren(table);
   }
