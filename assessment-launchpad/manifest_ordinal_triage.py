@@ -20,7 +20,9 @@ from launchpad import (
     report_hold, reject_constant, unique_pairs,
 )
 from manifest_change_desk import (
-    DELTA_JSON, OUTPUT_LIMIT, admit_saved_bundle, compare,
+    DELTA_JSON, DELTA_HTML, DELTA_CSV, DELTA_EDITOR,
+    OUTPUT_LIMIT, admit_saved_bundle, compare, render_html, render_csv,
+    read_review_editor,
 )
 
 JSON_NAME = "lightup-private-manifest-human-triage.json"
@@ -58,25 +60,38 @@ def original_delta(before_raw, after_raw, before, after):
     }
 
 def admit_delta(path, expected):
+    """Accept only a complete original source-bound change desk, not a loose JSON claim."""
     fd, absolute = open_output_directory(path)
     try:
         names = set(os.listdir(fd))
-        if not {
-            "lightup-private-manifest-delta.json",
-            "lightup-private-manifest-delta.html",
-        }.issubset(names):
-            raise Hold("existing change desk has missing original artifacts")
+        original = {DELTA_JSON, DELTA_HTML}
+        full = original | {DELTA_CSV, DELTA_EDITOR}
+        if names not in (original, original | {DELTA_CSV}, full):
+            raise Hold("original change desk has missing or unexpected files")
         raw = read_private_bundle_item(fd, DELTA_JSON, OUTPUT_LIMIT)
+        try:
+            parsed = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_pairs,
+                                parse_constant=reject_constant, parse_float=reject_constant)
+        except (UnicodeError, TypeError, ValueError) as exc:
+            raise Hold("original change receipt is not canonical JSON") from exc
+        canonical = (json.dumps(expected, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+        if parsed != expected or raw != canonical:
+            raise Hold("original PRIVATE change receipt or source context changed")
+        expected_artifacts = {
+            DELTA_JSON: canonical,
+            DELTA_HTML: render_html(expected, include_editor=(DELTA_EDITOR in names)),
+        }
+        if DELTA_CSV in names:
+            expected_artifacts[DELTA_CSV] = render_csv(expected)
+        if DELTA_EDITOR in names:
+            expected_artifacts[DELTA_EDITOR] = read_review_editor()
+        for name, expected_bytes in expected_artifacts.items():
+            if read_private_bundle_item(fd, name, OUTPUT_LIMIT) != expected_bytes:
+                raise Hold("original PRIVATE change artifact is incomplete or has drifted")
+        if set(os.listdir(fd)) != names:
+            raise Hold("original PRIVATE change desk changed during admission")
     finally:
         os.close(fd)
-    try:
-        parsed = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_pairs,
-                            parse_constant=reject_constant, parse_float=reject_constant)
-    except (UnicodeError, TypeError, ValueError) as exc:
-        raise Hold("original change receipt is not canonical JSON") from exc
-    canonical = (json.dumps(expected, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
-    if parsed != expected or raw != canonical:
-        raise Hold("original PRIVATE change receipt or source context changed")
     return absolute, raw
 
 def make_packet(original, delta_sha):
