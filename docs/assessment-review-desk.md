@@ -1,5 +1,11 @@
 # LightUp Offline Assessment Review Desk
 
+## Current product update · cross-sectional unknown-coverage distribution · 23 October 2026
+
+The Review Desk now summarizes candidate-side `coverage_unknown` values across the currently imported report: observed-value coverage, count and percentage above zero, total, median, nearest-rank Q1/Q3 and IQR, and minimum/maximum. Missing metric values are excluded from the distribution rather than silently treated as zero.
+
+The same source-reported summary appears in the dashboard, all-case print brief and filtered queue print brief. It is informational uncertainty context only; it does not reclassify regressions, establish actual coverage, prove remediation, or change REVIEW_ONLY/HOLD or any authority flag.
+
 ## Current product update · uncertainty-first queue sorting · 23 October 2026
 
 The offline human triage desk now sorts the filtered scenario queue by source-priority order, highest or lowest source-declared unknown coverage, number of source-reported regression flags, or anonymous scenario ordinal. The selected sort applies consistently to the visible queue, filtered print brief, CSV, JSON and scriptless HTML handoff, with deterministic tie-breakers.
