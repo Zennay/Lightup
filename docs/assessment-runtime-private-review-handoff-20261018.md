@@ -180,7 +180,7 @@ PYTHONPATH=src:scripts python scripts/assessment_runtime_human_capacity_inspect_
   /private/NEW-human-capacity.zip
 ```
 
-The capacity bundle contains a scriptless local HTML summary, CSV and JSON work rows, a fixed-layout manifest with unsigned output digests, and a privacy/no-authority guide. The optional capacity value is only a hypothetical number of HUMAN rows per route/date; the explicit reference date is required for overdue counts. Use `--preview-only` without `--output` to print aggregate counts without publishing files.
+The capacity bundle is a fixed six-member PRIVATE ZIP: scriptless local HTML summary, detailed `capacity.csv`, aggregate `capacity-summary.csv` (priority/stage/route counts and date/route load), canonical JSON work rows, schema-v2 manifest with unsigned output digests, and a privacy/no-authority guide. The optional capacity value is only a hypothetical number of HUMAN rows per route/date; the explicit reference date is required for overdue counts. Use `--preview-only` without `--output` to print aggregate counts without publishing files.
 
 Only distinct original comparison bytes are counted once; changing HUMAN notes on the same comparison does not make a new independent case. `reviewed` rows are excluded from open planning load but remain HUMAN self-reports, not verified fixes or approvals. All outputs remain private and potentially sensitive. Digests are unsigned integrity checks, not authentication. This feature does not grant authorization, prove consent, dispatch handlers, verify remediation, or permit release.
 
