@@ -144,8 +144,8 @@ def render() -> bytes:
 <body><main class="shell">
 <header><div class="eyebrow">LIGHTUP / OFFLINE WERKPLEK</div>
 <h1>Offline werkruimte</h1>
-<p class="lead">Maak een pakket, controleer wat je ontvangt of hervat een beoordeling.
-Dit scherm bereidt alleen een opdracht voor; er wordt niets automatisch uitgevoerd.</p>
+<p class="lead">Bereid een veilige opdracht voor, of vergelijk zelfgekozen bestanden lokaal.
+Er gebeurt niets automatisch en er wordt niets verstuurd.</p>
 <div class="state"><span class="dot"></span> INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</div>
 </header>
 <div class="notice" role="note"><strong>Alleen lokale controle. Geen toestemming of vrijgave.</strong>
