@@ -61,6 +61,14 @@
       for (const value of values) {
         if (field.repeat && value === "") continue;
         if (value !== value.trim()) throw Error("Geen spaties rondom paden: " + field.flag);
+        if ([...value].some(ch => {
+          const cp = ch.codePointAt(0);
+          return cp === 0x061c || cp === 0x200e || cp === 0x200f ||
+                 cp === 0xfeff || cp >= 0x202a && cp <= 0x202e ||
+                 cp >= 0x2066 && cp <= 0x2069;
+        })) {
+          throw Error("Verwijder onzichtbare tekens die de richting van een pad veranderen: " + field.flag);
+        }
         if (!value.startsWith("/") || value.startsWith("//") ||
             value.includes("\r") || value.includes("\0") || /[\x00-\x1f\x7f]/.test(value)) {
           throw Error("Gebruik een letterlijk absoluut Linux-pad: " + field.flag);
