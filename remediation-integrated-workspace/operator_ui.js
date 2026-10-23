@@ -300,10 +300,13 @@
   category.addEventListener("change", renderNav);
   search.addEventListener("input", renderNav);
   reset.addEventListener("click", () => {
+    // Clearing command fields is an explicit privacy action. Don't immediately
+    // replace its confirmation with a misleading "required field" error.
+    // Browser code cannot reliably erase a previously copied OS clipboard.
     for (const item of inputElements.values()) item.value = "";
     command.value = "";
     copy.disabled = true;
-    renderCommand();
+    showMessage("Ingevulde paden en het commando zijn gewist. Een eerder gekopieerd commando kan nog op je systeemklembord staan.", false);
   });
   copy.addEventListener("click", async () => {
     if (!command.value) return;
