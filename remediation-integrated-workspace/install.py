@@ -711,6 +711,9 @@ def main() -> int:
                           help="optionally write a NEW 0700 private scriptless integrity passport")
     p_verify.add_argument("--passport-dir", type=Path,
                           help="re-open EXISTING private integrity passport against original software")
+    p_preview = sub.add_parser("inspect-archive",
+                               help="Validate a PRIVATE software-only ZIP without extraction or writes")
+    p_preview.add_argument("--archive", required=True, type=Path)
     p_recv = sub.add_parser("receive", help="Safely reconstruct pinned software-only ZIP offline")
     p_recv.add_argument("--archive", required=True, type=Path)
     p_recv.add_argument("--output-dir", required=True, type=Path)
@@ -721,6 +724,9 @@ def main() -> int:
         elif args.action == "receive":
             from receiver import receive
             receive(args.archive, args.output_dir)
+        elif args.action == "inspect-archive":
+            from receiver import inspect_archive
+            inspect_archive(args.archive)
         else:
             verify(args.workspace, compare_checkout=args.compare_checkout,
                    report_dir=args.report_dir, passport_dir=args.passport_dir)
