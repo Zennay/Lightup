@@ -159,6 +159,19 @@ paths and both planned or real destinations. Ordinary UTF-8 letters and
 safe filenames remain allowed. This is a **terminal-readability safeguard**,
 not producer authentication, customer consent, or a scan/release grant.
 
+## Legible private operator paths (CLI and offline browser)
+
+Before emitting a local command, the offline HUMAN browser studio and the
+native `install.py` / software receiver apply the same fail-closed Unicode
+path-display rule. Both reject Unicode control, format, surrogate, line and
+paragraph separator categories (Cc, Cf, Cs, Zl, Zp). These include hidden
+zero-width spaces, soft hyphens, word joiners, bidi controls, C1 escapes and
+Unicode line breaks that can make the displayed source or destination
+different from what is actually opened. Ordinary printable Unicode place
+names remain allowed. Native file ownership, exact bytes and nofollow
+directory-descriptor checks remain authoritative; preview validation is
+not an authenticity guarantee or a permission grant.
+
 ## No-write admission of a received software-only ZIP
 
 An authorized HUMAN operator can inspect a *previously received* original
