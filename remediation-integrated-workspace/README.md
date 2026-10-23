@@ -111,7 +111,12 @@ python3 remediation-integrated-workspace/install.py inspect-archive \
 To check an unused PRIVATE checksum output filename without issuing it,
 use `--planned-checksum-file "$HOME/lightup-private/new-software.sha256"`
 with the same original `inspect-archive --archive ...` command, optionally
-alongside `--planned-output-dir`. This returns REVIEW_ONLY with
+alongside `--planned-output-dir`. Both planned names must be
+**different**, since a new private recipient directory and a new 0600
+checksum file cannot simultaneously occupy the same name. Native
+preflight returns **HOLD=3** (without any publication) for such conflicts;
+the offline HUMAN browser command composer also rejects them before
+copying the command. This returns REVIEW_ONLY with
 `PLANNED PRIVATE CHECKSUM PATH: admissible but not created` only when the
 original ZIP, destination parent ownership, permissions, unused name and
 source-tree separation pass the **same native checks as publication**.
