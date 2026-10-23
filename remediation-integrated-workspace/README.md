@@ -198,6 +198,27 @@ an existing output cause `3=HOLD`, without installing anything. The native
 does **not** reserve the name or grant permission. The offline HUMAN desk
 and command composer offer this optional planned output field.
 
+### Take inspected ZIP paths to the next HUMAN command
+
+In the **offline operator studio**, choose **Controleer software-ZIP** and
+enter the original `--archive`, the fresh `--planned-output-dir`, and, if
+already obtained, the `--expected-sha256-file`. Once these fields pass
+the browser's path-format checks, **Vul ontvangstcommando in** explicitly
+switches to **Ontvang software** and copies just those three paths into a
+*new* visible native terminal command. It never copies
+`--planned-checksum-file` into the expected source checksum: that file
+is merely a proposed *future* output and may not exist. The button is hidden
+for unrelated operations and disabled for missing/invalid input or after
+clearing the form.
+
+This handoff occurs **only in the current browser memory**: no native
+inspection, installation, shell execution, file write, upload, authority,
+review approval or consent is implied. The operator must separately run
+and check the original native `inspect-archive` result and later choose
+whether to execute the new `receive` command; the native recipient repeats
+the full source, checksum, path and permission admission at execution time.
+Clearing the form does not remove an OS clipboard entry already copied.
+
 ### Optional original software checksum preview in offline browser
 
 The standalone `operator.html` now has a separate **PRIVATE software-only
