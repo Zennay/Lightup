@@ -223,3 +223,8 @@ A HUMAN should inspect and edit this proposed CSV in the [PRIVATE browser Studio
 ### Portable ZIP round-trip after restore
 
 The same local ZIP packager now also accepts a directory produced by the safe `private_paged_restore.py` receiver. It permits exactly two extra private files from a legitimate original restore: `START-HERE-PRIVATE.txt` with the identical predefined no-authority instructions and `PRIVATE-restore-receipt.json` with the exact restored original source fingerprint, expected member count and all identity/authority/consent/release flags false. It refuses any altered or additional file. The old receipt is **not** included in the new ZIP; a new unsigned archive receipt is generated. This permits a private operator to pass an unmodified report onward without manual deletion or recreating source packages. It still authenticates neither the original producer nor receiving person, and the archive is still plain unencrypted ZIP.
+
+
+## Forget clears pending secrets as well as worksheet rows
+
+The **Forget local workroom** action now clears the original/encrypted file input selections, both pending encryption passphrase fields, and the pending decryption passphrase in addition to the in-memory HUMAN worksheet and incoming proposal. It resets visible counts/status summaries as well. This is best-effort browser-memory cleanup only: downloaded files are not deleted, and browser/OS/device memory guarantees are not claimed.
