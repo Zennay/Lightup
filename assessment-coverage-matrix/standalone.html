@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+FeQK9qNMACF6h4xFkdY0gKb64t9oNXVGntL+QGCRjc='; style-src 'sha256-GiwZL7dH+i8o4R86w8+GP+F7raPk9eokuVig2JVruXQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-I/4HAZliM0Xrt6J/tT3myP7nZbxR7ZlBGBYKFLpAOmA='; style-src 'sha256-GiwZL7dH+i8o4R86w8+GP+F7raPk9eokuVig2JVruXQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -184,8 +184,13 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
           <label for="vaultOpenPass">PRIVATE decryption passphrase
             <input id="vaultOpenPass" type="password" autocomplete="off" placeholder="Local passphrase">
           </label>
-          <button id="vaultOpen" type="button" class="secondary" disabled>Open complete ENCRYPTED workroom</button>
-          <p class="hint">All ORIGINAL lab files and source-bound HUMAN decisions are admitted before replacing any in-memory work. A wrong password, edited source or inconsistent plan keeps the current workroom unchanged.</p>
+          <button id="vaultOpen" type="button" class="secondary" disabled>Inspect complete ENCRYPTED workroom</button>
+          <p class="hint">First decrypt and fully admit a PRIVATE file without overwriting your current originals or HUMAN notes. Review the minimum-necessary counts summary, then explicitly apply or discard. The staged decrypted original data remain in local browser memory until applied/discarded; the browser cannot guarantee physical memory erasure.</p>
+          <p id="vaultPreview" class="hint" role="status" aria-live="polite">No decrypted PRIVATE workroom staged.</p>
+          <div class="buttons">
+            <button id="vaultApply" class="primary" type="button" disabled>Apply inspected PRIVATE workroom</button>
+            <button id="vaultDiscard" class="secondary" type="button" disabled>Discard decrypted preview</button>
+          </div>
         </div>
       </div>
       <p class="hint"><strong>IMPORTANT:</strong> Encryption protects local file confidentiality, not source authenticity, reviewer identity, consent, true vulnerability status, action-time authorization or completed remediation. There has been no independent cryptographic audit; secure your device, passphrase and downloaded file.</p>
@@ -1056,6 +1061,7 @@ function createHumanBoard(api) {
       plans=prepared.map(note=>({...note}));changed=false;lastBulk=null;
       historyResolutions.clear();clearHistory();page=0;render();
     },
+    choicesFingerprint:()=>JSON.stringify(plans),
     hasEdits:()=>changed&&plans.some(p=>!isDefault(p)),
     stageTotals:()=>plans.length?{...counts().stage}:null};
 }
@@ -1065,11 +1071,13 @@ function createHumanBoard(api) {
  * No assessment execution, no grant, no network, no browser persistence. */
 function createPrivateWorkspaceVault(api) {
   const {$,fail,shape,int,parseStrict,message,download,getRawFiles,getOriginalCount,getOriginalByteTotal,
-    getPrivatePlan,prepareFullWorkspace,commitFullWorkspace} = api;
+    getPrivatePlan,getSessionSnapshot,sessionStillCurrent,
+    prepareFullWorkspace,commitFullWorkspace} = api;
   const cryptoBox=createPrivatePlanCrypto();
   const MAX_SOURCE_TOTAL=24*1024*1024; // bounded, intentionally smaller than the 8x8MiB import limit
   const MAX_ENCRYPTED_FILE=65*1024*1024;
   const MAX_PLAN_CHARS=3*1024*1024;
+  let busy=false, operationEpoch=0, pending=null;
   const KIND="lightup.private_original_lab_complete_workspace_payload";
   const FIELDS=["kind","version","authorized","consent_verified",
     "dispatch_allowed","release_allowed","original_source_bytes_b64","human_plan",
@@ -1104,8 +1112,10 @@ function createPrivateWorkspaceVault(api) {
   function update() {
     const sources=getRawFiles(),total=getOriginalByteTotal();
     const allowed=available()&&total<=MAX_SOURCE_TOTAL;
-    $("vaultSave").disabled=!allowed;
-    $("vaultOpen").disabled=!cryptoBox.supported();
+    $("vaultSave").disabled=busy||!allowed;
+    $("vaultOpen").disabled=busy||!cryptoBox.supported();
+    $("vaultApply").disabled=busy||!pending;
+    $("vaultDiscard").disabled=busy||!pending;
     $("vaultAvailable").textContent=!cryptoBox.supported()
       ?"Browser WebCrypto is unavailable. Encrypted PRIVATE workspace import/export disabled."
       :getOriginalCount()===0
@@ -1115,9 +1125,21 @@ function createPrivateWorkspaceVault(api) {
       :"Private workspace available: "+sources.length+" original source slots, "+
         total+" original bytes (encrypted, not published as filenames or target labels).";
   }
+  function discardPreview() {
+    operationEpoch++;
+    if(pending) {
+      // Best-effort clear of staged source buffers, not a promise of physical memory erasure.
+      pending.prepared.bytes.forEach(bytes=>bytes.fill(0));
+      pending=null;
+    }
+    $("vaultPreview").textContent="No decrypted PRIVATE workroom staged.";
+    update();
+  }
   async function save() {
+    if(busy)return;
     if(!available()){message("Open and admit original PRIVATE source files first.",true);return;}
-    $("vaultSave").disabled=true;
+    const session=getSessionSnapshot(),operation=operationEpoch;
+    busy=true;update();
     try {
       const sources=getRawFiles(),total=sources.reduce((n,b)=>n+b.length,0);
       fail(total<=MAX_SOURCE_TOTAL,"Combined original bytes exceed the 24 MiB workspace vault export bound");
@@ -1130,7 +1152,10 @@ function createPrivateWorkspaceVault(api) {
       fail(raw.length<=48*1024*1024&&JSON.stringify(plan).length<=MAX_PLAN_CHARS,
         "PRIVATE original+HUMAN workspace exceeds bounded encryption input");
       if(!confirm("Encrypt and download ALL original PRIVATE lab source bytes together with HUMAN choices? This will store highly sensitive ORIGINAL targets and evidence inside a password-encrypted local file. No grant/assessment authority or independent security audit is implied. Protect your passphrase and device."))return;
-      const encrypted=await cryptoBox.encryptWorkspace(raw,$("vaultSavePass").value);
+      const password=$("vaultSavePass").value;
+      const encrypted=await cryptoBox.encryptWorkspace(raw,password);
+      fail(operation===operationEpoch&&sessionStillCurrent(session),
+        "Original sources or HUMAN choices changed while encrypting; stale export discarded");
       const wrapped=JSON.stringify(encrypted)+"\n";
       fail(new Blob([wrapped]).size<=MAX_ENCRYPTED_FILE,"Encrypted PRIVATE workspace exceeds safe download limit");
       download("lightup-PRIVATE-original-workroom-ENCRYPTED.json",wrapped,"application/json");
@@ -1138,19 +1163,23 @@ function createPrivateWorkspaceVault(api) {
     } catch(error) {
       message("Complete PRIVATE workspace encryption HOLD: "+error.message,true);
     } finally {
-      clearPasses();update();
+      busy=false;clearPasses();update();
     }
   }
   async function open() {
+    if(busy)return;
     const file=$("vaultFile").files[0];
     if(!file){message("Select one existing PRIVATE encrypted complete workspace first.",true);return;}
-    $("vaultOpen").disabled=true;
+    discardPreview();
+    const operation=operationEpoch,session=getSessionSnapshot();
+    busy=true;update();
     try {
       fail(file.size>0&&file.size<=MAX_ENCRYPTED_FILE,"Encrypted PRIVATE workspace outside 65 MiB bound");
       const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
       const outer=parseStrict(raw);
       fail(cryptoBox.isWorkspace(outer),"Expected a complete encrypted PRIVATE lab workspace, not an ordinary HUMAN plan");
-      const plaintext=await cryptoBox.decryptWorkspace(outer,$("vaultOpenPass").value);
+      const password=$("vaultOpenPass").value;
+      const plaintext=await cryptoBox.decryptWorkspace(outer,password);
       const payload=parseStrict(plaintext);
       fail(shape(payload,FIELDS)&&payload.kind===KIND&&payload.version===1,
         "Not a supported PRIVATE original+HUMAN workspace");
@@ -1166,20 +1195,57 @@ function createPrivateWorkspaceVault(api) {
         "Complete PRIVATE sources exceed the 24 MiB total admission bound");
       // Prepare all originals and the source-bound HUMAN plan before any replacement.
       const prepared=await prepareFullWorkspace(decoded,payload.human_plan);
-      if(!confirm("Replace current original PRIVATE source selection AND current HUMAN workplan with this completely admitted encrypted workspace? Existing unsaved choices will be discarded. This does not authorize work, attest clients or contact targets."))return;
-      commitFullWorkspace(prepared);
-      message("Original PRIVATE source bytes and matching HUMAN choices reopened from local encrypted workroom. This is unverified operator-provided input; no scanner/grant/network was used.");
+      fail(operation===operationEpoch&&sessionStillCurrent(session),
+        "Local source or HUMAN decisions changed while decrypting; staged import discarded");
+      const humanCount=prepared.notes.filter(p=>
+        p.stage!=="needs_review"||p.route!=="unassigned"||p.action!=="none").length;
+      pending={prepared,session,operation};
+      $("vaultPreview").textContent="ADMITTED PRIVATE preview (unverified): "+
+        decoded.length+" original source files · "+
+        decoded.reduce((sum,b)=>sum+b.length,0)+" total source bytes · "+
+        prepared.newRows.length+" source-declared groups · "+humanCount+
+        " non-default HUMAN planning rows. Existing originals and notes remain unchanged. "+
+        "Use APPLY to replace or DISCARD to release the staged workroom.";
+      message("PRIVATE encrypted workroom fully decrypted and source-bound. Preview staged only; nothing replaced or authorized.");
     } catch(error) {
       message("Complete PRIVATE workspace HOLD: "+error.message+
         ". The active original source selection and HUMAN plan have not been replaced.",true);
     } finally {
-      $("vaultFile").value="";clearPasses();update();
+      busy=false;$("vaultFile").value="";clearPasses();update();
     }
+  }
+  function applyPreview(){
+    if(busy||!pending)return;
+    const candidate=pending;
+    if(candidate.operation!==operationEpoch||!sessionStillCurrent(candidate.session)){
+      discardPreview();
+      message("PRIVATE preview HOLD: current original files or HUMAN choices changed; re-open the encrypted workroom.",true);
+      return;
+    }
+    if(!confirm("APPLY fully admitted PRIVATE workroom? Replace ALL current original source bytes and HUMAN planning choices? No scan, consent, source authentication or authority is inferred."))return;
+    if(candidate.operation!==operationEpoch||!sessionStillCurrent(candidate.session)){
+      discardPreview();
+      message("PRIVATE preview HOLD: local state changed before application.",true);
+      return;
+    }
+    // Ownership of the admitted buffers passes to the active workspace on successful commit.
+    pending=null;operationEpoch++;
+    commitFullWorkspace(candidate.prepared);
+    $("vaultPreview").textContent="Admitted PRIVATE workroom applied. No decrypted preview remains staged.";
+    message("Exact-source PRIVATE originals and HUMAN choices now open locally. No network, grant, scan, authenticated identity or release.");
+    update();
   }
   $("vaultSave").addEventListener("click",save);
   $("vaultOpen").addEventListener("click",open);
+  $("vaultApply").addEventListener("click",applyPreview);
+  $("vaultDiscard").addEventListener("click",()=>{
+    discardPreview();
+    message("Staged decrypted PRIVATE preview discarded; active workspace kept unchanged.");
+  });
+  $("vaultFile").addEventListener("change",discardPreview);
+  window.addEventListener("pagehide",()=>{discardPreview();clearPasses();});
   update();
-  return {update};
+  return {update,discardPreview};
 }
 
 "use strict";
@@ -1199,6 +1265,7 @@ function createPrivateWorkspaceVault(api) {
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
   let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
   let rawOriginalBytes = [], originalByteTotal = 0;
+  let originalSessionEpoch=0; // Monotonic, prevents an old async import from replacing newer originals.
   let matrixPage = 0;
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
@@ -1631,6 +1698,7 @@ function createPrivateWorkspaceVault(api) {
   function commitOriginalBatch(prepared,privateHumanNotes=null) {
     // All potentially invalid external ORIGINAL and HUMAN bytes were admitted
     // before this synchronous commit changes any visible application state.
+    originalSessionEpoch++;
     sources=prepared.next;sourceDigests=prepared.nextDigests;
     originalByteTotal=prepared.bytes.reduce((sum,b)=>sum+b.byteLength,0);
     // Retain an exact-byte copy only when the operator can use full-vault export.
@@ -1661,12 +1729,18 @@ function createPrivateWorkspaceVault(api) {
     const notes=humanBoard.validateVaultPlan(plan,prepared.newRows,prepared.nextDigests);
     return {...prepared,notes};
   }
+  const sessionSnapshot=()=>({originalEpoch:originalSessionEpoch,
+    humanChoices:humanBoard.choicesFingerprint()});
+  const sessionStillCurrent=snapshot=>snapshot.originalEpoch===originalSessionEpoch &&
+    snapshot.humanChoices===humanBoard.choicesFingerprint();
   const workspaceVault=createPrivateWorkspaceVault({
     $,fail,shape,int,parseStrict,message,download,
     getRawFiles:()=>rawOriginalBytes,
     getOriginalCount:()=>sources.length,
     getOriginalByteTotal:()=>originalByteTotal,
     getPrivatePlan:()=>humanBoard.exportVaultPlan(),
+    getSessionSnapshot:sessionSnapshot,
+    sessionStillCurrent,
     prepareFullWorkspace,
     commitFullWorkspace:prepared=>commitOriginalBatch(prepared,prepared.notes)
   });
@@ -1675,6 +1749,7 @@ function createPrivateWorkspaceVault(api) {
     if(files.length<2||files.length>8){
       message("Select 2–8 existing original PRIVATE lab JSON files in your chosen display order.",true);return;
     }
+    const openingSession=sessionSnapshot();
     $("load").disabled=true;
     message("Reading explicit local originals. Nothing is uploaded or scanned.");
     try {
@@ -1684,9 +1759,14 @@ function createPrivateWorkspaceVault(api) {
             "Original PRIVATE source file outside the 8 MiB bound");
           return new Uint8Array(await file.arrayBuffer());
         })));
+      fail(sessionStillCurrent(openingSession),
+        "Local original sources or HUMAN choices changed while the import was being read");
       if(sources.length&&!confirm("Replace current original PRIVATE results and all HUMAN planning choices?")) {
         message("Original file replacement cancelled. Current private workroom kept.");return;
       }
+      fail(sessionStillCurrent(openingSession),
+        "Local original sources or HUMAN choices changed before replacement");
+      workspaceVault.discardPreview();
       commitOriginalBatch(prepared);
       message("Original PRIVATE result batch structurally admitted. Source statements are unverified; no target contact or upload.");
     } catch(error) {
@@ -1699,6 +1779,8 @@ function createPrivateWorkspaceVault(api) {
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
+    originalSessionEpoch++;
+    workspaceVault.discardPreview();
     sources=[];rows=[];visible=[];selected=null;sourceDigests=[];rawOriginalBytes=[];
     originalByteTotal=0;matrixPage=0;
     humanBoard.clearAll();
