@@ -22,6 +22,9 @@
     "source_local_zone","recipient_iana_zone_unverified","human_window_start",
     "human_window_end","human_days","recipient_blackout_dates_unverified",
     "authorized","verified","consent"];
+  const RECIPIENT_COUNT_HEAD=["anonymous_group_slot","planned","within_declared_window",
+    "outside_hours","outside_weekdays","unavailable_date","clock_change",
+    "authorized","recipient_verified","consent_verified","dispatch_allowed","release_allowed"];
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
@@ -41,6 +44,7 @@
   let lastIcsSequence=0;
   let recipientPage=0,recipientGroupPage=0,recipientGroupFocus=null;
   let recipientGroupExportReady=false;
+  let recipientCountBaseline=null, recipientCountImportToken=0;
   let recipientProposal=null;
   let recipientSelection=new Set();
   let recipientUndo=null;
@@ -194,12 +198,16 @@
     $("recipientRemainder").textContent="";
     $("recipientGroupSummary").textContent="No HUMAN group preview loaded.";
     recipientGroupExportReady=false;
+    recipientCountBaseline=null;recipientCountImportToken++;
+    $("recipientCountImport").value="";
+    $("recipientCountRows").replaceChildren();
+    $("recipientCountSummary").textContent="No previous anonymous group counts loaded.";
     $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
     $("recipientPolicyStatus").textContent="Recipient preference not loaded; this is not authenticated availability.";
     for(const id of ["recipientExport","recipientPolicyExport",
       "recipientPrev","recipientNext","recipientGroupPrev","recipientGroupNext",
       "recipientGroupClear","recipientGroupCsv","recipientGroupPrint",
-      "recipientGroupNextAttention","recipientApply",
+      "recipientGroupNextAttention","recipientCountExport","recipientCountClear","recipientApply",
       "recipientProposalExport","recipientProposalPrint","recipientUndo"])
       $(id).disabled=true;
     $("recipientProposalDetails").open=false;
@@ -838,9 +846,7 @@
       "No recipient availability, consent or security decision is authenticated."))return;
     const after=recipientGroupSnapshot();
     hold(before.key===after.key && JSON.stringify(before.view)===JSON.stringify(after.view));
-    const columns=["anonymous_group_slot","planned","within_declared_window",
-      "outside_hours","outside_weekdays","unavailable_date","clock_change",
-      "authorized","recipient_verified","consent_verified","dispatch_allowed","release_allowed"];
+    const columns=RECIPIENT_COUNT_HEAD;
     // Aggregate cohorts smaller than three before export: never publish a
     // per-group low-count row that could be trivially associated with a person.
     // This is disclosure minimization, NOT a de-identification guarantee.
@@ -899,12 +905,115 @@
     $("recipientGroupSummary").scrollIntoView({block:"nearest"});
     inform("Opened next source-reported HUMAN group outside the declared window. This is not proof of real availability.");
   }
+
+  const GROUP_COUNT_LABELS=[
+    ["planned","Tentative HUMAN reminders"],
+    ["within_hours","Within manually declared window"],
+    ["outside_hours","Outside declared hours"],
+    ["weekend","Outside declared weekdays"],
+    ["unavailable_date","Unavailable recipient local day"],
+    ["clock_change","Recipient clock change"]];
+  function groupCategoryTotals(groups){
+    const counts={total:0,within_hours:0,outside_hours:0,weekend:0,
+      unavailable_date:0,clock_change:0};
+    for(const group of groups)for(const key of Object.keys(counts))
+      counts[key]+=group[key];
+    hold(counts.total<=MAX_ROWS &&
+      counts.total===counts.within_hours+counts.outside_hours+
+        counts.weekend+counts.unavailable_date+counts.clock_change);
+    return counts;
+  }
+  function renderRecipientCountComparison(){
+    const body=$("recipientCountRows");body.replaceChildren();
+    const valid=active && recipientGroupExportReady && !!recipientCountBaseline;
+    $("recipientCountExport").disabled=!valid;
+    $("recipientCountClear").disabled=!recipientCountBaseline;
+    if(!valid){
+      $("recipientCountSummary").textContent=recipientCountBaseline?
+        "Previous anonymous counts retained in local memory; current recipient zone unavailable (HOLD).":
+        "No previous anonymous group counts loaded.";
+      return;
+    }
+    let current;
+    try{current=groupCategoryTotals(recipientGroupWorkload());}
+    catch(_){$("recipientCountExport").disabled=true;return;}
+    $("recipientCountSummary").textContent="Two UNBOUND HUMAN count summaries. "+
+      "The earlier imported file has no authenticated source identity: these may be different cohorts. "+
+      "Current recipient zone and local availability are illustrative, not verified.";
+    for(const [field,label] of GROUP_COUNT_LABELS){
+      const a=recipientCountBaseline[field],b=current[field];
+      const tr=dom("tr");
+      tr.append(dom("td",label),dom("td",String(a)),dom("td",String(b)),
+        dom("td",(b-a>0?"+":"")+String(b-a)));
+      body.append(tr);
+    }
+  }
+  async function importRecipientCounts(file){
+    hold(active && file && file.size>0 && file.size<=150000);
+    const ticket=++recipientCountImportToken,first=recipientGroupSnapshot();
+    const raw=decoder.decode(await bytes(file));
+    hold(ticket===recipientCountImportToken && first.key===recipientGroupSnapshot().key);
+    hold(raw.length<=150000 && !raw.startsWith("\uFEFF") && !raw.includes("\0"));
+    const parsed=csv(raw,RECIPIENT_COUNT_HEAD.length);
+    hold(parsed.length>=2 && parsed.length<=MAX_ROWS+1 &&
+      JSON.stringify(parsed[0])===JSON.stringify(RECIPIENT_COUNT_HEAD) &&
+      makeCsv(parsed)===raw);
+    const groups=[],seen=new Set();let prior=0,suppressed=false;
+    for(const row of parsed.slice(1)){
+      const label=row[0];
+      if(label==="small_groups_combined"){
+        hold(!suppressed);suppressed=true;
+      }else{
+        hold(!suppressed && /^group_[0-9]{4}$/.test(label));
+        const id=Number(label.slice(6));
+        hold(id===prior+1);prior=id;
+      }
+      hold(!seen.has(label));seen.add(label);
+      hold(row.slice(7).every(value=>value==="false"));
+      const values=row.slice(1,7).map(value=>{
+        hold(/^(0|[1-9][0-9]{0,3})$/.test(value) && Number(value)<=MAX_ROWS);
+        return Number(value);
+      });
+      hold(values[0]>=1 && values[0]===values.slice(1).reduce((x,y)=>x+y,0));
+      if(label==="small_groups_combined")hold(values[0]>=1);
+      else hold(values[0]>=3);
+      groups.push({total:values[0],within_hours:values[1],outside_hours:values[2],
+        weekend:values[3],unavailable_date:values[4],clock_change:values[5]});
+    }
+    const totals=groupCategoryTotals(groups);
+    hold(ticket===recipientCountImportToken && first.key===recipientGroupSnapshot().key);
+    if(!confirm("Use these UNBOUND source-free HUMAN category counts as an earlier comparison? "+
+       "There is no group identity, original worksheet binding, timestamp or consent proof. "+
+       "Different counts cannot establish a trend or security finding."))return;
+    hold(ticket===recipientCountImportToken && first.key===recipientGroupSnapshot().key);
+    recipientCountBaseline=totals;
+    renderRecipientCountComparison();
+    inform("Earlier anonymous count summary loaded into this tab only; no original source or identity is matched.");
+  }
+  function exportRecipientCountComparison(){
+    const current=recipientGroupSnapshot();
+    hold(recipientCountBaseline && current.view.length>0);
+    const latest=groupCategoryTotals(current.view),lines=[
+      ["human_category","earlier_unbound_count","current_unverified_count","difference",
+      "same_cohort_verified","authorized","consent_verified","release_allowed"]];
+    for(const [key,label] of GROUP_COUNT_LABELS){
+      lines.push([label,String(recipientCountBaseline[key]),String(latest[key]),
+        String(latest[key]-recipientCountBaseline[key]),"false","false","false","false"]);
+    }
+    if(!confirm("Export PRIVATE HUMAN counts comparison? Earlier and current counts are NOT source, group or cohort matched; no trend, verified improvement or consent is claimed."))return;
+    hold(current.key===recipientGroupSnapshot().key);
+    download(makeCsv(lines),"lightup-private-unbound-human-count-comparison.csv",
+      "text/csv;charset=utf-8");
+    inform("PRIVATE unbound aggregate comparison exported without source identifiers or HUMAN notes.");
+  }
+
   function renderRecipientGroups(source){
     const ordered=recipientGroupWorkload(source);
     recipientGroupExportReady=ordered.length>0;
     for(const id of ["recipientGroupCsv","recipientGroupPrint"])
       $(id).disabled=!recipientGroupExportReady;
     $("recipientGroupNextAttention").disabled=!ordered.some(row=>row.total>row.within_hours);
+    renderRecipientCountComparison();
     const pages=Math.max(1,Math.ceil(ordered.length/32));
     recipientGroupPage=Math.max(0,Math.min(recipientGroupPage,pages-1));
     $("recipientGroupPrev").disabled=recipientGroupPage===0;
@@ -946,6 +1055,7 @@
       recipientProposal=null;recipientSelection.clear();
       renderRecipientProposal();
       recipientGroupExportReady=false;
+      renderRecipientCountComparison();
       for(const id of ["recipientGroupCsv","recipientGroupPrint","recipientGroupNextAttention"])
         $(id).disabled=true;
       $("recipientGroupRows").replaceChildren();
@@ -3271,6 +3381,21 @@
     try{if(e.target.files?.length)await recipientPolicyImport(e.target.files[0]);}
     catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference import rejected (HOLD). Current HUMAN window and schedule retained.";}
     finally{e.target.value="";}
+  });
+  hook("recipientCountImport","change",async event=>{
+    const file=event.target.files?.[0];event.target.value="";
+    if(!file)return;
+    try{await importRecipientCounts(file);}
+    catch(_){inform("HOLD: previous anonymous count CSV failed canonical, aggregate or current-context admission. No prior values changed.",true);}
+  });
+  hook("recipientCountExport","click",()=>{
+    try{exportRecipientCountComparison();}
+    catch(_){inform("HOLD: previous/current anonymous count comparison is no longer valid.",true);}
+  });
+  hook("recipientCountClear","click",()=>{
+    recipientCountBaseline=null;recipientCountImportToken++;
+    renderRecipientCountComparison();
+    inform("Previous unbound HUMAN count summary discarded from this tab.");
   });
   hook("recipientGroupCsv","click",()=>{try{recipientGroupReport(false);}catch(_){
     inform("HOLD: recipient workload CSV no longer matches the private source.",true);

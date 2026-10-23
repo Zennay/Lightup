@@ -164,6 +164,16 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <button id="recipientGroupPrev" class="ghost" type="button" disabled>Previous groups</button>
 <button id="recipientGroupNext" class="ghost" type="button" disabled>Next groups</button>
 </div>
+
+<div class="row">
+<label class="file">Reopen previous anonymous group counts (.csv)
+<input id="recipientCountImport" type="file" accept=".csv,text/csv"></label>
+<button id="recipientCountExport" type="button" class="ghost" disabled>Download unbound category comparison (.csv)</button>
+<button id="recipientCountClear" type="button" class="ghost" disabled>Discard previous counts</button>
+</div>
+<p id="recipientCountSummary" role="status" class="subtle">No previous anonymous group counts loaded.</p>
+<div class="tablebox"><table><thead><tr><th>Aggregate HUMAN category</th><th>Earlier unverified count</th><th>Current unverified count</th><th>Difference</th></tr></thead><tbody id="recipientCountRows"></tbody></table></div>
+<p class="subtle">An anonymous export contains no stable group identity or source credential. Earlier and current files MAY be different cohorts, dates or manually declared availability. Deltas are merely differences between two HUMAN-provided count tables, never a regression, finding, remediation or permission verdict.</p>
 <div class="tablebox"><table><thead><tr><th>Unverified HUMAN group</th>
 <th>Planned</th><th>Within window</th><th>Outside hours</th>
 <th>Outside weekdays</th><th>Unavailable date</th><th>Recipient clock change</th>

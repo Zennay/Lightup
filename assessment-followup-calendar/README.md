@@ -1,3 +1,9 @@
+## Optional unbound anonymous count comparison · 23 October 2026
+
+The recipient group desk can now reopen an **earlier own-export anonymous group workload CSV** without any original worksheet, group names, source SHA, appointments or notes. Admission is strict: own-canonical CSV, fixed schema, sequential anonymous group slots, pooled tiny-cohort row only at the end, nonnegative bounded category integers summing to each row's planned total, literal false authority flags, no extra columns/rows, and unchanged current workroom during asynchronous file read and human confirmation. Failure leaves the existing earlier comparison untouched.
+
+A local matrix shows earlier/current **aggregate counts only** for scheduled reminders, declared-hours fit, weekday mismatch, unavailable local dates, and clock-change attention. A separate counts-only CSV contains numeric differences and literal false fields for same-cohort verification, authority, consent and release. There is deliberately no attempt to align anonymous group slots, infer a true longitudinal trend, verify recipient identity or conclude that a removed HUMAN note was fixed. An earlier report can come from a different underlying cohort and is explicitly **UNBOUND**. No persistent browser storage; changing the original source/series clears the prior imported counts, while changing the current HUMAN schedule can be reviewed as a new unverified snapshot.
+
 **Privacy upgrade:** Group exports now pool all tiny source-reported groups with fewer than three proposed appointments into one combined count row. Each export preserves aggregate accounting while excluding these small group slots. This reduces but does not eliminate re-identification risk, so human disclosure approval remains mandatory. A large private workroom remains readable; source group views are still paginated, and exports reject changed original/policy contexts.
 
 ## Recipient-group privacy-minimal HUMAN review · October 2026
