@@ -37,6 +37,16 @@ To check the installed folder's exact native file inventory and the locally gene
 
 Inspection enforces private file ownership/modes, regular nofollow one-link files, **the exact expected directory layout (including detection of unexpected empty directories)**, canonical warning and non-authority flags, **the exact complete 79 pinned-original + 25 integrated-tool inventory** (never just whichever files a received manifest happens to list), exact installed SHA-256 file contents, ZIP-member byte identity, original source inventory and local scriptless portal renderer. The installed ZIP and the receiver must both preserve the builder's deterministic path order, original 2020 timestamps, Unix 0600 regular-file attributes, DEFLATE compression, and empty member/archive comments, encryption flags and extra metadata. Incomplete or rewritten ZIP layouts are HOLD, even when content hashes happen to match. These are local byte-integrity checks, **not** cryptographic signatures or authenticated software provenance.
 
+The native private-file reader now requires exactly `0600` for each
+admitted private original software/manifest/ZIP/checksum/passport file;
+owner-only `0400`, `0700` and other noncanonical modes also HOLD rather
+than being silently accepted. This is a **packaging/mode invariant**,
+not a claim that read-only originals are unsafe outside this software
+workflow. The trusted local source checkout uses separate admission rules
+and may preserve its existing source permissions. An original package
+whose mode was altered must not be silently accepted as the published
+original.
+
 The ordinary `inspect` command now **always compares all 25 installed integrated operator tools to the current trusted local checkout bytes**, not just the received package's self-declared manifest. Otherwise a changed operator tool paired with a regenerated unsigned local manifest/ZIP could be mistakenly treated as locally consistent. Original source-owner files remain pinned by the source lock; `--compare-checkout` additionally enforces exact current-checkout parity for the 79 original files. These checks assume the trusted checkout itself has not been replaced. No self-hash or local comparison authenticates a producer, consent or authorization.
 
 ## No-write admission of a received software-only ZIP
