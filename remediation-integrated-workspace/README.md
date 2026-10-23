@@ -102,6 +102,26 @@ original.
 
 The ordinary `inspect` command now **always compares all 25 installed integrated operator tools to the current trusted local checkout bytes**, not just the received package's self-declared manifest. Otherwise a changed operator tool paired with a regenerated unsigned local manifest/ZIP could be mistakenly treated as locally consistent. Original source-owner files remain pinned by the source lock; `--compare-checkout` additionally enforces exact current-checkout parity for the 79 original files. These checks assume the trusted checkout itself has not been replaced. No self-hash or local comparison authenticates a producer, consent or authorization.
 
+## Trusted offline operator UI source admission
+
+The original offline operator page contains locally bundled JavaScript and
+CSS. Its Python renderer now reads `operator_ui.css`, `operator_ui.js`
+and `fingerprint_ui.js` through the **same descriptor-pinned nofollow
+checkout admission** as the software ZIP and source files, instead of
+opening their pathnames with ordinary `read_bytes()`. Linked path
+components, non-single-link files and changed source bytes HOLD before
+those files can be embedded in the browser screen.
+
+Actual local verification on the connected Linux VPS: the original
+build → no-write ZIP inspection → receive → source-pinned PRIVATE
+passport → reopen workflow completed with `REVIEW_ONLY=2` for every
+native step. In an independent detached source checkout, a UI CSS file
+replaced by a symlink to a separate source outside the checkout was
+**rejected by the renderer** (`Linked checkout path refused`); the
+working branch source remained clean. This guards local source reading,
+not authenticated authorship, browser approval, client consent, or
+release permission.
+
 ## Private stage lifecycle: descriptor-pinned creation and cleanup
 
 A fresh Linux PRIVATE workspace, received source-only suite or
