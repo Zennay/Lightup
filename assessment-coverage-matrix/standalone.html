@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-I/4HAZliM0Xrt6J/tT3myP7nZbxR7ZlBGBYKFLpAOmA='; style-src 'sha256-GiwZL7dH+i8o4R86w8+GP+F7raPk9eokuVig2JVruXQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-VyQUZlvS7MZhjnNVyBJEXrSCG4laCYKSxgZvEfxludk='; style-src 'sha256-GiwZL7dH+i8o4R86w8+GP+F7raPk9eokuVig2JVruXQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -189,6 +189,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
           <p id="vaultPreview" class="hint" role="status" aria-live="polite">No decrypted PRIVATE workroom staged.</p>
           <div class="buttons">
             <button id="vaultApply" class="primary" type="button" disabled>Apply inspected PRIVATE workroom</button>
+            <button id="vaultApplyNotes" class="secondary" type="button" disabled>Restore HUMAN choices only (same original bytes)</button>
             <button id="vaultDiscard" class="secondary" type="button" disabled>Discard decrypted preview</button>
           </div>
         </div>
@@ -1071,7 +1072,8 @@ function createHumanBoard(api) {
  * No assessment execution, no grant, no network, no browser persistence. */
 function createPrivateWorkspaceVault(api) {
   const {$,fail,shape,int,parseStrict,message,download,getRawFiles,getOriginalCount,getOriginalByteTotal,
-    getPrivatePlan,getSessionSnapshot,sessionStillCurrent,
+    getPrivatePlan,getCurrentDigests,getCurrentRowCount,commitNotesOnly,
+    getSessionSnapshot,sessionStillCurrent,
     prepareFullWorkspace,commitFullWorkspace} = api;
   const cryptoBox=createPrivatePlanCrypto();
   const MAX_SOURCE_TOTAL=24*1024*1024; // bounded, intentionally smaller than the 8x8MiB import limit
@@ -1109,12 +1111,19 @@ function createPrivateWorkspaceVault(api) {
       originals.length<=8&&originals.every(x=>x instanceof Uint8Array)&&
       originals.every(x=>x.length>0&&x.length<=8*1024*1024);
   }
+  function sameOriginals() {
+    if(!pending)return false;
+    const before=getCurrentDigests(),next=pending.prepared.nextDigests;
+    return before.length===next.length&&getCurrentRowCount()===pending.prepared.newRows.length&&
+      before.every((value,index)=>value===next[index]);
+  }
   function update() {
     const sources=getRawFiles(),total=getOriginalByteTotal();
     const allowed=available()&&total<=MAX_SOURCE_TOTAL;
     $("vaultSave").disabled=busy||!allowed;
     $("vaultOpen").disabled=busy||!cryptoBox.supported();
     $("vaultApply").disabled=busy||!pending;
+    $("vaultApplyNotes").disabled=busy||!pending||!sameOriginals();
     $("vaultDiscard").disabled=busy||!pending;
     $("vaultAvailable").textContent=!cryptoBox.supported()
       ?"Browser WebCrypto is unavailable. Encrypted PRIVATE workspace import/export disabled."
@@ -1205,7 +1214,9 @@ function createPrivateWorkspaceVault(api) {
         decoded.reduce((sum,b)=>sum+b.length,0)+" total source bytes · "+
         prepared.newRows.length+" source-declared groups · "+humanCount+
         " non-default HUMAN planning rows. Existing originals and notes remain unchanged. "+
-        "Use APPLY to replace or DISCARD to release the staged workroom.";
+        (sameOriginals()?" Same-original HUMAN-only restore is available.":
+          " Current source bytes/order are different or absent; HUMAN-only restore unavailable.")+
+        " Use full APPLY to replace originals and choices, or DISCARD to release staging.";
       message("PRIVATE encrypted workroom fully decrypted and source-bound. Preview staged only; nothing replaced or authorized.");
     } catch(error) {
       message("Complete PRIVATE workspace HOLD: "+error.message+
@@ -1235,9 +1246,29 @@ function createPrivateWorkspaceVault(api) {
     message("Exact-source PRIVATE originals and HUMAN choices now open locally. No network, grant, scan, authenticated identity or release.");
     update();
   }
+  function applyNotesOnly(){
+    if(busy||!pending)return;
+    const selected=pending;
+    if(selected.operation!==operationEpoch||!sessionStillCurrent(selected.session)||!sameOriginals()){
+      discardPreview();
+      message("PRIVATE HUMAN restore HOLD: active original bytes, source order or HUMAN session changed.",true);
+      return;
+    }
+    if(!confirm("Restore ONLY the admitted HUMAN choices against the exact currently opened ORIGINAL source bytes and original row order? Current originals remain unchanged; existing HUMAN choices are replaced. This is not consent, verification or authorization."))return;
+    if(selected.operation!==operationEpoch||!sessionStillCurrent(selected.session)||!sameOriginals()){
+      discardPreview();
+      message("PRIVATE HUMAN restore HOLD: originals or decisions changed before application.",true);
+      return;
+    }
+    const notes=selected.prepared.notes;
+    discardPreview(); // Best-effort clear of staged PRIVATE input bytes before restoring choices.
+    commitNotesOnly(notes);
+    message("Source-bound HUMAN decisions restored onto EXACT unchanged original bytes. Current originals retained; no authenticated authority or assessment.");
+  }
   $("vaultSave").addEventListener("click",save);
   $("vaultOpen").addEventListener("click",open);
   $("vaultApply").addEventListener("click",applyPreview);
+  $("vaultApplyNotes").addEventListener("click",applyNotesOnly);
   $("vaultDiscard").addEventListener("click",()=>{
     discardPreview();
     message("Staged decrypted PRIVATE preview discarded; active workspace kept unchanged.");
@@ -1739,6 +1770,9 @@ function createPrivateWorkspaceVault(api) {
     getOriginalCount:()=>sources.length,
     getOriginalByteTotal:()=>originalByteTotal,
     getPrivatePlan:()=>humanBoard.exportVaultPlan(),
+    getCurrentDigests:()=>sourceDigests.slice(),
+    getCurrentRowCount:()=>rows.length,
+    commitNotesOnly:notes=>humanBoard.commitVaultPlan(notes),
     getSessionSnapshot:sessionSnapshot,
     sessionStillCurrent,
     prepareFullWorkspace,
