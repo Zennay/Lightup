@@ -40,3 +40,22 @@ Valid REVIEW_ONLY returns exit code **2**; valid upstream HOLD remains exit code
 ## Integration and release
 
 This is new-only assessment-runtime companion code. It does **not** change original comparison logic, source-owner scanner/runtime, domain authorization, portal/tenancy, existing CI, quality suites or other active work. The existing #1515 parent and independent security/privacy reviews remain prerequisites. Keep **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD** until exact-head hosted/permanent named VPS CI, source-owner acceptance, independent security/privacy review, real separately authenticated client and operator authorization with action-time revocation, and explicit HUMAN GO all pass. No QA suite is added or executed by these scripts.
+
+## PRIVATE capacity aggregate delta — two original existing bundles
+
+The new [offline comparison CLI](../scripts/assessment_runtime_human_capacity_delta_cli_20261023.py) consumes two **existing, fully admitted** six-member HUMAN capacity ZIPs (not source-rich review or assessment files). It independently reuses the exact original admission and source-free accounting from the existing capacity inspector, then produces only aggregate differences by fixed HUMAN stage/priority/route and declared date/route load. Input order is **manually nominated, not authenticated chronology**. Different source case membership is not knowable from anonymized capacity packets; a numerical change can never establish completion, remediation, client permission, security improvement or staff availability.
+
+```bash
+PYTHONPATH=src:scripts python scripts/assessment_runtime_human_capacity_delta_cli_20261023.py \
+  --earlier /private/CAPACITY-A.zip --later /private/CAPACITY-B.zip \
+  --preview-only
+
+PYTHONPATH=src:scripts python scripts/assessment_runtime_human_capacity_delta_cli_20261023.py \
+  --earlier /private/CAPACITY-A.zip --later /private/CAPACITY-B.zip \
+  --output /private/NEW-PRIVATE-capacity-delta.zip
+
+PYTHONPATH=src:scripts python scripts/assessment_runtime_human_capacity_delta_cli_20261023.py \
+  --inspect /private/NEW-PRIVATE-capacity-delta.zip
+```
+
+The output is a five-member private no-overwrite ZIP containing an unsigned canonical `delta.json`, source-free aggregate `delta.csv`, scriptless `delta.html`, SHA-256 member manifest and operator guidance. No case/packet IDs, source digests, original targets, original finding details, dates of the source files, private HUMAN free-text notes or identities are emitted. A literal date/route count and small cohort remain PRIVATE and may still be sensitive. If reference dates or hypothetical capacity differ, the report explicitly refuses to infer comparable overdue or overload changes. Explicit source comparison HOLD propagates. The read-only inspector rejects altered members or authority flags; source SHA-256 verification is not source-person authentication. No QA suites, scanner, network, grant, authenticated consent, release or deployment are added.
