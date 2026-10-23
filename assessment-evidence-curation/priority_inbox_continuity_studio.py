@@ -71,6 +71,19 @@ function parseOwnCsv(raw){
 let importEpoch=0;
 root.addEventListener('input',status);
 root.addEventListener('change',status);
+function forgetInMemory(){
+ importEpoch++;
+ cards().forEach(card=>{
+  card.querySelector('select').value='pending_discussion';
+  card.querySelector('textarea').value='';
+ });
+ document.getElementById('import-file').value='';
+ status();
+}
+window.addEventListener('pagehide',forgetInMemory);
+window.addEventListener('pageshow',event=>{
+ if(event.persisted)forgetInMemory();
+});
 document.getElementById('import').addEventListener('click',()=>
  document.getElementById('import-file').click());
 document.getElementById('import-file').addEventListener('change',async event=>{
@@ -79,7 +92,9 @@ document.getElementById('import-file').addEventListener('change',async event=>{
  const epoch=++importEpoch,previous=snapshot();
  try{
   if(file.size>131072||file.size===0)throw Error('file size');
-  const raw=await file.text();
+  const bytes=await file.arrayBuffer();
+  // Reject invalid UTF-8 instead of silently accepting replacement characters.
+  const raw=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
   const restored=parseOwnCsv(raw);
   if(epoch!==importEpoch||previous!==snapshot())
    throw Error('local draft changed while reading');
@@ -102,12 +117,7 @@ document.getElementById('import-file').addEventListener('change',async event=>{
 });
 document.getElementById('clear').addEventListener('click',()=>{
  if(!window.confirm('Clear all in-memory PRIVATE HUMAN notes and decisions? Existing downloads remain.'))return;
- importEpoch++;
- cards().forEach(card=>{
-  card.querySelector('select').value='pending_discussion';
-  card.querySelector('textarea').value='';
- });
- status();
+ forgetInMemory();
  output.textContent='In-memory HUMAN drafts cleared; earlier downloaded files remain.';
 });
 document.getElementById('export').addEventListener('click',()=>{
