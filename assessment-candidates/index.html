@@ -37,6 +37,7 @@
 <label>Maximum policy violations<input id="maxPolicy" type="number" min="0" max="1000000" step="1" value="0"></label>
 <label>Minimum mean evidence quality <small>0.0–1.0</small><input id="minQuality" type="number" min="0" max="1" step=".05" value=".75"></label>
 <label>Minimum total assessed coverage<input id="minCoverage" type="number" min="0" max="1000000000" step="1" value="0"></label>
+<label>Maximum total unknown coverage <small>0 flags any unknown coverage for discussion</small><input id="maxUnknownCoverage" type="number" min="0" max="1000000000" step="1" value="0"></label>
 <label>Maximum total runtime (seconds) <small>0 disables</small><input id="maxRuntime" type="number" min="0" max="1000000000000" step="1" value="0"></label>
 <label>Maximum total compute cost (USD) <small>0 disables</small><input id="maxCost" type="number" min="0" max="1000000000000" step=".01" value="0"></label>
 </div><p id="thresholdMessage" aria-live="polite" class="eyebrow"></p><div id="thresholds" class="tablewrap"></div></section>
