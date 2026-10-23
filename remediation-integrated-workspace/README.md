@@ -34,6 +34,15 @@ symlink or unexpected permission at an intermediate package directory
 fails closed; this is local filesystem integrity, not producer identity
 or consent.
 
+The native `write_file` publisher now flushes and `fsync`s the original
+new 0600 file **and fsyncs its containing current-user-private directory**
+while the directory descriptor is still pinned. This closes a crash-durability
+gap between persisting file contents and persisting the newly created
+directory entry. The existing exclusive outer workspace publication and
+source/manifest admission remain separate safety steps; filesystem and
+storage hardware ultimately determine actual power-failure durability.
+No provenance, approval or consent is implied.
+
 All installed files are 0600. The ZIP is **created as a private 0600 single-link
 file from the first write**, using exclusive nofollow creation against the
 pinned private staging-directory descriptor; no temporary default-umask
