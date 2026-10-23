@@ -13,6 +13,7 @@
   const command = document.getElementById("command");
   const copy = document.getElementById("copy");
   const prepareReceive = document.getElementById("prepare-receive");
+  const prepareChecksum = document.getElementById("prepare-checksum");
   const reset = document.getElementById("reset");
   const message = document.getElementById("message");
   const primaryNames = new Set([
@@ -183,6 +184,8 @@
     copy.disabled = true;
     prepareReceive.hidden = chosen.name !== "inspect-archive";
     prepareReceive.disabled = true;
+    prepareChecksum.hidden = chosen.name !== "inspect-archive";
+    prepareChecksum.disabled = true;
     let values;
     try {
       values = allPaths();
@@ -204,6 +207,11 @@
     if (chosen.name === "inspect-archive" &&
         (values.get("--planned-output-dir") || []).length === 1) {
       prepareReceive.disabled = false;
+    }
+    if (chosen.name === "inspect-archive" &&
+        (values.get("--planned-checksum-file") || []).length === 1 &&
+        byName.has("fingerprint-archive")) {
+      prepareChecksum.disabled = false;
     }
     showMessage("Lokaal commando voorbereid. Nog niets uitgevoerd, gedeeld of geautoriseerd.", false);
   }
@@ -316,7 +324,35 @@
     command.value = "";
     copy.disabled = true;
     prepareReceive.disabled = true;
+    prepareChecksum.disabled = true;
     showMessage("Ingevulde paden en het commando zijn gewist. Een eerder gekopieerd commando kan nog op je systeemklembord staan.", false);
+  });
+  prepareChecksum.addEventListener("click", () => {
+    if (chosen.name !== "inspect-archive" || prepareChecksum.disabled) return;
+    let original;
+    try {
+      original = allPaths();
+    } catch (error) {
+      showMessage(error.message, true);
+      return;
+    }
+    const zip = (original.get("--archive") || [])[0];
+    const checksum = (original.get("--planned-checksum-file") || [])[0];
+    if (!zip || !checksum || !byName.has("fingerprint-archive")) return;
+    // A future proposed checksum output must never be mistaken for the
+    // separately received --expected-sha256-file. This only fills another
+    // visible command after the HUMAN operator deliberately clicks.
+    select("fingerprint-archive");
+    for (const [flag, value] of [
+      ["--archive", zip], ["--output-file", checksum]
+    ]) {
+      const field = inputElements.get(flag);
+      if (field) field.value = value;
+    }
+    renderCommand();
+    if (command.value) {
+      showMessage("Nieuwe checksumopdracht voorbereid. De ZIP is hier niet gecontroleerd en er is geen checksum aangemaakt of gedeeld.", false);
+    }
   });
   prepareReceive.addEventListener("click", () => {
     if (chosen.name !== "inspect-archive" || prepareReceive.disabled) return;
