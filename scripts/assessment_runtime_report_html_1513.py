@@ -223,7 +223,7 @@ def render_comparison_csv(result, *, cohort: bool = False,
     actual negative numbers rather than reinterpreted as spreadsheet formulas.
     """
     file = StringIO(newline="")
-    out = csv_writer(file, lineterminator="\\r\\n")
+    out = csv_writer(file, lineterminator="\r\n")
     out.writerow((
         "report_type", "source_status", "input_admitted",
         "scenario_ordinal", "metric", "baseline", "candidate", "delta",
