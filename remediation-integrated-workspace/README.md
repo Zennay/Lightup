@@ -211,6 +211,12 @@ receipts, mismatching hashes, oversized ZIPs and absent local crypto return
 A changed file selection or explicit **Wis resultaat** invalidates old
 comparison results; work stays in local browser memory.
 
+The browser's matching-checksum message deliberately says only
+**Checksum komt overeen**, never native **REVIEW_ONLY**: hashing two chosen
+files does not run the full ZIP parser or compare the 104 installed source
+files. Native `REVIEW_ONLY=2` is reserved for completed source-admitted
+commands, and even those commands do not grant security permissions.
+
 This is an **advisory SHA-256 equality preview only**. It cannot verify a
 ZIP structure, original software source lock, human sender identity,
 review, consent, current authorization, genuine revocation or HUMAN GO.
