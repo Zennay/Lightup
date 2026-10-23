@@ -95,7 +95,7 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
         stage_identity = suite.write_file(stage, payload)
         suite.require(suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL) == raw,
                       "Software ZIP changed before private checksum publication")
-        suite.exclusive_publish(stage, output_file)
+        suite.exclusive_publish(stage, output_file, expected_identity=stage_identity)
     finally:
         # A changed temporary filename is NOT ours to remove. Never unlink
         # a substitute inode, even if it has identical 0600 permissions.
@@ -189,7 +189,7 @@ def receive(archive: Path, destination: Path,
         # ZIP against the same local checkout before any publication.
         suite.verify(stage, compare_checkout=True)
         suite.require(not destination.exists(), "Recipient destination unexpectedly appeared")
-        suite.exclusive_publish(stage, destination)
+        suite.exclusive_publish(stage, destination, expected_identity=stage_identity)
     finally:
         suite.cleanup_private_stage(stage, stage_identity)
     print("REVIEW_ONLY: received original software to PRIVATE directory:", destination)
