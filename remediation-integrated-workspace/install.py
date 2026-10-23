@@ -490,16 +490,21 @@ def write_file(path: Path, payload: bytes) -> None:
         fd = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
                      os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
                      0o600, dir_fd=parent_fd)
+        try:
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "wb", closefd=False) as f:
+                f.write(payload)
+                f.flush()
+                os.fsync(f.fileno())
+            # The file's bytes are durable only after fsync(file), but its
+            # newly created directory entry must also be made durable.
+            # Keep the original nofollow private parent fd pinned until
+            # both are synced; never reopen a possibly replaced pathname.
+            os.fsync(parent_fd)
+        finally:
+            os.close(fd)
     finally:
         os.close(parent_fd)
-    try:
-        os.fchmod(fd, 0o600)
-        with os.fdopen(fd, "wb", closefd=False) as f:
-            f.write(payload)
-            f.flush()
-            os.fsync(f.fileno())
-    finally:
-        os.close(fd)
 
 def home() -> bytes:
     # Single source-of-truth for the complete PRIVATE scriptless entry page.
