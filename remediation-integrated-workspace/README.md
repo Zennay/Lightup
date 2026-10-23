@@ -22,7 +22,14 @@ On an authorized trusted Linux machine with Python 3, inside a copy of this bran
 
 The installer returns 2 = REVIEW_ONLY after local success, or 3 = HOLD on failure. Use an unused directory name. Open integrated-workspace-v1/index.html locally.
 
-The new **private, 0700** folder contains the original 79 software-only files, a CSP/scriptless index linking four complete offline original application screens, source-lock.json, software-only.zip, and a SHA-256 manifest. The ZIP is ordered reproducibly and contains software, the installer, operator guide and landing page, but **no tenant data, evidence, login, credentials, private source workrooms or HUMAN notes**. All installed files are 0600. Never unpack or share this package outside a separately approved private environment. Optional original CLI cryptography functionality retains its documented local optional dependencies.
+The new **private, 0700** folder contains the original 79 software-only files, a CSP/scriptless index linking four complete offline original application screens, source-lock.json, software-only.zip, and a SHA-256 manifest. The ZIP is ordered reproducibly and contains software, the installer, operator guide and landing page, but **no tenant data, evidence, login, credentials, private source workrooms or HUMAN notes**. All installed files are 0600. The ZIP is **created as a private 0600 single-link
+file from the first write**, using exclusive nofollow creation against the
+pinned private staging-directory descriptor; no temporary default-umask
+ZIP is opened by pathname and chmod'ed later. The completed archive is
+flushed and fsynced before being read back through original owner-private
+descriptor admission, checked against the exact complete native ZIP layout
+and then exclusively published with the rest of the original suite.
+Never unpack or share this package outside a separately approved private environment. Optional original CLI cryptography functionality retains its documented local optional dependencies.
 
 To check the installed folder's exact native file inventory and the locally generated software archive, without contacting any service:
 
