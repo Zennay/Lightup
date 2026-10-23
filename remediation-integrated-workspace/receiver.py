@@ -91,21 +91,25 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
     print("Output is not producer identity, release approval, or permission to disclose.")
 
 
-def inspect_archive(archive: Path, expected_sha256_file: Path | None = None) -> None:
-    """Operator's side-effect-free pre-admission for an original private ZIP."""
+def inspect_archive(archive: Path, expected_sha256_file: Path | None = None,
+                    planned_output_dir: Path | None = None) -> None:
+    """Side-effect-free original software ZIP and optional recipient path preview."""
     raw, _, lock, files = admit_archive(archive, expected_sha256_file)
+    if planned_output_dir is not None:
+        validate_receive_destination(archive, planned_output_dir)
     print(f"REVIEW_ONLY: native software-only ZIP admitted: {len(files)} files, "
           f"{len(lock['files'])} original pinned assets and {len(TOOLS)} integrated tools.")
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
     print("ARCHIVE BYTES:", len(raw))
     if expected_sha256_file is not None:
         print("TRANSFER CHECKSUM PARITY: exact original ZIP bytes match operator-provided fingerprint.")
+    if planned_output_dir is not None:
+        print("PLANNED PRIVATE RECIPIENT PATH: admissible but not created:", planned_output_dir)
     print("No extraction, report creation, authenticated producer identity or permissions.")
 
 
-def receive(archive: Path, destination: Path,
-            expected_sha256_file: Path | None = None) -> None:
-    raw, lock_bytes, lock, files = admit_archive(archive, expected_sha256_file)
+def validate_receive_destination(archive: Path, destination: Path) -> None:
+    """Share the exact output gate between read-only preview and receive."""
     suite.require(destination.is_absolute() and not destination.exists()
                   and not destination.is_symlink()
                   and destination.parent == destination.parent.resolve(strict=True),
@@ -117,6 +121,12 @@ def receive(archive: Path, destination: Path,
                   and destination != archive.parent
                   and archive.parent not in destination.parents,
                   "Recipient output must be entirely outside the original software ZIP directory")
+
+
+def receive(archive: Path, destination: Path,
+            expected_sha256_file: Path | None = None) -> None:
+    raw, lock_bytes, lock, files = admit_archive(archive, expected_sha256_file)
+    validate_receive_destination(archive, destination)
     stage = suite.create_private_stage(destination.parent, ".lightup-receiver-")
     try:
         entries = {}
