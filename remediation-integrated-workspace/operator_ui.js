@@ -117,8 +117,11 @@
       if (chosen.name === "inspect-archive") {
         const recipient = vals("--planned-output-dir")[0];
         const checksum = vals("--planned-checksum-file")[0];
-        if (recipient && checksum && clean(recipient) === clean(checksum)) {
-          throw Error("Geplande softwareontvangst en checksum moeten verschillende nieuwe paden gebruiken.");
+        if (recipient && checksum &&
+            (clean(recipient) === clean(checksum) ||
+             clean(checksum).startsWith(clean(recipient) + "/") ||
+             clean(recipient).startsWith(clean(checksum) + "/"))) {
+          throw Error("Geplande softwareontvangst en checksum moeten gescheiden nieuwe paden gebruiken, nooit in elkaars map.");
         }
       }
     }
