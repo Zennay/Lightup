@@ -127,6 +127,10 @@ OPERATIONS = {
     "inspect-software": ("install.py", ("inspect",), (
         ("--workspace", "Existing private software-only suite", False, True),
     ), "Local consistency inspection only; not CI/release approval."),
+    "inspect-checkout": ("install.py", ("inspect", "--compare-checkout"), (
+        ("--workspace", "Existing private software-only suite", False, True),
+        ("--report-dir", "NEW owner-only reproducibility passport directory", False, True),
+    ), "Verify source/ZIP parity and publish PRIVATE HUMAN-only HTML/JSON passport."),
 }
 
 def parser() -> argparse.ArgumentParser:
