@@ -2,6 +2,29 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Issue #1629, implemented as new-only `assessment-portfolio/` files on a child of the exact original workbench commit `880d59e0a996005dce174516358ca04a48d4633d`. It does not replace or edit the original `assessment-archive/agenda.py`.
 
+
+## 23 October 2026 — exact-source PRIVATE HUMAN capacity plan reopening
+
+The interactive PRIVATE capacity scenario studio now supports a complete **export → close → reopen** workflow without retaining private data in browser storage. Download the **PRIVATE scenario JSON v2**, later generate or reopen the original portfolio with the **same** admitted original agenda bytes, source ordering, selected date and focus filters. In the locally opened capacity studio choose **Reopen PRIVATE scenario JSON**. The selected v2 JSON must be byte-canonical to the original browser export, its unsigned SHA-256 of the exact admitted aggregate source view and every source-local ordinal/day/role/count must still agree with the currently opened workspace. It is only an exact source-context fingerprint, not authenticated provenance. Changed or different original source data, legacy v1 exports, unknown fields, duplicate keys, mismatched arithmetic, changed flags, and malformed capacity assumptions HOLD before any persistent choice is applied. Two independent hypothetical plans (first and alternative) restore only after explicit HUMAN confirmation; browser edits during asynchronous file reads abort.
+
+For an **original-native CLI** reopening of the same two saved HUMAN capacity assumptions (rather than manually entering role/day values again), separately place the browser-downloaded JSON inside your **own 0700 private folder**, as an independently selected owner-only **0600 regular file** with no symlink or hardlink. The browser download itself is not automatically private: copying it does **not** undo any earlier exposure of the browser Downloads copy. Do not include real customer/private reports in this demonstration.
+
+```bash
+umask 077
+install -m 600 -- /home/operator/Downloads/lightup-PRIVATE-HUMAN-capacity-scenarios.json /private/saved-HUMAN-capacity.json
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-23 \
+  --restore-private-capacity-json /private/saved-HUMAN-capacity.json \
+  --private-capacity-studio \
+  --preview-only \
+  /private/agenda-room-a/agenda.json \
+  /private/agenda-room-b/agenda.json
+```
+
+The native command re-admits the same original agenda data and focus first; only then it strictly checks the v2 JSON, role/day capacity integers, every source-local ordinal and group, complete summary arithmetic, fixed false authority flags and exact reference day against freshly recomputed original portfolio rows. The private scenario source is opened with owner/mode/regular-file/no-hardlink/no-follow checks, bounded at 1 MiB, and re-read unchanged before publication. The argument is mutually exclusive with manual capacity-plan and alternate-capacity flags. To **publish** a newly restored PRIVATE workroom, replace `--preview-only` with `--output-dir /private/empty-owner-only-workroom` (already existing mode 0700). To verify an existing bundle, use original `--verify-output-dir` with the exact same options. No targets, scans, consent, provider calls, calendar sends, grant or release are performed.
+
+This is manual **HUMAN planning arithmetic only**. The source hash is unsigned, ordinals are not client identities, role/day limits are not actual staffing, REVIEW_ONLY is not an authorization, and the standing independent CI/source-owner/security/privacy/browser reviews, real current separately authenticated client/operator consent, at-use revocation and explicit HUMAN GO remain mandatory before main merge or deployment.
+
 ## Product behavior
 
 Combine **2–12 already-created original private agenda JSON exports** from the unchanged `assessment-archive/agenda.py` against one explicit human planning reference day. The portfolio groups follow-up rows by neutral role and proposed-date bucket, includes a role-by-date workload matrix, preserves separate agenda/source slot ordinals, and never merges original source identifiers or bytes.
