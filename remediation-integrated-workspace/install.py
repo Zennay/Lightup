@@ -454,16 +454,25 @@ def verify(folder: Path, *, compare_checkout: bool = False,
     require(receipt["source_heads"] == pinned_lock["source_heads"],
             "Source snapshot identities do not match installed review")
     expected = set(files) | {"manifest.json"}
+    # An otherwise empty injected directory is still an unexpected change to
+    # the private installed tree. Derive every valid ancestor directory from
+    # the canonical mandatory software paths rather than trusting disk layout.
+    expected_dirs = {"."}
+    for name in expected:
+        expected_dirs.update(str(parent) for parent in PurePosixPath(name).parents)
     present = set()
+    present_dirs = set()
     for directory, dirnames, filenames in os.walk(folder, followlinks=False):
         current = Path(directory)
         owner_dir(current)
+        present_dirs.add(current.relative_to(folder).as_posix())
         for dirname in dirnames:
             require(not (current / dirname).is_symlink(), "Unexpected linked directory")
         for filename in filenames:
             name = (current / filename).relative_to(folder).as_posix()
             present.add(name)
-    require(present == expected, "Package files missing or extra")
+    require(present == expected and present_dirs == expected_dirs,
+            "Package files or directories missing or extra")
     verified = {}
     for name, descriptor in files.items():
         require(safe_name(name) or name in INTEGRATED_TOOLS
