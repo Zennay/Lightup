@@ -108,9 +108,14 @@ ACTION_PURPOSES = {
 }
 
 def render() -> bytes:
-    css = (HERE / "operator_ui.css").read_bytes()
-    js = (HERE / "operator_ui.js").read_bytes()
-    fingerprint_js = (HERE / "fingerprint_ui.js").read_bytes()
+    # The offline browser source is part of the trusted local checkout.
+    # Do not follow attacker-swapped source symlinks via Path.read_bytes();
+    # use the same descriptor-pinned, single-link source admission used for
+    # the original native ZIP and installed software integrity checks.
+    from install import read_checkout_source
+    css = read_checkout_source(HERE / "operator_ui.css")
+    js = read_checkout_source(HERE / "operator_ui.js")
+    fingerprint_js = read_checkout_source(HERE / "fingerprint_ui.js")
     if set(ACTION_LABELS) != set(OPERATIONS) or set(ACTION_PURPOSES) != set(OPERATIONS):
         raise ValueError("Offline Dutch operator copy must cover exactly the native actions")
     operations = [{
