@@ -130,3 +130,15 @@ unavailable.
 - This is local input hardening only. It does not authenticate caller-provided
   lab provenance, grant consent, contact targets, or change any execution,
   authorization, dispatch, or release gate.
+
+## Optional human-readable cohort summary
+
+The cohort CLI keeps compact JSON as its default output so existing structured handoffs, including Assessment Trends, remain unchanged. For a terminal-friendly view, add `--format text`:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format text baseline-cohort.json candidate-cohort.json
+```
+
+The text view lists each result using a local anonymous ordinal (`Scenario 01`, etc.), then shows the source-reported metric baseline, candidate, delta and regression flag. It reports cohort-level status and counts without printing the original scenario IDs or input paths. Invalid or inconsistent input remains a generic `HOLD` with no partial scenario detail. The exit contract is unchanged: `2` means `REVIEW_ONLY`, `3` means `HOLD`; zero is never a success signal. This remains a local diagnostic, not authenticated provenance, remediation evidence, consent, authorization or release approval.
+
