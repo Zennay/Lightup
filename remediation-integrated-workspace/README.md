@@ -108,10 +108,15 @@ A fresh Linux PRIVATE workspace, received source-only suite or
 reproducibility passport is now staged under an original **0700
 current-user directory descriptor**, using `mkdir(..., dir_fd=...)`,
 then checked through a nofollow directory descriptor for exact
-owner-only mode. The native stage cleanup similarly uses the verified
-private directory descriptor and Python's fd-relative `shutil.rmtree`,
-so a changed path to the parent cannot silently redirect the
-**creation or cleanup** of the staging directory. The original
+owner-only mode. At creation, the native builder records the
+**original filesystem device and inode number** of each newly created stage.
+The builder, recipient and passport publisher pass that exact identity
+to cleanup. A different 0700 current-user directory placed under the
+same randomly generated temporary name now **HOLDs instead of being
+recursively removed**, even though its mode and owner match. The native
+cleanup also uses the verified private directory descriptor and Python's
+fd-relative `shutil.rmtree`, so a changed path to the parent cannot silently
+redirect **creation or cleanup**. The original
 `renameat2(RENAME_NOREPLACE)` private publication, full 104-file
 checkout comparison, 107-entry source-only ZIP admission and
 independent-review/authorization HOLD remain unchanged.
