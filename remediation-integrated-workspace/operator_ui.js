@@ -20,7 +20,10 @@
     "owner-encrypted-receipt", "archives", "continue-review",
     "fingerprint-compare", "inspect-archive", "receive-software"
   ]);
-  let chosen = specs.find(s => s.name === "owner-encrypted-receipt") || specs[0];
+  // Start with the least invasive read-only software admission, not an
+  // owner-encrypted handoff that requires sensitive artifacts and a password.
+  // All advanced HUMAN workflows remain accessible through navigation.
+  let chosen = specs.find(s => s.name === "inspect-archive") || specs[0];
   let inputElements = new Map();
   let showAll = false;
   const more = document.createElement("button");
