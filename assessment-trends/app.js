@@ -250,6 +250,7 @@
     };
     const u=count(noteUndoHistory),r=count(noteRedoHistory);
     undo.disabled=u===0;redo.disabled=r===0;
+    $("clearAllNotes").disabled=notes.size===0&&scratch.size===0;
     undo.textContent=u?"Undo commentary ("+u+")":"Undo commentary";
     redo.textContent=r?"Redo commentary ("+r+")":"Redo commentary";
     msg.textContent="Undo "+u+" · Redo "+r+" · up to "+NOTE_HISTORY_LIMIT+
@@ -2698,6 +2699,15 @@
     if(notes.has(key)||scratch.has(key))rememberNoteEdit();
     notes.delete(key);scratch.delete(key);renderNotePanel();renderNotePacketControls();
     $("noteMessage").textContent="Selected commentary cleared from this tab.";
+  });
+  $("clearAllNotes").addEventListener("click",()=>{
+    if(!snapshots.length||(!notes.size&&!scratch.size))return;
+    if(!window.confirm("Clear "+notes.size+" saved HUMAN note(s) and "+scratch.size+
+      " draft(s) for this local cohort? This can be undone while this source cohort remains open. "+
+      "Use Forget to erase the whole source cohort and history."))return;
+    rememberNoteEdit();
+    notes.clear();scratch.clear();renderNotePanel();renderNotePacketControls();
+    $("noteMessage").textContent="HUMAN notes and drafts cleared; Undo can restore them until history is cleared or tab closes.";
   });
   $("undoNote").addEventListener("click",()=>changeNoteHistory(noteUndoHistory,noteRedoHistory,"Undo"));
   $("redoNote").addEventListener("click",()=>changeNoteHistory(noteRedoHistory,noteUndoHistory,"Redo"));
