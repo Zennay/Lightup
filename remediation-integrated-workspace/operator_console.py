@@ -38,6 +38,7 @@ CATEGORIES = {
     "install": "Software only",
     "receive-software": "Software only",
     "inspect-software": "Software only",
+    "inspect-checkout": "Software only",
 }
 
 def render() -> bytes:
