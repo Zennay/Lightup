@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Fail-closed, software-only offline LightUp recipient. Never authenticates sender."""
 from __future__ import annotations
-import os
 import hmac
 from pathlib import Path
 import secrets
-import shutil
 
 import install as suite
 
