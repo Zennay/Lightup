@@ -159,6 +159,7 @@
       scope:total.scope_violations.candidate,
       policy:total.policy_violations.candidate,
       coverage:total.coverage_assessed.candidate,
+      unknownCoverage:total.coverage_unknown.candidate,
       quality:total.evidence_quality.candidate/count,
       runtime:total.runtime_seconds.candidate,
       cost:total.compute_cost_usd.candidate};
@@ -242,7 +243,8 @@
   function threshold(){
     const keys=[["maxScope",0,1e6,true],["maxPolicy",0,1e6,true],
       ["minQuality",0,1,false],["minCoverage",0,1e9,true],
-      ["maxRuntime",0,1e12,false],["maxCost",0,1e12,false]];
+      ["maxUnknownCoverage",0,1e9,true],["maxRuntime",0,1e12,false],
+      ["maxCost",0,1e12,false]];
     const t={};
     for(const [key,min,max,integer]of keys){
       const input=$(key),n=Number(input.value);
@@ -258,6 +260,7 @@
     if(a.policy>t.maxPolicy)b.push("Policy violations exceed review threshold");
     if(a.quality<t.minQuality)b.push("Evidence quality below discussion floor");
     if(a.coverage<t.minCoverage)b.push("Assessed coverage below discussion floor");
+    if(a.unknownCoverage>t.maxUnknownCoverage)b.push("Unknown coverage exceeds discussion ceiling");
     if(t.maxRuntime>0&&a.runtime>t.maxRuntime)b.push("Runtime above discussion budget");
     if(t.maxCost>0&&a.cost>t.maxCost)b.push("Compute cost above discussion budget");
     return b;
@@ -927,7 +930,7 @@
   }
   function exportJSON(){
     if(!reports.length||!settings)return;
-    const out={schema:"lightup.lab_candidate_matrix_review.v6",
+    const out={schema:"lightup.lab_candidate_matrix_review.v7",
       posture:"INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
       status:"REVIEW_ONLY",source_identity_authenticated:false,
       temporal_order_authenticated:false,fictional_demo_only:demo,
@@ -972,15 +975,17 @@
     const head=["candidate_slot","source_status","regressed_cases","metric_regressions",
       "threshold_discussions","threshold_max_scope","threshold_max_policy",
       "threshold_min_evidence_quality","threshold_min_assessed_coverage",
-      "threshold_max_runtime_seconds","threshold_max_compute_cost_usd","threshold_discussion_reasons",
+      "threshold_max_unknown_coverage","threshold_max_runtime_seconds",
+      "threshold_max_compute_cost_usd","threshold_discussion_reasons",
       "scope_flags","policy_flags","fictional_demo_only","report_status",
       "private_discussions_documented","private_discussions_in_progress",
       ...NAMES.map(n=>n+"_total"),"pareto_position","dominated_by_candidate_slots","pareto_dimensions",
       "authorized","consent_verified","dispatch_allowed","release_allowed"];
     const rows=metricRows().map(r=>[r.candidate_slot,r.source_status,r.regressed_cases,
       r.metric_regressions,r.threshold_discussions,settings.maxScope,settings.maxPolicy,
-      settings.minQuality,settings.minCoverage,settings.maxRuntime,settings.maxCost,
-      r.threshold_discussion_reasons.join("; "),r.scope_flags,r.policy_flags,
+      settings.minQuality,settings.minCoverage,settings.maxUnknownCoverage,
+      settings.maxRuntime,settings.maxCost,r.threshold_discussion_reasons.join("; "),
+      r.scope_flags,r.policy_flags,
       demo?"true":"false","REVIEW_ONLY",discussionSummary().stages.documented,
       discussionSummary().stages.in_discussion,...NAMES.map(n=>r.metrics[n].candidate_total),
       paretoBySlot.get(r.candidate_slot)?.position||"NOT_COMPUTED",
@@ -1065,6 +1070,7 @@
       ["Maximum policy violations",format(settings.maxPolicy)],
       ["Minimum evidence quality",format(settings.minQuality)],
       ["Minimum assessed coverage",format(settings.minCoverage)],
+      ["Maximum unknown coverage",format(settings.maxUnknownCoverage)],
       ["Maximum runtime seconds",format(settings.maxRuntime)],
       ["Maximum compute-cost USD",format(settings.maxCost)]
     ]);
@@ -1072,7 +1078,8 @@
       const flags=breaches(a,settings);
       return "<h2>Candidate "+(i+1)+"</h2><p>Original source status: "+reports[i].sourceStatus+
         "; regressed lab cases: "+a.affected+"; scope violations: "+format(a.scope)+
-        "; policy violations: "+format(a.policy)+"; human discussion flags: "+
+        "; policy violations: "+format(a.policy)+"; unknown coverage: "+
+        format(a.unknownCoverage)+"; human discussion flags: "+
         flags.length+". "+(flags.length?flags.join("; "):"No threshold breaches: STILL REVIEW ONLY.")+"</p>";
     }).join("");
     const agendaTable=table(["Human lab discussion topic","Source instances",
@@ -1183,29 +1190,34 @@
   }
   const DRAFT_SCHEMA_V1="lightup.lab_candidate_private_preferences.v1";
   const DRAFT_SCHEMA_V2="lightup.lab_candidate_private_preferences.v2";
-  const DRAFT_SCHEMA="lightup.lab_candidate_private_preferences.v3";
-  const PREF_KEYS=["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost"];
+  const DRAFT_SCHEMA_V3="lightup.lab_candidate_private_preferences.v3";
+  const DRAFT_SCHEMA="lightup.lab_candidate_private_preferences.v4";
+  const PREF_KEYS=["maxScope","maxPolicy","minQuality","minCoverage","maxUnknownCoverage","maxRuntime","maxCost"];
   const DIM_KEYS=["dimQuality","dimCoverage","dimRuntime","dimCost"];
   function checkDraft(x){
     assert(!demo&&reports.length>=2&&sourceHashes.length===reports.length);
-    const v3=x?.schema===DRAFT_SCHEMA,v2=x?.schema===DRAFT_SCHEMA_V2;
-    const withDiscussions=v2||v3;
+    const v4=x?.schema===DRAFT_SCHEMA,v3=x?.schema===DRAFT_SCHEMA_V3,
+      v2=x?.schema===DRAFT_SCHEMA_V2;
+    const withDiscussions=v2||v3||v4,withAliases=v3||v4;
     assert((withDiscussions||x?.schema===DRAFT_SCHEMA_V1)&&
       exact(x,["schema","private_unsigned","source_sha256","thresholds",
         "dimensions","focus",...(withDiscussions?["discussions"]:[]),
-        ...(v3?["source_aliases"]:[]),...AUTH])&&
+        ...(withAliases?["source_aliases"]:[]),...AUTH])&&
       x.private_unsigned===true&&AUTH.every(k=>x[k]===false));
     assert(Array.isArray(x.source_sha256)&&x.source_sha256.length===sourceHashes.length&&
       x.source_sha256.every((h,i)=>typeof h==="string"&&
       /^[a-f0-9]{64}$/.test(h)&&h===sourceHashes[i]));
-    assert(exact(x.thresholds,PREF_KEYS)&&exact(x.dimensions,DIM_KEYS)&&
-      DIM_KEYS.every(k=>typeof x.dimensions[k]==="boolean")&&
+    assert(exact(x.thresholds,v4?PREF_KEYS:PREF_KEYS.filter(k=>k!=="maxUnknownCoverage"))&&
+      exact(x.dimensions,DIM_KEYS)&&DIM_KEYS.every(k=>typeof x.dimensions[k]==="boolean")&&
       exact(x.focus,["pairA","pairB","caseIndex","metric"]));
-    const t=x.thresholds;
+    // Older v1–v3 private drafts predate the uncertainty ceiling. Preserve their
+    // source-bound notes and settings while introducing a conservative default.
+    const t={maxUnknownCoverage:0,...x.thresholds};
     for(const k of PREF_KEYS)assert(finite(t[k])&&t[k]>=0);
     assert(Number.isSafeInteger(t.maxScope)&&t.maxScope<=1e6&&
       Number.isSafeInteger(t.maxPolicy)&&t.maxPolicy<=1e6&&
       t.minQuality<=1&&Number.isSafeInteger(t.minCoverage)&&t.minCoverage<=1e9&&
+      Number.isSafeInteger(t.maxUnknownCoverage)&&t.maxUnknownCoverage<=1e9&&
       t.maxRuntime<=1e12&&t.maxCost<=1e12);
     const f=x.focus;
     assert(Number.isSafeInteger(f.pairA)&&Number.isSafeInteger(f.pairB)&&
@@ -1224,11 +1236,11 @@
         ordinals.add(row.ordinal);
       }
     }
-    if(v3)assert(Array.isArray(x.source_aliases)&&
+    if(withAliases)assert(Array.isArray(x.source_aliases)&&
       x.source_aliases.length===sourceHashes.length&&
       x.source_aliases.every(label=>typeof label==="string"&&label.length<=40&&
         label===label.trim()&&/^[\x20-\x7e]*$/.test(label)));
-    return x;
+    return {...x,thresholds:t};
   }
   function saveDraft(){
     if(demo||sourceHashes.length!==reports.length||!settings)return;
@@ -1385,7 +1397,8 @@
         const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
         const draft=checkDraft(strictJSON(raw));
         // Earlier settings-only v1 drafts have no HUMAN queue to compare.
-        assert(draft.schema===DRAFT_SCHEMA_V2||draft.schema===DRAFT_SCHEMA);
+        assert(draft.schema===DRAFT_SCHEMA_V2||draft.schema===DRAFT_SCHEMA_V3||
+        draft.schema===DRAFT_SCHEMA);
         drafts.push(draft);
       }
       const snapshots=drafts.map(roundRows),before=snapshots[0],
@@ -1539,7 +1552,7 @@
     discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
     $("draftFile").value="";$("draftMessage").textContent="";
     const defaults={maxScope:0,maxPolicy:0,minQuality:0.75,minCoverage:0,
-      maxRuntime:0,maxCost:0};
+      maxUnknownCoverage:0,maxRuntime:0,maxCost:0};
     Object.entries(defaults).forEach(([k,v])=>$(k).value=String(v));
     for(const k of ["dimQuality","dimCoverage","dimRuntime","dimCost"])$(k).checked=true;
     $("thresholdMessage").textContent="";$("files").value="";
@@ -1700,8 +1713,9 @@
   $("removeCandidate").addEventListener("click",removeCandidate);
   $("demo").addEventListener("click",demoLoad);
   $("forget").addEventListener("click",forget);
-  for(const id of ["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost",
-    "dimQuality","dimCoverage","dimRuntime","dimCost"])$(id).addEventListener("change",()=>{
+  for(const id of ["maxScope","maxPolicy","minQuality","minCoverage","maxUnknownCoverage",
+    "maxRuntime","maxCost","dimQuality","dimCoverage","dimRuntime","dimCost"])
+    $(id).addEventListener("change",()=>{
       cancelPendingFiles();render();
     });
   for(const id of ["pairA","pairB"])$(id).addEventListener("change",()=>{
