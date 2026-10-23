@@ -267,6 +267,30 @@
       notify("exportStatus","Selected PRIVATE lab subset downloaded. Protect original target addresses.");
     }catch(_){notify("status","HOLD: filtered source subset failed canonical admission.",true);}
   }
+  function saveSelectedCatalog(){
+    const visibleIds=new Set(visibleCatalog().map(row=>row.item.scenario_id));
+    const result=items.filter(item=>visibleIds.has(item.scenario_id)&&
+      selectedCatalogIds.has(item.scenario_id));
+    if(!result.length){
+      notify("status","Select one or more visible scenarios before exporting the selected subset.",true);
+      return;
+    }
+    try{
+      const payload=documentCatalog(result);
+      validateCatalog(payload);
+      const kind=fictional?"fictional demo":"PRIVATE source";
+      if(!confirm("Download "+result.length+" selected visible "+kind+
+        " scenario(s), including their declared target and finding data? "+
+        "Only checked visible rows are included. This does not execute anything."))return;
+      download(fictional?"lightup-FICTIONAL-lab-scenario-selected.json":
+        "lightup-PRIVATE-lab-scenario-selected.json",
+        JSON.stringify(payload,null,2)+"\\n","application/json");
+      notify("exportStatus","Downloaded "+result.length+" selected "+kind+
+        " scenario(s). Only checked visible rows were included; protect private target addresses and findings.");
+    }catch(_){
+      notify("status","HOLD: selected scenario subset failed canonical admission; no file was exported.",true);
+    }
+  }
   function render(){
     updateHistoryControls();
     const v=catalogSummary();
@@ -296,8 +320,9 @@
     $("copySelectedCatalog").disabled=!selectedCatalogIds.size||
       items.length+selectedCatalogIds.size>32;
     $("catalogSelectionSummary").textContent=selectedCatalogIds.size+
-      " visible private scenario(s) selected for optional local deletion. Changing filters clears hidden selections; no change until confirmed.";
+      " visible scenario(s) selected for optional export, local deletion or UNSCORED copy. Changing filters clears hidden selections; no change until confirmed.";
     $("exportFiltered").disabled=!visible.length;
+    $("exportSelectedCatalog").disabled=!selectedCatalogIds.size;
     $("filterSummary").textContent=visible.length+" matching PRIVATE scenario(s) of "+
       items.length+". Filters never change the underlying catalog or ground truth.";
     if(!items.length){$("catalog").innerHTML='<p class="empty">No scenarios yet.</p>';return;}
@@ -310,7 +335,7 @@
       const row=document.createElement("tr");
       const selectCell=document.createElement("td"),checkbox=document.createElement("input");
       checkbox.type="checkbox";checkbox.checked=selectedCatalogIds.has(item.scenario_id);
-      checkbox.setAttribute("aria-label","Select PRIVATE scenario slot "+(index+1)+" for local batch deletion");
+      checkbox.setAttribute("aria-label","Select scenario slot "+(index+1)+" for optional export, local deletion or UNSCORED copy");
       checkbox.addEventListener("change",()=>{
         if(checkbox.checked)selectedCatalogIds.add(item.scenario_id);
         else selectedCatalogIds.delete(item.scenario_id);
@@ -730,6 +755,7 @@
     $("catalogSeverity").value="all";render();
   });
   $("exportFiltered").addEventListener("click",saveFiltered);
+  $("exportSelectedCatalog").addEventListener("click",saveSelectedCatalog);
   $("selectVisibleCatalog").addEventListener("click",()=>{
     const rows=visibleCatalog();
     if(!rows.length)return;
