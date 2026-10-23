@@ -116,6 +116,12 @@
       <option value="decreased">Decreased unknown coverage</option>
       <option value="unchanged">Unchanged unknown coverage</option>
     </select></label>
+    <label>Sort scenario changes<select id="coverageUnknownPairSort" disabled>
+      <option value="scenario">Canonical scenario order</option>
+      <option value="increase">Largest increases first</option>
+      <option value="decrease">Largest decreases first</option>
+      <option value="magnitude">Largest absolute changes first</option>
+    </select></label>
   </div>
   <p id="coverageUnknownPairSummary" class="message" role="status" aria-live="polite">Import snapshots to compare unknown coverage for any two distinct manual slots.</p>
   <div id="coverageUnknownPairTable" class="tablewrap" role="region" aria-label="Anonymous per-scenario unknown-coverage comparison" tabindex="0"><p class="empty">No pairwise coverage comparison yet.</p></div>
