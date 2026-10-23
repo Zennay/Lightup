@@ -29,18 +29,11 @@ def receive(archive: Path, destination: Path) -> None:
                   and archive != destination and destination not in archive.parents,
                   "Source, recipient or package paths overlap")
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
-        members = z.infolist()
-        names = z.namelist()
-        suite.require(len(names) == len(expected) and set(names) == expected,
-                      "Complete original software inventory required")
-        suite.require(all((suite.safe_name(f.filename) or f.filename in expected - set(lock["files"]))
-                          and not f.is_dir() and f.file_size <= suite.MAX_SOURCE
-                          and f.compress_size <= suite.MAX_SOURCE
-                          and (f.external_attr >> 16) in (0, 0o100600)
-                          for f in members)
-                      and sum(f.file_size for f in members) <= suite.MAX_TOTAL,
-                      "Unsafe ZIP path, mode or size")
-        files = {member.filename: z.read(member) for member in members}
+        # Admit the exact original writer's safe portable ZIP metadata,
+        # not just matching listed content hashes. The shared publisher-side
+        # inspector performs the same check before publication.
+        suite.require_native_archive(z, expected)
+        files = {member.filename: z.read(member) for member in z.infolist()}
     import operator_console
     suite.require(files["source-lock.json"] == lock_bytes
                   and files["index.html"] == suite.home()
