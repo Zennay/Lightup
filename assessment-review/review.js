@@ -195,7 +195,7 @@
   }
   const countRegressions = () => report.cases.reduce((n, c) => n + c.regressions.length, 0);
   const unknownCoverage = c => c.changes.find(m => m.name === "coverage_unknown")?.candidate || 0;
-  const priority = c => !c.regressions.length ? (unknownCoverage(c)>0 ? "Coverage uncertainty" : "No regression") :
+  const priority = c => !c.regressions.length ? "No regression" :
     c.regressions.some(x => x === "scope_violations" || x === "policy_violations") ? "Critical drift" :
     c.regressions.some(x => ["missed_findings", "invalid_findings", "valid_findings"].includes(x)) ? "High drift" : "Review drift";
 
@@ -214,11 +214,14 @@
       return "Request independent rubric/evidence review and a proposed remediation plan.";
     if (c.regressions.length)
       return "Compare source metric details and prepare an independent human follow-up.";
-    if (unknownCoverage(c)>0)
-      return "Ask the original lab source owner to clarify declared unknown coverage. Do not infer a finding, remediation, permission or need for a new scan.";
     return "No scored regression reported. Review informational performance/cost changes if relevant.";
   }
-  const urgency = c => ["Critical drift", "High drift", "Review drift", "Coverage uncertainty", "No regression"].indexOf(priority(c));
+  function humanAction(c){
+    if(!c.regressions.length&&unknownCoverage(c)>0)
+      return "Ask the original lab source owner to clarify declared unknown coverage. Do not infer a finding, remediation, permission or need for a new scan.";
+    return nextHumanAction(c);
+  }
+  const urgency = c => ["Critical drift", "High drift", "Review drift", "No regression"].indexOf(priority(c));
   const label = i => "Case " + String(i + 1).padStart(2, "0");
   const nice = s => s.replaceAll("_", " ");
   const stageText = s => ({
@@ -287,7 +290,8 @@
       child(left, "strong", label(i));
       child(left, "small", c.regressions.length + " regression(s) · unknown coverage " +
         fmt(unknownCoverage(c)) + " · " + stageText(c.stage) + " · " + c.route);
-      badge(row, priority(c), c.regressions.length ? "bad" : unknownCoverage(c)>0 ? "warn" : "ok");
+      badge(row, priority(c), c.regressions.length ? "bad" : "ok");
+      if(unknownCoverage(c)>0)badge(row,"Unknown coverage","warn");
       row.addEventListener("click", () => {selected = i; render();});
     }
   }
@@ -303,7 +307,7 @@
     badge(chips, c.status, c.status === "HOLD" ? "bad" : "ok");
     badge(chips, c.regressions.length + " regressed metrics", c.regressions.length ? "bad" : "ok");
     if(unknownCoverage(c)>0)badge(chips,"Unknown coverage "+fmt(unknownCoverage(c)),"warn");
-    $("guidance").textContent = nextHumanAction(c);
+    $("guidance").textContent = humanAction(c);
     $("route").value = c.route;
     $("stage").value = c.stage;
     $("due").value = c.due;
@@ -395,7 +399,7 @@
       const evidenceCell = child(evidenceRow, "td");
       evidenceCell.colSpan = 8;
       const evidence = c.changes.filter(m => c.regressions.includes(m.name) ||
-        (metricFocus==="coverage_unknown" && m.name==="coverage_unknown" && m.candidate>0)).map(m =>
+        (m.name==="coverage_unknown" && m.candidate>0)).map(m =>
         nice(m.name) + ": baseline " + fmt(m.baseline) + " → candidate " + fmt(m.candidate) +
         " (Δ " + (m.delta >= 0 ? "+" : "") + fmt(m.delta) + ")"
       );
@@ -403,7 +407,7 @@
       child(evidenceCell, "span", evidence.join(" · ") || "No source-flagged metric regressions.");
       child(evidenceCell, "br");
       child(evidenceCell, "strong", "Suggested next HUMAN action: ");
-      child(evidenceCell, "span", nextHumanAction(c));
+      child(evidenceCell, "span", humanAction(c));
     });
     child(box, "p", "Only cases matching the filters above are included. Numeric values are source-reported, unverified observations. This is an unsigned HUMAN planning view, not evidence of remediation, identity, permission or release.", "print-note");
   }
@@ -707,7 +711,7 @@
   function filteredQueueExport() {
     const rows = filteredQueueRows();
     return {
-      schema: "lightup-offline-human-triage-filtered-v1",
+      schema: "lightup-offline-human-triage-filtered-v2",
       source_sha256: digest,
       source_kind: sourceKind,
       source_status: report.verdict,
@@ -738,7 +742,7 @@
         human_stage: c.stage,
         follow_up_date: c.due || null,
         routing_group: c.route,
-        suggested_human_action: nextHumanAction(c)
+        suggested_human_action: humanAction(c)
       })),
       warning: "FILTERED UNSIGNED OFFLINE HUMAN PLANNING ONLY. No source identity, remediation, consent or execution authority is asserted."
     };
@@ -770,7 +774,8 @@
       ensure(exactKeys(saved, ["schema","source_sha256","source_kind","source_status","filters",
         "authorized","consent_verified","dispatch_allowed","release_allowed","release_approved",
         "scan_allowed","review_only","case_count","cases","warning"]));
-      ensure(saved.schema === "lightup-offline-human-triage-filtered-v1" &&
+      const v2 = saved.schema === "lightup-offline-human-triage-filtered-v2";
+      ensure((v2 || saved.schema === "lightup-offline-human-triage-filtered-v1") &&
         saved.source_sha256 === digest && saved.source_kind === sourceKind &&
         saved.source_status === report.verdict && saved.release_approved === false &&
         saved.scan_allowed === false && saved.review_only === true &&
@@ -778,10 +783,11 @@
         saved.warning === "FILTERED UNSIGNED OFFLINE HUMAN PLANNING ONLY. No source identity, remediation, consent or execution authority is asserted." &&
         exactKeys(saved.filters, ["case_status","workstream","priority","metric"]));
       const filters = saved.filters;
-      ensure(["all","regressed","open","waiting","reviewed"].includes(filters.case_status) &&
+      ensure(["all","regressed",...(v2?["uncertain"]:[]),"open","waiting","reviewed"].includes(filters.case_status) &&
         (filters.workstream === "all" || ROUTES.has(filters.workstream)) &&
         ["all","Critical drift","High drift","Review drift","No regression"].includes(filters.priority) &&
-        (filters.metric === "all" || METRICS.includes(filters.metric)));
+        (filters.metric === "all" || (METRICS.includes(filters.metric) &&
+          (v2 || filters.metric!=="coverage_unknown"))));
       ensure(Array.isArray(saved.cases) && Number.isInteger(saved.case_count) &&
         saved.case_count === saved.cases.length && saved.cases.length > 0 &&
         saved.cases.length <= report.cases.length);
@@ -808,21 +814,26 @@
           row.metric_changes.every(metric => exactKeys(metric, metricKeys)) &&
           STAGES.has(row.human_stage) && ROUTES.has(row.routing_group));
         ensure((filters.case_status !== "regressed" || c.regressions.length > 0) &&
+          (filters.case_status !== "uncertain" || (v2 && unknownCoverage(c)>0)) &&
           (filters.case_status !== "open" || row.human_stage !== "reviewed") &&
           (filters.case_status !== "waiting" || row.human_stage === "waiting") &&
           (filters.case_status !== "reviewed" || row.human_stage === "reviewed") &&
           (filters.workstream === "all" || row.routing_group === filters.workstream) &&
           (filters.priority === "all" || row.priority === filters.priority) &&
-          (filters.metric === "all" || c.regressions.includes(filters.metric)));
+          (filters.metric === "all" || (v2 && filters.metric==="coverage_unknown" ?
+            unknownCoverage(c)>0 : c.regressions.includes(filters.metric))));
         const currentUrgency = urgency(c);
         ensure(currentUrgency > previousUrgency ||
           (currentUrgency === previousUrgency && index > previousIndex));
         previousUrgency = currentUrgency;
         previousIndex = index;
-        const expectedChanges = c.changes.filter(m=>filters.metric !== "all" ? m.name === filters.metric : m.regression)
+        const expectedChanges = (v2 ? c.changes.filter(m=>filters.metric !== "all" ?
+          (filters.metric==="coverage_unknown" ? m.name==="coverage_unknown" && m.candidate>0 : m.name===filters.metric) :
+          (m.regression || (m.name==="coverage_unknown" && m.candidate>0))) :
+          c.changes.filter(m=>filters.metric !== "all" ? m.name===filters.metric : m.regression))
           .map(m=>({metric:m.name,baseline:m.baseline,candidate:m.candidate,delta:m.delta,regression:m.regression}));
         ensure(JSON.stringify(row.metric_changes) === JSON.stringify(expectedChanges) &&
-          row.suggested_human_action === nextHumanAction(c));
+          row.suggested_human_action === (v2 ? humanAction(c) : nextHumanAction(c)));
         const due = row.follow_up_date;
         ensure(due === null || (typeof due === "string" &&
           /^\d{4}-\d{2}-\d{2}$/.test(due) &&
