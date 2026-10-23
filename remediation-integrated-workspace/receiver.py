@@ -184,5 +184,5 @@ def receive(archive: Path, destination: Path,
     print("Open offline:", destination / "index.html")
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
     if expected_sha256_file is not None:
-        print("TRANSFER CHECKSUM PARITY: independently supplied file bytes matched at admission and publication.")
+        print("TRANSFER CHECKSUM PARITY: operator-selected checksum file matched the ZIP at admission and before publication. Origin is NOT authenticated.")
     print("Unsigned local digests NEVER establish authenticated source, consent or HUMAN GO.")
