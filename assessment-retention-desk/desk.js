@@ -83,6 +83,88 @@
     soon.setDate(soon.getDate()+7);
     return {today:localDay(today), soon:localDay(soon)};
   }
+  function capacityScenario() {
+    const a = Number($("capacity-a").value), b = Number($("capacity-b").value);
+    if (!Number.isInteger(a) || a<1 || a>12 || !Number.isInteger(b) || b<1 || b>12)
+      return null;
+    const subset = $("capacity-scope").value === "all" ? entries.slice() : visibleEntries();
+    const {today} = humanReviewWindow();
+    const start = new Date(today + "T00:00:00Z");
+    const monday = new Date(start);
+    monday.setUTCDate(start.getUTCDate() - (start.getUTCDay()+6)%7);
+    const iso = day => day.toISOString().slice(0,10);
+    const addDays = (date, days) => {
+      const copy = new Date(date);
+      copy.setUTCDate(copy.getUTCDate()+days);
+      return copy;
+    };
+    const weeks = Array.from({length:4},(_,i)=>({
+      code:"week_"+(i+1),label:"Week "+(i+1)+" · "+iso(addDays(monday,i*7))+" t/m "+
+        iso(addDays(monday,i*7+6)),count:0,attention:0,scheduled:true
+    }));
+    const before={code:"overdue",label:"Voorlopig verstreken (vóór vandaag)",count:0,attention:0,scheduled:false};
+    const after={code:"later",label:"Latere reviewmomenten",count:0,attention:0,scheduled:false};
+    const undated={code:"undated",label:"Zonder voorlopige reviewdatum",count:0,attention:0,scheduled:false};
+    for(const item of subset){
+      let bucket;
+      if (!item.review_date || !validDate(item.review_date)) bucket=undated;
+      else if(item.review_date<today)bucket=before;
+      else {
+        const idx=Math.floor((Date.parse(item.review_date+"T00:00:00Z")-monday.getTime())/604800000);
+        bucket=idx>=0 && idx<4 ? weeks[idx] : after;
+      }
+      bucket.count++;
+      if(item.hold_flag!=="human_declared_clear" || !item.custodian.trim() ||
+         (item.status==="propose_delete" && !removalProposalReady(item)))bucket.attention++;
+    }
+    return {a,b,today,scope:$("capacity-scope").value,
+      total:subset.length,rows:[before,...weeks,after,undated]};
+  }
+  function renderCapacity(){
+    const root=$("capacity-rows");
+    root.replaceChildren();
+    const view=capacityScenario();
+    $("capacity-export").disabled=processing||!entries.length||!view||!view.total;
+    if(!view){
+      $("capacity-summary").textContent="HOLD: kies voor beide fictieve scenario's een geheel getal van 1 t/m 12.";
+      root.append(text("tr",""));
+      return;
+    }
+    const planned=view.rows.filter(r=>r.scheduled).reduce((n,r)=>n+r.count,0);
+    const pending=view.rows.filter(r=>!r.scheduled).reduce((n,r)=>n+r.count,0);
+    const gap=cap=>view.rows.filter(r=>r.scheduled).reduce((n,r)=>n+Math.max(0,r.count-cap),0);
+    $("capacity-summary").textContent=view.total+" geselecteerde HUMAN-rijen · "+
+      planned+" voorgesteld in vier kalenderweken · "+pending+" verstreken/later/ongedateerd · "+
+      "fictief overcapaciteitstekort A "+gap(view.a)+", B "+gap(view.b)+
+      ". Geen automatische planning, toestemming of verwijdering.";
+    for(const row of view.rows){
+      const tr=document.createElement("tr");
+      const difference=cap=>!row.scheduled?"Niet ingedeeld":
+        row.count>cap?"Fictief tekort "+(row.count-cap):
+          "Fictief restant "+(cap-row.count);
+      for(const value of [row.label,String(row.count),String(row.attention),
+        difference(view.a),difference(view.b)])
+        tr.append(text("td",value));
+      root.append(tr);
+    }
+  }
+  function exportCapacity(){
+    if(processing||!entries.length)return status("Geen PRIVATE HUMAN-planning beschikbaar.",true);
+    const report=capacityScenario();
+    if(!report || !report.total)return status("HOLD: ongeldige capaciteit of lege gekozen selectie.",true);
+    if(!window.confirm("PRIVATE export met alleen datumweek-/aantalgroepen en fictieve scenario-capaciteit? Kleine groepen en voorgestelde datums kunnen indirect vertrouwelijk zijn. Geen namen, SHA, notities, echte agenda-afspraken, verwijdering of consent. Alleen lokaal downloaden?"))
+      return status("PRIVATE capaciteitsplan niet geëxporteerd.");
+    const rows=["period,count,human_attention,scenario_a_capacity,scenario_a_shortfall,scenario_b_capacity,scenario_b_shortfall"];
+    for(const row of report.rows){
+      const aGap=row.scheduled?Math.max(0,row.count-report.a):0;
+      const bGap=row.scheduled?Math.max(0,row.count-report.b):0;
+      rows.push([row.code,row.count,row.attention,row.scheduled?report.a:"",aGap,
+        row.scheduled?report.b:"",bGap].join(","));
+    }
+    download("lightup-private-human-capacity-scenarios.csv","text/csv;charset=utf-8",
+      "\ufeff"+rows.join("\r\n")+"\r\n");
+    status("PRIVATE HUMAN-capaciteitsscenario's lokaal aangeboden. Alleen aantallen; geen planning, bronbewijs, grant of actie.");
+  }
   function updateCounts() {
     $("source-count").textContent = entries.length + " / " + MAX_FILES + " bronnen";
     const sums = Object.fromEntries(Object.keys(STATES).map(key => [key, 0]));
@@ -106,6 +188,7 @@
     target.append(text("div", unassigned + " · HUMAN dossierhouder onbekend", "stat attention"));
     target.append(text("div", humanHolds + " · HUMAN meldt mogelijke bewaarbeperking", "stat attention"));
     target.append(text("div", decisionHolds + " · verwijdervoorstellen onvolledig (HOLD)", "stat attention"));
+    renderCapacity();
   }
   function visibleEntries() {
     const q = $("query").value.trim().toLowerCase();
@@ -640,6 +723,10 @@
   $("compare").addEventListener("change", compareReceipt);
   $("export-plan").addEventListener("click", exportReceipt);
   $("export-counts").addEventListener("click", exportCounts);
+  $("capacity-scope").addEventListener("change", renderCapacity);
+  $("capacity-a").addEventListener("input", renderCapacity);
+  $("capacity-b").addEventListener("input", renderCapacity);
+  $("capacity-export").addEventListener("click", exportCapacity);
   $("export-brief").addEventListener("click",exportPrivateHumanBrief);
   $("export-calendar").addEventListener("click", exportHumanCalendar);
   $("export-visible-calendar").addEventListener("click", exportVisibleHumanCalendar);

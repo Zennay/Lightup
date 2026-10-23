@@ -70,6 +70,20 @@
 <div id="stats" class="stats" aria-live="polite"></div>
 <div class="scroll"><table><thead><tr><th>Bronidentiteit</th><th>Privé-alias</th><th>HUMAN dossierhouder</th><th>HUMAN gevoeligheid</th><th>Bewaarbeperking (onbevestigd)</th><th>Menselijke status</th><th>Reviewdatum</th><th>HUMAN actie / toelichting</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="9">Selecteer eerst bestanden.</td></tr></tbody></table></div>
 </section>
+
+<section class="panel" aria-labelledby="capacity-title">
+<h2 id="capacity-title">2b. PRIVATE HUMAN capaciteitsscenario's — alleen oefenplanning</h2>
+<p>Vergelijk twee lokaal gekozen weekcapaciteiten met uitsluitend de huidige ongetekende HUMAN-reviewdatums. Een tekort is een voorstel voor menselijke bespreking, nooit een vastgesteld risico, taaktoewijzing of vrijgave. Werkelijke reviewdeadlines, juridische bewaartermijnen, personeel en klanttoestemming worden niet gecontroleerd.</p>
+<div class="actions">
+<label>Bronset <select id="capacity-scope"><option value="visible">Alleen momenteel zichtbare gefilterde HUMAN-rijen</option><option value="all">Alle huidige HUMAN-rijen</option></select></label>
+<label>Scenario A · reviews per week <input id="capacity-a" type="number" min="1" max="12" step="1" value="3"></label>
+<label>Scenario B · reviews per week <input id="capacity-b" type="number" min="1" max="12" step="1" value="5"></label>
+<button id="capacity-export" class="secondary" type="button" disabled>PRIVATE teloverzicht (.csv)</button>
+</div>
+<p id="capacity-summary" class="muted" role="status">Selecteer eigen oorspronkelijke bronnen om een fictieve capaciteitsvergelijking te zien.</p>
+<div class="scroll"><table><caption>Aggregaten zonder oorspronkelijke bronidentiteit, aliassen of HUMAN notitieteksten</caption><thead><tr><th>Oefenperiode</th><th>HUMAN reviewvoorstellen</th><th>Onbevestigde HUMAN aandacht</th><th>Scenario A · restant/tekort</th><th>Scenario B · restant/tekort</th></tr></thead><tbody id="capacity-rows"></tbody></table></div>
+<p class="muted">Vier weken vanaf de huidige kalenderweek; eerder verlopen, latere en ongedateerde voorstellen staan apart. Aandacht is uitsluitend een HUMAN-melding/ontbrekende houder of onvolledig verwijdervoorstel. Deze scenario's worden niet aan het brongebonden privéplan toegevoegd en verdwijnen bij het sluiten van de pagina.</p>
+</section>
 <section class="panel">
 <h2>3. Brongebonden plan hervatten / exporteren</h2>
 <div class="vault">
