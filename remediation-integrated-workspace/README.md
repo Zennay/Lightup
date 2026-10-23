@@ -211,6 +211,16 @@ is merely a proposed *future* output and may not exist. The button is hidden
 for unrelated operations and disabled for missing/invalid input or after
 clearing the form.
 
+When the operator has separately entered a **fresh**
+`--planned-checksum-file`, the new explicit **Vul checksumopdracht in**
+button instead switches to **Maak privéchecksum** and carries ONLY the
+original ZIP path and that planned new checksum destination into a fresh
+`fingerprint-archive` command. It deliberately **does not** copy
+`--expected-sha256-file` into an output slot, or treat the future output
+as an authenticated source checksum. This provides the corresponding
+manual checksum path after a no-write source inspection without retyping;
+no file is written until the native command is actually executed.
+
 This handoff occurs **only in the current browser memory**: no native
 inspection, installation, shell execution, file write, upload, authority,
 review approval or consent is implied. The operator must separately run
