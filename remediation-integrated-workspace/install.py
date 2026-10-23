@@ -77,6 +77,29 @@ def require(ok: bool, message: str) -> None:
     if not ok:
         raise Hold(message)
 
+def require_operator_path(path: Path) -> None:
+    """Reject terminal-control/bidi spoofing in native HUMAN CLI paths.
+
+    The browser composer already rejects ASCII control characters, but
+    operators may run the native CLI without its browser preview. Original
+    path strings are echoed in HUMAN review instructions and must not
+    contain terminal escape controls or direction-changing Unicode marks.
+    This does not authenticate the path or its owner: nofollow/private
+    descriptor admission remains the actual filesystem gate.
+    """
+    require(isinstance(path, Path) and path.is_absolute(), 
+            "HOLD: expected a literal absolute HUMAN operator path")
+    name = os.fspath(path)
+    require(0 < len(name) <= 1024 and
+            all((0x20 <= ord(ch) <= 0x7e or ord(ch) >= 0xa0)
+                and ch not in ("\u061c", "\u200e", "\u200f", "\ufeff")
+                and not ("\u202a" <= ch <= "\u202e")
+                and not ("\u2066" <= ch <= "\u2069")
+                for ch in name) and
+            all(part not in (".", "..") for part in path.parts[1:]),
+            "Operator path contains terminal controls, bidi marks, or unsafe segments")
+
+
 def digest(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
@@ -930,6 +953,9 @@ def main() -> int:
                         help="optional separate owner-private 0600 original SHA-256+LF fingerprint")
     args = parser.parse_args()
     try:
+        for original_arg in vars(args).values():
+            if isinstance(original_arg, Path):
+                require_operator_path(original_arg)
         if args.action == "build":
             build(args.output_dir)
         elif args.action == "receive":
