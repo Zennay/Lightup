@@ -126,6 +126,16 @@ python3 remediation-integrated-workspace/install.py inspect \
   --report-dir "$HOME/lightup-private/software-passport-v1"
 ```
 
+A reproducibility passport can **only** be created or reopened after an
+explicit complete checkout comparison. Both `--report-dir` and
+`--passport-dir` now fail immediately with **HOLD=3** when the caller
+omits `--compare-checkout`: no directory is published, and no existing
+passport is credited as reproducible. The ordinary no-report
+`inspect --workspace ...` remains available for bounded local package
+consistency without claiming complete checkout parity. Publishing and
+reopening a passport require independently trusted exact source checkout
+bytes, not merely an internally consistent unsigned ZIP or manifest.
+
 This completes the local offline integrity workflow without making any network
 requests: verify every 0600 installed software file and the archive inventory,
 compare the pinned original software and the integrated CLI/browser assets to
