@@ -124,6 +124,7 @@ OPERATIONS = {
         ("--archive", "Existing PRIVATE owner-only source-only ZIP", False, True),
         ("--expected-sha256-file", "Optional SEPARATELY obtained PRIVATE 0600 exact ZIP SHA-256 fingerprint file", False, False),
         ("--planned-output-dir", "Optional NEW owner-only receive destination, checked without creation", False, False),
+        ("--planned-checksum-file", "Optional NEW separate PRIVATE 0600 checksum path, checked without writing", False, False),
     ), "No-write original ZIP check plus optional checksum and planned recipient path admission."),
     "fingerprint-archive": ("install.py", ("fingerprint-archive",), (
         ("--archive", "Existing admitted private source-only software ZIP", False, True),
