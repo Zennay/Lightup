@@ -1286,5 +1286,10 @@ endpoint stage/role changes from intermediate edits and includes unchanged
 original slots. It exposes no question/next-action text and grants no
 authority; manually selected round order is not authenticated chronology.
 
-See [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md) for the build and
-read-only reopen commands, exact input requirements and privacy boundaries.
+The `build --preview-only` mode admits and rechecks the same original board
+and 2–8 complete HUMAN worksheets, then prints only aggregate round/slot/pair
+counts. It does not render report files, create an output directory or publish
+artifacts. Preview is REVIEW_ONLY, never approval or release.
+
+See [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md) for the build, no-write
+preview and read-only reopen commands, exact input requirements and privacy boundaries.
