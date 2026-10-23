@@ -93,10 +93,19 @@ without a passport; omit `--compare-checkout` only when inspecting a detached
 package that cannot be compared with an original checkout. That condition is
 reported as **not checked**, never as passed.
 
-The builder and recipient now use stable no-follow source admission, re-admit
-the pinned source lock and integrated software before publishing, and inspect
-the **complete newly staged suite** against the exact checkout before
-exclusively publishing the destination. A failed prepublication inspection
+The builder and recipient now use stable no-follow source admission,
+walking **every directory component through a pinned directory descriptor**
+rather than following mutable parent pathnames. Private input and newly
+written 0600 files require an exact 0700 owner-only parent; the final
+Linux `renameat2(NO_REPLACE)` uses a pinned private directory descriptor for
+both temporary and destination names. These measures reduce linked-parent
+redirection and path-swap risks during read, write and atomic publication;
+they do not claim to defend against every same-user concurrent filesystem
+mutation or authenticate upstream authorship.
+
+The publisher re-admits the pinned source lock and integrated software before
+publishing and inspects the **complete newly staged suite** against the exact
+checkout before exclusively publishing the destination. A failed prepublication inspection
 removes the newly created private staging directory, leaving the intended
 destination absent and original input data untouched. The additional identity
 checks minimize TOCTOU risk but cannot protect against every concurrent
