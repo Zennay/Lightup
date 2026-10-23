@@ -1,0 +1,12 @@
+{
+  "review_at": "2026-10-16T12:00:00Z",
+  "proposals": [
+    {
+      "asset": "test-desk.example.test",
+      "capability": "inventory_read",
+      "risk": 4,
+      "valid_from": "2026-10-16T11:00:00Z",
+      "valid_until": "2026-10-16T13:00:00Z"
+    }
+  ]
+}
