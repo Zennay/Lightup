@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mzO5exeGkq9qZ8lm/xlWs3sxI+QjA9h+XvdOe+0O4FU='; style-src 'sha256-GdLEigU6fEfKD+wX/IxytPwLBP/KQSwgEfrkQIJ9CcY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
 <title>LightUp · Offline Lab Lineage Desk</title>
 <link rel="stylesheet" href="style.css">
 <script src="app.js" defer></script>
@@ -117,7 +117,9 @@
     <div class="actions"><button id="applyStage" type="button">Confirm bulk stage for visible cases</button>
       <button id="undoStage" class="secondary" type="button" disabled>Undo previous bulk change</button>
       <button id="suggestRoutes" type="button">Suggest routes for visible unrouted cases</button>
-      <button id="undoRoute" class="secondary" type="button" disabled>Undo proposed routes</button></div>
+      <button id="undoRoute" class="secondary" type="button" disabled>Undo proposed routes</button>
+      <button id="exportFilteredQueueCsv" type="button" disabled>Export filtered HUMAN queue CSV</button>
+      <button id="exportFilteredQueueHtml" type="button" disabled>Export filtered HUMAN queue HTML</button></div>
     <p>Filtering or moving a human discussion stage never changes a source report, invokes an evaluator or grants permission.</p>
     <div id="cases" class="scroll" aria-label="Private human scenario review"></div>
   </section>
