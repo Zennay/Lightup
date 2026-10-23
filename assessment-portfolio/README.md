@@ -163,3 +163,7 @@ source-owner path is modified.
 ### Reopen the complete ORIGINAL private workspace without modifying it
 
 [One-command original source workspace](ONE-COMMAND.md) accepts `--reopen-workspace PRIVATE.zip` instead of `--output`: with all original manifest/choices pairs and the same explicit reference date, it regenerates the entire original-source offline workspace and compares exact bytes to the owner-private ZIP, with no extraction or publication. A mismatch or changed source fails closed. A matching unsigned byte comparison does not prove consent, authorship, findings, or security readiness. Exit 2 remains REVIEW_ONLY; HOLD remains 3.
+
+### Private recipient: inspect ZIP without source originals
+
+[`inspect_original_workspace.py`](inspect_original_workspace.py) checks an existing owner-private original HUMAN workspace ZIP read-only against its own strict layout, original native agenda schemas, aggregate counts, source-binding ordinals and unsigned SHA-256 consistency inventory. It reports no private original source identifiers or dates. With no original manifest/choices it **cannot** prove source authentication, identity, finding validity, client/operator consent or authority. For full exact-byte reconstruction from held originals, use [`one_command.py --reopen-workspace`](ONE-COMMAND.md).

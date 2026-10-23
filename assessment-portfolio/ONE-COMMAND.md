@@ -71,3 +71,15 @@ python3 assessment-portfolio/one_command.py \
 ```
 
 This does not match clients or prove that HUMAN choices belong to a valid source: the unchanged original byte-bound validator still makes that decision, and an incorrect pair yields HOLD. The old repeated `--original-manifest` / `--original-choices` interface remains supported for existing automation. Combining both syntaxes, omitting matching inputs, or selecting more than 12 original pairs fails closed. No network or original data mutation.
+
+## Recipient-side read-only ZIP inspection without original source files
+
+If a reviewer has received only the owner-private offline ZIP and **does not** hold the original archive manifest/HUMAN choices, `inspect_original_workspace.py` can independently perform a **local, unsigned packet-internal byte-consistency check**:
+
+```sh
+python3 assessment-portfolio/inspect_original_workspace.py --workspace /private/existing-original-human-workspace.zip
+```
+
+The inspector admits an owner-only regular bounded (32 MiB) ZIP, strict fixed member names, duplicate/special/compressed/encrypted/member-mode rejection, exact original schema and anonymous flags, each original-agenda SHA/size/ordinal+HOLD claim, recomputes native aggregate and private source binding bytes, and checks the existing native private content-map hashes. It reports **only the number of HUMAN agendas** and always says REVIEW_ONLY / NO GO, with exit 3 for malformed packets or originally claimed HOLD. Nothing is extracted, shared, written or scheduled.
+
+**Important distinction:** inspection without the original source files cannot authenticate their owner or provenance, ascertain participant identity, or prove actual consent. For original source-byte comparison with your separately retained original inputs, use `one_command.py --reopen-workspace` above. Neither command authorizes live assessment, release, target access, disclosure, grant, or workflow dispatch.
