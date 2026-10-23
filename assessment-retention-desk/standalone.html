@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6sm6ztLBoRRQDkR5R4ZjYJzHmA4s4jEa4GBEhzfRU1k=' 'sha256-BczrEzC6UaslBT2lvTnl20zOoL27V1nGAh2M2cwzEVc='; style-src 'sha256-RFvcgvCNk2kvH5Fixwmv1eFTuTzZNJcjR2qkHfBpQ90='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-T0NHv4RTixKwwg7C3uEcwRlWp5AJBthGr0cFM/tWJyo=' 'sha256-BczrEzC6UaslBT2lvTnl20zOoL27V1nGAh2M2cwzEVc='; style-src 'sha256-RFvcgvCNk2kvH5Fixwmv1eFTuTzZNJcjR2qkHfBpQ90='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | PRIVATE Assessment Retention Desk</title>
 <style>:root { color-scheme:dark; font: 16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0a1220; color:#f1f6fc; }
 * { box-sizing:border-box }
@@ -101,6 +101,10 @@ td input[type=text] { max-width: 255px; }
 <option value="soon">Binnen 7 dagen inclusief vandaag</option>
 <option value="no_date">Geen reviewdatum</option>
 <option value="no_action">Geen vervolgactie</option>
+<option value="capacity_week_0">Capaciteit · kalenderweek 1 (vanaf deze week)</option>
+<option value="capacity_week_1">Capaciteit · kalenderweek 2</option>
+<option value="capacity_week_2">Capaciteit · kalenderweek 3</option>
+<option value="capacity_week_3">Capaciteit · kalenderweek 4</option>
 </select></label>
 <label>HUMAN bewaarbeperking <select id="hold-filter">
 <option value="">Alle onbevestigde controles</option>
@@ -147,9 +151,10 @@ td input[type=text] { max-width: 255px; }
 <label>Scenario A · reviews per week <input id="capacity-a" type="number" min="1" max="12" step="1" value="3"></label>
 <label>Scenario B · reviews per week <input id="capacity-b" type="number" min="1" max="12" step="1" value="5"></label>
 <button id="capacity-export" class="secondary" type="button" disabled>PRIVATE teloverzicht (.csv)</button>
+<button id="capacity-reset-week" class="secondary" type="button">Weekfilter wissen</button>
 </div>
 <p id="capacity-summary" class="muted" role="status">Selecteer eigen oorspronkelijke bronnen om een fictieve capaciteitsvergelijking te zien.</p>
-<div class="scroll"><table><caption>Aggregaten zonder oorspronkelijke bronidentiteit, aliassen of HUMAN notitieteksten</caption><thead><tr><th>Oefenperiode</th><th>HUMAN reviewvoorstellen</th><th>Onbevestigde HUMAN aandacht</th><th>Scenario A · restant/tekort</th><th>Scenario B · restant/tekort</th></tr></thead><tbody id="capacity-rows"></tbody></table></div>
+<div class="scroll"><table><caption>Aggregaten zonder oorspronkelijke bronidentiteit, aliassen of HUMAN notitieteksten</caption><thead><tr><th>Oefenperiode</th><th>HUMAN reviewvoorstellen</th><th>Onbevestigde HUMAN aandacht</th><th>Scenario A · restant/tekort</th><th>Scenario B · restant/tekort</th><th>HUMAN vervolg</th></tr></thead><tbody id="capacity-rows"></tbody></table></div>
 <p class="muted">Vier weken vanaf de huidige kalenderweek; eerder verlopen, latere en ongedateerde voorstellen staan apart. Aandacht is uitsluitend een HUMAN-melding/ontbrekende houder of onvolledig verwijdervoorstel. Deze scenario's worden niet aan het brongebonden privéplan toegevoegd en verdwijnen bij het sluiten van de pagina.</p>
 </section>
 <section class="panel">
@@ -274,6 +279,11 @@ td input[type=text] { max-width: 255px; }
     soon.setDate(soon.getDate()+7);
     return {today:localDay(today), soon:localDay(soon)};
   }
+  function humanCapacityWeek(index,today) {
+    const d=new Date(today+"T00:00:00Z");
+    d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7+index*7);
+    return d.toISOString().slice(0,10);
+  }
   function capacityScenario() {
     const a = Number($("capacity-a").value), b = Number($("capacity-b").value);
     if (!Number.isInteger(a) || a<1 || a>12 || !Number.isInteger(b) || b<1 || b>12)
@@ -321,7 +331,7 @@ td input[type=text] { max-width: 255px; }
       $("capacity-summary").textContent="HOLD: kies voor beide fictieve scenario's een geheel getal van 1 t/m 12.";
       const tr=document.createElement("tr");
       const td=text("td","Ongeldige fictieve weekcapaciteit: kies twee gehele waarden van 1 t/m 12.");
-      td.colSpan=5;tr.append(td);root.append(tr);
+      td.colSpan=6;tr.append(td);root.append(tr);
       return;
     }
     const planned=view.rows.filter(r=>r.scheduled).reduce((n,r)=>n+r.count,0);
@@ -339,6 +349,24 @@ td input[type=text] { max-width: 255px; }
       for(const value of [row.label,String(row.count),String(row.attention),
         difference(view.a),difference(view.b)])
         tr.append(text("td",value));
+      const cell=document.createElement("td");
+      if(row.scheduled){
+        const open=text("button","Bekijk HUMAN-rijen","secondary");
+        open.type="button";
+        open.disabled=!row.count;
+        open.setAttribute("aria-label","Filter HUMAN reviewvoorstellen voor "+row.label);
+        open.addEventListener("click",()=>{
+          const week=Number(row.code.slice(5))-1;
+          if(!Number.isInteger(week)||week<0||week>3)return;
+          $("due-filter").value="capacity_week_"+week;
+          render();
+          $("due-filter").focus();
+          status("Fictieve capaciteitsweek "+(week+1)+" zichtbaar gefilterd. "+
+            "HUMAN bulkacties blijven afzonderlijk bevestigd; geen echte taak of toestemming.");
+        });
+        cell.append(open);
+      }else cell.textContent="Buiten vierweekse capaciteit";
+      tr.append(cell);
       root.append(tr);
     }
   }
@@ -399,7 +427,13 @@ td input[type=text] { max-width: 255px; }
       (!dueFilter || (dueFilter === "overdue" && e.review_date && e.review_date < today) ||
         (dueFilter === "soon" && e.review_date && e.review_date >= today && e.review_date <= soon) ||
         (dueFilter === "no_date" && !e.review_date) ||
-        (dueFilter === "no_action" && !e.action.trim())));
+        (dueFilter === "no_action" && !e.action.trim()) ||
+        (dueFilter.startsWith("capacity_week_") &&
+          Number.isInteger(Number(dueFilter.slice(14))) &&
+          Number(dueFilter.slice(14))>=0 && Number(dueFilter.slice(14))<4 &&
+          e.review_date && e.review_date>=today &&
+          e.review_date>=humanCapacityWeek(Number(dueFilter.slice(14)),today) &&
+          e.review_date<humanCapacityWeek(Number(dueFilter.slice(14))+1,today))));
     if ($("sort-order").value === "due") items.sort((a,b)=>
       (a.review_date || "9999-99-99").localeCompare(b.review_date || "9999-99-99"));
     if ($("sort-order").value === "stage") items.sort((a,b)=>a.status.localeCompare(b.status));
@@ -922,6 +956,11 @@ td input[type=text] { max-width: 255px; }
   $("capacity-a").addEventListener("input", renderCapacity);
   $("capacity-b").addEventListener("input", renderCapacity);
   $("capacity-export").addEventListener("click", exportCapacity);
+  $("capacity-reset-week").addEventListener("click",()=>{
+    $("due-filter").value="";
+    render();
+    status("Alleen de lokale HUMAN weekdatumsfilter is gewist; overige filters en keuzes behouden.");
+  });
   $("export-brief").addEventListener("click",exportPrivateHumanBrief);
   $("export-calendar").addEventListener("click", exportHumanCalendar);
   $("export-visible-calendar").addEventListener("click", exportVisibleHumanCalendar);
