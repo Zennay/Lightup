@@ -7,6 +7,8 @@ interpolated. No browser network capability or authorization signal is emitted.
 from __future__ import annotations
 
 from collections import Counter
+from csv import writer as csv_writer
+from io import StringIO
 from hashlib import sha256
 from html import escape
 
@@ -210,3 +212,49 @@ def render_comparison_html(result, *, cohort: bool = False,
 
 def _stat(number, caption: str) -> str:
     return '<div class="stat"><b>' + _safe(number) + '</b><span>' + _safe(caption) + '</span></div>'
+
+
+def render_comparison_csv(result, *, cohort: bool = False,
+                          scored: bool = False) -> str:
+    """Long-form spreadsheet handoff with anonymous ordinals and fixed labels.
+
+    CSV output is a local diagnostic. Values are admitted comparator numeric
+    fields, never original untrusted text. Negative numeric deltas are kept as
+    actual negative numbers rather than reinterpreted as spreadsheet formulas.
+    """
+    file = StringIO(newline="")
+    out = csv_writer(file, lineterminator="\\r\\n")
+    out.writerow((
+        "report_type", "source_status", "input_admitted",
+        "scenario_ordinal", "metric", "baseline", "candidate", "delta",
+        "source_regression_flag", "source_unknown_coverage",
+        "authorized", "consent_verified", "dispatch_allowed",
+        "release_allowed", "review_only", "source_provenance_authenticated",
+    ))
+    if cohort:
+        accepted = tuple(comp for _source_id, comp in result.comparisons)
+    else:
+        accepted = (result,) if result.changes else ()
+    kind = "scored_cohort" if scored else "cohort" if cohort else "single_case"
+    status = "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD"
+    for ordinal, comparison in enumerate(accepted, 1):
+        for change in comparison.changes:
+            if change.name not in _METRIC_LABELS:
+                # A raw, potentially formula-leading name is never exported.
+                metric = "unclassified_metric"
+            else:
+                metric = change.name
+            out.writerow((
+                kind, status, "true", ordinal, metric, change.baseline,
+                change.candidate, change.delta,
+                "true" if change.regression else "false",
+                "true" if change.name == _UNCERTAIN and change.candidate > 0 else "false",
+                "false", "false", "false", "false", "true", "false",
+            ))
+    if not accepted:
+        # The only rejected-input row contains a generic HOLD and no partial
+        # details; file creation itself is not a signal of accepted input.
+        out.writerow((kind, "HOLD", "false", 0, "not_available",
+                      "", "", "", "false", "false",
+                      "false", "false", "false", "false", "true", "false"))
+    return file.getvalue()
