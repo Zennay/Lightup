@@ -448,6 +448,7 @@
     body.replaceChildren();
     const rows=calendarItems();
     $("calendar").disabled=!rows.length;
+    $("calendar-preview-csv").disabled=!rows.length;
     if (!report) {
       summary.textContent="Import an original comparison report to preview local HUMAN calendar tasks.";
     } else {
@@ -485,7 +486,7 @@
   // RFC 5545 folding is by octets; all generated fields below contain ASCII
   // literals, canonical enums, numeric ordinals and validated ISO dates only.
   function icsLine(line){
-    ensure(/^[\\x20-\\x7e]+$/.test(line));
+    ensure([...line].every(ch=>ch.charCodeAt(0)>=32 && ch.charCodeAt(0)<=126));
     return line.match(/.{1,73}/g).join("\r\n ");
   }
   function renderPlanningCalendar() {
@@ -1523,6 +1524,22 @@
     download("lightup-human-follow-up.csv", rows.join("\r\n")+"\r\n", "text/csv;charset=utf-8");
   });
 
+  function exportCalendarPreviewCsv(){
+    const rows=calendarItems();
+    if (!rows.length) return;
+    const headings=["anonymous_case","proposed_day","human_stage","workstream",
+      "source_priority","source_report_status","authorized","consent_verified",
+      "dispatch_allowed","release_allowed","calendar_imported","review_only"];
+    const output=[headings.map(csvCell).join(",")];
+    rows.forEach(({c,i})=>{
+      output.push([label(i),c.due,c.stage,c.route,priority(c),c.status,
+        false,false,false,false,false,true].map(csvCell).join(","));
+    });
+    download("lightup-human-calendar-preview.csv",
+      output.join("\r\n")+"\r\n","text/csv;charset=utf-8");
+    alert("PRIVATE anonymous preview CSV offered locally. The same dated HUMAN case selection is used for the .ics; no actual calendar import or authorization occurred.","good");
+  }
+  $("calendar-preview-csv").addEventListener("click",exportCalendarPreviewCsv);
   function calendarDownload() {
     const todo=calendarItems();
     if(!todo.length){alert("No dated open HUMAN follow-ups in this explicit selection.");return;}
