@@ -906,11 +906,11 @@ The native `manifest_change_timeline.py` compares **2–8 existing, separately s
 Preview the same 2–8 admitted source bundles **without creating, opening or writing an output directory**. This prints only the snapshot endpoint counts, adjacent transition totals and the selected net interval totals; it never prints source paths, endpoint values or manifest digests.
 
 ```sh
-python3 assessment-launchpad/manifest_change_timeline.py \\
-  --source-dir "$HOME/private-manifest-v1" \\
-  --source-dir "$HOME/private-manifest-v2" \\
-  --source-dir "$HOME/private-manifest-v3" \\
-  --compare-from-snapshot 1 --compare-to-snapshot 3 \\
+python3 assessment-launchpad/manifest_change_timeline.py \
+  --source-dir "$HOME/private-manifest-v1" \
+  --source-dir "$HOME/private-manifest-v2" \
+  --source-dir "$HOME/private-manifest-v3" \
+  --compare-from-snapshot 1 --compare-to-snapshot 3 \
   --preview-only
 ```
 
