@@ -21,6 +21,9 @@ h1{font-size:clamp(2rem,4vw,3.25rem);letter-spacing:-.04em;line-height:1.04;marg
 .action:hover,.action:focus-visible{background:#eaf3f6;border-color:#81bec3}
 .action[data-selected="true"]{background:#dceff0;border-color:#4d9a9e;box-shadow:inset 4px 0 0 #1d7f83}
 .action small{display:block;margin-top:5px;font-size:.73rem;line-height:1.35;text-transform:none;font-weight:450;color:#526579}
+.more-workflows{display:block;width:100%;margin-top:12px;padding:11px 13px;text-align:left;border:1px solid #bfd6da;border-radius:9px;background:white;color:#17656d;font-weight:700}
+.more-workflows:hover,.more-workflows:focus-visible{background:#eef7f7;border-color:#3a8790}
+.more-workflows[hidden]{display:none}
 .content{padding:27px 30px 34px}
 .step{font-size:.7rem;font-weight:850;letter-spacing:.13em;color:#186c76;margin:14px 0}
 .content h2{font-size:1.72rem;letter-spacing:-.03em;text-transform:capitalize;margin:0 0 7px}
