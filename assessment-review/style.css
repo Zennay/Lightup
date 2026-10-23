@@ -10,3 +10,37 @@
 @media print{body.print-filtered .hero{display:none!important}body.print-filtered #board>:not(#print-filtered-brief){display:none!important}body.print-filtered #print-brief{display:none!important}body.print-filtered #print-filtered-brief{display:block!important;break-before:auto!important}}
 
 @media print{.print-evidence-row td{white-space:normal!important;text-align:left!important;color:#222!important;background:#f3f3f3!important;font-size:10px;line-height:1.45;padding:7px 10px}.print-evidence-row strong{color:#000}}
+
+
+/* Cross-sectional unknown-coverage distribution; values remain source-reported. */
+.coverage-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 10px;
+  margin: 16px 0 8px;
+}
+.coverage-stat {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line, #36516a);
+  border-radius: 10px;
+  background: var(--panel, #152538);
+}
+.coverage-stat small {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted, #b9cad9);
+  font-size: 12px;
+}
+.coverage-stat strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.coverage-note {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  color: var(--muted, #b9cad9);
+  font-size: 12px;
+}
