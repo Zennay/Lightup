@@ -490,11 +490,23 @@ compare the pinned original software and the integrated CLI/browser assets to
 the exact current checked-out bytes, and publish a separate **0700, no-overwrite**
 report directory with 0600 `REVIEW_ONLY.json` and scriptless `REVIEW_ONLY.html`.
 The report contains anonymous software counts, the declared original source
-commit references, two unsigned archive/manifest checksums, and literal FALSE
-authorization/release flags. It deliberately omits tenant inputs, evidence,
-findings, source paths, reviewer names and notes; no source file is copied to
-the report. Missing, replaced, symlinked or changed files produce HOLD without
-publishing an incomplete passport.
+commit references, two unsigned archive/manifest checksums, the **number of
+software files compared byte-for-byte to this local checkout**, and literal
+FALSE authorization/release flags. `REVIEW_ONLY.html` is now a compact
+**Nederlandstalig integriteitsrapport** with short readable labels, the
+verified counts and checksums, and a prominent plain-language explanation of
+what local equality does **not** authorize. It uses only local system fonts,
+inline CSS and a strict no-script/no-network CSP; the exact deterministic
+`REVIEW_ONLY.json` stays machine-readable and now also carries the compared
+file count. The factory itself requires the explicit checkout-compared flag:
+even a direct Python caller cannot label an unchecked local package as
+reproduced merely by requesting report bytes.
+
+It deliberately omits tenant inputs, evidence, findings, source paths,
+reviewer names and notes; no source file is copied to the report. Missing,
+replaced, symlinked or changed files produce HOLD without publishing an
+incomplete passport. This is **local** reproducibility only, not a signature,
+real source authentication or consent.
 
 ### Reopen an existing PRIVATE reproducibility passport
 
