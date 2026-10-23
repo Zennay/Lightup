@@ -29,6 +29,7 @@ from verify_offline import (
 
 ROOT = Path(__file__).resolve().parent.parent
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,47}\Z")
+STUDIO_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 RECEIPT = "PRIVATE-INSTALL-RECEIPT.json"
 REVIEW = "PRIVATE-INSTALL-REVIEW.html"
 SCHEMA = "lightup.private_offline_kit_install.v2"
@@ -182,6 +183,9 @@ def install(package: Path, parent: Path, folder: str,
                         not name.startswith("studios/")):
                     raise Hold("HOLD: unrecognized software member path")
                 bits = name.split("/")
+                if name.startswith("studios/") and (
+                        len(bits) != 2 or STUDIO_NAME.fullmatch(bits[1]) is None):
+                    raise Hold("HOLD: unsupported nested/private studio archive member")
                 directory = staging
                 for segment in bits[:-1]:
                     directory = directory / segment
@@ -239,6 +243,8 @@ def inspect(room: Path, package: Path | None = None,
     raw = read_private(room, receipt_path, 256 * 1024)
     try:
         data = json.loads(raw.decode("utf-8"))
+        if not isinstance(data, dict):
+            raise Hold("HOLD: PRIVATE installer receipt root must be an object")
         current = data.get("schema") == SCHEMA
         expected_fields = {"schema", "package_sha256_unsigned", "package_schema",
                            "files", "authority"} | ({"review_sha256_unsigned"} if current else set())
@@ -267,11 +273,9 @@ def inspect(room: Path, package: Path | None = None,
                     not isinstance(sha, str) or not re.fullmatch("[a-f0-9]{64}", sha)):
                 raise Hold("HOLD: PRIVATE software entry is unsafe or duplicated")
             if name not in PACKAGE_ASSETS | {"manifest.json"} and (
-                    len(name.split("/")) != 2 or not NAME.fullmatch(name.split("/")[1])):
-                # Real studio names can contain periods and hyphens, but never path traversal.
-                if len(name.split("/")) != 2 or not re.fullmatch(
-                    r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", name.split("/")[1]):
-                    raise Hold("HOLD: PRIVATE studio path cannot be safely admitted")
+                    len(name.split("/")) != 2 or
+                    STUDIO_NAME.fullmatch(name.split("/")[1]) is None):
+                raise Hold("HOLD: PRIVATE studio path cannot be safely admitted")
             names.add(name)
             total += size
             if total > MAX_TOTAL:
