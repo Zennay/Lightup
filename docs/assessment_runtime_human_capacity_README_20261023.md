@@ -59,3 +59,8 @@ PYTHONPATH=src:scripts python scripts/assessment_runtime_human_capacity_delta_cl
 ```
 
 The output is a five-member private no-overwrite ZIP containing an unsigned canonical `delta.json`, source-free aggregate `delta.csv`, scriptless `delta.html`, SHA-256 member manifest and operator guidance. No case/packet IDs, source digests, original targets, original finding details, dates of the source files, private HUMAN free-text notes or identities are emitted. A literal date/route count and small cohort remain PRIVATE and may still be sensitive. If reference dates or hypothetical capacity differ, the report explicitly refuses to infer comparable overdue or overload changes. Explicit source comparison HOLD propagates. The read-only inspector rejects altered members or authority flags; source SHA-256 verification is not source-person authentication. No QA suites, scanner, network, grant, authenticated consent, release or deployment are added.
+
+
+### Aggregate integrity limits
+
+The companion inspector verifies fixed dimension order, canonical ISO dates, literal-false authority, every count-change arithmetic identity, and independently reconciles all HUMAN stage, route, priority and date/route totals with original snapshot-wide row totals. The source-free report still cannot prove that the earlier and later source populations are identical, who supplied them, whether chronology is true, or whether a changed count means a verified remediation.

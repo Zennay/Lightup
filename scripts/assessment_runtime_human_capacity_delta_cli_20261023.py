@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+from datetime import date
 from hashlib import sha256
 from html import escape
 from io import BytesIO, StringIO
@@ -53,13 +54,6 @@ MANIFEST_KEYS = frozenset({
     "schema", "comparison_status", "delta_json_sha256",
     "delta_csv_sha256", "delta_html_sha256", *AUTH,
 })
-
-
-def _original_capacity(path: str) -> dict:
-    raw = _private_snapshot(path)
-    inspect(raw)  # Original exact full six-member source admission, not reinvented.
-    with ZipFile(BytesIO(raw)) as archive:
-        return _json(archive.read("capacity.json"))
 
 
 def _rows(a: dict, b: dict) -> list[dict]:
@@ -241,10 +235,14 @@ def _inspect_delta(raw: bytes) -> tuple[str, int]:
             raise ValueError("invalid stated comparability")
         if field == "reference_date":
             for v in (before, after):
-                if v is not None and (type(v) is not str or len(v) != 10
-                                      or not v[:4].isdigit() or v[4] != "-"
-                                      or v[7] != "-"):
-                    raise ValueError("invalid declared date")
+                if v is not None:
+                    if type(v) is not str or len(v) != 10:
+                        raise ValueError("invalid declared date")
+                    try:
+                        if date.fromisoformat(v).isoformat() != v:
+                            raise ValueError("noncanonical declared date")
+                    except ValueError:
+                        raise ValueError("invalid declared date") from None
         elif any(v is not None and (type(v) is not int or not 1 <= v <= 64)
                  for v in (before, after)):
             raise ValueError("invalid hypothetical capacity")
@@ -266,9 +264,14 @@ def _inspect_delta(raw: bytes) -> tuple[str, int]:
             if " / " not in label:
                 raise ValueError("invalid date/route dimension")
             day, route = label.split(" / ", 1)
-            if route not in ROUTES or (day != "undated" and
-                                      (len(day) != 10 or day[4] != "-" or day[7] != "-")):
-                raise ValueError("invalid bounded date/route")
+            if route not in ROUTES:
+                raise ValueError("invalid bounded routing category")
+            if day != "undated":
+                try:
+                    if len(day) != 10 or date.fromisoformat(day).isoformat() != day:
+                        raise ValueError("invalid date/route")
+                except ValueError:
+                    raise ValueError("invalid date/route") from None
             if previous is not None and label <= previous:
                 raise ValueError("unordered private date/route")
             previous = label
@@ -279,16 +282,28 @@ def _inspect_delta(raw: bytes) -> tuple[str, int]:
                 or type(row["change"]) is not int
                 or row["change"] != row["later"]-row["earlier"]):
             raise ValueError("impossible aggregate change")
-    if not expected.issubset(encountered):
-        raise ValueError("missing required aggregate")
-    # Basic independent accounting; cannot verify common case identity.
+    fixed_order = [(kind, label) for kind, labels in COUNT_KINDS.items()
+                   for label in labels]
+    if [(r["kind"], r["label"]) for r in rows[:len(fixed_order)]] != fixed_order:
+        raise ValueError("missing or reordered mandatory source-free counts")
+    if set(fixed_order) != (encountered - {
+            (kind, label) for kind, label in encountered if kind == "date_route"}):
+        raise ValueError("unknown source-free aggregate")
+    # Original packets are unavailable by design, but the declared aggregate
+    # categories and dated open planning loads must at least add up internally.
     def value(field):
         return next(r for r in rows if r["kind"] == "summary" and r["label"] == field)
     for column in ("earlier", "later"):
-        if (value("human_work_rows")[column] !=
-                value("open_work_rows")[column]+value("reviewed_rows")[column]
-                or value("undated_open_rows")[column] > value("open_work_rows")[column]):
+        total=value("human_work_rows")[column]
+        open_count=value("open_work_rows")[column]
+        if (total != open_count+value("reviewed_rows")[column]
+                or value("undated_open_rows")[column] > open_count):
             raise ValueError("invalid source-free aggregate accounting")
+        for dimension in ("stage", "route", "priority"):
+            if sum(row[column] for row in rows if row["kind"]==dimension) != total:
+                raise ValueError("source-free category accounting mismatch")
+        if sum(row[column] for row in rows if row["kind"]=="date_route") != open_count:
+            raise ValueError("source-free date/route accounting mismatch")
     if (type(manifest) is not dict or set(manifest) != MANIFEST_KEYS
             or manifest["schema"] != "lightup.private_human_capacity_delta_pack.v1"
             or manifest["comparison_status"] != report["comparison_status"]
