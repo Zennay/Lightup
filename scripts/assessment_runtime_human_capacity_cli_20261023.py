@@ -262,13 +262,6 @@ def _html(board: dict) -> bytes:
         ) for item in board["route_date_loads"]
     )
     priority_load_rows = "".join(
-        "<tr><td>%s</td><td>%s</td><td>%d</td></tr>" %
-        (escape(priority), escape(day), count)
-        for priority, day, route, count in _priority_route_loads(board)
-        for _ in (None,)
-    )
-    # Keep the route visible in the table while preserving fixed vocabulary.
-    priority_load_rows = "".join(
         "<tr><td>%s</td><td>%s</td><td>%s</td><td>%d</td></tr>" %
         (escape(priority), escape(day), escape(route), count)
         for priority, day, route, count in _priority_route_loads(board)
