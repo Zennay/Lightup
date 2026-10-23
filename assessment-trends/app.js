@@ -562,6 +562,152 @@
     for(const id of ["coverageUnknownCsv","coverageUnknownJson","coverageUnknownBrief"])
       $(id).disabled=!rows.length;
   }
+  function syncCoverageUnknownPairControls(){
+    const from=$("coverageUnknownPairFrom"),to=$("coverageUnknownPairTo");
+    const previousFrom=Number(from.value),previousTo=Number(to.value);
+    for(const select of [from,to]){
+      select.replaceChildren();
+      for(let index=1;index<=snapshots.length;index++){
+        const option=document.createElement("option");
+        option.value=String(index);
+        option.textContent="Slot "+String(index).padStart(2,"0");
+        select.append(option);
+      }
+    }
+    const fromSlot=Number.isInteger(previousFrom)&&previousFrom>=1&&previousFrom<=snapshots.length?
+      previousFrom:1;
+    const toSlot=Number.isInteger(previousTo)&&previousTo>=1&&previousTo<=snapshots.length&&previousTo!==fromSlot?
+      previousTo:(fromSlot===snapshots.length?1:snapshots.length);
+    from.value=String(fromSlot);to.value=String(toSlot);
+    from.disabled=to.disabled=snapshots.length<2;
+    $("coverageUnknownPairFilter").disabled=snapshots.length<2;
+  }
+  function coverageUnknownPairData(){
+    if(snapshots.length<2||!scenarioIds.length)
+      return {rows:[],allRows:[],fromSlot:null,toSlot:null,filter:"all"};
+    const fromSlot=Number($("coverageUnknownPairFrom").value);
+    const toSlot=Number($("coverageUnknownPairTo").value);
+    const filter=$("coverageUnknownPairFilter").value;
+    if(!Number.isInteger(fromSlot)||!Number.isInteger(toSlot)||fromSlot<1||toSlot<1||
+      fromSlot>snapshots.length||toSlot>snapshots.length||fromSlot===toSlot)
+      return {rows:[],allRows:[],fromSlot:null,toSlot:null,filter};
+    const allRows=scenarioIds.map((id,index)=>{
+      const before=snapshots[fromSlot-1].cases.get(id).metrics.get("coverage_unknown").candidate;
+      const after=snapshots[toSlot-1].cases.get(id).metrics.get("coverage_unknown").candidate;
+      const change=after-before;
+      return {scenario_ordinal:index+1,from_manual_slot:fromSlot,to_manual_slot:toSlot,
+        unknown_coverage_before:before,unknown_coverage_after:after,change,
+        direction:change>0?"increased":change<0?"decreased":"unchanged"};
+    });
+    return {rows:filter==="all"?allRows:allRows.filter(row=>row.direction===filter),
+      allRows,fromSlot,toSlot,filter};
+  }
+  function coverageUnknownPairStats(rows){
+    const increased=rows.filter(row=>row.direction==="increased").length;
+    const decreased=rows.filter(row=>row.direction==="decreased").length;
+    const unchanged=rows.filter(row=>row.direction==="unchanged").length;
+    const fromTotal=rows.reduce((sum,row)=>sum+row.unknown_coverage_before,0);
+    const toTotal=rows.reduce((sum,row)=>sum+row.unknown_coverage_after,0);
+    return {scenario_count:rows.length,increased_scenarios:increased,
+      decreased_scenarios:decreased,unchanged_scenarios:unchanged,
+      unknown_coverage_before_total:fromTotal,unknown_coverage_after_total:toTotal,
+      total_change:toTotal-fromTotal,
+      median_scenario_change:rows.length?median(rows.map(row=>row.change)):null};
+  }
+  function renderCoverageUnknownPair(){
+    syncCoverageUnknownPairControls();
+    const data=coverageUnknownPairData(),allStats=coverageUnknownPairStats(data.allRows),
+      selectedStats=coverageUnknownPairStats(data.rows);
+    drawTable("coverageUnknownPairTable",
+      ["Anonymous scenario","From slot","To slot","Unknown coverage before",
+       "Unknown coverage after","Change (after − before)","Direction"],
+      data.rows.map(row=>[
+        "Scenario "+String(row.scenario_ordinal).padStart(2,"0"),
+        row.from_manual_slot,row.to_manual_slot,fmt(row.unknown_coverage_before),
+        fmt(row.unknown_coverage_after),cell(fmt(row.change),"cell-info"),
+        row.direction==="increased"?"Increased":row.direction==="decreased"?"Decreased":"Unchanged"
+      ]));
+    $("coverageUnknownPairSummary").textContent=data.allRows.length?
+      "Comparing manual slot "+String(data.fromSlot).padStart(2,"0")+" to slot "+
+      String(data.toSlot).padStart(2,"0")+": "+data.rows.length+" of "+data.allRows.length+
+      " anonymous scenarios shown. Across all scenarios: "+allStats.increased_scenarios+
+      " increased, "+allStats.decreased_scenarios+" decreased, "+allStats.unchanged_scenarios+
+      " unchanged; total change "+fmt(allStats.total_change)+". The selected subset changes by "+
+      fmt(selectedStats.total_change)+" in total. Increases indicate reported uncertainty only; decreases do not prove remediation. Slot order is manual, not authenticated chronology.":
+      "Import snapshots to compare unknown coverage for any two distinct manual slots.";
+    for(const id of ["coverageUnknownPairCsv","coverageUnknownPairJson","coverageUnknownPairBrief"])
+      $(id).disabled=!data.rows.length;
+  }
+  function coverageUnknownPairPayload(){
+    const data=coverageUnknownPairData();
+    if(!data.rows.length)return null;
+    return {schema:"lightup.assessment_trends_unknown_coverage_pair.v1",
+      status:summary().status,fictional_demo_only:fictional,
+      interpretation:"This compares source-declared unknown-coverage values only. Increases are uncertainty signals, not regression labels; decreases are not proof of remediation. Manual slot order does not establish chronology.",
+      manual_slot_order:true,manual_slot_count:snapshots.length,scenario_count:scenarioIds.length,
+      from_manual_slot:data.fromSlot,to_manual_slot:data.toSlot,
+      from_snapshot_status:snapshots[data.fromSlot-1].status,
+      to_snapshot_status:snapshots[data.toSlot-1].status,
+      selected_direction_filter:data.filter,summary:coverageUnknownPairStats(data.allRows),
+      filtered_summary:coverageUnknownPairStats(data.rows),
+      authenticated_chronology:false,source_metrics_independently_verified:false,
+      remediation_verified:false,authorized:false,consent_verified:false,dispatch_allowed:false,
+      release_allowed:false,rows:data.rows};
+  }
+  function exportCoverageUnknownPair(kind){
+    const payload=coverageUnknownPairPayload();
+    if(!payload)return;
+    if(kind==="json"){
+      download("lightup-unknown-coverage-pair-REVIEW-ONLY.json",
+        JSON.stringify(payload,null,2)+"\n","application/json");
+      return;
+    }
+    const headers=["scenario_ordinal","from_manual_slot","to_manual_slot",
+      "unknown_coverage_before","unknown_coverage_after","change_after_minus_before","direction",
+      "selected_direction_filter","fictional_demo_only","status","from_snapshot_status",
+      "to_snapshot_status","authenticated_chronology","source_metrics_independently_verified",
+      "remediation_verified","authorized","consent_verified","dispatch_allowed","release_allowed"];
+    const values=payload.rows.map(row=>[row.scenario_ordinal,row.from_manual_slot,row.to_manual_slot,
+      row.unknown_coverage_before,row.unknown_coverage_after,row.change,row.direction,
+      payload.selected_direction_filter,payload.fictional_demo_only,payload.status,
+      payload.from_snapshot_status,payload.to_snapshot_status,false,false,false,false,false,false,false]);
+    if(kind==="csv"){
+      download("lightup-unknown-coverage-pair-REVIEW-ONLY.csv",
+        [headers,...values].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+      return;
+    }
+    const table="<table><thead><tr>"+
+      ["Anonymous scenario","From slot","To slot","Unknown coverage before","Unknown coverage after","Change","Direction"]
+        .map(value=>"<th scope='col'>"+esc(value)+"</th>").join("")+
+      "</tr></thead><tbody>"+payload.rows.map(row=>"<tr>"+[
+        "Scenario "+String(row.scenario_ordinal).padStart(2,"0"),row.from_manual_slot,
+        row.to_manual_slot,row.unknown_coverage_before,row.unknown_coverage_after,row.change,
+        row.direction==="increased"?"Increased":row.direction==="decreased"?"Decreased":"Unchanged"
+      ].map(value=>"<td>"+esc(value)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
+    const all=payload.summary,selected=payload.filtered_summary;
+    const report="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"+
+      "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'\">"+
+      "<title>LightUp · Unknown coverage pair · REVIEW ONLY</title><style>"+
+      "body{font:14px/1.5 system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#17212f}"+
+      "table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #b7c1cb;padding:.45rem;text-align:left}"+
+      "th{background:#edf1f5}.hold{border:1px solid #a77b35;padding:1rem;margin:1rem 0}"+
+      "@media print{body{margin:0}tr{break-inside:avoid}}</style></head><body>"+
+      "<h1>LightUp · Unknown-coverage pairwise comparison</h1><div class='hold'><strong>"+
+      esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+payload.status+" · REVIEW ONLY / HOLD")+
+      "</strong><p>"+esc(payload.interpretation)+"</p><p>authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false · authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+      "<p>Manual slot "+payload.from_manual_slot+" → slot "+payload.to_manual_slot+
+      " · selected direction filter: "+esc(payload.selected_direction_filter)+
+      " · "+payload.rows.length+" of "+payload.scenario_count+" anonymous scenarios included. Source status: "+
+      esc(payload.from_snapshot_status)+" → "+esc(payload.to_snapshot_status)+".</p>"+
+      "<p>All scenarios: "+all.increased_scenarios+" increased, "+all.decreased_scenarios+
+      " decreased, "+all.unchanged_scenarios+" unchanged; total change "+all.total_change+
+      ". Filtered subset total change: "+selected.total_change+
+      "; median per-scenario change: "+(selected.median_scenario_change===null?"—":selected.median_scenario_change)+".</p>"+
+      table+"</body></html>";
+    download("lightup-unknown-coverage-pair-REVIEW-ONLY.html",report,"text/html");
+  }
+
   function metricTrendSummaryPayload(){
     return {schema:"lightup.assessment_trends_metric_trend_summary.v2",status:summary().status,
       fictional_demo_only:fictional,manual_slot_order:true,manual_slot_count:snapshots.length,
@@ -1811,6 +1957,7 @@
     for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson","metricDistributionBrief",
       "metricTrendSummaryCsv","metricTrendSummaryJson","metricTrendSummaryBrief",
       "coverageUnknownCsv","coverageUnknownJson","coverageUnknownBrief",
+      "coverageUnknownPairCsv","coverageUnknownPairJson","coverageUnknownPairBrief",
       "metricTransitionCsv","metricTransitionJson","metricTransitionBrief",
       "metricTransitionCasesCsv","metricTransitionCasesJson","metricTransitionCasesBrief"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
@@ -1822,16 +1969,19 @@
       option.textContent="Scenario "+String(i+1).padStart(2,"0");$("scenarioSelect").append(option);});
     if(active){selectedScenario=scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];$("scenarioSelect").value=selectedScenario;
       renderSummary();renderMetricBoard();renderMetricDistribution();renderMetricTrendSummary();
-      renderCoverageUnknownTrajectory();renderMetricTransitions();renderScenarioBoard();renderScenarioDetail();
+      renderCoverageUnknownTrajectory();renderCoverageUnknownPair();renderMetricTransitions();renderScenarioBoard();renderScenarioDetail();
       renderReviewQueue();renderHumanWorkPlan();renderPrintBrief();}
     else{
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","metricDistribution","metricTrendSummary","coverageUnknownTrajectory","metricTransitionTable","metricTransitionCases","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","metricDistribution","metricTrendSummary","coverageUnknownTrajectory","coverageUnknownPairTable","metricTransitionTable","metricTransitionCases","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
       $("metricDistributionSummary").textContent="Import snapshots to summarize numeric metric distributions.";
       $("metricTrendSummaryText").textContent="Import snapshots to summarize median shifts and source-flag prevalence.";
       $("coverageUnknownSummary").textContent="Import snapshots to compare declared unknown coverage separately from regression flags.";
+      $("coverageUnknownPairSummary").textContent="Import snapshots to compare unknown coverage for any two distinct manual slots.";
+      $("coverageUnknownPairFrom").disabled=$("coverageUnknownPairTo").disabled=$("coverageUnknownPairFilter").disabled=true;
+      for(const id of ["coverageUnknownPairCsv","coverageUnknownPairJson","coverageUnknownPairBrief"])$(id).disabled=true;
       $("metricTransitionSummary").textContent="Import at least two snapshots to summarize flag-state changes.";
       $("metricTransitionCasesSummary").textContent="Import at least two snapshots to inspect the scenarios behind a flag-state transition.";
       $("metricTransitionMetric").disabled=$("metricTransitionPair").disabled=$("metricTransitionCaseFilter").disabled=true;
@@ -2736,6 +2886,11 @@
   $("coverageUnknownCsv").addEventListener("click",()=>exportCoverageUnknownTrajectory("csv"));
   $("coverageUnknownJson").addEventListener("click",()=>exportCoverageUnknownTrajectory("json"));
   $("coverageUnknownBrief").addEventListener("click",()=>exportCoverageUnknownTrajectory("html"));
+  for(const id of ["coverageUnknownPairFrom","coverageUnknownPairTo","coverageUnknownPairFilter"])
+    $(id).addEventListener("change",renderCoverageUnknownPair);
+  $("coverageUnknownPairCsv").addEventListener("click",()=>exportCoverageUnknownPair("csv"));
+  $("coverageUnknownPairJson").addEventListener("click",()=>exportCoverageUnknownPair("json"));
+  $("coverageUnknownPairBrief").addEventListener("click",()=>exportCoverageUnknownPair("html"));
   $("metricDistributionCsv").addEventListener("click",()=>exportMetricDistribution("csv"));
   $("metricDistributionJson").addEventListener("click",()=>exportMetricDistribution("json"));
   $("metricDistributionBrief").addEventListener("click",()=>exportMetricDistribution("html"));
