@@ -96,6 +96,15 @@
     <button id="metricTrendSummaryJson" type="button" class="secondary" disabled>Export metric trend summary JSON</button>
     <button id="metricTrendSummaryBrief" type="button" class="ghost" disabled>Export script-free printable trend summary</button>
   </div>
+  <h3>Unknown-coverage movement · separate uncertainty signal</h3>
+  <p>Track total and median source-declared unknown coverage, plus how many anonymous scenarios report higher or lower values than manual slot 01. This is deliberately separate from regression flags: rising unknown coverage is an uncertainty signal, not a reclassified regression, verified finding or chronology.</p>
+  <p id="coverageUnknownSummary" class="message" role="status" aria-live="polite">Import snapshots to compare declared unknown coverage separately from regression flags.</p>
+  <div id="coverageUnknownTrajectory" class="tablewrap" role="region" aria-label="Unknown coverage totals and changes by manual slot" tabindex="0"><p class="empty">No coverage uncertainty trajectory yet.</p></div>
+  <div class="controls no-print">
+    <button id="coverageUnknownCsv" type="button" disabled>Export unknown-coverage CSV</button>
+    <button id="coverageUnknownJson" type="button" class="secondary" disabled>Export unknown-coverage JSON</button>
+    <button id="coverageUnknownBrief" type="button" class="ghost" disabled>Export script-free unknown-coverage brief</button>
+  </div>
   <h3>Manual-slot flag-state transition matrix</h3>
   <p>For every selected metric/slot pair, classify each anonymous scenario as clear in both, flagged in both, clear → flagged, or flagged → clear. The default matrix compares adjacent slots; switch to all distinct manual-slot pairs to compare non-adjacent endpoints directly. This separates new source-reported flags from flags that are no longer reported without implying a verified fix. The selected order is a display order, not authenticated chronology. The static review-group filter above also applies here.</p>
   <label>Compare pair scope
