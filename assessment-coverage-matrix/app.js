@@ -402,6 +402,7 @@
   const humanBoard=createHumanBoard({
     $,node,clear,fail,shape,obj,int,text,parseStrict,download,message,FLAGS,
     getRows:()=>rows,getDigests:()=>sourceDigests,
+    getOriginalEpoch:()=>originalSessionEpoch,
     onFocus:(row)=>{
       // HUMAN routing opens the original untrusted declaration; it never executes it.
       const index=row.bySource.findIndex(items=>items.length>0);

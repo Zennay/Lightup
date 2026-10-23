@@ -148,3 +148,7 @@ LightUp's Notion project phase is **Incubate; M3/M7 PLAN/LAB ONLY**. There is **
 ### Recover HUMAN decisions without replacing the ORIGINAL lab files
 
 After inspecting a complete encrypted private workspace, the browser also offers **Restore HUMAN choices only (same original bytes)**. This button is enabled solely if the currently open original set has exactly the same ordered SHA-256 source bytes and row count as the fully admitted staged originals. A separate HUMAN confirmation retains current sources and replaces only current HUMAN planning choices; the staged original plaintext buffers are discarded. If the current originals are different, reordered, absent or changed mid-decryption, the action HOLDs without changing current choices. A source SHA-256 is an unsigned exact-byte check, never an attestation of uploader identity, consent, original finding truth or authorization.
+
+### Atomic HUMAN import and export during long local cryptographic operations
+
+The original HUMAN-plan encrypted export and exact-source resume, plus the two independently opened encrypted/plain HUMAN history inputs, now snapshot the current original source session, ordered source digests and all current HUMAN choices before asynchronous file or cryptographic work. When those values change before completion, the operation HOLDs and preserves newer HUMAN edits and source data. Replacing a selected file before its import finishes also fails closed. These are local continuity controls, not authentication, client consent, CI or source verification.

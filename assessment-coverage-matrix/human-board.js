@@ -3,7 +3,7 @@
    Consumes only previously admitted original source data from the parent offline app. */
 function createHumanBoard(api) {
   const { $, node, clear, fail, shape, obj, int, text, parseStrict,
-    download, message, onFocus, getRows, getDigests, FLAGS } = api;
+    download, message, onFocus, getRows, getDigests, getOriginalEpoch, FLAGS } = api;
   const STAGES = ["needs_review","queued","discussing","documented","blocked"];
   const ROUTES = ["unassigned","scope","findings","evidence","remediation","privacy"];
   const ACTIONS = ["none","clarify_source","review_scope_policy",
@@ -20,6 +20,11 @@ function createHumanBoard(api) {
     "row_plans","interpretation"];
   let plans = [], page = 0, changed = false, lastBulk = null;
   let history = null, historyPage = 0, historyResolutions = new Map();
+  // Session guard for asynchronous local decrypt/import: an earlier pending file
+  // cannot overwrite newer HUMAN choices or replace an original source session.
+  const sessionStamp=()=>JSON.stringify([getOriginalEpoch(),getDigests(),plans]);
+  const requireSession=stamp=>fail(stamp===sessionStamp(),
+    "Original source session or HUMAN choices changed during local read");
   const fresh = () => ({...DEFAULT});
   const isDefault = p => KINDS.every(k=>p[k]===DEFAULT[k]);
   const strictDigest = s => typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);
@@ -394,12 +399,16 @@ function createHumanBoard(api) {
     if(!safeDigests()||!plans.length) {
       message("Open the original PRIVATE lab batch with WebCrypto before loading its HUMAN snapshot history.",true);return;
     }
+    const originalStamp=sessionStamp();
     $("historyOpen").disabled=true;
     try {
       fail(earlier&&later,"Choose an earlier and a later PRIVATE saved plan explicitly");
       const oldPlan=await readHistoryFile(earlier,$("historyPassEarlier").value);
       const newPlan=await readHistoryFile(later,$("historyPassLater").value);
       const next={earlier:oldPlan,later:newPlan,changes:historyChanges(oldPlan,newPlan)};
+      requireSession(originalStamp);
+      fail($("historyEarlier").files[0]===earlier&&$("historyLater").files[0]===later,
+        "Selected HUMAN history files changed while reading");
       // Entire two-file source-byte admission completed BEFORE any active comparison changes.
       history=next;historyPage=0;historyResolutions.clear();
       $("historySearch").value="";$("historyState").value="all";
@@ -538,12 +547,14 @@ function createHumanBoard(api) {
     $("humanSaveEncrypted").addEventListener("click",async()=>{
       if(!plans.length||!safeDigests()||!privatePlanCrypto.supported())return;
       const password=$("humanEncryptPass").value;
+      const originalStamp=sessionStamp();
       try {
         if(!confirm("Encrypt and download a PRIVATE HUMAN plan locally with your passphrase? If you lose this passphrase, the contents cannot be recovered. No password or file is sent anywhere."))return;
         const original=JSON.stringify(privatePlan(),null,2)+"\n";
         fail(new Blob([original]).size<=MAX_PRIVATE_BYTES,
           "HUMAN plan exceeds local encryption size limit");
         const encrypted=await privatePlanCrypto.encrypt(original,password);
+        requireSession(originalStamp);
         const output=JSON.stringify(encrypted,null,2)+"\n";
         fail(new Blob([output]).size<=MAX_ENCRYPTED_BYTES,
           "Encrypted PRIVATE output is too large");
@@ -557,10 +568,15 @@ function createHumanBoard(api) {
     $("humanResumeButton").addEventListener("click",async()=>{
       const file=$("humanResume").files[0];
       if(!safeDigests()||!file){message("Open the original source files, then choose one PRIVATE saved plan.",true);return;}
+      const originalStamp=sessionStamp();
       try {
         const candidate=admitPrivatePlan(
           await parsePrivateJSONFile(file,$("humanResumePass").value));
+        requireSession(originalStamp);
+        fail($("humanResume").files[0]===file,"Selected HUMAN plan changed while reading");
         if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
+        requireSession(originalStamp);
+        fail($("humanResume").files[0]===file,"Selected HUMAN plan changed before replacement");
         plans=candidate;changed=true;lastBulk=null;historyResolutions.clear();
         $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();
         message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
