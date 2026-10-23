@@ -84,6 +84,28 @@
         throw Error("Gebruik 1–8 verschillende oorspronkelijke .luhx/.luhz/.luhp bronvrije bestanden.");
       }
     }
+    if (["fingerprint-archive", "receive-software", "inspect-archive"].includes(chosen.name)) {
+      // Mirror original native source/recipient separation before preparing a
+      // terminal command. Normalize redundant separators only for checking;
+      // the command still shows exactly the operator-entered literal paths.
+      const clean = path => path.replace(/\/+/g, "/").replace(/\/+$/g, "") || "/";
+      const zip = clean(vals("--archive")[0]);
+      const parent = zip.slice(0, zip.lastIndexOf("/")) || "/";
+      const expected = vals("--expected-sha256-file")[0];
+      if (expected && clean(expected) === zip) {
+        throw Error("Fingerprintbestand mag niet hetzelfde zijn als het originele ZIP-bestand.");
+      }
+      if (chosen.name !== "inspect-archive") {
+        const destination = clean(vals(chosen.name === "fingerprint-archive"
+          ? "--output-file" : "--output-dir")[0]);
+        if (parent === "/" || destination === zip || destination === parent ||
+            destination.startsWith(parent + "/") ||
+            (chosen.name === "receive-software" &&
+              (zip.startsWith(destination + "/") || destination === "/"))) {
+          throw Error("Nieuwe output moet buiten de gehele oorspronkelijke software-ZIP-map blijven.");
+        }
+      }
+    }
     if (chosen.name === "recipient" && vals("--cockpit").length > 12) {
       throw Error("Maximaal 12 echte source-free Cockpits.");
     }
