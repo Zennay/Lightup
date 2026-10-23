@@ -265,6 +265,23 @@ for eight it is bounded to 28 pairs. Each pair retains every original slot,
 including unchanged slots and changes later reversed. A pair summary counts
 stage/role endpoint differences separately from any intermediate edits.
 
+For a no-write capacity preview, use the same original board and complete HUMAN
+worksheets but omit the output directory and add `--preview-only`:
+
+~~~sh
+python3 assessment-disclosure-preflight/private_inbox_interval_matrix.py build \
+  --board ./owner-private-board/PRIVATE-inbox-portfolio.json \
+  --revision ./owner-private-sheets/first.csv \
+  --revision ./owner-private-sheets/second.csv \
+  --revision ./owner-private-sheets/third.csv \
+  --preview-only
+~~~
+
+The preview admits all original inputs, verifies their bytes have not changed,
+and prints only aggregate round/slot/pair/slot-row counts. It skips report
+rendering and file publication and creates no output directory. Exit 2 remains
+REVIEW_ONLY, never an approval or release signal.
+
 ~~~sh
 mkdir -m 700 ./owner-private-interval-matrix
 python3 assessment-disclosure-preflight/private_inbox_interval_matrix.py build \
