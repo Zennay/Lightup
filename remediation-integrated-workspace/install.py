@@ -791,12 +791,21 @@ def verify(folder: Path, *, compare_checkout: bool = False,
     present_dirs = set()
     for directory, dirnames, filenames in os.walk(folder, followlinks=False):
         current = Path(directory)
+        relative = current.relative_to(folder).as_posix()
+        # Refuse alien paths BEFORE os.walk can traverse an arbitrarily deep
+        # untrusted private directory tree. All approved paths come from the
+        # fixed original mandatory software list, never a package manifest.
+        require(relative in expected_dirs, "Unexpected software directory")
         owner_dir(current)
-        present_dirs.add(current.relative_to(folder).as_posix())
+        present_dirs.add(relative)
         for dirname in dirnames:
-            require(not (current / dirname).is_symlink(), "Unexpected linked directory")
+            child = current / dirname
+            require(not child.is_symlink() and
+                    child.relative_to(folder).as_posix() in expected_dirs,
+                    "Unexpected or linked software directory")
         for filename in filenames:
             name = (current / filename).relative_to(folder).as_posix()
+            require(name in expected, "Unexpected software file")
             present.add(name)
     require(present == expected and present_dirs == expected_dirs,
             "Package files or directories missing or extra")
