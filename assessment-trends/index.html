@@ -99,7 +99,17 @@
   <h3>Unknown-coverage movement · separate uncertainty signal</h3>
   <p>Track total and median source-declared unknown coverage, plus how many anonymous scenarios report higher or lower values than manual slot 01. This is deliberately separate from regression flags: rising unknown coverage is an uncertainty signal, not a reclassified regression, verified finding or chronology.</p>
   <p id="coverageUnknownSummary" class="message" role="status" aria-live="polite">Import snapshots to compare declared unknown coverage separately from regression flags.</p>
-  <div id="coverageUnknownTrajectory" class="tablewrap" role="region" aria-label="Unknown coverage totals and changes by manual slot" tabindex="0"><p class="empty">No coverage uncertainty trajectory yet.</p></div>
+  <div class="controls no-print">
+    <label>Sort uncertainty slots<select id="coverageUnknownSort" disabled>
+      <option value="slot">Manual slot order</option>
+      <option value="total">Highest total unknown coverage</option>
+      <option value="median">Highest median unknown coverage</option>
+      <option value="affected">Most scenarios with unknown coverage</option>
+      <option value="net_magnitude">Largest absolute total change vs slot 01</option>
+      <option value="movement">Largest absolute total change vs previous slot</option>
+    </select></label>
+  </div>
+  <div id="coverageUnknownTrajectory" class="tablewrap" role="region" aria-label="Unknown coverage distribution and changes by manual slot" tabindex="0"><p class="empty">No coverage uncertainty trajectory yet.</p></div>
   <div class="controls no-print">
     <button id="coverageUnknownCsv" type="button" disabled>Export unknown-coverage CSV</button>
     <button id="coverageUnknownJson" type="button" class="secondary" disabled>Export unknown-coverage JSON</button>
