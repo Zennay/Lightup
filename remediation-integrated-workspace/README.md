@@ -106,7 +106,15 @@ python3 remediation-integrated-workspace/install.py receive \
 ```
 
 The optional matching input is supported by the native HUMAN desk and offline
-browser operator studio as a *path* field. The receiver re-reads the exact
+browser operator studio as a *path* field. The browser command composer
+prevents preparing a `fingerprint-archive` output or `receive-software`
+destination anywhere inside the ORIGINAL input ZIP directory tree; the
+native recipient separately enforces that same exclusion at execution,
+before it stages or publishes any files. The source folder remains
+unchanged instead of being contaminated by a newly received copy.
+The browser also catches a fingerprint-file path identical to the ZIP
+path before the operator copies the command; **all native restrictions
+remain authoritative**. The receiver re-reads the exact
 operator-provided file before atomic private publication; a changed fingerprint
 or changed ZIP is HOLD, without publishing the destination. Without the
 optional fingerprint, all preexisting exact native source/ZIP verification
