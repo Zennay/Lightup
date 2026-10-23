@@ -249,6 +249,8 @@
       prepareSelector($("finding"), [...findings.values()], value => value.finding_id,
         value => short(value.severity.toUpperCase() + " · " + value.title + " · " + value.finding_id, 110));
       prepareSelector($("stage"), STAGES, value => value, value => value.replaceAll("_", " "));
+      $("scenario-gap-filter").value = "";
+      $("finding-gap-filter").value = "";
       $("studio").hidden = false;
       $("source-summary").textContent = report.scenarios.size + " original lab cases, " +
         findings.size + " original findings · source " + report.status +
@@ -344,36 +346,96 @@
     }
   }
 
+  function prefillScenario(scenarioId) {
+    if (!app.source || !app.source.scenarios.has(scenarioId)) {
+      announce("HOLD · original scenario no longer belongs to the loaded source.", true);
+      return;
+    }
+    $("scenario").value = scenarioId;
+    renderSourcePreviews();
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("finding").focus({ preventScroll: true });
+    announce("Prefilled original scenario " + scenarioId +
+      ". Choose an original finding and save manually; no link was created.");
+  }
+
+  function prefillFinding(findingId) {
+    if (!app.source || !app.source.findings.has(findingId)) {
+      announce("HOLD · original finding no longer belongs to the loaded source.", true);
+      return;
+    }
+    $("finding").value = findingId;
+    renderSourcePreviews();
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("scenario").focus({ preventScroll: true });
+    announce("Prefilled original finding " + findingId +
+      ". Choose an original scenario and save manually; no link was created.");
+  }
+
   function renderGaps() {
     const root = $("gaps");
     root.replaceChildren();
     if (!app.source) return;
     const linkedScenarios = new Set(app.links.map(link => link.scenario_id));
     const linkedFindings = new Set(app.links.map(link => link.finding_id));
-    const missingScenarios = [...app.source.scenarios.values()]
-      .filter(row => !linkedScenarios.has(row.scenario_id))
+    const scenarioQuery = $("scenario-gap-filter").value.trim().toLowerCase();
+    const findingQuery = $("finding-gap-filter").value.trim().toLowerCase();
+    const unlinkedScenarios = [...app.source.scenarios.values()]
+      .filter(row => !linkedScenarios.has(row.scenario_id));
+    const unlinkedFindings = [...app.source.findings.values()]
+      .filter(row => !linkedFindings.has(row.finding_id));
+    const missingScenarios = unlinkedScenarios
+      .filter(row => !scenarioQuery || [
+        row.scenario_id, row.status,
+        ...(Array.isArray(row.changes) ? row.changes.map(change => change.name) : [])
+      ].join(" ").toLowerCase().includes(scenarioQuery))
       .sort((a, b) => Number(b.status === "HOLD") - Number(a.status === "HOLD") ||
         a.scenario_id.localeCompare(b.scenario_id));
     const severities = ["critical", "high", "medium", "low", "info"];
-    const missingFindings = [...app.source.findings.values()]
-      .filter(row => !linkedFindings.has(row.finding_id))
+    const missingFindings = unlinkedFindings
+      .filter(row => !findingQuery ||
+        [row.finding_id, row.title, row.severity, row.retest_status]
+          .join(" ").toLowerCase().includes(findingQuery))
       .sort((a, b) => severities.indexOf(a.severity) -
         severities.indexOf(b.severity) || a.finding_id.localeCompare(b.finding_id));
-    for (const [title, entries, formatter] of [
-      ["Original lab scenarios awaiting human mapping", missingScenarios,
-       item => item.status + " · " + item.scenario_id],
-      ["Original findings awaiting human mapping", missingFindings,
-       item => item.severity.toUpperCase() + " · " + item.title + " (" + item.finding_id + ")"]
+    for (const [title, entries, total, formatter, kind, hasQuery] of [
+      ["Original lab scenarios awaiting human mapping", missingScenarios, unlinkedScenarios.length,
+        item => item.status + " · " + item.scenario_id, "scenario", !!scenarioQuery],
+      ["Original findings awaiting human mapping", missingFindings, unlinkedFindings.length,
+        item => item.severity.toUpperCase() + " · " + item.title + " (" + item.finding_id + ")",
+        "finding", !!findingQuery]
     ]) {
-      showNode(root, "h4", title + " (" + entries.length + ")");
+      showNode(root, "h4", title + " (" + entries.length +
+        (entries.length !== total ? " of " + total : "") + ")");
+      if (!entries.length) {
+        showNode(root, "p", hasQuery ?
+          "No unlinked original records match this local search." :
+          "No unlinked original records remain in this category.");
+        continue;
+      }
       const list = document.createElement("ul");
+      list.className = "gap-results";
       for (const item of entries.slice(0, 100)) {
-        showNode(list, "li", formatter(item));
+        const li = document.createElement("li");
+        li.className = "gap-entry";
+        showNode(li, "span", formatter(item));
+        const button = showNode(li, "button",
+          kind === "scenario" ? "Use scenario" : "Use finding", "minor");
+        button.type = "button";
+        button.addEventListener("click", () => kind === "scenario" ?
+          prefillScenario(item.scenario_id) : prefillFinding(item.finding_id));
+        list.appendChild(li);
       }
       root.appendChild(list);
       if (entries.length > 100)
-        showNode(root, "p", String(entries.length - 100) + " additional original records.");
+        showNode(root, "p", String(entries.length - 100) +
+          " additional matches; narrow the local search to find a specific original record.");
     }
+    $("gap-filter-summary").textContent =
+      missingScenarios.length + " scenario gap(s) match / " + unlinkedScenarios.length +
+      " unlinked; " + missingFindings.length + " finding gap(s) match / " +
+      unlinkedFindings.length + " unlinked. Searches are local. Use buttons only to prefill; " +
+      "save a manual link explicitly.";
   }
 
   function render() {
@@ -485,6 +547,8 @@
   $("scenario").addEventListener("change", renderSourcePreviews);
   $("finding").addEventListener("change", renderSourcePreviews);
   $("filter").addEventListener("input", render);
+  $("scenario-gap-filter").addEventListener("input", renderGaps);
+  $("finding-gap-filter").addEventListener("input", renderGaps);
   $("export").addEventListener("click", downloadMapping);
   $("restore").addEventListener("change", restoreMapping);
 })();
