@@ -735,6 +735,10 @@ def main() -> int:
     p_preview.add_argument("--archive", required=True, type=Path)
     p_preview.add_argument("--expected-sha256-file", type=Path,
                            help="optional separate owner-private 0600 original SHA-256+LF fingerprint")
+    p_hash = sub.add_parser("fingerprint-archive",
+                            help="Write a NEW private 0600 SHA-256 file for an admitted source-only ZIP")
+    p_hash.add_argument("--archive", required=True, type=Path)
+    p_hash.add_argument("--output-file", required=True, type=Path)
     p_recv = sub.add_parser("receive", help="Safely reconstruct pinned software-only ZIP offline")
     p_recv.add_argument("--archive", required=True, type=Path)
     p_recv.add_argument("--output-dir", required=True, type=Path)
@@ -750,6 +754,9 @@ def main() -> int:
         elif args.action == "inspect-archive":
             from receiver import inspect_archive
             inspect_archive(args.archive, args.expected_sha256_file)
+        elif args.action == "fingerprint-archive":
+            from receiver import fingerprint_archive
+            fingerprint_archive(args.archive, args.output_file)
         else:
             verify(args.workspace, compare_checkout=args.compare_checkout,
                    report_dir=args.report_dir, passport_dir=args.passport_dir)
