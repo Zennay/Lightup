@@ -122,10 +122,14 @@ def build(manifest_paths,choice_paths,reference):
 
 def main(argv=None):
     p=argparse.ArgumentParser(description="Complete OFFLINE ORIGINAL-source human portfolio in one command; no GO")
-    p.add_argument("--original-manifest",required=True,action="append",
-                   help="One immutable ORIGINAL archive manifest path, repeat 1–12")
-    p.add_argument("--original-choices",required=True,action="append",
-                   help="Matching ORIGINAL private human choices, same order")
+    p.add_argument("--original-manifest",action="append",
+                   help="ORIGINAL manifest; use alongside matching --original-choices")
+    p.add_argument("--original-choices",action="append",
+                   help="ORIGINAL HUMAN choices; same order as --original-manifest")
+    p.add_argument("--original-pair",action="append",nargs=2,
+                   metavar=("MANIFEST","CHOICES"),
+                   help="Safer explicit ORIGINAL manifest+HUMAN-choices pair; repeat 1–12; "
+                        "cannot mix with the two older parallel lists")
     p.add_argument("--as-of",required=True,help="Explicit original shared human planning YYYY-MM-DD")
     mode=p.add_mutually_exclusive_group(required=True)
     mode.add_argument("--output",help="NEW owner-private complete workbench ZIP, never overwrite")
@@ -133,7 +137,17 @@ def main(argv=None):
                       help="READ-ONLY exact-byte reopen of an existing PRIVATE original ZIP; no output")
     a=p.parse_args(argv)
     try:
-        blob,status,count=build(a.original_manifest,a.original_choices,a.as_of)
+        if a.original_pair:
+            if a.original_manifest or a.original_choices:
+                raise Hold("cannot combine original-pair with parallel source lists")
+            manifest_paths=[pair[0] for pair in a.original_pair]
+            choice_paths=[pair[1] for pair in a.original_pair]
+        else:
+            if not a.original_manifest or not a.original_choices:
+                raise Hold("original manifest and choices required")
+            manifest_paths=a.original_manifest
+            choice_paths=a.original_choices
+        blob,status,count=build(manifest_paths,choice_paths,a.as_of)
         # Reopen the real ORIGINAL inputs after all potentially expensive rendering,
         # immediately before the exclusive private ZIP publication.
         with ZipFile(BytesIO(blob),"r") as assembled:
@@ -144,7 +158,7 @@ def main(argv=None):
                 or mapping.get("planning_not_permission") is not True
                 or any(mapping.get(flag) is not False for flag in FLAGS)):
             raise Hold("original private source map is not canonical")
-        require_original_sources(a.original_manifest,a.original_choices,mapping.get("sources"))
+        require_original_sources(manifest_paths,choice_paths,mapping.get("sources"))
         if a.reopen_workspace is not None:
             # No extraction. Reconstruct expected ORIGINAL-source workspace from
             # the separately re-presented ORIGINAL sources, then compare its

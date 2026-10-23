@@ -57,3 +57,17 @@ python3 assessment-portfolio/one_command.py \
 ```
 
 On an exact private byte match the exit is still **2 REVIEW_ONLY** (or 3 when the original claimed source status is HOLD), with a counts-only message. This is a private unsigned software/source consistency check. It does **not** establish source owner, recipient identity, independent client/operator consent, original finding validity, release authorization, or permission to scan.
+
+## Safer explicit source-pair input (same native original admission)
+
+To prevent accidentally crossing two separate positional path lists, use repeated **`--original-pair MANIFEST CHOICES`** instead. Each pair stays adjacent throughout the exact same unchanged original-source admission, full workspace creation or read-only reopen:
+
+```sh
+python3 assessment-portfolio/one_command.py \
+  --original-pair /private/ORIGINAL-archive-A.json /private/ORIGINAL-choices-A.json \
+  --original-pair /private/ORIGINAL-archive-B.json /private/ORIGINAL-choices-B.json \
+  --as-of 2026-10-18 \
+  --output /private/NEW-human-workspace.zip
+```
+
+This does not match clients or prove that HUMAN choices belong to a valid source: the unchanged original byte-bound validator still makes that decision, and an incorrect pair yields HOLD. The old repeated `--original-manifest` / `--original-choices` interface remains supported for existing automation. Combining both syntaxes, omitting matching inputs, or selecting more than 12 original pairs fails closed. No network or original data mutation.
