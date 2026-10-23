@@ -23,11 +23,59 @@ from human_review import Hold, source_bytes
 OUTPUT_HTML = "PRIVATE-HUMAN-original-interval-matrix.html"
 OUTPUT_CSV = "PRIVATE-HUMAN-original-interval-matrix.csv"
 OUTPUT_JSON = "PRIVATE-HUMAN-original-interval-matrix.json"
+OUTPUT_ATTENTION_CSV = "PRIVATE-HUMAN-original-interval-attention.csv"
 FALSE_FLAGS = interval.FALSE_FLAGS
 
 
 def _count(rows: list[dict], key: str) -> int:
     return sum(row[key] is True for row in rows)
+
+
+def _compose_attention(history: dict) -> list[dict]:
+    """Source-free operator discussion prompts, never automated decisions."""
+    events = history["changed_transitions"]
+    output = []
+    for path in history["slot_paths"]:
+        slot = path["slot"]
+        related = [e for e in events if e["slot"] == slot]
+        stage_count = sum("human_status" in e["changed_fields"] for e in related)
+        role_count = sum("proposed_role" in e["changed_fields"] for e in related)
+        question_count = sum("question_text_changed" in e["changed_fields"] for e in related)
+        action_count = sum("next_action_text_changed" in e["changed_fields"] for e in related)
+        beginning, latest = path["rounds"][0], path["rounds"][-1]
+        stage_return = stage_count > 0 and beginning["human_status"] == latest["human_status"]
+        role_return = role_count > 0 and beginning["proposed_role"] == latest["proposed_role"]
+        # Review ordering is illustrative. No severity, verified remedy, owner
+        # identity or independent timeline authority can be derived here.
+        if stage_return or role_return:
+            cue = "HUMAN_REVISIT_REVERTED_EDIT"
+        elif stage_count + role_count > 1:
+            cue = "HUMAN_REVIEW_MULTIPLE_DECLARED_EDITS"
+        elif question_count or action_count:
+            cue = "HUMAN_REVIEW_PRIVATE_NOTE_CHURN"
+        elif latest["human_status"] in ("UNREVIEWED", "NEEDS_INPUT"):
+            cue = "HUMAN_FOLLOW_UP_NOT_COMPLETED"
+        else:
+            cue = "HUMAN_DISCUSS_NO_RELEASE_INFERRED"
+        output.append({
+            "slot": slot,
+            "manual_round_count": history["round_count"],
+            "first_declared_status": beginning["human_status"],
+            "latest_declared_status": latest["human_status"],
+            "latest_proposed_role": latest["proposed_role"],
+            "status_edit_transitions": stage_count,
+            "role_edit_transitions": role_count,
+            "question_edit_transitions": question_count,
+            "next_action_edit_transitions": action_count,
+            "stage_returned_to_first_after_edit": stage_return,
+            "role_returned_to_first_after_edit": role_return,
+            "human_discussion_cue": cue,
+            "source_authenticated": False,
+            "chronology_authenticated": False,
+            "authorization_granted": False,
+            "release_allowed": False,
+        })
+    return output
 
 
 def compose_matrix(complete_history: dict) -> dict:
@@ -58,8 +106,21 @@ def compose_matrix(complete_history: dict) -> dict:
                 "all_original_slots": rows,
             })
 
+    attention = _compose_attention(complete_history)
+    attention_totals = {
+        "slots_with_declared_stage_reversions": sum(
+            row["stage_returned_to_first_after_edit"] for row in attention),
+        "slots_with_declared_role_reversions": sum(
+            row["role_returned_to_first_after_edit"] for row in attention),
+        "slots_with_private_note_edits": sum(
+            row["question_edit_transitions"] > 0 or
+            row["next_action_edit_transitions"] > 0 for row in attention),
+        "slots_with_multiple_stage_or_role_edits": sum(
+            row["status_edit_transitions"] + row["role_edit_transitions"] > 1
+            for row in attention),
+    }
     return {
-        "schema": "lightup.private_human_original_interval_matrix.v1",
+        "schema": "lightup.private_human_original_interval_matrix.v2",
         "status": "REVIEW_ONLY",
         "source_free": True,
         "original_complete_input_reopening_required": True,
@@ -73,6 +134,8 @@ def compose_matrix(complete_history: dict) -> dict:
             for pair in pairs
         ],
         "all_pairwise_intervals": pairs,
+        "human_discussion_attention": attention,
+        "attention_counts": attention_totals,
     }
 
 
@@ -95,6 +158,25 @@ def render_csv(matrix: dict) -> bytes:
                 *[_display(row[key]) for key in interval.ROW_KEYS],
                 "false", "false", "false", "false",
             ])
+    return output.getvalue().encode("utf-8")
+
+
+def render_attention_csv(matrix: dict) -> bytes:
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    columns = (
+        "slot", "manual_round_count", "first_declared_status",
+        "latest_declared_status", "latest_proposed_role",
+        "status_edit_transitions", "role_edit_transitions",
+        "question_edit_transitions", "next_action_edit_transitions",
+        "stage_returned_to_first_after_edit",
+        "role_returned_to_first_after_edit", "human_discussion_cue",
+        "source_authenticated", "chronology_authenticated",
+        "authorization_granted", "release_allowed",
+    )
+    writer.writerow(columns)
+    for row in matrix["human_discussion_attention"]:
+        writer.writerow([_display(row[key]) for key in columns])
     return output.getvalue().encode("utf-8")
 
 
@@ -127,6 +209,24 @@ def render_html(matrix: dict) -> bytes:
         ("next_action_edited_within_interval", "Next action edited"),
         ("original_unselected_holds", "Original HOLD choices"),
     )
+    attention_columns = (
+        ("slot", "Original slot"),
+        ("first_declared_status", "First HUMAN stage"),
+        ("latest_declared_status", "Latest HUMAN stage"),
+        ("latest_proposed_role", "Latest proposed role"),
+        ("status_edit_transitions", "Stage edits"),
+        ("role_edit_transitions", "Role edits"),
+        ("question_edit_transitions", "Question edits"),
+        ("next_action_edit_transitions", "Next-action edits"),
+        ("stage_returned_to_first_after_edit", "Stage changed then returned"),
+        ("role_returned_to_first_after_edit", "Role changed then returned"),
+        ("human_discussion_cue", "HUMAN follow-up cue"),
+    )
+    attention_rows = [
+        "<tr>" + "".join("<td>" + esc(row[key]) + "</td>"
+                         for key, label in attention_columns) + "</tr>"
+        for row in matrix["human_discussion_attention"]
+    ]
     summary_rows = []
     detail_rows = []
     for pair in matrix["all_pairwise_intervals"]:
@@ -158,6 +258,14 @@ no source identity, reviewer identity, consent, target clearance, grant or relea
 <p>Original rounds: <strong>__ROUNDS__</strong>. Original slots: <strong>__SLOTS__</strong>.
 All possible earlier/later pairs: <strong>__PAIRS__</strong>. Every pair includes every original slot,
 including unchanged slots and intermediate edits that were later reversed.</p>
+<h2>Source-free HUMAN follow-up desk</h2>
+<p>Declared stage-reversions: <strong>__STAGE_REVERT__</strong>.
+Declared role-reversions: <strong>__ROLE_REVERT__</strong>.
+Slots with private question/action edits: <strong>__NOTE_EDITS__</strong>.
+These are <em>manual-order discussion cues</em>, not priorities assigned by
+verified severity, chronology, consent or source identity.</p>
+<div class="scroll"><table><thead><tr>__ATTENTION_HEAD__</tr></thead>
+<tbody>__ATTENTION_ROWS__</tbody></table></div>
 <h2>Pairwise summary</h2><div class="scroll"><table><thead><tr>__SUMMARY_HEAD__</tr></thead><tbody>__SUMMARY_ROWS__</tbody></table></div>
 <h2>Complete original-slot detail</h2><div class="scroll"><table><thead><tr>__DETAIL_HEAD__</tr></thead><tbody>__DETAIL_ROWS__</tbody></table></div>
 <p>Question and next-action values are never included; their columns mean at least one edit occurred
@@ -170,6 +278,13 @@ No client contact, scan, dispatch, authorization or release follows from this re
     page = (page.replace("__ROUNDS__", esc(matrix["original_round_count"]))
             .replace("__SLOTS__", esc(matrix["original_slot_count"]))
             .replace("__PAIRS__", esc(matrix["pair_count"]))
+            .replace("__STAGE_REVERT__", esc(matrix["attention_counts"]["slots_with_declared_stage_reversions"]))
+            .replace("__ROLE_REVERT__", esc(matrix["attention_counts"]["slots_with_declared_role_reversions"]))
+            .replace("__NOTE_EDITS__", esc(matrix["attention_counts"]["slots_with_private_note_edits"]))
+            .replace("__ATTENTION_HEAD__", "".join(
+                "<th scope='col'>" + esc(label) + "</th>"
+                for _key, label in attention_columns))
+            .replace("__ATTENTION_ROWS__", "".join(attention_rows))
             .replace("__SUMMARY_HEAD__", "".join(
                 "<th scope='col'>" + esc(label) + "</th>"
                 for _key, label in summary_columns))
@@ -185,6 +300,7 @@ def expected_artifacts(matrix: dict) -> list[tuple[str, bytes]]:
     return [
         (OUTPUT_HTML, render_html(matrix)),
         (OUTPUT_CSV, render_csv(matrix)),
+        (OUTPUT_ATTENTION_CSV, render_attention_csv(matrix)),
         (OUTPUT_JSON, (json.dumps(
             matrix, sort_keys=True, ensure_ascii=True, separators=(",", ":")
         ) + "\n").encode("utf-8")),
@@ -244,6 +360,8 @@ def main() -> int:
                   + "; slots=" + str(matrix["original_slot_count"])
                   + "; pairs=" + str(matrix["pair_count"])
                   + "; pair_slot_rows=" + str(pair_slot_rows)
+                  + "; stage_reversions=" + str(matrix["attention_counts"]["slots_with_declared_stage_reversions"])
+                  + "; role_reversions=" + str(matrix["attention_counts"]["slots_with_declared_role_reversions"])
                   + "; no_files_written; no_authority")
             return 2
         if args.action == "build":

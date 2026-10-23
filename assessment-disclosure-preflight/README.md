@@ -1293,3 +1293,14 @@ artifacts. Preview is REVIEW_ONLY, never approval or release.
 
 See [PRIVATE-INBOX-HISTORY.md](./PRIVATE-INBOX-HISTORY.md) for the build, no-write
 preview and read-only reopen commands, exact input requirements and privacy boundaries.
+
+### Assessment interval matrix HUMAN follow-up (v2)
+
+`private_inbox_interval_matrix.py build` produces an original-source-bound,
+scriptless all-pairs interval matrix and a separate PRIVATE human follow-up CSV
+for all original slots. Stage/role reversions and note edit counts are
+*manual-order discussion signals only*, not remediation evidence, security
+findings, permission, identity or authenticated timing. Output now consists of
+four PRIVATE 0600 artifacts; `reopen` checks the original four byte-for-byte
+against current admitted inputs, while `--preview-only` stays read-only.
+See [PRIVATE-INBOX-HISTORY.md](PRIVATE-INBOX-HISTORY.md) for usage and gates.

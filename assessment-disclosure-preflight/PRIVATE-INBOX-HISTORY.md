@@ -311,3 +311,19 @@ and unsigned; small cohorts or role/stage combinations may be identifying.
 This tool never starts assessments, scans, grants, contacts clients, verifies
 consent, proves remediation or authorizes release. Exit 2 means REVIEW_ONLY;
 exit 3 means HOLD.
+
+### Source-free HUMAN follow-up desk (all-pairs matrix v2)
+
+The all-pairs interval command now publishes a fourth owner-PRIVATE artifact,
+`PRIVATE-HUMAN-original-interval-attention.csv`, alongside the original
+HTML, full pairwise CSV and JSON. The HTML starts with a usable per-original-slot
+HUMAN discussion desk, including how often manually ordered stages/roles changed,
+whether they changed and returned to the first declared value, and whether
+private question/next-action text was edited. A reversal is never a fixed issue;
+review cues are human discussion prompts, not verified priorities, source
+identity, authenticated chronology, approval, remediation or release. No
+original private note text, target, board digest or reviewer identity appears.
+The `--preview-only` mode shows aggregate stage/role return counts without
+writing files. Native `reopen` requires all four exact current artifacts and
+full original source re-admission. Old v1 workrooms remain historical; build
+into a new empty 0700 PRIVATE directory rather than silently upgrading one.
