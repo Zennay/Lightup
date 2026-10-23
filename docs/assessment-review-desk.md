@@ -1,13 +1,12 @@
 # LightUp Offline Assessment Review Desk
 
-## Current product update · unknown-coverage triage · 23 October 2026
+## Current product update · uncertainty-first queue sorting · 23 October 2026
 
-The regression landscape and human queue now expose source-declared `coverage_unknown` separately from regression flags:
+The offline human triage desk now sorts the filtered scenario queue by source-priority order, highest or lowest source-declared unknown coverage, number of source-reported regression flags, or anonymous scenario ordinal. The selected sort applies consistently to the visible queue, filtered print brief, CSV, JSON and scriptless HTML handoff, with deterministic tie-breakers.
 
-- A distinct **Unknown coverage > 0** bar filters the case queue even when no metric is marked as a regression. The queue also has an **Unknown coverage** status filter.
-- Case rows and detail chips show the declared unknown-coverage candidate value. When a case has no scored regression but has unknown coverage, the suggested human action asks the original lab source owner to clarify it; no missing finding, fix, authorization or need for a new scan is inferred.
-- All-case and filtered print briefs include an Unknown coverage column. Filtered queue JSON is now schema v2 and includes aggregate-safe source metric observations for unknown coverage; v1 filtered queue exports remain importable under their original validation rules.
-- This is an uncertainty signal, not a regression reclassification. The overall source verdict and regression counts are unchanged; source scenario IDs remain internal and no browser persistence, network, target access, scanner, grants or authorization are added. The refreshed offline standalone is 89,275 bytes (SHA-256 `67bba1d0c6ad00c316c90efc02dcb20be4995b09f41abf3ef2bd452ba81f3242`) with the updated JS/CSS pinned by its restrictive CSP.
+Filtered queue JSON is now schema v3 and records the selected sort. Its importer accepts legacy v1/v2 packets under their original validation and priority-order rules, and validates v3 row order before restoring only HUMAN planning fields. Unknown coverage remains an uncertainty signal, not a regression reclassification or authorization signal.
+
+Current standalone artifact: **91,153 bytes**, SHA-256 `d0a01a8a2d49415e9b56bd71f3fb29019238cbce0f00da8f7fc82a3de1a2a474`. It embeds the exact current JavaScript and CSS and pins their hashes in the restrictive no-network CSP.
 
 **Release boundary:** INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.
 Human preparation tool only, not a scan, source authenticity verifier, benchmark release gate, authorization service, consent collection, grant issuance or deployment route.
