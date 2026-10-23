@@ -44,12 +44,47 @@ CATEGORIES = {
     "reopen-passport": "Software only",
 }
 
+
+# Operator-facing labels only. CLI operation identifiers and contracts stay fixed.
+ACTION_LABELS = {
+    "owner": "Start brononderzoek",
+    "owner-package": "Maak offline pakket",
+    "owner-encrypted": "Versleutel overdracht",
+    "owner-encrypted-receipt": "Maak veilige overdracht",
+    "recipient": "Open ontvangen dossiers",
+    "archives": "Controleer en open pakket",
+    "pack": "Pak dossier in",
+    "unpack": "Pak dossier uit",
+    "review": "Start beoordeling",
+    "continue-review": "Hervat beoordeling",
+    "brief": "Maak samenvatting",
+    "seal-journal": "Beveilig notities",
+    "open-journal": "Open beveiligde notities",
+    "rekey-journal": "Wijzig notitiesleutel",
+    "encrypt-cockpit": "Versleutel dossier",
+    "decrypt-cockpit": "Ontsleutel dossier",
+    "pack-review": "Verpak beoordeling",
+    "receive-review": "Ontvang beoordeling",
+    "fingerprint-create": "Maak pakketvingerafdruk",
+    "fingerprint-compare": "Controleer pakketvingerafdruk",
+    "install": "Maak offline werkruimte",
+    "inspect-archive": "Controleer softwarepakket",
+    "fingerprint-archive": "Maak softwarechecksum",
+    "receive-software": "Ontvang software",
+    "inspect-software": "Controleer installatie",
+    "inspect-checkout": "Vergelijk met broncode",
+    "reopen-passport": "Open integriteitsrapport"
+}
+
 def render() -> bytes:
     css = (HERE / "operator_ui.css").read_bytes()
     js = (HERE / "operator_ui.js").read_bytes()
     fingerprint_js = (HERE / "fingerprint_ui.js").read_bytes()
+    if set(ACTION_LABELS) != set(OPERATIONS):
+        raise ValueError("Offline operator labels must cover exactly the native actions")
     operations = [{
         "name": name,
+        "label": ACTION_LABELS[name],
         "purpose": purpose,
         "category": CATEGORIES[name],
         "fields": [{
