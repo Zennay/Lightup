@@ -41,6 +41,7 @@ const downloadJSON = document.getElementById("download-json");
 const printButton = document.getElementById("print-studio");
 const undatedList = document.getElementById("undated-list");
 const settings = {};
+let assumptionsRevision = 0;
 let currentRows = [];
 let currentJson = null;
 const make = (tag, value) => {
@@ -59,7 +60,7 @@ for (const role of payload.roles) {
     input.step = "1"; input.required = true; input.inputMode = "numeric";
     input.value = String((index ? payload.alternative : payload.first)[role]);
     input.setAttribute("aria-label", name + " for proposed neutral role " + role);
-    input.addEventListener("input", () => refresh());
+    input.addEventListener("input", () => { assumptionsRevision++; refresh(); });
     settings[role].push(input);
     label.append(input); item.append(label);
   }
@@ -174,7 +175,8 @@ function refresh() {
   table.replaceChildren(fragment);
   currentRows = exportRows;
   currentJson = {
-    schema: "lightup.human_capacity_scenario_private.v1",
+    schema: "lightup.human_capacity_scenario_private.v2",
+    source_payload_sha256: payload.payload_sha256,
     posture: "INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
     status: "REVIEW_ONLY",
     reference_date: payload.reference_date,
@@ -212,6 +214,7 @@ function refresh() {
   printButton.disabled = false;
 }
 document.getElementById("reset-studio").addEventListener("click", () => {
+  assumptionsRevision++;
   for (const role of payload.roles) {
     settings[role][0].value = String(payload.first[role]);
     settings[role][1].value = String(payload.alternative[role]);
@@ -239,6 +242,78 @@ download.addEventListener("click", () => {
   setTimeout(() => URL.revokeObjectURL(object), 5000);
   message.textContent = "PRIVATE CSV downloaded locally. No source file, " +
     "calendar entry, identity, consent or permission was changed.";
+});
+const importButton = document.getElementById("open-scenario-json");
+const importFile = document.getElementById("scenario-json-file");
+const exactKeys = (obj, keys) => obj && typeof obj === "object" && !Array.isArray(obj) &&
+  Object.keys(obj).length === keys.length &&
+  keys.every(key => Object.prototype.hasOwnProperty.call(obj, key));
+const admittedLimits = obj => exactKeys(obj, payload.roles) &&
+  payload.roles.every(role => Number.isInteger(obj[role]) &&
+    obj[role] >= 1 && obj[role] <= 128);
+importButton.addEventListener("click", () => importFile.click());
+importFile.addEventListener("change", async () => {
+  const file = importFile.files && importFile.files[0];
+  importFile.value = "";
+  if (!file) return;
+  if (file.size > 1048576 || file.size === 0) {
+    message.textContent = "HOLD: PRIVATE capacity scenario must be 1 byte to 1 MiB.";
+    return;
+  }
+  const revisionAtStart = assumptionsRevision;
+  let text;
+  try {
+    text = await file.text();
+    if (assumptionsRevision !== revisionAtStart) {
+      message.textContent = "HOLD: current HUMAN capacity assumptions changed while reading. Nothing imported.";
+      return;
+    }
+    const candidate = JSON.parse(text);
+    if (JSON.stringify(candidate, null, 2) + "\n" !== text ||
+        candidate.schema !== "lightup.human_capacity_scenario_private.v2" ||
+        candidate.source_payload_sha256 !== payload.payload_sha256 ||
+        candidate.reference_date !== payload.reference_date ||
+        !admittedLimits(candidate.first_declared_daily_limit_by_role) ||
+        !admittedLimits(candidate.alternative_declared_daily_limit_by_role)) {
+      throw new Error("different source, schema or noncanonical capacity file");
+    }
+    // A strict full native regenerated export comparison rejects duplicate keys,
+    // altered false-authority flags, unknown fields and differing source rows.
+    const before = payload.roles.map(role => settings[role].map(input => input.value));
+    let matches = false;
+    try {
+      payload.roles.forEach((role, index) => {
+        settings[role][0].value = String(candidate.first_declared_daily_limit_by_role[role]);
+        settings[role][1].value = String(candidate.alternative_declared_daily_limit_by_role[role]);
+      });
+      refresh();
+      matches = JSON.stringify(currentJson, null, 2) + "\n" === text;
+    } finally {
+      payload.roles.forEach((role, index) => {
+        settings[role][0].value = before[index][0];
+        settings[role][1].value = before[index][1];
+      });
+      refresh();
+    }
+    if (!matches) throw new Error("source grouping, private rows or authority fields changed");
+    if (!window.confirm("Restore these two HUMAN-only hypothetical capacity plans? The exact current original source rows were rechecked. This is NOT an authorization.")) {
+      message.textContent = "Import canceled. Existing HUMAN assumptions kept.";
+      return;
+    }
+    if (assumptionsRevision !== revisionAtStart) {
+      message.textContent = "HOLD: assumptions changed. Nothing imported.";
+      return;
+    }
+    payload.roles.forEach(role => {
+      settings[role][0].value = String(candidate.first_declared_daily_limit_by_role[role]);
+      settings[role][1].value = String(candidate.alternative_declared_daily_limit_by_role[role]);
+    });
+    assumptionsRevision++;
+    refresh();
+    message.textContent = "PRIVATE hypothetical capacity plans reopened against exact source-bound rows. No identity, consent, real staffing, booking, permission or dispatch verified.";
+  } catch (_) {
+    message.textContent = "HOLD: not an exact original PRIVATE v2 export from these unchanged source rows. Existing plans kept.";
+  }
 });
 downloadJSON.addEventListener("click", () => {
   if (downloadJSON.disabled || !currentJson) return;
@@ -292,6 +367,9 @@ def render(rows, reference_day, first_limits, alternative_limits, roles):
         "dispatch_allowed": False,
         "release_allowed": False,
     }
+    seed["payload_sha256"] = sha256(json.dumps(
+        seed, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()
     seed_text = json.dumps(seed, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     # Prevent an HTML delimiter or attribute breakout regardless of future schema.
     seed_text = (seed_text.replace("&", "\\u0026").replace("<", "\\u003c")
@@ -325,7 +403,9 @@ def render(rows, reference_day, first_limits, alternative_limits, roles):
         "<p><button type='button' id='reset-studio'>Restore original assumptions</button>"
         "<button type='button' id='print-studio'>Print PRIVATE scenario</button>"
         "<button type='button' id='download-current'>Download PRIVATE scenario CSV</button>"
-        "<button type='button' id='download-json'>Download PRIVATE scenario JSON</button></p>"
+        "<button type='button' id='download-json'>Download PRIVATE scenario JSON</button>"
+        "<button type='button' id='open-scenario-json'>Reopen PRIVATE scenario JSON</button>"
+        "<input id='scenario-json-file' type='file' accept='.json,application/json' hidden></p>"
         "<p id='message' role='status' aria-live='polite'></p>"
         "<p id='summary' class='metrics' aria-live='polite'></p></section>"
         "<section><h2>Original proposed date and role groups</h2>"
