@@ -197,7 +197,14 @@ def owner_dir(folder: Path) -> None:
     require(stat.S_ISDIR(s.st_mode) and s.st_uid == os.getuid()
             and s.st_mode & 0o077 == 0, "Directory must be owner-only 0700")
 
-def read_owner_file(path: Path) -> bytes:
+def read_owner_file(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
+    """Admit an exact owner-private file with its explicitly declared size cap.
+
+    Source files retain the per-file source bound. Only the known portable
+    ZIP call sites request the larger 15 MB total archive bound.
+    """
+    require(type(ceiling) is int and 0 < ceiling <= MAX_TOTAL,
+            "Invalid private input size limit")
     s = path.lstat()
     require(stat.S_ISREG(s.st_mode) and s.st_uid == os.getuid()
             and s.st_nlink == 1 and s.st_mode & 0o077 == 0,
@@ -210,7 +217,7 @@ def read_owner_file(path: Path) -> bytes:
                 and fs.st_nlink == 1 and fs.st_mode & 0o077 == 0
                 and identity == (s.st_dev, s.st_ino, s.st_size,
                                  s.st_mtime_ns, s.st_ctime_ns)
-                and 0 <= fs.st_size <= MAX_SOURCE + 1_000_000,
+                and 0 <= fs.st_size <= ceiling,
                 "File changed or unsafe during private admission")
         with os.fdopen(fd, "rb", closefd=False) as stream:
             raw = stream.read(fs.st_size + 1)
@@ -424,7 +431,7 @@ release approval. Independent review remains mandatory.</p></main></html>""")
 def verify(folder: Path, *, compare_checkout: bool = False,
            report_dir: Path | None = None) -> None:
     owner_dir(folder)
-    receipt = parse(read_owner_file(folder / "manifest.json"))
+    receipt = parse(read_owner_file(folder / "manifest.json", ceiling=350_000))
     require(set(receipt) == {"kind", "version", "disposition", "authority_granted",
                             "scan_authorized", "verified_remediation", "client_consent",
                             "source_heads", "files", "warning"}
@@ -466,7 +473,7 @@ def verify(folder: Path, *, compare_checkout: bool = False,
                 and type(descriptor["bytes"]) is int and descriptor["bytes"] >= 0
                 and type(descriptor["sha256"]) is str and len(descriptor["sha256"]) == 64,
                 "Invalid package descriptor")
-        raw = read_owner_file(folder / name)
+        raw = read_owner_file(folder / name, ceiling=MAX_TOTAL if name == "software-only.zip" else MAX_SOURCE)
         require(digest(raw) == descriptor["sha256"] and len(raw) == descriptor["bytes"],
                 "Package file bytes changed")
         verified[name] = raw
