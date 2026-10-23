@@ -104,3 +104,5 @@ The Unknown-coverage movement section now lets a reviewer compare **any two dist
 
 Export the selected pair and current filter as CSV, JSON or a script-free printable HTML brief. Handoffs use anonymous scenario ordinals and fixed field names only; they exclude original scenario IDs, filenames, source hashes and HUMAN notes. Aggregate counts and total/median changes are included, along with the selected manual slot numbers, source-reported snapshot statuses, and explicit false authority/verification fields. The selected order remains unauthenticated: increased unknown coverage is an uncertainty signal, while a decrease is **not** evidence of remediation, consent, safety or release.
 
+The pairwise table can also be sorted by canonical anonymous scenario order, largest increase, largest decrease or largest absolute change. Its summary now includes the full-cohort and filtered-subset median, quartiles, IQR and min/max change so a large movement in a few scenarios is not hidden by the total. The JSON pair handoff uses schema v2; CSV includes the chosen sort/filter and aggregate distribution summary alongside each anonymous scenario row.
+
