@@ -79,6 +79,16 @@
       <option value="clear">No flagged scenarios in any slot</option>
     </select>
   </label>
+  <label>Sort metric summaries for review
+    <select id="metricTrendSort">
+      <option value="fixed">Fixed metric order</option>
+      <option value="flagged_percent">Highest maximum flag prevalence</option>
+      <option value="flagged_observations">Most flagged scenario-slot observations</option>
+      <option value="candidate_shift">Largest absolute median candidate shift</option>
+      <option value="delta_shift">Largest absolute median delta shift</option>
+      <option value="flagged_slots">Most slots containing flags</option>
+    </select>
+  </label>
   <p id="metricTrendSummaryText" class="message" role="status" aria-live="polite">Import snapshots to summarize median shifts and source-flag prevalence.</p>
   <div id="metricTrendSummary" class="tablewrap" role="region" aria-label="Compact per-metric trend summary" tabindex="0"><p class="empty">No trend summaries yet.</p></div>
   <div class="controls no-print">
