@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LightUp · Lab Scenario Studio</title><link rel="stylesheet" href="style.css"></head><body>
+<a href="#composer" class="skip">Skip to scenario editor</a>
+<header><div class="top"><span class="brand">◈ LIGHTUP / ASSESSMENT RUNTIME</span><strong class="pill">INCUBATE · LAB ONLY · DRAFT/HOLD</strong></div>
+<h1>Lab Scenario Studio</h1><p class="lead">Design <strong>isolated, offline lab exercises</strong> and their planted ground truth, before evaluation. No target connection, runner, scanner or permissions are created.</p>
+<div class="warning"><strong>NO EXECUTION AUTHORITY</strong><span>Authorized: false · Consent verified: false · Dispatch: false · Release: false</span></div>
+</header><main>
+<section class="panel" id="sources"><div class="section"><h2>01 / Catalog</h2><span>PRIVATE · LOCAL ONLY</span></div>
+<p>Start with an entirely fictional demonstration or import a previously saved private Lab Design Catalog v1 JSON. Data stays in browser memory until Forget or closing the page; no network or background persistence.</p>
+<div class="controls"><button id="originalProfiles" type="button">Load original fixture profiles</button><button id="demo">Load fictional demo</button><label class="pick">Import PRIVATE catalog<input type="file" accept=".json,application/json" id="load"></label>
+<label class="pick">Append PRIVATE catalog<input type="file" accept=".json,application/json" id="appendCatalog" disabled></label><button id="forget" class="outline">Forget all</button></div><p>Want native examples? From the LightUp repository root, run <code>python3 lab-design/fixture_catalog.py --output /private/path/fixture-design.json</code>, then import that PRIVATE JSON and explicitly accept it. This reads installed fixture definitions only — it does not start a fixture server.</p>
+<p id="status" role="status" aria-live="polite"></p>
+<div class="controls" aria-label="In-memory catalog history">
+<button id="undo" type="button" class="outline" disabled>Undo last change</button>
+<button id="redo" type="button" class="outline" disabled>Redo</button>
+</div>
+<p id="historyStatus" role="status" aria-live="polite">Undo/redo keeps up to 20 catalog changes in this tab's memory only. Forget all clears history.</p>
+<div id="stats" class="stats"></div><div id="staging" class="staged" hidden><h3>Replacement preview — not applied</h3>
+<p id="stageSummary"></p><div id="stageRows" class="tablewrap"></div>
+<div class="controls"><button id="mergeStage" type="button" class="outline">Apply selected changes (no deletion)</button><button id="acceptStage" type="button">Accept replacement (PRIVATE)</button><button id="rejectStage" type="button" class="outline">Discard imported candidate</button></div>
+<p>Choose individual ADDED/CHANGED scenario rows to copy into your current private catalog, preserving all other entries. ABSENT never causes automatic deletion. Alternatively accept full replacement after reviewing its differences. No source chronology, authenticity, scan results or consent is established.</p></div></section>
+<section class="panel" id="composer"><div class="section"><h2>02 / Scenario composer</h2><span>OFFLINE DESIGN · NO SCAN</span></div>
+<p>Only explicit numeric IP literals from 127.0.0.0/8, RFC1918, IPv6 loopback, ULA or IPv6 link-local are accepted. Hostnames, public and reserved documentation/test networks, URL schemes, ports and scoped identifiers are rejected. Zero planted findings and unscored are different.</p>
+<form id="editor" novalidate><div class="grid">
+<label>Scenario ID <small>Unique ASCII token, e.g. local-login-01</small><input id="scenarioId" maxlength="64" required autocomplete="off" placeholder="local-login-01"></label>
+<label>Scenario title <small>1–160 characters</small><input id="scenarioName" maxlength="160" required autocomplete="off" placeholder="Isolated login fixture"></label>
+<label class="wide">Lab target IPs <small>One numeric IP address per line, 1–16 targets. No DNS, URL or CIDR.</small><textarea id="targets" rows="4" spellcheck="false" placeholder="127.0.0.1&#10;10.0.0.8"></textarea></label>
+<label class="wide">Description <small>Optional short human lab setup note, never public export</small><textarea id="description" rows="3" maxlength="500" placeholder="Fictional offline scenario notes"></textarea></label>
+<label>Ground truth <small>Choose whether scoring expectations exist</small><select id="groundMode"><option value="unscored">Unscored (unknown)</option><option value="zero">Scored: exactly zero findings expected</option><option value="planted">Scored: planted finding list</option></select></label>
+<label class="wide" id="findingsWrap">Planted findings <small>One per line: identifier | title | capability_id | severity (critical, high, medium, low, info). Maximum 64. No pipes in fields.</small><textarea id="findings" rows="5" spellcheck="false" placeholder="fixture-1 | Simulated missing header | lab.http.headers | medium"></textarea></label>
+</div><div class="controls"><button id="save" type="submit">Add scenario</button><button id="clear" type="button" class="outline">Clear editor</button><button id="delete" type="button" class="danger" disabled>Delete selected scenario</button></div>
+<p id="editorStatus" role="status" aria-live="polite"></p></form></section>
+<section class="panel"><div class="section"><h2>03 / Lab scenario catalog</h2><span>1–32 MANUAL SCENARIOS</span></div>
+<p>Select a numbered scenario to edit; each edit replaces only that scenario. The original target addresses and finding IDs are visible <strong>only inside this private workspace</strong> and its original private catalog export.</p>
+<div class="grid">
+<label>Find private scenario <small>Local ID, title or planted capability</small><input id="catalogSearch" maxlength="100" placeholder="Name, ID or capability" autocomplete="off"></label>
+<label>Ground-truth mode<select id="catalogMode"><option value="all">All modes</option><option value="unscored">Unscored / unknown</option><option value="zero">Explicit zero</option><option value="planted">Planted findings</option></select></label>
+<label>Planted severity<select id="catalogSeverity"><option value="all">All severities</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label>
+</div><div class="controls"><button id="exportFiltered" type="button" class="outline" disabled>Download matching PRIVATE subset</button><button id="exportSelectedCatalog" type="button" class="outline" disabled>Download selected subset</button><button id="clearFilters" type="button" class="outline">Clear filters</button><button id="selectVisibleCatalog" type="button" class="outline" disabled>Select all matching</button><button id="deleteSelectedCatalog" type="button" class="danger" disabled>Delete selected scenarios</button><button id="copySelectedCatalog" type="button" class="outline" disabled>Copy selected as UNSCORED</button></div>
+<p id="catalogSelectionSummary" role="status" aria-live="polite">No private scenarios selected for batch deletion.</p>
+<p id="filterSummary" aria-live="polite"></p>
+<div id="catalog" class="tablewrap"><p class="empty">No lab scenarios. Add one or explore the fictional demo.</p></div></section>
+<section class="panel"><div class="section"><h2>04 / Ground-truth capability map</h2><span>PRIVATE SOURCE COUNTS</span></div>
+<p>Review which manually declared capability IDs and severity classes have planted findings. An absent capability has <strong>no inferred coverage</strong>. An explicitly unscored scenario is not a clean test result. Capability text stays in this private browser view and is never sent to redacted exports.</p>
+<div id="coverage" class="tablewrap"><p class="empty">No explicit findings yet.</p></div></section>
+<section class="panel"><div class="section"><h2>05 / Private native handoff</h2><span>PREPARATION, NOT EXECUTION</span></div>
+<p>Download the exact original private catalog JSON, then optionally run the separate opt-in Python bridge for <code>LabScenario</code> and <code>ExpectedFinding</code> constructors. The bridge does not start or record any evaluation or scan. Do not share the original catalog publicly: it contains target IPs, labels, and findings.</p>
+<div class="controls"><button id="savePrivate" disabled>Download PRIVATE catalog JSON</button>
+<button id="summary" class="outline" disabled>Download redacted review summary</button><button id="brief" class="outline" disabled>Download script-free redacted brief</button><button id="runbook" class="outline" type="button" disabled>Download PRIVATE lab runbook</button><button id="print" class="outline" disabled>Print redacted summary</button></div>
+<div id="printSummary" class="print-summary"></div><p id="exportStatus" role="status" aria-live="polite"></p>
+<p class="footer-note">Separate authentically verified client/operator consent, revoke-at-use, original source-owner security repairs, the complete required hosted and named VPS CI, independent privacy/security review and explicit HUMAN GO remain mandatory before any production activity. This editor cannot satisfy those requirements.</p></section>
+</main><footer>LightUp · Lab-only planning · no network or execution · <a href="https://github.com/Zennay/Lightup/issues/1593">Issue #1593</a></footer>
+<script src="fixture-pack.js" defer></script>
+<script src="app.js" defer></script></body></html>
