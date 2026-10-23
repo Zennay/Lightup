@@ -103,6 +103,9 @@ class PlannedAssessmentTest(unittest.TestCase):
         self.assertEqual(metrics["coverage_assessed"], 3)
         capabilities = {f["capability_id"] for f in result["findings"]}
         self.assertEqual(capabilities, {"web-baseline", "cryptography"})
+        for finding in result["findings"]:
+            self.assertTrue(finding["evidence_ids"])
+            self.assertTrue(finding["evidence_summary"].strip())
         self.assertEqual(result["coverage"]["domains"]["network-services"], "assessed")
 
     def test_coverage_persists_to_domain_and_is_tenant_scoped(self):

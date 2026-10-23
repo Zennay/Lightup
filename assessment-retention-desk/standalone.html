@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-isEIqGK/MjjlYYjVkSv7MYH83uwXcQVNF35dorhmKYo=' 'sha256-7RXN0GbOa9eA7uqe91ugbLe5JTORA8ZSNQG0mewKHnU='; style-src 'sha256-RFvcgvCNk2kvH5Fixwmv1eFTuTzZNJcjR2qkHfBpQ90='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp | PRIVATE Assessment Retention Desk</title>
+<style>:root { color-scheme:dark; font: 16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0a1220; color:#f1f6fc; }
+* { box-sizing:border-box }
+body { margin:0 }
+main { width:min(1320px,95vw); margin:0 auto; padding:28px 0 55px }
+header { padding:40px 6px 18px }
+.eyebrow { font-size:12px; letter-spacing:.16em; font-weight:750; color:#7bcef9 }
+h1 { max-width:940px; font-size:clamp(29px,3vw,47px); letter-spacing:-.035em; line-height:1.14; margin:10px 0 20px }
+h2 { font-size:1.25rem; margin:0 0 7px }
+p { color:#c0cedd; max-width:1050px; margin:8px 0 16px }
+.warning { border:1px solid #e6ba72; background:#32261d; padding:15px 19px; border-radius:14px; line-height:1.65; max-width:1080px }
+.warning strong { color:#ffe2a2 }
+.panel { background:#111d2e; border:1px solid #2b3f57; border-radius:18px; padding:24px; margin:20px 0; box-shadow:0 10px 24px #060e1850 }
+.actions,.filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:14px 0 }
+.filelabel,button { display:inline-block; padding:11px 16px; border:1px solid #7ed6f8; background:#207fac; color:#fff; border-radius:10px; font:inherit; font-weight:600; cursor:pointer; }
+.filelabel:hover,button:hover { filter:brightness(1.17) }
+.secondary { border-color:#66849e; background:#23364e }
+.danger { border-color:#bd8d91; background:#5a2c3b; font-size:.84rem; padding:8px 10px }
+input[type=file] { max-width:310px; color:#d6e4ee; font:inherit; font-size:.8rem }
+input[type=file]::file-selector-button { display:none }
+input[type=text],input[type=search],input[type=date],select { background:#091422; border:1px solid #54718b; color:#fff; padding:9px; border-radius:9px; font:inherit; max-width:260px; min-width:135px; }
+input[type=text] { width:100%; min-width:175px }
+.filters label { display:grid; gap:3px; color:#b8cadb; font-size:.85rem }
+button:focus-visible,input:focus-visible,select:focus-visible,.filelabel:focus-visible { outline:3px solid #fed483; outline-offset:2px }
+.scroll { width:100%; overflow-x:auto; border:1px solid #31475d; border-radius:11px }
+table { border-collapse:collapse; width:100%; min-width:1710px; font-size:.9rem }
+th { color:#bbd5e7; text-align:left; font-size:.79rem; letter-spacing:.03em; background:#1c3047 }
+td,th { padding:12px; border-bottom:1px solid #34485e; vertical-align:top; }
+tbody tr:hover { background:#1a3046 }
+td small { display:block; color:#a8c0d2; font-size:.77rem; margin-top:2px; }
+.stats { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0 19px; }
+.stat.attention { border-color:#d4a15f; background:#47311f; }
+.stat { background:#20354b; border:1px solid #355672; border-radius:12px; padding:12px 15px; min-width:175px; flex:1; font-size:.87rem; }
+.vault { border:1px solid #468aa8; background:#112f3e; padding:16px 18px; border-radius:14px; margin:15px 0 20px; }
+.vault h3 { margin:0 0 7px; font-size:1.05rem; color:#b5e5ff; }
+.vault .actions label:not(.filelabel) { display:grid; gap:5px; font-size:.9rem; color:#e4f0fc; }
+.vault .actions input[type=password] { background:#07131f; border:1px solid #8cb5cd; border-radius:9px; color:#fff; min-width:220px; padding:9px; font:inherit; }
+.vault .actions input[type=password]:focus-visible {outline:3px solid #fce18b; outline-offset:2px;}
+.drift { border:1px solid #506985; border-radius:11px; background:#1b3046; padding:12px 17px; margin:13px 0; overflow-wrap:anywhere; }
+.drift strong { color:#c1e6f8; }
+.drift li { padding:3px 0; font-size:.85rem; }
+.bulk { border:1px solid #49647c; border-radius:12px; background:#182940; padding:14px; margin-bottom:15px; }
+.bulk h3 { font-size:1rem; margin:0 0 10px; }
+.bulk .actions label { display:grid; gap:3px; font-size:.82rem; color:#bfd6e7; }
+.bulk .actions label:has(#bulk-action) { flex:1; min-width:240px; }
+.bulk .actions input[type=text] { width:100%; max-width:none; }
+button:disabled { opacity:.43; cursor:not-allowed; }
+.muted { color:#a7bed0; font-size:.88rem }
+#message { background:#213751; border-left:4px solid #85c8eb; padding:14px 18px; border-radius:8px; margin:20px 0; }
+#message.error { background:#44292f; border-left-color:#f7a5a8; }
+footer { color:#95adbe; font-size:.78rem; text-align:center; }
+@media(max-width:720px) { main {width:96vw;padding-top:8px} header {padding-top:18px} .panel {padding:16px} .filelabel,button{width:100%;text-align:center} }
+@media print {
+.vault {display:none!important}
+
+:root {color-scheme:light; background:white; color:black}
+main{width:100%;padding:0}header{padding:0}
+.panel{break-inside:avoid;box-shadow:none;background:#fff;color:#000;border:1px solid #999;padding:9px;margin:9px 0}
+.warning{background:white;color:#000;border:2px solid #000}
+.warning strong,p,h1,h2,.eyebrow,.muted,footer {color:#111}
+.actions,.filters,#sources,#receipt,#message,button {display:none!important}
+input,select{background:white!important;color:black!important;border:0!important}
+table{min-width:0;font-size:10px}
+td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
+.stat{background:white;color:black;border:1px solid #aaa}
+}
+/* HUMAN custody/sensitivity/hold fields are visible and always private; none denotes a verified legal decision. */
+td select { max-width: 225px; width: 100%; }
+td input[type=text] { max-width: 255px; }
+</style>
+
+
+</head>
+<body>
+<main>
+<header>
+<p class="eyebrow">LIGHTUP · OFFLINE ASSESSMENT OPERATIONS</p>
+<h1>PRIVATE bewaartermijnen & overdrachtsregister</h1>
+<p>Orden reeds geproduceerde assessmentbestanden, koppel menselijke vervolgkeuzes aan <strong>werkelijk geselecteerde bestandsbytes</strong> en neem die keuzes later opnieuw door. Geen uploads, netwerk, scanning of bestandsverwijdering.</p>
+<div class="warning" role="note"><strong>INCUBATE · M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><br>Alle keuzes zijn ongetekende menselijke voorstellen; geen toestemming, risicogoedkeuring, bewijs van herstel, eigenaarstoestemming of toestemming tot verwijdering. Gebruik alleen op een vertrouwd apparaat voor data waarvoor je bevoegd bent.</div>
+</header>
+<section class="panel">
+<h2>1. Privébronbestanden toevoegen</h2>
+<p>Maximaal 12 bestanden, maximaal 8 MiB per stuk en 64 MiB totaal. De browser berekent lokaal SHA-256; bestandsinhoud wordt <strong>niet</strong> in een export geplaatst. Bestandsnamen worden niet in de ontvangst opgeslagen.</p>
+<label for="sources" class="filelabel">Selecteer bestaande privébestanden</label><input id="sources" type="file" multiple>
+<div class="actions"><button id="clear" class="secondary" type="button">Werkruimte leegmaken</button><span id="source-count" class="muted">0 / 12 bronnen</span></div>
+</section>
+<section class="panel">
+<h2>2. Menselijke opvolging en beslissingen</h2>
+<p>De naam is een <strong>zelfgekozen lokaal alias</strong>, geen bewijs van herkomst. Dossierhouder, gevoeligheid en bewaarbeperking zijn uitsluitend <strong>onbevestigde HUMAN-indicaties</strong>, geen geauthenticeerd wettelijk besluit. Onbekende bewaarbeperkingen blijven een HOLD voor verwijderingsvoorstellen. "Voorgesteld verwijderen" voert nooit een verwijdering uit. Elke rij blijft expliciet onbeoordeeld totdat een mens haar invult.</p>
+<div class="filters"><label>Zoeken <input type="search" id="query" placeholder="Alias of SHA-prefix"></label><label>Status <select id="status-filter"><option value="">Alle voorstellen</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden</option><option value="quarantine">Afzonderen</option><option value="propose_delete">Verwijdering voorstellen</option></select></label>
+<label>HUMAN reviewdatum <select id="due-filter">
+<option value="">Alle reviewmomenten</option>
+<option value="overdue">Voorlopig verstreken</option>
+<option value="soon">Binnen 7 dagen inclusief vandaag</option>
+<option value="no_date">Geen reviewdatum</option>
+<option value="no_action">Geen vervolgactie</option>
+</select></label>
+<label>HUMAN bewaarbeperking <select id="hold-filter">
+<option value="">Alle onbevestigde controles</option>
+<option value="unknown">HUMAN nog niet beoordeeld</option>
+<option value="human_claim_active">HUMAN meldt actieve beperking</option>
+<option value="human_declared_clear">HUMAN meldt geen bekende beperking (niet geverifieerd)</option>
+<option value="unassigned">Dossierhouder ontbreekt</option>
+<option value="decision_hold">Verwijdervoorstel nog HOLD</option>
+</select></label>
+<label>Weergavevolgorde <select id="sort-order"><option value="source">Oorspronkelijke invoer</option><option value="due">Reviewdatum eerst</option><option value="stage">HUMAN fase</option></select></label>
+</div>
+<div class="bulk panel-mini">
+<h3>Gefilterde HUMAN-planning (voorbeeld → bevestigen → één stap terug)</h3>
+<div class="actions">
+<label>Status voor zichtbare rijen <select id="bulk-status"><option value="__keep__">Huidige status behouden</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden — voorstel</option><option value="quarantine">Afzonderen — voorstel</option><option value="propose_delete">Verwijdering voorstellen (geen actie)</option></select></label>
+<label>HUMAN houder (leeg = behouden) <input type="text" id="bulk-custodian" maxlength="80" placeholder="Team of dossierhouder"></label>
+<label>HUMAN gevoeligheid <select id="bulk-classification">
+<option value="__keep__">Niet wijzigen</option>
+<option value="unknown">Onbekend</option><option value="internal">Intern</option>
+<option value="confidential">Vertrouwelijk</option><option value="restricted">Beperkt gevoelig</option>
+</select></label>
+<label>HUMAN bewaarbeperking <select id="bulk-hold">
+<option value="__keep__">Niet wijzigen</option>
+<option value="unknown">Onbekend / onderzoek nodig</option>
+<option value="human_claim_active">HUMAN meldt actief</option>
+<option value="human_declared_clear">HUMAN meldt geen bekende beperking (onbevestigd)</option>
+</select></label>
+<label>Optionele voorlopige reviewdatum <input type="date" id="bulk-date" min="2000-01-01" max="2099-12-31"></label>
+<label>Menselijke vervolgactie <input type="text" id="bulk-action" maxlength="400" placeholder="Bij verwijderen verplicht: reden/goedkeuring volgen"></label>
+<button id="bulk-apply" type="button">Toepassen op zichtbare rijen</button>
+<button id="bulk-undo" class="secondary" type="button" disabled>Laatste bulkbewerking terugdraaien</button>
+</div>
+<p class="muted">Alleen zichtbaar gefilterde bronrijen worden aangepast. Bron-SHA en bestandsgrootte blijven altijd onveranderd. Dit is een lokale niet-bevoegdheidsplanning.</p>
+</div>
+<div id="stats" class="stats" aria-live="polite"></div>
+<div class="scroll"><table><thead><tr><th>Bronidentiteit</th><th>Privé-alias</th><th>HUMAN dossierhouder</th><th>HUMAN gevoeligheid</th><th>Bewaarbeperking (onbevestigd)</th><th>Menselijke status</th><th>Reviewdatum</th><th>HUMAN actie / toelichting</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="9">Selecteer eerst bestanden.</td></tr></tbody></table></div>
+</section>
+<section class="panel">
+<h2>3. Brongebonden plan hervatten / exporteren</h2>
+<div class="vault">
+<h3>Versleuteld PRIVATE HUMAN-plan (standaard overdracht)</h3>
+<p>Beveilig de gevoelige HUMAN-aliassen, bronhashes en acties lokaal met een afzonderlijk wachtwoord. AES-256-GCM met PBKDF2-SHA256 (310.000 iteraties, verse willekeurige salt en nonce). Encryptie bewijst <strong>geen bronherkomst of toestemming</strong>.</p>
+<div class="actions">
+<label>Privéwachtwoord (12–128 tekens) <input id="vault-password" type="password" minlength="12" maxlength="128" autocomplete="off" placeholder="Wordt niet opgeslagen"></label>
+<button id="export-vault" type="button">Versleuteld plan exporteren (.lurt)</button>
+<label for="vault-import" class="filelabel secondary">Versleuteld plan openen (.lurt)</label><input id="vault-import" type="file" accept=".lurt,application/json">
+<label for="vault-compare" class="filelabel secondary">Oud versleuteld plan vergelijken (zonder overname)</label><input id="vault-compare" type="file" accept=".lurt,application/json">
+</div>
+<p class="muted">Wachtwoordverlies betekent geen herstel van versleutelde HUMAN-keuzes. De actuele originele bronbestanden moeten opnieuw zijn geselecteerd; bij mismatch wordt geen enkele HUMAN-rij overgenomen.</p>
+</div>
+<p>Een bestaand plan wordt uitsluitend in zijn geheel geaccepteerd wanneer de <em>actueel geselecteerde</em> bestandsbytes exact dezelfde SHA-256 en grootte hebben. Geen gedeeltelijke overname, geen automatische carry van gewijzigde bronnen. Het plan is <strong>PRIVATE en ongetekend</strong>: hashes alleen bewijzen bytegelijkheid.</p>
+<div class="actions">
+<label for="receipt" class="filelabel">Bestaand privéplan openen</label><input id="receipt" type="file" accept=".json,application/json">
+<label for="compare" class="filelabel secondary">Vergelijk ander privéplan (geen overname)</label><input id="compare" type="file" accept=".json,application/json">
+<button id="export-plan" class="secondary" type="button">Onversleuteld PRIVATE JSON exporteren (expliciet)</button>
+<button id="export-counts" class="secondary" type="button">Alleen statusaantallen (.csv)</button>
+<button id="export-calendar" class="secondary" type="button">PRIVATE voorgestelde reviewdatums (.ics)</button>
+<button id="export-brief" class="secondary" type="button">PRIVATE HUMAN reviewdossier (.html)</button>
+<button id="print" class="secondary" type="button">Privé-overzicht afdrukken</button>
+</div>
+<div id="source-drift" class="drift" aria-live="polite">Bronvergelijking is optioneel: selecteer eerst huidige originele bronnen, daarna een eerder privéplan. Ontbrekende bron = onbekend, nooit opgelost/verwijderd.</div>
+<p class="muted">Planexport bevat SHA-256, bestandsgrootte en jouw HUMAN-alias/status/actie. Dit is gevoelige privé-informatie; behandel de export als vertrouwelijk. Gegevens blijven alleen in browsergeheugen, niet in localStorage.</p>
+</section>
+<div id="message" role="status" aria-live="polite" tabindex="-1">Klaar voor lokale bestandsselectie.</div>
+<footer>Geen source-owner of veiligheidsgrenzen gewijzigd · geen actieve assessment · geen automatische retentie- of wisbeslissing.</footer>
+</main>
+<script>"use strict";
+/* PRIVATE, unsigned, local-only HUMAN metadata workroom. No network, scans, deletes or grants. */
+(() => {
+  const MAX_FILES = 12, MAX_FILE_BYTES = 8 * 1024 * 1024, MAX_TOTAL_BYTES = 64 * 1024 * 1024;
+  const MAX_RECEIPT_BYTES = 131072;
+  const STATES = Object.freeze({
+    needs_review: "Nog beoordelen",
+    retain: "Behouden (voorstel)",
+    quarantine: "Afzonderen (voorstel)",
+    propose_delete: "Verwijdering voorstellen — GEEN wisopdracht"
+  });
+  const CLASSIFICATIONS = Object.freeze({
+    unknown:"Onbekend (HUMAN)",
+    internal:"Intern (HUMAN)",
+    confidential:"Vertrouwelijk (HUMAN)",
+    restricted:"Beperkt gevoelig (HUMAN)"
+  });
+  const HOLD_FLAGS = Object.freeze({
+    unknown:"Onbekend / nog bespreken",
+    human_claim_active:"HUMAN meldt actieve bewaarbeperking",
+    human_declared_clear:"HUMAN meldt geen bekende beperking — NIET geverifieerd"
+  });
+  const V2_COLUMNS = ["sha256","bytes","alias","status","review_date","action","custodian","classification","hold_flag"];
+  const HUMAN_FIELDS = ["alias","status","review_date","action","custodian","classification","hold_flag"];
+  const AUTHORITY = Object.freeze({
+    authorizes_scan: false, authorizes_delete: false, verifies_finding: false,
+    verifies_remediation: false, proves_consent: false, authenticates_source: false
+  });
+  let entries = [];
+  let processing = false;
+  let lastBulk = null;
+  function invalidateUndo() {
+    lastBulk = null;
+    $("bulk-undo").disabled = true;
+  }
+  const $ = id => document.getElementById(id);
+  const status = (s, bad = false) => {
+    $("message").textContent = s;
+    $("message").classList.toggle("error", bad);
+  };
+  const isPlain = value => !!value && typeof value === "object" && !Array.isArray(value)
+    && Object.getPrototypeOf(value) === Object.prototype;
+  const keysAre = (value, keys) => isPlain(value) &&
+    Object.keys(value).sort().join("|") === keys.slice().sort().join("|");
+  const safeHuman = (value, max) => typeof value === "string" &&
+    value.length <= max && !/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/u.test(value);
+  const validDate = s => s === "" || (typeof s === "string" && /^20\d{2}-\d{2}-\d{2}$/.test(s) &&
+    !Number.isNaN(Date.parse(s + "T00:00:00Z")) &&
+    new Date(s + "T00:00:00Z").toISOString().slice(0,10) === s);
+  const hexSha = buffer => Array.from(new Uint8Array(buffer), b => b.toString(16).padStart(2, "0")).join("");
+  const digest = async file => hexSha(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()));
+  function download(name, type, contents) {
+    const blob = new Blob([contents], {type});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.hidden = true;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  function text(tag, value, className) {
+    const element = document.createElement(tag);
+    element.textContent = value;
+    if (className) element.className = className;
+    return element;
+  }
+  function input(value, max, placeholder, update) {
+    const e = document.createElement("input");
+    e.type = "text"; e.value = value; e.maxLength = max;
+    e.placeholder = placeholder; e.addEventListener("change", () => {
+      if (!safeHuman(e.value, max)) { e.value = value; status("Ongeldige controle-/richtingskarakters geweigerd.", true); return; }
+      update(e.value); invalidateUndo(); updateCounts();
+    });
+    return e;
+  }
+  function localDay(day) {
+    const y = day.getFullYear();
+    return String(y).padStart(4,"0") + "-" + String(day.getMonth()+1).padStart(2,"0") +
+      "-" + String(day.getDate()).padStart(2,"0");
+  }
+  function humanReviewWindow() {
+    const today = new Date();
+    const soon = new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    soon.setDate(soon.getDate()+7);
+    return {today:localDay(today), soon:localDay(soon)};
+  }
+  function updateCounts() {
+    $("source-count").textContent = entries.length + " / " + MAX_FILES + " bronnen";
+    const sums = Object.fromEntries(Object.keys(STATES).map(key => [key, 0]));
+    for (const e of entries) sums[e.status] += 1;
+    const {today,soon} = humanReviewWindow();
+    const overdue = entries.filter(e => e.review_date && e.review_date < today).length;
+    const dueSoon = entries.filter(e => e.review_date && e.review_date >= today && e.review_date <= soon).length;
+    const noDate = entries.filter(e => !e.review_date).length;
+    const humanHolds = entries.filter(e=>e.hold_flag==="human_claim_active").length;
+    const unassigned = entries.filter(e=>!e.custodian.trim()).length;
+    const decisionHolds = entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length;
+    const target = $("stats");
+    target.replaceChildren();
+    for (const [key, label] of Object.entries(STATES)) {
+      const card = text("div", sums[key] + " · " + label, "stat");
+      target.append(card);
+    }
+    target.append(text("div", overdue + " · voorlopige HUMAN reviews verstreken", "stat attention"));
+    target.append(text("div", dueSoon + " · voorlopige HUMAN reviews komende 7 dagen", "stat"));
+    target.append(text("div", noDate + " · zonder voorlopige reviewdatum", "stat"));
+    target.append(text("div", unassigned + " · HUMAN dossierhouder onbekend", "stat attention"));
+    target.append(text("div", humanHolds + " · HUMAN meldt mogelijke bewaarbeperking", "stat attention"));
+    target.append(text("div", decisionHolds + " · verwijdervoorstellen onvolledig (HOLD)", "stat attention"));
+  }
+  function visibleEntries() {
+    const q = $("query").value.trim().toLowerCase();
+    const filter = $("status-filter").value;
+    const dueFilter = $("due-filter").value;
+    const holdFilter = $("hold-filter").value;
+    const {today, soon} = humanReviewWindow();
+    const items = entries.filter(e => (!filter || e.status === filter) &&
+      (!q || e.alias.toLowerCase().includes(q) || e.custodian.toLowerCase().includes(q) || e.sha256.includes(q)) &&
+      (!holdFilter || (holdFilter==="unassigned" && !e.custodian.trim()) ||
+        (holdFilter==="decision_hold" && e.status==="propose_delete" && !removalProposalReady(e)) ||
+        e.hold_flag===holdFilter) &&
+      (!dueFilter || (dueFilter === "overdue" && e.review_date && e.review_date < today) ||
+        (dueFilter === "soon" && e.review_date && e.review_date >= today && e.review_date <= soon) ||
+        (dueFilter === "no_date" && !e.review_date) ||
+        (dueFilter === "no_action" && !e.action.trim())));
+    if ($("sort-order").value === "due") items.sort((a,b)=>
+      (a.review_date || "9999-99-99").localeCompare(b.review_date || "9999-99-99"));
+    if ($("sort-order").value === "stage") items.sort((a,b)=>a.status.localeCompare(b.status));
+    return items;
+  }
+  function render() {
+    const body = $("rows");
+    body.replaceChildren();
+    const shown = visibleEntries();
+    for (const item of shown) {
+      const row = document.createElement("tr");
+      const identity = document.createElement("td");
+      identity.append(text("strong", item.sha256.slice(0, 14) + "…"),
+        text("small", item.bytes.toLocaleString("nl-NL") + " bytes"));
+      const alias = document.createElement("td");
+      alias.append(input(item.alias, 80, "Vrij alias", value => { item.alias = value; }));
+      const custodian = document.createElement("td");
+      custodian.append(input(item.custodian, 80, "HUMAN dossierhouder of team", value => { item.custodian=value; }));
+      const sensitivity = document.createElement("td");
+      const cls = document.createElement("select");
+      for(const [key,label] of Object.entries(CLASSIFICATIONS))cls.add(new Option(label,key));
+      cls.value = item.classification;
+      cls.addEventListener("change",()=>{item.classification=cls.value;invalidateUndo();updateCounts();});
+      sensitivity.append(cls);
+      const hold = document.createElement("td");
+      const holdSelect=document.createElement("select");
+      for(const [key,label] of Object.entries(HOLD_FLAGS))holdSelect.add(new Option(label,key));
+      holdSelect.value=item.hold_flag;
+      holdSelect.addEventListener("change",()=>{item.hold_flag=holdSelect.value;invalidateUndo();updateCounts();});
+      hold.append(holdSelect);
+      const stage = document.createElement("td");
+      const select = document.createElement("select");
+      for (const [value, label] of Object.entries(STATES)) {
+        const option = new Option(label, value); select.add(option);
+      }
+      select.value = item.status;
+      select.addEventListener("change", () => {
+        item.status = select.value; invalidateUndo(); updateCounts();
+        if ($("status-filter").value) render();
+      });
+      stage.append(select);
+      const due = document.createElement("td");
+      const date = document.createElement("input");
+      date.type = "date"; date.min = "2000-01-01"; date.max = "2099-12-31";
+      date.value = item.review_date;
+      date.addEventListener("change", () => {
+        if (!validDate(date.value)) { date.value = item.review_date; status("Geen geldige reviewdatum.", true); return; }
+        item.review_date = date.value; invalidateUndo(); updateCounts();
+        if ($("due-filter").value || $("sort-order").value === "due") render();
+      });
+      due.append(date);
+      const action = document.createElement("td");
+      action.append(input(item.action, 400, "Menselijke vervolgstap, geen uitvoeropdracht", value => { item.action = value; }));
+      const remove = document.createElement("td");
+      const btn = document.createElement("button");
+      btn.textContent = "Verwijder rij"; btn.className = "danger"; btn.type = "button";
+      btn.addEventListener("click", () => {
+        entries = entries.filter(e => e.sha256 !== item.sha256); invalidateUndo(); resetDrift();
+        status("Alleen de bronrij is uit het browsergeheugen verwijderd; geen bronbestand gewist.");
+        render();
+      });
+      remove.append(btn);
+      row.append(identity, alias, custodian, sensitivity, hold, stage, due, action, remove);
+      body.append(row);
+    }
+    if (!shown.length) {
+      const tr = document.createElement("tr"); const td = document.createElement("td");
+      td.colSpan = 9; td.textContent = entries.length ? "Geen rijen voor dit filter." : "Selecteer eerst bestanden.";
+      tr.append(td); body.append(tr);
+    }
+    updateCounts();
+  }
+  async function ingest(event) {
+    if (processing) return;
+    processing = true;
+    const chosen = Array.from(event.target.files || []);
+    try {
+      if (!chosen.length) return;
+      if (!globalThis.crypto?.subtle) throw new Error("WebCrypto SHA-256 is hier niet beschikbaar; open op een vertrouwde HTTPS/file-browseromgeving.");
+      if (chosen.length + entries.length > MAX_FILES) throw new Error("Maximaal " + MAX_FILES + " bestanden.");
+      let size = entries.reduce((a, e) => a + e.bytes, 0);
+      const seen = new Set(entries.map(e => e.sha256));
+      const staged = [];
+      for (const file of chosen) {
+        if (!file.size || file.size > MAX_FILE_BYTES) throw new Error("Lege of te grote bron geweigerd (maximaal 8 MiB).");
+        size += file.size;
+        if (size > MAX_TOTAL_BYTES) throw new Error("Totale invoer groter dan 64 MiB.");
+        const sha256 = await digest(file);
+        if (seen.has(sha256)) throw new Error("Dubbel identiek bestand; geen herhaalde bronidentiteiten.");
+        seen.add(sha256);
+        staged.push({sha256, bytes:file.size, alias:"Bron " + (entries.length + staged.length + 1),
+          status:"needs_review", review_date:"", action:"",
+          custodian:"", classification:"unknown", hold_flag:"unknown"});
+      }
+      // Atomic: no selected source is installed before every new source has been admitted.
+      entries = entries.concat(staged); invalidateUndo(); resetDrift();
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
+      render(); status(staged.length + " echte lokale bestandsidentiteiten gecontroleerd en toegevoegd. Geen bytes geüpload.");
+    } catch (e) {
+      status("HOLD: " + e.message + " Er is niets uit deze selectie toegevoegd.", true);
+    } finally {
+      event.target.value = ""; processing = false;
+    }
+  }
+  function record(e) {
+    return {sha256:e.sha256, bytes:e.bytes, alias:e.alias,
+      status:e.status, review_date:e.review_date, action:e.action,
+      custodian:e.custodian, classification:e.classification, hold_flag:e.hold_flag};
+  }
+  function removalProposalReady(e) {
+    return e.status!=="propose_delete" || (
+      Boolean(e.action.trim()) && Boolean(e.custodian.trim()) &&
+      e.hold_flag==="human_declared_clear"
+    );
+  }
+  function requireCompleteHumanProposals() {
+    if(entries.some(e=>!removalProposalReady(e)))
+      throw Error("Verwijdervoorstel-HOLD: dossierhouder, HUMAN-actie en expliciete (onbevestigde) check op bewaarbeperking nodig. Dit verleent NOOIT wisbevoegdheid.");
+  }
+  function sourcePlan() {
+    if (!entries.length || processing) throw Error("Selecteer eerst privébronnen.");
+    requireCompleteHumanProposals();
+    return {kind:"lightup.private.assessment.retention.plan",version:2,authority:AUTHORITY,
+      rows:entries.map(record).sort((a,b)=>a.sha256.localeCompare(b.sha256))};
+  }
+  function restoreOriginal(raw, label) {
+    const rows = validateReceipt(raw, true);
+    if (!window.confirm("Volledige bron-SHA/size match: alle HUMAN voorstellen overnemen uit " + label +
+      "? Dit bewijst GEEN echte herkomst, toestemming, intrekking, herstel of verwijderingsbevoegdheid.")) {
+      return status("Overname geannuleerd. Huidige planning blijft intact.");
+    }
+    entries = entries.map(e=>({...e,...record(rows.get(e.sha256))}));
+    invalidateUndo(); resetDrift();
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
+    render(); status("Gehele brongebonden PRIVATE HUMAN-planning overgenomen zonder autorisatieclaim.");
+  }
+  function compareVaultPlan(raw) {
+    const earlier = validateReceipt(raw,true);
+    const target = $("source-drift");
+    const changed = [];
+    const stageCounts = Object.fromEntries(Object.keys(STATES).map(k=>[k,0]));
+    for (const e of entries) {
+      const before = earlier.get(e.sha256);
+      stageCounts[before.status] += 1;
+      const fields = HUMAN_FIELDS.filter(k=>e[k]!==before[k]);
+      if (fields.length) changed.push({sha:e.sha256.slice(0,16),fields});
+    }
+    target.replaceChildren(text("strong","PRIVATE AES-GCM HUMAN-planning vergelijking — zelfde originele bytes"));
+    target.append(text("p","Gelijke SHA-256/bestandsgrootte set: " + entries.length +
+      " · HUMAN rijen met verschillen: " + changed.length +
+      " · bronidentiteiten ongewijzigd; geen enkel veld overgenomen."));
+    const oldStages = Object.entries(stageCounts).map(([k,n])=>STATES[k]+": "+n).join(" · ");
+    target.append(text("p","Eerder door mens opgegeven: "+oldStages));
+    const ul=document.createElement("ul");
+    for (const diff of changed) {
+      ul.append(text("li",diff.sha+"… · eerdere versus huidige HUMAN: "+diff.fields.join(", ")));
+    }
+    if (!changed.length) ul.append(text("li","Geen wijzigingen in HUMAN-alias/status/datum/actie."));
+    target.append(ul);
+    status("Brongebonden versleutelde HUMAN-planning alleen vergeleken. Geen statusovername, autorisatie of bronverandering.");
+  }
+  // Same-origin, offline-only bridge, not a consent or authorization API.
+  Object.defineProperty(window, "LightUpPrivateVaultBridge", {
+    value:Object.freeze({
+      snapshot:sourcePlan, restore:restoreOriginal, compare:compareVaultPlan,
+      busy:()=>processing, setBusy:value=>{processing=value;},
+      notify:status
+    }), writable:false, configurable:false
+  });
+  function exportReceipt() {
+    if (!entries.length || processing) return status("Selecteer eerst privébronnen.", true);
+    try {requireCompleteHumanProposals();} catch(e) {return status("HOLD: "+e.message,true);}
+    const obj = {
+      kind:"lightup.private.assessment.retention.plan", version:2,
+      authority:AUTHORITY,
+      rows:entries.map(record).sort((a,b) => a.sha256.localeCompare(b.sha256))
+    };
+    if (!window.confirm("Dit is een ONVERSLEUTELD PRIVATE JSON-plan met volledige SHA-256 bronidentiteiten, menselijke aliassen, reviewdatums en acties. Alleen bewust exporteren naar een vertrouwde privéopslag. Doorgaan?")) {
+      return status("PRIVATE plaintext export geannuleerd; geen bestand aangemaakt.");
+    }
+    download("lightup-private-assessment-retention.json", "application/json", JSON.stringify(obj));
+    status("PRIVATE ongetekend en bewust onversleuteld JSON-plan geëxporteerd. Vertrouwelijk bewaren.");
+  }
+  function validateReceipt(raw, requireExactMembership = true) {
+    let obj;
+    try { obj = JSON.parse(raw); } catch { throw new Error("Geen geldig JSON-plan."); }
+    // JSON.stringify roundtrip rejects duplicate-key JSON, alternative/ambiguous encodings and noncanonical input.
+    if (JSON.stringify(obj) !== raw.trim()) throw new Error("Niet-canonieke of mogelijk ambigue JSON.");
+    if (!keysAre(obj, ["kind","version","authority","rows"]) ||
+        obj.kind !== "lightup.private.assessment.retention.plan" || ![1,2].includes(obj.version) ||
+        !keysAre(obj.authority, Object.keys(AUTHORITY)) ||
+        Object.keys(AUTHORITY).some(key => obj.authority[key] !== false) ||
+        !Array.isArray(obj.rows) || !obj.rows.length || obj.rows.length > MAX_FILES) {
+      throw new Error("Onbekend plancontract of bevoegdheidsclaim.");
+    }
+    const proposed = new Map();
+    for (const row of obj.rows) {
+      if (!keysAre(row, obj.version === 2 ? V2_COLUMNS : ["sha256","bytes","alias","status","review_date","action"]) ||
+          !/^[a-f0-9]{64}$/.test(row.sha256) || !Number.isSafeInteger(row.bytes) ||
+          row.bytes < 1 || row.bytes > MAX_FILE_BYTES || !safeHuman(row.alias, 80) ||
+          !Object.hasOwn(STATES, row.status) || !validDate(row.review_date) ||
+          !safeHuman(row.action, 400) ||
+          (row.status === "propose_delete" && !row.action.trim()) ||
+          (obj.version === 2 && (!safeHuman(row.custodian,80) ||
+            !Object.hasOwn(CLASSIFICATIONS,row.classification) ||
+            !Object.hasOwn(HOLD_FLAGS,row.hold_flag) ||
+            (row.status === "propose_delete" && !removalProposalReady(row)))) ||
+          proposed.has(row.sha256)) {
+        throw new Error("Onbekende, herhaalde of ambigue oorspronkelijke bron/HUMAN-rij.");
+      }
+      // Older v1 has no custody assertions. Missing fields are UNKNOWN, not cleared.
+      proposed.set(row.sha256, obj.version===1 ?
+        {...row,custodian:"",classification:"unknown",hold_flag:"unknown"} : row);
+    }
+    if (requireExactMembership && (proposed.size !== entries.length ||
+        entries.some(e => !proposed.has(e.sha256) || proposed.get(e.sha256).bytes !== e.bytes))) {
+      throw new Error("Bronset wijkt af: selecteer opnieuw de exacte originele bestanden. Geen gedeeltelijke carry.");
+    }
+    return proposed;
+  }
+  async function importReceipt(event) {
+    if (processing) return;
+    processing = true;
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!entries.length) throw new Error("Selecteer eerst originele bronbestanden voor SHA-binding.");
+      if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Planbestand overschrijdt de 128 KiB grens.");
+      const raw = await file.text();
+      const rows = validateReceipt(raw);
+      if (!window.confirm("Alle geselecteerde echte bestandsbytes komen overeen. De volledige bestaande HUMAN-planning lokaal overnemen? Dit verleent GEEN consent, toestemming tot wissen, bron-authenticatie of scanbevoegdheid.")) {
+        status("Overname geannuleerd. De huidige werkruimte blijft intact."); return;
+      }
+      entries = entries.map(e => ({...e, ...record(rows.get(e.sha256))})); invalidateUndo();
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
+      render(); status("Volledige exact-brongebonden PRIVATE HUMAN-planning heropend. Bronbestanden ongewijzigd.");
+    } catch (e) {
+      status("HOLD: " + e.message + " Huidige planning ongewijzigd.", true);
+    } finally {
+      event.target.value = ""; processing = false;
+    }
+  }
+  async function compareReceipt(event) {
+    if (processing) return;
+    processing = true;
+    const target = $("source-drift");
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!entries.length) throw new Error("Selecteer eerst huidige originele bronbestanden.");
+      if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Plan moet 1–128 KiB zijn.");
+      const plan = validateReceipt(await file.text(), false);
+      const current = new Map(entries.map(e => [e.sha256, e]));
+      const added = entries.filter(e => !plan.has(e.sha256));
+      const missing = Array.from(plan.values()).filter(e => !current.has(e.sha256));
+      const same = entries.filter(e => plan.has(e.sha256) && plan.get(e.sha256).bytes === e.bytes);
+      const inconsistent = entries.filter(e => plan.has(e.sha256) && plan.get(e.sha256).bytes !== e.bytes);
+      if (inconsistent.length) throw new Error("Zelfde SHA met tegenstrijdige originele bestandsgrootte.");
+      target.replaceChildren();
+      target.append(text("strong", "PRIVATE bronvergelijking · geen automatische overname"));
+      target.append(text("p", "Nieuwe originele bytes in huidige selectie: " + added.length +
+        " · ontbreken ten opzichte van privéplan: " + missing.length +
+        " · exact aanwezige SHA/size: " + same.length));
+      const examples = document.createElement("ul");
+      for (const e of added) examples.append(text("li", "NIEUW in huidige selectie: " + e.sha256.slice(0,16) + "…"));
+      for (const e of missing) examples.append(text("li", "NIET in huidige selectie: " + e.sha256.slice(0,16) +
+        "… (geen claim dat de bron verwijderd, hersteld of ingetrokken is)"));
+      const humanChanged = same.filter(e => {
+        const before = plan.get(e.sha256);
+        return HUMAN_FIELDS.some(key=>e[key]!==before[key]);
+      });
+      target.append(text("p", "Gewijzigde menselijke voorstellen bij ongewijzigde bytes: " +
+        humanChanged.length + ". Er wordt niets samengevoegd of geautoriseerd."));
+      target.append(examples);
+      status("PRIVATE bronverschillen lokaal bekeken; huidige bronset en HUMAN-planning ongewijzigd.");
+    } catch (e) {
+      target.replaceChildren();
+      status("HOLD: bronvergelijking geweigerd: " + e.message + " Niets overgenomen.", true);
+    } finally {
+      event.target.value = ""; processing = false;
+    }
+  }
+  function resetDrift() {
+    $("source-drift").textContent = "Geen actuele bronvergelijking. Verschillen geven nooit een herstel-, intrekkings- of wisclaim.";
+  }
+  function exportPrivateHumanBrief() {
+    if (!entries.length || processing) return status("HOLD: geen PRIVATE brongebonden HUMAN-dossiers.", true);
+    if (!window.confirm("Exporteer ONVERSLEUTELD PRIVATE HUMAN reviewrapport met menselijke houder, gevoeligheid, bewaarbeperking en acties? Bevat geen broninhoud maar wel gevoelige HUMAN informatie; sla uitsluitend privé op. Doorgaan?"))
+      return status("PRIVATE HUMAN rapport geannuleerd; geen overdracht.");
+    // DOM textContent ensures every human-supplied string remains inert.
+    const doc=document.implementation.createHTMLDocument("LightUp PRIVATE HUMAN custody");
+    const meta=doc.createElement("meta");
+    meta.httpEquiv="Content-Security-Policy";
+    meta.content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
+    doc.head.append(meta);
+    const style=doc.createElement("style");
+    style.textContent="body{font:15px/1.5 system-ui,sans-serif;max-width:1450px;margin:24px auto;padding:0 15px;color:#192938}header{padding:15px;border:2px solid #b87d4c;border-radius:10px;background:#fff5eb}table{border-collapse:collapse;width:100%;min-width:1080px}th,td{border:1px solid #aab6c0;text-align:left;vertical-align:top;padding:8px;overflow-wrap:anywhere}th{background:#ebf1f6}.scroll{overflow-x:auto}@media print{body{font-size:10px;margin:0}header{background:white}table{min-width:0}td,th{padding:4px}}";
+    doc.head.append(style);
+    const write=(parent,tag,value)=>{
+      const e=doc.createElement(tag);e.textContent=value;parent.append(e);return e;
+    };
+    const banner=doc.createElement("header");doc.body.append(banner);
+    write(banner,"h1","LightUp PRIVATE · HUMAN custody en bewaarbeperkingen");
+    write(banner,"p","INCUBATE · M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Ongetekende, niet-geauthenticeerde HUMAN voorstellen. Geen aangetoonde client/operator toestemming, juridische vrijgave, geverifieerde vulnerability, bronherkomst, grant, scan, remediation of wisopdracht. Bronhash-prefixen vergelijken alleen lokale bytes. Dit bronvrije rapport bevat gevoelige HUMAN persoonsgegevens en mag NIET publiek worden gedeeld.");
+    write(doc.body,"h2","PRIVATE HUMAN werkoverzicht");
+    const ul=doc.createElement("ul");doc.body.append(ul);
+    const stats=[
+      "Geselecteerde oorspronkelijke bronnen: "+entries.length,
+      "Dossierhouder nog niet ingevuld: "+entries.filter(e=>!e.custodian.trim()).length,
+      "HUMAN meldt mogelijk actieve bewaarbeperking: "+entries.filter(e=>e.hold_flag==="human_claim_active").length,
+      "HUMAN verwijdervoorstel nog HOLD: "+entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length
+    ];
+    for(const value of stats)write(ul,"li",value);
+    write(doc.body,"h2","Brongebonden PRIVATE opvolgdossiers — vereisen echte menselijke beoordeling");
+    const scroll=doc.createElement("div");scroll.className="scroll";doc.body.append(scroll);
+    const table=doc.createElement("table");scroll.append(table);
+    const thead=doc.createElement("thead"),tr=doc.createElement("tr");
+    thead.append(tr);table.append(thead);
+    for(const head of ["#","Originele SHA-prefix","HUMAN alias","HUMAN dossierhouder",
+       "Gevoeligheid (HUMAN)","Bewaarbeperking (HUMAN)","Voorstel (HUMAN)",
+       "Reviewdatum (HUMAN)","Vervolgactie (HUMAN)"])write(tr,"th",head);
+    const tbody=doc.createElement("tbody");table.append(tbody);
+    const sorted=[...entries].sort((a,b)=>
+      (a.hold_flag==="human_claim_active"?0:a.hold_flag==="unknown"?1:2)-
+      (b.hold_flag==="human_claim_active"?0:b.hold_flag==="unknown"?1:2) ||
+      (a.review_date||"9999").localeCompare(b.review_date||"9999") ||
+      a.sha256.localeCompare(b.sha256));
+    sorted.forEach((e,i)=>{
+      const row=doc.createElement("tr");tbody.append(row);
+      const held=e.status==="propose_delete" && !removalProposalReady(e);
+      for(const col of [i+1,e.sha256.slice(0,16)+"…",e.alias,
+        e.custodian||"NIET TOEGEWEZEN",CLASSIFICATIONS[e.classification],
+        HOLD_FLAGS[e.hold_flag],
+        held?"HOLD · HUMAN verwijdervoorstel onvolledig":STATES[e.status],
+        e.review_date||"ONBEKEND",e.action||"Geen HUMAN-actie genoteerd"])write(row,"td",String(col));
+    });
+    write(doc.body,"p","Geen originele bronbytes, volledige bronhash, bestandsnaam of geauthenticeerde toestemming wordt in dit rapport opgenomen. Het rapport is uitsluitend PRIVATE menselijk werkmateriaal.");
+    download("lightup-private-human-custody-review.html","text/html;charset=utf-8",
+      "<!doctype html>\n"+doc.documentElement.outerHTML);
+    status("PRIVATE scriptloos HUMAN custody-reviewdossier lokaal geëxporteerd. Broninhoud blijft gescheiden.");
+  }
+  function exportHumanCalendar() {
+    if (processing || !entries.length) return status("Selecteer eerst originele PRIVÉ-bronnen.", true);
+    const dayCounts = new Map();
+    for (const item of entries) {
+      if (!item.review_date) continue;
+      if (!validDate(item.review_date)) return status("HOLD: ongeldige menselijke reviewdatum.", true);
+      dayCounts.set(item.review_date, (dayCounts.get(item.review_date) || 0) + 1);
+    }
+    if (!dayCounts.size) return status("Voeg eerst minstens één voorlopige HUMAN-reviewdatum toe.", true);
+    if (!globalThis.crypto?.getRandomValues) return status("Beveiligde willekeur is hier niet beschikbaar; geen kalender gegenereerd.", true);
+    if (!window.confirm("Maak een PRIVÉ agenda met uitsluitend voorgestelde datums en aantallen? Kalenders kunnen automatisch naar cloudaccounts synchroniseren; bij kleine groepen kunnen datums indirect gevoelig zijn. Dit is GEEN echt retention-/consentbesluit. Doorgaan?"))
+      return status("PRIVATE agenda-export geannuleerd; geen externe kalender bijgewerkt.");
+    const stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");
+    const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp PRIVATE HUMAN Review//NL",
+      "CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+    for (const [day,count] of [...dayCounts].sort(([a],[b])=>a.localeCompare(b))) {
+      const d = new Date(day + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate()+1);
+      const following = d.toISOString().slice(0,10).replaceAll("-","");
+      const entropy = new Uint8Array(16);
+      crypto.getRandomValues(entropy);
+      lines.push("BEGIN:VEVENT",
+        "UID:"+bytesToHex(entropy)+"@lightup.local.invalid",
+        "DTSTAMP:"+stamp,
+        "DTSTART;VALUE=DATE:"+day.replaceAll("-",""),
+        "DTEND;VALUE=DATE:"+following,
+        "SUMMARY:LightUp PRIVATE "+count+" HUMAN reviewvoorstel"+(count===1?"":"len"),
+        "DESCRIPTION:PRIVATE tentative HUMAN work only. No approval or deletion.",
+        "CLASS:PRIVATE","STATUS:TENTATIVE","TRANSP:TRANSPARENT",
+        "END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download("lightup-private-human-provisional-reviews.ics","text/calendar;charset=utf-8",
+      lines.join("\r\n")+"\r\n");
+    status("PRIVATE voorlopige HUMAN-reviewdatums geëxporteerd. Geen automatische agenda-upload, grant, verwijdering of statuswijziging.");
+  }
+  function exportCounts() {
+    if (!entries.length || processing) return status("Geen aantallen zonder geselecteerde privébronnen.", true);
+    const rows = ["status,count"];
+    for (const key of Object.keys(STATES)) {
+      rows.push(key + "," + entries.filter(e => e.status === key).length);
+    }
+    rows.push("human_custodian_unassigned,"+entries.filter(e=>!e.custodian.trim()).length);
+    rows.push("human_claim_active_hold,"+entries.filter(e=>e.hold_flag==="human_claim_active").length);
+    rows.push("human_unknown_hold,"+entries.filter(e=>e.hold_flag==="unknown").length);
+    rows.push("human_proposal_blocked,"+entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length);
+    download("lightup-private-human-retention-counts.csv", "text/csv;charset=utf-8",
+      "\ufeff" + rows.join("\r\n") + "\r\n");
+    status("Alleen conservatieve HUMAN-aantallen geëxporteerd; bij kleine groepen nog steeds PRIVATE.");
+  }
+  function applyBulk() {
+    if (processing) return status("Broncontrole loopt nog.", true);
+    const candidates = visibleEntries();
+    if (!candidates.length) return status("Geen zichtbare rijen voor bulkplanning.", true);
+    const stage = $("bulk-status").value;
+    const due = $("bulk-date").value;
+    const action = $("bulk-action").value;
+    const custodian = $("bulk-custodian").value;
+    const classification = $("bulk-classification").value;
+    const hold = $("bulk-hold").value;
+    if ((stage!=="__keep__" && !Object.hasOwn(STATES,stage)) ||
+        (classification!=="__keep__" && !Object.hasOwn(CLASSIFICATIONS,classification)) ||
+        (hold!=="__keep__" && !Object.hasOwn(HOLD_FLAGS,hold)) ||
+        !validDate(due) || !safeHuman(action,400) || !safeHuman(custodian,80)) {
+      return status("HOLD: ongeldige HUMAN bulkstatus, datum, houder of metadata.",true);
+    }
+    if (stage==="__keep__" && !due && !action && !custodian &&
+        classification==="__keep__" && hold==="__keep__") {
+      return status("Geen HUMAN-bulkwijzigingen gekozen.",true);
+    }
+    const preview = candidates.map(e=>({...e,
+      status:stage==="__keep__"?e.status:stage,
+      review_date:due||e.review_date,
+      action:action||e.action,
+      custodian:custodian||e.custodian,
+      classification:classification==="__keep__"?e.classification:classification,
+      hold_flag:hold==="__keep__"?e.hold_flag:hold
+    }));
+    if (preview.some(e=>!removalProposalReady(e))) {
+      return status("HOLD: één of meer nieuwe HUMAN verwijdervoorstellen missen houder/actie of verklaarde check op bewaarbeperking. Niets aangepast.",true);
+    }
+    const count = candidates.length;
+    const summary = "HUMAN werkpakket voor "+count+" zichtbare bronrij(en). "+
+      "Status: "+(stage==="__keep__"?"ongewijzigd":STATES[stage])+
+      "; Houder: "+(custodian?"aangepast":"ongewijzigd")+
+      "; Gevoeligheid: "+(classification==="__keep__"?"ongewijzigd":CLASSIFICATIONS[classification])+
+      "; Bewaarbeperking: "+(hold==="__keep__"?"ongewijzigd":HOLD_FLAGS[hold])+
+      "; datum/actie: "+(due||action?"aangepast waar ingevuld":"ongewijzigd")+
+      ". Dit is nooit een grant, juridische vrijgave of wisopdracht. Doorgaan?";
+    if (!window.confirm(summary)) return status("HUMAN-bulkvoorstel geannuleerd; geen bronwijziging.");
+    const before=candidates.map(record);
+    for(let n=0;n<count;n++) Object.assign(candidates[n],{
+      status:preview[n].status,review_date:preview[n].review_date,
+      action:preview[n].action,custodian:preview[n].custodian,
+      classification:preview[n].classification,hold_flag:preview[n].hold_flag
+    });
+    lastBulk={before,after:candidates.map(record)};
+    $("bulk-undo").disabled=false;
+    render();
+    status("HUMAN brongebonden bulkwijziging voor "+count+" rijen toegepast; directe éénstaps-undo beschikbaar.");
+  }
+  function undoBulk() {
+    if (!lastBulk || processing) return status("Geen geldige directe bulkstap om terug te draaien.", true);
+    const matches = lastBulk.after.every(saved => {
+      const current = entries.find(e => e.sha256 === saved.sha256);
+      return current && JSON.stringify(record(current)) === JSON.stringify(saved);
+    });
+    if (!matches) {
+      invalidateUndo();
+      return status("HOLD: rijen veranderden sinds de bulkstap; ongedaan maken is niet veilig.", true);
+    }
+    for (const original of lastBulk.before) {
+      const item = entries.find(e => e.sha256 === original.sha256);
+      Object.assign(item, original);
+    }
+    const count = lastBulk.before.length;
+    invalidateUndo();
+    render();
+    status("Laatste HUMAN bulkvoorstel voor " + count + " rijen volledig hersteld.");
+  }
+  $("bulk-apply").addEventListener("click", applyBulk);
+  $("bulk-undo").addEventListener("click", undoBulk);
+  $("sources").addEventListener("change", ingest);
+  $("receipt").addEventListener("change", importReceipt);
+  $("compare").addEventListener("change", compareReceipt);
+  $("export-plan").addEventListener("click", exportReceipt);
+  $("export-counts").addEventListener("click", exportCounts);
+  $("export-brief").addEventListener("click",exportPrivateHumanBrief);
+  $("export-calendar").addEventListener("click", exportHumanCalendar);
+  $("query").addEventListener("input", render);
+  $("status-filter").addEventListener("change", render);
+  $("due-filter").addEventListener("change", render);
+  $("sort-order").addEventListener("change", render);
+  $("hold-filter").addEventListener("change", render);
+  $("print").addEventListener("click", () => {
+    if (!entries.length) return status("Geen overzicht om te printen.", true);
+    if (window.confirm("Dit is een PRIVATE, ongetekend overzicht. Afdrukken kan lokale printsporen maken. Alleen op een vertrouwde printer doorgaan?")) window.print();
+  });
+  $("clear").addEventListener("click", () => {
+    if (entries.length && !window.confirm("Alle niet-opgeslagen HUMAN-keuzes uit dit tabblad wissen? Eerder gedownloade privébestanden worden niet gewist.")) return;
+    entries = []; invalidateUndo(); resetDrift(); $("sources").value = ""; $("receipt").value = ""; $("compare").value = "";
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
+    render(); status("Lokale werkruimte leeggemaakt (geen garantie op veilig geheugenwissen).");
+  });
+  window.addEventListener("beforeunload", event => {
+    if (!entries.length) return;
+    event.preventDefault(); event.returnValue = "";
+  });
+  render();
+})();</script>
+<script>"use strict";
+/* Local-only, optional encrypted HUMAN plan continuity. Never authenticates the producer
+   or authorizes scanning, retention, deletion, remediation or client operations. */
+(() => {
+  const bridge = window.LightUpPrivateVaultBridge;
+  if (!bridge) throw Error("Original private assessment workroom must load before vault.");
+  const $ = id => document.getElementById(id);
+  const KIND = "lightup.private.assessment.retention.encrypted";
+  const ITERATIONS = 310000;
+  const PURPOSE = new TextEncoder().encode("lightup.private.assessment.retention.encrypted.v1");
+  const MAX_ORIGINAL_BYTES = 131072, MAX_ENVELOPE_BYTES = 262144;
+  const AUTHORITY = Object.freeze({
+    authorizes_scan:false, authorizes_delete:false, verifies_finding:false,
+    verifies_remediation:false, proves_consent:false, authenticates_source:false
+  });
+  const fields = (obj, expected) => obj && typeof obj === "object" && !Array.isArray(obj) &&
+    Object.keys(obj).sort().join("|") === expected.slice().sort().join("|");
+  const hex = bytes => Array.from(bytes, x => x.toString(16).padStart(2,"0")).join("");
+  function unhex(value, length) {
+    if (typeof value !== "string" || value.length !== length*2 ||
+        !/^[a-f0-9]+$/.test(value)) throw Error("Ongeldige cryptografische parameters.");
+    const bytes = new Uint8Array(length);
+    for (let i=0;i<length;i++) bytes[i] = parseInt(value.slice(i*2,i*2+2),16);
+    return bytes;
+  }
+  function base64(bytes) {
+    let b = "";
+    for (let i=0;i<bytes.length;i+=4096)
+      b += String.fromCharCode(...bytes.subarray(i,i+4096));
+    return btoa(b);
+  }
+  function unbase64(value) {
+    if (typeof value !== "string" || value.length > 200000 || value.length < 24 ||
+        value.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value))
+      throw Error("Ongeldige ciphertext.");
+    const str = atob(value);
+    if (btoa(str) !== value) throw Error("Niet-canonieke ciphertext.");
+    const bytes = new Uint8Array(str.length);
+    for (let i=0;i<str.length;i++) bytes[i] = str.charCodeAt(i);
+    if (bytes.length < 17 || bytes.length > MAX_ORIGINAL_BYTES + 16)
+      throw Error("Onveilige grootte van versleuteld plan.");
+    return bytes;
+  }
+  function takePassword() {
+    const input = $("vault-password");
+    const password = input.value;
+    input.value = "";
+    const encoded = new TextEncoder().encode(password);
+    if (password.length < 12 || password.length > 128 || encoded.length > 256 ||
+        /[\u0000-\u001f\u007f-\u009f]/u.test(password))
+      throw Error("Privéwachtwoord vereist 12–128 tekens, maximaal 256 UTF-8 bytes, zonder stuurtekens.");
+    if (!globalThis.crypto || !crypto.subtle || !crypto.getRandomValues)
+      throw Error("WebCrypto niet beschikbaar op deze vertrouwde browsercontext.");
+    return encoded;
+  }
+  async function derive(pass, salt) {
+    const imported = await crypto.subtle.importKey("raw", pass, "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      {name:"PBKDF2", hash:"SHA-256", salt, iterations:ITERATIONS},
+      imported, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+  }
+  function download(name, json) {
+    const url = URL.createObjectURL(new Blob([json],{type:"application/json"}));
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = name; anchor.hidden = true;
+    document.body.append(anchor); anchor.click(); anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  }
+  function enter() {
+    if (bridge.busy()) throw Error("Een andere bestandsbewerking loopt nog.");
+    bridge.setBusy(true);
+  }
+  function leave() {
+    $("vault-password").value = "";
+    $("vault-import").value = "";
+    $("vault-compare").value = "";
+    bridge.setBusy(false);
+  }
+  async function exportVault() {
+    let payload;
+    let acquired = false;
+    try {
+      // Verify source and HUMAN records before setting busy.
+      const original = bridge.snapshot();
+      const pass = takePassword();
+      enter(); acquired = true;
+      const plain = new TextEncoder().encode(JSON.stringify(original));
+      if (!plain.length || plain.length > MAX_ORIGINAL_BYTES) throw Error("HUMAN-plan te groot.");
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      const key = await derive(pass, salt);
+      payload = new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:PURPOSE,tagLength:128},key,plain));
+      const envelope = {
+        kind:KIND, version:1, algorithm:"PBKDF2-SHA256/AES-256-GCM",
+        iterations:ITERATIONS, salt:hex(salt), nonce:hex(nonce),
+        ciphertext:base64(payload), authority:AUTHORITY
+      };
+      download("lightup-private-human-retention.lurt",JSON.stringify(envelope));
+      bridge.notify("Volledige PRIVATE HUMAN-planning AES-256-GCM versleuteld opgeslagen. Geen bron- of consentauthenticatie.");
+    } catch(e) {
+      bridge.notify("HOLD: PRIVATE versleuteling geweigerd: " + e.message, true);
+    } finally {
+      if (acquired) leave(); else $("vault-password").value = "";
+    }
+  }
+  async function decryptEnvelope(file, pass) {
+    if (file.size < 1 || file.size > MAX_ENVELOPE_BYTES)
+      throw Error("Versleuteld bestand is leeg of groter dan 256 KiB.");
+    const json = await file.text();
+    let receipt;
+    try { receipt = JSON.parse(json); } catch { throw Error("Ongeldig versleuteld JSON."); }
+    if (JSON.stringify(receipt) !== json.trim() ||
+        !fields(receipt,["kind","version","algorithm","iterations","salt","nonce","ciphertext","authority"]) ||
+        receipt.kind !== KIND || receipt.version !== 1 ||
+        receipt.algorithm !== "PBKDF2-SHA256/AES-256-GCM" ||
+        receipt.iterations !== ITERATIONS ||
+        !fields(receipt.authority,Object.keys(AUTHORITY)) ||
+        Object.keys(AUTHORITY).some(k=>receipt.authority[k] !== false))
+      throw Error("Niet-canoniek PRIVATE vaultcontract of ongeoorloofde bevoegdheidsclaim.");
+    const salt = unhex(receipt.salt,16);
+    const nonce = unhex(receipt.nonce,12);
+    const ciphertext = unbase64(receipt.ciphertext);
+    let decrypted;
+    try {
+      const key = await derive(pass,salt);
+      decrypted = await crypto.subtle.decrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:PURPOSE,tagLength:128},key,ciphertext);
+    } catch {
+      throw Error("Verkeerd wachtwoord of gewijzigde cryptografische inhoud.");
+    }
+    return new TextDecoder("utf-8",{fatal:true}).decode(decrypted);
+  }
+  async function importVault(event) {
+    let acquired = false;
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const pass = takePassword();
+      enter(); acquired = true;
+      const original = await decryptEnvelope(file, pass);
+      // Exact original source SHA/size admission and separate HUMAN confirmation
+      // remain exclusively in the original offline workroom bridge.
+      bridge.restore(original,"versleutelde PRIVATE HUMAN-ontvangst");
+    } catch(e) {
+      bridge.notify("HOLD: versleutelde HUMAN-heropening geweigerd: " + e.message +
+        " Bestaande PRIVATE keuzes blijven intact.",true);
+    } finally {
+      if (acquired) leave(); else { $("vault-password").value = ""; $("vault-import").value = ""; }
+    }
+  }
+  $("export-vault").addEventListener("click",exportVault);
+  $("vault-import").addEventListener("change",importVault);
+  async function compareVault(event) {
+    let acquired = false;
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      // Current genuine original source files must already be selected.
+      bridge.snapshot();
+      const pass = takePassword();
+      enter(); acquired = true;
+      const original = await decryptEnvelope(file, pass);
+      bridge.compare(original);  // validates exact entire current original source set, no change.
+    } catch(e) {
+      bridge.notify("HOLD: versleutelde PRIVATE vergelijking geweigerd: " + e.message +
+        " Geen HUMAN-velden gewijzigd.",true);
+    } finally {
+      if (acquired) leave(); else { $("vault-password").value = ""; $("vault-compare").value = ""; }
+    }
+  }
+  $("vault-compare").addEventListener("change",compareVault);
+})();</script>
+</body>
+</html>

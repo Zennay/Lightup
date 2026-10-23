@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; font-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+  <title>LightUp · PRIVATE HUMAN Follow-up Studio</title>
+  <link rel="stylesheet" href="worksheet-studio.css">
+  <script src="worksheet-studio.js" defer></script>
+</head>
+<body>
+<main class="shell">
+  <header class="top">
+    <div class="brand"><span aria-hidden="true">◈</span> LIGHTUP <span class="muted">/ ASSESSMENT-RUNTIME</span></div>
+    <div class="phase">PRIVATE · LAB/PLAN ONLY · NO AUTHORITY</div>
+  </header>
+
+  <section class="hero" aria-labelledby="title">
+    <div class="eyebrow">HUMAN FOLLOW-UP WORKSPACE / 01</div>
+    <h1 id="title">Turn an ordinal worksheet<br><em>into an actionable review.</em></h1>
+    <p>Edit follow-up stages, groups, next steps and uncertainties without opening original target URLs, finding titles or evidence in this browser. Every decision remains a HUMAN-only proposal.</p>
+    <div class="notice"><strong>REVIEW ONLY.</strong> No credential, authorization, consent, actual remediation, verified finding, active scan, target contact or production release is created here. Input CSV comes from <code>briefing.py</code>.</div>
+  </section>
+
+  <section class="panel import" aria-labelledby="importTitle">
+    <div class="panelHeading">
+      <div><div class="eyebrow">01 / LOCAL SOURCE</div><h2 id="importTitle">Open original PRIVATE worksheet</h2></div>
+      <span class="tag">NO NETWORK · NO STORAGE</span>
+    </div>
+    <p>Choose the existing seven-column <code>human-followup.csv</code> generated from an independently obtained original lab report. Only ordinals, declared severities, source evidence-reference counts and HUMAN fields enter this editor. No original report is required here.</p>
+    <div class="fileRow"><input id="fileInput" type="file" accept=".csv,text/csv" aria-label="PRIVATE original human-followup CSV"><button id="load" type="button" class="primary">Open PRIVATE worksheet</button></div>
+    <p class="small muted">Maximum 1 MiB / 2,048 rows · strict UTF-8 and CSV · no browser storage, no uploads. Existing in-memory edits are not replaced without confirmation.</p>
+    <details class="vaultPanel">
+      <summary>Open optional encrypted PRIVATE HUMAN worksheet (.luhw)</summary>
+      <p class="small">This is a separate locally encrypted file containing the HUMAN CSV only—not original lab evidence or consent. WebCrypto must be available; an incorrect password, altered envelope or changed data fails closed.</p>
+      <div class="vaultForm">
+        <label>PRIVATE encrypted file<input id="encryptedInput" type="file" accept=".luhw,application/json"></label>
+        <label>Decryption passphrase<input id="decryptPass" type="password" minlength="12" maxlength="256" autocomplete="off" placeholder="Never stored or transmitted"></label>
+        <button id="loadEncrypted" type="button">Open ENCRYPTED PRIVATE CSV</button>
+      </div>
+    </details>
+    <div id="message" class="message" role="status" aria-live="polite">Select a PRIVATE file to begin.</div>
+  </section>
+
+  <div id="workroom" hidden>
+    <section class="panel compact">
+      <div class="panelHeading"><div><div class="eyebrow">02 / CURRENT IN-MEMORY SOURCE</div><h2 id="sourceName">PRIVATE worksheet</h2></div><span id="dirtyStatus" class="tag"></span></div>
+      <p id="sourceStatus" class="muted small"></p>
+      <div id="summary" class="stats" aria-live="polite"></div>
+      <div class="progress"><div id="completionFill"></div></div>
+      <p class="small muted">Progress is derived from HUMAN labels, not original evidence or verified remediation.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panelHeading"><div><div class="eyebrow">03 / PRIVATE HUMAN QUEUE</div><h2>Edit follow-up proposals</h2></div><span id="displayCount" class="tag"></span></div>
+      <div class="filters">
+        <label>Declared severity<select id="severityFilter"><option value="all">All severity levels</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+        <label>HUMAN stage<select id="stageFilter"><option value="all">All HUMAN stages</option><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="blocked">Blocked</option><option value="documented">Documented</option></select></label>
+        <label>HUMAN group<select id="groupFilter"><option value="all">All groups</option><option value="unassigned">Unassigned</option></select></label>
+        <label>Search local HUMAN fields<input id="query" type="search" placeholder="Ordinal / group / proposed action"></label>
+      </div>
+      <div class="tableOverflow">
+        <table>
+          <caption class="srOnly">PRIVATE source ordinal and editable HUMAN follow-up values</caption>
+          <thead><tr><th scope="col">Ordinal</th><th scope="col">Source severity</th><th scope="col">Evidence refs</th><th scope="col">HUMAN stage</th><th scope="col">HUMAN group</th><th scope="col">Next action</th><th scope="col">Blocker / uncertainty</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="pager"><button id="prev" type="button">← Previous</button><span id="pageLabel" class="muted"></span><button id="next" type="button">Next →</button></div>
+    </section>
+
+    <section class="panel">
+      <div class="panelHeading"><div><div class="eyebrow">04 / PROPOSED BATCH CHANGE</div><h2>Apply to filtered rows only</h2></div><span class="tag">HUMAN LABELS ONLY</span></div>
+      <p class="small muted">This adjusts only local HUMAN stage/group proposals on currently filtered original ordinals. Original immutable ordinal, severity, evidence-reference count, action, blocker and source file are untouched.</p>
+      <div class="batchControls">
+        <label>HUMAN stage<select id="bulkStage"><option value="unchanged">Do not change stage</option><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="blocked">Blocked</option><option value="documented">Documented</option></select></label>
+        <label>HUMAN group<input id="bulkGroup" maxlength="120" placeholder="Blank = unchanged; __CLEAR__ = clear"></label>
+        <button id="applyBulk" type="button" class="primary">Apply to visible rows</button>
+        <button id="undoBulk" type="button" disabled>Undo last batch</button>
+      </div>
+      <p class="muted small">Leave the group field blank to preserve the current group, enter <code>__CLEAR__</code> to explicitly clear it, or type a new HUMAN-only group name. A row-level edit invalidates bulk Undo to avoid rolling back later individual work.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="replyTitle">
+      <div class="panelHeading"><div><div class="eyebrow">05 / PRIVATE PEER PROPOSALS</div><h2 id="replyTitle">Reconcile another HUMAN worksheet</h2></div><span class="tag">MANUAL CHOICE · NO IDENTITY CLAIM</span></div>
+      <p>Open a second seven-column original-format PRIVATE CSV returned by another human. Every original ordinal, declared severity and evidence-reference count must match this already loaded worksheet in exactly the same order. Only HUMAN fields are eligible for review; original source identity, consent and reviewer identity remain unauthenticated here.</p>
+      <div class="fileRow"><input id="replyInput" type="file" accept=".csv,text/csv" aria-label="PRIVATE incoming human worksheet CSV"><button id="previewReply" type="button">Preview incoming HUMAN proposals</button></div>
+      <div id="replyStatus" class="message">No incoming HUMAN proposal loaded.</div>
+      <div id="replyBoard" hidden>
+        <p class="small muted">Nothing is imported automatically. Select individual proposed HUMAN fields, then explicitly accept only those proposals. Any intervening local edit cancels the pending comparison; re-open the incoming file to compare it to your latest worksheet.</p>
+        <div class="tableOverflow">
+          <table class="replyTable">
+            <caption class="srOnly">Unverified incoming PRIVATE HUMAN proposals: choose each field explicitly</caption>
+            <thead><tr><th scope="col">Accept?</th><th scope="col">Original ordinal</th><th scope="col">HUMAN field</th><th scope="col">Your current value</th><th scope="col">Incoming proposed value</th></tr></thead>
+            <tbody id="replyRows"></tbody>
+          </table>
+        </div>
+        <div class="pager"><button id="replyPrev" type="button">← Previous</button><span id="replyPage" class="muted"></span><button id="replyNext" type="button">Next →</button></div>
+        <div class="actionsRow">
+          <button id="selectVisibleReply" type="button">Select visible proposal fields</button>
+          <button id="clearReplySelections" type="button">Clear selections</button>
+          <button id="acceptReply" type="button" class="primary">Apply selected HUMAN proposals</button>
+          <button id="discardReply" type="button">Discard incoming proposal</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel finish">
+      <div><div class="eyebrow">06 / PRIVATE FILE HANDOFF</div><h2>Save an immutable-source worksheet</h2><p>Download the updated PRIVATE seven-column CSV, preserving all original ordinal/severity/evidence-count cells. To produce a source-verified-by-digest PRIVATE report, run the existing local <code>human_return.py</code> with the actual unchanged original lab JSON and its original manifest. This editor cannot authenticate either.</p></div>
+      <div class="actions"><button id="saveCsv" type="button" class="primary">Download PRIVATE human CSV</button><button id="saveCounts" type="button">Download counts-only JSON</button><button id="forget" type="button" class="danger">Forget local workroom</button></div>
+      <details class="vaultPanel vaultExport">
+        <summary>Optional ENCRYPTED PRIVATE worksheet for offline handoff</summary>
+        <p class="small">Encrypt only your current original-format HUMAN CSV locally with a fresh PBKDF2/AES-GCM password. The passphrase and HUMAN notes are not uploaded or stored by this app. Cryptographic protection is not producer authenticity, identity, source consent or release approval. This feature has not received independent cryptographic review.</p>
+        <div class="vaultForm">
+          <label>Private passphrase (12–256 characters)<input id="encryptPass" type="password" minlength="12" maxlength="256" autocomplete="new-password"></label>
+          <label>Repeat the passphrase<input id="encryptPassConfirm" type="password" minlength="12" maxlength="256" autocomplete="new-password"></label>
+          <button id="saveEncrypted" type="button" class="primary">Download ENCRYPTED PRIVATE CSV (.luhw)</button>
+        </div>
+      </details>
+      <div class="small muted">The CSV includes private HUMAN notes. The anonymous-count JSON omits notes and targets but can still be sensitive. No data is saved to a server, localStorage or browser cache by this app. Browser process memory and downloaded files are separate responsibilities.</div>
+    </section>
+  </div>
+
+  <footer>LIGHTUP / ASSESSMENT-RUNTIME · Incubate M3/M7 · DRAFT/HOLD · Never interpret HUMAN stage or a hash as authorization, a security verdict or an operational release.</footer>
+</main>
+</body>
+</html>

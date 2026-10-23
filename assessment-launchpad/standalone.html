@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7LxlFPqAZizYFAPilCag/byMzNwbxU0SEMZ6VcmfS0E='; style-src 'sha256-Gtwruba7TdWXHQwpJdVhTjBMksvSM9Jetv3LYFiVPOA='; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>LightUp · Lab Launchpad</title>
+  <style>:root{font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1522;color:#e5f0fa;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:1120px;padding:32px 24px 48px}
+header{padding:38px;border-radius:24px;background:linear-gradient(135deg,#1a4a56 0%,#14283b 60%,#131f32 100%);border:1px solid #467183;margin-bottom:24px}
+.eyebrow{font-size:.79rem;letter-spacing:.13em;font-weight:700;color:#8cdddb}
+h1{font-size:clamp(2rem,4vw,3.1rem);letter-spacing:-.04em;margin:11px 0;line-height:1.13}
+h2{font-size:1.37rem;line-height:1.24;letter-spacing:-.015em;margin:0 0 10px}
+p{color:#c0d2e3;margin:6px 0 16px}
+.hold{display:inline-block;border:1px solid #e4b477;background:#47341f;border-radius:999px;color:#ffe6bd;padding:8px 14px;font-size:.78rem;font-weight:750;margin-top:10px}
+main{display:grid;gap:20px}
+section{background:#17283a;border:1px solid #354f65;border-radius:22px;padding:26px}
+section.entry{display:grid;gap:8px}
+label{display:block;font-size:.85rem;font-weight:750;color:#aed5e8;margin:4px 0 2px}
+textarea,pre{background:#0c1828;border:1px solid #46627b;border-radius:12px;color:#e4f5ff;width:100%;padding:16px;font:0.95rem/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+textarea{resize:vertical;min-height:144px}
+textarea:focus-visible,button:focus-visible{outline:3px solid #74dff0;outline-offset:3px}
+pre{margin-top:9px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font:0.93em/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:#bff6d3}
+.buttons{display:flex;flex-wrap:wrap;gap:10px;margin:7px 0}
+button{background:#88e7d3;color:#102a29;font:inherit;font-size:.9rem;font-weight:730;border:1px solid transparent;border-radius:11px;padding:11px 17px;cursor:pointer}
+button:hover:not(:disabled){filter:brightness(1.13)}
+button:disabled{opacity:.38;cursor:not-allowed}
+button.quiet{background:#1b3b4e;border-color:#547587;color:#e1f4fc}
+button.small{font-size:.79rem;padding:6px 10px}
+#feedback{min-height:1.4em;margin:4px 0 0;color:#a6e7cf}
+#feedback.error{color:#ffbcae}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.count{border:1px solid #4d7289;padding:8px 14px;border-radius:999px;color:#d4e4f3;white-space:nowrap;font-weight:700}
+.targets{list-style:none;display:grid;gap:10px;margin:14px 0 0;padding:0}
+.targets li{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 15px;border:1px solid #3c6375;background:#101f31;border-radius:12px;min-width:0}
+.target-label{display:flex;gap:12px;align-items:center;min-width:0;overflow-wrap:anywhere}
+.ordinal{font-size:.78rem;font-weight:800;color:#89d3ef;white-space:nowrap}
+.tight{margin:0}
+.fine{font-size:.88rem}
+.warning{background:#282b32;border-color:#a28053}
+.warning p{color:#ebd8b9}
+footer{text-align:center;color:#9db5c9;font-size:.83rem;margin-top:27px}
+@media(max-width:760px){body{padding:14px}header,section{padding:21px}.targets li{flex-direction:column;align-items:stretch}.buttons.tight{width:100%}.buttons.tight button{flex:1}.section-head{align-items:flex-start}button{min-height:42px}}
+
+/* Private Studio source preparation and accessible local import. */
+input[type=file],select{display:block;width:100%;max-width:100%;margin:7px 0 14px;padding:12px 14px;background:#0c1828;border:1px solid #46627b;border-radius:12px;color:#e4f5ff;font:inherit}
+select:disabled,input:disabled{opacity:.58}
+input[type=file]:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #74dff0;outline-offset:3px}
+details.import{border:1px solid #46627b;background:#112238;border-radius:14px;padding:17px;margin-top:13px}
+details summary{color:#b8e3f1;font-weight:750;cursor:pointer}
+details[open] summary{margin-bottom:14px}
+#studio-status{background:#12283a;border-left:3px solid #84cee0;border-radius:8px;padding:12px 16px;min-height:50px}
+#studio-area .buttons{margin-bottom:13px}
+
+.scaffold-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin:12px 0}
+.scaffold-controls input[type=number]{display:block;width:100%;padding:12px 14px;background:#0c1828;border:1px solid #46627b;border-radius:12px;color:#e4f5ff;font:inherit}
+.scaffold-controls input[type=number]:focus-visible{outline:3px solid #74dff0;outline-offset:3px}
+@media(max-width:760px){.scaffold-controls{grid-template-columns:1fr;gap:4px}}
+</style>
+
+</head>
+<body>
+  <header>
+    <div class="eyebrow">LIGHTUP / ASSESSMENT / OFFLINE LAUNCHPAD</div>
+    <h1>Prepare an isolated lab batch</h1>
+    <p>Compose a source-friendly manifest for the <code>lightup lab-assess</code> CLI.
+    This interface never sends a request, runs a command, persists browser state or authenticates a target.</p>
+    <div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED</div>
+  </header>
+  <main>
+    <section class="entry">
+      <div>
+        <h2>1 · Choose isolated lab endpoints</h2>
+        <p>Enter up to 16 explicit numeric HTTP(S) endpoints, one per line. The browser checks basic isolation syntax; only the original Python LabScenario admission is authoritative.</p>
+      </div>
+      <label for="entry">Lab URLs</label>
+      <textarea id="entry" spellcheck="false" rows="6" placeholder="http://127.0.0.1:18080/&#10;http://10.0.0.5:8080/"></textarea>
+      <div class="buttons"><button type="button" id="add">Add to batch</button><button type="button" id="clear" class="quiet">Clear all local entries</button></div>
+      <details class="import">
+        <summary>Import a previous original-format targets.txt</summary>
+        <p>Choose a local UTF-8 manifest (maximum 16 KiB). Import replaces this entire in-memory batch only after every line is admitted. Blank and # comment lines follow the original CLI file format. Your local file is not uploaded anywhere.</p>
+        <label for="source-file">Existing private manifest file</label>
+        <input id="source-file" type="file" accept=".txt,text/plain">
+        <button type="button" id="import">Replace batch from chosen file</button>
+      </details>
+      <p id="feedback" role="status" aria-live="polite">No endpoints prepared.</p>
+    </section>
+    <section>
+      <div class="section-head"><div><h2>2 · Review the batch</h2><p>Reorder or remove an endpoint before exporting. Every distinct endpoint receives one ordered local slot.</p></div><span class="count" id="count">0 / 16</span></div>
+      <ol id="targets" class="targets" aria-label="Prepared endpoints"></ol>
+      <p id="empty">Your private batch is empty.</p>
+    </section>
+    <section id="studio-area">
+      <h2>3 · Optionally bind an original Lab Scenario Studio design</h2>
+      <p>Import an existing PRIVATE Studio v1 catalog locally (up to 256 KiB), then choose one original scenario. An independently entered explicit URL with port must exist for <em>each</em> exact declared lab IP. An imported design is an untrusted draft, not verified ground truth or permission.</p>
+      <label for="studio-file">Original private Studio JSON catalog</label>
+      <input id="studio-file" type="file" accept=".json,application/json">
+      <div class="buttons">
+        <button type="button" id="studio-import" class="quiet">Read catalog locally</button>
+        <button type="button" id="studio-clear" class="quiet">Discard private Studio draft</button>
+      </div>
+      <label for="studio-select">Original scenario (one at a time)</label>
+      <select id="studio-select" disabled><option value="">Choose a locally imported original Studio catalog</option></select>
+      <div class="scaffold-controls">
+        <div><label for="studio-scheme">Human-chosen scheme</label><select id="studio-scheme"><option value="http">HTTP lab only</option><option value="https">HTTPS lab only</option></select></div>
+        <div><label for="studio-port">Human-chosen explicit port (1–65535)</label><input id="studio-port" type="number" min="1" max="65535" step="1" placeholder="e.g. 18080"></div>
+      </div>
+      <button id="studio-scaffold" type="button" class="quiet" disabled>Prepare URL batch from selected original lab IPs</button>
+      <p class="fine">This only drafts local text. You choose protocol and port; no port is assumed, no DNS or endpoint contacted. Existing unsaved batch selections require confirmation before replacement.</p>
+      <p id="studio-status" role="status" aria-live="polite">No original Studio draft imported. Plain lab-batch preparation remains available.</p>
+      <div class="buttons"><button id="studio-export" type="button" disabled>Download exact private studio-catalog.json</button></div>
+      <p class="fine">Browser matching is only an advisory operator preview. The native <code>build.py --catalog-file ... --scenario-id ...</code> and original <code>read_selected_lab_design</code> validators must still approve the complete byte-exact source before any handoff.</p>
+    </section>
+    <section>
+      <h2>4 · Export a no-work handoff</h2>
+      <p>Download <code>targets.txt</code> for the already-existing held CLI. Also available: an anonymous counts-only planning summary. Export downloads include only explicitly prepared local inputs.</p>
+      <div class="buttons"><button id="manifest" type="button" disabled>Download private targets.txt</button><button id="receipt" type="button" class="quiet" disabled>Download anonymous plan.json</button></div>
+      <label for="command">Display-only original CLI preview command</label>
+      <pre id="command">lightup lab-assess --targets-file ./targets.txt --preview-only</pre>
+      <p class="fine">This text is not executed. The original CLI still performs its own URL, scope, full-batch and private-output admission. The download is not a scenario, customer consent, authorization, scan, result or security finding.</p>
+    </section>
+    <section class="warning">
+      <h2>Human release boundary</h2>
+      <p>Only independently authorized isolated labs may ever be assessed. The separate source-owner, exact-head hosted and permanent named VPS CI, privacy and security acceptance, genuine authenticated client/operator consent with action-time revocation, original #177/#182/#829 and explicit HUMAN GO remain mandatory for release or any active target work.</p>
+      <p>Importing or removing an endpoint here never changes actual grants, approvals, historical evidence, vulnerability status or STOP decisions.</p>
+    </section>
+  </main>
+  <footer>Locally hosted HTML/CSS/JS only · no trackers, services, storage, worker dispatch, network or scanner APIs.</footer>
+<script>/* LightUp Lab Launchpad: local memory only, no fetch/storage/scanning/dispatch. */
+(() => {
+  "use strict";
+  const list = [];
+  const max = 16;
+  const input = document.getElementById("entry");
+  const feedback = document.getElementById("feedback");
+  const targets = document.getElementById("targets");
+  const empty = document.getElementById("empty");
+  const count = document.getElementById("count");
+  const manifest = document.getElementById("manifest");
+  const receipt = document.getElementById("receipt");
+
+  function privateNumericAddress(hostname) {
+    if (hostname.startsWith("[") && hostname.endsWith("]")) {
+      const literal = hostname.slice(1, -1).toLowerCase();
+      if (!/^[0-9a-f:]+$/.test(literal)) return false;
+      if (literal === "::1") return true;
+      const first = literal.split(":")[0];
+      if (first === "") return false;
+      const number = parseInt(first, 16);
+      return (number & 0xfe00) === 0xfc00 || (number & 0xffc0) === 0xfe80;
+    }
+    if (!/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname)) return false;
+    const raw = hostname.split(".");
+    if (raw.some(part => String(Number(part)) !== part || Number(part) > 255)) return false;
+    const a = raw.map(Number);
+    return a[0] === 127 || a[0] === 10 ||
+      (a[0] === 172 && a[1] >= 16 && a[1] <= 31) ||
+      (a[0] === 192 && a[1] === 168);
+  }
+
+  function admit(raw) {
+    if (typeof raw !== "string" || raw.length < 1 || raw.length > 2048 ||
+        raw !== raw.trim() || /[\x00-\x20\x7f]/.test(raw) ||
+        !/^https?:\/\//.test(raw) || raw.includes("#")) {
+      throw new Error("Use a printable HTTP(S) URL with no fragment or whitespace.");
+    }
+    let parsed;
+    try { parsed = new URL(raw); } catch (_) {
+      throw new Error("The URL is malformed.");
+    }
+    if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+        !parsed.hostname || parsed.username || parsed.password ||
+        !privateNumericAddress(parsed.hostname)) {
+      throw new Error("Only literal isolated private/loopback numeric lab addresses are accepted.");
+    }
+    // Reject URL canonicalization tricks (abbreviated, octal or hex IPv4).
+    const authority = raw.match(/^https?:\/\/([^/?#]+)/);
+    if (!authority || authority[1].includes("@") || authority[1].endsWith(":")) {
+      throw new Error("The address or port is malformed.");
+    }
+    const originalHost = authority[1].startsWith("[")
+      ? authority[1].match(/^\[[^\]]+\]/)?.[0]
+      : authority[1].split(":")[0];
+    if (!originalHost || originalHost.toLowerCase() !== parsed.hostname.toLowerCase()) {
+      throw new Error("Use a canonical numeric IP literal.");
+    }
+    return raw;
+  }
+
+  const studioSelect = document.getElementById("studio-select");
+  const studioStatus = document.getElementById("studio-status");
+  const studioExport = document.getElementById("studio-export");
+  const previewCommand = document.getElementById("command");
+  let studio = null;
+
+  function selectedStudio() {
+    return studio?.rows.find(row => row.scenario_id === studioSelect.value) || null;
+  }
+
+  function activeStudioBinding() {
+    const selected = selectedStudio();
+    if (!selected) return null;
+    const endpointIps = [];
+    for (const endpoint of list) {
+      const sourceAuthority = endpoint.match(/^https?:\/\/([^/?#]+)/)?.[1] || "";
+      const port = sourceAuthority.match(/:([0-9]{1,5})$/)?.[1];
+      if (!port || Number(port) < 1 || Number(port) > 65535) return null;
+      let parsed;
+      try { parsed = new URL(endpoint); } catch (_) { return null; }
+      endpointIps.push(parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase());
+    }
+    const declared = selected.targets.map(value => value.toLowerCase());
+    if (endpointIps.length !== declared.length ||
+        new Set(endpointIps).size !== endpointIps.length ||
+        new Set(declared).size !== declared.length ||
+        !endpointIps.every(ip => declared.includes(ip))) return null;
+    return selected;
+  }
+
+  function renderStudio() {
+    const selected = selectedStudio();
+    const bound = activeStudioBinding();
+    if (!studio) {
+      studioStatus.textContent = "No original Studio draft imported. Plain lab-batch preparation remains available.";
+    } else if (!selected) {
+      studioStatus.textContent = "Private Studio draft loaded. Choose one original scenario; this is not source authentication.";
+    } else if (!bound) {
+      studioStatus.textContent = "HOLD: the chosen Studio scenario requires exactly one explicit URL+port for each original declared lab IP. No Studio export yet.";
+    } else {
+      const count = bound.expected_findings === null
+        ? "UNKNOWN (not zero)"
+        : String(bound.expected_findings.length) + " self-declared, unverified expected findings";
+      studioStatus.textContent = "Draft match: " + bound.targets.length +
+        " original lab IPs, " + count +
+        ". Only the original native schema, scope and byte-source checks may accept this draft.";
+    }
+    document.getElementById("studio-scaffold").disabled = !selected;
+    studioExport.disabled = !bound;
+    previewCommand.textContent = "lightup lab-assess --targets-file ./targets.txt" +
+      (bound ? " --catalog-file ./studio-catalog.json --scenario-id " + bound.scenario_id : "") +
+      " --preview-only";
+  }
+
+  function status(message, isError = false) {
+    feedback.textContent = message;
+    feedback.classList.toggle("error", isError);
+  }
+
+  function render() {
+    targets.replaceChildren();
+    list.forEach((url, index) => {
+      const li = document.createElement("li");
+      const label = document.createElement("div");
+      label.className = "target-label";
+      const badge = document.createElement("span");
+      badge.className = "ordinal";
+      badge.textContent = "#" + String(index + 1);
+      const value = document.createElement("code");
+      value.textContent = url;
+      label.append(badge, value);
+      const buttons = document.createElement("div");
+      buttons.className = "buttons tight";
+      for (const [action, title, disabled] of [
+        ["up", "Move earlier", index === 0],
+        ["down", "Move later", index === list.length - 1],
+        ["remove", "Remove", false],
+      ]) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "small quiet";
+        b.textContent = title;
+        b.disabled = disabled;
+        b.setAttribute("aria-label", title + " endpoint " + (index + 1));
+        b.addEventListener("click", () => {
+          if (action === "remove") list.splice(index, 1);
+          if (action === "up") [list[index - 1], list[index]] = [list[index], list[index - 1]];
+          if (action === "down") [list[index], list[index + 1]] = [list[index + 1], list[index]];
+          render();
+          status("Private planning order updated; original CLI validation remains mandatory.");
+        });
+        buttons.appendChild(b);
+      }
+      li.append(label, buttons);
+      targets.appendChild(li);
+    });
+    count.textContent = list.length + " / " + max;
+    empty.hidden = list.length !== 0;
+    manifest.disabled = list.length === 0;
+    receipt.disabled = list.length === 0;
+    renderStudio();
+  }
+
+  function download(filename, payload, mime) {
+    const blob = new Blob([payload], {type: mime});
+    const address = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = address;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Download URL exists only briefly in memory; no browser storage.
+    window.setTimeout(() => URL.revokeObjectURL(address), 6000);
+  }
+
+  document.getElementById("add").addEventListener("click", () => {
+    const rows = input.value.split(/\r?\n/).map(text => text.trim()).filter(Boolean);
+    if (!rows.length) { status("Enter at least one lab URL.", true); return; }
+    if (rows.length + list.length > max) {
+      status("The existing lab-assess CLI admits no more than 16 endpoints.", true);
+      return;
+    }
+    const next = [];
+    try {
+      for (const row of rows) {
+        const url = admit(row);
+        if (list.includes(url) || next.includes(url)) {
+          throw new Error("Duplicate URL in the proposed batch.");
+        }
+        next.push(url);
+      }
+    } catch (e) {
+      status("Nothing added. " + e.message + " Review the entire input.", true);
+      return;
+    }
+    list.push(...next);
+    input.value = "";
+    render();
+    status(String(next.length) + " isolated lab URL(s) prepared locally. No connections made.");
+  });
+
+  document.getElementById("import").addEventListener("click", async () => {
+    const picker = document.getElementById("source-file");
+    const file = picker.files && picker.files[0];
+    if (!file) { status("Choose a local private .txt file before importing.", true); return; }
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 16384) {
+      status("Nothing changed: input must be an ordinary local file of at most 16 KiB.", true);
+      picker.value = "";
+      return;
+    }
+    let proposed;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length !== file.size ||
+          (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)) {
+        throw new Error("Unstable or non-original UTF-8 source encoding.");
+      }
+      const raw = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+      if (raw.includes("\u0000")) throw new Error("NUL bytes are unsupported.");
+      const rows = raw.split(/\r?\n/).map(row => row.trim())
+        .filter(row => row && !row.startsWith("#"));
+      if (rows.length < 1 || rows.length > max) {
+        throw new Error("Source must have 1–16 non-comment isolated lab URLs.");
+      }
+      proposed = rows.map(admit);
+      if (new Set(proposed).size !== proposed.length) {
+        throw new Error("Source repeats an endpoint.");
+      }
+    } catch (e) {
+      status("Nothing changed: entire input held. " + e.message, true);
+      picker.value = "";
+      return;
+    }
+    list.splice(0, list.length, ...proposed);
+    picker.value = "";
+    input.value = "";
+    render();
+    status(String(list.length) + " private URLs restored as a local proposed batch. No contact or authorization.");
+  });
+
+  document.getElementById("studio-import").addEventListener("click", async () => {
+    const picker = document.getElementById("studio-file");
+    const file = picker.files?.[0];
+    if (!file) { status("Choose a private Studio JSON file first.", true); return; }
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 262144) {
+      status("Studio draft held: expected an existing file of at most 256 KiB.", true);
+      picker.value = "";
+      return;
+    }
+    let candidate;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length !== file.size) throw new Error("Source changed while reading.");
+      const decoded = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+      const catalogDoc = JSON.parse(decoded);
+      const flags = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
+      if (!catalogDoc || Array.isArray(catalogDoc) || typeof catalogDoc !== "object" ||
+          catalogDoc.schema !== "lightup.lab_design_catalog.v1" ||
+          catalogDoc.status !== "DRAFT_ONLY" ||
+          flags.some(key => catalogDoc[key] !== false) ||
+          !Array.isArray(catalogDoc.scenarios) ||
+          catalogDoc.scenarios.length < 1 || catalogDoc.scenarios.length > 32) {
+        throw new Error("Source is not the original Studio v1 DRAFT_ONLY format.");
+      }
+      const names = new Set();
+      for (const row of catalogDoc.scenarios) {
+        if (!row || typeof row !== "object" || Array.isArray(row) ||
+            typeof row.scenario_id !== "string" ||
+            !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(row.scenario_id) ||
+            names.has(row.scenario_id) ||
+            typeof row.name !== "string" || !Array.isArray(row.targets) ||
+            !row.targets.length || row.targets.length > 16 ||
+            row.targets.some(ip => typeof ip !== "string" || ip.length > 45) ||
+            (row.expected_findings !== null && !Array.isArray(row.expected_findings))) {
+          throw new Error("Catalog contains a noncanonical draft scenario.");
+        }
+        names.add(row.scenario_id);
+      }
+      // Preserve the *exact original bytes* for subsequent native admission.
+      // Browser JSON.parse cannot reject duplicate JSON keys: Python source
+      // read_selected_lab_design is mandatory and authoritative, never skipped.
+      candidate = {raw: bytes, rows: catalogDoc.scenarios};
+    } catch (e) {
+      picker.value = "";
+      status("Studio HOLD, previous private selection kept. " + e.message, true);
+      return;
+    }
+    studio = candidate;
+    studioSelect.replaceChildren();
+    const prompt = document.createElement("option");
+    prompt.value = "";
+    prompt.textContent = "Select one original draft scenario";
+    studioSelect.appendChild(prompt);
+    for (const row of studio.rows) {
+      const option = document.createElement("option");
+      option.value = row.scenario_id;
+      option.textContent = row.name.slice(0, 100) + " (" + row.scenario_id + ")";
+      studioSelect.appendChild(option);
+    }
+    studioSelect.disabled = false;
+    picker.value = "";
+    renderStudio();
+    status("Original Studio bytes loaded locally for human preparation; authority NOT verified.");
+  });
+
+  studioSelect.addEventListener("change", renderStudio);
+  document.getElementById("studio-scaffold").addEventListener("click", () => {
+    const selected = selectedStudio();
+    if (!selected) { status("Choose an original draft Studio scenario first.", true); return; }
+    const scheme = document.getElementById("studio-scheme").value;
+    const portText = document.getElementById("studio-port").value;
+    if (!["http", "https"].includes(scheme) || !/^[1-9][0-9]{0,4}$/.test(portText) ||
+        Number(portText) > 65535) {
+      status("Choose an explicit HTTP(S) scheme and a valid numeric port (1–65535).", true);
+      return;
+    }
+    let prepared;
+    try {
+      prepared = selected.targets.map(rawIp => {
+        const bracketed = rawIp.includes(":") ? "[" + rawIp + "]" : rawIp;
+        return admit(scheme + "://" + bracketed + ":" + portText + "/");
+      });
+      if (prepared.length !== selected.targets.length ||
+          new Set(prepared).size !== prepared.length) {
+        throw new Error("Original scenario has duplicate or unusable lab addresses.");
+      }
+    } catch (e) {
+      status("No batch replaced: " + e.message + " Original native validation remains required.", true);
+      return;
+    }
+    if (list.length && !window.confirm(
+      "Replace all current local lab URL entries with URLs prepared from the selected Studio draft? No network or assessment will be run."
+    )) return;
+    list.splice(0, list.length, ...prepared);
+    input.value = "";
+    render();
+    status(prepared.length + " human-proposed lab URLs prepared from the original draft. No command executed, no consent inferred.");
+  });
+
+
+
+  document.getElementById("studio-clear").addEventListener("click", () => {
+    studio = null;
+    studioSelect.replaceChildren();
+    studioSelect.disabled = true;
+    document.getElementById("studio-file").value = "";
+    renderStudio();
+    status("Private Studio draft discarded from the offline editor memory.");
+  });
+
+  studioExport.addEventListener("click", () => {
+    if (!studio || !activeStudioBinding()) return;
+    download("studio-catalog.json", studio.raw, "application/json");
+    status("Original Studio source bytes exported PRIVATE. The native original schema and scope gate must still admit them.");
+  });
+
+  document.getElementById("clear").addEventListener("click", () => {
+    list.length = 0;
+    input.value = "";
+    render();
+    status("All local prepared inputs cleared; no browser storage used.");
+  });
+
+  manifest.addEventListener("click", () => {
+    if (!list.length) return;
+    download("targets.txt", list.join("\n") + "\n", "text/plain;charset=utf-8");
+    status("Private targets.txt prepared. Validate with the original lab policy before any use.");
+  });
+
+  receipt.addEventListener("click", () => {
+    if (!list.length) return;
+    const output = {
+      schema: "lightup.lab_launchpad_aggregate.v1",
+      status: "DRAFT_HOLD",
+      source_count: list.length,
+      preview_only: true,
+      planning_not_permission: true,
+      authorized: false,
+      consent_verified: false,
+      dispatch_allowed: false,
+      release_allowed: false
+    };
+    download("anonymous-plan.json", JSON.stringify(output, null, 2) + "\n",
+      "application/json;charset=utf-8");
+    status("Counts-only anonymous planning summary prepared; not an authorization receipt.");
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
