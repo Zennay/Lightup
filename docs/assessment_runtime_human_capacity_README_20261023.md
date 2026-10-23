@@ -27,7 +27,7 @@ The result is one new owner-only PRIVATE ZIP with:
 
 The source comparison status stays **HOLD** if any input is HOLD. A manually marked `reviewed` row is not open planning load, **but never becomes a finding fix or approval**. A repeated source comparison (including a separately edited HUMAN revision of the same original review) is rejected rather than double-counted. Packet ordinals express command-line input order, not authenticated chronology, and capacities are hypothetical user-provided rows per date/route rather than real staffing, assignments, deadlines or security decisions.
 
-To inspect counts **without creating an output directory or files**, omit `--output` and use `--preview-only` with the same input options. Preview prints only aggregate packet/open/reviewed/undated counts and status. To get overdue counts, an operator must supply a literal ISO reference day; no clock is consulted.
+To inspect counts **without creating an output directory or files**, omit `--output` and use `--preview-only` with the same input options. Preview prints only aggregate packet/open/reviewed/undated counts, source-priority open counts, route/date group and over-capacity counts, overdue count (or `not-computed`) and status; it never prints source identifiers or writes files. To get overdue counts, an operator must supply a literal ISO reference day; no clock is consulted.
 
 ## Fail-closed and privacy boundary
 
