@@ -41,11 +41,12 @@ def _reject_nonfinite(_value):
 
 
 def _read_json(path, maximum_bytes=MAX_BYTES):
-    """Read one bounded ordinary file without following path symlinks.
+    """Read one bounded ordinary file without following user path symlinks.
 
-    Directory components are opened one at a time relative to pinned directory
-    descriptors. O_NONBLOCK prevents a FIFO from hanging this offline CLI;
-    fstat and a final no-follow stat reject special files and changed paths.
+    Directory components are opened relative to pinned directory descriptors.
+    O_PATH pins the final inode before a readable descriptor is acquired via
+    /proc/self/fd, so a raced FIFO/device cannot be opened as the input. The
+    final descriptor and directory entry must remain byte-source-stable.
     """
     if type(maximum_bytes) is not int or not 1 <= maximum_bytes <= 1_048_576:
         raise ValueError("invalid input size limit")
@@ -55,7 +56,9 @@ def _read_json(path, maximum_bytes=MAX_BYTES):
         raise ValueError("invalid input path") from exc
     if type(raw_path) is not str or not raw_path or "\x00" in raw_path:
         raise ValueError("invalid input path")
-    if not all(hasattr(os, flag) for flag in ("O_NOFOLLOW", "O_DIRECTORY", "O_CLOEXEC", "O_NONBLOCK")):
+    if not all(hasattr(os, flag) for flag in (
+        "O_NOFOLLOW", "O_DIRECTORY", "O_CLOEXEC", "O_NONBLOCK", "O_PATH"
+    )):
         raise ValueError("safe file access unavailable")
 
     # Reject dot components instead of normalizing a path whose OS resolution
@@ -71,6 +74,7 @@ def _read_json(path, maximum_bytes=MAX_BYTES):
     directory_fd = os.open(
         os.sep, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
     )
+    path_fd = None
     file_fd = None
     try:
         for component in components[:-1]:
@@ -87,18 +91,32 @@ def _read_json(path, maximum_bytes=MAX_BYTES):
         if not stat.S_ISREG(entry_before.st_mode):
             raise ValueError("input must be a regular file")
 
+        # O_PATH does not open a FIFO/device for reading. O_NOFOLLOW pins a
+        # final symlink itself, which is rejected by the regular-file check.
+        path_fd = os.open(
+            name, os.O_PATH | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=directory_fd
+        )
+        pinned = os.fstat(path_fd)
+        if not stat.S_ISREG(pinned.st_mode):
+            raise ValueError("input must be a regular file")
+        if (pinned.st_dev, pinned.st_ino) != (entry_before.st_dev, entry_before.st_ino):
+            raise ValueError("input changed during open")
+        if pinned.st_size <= 0 or pinned.st_size > maximum_bytes:
+            raise ValueError("invalid input size")
+
+        # This procfs path is constructed only from our pinned descriptor, not
+        # from caller input; it opens the already-inspected inode for reading.
         file_fd = os.open(
-            name,
-            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
-            dir_fd=directory_fd,
+            f"/proc/self/fd/{path_fd}", os.O_RDONLY | os.O_NONBLOCK | os.O_CLOEXEC
         )
         before = os.fstat(file_fd)
-        if not stat.S_ISREG(before.st_mode):
-            raise ValueError("input must be a regular file")
-        if (before.st_dev, before.st_ino) != (entry_before.st_dev, entry_before.st_ino):
+        def _identity(info):
+            return (
+                info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                info.st_mtime_ns, info.st_ctime_ns,
+            )
+        if not stat.S_ISREG(before.st_mode) or _identity(before) != _identity(pinned):
             raise ValueError("input changed during open")
-        if before.st_size <= 0 or before.st_size > maximum_bytes:
-            raise ValueError("invalid input size")
 
         chunks = []
         remaining = maximum_bytes + 1
@@ -111,16 +129,13 @@ def _read_json(path, maximum_bytes=MAX_BYTES):
         payload = b"".join(chunks)
 
         after = os.fstat(file_fd)
+        pinned_after = os.fstat(path_fd)
         entry_after = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
-        def _identity(info):
-            return (
-                info.st_dev, info.st_ino, info.st_mode, info.st_size,
-                info.st_mtime_ns, info.st_ctime_ns,
-            )
         if (
             not stat.S_ISREG(entry_after.st_mode)
             or _identity(before) != _identity(after)
-            or _identity(after) != _identity(entry_after)
+            or _identity(after) != _identity(pinned_after)
+            or _identity(pinned_after) != _identity(entry_after)
         ):
             raise ValueError("input changed during read")
         if not payload or len(payload) > maximum_bytes:
@@ -128,13 +143,14 @@ def _read_json(path, maximum_bytes=MAX_BYTES):
     finally:
         if file_fd is not None:
             os.close(file_fd)
+        if path_fd is not None:
+            os.close(path_fd)
         os.close(directory_fd)
 
     return json.loads(
         payload.decode("utf-8"), object_pairs_hook=_dict_no_duplicates,
         parse_constant=_reject_nonfinite,
     )
-
 
 def _parse_case_document(document):
     if type(document) is not dict or set(document) != {"record", "context"}:
