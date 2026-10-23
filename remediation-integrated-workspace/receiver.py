@@ -67,6 +67,11 @@ def validate_fingerprint_destination(archive: Path, output_file: Path) -> None:
     Preflight cannot reserve the output name, nor authenticate a sender.
     """
     suite.require_operator_path(output_file)
+    # The offline HUMAN browser accepts software receipts as .sha256 files.
+    # A different suffix creates a valid native receipt that the browser
+    # then refuses to compare; enforce the same filename contract up front.
+    suite.require(output_file.name.endswith(".sha256"),
+                  "Software checksum output must end in .sha256")
     suite.require(output_file.is_absolute() and
                   output_file.parent == output_file.parent.resolve(strict=True)
                   and not output_file.exists() and not output_file.is_symlink()
