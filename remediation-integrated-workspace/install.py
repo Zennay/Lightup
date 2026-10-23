@@ -375,8 +375,10 @@ def create_private_stage(parent: Path, prefix: str) -> Path:
             "Unknown private staging namespace")
     stage = parent / (prefix + secrets.token_hex(12))
     parent_fd = open_private_dir_fd(parent)
+    created = False
     try:
         os.mkdir(stage.name, mode=0o700, dir_fd=parent_fd)
+        created = True
         child_fd = os.open(stage.name,
                            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW |
                            getattr(os, "O_CLOEXEC", 0), dir_fd=parent_fd)
@@ -389,6 +391,18 @@ def create_private_stage(parent: Path, prefix: str) -> Path:
             os.close(child_fd)
         os.fsync(parent_fd)
         return stage
+    except BaseException:
+        # A caller's finally only starts after this factory returns. If
+        # fstat/open/fsync fails after mkdir, remove ONLY the fresh, EMPTY
+        # original stage using the still-pinned private parent descriptor.
+        # Do not recursively delete another actor's substituted contents.
+        if created:
+            try:
+                os.rmdir(stage.name, dir_fd=parent_fd)
+                os.fsync(parent_fd)
+            except OSError:
+                pass  # Preserve the first HOLD/error; never delete unknown data.
+        raise
     finally:
         os.close(parent_fd)
 
