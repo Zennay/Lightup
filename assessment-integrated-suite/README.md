@@ -1,3 +1,42 @@
+## PRIVATE offline kit installer and post-install inspector (DRAFT/HOLD)
+
+The original software-only v2 offline ZIP can now be received as a real, usable local
+PRIVATE workroom without running any assessment, service, tool or network action.
+The new source-only `install_offline.py` requires owner-owned 0700 destination parent,
+a new strictly named folder, explicit human confirmation, and full unchanged
+native `verify_offline.verify` admission with optional separately sourced ZIP hash,
+adjacent convenience sidecar, and source-checkout parity. It snapshots and binds
+the exact original ZIP bytes before install, refuses legacy v1 unauthenticated
+launcher/README inventory, and publishes via Linux atomic no-replace rename.
+Outputs are owner-only (0700 directories and 0600 software/receipt). Failure
+before publication cleans up only its newly created staging directory.
+
+Example on an **isolated local operator device** (not a VPS deploy):
+
+```sh
+mkdir -m 700 -p "$HOME/lightup-private"
+python3 assessment-integrated-suite/suite.py install-kit \
+  --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip \
+  --sha256-file assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip.sha256 \
+  --private-parent "$HOME/lightup-private" --folder lab-software-v28 \
+  --human-confirm "INSTALL PRIVATE OFFLINE KIT"
+python3 assessment-integrated-suite/suite.py inspect-kit \
+  --room "$HOME/lightup-private/lab-software-v28"
+```
+
+The separate `python3 assessment-integrated-suite/install_offline.py install`
+and `inspect` entry points provide the same offline operation. Both return
+`2 REVIEW_ONLY` on accepted input and `3 HOLD` on failure, never an
+authorization pass code. Open `START-HERE.html` **from disk only**, not over
+HTTP. Inspection is a full private SHA/size/path/mode inventory check of
+installed software plus the local non-authoritative receipt; it flags
+unexpected new files, missing originals, and modified bytes. No automatic
+re-download, network execution, extraction to public locations, grant or
+client/operator consent exists. The same-repo digest sidecar does not verify
+authorship or trusted origin. All original independent CI/review/privacy,
+real target permission, action-time revocation and HUMAN GO remain mandatory
+for any future authorized use.
+
 ## Latest portable software bundle — v28
 
 [Download the integrated offline toolkit v28](LightUp-Assessment-Offline-Toolkit-v28.zip) ·

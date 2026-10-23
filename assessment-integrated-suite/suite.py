@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 from verify_offline import Hold as VerifyHold, compare_packages, verify as verify_package
+from install_offline import install as install_private_kit, inspect as inspect_private_kit
 
 ROOT = Path(__file__).resolve().parent.parent
 INSPECTOR = ROOT / "src/lightup/lab_inspect.py"
@@ -70,6 +71,14 @@ def guard_command_paths(args: argparse.Namespace) -> None:
         paths.extend([args.private_session, args.private_parent, *args.workpack])
     elif args.command == "workpack-continue":
         paths.extend([args.private_session, args.from_workpack, args.private_parent])
+    elif args.command == "install-kit":
+        paths.extend([args.package, args.private_parent])
+        if args.sha256_file:
+            paths.append(args.sha256_file)
+        if args.source_root:
+            paths.append(args.source_root)
+    elif args.command == "inspect-kit":
+        paths.append(args.room)
     elif args.command == "verify-kit":
         paths.append(args.package)
         if args.compare_package:
@@ -342,6 +351,19 @@ def main() -> int:
                         help="optional local checkout root; fail if packaged software bytes are stale")
     verify.add_argument("--compare-package", default="",
                         help="optional second verified ZIP; print software/support inventory differences without extracting")
+    installing = commands.add_parser(
+        "install-kit", help="verify and privately install a fully inventoried v2 offline software ZIP")
+    installing.add_argument("--package", required=True)
+    installing.add_argument("--private-parent", required=True, help="owner-only 0700 local folder")
+    installing.add_argument("--folder", required=True, help="new exclusive local directory name")
+    installing.add_argument("--expected-sha256", default="")
+    installing.add_argument("--sha256-file", default="")
+    installing.add_argument("--source-root", default="")
+    installing.add_argument("--human-confirm", required=True,
+                            help="must equal INSTALL PRIVATE OFFLINE KIT")
+    inspecting = commands.add_parser(
+        "inspect-kit", help="inspect an installed owner-private kit against its receipt")
+    inspecting.add_argument("--room", required=True)
     args = cli.parse_args()
     if args.command == "catalog":
         for label, component in (("source inspector", INSPECTOR), ("PRIVATE briefing", BRIEF),
@@ -363,6 +385,16 @@ def main() -> int:
                     package, Path(args.compare_package).absolute(),
                     args.expected_sha256, sha256_file, source_root)
             return verify_package(package, args.expected_sha256, sha256_file, source_root)
+        if args.command == "install-kit":
+            if args.human_confirm != "INSTALL PRIVATE OFFLINE KIT":
+                raise Hold("HOLD: explicit private installation confirmation required")
+            return install_private_kit(
+                Path(args.package).absolute(), Path(args.private_parent).absolute(),
+                args.folder, args.expected_sha256,
+                Path(args.sha256_file).absolute() if args.sha256_file else None,
+                Path(args.source_root).absolute() if args.source_root else None)
+        if args.command == "inspect-kit":
+            return inspect_private_kit(Path(args.room).absolute())
         if args.command == "human-workpack":
             return private_human_workpack(args)
         if args.command == "workpack-progress":
