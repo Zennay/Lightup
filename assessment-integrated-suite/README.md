@@ -1,3 +1,15 @@
+## Printable PRIVATE software-intake review
+
+A successful native `install-kit` also creates `PRIVATE-INSTALL-REVIEW.html`
+with fixed source-free counts and the unsigned original ZIP SHA-256 plus a
+human-only handoff checklist. This portable document has no JavaScript,
+network, image, external style, link or embedded customer data. The updated
+receipt schema v2 binds the exact review page SHA. `inspect-kit` reconstructs
+that page and refuses any missing, changed or extra bytes. Previous schema-v1
+rooms remain readable without inventing an older printable page. Neither
+the receipt nor a local SHA proves authenticity, independent consent, scanner
+authorization, or permission to deploy.
+
 ## PRIVATE offline kit installer and post-install inspector (DRAFT/HOLD)
 
 The original software-only v2 offline ZIP can now be received as a real, usable local

@@ -30,12 +30,47 @@ from verify_offline import (
 ROOT = Path(__file__).resolve().parent.parent
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,47}\Z")
 RECEIPT = "PRIVATE-INSTALL-RECEIPT.json"
-SCHEMA = "lightup.private_offline_kit_install.v1"
+REVIEW = "PRIVATE-INSTALL-REVIEW.html"
+SCHEMA = "lightup.private_offline_kit_install.v2"
+LEGACY = "lightup.private_offline_kit_install.v1"
 NO_AUTHORITY = {
     "authenticated_client": False, "authenticated_operator": False,
     "consent_verified": False, "dispatch_allowed": False,
     "release_allowed": False, "deploy_allowed": False,
 }
+
+
+def render_private_review(zip_sha: str, apps: int, scripts: int) -> bytes:
+    """No raw source, filename, notes or client text enters this local document."""
+    if (not isinstance(zip_sha, str) or re.fullmatch("[a-f0-9]{64}", zip_sha) is None or
+            type(apps) is not int or not 1 <= apps <= 100 or
+            type(scripts) is not int or not 0 <= scripts <= 100):
+        raise Hold("HOLD: printable software inventory is malformed")
+    return ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>LightUp | PRIVATE offline kit intake</title></head><body><main>
+<h1>LightUp | PRIVATE software intake</h1>
+<p><strong>INCUBATE M3/M7 - REVIEW_ONLY / DRAFT-HOLD.</strong></p>
+<p>Local software receipt only. No customer material, scan, consent, grant, execution,
+real approval, vulnerability verification or deployment is contained here.</p>
+<h2>Unsigned installed software inventory</h2>
+<p>Original offline HTML studios: """ + str(apps) + """</p>
+<p>Local supporting JS files: """ + str(scripts) + """</p>
+<p>Original ZIP SHA-256 (unsigned, local-byte comparison only):
+<code>""" + zip_sha + """</code></p>
+<h2>Independent HUMAN review checklist</h2><ol>
+<li>Separately authenticate the original package source and expected whole ZIP
+digest through an independent trusted channel. A bundled checksum is not a signature.</li>
+<li>Open START-HERE.html from disk on a suitably private local computer; do not serve publicly.</li>
+<li>Before real use require the original owner, security/privacy/browser and CI approvals,
+genuine separately authenticated current client/operator consent, action-time revocation
+checks and explicit HUMAN GO. This app does none of these checks.</li>
+<li>Use the native inspect-kit command to inspect local software continuity before
+further offline human review. Missing, modified or unexpected files require HOLD.</li>
+</ol><p>AUTHENTICATED=false | CONSENT_VERIFIED=false |
+DISPATCH_ALLOWED=false | RELEASE_ALLOWED=false | DEPLOY_ALLOWED=false</p>
+</main></body></html>\n""").encode("utf-8")
 
 
 def private_directory(path: Path) -> Path:
@@ -158,8 +193,12 @@ def install(package: Path, parent: Path, folder: str,
                         len(content) > MAX_MEMBER):
                     raise Hold("HOLD: software bytes changed since manifest admission")
                 exact_private_file(staging / name, content)
+            review_html = render_private_review(
+                actual_sha, manifest["original_app_count"], manifest["support_asset_count"])
+            exact_private_file(staging / REVIEW, review_html)
             receipt = {
-                "schema": SCHEMA, "package_sha256_unsigned": actual_sha,
+                "schema": SCHEMA, "review_sha256_unsigned": digest(review_html),
+                "package_sha256_unsigned": actual_sha,
                 "package_schema": manifest["schema"], "files": [
                     listed[name] for name in sorted(listed)
                 ], "authority": dict(NO_AUTHORITY),
@@ -186,6 +225,7 @@ def install(package: Path, parent: Path, folder: str,
                 shutil.rmtree(staging)
     print("INSTALLED PRIVATE SOFTWARE ONLY / REVIEW_ONLY: " + str(destination))
     print("OPEN OFFLINE LOCALLY: " + str(destination / "START-HERE.html"))
+    print("PRIVATE HUMAN REVIEW: " + str(destination / REVIEW))
     print("Unsigned ZIP SHA-256: " + actual_sha)
     print("No source authentication, consent, grant, assessment, execution or release.")
     return 2
@@ -197,8 +237,11 @@ def inspect(room: Path) -> int:
     raw = read_private(room, receipt_path, 256 * 1024)
     try:
         data = json.loads(raw.decode("utf-8"))
-        if (set(data) != {"schema", "package_sha256_unsigned", "package_schema",
-                          "files", "authority"} or data["schema"] != SCHEMA or
+        current = data.get("schema") == SCHEMA
+        expected_fields = {"schema", "package_sha256_unsigned", "package_schema",
+                           "files", "authority"} | ({"review_sha256_unsigned"} if current else set())
+        if (set(data) != expected_fields or
+                data.get("schema") not in {SCHEMA, LEGACY} or
                 data["package_schema"] != "lightup.assessment_offline_software_kit.v2" or
                 data["authority"] != NO_AUTHORITY or
                 not isinstance(data["package_sha256_unsigned"], str) or
@@ -239,6 +282,16 @@ def inspect(room: Path) -> int:
                 raise Hold("HOLD: installed PRIVATE software differs from receipt")
         if not PACKAGE_ASSETS.issubset(names) or "manifest.json" not in names:
             raise Hold("HOLD: required offline launcher/manifest absent")
+        if current:
+            expected_page = render_private_review(
+                data["package_sha256_unsigned"],
+                sum(x.startswith("studios/") and x.endswith(".html") for x in names),
+                sum(x.startswith("studios/") and not x.endswith(".html") for x in names))
+            page = read_private(room, room / REVIEW, 16 * 1024)
+            if (not isinstance(data["review_sha256_unsigned"], str) or
+                    data["review_sha256_unsigned"] != digest(expected_page) or
+                    page != expected_page):
+                raise Hold("HOLD: printable PRIVATE intake review differs from original receipt")
         real_files = set()
         for candidate in room.rglob("*"):
             candidate = reject_symlink_components(candidate)
@@ -252,12 +305,14 @@ def inspect(room: Path) -> int:
                 real_files.add(relative)
             else:
                 raise Hold("HOLD: unsafe PRIVATE room entry")
-        if real_files != names | {RECEIPT}:
+        if real_files != names | ({RECEIPT, REVIEW} if current else {RECEIPT}):
             raise Hold("HOLD: missing or unexpected PRIVATE installed software file")
     except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError):
         raise Hold("HOLD: malformed PRIVATE installer receipt") from None
     print("INSPECTED LOCAL PRIVATE SOFTWARE / REVIEW_ONLY: " + str(room))
     print("Matched " + str(len(names)) + " original installed software files against unsigned receipt.")
+    if current:
+        print("PRINTABLE PRIVATE REVIEW: " + str(room / REVIEW))
     print("SHA receipt establishes local byte continuity only, never identity or consent.")
     return 2
 
