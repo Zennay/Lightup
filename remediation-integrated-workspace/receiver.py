@@ -89,15 +89,17 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
     validate_fingerprint_destination(archive, output_file)
     payload = (suite.digest(raw) + "\n").encode("ascii")
     stage = output_file.parent / (".lightup-software-hash-" + secrets.token_hex(12))
+    stage_identity = None
     try:
-        suite.write_file(stage, payload)
+        stage_identity = suite.write_file(stage, payload)
         suite.require(suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL) == raw,
                       "Software ZIP changed before private checksum publication")
         suite.exclusive_publish(stage, output_file)
     finally:
-        # Clean only this known temporary checksum name relative to the
-        # verified private directory, not via a replaceable absolute path.
-        suite.cleanup_private_file_stage(stage)
+        # A changed temporary filename is NOT ours to remove. Never unlink
+        # a substitute inode, even if it has identical 0600 permissions.
+        if stage_identity is not None:
+            suite.cleanup_private_file_stage(stage, stage_identity)
     print("REVIEW_ONLY: original software fingerprint saved to PRIVATE file:", output_file)
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
     print("Output is not producer identity, release approval, or permission to disclose.")
