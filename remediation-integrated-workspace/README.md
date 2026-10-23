@@ -61,7 +61,10 @@ native software renderers before publication. Only after the ZIP is
 re-admitted, it writes a **fresh 0600 temporary 65-byte checksum file** and
 publishes it with the existing Linux exclusive no-replace private publisher.
 Changed original ZIP contents, unsafe private paths, or an already existing
-destination produce **HOLD=3** with **no replacement**. The output is exactly
+destination produce **HOLD=3** with **no replacement**. **The entire
+original installed software tree, including every nested subdirectory,
+is forbidden as an output destination:** issuing a checksum must not mutate
+the source-only suite being attested. The output is exactly
 64 lowercase SHA-256 hex characters and one LF. The separate operator
 `private_desk.py fingerprint-archive` and offline browser studio expose
 the same operation; no filename, original evidence, target details or
