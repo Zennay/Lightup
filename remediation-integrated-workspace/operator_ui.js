@@ -95,15 +95,23 @@
       if (expected && clean(expected) === zip) {
         throw Error("Fingerprintbestand mag niet hetzelfde zijn als het originele ZIP-bestand.");
       }
-      const proposed = vals(chosen.name === "fingerprint-archive" ? "--output-file"
-        : chosen.name === "inspect-archive" ? "--planned-output-dir" : "--output-dir")[0];
-      if (proposed) {
+      const planned = chosen.name === "inspect-archive"
+        ? [["--planned-output-dir", true], ["--planned-checksum-file", false]]
+        : chosen.name === "fingerprint-archive"
+          ? [["--output-file", false]] : [["--output-dir", true]];
+      for (const [flag, isReceiver] of planned) {
+        const proposed = vals(flag)[0];
+        if (!proposed) continue;
         const destination = clean(proposed);
         if (parent === "/" || destination === zip || destination === parent ||
             destination.startsWith(parent + "/") ||
-            (chosen.name !== "fingerprint-archive" &&
+            (isReceiver &&
               (zip.startsWith(destination + "/") || destination === "/"))) {
           throw Error("Nieuwe output moet buiten de gehele oorspronkelijke software-ZIP-map blijven.");
+        }
+        if (flag === "--planned-checksum-file" && expected &&
+            destination === clean(expected)) {
+          throw Error("Het nieuwe checksum-bestand mag niet dezelfde naam hebben als de ontvangen originele checksum.");
         }
       }
     }
