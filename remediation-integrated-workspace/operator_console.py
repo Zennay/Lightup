@@ -139,6 +139,28 @@ bewijst nooit de identiteit van de bronhouder of toestemming.</small>
 de fingerprint beheerst, kan beide vervangen. Native ontvangst, afzonderlijke
 actuele toestemming en onafhankelijke securityreview blijven verplicht.</small>
 </section>
+<section class="fingerprint" aria-label="Offline software ZIP checksum vergelijken">
+<h2>Ontvangen PRIVATE softwarepakket controleren</h2>
+<p>Vergelijk de originele <code>software-only.zip</code> met een apart ontvangen
+<code>.sha256</code>-bestand. Deze pagina leest uitsluitend twee door de
+operator gekozen lokale bestanden in het geheugen. Maximaal 15.000.000 bytes
+voor de ZIP en exact 65 bytes voor de checksum (64 kleine hextekens en LF).</p>
+<label for="software-zip">Originele ontvangen software-ZIP</label>
+<input id="software-zip" type="file" accept=".zip">
+<label for="software-sha256">Apart ontvangen originele PRIVATE .sha256-checksum</label>
+<input id="software-sha256" type="file" accept=".sha256">
+<div class="tools">
+<button id="software-compare" type="button">Vergelijk exacte lokale bytes</button>
+<button id="software-clear" type="button" class="secondary">Wis resultaat</button>
+</div>
+<p id="software-result" role="status" aria-live="polite">
+Er is nog geen softwarepakket gelezen of verzonden.</p>
+<small>Gelijke SHA-256 bewijst geen afzender of toestemming. Dit is alleen
+een vroege lokale bytesvergelijking. Voer daarna de native
+<code>inspect-archive --expected-sha256-file</code> uit voor volledige
+ZIP-structuur-, bron- en autorisatiegrenzen. Geen installatie, upload,
+browseropslag, toestemming of automatische actie.</small>
+</section>
 <div class="layout">
 <aside class="nav"><h2>Werkstappen</h2>
 <p>Kies een opdracht. Alles blijft in browsergeheugen; er is geen netwerk,
