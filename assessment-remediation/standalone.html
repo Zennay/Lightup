@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; img-src 'none'; object-src 'none'; script-src 'sha256-cuMW2WdvaNE03FJSrJ26NMhjwO6epfjB/ptSz/HPUHI='; style-src 'sha256-vbe3i+CHUPDM10TWrOf2ZuecHwUHD73THMMKPuwvOk0='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; img-src 'none'; object-src 'none'; script-src 'sha256-AFTfH3S7YWtnPyagv5rjx9d+tIF2eaUBi5fKbghZwdY='; style-src 'sha256-Uiio0sbgG9AdO+xHJi7MdyHcROOP3fHTQKXY5gTj/sI='">
 <title>LightUp · private assessment-to-finding mapping</title>
 <style>:root{color-scheme:light;--ink:#1b2b45;--muted:#566579;--line:#d6dfeb;--paper:#f2f5fa;--action:#214c88;--warning:#85450f}
 *{box-sizing:border-box}html{scroll-behavior:smooth}
@@ -43,7 +43,14 @@ code{background:#f0f3f8;border:1px solid #e4eaf3;border-radius:4px;padding:.15re
 .metric-mini dt{color:var(--muted)}.metric-mini dd{margin:0;text-align:right}
 footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line)}
 @media(max-width:600px){main{padding:1rem}.panel{padding:1.1rem}.hero{padding:2rem 1.2rem}.section-title{gap:.55rem}}
-@media print{.hero{background:white;color:black;padding:1rem}.hero .lede{color:black}.panel{box-shadow:none}.warning{color:black}button,input,select,textarea,.table-wrap{break-inside:avoid}}</style>
+@media print{.hero{background:white;color:black;padding:1rem}.hero .lede{color:black}.panel{box-shadow:none}.warning{color:black}button,input,select,textarea,.table-wrap{break-inside:avoid}}
+.gap-search-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.7rem}
+.source-preview .gap-results{max-height:340px;overflow:auto;padding-left:1.2rem}
+.gap-entry{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin:.4rem 0;padding:.4rem 0;border-bottom:1px solid var(--line)}
+.gap-entry span{min-width:0;overflow-wrap:anywhere}
+.gap-entry button{flex:none;white-space:nowrap}
+#gap-filter-summary{margin:.5rem 0}
+@media(max-width:600px){.gap-entry{flex-direction:column;align-items:stretch}.gap-entry button{align-self:flex-start}}</style>
 </head>
 <body>
 <header class="hero">
@@ -97,6 +104,11 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
       <div class="source-preview">
         <h3>Human review gaps across original source files</h3>
         <p class="sub">Unlinked original scenarios and findings remain visible; missing mapping never means fixed or safe.</p>
+        <div class="gap-search-grid">
+          <label>Search unlinked original scenarios<input type="search" id="scenario-gap-filter" placeholder="Scenario ID, HOLD status, metric name" autocomplete="off"></label>
+          <label>Search unlinked original findings<input type="search" id="finding-gap-filter" placeholder="Finding ID, title, severity, retest status" autocomplete="off"></label>
+        </div>
+        <p class="sub" id="gap-filter-summary" aria-live="polite">Search locally to find unlinked source records. Actions only prefill the mapping form.</p>
         <div id="gaps" aria-live="polite"></div>
       </div>
     </div>
@@ -362,6 +374,8 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
       prepareSelector($("finding"), [...findings.values()], value => value.finding_id,
         value => short(value.severity.toUpperCase() + " · " + value.title + " · " + value.finding_id, 110));
       prepareSelector($("stage"), STAGES, value => value, value => value.replaceAll("_", " "));
+      $("scenario-gap-filter").value = "";
+      $("finding-gap-filter").value = "";
       $("studio").hidden = false;
       $("source-summary").textContent = report.scenarios.size + " original lab cases, " +
         findings.size + " original findings · source " + report.status +
@@ -457,36 +471,96 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
     }
   }
 
+  function prefillScenario(scenarioId) {
+    if (!app.source || !app.source.scenarios.has(scenarioId)) {
+      announce("HOLD · original scenario no longer belongs to the loaded source.", true);
+      return;
+    }
+    $("scenario").value = scenarioId;
+    renderSourcePreviews();
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("finding").focus({ preventScroll: true });
+    announce("Prefilled original scenario " + scenarioId +
+      ". Choose an original finding and save manually; no link was created.");
+  }
+
+  function prefillFinding(findingId) {
+    if (!app.source || !app.source.findings.has(findingId)) {
+      announce("HOLD · original finding no longer belongs to the loaded source.", true);
+      return;
+    }
+    $("finding").value = findingId;
+    renderSourcePreviews();
+    $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("scenario").focus({ preventScroll: true });
+    announce("Prefilled original finding " + findingId +
+      ". Choose an original scenario and save manually; no link was created.");
+  }
+
   function renderGaps() {
     const root = $("gaps");
     root.replaceChildren();
     if (!app.source) return;
     const linkedScenarios = new Set(app.links.map(link => link.scenario_id));
     const linkedFindings = new Set(app.links.map(link => link.finding_id));
-    const missingScenarios = [...app.source.scenarios.values()]
-      .filter(row => !linkedScenarios.has(row.scenario_id))
+    const scenarioQuery = $("scenario-gap-filter").value.trim().toLowerCase();
+    const findingQuery = $("finding-gap-filter").value.trim().toLowerCase();
+    const unlinkedScenarios = [...app.source.scenarios.values()]
+      .filter(row => !linkedScenarios.has(row.scenario_id));
+    const unlinkedFindings = [...app.source.findings.values()]
+      .filter(row => !linkedFindings.has(row.finding_id));
+    const missingScenarios = unlinkedScenarios
+      .filter(row => !scenarioQuery || [
+        row.scenario_id, row.status,
+        ...(Array.isArray(row.changes) ? row.changes.map(change => change.name) : [])
+      ].join(" ").toLowerCase().includes(scenarioQuery))
       .sort((a, b) => Number(b.status === "HOLD") - Number(a.status === "HOLD") ||
         a.scenario_id.localeCompare(b.scenario_id));
     const severities = ["critical", "high", "medium", "low", "info"];
-    const missingFindings = [...app.source.findings.values()]
-      .filter(row => !linkedFindings.has(row.finding_id))
+    const missingFindings = unlinkedFindings
+      .filter(row => !findingQuery ||
+        [row.finding_id, row.title, row.severity, row.retest_status]
+          .join(" ").toLowerCase().includes(findingQuery))
       .sort((a, b) => severities.indexOf(a.severity) -
         severities.indexOf(b.severity) || a.finding_id.localeCompare(b.finding_id));
-    for (const [title, entries, formatter] of [
-      ["Original lab scenarios awaiting human mapping", missingScenarios,
-       item => item.status + " · " + item.scenario_id],
-      ["Original findings awaiting human mapping", missingFindings,
-       item => item.severity.toUpperCase() + " · " + item.title + " (" + item.finding_id + ")"]
+    for (const [title, entries, total, formatter, kind, hasQuery] of [
+      ["Original lab scenarios awaiting human mapping", missingScenarios, unlinkedScenarios.length,
+        item => item.status + " · " + item.scenario_id, "scenario", !!scenarioQuery],
+      ["Original findings awaiting human mapping", missingFindings, unlinkedFindings.length,
+        item => item.severity.toUpperCase() + " · " + item.title + " (" + item.finding_id + ")",
+        "finding", !!findingQuery]
     ]) {
-      showNode(root, "h4", title + " (" + entries.length + ")");
+      showNode(root, "h4", title + " (" + entries.length +
+        (entries.length !== total ? " of " + total : "") + ")");
+      if (!entries.length) {
+        showNode(root, "p", hasQuery ?
+          "No unlinked original records match this local search." :
+          "No unlinked original records remain in this category.");
+        continue;
+      }
       const list = document.createElement("ul");
+      list.className = "gap-results";
       for (const item of entries.slice(0, 100)) {
-        showNode(list, "li", formatter(item));
+        const li = document.createElement("li");
+        li.className = "gap-entry";
+        showNode(li, "span", formatter(item));
+        const button = showNode(li, "button",
+          kind === "scenario" ? "Use scenario" : "Use finding", "minor");
+        button.type = "button";
+        button.addEventListener("click", () => kind === "scenario" ?
+          prefillScenario(item.scenario_id) : prefillFinding(item.finding_id));
+        list.appendChild(li);
       }
       root.appendChild(list);
       if (entries.length > 100)
-        showNode(root, "p", String(entries.length - 100) + " additional original records.");
+        showNode(root, "p", String(entries.length - 100) +
+          " additional matches; narrow the local search to find a specific original record.");
     }
+    $("gap-filter-summary").textContent =
+      missingScenarios.length + " scenario gap(s) match / " + unlinkedScenarios.length +
+      " unlinked; " + missingFindings.length + " finding gap(s) match / " +
+      unlinkedFindings.length + " unlinked. Searches are local. Use buttons only to prefill; " +
+      "save a manual link explicitly.";
   }
 
   function render() {
@@ -598,6 +672,8 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
   $("scenario").addEventListener("change", renderSourcePreviews);
   $("finding").addEventListener("change", renderSourcePreviews);
   $("filter").addEventListener("input", render);
+  $("scenario-gap-filter").addEventListener("input", renderGaps);
+  $("finding-gap-filter").addEventListener("input", renderGaps);
   $("export").addEventListener("click", downloadMapping);
   $("restore").addEventListener("change", restoreMapping);
 })();</script>
