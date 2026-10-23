@@ -118,8 +118,7 @@ def receive(archive: Path, destination: Path,
                   and destination != archive.parent
                   and archive.parent not in destination.parents,
                   "Recipient output must be entirely outside the original software ZIP directory")
-    stage = destination.parent / (".lightup-receiver-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
+    stage = suite.create_private_stage(destination.parent, ".lightup-receiver-")
     try:
         entries = {}
         for name, data in sorted(files.items()):
@@ -149,8 +148,7 @@ def receive(archive: Path, destination: Path,
         suite.require(not destination.exists(), "Recipient destination unexpectedly appeared")
         suite.exclusive_publish(stage, destination)
     finally:
-        if stage.exists():
-            shutil.rmtree(stage)
+        suite.cleanup_private_stage(stage)
     print("REVIEW_ONLY: received original software to PRIVATE directory:", destination)
     print("Open offline:", destination / "index.html")
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
