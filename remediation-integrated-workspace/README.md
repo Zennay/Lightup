@@ -254,8 +254,14 @@ operator studio and HUMAN command desk also offer this optional original
 read-only option. This is a path preflight only: names can change afterward;
 a later write repeats the check and never authenticates a software producer.
 
-The source ZIP must pass the complete native software/ZIP/source-lock check
-before the planned destination is admitted. A valid output must be an
+**Destination validation now runs before opening original ZIP bytes.**
+A malformed or occupied output path is refused immediately, even when the
+incoming ZIP has not yet been read. Once the planned path passes the
+no-write check, the original ZIP must still pass full native software,
+ZIP-layout and source-lock admission before the command can report REVIEW_ONLY.
+The same early path gate is used for real checksum publication and recipient
+installation, so impossible outputs cannot trigger unnecessary private
+input reads. A valid output must be an
 **unused exact absolute path under an existing current-user 0700 parent**,
 not the original ZIP path, a directory within the source-only software
 tree, or a path overlapping the trusted checkout. On valid input, prints
