@@ -20,7 +20,7 @@ The result is one new owner-only PRIVATE ZIP with:
 
 - `capacity.html`: local script-free printable planning page, no network access; includes source-priority, HUMAN-stage and route distributions, date/route load and an explicit overdue summary (or states that overdue was not computed);
 - `capacity.csv`: all anonymous original packet/case ordinals, HUMAN stage, routing group, follow-up date, priority and source-reported regression count;
-- `capacity-summary.csv`: spreadsheet-ready counts by source priority, HUMAN stage and routing group, plus open load per date/route, declared hypothetical capacity and explicit overdue totals when a reference date is supplied;
+- `capacity-summary.csv`: spreadsheet-ready counts by source priority, HUMAN stage and routing group, open load per date/route, and open counts by source priority/date/route; it also includes the declared hypothetical capacity and explicit overdue totals when a reference date is supplied;
 - `capacity.json`: the same rows and aggregate stage/priority/routing totals plus dated open work loads;
 - `manifest.json`: schema-v2 unsigned SHA-256 byte checks for all four data/report outputs and permanently false authorization flags;
 - `READ-ME.txt`: explicit privacy and no-authority instructions.
