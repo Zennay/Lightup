@@ -193,6 +193,7 @@
       tr.append(td); body.append(tr);
     }
     updateCounts();
+    $("export-visible-calendar").disabled=processing||!shown.some(item=>Boolean(item.review_date));
   }
   async function ingest(event) {
     if (processing) return;
@@ -518,6 +519,36 @@
       lines.join("\r\n")+"\r\n");
     status("PRIVATE voorlopige HUMAN-reviewdatums geëxporteerd. Geen automatische agenda-upload, grant, verwijdering of statuswijziging.");
   }
+  function exportVisibleHumanCalendar(){
+    if(processing||!entries.length)return status("Selecteer eerst originele PRIVÉ-bronnen.",true);
+    const shown=visibleEntries(),dayCounts=new Map();
+    for(const item of shown){
+      if(!item.review_date)continue;
+      if(!validDate(item.review_date))return status("HOLD: ongeldige menselijke reviewdatum.",true);
+      dayCounts.set(item.review_date,(dayCounts.get(item.review_date)||0)+1);
+    }
+    if(!dayCounts.size)return status("Geen gedateerde rijen in de huidige filters; er is geen zichtbare kalender gemaakt.",true);
+    if(!globalThis.crypto?.getRandomValues)return status("Beveiligde willekeur is hier niet beschikbaar; geen kalender gegenereerd.",true);
+    if(!window.confirm("Maak een PRIVATE agenda met alleen datums en aantallen van de momenteel zichtbare gefilterde rijen? Agenda-apps kunnen synchroniseren naar cloudaccounts; kleine groepen kunnen indirect gevoelig zijn. Dit is GEEN echt retention-/consentbesluit. Doorgaan?"))
+      return status("PRIVATE zichtbare agenda-export geannuleerd; geen externe kalender bijgewerkt.");
+    const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");
+    const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp PRIVATE Visible HUMAN Review//NL",
+      "CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+    for(const [day,count] of [...dayCounts].sort(([a],[b])=>a.localeCompare(b))){
+      const d=new Date(day+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+1);
+      const following=d.toISOString().slice(0,10).replaceAll("-","");
+      const entropy=new Uint8Array(16);crypto.getRandomValues(entropy);
+      lines.push("BEGIN:VEVENT","UID:"+bytesToHex(entropy)+"@lightup.local.invalid",
+        "DTSTAMP:"+stamp,"DTSTART;VALUE=DATE:"+day.replaceAll("-",""),
+        "DTEND;VALUE=DATE:"+following,
+        "SUMMARY:LightUp PRIVATE visible "+count+" HUMAN reviewvoorstel"+(count===1?"":"len"),
+        "DESCRIPTION:PRIVATE filtered visible HUMAN work only. No approval or deletion.",
+        "CLASS:PRIVATE","STATUS:TENTATIVE","TRANSP:TRANSPARENT","END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download("lightup-private-visible-human-review-dates.ics","text/calendar;charset=utf-8",lines.join("\r\n")+"\r\n");
+    status("PRIVATE kalender met uitsluitend datums/aantallen van zichtbare rijen geëxporteerd. Geen bronidentiteit, upload, grant, verwijdering of statuswijziging.");
+  }
   function exportCounts() {
     if (!entries.length || processing) return status("Geen aantallen zonder geselecteerde privébronnen.", true);
     const rows = ["status,count"];
@@ -611,6 +642,7 @@
   $("export-counts").addEventListener("click", exportCounts);
   $("export-brief").addEventListener("click",exportPrivateHumanBrief);
   $("export-calendar").addEventListener("click", exportHumanCalendar);
+  $("export-visible-calendar").addEventListener("click", exportVisibleHumanCalendar);
   $("query").addEventListener("input", render);
   $("status-filter").addEventListener("change", render);
   $("due-filter").addEventListener("change", render);
