@@ -501,6 +501,80 @@
       return true;
     }).sort((a,b)=>priority(a.item)-priority(b.item)||a.i-b.i);
   }
+  function filteredHumanQueue(){
+    safeExport();
+    const rows=visibleCases();
+    admit(rows.length>0);
+    return {rows,filters:{
+      flag_family:$("familyFilter").value,ground_truth:$("truthFilter").value,
+      human_stage:$("stageFilter").value,proposed_route:$("routeFilter").value,
+      next_action:$("actionFilter").value
+    },catalog_count:catalog.length,report_count:reports.length,fictional_demo_only:fictional};
+  }
+  function exportFilteredQueueCsv(){
+    try{
+      const handoff=filteredHumanQueue();
+      const columns=["record","case_ordinal","source_priority","source_membership",
+        "declared_ground_truth_mode","planted_count","source_reported_flags","human_stage",
+        "proposed_route","proposed_next_action","loaded_report_count","filter_flag_family",
+        "filter_ground_truth","filter_human_stage","filter_proposed_route","filter_next_action",
+        "fictional_demo_only","authorized","consent_verified","dispatch_allowed","release_allowed"];
+      const rows=[columns];
+      for(const {item,i} of handoff.rows){
+        const flags=caseFlags(item);
+        rows.push(["case","Lab case "+String(i+1).padStart(2,"0"),QUEUE_LABELS[priority(item)],
+          flags.missing?"missing_from_loaded_reports":"present_in_all_loaded_reports",
+          item.mode,item.planted===null?"unknown":item.planted,
+          flags.flags.size?[...flags.flags].sort().join(";"):"none",
+          reviews.get(item.id)||"needs_review",humanRouteFor(item),humanActionFor(item),
+          handoff.report_count,handoff.filters.flag_family,handoff.filters.ground_truth,
+          handoff.filters.human_stage,handoff.filters.proposed_route,handoff.filters.next_action,
+          handoff.fictional_demo_only,false,false,false,false]);
+      }
+      download("lightup-lineage-filtered-human-queue.csv",csv(rows),"text/csv;charset=utf-8");
+      message("Exported "+handoff.rows.length+" currently visible anonymous HUMAN queue rows. No original IDs, targets, hashes or private notes were included.");
+    }catch(_){message("HOLD: filtered handoff requires exact canonical source membership and at least one visible case.",true);}
+  }
+  function exportFilteredQueueHtml(){
+    try{
+      const handoff=filteredHumanQueue();
+      const esc=value=>String(value).replace(/[&<>"']/g,c=>c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c===String.fromCharCode(34)?"&quot;":"&#39;");
+      const filterSummary=[
+        "source flag family: "+$("familyFilter").selectedOptions[0].textContent,
+        "ground truth: "+$("truthFilter").selectedOptions[0].textContent,
+        "human stage: "+$("stageFilter").selectedOptions[0].textContent,
+        "proposed route: "+$("routeFilter").selectedOptions[0].textContent,
+        "next action: "+$("actionFilter").selectedOptions[0].textContent
+      ].join(" · ");
+      const headings=["Anonymous case ordinal","Source-reported priority","Source membership",
+        "Declared ground-truth mode","Planted finding count","Source-reported metric flags",
+        "Human discussion stage","Proposed human route","Proposed next action"];
+      const rows=handoff.rows.map(({item,i})=>{
+        const flags=caseFlags(item);
+        const values=["Lab case "+String(i+1).padStart(2,"0"),QUEUE_LABELS[priority(item)],
+          flags.missing?"Missing from a loaded report":"Present in every loaded report",
+          item.mode,item.planted===null?"Unknown":item.planted,
+          flags.flags.size?[...flags.flags].sort().join(", "):"None",
+          reviews.get(item.id)||"needs_review",ROUTE_LABELS[humanRouteFor(item)],ACTION_LABELS[humanActionFor(item)]];
+        return "<tr>"+values.map(value=>"<td>"+esc(value)+"</td>").join("")+"</tr>";
+      }).join("");
+      const output="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+        "<meta name='referrer' content='no-referrer'>"+
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; base-uri 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'none'; script-src 'none'\">"+
+        "<title>LightUp filtered HUMAN queue</title></head><body>"+
+        "<h1>LightUp · filtered anonymous HUMAN queue</h1>"+
+        "<p><strong>UNSIGNED HUMAN PLANNING ONLY · REVIEW_ONLY / HOLD"+
+        (handoff.fictional_demo_only?" · FICTIONAL DEMO":" · SOURCE UNVERIFIED")+"</strong></p>"+
+        "<p>Visible cases: "+handoff.rows.length+" of "+handoff.catalog_count+" original scenario slots; loaded completed comparison reports: "+handoff.report_count+".</p>"+
+        "<p>Filters applied: "+esc(filterSummary)+"</p>"+
+        "<p>No original scenario IDs, targets, source filenames/hashes, raw source values or private notes. Original source flags and ground-truth declarations are untrusted retrospective lab data.</p>"+
+        "<table><thead><tr>"+headings.map(value=>"<th>"+esc(value)+"</th>").join("")+"</tr></thead><tbody>"+rows+"</tbody></table>"+
+        "<p>authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false. This report is not a scan, authenticated finding, staff assignment, grant or release approval.</p>"+
+        "</body></html>";
+      download("lightup-lineage-filtered-human-queue.html",output,"text/html;charset=utf-8");
+      message("Exported a scriptless filtered HUMAN queue. Only visible anonymous ordinals and declared review fields are included.");
+    }catch(_){message("HOLD: filtered handoff requires exact canonical source membership and at least one visible case.",true);}
+  }
   function humanBulk(){
     if(!catalog||!reports.length){message("Load sources before changing review stages.",true);return;}
     const selected=visibleCases(),stage=$("bulkStage").value;
@@ -719,6 +793,8 @@
     renderAnonymousPrint();
     $("cases").replaceChildren();
     const all=catalog?.length||0,visible=visibleCases();
+    $("exportFilteredQueueCsv").disabled=!(ready&&match.exact&&visible.length);
+    $("exportFilteredQueueHtml").disabled=!(ready&&match.exact&&visible.length);
     $("queueCount").textContent=visible.length+" visible of "+all+
       " private source cases. Sorted: missing originals → scope/policy → findings → "+
       "evidence → informational operations → no source flags. This is an analyst review order, not a verified risk score.";
@@ -1241,6 +1317,8 @@
   });
   $("exportJson").addEventListener("click",exportJson);
   $("exportCsv").addEventListener("click",exportCsv);
+  $("exportFilteredQueueCsv").addEventListener("click",exportFilteredQueueCsv);
+  $("exportFilteredQueueHtml").addEventListener("click",exportFilteredQueueHtml);
   $("exportBrief").addEventListener("click",brief);
   render();
 })();
