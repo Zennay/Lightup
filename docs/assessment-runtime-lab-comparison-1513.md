@@ -106,3 +106,27 @@ now it returns generic HOLD without per-metric output. This exact identity
 check is a narrow diagnostic integrity check and is NOT cryptographic run
 provenance, authorization, client consent, or release approval. The JSON
 CLI, scored-scenario comparisons and cohorts inherit the same rejection.
+
+## Offline CLI input-file admission
+
+The three JSON command-line entry points share the same bounded file reader:
+the single-case comparator, the ordinary cohort comparator, and the scored
+ground-truth cohort comparator. The reader is deliberately fail-closed on
+Linux systems where the required descriptor flags or `/proc/self/fd` are
+unavailable.
+
+- Every user-supplied directory component is opened relative to a pinned
+  directory descriptor with no-follow semantics; ambiguous `.` and `..`
+  components are rejected instead of normalized.
+- The final entry must be a regular file. An `O_PATH` descriptor pins the
+  inspected inode before a separate read descriptor is opened, preventing a
+  raced FIFO or device from becoming the read source. `O_NONBLOCK` prevents
+  FIFO hangs as an additional defensive layer.
+- The read remains bounded by each CLI's existing byte limit. Descriptor
+  identity, size, mode, modification time, and change time are compared before
+  and after reading, along with the final no-follow directory entry. A replaced,
+  symlinked, special, oversized, empty, or concurrently changed input is
+  rejected and follows the existing generic `HOLD` output.
+- This is local input hardening only. It does not authenticate caller-provided
+  lab provenance, grant consent, contact targets, or change any execution,
+  authorization, dispatch, or release gate.
