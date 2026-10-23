@@ -55,6 +55,36 @@ findings, source paths, reviewer names and notes; no source file is copied to
 the report. Missing, replaced, symlinked or changed files produce HOLD without
 publishing an incomplete passport.
 
+### Reopen an existing PRIVATE reproducibility passport
+
+An authorized owner can independently compare a previously issued scriptless
+passport with the *same* original source-only installed suite on the same
+trusted machine. Use the current exact source checkout, existing owner-private
+0700 suite and the existing, separate 0700 passport directory:
+
+```sh
+python3 remediation-integrated-workspace/install.py inspect \
+  --workspace "$HOME/lightup-private/integrated-workspace-v1" \
+  --compare-checkout \
+  --passport-dir "$HOME/lightup-private/software-passport-v1"
+```
+
+This native read-only `reopen-passport` operation verifies all required pinned
+and integrated software, ZIP bytes and exact current checkout parity, then
+reconstructs the original *canonical JSON and entire scriptless HTML* byte for
+byte. The separately owned original passport must contain **exactly** the two
+original 0600 files `REVIEW_ONLY.json` and `REVIEW_ONLY.html`; symlinks,
+extra files/directories, modified HTML, edited source claims and source-version
+mismatches HOLD. The normal result remains exit 2=REVIEW_ONLY, not release.
+There is no overwrite or published replacement. This is also available as
+`private_desk.py reopen-passport` and in the offline operator UI.
+
+A passport contains **unsigned local consistency evidence**, not producer
+authentication, an attested timestamp, tenant identity, source ownership,
+verified findings, scan rights, consent, approval or permission to deploy.
+Use `--compare-checkout` only when checking against the exact original source
+checkout; no fallback or bypass of independent review gates occurs.
+
 The native `private_desk.py inspect-checkout` operation and offline operator
 UI expose the same explicit command. The regular `inspect` command still works
 without a passport; omit `--compare-checkout` only when inspecting a detached
