@@ -309,6 +309,9 @@ def build(dest: Path) -> None:
             if name.startswith("remediation-integrated-workspace/"):
                 require(read_checkout_source(ROOT / name) == written[name],
                         "Installer software changed during build")
+        # Check the actual complete staged software and archive before
+        # exclusive publication; any HOLD removes this unpublished stage.
+        verify(stage, compare_checkout=True)
         require(not dest.exists(), "Destination appeared during build")
         exclusive_publish(stage, dest)
         print("PRIVATE offline integrated workspace:", dest)
@@ -319,7 +322,7 @@ def build(dest: Path) -> None:
         if stage.exists():
             shutil.rmtree(stage)
 
-def verify(folder: Path) -> None:
+def verify(folder: Path, *, compare_checkout: bool = False) -> None:
     owner_dir(folder)
     receipt = parse(read_owner_file(folder / "manifest.json"))
     require(set(receipt) == {"kind", "version", "disposition", "authority_granted",
@@ -400,6 +403,19 @@ def verify(folder: Path) -> None:
         for name in z.namelist():
             require(z.getinfo(name).file_size <= MAX_SOURCE, "Archive item oversized")
             require(z.read(name) == verified[name], "Archive does not match installed source")
+    if compare_checkout:
+        require(read_checkout_source(LOCK, 350_000) == verified["source-lock.json"],
+                "Local checkout source lock differs from installed suite")
+        compared = 0
+        for name in sorted(verified):
+            if name in ("index.html", "operator.html", "source-lock.json",
+                        "software-only.zip"):
+                continue
+            require(read_checkout_source(ROOT / name) == verified[name],
+                    "Installed software differs from the explicit checkout")
+            compared += 1
+        print(f"CHECKOUT PARITY: {compared} original and integrated software files match exact local checkout bytes.")
+        print("Checkout parity is not producer identity or independent approval.")
     print("REVIEW_ONLY: offline suite and software archive locally consistent.")
     print("Local hashes are not signatures, authenticated consent or release approval.")
 
@@ -410,6 +426,8 @@ def main() -> int:
     p_build.add_argument("--output-dir", required=True, type=Path)
     p_verify = sub.add_parser("inspect", help="Inspect a locally installed PRIVATE suite without any network")
     p_verify.add_argument("--workspace", required=True, type=Path)
+    p_verify.add_argument("--compare-checkout", action="store_true",
+                          help="also compare installed software with the exact current local checkout")
     p_recv = sub.add_parser("receive", help="Safely reconstruct pinned software-only ZIP offline")
     p_recv.add_argument("--archive", required=True, type=Path)
     p_recv.add_argument("--output-dir", required=True, type=Path)
@@ -421,7 +439,7 @@ def main() -> int:
             from receiver import receive
             receive(args.archive, args.output_dir)
         else:
-            verify(args.workspace)
+            verify(args.workspace, compare_checkout=args.compare_checkout)
         return 2  # REVIEW_ONLY; not a release success signal.
     except (Hold, OSError, KeyError, TypeError, zipfile.BadZipFile, ValueError) as exc:
         print("HOLD:", str(exc), file=sys.stderr)
