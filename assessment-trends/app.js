@@ -488,6 +488,33 @@
     else rows.sort((a,b)=>metricOrder.get(a.metric)-metricOrder.get(b.metric));
     return rows;
   }
+  // Coverage uncertainty is deliberately tracked separately from regression labels.
+  // Slot order is selected by the operator and is never treated as chronology.
+  function coverageUnknownTrajectoryRows(){
+    if(!snapshots.length||!scenarioIds.length)return [];
+    const firstValues=scenarioIds.map(id=>snapshots[0].cases.get(id).metrics.get("coverage_unknown").candidate);
+    const firstTotal=firstValues.reduce((sum,value)=>sum+value,0);
+    let previousTotal=null;
+    return snapshots.map((report,index)=>{
+      const values=scenarioIds.map(id=>report.cases.get(id).metrics.get("coverage_unknown").candidate);
+      const total=values.reduce((sum,value)=>sum+value,0);
+      let increased=0,decreased=0,unchanged=0;
+      values.forEach((value,i)=>{
+        if(value>firstValues[i])increased++;
+        else if(value<firstValues[i])decreased++;
+        else unchanged++;
+      });
+      const row={manual_slot:index+1,scenario_count:scenarioIds.length,
+        total_unknown_coverage:total,median_unknown_coverage:median(values),
+        scenarios_with_unknown_coverage:values.filter(value=>value>0).length,
+        scenarios_increased_vs_slot_01:increased,scenarios_decreased_vs_slot_01:decreased,
+        scenarios_unchanged_vs_slot_01:unchanged,
+        net_total_change_from_slot_01:total-firstTotal,
+        total_change_from_previous_slot:previousTotal===null?null:total-previousTotal};
+      previousTotal=total;
+      return row;
+    });
+  }
   function renderMetricTrendSummary(){
     const rows=metricTrendSummaryRows();
     drawTable("metricTrendSummary",
@@ -517,6 +544,24 @@
     $("metricTrendSummaryJson").disabled=!rows.length;
     $("metricTrendSummaryBrief").disabled=!rows.length;
   }
+  function renderCoverageUnknownTrajectory(){
+    const rows=coverageUnknownTrajectoryRows();
+    drawTable("coverageUnknownTrajectory",
+      ["Manual slot","Anonymous scenarios","Total unknown coverage","Median unknown coverage",
+       "Scenarios with unknown coverage","Higher than slot 01","Lower than slot 01",
+       "Unchanged vs slot 01","Total change vs slot 01","Total change vs previous slot"],
+      rows.map(r=>[r.manual_slot,r.scenario_count,r.total_unknown_coverage,
+        fmt(r.median_unknown_coverage),r.scenarios_with_unknown_coverage,
+        r.scenarios_increased_vs_slot_01,r.scenarios_decreased_vs_slot_01,
+        r.scenarios_unchanged_vs_slot_01,fmt(r.net_total_change_from_slot_01),
+        r.total_change_from_previous_slot===null?"—":fmt(r.total_change_from_previous_slot)]));
+    $("coverageUnknownSummary").textContent=rows.length?
+      "Unknown coverage is shown separately from source regression flags. Across "+rows.length+
+      " manually selected slots, totals and scenario counts are descriptive only; increasing unknown coverage is not reclassified as a regression, and slot order is not authenticated chronology.":
+      "Import snapshots to compare declared unknown coverage separately from regression flags.";
+    for(const id of ["coverageUnknownCsv","coverageUnknownJson","coverageUnknownBrief"])
+      $(id).disabled=!rows.length;
+  }
   function metricTrendSummaryPayload(){
     return {schema:"lightup.assessment_trends_metric_trend_summary.v2",status:summary().status,
       fictional_demo_only:fictional,manual_slot_order:true,manual_slot_count:snapshots.length,
@@ -524,6 +569,65 @@
       remediation_verified:false,authorized:false,consent_verified:false,dispatch_allowed:false,
       release_allowed:false,selected_group_filter:$("metricDistributionGroup").value,
       selected_flag_filter:$("metricTrendFlagFilter").value,selected_sort:$("metricTrendSort").value,rows:metricTrendSummaryRows()};
+  }
+  function coverageUnknownTrajectoryPayload(){
+    return {schema:"lightup.assessment_trends_unknown_coverage_trajectory.v1",
+      status:summary().status,fictional_demo_only:fictional,
+      interpretation:"Unknown coverage is an uncertainty signal, not a source-reported regression label or verified finding. Slot order is manual and does not establish chronology or remediation.",
+      manual_slot_order:true,manual_slot_count:snapshots.length,scenario_count:scenarioIds.length,
+      authenticated_chronology:false,source_metrics_independently_verified:false,
+      remediation_verified:false,authorized:false,consent_verified:false,dispatch_allowed:false,
+      release_allowed:false,rows:coverageUnknownTrajectoryRows()};
+  }
+  function exportCoverageUnknownTrajectory(kind){
+    const payload=coverageUnknownTrajectoryPayload();
+    if(!payload.rows.length)return;
+    if(kind==="json"){
+      download("lightup-unknown-coverage-trajectory-REVIEW-ONLY.json",
+        JSON.stringify(payload,null,2)+"\n","application/json");
+      return;
+    }
+    const headers=["manual_slot","scenario_count","total_unknown_coverage",
+      "median_unknown_coverage","scenarios_with_unknown_coverage",
+      "scenarios_increased_vs_slot_01","scenarios_decreased_vs_slot_01",
+      "scenarios_unchanged_vs_slot_01","net_total_change_from_slot_01",
+      "total_change_from_previous_slot","fictional_demo_only","status",
+      "authenticated_chronology","source_metrics_independently_verified",
+      "remediation_verified","authorized","consent_verified","dispatch_allowed","release_allowed"];
+    const values=payload.rows.map(r=>[r.manual_slot,r.scenario_count,r.total_unknown_coverage,
+      r.median_unknown_coverage,r.scenarios_with_unknown_coverage,r.scenarios_increased_vs_slot_01,
+      r.scenarios_decreased_vs_slot_01,r.scenarios_unchanged_vs_slot_01,
+      r.net_total_change_from_slot_01,r.total_change_from_previous_slot,
+      payload.fictional_demo_only,payload.status,false,false,false,false,false,false,false]);
+    if(kind==="csv"){
+      download("lightup-unknown-coverage-trajectory-REVIEW-ONLY.csv",
+        [headers,...values].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+      return;
+    }
+    const table="<table><thead><tr>"+headers.slice(0,10).map(v=>"<th scope='col'>"+esc(v)+"</th>").join("")+
+      "</tr></thead><tbody>"+payload.rows.map(r=>"<tr>"+[
+        r.manual_slot,r.scenario_count,r.total_unknown_coverage,r.median_unknown_coverage,
+        r.scenarios_with_unknown_coverage,r.scenarios_increased_vs_slot_01,
+        r.scenarios_decreased_vs_slot_01,r.scenarios_unchanged_vs_slot_01,
+        r.net_total_change_from_slot_01,r.total_change_from_previous_slot===null?"—":r.total_change_from_previous_slot
+      ].map(v=>"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
+    const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"+
+      "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'\">"+
+      "<title>LightUp · Unknown coverage trajectory · REVIEW ONLY</title><style>"+
+      "body{font:14px/1.5 system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#17212f}"+
+      "table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #b7c1cb;padding:.45rem;text-align:left}"+
+      "th{background:#edf1f5}.hold{border:1px solid #a77b35;padding:1rem;margin:1rem 0}"+
+      "@media print{body{margin:0}tr{break-inside:avoid}}</style></head><body>"+
+      "<h1>LightUp · Unknown coverage trajectory</h1><div class='hold'><strong>"+
+      esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+payload.status+" · REVIEW ONLY / HOLD")+
+      "</strong><p>"+esc(payload.interpretation)+"</p><p>fictional_demo_only="+payload.fictional_demo_only+
+      " · authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false"+
+      " · authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
+      "<p>Selected manual slots: "+payload.manual_slot_count+" · anonymous scenarios: "+payload.scenario_count+
+      ". This aggregate handoff excludes scenario identifiers, source names and target metadata.</p>"+table+
+      "</body></html>";
+    download("lightup-unknown-coverage-trajectory-REVIEW-ONLY.html",html,"text/html");
   }
   function exportMetricTrendSummaryHtml(payload){
     const headers=["Metric","Review group","Scenarios","First median candidate","Last median candidate",
@@ -1706,6 +1810,7 @@
     const active=snapshots.length>0;
     for(const id of ["forget","exportJson","exportCsv","exportScenarioCsv","exportScenarioJson","exportScenarioBrief","exportBrief","print","reviewExportCsv","reviewExportJson","metricDistributionCsv","metricDistributionJson","metricDistributionBrief",
       "metricTrendSummaryCsv","metricTrendSummaryJson","metricTrendSummaryBrief",
+      "coverageUnknownCsv","coverageUnknownJson","coverageUnknownBrief",
       "metricTransitionCsv","metricTransitionJson","metricTransitionBrief",
       "metricTransitionCasesCsv","metricTransitionCasesJson","metricTransitionCasesBrief"])$(id).disabled=!active;
     $("scenarioSelect").disabled=!active;$("noteMetric").disabled=!active;
@@ -1717,20 +1822,22 @@
       option.textContent="Scenario "+String(i+1).padStart(2,"0");$("scenarioSelect").append(option);});
     if(active){selectedScenario=scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];$("scenarioSelect").value=selectedScenario;
       renderSummary();renderMetricBoard();renderMetricDistribution();renderMetricTrendSummary();
-      renderMetricTransitions();renderScenarioBoard();renderScenarioDetail();
+      renderCoverageUnknownTrajectory();renderMetricTransitions();renderScenarioBoard();renderScenarioDetail();
       renderReviewQueue();renderHumanWorkPlan();renderPrintBrief();}
     else{
       $("statusBanner").className="status hold";$("statusBanner").textContent="INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.";
       $("summaryCards").innerHTML='<p class="empty">Import snapshots to build the trend view.</p>';
       $("summaryText").textContent="";
-      ["metricHeatmap","metricDistribution","metricTrendSummary","metricTransitionTable","metricTransitionCases","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
+      ["metricHeatmap","metricDistribution","metricTrendSummary","coverageUnknownTrajectory","metricTransitionTable","metricTransitionCases","scenarioHeatmap","trajectoryTable","reviewTable","reviewSummary","workPlanTable","printBrief"].forEach(id=>$(id).replaceChildren());
       $("metricDistributionSummary").textContent="Import snapshots to summarize numeric metric distributions.";
       $("metricTrendSummaryText").textContent="Import snapshots to summarize median shifts and source-flag prevalence.";
+      $("coverageUnknownSummary").textContent="Import snapshots to compare declared unknown coverage separately from regression flags.";
       $("metricTransitionSummary").textContent="Import at least two snapshots to summarize flag-state changes.";
       $("metricTransitionCasesSummary").textContent="Import at least two snapshots to inspect the scenarios behind a flag-state transition.";
       $("metricTransitionMetric").disabled=$("metricTransitionPair").disabled=$("metricTransitionCaseFilter").disabled=true;
       $("metricDistributionCsv").disabled=$("metricDistributionJson").disabled=$("metricDistributionBrief").disabled=true;
       $("metricTrendSummaryCsv").disabled=$("metricTrendSummaryJson").disabled=$("metricTrendSummaryBrief").disabled=true;
+      $("coverageUnknownCsv").disabled=$("coverageUnknownJson").disabled=$("coverageUnknownBrief").disabled=true;
       $("metricTransitionCsv").disabled=$("metricTransitionJson").disabled=$("metricTransitionBrief").disabled=true;
       $("metricTransitionCasesCsv").disabled=$("metricTransitionCasesJson").disabled=$("metricTransitionCasesBrief").disabled=true;
       renderHumanWorkPlan();
@@ -2626,6 +2733,9 @@
   $("metricTrendSummaryCsv").addEventListener("click",()=>exportMetricTrendSummary("csv"));
   $("metricTrendSummaryJson").addEventListener("click",()=>exportMetricTrendSummary("json"));
   $("metricTrendSummaryBrief").addEventListener("click",()=>exportMetricTrendSummary("html"));
+  $("coverageUnknownCsv").addEventListener("click",()=>exportCoverageUnknownTrajectory("csv"));
+  $("coverageUnknownJson").addEventListener("click",()=>exportCoverageUnknownTrajectory("json"));
+  $("coverageUnknownBrief").addEventListener("click",()=>exportCoverageUnknownTrajectory("html"));
   $("metricDistributionCsv").addEventListener("click",()=>exportMetricDistribution("csv"));
   $("metricDistributionJson").addEventListener("click",()=>exportMetricDistribution("json"));
   $("metricDistributionBrief").addEventListener("click",()=>exportMetricDistribution("html"));
