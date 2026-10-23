@@ -404,7 +404,7 @@
   // HUMAN-only date classification uses an explicitly chosen local date.
   // It intentionally does not read the system clock or schedule real work.
   function validLocalDay(value) {
-    if (typeof value !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
     const parsed = new Date(value + "T00:00:00Z");
     return Number.isFinite(parsed.getTime()) &&
       parsed.toISOString().slice(0,10) === value;
@@ -492,7 +492,7 @@
       lines.push(row.map(csvCell).join(","));
     });
     download("lightup-human-date-planning.csv",
-      lines.join("\\r\\n")+"\\r\\n","text/csv;charset=utf-8");
+      lines.join("\r\n")+"\r\n","text/csv;charset=utf-8");
     child($("planning-summary"),"p","Private anonymous HUMAN date-plan CSV exported. "+
       "Source case identities, actual owners and permissions are excluded.","muted-copy");
   }
