@@ -28,7 +28,20 @@ To check the installed folder's exact native file inventory and the locally gene
 
     python3 remediation-integrated-workspace/install.py inspect --workspace "$HOME/lightup-private/integrated-workspace-v1"
 
-Inspection enforces private file ownership/modes, regular nofollow one-link files, **the exact expected directory layout (including detection of unexpected empty directories)**, canonical warning and non-authority flags, **the exact complete 79 pinned-original + 25 integrated-tool inventory** (never just whichever files a received manifest happens to list), exact installed SHA-256 file contents, ZIP-member byte identity, original source inventory and local scriptless portal renderer. The installed ZIP and the receiver must both preserve the builder's deterministic path order, original 2020 timestamps, Unix 0600 regular-file attributes, DEFLATE compression, and empty member/archive comments, encryption flags and extra metadata. Incomplete or rewritten ZIP layouts are HOLD, even when content hashes happen to match. These are local byte-integrity checks, **not** cryptographic signatures or authenticated software provenance.
+Inspection enforces private file ownership/modes, regular nofollow one-link files, **the exact expected directory layout (including detection of unexpected empty directories)**, canonical warning and non-authority flags, **the exact complete 79 pinned-original + 25 integrated-tool inventory**
+
+The ordinary `inspect` command now **always compares all 25 installed integrated
+operator tools to the trusted local checkout's actual bytes**, not just the
+received package's self-declared manifest. This closes the gap in which an
+attacker could alter an integrated tool and regenerate unsigned local manifest
+and ZIP hashes yet obtain an ordinary REVIEW_ONLY result. Original source-owner
+files are separately pinned by the immutable source-lock; selecting
+`--compare-checkout` additionally enforces current-checkout parity for all
+79 original source files and is mandatory for the explicit reproducibility
+passport. These checks assume the machine's caller-supplied trusted software
+checkout has not itself been replaced. No unsigned manifest, self-hash or local
+byte comparison authenticates a producer or authorizes access.
+ (never just whichever files a received manifest happens to list), exact installed SHA-256 file contents, ZIP-member byte identity, original source inventory and local scriptless portal renderer. The installed ZIP and the receiver must both preserve the builder's deterministic path order, original 2020 timestamps, Unix 0600 regular-file attributes, DEFLATE compression, and empty member/archive comments, encryption flags and extra metadata. Incomplete or rewritten ZIP layouts are HOLD, even when content hashes happen to match. These are local byte-integrity checks, **not** cryptographic signatures or authenticated software provenance.
 
 ## Reproducible software evidence — single-command PRIVATE passport
 
