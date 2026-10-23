@@ -407,9 +407,18 @@ def verify(folder: Path, *, compare_checkout: bool = False,
             and all(receipt[k] is False for k in
                     ("authority_granted", "scan_authorized", "verified_remediation", "client_consent"))
             and receipt["warning"] == WARNING, "Not a canonical HUMAN-only suite")
+    # A locally consistent archive is not complete merely because every
+    # *listed* hash matches: the publisher/recipient's exact fixed inventory
+    # must also be present. Do not trust a received manifest to enumerate
+    # which original and integrated tools are mandatory.
+    _, pinned_lock = catalog()
     files = receipt["files"]
-    require(type(files) is dict and len(files) >= 53, "Incomplete package manifest")
-    require(receipt["source_heads"] == catalog()[1]["source_heads"],
+    expected_software = (set(pinned_lock["files"]) | set(INTEGRATED_TOOLS) |
+                         {"index.html", "operator.html", "source-lock.json",
+                          "software-only.zip"})
+    require(type(files) is dict and set(files) == expected_software,
+            "Missing or unexpected original/integrated offline software")
+    require(receipt["source_heads"] == pinned_lock["source_heads"],
             "Source snapshot identities do not match installed review")
     expected = set(files) | {"manifest.json"}
     present = set()
@@ -424,33 +433,9 @@ def verify(folder: Path, *, compare_checkout: bool = False,
     require(present == expected, "Package files missing or extra")
     verified = {}
     for name, descriptor in files.items():
-        require(safe_name(name) or name in ("index.html", "operator.html", "software-only.zip", "source-lock.json",
-                                             "remediation-integrated-workspace/install.py",
-                     "remediation-integrated-workspace/private_desk.py",
-                     "remediation-integrated-workspace/operator_console.py",
-                     "remediation-integrated-workspace/landing.py",
-                     "remediation-integrated-workspace/operator_ui.js",
-                     "remediation-integrated-workspace/fingerprint_ui.js",
-                     "remediation-integrated-workspace/packet_fingerprint.py",
-                     "remediation-integrated-workspace/packet_brief.py",
-                     "remediation-integrated-workspace/operator_ui.css",
-                                             "remediation-integrated-workspace/receiver.py",
-                                             "remediation-integrated-workspace/workflow.py",
-                                             "remediation-integrated-workspace/portable_cockpit.py",
-                                             "remediation-integrated-workspace/single_review.py",
-                                             "remediation-integrated-workspace/single_review.js",
-                                             "remediation-integrated-workspace/single_brief.py",
-                                             "remediation-integrated-workspace/SINGLE_REVIEW.md",
-                                             "remediation-integrated-workspace/archive_workflow.py",
-                     "remediation-integrated-workspace/encrypted_cockpit.py",
-                     "remediation-integrated-workspace/journal_vault.py",
-                     "remediation-integrated-workspace/journal_encrypt.js",
-                     "remediation-integrated-workspace/journal_open.js",
-                     "remediation-integrated-workspace/review_package.py",
-                     "remediation-integrated-workspace/REVIEW_PACKAGE.md",
-                     "remediation-integrated-workspace/JOURNAL_VAULT.md",
-                                             "remediation-integrated-workspace/README.md"),
-                "Unexpected package name")
+        require(safe_name(name) or name in INTEGRATED_TOOLS
+                or name in ("index.html", "operator.html", "software-only.zip",
+                            "source-lock.json"), "Unexpected package name")
         require(type(descriptor) is dict and set(descriptor) == {"sha256", "bytes"}
                 and type(descriptor["bytes"]) is int and descriptor["bytes"] >= 0
                 and type(descriptor["sha256"]) is str and len(descriptor["sha256"]) == 64,
@@ -464,7 +449,7 @@ def verify(folder: Path, *, compare_checkout: bool = False,
     require(verified["operator.html"] == operator_console.render(),
             "Operator studio differs from original native offline renderer")
     installed_lock = parse(verified["source-lock.json"])
-    require(installed_lock == catalog()[1], "Source inventory changed")
+    require(installed_lock == pinned_lock, "Source inventory changed")
     for name, descriptor in installed_lock["files"].items():
         require(name in verified and digest(verified[name]) == descriptor["sha256"],
                 "Installed source not pinned")
