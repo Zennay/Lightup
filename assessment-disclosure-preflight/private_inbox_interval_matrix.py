@@ -198,9 +198,17 @@ def main() -> int:
     parser.add_argument("action", choices=("build", "reopen"))
     parser.add_argument("--board", required=True)
     parser.add_argument("--revision", action="append", required=True)
-    parser.add_argument("--private-output-dir", required=True)
+    parser.add_argument("--private-output-dir")
+    parser.add_argument("--preview-only", action="store_true",
+                        help="Admit inputs and print aggregate counts without rendering or writing outputs")
     args = parser.parse_args()
     try:
+        if args.preview_only and args.action != "build":
+            raise ValueError("preview-only is available for build only")
+        if args.preview_only and args.private_output_dir is not None:
+            raise ValueError("preview-only must not receive an output directory")
+        if not args.preview_only and not args.private_output_dir:
+            raise ValueError("private output directory required")
         if not timeline.MIN_ROUNDS <= len(args.revision) <= timeline.MAX_ROUNDS:
             raise ValueError("2–8 complete original HUMAN revisions required")
         board_raw = source_bytes(args.board)
@@ -215,16 +223,29 @@ def main() -> int:
             for path in args.revision
         ]
         matrix = compose_matrix(timeline.compose_history(originals, revisions))
-        artifacts = expected_artifacts(matrix)
-        for source in (args.board, *args.revision):
-            actions.board.require_output_outside_source_tree(
-                os.path.dirname(os.path.realpath(source)), args.private_output_dir
-            )
+        if not args.preview_only:
+            artifacts = expected_artifacts(matrix)
+            for source in (args.board, *args.revision):
+                actions.board.require_output_outside_source_tree(
+                    os.path.dirname(os.path.realpath(source)), args.private_output_dir
+                )
         if source_bytes(args.board) != board_raw:
             raise ValueError("original board changed before matrix publication")
         for path, raw in zip(args.revision, revision_raws):
             if source_bytes(path) != raw:
                 raise ValueError("original HUMAN worksheet changed before matrix publication")
+        if args.preview_only:
+            pair_slot_rows = sum(
+                len(pair["all_original_slots"])
+                for pair in matrix["all_pairwise_intervals"]
+            )
+            print("PRIVATE_HUMAN_INTERVAL_MATRIX_PREVIEW — REVIEW_ONLY"
+                  + "; rounds=" + str(matrix["original_round_count"])
+                  + "; slots=" + str(matrix["original_slot_count"])
+                  + "; pairs=" + str(matrix["pair_count"])
+                  + "; pair_slot_rows=" + str(pair_slot_rows)
+                  + "; no_files_written; no_authority")
+            return 2
         if args.action == "build":
             actions.publish_private_artifacts(args.private_output_dir, artifacts)
         else:
