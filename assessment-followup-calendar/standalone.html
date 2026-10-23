@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LPe1TaMFIqcpzyb2zAEpqLlr+aiaX0bPYpR0WIISvZ0='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-yZgBTT+MV4KdZMSpXXUI8bocJaMMXTAD4i0JdvgJbOk='; style-src 'sha256-MIa4YHJdfk9/xTqlCFVXdYeDYhrhTyTQdaScf4EpFmA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -88,6 +88,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   let conflictProposal=null;
   let lastIcsSequence=0;
   let recipientPage=0,recipientGroupPage=0,recipientGroupFocus=null;
+  let recipientGroupExportReady=false;
   let recipientProposal=null;
   let recipientSelection=new Set();
   let recipientUndo=null;
@@ -240,11 +241,13 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     $("recipientSummary").textContent="No PRIVATE HUMAN worksheet or alternate recipient zone loaded.";
     $("recipientRemainder").textContent="";
     $("recipientGroupSummary").textContent="No HUMAN group preview loaded.";
+    recipientGroupExportReady=false;
     $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
     $("recipientPolicyStatus").textContent="Recipient preference not loaded; this is not authenticated availability.";
     for(const id of ["recipientExport","recipientPolicyExport",
       "recipientPrev","recipientNext","recipientGroupPrev","recipientGroupNext",
-      "recipientGroupClear","recipientApply",
+      "recipientGroupClear","recipientGroupCsv","recipientGroupPrint",
+      "recipientGroupNextAttention","recipientApply",
       "recipientProposalExport","recipientProposalPrint","recipientUndo"])
       $(id).disabled=true;
     $("recipientProposalDetails").open=false;
@@ -847,18 +850,109 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     changed=true;exportedPlan=false;render();
     inform("Last HUMAN cross-zone draft adjustment undone locally. Save the corrected PRIVATE workroom separately.");
   }
-  function renderRecipientGroups(source){
+
+  function recipientGroupWorkload(source=recipientRows()){
+    hold(active && source.length<=MAX_ROWS);
     const groups=new Map();
     for(const row of source){
+      hold(["within_hours","outside_hours","weekend","unavailable_date","clock_change"].includes(row.status));
       if(!groups.has(row.group))groups.set(row.group,{group:row.group,total:0,
-        within_hours:0,outside_hours:0,weekend:0,
-        unavailable_date:0,clock_change:0});
+        within_hours:0,outside_hours:0,weekend:0,unavailable_date:0,clock_change:0});
       const record=groups.get(row.group);
       record.total++;record[row.status]++;
     }
-    const ordered=[...groups.values()].sort((a,b)=>
+    hold(groups.size<=MAX_ROWS);
+    return [...groups.values()].sort((a,b)=>
       (b.total-b.within_hours)-(a.total-a.within_hours)||
       b.total-a.total||a.group.localeCompare(b.group));
+  }
+  function recipientGroupSnapshot(){
+    const view=recipientGroupWorkload();
+    hold(recipientPreferenceSource===hash+"|"+seriesId);
+    const policy=recipientHoursRule(),target=recipientFormatter().resolvedOptions().timeZone;
+    const key=JSON.stringify([workroomFingerprint(),recipientPreferenceSource,target,
+      policy.from,policy.to,policy.days,recipientBlackoutText()]);
+    return {view,target,key};
+  }
+  function recipientGroupReport(downloadHtml){
+    let before;
+    try{before=recipientGroupSnapshot();}catch(_){
+      inform("HOLD: recipient timezone or unverified HUMAN availability is invalid. No group report exported.",true);return;
+    }
+    hold(before.view.length>0);
+    if(!confirm("Create PRIVATE, UNSIGNED HUMAN recipient group workload ("+
+      before.view.length+" anonymous groups)? Small-group counts may identify people in context. "+
+      "Groups with fewer than three entries are pooled together. The file contains no group names, source identifiers, individual appointment dates or notes. "+
+      "No recipient availability, consent or security decision is authenticated."))return;
+    const after=recipientGroupSnapshot();
+    hold(before.key===after.key && JSON.stringify(before.view)===JSON.stringify(after.view));
+    const columns=["anonymous_group_slot","planned","within_declared_window",
+      "outside_hours","outside_weekdays","unavailable_date","clock_change",
+      "authorized","recipient_verified","consent_verified","dispatch_allowed","release_allowed"];
+    // Aggregate cohorts smaller than three before export: never publish a
+    // per-group low-count row that could be trivially associated with a person.
+    // This is disclosure minimization, NOT a de-identification guarantee.
+    const small=after.view.filter(g=>g.total<3);
+    const material=after.view.filter(g=>g.total>=3);
+    const rowFor=(label,g)=>[label,String(g.total),String(g.within_hours),
+      String(g.outside_hours),String(g.weekend),String(g.unavailable_date),
+      String(g.clock_change),"false","false","false","false","false"];
+    const rows=material.map((g,i)=>rowFor("group_"+String(i+1).padStart(4,"0"),g));
+    if(small.length){
+      const aggregate={total:0,within_hours:0,outside_hours:0,weekend:0,
+        unavailable_date:0,clock_change:0};
+      for(const g of small)for(const key of Object.keys(aggregate))
+        aggregate[key]+=g[key];
+      rows.push(rowFor("small_groups_combined",aggregate));
+    }
+    hold(rows.length>0 && rows.length<=MAX_ROWS &&
+      rows.reduce((n,row)=>n+Number(row[1]),0)===
+        after.view.reduce((n,g)=>n+g.total,0));
+    if(downloadHtml){
+      const escapeValue=v=>String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+      const table=rows.map(row=>"<tr>"+row.slice(0,7).map(cell=>
+        "<td>"+escapeValue(cell)+"</td>").join("")+"</tr>").join("");
+      const th=columns.slice(0,7).map(label=>"<th scope=\"col\">"+
+        escapeValue(label)+"</th>").join("");
+      const documentText='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\';'+
+        ' connect-src \'none\'; style-src \'none\'; script-src \'none\';'+
+        ' img-src \'none\'; base-uri \'none\'; form-action \'none\'">'+
+        '<meta name="referrer" content="no-referrer"><title>PRIVATE HUMAN group review</title></head>'+
+        '<body><h1>PRIVATE HUMAN group workload</h1><p>Unsigned; anonymous group slots '+
+        'within this single export only. Source-reported, manually declared recipient windows; NOT authenticated.</p>'+
+        '<p>'+rows.length+' groups, '+after.view.reduce((n,g)=>n+g.total,0)+
+        ' proposed appointments. No actual calendar, identity, consent, grant or release is checked.</p>'+
+        '<table border="1"><thead><tr>'+th+'</tr></thead><tbody>'+table+
+        '</tbody></table><p>AUTHENTICATED=false; CONSENT_VERIFIED=false; DISPATCH_ALLOWED=false; RELEASE_ALLOWED=false.</p>'+
+        '<p>Small cohorts can still reveal patterns. Do not publish without a separately authorized PRIVATE review.</p></body></html>';
+      download(documentText,"lightup-private-anonymous-human-group-review.html","text/html;charset=utf-8");
+    }else{
+      download(makeCsv([columns,...rows]),"lightup-private-anonymous-human-group-workload.csv",
+        "text/csv;charset=utf-8");
+    }
+    inform("PRIVATE aggregate HUMAN group review offered for local download; no source identity or consent proven.");
+  }
+  function focusNextRecipientGroupAttention(){
+    let current;
+    try{current=recipientGroupWorkload().filter(g=>g.total>g.within_hours);}
+    catch(_){inform("HOLD: invalid HUMAN recipient window; nothing opened.",true);return;}
+    if(!current.length)return;
+    const index=current.findIndex(g=>g.group===recipientGroupFocus);
+    recipientGroupFocus=current[(index+1)%current.length].group;
+    recipientPage=0;
+    $("recipientView").value="all";$("recipientQuery").value="";
+    renderRecipientZone();
+    $("recipientGroupSummary").scrollIntoView({block:"nearest"});
+    inform("Opened next source-reported HUMAN group outside the declared window. This is not proof of real availability.");
+  }
+  function renderRecipientGroups(source){
+    const ordered=recipientGroupWorkload(source);
+    recipientGroupExportReady=ordered.length>0;
+    for(const id of ["recipientGroupCsv","recipientGroupPrint"])
+      $(id).disabled=!recipientGroupExportReady;
+    $("recipientGroupNextAttention").disabled=!ordered.some(row=>row.total>row.within_hours);
     const pages=Math.max(1,Math.ceil(ordered.length/32));
     recipientGroupPage=Math.max(0,Math.min(recipientGroupPage,pages-1));
     $("recipientGroupPrev").disabled=recipientGroupPage===0;
@@ -899,6 +993,9 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     catch(_){
       recipientProposal=null;recipientSelection.clear();
       renderRecipientProposal();
+      recipientGroupExportReady=false;
+      for(const id of ["recipientGroupCsv","recipientGroupPrint","recipientGroupNextAttention"])
+        $(id).disabled=true;
       $("recipientGroupRows").replaceChildren();
       for(const id of ["recipientGroupClear","recipientGroupPrev","recipientGroupNext"])
         $(id).disabled=true;
@@ -2018,7 +2115,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     $("handoffConfirm").value="";
   }
   async function handoffKey(password,salt){
-    hold(typeof password==="string" && password.length>=16 && password.length<=256);
+    hold(typeof password=[REDACTED]"string" && password.length>=16 && password.length<=256);
     hold(crypto.subtle && salt.length===16);
     const raw=new TextEncoder().encode(password);
     try{
@@ -2032,8 +2129,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   const ENC_AAD=new TextEncoder().encode("lightup.human_calendar.private_plan.v1|REVIEW_ONLY|NO_AUTHORITY");
   async function saveEncrypted(){
     hold(active && crypto.subtle);
-    const password=$("handoffPassword").value,confirmation=$("handoffConfirm").value;
-    hold(password.length>=16 && password.length<=256 && password===confirmation);
+    const password=[REDACTED]"handoffPassword").value,confirmation=$("handoffConfirm").value;
+    hold(password.length>=16 && password.length<=256 && password=[REDACTED]
     const snapshotCSV=privatePlanCSV();
     const plain=new TextEncoder().encode(snapshotCSV);
     const salt=new Uint8Array(16),iv=new Uint8Array(12);
@@ -2147,7 +2244,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const wasActive=active,priorSource=originalBytes;
     const snapshot=active?workroomFingerprint():null;
     const previousUnsaved=wasActive&&(changed||capacityDirty||capacityEditorDirty);
-    const password=$("vaultPassword").value;
+    const password=[REDACTED]"vaultPassword").value;
     let admitted=null;
     try{
       admitted=await readPortableVault(file,password);
@@ -2230,7 +2327,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   }
   async function recoverPortableVaultComponent(file){
     hold(crypto.subtle);
-    const password=$("vaultPassword").value,kind=$("vaultExtractKind").value;
+    const password=[REDACTED]"vaultPassword").value,kind=$("vaultExtractKind").value;
     hold(["source","plan","capacity"].includes(kind));
     let admitted=null;
     try{
@@ -2365,8 +2462,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   }
   async function saveEncryptedWorkroom(){
     hold(active && crypto.subtle && !capacityEditorDirty);
-    const password=$("handoffPassword").value,confirmation=$("handoffConfirm").value;
-    hold(password.length>=16 && password.length<=256 && password===confirmation);
+    const password=[REDACTED]"handoffPassword").value,confirmation=$("handoffConfirm").value;
+    hold(password.length>=16 && password.length<=256 && password=[REDACTED]
     const snapshot=workroomFingerprint(),plain=packWorkroom(privatePlanCSV(),privateCapacityCSV());
     const salt=new Uint8Array(16),iv=new Uint8Array(12);
     crypto.getRandomValues(salt);crypto.getRandomValues(iv);
@@ -2630,7 +2727,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   }
   async function compareEncryptedWorkroom(file){
     hold(active && crypto.subtle && !capacityEditorDirty);
-    const initial=workroomFingerprint(),password=$("handoffPassword").value;
+    const initial=workroomFingerprint(),password=[REDACTED]"handoffPassword").value;
     try{
       const admitted=await readEncryptedWorkroom(file,password);
       hold(active && initial===workroomFingerprint() && !capacityEditorDirty);
@@ -2666,7 +2763,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   async function restoreEncryptedWorkroom(file,ticket){
     hold(active && crypto.subtle);
     const initial=workroomFingerprint(),oldPlan=plan,oldSeries=seriesId;
-    const password=$("handoffPassword").value;
+    const password=[REDACTED]"handoffPassword").value;
     try{
       const admitted=await readEncryptedWorkroom(file,password);
       if(!currentWorkspaceReplacement(ticket))return;
@@ -2710,7 +2807,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   async function restoreEncryptedFile(file,ticket){
     hold(active && crypto.subtle);
     const fingerprint=workroomFingerprint(),oldPlan=plan;
-    const password=$("handoffPassword").value;
+    const password=[REDACTED]"handoffPassword").value;
     try{
       const admitted=await decryptPrivatePlan(file,password);
       if(!currentWorkspaceReplacement(ticket))return;
@@ -2734,7 +2831,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   async function readEncryptedBaseline(file){
     hold(active && crypto.subtle);
     const originHash=hash,originSeries=seriesId,oldPlan=plan;
-    const password=$("baselinePassword").value;
+    const password=[REDACTED]"baselinePassword").value;
     try{
       const admitted=await decryptPrivatePlan(file,password);
       hold(active && hash===originHash && seriesId===originSeries &&
@@ -3223,6 +3320,13 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference import rejected (HOLD). Current HUMAN window and schedule retained.";}
     finally{e.target.value="";}
   });
+  hook("recipientGroupCsv","click",()=>{try{recipientGroupReport(false);}catch(_){
+    inform("HOLD: recipient workload CSV no longer matches the private source.",true);
+  }});
+  hook("recipientGroupPrint","click",()=>{try{recipientGroupReport(true);}catch(_){
+    inform("HOLD: private group review could not be safely created.",true);
+  }});
+  hook("recipientGroupNextAttention","click",focusNextRecipientGroupAttention);
   hook("recipientGroupClear","click",()=>{
     recipientGroupFocus=null;recipientPage=0;renderRecipientZone();
   });
@@ -3488,6 +3592,12 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <summary>PRIVATE HUMAN cross-zone group workload — exact group focus</summary>
 <p>Aggregated counts of already-scheduled original HUMAN ordinal proposals in the chosen recipient zone, grouped by unverified worksheet group labels. Source-reported groups are NOT authenticated recipient names, calendar permissions, availability or security findings. Focus one group to review its original ordinals; filters and PRIVATE schedule CSV then apply only to the chosen group.</p>
 <p id="recipientGroupSummary" class="subtle" role="status">No HUMAN group preview loaded.</p>
+<div class="row">
+<button id="recipientGroupNextAttention" type="button" class="ghost" disabled>Review next HUMAN group outside declared window</button>
+<button id="recipientGroupCsv" type="button" class="ghost" disabled>Download anonymous group workload (.csv)</button>
+<button id="recipientGroupPrint" type="button" class="ghost" disabled>Download scriptless group review (.html)</button>
+</div>
+<p class="subtle">These anonymous handoffs contain only group slots and aggregate counts: no original group names, ordinals, source SHA, source dates, targets or free HUMAN notes. Very small groups may still be re-identifiable when combined with outside information. Only use a trusted PRIVATE device and HUMAN disclosure review. No recipient authorization or consent is checked.</p>
 <div class="row">
 <button id="recipientGroupClear" class="ghost" type="button" disabled>Clear exact group focus</button>
 <button id="recipientGroupPrev" class="ghost" type="button" disabled>Previous groups</button>
