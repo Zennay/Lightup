@@ -24,10 +24,10 @@ Use a local Python 3.11+ environment with the standard library only. Agenda inpu
 Use `--preview-only` to admit the same original agenda files, apply the selected focus filters and validate any selected HUMAN returns, but **never open/create an output directory or write files**. It prints only aggregate counts by neutral role, date bucket and HUMAN stage, plus the number/total byte size of the artifacts that would be rendered. If you explicitly select a declared capacity plan, the preview also shows only role/day group totals, over-limit group totals, excess-item totals and undated-item totals for the declared and optional alternate assumptions; these are hypothetical planning limits, not actual staffing. It does not print source paths, source hashes, original IDs, target labels or per-agenda rows.
 
 ```bash
-python3 assessment-portfolio/portfolio.py \\
-  --as-of 2026-10-23 \\
-  --preview-only \\
-  /private/agenda-room-a/agenda.json \\
+python3 assessment-portfolio/portfolio.py \
+  --as-of 2026-10-23 \
+  --preview-only \
+  /private/agenda-room-a/agenda.json \
   /private/agenda-room-b/agenda.json
 ```
 
