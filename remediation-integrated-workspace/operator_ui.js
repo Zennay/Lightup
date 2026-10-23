@@ -360,6 +360,11 @@
     }
     renderCommand();
     if (command.value) {
+      // The clicked quick-action button becomes hidden after switching to a
+      // different command. Move keyboard focus to a visible editable field
+      // instead of abandoning keyboard and screen-reader operators.
+      const first = fields.querySelector("input,textarea");
+      if (first) first.focus();
       showMessage("Nieuwe checksumopdracht voorbereid. De ZIP is hier niet gecontroleerd en er is geen checksum aangemaakt of gedeeld.", false);
     }
   });
@@ -388,6 +393,8 @@
     }
     renderCommand();
     if (command.value) {
+      const first = fields.querySelector("input,textarea");
+      if (first) first.focus();
       showMessage("Paden lokaal overgenomen. Dit is een NIEUW ontvangstcommando: geen ZIP-inspectie uitgevoerd en geen toestemming of ontvangst verleend.", false);
     }
   });
