@@ -365,7 +365,7 @@
       topic=$("queueFamily").value||"all",stageFilter=$("queueFilter").value||"all",
       includeNeutral=$("queueIncludeNeutral").checked;
     const rows=ids.map((id,i)=>({i,id,count:queueAdverse(id,candidate,topic),
-      safety:queueAdverse(id,candidate,"scope"),review:queueSettings(id)})).filter(row=>
+      safety:queueAdverse(id,candidate,"scope"),safetyAll:queueAdverse(id,"all","scope"),review:queueSettings(id)})).filter(row=>
       (stageFilter==="all"||row.review.stage===stageFilter)&&(includeNeutral||row.count>0));
     rows.sort((a,b)=>topic==="all"?
       Number(b.safety>0)-Number(a.safety>0)||b.safety-a.safety||
@@ -394,7 +394,7 @@
         rows.push(["lightup.lab_candidate_matrix_human_queue.v1",
           "Lab case "+String(row.i+1).padStart(2,"0"),
           view.candidate==="all"?"all":"candidate "+(Number(view.candidate)+1),
-          view.topic,row.count,row.safety,slots.length?slots.join(";"):"none",
+          view.topic,row.count,row.safetyAll,slots.length?slots.join(";"):"none",
           row.review.stage,row.review.route,reports.length,view.stageFilter,
           view.includeNeutral,demo,false,false,false,false]);
       }
@@ -412,12 +412,12 @@
         "metric topic: "+view.topic,"discussion stage: "+view.stageFilter,
         "include neutral cases: "+(view.includeNeutral?"yes":"no")
       ].join(" · ");
-      const headings=["Anonymous case ordinal","Source signal instances","Scope/policy flags across candidates",
+      const headings=["Anonymous case ordinal","Source signal instances","Scope/policy flags across all candidates",
         "Candidate slots with source signal","Human discussion stage","Generic proposed group"];
       const body=view.rows.map(row=>{
         const slots=(view.candidate==="all"?reports.map((_,i)=>i):[Number(view.candidate)])
           .filter(i=>queueAdverse(row.id,String(i),view.topic)>0).map(i=>i+1);
-        const values=["Lab case "+String(row.i+1).padStart(2,"0"),row.count,row.safety,
+        const values=["Lab case "+String(row.i+1).padStart(2,"0"),row.count,row.safetyAll,
           slots.length?slots.join(", "):"None",row.review.stage,row.review.route];
         return "<tr>"+values.map(value=>"<td>"+esc(value)+"</td>").join("")+"</tr>";
       }).join("");
