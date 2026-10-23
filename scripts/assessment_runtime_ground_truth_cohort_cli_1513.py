@@ -1,6 +1,6 @@
 """Offline scored lab cohort review: 2 REVIEW_ONLY / 3 HOLD, NEVER a grant.
 
-Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py old.json new.json
+Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text] old.json new.json
 Only two explicitly supplied local files are read, never a network endpoint.
 """
 from __future__ import annotations
@@ -58,16 +58,84 @@ def _load(path):
     return tuple(_parse_scored_case(packet) for packet in packets)
 
 
+def _display_text(review: LabCohortComparison) -> str:
+    """Render a privacy-minimal scored-cohort summary without source identifiers."""
+    lines = [
+        "LightUp assessment-runtime scored cohort comparison",
+        f"Status: {review.status}",
+        f"Scenarios compared: {len(review.comparisons)}",
+        f"Scenarios with source-reported adverse flags: {len(review.regressed_scenarios)}",
+        "Input mode: explicit local files only; source provenance and chronology are unauthenticated.",
+        "REVIEW_ONLY is not remediation proof, consent or release approval.",
+    ]
+    if not review.comparisons:
+        lines.append(
+            "No scenario details emitted; input admission, source ground truth or "
+            "cohort consistency did not permit a complete comparison."
+        )
+    else:
+        for ordinal, (_scenario_id, comparison) in enumerate(review.comparisons, 1):
+            adverse = ", ".join(comparison.regressions) if comparison.regressions else "none reported"
+            lines.append(
+                f"Scenario {ordinal:02d}: {comparison.status}; "
+                f"source-reported adverse metrics: {adverse}"
+            )
+            for change in comparison.changes:
+                flag = "FLAGGED" if change.regression else "not flagged"
+                lines.append(
+                    f"  {change.name}: baseline={change.baseline} "
+                    f"candidate={change.candidate} delta={change.delta} [{flag}]"
+                )
+    lines.extend([
+        "Authority: authorized=false; consent_verified=false; "
+        "dispatch_allowed=false; release_allowed=false.",
+        "No target, network, handler, grant, state write or deployment was used.",
+    ])
+    return "\n".join(lines)
+
+
 def main(argv=None):
-    args = sys.argv[1:] if argv is None else argv
+    args = list(sys.argv[1:] if argv is None else argv)
+    output_format = "json"
+    format_seen = False
+    malformed = False
+    positional = []
+    index = 0
+    while index < len(args):
+        item = args[index]
+        if item == "--format":
+            if (
+                format_seen or index + 1 >= len(args)
+                or args[index + 1] not in ("json", "text")
+            ):
+                malformed = True
+                index += 2 if index + 1 < len(args) else 1
+            else:
+                output_format = args[index + 1]
+                format_seen = True
+                index += 2
+        elif item.startswith("--"):
+            malformed = True
+            index += 1
+        else:
+            positional.append(item)
+            index += 1
+
     review = LabCohortComparison('HOLD')
-    if len(args) == 2:
+    if len(positional) == 2 and not malformed:
         try:
-            review = compare_ground_truthed_lab_cohorts(_load(args[0]), _load(args[1]))
-        except (OSError, ValueError, KeyError, TypeError, OverflowError,
-                UnicodeError, RecursionError, PermissionError):
+            review = compare_ground_truthed_lab_cohorts(
+                _load(positional[0]), _load(positional[1]),
+            )
+        except (
+            OSError, ValueError, KeyError, TypeError, OverflowError,
+            UnicodeError, RecursionError, PermissionError,
+        ):
             pass
-    print(json.dumps(_display(review), sort_keys=True, separators=(',', ':')))
+    if output_format == "text":
+        print(_display_text(review))
+    else:
+        print(json.dumps(_display(review), sort_keys=True, separators=(',', ':')))
     return 2 if review.status == 'REVIEW_ONLY' else 3
 
 
