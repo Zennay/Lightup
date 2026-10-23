@@ -58,7 +58,7 @@
     }
     expectedResult.textContent = matches.map(x => "Lokaal slot " + x.slot).join(", ") +
       " heeft dezelfde bytes-fingerprint" + (targetSize === null ? "" : " en bytegrootte") +
-      " als de afzonderlijk aangeleverde, ONDERTEKENDE: nee bronnotitie. Dit bewijst GEEN afzender, toestemming of veiligheid.";
+      " als het afzonderlijke controlebestand. Dit is geen digitale handtekening en bewijst geen afzender of toestemming.";
   }
   function hex(bytes) {
     return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, "0")).join("");
