@@ -85,8 +85,9 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
     bytes and giving them the appearance of a locally verified distribution.
     The operator alone controls whether and how this receipt is disclosed.
     """
-    raw, _, _, _ = admit_archive(archive)
+    # Reject impossible output before touching or decoding any original ZIP.
     validate_fingerprint_destination(archive, output_file)
+    raw, _, _, _ = admit_archive(archive)
     payload = (suite.digest(raw) + "\n").encode("ascii")
     stage = output_file.parent / (".lightup-software-hash-" + secrets.token_hex(12))
     stage_identity = None
@@ -109,7 +110,8 @@ def inspect_archive(archive: Path, expected_sha256_file: Path | None = None,
                     planned_output_dir: Path | None = None,
                     planned_checksum_file: Path | None = None) -> None:
     """Side-effect-free original ZIP, recipient and checksum path preview."""
-    raw, _, lock, files = admit_archive(archive, expected_sha256_file)
+    # Planned paths have no need for sensitive ZIP bytes. Validate them
+    # before opening the archive, without creating or reserving anything.
     if planned_output_dir is not None and planned_checksum_file is not None:
         # Both names are future outputs, so neither can serve as the other's
         # parent. Reject impossible overlaps before probing the filesystem.
@@ -123,6 +125,7 @@ def inspect_archive(archive: Path, expected_sha256_file: Path | None = None,
         validate_receive_destination(archive, planned_output_dir)
     if planned_checksum_file is not None:
         validate_fingerprint_destination(archive, planned_checksum_file)
+    raw, _, lock, files = admit_archive(archive, expected_sha256_file)
     print(f"REVIEW_ONLY: native software-only ZIP admitted: {len(files)} files, "
           f"{len(lock['files'])} original pinned assets and {len(TOOLS)} integrated tools.")
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
@@ -154,8 +157,10 @@ def validate_receive_destination(archive: Path, destination: Path) -> None:
 
 def receive(archive: Path, destination: Path,
             expected_sha256_file: Path | None = None) -> None:
-    raw, lock_bytes, lock, files = admit_archive(archive, expected_sha256_file)
+    # A rejected recipient directory must not cause the original incoming
+    # private ZIP to be read merely to discover an invalid output pathname.
     validate_receive_destination(archive, destination)
+    raw, lock_bytes, lock, files = admit_archive(archive, expected_sha256_file)
     stage, stage_identity = suite.create_private_stage(destination.parent, ".lightup-receiver-")
     try:
         entries = {}
