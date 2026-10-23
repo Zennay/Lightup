@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-kpefY9vec1PfVnMDlkwffvRwWuc18ebnWLcg6Qk1IZM=&#x27; &#x27;sha256-o3Qh4ErlUO4GaLuXa0xwhVsk30C90L7yWdGYtB/E498=&#x27;; style-src &#x27;sha256-o30WbtgUbCtKM2x6nLja7rRbpXkNIcvpAgUVue0FwNc=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-3CxITkR6ZuysEH0OFJS1CzrT75HoWtQUgue2sKITPc8=&#x27; &#x27;sha256-o3Qh4ErlUO4GaLuXa0xwhVsk30C90L7yWdGYtB/E498=&#x27;; style-src &#x27;sha256-o30WbtgUbCtKM2x6nLja7rRbpXkNIcvpAgUVue0FwNc=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -195,6 +195,7 @@ readonly spellcheck="false" placeholder="Vul eerst de benodigde absolute paden i
 <div class="tools">
 <button type="button" id="copy" disabled>Kopieer terminalcommando</button>
 <button type="button" id="prepare-receive" class="secondary" hidden disabled>Vul ontvangstcommando in</button>
+<button type="button" id="prepare-checksum" class="secondary" hidden disabled>Vul checksumopdracht in</button>
 <button type="button" id="reset" class="secondary">Wis ingevoerde paden</button>
 </div>
 <p id="message" class="message" aria-live="polite"></p>
@@ -227,6 +228,7 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   const command = document.getElementById("command");
   const copy = document.getElementById("copy");
   const prepareReceive = document.getElementById("prepare-receive");
+  const prepareChecksum = document.getElementById("prepare-checksum");
   const reset = document.getElementById("reset");
   const message = document.getElementById("message");
   const primaryNames = new Set([
@@ -397,6 +399,8 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     copy.disabled = true;
     prepareReceive.hidden = chosen.name !== "inspect-archive";
     prepareReceive.disabled = true;
+    prepareChecksum.hidden = chosen.name !== "inspect-archive";
+    prepareChecksum.disabled = true;
     let values;
     try {
       values = allPaths();
@@ -418,6 +422,11 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     if (chosen.name === "inspect-archive" &&
         (values.get("--planned-output-dir") || []).length === 1) {
       prepareReceive.disabled = false;
+    }
+    if (chosen.name === "inspect-archive" &&
+        (values.get("--planned-checksum-file") || []).length === 1 &&
+        byName.has("fingerprint-archive")) {
+      prepareChecksum.disabled = false;
     }
     showMessage("Lokaal commando voorbereid. Nog niets uitgevoerd, gedeeld of geautoriseerd.", false);
   }
@@ -530,7 +539,35 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     command.value = "";
     copy.disabled = true;
     prepareReceive.disabled = true;
+    prepareChecksum.disabled = true;
     showMessage("Ingevulde paden en het commando zijn gewist. Een eerder gekopieerd commando kan nog op je systeemklembord staan.", false);
+  });
+  prepareChecksum.addEventListener("click", () => {
+    if (chosen.name !== "inspect-archive" || prepareChecksum.disabled) return;
+    let original;
+    try {
+      original = allPaths();
+    } catch (error) {
+      showMessage(error.message, true);
+      return;
+    }
+    const zip = (original.get("--archive") || [])[0];
+    const checksum = (original.get("--planned-checksum-file") || [])[0];
+    if (!zip || !checksum || !byName.has("fingerprint-archive")) return;
+    // A future proposed checksum output must never be mistaken for the
+    // separately received --expected-sha256-file. This only fills another
+    // visible command after the HUMAN operator deliberately clicks.
+    select("fingerprint-archive");
+    for (const [flag, value] of [
+      ["--archive", zip], ["--output-file", checksum]
+    ]) {
+      const field = inputElements.get(flag);
+      if (field) field.value = value;
+    }
+    renderCommand();
+    if (command.value) {
+      showMessage("Nieuwe checksumopdracht voorbereid. De ZIP is hier niet gecontroleerd en er is geen checksum aangemaakt of gedeeld.", false);
+    }
   });
   prepareReceive.addEventListener("click", () => {
     if (chosen.name !== "inspect-archive" || prepareReceive.disabled) return;
