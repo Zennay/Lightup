@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-5pW8r8qYibyElLBQDM9qNWTgxvCHoz0oSIRi9debZPw=&#x27; &#x27;sha256-o3Qh4ErlUO4GaLuXa0xwhVsk30C90L7yWdGYtB/E498=&#x27;; style-src &#x27;sha256-o30WbtgUbCtKM2x6nLja7rRbpXkNIcvpAgUVue0FwNc=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-Ub/ma/r67m5DNky+wmZqP4G8K3aIkjpCVxJ3XpWSUoU=&#x27; &#x27;sha256-o3Qh4ErlUO4GaLuXa0xwhVsk30C90L7yWdGYtB/E498=&#x27;; style-src &#x27;sha256-o30WbtgUbCtKM2x6nLja7rRbpXkNIcvpAgUVue0FwNc=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -544,7 +544,12 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   let softwareGeneration = 0;
   let softwareBusy = false;
   function clearSoftwareResult(clearFiles = false) {
+    // A previous asynchronous File/WebCrypto read may still be finishing.
+    // Invalidate its generation and make the newest selection actionable
+    // immediately; a stale finally must never unlock a newer comparison.
     softwareGeneration++;
+    softwareBusy = false;
+    softwareCompare.disabled = false;
     if (clearFiles) {
       softwareZip.value = "";
       softwareHash.value = "";
@@ -580,6 +585,7 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     softwareResult.textContent = "PRIVATE bestanden uitsluitend lokaal lezen en vergelijken…";
     try {
       const signature = new Uint8Array(await receipt.arrayBuffer());
+      if (generation !== softwareGeneration) return;
       if (signature.length !== 65 || signature[64] !== 10 ||
           !Array.from(signature.slice(0, 64)).every(b =>
             b >= 48 && b <= 57 || b >= 97 && b <= 102)) {
@@ -587,13 +593,15 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
       }
       const expected = String.fromCharCode(...signature.slice(0, 64));
       const bytes = await zip.arrayBuffer();
+      if (generation !== softwareGeneration) return;
       if (bytes.byteLength !== zip.size || bytes.byteLength > 15000000) {
         throw Error("zip-changed");
       }
-      const hash = Array.from(
-        new Uint8Array(await window.crypto.subtle.digest("SHA-256", bytes)),
-        b => b.toString(16).padStart(2, "0")).join("");
+      const hashBytes = await window.crypto.subtle.digest("SHA-256", bytes);
       if (generation !== softwareGeneration) return;
+      const hash = Array.from(
+        new Uint8Array(hashBytes),
+        b => b.toString(16).padStart(2, "0")).join("");
       if (hash !== expected) {
         softwareResult.textContent = "HOLD: SHA-256 van ontvangen ZIP wijkt af van het afzonderlijke checksum-bestand. Niet installeren of stilzwijgend vervangen.";
         softwareResult.dataset.kind = "error";
@@ -611,8 +619,10 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
         softwareResult.dataset.kind = "error";
       }
     } finally {
-      softwareBusy = false;
-      softwareCompare.disabled = false;
+      if (generation === softwareGeneration) {
+        softwareBusy = false;
+        softwareCompare.disabled = false;
+      }
     }
   });
 
