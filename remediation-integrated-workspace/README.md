@@ -43,6 +43,37 @@ python3 remediation-integrated-workspace/install.py inspect-archive \
   --archive "$HOME/lightup-private/incoming/software-only.zip"
 ```
 
+### PRIVATE original software checksum issuance
+
+An authorized software publisher can now generate the original **65-byte
+exact-ZIP checksum file without manually formatting its contents**. After
+native source-only ZIP publication, select a *new, separate owner-only
+0700 destination parent* outside the installed software directory:
+
+```sh
+python3 remediation-integrated-workspace/install.py fingerprint-archive \
+  --archive "$HOME/lightup-private/integrated-workspace-v1/software-only.zip" \
+  --output-file "$HOME/lightup-private/software-transfer-v1.sha256"
+```
+
+This reuses the original full offline ZIP/source-lock admission and exact
+native software renderers before publication. Only after the ZIP is
+re-admitted, it writes a **fresh 0600 temporary 65-byte checksum file** and
+publishes it with the existing Linux exclusive no-replace private publisher.
+Changed original ZIP contents, unsafe private paths, or an already existing
+destination produce **HOLD=3** with **no replacement**. The output is exactly
+64 lowercase SHA-256 hex characters and one LF. The separate operator
+`private_desk.py fingerprint-archive` and offline browser studio expose
+the same operation; no filename, original evidence, target details or
+client secrets enter this tiny receipt.
+
+**The checksum is UNSIGNED.** It should only be transmitted over a separately
+approved channel whose authenticity is established outside LightUp, and
+the recipient must separately provide actual client/operator consent
+before processing any private evidence. Neither creating nor matching
+this checksum file establishes sender identity, release approval,
+scanning rights, findings or HUMAN GO. Nothing is sent automatically.
+
 ### Optional exact-byte SHA-256 transfer fingerprint
 
 The native `inspect-archive` command now prints the complete software-only
