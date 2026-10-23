@@ -390,11 +390,28 @@ def main(argv=None) -> int:
         if args.preview_only:
             if args.output is not None:
                 raise ValueError("preview cannot publish output")
+            open_rows = [row for row in board["rows"]
+                         if row["human_stage"] != "reviewed"]
+            priority_open = Counter(row["priority"] for row in open_rows)
+            over_capacity_groups = sum(
+                item["above_declared_capacity"] is not None
+                and item["above_declared_capacity"] > 0
+                for item in board["route_date_loads"]
+            )
+            overdue = ("not-computed" if board["overdue_open_rows"] is None
+                       else str(board["overdue_open_rows"]))
             print("PRIVATE_HUMAN_CAPACITY_PREVIEW — " + board["comparison_status"]
                   + "; packets=" + str(board["packet_count"])
                   + "; open_rows=" + str(board["open_work_rows"])
                   + "; reviewed_rows=" + str(board["reviewed_rows"])
                   + "; undated_open=" + str(board["undated_open_rows"])
+                  + "; critical_open=" + str(priority_open["Critical drift"])
+                  + "; high_open=" + str(priority_open["High drift"])
+                  + "; review_open=" + str(priority_open["Review drift"])
+                  + "; no_regression_open=" + str(priority_open["No regression"])
+                  + "; route_date_groups=" + str(len(board["route_date_loads"]))
+                  + "; over_capacity_groups=" + str(over_capacity_groups)
+                  + "; overdue_open=" + overdue
                   + "; NOT AUTHORIZED")
             return 2 if board["comparison_status"] == "REVIEW_ONLY" else 3
         if not args.output:
