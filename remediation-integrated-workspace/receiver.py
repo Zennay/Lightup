@@ -83,8 +83,9 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
                       "Software ZIP changed before private checksum publication")
         suite.exclusive_publish(stage, output_file)
     finally:
-        if stage.exists() or stage.is_symlink():
-            stage.unlink()
+        # Clean only this known temporary checksum name relative to the
+        # verified private directory, not via a replaceable absolute path.
+        suite.cleanup_private_file_stage(stage)
     print("REVIEW_ONLY: original software fingerprint saved to PRIVATE file:", output_file)
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
     print("Output is not producer identity, release approval, or permission to disclose.")
