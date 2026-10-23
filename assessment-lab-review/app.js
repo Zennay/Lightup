@@ -276,6 +276,7 @@ function updateSummary(){
   " human review notes progressed · "+notes.filter(n=>n.stage==="blocked").length+
   " human blockers · all source status unverified";
  renderEndpointCoverage();
+ renderHumanQueue();
 }
 function endpointCoverageRows(){
  const rows=new Map();
@@ -309,6 +310,103 @@ function renderEndpointCoverage(){
  $("coverage-summary").textContent=source.targets.length+" declared endpoint(s) · "+rows.reduce((n,row)=>n+row.findings,0)+" source-reported finding(s) grouped · "+waiting+" endpoint group(s) still contain needs-review items"+unmatched+". Human planning only.";
  $("coverage-export").disabled=false;
 }
+// Offline HUMAN-only prioritization. No source assertion or execution authority.
+const HUMAN_QUEUE_CATEGORIES=Object.freeze({
+ blocked:"HUMAN blocker or uncertainty",pending:"Needs HUMAN review",
+ missing:"Next HUMAN action missing",drafted:"HUMAN follow-up drafted"
+});
+let humanQueueFilter="",humanQueuePage=0;
+function humanQueueCategory(note){
+ if(note.stage==="blocked"||note.blocker.trim())return "blocked";
+ if(note.stage==="needs_review")return "pending";
+ if(!note.next_action.trim())return "missing";
+ return "drafted";
+}
+function humanQueueEntries(){
+ if(!source)return [];
+ const order={blocked:0,pending:1,missing:2,drafted:3};
+ const sev=Object.fromEntries(SEVERITIES.map((x,i)=>[x,i]));
+ return source.findings.map((finding,i)=>({
+  ordinal:i+1, endpoint:endpointOrdinal(finding),severity:finding.severity,
+  category:humanQueueCategory(notes[i]),note:{...notes[i]}
+ })).sort((a,b)=>order[a.category]-order[b.category]||
+   sev[a.severity]-sev[b.severity]||a.ordinal-b.ordinal);
+}
+function focusHumanQueue(ordinal){
+ if(!source||!Number.isSafeInteger(ordinal)||ordinal<1||ordinal>source.findings.length)return;
+ filter="";searchTerm="";sortMode="source";
+ $("filter").value="";$("search").value="";$("sort").value="source";
+ render();
+ const row=[...$("findings").querySelectorAll("tr")].find(x=>
+  x.dataset.originalOrdinal===String(ordinal));
+ if(row){row.scrollIntoView({block:"center"});row.focus();}
+ status("Original private ordinal "+ordinal+" opened for HUMAN follow-up; no authority or security verification.");
+}
+function renderHumanQueue(){
+ const body=$("human-queue-rows");if(!body)return;
+ body.replaceChildren();
+ if(!source){$("human-queue-summary").textContent="Open a PRIVATE lab result first.";
+  $("human-queue-brief").disabled=true;$("human-queue-csv").disabled=true;
+  $("human-queue-prev").disabled=true;$("human-queue-next").disabled=true;
+  $("human-queue-page").textContent="";return;}
+ const all=humanQueueEntries(),counts={blocked:0,pending:0,missing:0,drafted:0};
+ all.forEach(r=>counts[r.category]++);
+ const shown=humanQueueFilter?all.filter(r=>r.category===humanQueueFilter):all;
+ const pages=Math.max(0,Math.ceil(shown.length/24)-1);
+ humanQueuePage=Math.min(humanQueuePage,pages);
+ const start=humanQueuePage*24;
+ shown.slice(start,start+24).forEach(item=>{
+  const tr=document.createElement("tr");
+  cell(tr,"#"+item.ordinal+" · endpoint "+item.endpoint);
+  cell(tr,item.severity.toUpperCase());
+  cell(tr,item.note.stage+" / "+item.note.group);
+  cell(tr,HUMAN_QUEUE_CATEGORIES[item.category]);
+  const td=document.createElement("td"),button=el("button","Open HUMAN #"+item.ordinal);
+  button.type="button";button.addEventListener("click",()=>focusHumanQueue(item.ordinal));
+  td.append(button);tr.append(td);body.append(tr);
+ });
+ $("human-queue-summary").textContent=all.length+" original source-declared findings · "+
+  Object.entries(counts).map(([key,n])=>HUMAN_QUEUE_CATEGORIES[key]+": "+n).join(" · ")+
+  ". Unverified source and HUMAN planning only.";
+ $("human-queue-page").textContent=shown.length?
+  "Showing "+(start+1)+"–"+Math.min(start+24,shown.length)+" of "+shown.length:
+  "No HUMAN items in this group.";
+ $("human-queue-prev").disabled=humanQueuePage===0;
+ $("human-queue-next").disabled=humanQueuePage>=pages;
+ $("human-queue-brief").disabled=!all.length;
+ $("human-queue-csv").disabled=!all.length;
+}
+function humanQueueMarkdown(){
+ const lines=["# LightUp · PRIVATE HUMAN action agenda","",
+  "**REVIEW_ONLY · Source declarations and HUMAN notes are not verified findings, grants, consent or release.**",
+  "Original target URLs, evidence, titles, check identifiers and source hash are excluded.",
+  "Keep this confidential: human notes and original ordinals may remain sensitive.",""];
+ humanQueueEntries().forEach(row=>{
+  lines.push("## Original ordinal "+row.ordinal+" · endpoint "+row.endpoint+
+   " (unverified) · source severity "+row.severity,
+   "Attention: "+HUMAN_QUEUE_CATEGORIES[row.category],
+   "Human stage: "+row.note.stage+" · proposed group: "+row.note.group,
+   "Next HUMAN action (literal JSON string): "+JSON.stringify(row.note.next_action),
+   "HUMAN blocker (literal JSON string): "+JSON.stringify(row.note.blocker),"");
+ });
+ lines.push("SOURCE_AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false","");
+ return lines.join("\n");
+}
+function humanQueueCsv(){
+ const grouped=new Map();
+ humanQueueEntries().forEach(r=>{
+  const k=r.category+"|"+r.severity;grouped.set(k,(grouped.get(k)||0)+1);
+ });
+ const rows=[["status","human_attention","source_reported_severity","human_count",
+  "source_authenticated","ground_truth_verified","client_consent_verified",
+  "operator_consent_verified","authorized","consent_verified","dispatch_allowed","release_allowed"]];
+ [...grouped].sort((a,b)=>a[0].localeCompare(b[0])).forEach(([k,n])=>{
+  const [category,severity]=k.split("|");
+  rows.push(["REVIEW_ONLY",category,severity,n,false,false,false,false,false,false,false,false]);
+ });
+ return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(",")).join("\r\n")+"\r\n";
+}
+
 function field(label,value,fn){
  const wrapper=el("label"),span=el("span",label);wrapper.append(span);
  const control=label==="Stage"||label==="Proposed group"?document.createElement("select"):document.createElement("input");
@@ -353,7 +451,7 @@ function render(){
    el("p","Unverified evidence summary: "+f.evidence_summary));
   meta.append(detail);const a=document.createElement("td");a.append(meta);tr.append(a);
   const review=document.createElement("td"),controls=el("div",undefined,"controls");
-  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;lastBulkUndo=null;dirty=true;updateSummary();};
+  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;lastBulkUndo=null;dirty=true;updateSummary();render();};
   controls.append(field("Stage",n.stage,v=>apply("stage",v)),
    field("Proposed group",n.group,v=>apply("group",v)),
    field("Next human action",n.next_action,v=>apply("next_action",v)),
@@ -400,7 +498,7 @@ async function importSource(file){
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
  source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();
  filter="";searchTerm="";sortMode="source";$("filter").value="";
- $("search").value="";$("sort").value="source";buildEndpointFilter();
+ $("search").value="";$("sort").value="source";humanQueueFilter="";humanQueuePage=0;$("human-queue-filter").value="";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
  status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
@@ -527,8 +625,21 @@ $("coverage-export").addEventListener("click",()=>{
  download("PRIVATE-lab-endpoint-human-coverage.csv",csv,"text/csv;charset=utf-8");
  status("Counts-only endpoint coverage CSV exported. Ordinals and human stages remain unverified; no authorization or completion is implied.");
 });
+$("human-queue-filter").addEventListener("change",e=>{humanQueueFilter=e.target.value;humanQueuePage=0;renderHumanQueue();});
+$("human-queue-prev").addEventListener("click",()=>{humanQueuePage=Math.max(0,humanQueuePage-1);renderHumanQueue();});
+$("human-queue-next").addEventListener("click",()=>{humanQueuePage++;renderHumanQueue();});
+$("human-queue-brief").addEventListener("click",()=>{
+ if(!source||!confirm("Export a PRIVATE HUMAN agenda containing original ordinals and all operator-authored action/blocker notes? Keep it confidential and obtain separate recipient approval."))return;
+ download("PRIVATE-lab-human-action-agenda.md",humanQueueMarkdown(),"text/markdown");
+ status("PRIVATE HUMAN planning agenda downloaded. No original source authentication or permission implied.");
+});
+$("human-queue-csv").addEventListener("click",()=>{
+ if(!source||!confirm("Export anonymous category/severity HUMAN counts only? Even small aggregate counts may be sensitive. No source identity, notes or permission."))return;
+ download("lab-anonymous-human-attention.csv",humanQueueCsv(),"text/csv;charset=utf-8");
+ status("Anonymous HUMAN queue counts exported; original source never verified.");
+});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";humanQueueFilter="";humanQueuePage=0;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("human-queue-filter").value="";$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();renderHumanQueue();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 $("collab-select-visible").addEventListener("click",()=>{
  if(!source)return;

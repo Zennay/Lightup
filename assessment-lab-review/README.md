@@ -48,3 +48,9 @@ The separate interface provides original A/B report ordinals and two side-by-sid
 ## Release conditions
 
 **NO MAIN MERGE, LIVE DEPLOY, TARGET EXECUTION, GRANT OR CLIENT APPROVAL.** Exact-head hosted and permanently registered named VPS CI, original owner acceptance, independent security and privacy, authentic independently authenticated client/operator consent and action-time revocation, #177/#182/#829 and explicit HUMAN GO remain mandatory. No QA/regression/testsuites added or run; syntax and static bundling only.
+
+## PRIVATE HUMAN action queue (23 October 2026)
+
+The operator-only browser now groups **all** originally admitted finding ordinals into mutually exclusive HUMAN attention categories: blocked/uncertain, needs review, next HUMAN action missing, or action drafted. A blocked status or authored uncertainty takes precedence over other stages. Its 24-row paginated display can filter by HUMAN attention and open any original ordinal in the existing editor without transferring original findings or granting execution. Individual HUMAN edits refresh the queue and existing severity/stage view. Source replacement and Forget reset the queue. This feature never validates a finding, source identity, scope or remediation.
+
+Two explicit downloads complete the workflow: the confidential PRIVATE action agenda uses original ordinal, local endpoint ordinal, unverified severity and JSON-encoded HUMAN action/blocker; it deliberately excludes original URLs, check IDs, finding titles, evidence and source SHA. The separate anonymous CSV contains only HUMAN attention category, source-reported severity, aggregated count and literal false-authority flags. Even small counts may be sensitive. Both require HUMAN confirmation and a separately approved channel. No network, scanner, customer credentials, granting, original-source changes or QA suites.

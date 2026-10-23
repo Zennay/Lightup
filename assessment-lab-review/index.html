@@ -27,6 +27,23 @@
  <tbody id="coverage-rows"></tbody></table></div>
  <p class="note">Coverage is a HUMAN planning summary, not finding verification, completion, remediation, source authenticity or authorization. Ordinal 0 means an unmatched source-reported asset. The optional CSV contains only counts and literal false authority flags; small aggregates may still be sensitive.</p>
 </section>
+<section class="coverage-panel" aria-labelledby="human-queue-heading">
+<h3 id="human-queue-heading">Private HUMAN action queue</h3>
+<p class="note">Local planning only; source-severity and human notes never verify findings, fixes, client consent or authority. Every original finding remains unchanged.</p>
+<div class="toolbar"><label for="human-queue-filter">Attention group <select id="human-queue-filter">
+<option value="">All HUMAN follow-up</option><option value="blocked">Blocked or uncertain</option>
+<option value="pending">Needs human review</option><option value="missing">Next HUMAN action missing</option>
+<option value="drafted">HUMAN follow-up drafted</option></select></label>
+<button id="human-queue-brief" type="button" disabled>Export PRIVATE HUMAN agenda (.md)</button>
+<button id="human-queue-csv" type="button" disabled>Export anonymous counts (.csv)</button></div>
+<p id="human-queue-summary" class="note" role="status">Open a PRIVATE lab result first.</p>
+<div class="table-wrap"><table><caption>Original finding ordinals, unverified source severity and HUMAN attention only</caption>
+<thead><tr><th>Original ordinal</th><th>Source severity</th><th>Human stage / group</th><th>Attention</th><th>Review</th></tr></thead>
+<tbody id="human-queue-rows"></tbody></table></div>
+<div class="toolbar"><button id="human-queue-prev" type="button" disabled>Previous</button>
+<button id="human-queue-next" type="button" disabled>Next</button><span id="human-queue-page"></span></div>
+<p class="note">PRIVATE agenda carries operator-authored HUMAN notes and original ordinal; not target URLs, evidence, check IDs, titles or source hashes. Send only through independently approved confidential channels. Anonymous grouped counts can still be sensitive in small cohorts.</p>
+</section>
 <div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><label for="search">Find source title/check or HUMAN note
 <input id="search" type="search" maxlength="180" autocomplete="off" placeholder="Local private text search"></label>
 <label for="sort">Priority view <select id="sort"><option value="source">Original source order</option>
