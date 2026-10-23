@@ -46,6 +46,8 @@
   }
 
   let snapshots=[],scenarioIds=[],selectedScenario="",selectedMetric=METRICS[0],notes=new Map(),scratch=new Map(),fictional=false;
+  const NOTE_HISTORY_LIMIT=20;
+  let noteUndoHistory=[],noteRedoHistory=[];
 
   function admit(ok){if(!ok)throw Error("Invalid or incompatible source");}
   function exact(v,keys){return v!==null&&typeof v==="object"&&!Array.isArray(v)&&
@@ -232,6 +234,44 @@
     return "Info · Operations";
   }
   function noteKey(id,metric){return JSON.stringify([id,metric]);}
+  // Note snapshots are local-only and cannot cross a change of original source cohort.
+  function noteSnapshot(){return {dataset:snapshots,sha:[...sourceFingerprints],ids:[...scenarioIds],
+    notes:new Map(notes),scratch:new Map(scratch)};}
+  function noteSnapshotCurrent(entry){
+    return !!entry&&entry.dataset===snapshots&&entry.sha.length===sourceFingerprints.length&&
+      entry.sha.every((v,i)=>v===sourceFingerprints[i])&&entry.ids.length===scenarioIds.length&&
+      entry.ids.every((v,i)=>v===scenarioIds[i]);
+  }
+  function renderNoteHistory(){
+    const undo=$("undoNote"),redo=$("redoNote"),msg=$("noteHistoryStatus");
+    if(!undo||!redo||!msg)return;
+    const count=stack=>{
+      let n=0;for(let i=stack.length-1;i>=0;i--){if(!noteSnapshotCurrent(stack[i]))break;n++;}return n;
+    };
+    const u=count(noteUndoHistory),r=count(noteRedoHistory);
+    undo.disabled=u===0;redo.disabled=r===0;
+    undo.textContent=u?"Undo commentary ("+u+")":"Undo commentary";
+    redo.textContent=r?"Redo commentary ("+r+")":"Redo commentary";
+    msg.textContent="Undo "+u+" · Redo "+r+" · up to "+NOTE_HISTORY_LIMIT+
+      " saved HUMAN note edits retained in this tab only. Imports and Forget clear history.";
+  }
+  function rememberNoteEdit(){
+    if(!snapshots.length)return;
+    noteUndoHistory.push(noteSnapshot());
+    if(noteUndoHistory.length>NOTE_HISTORY_LIMIT)noteUndoHistory.shift();
+    noteRedoHistory=[];renderNoteHistory();
+  }
+  function resetNoteHistory(){noteUndoHistory=[];noteRedoHistory=[];renderNoteHistory();}
+  function changeNoteHistory(from,to,label){
+    if(!snapshots.length||!from.length)return;
+    if(!noteSnapshotCurrent(from[from.length-1])){resetNoteHistory();return;}
+    if(scratch.size&&!window.confirm(label+" commentary? Unsaved local drafts may be replaced."))return;
+    const next=from.pop();
+    to.push(noteSnapshot());if(to.length>NOTE_HISTORY_LIMIT)to.shift();
+    notes=new Map(next.notes);scratch=new Map(next.scratch);
+    renderNotePanel();renderNotePacketControls();
+    $("noteMessage").textContent=label+" restored only local HUMAN commentary; assessment sources and HUMAN stages did not change.";
+  }
   function currentId(){return scenarioIds.includes(selectedScenario)?selectedScenario:scenarioIds[0];}
   function slot(id){return scenarioIds.indexOf(id)+1;}
   function fmt(n){return Number(n).toLocaleString("en-US",{maximumFractionDigits:6});}
@@ -1508,6 +1548,7 @@
     $("noteMessage").textContent=id?"Scenario "+String(slot(id)).padStart(2,"0")+" · "+metric+
       ". Notes are local to this tab and are never included in anonymous exports.":"";
     renderSavedNoteIndex();
+    renderNoteHistory();
   }
 
   // Minimum-necessary encrypted HUMAN note handoff; no HUMAN stage or source
@@ -1609,7 +1650,8 @@
         notes.set(key,note);scratch.delete(key);
       }
       renderNotePanel();renderNotePacketControls();
-      $("notePacketMessage").textContent="Merged "+additions.size+
+      resetNoteHistory();
+       $("notePacketMessage").textContent="Merged "+additions.size+
         " PRIVATE HUMAN note(s), including "+replacing+" changed saved notes, for the exact original byte-bound cohort. Current stages unchanged.";
     }catch(_){
       $("notePacketMessage").textContent="HOLD: encrypted note packet rejected (password, schema, source bytes/order, size or HUMAN note membership). Current HUMAN notes and stages unchanged.";
@@ -1771,7 +1813,7 @@
       reviewOffset=0;workPlanOffset=0;
       $("workPlanGroup").value="all";$("workPlanStage").value="all";
       humanReviewStages.clear();resetReviewFilters();
-      notes.clear();scratch.clear();fictional=false;
+      notes.clear();scratch.clear();fictional=false;resetNoteHistory();
       savedNoteOffset=0;$("savedNoteGroup").value="all";
       resetRevisionComparison();resetHumanTimeline();
       render();$("sessionMessage").textContent="New snapshot batch admitted; previous HUMAN session cannot be carried across datasets.";
@@ -1813,7 +1855,7 @@
     ++sourceAdmissionTicket;sourceAdmissionBusy=false;
     snapshots=[buildDemoReport(1),buildDemoReport(2),buildDemoReport(3)];
     scenarioIds=[...snapshots[0].cases.keys()].sort();selectedScenario=scenarioIds[0];
-    selectedMetric=METRICS[0];notes.clear();scratch.clear();fictional=true;
+    selectedMetric=METRICS[0];notes.clear();scratch.clear();resetNoteHistory();fictional=true;
     savedNoteOffset=0;$("savedNoteGroup").value="all";
     sourceFingerprints=[];$("privateSessionFile").value="";
     reviewOffset=0;workPlanOffset=0;scenarioOffset=0;
@@ -1826,7 +1868,7 @@
     if(!confirmWorkspaceReplacement("forget all local sources and work",true))return;
     ++sourceAdmissionTicket;sourceAdmissionBusy=false;
     pendingSources=[];$("files").value="";
-    snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;
+    snapshots=[];scenarioIds=[];selectedScenario="";notes.clear();scratch.clear();fictional=false;resetNoteHistory();
     savedNoteOffset=0;$("savedNoteGroup").value="all";
     sourceFingerprints=[];$("privateSessionFile").value="";
     reviewOffset=0;workPlanOffset=0;scenarioOffset=0;
@@ -2146,7 +2188,7 @@
       stageBatchUndo=null;selectedStageEvents.clear();
       humanReviewStages.clear();for(const [key,value] of newStages)humanReviewStages.set(key,value);
       notes.clear();for(const [key,value] of newNotes)notes.set(key,value);
-      scratch.clear();reviewOffset=0;render();
+      scratch.clear();resetNoteHistory();reviewOffset=0;render();
       $("sessionMessage").textContent="PRIVATE HUMAN session restored for identical local source bytes and manual order: "+
         newStages.size+" stages, "+newNotes.size+" saved notes. UNSIGNED and non-authorizing.";
     }catch(_){
@@ -2638,13 +2680,37 @@
     selectedMetric=$("noteMetric").value;renderNotePanel();renderNotePacketControls();
   });
   $("noteInput").addEventListener("input",()=>{const id=currentId();if(id)scratch.set(noteKey(id,$("noteMetric").value),$("noteInput").value);});
-  $("saveNote").addEventListener("click",()=>{const id=currentId();if(!id)return;const key=noteKey(id,$("noteMetric").value),value=scratch.get(key)||"";
+  $("saveNote").addEventListener("click",()=>{
+    const id=currentId();if(!id)return;
+    const key=noteKey(id,$("noteMetric").value);
+    const value=scratch.has(key)?scratch.get(key):(notes.get(key)||"");
     if(value.length>500){$("noteMessage").textContent="HOLD: commentary exceeds 500 characters.";return;}
-    if(value.trim())notes.set(key,value);else notes.delete(key);
-    renderNotePanel();renderNotePacketControls();$("noteMessage").textContent="Commentary saved in memory only. It is not included in anonymous exports.";});
-  $("clearNote").addEventListener("click",()=>{const id=currentId();if(!id)return;const key=noteKey(id,$("noteMetric").value);
+    const next=value.trim()?value:null;
+    if((notes.get(key)??null)!==next||scratch.has(key))rememberNoteEdit();
+    if(next===null)notes.delete(key);else notes.set(key,next);
+    scratch.delete(key);
+    renderNotePanel();renderNotePacketControls();
+    $("noteMessage").textContent="Commentary saved in tab memory only. Not included in anonymous exports.";
+  });
+  $("clearNote").addEventListener("click",()=>{
+    const id=currentId();if(!id)return;
+    const key=noteKey(id,$("noteMetric").value);
+    if(notes.has(key)||scratch.has(key))rememberNoteEdit();
     notes.delete(key);scratch.delete(key);renderNotePanel();renderNotePacketControls();
-    $("noteMessage").textContent="Selected commentary cleared from this tab.";});
+    $("noteMessage").textContent="Selected commentary cleared from this tab.";
+  });
+  $("undoNote").addEventListener("click",()=>changeNoteHistory(noteUndoHistory,noteRedoHistory,"Undo"));
+  $("redoNote").addEventListener("click",()=>changeNoteHistory(noteRedoHistory,noteUndoHistory,"Redo"));
+  document.addEventListener("keydown",event=>{
+    if(!(event.ctrlKey||event.metaKey)||event.altKey)return;
+    const target=event.target;
+    if(target&&(/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)||target.isContentEditable))return;
+    const key=event.key.toLowerCase();
+    if(key==="z"){event.preventDefault();
+      if(event.shiftKey)changeNoteHistory(noteRedoHistory,noteUndoHistory,"Redo");
+      else changeNoteHistory(noteUndoHistory,noteRedoHistory,"Undo");}
+    else if(key==="y"){event.preventDefault();changeNoteHistory(noteRedoHistory,noteUndoHistory,"Redo");}
+  });
   const noteIndexGroup=$("savedNoteGroup");noteIndexGroup.replaceChildren();
   for(const group of ["all",...new Set(METRICS.map(family))]){
     const option=document.createElement("option");option.value=group;
