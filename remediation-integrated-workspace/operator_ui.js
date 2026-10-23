@@ -245,7 +245,15 @@
       button.setAttribute("aria-pressed", String(item.name === chosen.name));
       const caption = node("small", "", item.purpose);
       button.append(caption);
-      button.addEventListener("click", () => select(item.name));
+      button.addEventListener("click", () => {
+        // select() recreates the action buttons. Without an explicit focus
+        // transfer, mouse/keyboard activation strands assistive technology
+        // on a detached element. The newly selected task's first path field
+        // is the next useful visible control.
+        select(item.name);
+        const first = fields.querySelector("input,textarea");
+        if (first) first.focus();
+      });
       actions.append(button);
     }
     if (!hits.length) actions.append(node("p", "hint", "Geen passende offline workflow."));
