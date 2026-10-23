@@ -293,6 +293,8 @@
       visible.every(row=>selectedCatalogIds.has(row.item.scenario_id))?
       "Deselect all matching":"Select all matching";
     $("deleteSelectedCatalog").disabled=!selectedCatalogIds.size;
+    $("copySelectedCatalog").disabled=!selectedCatalogIds.size||
+      items.length+selectedCatalogIds.size>32;
     $("catalogSelectionSummary").textContent=selectedCatalogIds.size+
       " visible private scenario(s) selected for optional local deletion. Changing filters clears hidden selections; no change until confirmed.";
     $("exportFiltered").disabled=!visible.length;
@@ -348,6 +350,39 @@
     items=items.filter(row=>!doomed.has(row.scenario_id));
     resetEditor();render();
     notify("status","Deleted "+ids.length+" selected PRIVATE scenario(s) locally. Undo is available; no execution.");
+  }
+  function copySelectedCatalog(){
+    const visibleIds=new Set(visibleCatalog().map(row=>row.item.scenario_id));
+    const chosen=items.filter(row=>visibleIds.has(row.scenario_id)&&
+      selectedCatalogIds.has(row.scenario_id));
+    if(!chosen.length)return;
+    if(items.length+chosen.length>32){
+      notify("status","HOLD: bulk copying would exceed the 32-scenario PRIVATE catalog limit.",true);return;
+    }
+    const next=[...items],occupied=new Set(items.map(row=>row.scenario_id));
+    try{
+      for(const original of chosen){
+        let copyId=null;
+        for(let n=1;n<=99;n++){
+          const suffix="-copy-"+n;
+          const candidate=original.scenario_id.slice(0,64-suffix.length)+suffix;
+          if(!occupied.has(candidate)){copyId=candidate;occupied.add(candidate);break;}
+        }
+        fail(copyId!==null);
+        next.push(validateScenario({...original,scenario_id:copyId,
+          name:("COPY: "+original.name).slice(0,160),targets:[...original.targets],
+          expected_findings:null}));
+      }
+      validateCatalog(documentCatalog(next));
+    }catch(_){
+      notify("status","HOLD: selected copies could not be admitted; catalog unchanged.",true);return;
+    }
+    if(!confirm("Copy "+chosen.length+" visible selected PRIVATE scenario(s) as UNSCORED "+
+      "(never copy planted/zero ground truth)? Copies are appended; staged imports are discarded. "+
+      "No evaluation or network execution takes place."))return;
+    rememberCatalogChange();clearStage();items=next;render();
+    notify("status","Appended "+chosen.length+" new UNSCORED PRIVATE lab copies. "+
+      "Original ground truth is not inherited; Undo is available.");
   }
   function moveScenario(index,direction){
     const target=index+direction;
@@ -703,6 +738,7 @@
     render();
   });
   $("deleteSelectedCatalog").addEventListener("click",deleteSelectedCatalog);
+  $("copySelectedCatalog").addEventListener("click",copySelectedCatalog);
   $("editor").addEventListener("submit",saveForm);
   $("clear").addEventListener("click",resetEditor);
   $("delete").addEventListener("click",deleteScenario);
