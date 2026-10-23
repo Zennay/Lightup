@@ -1,3 +1,5 @@
+**Privacy upgrade:** Group exports now pool all tiny source-reported groups with fewer than three proposed appointments into one combined count row. Each export preserves aggregate accounting while excluding these small group slots. This reduces but does not eliminate re-identification risk, so human disclosure approval remains mandatory. A large private workroom remains readable; source group views are still paginated, and exports reject changed original/policy contexts.
+
 ## Recipient-group privacy-minimal HUMAN review · October 2026
 
 The alternate-timezone group desk offers an explicit **next group needing HUMAN attention** navigator across groups with proposals outside manually declared hours/weekdays or on unavailable days/clock changes. This focuses existing original ordinals locally; no appointments or source authority are changed.

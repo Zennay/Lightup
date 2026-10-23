@@ -813,7 +813,7 @@
       const record=groups.get(row.group);
       record.total++;record[row.status]++;
     }
-    hold(groups.size<=256);
+    hold(groups.size<=MAX_ROWS);
     return [...groups.values()].sort((a,b)=>
       (b.total-b.within_hours)-(a.total-a.within_hours)||
       b.total-a.total||a.group.localeCompare(b.group));
@@ -834,17 +834,32 @@
     hold(before.view.length>0);
     if(!confirm("Create PRIVATE, UNSIGNED HUMAN recipient group workload ("+
       before.view.length+" anonymous groups)? Small-group counts may identify people in context. "+
-      "The file contains no group names, source identifiers, individual appointment dates or notes. "+
+      "Groups with fewer than three entries are pooled together. The file contains no group names, source identifiers, individual appointment dates or notes. "+
       "No recipient availability, consent or security decision is authenticated."))return;
     const after=recipientGroupSnapshot();
     hold(before.key===after.key && JSON.stringify(before.view)===JSON.stringify(after.view));
     const columns=["anonymous_group_slot","planned","within_declared_window",
       "outside_hours","outside_weekdays","unavailable_date","clock_change",
       "authorized","recipient_verified","consent_verified","dispatch_allowed","release_allowed"];
-    const rows=after.view.map((g,i)=>[
-      "group_"+String(i+1).padStart(3,"0"),String(g.total),String(g.within_hours),
+    // Aggregate cohorts smaller than three before export: never publish a
+    // per-group low-count row that could be trivially associated with a person.
+    // This is disclosure minimization, NOT a de-identification guarantee.
+    const small=after.view.filter(g=>g.total<3);
+    const material=after.view.filter(g=>g.total>=3);
+    const rowFor=(label,g)=>[label,String(g.total),String(g.within_hours),
       String(g.outside_hours),String(g.weekend),String(g.unavailable_date),
-      String(g.clock_change),"false","false","false","false","false"]);
+      String(g.clock_change),"false","false","false","false","false"];
+    const rows=material.map((g,i)=>rowFor("group_"+String(i+1).padStart(4,"0"),g));
+    if(small.length){
+      const aggregate={total:0,within_hours:0,outside_hours:0,weekend:0,
+        unavailable_date:0,clock_change:0};
+      for(const g of small)for(const key of Object.keys(aggregate))
+        aggregate[key]+=g[key];
+      rows.push(rowFor("small_groups_combined",aggregate));
+    }
+    hold(rows.length>0 && rows.length<=MAX_ROWS &&
+      rows.reduce((n,row)=>n+Number(row[1]),0)===
+        after.view.reduce((n,g)=>n+g.total,0));
     if(downloadHtml){
       const escapeValue=v=>String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;")
         .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
