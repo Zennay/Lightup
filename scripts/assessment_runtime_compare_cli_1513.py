@@ -9,7 +9,8 @@ from dataclasses import fields
 from datetime import datetime, timedelta
 import json
 import math
-from pathlib import Path
+import os
+import stat
 import sys
 
 from lightup.ai.assessment_runtime_diff_1513 import compare_lab_evaluations
@@ -40,10 +41,95 @@ def _reject_nonfinite(_value):
 
 
 def _read_json(path, maximum_bytes=MAX_BYTES):
-    with Path(path).open("rb") as handle:
-        payload = handle.read(maximum_bytes + 1)
-    if not payload or len(payload) > maximum_bytes:
-        raise ValueError("invalid input size")
+    """Read one bounded ordinary file without following path symlinks.
+
+    Directory components are opened one at a time relative to pinned directory
+    descriptors. O_NONBLOCK prevents a FIFO from hanging this offline CLI;
+    fstat and a final no-follow stat reject special files and changed paths.
+    """
+    if type(maximum_bytes) is not int or not 1 <= maximum_bytes <= 1_048_576:
+        raise ValueError("invalid input size limit")
+    try:
+        raw_path = os.fspath(path)
+    except TypeError as exc:
+        raise ValueError("invalid input path") from exc
+    if type(raw_path) is not str or not raw_path or "\x00" in raw_path:
+        raise ValueError("invalid input path")
+    if not all(hasattr(os, flag) for flag in ("O_NOFOLLOW", "O_DIRECTORY", "O_CLOEXEC", "O_NONBLOCK")):
+        raise ValueError("safe file access unavailable")
+
+    # Reject dot components instead of normalizing a path whose OS resolution
+    # could traverse a symlink before processing "..".
+    if os.path.isabs(raw_path):
+        components = raw_path.split(os.sep)
+    else:
+        components = os.getcwd().split(os.sep) + raw_path.split(os.sep)
+    components = [part for part in components if part]
+    if not components or any(part in (".", "..") for part in components):
+        raise ValueError("unsafe input path")
+
+    directory_fd = os.open(
+        os.sep, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    )
+    file_fd = None
+    try:
+        for component in components[:-1]:
+            next_fd = os.open(
+                component,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                dir_fd=directory_fd,
+            )
+            os.close(directory_fd)
+            directory_fd = next_fd
+
+        name = components[-1]
+        entry_before = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        if not stat.S_ISREG(entry_before.st_mode):
+            raise ValueError("input must be a regular file")
+
+        file_fd = os.open(
+            name,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+            dir_fd=directory_fd,
+        )
+        before = os.fstat(file_fd)
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError("input must be a regular file")
+        if (before.st_dev, before.st_ino) != (entry_before.st_dev, entry_before.st_ino):
+            raise ValueError("input changed during open")
+        if before.st_size <= 0 or before.st_size > maximum_bytes:
+            raise ValueError("invalid input size")
+
+        chunks = []
+        remaining = maximum_bytes + 1
+        while remaining:
+            chunk = os.read(file_fd, min(65_536, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        payload = b"".join(chunks)
+
+        after = os.fstat(file_fd)
+        entry_after = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        def _identity(info):
+            return (
+                info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                info.st_mtime_ns, info.st_ctime_ns,
+            )
+        if (
+            not stat.S_ISREG(entry_after.st_mode)
+            or _identity(before) != _identity(after)
+            or _identity(after) != _identity(entry_after)
+        ):
+            raise ValueError("input changed during read")
+        if not payload or len(payload) > maximum_bytes:
+            raise ValueError("invalid input size")
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+        os.close(directory_fd)
+
     return json.loads(
         payload.decode("utf-8"), object_pairs_hook=_dict_no_duplicates,
         parse_constant=_reject_nonfinite,
