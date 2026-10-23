@@ -2,6 +2,7 @@
 """Fail-closed, software-only offline LightUp recipient. Never authenticates sender."""
 from __future__ import annotations
 import os
+import hmac
 from pathlib import Path
 import secrets
 import shutil
@@ -11,11 +12,29 @@ import install as suite
 # One exact source of truth for builder and receiver file inventory.
 TOOLS = frozenset(suite.INTEGRATED_TOOLS)
 
-def admit_archive(archive: Path) -> tuple[bytes, bytes, dict, dict[str, bytes]]:
+def admit_archive(archive: Path,
+                  expected_sha256_file: Path | None = None
+                  ) -> tuple[bytes, bytes, dict, dict[str, bytes]]:
     """Read and validate original software bytes without extracting or writing."""
     suite.owner_dir(archive.parent)
     raw = suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL)
     suite.require(0 < len(raw) <= suite.MAX_TOTAL, "Oversized incoming software ZIP")
+    if expected_sha256_file is not None:
+        suite.require(expected_sha256_file != archive and
+                      expected_sha256_file != suite.ROOT and
+                      suite.ROOT not in expected_sha256_file.parents,
+                      "Expected transfer fingerprint must be separate from source and ZIP")
+        # The operator must obtain these original 65 bytes by a separately
+        # trusted procedure. This comparison alone does not authenticate the
+        # owner, channel, client or operator.
+        fingerprint = suite.read_owner_file(expected_sha256_file, ceiling=65)
+        suite.require(len(fingerprint) == 65
+                      and fingerprint[-1:] == b"\n"
+                      and all(x in b"0123456789abcdef" for x in fingerprint[:64]),
+                      "Expected transfer checksum must be 64 lowercase hex digits and LF")
+        suite.require(hmac.compare_digest(fingerprint[:64],
+                                          suite.digest(raw).encode("ascii")),
+                      "Software ZIP differs from separately supplied exact-byte checksum")
     lock_bytes, lock = suite.catalog()
     expected = set(lock["files"]) | set(TOOLS) | {"source-lock.json", "index.html", "operator.html"}
     # Source names, complete ZIP layout, original pinned files and all current
@@ -40,16 +59,21 @@ def admit_archive(archive: Path) -> tuple[bytes, bytes, dict, dict[str, bytes]]:
     return raw, lock_bytes, lock, files
 
 
-def inspect_archive(archive: Path) -> None:
+def inspect_archive(archive: Path, expected_sha256_file: Path | None = None) -> None:
     """Operator's side-effect-free pre-admission for an original private ZIP."""
-    _, _, lock, files = admit_archive(archive)
+    raw, _, lock, files = admit_archive(archive, expected_sha256_file)
     print(f"REVIEW_ONLY: native software-only ZIP admitted: {len(files)} files, "
           f"{len(lock['files'])} original pinned assets and {len(TOOLS)} integrated tools.")
+    print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
+    print("ARCHIVE BYTES:", len(raw))
+    if expected_sha256_file is not None:
+        print("TRANSFER CHECKSUM PARITY: exact original ZIP bytes match operator-provided fingerprint.")
     print("No extraction, report creation, authenticated producer identity or permissions.")
 
 
-def receive(archive: Path, destination: Path) -> None:
-    raw, lock_bytes, lock, files = admit_archive(archive)
+def receive(archive: Path, destination: Path,
+            expected_sha256_file: Path | None = None) -> None:
+    raw, lock_bytes, lock, files = admit_archive(archive, expected_sha256_file)
     suite.require(destination.is_absolute() and not destination.exists()
                   and not destination.is_symlink()
                   and destination.parent == destination.parent.resolve(strict=True),
@@ -80,6 +104,10 @@ def receive(archive: Path, destination: Path) -> None:
                       "Pinned original source inventory changed during receiving")
         suite.require(suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL) == raw,
                       "Received ZIP changed before private publication")
+        if expected_sha256_file is not None:
+            require_again = suite.read_owner_file(expected_sha256_file, ceiling=65)
+            suite.require(require_again == (suite.digest(raw) + "\n").encode("ascii"),
+                          "Expected transfer checksum changed before publication")
         # Validate the complete original staged suite and the stable received
         # ZIP against the same local checkout before any publication.
         suite.verify(stage, compare_checkout=True)
