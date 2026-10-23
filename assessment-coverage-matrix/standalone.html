@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-VyQUZlvS7MZhjnNVyBJEXrSCG4laCYKSxgZvEfxludk='; style-src 'sha256-GiwZL7dH+i8o4R86w8+GP+F7raPk9eokuVig2JVruXQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-NHC+qShWDrX5qwE2lZxn2gAuuGFMva3ZqYqOxytDNNw='; style-src 'sha256-GiwZL7dH+i8o4R86w8+GP+F7raPk9eokuVig2JVruXQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -470,7 +470,7 @@ function createPrivatePlanCrypto() {
    Consumes only previously admitted original source data from the parent offline app. */
 function createHumanBoard(api) {
   const { $, node, clear, fail, shape, obj, int, text, parseStrict,
-    download, message, onFocus, getRows, getDigests, FLAGS } = api;
+    download, message, onFocus, getRows, getDigests, getOriginalEpoch, FLAGS } = api;
   const STAGES = ["needs_review","queued","discussing","documented","blocked"];
   const ROUTES = ["unassigned","scope","findings","evidence","remediation","privacy"];
   const ACTIONS = ["none","clarify_source","review_scope_policy",
@@ -487,6 +487,11 @@ function createHumanBoard(api) {
     "row_plans","interpretation"];
   let plans = [], page = 0, changed = false, lastBulk = null;
   let history = null, historyPage = 0, historyResolutions = new Map();
+  // Session guard for asynchronous local decrypt/import: an earlier pending file
+  // cannot overwrite newer HUMAN choices or replace an original source session.
+  const sessionStamp=()=>JSON.stringify([getOriginalEpoch(),getDigests(),plans]);
+  const requireSession=stamp=>fail(stamp===sessionStamp(),
+    "Original source session or HUMAN choices changed during local read");
   const fresh = () => ({...DEFAULT});
   const isDefault = p => KINDS.every(k=>p[k]===DEFAULT[k]);
   const strictDigest = s => typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);
@@ -861,12 +866,16 @@ function createHumanBoard(api) {
     if(!safeDigests()||!plans.length) {
       message("Open the original PRIVATE lab batch with WebCrypto before loading its HUMAN snapshot history.",true);return;
     }
+    const originalStamp=sessionStamp();
     $("historyOpen").disabled=true;
     try {
       fail(earlier&&later,"Choose an earlier and a later PRIVATE saved plan explicitly");
       const oldPlan=await readHistoryFile(earlier,$("historyPassEarlier").value);
       const newPlan=await readHistoryFile(later,$("historyPassLater").value);
       const next={earlier:oldPlan,later:newPlan,changes:historyChanges(oldPlan,newPlan)};
+      requireSession(originalStamp);
+      fail($("historyEarlier").files[0]===earlier&&$("historyLater").files[0]===later,
+        "Selected HUMAN history files changed while reading");
       // Entire two-file source-byte admission completed BEFORE any active comparison changes.
       history=next;historyPage=0;historyResolutions.clear();
       $("historySearch").value="";$("historyState").value="all";
@@ -1005,12 +1014,14 @@ function createHumanBoard(api) {
     $("humanSaveEncrypted").addEventListener("click",async()=>{
       if(!plans.length||!safeDigests()||!privatePlanCrypto.supported())return;
       const password=$("humanEncryptPass").value;
+      const originalStamp=sessionStamp();
       try {
         if(!confirm("Encrypt and download a PRIVATE HUMAN plan locally with your passphrase? If you lose this passphrase, the contents cannot be recovered. No password or file is sent anywhere."))return;
         const original=JSON.stringify(privatePlan(),null,2)+"\n";
         fail(new Blob([original]).size<=MAX_PRIVATE_BYTES,
           "HUMAN plan exceeds local encryption size limit");
         const encrypted=await privatePlanCrypto.encrypt(original,password);
+        requireSession(originalStamp);
         const output=JSON.stringify(encrypted,null,2)+"\n";
         fail(new Blob([output]).size<=MAX_ENCRYPTED_BYTES,
           "Encrypted PRIVATE output is too large");
@@ -1024,10 +1035,15 @@ function createHumanBoard(api) {
     $("humanResumeButton").addEventListener("click",async()=>{
       const file=$("humanResume").files[0];
       if(!safeDigests()||!file){message("Open the original source files, then choose one PRIVATE saved plan.",true);return;}
+      const originalStamp=sessionStamp();
       try {
         const candidate=admitPrivatePlan(
           await parsePrivateJSONFile(file,$("humanResumePass").value));
+        requireSession(originalStamp);
+        fail($("humanResume").files[0]===file,"Selected HUMAN plan changed while reading");
         if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
+        requireSession(originalStamp);
+        fail($("humanResume").files[0]===file,"Selected HUMAN plan changed before replacement");
         plans=candidate;changed=true;lastBulk=null;historyResolutions.clear();
         $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();
         message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
@@ -1683,6 +1699,7 @@ function createPrivateWorkspaceVault(api) {
   const humanBoard=createHumanBoard({
     $,node,clear,fail,shape,obj,int,text,parseStrict,download,message,FLAGS,
     getRows:()=>rows,getDigests:()=>sourceDigests,
+    getOriginalEpoch:()=>originalSessionEpoch,
     onFocus:(row)=>{
       // HUMAN routing opens the original untrusted declaration; it never executes it.
       const index=row.bySource.findIndex(items=>items.length>0);
