@@ -174,9 +174,14 @@
     }
   });
   clear.addEventListener("click", () => {
+    // "Wis fingerprints" must also clear the independently typed original
+    // checksum and byte count. Their retention would contradict the operator
+    // expectation that all on-screen fingerprint values have been forgotten.
     picker.value = "";
-    forget();
-    message("Resultaten uit het browsergeheugen gewist; er zijn geen bronbestanden aangepast.");
+    expected.value = "";
+    expectedSize.value = "";
+    forget(); // Also invalidates any still-running File/WebCrypto operation.
+    message("Lokale hashes en ingevulde controlewaarden gewist. Eerder gekopieerde of gedownloade bestanden blijven buiten deze browser bestaan.");
   });
   exportButton.addEventListener("click", () => {
     if (!inventory.length) return;
