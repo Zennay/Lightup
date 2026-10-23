@@ -222,6 +222,23 @@
     return nextHumanAction(c);
   }
   const urgency = c => ["Critical drift", "High drift", "Review drift", "No regression"].indexOf(priority(c));
+  const QUEUE_SORTS = new Set(["priority","unknown_desc","unknown_asc","regressions","ordinal"]);
+  const QUEUE_SORT_LABELS = Object.freeze({
+    priority:"priority then original order",
+    unknown_desc:"highest unknown coverage first",
+    unknown_asc:"lowest unknown coverage first",
+    regressions:"most regression flags first",
+    ordinal:"scenario ordinal"
+  });
+  const queueSortLabel = sort => QUEUE_SORT_LABELS[sort] || QUEUE_SORT_LABELS.priority;
+  function compareQueueRows(a,b,sort) {
+    const byPriority = () => urgency(a.c)-urgency(b.c) || a.i-b.i;
+    if (sort === "unknown_desc") return unknownCoverage(b.c)-unknownCoverage(a.c) || byPriority();
+    if (sort === "unknown_asc") return unknownCoverage(a.c)-unknownCoverage(b.c) || byPriority();
+    if (sort === "regressions") return b.c.regressions.length-a.c.regressions.length || byPriority();
+    if (sort === "ordinal") return a.i-b.i;
+    return byPriority();
+  }
   const label = i => "Case " + String(i + 1).padStart(2, "0");
   const nice = s => s.replaceAll("_", " ");
   const stageText = s => ({
@@ -251,11 +268,13 @@
     $("pending").textContent = String(report.cases.filter(c => c.stage !== "reviewed").length);
     $("source-hash").textContent = digest ? "Local source SHA-256: " + digest : "Source hash unavailable in this browser; no provenance assertion.";
   }
+
   function filteredQueueRows() {
     if (!report) return [];
     const filter = $("filter").value;
     const routeFilter = $("route-filter").value;
     const priorityFilter = $("priority-filter").value;
+    const sort = QUEUE_SORTS.has($("queue-sort").value) ? $("queue-sort").value : "priority";
     return report.cases.map((c, i) => ({c, i}))
       .filter(({c}) => routeFilter === "all" || c.route === routeFilter)
       .filter(({c}) => priorityFilter === "all" || priority(c) === priorityFilter)
@@ -266,7 +285,7 @@
         (filter === "open" && c.stage !== "reviewed") ||
         (filter === "waiting" && c.stage === "waiting") ||
         (filter === "reviewed" && c.stage === "reviewed"))
-      .sort((a,b) => urgency(a.c) - urgency(b.c) || a.i - b.i);
+      .sort((a,b) => compareQueueRows(a,b,sort));
   }
   function renderQueue() {
     const parent = $("cases");
@@ -274,7 +293,7 @@
     const sorted = filteredQueueRows();
     $("queue-export-summary").textContent = sorted.length
       ? "Filtered export includes " + sorted.length + " of " + report.cases.length +
-        " cases. Current status, workstream and metric filters are applied; raw scenario IDs stay excluded."
+        " cases. Current status, workstream, priority and metric filters plus " + queueSortLabel($("queue-sort").value) + " ordering are applied; raw scenario IDs stay excluded."
       : "No cases match the current filters; filtered exports are disabled.";
     $("queue-export-csv").disabled = !sorted.length;
     $("queue-export-json").disabled = !sorted.length;
@@ -374,7 +393,8 @@
       "status: " + $("filter").selectedOptions[0].textContent,
       "workstream: " + $("route-filter").selectedOptions[0].textContent,
       "priority: " + $("priority-filter").selectedOptions[0].textContent,
-      "metric: " + (metricFocus || "All metrics")
+      "metric: " + (metricFocus || "All metrics"),
+      "sort: " + queueSortLabel($("queue-sort").value)
     ].join(" · ");
     const regressionFlags = rows.reduce((sum, {c}) => sum + c.regressions.length, 0);
     child(box, "p", "Source " + report.verdict + " | " + rows.length + " filtered cases of " +
@@ -625,7 +645,7 @@
     humanUndoHistory = []; humanRedoHistory = [];
     updateHumanHistoryControls();
     clearHistorical(); clearPlanComparison(); metricFocus = null;
-    $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all";
+    $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all"; $("priority-filter").value = "all"; $("queue-sort").value = "priority";
     $("cases").replaceChildren(); $("metrics").replaceChildren();
     ["queue-export-csv","queue-export-json","queue-export-html","queue-import-button","print-filtered"]
       .forEach(id => { $(id).disabled = true; });
@@ -708,10 +728,11 @@
         "HOLD · Unsupported, oversized, inconsistent or malformed local report. Previous HUMAN workspace preserved.", "error");
     }
   }
+
   function filteredQueueExport() {
     const rows = filteredQueueRows();
     return {
-      schema: "lightup-offline-human-triage-filtered-v2",
+      schema: "lightup-offline-human-triage-filtered-v3",
       source_sha256: digest,
       source_kind: sourceKind,
       source_status: report.verdict,
@@ -719,7 +740,8 @@
         case_status: $("filter").value,
         workstream: $("route-filter").value,
         priority: $("priority-filter").value,
-        metric: metricFocus || "all"
+        metric: metricFocus || "all",
+        sort: QUEUE_SORTS.has($("queue-sort").value) ? $("queue-sort").value : "priority"
       },
       authorized: false,
       consent_verified: false,
@@ -774,18 +796,20 @@
       ensure(exactKeys(saved, ["schema","source_sha256","source_kind","source_status","filters",
         "authorized","consent_verified","dispatch_allowed","release_allowed","release_approved",
         "scan_allowed","review_only","case_count","cases","warning"]));
-      const v2 = saved.schema === "lightup-offline-human-triage-filtered-v2";
+      const v3 = saved.schema === "lightup-offline-human-triage-filtered-v3";
+      const v2 = v3 || saved.schema === "lightup-offline-human-triage-filtered-v2";
       ensure((v2 || saved.schema === "lightup-offline-human-triage-filtered-v1") &&
         saved.source_sha256 === digest && saved.source_kind === sourceKind &&
         saved.source_status === report.verdict && saved.release_approved === false &&
         saved.scan_allowed === false && saved.review_only === true &&
         boolFalseAuthority(saved) &&
         saved.warning === "FILTERED UNSIGNED OFFLINE HUMAN PLANNING ONLY. No source identity, remediation, consent or execution authority is asserted." &&
-        exactKeys(saved.filters, ["case_status","workstream","priority","metric"]));
+        exactKeys(saved.filters, v3 ? ["case_status","workstream","priority","metric","sort"] : ["case_status","workstream","priority","metric"]));
       const filters = saved.filters;
       ensure(["all","regressed",...(v2?["uncertain"]:[]),"open","waiting","reviewed"].includes(filters.case_status) &&
         (filters.workstream === "all" || ROUTES.has(filters.workstream)) &&
         ["all","Critical drift","High drift","Review drift","No regression"].includes(filters.priority) &&
+        (!v3 || QUEUE_SORTS.has(filters.sort)) &&
         (filters.metric === "all" || (METRICS.includes(filters.metric) &&
           (v2 || filters.metric!=="coverage_unknown"))));
       ensure(Array.isArray(saved.cases) && Number.isInteger(saved.case_count) &&
@@ -823,9 +847,14 @@
           (filters.metric === "all" || (v2 && filters.metric==="coverage_unknown" ?
             unknownCoverage(c)>0 : c.regressions.includes(filters.metric))));
         const currentUrgency = urgency(c);
-        ensure(currentUrgency > previousUrgency ||
-          (currentUrgency === previousUrgency && index > previousIndex));
-        previousUrgency = currentUrgency;
+        if (v3) {
+          ensure(previousIndex < 0 || compareQueueRows(
+            {c:report.cases[previousIndex],i:previousIndex},{c,i:index},filters.sort) <= 0);
+        } else {
+          ensure(currentUrgency > previousUrgency ||
+            (currentUrgency === previousUrgency && index > previousIndex));
+          previousUrgency = currentUrgency;
+        }
         previousIndex = index;
         const expectedChanges = (v2 ? c.changes.filter(m=>filters.metric !== "all" ?
           (filters.metric==="coverage_unknown" ? m.name==="coverage_unknown" && m.candidate>0 : m.name===filters.metric) :
@@ -858,6 +887,7 @@
     }
   }
 
+
   function exportFilteredQueueHtml() {
     if (!report) return;
     const output = filteredQueueExport();
@@ -873,7 +903,8 @@
       "status: " + $("filter").selectedOptions[0].textContent,
       "workstream: " + $("route-filter").selectedOptions[0].textContent,
       "priority: " + $("priority-filter").selectedOptions[0].textContent,
-      "metric: " + (metricFocus || "All metrics")
+      "metric: " + (metricFocus || "All metrics"),
+      "sort: " + queueSortLabel($("queue-sort").value)
     ].join(" · ");
     const bodyRows = output.cases.map(item => {
       const movements = item.metric_changes.map(metric =>
@@ -922,7 +953,7 @@
     }
     const columns = ["case","priority","source_status","metric_regressions","metric_changes","human_stage",
       "follow_up_date","routing_group","suggested_human_action","source_sha256","source_kind",
-      "overall_source_status","filter_case_status","filter_workstream","filter_priority","filter_metric",
+      "overall_source_status","filter_case_status","filter_workstream","filter_priority","filter_metric","filter_sort",
       "authorized","consent_verified","dispatch_allowed","release_allowed","release_approved","scan_allowed"];
     const lines = [columns.map(csvCell).join(",")];
     for (const item of output.cases) {
@@ -937,6 +968,7 @@
         filter_workstream: output.filters.workstream,
         filter_priority: output.filters.priority,
         filter_metric: output.filters.metric,
+        filter_sort: output.filters.sort,
         authorized: false,
         consent_verified: false,
         dispatch_allowed: false,
@@ -1210,6 +1242,7 @@
   $("filter").addEventListener("change", renderQueue);
   $("route-filter").addEventListener("change", renderQueue);
   $("priority-filter").addEventListener("change", renderQueue);
+  $("queue-sort").addEventListener("change", renderQueue);
   $("queue-export-csv").addEventListener("click", exportFilteredQueueCsv);
   $("queue-export-json").addEventListener("click", exportFilteredQueueJson);
   $("queue-export-html").addEventListener("click", exportFilteredQueueHtml);
