@@ -164,3 +164,24 @@ The same read-only `assessment_runtime_verify_pack_cli_20261018.py` product insp
 ### Direct offline entry screen for saved human reviews
 
 A complete source-bound **ten-member** follow-up ZIP includes `review-followup.html`, a separately hash-pinned responsive browser launcher. Open it after extracting the trusted private archive: it links to `human-summary.html` and provides the exact two-step original desk workflow (select `review-desk.json`, then restore `saved-human-review.json`). It also links to the unchanged metric source printout. The screen has no scripts or network access and never changes case status or grants approval. The original pinned Review Desk and older seven-file package remain byte-for-byte unchanged. The same archive inspector admits exactly the ten fixed v2 members and their expected manifest hashes.
+
+
+## Offline HUMAN capacity planning across completed review packets
+
+Use the capacity companion only after separate original review packets have already been created and locally reviewed. It aggregates the existing HUMAN follow-up rows across 2–8 distinct annotated private review ZIPs; it does not reopen targets or execute assessments.
+
+```bash
+PYTHONPATH=src:scripts python scripts/assessment_runtime_human_capacity_cli_20261023.py \
+  /private/REVIEW-01.zip /private/REVIEW-02.zip \
+  --capacity-per-group 4 --reference-date 2026-10-23 \
+  --output /private/NEW-human-capacity.zip
+
+PYTHONPATH=src:scripts python scripts/assessment_runtime_human_capacity_inspect_cli_20261023.py \
+  /private/NEW-human-capacity.zip
+```
+
+The capacity bundle contains a scriptless local HTML summary, CSV and JSON work rows, a fixed-layout manifest with unsigned output digests, and a privacy/no-authority guide. The optional capacity value is only a hypothetical number of HUMAN rows per route/date; the explicit reference date is required for overdue counts. Use `--preview-only` without `--output` to print aggregate counts without publishing files.
+
+Only distinct original comparison bytes are counted once; changing HUMAN notes on the same comparison does not make a new independent case. `reviewed` rows are excluded from open planning load but remain HUMAN self-reports, not verified fixes or approvals. All outputs remain private and potentially sensitive. Digests are unsigned integrity checks, not authentication. This feature does not grant authorization, prove consent, dispatch handlers, verify remediation, or permit release.
+
+Full operator instructions: [assessment_runtime_human_capacity_README_20261023.md](assessment_runtime_human_capacity_README_20261023.md).
