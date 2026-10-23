@@ -448,17 +448,32 @@ def ensure_private_subdirs(root: Path, member: str) -> None:
 
 
 def cleanup_private_stage(stage: Path) -> None:
-    """Remove only the named stage beneath a verified nofollow private fd.
+    """Remove only a genuine private LightUp staging tree, never a caller path.
 
-    shutil.rmtree's dir_fd implementation uses anchored traversal on Linux
-    rather than following the caller's mutable parent pathname.
+    Reject arbitrary names and changed/non-private stage inodes before any
+    recursive deletion. The anchored rmtree itself never follows symlinks.
     """
+    prefixes = (".lightup-suite-", ".lightup-integrity-", ".lightup-receiver-")
+    require(stage.is_absolute() and
+            any(stage.name.startswith(prefix) and
+                len(stage.name) == len(prefix) + 24 and
+                all(ch in "0123456789abcdef" for ch in stage.name[len(prefix):])
+                for prefix in prefixes),
+            "Refusing to clean an unknown private staging path")
     parent_fd = open_private_dir_fd(stage.parent)
     try:
         try:
-            shutil.rmtree(stage.name, dir_fd=parent_fd)
+            original = os.stat(stage.name, dir_fd=parent_fd,
+                               follow_symlinks=False)
         except FileNotFoundError:
-            pass  # Successfully renamed to the exclusive final destination.
+            return  # Already published with exclusive no-replace rename.
+        require(stat.S_ISDIR(original.st_mode) and
+                original.st_uid == os.getuid() and
+                stat.S_IMODE(original.st_mode) == 0o700,
+                "Refusing to clean a replaced or unsafe private stage")
+        # shutil.rmtree uses fd-relative nofollow traversal on this Linux
+        # host; no mutable absolute parent is used during removal.
+        shutil.rmtree(stage.name, dir_fd=parent_fd)
         os.fsync(parent_fd)
     finally:
         os.close(parent_fd)
