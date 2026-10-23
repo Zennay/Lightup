@@ -194,7 +194,8 @@
     return {kind, verdict: doc.status, cases};
   }
   const countRegressions = () => report.cases.reduce((n, c) => n + c.regressions.length, 0);
-  const priority = c => !c.regressions.length ? "No regression" :
+  const unknownCoverage = c => c.changes.find(m => m.name === "coverage_unknown")?.candidate || 0;
+  const priority = c => !c.regressions.length ? (unknownCoverage(c)>0 ? "Coverage uncertainty" : "No regression") :
     c.regressions.some(x => x === "scope_violations" || x === "policy_violations") ? "Critical drift" :
     c.regressions.some(x => ["missed_findings", "invalid_findings", "valid_findings"].includes(x)) ? "High drift" : "Review drift";
 
@@ -213,9 +214,11 @@
       return "Request independent rubric/evidence review and a proposed remediation plan.";
     if (c.regressions.length)
       return "Compare source metric details and prepare an independent human follow-up.";
+    if (unknownCoverage(c)>0)
+      return "Ask the original lab source owner to clarify declared unknown coverage. Do not infer a finding, remediation, permission or need for a new scan.";
     return "No scored regression reported. Review informational performance/cost changes if relevant.";
   }
-  const urgency = c => ["Critical drift", "High drift", "Review drift", "No regression"].indexOf(priority(c));
+  const urgency = c => ["Critical drift", "High drift", "Review drift", "Coverage uncertainty", "No regression"].indexOf(priority(c));
   const label = i => "Case " + String(i + 1).padStart(2, "0");
   const nice = s => s.replaceAll("_", " ");
   const stageText = s => ({
@@ -253,9 +256,10 @@
     return report.cases.map((c, i) => ({c, i}))
       .filter(({c}) => routeFilter === "all" || c.route === routeFilter)
       .filter(({c}) => priorityFilter === "all" || priority(c) === priorityFilter)
-      .filter(({c}) => !metricFocus || c.regressions.includes(metricFocus))
+      .filter(({c}) => !metricFocus || (metricFocus==="coverage_unknown" ? unknownCoverage(c)>0 : c.regressions.includes(metricFocus)))
       .filter(({c}) => filter === "all" ||
         (filter === "regressed" && c.regressions.length > 0) ||
+        (filter === "uncertain" && unknownCoverage(c)>0) ||
         (filter === "open" && c.stage !== "reviewed") ||
         (filter === "waiting" && c.stage === "waiting") ||
         (filter === "reviewed" && c.stage === "reviewed"))
@@ -281,8 +285,9 @@
       row.setAttribute("aria-pressed", String(i === selected));
       const left = child(row, "span");
       child(left, "strong", label(i));
-      child(left, "small", c.regressions.length + " regression(s) · " + stageText(c.stage) + " · " + c.route);
-      badge(row, priority(c), c.regressions.length ? "bad" : "ok");
+      child(left, "small", c.regressions.length + " regression(s) · unknown coverage " +
+        fmt(unknownCoverage(c)) + " · " + stageText(c.stage) + " · " + c.route);
+      badge(row, priority(c), c.regressions.length ? "bad" : unknownCoverage(c)>0 ? "warn" : "ok");
       row.addEventListener("click", () => {selected = i; render();});
     }
   }
@@ -297,6 +302,7 @@
     if (!c) return;
     badge(chips, c.status, c.status === "HOLD" ? "bad" : "ok");
     badge(chips, c.regressions.length + " regressed metrics", c.regressions.length ? "bad" : "ok");
+    if(unknownCoverage(c)>0)badge(chips,"Unknown coverage "+fmt(unknownCoverage(c)),"warn");
     $("guidance").textContent = nextHumanAction(c);
     $("route").value = c.route;
     $("stage").value = c.stage;
@@ -319,13 +325,13 @@
     const table = child(box, "table");
     const head = child(table, "thead");
     const headings = child(head, "tr");
-    ["Case", "Priority", "Source", "Workstream", "Follow-up stage", "Due", "Regressed metrics"].forEach(x => child(headings,"th",x));
+    ["Case", "Priority", "Source", "Workstream", "Follow-up stage", "Due", "Unknown coverage", "Regressed metrics"].forEach(x => child(headings,"th",x));
     const body = child(table, "tbody");
     report.cases.map((c,i) => ({c,i})).sort((a,b) =>
       urgency(a.c)-urgency(b.c) || a.i-b.i).forEach(({c,i}) => {
       const tr=child(body,"tr");
       [label(i), priority(c), c.status, c.route, stageText(c.stage),
-        c.due || "-", c.regressions.join(", ") || "None"].forEach(x => child(tr,"td",x));
+        c.due || "-", fmt(unknownCoverage(c)), c.regressions.join(", ") || "None"].forEach(x => child(tr,"td",x));
     });
     if (planDelta) {
       child(box, "h2", "Saved HUMAN plan comparison");
@@ -378,17 +384,18 @@
     const table = child(box, "table");
     const head = child(table, "thead");
     const headings = child(head, "tr");
-    ["Case", "Priority", "Source", "Workstream", "Follow-up stage", "Due", "Regressed metrics"]
+    ["Case", "Priority", "Source", "Workstream", "Follow-up stage", "Due", "Unknown coverage", "Regressed metrics"]
       .forEach(x => child(headings, "th", x));
     const body = child(table, "tbody");
     rows.forEach(({c, i}) => {
       const tr = child(body, "tr");
       [label(i), priority(c), c.status, c.route, stageText(c.stage),
-        c.due || "-", c.regressions.join(", ") || "None"].forEach(x => child(tr, "td", x));
+        c.due || "-", fmt(unknownCoverage(c)), c.regressions.join(", ") || "None"].forEach(x => child(tr, "td", x));
       const evidenceRow = child(body, "tr", undefined, "print-evidence-row");
       const evidenceCell = child(evidenceRow, "td");
-      evidenceCell.colSpan = 7;
-      const evidence = c.changes.filter(m => c.regressions.includes(m.name)).map(m =>
+      evidenceCell.colSpan = 8;
+      const evidence = c.changes.filter(m => c.regressions.includes(m.name) ||
+        (metricFocus==="coverage_unknown" && m.name==="coverage_unknown" && m.candidate>0)).map(m =>
         nice(m.name) + ": baseline " + fmt(m.baseline) + " → candidate " + fmt(m.candidate) +
         " (Δ " + (m.delta >= 0 ? "+" : "") + fmt(m.delta) + ")"
       );
@@ -497,24 +504,39 @@
       name,count:report.cases.filter(c=>c.regressions.includes(name)).length
     })).filter(x=>x.count>0).sort((a,b)=>b.count-a.count ||
       a.name.localeCompare(b.name));
-    if (!counts.length) {
-      child(parent,"p","No source-reported metric regression in this accepted report.","muted-copy");
-    } else {
-      counts.forEach(({name,count})=>{
-        const row=child(parent,"button",undefined,
-          "metric-bar"+(metricFocus===name?" active":""));
-        row.type="button";
-        row.setAttribute("aria-pressed",String(metricFocus===name));
-        row.title="Filter to cases with "+nice(name)+" regression";
-        child(row,"span",nice(name));
-        const track=child(row,"div",undefined,"track");
-        const bar=child(track,"i");
-        bar.style.width=(100*count/report.cases.length).toFixed(1)+"%";
-        child(row,"b",count);
-        row.addEventListener("click",()=>{
-          metricFocus=metricFocus===name?null:name;
-          render();
-        });
+    const uncertaintyCount=report.cases.filter(c=>unknownCoverage(c)>0).length;
+    if (!counts.length&&!uncertaintyCount) {
+      child(parent,"p","No source-reported metric regression or unknown-coverage value above zero in this accepted report.","muted-copy");
+    }
+    counts.forEach(({name,count})=>{
+      const row=child(parent,"button",undefined,
+        "metric-bar"+(metricFocus===name?" active":""));
+      row.type="button";
+      row.setAttribute("aria-pressed",String(metricFocus===name));
+      row.title="Filter to cases with "+nice(name)+" regression";
+      child(row,"span",nice(name));
+      const track=child(row,"div",undefined,"track");
+      const bar=child(track,"i");
+      bar.style.width=(100*count/report.cases.length).toFixed(1)+"%";
+      child(row,"b",count);
+      row.addEventListener("click",()=>{
+        metricFocus=metricFocus===name?null:name;
+        render();
+      });
+    });
+    if(uncertaintyCount){
+      const row=child(parent,"button",undefined,
+        "metric-bar uncertainty"+(metricFocus==="coverage_unknown"?" active":""));
+      row.type="button";
+      row.setAttribute("aria-pressed",String(metricFocus==="coverage_unknown"));
+      row.title="Filter to cases with source-declared unknown coverage above zero; this is not a regression flag.";
+      child(row,"span","Unknown coverage > 0");
+      const track=child(row,"div",undefined,"track"),bar=child(track,"i");
+      bar.style.width=(100*uncertaintyCount/report.cases.length).toFixed(1)+"%";
+      child(row,"b",uncertaintyCount);
+      row.addEventListener("click",()=>{
+        metricFocus=metricFocus==="coverage_unknown"?null:"coverage_unknown";
+        render();
       });
     }
     function sumCost(name) {
@@ -527,9 +549,10 @@
     const runtime=sumCost("runtime_seconds"), cost=sumCost("compute_cost_usd");
     $("runtime-summary").textContent=fmt(runtime.baseline)+" → "+fmt(runtime.candidate);
     $("cost-summary").textContent=fmt(cost.baseline)+" → "+fmt(cost.candidate);
-    $("metric-focus").textContent=metricFocus ?
-      "Filtering only "+nice(metricFocus)+" regressions in the local case queue. Exports retain all cases." :
-      "Showing all regression categories. Costs and times are untrusted lab report totals.";
+    $("metric-focus").textContent=metricFocus==="coverage_unknown" ?
+      "Filtering cases with source-declared unknown coverage above zero. This is an uncertainty signal, not a regression label." :
+      metricFocus ? "Filtering only "+nice(metricFocus)+" regressions in the local case queue. Exports retain all cases." :
+      "Showing all regression categories. Unknown coverage is separate from regression flags; costs and times are untrusted lab report totals.";
   }
   $("metric-reset").addEventListener("click",()=>{
     metricFocus=null;
@@ -707,7 +730,9 @@
         priority: priority(c),
         source_status: c.status,
         metric_regressions: c.regressions.slice().sort(),
-        metric_changes: c.changes.filter(m => metricFocus ? m.name === metricFocus : m.regression)
+        metric_changes: c.changes.filter(m => metricFocus ? (metricFocus==="coverage_unknown" ?
+          m.name==="coverage_unknown" && m.candidate>0 : m.name===metricFocus) :
+          (m.regression || (m.name==="coverage_unknown" && m.candidate>0)))
           .map(m => ({metric:m.name,baseline:m.baseline,candidate:m.candidate,
             delta:m.delta,regression:m.regression})),
         human_stage: c.stage,
