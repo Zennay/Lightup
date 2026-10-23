@@ -144,7 +144,7 @@ def build_packet(admitted, compare_from=None, compare_to=None):
         })
 
     return {
-        "schema": "lightup.private-manifest-source-timeline.v1",
+        "schema": "lightup.private-manifest-source-timeline.v2",
         "status": "REVIEW_ONLY",
         "order_is_operator_supplied": True,
         "snapshot_count": len(admitted),
