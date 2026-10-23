@@ -59,7 +59,8 @@
 @media(max-width:800px){.timeline-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:440px){.timeline-panel .flex{display:block}.timeline-stats{grid-template-columns:1fr}}
 @media print{
- .timeline-panel .date-controls,.timeline-link{display:none!important}
+ .timeline-panel .date-controls{display:none!important}
+ .timeline-link{display:inline!important;background:transparent!important;border:0!important;color:#000!important;padding:0!important}
  .timeline-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
  .timeline-stat{color:#111;background:#fff;border-color:#888}
  .timeline-stat small,.timeline-stat strong{color:#111}
