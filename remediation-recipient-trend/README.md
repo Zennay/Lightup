@@ -201,3 +201,8 @@ python3 remediation-recipient-trend/receiver_desk.py human-reopen-diff \
 This can reconstruct the private HTML, CSV, JSON and anonymous counts byte-for-byte from the locally admitted changed HUMAN records, and validate the complete original owner-private file inventory. Reopening only proves self-consistent local bytes, not an authenticated source identity, reliable chronology, real assignment, scan authorization, active remediation or an approved retest.
 
 Everything above is offline, HUMAN-only and PRIVATE; do not attach downloaded notes or small-group workload exports to GitHub, Notion, CI, shared drives or public issue comments. Original-release gates remain unchanged.
+
+
+## Strict PRIVATE HUMAN journal restore
+
+The browser workroom now admits only the exact canonical UTF-8 JSON representation emitted by its own journal exporter: fatal UTF-8 decoding, no leading BOM, exact pretty-printed JSON bytes with one terminal newline, then the existing schema/source-snapshot checks. Duplicate-key JSON and alternate whitespace/key-order encodings are rejected before any HUMAN entry is applied. Failed admission leaves all current HUMAN entries unchanged. This protects the local review format; it does not authenticate a sender, reviewer identity, source producer, client consent or remediation.
