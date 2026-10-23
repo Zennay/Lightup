@@ -289,5 +289,84 @@
       showMessage("Selecteer het commando en kopieer met Ctrl+C; klembordtoegang is hier uitgeschakeld.", false);
     }
   });
+  // Separate read-only preview of the native 65-byte software ZIP receipt.
+  // File objects never leave this browser; no fetch, upload, storage or install.
+  const softwareZip = document.getElementById("software-zip");
+  const softwareHash = document.getElementById("software-sha256");
+  const softwareCompare = document.getElementById("software-compare");
+  const softwareClear = document.getElementById("software-clear");
+  const softwareResult = document.getElementById("software-result");
+  let softwareGeneration = 0;
+  let softwareBusy = false;
+  function clearSoftwareResult(clearFiles = false) {
+    softwareGeneration++;
+    if (clearFiles) {
+      softwareZip.value = "";
+      softwareHash.value = "";
+    }
+    softwareResult.textContent = "Nog geen lokale bytesvergelijking. Geen bestanden verzonden.";
+    softwareResult.dataset.kind = "info";
+  }
+  softwareZip.addEventListener("change", () => clearSoftwareResult());
+  softwareHash.addEventListener("change", () => clearSoftwareResult());
+  softwareClear.addEventListener("click", () => clearSoftwareResult(true));
+  softwareCompare.addEventListener("click", async () => {
+    if (softwareBusy) return;
+    const zip = softwareZip.files && softwareZip.files[0];
+    const receipt = softwareHash.files && softwareHash.files[0];
+    if (!zip || !receipt || !zip.name.endsWith(".zip") ||
+        !receipt.name.endsWith(".sha256") ||
+        !Number.isSafeInteger(zip.size) || zip.size < 1 || zip.size > 15000000 ||
+        receipt.size !== 65) {
+      softwareResult.textContent = "HOLD: kies precies één ZIP van 1–15.000.000 bytes en één originele .sha256 van exact 65 bytes.";
+      softwareResult.dataset.kind = "error";
+      return;
+    }
+    if (!window.crypto || !window.crypto.subtle ||
+        typeof window.crypto.subtle.digest !== "function") {
+      softwareResult.textContent = "HOLD: lokale WebCrypto SHA-256 niet beschikbaar. Gebruik de native inspect-archive-opdracht; geen upload of fallback.";
+      softwareResult.dataset.kind = "error";
+      return;
+    }
+    const generation = ++softwareGeneration;
+    softwareBusy = true;
+    softwareCompare.disabled = true;
+    softwareResult.dataset.kind = "info";
+    softwareResult.textContent = "PRIVATE bestanden uitsluitend lokaal lezen en vergelijken…";
+    try {
+      const signature = new Uint8Array(await receipt.arrayBuffer());
+      if (signature.length !== 65 || signature[64] !== 10 ||
+          !Array.from(signature.slice(0, 64)).every(b =>
+            b >= 48 && b <= 57 || b >= 97 && b <= 102)) {
+        throw Error("receipt-format");
+      }
+      const expected = String.fromCharCode(...signature.slice(0, 64));
+      const bytes = await zip.arrayBuffer();
+      if (bytes.byteLength !== zip.size || bytes.byteLength > 15000000) {
+        throw Error("zip-changed");
+      }
+      const hash = Array.from(
+        new Uint8Array(await window.crypto.subtle.digest("SHA-256", bytes)),
+        b => b.toString(16).padStart(2, "0")).join("");
+      if (generation !== softwareGeneration) return;
+      if (hash !== expected) {
+        softwareResult.textContent = "HOLD: SHA-256 van ontvangen ZIP wijkt af van het afzonderlijke checksum-bestand. Niet installeren of stilzwijgend vervangen.";
+        softwareResult.dataset.kind = "error";
+      } else {
+        softwareResult.textContent = "REVIEW_ONLY: oorspronkelijke ZIP en 65-byte checksum zijn lokaal byte-gelijk volgens SHA-256 (" +
+          zip.size + " bytes). Voer de afzonderlijke native bron-/ZIP-controle uit; geen afzender- of toestemmingbewijs.";
+        softwareResult.dataset.kind = "info";
+      }
+    } catch (_) {
+      if (generation === softwareGeneration) {
+        softwareResult.textContent = "HOLD: lokale SHA-256 of originele checksumindeling ongeldig. Geen gedeeltelijke goedkeuring.";
+        softwareResult.dataset.kind = "error";
+      }
+    } finally {
+      softwareBusy = false;
+      softwareCompare.disabled = false;
+    }
+  });
+
   select(chosen.name);
 })();
