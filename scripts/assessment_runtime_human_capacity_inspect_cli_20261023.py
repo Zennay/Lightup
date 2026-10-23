@@ -14,7 +14,7 @@ import sys
 from zipfile import BadZipFile, LargeZipFile, ZipFile, ZIP_DEFLATED
 
 from assessment_runtime_human_capacity_cli_20261023 import (
-    AUTH, MAX_ARCHIVE, PRIORITIES, ROUTES, STAGES, _csv, _html,
+    AUTH, MAX_ARCHIVE, PRIORITIES, ROUTES, STAGES, _csv, _summary_csv, _html,
     _private_snapshot,
 )
 from assessment_runtime_verify_pack_cli_20261018 import _json
@@ -24,6 +24,7 @@ MEMBERS = {
     "manifest.json": 8_192,
     "capacity.json": 250_000,
     "capacity.csv": 250_000,
+    "capacity-summary.csv": 100_000,
     "capacity.html": 250_000,
 }
 BOARD_KEYS = frozenset((
@@ -39,7 +40,8 @@ ROW_KEYS = frozenset((
 ))
 MANIFEST_KEYS = frozenset((
     "format", "comparison_status", "human_work_rows",
-    "capacity_json_sha256", "capacity_csv_sha256", "capacity_html_sha256",
+    "capacity_json_sha256", "capacity_csv_sha256",
+    "capacity_summary_csv_sha256", "capacity_html_sha256",
     *AUTH,
 ))
 
@@ -178,13 +180,14 @@ def inspect(raw: bytes):
     _inspect_board(board)
     if type(manifest) is not dict or set(manifest) != MANIFEST_KEYS:
         raise ValueError("invalid manifest")
-    if (manifest["format"] != "lightup.private_human_capacity_pack.v1"
+    if (manifest["format"] != "lightup.private_human_capacity_pack.v2"
             or manifest["comparison_status"] != board["comparison_status"]
             or manifest["human_work_rows"] != board["human_work_rows"]
             or any(manifest[key] is not False for key in AUTH)):
         raise ValueError("status/authority mismatch")
     for key, name in (("capacity_json_sha256", "capacity.json"),
                       ("capacity_csv_sha256", "capacity.csv"),
+                      ("capacity_summary_csv_sha256", "capacity-summary.csv"),
                       ("capacity_html_sha256", "capacity.html")):
         if manifest[key] != sha256(contents[name]).hexdigest():
             raise ValueError("modified output member")
@@ -192,6 +195,7 @@ def inspect(raw: bytes):
                            ensure_ascii=True, allow_nan=False).encode("ascii")
     if (contents["capacity.json"] != canonical
             or contents["capacity.csv"] != _csv(board)
+            or contents["capacity-summary.csv"] != _summary_csv(board)
             or contents["capacity.html"] != _html(board)
             or not contents["READ-ME.txt"].startswith(
                 b"LIGHTUP PRIVATE HUMAN CAPACITY / NO AUTHORITY\n")):
