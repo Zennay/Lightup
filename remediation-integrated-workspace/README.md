@@ -28,7 +28,7 @@ To check the installed folder's exact native file inventory and the locally gene
 
     python3 remediation-integrated-workspace/install.py inspect --workspace "$HOME/lightup-private/integrated-workspace-v1"
 
-Inspection enforces private file ownership/modes, regular nofollow one-link files, canonical warning and non-authority flags, exact installed SHA-256 file contents, ZIP-member byte identity, original source inventory and local scriptless portal renderer. It only establishes local consistency.
+Inspection enforces private file ownership/modes, regular nofollow one-link files, canonical warning and non-authority flags, **the exact complete 79 pinned-original + 25 integrated-tool inventory** (never just whichever files a received manifest happens to list), exact installed SHA-256 file contents, ZIP-member byte identity, original source inventory and local scriptless portal renderer. The installed ZIP and the receiver must both preserve the builder's deterministic path order, original 2020 timestamps, Unix 0600 regular-file attributes, DEFLATE compression, and empty member/archive comments, encryption flags and extra metadata. Incomplete or rewritten ZIP layouts are HOLD, even when content hashes happen to match. These are local byte-integrity checks, **not** cryptographic signatures or authenticated software provenance.
 
 ## Reproducible software evidence — single-command PRIVATE passport
 
