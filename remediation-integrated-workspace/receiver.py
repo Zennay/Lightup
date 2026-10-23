@@ -154,7 +154,7 @@ def receive(archive: Path, destination: Path,
             expected_sha256_file: Path | None = None) -> None:
     raw, lock_bytes, lock, files = admit_archive(archive, expected_sha256_file)
     validate_receive_destination(archive, destination)
-    stage = suite.create_private_stage(destination.parent, ".lightup-receiver-")
+    stage, stage_identity = suite.create_private_stage(destination.parent, ".lightup-receiver-")
     try:
         entries = {}
         for name, data in sorted(files.items()):
@@ -184,7 +184,7 @@ def receive(archive: Path, destination: Path,
         suite.require(not destination.exists(), "Recipient destination unexpectedly appeared")
         suite.exclusive_publish(stage, destination)
     finally:
-        suite.cleanup_private_stage(stage)
+        suite.cleanup_private_stage(stage, stage_identity)
     print("REVIEW_ONLY: received original software to PRIVATE directory:", destination)
     print("Open offline:", destination / "index.html")
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
