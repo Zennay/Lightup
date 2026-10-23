@@ -76,16 +76,47 @@ ACTION_LABELS = {
     "reopen-passport": "Open integriteitsrapport"
 }
 
+# Brief Dutch UI copy only; native CLI descriptions and review gates are unchanged.
+ACTION_PURPOSES = {
+    "owner": "Bereid de bron voor; originele gegevens blijven lokaal.",
+    "owner-package": "Maak een apart pakket zonder originele bewijsbestanden.",
+    "owner-encrypted": "Versleutel een pakket lokaal, zonder het te verzenden.",
+    "owner-encrypted-receipt": "Maak een versleuteld pakket met apart controlebewijs.",
+    "recipient": "Open ontvangen dossiers voor menselijke beoordeling.",
+    "archives": "Controleer en open een werkelijk ontvangen pakket.",
+    "pack": "Maak een onversleuteld pakket. Deel het niet zonder toestemming.",
+    "unpack": "Controleer en open een lokaal ontvangen pakket.",
+    "review": "Beoordeel één dossier, zonder aannames over eerdere momenten.",
+    "continue-review": "Ga verder met opgeslagen antwoorden uit hetzelfde dossier.",
+    "brief": "Maak een leesbare samenvatting van menselijke notities.",
+    "seal-journal": "Versleutel je notities met een wachtwoord.",
+    "open-journal": "Open versleutelde notities in een privémap.",
+    "rekey-journal": "Wijzig het wachtwoord van versleutelde notities.",
+    "encrypt-cockpit": "Versleutel een lokaal dossier; niets wordt verstuurd.",
+    "decrypt-cockpit": "Open een lokaal versleuteld dossier.",
+    "pack-review": "Verpak een beoordeling voor afzonderlijk toegestane overdracht.",
+    "receive-review": "Controleer een ontvangen beoordeling voordat je die opent.",
+    "fingerprint-create": "Maak een privécontrolebewijs van exacte pakketbytes.",
+    "fingerprint-compare": "Vergelijk pakketbytes met een apart controlebewijs.",
+    "install": "Maak een privéwerkruimte met de bestaande software.",
+    "inspect-archive": "Controleer een software-ZIP zonder installatie of wijzigingen.",
+    "fingerprint-archive": "Maak een afzonderlijke privéchecksum voor een software-ZIP.",
+    "receive-software": "Ontvang een gecontroleerde software-ZIP in een nieuwe privémap.",
+    "inspect-software": "Controleer bestanden van een bestaande installatie.",
+    "inspect-checkout": "Vergelijk de installatie met broncode en maak een rapport.",
+    "reopen-passport": "Open het bestaande integriteitsrapport opnieuw ter controle.",
+}
+
 def render() -> bytes:
     css = (HERE / "operator_ui.css").read_bytes()
     js = (HERE / "operator_ui.js").read_bytes()
     fingerprint_js = (HERE / "fingerprint_ui.js").read_bytes()
-    if set(ACTION_LABELS) != set(OPERATIONS):
-        raise ValueError("Offline operator labels must cover exactly the native actions")
+    if set(ACTION_LABELS) != set(OPERATIONS) or set(ACTION_PURPOSES) != set(OPERATIONS):
+        raise ValueError("Offline Dutch operator copy must cover exactly the native actions")
     operations = [{
         "name": name,
         "label": ACTION_LABELS[name],
-        "purpose": purpose,
+        "purpose": ACTION_PURPOSES[name],
         "category": CATEGORIES[name],
         "fields": [{
             "flag": flag, "label": label, "repeat": repeat, "required": required
