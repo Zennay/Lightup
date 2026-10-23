@@ -21,6 +21,13 @@ import sys
 import zipfile
 import zlib
 
+# inspect-archive promises no filesystem output. Python otherwise creates
+# __pycache__ for imported local renderer, desk and recipient modules.
+# Prevent cache writes when launched as the native CLI, BEFORE local imports.
+# Other callers importing this library retain their own Python cache policy.
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True
+
 ROOT = Path(__file__).resolve().parent.parent
 LOCK = ROOT / "remediation-integrated-workspace" / "source-lock.json"
 KIND = "lightup.private_offline_remediation_suite"
