@@ -40,6 +40,7 @@
   let conflictProposal=null;
   let lastIcsSequence=0;
   let recipientPage=0,recipientGroupPage=0,recipientGroupFocus=null;
+  let recipientGroupExportReady=false;
   let recipientProposal=null;
   let recipientSelection=new Set();
   let recipientUndo=null;
@@ -192,11 +193,13 @@
     $("recipientSummary").textContent="No PRIVATE HUMAN worksheet or alternate recipient zone loaded.";
     $("recipientRemainder").textContent="";
     $("recipientGroupSummary").textContent="No HUMAN group preview loaded.";
+    recipientGroupExportReady=false;
     $("recipientProposalSummary").textContent="No pending HUMAN common-hours proposal.";
     $("recipientPolicyStatus").textContent="Recipient preference not loaded; this is not authenticated availability.";
     for(const id of ["recipientExport","recipientPolicyExport",
       "recipientPrev","recipientNext","recipientGroupPrev","recipientGroupNext",
-      "recipientGroupClear","recipientApply",
+      "recipientGroupClear","recipientGroupCsv","recipientGroupPrint",
+      "recipientGroupNextAttention","recipientApply",
       "recipientProposalExport","recipientProposalPrint","recipientUndo"])
       $(id).disabled=true;
     $("recipientProposalDetails").open=false;
@@ -799,18 +802,94 @@
     changed=true;exportedPlan=false;render();
     inform("Last HUMAN cross-zone draft adjustment undone locally. Save the corrected PRIVATE workroom separately.");
   }
-  function renderRecipientGroups(source){
+
+  function recipientGroupWorkload(source=recipientRows()){
+    hold(active && source.length<=MAX_ROWS);
     const groups=new Map();
     for(const row of source){
+      hold(["within_hours","outside_hours","weekend","unavailable_date","clock_change"].includes(row.status));
       if(!groups.has(row.group))groups.set(row.group,{group:row.group,total:0,
-        within_hours:0,outside_hours:0,weekend:0,
-        unavailable_date:0,clock_change:0});
+        within_hours:0,outside_hours:0,weekend:0,unavailable_date:0,clock_change:0});
       const record=groups.get(row.group);
       record.total++;record[row.status]++;
     }
-    const ordered=[...groups.values()].sort((a,b)=>
+    hold(groups.size<=256);
+    return [...groups.values()].sort((a,b)=>
       (b.total-b.within_hours)-(a.total-a.within_hours)||
       b.total-a.total||a.group.localeCompare(b.group));
+  }
+  function recipientGroupSnapshot(){
+    const view=recipientGroupWorkload();
+    hold(recipientPreferenceSource===hash+"|"+seriesId);
+    const policy=recipientHoursRule(),target=recipientFormatter().resolvedOptions().timeZone;
+    const key=JSON.stringify([workroomFingerprint(),recipientPreferenceSource,target,
+      policy.from,policy.to,policy.days,recipientBlackoutText()]);
+    return {view,target,key};
+  }
+  function recipientGroupReport(downloadHtml){
+    let before;
+    try{before=recipientGroupSnapshot();}catch(_){
+      inform("HOLD: recipient timezone or unverified HUMAN availability is invalid. No group report exported.",true);return;
+    }
+    hold(before.view.length>0);
+    if(!confirm("Create PRIVATE, UNSIGNED HUMAN recipient group workload ("+
+      before.view.length+" anonymous groups)? Small-group counts may identify people in context. "+
+      "The file contains no group names, source identifiers, individual appointment dates or notes. "+
+      "No recipient availability, consent or security decision is authenticated."))return;
+    const after=recipientGroupSnapshot();
+    hold(before.key===after.key && JSON.stringify(before.view)===JSON.stringify(after.view));
+    const columns=["anonymous_group_slot","planned","within_declared_window",
+      "outside_hours","outside_weekdays","unavailable_date","clock_change",
+      "authorized","recipient_verified","consent_verified","dispatch_allowed","release_allowed"];
+    const rows=after.view.map((g,i)=>[
+      "group_"+String(i+1).padStart(3,"0"),String(g.total),String(g.within_hours),
+      String(g.outside_hours),String(g.weekend),String(g.unavailable_date),
+      String(g.clock_change),"false","false","false","false","false"]);
+    if(downloadHtml){
+      const escapeValue=v=>String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+      const table=rows.map(row=>"<tr>"+row.slice(0,7).map(cell=>
+        "<td>"+escapeValue(cell)+"</td>").join("")+"</tr>").join("");
+      const th=columns.slice(0,7).map(label=>"<th scope=\"col\">"+
+        escapeValue(label)+"</th>").join("");
+      const documentText='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\';'+
+        ' connect-src \'none\'; style-src \'none\'; script-src \'none\';'+
+        ' img-src \'none\'; base-uri \'none\'; form-action \'none\'">'+
+        '<meta name="referrer" content="no-referrer"><title>PRIVATE HUMAN group review</title></head>'+
+        '<body><h1>PRIVATE HUMAN group workload</h1><p>Unsigned; anonymous group slots '+
+        'within this single export only. Source-reported, manually declared recipient windows; NOT authenticated.</p>'+
+        '<p>'+rows.length+' groups, '+after.view.reduce((n,g)=>n+g.total,0)+
+        ' proposed appointments. No actual calendar, identity, consent, grant or release is checked.</p>'+
+        '<table border="1"><thead><tr>'+th+'</tr></thead><tbody>'+table+
+        '</tbody></table><p>AUTHENTICATED=false; CONSENT_VERIFIED=false; DISPATCH_ALLOWED=false; RELEASE_ALLOWED=false.</p>'+
+        '<p>Small cohorts can still reveal patterns. Do not publish without a separately authorized PRIVATE review.</p></body></html>';
+      download(documentText,"lightup-private-anonymous-human-group-review.html","text/html;charset=utf-8");
+    }else{
+      download(makeCsv([columns,...rows]),"lightup-private-anonymous-human-group-workload.csv",
+        "text/csv;charset=utf-8");
+    }
+    inform("PRIVATE aggregate HUMAN group review offered for local download; no source identity or consent proven.");
+  }
+  function focusNextRecipientGroupAttention(){
+    let current;
+    try{current=recipientGroupWorkload().filter(g=>g.total>g.within_hours);}
+    catch(_){inform("HOLD: invalid HUMAN recipient window; nothing opened.",true);return;}
+    if(!current.length)return;
+    const index=current.findIndex(g=>g.group===recipientGroupFocus);
+    recipientGroupFocus=current[(index+1)%current.length].group;
+    recipientPage=0;
+    $("recipientView").value="all";$("recipientQuery").value="";
+    renderRecipientZone();
+    $("recipientGroupSummary").scrollIntoView({block:"nearest"});
+    inform("Opened next source-reported HUMAN group outside the declared window. This is not proof of real availability.");
+  }
+  function renderRecipientGroups(source){
+    const ordered=recipientGroupWorkload(source);
+    recipientGroupExportReady=ordered.length>0;
+    for(const id of ["recipientGroupCsv","recipientGroupPrint"])
+      $(id).disabled=!recipientGroupExportReady;
+    $("recipientGroupNextAttention").disabled=!ordered.some(row=>row.total>row.within_hours);
     const pages=Math.max(1,Math.ceil(ordered.length/32));
     recipientGroupPage=Math.max(0,Math.min(recipientGroupPage,pages-1));
     $("recipientGroupPrev").disabled=recipientGroupPage===0;
@@ -851,6 +930,9 @@
     catch(_){
       recipientProposal=null;recipientSelection.clear();
       renderRecipientProposal();
+      recipientGroupExportReady=false;
+      for(const id of ["recipientGroupCsv","recipientGroupPrint","recipientGroupNextAttention"])
+        $(id).disabled=true;
       $("recipientGroupRows").replaceChildren();
       for(const id of ["recipientGroupClear","recipientGroupPrev","recipientGroupNext"])
         $(id).disabled=true;
@@ -3175,6 +3257,13 @@
     catch(_){$("recipientPolicyStatus").textContent="PRIVATE recipient preference import rejected (HOLD). Current HUMAN window and schedule retained.";}
     finally{e.target.value="";}
   });
+  hook("recipientGroupCsv","click",()=>{try{recipientGroupReport(false);}catch(_){
+    inform("HOLD: recipient workload CSV no longer matches the private source.",true);
+  }});
+  hook("recipientGroupPrint","click",()=>{try{recipientGroupReport(true);}catch(_){
+    inform("HOLD: private group review could not be safely created.",true);
+  }});
+  hook("recipientGroupNextAttention","click",focusNextRecipientGroupAttention);
   hook("recipientGroupClear","click",()=>{
     recipientGroupFocus=null;recipientPage=0;renderRecipientZone();
   });

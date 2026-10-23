@@ -154,6 +154,12 @@ is updated or cancelled, and no authority or security result is inferred.</p></d
 <p>Aggregated counts of already-scheduled original HUMAN ordinal proposals in the chosen recipient zone, grouped by unverified worksheet group labels. Source-reported groups are NOT authenticated recipient names, calendar permissions, availability or security findings. Focus one group to review its original ordinals; filters and PRIVATE schedule CSV then apply only to the chosen group.</p>
 <p id="recipientGroupSummary" class="subtle" role="status">No HUMAN group preview loaded.</p>
 <div class="row">
+<button id="recipientGroupNextAttention" type="button" class="ghost" disabled>Review next HUMAN group outside declared window</button>
+<button id="recipientGroupCsv" type="button" class="ghost" disabled>Download anonymous group workload (.csv)</button>
+<button id="recipientGroupPrint" type="button" class="ghost" disabled>Download scriptless group review (.html)</button>
+</div>
+<p class="subtle">These anonymous handoffs contain only group slots and aggregate counts: no original group names, ordinals, source SHA, source dates, targets or free HUMAN notes. Very small groups may still be re-identifiable when combined with outside information. Only use a trusted PRIVATE device and HUMAN disclosure review. No recipient authorization or consent is checked.</p>
+<div class="row">
 <button id="recipientGroupClear" class="ghost" type="button" disabled>Clear exact group focus</button>
 <button id="recipientGroupPrev" class="ghost" type="button" disabled>Previous groups</button>
 <button id="recipientGroupNext" class="ghost" type="button" disabled>Next groups</button>

@@ -1,3 +1,11 @@
+## Recipient-group privacy-minimal HUMAN review · October 2026
+
+The alternate-timezone group desk offers an explicit **next group needing HUMAN attention** navigator across groups with proposals outside manually declared hours/weekdays or on unavailable days/clock changes. This focuses existing original ordinals locally; no appointments or source authority are changed.
+
+Two new PRIVATE local exports, explicitly confirmed each time, provide the **entire** already-scheduled cross-zone group workload: aggregate CSV and scriptless printable HTML. Groups are represented only as per-export, nonpersistent anonymous group slots ordered by their own local attention counts. Each includes only planned/within-hours/outside-hours/weekend/unavailable-date/clock-change counts and literal false authority flags. No worksheet hash, group labels, identity, original ordinal, appointment date, free text, target, or recipient address is exported. Small-group counts may still be re-identifiable in context; do not distribute without a separately authorized PRIVATE disclosure review. The export re-admits current recipient timezone and policy, re-computes group counts, and fails closed if the source or HUMAN policy changes while confirming. Invalid recipient zone/window disables exports and navigation; changing/clearing the source removes rendered group data.
+
+**No actual recipient work hours, identity, consent, calendar delivery, scope authorization, security severity or execution has been verified.** No network, external calendar, grant, target, scan or dispatch.
+
 # LightUp · PRIVATE HUMAN Follow-up Calendar
 
 **Current release fence: INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.**
