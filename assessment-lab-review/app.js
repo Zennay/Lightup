@@ -21,6 +21,8 @@ const MAX_PRIVATE_CLEAR=4*1024*1024, MAX_PRIVATE_ENVELOPE=8*1024*1024;
 const PRIVATE_REVIEW_ENVELOPE="lightup.private_lab_human_review_encrypted.v1";
 const PRIVATE_REVIEW_KDF_ITERATIONS=310000;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",searchTerm="",sortMode="source",lastBulkUndo=null;
+let sourceIntent=0,sourceEpoch=0,humanNotesEpoch=0,reviewImportIntent=0,peerImportIntent=0;
+// Monotonic original-source and HUMAN epochs prevent late PRIVATE reads from replacing newer work.
 const selectedForHandoff=new Set();
 const validText=(s,limit=1000)=>typeof s==="string"&&s.length<=limit&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
 const require_=(ok)=>{if(!ok)throw Error("Incompatible or untrusted private lab artifact");};
@@ -451,7 +453,7 @@ function render(){
    el("p","Unverified evidence summary: "+f.evidence_summary));
   meta.append(detail);const a=document.createElement("td");a.append(meta);tr.append(a);
   const review=document.createElement("td"),controls=el("div",undefined,"controls");
-  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;lastBulkUndo=null;dirty=true;updateSummary();render();};
+  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;humanNotesEpoch++;lastBulkUndo=null;dirty=true;updateSummary();render();};
   controls.append(field("Stage",n.stage,v=>apply("stage",v)),
    field("Proposed group",n.group,v=>apply("group",v)),
    field("Next human action",n.next_action,v=>apply("next_action",v)),
@@ -489,13 +491,17 @@ function aggregate(){
   operator_consent_verified:false,...noAuthority()};
 }
 async function importSource(file){
+ const intent=++sourceIntent;
  require_(file&&file.size>0&&file.size<=MAX_BYTES);
  const bytes=await file.arrayBuffer();require_(bytes.byteLength>0&&bytes.byteLength<=MAX_BYTES);
  const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
  const parsed=admit(parseStrict(raw));
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
+ require_(intent===sourceIntent); // A newer file selection or Forget supersedes this read.
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
+ require_(intent===sourceIntent);
+ sourceEpoch++;humanNotesEpoch++;peerImportIntent++;reviewImportIntent++;
  source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();
  filter="";searchTerm="";sortMode="source";$("filter").value="";
  $("search").value="";$("sort").value="source";humanQueueFilter="";humanQueuePage=0;$("human-queue-filter").value="";buildEndpointFilter();
@@ -521,14 +527,18 @@ function admitPrivatePayload(v){
 function applyPrivatePayload(v){
  const next=admitPrivatePayload(v);
  if(dirty&&!confirm("Replace existing unsaved human notes with this matching private return?"))return false;
- notes=next;dirty=false;lastBulkUndo=null;updateSummary();render();
+ notes=next;humanNotesEpoch++;dirty=false;lastBulkUndo=null;updateSummary();render();
  status("Exact source-bound human notes restored. No security evidence was authenticated.");
  return true;
 }
 async function resume(file){
+ const intent=++reviewImportIntent,original=source,epoch=sourceEpoch,noteEpoch=humanNotesEpoch;
  require_(source&&file&&file.size>0&&file.size<=MAX_PRIVATE_CLEAR);
  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
- return applyPrivatePayload(parseStrict(raw));
+ const candidate=parseStrict(raw);
+ require_(intent===reviewImportIntent&&source===original&&sourceEpoch===epoch&&
+  humanNotesEpoch===noteEpoch);
+ return applyPrivatePayload(candidate);
 }
 
 function visibleOrdinals(){
@@ -552,12 +562,12 @@ $("applyBulk").addEventListener("click",()=>{
   ...n,...(stage?{stage}:{}),...(group?{group}:{})
  }:n);
  require_(next.every(admitNote));
- notes=next;lastBulkUndo=old;dirty=true;updateSummary();render();
+ notes=next;humanNotesEpoch++;lastBulkUndo=old;dirty=true;updateSummary();render();
  status(ids.length+" human planning rows changed. Source evidence is unchanged; Undo is available.");
 });
 $("undoBulk").addEventListener("click",()=>{
  if(!source||!lastBulkUndo){status("No last bulk change available.");return;}
- notes=lastBulkUndo;lastBulkUndo=null;dirty=true;updateSummary();render();
+ notes=lastBulkUndo;humanNotesEpoch++;lastBulkUndo=null;dirty=true;updateSummary();render();
  status("Last human-only bulk change undone.");
 });
 
@@ -639,6 +649,7 @@ $("human-queue-csv").addEventListener("click",()=>{
  status("Anonymous HUMAN queue counts exported; original source never verified.");
 });
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
+ sourceIntent++;sourceEpoch++;humanNotesEpoch++;reviewImportIntent++;peerImportIntent++;
  source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";humanQueueFilter="";humanQueuePage=0;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("human-queue-filter").value="";$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();renderHumanQueue();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 $("collab-select-visible").addEventListener("click",()=>{
@@ -759,11 +770,13 @@ function renderPeer(){
  $("peer-next").disabled=peerPage>=max;
 }
 $("peer-input").addEventListener("change",async e=>{
+ const intent=++peerImportIntent,original=source,epoch=sourceEpoch;
  try{
   require_(source&&e.target.files[0]&&e.target.files[0].size>0&&
    e.target.files[0].size<=MAX_BYTES);
   const raw=new TextDecoder("utf-8",{fatal:true}).decode(await e.target.files[0].arrayBuffer());
   const second=admit(parseStrict(raw));
+  require_(intent===peerImportIntent&&original===source&&epoch===sourceEpoch);
   const draft=classifyPeer(second);
   peerComparison=draft;peerPage=0;peerFilter="";
   $("peer-kind").value="";$("peer-export").disabled=false;
@@ -773,7 +786,7 @@ $("peer-input").addEventListener("change",async e=>{
    " original findings. "+PEER_KINDS.map(([k])=>k+" "+draft.counts[k]).join(" · ");
   renderPeer();
   status("Separate original lab report B admitted locally. No original finding, consent or remediation was verified.");
- }catch(_){status("HOLD: second lab source incompatible, same-run or different declared endpoints. Previous comparison unchanged.",true);}
+ }catch(_){status("HOLD: second lab source incompatible or original source changed during import. Previous comparison unchanged.",true);}
  finally{e.target.value="";}
 });
 $("peer-kind").addEventListener("change",e=>{peerFilter=e.target.value;peerPage=0;renderPeer();});
@@ -819,7 +832,7 @@ window.LightUpReviewBridge=Object.freeze({
   if(!confirm("Accept "+updates.length+" source-bound HUMAN follow-up row changes? Original lab findings, source evidence, targets and permissions remain unchanged."))return false;
   const changed=notes.map(n=>({...n}));
   for(const row of updates)changed[row.ordinal-1]={...row.proposed};
-  notes=changed;dirty=true;lastBulkUndo=null;updateSummary();render();
+  notes=changed;humanNotesEpoch++;dirty=true;lastBulkUndo=null;updateSummary();render();
   status("PRIVATE reviewer return applied to human fields only. No assessment was verified.");
   return true;
  }
