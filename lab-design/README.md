@@ -129,3 +129,10 @@ Use the checkboxes next to individual PRIVATE scenario rows or **Select all matc
 ## Filter-scoped selected export
 
 Use row checkboxes or **Select all matching** to select scenarios, then choose **Download selected subset**. The export contains only the checked scenarios that remain visible under the current filters; hidden selections are removed whenever filters change. It emits the same canonical catalog schema and keeps the selected scenarios' declared target addresses and ground-truth fields intact. The browser asks for explicit confirmation before exporting these sensitive details. Export does not mutate the catalog, copy/delete scenarios, validate permission, or contact any target; the result remains `DRAFT_ONLY` with all authority flags false. Empty selection cannot be exported.
+
+
+## Exact staged field-by-field comparison
+
+When a PRIVATE JSON catalog or the original fixture pack is staged, each ADDED or CHANGED row now has an expandable exact-value preview. Changed fields show the current and proposed JSON values side by side; new rows show their proposed values; source-ABSENT rows show the current values that remain in the working catalog. The preview is created with DOM text nodes, not interpreted HTML, and stays in the local browser workspace. It never applies a row: selected merge or explicit replacement acceptance remains a separate human action. `expected_findings: null` is labelled UNSCORED and `expected_findings: []` is labelled EXPLICIT ZERO. Target addresses and finding identities remain PRIVATE.
+
+Selected-subset JSON now ends with a real newline, preserving a clean canonical text artifact for command-line and version-control workflows.
