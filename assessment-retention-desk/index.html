@@ -33,6 +33,10 @@
 <option value="soon">Binnen 7 dagen inclusief vandaag</option>
 <option value="no_date">Geen reviewdatum</option>
 <option value="no_action">Geen vervolgactie</option>
+<option value="capacity_week_0">Capaciteit · kalenderweek 1 (vanaf deze week)</option>
+<option value="capacity_week_1">Capaciteit · kalenderweek 2</option>
+<option value="capacity_week_2">Capaciteit · kalenderweek 3</option>
+<option value="capacity_week_3">Capaciteit · kalenderweek 4</option>
 </select></label>
 <label>HUMAN bewaarbeperking <select id="hold-filter">
 <option value="">Alle onbevestigde controles</option>
@@ -79,9 +83,10 @@
 <label>Scenario A · reviews per week <input id="capacity-a" type="number" min="1" max="12" step="1" value="3"></label>
 <label>Scenario B · reviews per week <input id="capacity-b" type="number" min="1" max="12" step="1" value="5"></label>
 <button id="capacity-export" class="secondary" type="button" disabled>PRIVATE teloverzicht (.csv)</button>
+<button id="capacity-reset-week" class="secondary" type="button">Weekfilter wissen</button>
 </div>
 <p id="capacity-summary" class="muted" role="status">Selecteer eigen oorspronkelijke bronnen om een fictieve capaciteitsvergelijking te zien.</p>
-<div class="scroll"><table><caption>Aggregaten zonder oorspronkelijke bronidentiteit, aliassen of HUMAN notitieteksten</caption><thead><tr><th>Oefenperiode</th><th>HUMAN reviewvoorstellen</th><th>Onbevestigde HUMAN aandacht</th><th>Scenario A · restant/tekort</th><th>Scenario B · restant/tekort</th></tr></thead><tbody id="capacity-rows"></tbody></table></div>
+<div class="scroll"><table><caption>Aggregaten zonder oorspronkelijke bronidentiteit, aliassen of HUMAN notitieteksten</caption><thead><tr><th>Oefenperiode</th><th>HUMAN reviewvoorstellen</th><th>Onbevestigde HUMAN aandacht</th><th>Scenario A · restant/tekort</th><th>Scenario B · restant/tekort</th><th>HUMAN vervolg</th></tr></thead><tbody id="capacity-rows"></tbody></table></div>
 <p class="muted">Vier weken vanaf de huidige kalenderweek; eerder verlopen, latere en ongedateerde voorstellen staan apart. Aandacht is uitsluitend een HUMAN-melding/ontbrekende houder of onvolledig verwijdervoorstel. Deze scenario's worden niet aan het brongebonden privéplan toegevoegd en verdwijnen bij het sluiten van de pagina.</p>
 </section>
 <section class="panel">

@@ -83,6 +83,11 @@
     soon.setDate(soon.getDate()+7);
     return {today:localDay(today), soon:localDay(soon)};
   }
+  function humanCapacityWeek(index,today) {
+    const d=new Date(today+"T00:00:00Z");
+    d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7+index*7);
+    return d.toISOString().slice(0,10);
+  }
   function capacityScenario() {
     const a = Number($("capacity-a").value), b = Number($("capacity-b").value);
     if (!Number.isInteger(a) || a<1 || a>12 || !Number.isInteger(b) || b<1 || b>12)
@@ -130,7 +135,7 @@
       $("capacity-summary").textContent="HOLD: kies voor beide fictieve scenario's een geheel getal van 1 t/m 12.";
       const tr=document.createElement("tr");
       const td=text("td","Ongeldige fictieve weekcapaciteit: kies twee gehele waarden van 1 t/m 12.");
-      td.colSpan=5;tr.append(td);root.append(tr);
+      td.colSpan=6;tr.append(td);root.append(tr);
       return;
     }
     const planned=view.rows.filter(r=>r.scheduled).reduce((n,r)=>n+r.count,0);
@@ -148,6 +153,24 @@
       for(const value of [row.label,String(row.count),String(row.attention),
         difference(view.a),difference(view.b)])
         tr.append(text("td",value));
+      const cell=document.createElement("td");
+      if(row.scheduled){
+        const open=text("button","Bekijk HUMAN-rijen","secondary");
+        open.type="button";
+        open.disabled=!row.count;
+        open.setAttribute("aria-label","Filter HUMAN reviewvoorstellen voor "+row.label);
+        open.addEventListener("click",()=>{
+          const week=Number(row.code.slice(5))-1;
+          if(!Number.isInteger(week)||week<0||week>3)return;
+          $("due-filter").value="capacity_week_"+week;
+          render();
+          $("due-filter").focus();
+          status("Fictieve capaciteitsweek "+(week+1)+" zichtbaar gefilterd. "+
+            "HUMAN bulkacties blijven afzonderlijk bevestigd; geen echte taak of toestemming.");
+        });
+        cell.append(open);
+      }else cell.textContent="Buiten vierweekse capaciteit";
+      tr.append(cell);
       root.append(tr);
     }
   }
@@ -208,7 +231,13 @@
       (!dueFilter || (dueFilter === "overdue" && e.review_date && e.review_date < today) ||
         (dueFilter === "soon" && e.review_date && e.review_date >= today && e.review_date <= soon) ||
         (dueFilter === "no_date" && !e.review_date) ||
-        (dueFilter === "no_action" && !e.action.trim())));
+        (dueFilter === "no_action" && !e.action.trim()) ||
+        (dueFilter.startsWith("capacity_week_") &&
+          Number.isInteger(Number(dueFilter.slice(14))) &&
+          Number(dueFilter.slice(14))>=0 && Number(dueFilter.slice(14))<4 &&
+          e.review_date && e.review_date>=today &&
+          e.review_date>=humanCapacityWeek(Number(dueFilter.slice(14)),today) &&
+          e.review_date<humanCapacityWeek(Number(dueFilter.slice(14))+1,today))));
     if ($("sort-order").value === "due") items.sort((a,b)=>
       (a.review_date || "9999-99-99").localeCompare(b.review_date || "9999-99-99"));
     if ($("sort-order").value === "stage") items.sort((a,b)=>a.status.localeCompare(b.status));
@@ -731,6 +760,11 @@
   $("capacity-a").addEventListener("input", renderCapacity);
   $("capacity-b").addEventListener("input", renderCapacity);
   $("capacity-export").addEventListener("click", exportCapacity);
+  $("capacity-reset-week").addEventListener("click",()=>{
+    $("due-filter").value="";
+    render();
+    status("Alleen de lokale HUMAN weekdatumsfilter is gewist; overige filters en keuzes behouden.");
+  });
   $("export-brief").addEventListener("click",exportPrivateHumanBrief);
   $("export-calendar").addEventListener("click", exportHumanCalendar);
   $("export-visible-calendar").addEventListener("click", exportVisibleHumanCalendar);
