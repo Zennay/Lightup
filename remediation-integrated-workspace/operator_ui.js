@@ -85,6 +85,16 @@
       result.set(field.flag, collected);
     }
     const vals = key => result.get(key) || [];
+    // The native publisher and browser file chooser both use .sha256 for
+    // software receipts. Reject a mismatched output name before showing a
+    // copyable command; actual native owner-private admission still decides.
+    const softwareReceipt = chosen.name === "fingerprint-archive"
+      ? vals("--output-file")[0]
+      : chosen.name === "inspect-archive"
+        ? vals("--planned-checksum-file")[0] : null;
+    if (softwareReceipt && !softwareReceipt.endsWith(".sha256")) {
+      throw Error("Gebruik .sha256 voor het nieuwe softwarecontrolebestand.");
+    }
     if (chosen.name.startsWith("owner") &&
         !vals("--input-dir").length && !vals("--bundle").length) {
       throw Error("Selecteer minstens één echt oorspronkelijk evidencepakket.");
