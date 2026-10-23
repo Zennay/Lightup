@@ -393,6 +393,46 @@ def create_private_stage(parent: Path, prefix: str) -> Path:
         os.close(parent_fd)
 
 
+
+def ensure_private_subdirs(root: Path, member: str) -> None:
+    """Make a member's private parent directories by anchored Linux dirfds.
+
+    pathlib.mkdir(parents=True) uses absolute paths, and could follow a
+    replaced intermediate directory symlink. Every existing or newly made
+    component here is opened with O_DIRECTORY|O_NOFOLLOW and must be the
+    current user's exact 0700 directory; no arbitrary files are admitted.
+    The last member component is written separately with exclusive nofollow.
+    """
+    require(type(member) is str and len(member) > 0
+            and not member.startswith("/")
+            and all(part not in ("", ".", "..") for part in member.split("/")),
+            "Unsafe installed member directory path")
+    flags = (os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW |
+             getattr(os, "O_CLOEXEC", 0))
+    fd = open_private_dir_fd(root)
+    try:
+        for part in PurePosixPath(member).parts[:-1]:
+            try:
+                os.mkdir(part, mode=0o700, dir_fd=fd)
+                os.fsync(fd)
+            except FileExistsError:
+                pass
+            next_fd = os.open(part, flags, dir_fd=fd)
+            try:
+                state = os.fstat(next_fd)
+                require(stat.S_ISDIR(state.st_mode)
+                        and state.st_uid == os.getuid()
+                        and stat.S_IMODE(state.st_mode) == 0o700,
+                        "Installed member parent must be exact owner-only 0700")
+            except BaseException:
+                os.close(next_fd)
+                raise
+            os.close(fd)
+            fd = next_fd
+    finally:
+        os.close(fd)
+
+
 def cleanup_private_stage(stage: Path) -> None:
     """Remove only the named stage beneath a verified nofollow private fd.
 
@@ -514,7 +554,7 @@ def build(dest: Path) -> None:
                     digest(raw) == descriptor["sha256"],
                     "Original source bytes differ from the pinned source inventory")
             target = stage / name
-            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            ensure_private_subdirs(stage, name)
             write_file(target, raw)
             written[name] = raw
             entries[name] = descriptor
@@ -523,7 +563,7 @@ def build(dest: Path) -> None:
         for name in INTEGRATED_TOOLS:
             data = read_checkout_source(ROOT / name)
             dest_file = stage / name
-            dest_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            ensure_private_subdirs(stage, name)
             write_file(dest_file, data)
             written[name] = data
             entries[name] = {"sha256": digest(data), "bytes": len(data)}
