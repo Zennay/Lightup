@@ -15,7 +15,7 @@ TOOLS = frozenset(suite.INTEGRATED_TOOLS)
 
 def receive(archive: Path, destination: Path) -> None:
     suite.owner_dir(archive.parent)
-    raw = suite.read_owner_file(archive)
+    raw = suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL)
     suite.require(0 < len(raw) <= suite.MAX_TOTAL, "Oversized incoming software ZIP")
     lock_bytes, lock = suite.catalog()
     expected = set(lock["files"]) | set(TOOLS) | {"source-lock.json", "index.html", "operator.html"}
@@ -65,7 +65,7 @@ def receive(archive: Path, destination: Path) -> None:
         suite.write_file(stage / "manifest.json", suite.canonical(receipt))
         suite.require(suite.read_checkout_source(suite.LOCK, 350_000) == lock_bytes,
                       "Pinned original source inventory changed during receiving")
-        suite.require(suite.digest(suite.read_owner_file(archive)) == suite.digest(raw),
+        suite.require(suite.digest(suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL)) == suite.digest(raw),
                       "Received ZIP changed during admission")
         # Validate the complete original staged suite and the stable received
         # ZIP against the same local checkout before any publication.
