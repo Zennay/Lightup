@@ -98,8 +98,19 @@ document.getElementById('import-file').addEventListener('change',async event=>{
   const restored=parseOwnCsv(raw);
   if(epoch!==importEpoch||previous!==snapshot())
    throw Error('local draft changed while reading');
-  if(!window.confirm('Replace all currently entered PRIVATE HUMAN drafts with '+restored.length+
-    ' exact source-bound records? No automatic save or submission.'))
+  const existing=cards();
+  const changed=restored.filter((row,i)=>
+   row.disposition!==existing[i].querySelector('select').value||
+   row.note!==existing[i].querySelector('textarea').value).length;
+  const filled=existing.filter(card=>card.querySelector('textarea').value.length>0).length;
+  if(!changed){
+   output.textContent='This source-bound PRIVATE HUMAN file matches all '+restored.length+
+    ' current rows; no changes applied.';
+   return;
+  }
+  if(!window.confirm('Restore '+restored.length+' exact source-bound HUMAN records? '+
+    changed+' rows differ; '+filled+' current private notes may be replaced. '+
+    'This never verifies a reviewer or sends information.'))
    return;
   if(epoch!==importEpoch||previous!==snapshot())
    throw Error('draft changed during review');
