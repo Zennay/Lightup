@@ -45,6 +45,8 @@ def combine(args):
             "invalid private output name")
     fail_if(not 2 <= len(handoffs) <= 12 or len(handoffs) != len(returns),
             "2–12 explicit private handoff/return pairs required")
+    fail_if(args.preview_only and args.inspect_existing,
+            "preview and inspect are exclusive read-only modes")
     folder = private_dir(args.output_dir)
     baseline_raw = read_regular(args.links, MAX_LINKS)
     base = admit_original(baseline_raw)
@@ -134,7 +136,7 @@ def combine(args):
     }
     paths = [(folder / (args.prefix + suffix), data)
              for suffix, data in outputs.items()]
-    if not args.preview_only:
+    if not (args.preview_only or args.inspect_existing):
         fail_if(any(os.path.lexists(path) for path, _ in paths),
                 "an owner-only multi-team output already exists")
     do_render = bool(args.comparison or args.findings_csv)
@@ -157,7 +159,7 @@ def combine(args):
         for suffix in ("-private.html", "-links.json", "-aggregate.json",
                        "-private-agenda.csv",
                        *(("-private-room.zip",) if args.bundle else ())):
-            if not args.preview_only:
+            if not (args.preview_only or args.inspect_existing):
                 fail_if(os.path.lexists(folder / (args.prefix + suffix)),
                         "private dossier/ZIP destination already exists")
     for path, payload in snapshots:
@@ -166,6 +168,16 @@ def combine(args):
                    else MAX_LINKS)
         fail_if(read_regular(path, maximum) != payload,
                 "an original private team/source snapshot changed")
+    if args.inspect_existing:
+        # Rebuild all six original core HUMAN outputs from exactly re-admitted
+        # source bytes and compare private on-disk files without rewriting them.
+        # This validates local byte integrity, never origin or user identity.
+        for path, expected in paths:
+            fail_if(read_regular(str(path), max(2097152, len(expected))) != expected,
+                    "a PRIVATE multi-team source-bound workboard file has changed")
+        print("PRIVATE_MULTI_TEAM_CORE_REOPEN_EXACT — six original HUMAN files match")
+        print("No source authentication, security proof, consent, grant or HUMAN GO.")
+        return 2
     if args.preview_only:
         # All original source, exact membership, allowed human-only updates,
         # optional original render binding and TOCTOU source rechecks passed.
@@ -221,6 +233,8 @@ def main(argv=None):
     parser.add_argument("--prefix", required=True)
     parser.add_argument("--comparison", help="Optional original canonical cohort comparison JSON")
     parser.add_argument("--findings-csv", help="Optional original authenticated client findings CSV")
+    parser.add_argument("--inspect-existing", action="store_true",
+                        help="Read-only exact-source inspection of six already published core HUMAN files")
     parser.add_argument("--preview-only", action="store_true",
                         help="Strict source-bound dry run: counts-only stdout, no files, never GO")
     parser.add_argument("--bundle", action="store_true",
