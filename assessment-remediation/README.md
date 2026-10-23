@@ -411,3 +411,7 @@ No original source, real client finding, grant, retest status or scanner is
 modified. Source HOLD remains HOLD. This is offline human handoff preparation
 only: independently verify every reviewer and the underlying engagement
 before distributing the confidential outputs.
+
+## Search and prefill unlinked source gaps
+
+The gap board now searches the complete unlinked scenario and finding sets locally before applying its 100-row display cap. Search scenarios by original ID, source HOLD status or metric name; search findings by original ID, title, severity or source-reported retest status. Each result has a **Use scenario** or **Use finding** action that only pre-fills the matching selector and opens the manual-link form. It does not create a link, pair sources automatically or change source records; the operator must still choose the counterpart and explicitly save the human statement. Search fields reset when new original source files are loaded. No network, target, evidence, consent or authorization is introduced.
