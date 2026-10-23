@@ -17,6 +17,34 @@ from archive import MAX_MANIFEST, _manifest
 from agenda import render_bytes, selected_day
 
 SCHEMA="lightup.assessment_portfolio_original_source_workspace.v1"
+MAX_WORKSPACE_BYTES=32*1024*1024
+
+def source_digests(manifest_paths, choice_paths):
+    """Reopen exact ORIGINAL regular files; never infer identity from SHA-256."""
+    if not 1<=len(manifest_paths)<=12 or len(choice_paths)!=len(manifest_paths):
+        raise Hold("original source/choices count mismatch")
+    return [(
+        sha256(read_regular(manifest_path,MAX_MANIFEST)).hexdigest(),
+        sha256(read_regular(choices_path,MAX_MANIFEST)).hexdigest(),
+    ) for manifest_path,choices_path in zip(manifest_paths,choice_paths)]
+
+
+def require_original_sources(manifest_paths, choice_paths, expected):
+    """Fail closed on source drift before a private output is published or reused."""
+    if (type(expected) is not list or len(expected)!=len(manifest_paths)
+            or any(type(row) is not dict or
+                   set(row)!={"slot","original_manifest_sha256",
+                              "original_choices_sha256","derived_original_agenda_sha256",
+                              "original_source_count","claimed_status"}
+                   or row["slot"]!=i+1
+                   for i,row in enumerate(expected))):
+        raise Hold("invalid original source binding")
+    current=source_digests(manifest_paths,choice_paths)
+    for i,(manifest_sha,choices_sha) in enumerate(current):
+        if (manifest_sha!=expected[i]["original_manifest_sha256"]
+                or choices_sha!=expected[i]["original_choices_sha256"]):
+            raise Hold("original source bytes changed before private handoff")
+
 
 def build(manifest_paths,choice_paths,reference):
     selected_day(reference)
@@ -85,7 +113,11 @@ def build(manifest_paths,choice_paths,reference):
             "and its newly exported human proposal to proposal_return.py.\n"
             "Do not reuse previous source outputs when original choices change; retained HOLD never authorizes action.\n"
             "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO GO.\n").encode("utf-8"))
-    return packet.getvalue(),summary["claimed_status"],len(agendas)
+    assembled=packet.getvalue()
+    if not 0<len(assembled)<=MAX_WORKSPACE_BYTES:
+        raise Hold("original workspace exceeds private size limit")
+    require_original_sources(manifest_paths,choice_paths,source_entries)
+    return assembled,summary["claimed_status"],len(agendas)
 
 def main(argv=None):
     p=argparse.ArgumentParser(description="Complete OFFLINE ORIGINAL-source human portfolio in one command; no GO")
@@ -98,6 +130,17 @@ def main(argv=None):
     a=p.parse_args(argv)
     try:
         blob,status,count=build(a.original_manifest,a.original_choices,a.as_of)
+        # Reopen the real ORIGINAL inputs after all potentially expensive rendering,
+        # immediately before the exclusive private ZIP publication.
+        with ZipFile(BytesIO(blob),"r") as assembled:
+            mapping=decode_json(assembled.read("private-original-source-map.json"))
+        if (type(mapping) is not dict or mapping.get("schema")!=SCHEMA
+                or mapping.get("source_count")!=count
+                or mapping.get("reference_date")!=a.as_of
+                or mapping.get("planning_not_permission") is not True
+                or any(mapping.get(flag) is not False for flag in FLAGS)):
+            raise Hold("original private source map is not canonical")
+        require_original_sources(a.original_manifest,a.original_choices,mapping.get("sources"))
         publish(a.output,blob)
         print(f"ORIGINAL_OFFLINE_HUMAN_WORKSPACE_CREATED agendas={count} — NO GO")
         return 3 if status=="HOLD" else 2

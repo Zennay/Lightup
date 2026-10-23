@@ -39,3 +39,7 @@ For returning the human proposals from the complete ZIP **without manually extra
 The new CLI only composes existing offline source-owner modules; it never initiates lab evaluation, original scan, dispatch, consent, grant, retest or release. Exit 2 for REVIEW_ONLY, 3 for original HOLD/rejected input, never permission. Original exact-head hosted/permanent named VPS CI, source-owner + independent privacy/security reviews, genuine separately authenticated current client/operator consent with at-use revocation and explicit HUMAN GO remain mandatory before release.
 
 The newly generated private ZIP also includes `workspace-home.html` for local navigation and `private-workspace-content-map.json` for locally recorded SHA-256 byte consistency checks of included interface/report members. Both are owner-private and non-authorizing; the map is unsigned. See [CONTENT-INTEGRITY.md](CONTENT-INTEGRITY.md).
+
+## Source-change HOLD before publication
+
+The native one-command original importer now reads the exact original manifest and HUMAN choices a second time **after rendering the full private ZIP** and again immediately before its exclusive owner-private publication. It verifies that every re-opened original SHA-256 equals the original admitted source/choices pair in the ZIP's exact slot-ordered private source map; a changed file yields HOLD and no new published output. The SHA is only local byte correlation, not source authenticity, client consent or permission. This does not turn the result into a trusted security finding or a released assessment.
