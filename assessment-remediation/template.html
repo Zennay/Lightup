@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{CSP}}">
+<title>LightUp · private assessment-to-finding mapping</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+<header class="hero">
+  <p class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME / PRIVATE OFFLINE</p>
+  <h1>Connect lab scenarios to findings</h1>
+  <p class="lede">Human-only traceability between existing original offline lab comparator output and a separately exported original client findings CSV. A manual link is an unverified reviewer claim, not evidence that the two sources represent the same client or engagement.</p>
+  <div class="warning"><strong>PLAN/LAB ONLY · DRAFT/HOLD</strong> · No targets, model, scanning, grants, real retests, verified fixes, consent, release or execution. Local files remain in memory unless you explicitly save a private draft. Source hashes bind bytes, not issuer identity.</div>
+</header>
+<main>
+  <section class="panel" aria-labelledby="sources-title">
+    <div class="section-title"><span class="step">01</span><div><h2 id="sources-title">Open original, already completed sources</h2><p>Select a canonical original cohort comparison JSON and original five-column findings CSV. Both are required. The Python bridge independently performs final deep source validation.</p></div></div>
+    <div class="file-grid">
+      <label>Original comparator report <span class="sub">1–64 original lab cases · max 256 KiB</span><input type="file" id="comparison" accept=".json,application/json"></label>
+      <label>Original findings export <span class="sub">1–350 client findings · max 1 MiB</span><input type="file" id="findings" accept=".csv,text/csv"></label>
+    </div>
+    <button type="button" id="load">Read private files locally</button>
+    <p class="sub" id="source-summary" aria-live="polite">Nothing loaded. No target or external API is used.</p>
+  </section>
+
+  <section id="studio" hidden>
+    <div class="panel">
+      <div class="section-title"><span class="step">02</span><div><h2>Declare human-only traceability</h2><p>Explicitly select a scenario and a finding. Never infer that metrics represent verified vulnerability fixes, access rights or real retest outcomes.</p></div></div>
+      <form id="form">
+        <div class="grid two">
+          <label>Original scenario ID<select id="scenario" required></select></label>
+          <label>Original finding ID / title<select id="finding" required></select></label>
+          <label>Local review stage<select id="stage" required></select></label>
+          <label>Human reviewer / team (optional)<input id="reviewer" maxlength="100" autocomplete="off" placeholder="Unverified local coordination"></label>
+        </div>
+        <label>Next human step <input id="action" maxlength="300" autocomplete="off" placeholder="e.g. confirm original source owner with operator"></label>
+        <label>Private human note <textarea id="note" rows="3" maxlength="500" placeholder="No credentials, targets or personal data. Never treat as proof."></textarea></label>
+        <button type="submit">Save manual scenario–finding link</button>
+      </form>
+      <div class="inspector-grid" aria-label="Original source preview">
+        <div class="source-preview" aria-live="polite">
+          <h3>Selected original lab source · metric summary</h3>
+          <p class="sub">Original source statements only; no finding or permission is inferred.</p>
+          <div id="scenario-inspect"></div>
+        </div>
+        <div class="source-preview" aria-live="polite">
+          <h3>Selected original finding · remediation text</h3>
+          <p class="sub">Source reported status is historical. Not evidence of a verified fix.</p>
+          <div id="finding-inspect"></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-title"><span class="step">03</span><div><h2>Review local linked findings</h2><p id="link-count" aria-live="polite">No links</p></div></div>
+      <label>Filter local source details<input type="search" id="filter" placeholder="Search original IDs, finding titles, human stage" autocomplete="off"></label>
+      <div class="table-wrap"><table><thead><tr><th>Original lab scenario</th><th>Original finding</th><th>Human stage</th><th>Local actions</th></tr></thead><tbody id="links-body"></tbody></table></div>
+      <div class="source-preview">
+        <h3>Human review gaps across original source files</h3>
+        <p class="sub">Unlinked original scenarios and findings remain visible; missing mapping never means fixed or safe.</p>
+        <div class="gap-search-grid">
+          <label>Search unlinked original scenarios<input type="search" id="scenario-gap-filter" placeholder="Scenario ID, HOLD status, metric name" autocomplete="off"></label>
+          <label>Search unlinked original findings<input type="search" id="finding-gap-filter" placeholder="Finding ID, title, severity, retest status" autocomplete="off"></label>
+        </div>
+        <p class="sub" id="gap-filter-summary" aria-live="polite">Search locally to find unlinked source records. Actions only prefill the mapping form.</p>
+        <div id="gaps" aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-title"><span class="step">04</span><div><h2>Export an exact-source-bound private draft</h2><p>This is only a local human mapping JSON. The Python CLI checks original comparison metrics, input hashes and finding source schema before creating the final protected operator dossier. The source bytes and raw findings are not bundled into this draft.</p></div></div>
+      <div class="grid two">
+        <div><button type="button" id="export">Save private links JSON</button><p class="sub">Use <code>bridge.py --links PRIVATE.json</code>. Empty links are allowed and never mean a clean assessment.</p></div>
+        <label>Restore an existing private draft <input type="file" id="restore" accept=".json,application/json"><span class="sub">Requires the same exact two source file byte hashes. Rejected restores never partially modify the accepted review.</span></label>
+      </div>
+    </div>
+  </section>
+  <div id="messages" class="message" role="status" aria-live="polite">Load original local sources to start. This workspace is not a security authority.</div>
+</main>
+<footer>LightUp · Human-only offline lab-to-remediation preparation · All four authority flags remain false · Explicit HUMAN GO and independently authenticated consent remain outside this workspace.</footer>
+<script>{{SCRIPT}}</script>
+</body>
+</html>
