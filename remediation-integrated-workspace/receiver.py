@@ -10,33 +10,8 @@ import zipfile
 
 import install as suite
 
-TOOLS = frozenset((
-    "remediation-integrated-workspace/install.py",
-                     "remediation-integrated-workspace/private_desk.py",
-    "remediation-integrated-workspace/operator_console.py",
-    "remediation-integrated-workspace/landing.py",
-    "remediation-integrated-workspace/operator_ui.js",
-                     "remediation-integrated-workspace/fingerprint_ui.js",
-                     "remediation-integrated-workspace/packet_fingerprint.py",
-                     "remediation-integrated-workspace/packet_brief.py",
-    "remediation-integrated-workspace/operator_ui.css",
-    "remediation-integrated-workspace/receiver.py",
-    "remediation-integrated-workspace/workflow.py",
-    "remediation-integrated-workspace/portable_cockpit.py",
-    "remediation-integrated-workspace/single_review.py",
-    "remediation-integrated-workspace/single_review.js",
-    "remediation-integrated-workspace/single_brief.py",
-    "remediation-integrated-workspace/SINGLE_REVIEW.md",
-    "remediation-integrated-workspace/archive_workflow.py",
-    "remediation-integrated-workspace/encrypted_cockpit.py",
-    "remediation-integrated-workspace/journal_vault.py",
-    "remediation-integrated-workspace/journal_encrypt.js",
-    "remediation-integrated-workspace/journal_open.js",
-    "remediation-integrated-workspace/review_package.py",
-    "remediation-integrated-workspace/REVIEW_PACKAGE.md",
-    "remediation-integrated-workspace/JOURNAL_VAULT.md",
-    "remediation-integrated-workspace/README.md",
-))
+# One exact source of truth for builder and receiver file inventory.
+TOOLS = frozenset(suite.INTEGRATED_TOOLS)
 
 def receive(archive: Path, destination: Path) -> None:
     suite.owner_dir(archive.parent)
