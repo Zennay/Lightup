@@ -331,7 +331,12 @@
   let softwareGeneration = 0;
   let softwareBusy = false;
   function clearSoftwareResult(clearFiles = false) {
+    // A previous asynchronous File/WebCrypto read may still be finishing.
+    // Invalidate its generation and make the newest selection actionable
+    // immediately; a stale finally must never unlock a newer comparison.
     softwareGeneration++;
+    softwareBusy = false;
+    softwareCompare.disabled = false;
     if (clearFiles) {
       softwareZip.value = "";
       softwareHash.value = "";
@@ -367,6 +372,7 @@
     softwareResult.textContent = "PRIVATE bestanden uitsluitend lokaal lezen en vergelijken…";
     try {
       const signature = new Uint8Array(await receipt.arrayBuffer());
+      if (generation !== softwareGeneration) return;
       if (signature.length !== 65 || signature[64] !== 10 ||
           !Array.from(signature.slice(0, 64)).every(b =>
             b >= 48 && b <= 57 || b >= 97 && b <= 102)) {
@@ -374,13 +380,15 @@
       }
       const expected = String.fromCharCode(...signature.slice(0, 64));
       const bytes = await zip.arrayBuffer();
+      if (generation !== softwareGeneration) return;
       if (bytes.byteLength !== zip.size || bytes.byteLength > 15000000) {
         throw Error("zip-changed");
       }
-      const hash = Array.from(
-        new Uint8Array(await window.crypto.subtle.digest("SHA-256", bytes)),
-        b => b.toString(16).padStart(2, "0")).join("");
+      const hashBytes = await window.crypto.subtle.digest("SHA-256", bytes);
       if (generation !== softwareGeneration) return;
+      const hash = Array.from(
+        new Uint8Array(hashBytes),
+        b => b.toString(16).padStart(2, "0")).join("");
       if (hash !== expected) {
         softwareResult.textContent = "HOLD: SHA-256 van ontvangen ZIP wijkt af van het afzonderlijke checksum-bestand. Niet installeren of stilzwijgend vervangen.";
         softwareResult.dataset.kind = "error";
@@ -398,8 +406,10 @@
         softwareResult.dataset.kind = "error";
       }
     } finally {
-      softwareBusy = false;
-      softwareCompare.disabled = false;
+      if (generation === softwareGeneration) {
+        softwareBusy = false;
+        softwareCompare.disabled = false;
+      }
     }
   });
 
