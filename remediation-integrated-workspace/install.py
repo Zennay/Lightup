@@ -269,7 +269,31 @@ def read_owner_file(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
         os.close(fd)
 
 def write_file(path: Path, payload: bytes) -> None:
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    """Publish one new 0600 file under a descriptor-pinned private directory.
+
+    O_EXCL protects the final filename; per-component O_NOFOLLOW additionally
+    prevents a swapped parent directory link from redirecting our writes.
+    """
+    require(path.is_absolute() and len(path.parts) >= 2
+            and all(part not in (".", "..") for part in path.parts[1:]),
+            "A literal absolute output file path is required")
+    flags = (os.O_RDONLY | os.O_NOFOLLOW | os.O_DIRECTORY |
+             getattr(os, "O_CLOEXEC", 0))
+    parent_fd = os.open("/", flags)
+    try:
+        for part in path.parts[1:-1]:
+            next_fd = os.open(part, flags, dir_fd=parent_fd)
+            os.close(parent_fd)
+            parent_fd = next_fd
+        parent = os.fstat(parent_fd)
+        require(stat.S_ISDIR(parent.st_mode) and
+                parent.st_uid == os.getuid() and parent.st_mode & 0o077 == 0,
+                "New private file parent must be owner-only")
+        fd = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                     os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+                     0o600, dir_fd=parent_fd)
+    finally:
+        os.close(parent_fd)
     try:
         os.fchmod(fd, 0o600)
         with os.fdopen(fd, "wb", closefd=False) as f:
