@@ -124,6 +124,10 @@ OPERATIONS = {
         ("--archive", "Existing PRIVATE owner-only source-only ZIP", False, True),
         ("--expected-sha256-file", "Optional SEPARATELY obtained PRIVATE 0600 exact ZIP SHA-256 fingerprint file", False, False),
     ), "No-write original ZIP check; optional separately supplied exact-byte SHA-256 parity."),
+    "fingerprint-archive": ("install.py", ("fingerprint-archive",), (
+        ("--archive", "Existing admitted private source-only software ZIP", False, True),
+        ("--output-file", "NEW private 0600 ASCII SHA-256+LF receipt outside software directory", False, True),
+    ), "Save an original exact-byte local ZIP fingerprint; separate HUMAN disclosure approval is required."),
     "receive-software": ("install.py", ("receive",), (
         ("--archive", "Original software-only ZIP", False, True),
         ("--output-dir", "NEW owner-private software installation", False, True),
