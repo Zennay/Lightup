@@ -81,6 +81,32 @@ python3 remediation-integrated-workspace/install.py inspect-archive \
   --archive "$HOME/lightup-private/incoming/software-only.zip"
 ```
 
+### Validate a recipient destination without creating it
+
+The original read-only `inspect-archive` can now also check the **planned,
+fresh PRIVATE receiver directory** against the exact same native path
+constraints used by the eventual `receive` command. An optional separate
+unsigned ZIP checksum can be combined with this preflight:
+
+```sh
+python3 remediation-integrated-workspace/install.py inspect-archive \
+  --archive "$HOME/lightup-private/incoming/software-only.zip" \
+  --expected-sha256-file "$HOME/lightup-private/incoming/expected.sha256" \
+  --planned-output-dir "$HOME/lightup-private/recipient-copy-v1"
+```
+
+The source ZIP must pass the complete native software/ZIP/source-lock check
+before the planned destination is admitted. A valid output must be an
+**unused exact absolute path under an existing current-user 0700 parent**,
+not the original ZIP path, a directory within the source-only software
+tree, or a path overlapping the trusted checkout. On valid input, prints
+`PLANNED PRIVATE RECIPIENT PATH: admissible but not created` and returns
+`2=REVIEW_ONLY` without touching the destination. Invalid locations and
+an existing output cause `3=HOLD`, without installing anything. The native
+`receive` repeats all of these checks when run, so a passing preflight
+does **not** reserve the name or grant permission. The offline HUMAN desk
+and command composer offer this optional planned output field.
+
 ### PRIVATE original software checksum issuance
 
 An authorized software publisher can now generate the original **65-byte
