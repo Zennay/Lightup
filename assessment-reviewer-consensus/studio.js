@@ -426,7 +426,7 @@
   $("saveWorkspace").addEventListener("click",async()=>{
     const revision=stateRevision;
     try{
-      const payload=JSON.stringify(exportWholeWorkspace())+"\\n";
+      const payload=JSON.stringify(exportWholeWorkspace())+"\n";
       const pass=window.prompt("Choose NEW local passphrase for the complete PRIVATE HUMAN reviewer workspace (12–256 characters). No recovery.");
       if(pass===null)return;
       const repeat=window.prompt("Confirm PRIVATE reviewer workspace passphrase:");
@@ -523,7 +523,7 @@
       if(second===null){msg("Encrypted export cancelled; current HUMAN review unchanged.");return;}
       guard(first===second,"Private encryption passphrases do not match");
       if(!window.confirm("Encrypt the original-format HUMAN plan locally using AES-256-GCM? Original source authenticity, permission and security findings remain unverified."))return;
-      const encrypted=await encryptOriginalHumanPlan(JSON.stringify(plan)+"\\n",first);
+      const encrypted=await encryptOriginalHumanPlan(JSON.stringify(plan)+"\n",first);
       if(revision!==stateRevision){
         msg("HOLD · HUMAN choices changed during encryption; stale merged-plan download cancelled.",true);
         return;
