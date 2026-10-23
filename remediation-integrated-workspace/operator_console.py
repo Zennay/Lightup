@@ -183,15 +183,15 @@ lokaal worden verzegeld. Bronidentiteit, toestemming en retest blijven extern.</
 <p>Bereken SHA-256 van de <strong>exacte lokale bytes</strong> van bronvrije
 overdrachtspakketten. Gelijke fingerprints tonen uitsluitend byte-identiteit,
 NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
-<label for="packet-files">Kies lokale bronvrije .luhx / .luhz / .luhp bestanden en eventuele ontvangen kopieën</label>
-<input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp">
+<label for="packet-files">Kies lokale bronvrije pakketten of LightUps software-only.zip</label>
+<input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp,.zip">
 <div class="tools">
 <button type="button" id="packet-analyze">Bereken lokaal SHA-256</button>
 <button type="button" id="packet-export" disabled>Download PRIVATE unsigned hashreceipt</button>
 <button type="button" id="packet-clear" class="secondary">Wis fingerprints</button>
 </div>
 <p id="packet-message" role="status" aria-live="polite">Alle bytes blijven lokaal;
-maximaal acht bestanden, 20 MiB per bestand en 64 MiB samen.</p>
+maximaal acht bestanden: 20 MiB per bronvrij pakket, 15 MB per software-only.zip en 64 MiB samen.</p>
 <div id="packet-result" class="fingerprint-result"></div>
 <div class="fingerprint-match">
 <label for="packet-expected">Ontvangen oorspronkelijke SHA-256, optioneel
@@ -209,8 +209,12 @@ geen afzender of toestemming.</small>
 
 <p id="packet-comparison" class="fingerprint-comparison" aria-live="polite"></p>
 <small>Een PRIVATE checksum is niet ondertekend; wie het bronpakket en
-de fingerprint beheerst, kan beide vervangen. Native ontvangst, afzonderlijke
-actuele toestemming en onafhankelijke securityreview blijven verplicht.</small>
+de fingerprint beheerst, kan beide vervangen. Alleen de vaste naam
+<strong>software-only.zip</strong> wordt als softwarearchief gehasht;
+willekeurige ZIP-bestanden en originele klantevidence blijven geweigerd.
+SHA-256 vergelijken is GEEN softwaretoelating: gebruik daarvoor native
+<code>inspect-archive</code>. Afzonderlijke actuele toestemming en
+onafhankelijke securityreview blijven verplicht.</small>
 </section>
 <section class="fingerprint" aria-label="Offline software ZIP checksum vergelijken">
 <h2>Ontvangen PRIVATE softwarepakket controleren</h2>
