@@ -274,9 +274,12 @@
   <div class="controls">
     <button id="saveNote" type="button" disabled>Save commentary in memory</button>
     <button id="clearNote" type="button" class="secondary" disabled>Clear commentary</button>
+     <button id="undoNote" type="button" class="secondary" disabled>Undo commentary</button>
+     <button id="redoNote" type="button" class="secondary" disabled>Redo commentary</button>
     <button id="exportNotes" type="button" class="ghost" disabled>Export fictional demo notes only (plaintext JSON)</button>
   </div>
-  <p id="noteMessage" class="message" role="status" aria-live="polite"></p>
+  <p id="noteHistoryStatus" role="status" aria-live="polite" class="footnote">Undo/redo stays in memory and is bound to the active source cohort.</p>
+   <p id="noteMessage" class="message" role="status" aria-live="polite"></p>
   <h3>Locally saved PRIVATE HUMAN note index</h3>
   <p>Browse saved notes after returning from an encrypted PRIVATE packet. This index shows only fixed metrics, anonymous scenario ordinals and character counts; it never displays note text until you explicitly open its editor. Nothing is stored in your browser after forgetting or closing this tab.</p>
   <label>Filter saved HUMAN notes by static group
