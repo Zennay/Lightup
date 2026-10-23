@@ -84,8 +84,9 @@ python3 remediation-integrated-workspace/install.py inspect-archive \
 ### Validate a recipient destination without creating it
 
 The original read-only `inspect-archive` can now also check the **planned,
-fresh PRIVATE receiver directory** against the exact same native path
-constraints used by the eventual `receive` command. An optional separate
+fresh PRIVATE receiver directory** and a **planned separately written software
+checksum file** against the same exact native path and owner-only permission
+constraints used by the eventual `receive` and `fingerprint-archive` commands. An optional separate
 unsigned ZIP checksum can be combined with this preflight:
 
 ```sh
@@ -94,6 +95,19 @@ python3 remediation-integrated-workspace/install.py inspect-archive \
   --expected-sha256-file "$HOME/lightup-private/incoming/expected.sha256" \
   --planned-output-dir "$HOME/lightup-private/recipient-copy-v1"
 ```
+
+To check an unused PRIVATE checksum output filename without issuing it,
+use `--planned-checksum-file "$HOME/lightup-private/new-software.sha256"`
+with the same original `inspect-archive --archive ...` command, optionally
+alongside `--planned-output-dir`. This returns REVIEW_ONLY with
+`PLANNED PRIVATE CHECKSUM PATH: admissible but not created` only when the
+original ZIP, destination parent ownership, permissions, unused name and
+source-tree separation pass the **same native checks as publication**.
+A checksum path inside the source ZIP's directory or an already occupied
+filename is HOLD without creating or overwriting any file. The browser
+operator studio and HUMAN command desk also offer this optional original
+read-only option. This is a path preflight only: names can change afterward;
+a later write repeats the check and never authenticates a software producer.
 
 The source ZIP must pass the complete native software/ZIP/source-lock check
 before the planned destination is admitted. A valid output must be an
