@@ -231,7 +231,9 @@ def install(package: Path, parent: Path, folder: str,
     return 2
 
 
-def inspect(room: Path) -> int:
+def inspect(room: Path, package: Path | None = None,
+            expected_sha256: str = "", sidecar: Path | None = None,
+            source_root: Path | None = None) -> int:
     room = private_directory(room)
     receipt_path = room / RECEIPT
     raw = read_private(room, receipt_path, 256 * 1024)
@@ -307,12 +309,40 @@ def inspect(room: Path) -> int:
                 raise Hold("HOLD: unsafe PRIVATE room entry")
         if real_files != names | ({RECEIPT, REVIEW} if current else {RECEIPT}):
             raise Hold("HOLD: missing or unexpected PRIVATE installed software file")
+        if package is None and (expected_sha256 or sidecar is not None or source_root is not None):
+            raise Hold("HOLD: supply the original ZIP for independent source comparison")
+        if package is not None:
+            raw_zip = bytes_snapshot(package)
+            original_sha = digest(raw_zip)
+            if original_sha != data["package_sha256_unsigned"]:
+                raise Hold("HOLD: installed source ZIP identity differs from PRIVATE receipt")
+            if expected_sha256 and original_sha != expected_sha256:
+                raise Hold("HOLD: independently expected source ZIP digest differs")
+            original_manifest = verify(
+                package, original_sha, sidecar, source_root, return_manifest=True)
+            if original_manifest["schema"] != data["package_schema"]:
+                raise Hold("HOLD: original ZIP manifest differs from installed software")
+            with ZipFile(io.BytesIO(raw_zip)) as original_archive:
+                manifest_raw = original_archive.read("manifest.json")
+            original_members = [
+                {"filename": x["filename"], "bytes": x["bytes"],
+                 "sha256_unsigned": x["sha256_unsigned"]}
+                for x in (original_manifest["files"] +
+                          original_manifest["package_assets"])
+            ]
+            original_members.append({
+                "filename": "manifest.json", "bytes": len(manifest_raw),
+                "sha256_unsigned": digest(manifest_raw)})
+            if data["files"] != sorted(original_members, key=lambda x: x["filename"]):
+                raise Hold("HOLD: installed software inventory differs from original ZIP")
     except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError):
         raise Hold("HOLD: malformed PRIVATE installer receipt") from None
     print("INSPECTED LOCAL PRIVATE SOFTWARE / REVIEW_ONLY: " + str(room))
     print("Matched " + str(len(names)) + " original installed software files against unsigned receipt.")
     if current:
         print("PRINTABLE PRIVATE REVIEW: " + str(room / REVIEW))
+    if package is not None:
+        print("ORIGINAL ZIP RECHECK: original software ZIP and installed room agree byte-for-byte.")
     print("SHA receipt establishes local byte continuity only, never identity or consent.")
     return 2
 
@@ -356,6 +386,10 @@ def main() -> int:
                             help="exactly INSTALL PRIVATE OFFLINE KIT")
     opening = sub.add_parser("inspect", help="reopen private files without original ZIP")
     opening.add_argument("--room", required=True)
+    opening.add_argument("--package", default="", help="optional original ZIP for full source recheck")
+    opening.add_argument("--expected-sha256", default="")
+    opening.add_argument("--sha256-file", default="")
+    opening.add_argument("--source-root", default="")
     args = parser.parse_args()
     try:
         if args.command == "install":
@@ -366,7 +400,12 @@ def main() -> int:
                            args.expected_sha256,
                            Path(args.sha256_file).absolute() if args.sha256_file else None,
                            Path(args.source_root).absolute() if args.source_root else None)
-        return inspect(Path(args.room).absolute())
+        return inspect(
+            Path(args.room).absolute(),
+            Path(args.package).absolute() if args.package else None,
+            args.expected_sha256,
+            Path(args.sha256_file).absolute() if args.sha256_file else None,
+            Path(args.source_root).absolute() if args.source_root else None)
     except (Hold, OSError, ValueError, TypeError) as exc:
         print(str(exc) if isinstance(exc, Hold) else "HOLD: offline PRIVATE installation refused",
               file=sys.stderr)

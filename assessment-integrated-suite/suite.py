@@ -79,6 +79,12 @@ def guard_command_paths(args: argparse.Namespace) -> None:
             paths.append(args.source_root)
     elif args.command == "inspect-kit":
         paths.append(args.room)
+        if args.package:
+            paths.append(args.package)
+        if args.sha256_file:
+            paths.append(args.sha256_file)
+        if args.source_root:
+            paths.append(args.source_root)
     elif args.command == "verify-kit":
         paths.append(args.package)
         if args.compare_package:
@@ -364,6 +370,11 @@ def main() -> int:
     inspecting = commands.add_parser(
         "inspect-kit", help="inspect an installed owner-private kit against its receipt")
     inspecting.add_argument("--room", required=True)
+    inspecting.add_argument("--package", default="",
+                            help="original software ZIP for independent source recheck")
+    inspecting.add_argument("--expected-sha256", default="")
+    inspecting.add_argument("--sha256-file", default="")
+    inspecting.add_argument("--source-root", default="")
     args = cli.parse_args()
     if args.command == "catalog":
         for label, component in (("source inspector", INSPECTOR), ("PRIVATE briefing", BRIEF),
@@ -394,7 +405,12 @@ def main() -> int:
                 Path(args.sha256_file).absolute() if args.sha256_file else None,
                 Path(args.source_root).absolute() if args.source_root else None)
         if args.command == "inspect-kit":
-            return inspect_private_kit(Path(args.room).absolute())
+            return inspect_private_kit(
+                Path(args.room).absolute(),
+                Path(args.package).absolute() if args.package else None,
+                args.expected_sha256,
+                Path(args.sha256_file).absolute() if args.sha256_file else None,
+                Path(args.source_root).absolute() if args.source_root else None)
         if args.command == "human-workpack":
             return private_human_workpack(args)
         if args.command == "workpack-progress":

@@ -1,3 +1,27 @@
+## Independently recheck the installed software against the original ZIP
+
+An unsigned local receipt detects accidental local drift, but a compromised
+receipt could be rewritten. `inspect-kit` now supports an **optional original
+ZIP source recheck**, keeping the original archive entirely unextracted:
+
+```sh
+python3 assessment-integrated-suite/suite.py inspect-kit \
+  --room "$HOME/lightup-private/lab-software-v28" \
+  --package assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip \
+  --sha256-file assessment-integrated-suite/LightUp-Assessment-Offline-Toolkit-v28.zip.sha256
+```
+
+When supplied, the installed receipt's original ZIP SHA must exactly match
+the reopened native-verifier-admitted original ZIP. All source-bound software,
+launcher/README/guide and original manifest byte descriptors must agree
+with the installed owner-private files. If either the source ZIP or any local
+installed file differs, the operation returns HOLD without changing either.
+`--expected-sha256` from a separately authenticated channel is recommended;
+the bundled sidecar alone does not authenticate the software producer.
+Optional `--source-root` checks the ZIP against explicit local checkout
+software bytes. The standalone `install_offline.py inspect` accepts the same
+flags. None of these steps authorizes client targets or releases.
+
 ## Printable PRIVATE software-intake review
 
 A successful native `install-kit` also creates `PRIVATE-INSTALL-REVIEW.html`
