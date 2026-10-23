@@ -18,7 +18,7 @@ PYTHONPATH=src:scripts python scripts/assessment_runtime_human_capacity_inspect_
 
 The result is one new owner-only PRIVATE ZIP with:
 
-- `capacity.html`: local script-free printable planning page, no network access;
+- `capacity.html`: local script-free printable planning page, no network access; includes source-priority, HUMAN-stage and route distributions, date/route load and an explicit overdue summary (or states that overdue was not computed);
 - `capacity.csv`: all anonymous original packet/case ordinals, HUMAN stage, routing group, follow-up date, priority and source-reported regression count;
 - `capacity.json`: the same rows and aggregate stage/priority/routing totals plus dated open work loads;
 - `manifest.json`: unsigned SHA-256 byte checks for the three outputs and permanently false authorization flags;
