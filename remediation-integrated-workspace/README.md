@@ -2,6 +2,21 @@
 
 **INCUBATE M3/M7 — PLAN/LAB ONLY — DRAFT/HOLD.** This is source-only offline software, not a released scanner, grant, authenticated evidence or verified remediation.
 
+## Offline operator screen — minimal safe first step
+
+Open the original locally generated `operator.html` in an authorized private
+browser. The first selected operation is now **Controleer softwarepakket**
+(`inspect-archive`), a no-write original software ZIP check. The ordinary
+command composer and clear HUMAN review warning remain visible immediately.
+Less common owner transfer, local SHA-256 comparison and extended operator
+guidance stay accessible under **Andere offline hulpmiddelen**; expanding it
+does not execute software or transmit any file. All original native actions,
+parameter contracts, consent gates and HOLD semantics are retained.
+
+This is a browser presentation choice, not an authenticated release or
+automatic approval. The source-only installed CLI makes the final offline
+decision; a browser-composed command is not evidence that it ran.
+
 ## Integrated original products
 
 This branch includes existing original product assets unchanged from:
