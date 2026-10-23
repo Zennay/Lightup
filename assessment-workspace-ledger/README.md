@@ -1,10 +1,39 @@
 # LightUp · PRIVATE Assessment Workspace Ledger
 
+## 23 October 2026 · source-bound HUMAN calendar decision editing, offline only
+
+The existing calendar decision browser (portfolio-operator-calendar-decision-studio.html)
+provides complete local, non-authorizing editing over source-bound originals:
+
+1. Open the native-generated complete 13-column HUMAN calendar decision CSV.
+   Optionally open matching native-original proposed options: JSON admission
+   requires exact canonical original bytes, refusing duplicate or shadowed keys.
+2. Filter by original HUMAN owner, discussion stage, text or disagreements.
+   Undo/redo retains at most 16 in-memory source-bound decision frames, across
+   individual choices and full CSV draft restoration. No automatic persistence.
+3. Bulk HOLD or Bulk Needs discussion affects ONLY currently visible filtered
+   records after explicit HUMAN confirmation. No batch approve, scheduling,
+   dispatch, grant or consent is possible. All hidden original rows remain.
+4. Restoring a complete draft requires every original source SHA/ordinal,
+   owner label, case slot and conflict flag to match. Concurrent edits made
+   during a file read cause HOLD rather than overwriting newer local decisions.
+5. Export includes the entire native 13-column original sheet regardless of
+   filters. Native source-owner portfolio_operator_calendar_decisions.py must
+   independently reopen the original receipts/records for actual PRIVATE
+   HUMAN-only reception; the browser has no original authentication authority.
+
+**No QA/regression suites, real customer material, target scan, grant,
+release, network service, calendar booking or automatic permission.**
+The software manifest remains original allowlisted v56. Use the adjacent
+LightUp-Workspace-Ledger-Offline.zip.sha256 to inspect the current rebuilt
+ZIP's byte checksum, never the included README itself (which cannot contain
+its own final archive digest without a self-reference).
+
 ## Current product delivery · source-only offline ZIP v56 · 23 October 2026
 
 The committed software bundle has been rebuilt from this branch's current allowlisted source after the source-freshness and detached-checksum controls were added.
 
-- Archive: `LightUp-Workspace-Ledger-Offline.zip` — **426,876 bytes**, unsigned SHA-256 `8603d15408e23a0c0ae8fbd69e7906000c5b02f1f5e3928295c64125cd600006`.
+- Archive: LightUp-Workspace-Ledger-Offline.zip; exact current bytes and unsigned SHA-256 are recorded by the adjacent .zip.sha256 sidecar.
 - Detached sidecar: `LightUp-Workspace-Ledger-Offline.zip.sha256`; the sidecar is a checksum only, not a signature or publisher authentication.
 - Manifest schema: `lightup.private.workspace-ledger-software.v56`; **78 allowlisted software files** plus the manifest.
 - The exact branch source build and `inspect --sha256-sidecar --compare-source` report the sidecar matching the archive bytes, internal manifest consistency, and exact parity for all 78 current allowlisted source files.
@@ -92,10 +121,9 @@ The ledger editor, owner-reply, focus, inbox, inbox-owner-return, inbox-timeline
 owner-change-board, owner-change-history, owner-follow-up and owner-inbox-viewer
 studios now include a portable SHA-256 fallback for local browsers without Web
 Crypto. Their generated standalone HTML pages embed the matching updated source
-and retain exact CSP script hashes. The committed software ZIP is still the
-previous packaged snapshot and does not yet include these updates; rebuild and
-inspect a fresh private ZIP before redistributing the bundle. No new ZIP or
-checksum is claimed in this change.
+and retain exact CSP script hashes. The current source-only archive is rebuilt from the current allowlisted
+sources and its sidecar records the corresponding unsigned ZIP digest.
+Every future source edit needs a fresh native build before redistribution.
 
 Both features are also foreground console options 9 and 10.
 

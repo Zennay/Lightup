@@ -13,6 +13,55 @@ const HEAD=[
 const STAGES=["needs_discussion","hold","human_alignment_proposed"];
 const PRIORITIES=["unset","human_urgent","near_term","routine"];
 let records=[],sourceSha="",dirty=false,sourceOptions=null;
+let revision=0,undoFrames=[],redoFrames=[];
+const HISTORY_LIMIT=16;
+const choices=()=>records.map(r=>({day:r.day,priority:r.priority,question:r.question,stage:r.stage}));
+function frame(){return {sourceSha,rows:choices(),dirty};}
+function remember(){
+ if(!records.length)return;
+ undoFrames.push(frame());
+ if(undoFrames.length>HISTORY_LIMIT)undoFrames.shift();
+ redoFrames=[];revision++;
+}
+function restoreFrame(saved){
+ if(saved.sourceSha!==sourceSha||saved.rows.length!==records.length)
+  throw Error("Original HUMAN template changed; old history is invalid");
+ saved.rows.forEach((row,i)=>{
+  records[i].day=row.day;records[i].priority=row.priority;
+  records[i].question=row.question;records[i].stage=row.stage;
+ });
+ dirty=saved.dirty;revision++;
+ render();
+}
+function stepHistory(back){
+ const from=back?undoFrames:redoFrames;
+ if(!from.length)return;
+ const saved=from.pop(),target=back?redoFrames:undoFrames;
+ target.push(frame());
+ if(target.length>HISTORY_LIMIT)target.shift();
+ try{restoreFrame(saved);status(back?"Local HUMAN edit undone. Native receive still required.":"Local HUMAN edit reapplied. Native receive still required.");}
+ catch(e){undoFrames=[];redoFrames=[];status("PRIVATE HOLD: source context changed; edit history cleared.");}
+}
+function resetHistory(){undoFrames=[];redoFrames=[];revision++;}
+function bulk(stage){
+ if(!records.length||!["hold","needs_discussion"].includes(stage))return;
+ const rows=matching().filter(row=>row.stage!==stage);
+ if(!rows.length){status("No visible HUMAN decisions need this change.");return;}
+ if(!window.confirm("Apply HUMAN-only "+stage+" to "+rows.length+
+  " currently visible original rows? This does not approve, book, send or authorize anything. Undo remains local."))return;
+ remember();
+ rows.forEach(row=>{row.stage=stage;});
+ dirty=true;render();
+ status(rows.length+" visible HUMAN proposals updated; hidden rows unchanged. Native original-source RECEIVE still required.");
+}
+// Original native options use canonical sorted UTF-8 JSON, one final newline.
+// Exact-byte admission rejects duplicate keys and ambiguous shadowed fields.
+function ownCanonical(v){
+ if(Array.isArray(v))return "["+v.map(ownCanonical).join(",")+"]";
+ if(v!==null&&typeof v==="object")
+  return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+ownCanonical(v[k])).join(",")+"}";
+ return JSON.stringify(v);
+}
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const safe=x=>typeof x==="string"&&x.length<=240&&!/[\u0000-\u001f\u007f]/.test(x)&&!/^\s*[=+@-]/.test(x);
 function validDate(x) {
@@ -94,6 +143,10 @@ function updateCounts(){
    records.filter(r=>r.conflict).length+" with differing proposals | "+
    STAGES.map(stage=>stage+": "+records.filter(r=>r.stage===stage).length).join(" | ")+
    (dirty?" | unsaved local HUMAN choices":"");
+ $("undo").disabled=!undoFrames.length;
+ $("redo").disabled=!redoFrames.length;
+ $("history-summary").textContent=undoFrames.length+" reversible local changes; "+
+  redoFrames.length+" redo steps. History is in-memory only and cleared on a new source.";
  $("visible").textContent=matching().length+" visible; complete source slot set stays intact.";
 }
 function render(){
@@ -121,7 +174,8 @@ function render(){
     select.type="button";select.className="secondary";
     select.addEventListener("click",()=>{
      if(!window.confirm("Copy this HUMAN round's proposed date and priority into the local DRAFT? It does NOT change decision stage or approve a meeting."))return;
-     entry.day=day;entry.priority=humanPriority;dirty=true;render();
+     if(entry.day===day&&entry.priority===humanPriority)return;
+     remember();entry.day=day;entry.priority=humanPriority;dirty=true;render();
      status("HUMAN proposed values copied locally; stage remains unchanged. Native receive remains required.");
     });
     line.append(select);optionBox.append(line);
@@ -135,14 +189,18 @@ function render(){
    const opt=create("option",value.replaceAll("_"," "));opt.value=value;
    opt.selected=value===entry.stage;select.append(opt);
   }
-  select.addEventListener("change",()=>{entry.stage=select.value;dirty=true;updateCounts();});
+  select.addEventListener("change",()=>{
+    if(entry.stage===select.value)return;
+    remember();entry.stage=select.value;dirty=true;updateCounts();
+  });
   stageLabel.append(select);
   const dayLabel=create("label","Human-proposed review day (NOT booked)");
   const day=create("input");
   day.type="date";day.min="2000-01-01";day.max="2099-12-31";day.value=entry.day;
   day.addEventListener("change",()=>{
    if(!validDate(day.value)){day.value=entry.day;status("PRIVATE HOLD: HUMAN date rejected");return;}
-   entry.day=day.value;dirty=true;updateCounts();
+   if(entry.day===day.value)return;
+   remember();entry.day=day.value;dirty=true;updateCounts();
   });
   dayLabel.append(day);
   const priorityLabel=create("label","Proposed HUMAN discussion priority");
@@ -151,13 +209,20 @@ function render(){
    const option=create("option",value.replaceAll("_"," "));option.value=value;
    option.selected=value===entry.priority;priority.append(option);
   }
-  priority.addEventListener("change",()=>{entry.priority=priority.value;dirty=true;updateCounts();});
+  priority.addEventListener("change",()=>{
+    if(entry.priority===priority.value)return;
+    remember();entry.priority=priority.value;dirty=true;updateCounts();
+  });
   priorityLabel.append(priority);
   const noteLabel=create("label","PRIVATE HUMAN discussion question (max 240)");
   const note=create("textarea");note.maxLength=240;note.rows=2;note.value=entry.question;
+  let typingSession=false;
+  note.addEventListener("blur",()=>{typingSession=false;});
   note.addEventListener("input",()=>{
    if(!safe(note.value)){note.value=entry.question;status("PRIVATE HOLD: unsafe HUMAN question rejected");return;}
-   entry.question=note.value;dirty=true;updateCounts();
+   if(entry.question===note.value)return;
+   if(!typingSession){remember();typingSession=true;}
+   entry.question=note.value;dirty=true;revision++;updateCounts();
   });
   noteLabel.append(note);
   container.append(stageLabel,dayLabel,priorityLabel,noteLabel);
@@ -171,10 +236,13 @@ async function readCSV(file){
  return new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
 }
 async function open(event){
+ const started=revision;
  try{
   const parsed=admit(await readCSV(event.target.files?.[0]));
+  if(revision!==started)throw Error("Local HUMAN work changed during file read");
   if(dirty&&!window.confirm("Discard unsaved local HUMAN decisions?"))return;
   sourceSha=parsed.sha;records=parsed.rows;dirty=false;sourceOptions=null;
+  resetHistory();
   $("options").value="";
   $("owner").replaceChildren(create("option","All proposed HUMAN owners"));
   $("owner").firstChild.value="";
@@ -187,12 +255,17 @@ async function open(event){
  }catch(error){status("PRIVATE HOLD: "+(error?.message||"invalid complete CSV")+". Existing draft unchanged.");}
 }
 async function loadOptions(event){
+ const started=revision;
  try{
   if(!records.length)throw Error("Open original complete decision CSV first");
   const file=event.target.files?.[0];
   if(!file||file.size<=0||file.size>1048576||!file.name.toLowerCase().endsWith(".json"))
    throw Error("Select PRIVATE HUMAN options JSON <=1MiB");
-  const doc=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer()));
+  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  if(revision!==started)throw Error("HUMAN source or choices changed during options read");
+  const doc=JSON.parse(raw);
+  if(ownCanonical(doc)+"\n"!==raw)
+   throw Error("Options must match original canonical bytes; duplicate or ambiguous keys refused");
   const plain=x=>x&&typeof x==="object"&&!Array.isArray(x);
   const fields=["schema","authority","historical_only","sources_reopened",
    "recipient_authenticated","consent_assumed","actions_dispatched",
@@ -239,7 +312,8 @@ async function loadOptions(event){
    return {dates:option.human_day_proposals_by_original_round,
            priorities:option.human_priority_proposals_by_original_round};
   });
-  sourceOptions=loaded;render();
+  if(revision!==started)throw Error("HUMAN source changed before options admission");
+  sourceOptions=loaded;revision++;render();
   status("Source-matching PRIVATE HUMAN proposals displayed, unsigned preview only; native receipt remains mandatory.");
  }catch(error){
   status("PRIVATE HOLD: options refused ("+(error?.message||"invalid")+"). Existing HUMAN choices retained.");
@@ -247,13 +321,16 @@ async function loadOptions(event){
 }
 
 async function restore(event){
+ const started=revision;
  try{
   if(!records.length)throw Error("Open original HUMAN template first");
   const parsed=admit(await readCSV(event.target.files?.[0]));
+  if(revision!==started)throw Error("Local HUMAN decisions changed during draft read");
   if(parsed.sha!==sourceSha||parsed.rows.length!==records.length||
       parsed.rows.some((r,i)=>JSON.stringify(r.fixed)!==JSON.stringify(records[i].fixed)))
     throw Error("Original HUMAN source/owner/order mismatch");
   if(!window.confirm("Restore COMPLETE source-bound local HUMAN draft? Existing choices replaced."))return;
+  remember();
   parsed.rows.forEach((r,i)=>{
    records[i].stage=r.stage;records[i].day=r.day;
    records[i].priority=r.priority;records[i].question=r.question;
@@ -276,16 +353,21 @@ function download(){
   const a=create("a");a.href=url;a.download="HUMAN-calendar-decision-template.csv";
   document.body.append(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),750);
-  dirty=false;updateCounts();
+  dirty=false;revision++;updateCounts();
   status("Complete original HUMAN CSV downloaded. Native original-bound RECEIVE still required.");
  }catch(error){status("PRIVATE HOLD: "+(error?.message||"export refused"));}
 }
 function forget(){
  if(dirty&&!window.confirm("Discard unsaved local PRIVATE HUMAN choices?"))return;
  records=[];sourceSha="";dirty=false;sourceOptions=null;
+ resetHistory();
  $("file").value="";$("restore").value="";$("options").value="";$("room").hidden=true;
  $("cards").replaceChildren();status("Private HUMAN discussion cleared from browser memory.");
 }
+$("undo").addEventListener("click",()=>stepHistory(true));
+$("redo").addEventListener("click",()=>stepHistory(false));
+$("bulk-hold").addEventListener("click",()=>bulk("hold"));
+$("bulk-discuss").addEventListener("click",()=>bulk("needs_discussion"));
 $("file").addEventListener("change",open);
 $("restore").addEventListener("change",restore);
 $("options").addEventListener("change",loadOptions);

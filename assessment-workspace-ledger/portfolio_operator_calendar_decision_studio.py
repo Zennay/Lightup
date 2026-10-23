@@ -102,8 +102,17 @@ candidate is an EXPLICIT human proposal and NEVER changes approval stage.</small
 owner labels and conflict flags BEFORE changing any local choices. Filtering
 does not remove any original rows. HUMAN alignment is never automatic.</small></p>
 <div class="actions">
+<button id="undo" type="button" class="secondary" disabled>Undo HUMAN edit</button>
+<button id="redo" type="button" class="secondary" disabled>Redo HUMAN edit</button>
+<button id="bulk-hold" type="button" class="secondary">Mark visible proposals HUMAN HOLD</button>
+<button id="bulk-discuss" type="button" class="secondary">Mark visible proposals NEEDS DISCUSSION</button>
 <button id="export" type="button">Export COMPLETE HUMAN decision CSV</button>
 <button id="clear" type="button" class="secondary">Clear local private workroom</button></div>
+<p id="history-summary" role="status">Local edit history: none.</p>
+<p><small>Bulk decisions affect only the currently filtered visible original
+source slots and require separate HUMAN confirmation. All original rows stay
+in exports. Undo/redo is bounded local memory, reset on source replacement,
+and never authenticates original records, reviewers, appointments or consent.</small></p>
 <div id="cards"></div></section></main>
 <footer>Offline human proposals only. No actual booking, grant, permission,
 task assignment, reviewer identity or verified security result.</footer>
