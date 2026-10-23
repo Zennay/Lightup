@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp | PRIVATE Assessment Retention Desk</title>
+<link rel="stylesheet" href="desk.css">
+<script src="desk.js" defer></script>
+<script src="vault.js" defer></script>
+</head>
+<body>
+<main>
+<header>
+<p class="eyebrow">LIGHTUP · OFFLINE ASSESSMENT OPERATIONS</p>
+<h1>PRIVATE bewaartermijnen & overdrachtsregister</h1>
+<p>Orden reeds geproduceerde assessmentbestanden, koppel menselijke vervolgkeuzes aan <strong>werkelijk geselecteerde bestandsbytes</strong> en neem die keuzes later opnieuw door. Geen uploads, netwerk, scanning of bestandsverwijdering.</p>
+<div class="warning" role="note"><strong>INCUBATE · M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><br>Alle keuzes zijn ongetekende menselijke voorstellen; geen toestemming, risicogoedkeuring, bewijs van herstel, eigenaarstoestemming of toestemming tot verwijdering. Gebruik alleen op een vertrouwd apparaat voor data waarvoor je bevoegd bent.</div>
+</header>
+<section class="panel">
+<h2>1. Privébronbestanden toevoegen</h2>
+<p>Maximaal 12 bestanden, maximaal 8 MiB per stuk en 64 MiB totaal. De browser berekent lokaal SHA-256; bestandsinhoud wordt <strong>niet</strong> in een export geplaatst. Bestandsnamen worden niet in de ontvangst opgeslagen.</p>
+<label for="sources" class="filelabel">Selecteer bestaande privébestanden</label><input id="sources" type="file" multiple>
+<div class="actions"><button id="clear" class="secondary" type="button">Werkruimte leegmaken</button><span id="source-count" class="muted">0 / 12 bronnen</span></div>
+</section>
+<section class="panel">
+<h2>2. Menselijke opvolging en beslissingen</h2>
+<p>De naam is een <strong>zelfgekozen lokaal alias</strong>, geen bewijs van herkomst. Dossierhouder, gevoeligheid en bewaarbeperking zijn uitsluitend <strong>onbevestigde HUMAN-indicaties</strong>, geen geauthenticeerd wettelijk besluit. Onbekende bewaarbeperkingen blijven een HOLD voor verwijderingsvoorstellen. "Voorgesteld verwijderen" voert nooit een verwijdering uit. Elke rij blijft expliciet onbeoordeeld totdat een mens haar invult.</p>
+<div class="filters"><label>Zoeken <input type="search" id="query" placeholder="Alias of SHA-prefix"></label><label>Status <select id="status-filter"><option value="">Alle voorstellen</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden</option><option value="quarantine">Afzonderen</option><option value="propose_delete">Verwijdering voorstellen</option></select></label>
+<label>HUMAN reviewdatum <select id="due-filter">
+<option value="">Alle reviewmomenten</option>
+<option value="overdue">Voorlopig verstreken</option>
+<option value="soon">Binnen 7 dagen inclusief vandaag</option>
+<option value="no_date">Geen reviewdatum</option>
+<option value="no_action">Geen vervolgactie</option>
+<option value="capacity_week_0">Capaciteit · kalenderweek 1 (vanaf deze week)</option>
+<option value="capacity_week_1">Capaciteit · kalenderweek 2</option>
+<option value="capacity_week_2">Capaciteit · kalenderweek 3</option>
+<option value="capacity_week_3">Capaciteit · kalenderweek 4</option>
+</select></label>
+<label>HUMAN bewaarbeperking <select id="hold-filter">
+<option value="">Alle onbevestigde controles</option>
+<option value="unknown">HUMAN nog niet beoordeeld</option>
+<option value="human_claim_active">HUMAN meldt actieve beperking</option>
+<option value="human_declared_clear">HUMAN meldt geen bekende beperking (niet geverifieerd)</option>
+<option value="unassigned">Dossierhouder ontbreekt</option>
+<option value="decision_hold">Verwijdervoorstel nog HOLD</option>
+</select></label>
+<label>Weergavevolgorde <select id="sort-order"><option value="source">Oorspronkelijke invoer</option><option value="due">Reviewdatum eerst</option><option value="stage">HUMAN fase</option></select></label>
+</div>
+<div class="bulk panel-mini">
+<h3>Gefilterde HUMAN-planning (voorbeeld → bevestigen → één stap terug)</h3>
+<div class="actions">
+<label>Status voor zichtbare rijen <select id="bulk-status"><option value="__keep__">Huidige status behouden</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden — voorstel</option><option value="quarantine">Afzonderen — voorstel</option><option value="propose_delete">Verwijdering voorstellen (geen actie)</option></select></label>
+<label>HUMAN houder (leeg = behouden) <input type="text" id="bulk-custodian" maxlength="80" placeholder="Team of dossierhouder"></label>
+<label>HUMAN gevoeligheid <select id="bulk-classification">
+<option value="__keep__">Niet wijzigen</option>
+<option value="unknown">Onbekend</option><option value="internal">Intern</option>
+<option value="confidential">Vertrouwelijk</option><option value="restricted">Beperkt gevoelig</option>
+</select></label>
+<label>HUMAN bewaarbeperking <select id="bulk-hold">
+<option value="__keep__">Niet wijzigen</option>
+<option value="unknown">Onbekend / onderzoek nodig</option>
+<option value="human_claim_active">HUMAN meldt actief</option>
+<option value="human_declared_clear">HUMAN meldt geen bekende beperking (onbevestigd)</option>
+</select></label>
+<label>Optionele voorlopige reviewdatum <input type="date" id="bulk-date" min="2000-01-01" max="2099-12-31"></label>
+<label>Menselijke vervolgactie <input type="text" id="bulk-action" maxlength="400" placeholder="Bij verwijderen verplicht: reden/goedkeuring volgen"></label>
+<button id="bulk-apply" type="button">Toepassen op zichtbare rijen</button>
+<button id="bulk-undo" class="secondary" type="button" disabled>Laatste bulkbewerking terugdraaien</button>
+</div>
+<p class="muted">Alleen zichtbaar gefilterde bronrijen worden aangepast. Bron-SHA en bestandsgrootte blijven altijd onveranderd. Dit is een lokale niet-bevoegdheidsplanning.</p>
+</div>
+<div id="stats" class="stats" aria-live="polite"></div>
+<div class="scroll"><table><thead><tr><th>Bronidentiteit</th><th>Privé-alias</th><th>HUMAN dossierhouder</th><th>HUMAN gevoeligheid</th><th>Bewaarbeperking (onbevestigd)</th><th>Menselijke status</th><th>Reviewdatum</th><th>HUMAN actie / toelichting</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="9">Selecteer eerst bestanden.</td></tr></tbody></table></div>
+</section>
+
+<section class="panel" aria-labelledby="capacity-title">
+<h2 id="capacity-title">2b. PRIVATE HUMAN capaciteitsscenario's — alleen oefenplanning</h2>
+<p>Vergelijk twee lokaal gekozen weekcapaciteiten met uitsluitend de huidige ongetekende HUMAN-reviewdatums. Een tekort is een voorstel voor menselijke bespreking, nooit een vastgesteld risico, taaktoewijzing of vrijgave. Werkelijke reviewdeadlines, juridische bewaartermijnen, personeel en klanttoestemming worden niet gecontroleerd.</p>
+<div class="actions">
+<label>Bronset <select id="capacity-scope"><option value="visible">Alleen momenteel zichtbare gefilterde HUMAN-rijen</option><option value="all">Alle huidige HUMAN-rijen</option></select></label>
+<label>Scenario A · reviews per week <input id="capacity-a" type="number" min="1" max="12" step="1" value="3"></label>
+<label>Scenario B · reviews per week <input id="capacity-b" type="number" min="1" max="12" step="1" value="5"></label>
+<button id="capacity-export" class="secondary" type="button" disabled>PRIVATE teloverzicht (.csv)</button>
+<button id="capacity-reset-week" class="secondary" type="button">Weekfilter wissen</button>
+</div>
+<p id="capacity-summary" class="muted" role="status">Selecteer eigen oorspronkelijke bronnen om een fictieve capaciteitsvergelijking te zien.</p>
+<div class="scroll"><table><caption>Aggregaten zonder oorspronkelijke bronidentiteit, aliassen of HUMAN notitieteksten</caption><thead><tr><th>Oefenperiode</th><th>HUMAN reviewvoorstellen</th><th>Onbevestigde HUMAN aandacht</th><th>Scenario A · restant/tekort</th><th>Scenario B · restant/tekort</th><th>HUMAN vervolg</th></tr></thead><tbody id="capacity-rows"></tbody></table></div>
+<p class="muted">Vier weken vanaf de huidige kalenderweek; eerder verlopen, latere en ongedateerde voorstellen staan apart. Aandacht is uitsluitend een HUMAN-melding/ontbrekende houder of onvolledig verwijdervoorstel. Deze scenario's worden niet aan het brongebonden privéplan toegevoegd en verdwijnen bij het sluiten van de pagina.</p>
+</section>
+<section class="panel">
+<h2>3. Brongebonden plan hervatten / exporteren</h2>
+<div class="vault">
+<h3>Versleuteld PRIVATE HUMAN-plan (standaard overdracht)</h3>
+<p>Beveilig de gevoelige HUMAN-aliassen, bronhashes en acties lokaal met een afzonderlijk wachtwoord. AES-256-GCM met PBKDF2-SHA256 (310.000 iteraties, verse willekeurige salt en nonce). Encryptie bewijst <strong>geen bronherkomst of toestemming</strong>.</p>
+<div class="actions">
+<label>Privéwachtwoord (12–128 tekens) <input id="vault-password" type="password" minlength="12" maxlength="128" autocomplete="off" placeholder="Wordt niet opgeslagen"></label>
+<button id="export-vault" type="button">Versleuteld plan exporteren (.lurt)</button>
+<label for="vault-import" class="filelabel secondary">Versleuteld plan openen (.lurt)</label><input id="vault-import" type="file" accept=".lurt,application/json">
+<label for="vault-compare" class="filelabel secondary">Oud versleuteld plan vergelijken (zonder overname)</label><input id="vault-compare" type="file" accept=".lurt,application/json">
+<hr>
+<h4>Wachtwoord roteren voor een bestaand versleuteld plan</h4>
+<p class="muted">Vereist opnieuw geselecteerde, exact overeenkomende originele bronbestanden. Het bestaande plan wordt opnieuw versleuteld naar een nieuw bestand; huidige HUMAN-keuzes en het oude bestand blijven intact.</p>
+<label for="vault-new-password">Nieuw privéwachtwoord (12–128 tekens) <input id="vault-new-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Niet opgeslagen"></label>
+<label for="vault-confirm-password">Bevestig nieuw privéwachtwoord <input id="vault-confirm-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Niet opgeslagen"></label>
+<label for="vault-rotate" class="filelabel secondary">Bestaand .lurt-plan voor rotatie kiezen</label><input id="vault-rotate" type="file" accept=".lurt,application/json">
+<button id="rotate-vault" type="button">Bestaand .lurt-plan opnieuw versleutelen</button>
+</div>
+<p class="muted">Wachtwoordverlies betekent geen herstel van versleutelde HUMAN-keuzes. De actuele originele bronbestanden moeten opnieuw zijn geselecteerd; bij mismatch wordt geen enkele HUMAN-rij overgenomen.</p>
+</div>
+<p>Een bestaand plan wordt uitsluitend in zijn geheel geaccepteerd wanneer de <em>actueel geselecteerde</em> bestandsbytes exact dezelfde SHA-256 en grootte hebben. Geen gedeeltelijke overname, geen automatische carry van gewijzigde bronnen. Het plan is <strong>PRIVATE en ongetekend</strong>: hashes alleen bewijzen bytegelijkheid.</p>
+<div class="actions">
+<label for="receipt" class="filelabel">Bestaand privéplan openen</label><input id="receipt" type="file" accept=".json,application/json">
+<label for="compare" class="filelabel secondary">Vergelijk ander privéplan (geen overname)</label><input id="compare" type="file" accept=".json,application/json">
+<button id="export-plan" class="secondary" type="button">Onversleuteld PRIVATE JSON exporteren (expliciet)</button>
+<button id="export-counts" class="secondary" type="button">Alleen statusaantallen (.csv)</button>
+<button id="export-calendar" class="secondary" type="button">PRIVATE voorgestelde reviewdatums (.ics)</button>
+<button id="export-visible-calendar" class="secondary" type="button" disabled>PRIVATE zichtbare reviewdatums (.ics)</button>
+<button id="export-brief" class="secondary" type="button">PRIVATE HUMAN reviewdossier (.html)</button>
+<button id="print" class="secondary" type="button">Privé-overzicht afdrukken</button>
+</div>
+<div id="source-drift" class="drift" aria-live="polite">Bronvergelijking is optioneel: selecteer eerst huidige originele bronnen, daarna een eerder privéplan. Ontbrekende bron = onbekend, nooit opgelost/verwijderd.</div>
+<p class="muted">Planexport bevat SHA-256, bestandsgrootte en jouw HUMAN-alias/status/actie. Dit is gevoelige privé-informatie; behandel de export als vertrouwelijk. Gegevens blijven alleen in browsergeheugen, niet in localStorage.</p>
+</section>
+<div id="message" role="status" aria-live="polite" tabindex="-1">Klaar voor lokale bestandsselectie.</div>
+<footer>Geen source-owner of veiligheidsgrenzen gewijzigd · geen actieve assessment · geen automatische retentie- of wisbeslissing.</footer>
+</main>
+</body>
+</html>
