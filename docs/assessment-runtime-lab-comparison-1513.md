@@ -119,6 +119,27 @@ PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py
 
 The text summary reports the cohort status and anonymous scenario ordinals, then lists each metric's baseline, candidate, delta and source-reported flag. It deliberately omits scenario IDs, target addresses, planted finding identities and input paths. Invalid or inconsistent input produces a generic HOLD with no partial case details. Exit `2` means REVIEW_ONLY, `3` means HOLD; zero is never a success signal. The output is not authenticated ground truth, consent, authorization or release evidence.
 
+## Printable, script-free offline HTML reports
+
+All three original local-file comparators now support opt-in `--format html`, alongside the unchanged default `json` and the terminal-friendly `text` format. Redirect stdout to a local file; the CLI does not invent a destination, write a report file itself, or contact a network endpoint:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cli_1513.py \
+  --format html before.json after.json > single-lab-review.html
+
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format html baseline-cohort.json candidate-cohort.json > cohort-lab-review.html
+
+PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py \
+  --format html old.json new.json > scored-lab-review.html
+```
+
+Open the resulting HTML file locally in a browser or print it to PDF using your browser's print dialog. The portable report has **no scripts, remote fonts, images or external assets**. Its Content-Security-Policy denies all network connections and permits only the SHA-256-pinned embedded stylesheet. It contains a summary of admitted anonymous scenario counts, source-flagged adverse metrics, source-reported unknown-coverage values above zero, per-metric flag frequencies and a print-friendly baseline/candidate/delta detail table for each admitted scenario. Cohort details use locally assigned anonymous ordinals, never the original scenario IDs; scored ground-truth descriptions, planted finding identifiers, targets, client identities, input paths and raw notes are not printed.
+
+The source-reported `coverage_unknown` metric remains separate **uncertainty**, not an invented regression. Cost/runtime and other informational metrics retain their original comparator flags. Rejected or inconsistent input prints a generic `HOLD` HTML report **without partial metrics or scenario details**. The HTML is unsigned and numeric values are unauthenticated source data; do not publish private lab outputs or interpret the report as remediation, real safety evidence, authorization or consent.
+
+The program exit contract is unchanged for all formats: **2 for REVIEW_ONLY, 3 for HOLD, never zero**. Shell redirection can create a local file even when the command exits 3: inspect the displayed HOLD status instead of treating file existence as success. Four authority flags remain false; no new execution, dispatch, scan, grant, deployment or release permission is created.
+
 ## Baseline replay is not an independent candidate
 
 The offline evaluator now rejects the *same* record ID or run ID on both
