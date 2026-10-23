@@ -50,7 +50,7 @@ ACTION_LABELS = {
     "owner": "Start brononderzoek",
     "owner-package": "Maak offline pakket",
     "owner-encrypted": "Versleutel overdracht",
-    "owner-encrypted-receipt": "Maak veilige overdracht",
+    "owner-encrypted-receipt": "Maak versleutelde overdracht",
     "recipient": "Open ontvangen dossiers",
     "archives": "Controleer en open pakket",
     "pack": "Pak dossier in",
@@ -111,10 +111,10 @@ def render() -> bytes:
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>""" + css_text + """</style></head>
 <body><main class="shell">
-<header><div class="eyebrow">LIGHTUP / PRIVATE OPERATOR DESK</div>
-<h1>Offline HUMAN werkruimte</h1>
-<p class="lead">Van echte oorspronkelijke evidence naar bronvrije HUMAN-opvolging.
-Kies een bestaande native workflow en bereid lokaal het bijbehorende terminalcommando voor.</p>
+<header><div class="eyebrow">LIGHTUP / OFFLINE WERKPLEK</div>
+<h1>Offline werkruimte</h1>
+<p class="lead">Maak een pakket, controleer wat je ontvangt of hervat een beoordeling.
+Dit scherm bereidt alleen een opdracht voor; er wordt niets automatisch uitgevoerd.</p>
 <div class="state"><span class="dot"></span> INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</div>
 </header>
 <div class="notice" role="note"><strong>Geen uitvoerings- of vrijgavebevoegdheid.</strong>
@@ -123,19 +123,19 @@ Alleen de bestaande native Python-tools kunnen na expliciete operatoractie
 bronbestanden controleren en nieuwe private lokale output publiceren.
 Versleuteling en checksums bewijzen geen identiteit, echte toestemming of fix.</div>
 <section class="journey" aria-label="Gids voor echte PRIVATE bronvrije overdracht">
-<h2>Van oorspronkelijke evidence naar menselijke opvolging</h2>
+<h2>Drie stappen, van pakket tot beoordeling</h2>
 <p>Drie onafhankelijke lokale HUMAN-stappen. De pakketoverdracht tussen machines
 gebeurt uitsluitend na afzonderlijke echte toestemming, nooit automatisch.</p>
 <div class="journey-grid">
-<article><span>01 · ORIGINAL OWNER</span><h3>Maak versleuteld pakket en eigen fingerprintbewijs</h3>
+<article><span>01 · BRONHOUDER</span><h3>Maak versleuteld pakket en eigen fingerprintbewijs</h3>
 <p>Oorspronkelijke privé-evidence blijft bij de bronhouder; alleen de afzonderlijke native
 bronvrije Cockpit wordt lokaal versleuteld naar een nieuw .luhx-bestand plus apart privé, niet-ondertekend JSON-fingerprintbewijs.</p>
 <button type="button" data-workflow="owner-encrypted-receipt">Bereid originele eigenaarsoverdracht voor</button></article>
-<article><span>02 · PRIVATE RECIPIENT</span><h3>Open de werkelijk ontvangen overdracht</h3>
+<article><span>02 · ONTVANGER</span><h3>Open de werkelijk ontvangen overdracht</h3>
 <p>Gebruik uitsluitend het apart geautoriseerd ontvangen .luhx-bestand én bijbehorend privé unsigned .json-fingerprintbewijs; controleer bytes vóór decryptie.
 De ontvanger maakt lokaal een PRIVATE HUMAN-werkruimte, geen scan of fix.</p>
 <button type="button" data-workflow="archives">Bereid ontvangst en HUMAN-review voor</button></article>
-<article><span>03 · HUMAN FOLLOW-UP</span><h3>Bewaar menselijke antwoorden versleuteld</h3>
+<article><span>03 · BEOORDELAAR</span><h3>Bewaar menselijke antwoorden versleuteld</h3>
 <p>Na handmatige brongebonden beoordeling kunnen bestaande echte HUMAN-journalantwoorden
 lokaal worden verzegeld. Bronidentiteit, toestemming en retest blijven extern.</p>
 <button type="button" data-workflow="seal-journal">Bereid versleuteld HUMAN-journal voor</button></article>
