@@ -97,3 +97,10 @@ Commentary saved or cleared in the offline browser editor can be undone and redo
 ### Clear notes without losing source comparisons
 
 **Clear all HUMAN notes and drafts** clears only private saved commentary and unsaved drafts after explicit confirmation. Original cohort snapshots, metric values, status and HUMAN stage marks remain unchanged. Clearing is one reversible edit in the bounded 20-step local note history until history is discarded, while **Forget** clears the source data and both undo/redo stacks. Nothing is persisted or sent over the network.
+
+## Pairwise unknown-coverage drilldown
+
+The Unknown-coverage movement section now lets a reviewer compare **any two distinct manually selected snapshot slots**, not only slot 01 or the immediately previous slot. The per-scenario table reports the two source-declared values, their arithmetic change, and whether the value increased, decreased or stayed unchanged. A direction filter narrows the visible rows without changing the imported source cohort.
+
+Export the selected pair and current filter as CSV, JSON or a script-free printable HTML brief. Handoffs use anonymous scenario ordinals and fixed field names only; they exclude original scenario IDs, filenames, source hashes and HUMAN notes. Aggregate counts and total/median changes are included, along with the selected manual slot numbers, source-reported snapshot statuses, and explicit false authority/verification fields. The selected order remains unauthenticated: increased unknown coverage is an uncertainty signal, while a decrease is **not** evidence of remediation, consent, safety or release.
+
