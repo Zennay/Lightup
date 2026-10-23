@@ -197,6 +197,11 @@ def render_html(packet):
             "".join("<td>" + str(counts[state]) + "</td>" for state in TRANSITIONS) +
             "</tr>"
         )
+    interval_counts = packet["selected_interval"]["counts"]
+    interval_summary_rows = "".join(
+        "<tr><td>" + state + "</td><td>" + str(interval_counts[state]) + "</td></tr>"
+        for state in TRANSITIONS
+    )
     source_counts = " · ".join(
         "Snapshot " + str(index) + ": " + str(count) + " endpoints"
         for index, count in enumerate(packet["snapshot_endpoint_counts"], start=1)
@@ -229,6 +234,8 @@ def render_html(packet):
         "<h2>Transition totals</h2><table><thead><tr><th>Snapshot pair</th>" +
         "".join("<th>" + state + "</th>" for state in TRANSITIONS) +
         "</tr></thead><tbody>" + "".join(summary_rows) + "</tbody></table>"
+        "<h2>Selected interval totals</h2><table><thead><tr><th>Net state</th><th>Count</th></tr></thead>"
+        "<tbody>" + interval_summary_rows + "</tbody></table>"
         "<p><a href='" + CSV_NAME + "'>Download PRIVATE ordinal timeline CSV</a></p>"
         "<p><small>Local unsigned consistency only. Source authenticity, chronology, "
         "client/operator identity and consent, action-time revocation, independent "
