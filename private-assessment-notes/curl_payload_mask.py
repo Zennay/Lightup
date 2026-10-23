@@ -45,14 +45,13 @@ _PRIVATE_MARKER = "[REDACTED_FORM_VALUE]"
 FIELD_BOUNDARY_GUARD = "_LIGHTUP_PRIVATE_CURL_FIELD_BOUNDARY_"
 
 
-def _field_key(name: str) -> str:
-    """Canonicalise only a field name for credential matching.
+def _field_key(name: str) -> tuple[str, bool]:
+    """Return a canonical field name and whether bounded decoding stayed ambiguous.
 
-    Decode at most three bounded layers of percent-encoded ASCII letters,
-    digits, underscore or hyphen. NFKC folds compatibility spellings, and
-    Unicode format controls are ignored for matching. The original key is
-    retained in output; the value is withheld. Never decode payload values
-    or use a URI, shell or network parser here.
+    Only ASCII letters/digits/underscore/hyphen are decoded, for at most three
+    layers. Original key text is retained. Any malformed or residual percent
+    escape after the budget is ambiguous and causes the paired value to be
+    withheld conservatively instead of passing through unreviewed.
     """
     def decode_ascii_name_char(match: re.Match[str]) -> str:
         character = chr(int(match.group(1), 16))
@@ -61,9 +60,6 @@ def _field_key(name: str) -> str:
         return match.group(0)
 
     canonical = name
-    # Bound nested name-only percent decoding. Expose an encoded percent only
-    # when another two-hex escape follows; values and original key spelling
-    # are never decoded or rewritten.
     for _ in range(3):
         exposed = re.sub(r"(?i)%25(?=[0-9a-f]{2})", "%", canonical)
         decoded = _PERCENT_ASCII_FIELD_CHAR.sub(decode_ascii_name_char, exposed)
@@ -71,8 +67,11 @@ def _field_key(name: str) -> str:
             break
         canonical = decoded
     canonical = unicodedata.normalize("NFKC", canonical)
-    return "".join(character for character in canonical
-                   if unicodedata.category(character) != "Cf")
+    canonical = "".join(character for character in canonical
+                        if unicodedata.category(character) != "Cf")
+    ambiguous = bool(_PERCENT_ASCII_FIELD_CHAR.search(canonical) or
+                      re.search(r"%(?![0-9a-f]{2})", canonical, re.IGNORECASE))
+    return canonical, ambiguous
 
 
 def _mask_field(fragment: str, *, urlencoded: bool) -> str:
@@ -87,7 +86,8 @@ def _mask_field(fragment: str, *, urlencoded: bool) -> str:
         split_at = at_sign
     raw_name = fragment[:split_at]
     name = raw_name.strip()
-    if not _CREDENTIAL_FIELD.fullmatch(_field_key(name)):
+    canonical, ambiguous = _field_key(name)
+    if not _CREDENTIAL_FIELD.fullmatch(canonical) and not ambiguous:
         return fragment
     # The @source form of --data-urlencode and --form is also private.
     # Retain the original delimiter/key as a cue for HUMAN review.
