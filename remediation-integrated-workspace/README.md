@@ -416,7 +416,13 @@ before it stages or publishes any files. The source folder remains
 unchanged instead of being contaminated by a newly received copy.
 The browser also catches a fingerprint-file path identical to the ZIP
 path before the operator copies the command; **all native restrictions
-remain authoritative**. The receiver re-reads the exact
+remain authoritative**. The offline command composer also rejects invisible
+Unicode format/direction marks, surrogate code points and line/paragraph
+separators in every operator-supplied path, matching the native terminal's
+existing `require_operator_path` policy. Printable Unicode names are
+allowed. No command is offered for copying when a hidden-character path
+is detected. This is **early operator feedback**, never a replacement for
+native owner-private descriptor checks, separate approval or source review. The receiver re-reads the exact
 operator-provided file before atomic private publication; a changed fingerprint
 or changed ZIP is HOLD, without publishing the destination. Without the
 optional fingerprint, all preexisting exact native source/ZIP verification
