@@ -112,9 +112,12 @@ To check an unused PRIVATE checksum output filename without issuing it,
 use `--planned-checksum-file "$HOME/lightup-private/new-software.sha256"`
 with the same original `inspect-archive --archive ...` command, optionally
 alongside `--planned-output-dir`. Both planned names must be
-**different**, since a new private recipient directory and a new 0600
-checksum file cannot simultaneously occupy the same name. Native
-preflight returns **HOLD=3** (without any publication) for such conflicts;
+**different and non-overlapping**: the new checksum file cannot be
+inside the future recipient directory, and the recipient cannot use the
+checksum file as an ancestor directory. Neither output can be a parent
+or descendant of the other; otherwise a file and a fresh private directory
+could not be published in the requested order. Native
+preflight returns **HOLD=3** (without any publication) for these conflicts;
 the offline HUMAN browser command composer also rejects them before
 copying the command. This returns REVIEW_ONLY with
 `PLANNED PRIVATE CHECKSUM PATH: admissible but not created` only when the
