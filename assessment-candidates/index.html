@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LightUp · Lab Candidate Matrix</title><link rel="stylesheet" href="style.css"></head>
+<title>LightUp · Lab Candidate Matrix</title><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; style-src 'sha256-pICf3MuJm2Iyb4gImVSDNI6Kedsqj1OIzF+c+lMI6jc='; script-src 'sha256-X+aXcKiQaG8X5h98CW/yx2lL+imy3oZHDw3cv8YGAc0='"><link rel="stylesheet" href="style.css"></head>
 <body><a class="skip" href="#summary">Skip to matrix</a>
 <header><div class="topline"><span class="brand">◈ LightUp / assessment-runtime</span><span class="posture">INCUBATE · LAB ONLY · DRAFT/HOLD</span></div>
 <h1>Candidate Decision Matrix</h1><p class="lede">Compare <strong>existing, untrusted laboratory outputs</strong> without scanning, deploying or authorizing anything. Every result is a human discussion prompt, never a safety or release verdict.</p>
@@ -72,7 +72,7 @@
 <label>Current anonymous case<select id="queueCase"><option value="">Select after import</option></select></label>
 <label>Proposed reviewer group<select id="queueRoute"><option value="unrouted">No proposed group</option><option value="scope">Human scope reviewer</option><option value="findings">Lab detection reviewer</option><option value="evidence">Evidence reviewer</option><option value="operations">Lab operations reviewer</option></select></label>
 <label>Local discussion stage<select id="queueStage"><option value="needs_review">Needs human review</option><option value="in_discussion">In discussion</option><option value="documented">Discussion documented</option></select></label>
-</div><div class="controls"><button id="saveQueue" type="button" disabled>Save case discussion</button><button id="focusQueue" type="button" class="secondary" disabled>Inspect selected case metrics</button><button id="resetQueue" type="button" class="ghost" disabled>Reset local case discussions</button></div>
+</div><div class="controls"><button id="saveQueue" type="button" disabled>Save case discussion</button><button id="focusQueue" type="button" class="secondary" disabled>Inspect selected case metrics</button><button id="resetQueue" type="button" class="ghost" disabled>Reset local case discussions</button><button id="exportQueueCsv" type="button" class="secondary" disabled>Export filtered HUMAN queue CSV</button><button id="exportQueueHtml" type="button" class="secondary" disabled>Export filtered HUMAN queue HTML</button></div>
 <fieldset><legend>Human discussion batch proposals (visible filtered cases only)</legend>
 <label><input id="queueIncludeNeutral" type="checkbox"> Also show cases with no source-adverse metrics in selected topic</label>
 <label>Batch generic group<select id="bulkRoute"><option value="unchanged">Leave unchanged</option><option value="unrouted">No group proposed</option><option value="scope">Human scope reviewer</option><option value="findings">Lab detection reviewer</option><option value="evidence">Evidence reviewer</option><option value="operations">Lab operations reviewer</option></select></label>
