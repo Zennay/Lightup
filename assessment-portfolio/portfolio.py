@@ -993,6 +993,12 @@ def run(args):
     elif not args.output_dir:
         raise Hold("select an output directory or use --preview-only")
     reference_day = parse_date(args.as_of)
+    if args.restore_private_capacity_json and (
+        args.private_capacity_plan or args.daily_capacity is not None
+        or args.role_capacity or args.alternate_daily_capacity is not None
+        or args.alternate_role_capacity
+    ):
+        raise Hold("choose saved PRIVATE capacity scenario OR manual capacity inputs")
     capacity_limits = capacity.configure(
         args.private_capacity_plan, args.daily_capacity, args.role_capacity, ROLES,
     )
@@ -1002,7 +1008,7 @@ def run(args):
     )
     if alternative_capacity_limits is not None and capacity_limits is None:
         raise Hold("alternative capacity scenario requires the original PRIVATE capacity plan")
-    if args.private_capacity_studio and capacity_limits is None:
+    if args.private_capacity_studio and capacity_limits is None and not args.restore_private_capacity_json:
         raise Hold("private capacity scenario studio needs original declared capacity")
     if bool(args.focus_from) != bool(args.focus_through):
         raise Hold("planning window needs both first and last proposed dates")
@@ -1033,6 +1039,10 @@ def run(args):
     documents, rows, source_dirs = collect(admitted, reference_day)
     if manifest_path:
         source_dirs.add(os.path.dirname(manifest_path))
+    scenario_path = (os.path.abspath(args.restore_private_capacity_json)
+                     if args.restore_private_capacity_json else None)
+    if scenario_path:
+        source_dirs.add(os.path.dirname(scenario_path))
     if history_paths:
         if args.human_responses or args.previous_human_responses:
             raise Hold("choose multi-round HUMAN history or pairwise HUMAN inputs, not both")
@@ -1090,6 +1100,14 @@ def run(args):
                 and (first_day is None or (row["review_date"] is not None and
                      first_day.isoformat() <= row["review_date"] <= last_day.isoformat()))
             ]
+        scenario_raw = None
+        if scenario_path:
+            scenario_raw, scenario_doc = human_workbook.read_private_response(
+                scenario_path, open_directory_nofollow
+            )
+            capacity_limits, alternative_capacity_limits = capacity_studio.admit_private_scenario(
+                scenario_doc, rows, reference_day, ROLES
+            )
         responses_raw, human_entries = None, None
         if args.human_responses:
             # Explicit private HUMAN input; never edits original admitted agendas.
@@ -1137,6 +1155,12 @@ def run(args):
             human_history_entries=history_entries,
         )
         readmit_unchanged_sources(admitted)
+        if scenario_path:
+            reopened, _ = human_workbook.read_private_response(
+                scenario_path, open_directory_nofollow
+            )
+            if reopened != scenario_raw:
+                raise Hold("PRIVATE HUMAN capacity scenario changed before publication")
         if args.human_responses:
             reopened, _ = human_workbook.read_private_response(
                 args.human_responses, open_directory_nofollow
@@ -1248,6 +1272,8 @@ def main(argv=None):
                         help="Operator-declared 1–128 HUMAN proposals per neutral role and proposed day")
     parser.add_argument("--role-capacity", action="append", default=[], metavar="ROLE=N",
                         help="Optional explicit daily HUMAN item assumption for a fixed neutral role")
+    parser.add_argument("--restore-private-capacity-json", metavar="PRIVATE_JSON",
+                        help="Reopen browser v2 PRIVATE HUMAN capacity assumptions against exact current source rows, no authority")
     parser.add_argument("--private-capacity-studio", action="store_true",
                         help="Add hash-CSP-pinned offline PRIVATE browser capacity scenario editor (requires declared capacity)")
     parser.add_argument("--alternate-daily-capacity", type=int,
