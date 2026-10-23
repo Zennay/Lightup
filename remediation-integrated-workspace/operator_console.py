@@ -39,6 +39,7 @@ CATEGORIES = {
     "receive-software": "Software only",
     "inspect-software": "Software only",
     "inspect-checkout": "Software only",
+    "reopen-passport": "Software only",
 }
 
 def render() -> bytes:
