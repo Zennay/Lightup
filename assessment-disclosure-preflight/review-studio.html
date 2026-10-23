@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE HUMAN disclosure studio</title>
+<link rel="stylesheet" href="./review-studio.css">
+<script src="./review-vault.js" defer></script>
+<script src="./review-studio.js" defer></script>
+</head>
+<body>
+<header>
+<p>LIGHTUP / OFFLINE ASSESSMENT LAB / PRIVATE HUMAN DESK</p>
+<h1>Disclosure review studio</h1>
+<p>Inspect and change source-free HUMAN follow-up notes against an exact original PRIVATE preflight receipt. Local files only: no scanning, model, upload, browser storage, signed authority, automatic decision or recipient sharing.</p>
+</header>
+<main>
+<section class="hold" aria-label="Mandatory release HOLD">
+<h2>REVIEW ONLY — not release authorization</h2>
+<p>An exact SHA-256 match binds your CSV only to the selected <strong>receipt bytes</strong>, not to original lab source bytes, genuine client/operator consent, authenticated reviewers, target ownership, ground truth, remediation or a secure release. Even a manually reviewed row does not grant approval. The source-free template and HUMAN notes are still PRIVATE.</p>
+<p class="muted">All work is kept in page memory until you explicitly export a local file. Passwords are cleared from the input fields after each encrypt/decrypt attempt; this does not guarantee secure erasure from browser memory. No network dependencies, telemetry, IndexedDB, localStorage, cookies or clipboard collection. Closing this page before export loses unsaved HUMAN edits.</p>
+</section>
+<section aria-labelledby="loadTitle">
+<h2 id="loadTitle">1. Open PRIVATE source-free review files</h2>
+<div class="controls">
+<label for="receipt">Original PRIVATE-receipt.json<input id="receipt" type="file" accept=".json,application/json" aria-describedby="loadHelp"></label>
+<label for="csv">PRIVATE plaintext HUMAN CSV (optional)<input id="csv" type="file" accept=".csv,text/csv" aria-describedby="loadHelp"></label>
+<label for="vault">OR encrypted PRIVATE HUMAN vault (.luhd)<input id="vault" type="file" accept=".luhd,application/octet-stream" aria-describedby="loadHelp"></label>
+<label for="openPassword">Encrypted vault password, if selected<input id="openPassword" type="password" autocomplete="off" minlength="14" maxlength="256" aria-describedby="loadHelp"></label>
+<label for="bundle">OR complete encrypted PRIVATE HUMAN handoff (.luhb): no separate receipt needed<input id="bundle" type="file" accept=".luhb,application/octet-stream" aria-describedby="loadHelp"></label>
+<button id="load" type="button">Open matching pair</button>
+</div>
+<p id="loadHelp" class="muted">First use the native original preflight and human_review.py prepare. Select EITHER the exact PRIVATE receipt and one matching HUMAN CSV/.luhd, OR a single fully encrypted HUMAN .luhb handoff and password, never both. The bundle encrypts receipt plus notes. A changed receipt, wrong ordinal, unsupported stage or unexpected source-kind fails closed without replacing your current in-memory edits. A modern offline browser with Web Crypto is required.</p>
+<p id="notice" role="status" aria-live="polite">Select your source-free PRIVATE receipt and CSV to begin. No file has been opened.</p>
+</section>
+<section id="editor" hidden aria-labelledby="editTitle">
+<h2 id="editTitle">2. Human-only next actions</h2>
+<p>All decisions remain non-authorizing HUMAN claims. The native Python renderer strictly re-admits the downloaded CSV against the selected receipt; an offline browser check is not security approval.</p>
+<div class="controls">
+<label for="stageFilter">Filter review stage
+<select id="stageFilter">
+<option value="all">All human stages</option>
+<option value="unreviewed">Unreviewed</option>
+<option value="privacy_hold">Privacy HOLD</option>
+<option value="source_owner_hold">Source-owner HOLD</option>
+<option value="consent_hold">Consent HOLD</option>
+<option value="follow_up_required">Follow-up required</option>
+<option value="human_reviewed_no_release">Human reviewed / NO RELEASE</option>
+</select></label>
+<label for="query">Search ordinal, kind, question or next action<input id="query" type="search" autocomplete="off" placeholder="Local search only"></label>
+</div>
+<p id="visible" aria-live="polite"></p>
+<p id="unsaved" aria-live="polite"></p>
+<div class="tablewrap" role="region" aria-label="Private human review rows" tabindex="0">
+<table>
+<thead><tr><th scope="col">Ordinal</th><th scope="col">Original declared kind</th><th scope="col">HUMAN stage</th><th scope="col">PRIVATE question</th><th scope="col">PRIVATE next action</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+</section>
+<section aria-labelledby="compareTitle">
+<h2 id="compareTitle">3. Compare earlier encrypted HUMAN review (read-only)</h2>
+<p>Choose an older PRIVATE .luhd HUMAN round, sealed against the <strong>identical receipt bytes</strong>. Review literal differences in stage, question and next action. Earlier answers are display-only; they never replace current HUMAN choices, make a finding valid, prove independent reviewers or authorize release.</p>
+<div class="controls">
+<label for="compareVault">Older encrypted PRIVATE HUMAN .luhd file<input id="compareVault" type="file" accept=".luhd,application/octet-stream"></label>
+<label for="comparePassword">Older vault passphrase<input id="comparePassword" type="password" autocomplete="off" minlength="14" maxlength="256"></label>
+<button id="compare" type="button" disabled>Compare HUMAN rounds locally</button></div>
+<div id="compareSection" hidden>
+<p id="compareCounts" role="status" aria-live="polite"></p>
+<div class="tablewrap" role="region" aria-label="Read-only prior HUMAN review differences" tabindex="0">
+<table><thead><tr><th scope="col">Ordinal</th><th scope="col">Kind</th><th scope="col">Literal fields changed</th><th scope="col">Earlier HUMAN text</th><th scope="col">Current HUMAN text</th></tr></thead><tbody id="compareRows"></tbody></table></div>
+</div>
+</section>
+<section aria-labelledby="exportTitle">
+<h2 id="exportTitle">4. Export PRIVATE HUMAN choices</h2>
+<p>Exports full ordinal order, even when the table is filtered. No source IDs, targets, evidence, model responses or credentials are included by this app unless a human manually types them into notes. Keep PRIVATE. Reopen with the existing native human_review.py render command for a new scriptless PRIVATE human report.</p>
+<div class="controls"><label for="newPassword">New encrypted vault passphrase (14–256 characters)<input id="newPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
+<label for="confirmPassword">Repeat new encrypted vault passphrase<input id="confirmPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label></div>
+<p class="muted">Recommended private continuity: seal your HUMAN notes with AES-256-GCM and PBKDF2-SHA256 (600,000 iterations) using a fresh salt and nonce. This only encrypts HUMAN CSV bytes, bound to the exact unsignable PRIVATE receipt digest. Keep the passphrase separately. An incorrect password or different receipt causes HOLD. There is no password recovery.</p>
+<div class="controls"><button id="exportBundle" type="button" disabled>Export complete encrypted PRIVATE HUMAN handoff (.luhb)</button>
+<button id="exportEncrypted" type="button" disabled>Export encrypted PRIVATE HUMAN vault (.luhd)</button>
+<button id="export" type="button" disabled>Export plaintext PRIVATE HUMAN CSV (explicit warning)</button>
+<button id="exportCounts" type="button" disabled>Export suppressed PRIVATE HUMAN counts only</button>
+<button id="exportPrint" type="button" disabled>Export printable PRIVATE HUMAN report</button></div>
+<p class="muted">The complete encrypted handoff includes both unsigned source-free PRIVATE receipt and HUMAN notes under one new password-derived authenticated encryption envelope; no original lab evidence is embedded. The older .luhd format still requires the separate exact receipt. The counts-only option never includes HUMAN note text, original artifact names, targets, findings, evidence or receipt hash. It still reveals summary categories for sufficiently large groups and is not guaranteed anonymous or approved for public sharing.</p>
+</section>
+<section aria-labelledby="reconcileTitle">
+<h2 id="reconcileTitle">5. Combine two completed HUMAN reviews — explicit HOLD/A/B</h2>
+<p>Already have two separately completed PRIVATE HUMAN CSV rounds for the <strong>same exact unsigned PRIVATE receipt</strong>? Open the independent <a href="./reconcile-standalone.html">offline two-reviewer reconciliation studio</a> in this local folder. It shows stages, questions and follow-up actions side by side, requires a deliberate per-ordinal HUMAN choice and reason, defaults everything to HOLD, and exports a source-bound decision worksheet for the original Python finalizer.</p>
+<p class="muted">Keep the exact receipt and both reviewer CSVs. The reconciliation workroom does not authenticate either reviewer or original source, infer consent, grant authority, approve disclosures or replace native original admission. For encrypted sources use the native reconcile.py CLI without decrypting to an extra browser CSV. Links work only when the software-only files have been downloaded together into a trusted offline directory; there is no hosted endpoint.</p>
+</section>
+</main>
+<footer>LightUp · Incubate / M3-M7 PLAN/LAB ONLY · DRAFT/HOLD · No permission, verification, grant or release</footer>
+</body>
+</html>

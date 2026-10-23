@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE HUMAN History Desk</title>
+<link href="./private-inbox-history-studio.css" rel="stylesheet">
+<script src="./private-inbox-history-studio.js" defer></script>
+<script src="./private-inbox-history-compose.js" defer></script>
+</head>
+<body>
+<header>
+<p class="eyebrow">LIGHTUP / OFFLINE HUMAN OPERATIONS</p>
+<h1>Private HUMAN History Desk</h1>
+<p class="lead">Inspect 2–8 manually ordered HUMAN review rounds, track changed discussion stages and spot the next human follow-ups. Your saved local history report stays entirely in this browser session.</p>
+<p class="warning"><strong>REVIEW_ONLY / HOLD · INCUBATE M3/M7 PLAN/LAB ONLY.</strong> The timeline is manually ordered, <strong>not authenticated chronology</strong>. Discussion completion is not remediation or a security verdict. Suggested teams are not assignments. This workspace does not create consent, scanning, release, or authorization.</p>
+</header>
+<main>
+<section class="panel" aria-labelledby="load-heading">
+<h2 id="load-heading">1 · Open native PRIVATE history</h2>
+<label for="history-file">Import <code>PRIVATE-inbox-HUMAN-history.json</code> saved by the native <code>private_inbox_history.py build</code> workflow.</label>
+<input type="file" id="history-file" accept=".json,application/json">
+<p id="notice" role="status" aria-live="polite">No private HUMAN history loaded.</p>
+<p class="muted">Maximum 256 KiB, 2–8 complete rounds and 1–12 original slot ordinals. Imported native JSON is read-only. The browser does not authenticate the source, original files, reviewers, chronology or SHA.</p>
+</section>
+<section class="panel" aria-labelledby="compose-heading">
+<h2 id="compose-heading">Or compose PRIVATE history from original complete HUMAN worksheets</h2>
+<p>Without Python, select the original <strong>owner-private source-free inbox board JSON</strong> and 2–8 separately saved complete HUMAN action CSVs. Select files in manual earliest-to-latest order using the numbered controls. The original HUMAN note contents are temporarily processed in <strong>browser memory only</strong> and excluded entirely from the resulting history.</p>
+<p class="warning">Only use this on a trusted offline computer. Browser composition does not authenticate the source producer, reviewers, chronology, consent or file custody. The original native `reopen` is still required for saved PRIVATE reports. Never upload files to this page on a public website.</p>
+<label for="compose-board">Original PRIVATE-inbox-portfolio.json (owner-only, up to 64 KiB)</label>
+<input id="compose-board" type="file" accept=".json,application/json">
+<div class="topline"><label for="compose-count">Number of complete manually ordered revisions
+<select id="compose-count"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><button type="button" id="compose-reset" class="secondary">Clear original inputs</button></div>
+<div id="compose-revisions" class="compose-grid"></div>
+<label class="checkbox confirm"><input type="checkbox" id="compose-confirm"> I understand original HUMAN notes remain in local browser memory during comparison; outputs omit notes and are unsigned, non-authorizing coordination reports.</label>
+<div class="topline"><button type="button" id="compose-build">Compose PRIVATE source-free history in memory</button><button type="button" id="compose-download" class="secondary" disabled>Download private source-free history JSON</button></div>
+<p id="compose-status" role="status" aria-live="polite">No original private inputs processed. Native source custody remains separate.</p>
+</section>
+<section class="panel" id="workspace" hidden aria-labelledby="workspace-heading">
+<div class="topline"><h2 id="workspace-heading">2 · Review your manually ordered snapshots</h2><button type="button" id="clear" class="secondary">Clear ALL private inputs and history</button></div>
+<div class="metrics" id="metrics" aria-label="Private HUMAN summary"></div>
+<div class="controls">
+<label for="round">Selected manual round
+<select id="round"></select></label>
+<label for="stage">HUMAN stage
+<select id="stage"><option value="ALL">All stages</option><option value="UNREVIEWED">Unreviewed</option><option value="NEEDS_INPUT">Needs HUMAN input</option><option value="IN_PROGRESS">Discussion in progress</option><option value="DISCUSSION_COMPLETE_NO_RELEASE">Discussion complete, no release</option></select></label>
+<label for="role">Suggested discussion role
+<select id="role"><option value="ALL">All proposed roles</option><option value="UNASSIGNED">Unassigned</option><option value="SECURITY">Security</option><option value="PRIVACY">Privacy</option><option value="CLIENT_OPERATIONS">Client operations</option><option value="PLATFORM">Platform</option></select></label>
+<label for="changes" class="checkbox"><input id="changes" type="checkbox"> Only changed since prior round</label>
+</div>
+<p id="filter-count" aria-live="polite"></p>
+<div class="cards" id="cards"></div>
+<section class="inner" aria-labelledby="timeline-heading">
+<h3 id="timeline-heading">Manual round overview</h3>
+<p>All slots remain in the native history; filters only change what you see here.</p>
+<div class="table-scroll"><table><thead><tr><th>Round</th><th>Unreviewed</th><th>Needs input</th><th>In progress</th><th>Discussion complete · no release</th></tr></thead><tbody id="round-rows"></tbody></table></div>
+</section>
+<section class="inner" aria-labelledby="range-heading">
+<h3 id="range-heading">Compare any two manually ordered HUMAN rounds</h3>
+<p>Compare early and late discussion snapshots without changing original files.
+The report shows exact status and proposed-role endpoints. For private note
+fields it records only whether an edit was reported <em>at least once</em>
+between selected rounds; it cannot establish whether final text differs.</p>
+<div class="controls">
+<label for="range-from">From manual round<select id="range-from"></select></label>
+<label for="range-to">Through manual round<select id="range-to"></select></label>
+<label for="range-changes" class="checkbox"><input id="range-changes" type="checkbox" checked> Changed HUMAN slots only</label>
+</div>
+<p id="range-summary" role="status" aria-live="polite">Select two different manually ordered rounds.</p>
+<div class="table-scroll"><table><thead><tr>
+<th>Slot</th><th>Status: from → through</th><th>Suggested role: from → through</th>
+<th>Status different at endpoints</th><th>Status edited at least once</th>
+<th>Proposed role different at endpoints</th><th>Role edited at least once</th>
+<th>Question edited at least once</th><th>Next action edited at least once</th>
+</tr></thead><tbody id="range-rows"></tbody></table></div>
+<div class="topline">
+<button type="button" id="range-export">Download complete PRIVATE interval CSV (all original slots)</button>
+<p class="muted">Source-free, unsigned and local. A note edited and reverted still counts as edited in the interval, not a different final note. Chronology, source, role assignment, client/operator consent and release remain unverified.</p>
+</div>
+</section>
+<section class="inner" aria-labelledby="followup-heading">
+<h3 id="followup-heading">Latest round · HUMAN-only follow-up</h3>
+<p>The latest available snapshot may still be stale. The suggested role is a proposal, not an assigned real person.</p>
+<div class="table-scroll"><table><thead><tr><th>Slot</th><th>Follow-up group</th><th>Stage</th><th>Suggested role</th><th>Original HOLD choices</th></tr></thead><tbody id="attention-rows"></tbody></table></div>
+</section>
+<section class="inner" aria-labelledby="changes-heading">
+<h3 id="changes-heading">Adjacent round field changes</h3>
+<p>Private note text is never loaded from this native source-free report. Only changed-field names and boolean note-change indicators are shown.</p>
+<div class="table-scroll"><table><thead><tr><th>Slot</th><th>Round change</th><th>Changed fields</th><th>Latest HUMAN stage</th><th>Latest proposed role</th></tr></thead><tbody id="change-rows"></tbody></table></div>
+</section>
+<div class="topline"><button type="button" id="print">Print PRIVATE filtered review</button><p class="muted">Use a trusted offline device and private printer. Do not forward these small-cohort reports without independent approval.</p></div>
+</section>
+<section class="panel" aria-labelledby="native-heading">
+<h2 id="native-heading">3 · Verify custody with the original native receiver</h2>
+<p>For a full read-only source-bound local check, run <code>private_inbox_history.py reopen</code> with the same original board, 2–8 complete HUMAN worksheets in the same order, and the saved four-file PRIVATE folder. This app only reads a source-free local JSON copy; it is not equivalent to native re-admission.</p>
+<a href="./PRIVATE-INBOX-HISTORY.md">Read full PRIVATE history operator guide</a>
+</section>
+</main>
+<footer>LightUp PRIVATE assessment workroom · memory-only · no network, localStorage, remote services or execution authority</footer>
+</body>
+</html>

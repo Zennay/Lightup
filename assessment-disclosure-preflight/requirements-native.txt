@@ -1,0 +1,2 @@
+# Optional native AES-256-GCM HUMAN vault reader only; browser needs no packages.
+cryptography>=42.0.0

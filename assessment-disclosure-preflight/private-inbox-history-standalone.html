@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WvcYcBi7gbt2wJWSO9/wGCBkqmhRI3cCKc6GRcqMFFU=' 'sha256-j35WXA2ThdyR/zSvu4fzRlU90zfYw3+C0a01C4AYEeo='; script-src-attr 'none'; style-src 'sha256-5TurPp412kx/oKAViAWuc4hI5IA9rBmJKHecsgTU/zk='; style-src-attr 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE HUMAN History Desk</title>
+<style>:root{color-scheme:light;font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f2f6fb;color:#18283d}*{box-sizing:border-box}
+body{max-width:1300px;margin:0 auto;padding:clamp(1rem,3.5vw,3rem)}
+header{max-width:1000px}h1{font-size:clamp(2.1rem,5vw,3.5rem);line-height:1.1;margin:.5rem 0}h2{font-size:1.5rem;margin:0 0 .6rem}h3{font-size:1.15rem;margin:.1rem 0 .8rem}
+.eyebrow{font-size:.82rem;font-weight:800;letter-spacing:.09em;color:#3d5d85}.lead{font-size:1.12rem}.warning{border-left:5px solid #956000;background:#fff1db;padding:1rem 1.2rem;border-radius:.4rem}.muted{font-size:.9rem;color:#50617a}
+.panel{margin:1.4rem 0;padding:clamp(1rem,3vw,2rem);border:1px solid #d1dbe8;border-radius:1rem;background:#fff}
+.inner{margin:1.5rem 0;border-top:1px solid #d8e1ec;padding-top:1.3rem}
+label{display:block;font-weight:700}select,input[type=file]{font:inherit;max-width:100%;border:1px solid #a5b5c9;border-radius:.4rem;background:#fff;padding:.55rem;min-height:44px}
+select{width:100%}input[type=file]{margin-top:.5rem}button{font:inherit;font-weight:750;padding:.7rem 1.1rem;background:#084e9b;color:white;border:0;border-radius:.4rem;cursor:pointer}
+button:hover{filter:brightness(1.1)}button.secondary{background:#435a75}button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #d77f00;outline-offset:2px}
+code{background:#eef3fa;padding:.12rem .35rem;border-radius:.25rem;overflow-wrap:anywhere}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:.8rem;margin:1.2rem 0}
+.metric{padding:1rem;background:#eff5fc;border:1px solid #cedbec;border-radius:.7rem;display:flex;flex-direction:column}
+.metric span{font-size:.86rem;color:#435b77}.metric strong{font-size:1.7rem;color:#1c476f;line-height:1.2;margin-top:.35rem}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,235px),1fr));gap:1rem;align-items:end;padding:1rem;background:#f6f9fd;border-radius:.7rem}
+.controls .checkbox{display:flex;align-items:center;gap:.6rem;font-weight:600;min-height:44px}
+.controls input[type=checkbox]{width:19px;height:19px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:.85rem;margin:1rem 0}
+.card{border:1px solid #c8d7e7;background:#fbfdff;border-radius:.75rem;padding:1.1rem}
+.card p{margin:.65rem 0}.stage{display:inline-block;padding:.18rem .55rem;border-radius:.35rem;font-size:.78rem;font-weight:800;background:#e5ebf4;overflow-wrap:anywhere}
+.stage[data-stage="NEEDS_INPUT"]{background:#fff0d4}.stage[data-stage="IN_PROGRESS"]{background:#e1eefc}.stage[data-stage="DISCUSSION_COMPLETE_NO_RELEASE"]{background:#e4f1eb}
+.change{font-size:.9rem;color:#445b75}.table-scroll{max-width:100%;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}th,td{padding:.6rem;border:1px solid #ced9e7;vertical-align:top;text-align:left;overflow-wrap:anywhere}th{background:#eaf1f9;white-space:normal}
+a{color:#074d95;font-weight:700}a:hover{text-decoration-thickness:3px}footer{font-size:.88rem;color:#53687e;padding:1rem 0}
+#notice[data-failed=true]{color:#96231f;font-weight:750}
+@media print{body{background:#fff;max-width:none;padding:0;font-size:12px}.warning{background:#fff;border:1px solid #333}.panel,.card{break-inside:avoid}.metrics{display:flex;flex-wrap:wrap}.metric{min-width:130px}button,input[type=file],.controls,#filter-count{display:none!important}.panel{border:0;padding:.4rem 0}.table-scroll{overflow:visible}th,td{padding:.25rem}#workspace[hidden]{display:none}}
+
+.compose-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:.75rem;margin:1rem 0}.compose-grid label{background:#f5f9fe;border:1px solid #d0deed;padding:.8rem;border-radius:.5rem}.confirm{display:flex;align-items:flex-start;gap:.7rem;font-weight:600;margin:1.2rem 0}.confirm input{width:20px;height:20px;flex:none;margin-top:.25rem}#compose-status[data-failed=true]{color:#922520;font-weight:700}@media print{#compose-board,#compose-revisions,#compose-count,#compose-build,#compose-download,#compose-reset,#compose-confirm{display:none!important}}
+
+#range-summary{font-weight:650;color:#2f4c6b}#range-export{margin:.3rem 0 1rem}
+@media print{#range-export,.controls{display:none!important}}
+</style>
+
+
+</head>
+<body>
+<header>
+<p class="eyebrow">LIGHTUP / OFFLINE HUMAN OPERATIONS</p>
+<h1>Private HUMAN History Desk</h1>
+<p class="lead">Inspect 2–8 manually ordered HUMAN review rounds, track changed discussion stages and spot the next human follow-ups. Your saved local history report stays entirely in this browser session.</p>
+<p class="warning"><strong>REVIEW_ONLY / HOLD · INCUBATE M3/M7 PLAN/LAB ONLY.</strong> The timeline is manually ordered, <strong>not authenticated chronology</strong>. Discussion completion is not remediation or a security verdict. Suggested teams are not assignments. This workspace does not create consent, scanning, release, or authorization.</p>
+</header>
+<main>
+<section class="panel" aria-labelledby="load-heading">
+<h2 id="load-heading">1 · Open native PRIVATE history</h2>
+<label for="history-file">Import <code>PRIVATE-inbox-HUMAN-history.json</code> saved by the native <code>private_inbox_history.py build</code> workflow.</label>
+<input type="file" id="history-file" accept=".json,application/json">
+<p id="notice" role="status" aria-live="polite">No private HUMAN history loaded.</p>
+<p class="muted">Maximum 256 KiB, 2–8 complete rounds and 1–12 original slot ordinals. Imported native JSON is read-only. The browser does not authenticate the source, original files, reviewers, chronology or SHA.</p>
+</section>
+<section class="panel" aria-labelledby="compose-heading">
+<h2 id="compose-heading">Or compose PRIVATE history from original complete HUMAN worksheets</h2>
+<p>Without Python, select the original <strong>owner-private source-free inbox board JSON</strong> and 2–8 separately saved complete HUMAN action CSVs. Select files in manual earliest-to-latest order using the numbered controls. The original HUMAN note contents are temporarily processed in <strong>browser memory only</strong> and excluded entirely from the resulting history.</p>
+<p class="warning">Only use this on a trusted offline computer. Browser composition does not authenticate the source producer, reviewers, chronology, consent or file custody. The original native `reopen` is still required for saved PRIVATE reports. Never upload files to this page on a public website.</p>
+<label for="compose-board">Original PRIVATE-inbox-portfolio.json (owner-only, up to 64 KiB)</label>
+<input id="compose-board" type="file" accept=".json,application/json">
+<div class="topline"><label for="compose-count">Number of complete manually ordered revisions
+<select id="compose-count"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><button type="button" id="compose-reset" class="secondary">Clear original inputs</button></div>
+<div id="compose-revisions" class="compose-grid"></div>
+<label class="checkbox confirm"><input type="checkbox" id="compose-confirm"> I understand original HUMAN notes remain in local browser memory during comparison; outputs omit notes and are unsigned, non-authorizing coordination reports.</label>
+<div class="topline"><button type="button" id="compose-build">Compose PRIVATE source-free history in memory</button><button type="button" id="compose-download" class="secondary" disabled>Download private source-free history JSON</button></div>
+<p id="compose-status" role="status" aria-live="polite">No original private inputs processed. Native source custody remains separate.</p>
+</section>
+<section class="panel" id="workspace" hidden aria-labelledby="workspace-heading">
+<div class="topline"><h2 id="workspace-heading">2 · Review your manually ordered snapshots</h2><button type="button" id="clear" class="secondary">Clear ALL private inputs and history</button></div>
+<div class="metrics" id="metrics" aria-label="Private HUMAN summary"></div>
+<div class="controls">
+<label for="round">Selected manual round
+<select id="round"></select></label>
+<label for="stage">HUMAN stage
+<select id="stage"><option value="ALL">All stages</option><option value="UNREVIEWED">Unreviewed</option><option value="NEEDS_INPUT">Needs HUMAN input</option><option value="IN_PROGRESS">Discussion in progress</option><option value="DISCUSSION_COMPLETE_NO_RELEASE">Discussion complete, no release</option></select></label>
+<label for="role">Suggested discussion role
+<select id="role"><option value="ALL">All proposed roles</option><option value="UNASSIGNED">Unassigned</option><option value="SECURITY">Security</option><option value="PRIVACY">Privacy</option><option value="CLIENT_OPERATIONS">Client operations</option><option value="PLATFORM">Platform</option></select></label>
+<label for="changes" class="checkbox"><input id="changes" type="checkbox"> Only changed since prior round</label>
+</div>
+<p id="filter-count" aria-live="polite"></p>
+<div class="cards" id="cards"></div>
+<section class="inner" aria-labelledby="timeline-heading">
+<h3 id="timeline-heading">Manual round overview</h3>
+<p>All slots remain in the native history; filters only change what you see here.</p>
+<div class="table-scroll"><table><thead><tr><th>Round</th><th>Unreviewed</th><th>Needs input</th><th>In progress</th><th>Discussion complete · no release</th></tr></thead><tbody id="round-rows"></tbody></table></div>
+</section>
+<section class="inner" aria-labelledby="range-heading">
+<h3 id="range-heading">Compare any two manually ordered HUMAN rounds</h3>
+<p>Compare early and late discussion snapshots without changing original files.
+The report shows exact status and proposed-role endpoints. For private note
+fields it records only whether an edit was reported <em>at least once</em>
+between selected rounds; it cannot establish whether final text differs.</p>
+<div class="controls">
+<label for="range-from">From manual round<select id="range-from"></select></label>
+<label for="range-to">Through manual round<select id="range-to"></select></label>
+<label for="range-changes" class="checkbox"><input id="range-changes" type="checkbox" checked> Changed HUMAN slots only</label>
+</div>
+<p id="range-summary" role="status" aria-live="polite">Select two different manually ordered rounds.</p>
+<div class="table-scroll"><table><thead><tr>
+<th>Slot</th><th>Status: from → through</th><th>Suggested role: from → through</th>
+<th>Status different at endpoints</th><th>Status edited at least once</th>
+<th>Proposed role different at endpoints</th><th>Role edited at least once</th>
+<th>Question edited at least once</th><th>Next action edited at least once</th>
+</tr></thead><tbody id="range-rows"></tbody></table></div>
+<div class="topline">
+<button type="button" id="range-export">Download complete PRIVATE interval CSV (all original slots)</button>
+<p class="muted">Source-free, unsigned and local. A note edited and reverted still counts as edited in the interval, not a different final note. Chronology, source, role assignment, client/operator consent and release remain unverified.</p>
+</div>
+</section>
+<section class="inner" aria-labelledby="followup-heading">
+<h3 id="followup-heading">Latest round · HUMAN-only follow-up</h3>
+<p>The latest available snapshot may still be stale. The suggested role is a proposal, not an assigned real person.</p>
+<div class="table-scroll"><table><thead><tr><th>Slot</th><th>Follow-up group</th><th>Stage</th><th>Suggested role</th><th>Original HOLD choices</th></tr></thead><tbody id="attention-rows"></tbody></table></div>
+</section>
+<section class="inner" aria-labelledby="changes-heading">
+<h3 id="changes-heading">Adjacent round field changes</h3>
+<p>Private note text is never loaded from this native source-free report. Only changed-field names and boolean note-change indicators are shown.</p>
+<div class="table-scroll"><table><thead><tr><th>Slot</th><th>Round change</th><th>Changed fields</th><th>Latest HUMAN stage</th><th>Latest proposed role</th></tr></thead><tbody id="change-rows"></tbody></table></div>
+</section>
+<div class="topline"><button type="button" id="print">Print PRIVATE filtered review</button><p class="muted">Use a trusted offline device and private printer. Do not forward these small-cohort reports without independent approval.</p></div>
+</section>
+<section class="panel" aria-labelledby="native-heading">
+<h2 id="native-heading">3 · Verify custody with the original native receiver</h2>
+<p>For a full read-only source-bound local check, run <code>private_inbox_history.py reopen</code> with the same original board, 2–8 complete HUMAN worksheets in the same order, and the saved four-file PRIVATE folder. This app only reads a source-free local JSON copy; it is not equivalent to native re-admission.</p>
+<a href="./PRIVATE-INBOX-HISTORY.md">Read full PRIVATE history operator guide</a>
+</section>
+</main>
+<footer>LightUp PRIVATE assessment workroom · memory-only · no network, localStorage, remote services or execution authority</footer>
+<script>"use strict";
+/* Offline PRIVATE HUMAN history reader: source-free, memory-only, no authority.
+ * The original native source-bound 4-file reopen is mandatory for custody.
+ */
+(() => {
+  const $ = id => document.getElementById(id);
+  const STAGES = ["UNREVIEWED","NEEDS_INPUT","IN_PROGRESS","DISCUSSION_COMPLETE_NO_RELEASE"];
+  const ROLES = ["UNASSIGNED","SECURITY","PRIVACY","CLIENT_OPERATIONS","PLATFORM"];
+  const ATTENTION = ["HUMAN_INPUT_REQUESTED","HUMAN_INITIAL_REVIEW",
+    "HUMAN_DISCUSSION_IN_PROGRESS","HUMAN_RECHECK_NO_RELEASE"];
+  const STAGE_ATTENTION = {
+    NEEDS_INPUT: ATTENTION[0], UNREVIEWED: ATTENTION[1],
+    IN_PROGRESS: ATTENTION[2], DISCUSSION_COMPLETE_NO_RELEASE: ATTENTION[3]
+  };
+  const FLAGS = ["source_authenticated","reviewers_authenticated",
+    "chronology_authenticated","client_consent_verified",
+    "operator_consent_verified","authorization_granted","release_allowed","signed"];
+  const FIELDS = ["human_status","proposed_role",
+    "question_text_changed","next_action_text_changed"];
+  const MAX_BYTES = 256 * 1024;
+  const TOP = ["schema","status","source_free","original_board_byte_binding_checked",
+    "complete_revision_membership_checked","manual_order_not_authenticated_chronology",
+    ...FLAGS,"slot_count","round_count","round_summaries","slot_paths",
+    "changed_transitions","latest_human_attention"];
+  let history = null;
+  let loadGeneration = 0;
+  let intervalRows = [];
+
+  function admit(condition) {
+    if (!condition) throw Error("HOLD: invalid or ambiguous PRIVATE HUMAN history");
+  }
+  function shape(input, keys) {
+    admit(input && typeof input === "object" && !Array.isArray(input) &&
+      Object.keys(input).length === keys.length &&
+      keys.every(key => Object.hasOwn(input, key)));
+  }
+  function boundedInteger(value, min, max) {
+    admit(Number.isSafeInteger(value) && value >= min && value <= max);
+  }
+  function strictJSON(raw) {
+    // Duplicate decoded JSON keys (including escaped aliases) must fail closed.
+    let pos = 0, count = 0;
+    const spaces = () => {
+      while (pos < raw.length && /[\u0009\u000a\u000d\u0020]/u.test(raw[pos])) pos++;
+    };
+    function stringToken() {
+      admit(raw[pos] === '"');
+      const start = pos++;
+      while (pos < raw.length) {
+        if (raw[pos] === "\\") { pos += 2; continue; }
+        if (raw[pos++] === '"') return JSON.parse(raw.slice(start, pos));
+      }
+      admit(false);
+    }
+    function value(depth) {
+      admit(depth < 32 && ++count <= 8000);
+      spaces();
+      if (raw[pos] === "{") {
+        pos++;
+        const seen = new Set();
+        spaces();
+        if (raw[pos] === "}") { pos++; return; }
+        while (pos < raw.length) {
+          spaces();
+          const key = stringToken();
+          admit(!seen.has(key)); seen.add(key);
+          spaces(); admit(raw[pos++] === ":");
+          value(depth + 1); spaces();
+          if (raw[pos] === "}") { pos++; return; }
+          admit(raw[pos++] === ",");
+        }
+        admit(false);
+      } else if (raw[pos] === "[") {
+        pos++; spaces();
+        if (raw[pos] === "]") { pos++; return; }
+        while (pos < raw.length) {
+          value(depth + 1); spaces();
+          if (raw[pos] === "]") { pos++; return; }
+          admit(raw[pos++] === ",");
+        }
+        admit(false);
+      } else if (raw[pos] === '"') stringToken();
+      else {
+        const match = /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/u.exec(raw.slice(pos));
+        admit(Boolean(match)); pos += match[0].length;
+      }
+    }
+    value(0); spaces(); admit(pos === raw.length);
+    return JSON.parse(raw);
+  }
+  function validate(input) {
+    shape(input, TOP);
+    admit(input.schema === "lightup.private_human_inbox_history.v1" &&
+      input.status === "REVIEW_ONLY" && input.source_free === true &&
+      input.original_board_byte_binding_checked === true &&
+      input.complete_revision_membership_checked === true &&
+      input.manual_order_not_authenticated_chronology === true &&
+      FLAGS.every(flag => input[flag] === false));
+    boundedInteger(input.round_count,2,8);
+    boundedInteger(input.slot_count,1,12);
+    admit(Array.isArray(input.slot_paths) && input.slot_paths.length === input.slot_count);
+    admit(Array.isArray(input.round_summaries) && input.round_summaries.length === input.round_count);
+    admit(Array.isArray(input.latest_human_attention) && input.latest_human_attention.length === input.slot_count);
+    admit(Array.isArray(input.changed_transitions) &&
+          input.changed_transitions.length <= input.slot_count * (input.round_count - 1));
+
+    const counts = Array.from({length:input.round_count}, () => ({
+      status:Object.fromEntries(STAGES.map(stage=>[stage,0])),
+      role:Object.fromEntries(ROLES.map(role=>[role,0]))
+    }));
+    const keyedPaths = new Map();
+    input.slot_paths.forEach((item,index) => {
+      shape(item,["slot","original_unselected_holds","rounds"]);
+      admit(item.slot === index + 1);
+      boundedInteger(item.original_unselected_holds,0,12);
+      admit(Array.isArray(item.rounds) && item.rounds.length === input.round_count);
+      item.rounds.forEach((row,roundIndex) => {
+        shape(row,["round","human_status","proposed_role"]);
+        admit(row.round === roundIndex + 1 &&
+          STAGES.includes(row.human_status) && ROLES.includes(row.proposed_role));
+        counts[roundIndex].status[row.human_status]++;
+        counts[roundIndex].role[row.proposed_role]++;
+      });
+      keyedPaths.set(item.slot,item);
+    });
+
+    input.round_summaries.forEach((item,index) => {
+      shape(item,["round","slots","human_status_counts","proposed_role_counts",
+        "needs_input","unreviewed","discussion_complete_no_release"]);
+      admit(item.round === index + 1 && item.slots === input.slot_count);
+      shape(item.human_status_counts,STAGES);
+      shape(item.proposed_role_counts,ROLES);
+      STAGES.forEach(stage => admit(item.human_status_counts[stage] === counts[index].status[stage]));
+      ROLES.forEach(role => admit(item.proposed_role_counts[role] === counts[index].role[role]));
+      admit(item.needs_input === counts[index].status.NEEDS_INPUT &&
+        item.unreviewed === counts[index].status.UNREVIEWED &&
+        item.discussion_complete_no_release === counts[index].status.DISCUSSION_COMPLETE_NO_RELEASE);
+    });
+
+    const seen = new Set();
+    input.changed_transitions.forEach(item => {
+      shape(item,["slot","from_round","to_round","changed_fields",
+        "previous_status","current_status","previous_role","current_role",
+        "question_text_changed","next_action_text_changed"]);
+      boundedInteger(item.slot,1,input.slot_count);
+      boundedInteger(item.from_round,1,input.round_count - 1);
+      admit(item.to_round === item.from_round + 1);
+      const pair = item.slot + ":" + item.to_round;
+      admit(!seen.has(pair));seen.add(pair);
+      const path = keyedPaths.get(item.slot);
+      const before = path.rounds[item.from_round - 1];
+      const after = path.rounds[item.to_round - 1];
+      admit(item.previous_status === before.human_status &&
+        item.current_status === after.human_status &&
+        item.previous_role === before.proposed_role &&
+        item.current_role === after.proposed_role &&
+        typeof item.question_text_changed === "boolean" &&
+        typeof item.next_action_text_changed === "boolean");
+      admit(Array.isArray(item.changed_fields) && item.changed_fields.length >= 1 &&
+        item.changed_fields.length <= 4 &&
+        new Set(item.changed_fields).size === item.changed_fields.length &&
+        item.changed_fields.every(field=>FIELDS.includes(field)));
+      const expected = {
+        human_status:before.human_status !== after.human_status,
+        proposed_role:before.proposed_role !== after.proposed_role,
+        question_text_changed:item.question_text_changed,
+        next_action_text_changed:item.next_action_text_changed
+      };
+      FIELDS.forEach(field=>admit(item.changed_fields.includes(field) === expected[field]));
+    });
+    // Changed stages/roles cannot be silently omitted from the transition list.
+    input.slot_paths.forEach(item => {
+      for (let round=1;round<input.round_count;round++) {
+        const a=item.rounds[round-1],b=item.rounds[round];
+        if (a.human_status!==b.human_status || a.proposed_role!==b.proposed_role)
+          admit(seen.has(item.slot+":"+(round+1)));
+      }
+    });
+    const attentionSeen = new Set();
+    let lastRank = -1, lastSlot = 0;
+    input.latest_human_attention.forEach(item=>{
+      shape(item,["slot","manual_round","discussion_group","human_status",
+        "suggested_role","original_unselected_holds","actual_owner_assigned","release_allowed"]);
+      boundedInteger(item.slot,1,input.slot_count);
+      admit(!attentionSeen.has(item.slot));attentionSeen.add(item.slot);
+      const path=keyedPaths.get(item.slot), last=path.rounds[input.round_count-1];
+      admit(item.manual_round===input.round_count &&
+        item.discussion_group===STAGE_ATTENTION[last.human_status] &&
+        item.human_status===last.human_status &&
+        item.suggested_role===last.proposed_role &&
+        item.original_unselected_holds===path.original_unselected_holds &&
+        item.actual_owner_assigned===false && item.release_allowed===false);
+      const rank=ATTENTION.indexOf(item.discussion_group);
+      admit(rank>=lastRank && (rank!==lastRank || item.slot>lastSlot));
+      lastRank=rank;lastSlot=item.slot;
+    });
+    return input;
+  }
+
+  function node(tag,text,cls) {
+    const element=document.createElement(tag);
+    if (text !== undefined) element.textContent=String(text);
+    if (cls) element.className=cls;
+    return element;
+  }
+  function row(container,values) {
+    const tr=node("tr");
+    values.forEach(value=>tr.append(node("td",value)));
+    container.append(tr);
+    return tr;
+  }
+  function renderRange() {
+    intervalRows=[];
+    $("range-rows").replaceChildren();
+    const from=Number($("range-from").value),to=Number($("range-to").value);
+    if(!history || !Number.isSafeInteger(from) || !Number.isSafeInteger(to) ||
+       from<1 || to>history.round_count || from>=to) {
+      $("range-summary").textContent="HOLD: select an earlier starting round.";
+      $("range-export").disabled=true;
+      return;
+    }
+    for(const item of history.slot_paths) {
+      const before=item.rounds[from-1],after=item.rounds[to-1];
+      const changes=history.changed_transitions.filter(change=>
+        change.slot===item.slot && change.to_round>from && change.to_round<=to);
+      const fields=new Set(changes.flatMap(change=>change.changed_fields));
+      intervalRows.push({
+        slot:item.slot,from_round:from,to_round:to,
+        original_unselected_holds:item.original_unselected_holds,
+        from_status:before.human_status,to_status:after.human_status,
+        status_endpoint_changed:before.human_status!==after.human_status,
+        status_edited_within_interval:fields.has("human_status"),
+        from_role:before.proposed_role,to_role:after.proposed_role,
+        role_endpoint_changed:before.proposed_role!==after.proposed_role,
+        role_edited_within_interval:fields.has("proposed_role"),
+        question_edited_within_interval:fields.has("question_text_changed"),
+        next_action_edited_within_interval:fields.has("next_action_text_changed")
+      });
+    }
+    const activity=item=>item.status_edited_within_interval ||
+      item.role_edited_within_interval ||
+      item.question_edited_within_interval ||
+      item.next_action_edited_within_interval;
+    const displayed=intervalRows.filter(item=>!$("range-changes").checked||activity(item));
+    displayed.forEach(item=>row($("range-rows"),[
+      item.slot,item.from_status+" → "+item.to_status,
+      item.from_role+" → "+item.to_role,
+      item.status_endpoint_changed?"Yes":"No",
+      item.status_edited_within_interval?"Yes":"No",
+      item.role_endpoint_changed?"Yes":"No",
+      item.role_edited_within_interval?"Yes":"No",
+      item.question_edited_within_interval?"Yes":"No",
+      item.next_action_edited_within_interval?"Yes":"No"
+    ]));
+    if(!displayed.length)row($("range-rows"),[
+       "—","No reported HUMAN activity","—","—","—","—","—","—","—"]);
+    $("range-summary").textContent="Manual R"+from+" → R"+to+
+      ": "+intervalRows.filter(activity).length+" of "+history.slot_count+
+      " slots have reported HUMAN field activity; "+displayed.length+
+       " shown. PRIVATE CSV preserves all "+history.slot_count+
+      " slots. Original note text and verified chronology are unavailable.";
+    $("range-export").disabled=false;
+  }
+
+  function downloadRange() {
+    if(!history || $("range-export").disabled || !intervalRows.length) return;
+    // Match original native PRIVATE interval CSV columns and order.
+    // Equality of unsigned browser/native schema is NOT custody authority.
+    const fields=[
+      "slot","from_status","to_status","status_endpoint_changed",
+      "status_edited_within_interval","from_proposed_role","to_proposed_role",
+      "proposed_role_endpoint_changed","role_edited_within_interval",
+      "question_edited_within_interval","next_action_edited_within_interval",
+      "original_unselected_holds","manual_start_round","manual_end_round",
+      "source_authenticated","chronology_authenticated","authorization_granted",
+      "release_allowed"];
+    const csvCell=value=>'"'+String(value).replaceAll('"','""')+'"';
+    const lines=[fields.map(csvCell).join(",")];
+    intervalRows.forEach(item=>lines.push([
+      item.slot,item.from_status,item.to_status,item.status_endpoint_changed,
+      item.status_edited_within_interval,item.from_role,item.to_role,
+      item.role_endpoint_changed,item.role_edited_within_interval,
+      item.question_edited_within_interval,item.next_action_edited_within_interval,
+      item.original_unselected_holds,item.from_round,item.to_round,
+      false,false,false,false
+    ].map(csvCell).join(",")));
+    const blob=new Blob([lines.join("\n")+"\n"],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    try {
+      const link=node("a");
+      link.href=url;
+      link.download="PRIVATE-HUMAN-manual-round-interval-unsigned.csv";
+      document.body.append(link);link.click();link.remove();
+    } finally {
+      setTimeout(()=>URL.revokeObjectURL(url),0);
+    }
+  }
+
+  function reset(message="No private HUMAN history loaded.",failed=false) {
+    // Invalidate any previous asynchronous File.arrayBuffer() import.
+    loadGeneration++;
+    history=null;
+    $("workspace").hidden=true;
+    $("history-file").value="";
+    ["metrics","cards","round-rows","attention-rows","change-rows","round",
+      "range-from","range-to","range-rows"].forEach(id=>$(id).replaceChildren());
+    intervalRows=[];
+    $("range-summary").textContent="Select two different manually ordered rounds.";
+    $("range-export").disabled=true;
+    $("stage").value="ALL";$("role").value="ALL";$("changes").checked=false;
+    $("notice").textContent=message;$("notice").dataset.failed=String(failed);
+    $("filter-count").textContent="";
+  }
+  function selectRound() {
+    return Number($("round").value) || history.round_count;
+  }
+  function changedFor(slot,round) {
+    return history.changed_transitions.find(row=>row.slot===slot&&row.to_round===round);
+  }
+  function summary() {
+    const round=selectRound(), data=history.round_summaries[round-1];
+    const metrics=[
+      ["Original slots",history.slot_count],
+      ["Manual round",round+" / "+history.round_count],
+      ["Needs HUMAN input",data.needs_input],
+      ["Unreviewed",data.unreviewed],
+      ["Discussion complete · NO RELEASE",data.discussion_complete_no_release]
+    ];
+    $("metrics").replaceChildren();
+    metrics.forEach(([label,count])=>{
+      const tile=node("div",undefined,"metric");
+      tile.append(node("span",label),node("strong",count));
+      $("metrics").append(tile);
+    });
+  }
+  function renderCards() {
+    const round=selectRound(),stage=$("stage").value,role=$("role").value;
+    const onlyChanged=$("changes").checked;
+    $("cards").replaceChildren();
+    let visible=0;
+    history.slot_paths.forEach(item=>{
+      const current=item.rounds[round-1];
+      const delta=changedFor(item.slot,round);
+      if ((stage!=="ALL"&&current.human_status!==stage)||
+          (role!=="ALL"&&current.proposed_role!==role)||
+          (onlyChanged&&!delta))return;
+      visible++;
+      const card=node("article",undefined,"card");
+      const heading=node("h3","Slot "+item.slot);
+      const badge=node("span",current.human_status,"stage");
+      badge.dataset.stage=current.human_status;
+      card.append(heading,badge,
+        node("p","Suggested discussion: "+current.proposed_role),
+        node("p","Original unresolved choices: "+item.original_unselected_holds));
+      if(round>1)card.append(node("p",delta?
+        "Since R"+(round-1)+": "+delta.changed_fields.join(", "):
+        "No reported HUMAN field changes since R"+(round-1),"change"));
+      else card.append(node("p","First manually supplied round: no prior comparison","change"));
+      $("cards").append(card);
+    });
+    $("filter-count").textContent=visible+" of "+history.slot_count+
+      " original slots shown for manually ordered round "+round+".";
+    if(!visible)$("cards").append(node("p","No HUMAN slots match these display filters."));
+  }
+  function renderStatic() {
+    const rounds=$("round");rounds.replaceChildren();
+    history.round_summaries.forEach(item=>{
+      const option=node("option","Manual round "+item.round);
+      option.value=String(item.round);
+      rounds.append(option);
+      row($("round-rows"),[
+        item.round,item.unreviewed,item.needs_input,
+        item.human_status_counts.IN_PROGRESS,
+        item.discussion_complete_no_release
+      ]);
+    });
+    rounds.value=String(history.round_count);
+    for(let index=1;index<=history.round_count;index++) {
+      for (const id of ["range-from","range-to"]) {
+        const option=node("option","Round "+index);
+        option.value=String(index);
+        $(id).append(option);
+      }
+    }
+    $("range-from").value="1";
+    $("range-to").value=String(history.round_count);
+    history.latest_human_attention.forEach(item=>row($("attention-rows"),[
+      item.slot,item.discussion_group,item.human_status,item.suggested_role,
+      item.original_unselected_holds
+    ]));
+    if (!history.changed_transitions.length) row($("change-rows"),[
+      "—","—","No declared HUMAN changes","—","—"
+    ]);
+    history.changed_transitions.forEach(item=>row($("change-rows"),[
+      item.slot,"R"+item.from_round+" → R"+item.to_round,
+      item.changed_fields.join(", "),item.current_status,item.current_role
+    ]));
+    $("workspace").hidden=false;
+    summary();renderCards();renderRange();
+    $("notice").textContent="PRIVATE HUMAN history admitted for local viewing only. "+
+      "The original native 4-file reopener remains authoritative for local custody.";
+    $("notice").dataset.failed="false";
+  }
+  async function onImport() {
+    const file=$("history-file").files[0];
+    reset();
+    // A new native import replaces any sensitive original CSV selection and
+    // pending composed browser report in the other source file form.
+    window.dispatchEvent(new Event("lightup:history-clear-original-inputs"));
+    const active=loadGeneration;
+    try {
+      admit(file && file.size>0 && file.size<=MAX_BYTES);
+      const bytes=await file.arrayBuffer();
+      admit(active===loadGeneration && bytes.byteLength===file.size);
+      const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      const next=validate(strictJSON(text));
+      admit(active===loadGeneration);
+      history=next;
+      renderStatic();
+    } catch(_error) {
+      if(active===loadGeneration)
+        reset("HOLD: PRIVATE history rejected. Confirm an unchanged original native source-free history JSON (no duplicate fields, missing slots or authority claims).",true);
+    }
+  }
+  // The adjacent PRIVATE composer uses the exact same strict source-free
+  // schema admission and rendering, never reaching into private note memory.
+  // This is a local browser-generated preview, not native output custody.
+  window.LightUpPrivateHistory = Object.freeze({
+    parseJSON: strictJSON,
+    discardComposedPreview() { reset(); },
+    clearPrivateSession() {
+      reset();
+      window.dispatchEvent(new Event("lightup:history-clear-original-inputs"));
+    },
+    openComposed(sourceFreeJSON) {
+      try {
+        const original = validate(strictJSON(sourceFreeJSON));
+        reset();
+        history=original;
+        renderStatic();
+        $("notice").textContent="REVIEW_ONLY: unsigned BROWSER-COMPOSED PRIVATE history. "+
+          "All complete original inputs require separate native custody admission.";
+        return true;
+      } catch (_error) {
+        reset("HOLD: browser-composed PRIVATE HUMAN history failed source-free admission.",true);
+        return false;
+      }
+    }
+  });
+  $("history-file").addEventListener("change",onImport);
+  $("clear").addEventListener("click",()=>window.LightUpPrivateHistory.clearPrivateSession());
+  ["round","stage","role"].forEach(id=>$(id).addEventListener("change",()=>{
+    if(history){summary();renderCards();}
+  }));
+  $("changes").addEventListener("change",()=>{if(history)renderCards();});
+  ["range-from","range-to","range-changes"].forEach(id=>
+    $(id).addEventListener("change",()=>{if(history)renderRange();}));
+  $("range-export").addEventListener("click",downloadRange);
+  $("print").addEventListener("click",()=>{if(history)window.print();});
+  reset();
+})();
+</script>
+<script>"use strict";
+/* Original PRIVATE HUMAN worksheet-to-history authoring; strictly local.
+ * This browser flow never authenticates original sources, signs approvals,
+ * grants scopes, scans assets, uploads data or saves raw HUMAN note text.
+ */
+(() => {
+  const $ = id => document.getElementById(id);
+  const FIELDS = ["board_sha256","slot","human_status","proposed_discussion_role",
+    "human_question","human_next_action"];
+  const BOARD_FIELDS = ["slot","source_declarations","human_a_choices",
+    "human_b_choices","unselected_hold","result_transport",
+    "local_file_custody","source_reopening","authority","human_followup"];
+  const BOARD_KEYS = ["schema","status","source_free","source_authenticated",
+    "reviewers_authenticated","client_consent_verified","operator_consent_verified",
+    "authorization_granted","release_allowed","original_human_reopening_performed",
+    "signed","rooms"];
+  const STAGES = ["UNREVIEWED","NEEDS_INPUT","IN_PROGRESS","DISCUSSION_COMPLETE_NO_RELEASE"];
+  const ROLES = ["UNASSIGNED","SECURITY","PRIVACY","CLIENT_OPERATIONS","PLATFORM"];
+  const GROUPS = {
+    NEEDS_INPUT:"HUMAN_INPUT_REQUESTED",
+    UNREVIEWED:"HUMAN_INITIAL_REVIEW",
+    IN_PROGRESS:"HUMAN_DISCUSSION_IN_PROGRESS",
+    DISCUSSION_COMPLETE_NO_RELEASE:"HUMAN_RECHECK_NO_RELEASE"
+  };
+  const FALSE_FLAGS = ["source_authenticated","reviewers_authenticated",
+    "chronology_authenticated","client_consent_verified","operator_consent_verified",
+    "authorization_granted","release_allowed","signed"];
+  let saved = null, generation = 0, showingComposed = false;
+
+  function requireValid(ok) {
+    if (!ok) throw Error("HOLD: original HUMAN source data not admitted");
+  }
+  function exactKeys(object, keys) {
+    requireValid(object && typeof object === "object" && !Array.isArray(object) &&
+      Object.keys(object).length === keys.length && keys.every(k=>Object.hasOwn(object,k)));
+  }
+  function integer(value,min,max) {
+    requireValid(Number.isSafeInteger(value) && value >= min && value <= max);
+  }
+  function invalidate(message = "Private inputs changed. Compose again; no saved history.") {
+    generation++;
+    saved = null;
+    // Never leave a stale preview visible as if it corresponded to revised
+    // original input selections. Native imports stay independent.
+    if (showingComposed) {
+      showingComposed = false;
+      window.LightUpPrivateHistory?.discardComposedPreview();
+    }
+    $("compose-download").disabled = true;
+    $("compose-status").textContent = message;
+    $("compose-status").dataset.failed = "false";
+  }
+  function buildFileFields() {
+    invalidate("Select original board and complete HUMAN CSVs in manual order.");
+    $("compose-revisions").replaceChildren();
+    const n=Number($("compose-count").value);
+    for(let i=1;i<=n;i++){
+      const label=document.createElement("label");
+      label.textContent="Manually ordered revision "+i+" of "+n;
+      const input=document.createElement("input");
+      input.type="file"; input.accept=".csv,text/csv";
+      input.dataset.revision=String(i);
+      input.addEventListener("change",()=>invalidate());
+      label.append(input);$("compose-revisions").append(label);
+    }
+  }
+  function csvRows(text) {
+    // Keep the same six exact columns and original full slot ordering.
+    text=text.replace(/^\uFEFF/u,"");
+    const output=[]; let line=[],cell="",mode="start";
+    const appendRow=()=>{
+      line.push(cell);
+      requireValid(line.length===FIELDS.length);
+      output.push(line);line=[];cell="";mode="start";
+    };
+    for(let i=0;i<text.length;i++){
+      const ch=text[i];
+      if(mode==="quoted"){
+        if(ch==='"'){
+          if(text[i+1]==='"'){cell+='"';i++;}
+          else mode="closed";
+        }else cell+=ch;
+      }else if(ch==='"'){
+        requireValid(mode==="start");mode="quoted";
+      }else if(ch==="," || ch==="\n" || ch==="\r"){
+        requireValid(ch!== "\r" || text[i+1]==="\n");
+        if(ch===","){
+          line.push(cell);cell="";mode="start";
+        }else{
+          appendRow();if(ch==="\r")i++;
+        }
+      }else{
+        requireValid(mode!=="closed");
+        cell+=ch;mode="plain";
+      }
+    }
+    requireValid(mode!=="quoted");
+    if(mode!=="start" || line.length || cell!=="")appendRow();
+    requireValid(output.length>=2 && output.length<=13 &&
+      output[0].every((value,index)=>value===FIELDS[index]));
+    return output.slice(1);
+  }
+  function safeNote(value) {
+    requireValid(typeof value==="string" && [...value].length <= 1200);
+    for(const ch of value)requireValid(!/[\p{C}\p{Zl}\p{Zp}]/u.test(ch));
+    requireValid(!/^[\s]*[=+\-@]/u.test(value.normalize("NFKC")));
+    return value;
+  }
+  function admitBoard(text) {
+    const board=window.LightUpPrivateHistory.parseJSON(text);
+    exactKeys(board,BOARD_KEYS);
+    requireValid(board.schema==="lightup.private_human_inbox_board.v1" &&
+      board.status==="REVIEW_ONLY" && board.source_free===true &&
+      typeof board.original_human_reopening_performed==="boolean" &&
+      ["source_authenticated","reviewers_authenticated","client_consent_verified",
+       "operator_consent_verified","authorization_granted","release_allowed","signed"]
+        .every(flag=>board[flag]===false));
+    requireValid(Array.isArray(board.rooms) && board.rooms.length>=1 &&
+      board.rooms.length<=12);
+    board.rooms.forEach((row,index)=>{
+      exactKeys(row,BOARD_FIELDS);
+      integer(row.slot,index+1,index+1);
+      integer(row.source_declarations,1,12);
+      integer(row.human_a_choices,0,12);
+      integer(row.human_b_choices,0,12);
+      integer(row.unselected_hold,0,12);
+      requireValid(row.human_a_choices+row.human_b_choices+
+        row.unselected_hold===row.source_declarations);
+      requireValid(["ENCRYPTED","PRIVATE_PLAINTEXT"].includes(row.result_transport) &&
+        row.local_file_custody==="EXACT_UNSIGNED_BYTES" &&
+        ["NOT_PERFORMED_BY_BOARD","ORIGINAL_NATIVE_REVIEW_ONLY"].includes(row.source_reopening) &&
+        (row.source_reopening==="ORIGINAL_NATIVE_REVIEW_ONLY")===
+          board.original_human_reopening_performed &&
+        row.authority==="NONE" &&
+        row.human_followup===(row.unselected_hold?"CHECK_HOLD_CHOICES":"INDEPENDENT_REVIEW_REQUIRED"));
+    });
+    return board.rooms;
+  }
+  function admitHumanRows(text,digest,rooms) {
+    const output=csvRows(text);
+    requireValid(output.length===rooms.length);
+    return output.map((row,index)=>{
+      requireValid(row[0]===digest && row[1]===String(index+1) &&
+        STAGES.includes(row[2]) && ROLES.includes(row[3]));
+      const question=safeNote(row[4]),next=safeNote(row[5]);
+      requireValid(row[2]!=="UNREVIEWED" ||
+        (row[3]==="UNASSIGNED"&&!question&&!next));
+      requireValid(row[2]!=="DISCUSSION_COMPLETE_NO_RELEASE" ||
+        (question.trim().length>0 && next.trim().length>0));
+      return {
+        slot:index+1,human_status:row[2],proposed_discussion_role:row[3],
+        human_question:question,human_next_action:next
+      };
+    });
+  }
+  async function bytes(file,limit) {
+    requireValid(file && file.size>0 && file.size<=limit);
+    const result=await file.arrayBuffer();
+    requireValid(result.byteLength===file.size);
+    return result;
+  }
+  function decode(input) {
+    return new TextDecoder("utf-8",{fatal:true}).decode(input);
+  }
+  async function sha256(raw) {
+    requireValid(crypto && crypto.subtle && typeof crypto.subtle.digest==="function");
+    const digest=await crypto.subtle.digest("SHA-256",raw);
+    return [...new Uint8Array(digest)].map(value=>value.toString(16).padStart(2,"0")).join("");
+  }
+  async function fingerprint(file,limit) {
+    return sha256(await bytes(file,limit));
+  }
+  function compose(rooms,revisions) {
+    const rounds=revisions.length;
+    const summaries=revisions.map((snapshot,index)=>{
+      const statuses=Object.fromEntries(STAGES.map(status=>[status,0]));
+      const roles=Object.fromEntries(ROLES.map(role=>[role,0]));
+      snapshot.forEach(item=>{
+        statuses[item.human_status]++;
+        roles[item.proposed_discussion_role]++;
+      });
+      return {
+        round:index+1,slots:rooms.length,human_status_counts:statuses,
+        proposed_role_counts:roles,needs_input:statuses.NEEDS_INPUT,
+        unreviewed:statuses.UNREVIEWED,
+        discussion_complete_no_release:statuses.DISCUSSION_COMPLETE_NO_RELEASE
+      };
+    });
+    const transitions=[],paths=[];
+    rooms.forEach((source,index)=>{
+      const snapshots=[];
+      revisions.forEach((revision,roundIndex)=>{
+        const row=revision[index];
+        snapshots.push({
+          round:roundIndex+1,human_status:row.human_status,
+          proposed_role:row.proposed_discussion_role
+        });
+        if(!roundIndex)return;
+        const previous=revisions[roundIndex-1][index];
+        const changed=[];
+        const questionChanged=previous.human_question!==row.human_question;
+        const nextChanged=previous.human_next_action!==row.human_next_action;
+        if(previous.human_status!==row.human_status)changed.push("human_status");
+        if(previous.proposed_discussion_role!==row.proposed_discussion_role)
+          changed.push("proposed_role");
+        if(questionChanged)changed.push("question_text_changed");
+        if(nextChanged)changed.push("next_action_text_changed");
+        if(changed.length)transitions.push({
+          slot:index+1,from_round:roundIndex,to_round:roundIndex+1,
+          changed_fields:changed,previous_status:previous.human_status,
+          current_status:row.human_status,
+          previous_role:previous.proposed_discussion_role,
+          current_role:row.proposed_discussion_role,
+          question_text_changed:questionChanged,
+          next_action_text_changed:nextChanged
+        });
+      });
+      paths.push({slot:index+1,original_unselected_holds:source.unselected_hold,
+        rounds:snapshots});
+    });
+    const attention=paths.map(path=>{
+      const last=path.rounds[rounds-1];
+      return {
+        slot:path.slot,manual_round:rounds,discussion_group:GROUPS[last.human_status],
+        human_status:last.human_status,suggested_role:last.proposed_role,
+        original_unselected_holds:path.original_unselected_holds,
+        actual_owner_assigned:false,release_allowed:false
+      };
+    });
+    const priority=Object.values(GROUPS);
+    attention.sort((a,b)=>priority.indexOf(a.discussion_group)-
+      priority.indexOf(b.discussion_group)||a.slot-b.slot);
+    return {
+      schema:"lightup.private_human_inbox_history.v1",status:"REVIEW_ONLY",
+      source_free:true,original_board_byte_binding_checked:true,
+      complete_revision_membership_checked:true,
+      manual_order_not_authenticated_chronology:true,
+      ...Object.fromEntries(FALSE_FLAGS.map(flag=>[flag,false])),
+      slot_count:rooms.length,round_count:rounds,round_summaries:summaries,
+      slot_paths:paths,changed_transitions:transitions,
+      latest_human_attention:attention
+    };
+  }
+  async function composeClicked() {
+    invalidate();
+    const current=generation;
+    try {
+      requireValid($("compose-confirm").checked);
+      requireValid(window.LightUpPrivateHistory && crypto && crypto.subtle);
+      const board=$("compose-board").files[0];
+      const worksheets=[...document.querySelectorAll("[data-revision]")]
+        .map(input=>input.files[0]);
+      requireValid(worksheets.length===Number($("compose-count").value) &&
+        worksheets.length>=2&&worksheets.length<=8 && worksheets.every(Boolean));
+      const boardRaw=await bytes(board,64*1024);
+      // Native original board JSON does not accept a leading UTF-8 BOM.
+      const head=new Uint8Array(boardRaw);
+      requireValid(!(head[0]===0xef&&head[1]===0xbb&&head[2]===0xbf));
+      const digest=await sha256(boardRaw);
+      const original=admitBoard(decode(boardRaw));
+      const revBytes=await Promise.all(worksheets.map(file=>bytes(file,128*1024)));
+      const revHash=await Promise.all(revBytes.map(raw=>sha256(raw)));
+      requireValid(new Set(revHash).size===revHash.length);
+      const revisions=revBytes.map(raw=>admitHumanRows(decode(raw),digest,original));
+      requireValid(current===generation);
+      const outcome=compose(original,revisions);
+      const json=JSON.stringify(outcome);
+      const admission=window.LightUpPrivateHistory.openComposed(json);
+      requireValid(admission===true && current===generation);
+      showingComposed = true;
+      // The source snapshots contain only browser File handles and hashes:
+      // complete question/next-action notes never enter saved output.
+      saved={json,files:[board,...worksheets],hashes:[digest,...revHash],limits:
+        [64*1024,...worksheets.map(()=>128*1024)],at:current};
+      $("compose-download").disabled=false;
+      $("compose-status").textContent="REVIEW_ONLY: source-free HUMAN history composed and opened below. "+
+        "No notes in output. Download privately if needed; native re-admission remains separate.";
+      $("compose-status").dataset.failed="false";
+    }catch(_error){
+      if(current===generation){
+        saved=null;$("compose-download").disabled=true;
+        $("compose-status").textContent="HOLD: original board, complete HUMAN revisions, "+
+          "cryptographic digest or browser availability not admitted. Nothing downloaded.";
+        $("compose-status").dataset.failed="true";
+      }
+    }
+  }
+  async function downloadClicked() {
+    const current=saved;
+    $("compose-download").disabled=true;
+    try{
+      requireValid(current && current.at===generation);
+      // Require the same explicitly selected original files, count and SHA.
+      const selected=[$("compose-board").files[0],
+        ...[...document.querySelectorAll("[data-revision]")].map(input=>input.files[0])];
+      requireValid(selected.length===current.files.length &&
+        selected.every((file,index)=>file===current.files[index]));
+      const hashes=await Promise.all(selected.map((file,index)=>fingerprint(file,current.limits[index])));
+      requireValid(hashes.every((hash,index)=>hash===current.hashes[index]) &&
+        current.at===generation);
+      const blob=new Blob([current.json+"\n"],{type:"application/json;charset=utf-8"});
+      const url=URL.createObjectURL(blob);
+      try{
+        const anchor=document.createElement("a");
+        anchor.href=url;anchor.download="PRIVATE-inbox-HUMAN-history-browser-unsigned.json";
+        document.body.append(anchor);anchor.click();anchor.remove();
+      }finally{setTimeout(()=>URL.revokeObjectURL(url),0);}
+      $("compose-status").textContent="PRIVATE source-free JSON downloaded locally, unsigned. "+
+        "This is not the native four-file custody report or release authorization.";
+      $("compose-status").dataset.failed="false";
+    }catch(_error){
+      $("compose-status").textContent="HOLD: original inputs changed or were not re-admitted. "+
+        "Compose again; no valid report was downloaded.";
+      $("compose-status").dataset.failed="true";
+      saved=null;
+    }finally{
+      $("compose-download").disabled=!saved;
+    }
+  }
+  // The viewer owns the global PRIVATE session Clear action. It empties
+  // both source File inputs and generated source-free output; crucially,
+  // the original CSV files can no longer be reprocessed without reselection.
+  window.addEventListener("lightup:history-clear-original-inputs", () => {
+    // Avoid resetting a newly imported native history on the same signal.
+    showingComposed = false;
+    $("compose-board").value = "";
+    $("compose-confirm").checked = false;
+    buildFileFields();
+  });
+  $("compose-count").addEventListener("change",buildFileFields);
+  $("compose-board").addEventListener("change",()=>invalidate());
+  $("compose-confirm").addEventListener("change",()=>invalidate());
+  $("compose-reset").addEventListener("click",()=>{
+    $("compose-board").value="";
+    $("compose-confirm").checked=false;
+    buildFileFields();
+  });
+  $("compose-build").addEventListener("click",composeClicked);
+  $("compose-download").addEventListener("click",downloadClicked);
+  buildFileFields();
+})();
+</script>
+</body>
+</html>

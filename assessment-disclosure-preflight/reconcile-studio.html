@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE HUMAN reconciliation desk</title>
+<link rel="stylesheet" href="./reconcile-studio.css">
+<script src="./review-vault.js" defer></script>
+<script src="./reconcile-studio.js" defer></script>
+</head>
+<body>
+<header><p class="eyebrow">LIGHTUP / LOCAL-ONLY / ASSESSMENT LAB</p>
+<h1>PRIVATE reviewer reconciliation</h1>
+<p>Compare two already-completed HUMAN reviews against <strong>the same exact unsigned PRIVATE receipt bytes</strong>. Select what to carry forward yourself. Nothing is scanned, uploaded, authorized, or released.</p></header>
+<main>
+<section class="warning" aria-labelledby="holdTitle">
+<h2 id="holdTitle">REVIEW ONLY · RELEASE HOLD</h2>
+<p>This workroom does <strong>not</strong> authenticate the original laboratory evidence, either reviewer, their identity, client/operator consent, at-action revocation or a remediated finding. Identical HUMAN words are not independent verification. All selections default to HOLD, even when both reviewers agree. Both incoming reviewer files and this workroom remain PRIVATE.</p>
+<p>Works only in a trusted secure offline browser context with WebCrypto. No scripts, styles, images or other resources are loaded over the network. Files remain in page memory unless you explicitly download a PRIVATE decision CSV. Native <code>reconcile.py finalize</code> must re-admit the exact original inputs and your decisions before any HUMAN handoff.</p>
+</section>
+<section aria-labelledby="openTitle">
+<h2 id="openTitle">1 · Open exact matching sources</h2>
+<div class="grid">
+<label>Original PRIVATE-receipt.json<input id="receipt" type="file" accept=".json,application/json"></label>
+<label>Reviewer A format<select id="formatA"><option value="csv">Native HUMAN CSV</option><option value="vault">Encrypted receipt-bound .luhd</option><option value="bundle">Encrypted receipt + HUMAN .luhb</option></select></label>
+<label>Independent reviewer A file<input id="reviewA" type="file" accept=".csv,.luhd,.luhb"></label>
+<label>Reviewer A password (encrypted only)<input id="passwordA" type="password" minlength="14" maxlength="256" autocomplete="off"></label>
+<label>Reviewer B format<select id="formatB"><option value="csv">Native HUMAN CSV</option><option value="vault">Encrypted receipt-bound .luhd</option><option value="bundle">Encrypted receipt + HUMAN .luhb</option></select></label>
+<label>Independent reviewer B file<input id="reviewB" type="file" accept=".csv,.luhd,.luhb"></label>
+<label>Reviewer B password (encrypted only)<input id="passwordB" type="password" minlength="14" maxlength="256" autocomplete="off"></label>
+</div>
+<p class="hint">For each reviewer independently select an original native CSV, receipt-bound encrypted .luhd, or complete receipt+HUMAN .luhb. The app reuses the existing LightUp PBKDF2/AES-256-GCM implementation, decrypts locally in memory and re-admits exact native HUMAN CSV bytes. The receipt embedded in any .luhb must equal the selected original receipt byte-for-byte. Passphrases are cleared after every attempt. No extra plaintext reviewer file is written, no sender/consent authority is inferred. The native <code>reconcile.py</code> remains available for encrypted terminal-only handling.</p>
+<div class="actions"><button id="open" type="button">Open exact review trio</button><button id="clear" type="button" class="secondary">Clear PRIVATE session</button></div>
+<p id="notice" role="status" aria-live="polite">No PRIVATE material loaded.</p>
+</section>
+<section id="desk" hidden aria-labelledby="deskTitle">
+<h2 id="deskTitle">2 · Resolve every original ordinal yourself</h2>
+<div class="stats"><span id="totals"></span><span id="different"></span><span id="selected"></span></div>
+<div class="grid">
+<label>View <select id="view"><option value="all">All ordinals</option><option value="different">Different HUMAN text</option><option value="same">Same HUMAN text (unverified)</option><option value="undecided">HOLD only</option><option value="selected">Explicit HUMAN selection</option></select></label>
+<label>Search local HUMAN text/ordinal/kind<input id="query" type="search" autocomplete="off" placeholder="PRIVATE local filter"></label>
+</div>
+<div class="historybar" role="group" aria-label="PRIVATE HUMAN decision history">
+<button id="undo" type="button" class="secondary" disabled>Undo last HUMAN edit</button>
+<button id="redo" type="button" class="secondary" disabled>Redo HUMAN edit</button>
+<button id="holdFiltered" type="button" class="secondary" disabled>Set selected matching rows to HOLD</button>
+</div>
+<p id="historyStatus" class="hint" role="status" aria-live="polite">No HUMAN decision history loaded. Undo/redo remains local and is never proof of authorization.</p>
+<p id="visible" role="status" aria-live="polite"></p>
+<p class="hint">Filters only affect visibility. Every original ordinal is exported, including hidden rows. Changing the underlying original files requires a new load. Choosing A or B requires an explicit HUMAN reason. A selection is not approval.</p>
+<div class="resume"><h3>Resume a previous PRIVATE HUMAN choice draft</h3>
+<p>Choose a completed or unfinished native 7-column PRIVATE reconciliation decision CSV. The entire file must match the <strong>current exact receipt SHA-256, reviewer A and B original CSV byte SHA-256, source ordinal and kind</strong>. Every field is admitted before any selection changes. Human confirmation is mandatory; importing never finalizes or approves anything.</p>
+<div class="actions"><label>Previously exported PRIVATE decisions CSV<input id="resume" type="file" accept=".csv,text/csv"></label>
+<button id="restore" type="button">Validate &amp; restore decisions</button></div>
+</div>
+<div id="entries" class="entries" aria-label="PRIVATE reviewer comparisons"></div>
+<div class="sticky"><span id="saveState" role="status" aria-live="polite">No decisions saved.</span>
+<button id="save" type="button" disabled>Export PRIVATE decision CSV</button></div>
+<div class="finalize" aria-labelledby="finalizeTitle">
+<h3 id="finalizeTitle">3 · Export your selected PRIVATE HUMAN result</h3>
+<p>Review the complete final result below, including rows hidden by search/filter. Questions and actions are collapsed by default so a passer-by does not automatically see PRIVATE detail. Expanding them is a local HUMAN operator choice. This is still neither source identity, independent verification nor consent.</p>
+<div id="finalPreview" class="final-preview" aria-label="Tentative selected HUMAN result for every ordinal"></div>
+<p>First export the exact reviewer-bound decision CSV above: it records your explicit A/B/HOLD choices and private reasons. Keep that PRIVATE audit file safely alongside the separately stored originals. This optional next step offers either a native-compatible encrypted <code>.luhb</code> containing the exact original PRIVATE receipt bytes and original-format HUMAN CSV, or a deliberately requested unencrypted original-format complete PRIVATE HUMAN CSV. A HOLD row always becomes <code>unreviewed</code> with empty notes; matching reviewers are never automatically selected. Neither format authenticates source, reviewers or consent. The plaintext option contains HUMAN questions and actions and requires separate owner-only custody.</p>
+<div class="grid">
+<label>New local-only encrypted result passphrase (14–256 characters)<input id="sealPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
+<label>Repeat passphrase<input id="sealConfirm" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
+</div>
+<div class="actions">
+<button id="seal" type="button" disabled>Seal PRIVATE selected HUMAN result (.luhb)</button>
+<button id="exportPlain" type="button" class="secondary" disabled>Export complete UNENCRYPTED PRIVATE HUMAN CSV</button>
+<button id="counts" type="button" class="secondary" disabled>Export suppressed counts only</button>
+<button id="cover" type="button" class="secondary" disabled>Export PRIVATE no-notes HUMAN handoff cover (.html)</button>
+</div>
+<p id="sealStatus" role="status" aria-live="polite">No HUMAN result sealed. Neither encryption nor SHA-256 authenticates the reviewers, verifies source evidence, authorizes a disclosure or confers release.</p>
+<p class="hint"><strong>Privacy warning:</strong> The optional unencrypted complete HUMAN CSV includes every selected PRIVATE stage, reviewer question and next action and may be copied into ordinary browser download storage without 0600 permissions. Export only when deliberately needed for an owner-controlled offline workflow. An earlier locally exported A/B/HOLD decision CSV remains mandatory. The new original-format complete CSV can be re-admitted using native <code>reconcile.py reopen --received-csv ... --received-counts ...</code>. It is never consent or release.</p>
+<p class="hint">The encrypted file uses the original LightUp AES-256-GCM/PBKDF2 implementation and can be opened locally with the existing HUMAN studio or native <code>human_review.py render --bundle</code>. It contains the unsigned receipt and selected HUMAN stage/question/next-action text, not the A/B justification; retain the separately exported exact decision CSV. The source-free counts download suppresses small cohorts/groups and is not automatically anonymous. Browser download files may initially have default filesystem permissions. No automatic recipient dispatch, scan, grant, deployment or network access.</p>
+</div>
+<div class="resume" aria-labelledby="receiveTitle">
+<h3 id="receiveTitle">4 · Receive an already saved PRIVATE HUMAN handoff</h3>
+<p>After exporting the current complete A/B/HOLD decision CSV, reopen your previously produced final HUMAN file <strong>and its separate suppressed-counts CSV</strong>. Select a native PRIVATE-reconciled-human.csv or the original password-encrypted receipt+HUMAN .luhb. This local read-only receiving desk compares every original ordinal, selected stage, private question/action and complete count handoff against the current original source files and HUMAN decisions. The encrypted receipt must match the original bytes exactly. Nothing is uploaded, endorsed or rewritten.</p>
+<div class="grid">
+<label>Saved result type<select id="receiveFormat"><option value="bundle">Encrypted native .luhb</option><option value="csv">Native complete HUMAN CSV</option></select></label>
+<label>Previously saved final PRIVATE HUMAN result<input id="receiveResult" type="file" accept=".csv,.luhb"></label>
+<label>Previously saved suppressed PRIVATE counts<input id="receiveCounts" type="file" accept=".csv,text/csv"></label>
+<label>Previous result password (.luhb only)<input id="receivePassword" type="password" autocomplete="off" minlength="14" maxlength="256"></label>
+</div>
+<div class="actions"><button id="receiveSaved" type="button">Reopen complete PRIVATE handoff</button>
+<button id="exportReceiving" type="button" class="secondary" disabled>Export PRIVATE local receiving record (.html)</button></div>
+<p class="hint">The receiving record becomes available only after every previously saved result row and complete suppressed-counts file match the currently exported PRIVATE HUMAN choices. It records only source-byte SHA-256 identities and declared summary counts, never original reviewer question/action/reason text. Treat even this source-free record as PRIVATE. Every local edit invalidates the earlier receiving result.</p>
+<p id="receiveStatus" class="hint" role="status" aria-live="polite">No saved result re-admitted. Exact native Python reopen remains the final local custody check.</p>
+</div>
+<p class="hint">The output pins SHA-256 of the exact original receipt and both complete native HUMAN CSV byte streams. On the same trusted machine, run <code>reconcile.py finalize --decisions ...</code> with the unchanged source files. It rejects any changed source, reordered ordinal, invalid stage, CSV or decision. A SHA-256 digest proves byte equality only, never origin or authority. Local browser downloads may receive normal filesystem permissions: move the PRIVATE file into a trusted owner-only directory before finalization.</p>
+</section>
+</main>
+<footer>LightUp · INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD · no source claims, scanning, authorization, recipient delivery or release</footer>
+</body></html>
