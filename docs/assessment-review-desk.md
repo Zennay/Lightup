@@ -7,7 +7,7 @@ The regression landscape and human queue now expose source-declared `coverage_un
 - A distinct **Unknown coverage > 0** bar filters the case queue even when no metric is marked as a regression. The queue also has an **Unknown coverage** status filter.
 - Case rows and detail chips show the declared unknown-coverage candidate value. When a case has no scored regression but has unknown coverage, the suggested human action asks the original lab source owner to clarify it; no missing finding, fix, authorization or need for a new scan is inferred.
 - All-case and filtered print briefs include an Unknown coverage column. Filtered queue JSON is now schema v2 and includes aggregate-safe source metric observations for unknown coverage; v1 filtered queue exports remain importable under their original validation rules.
-- This is an uncertainty signal, not a regression reclassification. The overall source verdict and regression counts are unchanged; source scenario IDs remain internal and no browser persistence, network, target access, scanner, grants or authorization are added.
+- This is an uncertainty signal, not a regression reclassification. The overall source verdict and regression counts are unchanged; source scenario IDs remain internal and no browser persistence, network, target access, scanner, grants or authorization are added. The refreshed offline standalone is 89,275 bytes (SHA-256 `67bba1d0c6ad00c316c90efc02dcb20be4995b09f41abf3ef2bd452ba81f3242`) with the updated JS/CSS pinned by its restrictive CSP.
 
 **Release boundary:** INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.
 Human preparation tool only, not a scan, source authenticity verifier, benchmark release gate, authorization service, consent collection, grant issuance or deployment route.
