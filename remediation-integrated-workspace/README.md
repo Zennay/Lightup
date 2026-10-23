@@ -123,6 +123,22 @@ ownership, disclosure rights, client consent or a release decision.
 The expected native product result is always `REVIEW_ONLY`, not
 permission to scan or deploy.
 
+## Kortere offline bediening voor echte operators
+
+De offline operatorinterface opent met **zes veelgebruikte handelingen** in
+plaats van alle **27** technische opdrachten tegelijk: versleuteld
+overdragen met privébewijs, ontvangen en controleren, hervatten van
+menselijke beoordeling, pakketvingerafdruk vergelijken, softwarepakket
+inspecteren en software ontvangen. Kies **Bekijk alle 27 acties** om
+de complete lijst te openen, of zoek direct op een Nederlandse handeling,
+native naam of uitleg. Een expliciet geselecteerde actie blijft zichtbaar,
+ook in de compacte weergave. De knoppen tonen menselijke Nederlandse namen;
+de originele commandonaam blijft behouden in de lokaal voorbereide
+terminalopdracht en de native veiligheidsvalidaties zijn ongewijzigd.
+Dit is **uitsluitend een offline commandocomposer**: geen bestanden openen,
+toestemmingen geven, cloudverbinding maken of beveiligingsscans uitvoeren
+via de browser. REVIEW_ONLY is geen vrijgave.
+
 ## No-write admission of a received software-only ZIP
 
 An authorized HUMAN operator can inspect a *previously received* original
