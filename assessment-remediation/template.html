@@ -59,6 +59,11 @@
       <div class="source-preview">
         <h3>Human review gaps across original source files</h3>
         <p class="sub">Unlinked original scenarios and findings remain visible; missing mapping never means fixed or safe.</p>
+        <div class="gap-search-grid">
+          <label>Search unlinked original scenarios<input type="search" id="scenario-gap-filter" placeholder="Scenario ID, HOLD status, metric name" autocomplete="off"></label>
+          <label>Search unlinked original findings<input type="search" id="finding-gap-filter" placeholder="Finding ID, title, severity, retest status" autocomplete="off"></label>
+        </div>
+        <p class="sub" id="gap-filter-summary" aria-live="polite">Search locally to find unlinked source records. Actions only prefill the mapping form.</p>
         <div id="gaps" aria-live="polite"></div>
       </div>
     </div>
