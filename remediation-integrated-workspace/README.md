@@ -370,7 +370,10 @@ Changed original ZIP contents, unsafe private paths, or an already existing
 destination produce **HOLD=3** with **no replacement**. **The entire
 original installed software tree, including every nested subdirectory,
 is forbidden as an output destination:** issuing a checksum must not mutate
-the source-only suite being attested. The output is exactly
+the source-only suite being attested. The checksum output filename must end in **`.sha256`**, matching the
+original offline browser's file chooser. The native writer and preview
+now refuse a different output suffix with HOLD rather than issuing a
+receipt the browser cannot open. The output is exactly
 64 lowercase SHA-256 hex characters and one LF. The separate operator
 `private_desk.py fingerprint-archive` and offline browser studio expose
 the same operation; no filename, original evidence, target details or
