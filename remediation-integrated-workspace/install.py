@@ -531,6 +531,14 @@ def verify(folder: Path, *, compare_checkout: bool = False,
     for name, descriptor in installed_lock["files"].items():
         require(name in verified and digest(verified[name]) == descriptor["sha256"],
                 "Installed source not pinned")
+    # The original lock pins source-owner files, not the integration's own
+    # operator CLIs and browsers. A self-consistent manifest/ZIP alone is not
+    # sufficient for those executable tools. Re-admit all 25 against the
+    # current explicit trusted code even in the ordinary inspect operation;
+    # --compare-checkout additionally checks every pinned original source.
+    for name in INTEGRATED_TOOLS:
+        require(verified[name] == read_checkout_source(ROOT / name),
+                "Integrated software differs from the trusted local checkout")
     # Inspect the exact stable 0600 ZIP bytes already admitted above; do not
     # reopen its pathname after verifying the manifest.
     import io
