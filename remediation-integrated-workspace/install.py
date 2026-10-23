@@ -33,6 +33,34 @@ WARNING = ("PRIVATE HUMAN-only offline software. No original producer authentica
 MAX_SOURCE = 4_000_000
 MAX_TOTAL = 15_000_000
 
+INTEGRATED_TOOLS = (
+    "remediation-integrated-workspace/install.py",
+    "remediation-integrated-workspace/private_desk.py",
+    "remediation-integrated-workspace/operator_console.py",
+    "remediation-integrated-workspace/landing.py",
+    "remediation-integrated-workspace/operator_ui.js",
+    "remediation-integrated-workspace/fingerprint_ui.js",
+    "remediation-integrated-workspace/packet_fingerprint.py",
+    "remediation-integrated-workspace/packet_brief.py",
+    "remediation-integrated-workspace/operator_ui.css",
+    "remediation-integrated-workspace/receiver.py",
+    "remediation-integrated-workspace/workflow.py",
+    "remediation-integrated-workspace/portable_cockpit.py",
+    "remediation-integrated-workspace/single_review.py",
+    "remediation-integrated-workspace/single_review.js",
+    "remediation-integrated-workspace/single_brief.py",
+    "remediation-integrated-workspace/SINGLE_REVIEW.md",
+    "remediation-integrated-workspace/archive_workflow.py",
+    "remediation-integrated-workspace/encrypted_cockpit.py",
+    "remediation-integrated-workspace/journal_vault.py",
+    "remediation-integrated-workspace/journal_encrypt.js",
+    "remediation-integrated-workspace/journal_open.js",
+    "remediation-integrated-workspace/review_package.py",
+    "remediation-integrated-workspace/REVIEW_PACKAGE.md",
+    "remediation-integrated-workspace/JOURNAL_VAULT.md",
+    "remediation-integrated-workspace/README.md",
+)
+
 class Hold(ValueError):
     pass
 
@@ -239,31 +267,7 @@ def build(dest: Path) -> None:
             entries[name] = descriptor
         # Make the archive independently inspectable on a second offline
         # authorized device: carry this CLI and its operator guide too.
-        for name in ("remediation-integrated-workspace/install.py",
-                     "remediation-integrated-workspace/private_desk.py",
-                     "remediation-integrated-workspace/operator_console.py",
-                     "remediation-integrated-workspace/landing.py",
-                     "remediation-integrated-workspace/operator_ui.js",
-                     "remediation-integrated-workspace/fingerprint_ui.js",
-                     "remediation-integrated-workspace/packet_fingerprint.py",
-                     "remediation-integrated-workspace/packet_brief.py",
-                     "remediation-integrated-workspace/operator_ui.css",
-                     "remediation-integrated-workspace/receiver.py",
-                     "remediation-integrated-workspace/workflow.py",
-                     "remediation-integrated-workspace/portable_cockpit.py",
-                     "remediation-integrated-workspace/single_review.py",
-                     "remediation-integrated-workspace/single_review.js",
-                     "remediation-integrated-workspace/single_brief.py",
-                     "remediation-integrated-workspace/SINGLE_REVIEW.md",
-                     "remediation-integrated-workspace/archive_workflow.py",
-                     "remediation-integrated-workspace/encrypted_cockpit.py",
-                     "remediation-integrated-workspace/journal_vault.py",
-                     "remediation-integrated-workspace/journal_encrypt.js",
-                     "remediation-integrated-workspace/journal_open.js",
-                     "remediation-integrated-workspace/review_package.py",
-                     "remediation-integrated-workspace/REVIEW_PACKAGE.md",
-                     "remediation-integrated-workspace/JOURNAL_VAULT.md",
-                     "remediation-integrated-workspace/README.md"):
+        for name in INTEGRATED_TOOLS:
             data = read_checkout_source(ROOT / name)
             dest_file = stage / name
             dest_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
