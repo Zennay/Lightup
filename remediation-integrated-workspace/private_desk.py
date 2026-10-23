@@ -120,6 +120,9 @@ OPERATIONS = {
     "install": ("install.py", ("build",), (
         ("--output-dir", "NEW owner-private software-only suite", False, True),
     ), "Copies original pinned software only; NEVER client data."),
+    "inspect-archive": ("install.py", ("inspect-archive",), (
+        ("--archive", "Existing PRIVATE owner-only source-only ZIP", False, True),
+    ), "Check original complete software ZIP offline without extracting or writing."),
     "receive-software": ("install.py", ("receive",), (
         ("--archive", "Original software-only ZIP", False, True),
         ("--output-dir", "NEW owner-private software installation", False, True),
