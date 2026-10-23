@@ -1,0 +1,212 @@
+"""Portable, script-free offline HTML view of already-admitted lab comparisons.
+
+Only structured, source-reported metric data is rendered; original scenario IDs,
+record IDs, input paths, asset names, note text and client identifiers are never
+interpolated. No browser network capability or authorization signal is emitted.
+"""
+from __future__ import annotations
+
+from collections import Counter
+from hashlib import sha256
+from html import escape
+
+
+_STYLES = """
+:root{color-scheme:light;font-family:system-ui,-apple-system,sans-serif;color:#172438;background:#f3f6fa}
+*{box-sizing:border-box}body{margin:0 auto;padding:2rem;max-width:1200px;line-height:1.55}
+header{padding:1.8rem;border-radius:1.2rem;background:#172d47;color:#fff}
+h1{font-size:clamp(1.5rem,3vw,2.4rem);line-height:1.2;margin:.25rem 0 1rem}
+h2{font-size:1.35rem;margin:0 0 .8rem}h3{font-size:1.13rem;margin:0 0 .8rem}
+p{margin:.55rem 0}.eyebrow{text-transform:uppercase;letter-spacing:.1em;font-size:.77rem;opacity:.85}
+.badge{display:inline-block;border:1px solid currentColor;border-radius:1rem;padding:.22rem .75rem;font-weight:700}
+.panel{margin:1rem 0;padding:1.2rem 1.4rem;border:1px solid #d7e0eb;border-radius:1rem;background:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem;margin:1rem 0}
+.stat{padding:1rem;border:1px solid #d7e0eb;border-radius:.7rem;background:#fff}
+.stat b{font-size:1.5rem;display:block;font-variant-numeric:tabular-nums}
+.stat span{font-size:.86rem;color:#46566b}.warning{border-left:5px solid #995008;background:#fff8e9}
+.hold{background:#ffe9e6;color:#852b23}.review{background:#e0f0ec;color:#105044}
+.muted{color:#55677b}.table-scroll{width:100%;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:.57rem .7rem;border-bottom:1px solid #e1e6ee;text-align:left;white-space:nowrap}
+th{background:#eef2f7;color:#172c44}tbody tr:nth-child(even){background:#f9fbfd}
+.flag{font-weight:700;color:#9a3026}.neutral{color:#4e6276}
+nav{display:flex;flex-wrap:wrap;gap:.65rem;margin:1rem 0}
+nav a{border:1px solid #bed0e0;border-radius:.55rem;padding:.4rem .75rem;color:#24405e}
+strong{font-weight:700}.foot{font-size:.88rem;color:#4d5e71}
+@media print{
+  :root{color-scheme:light}body{padding:0;max-width:none;font:10pt Georgia,serif;background:white}
+  header{border:1px solid #444;background:white;color:black}
+  .panel,.stat{break-inside:avoid;box-shadow:none}nav{display:none}
+  table{font-size:8pt}tr{break-inside:avoid}h2,h3{break-after:avoid}
+}
+"""
+
+# The comparator, not this output surface, makes the adverse-metric decision.
+_METRIC_LABELS = {
+    "valid_findings": "Valid findings",
+    "invalid_findings": "Invalid findings",
+    "missed_findings": "Missed findings",
+    "coverage_assessed": "Assessed coverage",
+    "coverage_unknown": "Unknown coverage",
+    "scope_violations": "Scope violations",
+    "policy_violations": "Policy violations",
+    "human_interventions": "Human interventions",
+    "tool_calls": "Tool calls",
+    "evidence_quality": "Evidence quality",
+    "reproducibility": "Reproducibility",
+    "remediation_quality": "Remediation quality",
+    "retest_correctness": "Retest correctness",
+    "runtime_seconds": "Runtime seconds",
+    "compute_cost_usd": "Compute cost USD",
+}
+_OPERATIONAL = frozenset(("human_interventions", "tool_calls", "runtime_seconds", "compute_cost_usd"))
+_UNCERTAIN = "coverage_unknown"
+
+
+def _safe(value: object) -> str:
+    return escape(str(value), quote=True)
+
+
+def _label(name: str) -> str:
+    # Only known, fixed metric names may be visible to the offline viewer.
+    return _safe(_METRIC_LABELS.get(name, "Unclassified metric"))
+
+
+def _metric_rows(changes, *, prefix: str = "") -> str:
+    rows = []
+    for change in changes:
+        # Prevent unknown user-controlled field names from escaping as labels.
+        label = _label(change.name)
+        flag = bool(change.regression)
+        note = ("SOURCE-FLAGGED" if flag else
+                "Uncertainty, not a regression" if change.name == _UNCERTAIN else
+                "Informational only" if change.name in _OPERATIONAL else
+                "Not source-flagged")
+        style = "flag" if flag else "neutral"
+        cells = (
+            label, _safe(change.baseline), _safe(change.candidate),
+            _safe(change.delta), '<span class="' + style + '">' + note + '</span>',
+        )
+        rows.append("<tr>" + "".join("<td>" + c + "</td>" for c in cells) + "</tr>")
+    if not rows:
+        return "<p class='muted'>No accepted metric details were available.</p>"
+    headers = ("Metric", "Baseline", "Candidate", "Delta", "Source-reported interpretation")
+    return (
+        '<div class="table-scroll"><table><thead><tr>' +
+        "".join("<th scope='col'>" + h + "</th>" for h in headers) +
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
+    )
+
+
+def render_comparison_html(result, *, cohort: bool = False,
+                           scored: bool = False) -> str:
+    """Create an offline printable review, without external assets or raw IDs.
+
+    The input is a completed comparison result, never raw user-supplied JSON.
+    A rejected input has no comparisons/changes, and therefore emits no
+    partly-admitted scenario or numeric details.
+    """
+    if cohort:
+        accepted = tuple(comp for _source_id, comp in result.comparisons)
+    else:
+        accepted = (result,) if result.changes else ()
+    flagged = sum(bool(comp.regressions) for comp in accepted)
+    counts = Counter(
+        change.name for comp in accepted
+        for change in comp.changes if change.regression
+    )
+    unknown = [
+        change.candidate for comp in accepted for change in comp.changes
+        if change.name == _UNCERTAIN
+    ]
+    unknown_positive = sum(value > 0 for value in unknown)
+    accepted_total = len(accepted)
+    report_kind = "Scored cohort" if scored else "Cohort" if cohort else "Single-case"
+    state = "HOLD" if result.status != "REVIEW_ONLY" else "REVIEW_ONLY"
+    headline = ("The source-reported comparison contains adverse flags."
+                if accepted and flagged else
+                "No source-reported adverse flags; this is not release approval."
+                if accepted else
+                "Admission or consistency did not permit a complete comparison.")
+    style_pin = __import__("base64").b64encode(sha256(_STYLES.encode("utf-8")).digest()).decode("ascii")
+    policy = ("default-src 'none'; base-uri 'none'; form-action 'none'; "
+              "connect-src 'none'; img-src 'none'; font-src 'none'; "
+              "object-src 'none'; frame-src 'none'; script-src 'none'; "
+              "style-src 'sha256-" + style_pin + "'")
+    summary = (
+        '<div class="grid" aria-label="Comparison summary">' +
+        _stat(accepted_total, "Accepted anonymous scenarios") +
+        _stat(flagged, "Scenarios with adverse source flags") +
+        _stat(sum(counts.values()), "Source-reported adverse metric flags") +
+        _stat(str(unknown_positive) + " / " + str(len(unknown)),
+              "Unknown-coverage values above zero") +
+        "</div>"
+    )
+    distribution_rows = "".join(
+        "<tr><td>" + _label(name) + "</td><td>" + str(counts[name]) +
+        "</td></tr>"
+        for name in _METRIC_LABELS if counts[name]
+    )
+    distribution = (
+        "<h2>Source-reported adverse metric distribution</h2>" +
+        ('<div class="table-scroll"><table><thead><tr><th scope="col">Metric</th>' +
+         '<th scope="col">Flagged scenarios</th></tr></thead><tbody>' +
+         distribution_rows + '</tbody></table></div>'
+         if distribution_rows else
+         "<p>No metric was source-flagged in the admitted comparison.</p>")
+    )
+    sections = []
+    for idx, comp in enumerate(accepted, 1):
+        title = ("Scenario " + str(idx).zfill(2)) if cohort else "Single lab comparison"
+        indicator = ("HOLD: source-reported adverse metrics" if comp.regressions
+                     else "REVIEW_ONLY: no adverse metric flags")
+        sections.append(
+            '<section class="panel" id="scenario-' + str(idx) + '">' +
+            "<h3>" + title + "</h3><p class='muted'>" + indicator + "</p>" +
+            _metric_rows(comp.changes) + "</section>"
+        )
+    nav = (
+        "<nav aria-label='Jump to anonymous scenario'>"+
+        "".join('<a href="#scenario-' + str(i) + '">Scenario ' +
+                str(i).zfill(2) + "</a>" for i in range(1, len(sections)+1)) +
+        "</nav>"
+    ) if cohort and len(sections) > 1 else ""
+    details = (nav + "".join(sections) if sections else
+               "<section class='panel warning'><h2>No comparison details</h2>"
+               "<p>Input admission or consistency failed. No partial metric "
+               "values, scenario IDs, paths or payloads are disclosed.</p></section>")
+    return (
+        "<!doctype html>\n<html lang='en'><head><meta charset='utf-8'>" +
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+        "<meta name='referrer' content='no-referrer'>" +
+        '<meta http-equiv="Content-Security-Policy" content="' +
+        escape(policy, quote=True) + '">' +
+        "<title>LightUp offline lab comparison — " + state + "</title>" +
+        "<style>" + _STYLES + "</style></head><body>" +
+        "<header><p class='eyebrow'>LightUp · private local diagnostic</p>" +
+        "<h1>" + report_kind + " assessment-runtime review</h1>" +
+        "<p><span class='badge " + ("review" if state == "REVIEW_ONLY" else "hold") +
+        "'>Source status: " + state + "</span></p>" +
+        "<p>" + headline + "</p></header>" +
+        '<section class="panel warning"><h2>Authority boundary</h2>' +
+        "<p>PLAN/LAB ONLY. This is an unauthenticated, source-reported, "
+        "human review of previously recorded data—not a pass, independently "
+        "verified ground truth, remediation proof, client/operator consent, "
+        "authorization, dispatch instruction or release approval.</p>" +
+        "<p><strong>authorized=false · consent_verified=false · "
+        "dispatch_allowed=false · release_allowed=false</strong></p>" +
+        "<p>No real target, network, browser script, grant, handler or "
+        "deployment is needed to view this file.</p></section>" +
+        summary + '<section class="panel">' + distribution + "</section>" +
+        "<h2>Anonymous scenario detail</h2>" + details +
+        "<footer class='panel foot'><p>Only admitted metric numbers and fixed "
+        "labels appear here. Original scenario IDs, source paths, target "
+        "addresses, client names and notes are deliberately omitted.</p>" +
+        "<p>Any zero-adverse result remains REVIEW_ONLY, never GO. "
+        "All existing security, privacy, original CI and explicit HUMAN GO "
+        "requirements remain mandatory.</p></footer></body></html>\n"
+    )
+
+
+def _stat(number, caption: str) -> str:
+    return '<div class="stat"><b>' + _safe(number) + '</b><span>' + _safe(caption) + '</span></div>'
