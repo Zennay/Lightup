@@ -608,6 +608,13 @@ def reopen_integrity_receipt(folder: Path, report_dir: Path,
 def verify(folder: Path, *, compare_checkout: bool = False,
            report_dir: Path | None = None,
            passport_dir: Path | None = None) -> None:
+    # A reproducibility passport must never be issuable (or re-admitted)
+    # from self-consistent but checkout-unverified package files.
+    # Reject ambiguous operator intent before any possible publication.
+    require(not (report_dir is not None and passport_dir is not None),
+            "Choose passport publication OR existing passport admission")
+    require((report_dir is None and passport_dir is None) or compare_checkout,
+            "Reproducibility passport requires explicit --compare-checkout")
     owner_dir(folder)
     receipt = parse(read_owner_file(folder / "manifest.json", ceiling=350_000))
     require(set(receipt) == {"kind", "version", "disposition", "authority_granted",
@@ -703,8 +710,6 @@ def verify(folder: Path, *, compare_checkout: bool = False,
             compared += 1
         print(f"CHECKOUT PARITY: {compared} original and integrated software files match exact local checkout bytes.")
         print("Checkout parity is not producer identity or independent approval.")
-    require(not (report_dir is not None and passport_dir is not None),
-            "Choose passport publication OR existing passport admission")
     if report_dir is not None:
         publish_integrity_receipt(folder, report_dir, receipt, verified, compare_checkout)
     if passport_dir is not None:
