@@ -58,8 +58,13 @@
           <label for="vaultOpenPass">PRIVATE decryption passphrase
             <input id="vaultOpenPass" type="password" autocomplete="off" placeholder="Local passphrase">
           </label>
-          <button id="vaultOpen" type="button" class="secondary" disabled>Open complete ENCRYPTED workroom</button>
-          <p class="hint">All ORIGINAL lab files and source-bound HUMAN decisions are admitted before replacing any in-memory work. A wrong password, edited source or inconsistent plan keeps the current workroom unchanged.</p>
+          <button id="vaultOpen" type="button" class="secondary" disabled>Inspect complete ENCRYPTED workroom</button>
+          <p class="hint">First decrypt and fully admit a PRIVATE file without overwriting your current originals or HUMAN notes. Review the minimum-necessary counts summary, then explicitly apply or discard. The staged decrypted original data remain in local browser memory until applied/discarded; the browser cannot guarantee physical memory erasure.</p>
+          <p id="vaultPreview" class="hint" role="status" aria-live="polite">No decrypted PRIVATE workroom staged.</p>
+          <div class="buttons">
+            <button id="vaultApply" class="primary" type="button" disabled>Apply inspected PRIVATE workroom</button>
+            <button id="vaultDiscard" class="secondary" type="button" disabled>Discard decrypted preview</button>
+          </div>
         </div>
       </div>
       <p class="hint"><strong>IMPORTANT:</strong> Encryption protects local file confidentiality, not source authenticity, reviewer identity, consent, true vulnerability status, action-time authorization or completed remediation. There has been no independent cryptographic audit; secure your device, passphrase and downloaded file.</p>
