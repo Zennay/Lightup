@@ -359,18 +359,9 @@ def build(dest: Path) -> None:
         if stage.exists():
             shutil.rmtree(stage)
 
-def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
-                              verified: dict[str, bytes], checkout_compared: bool) -> None:
-    """Create a separate private reproducibility passport, never a consent receipt."""
-    require(output.is_absolute() and output.parent == output.parent.resolve(strict=True)
-            and not output.exists() and not output.is_symlink(),
-            "Choose an unused literal absolute private report directory")
-    owner_dir(output.parent)
-    require(output != ROOT and ROOT not in output.parents
-            and output != folder and folder not in output.parents
-            and output not in folder.parents
-            and output not in ROOT.parents,
-            "Integrity report must remain outside source checkout and installed suite")
+def passport_material(receipt: dict, verified: dict[str, bytes],
+                      checkout_compared: bool) -> tuple[bytes, bytes]:
+    """Rebuild the exact original offline review-only passport, without IO."""
     manifest = canonical(receipt)
     report = {
         "kind": "lightup.offline_software_reproducibility_passport",
@@ -413,11 +404,26 @@ original findings, reviewer identity or source filenames.</p><dl>""" +
         body + """</dl><p>Hash matching does not authenticate the software producer,
 client/operator consent, scanning permission, verified remediation or
 release approval. Independent review remains mandatory.</p></main></html>""")
+    return canonical(report), page.encode("utf-8")
+
+def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
+                              verified: dict[str, bytes], checkout_compared: bool) -> None:
+    """Create a separate private reproducibility passport, never a consent receipt."""
+    require(output.is_absolute() and output.parent == output.parent.resolve(strict=True)
+            and not output.exists() and not output.is_symlink(),
+            "Choose an unused literal absolute private report directory")
+    owner_dir(output.parent)
+    require(output != ROOT and ROOT not in output.parents
+            and output != folder and folder not in output.parents
+            and output not in folder.parents
+            and output not in ROOT.parents,
+            "Integrity report must remain outside source checkout and installed suite")
+    report_json, report_html = passport_material(receipt, verified, checkout_compared)
     stage = output.parent / (".lightup-integrity-" + secrets.token_hex(12))
     os.mkdir(stage, 0o700)
     try:
-        write_file(stage / "REVIEW_ONLY.json", canonical(report))
-        write_file(stage / "REVIEW_ONLY.html", page.encode("utf-8"))
+        write_file(stage / "REVIEW_ONLY.json", report_json)
+        write_file(stage / "REVIEW_ONLY.html", report_html)
         require(not output.exists() and not output.is_symlink(),
                 "Private report destination appeared during publication")
         exclusive_publish(stage, output)
@@ -428,8 +434,38 @@ release approval. Independent review remains mandatory.</p></main></html>""")
     print("Unsigned digests do not establish authenticity, consent or release.")
 
 
+def reopen_integrity_receipt(folder: Path, report_dir: Path,
+                             receipt: dict, verified: dict[str, bytes],
+                             checkout_compared: bool) -> None:
+    """Re-admit a previously produced PRIVATE source-only passport.
+
+    Require an original installed package and independently reconstruct both
+    native JSON and scriptless HTML. This is local reproducibility, not a
+    signature, producer identity, authority or authenticated chronology.
+    """
+    require(report_dir.is_absolute() and
+            report_dir.parent == report_dir.parent.resolve(strict=True)
+            and report_dir != folder and report_dir not in folder.parents
+            and folder not in report_dir.parents
+            and report_dir != ROOT and ROOT not in report_dir.parents
+            and report_dir not in ROOT.parents,
+            "PRIVATE passport must be separate from checkout and installed suite")
+    owner_dir(report_dir)
+    require({p.name for p in report_dir.iterdir()} ==
+            {"REVIEW_ONLY.json", "REVIEW_ONLY.html"},
+            "PRIVATE passport contains missing or extra entries")
+    json_bytes = read_owner_file(report_dir / "REVIEW_ONLY.json", ceiling=350_000)
+    html_bytes = read_owner_file(report_dir / "REVIEW_ONLY.html", ceiling=350_000)
+    expected_json, expected_html = passport_material(receipt, verified, checkout_compared)
+    require(json_bytes == expected_json and html_bytes == expected_html,
+            "Passport differs from original installed software or native renderer")
+    print("REVIEW_ONLY: original private software passport reopened and byte-matched.")
+    print("A matched unsigned passport is not source authentication or consent.")
+
+
 def verify(folder: Path, *, compare_checkout: bool = False,
-           report_dir: Path | None = None) -> None:
+           report_dir: Path | None = None,
+           passport_dir: Path | None = None) -> None:
     owner_dir(folder)
     receipt = parse(read_owner_file(folder / "manifest.json", ceiling=350_000))
     require(set(receipt) == {"kind", "version", "disposition", "authority_granted",
@@ -515,8 +551,12 @@ def verify(folder: Path, *, compare_checkout: bool = False,
             compared += 1
         print(f"CHECKOUT PARITY: {compared} original and integrated software files match exact local checkout bytes.")
         print("Checkout parity is not producer identity or independent approval.")
+    require(not (report_dir is not None and passport_dir is not None),
+            "Choose passport publication OR existing passport admission")
     if report_dir is not None:
         publish_integrity_receipt(folder, report_dir, receipt, verified, compare_checkout)
+    if passport_dir is not None:
+        reopen_integrity_receipt(folder, passport_dir, receipt, verified, compare_checkout)
     print("REVIEW_ONLY: offline suite and software archive locally consistent.")
     print("Local hashes are not signatures, authenticated consent or release approval.")
 
@@ -531,6 +571,8 @@ def main() -> int:
                           help="also compare installed software with the exact current local checkout")
     p_verify.add_argument("--report-dir", type=Path,
                           help="optionally write a NEW 0700 private scriptless integrity passport")
+    p_verify.add_argument("--passport-dir", type=Path,
+                          help="re-open EXISTING private integrity passport against original software")
     p_recv = sub.add_parser("receive", help="Safely reconstruct pinned software-only ZIP offline")
     p_recv.add_argument("--archive", required=True, type=Path)
     p_recv.add_argument("--output-dir", required=True, type=Path)
@@ -543,7 +585,7 @@ def main() -> int:
             receive(args.archive, args.output_dir)
         else:
             verify(args.workspace, compare_checkout=args.compare_checkout,
-                   report_dir=args.report_dir)
+                   report_dir=args.report_dir, passport_dir=args.passport_dir)
         return 2  # REVIEW_ONLY; not a release success signal.
     except (Hold, OSError, KeyError, TypeError, zipfile.BadZipFile, ValueError) as exc:
         print("HOLD:", str(exc), file=sys.stderr)
