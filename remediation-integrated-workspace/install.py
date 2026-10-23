@@ -714,19 +714,23 @@ def main() -> int:
     p_preview = sub.add_parser("inspect-archive",
                                help="Validate a PRIVATE software-only ZIP without extraction or writes")
     p_preview.add_argument("--archive", required=True, type=Path)
+    p_preview.add_argument("--expected-sha256-file", type=Path,
+                           help="optional separate owner-private 0600 original SHA-256+LF fingerprint")
     p_recv = sub.add_parser("receive", help="Safely reconstruct pinned software-only ZIP offline")
     p_recv.add_argument("--archive", required=True, type=Path)
     p_recv.add_argument("--output-dir", required=True, type=Path)
+    p_recv.add_argument("--expected-sha256-file", type=Path,
+                        help="optional separate owner-private 0600 original SHA-256+LF fingerprint")
     args = parser.parse_args()
     try:
         if args.action == "build":
             build(args.output_dir)
         elif args.action == "receive":
             from receiver import receive
-            receive(args.archive, args.output_dir)
+            receive(args.archive, args.output_dir, args.expected_sha256_file)
         elif args.action == "inspect-archive":
             from receiver import inspect_archive
-            inspect_archive(args.archive)
+            inspect_archive(args.archive, args.expected_sha256_file)
         else:
             verify(args.workspace, compare_checkout=args.compare_checkout,
                    report_dir=args.report_dir, passport_dir=args.passport_dir)
