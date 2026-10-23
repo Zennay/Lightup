@@ -9,6 +9,13 @@ h1{font-size:clamp(2rem,4vw,3.25rem);letter-spacing:-.04em;line-height:1.04;marg
 .state{display:inline-flex;align-items:center;gap:10px;font-size:.79rem;font-weight:750;letter-spacing:.05em;border:1px solid #7a9aaa;border-radius:100px;padding:10px 15px}
 .dot{height:9px;width:9px;background:#e7b976;display:inline-block;border-radius:50%}
 .notice{margin:22px 0;padding:18px 20px;background:#fff;border:1px solid #cad9e5;border-left:5px solid #a87022;border-radius:12px;line-height:1.6}
+.extra-tools{margin:0 0 20px;background:#fff;border:1px solid #dae2eb;border-radius:13px;overflow:hidden}
+.extra-tools>summary{padding:16px 21px;cursor:pointer;font-size:.91rem;font-weight:800;color:#21495a}
+.extra-tools>summary span{display:block;margin:4px 0 0 20px;color:#627689;font-size:.8rem;font-weight:450}
+.extra-tools>summary:hover,.extra-tools>summary:focus-visible{background:#f1f7f8}
+.extra-tools>summary:focus-visible{outline:3px solid #8ad6d7;outline-offset:-3px}
+.extra-tools[open]{padding-bottom:13px}
+.extra-tools>.journey,.extra-tools>.fingerprint{margin:12px 16px}
 .layout{display:grid;grid-template-columns:minmax(250px,340px) minmax(0,1fr);gap:22px;align-items:start}
 .nav,.content{background:#fff;border:1px solid #dae2eb;border-radius:16px;box-shadow:0 6px 20px rgba(16,37,58,.035)}
 .nav{padding:22px;position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto}
