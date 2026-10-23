@@ -114,8 +114,10 @@ def receive(archive: Path, destination: Path,
     suite.owner_dir(destination.parent)
     suite.require(destination != suite.ROOT and suite.ROOT not in destination.parents
                   and destination not in suite.ROOT.parents
-                  and archive != destination and destination not in archive.parents,
-                  "Source, recipient or package paths overlap")
+                  and archive != destination and destination not in archive.parents
+                  and destination != archive.parent
+                  and archive.parent not in destination.parents,
+                  "Recipient output must be entirely outside the original software ZIP directory")
     stage = destination.parent / (".lightup-receiver-" + secrets.token_hex(12))
     os.mkdir(stage, 0o700)
     try:
