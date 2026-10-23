@@ -14,6 +14,12 @@ provides complete local, non-authorizing editing over source-bound originals:
 3. Bulk HOLD or Bulk Needs discussion affects ONLY currently visible filtered
    records after explicit HUMAN confirmation. No batch approve, scheduling,
    dispatch, grant or consent is possible. All hidden original rows remain.
+   The HUMAN change-review section shows per-field changes to the exact
+   original local template (up to 32 literal original ordinals at once;
+   PRIVATE question text excluded). Restore Visible returns only filtered,
+   edited rows to their originally imported draft values after confirmation,
+   preserving hidden rows and a reversible history step. This visual diff
+   does not prove original source authenticity or human consent.
 4. Restoring a complete draft requires every original source SHA/ordinal,
    owner label, case slot and conflict flag to match. Concurrent edits made
    during a file read cause HOLD rather than overwriting newer local decisions.

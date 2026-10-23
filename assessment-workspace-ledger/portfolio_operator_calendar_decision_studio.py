@@ -101,7 +101,17 @@ candidate is an EXPLICIT human proposal and NEVER changes approval stage.</small
 <p><small>Import matches the entire original source SHA, all original ordinals,
 owner labels and conflict flags BEFORE changing any local choices. Filtering
 does not remove any original rows. HUMAN alignment is never automatic.</small></p>
+<section aria-labelledby="changes-title">
+<h3 id="changes-title">Review locally changed HUMAN proposals before export</h3>
+<p id="changed-summary">No original template loaded.</p>
+<ul id="changed-rows"></ul>
+<p><small>This PRIVATE comparison is against the complete locally imported
+template ONLY. It is NOT signed source authenticity, actual consent,
+an authenticated human reviewer, verified remediation or a real schedule.
+PRIVATE question contents are deliberately omitted from the change list.</small></p>
+</section>
 <div class="actions">
+<button id="bulk-reset" type="button" class="secondary" disabled>Restore visible edited rows from original draft</button>
 <button id="undo" type="button" class="secondary" disabled>Undo HUMAN edit</button>
 <button id="redo" type="button" class="secondary" disabled>Redo HUMAN edit</button>
 <button id="bulk-hold" type="button" class="secondary">Mark visible proposals HUMAN HOLD</button>

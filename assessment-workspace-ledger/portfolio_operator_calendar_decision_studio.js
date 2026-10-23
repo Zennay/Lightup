@@ -12,7 +12,7 @@ const HEAD=[
 "human_selected_priority","private_human_alignment_question","human_alignment_stage"];
 const STAGES=["needs_discussion","hold","human_alignment_proposed"];
 const PRIORITIES=["unset","human_urgent","near_term","routine"];
-let records=[],sourceSha="",dirty=false,sourceOptions=null;
+let records=[],sourceSha="",dirty=false,sourceOptions=null,originalChoices=[];
 let revision=0,undoFrames=[],redoFrames=[];
 const HISTORY_LIMIT=16;
 const choices=()=>records.map(r=>({day:r.day,priority:r.priority,question:r.question,stage:r.stage}));
@@ -43,6 +43,53 @@ function stepHistory(back){
  catch(e){undoFrames=[];redoFrames=[];status("PRIVATE HOLD: source context changed; edit history cleared.");}
 }
 function resetHistory(){undoFrames=[];redoFrames=[];revision++;}
+function changedRows(){
+ return records.flatMap((r,i)=>{
+  const original=originalChoices[i];
+  if(!original)return [];
+  const keys=["day","priority","question","stage"];
+  const changes=keys.filter(k=>r[k]!==original[k]);
+  return changes.length?[{index:i,entry:r,original,changes}]:[];
+ });
+}
+function renderChangedRows(){
+ const changed=changedRows(),root=$("changed-rows");
+ root.replaceChildren();
+ const count={day:0,priority:0,question:0,stage:0};
+ changed.forEach(x=>x.changes.forEach(k=>count[k]++));
+ $("changed-summary").textContent=changed.length+" / "+records.length+
+  " original HUMAN slots changed since opening original complete template. "+
+  "Date: "+count.day+"; priority: "+count.priority+
+  "; private question changed (text hidden): "+count.question+
+  "; stage: "+count.stage+". No original authorization verified.";
+ $("bulk-reset").disabled=!matching().some(entry=>
+  changed.some(x=>x.entry===entry));
+ changed.slice(0,32).forEach(x=>{
+  const name="HUMAN original slot "+x.entry.fixed[1]+" — ";
+  const descriptions=x.changes.map(k=>k==="question"?"private question text changed (hidden)":
+   k==="stage"?"stage: "+x.original.stage+" → "+x.entry.stage:
+   k==="day"?"proposed date: "+(x.original.day||"unset")+" → "+(x.entry.day||"unset"):
+   "priority: "+x.original.priority+" → "+x.entry.priority);
+  root.append(create("li",name+descriptions.join("; ")));
+ });
+ if(changed.length>32)root.append(create("li","... "+(changed.length-32)+
+  " additional changed ORIGINAL slots; complete CSV export still includes all rows."));
+}
+function resetVisibleChanges(){
+ const shown=new Set(matching());
+ const changed=changedRows().filter(x=>shown.has(x.entry));
+ if(!changed.length){status("No visible changed HUMAN proposals to reset.");return;}
+ if(!window.confirm("Restore "+changed.length+
+   " filtered HUMAN rows to the original complete imported draft? PRIVATE questions in these rows will be overwritten. "+
+   "The action is reversible within this local history; no grant or booking."))return;
+ remember();
+ changed.forEach(x=>{
+  x.entry.day=x.original.day;x.entry.priority=x.original.priority;
+  x.entry.question=x.original.question;x.entry.stage=x.original.stage;
+ });
+ dirty=true;render();
+ status(changed.length+" visible HUMAN proposals restored from original local template; native SOURCE verification still required.");
+}
 function bulk(stage){
  if(!records.length||!["hold","needs_discussion"].includes(stage))return;
  const rows=matching().filter(row=>row.stage!==stage);
@@ -143,6 +190,7 @@ function updateCounts(){
    records.filter(r=>r.conflict).length+" with differing proposals | "+
    STAGES.map(stage=>stage+": "+records.filter(r=>r.stage===stage).length).join(" | ")+
    (dirty?" | unsaved local HUMAN choices":"");
+ renderChangedRows();
  $("undo").disabled=!undoFrames.length;
  $("redo").disabled=!redoFrames.length;
  $("history-summary").textContent=undoFrames.length+" reversible local changes; "+
@@ -242,6 +290,7 @@ async function open(event){
   if(revision!==started)throw Error("Local HUMAN work changed during file read");
   if(dirty&&!window.confirm("Discard unsaved local HUMAN decisions?"))return;
   sourceSha=parsed.sha;records=parsed.rows;dirty=false;sourceOptions=null;
+  originalChoices=choices();
   resetHistory();
   $("options").value="";
   $("owner").replaceChildren(create("option","All proposed HUMAN owners"));
@@ -359,13 +408,14 @@ function download(){
 }
 function forget(){
  if(dirty&&!window.confirm("Discard unsaved local PRIVATE HUMAN choices?"))return;
- records=[];sourceSha="";dirty=false;sourceOptions=null;
+ records=[];sourceSha="";dirty=false;sourceOptions=null;originalChoices=[];
  resetHistory();
  $("file").value="";$("restore").value="";$("options").value="";$("room").hidden=true;
  $("cards").replaceChildren();status("Private HUMAN discussion cleared from browser memory.");
 }
 $("undo").addEventListener("click",()=>stepHistory(true));
 $("redo").addEventListener("click",()=>stepHistory(false));
+$("bulk-reset").addEventListener("click",resetVisibleChanges);
 $("bulk-hold").addEventListener("click",()=>bulk("hold"));
 $("bulk-discuss").addEventListener("click",()=>bulk("needs_discussion"));
 $("file").addEventListener("change",open);

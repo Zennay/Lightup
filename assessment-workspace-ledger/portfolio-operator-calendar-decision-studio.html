@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-XkVLqLvwdAUGWaCCpGJGc0lBM+hEDX5b4kkdoFFlM8o='; script-src 'sha256-kiBd0fDD6ZK8uWiR9m1sUiITfHt0hRPr0fg/POjbRTg='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-XkVLqLvwdAUGWaCCpGJGc0lBM+hEDX5b4kkdoFFlM8o='; script-src 'sha256-6YHlCKN4c9f72JtIXe0GcKtqe02U63qO9Wejiw7DxXg='">
 <title>LightUp PRIVATE HUMAN Calendar Decision Studio</title><style>body{margin:0;background:#edf3f8;color:#10233a;font:16px/1.55 system-ui,sans-serif}
 header{padding:1.3rem max(1rem,calc((100vw - 1180px)/2));background:#112b46;color:#fff}
 main{max-width:1180px;margin:1.2rem auto;padding:0 1rem 4rem}
@@ -65,7 +65,17 @@ candidate is an EXPLICIT human proposal and NEVER changes approval stage.</small
 <p><small>Import matches the entire original source SHA, all original ordinals,
 owner labels and conflict flags BEFORE changing any local choices. Filtering
 does not remove any original rows. HUMAN alignment is never automatic.</small></p>
+<section aria-labelledby="changes-title">
+<h3 id="changes-title">Review locally changed HUMAN proposals before export</h3>
+<p id="changed-summary">No original template loaded.</p>
+<ul id="changed-rows"></ul>
+<p><small>This PRIVATE comparison is against the complete locally imported
+template ONLY. It is NOT signed source authenticity, actual consent,
+an authenticated human reviewer, verified remediation or a real schedule.
+PRIVATE question contents are deliberately omitted from the change list.</small></p>
+</section>
 <div class="actions">
+<button id="bulk-reset" type="button" class="secondary" disabled>Restore visible edited rows from original draft</button>
 <button id="undo" type="button" class="secondary" disabled>Undo HUMAN edit</button>
 <button id="redo" type="button" class="secondary" disabled>Redo HUMAN edit</button>
 <button id="bulk-hold" type="button" class="secondary">Mark visible proposals HUMAN HOLD</button>
@@ -94,7 +104,7 @@ const HEAD=[
 "human_selected_priority","private_human_alignment_question","human_alignment_stage"];
 const STAGES=["needs_discussion","hold","human_alignment_proposed"];
 const PRIORITIES=["unset","human_urgent","near_term","routine"];
-let records=[],sourceSha="",dirty=false,sourceOptions=null;
+let records=[],sourceSha="",dirty=false,sourceOptions=null,originalChoices=[];
 let revision=0,undoFrames=[],redoFrames=[];
 const HISTORY_LIMIT=16;
 const choices=()=>records.map(r=>({day:r.day,priority:r.priority,question:r.question,stage:r.stage}));
@@ -125,6 +135,53 @@ function stepHistory(back){
  catch(e){undoFrames=[];redoFrames=[];status("PRIVATE HOLD: source context changed; edit history cleared.");}
 }
 function resetHistory(){undoFrames=[];redoFrames=[];revision++;}
+function changedRows(){
+ return records.flatMap((r,i)=>{
+  const original=originalChoices[i];
+  if(!original)return [];
+  const keys=["day","priority","question","stage"];
+  const changes=keys.filter(k=>r[k]!==original[k]);
+  return changes.length?[{index:i,entry:r,original,changes}]:[];
+ });
+}
+function renderChangedRows(){
+ const changed=changedRows(),root=$("changed-rows");
+ root.replaceChildren();
+ const count={day:0,priority:0,question:0,stage:0};
+ changed.forEach(x=>x.changes.forEach(k=>count[k]++));
+ $("changed-summary").textContent=changed.length+" / "+records.length+
+  " original HUMAN slots changed since opening original complete template. "+
+  "Date: "+count.day+"; priority: "+count.priority+
+  "; private question changed (text hidden): "+count.question+
+  "; stage: "+count.stage+". No original authorization verified.";
+ $("bulk-reset").disabled=!matching().some(entry=>
+  changed.some(x=>x.entry===entry));
+ changed.slice(0,32).forEach(x=>{
+  const name="HUMAN original slot "+x.entry.fixed[1]+" — ";
+  const descriptions=x.changes.map(k=>k==="question"?"private question text changed (hidden)":
+   k==="stage"?"stage: "+x.original.stage+" → "+x.entry.stage:
+   k==="day"?"proposed date: "+(x.original.day||"unset")+" → "+(x.entry.day||"unset"):
+   "priority: "+x.original.priority+" → "+x.entry.priority);
+  root.append(create("li",name+descriptions.join("; ")));
+ });
+ if(changed.length>32)root.append(create("li","... "+(changed.length-32)+
+  " additional changed ORIGINAL slots; complete CSV export still includes all rows."));
+}
+function resetVisibleChanges(){
+ const shown=new Set(matching());
+ const changed=changedRows().filter(x=>shown.has(x.entry));
+ if(!changed.length){status("No visible changed HUMAN proposals to reset.");return;}
+ if(!window.confirm("Restore "+changed.length+
+   " filtered HUMAN rows to the original complete imported draft? PRIVATE questions in these rows will be overwritten. "+
+   "The action is reversible within this local history; no grant or booking."))return;
+ remember();
+ changed.forEach(x=>{
+  x.entry.day=x.original.day;x.entry.priority=x.original.priority;
+  x.entry.question=x.original.question;x.entry.stage=x.original.stage;
+ });
+ dirty=true;render();
+ status(changed.length+" visible HUMAN proposals restored from original local template; native SOURCE verification still required.");
+}
 function bulk(stage){
  if(!records.length||!["hold","needs_discussion"].includes(stage))return;
  const rows=matching().filter(row=>row.stage!==stage);
@@ -225,6 +282,7 @@ function updateCounts(){
    records.filter(r=>r.conflict).length+" with differing proposals | "+
    STAGES.map(stage=>stage+": "+records.filter(r=>r.stage===stage).length).join(" | ")+
    (dirty?" | unsaved local HUMAN choices":"");
+ renderChangedRows();
  $("undo").disabled=!undoFrames.length;
  $("redo").disabled=!redoFrames.length;
  $("history-summary").textContent=undoFrames.length+" reversible local changes; "+
@@ -324,6 +382,7 @@ async function open(event){
   if(revision!==started)throw Error("Local HUMAN work changed during file read");
   if(dirty&&!window.confirm("Discard unsaved local HUMAN decisions?"))return;
   sourceSha=parsed.sha;records=parsed.rows;dirty=false;sourceOptions=null;
+  originalChoices=choices();
   resetHistory();
   $("options").value="";
   $("owner").replaceChildren(create("option","All proposed HUMAN owners"));
@@ -441,13 +500,14 @@ function download(){
 }
 function forget(){
  if(dirty&&!window.confirm("Discard unsaved local PRIVATE HUMAN choices?"))return;
- records=[];sourceSha="";dirty=false;sourceOptions=null;
+ records=[];sourceSha="";dirty=false;sourceOptions=null;originalChoices=[];
  resetHistory();
  $("file").value="";$("restore").value="";$("options").value="";$("room").hidden=true;
  $("cards").replaceChildren();status("Private HUMAN discussion cleared from browser memory.");
 }
 $("undo").addEventListener("click",()=>stepHistory(true));
 $("redo").addEventListener("click",()=>stepHistory(false));
+$("bulk-reset").addEventListener("click",resetVisibleChanges);
 $("bulk-hold").addEventListener("click",()=>bulk("hold"));
 $("bulk-discuss").addEventListener("click",()=>bulk("needs_discussion"));
 $("file").addEventListener("change",open);
