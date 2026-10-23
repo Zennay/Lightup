@@ -1,6 +1,6 @@
 """Read-only atomic cohort comparison over two explicit local JSON arrays.
 
-Usage: python scripts/assessment_runtime_compare_cohort_cli_1513.py base.json next.json
+Usage: python scripts/assessment_runtime_compare_cohort_cli_1513.py [--format json|text|html] base.json next.json
 Each file is an array of 1..64 single-case JSON envelopes.
 Never a release or authorization gate: exits 2 REVIEW_ONLY / 3 HOLD only.
 """
@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import sys
+
+from assessment_runtime_report_html_1513 import render_comparison_html
 
 from assessment_runtime_compare_cli_1513 import _read_json, _parse_case_document
 from lightup.ai.assessment_runtime_cohort_1513 import (
@@ -95,7 +97,7 @@ def main(argv=None):
     while index < len(args):
         item = args[index]
         if item == "--format":
-            if format_seen or index + 1 >= len(args) or args[index + 1] not in ("json", "text"):
+            if format_seen or index + 1 >= len(args) or args[index + 1] not in ("json", "text", "html"):
                 malformed = True
                 index += 2 if index + 1 < len(args) else 1
             else:
@@ -120,6 +122,8 @@ def main(argv=None):
             pass
     if output_format == "text":
         print(_display_text(review))
+    elif output_format == "html":
+        print(render_comparison_html(review, cohort=True, scored=False), end="")
     else:
         print(json.dumps(_display(review), sort_keys=True, separators=(",", ":")))
     return 2 if review.status == "REVIEW_ONLY" else 3
