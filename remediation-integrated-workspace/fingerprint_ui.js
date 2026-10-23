@@ -14,8 +14,13 @@
   const limitItem = 20 * 1024 * 1024;
   const limitTotal = 64 * 1024 * 1024;
   let inventory = [];
+  // Invalidate every in-flight File.arrayBuffer/WebCrypto digest whenever the
+  // operator clears results or changes the original file selection.
+  let generation = 0;
+  let busy = false;
 
   function forget() {
+    generation++;
     inventory = [];
     output.replaceChildren();
     comparison.textContent = "";
@@ -88,8 +93,14 @@
 
   expected.addEventListener("input", compareDeclaredSource);
   expectedSize.addEventListener("input", compareDeclaredSource);
-  analyze.addEventListener("click", async () => {
+  picker.addEventListener("change", () => {
     forget();
+    message("Nieuwe lokale selectie. Bereken de nieuwe fingerprints opnieuw.");
+  });
+  analyze.addEventListener("click", async () => {
+    if (busy) return;
+    forget();
+    const requestGeneration = generation;
     const files = Array.from(picker.files || []);
     if (!files.length) {
       message("Kies eerst 1 tot 8 oorspronkelijke lokale bestanden.");
@@ -111,6 +122,7 @@
       message("HOLD: veilige lokale WebCrypto SHA-256 is hier niet beschikbaar. Geen upload/fallback.");
       return;
     }
+    busy = true;
     analyze.disabled = true;
     const candidate = [];
     message("Exacte bytes worden alleen in dit browservenster gelezen en lokaal gehasht.");
@@ -118,10 +130,12 @@
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
         const raw = await f.arrayBuffer();
+        if (requestGeneration !== generation) return;
         if (raw.byteLength !== f.size || raw.byteLength > limitItem) {
           throw Error("De geselecteerde bronbytes veranderden tijdens het lezen.");
         }
         const sha256 = hex(await crypto.subtle.digest("SHA-256", raw));
+        if (requestGeneration !== generation) return;
         candidate.push({
           slot: i + 1,
           label: "Lokaal bestand " + (i + 1),
@@ -129,6 +143,7 @@
           sha256
         });
       }
+      if (requestGeneration !== generation) return;
       inventory = candidate;
       table(candidate);
       if (candidate.length === 2) {
@@ -148,11 +163,14 @@
       compareDeclaredSource();
       message("PRIVATE fingerprint-overzicht klaar. Geen bestanden verzonden of bewaard. Verwijder lokaal na gebruik.");
     } catch (_) {
-      forget();
-      message("HOLD: lokaal lezen of SHA-256 mislukt. Geen gedeeltelijke resultaten behouden.");
+      if (requestGeneration === generation) {
+        forget();
+        message("HOLD: lokaal lezen of SHA-256 mislukt. Geen gedeeltelijke resultaten behouden.");
+      }
     } finally {
+      busy = false;
       analyze.disabled = false;
-      picker.value = "";
+      if (requestGeneration === generation) picker.value = "";
     }
   });
   clear.addEventListener("click", () => {
