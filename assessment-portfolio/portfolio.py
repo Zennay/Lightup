@@ -1102,7 +1102,7 @@ def run(args):
             ]
         scenario_raw = None
         if scenario_path:
-            scenario_raw, scenario_doc = human_workbook.read_private_response(
+            scenario_raw, scenario_doc = capacity_studio.read_private_scenario(
                 scenario_path, open_directory_nofollow
             )
             capacity_limits, alternative_capacity_limits = capacity_studio.admit_private_scenario(
@@ -1156,7 +1156,7 @@ def run(args):
         )
         readmit_unchanged_sources(admitted)
         if scenario_path:
-            reopened, _ = human_workbook.read_private_response(
+            reopened, _ = capacity_studio.read_private_scenario(
                 scenario_path, open_directory_nofollow
             )
             if reopened != scenario_raw:
