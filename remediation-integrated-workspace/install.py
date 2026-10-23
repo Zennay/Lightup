@@ -510,12 +510,11 @@ def cleanup_private_stage(stage: Path, identity: tuple[int, int]) -> None:
         os.close(parent_fd)
 
 
-def cleanup_private_file_stage(stage: Path) -> None:
-    """Discard only the original owner-private temporary checksum entry.
+def cleanup_private_file_stage(stage: Path, identity: tuple[int, int]) -> None:
+    """Discard only the exact original temporary checksum inode.
 
-    Never follow the staged name or an intervening parent symlink during
-    cleanup. A replaced stage that is no longer a 0600 regular one-link
-    owner-only file is HOLD, not a file we are entitled to remove.
+    Never follow a substituted path. Even same-owner, same-mode replacement
+    is NOT the file this worker created, and must never be unlinked by us.
     """
     require(stage.is_absolute() and
             stage.name.startswith(".lightup-software-hash-") and
@@ -523,6 +522,9 @@ def cleanup_private_file_stage(stage: Path) -> None:
             all(c in "0123456789abcdef"
                 for c in stage.name[len(".lightup-software-hash-"):]),
             "Unknown private checksum staging entry")
+    require(type(identity) is tuple and len(identity) == 2
+            and all(type(v) is int and v >= 0 for v in identity),
+            "Original checksum inode identity required")
     parent_fd = open_private_dir_fd(stage.parent)
     try:
         try:
@@ -533,7 +535,8 @@ def cleanup_private_file_stage(stage: Path) -> None:
         require(stat.S_ISREG(original.st_mode) and
                 original.st_uid == os.getuid() and
                 stat.S_IMODE(original.st_mode) == 0o600 and
-                original.st_nlink == 1,
+                original.st_nlink == 1 and
+                (original.st_dev, original.st_ino) == identity,
                 "Private checksum stage was replaced or became unsafe")
         os.unlink(stage.name, dir_fd=parent_fd)
         os.fsync(parent_fd)
@@ -541,8 +544,12 @@ def cleanup_private_file_stage(stage: Path) -> None:
         os.close(parent_fd)
 
 
-def write_file(path: Path, payload: bytes) -> None:
-    """Publish one new 0600 file inside a pinned original private directory."""
+def write_file(path: Path, payload: bytes) -> tuple[int, int]:
+    """Publish a new 0600 file and return the exact descriptor-backed inode.
+
+    Other callers may discard the identity. The checksum writer uses it to
+    prevent deleting a replaced stage during cleanup.
+    """
     require(path.is_absolute() and path.name not in (".", ".."),
             "A literal absolute output file path is required")
     parent_fd = open_private_dir_fd(path.parent)
@@ -561,6 +568,8 @@ def write_file(path: Path, payload: bytes) -> None:
             # Keep the original nofollow private parent fd pinned until
             # both are synced; never reopen a possibly replaced pathname.
             os.fsync(parent_fd)
+            state = os.fstat(fd)
+            return state.st_dev, state.st_ino
         finally:
             os.close(fd)
     finally:
