@@ -139,6 +139,21 @@ Dit is **uitsluitend een offline commandocomposer**: geen bestanden openen,
 toestemmingen geven, cloudverbinding maken of beveiligingsscans uitvoeren
 via de browser. REVIEW_ONLY is geen vrijgave.
 
+### HUMAN paths cannot alter terminal output
+
+The offline browser composer and native Linux CLI now both refuse absolute
+operator paths containing ASCII/C1 terminal controls, invisible Unicode
+direction-changing markers (including bidi embeddings/isolates) or paths
+longer than 1024 characters. These characters have no valid use in a HUMAN
+software transfer command and could disguise what the operator actually
+reads in terminal output, even when the Linux filesystem accepts them.
+The native `receive`, `fingerprint-archive` and read-only `inspect-archive`
+entrypoints check paths before source admission, output, or publication;
+direct recipient-library use also validates original ZIP/checksum input
+paths and both planned or real destinations. Ordinary UTF-8 letters and
+safe filenames remain allowed. This is a **terminal-readability safeguard**,
+not producer authentication, customer consent, or a scan/release grant.
+
 ## No-write admission of a received software-only ZIP
 
 An authorized HUMAN operator can inspect a *previously received* original
