@@ -1,5 +1,17 @@
 # LightUp Offline Assessment Review Desk
 
+## Current product update · explicit-reference HUMAN date board · 23 October 2026
+
+The offline Review Desk now includes a local date-planning board for existing HUMAN proposals. Choose the **reference day manually**; the application deliberately does not infer "today", overdue severity, reminders or real deadlines from the device clock.
+
+- It classifies all **not-human-reviewed** cases by proposed follow-up day: before the chosen reference, on it, after it, or undated. Human-reviewed labels are counted separately and excluded from the open follow-up board.
+- A four-card summary and anonymous case table show counts, proposed dates, HUMAN planning stage and workstream, and source-derived triage priority. Clicking a case selects its existing original-metric detail; original source identities remain excluded.
+- **Export date-plan CSV** downloads the same anonymous, date-sorted visible work list with the chosen reference day, regression count, source-declared unknown coverage and four literal false authority flags. It does not contain source case IDs, client identities, staff assignments, original notes, scope details or raw input.
+- All-case and filtered printable briefs include the locally selected reference-day summary. Editing a proposed case date now refreshes the entire board and the print summaries immediately.
+- Clearing/loading a new report resets the manually selected day. No browser storage, auto scheduling, notification, authenticated SLA, consent or operational action occurs. Neither a before-date label nor a HUMAN-reviewed stage proves an issue is overdue, repaired, safe or approved.
+
+The standalone offline HTML is rebuilt from the exact source and CSP pins; this remains INCUBATE M3/M7, PLAN/LAB ONLY, DRAFT/HOLD.
+
 ## Current product update · cross-sectional unknown-coverage distribution · 23 October 2026
 
 The Review Desk now summarizes candidate-side `coverage_unknown` values across the currently imported report: observed-value coverage, count and percentage above zero, total, median, nearest-rank Q1/Q3 and IQR, and minimum/maximum. Missing metric values are excluded from the distribution rather than silently treated as zero.
