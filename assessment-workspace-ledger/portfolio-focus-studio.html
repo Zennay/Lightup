@@ -1,0 +1,445 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; connect-src 'none'; img-src 'none'; frame-src 'none'; style-src 'sha256-XkVLqLvwdAUGWaCCpGJGc0lBM+hEDX5b4kkdoFFlM8o='; script-src 'sha256-h0TZ4AHw33Fn73UmFV8Gz/W1j0ElqXDnzpeRw76tqVg='">
+<title>LightUp · PRIVATE HUMAN Focus Studio</title><style>body{margin:0;background:#edf3f8;color:#10233a;font:16px/1.55 system-ui,sans-serif}
+header{padding:1.3rem max(1rem,calc((100vw - 1180px)/2));background:#112b46;color:#fff}
+main{max-width:1180px;margin:1.2rem auto;padding:0 1rem 4rem}
+h1,h2,h3{line-height:1.2}h1{margin:.2rem 0}h3{font-size:1.1rem}
+section,.card{background:white;border:1px solid #afc0d0;border-radius:13px;padding:1.1rem;margin:1rem 0}
+.notice{border-left:5px solid #a65316;padding:.9rem;background:#fff5e5}
+.controls,.edit,.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.8rem}
+.fact{display:grid;align-content:start;padding:.5rem;border-radius:8px;background:#f0f5fa;overflow-wrap:anywhere}
+.fact strong{font-size:.85rem;color:#3b5569}.fact span{margin-top:.2rem}
+label{display:grid;gap:.3rem;font-weight:600}input,select,textarea,button{font:inherit}
+input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #8e9fac;border-radius:7px;padding:.6rem}
+textarea{resize:vertical;min-height:4rem}input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #ed9700;outline-offset:2px}
+button{padding:.7rem 1.1rem;border:0;border-radius:7px;background:#11557d;color:white;font-weight:700;cursor:pointer}
+button.secondary{background:#365068}button:hover{filter:brightness(1.12)}
+.actions{display:flex;flex-wrap:wrap;gap:.7rem}.status{padding:.7rem;background:#e1eef7;border-radius:7px;overflow-wrap:anywhere}
+.card{border-left:5px solid #1b668f}.card h3{margin-top:0}
+small{color:#465c6d}#summary{font-weight:700}#visibility{font-weight:600}
+footer{max-width:1180px;padding:1rem;margin:auto;color:#31475a}
+@media print{header,.controls,.actions,#source,.notice{display:none!important}
+body{background:white}.card{page-break-inside:avoid;border:1px solid #888}}
+</style>
+</head><body>
+<header><h1>LightUp · PRIVATE HUMAN Focus Studio</h1>
+<p>Incubate M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · Offline HUMAN editor</p></header>
+<main>
+<section aria-labelledby="intro"><h2 id="intro">Open an original private meeting</h2>
+<p class="notice"><strong>Local proposal editor only.</strong> Original assessment
+source bytes are NOT reopened in this browser, and the source JSON is unsigned.
+This preview does not authenticate reviewers, confirm consent, authorize a scan,
+schedule a meeting, issue a grant, verify any finding or prove remediation.
+Do not load unapproved client data. After export, use the native fail-closed
+<code>portfolio_focus_review.py</code> finalizer with original source files.</p>
+<label for="source">Choose owner-private PRIVATE-HUMAN-meeting.json (≤1 MiB)
+<input id="source" type="file" accept=".json,application/json"></label>
+<p id="status" class="status" role="status" aria-live="polite"></p></section>
+<section id="workspace" hidden>
+<h2 id="meetingTitle"></h2><p id="summary"></p>
+<div class="controls">
+<label for="query">Search original local human labels and notes
+<input id="query" type="search" placeholder="Search only in memory"></label>
+<label for="priority">Original HUMAN priority filter
+<select id="priority"><option value="">All original priorities</option>
+<option value="human_urgent">human urgent</option>
+<option value="near_term">near term</option>
+<option value="routine">routine</option><option value="unset">unset</option></select></label>
+<label for="stage">New local meeting stage filter
+<select id="stage"><option value="">All local stages</option>
+<option value="needs_discussion">needs discussion</option>
+<option value="proposed_followup">proposed follow-up</option>
+<option value="hold">hold</option></select></label>
+</div><p id="visibility"></p>
+<label for="restore">Optional: restore original same-meeting HUMAN-review.csv
+<input id="restore" type="file" accept=".csv,text/csv"></label>
+<p><small>The whole original CSV must match source SHA and EVERY original
+row in order; otherwise no local edits are applied. No native authentication
+is claimed by this browser-only convenience.</small></p>
+<div class="actions">
+<button id="download" type="button">Export ALL rows as source-bound HUMAN CSV</button>
+<button class="secondary" id="clear" type="button">Clear original local data</button></div>
+<p><small>All original historical HUMAN entries export even when filtered
+from the display. Downloads may be publicly readable; move the edited CSV
+to owner-only 0600 custody before native original-source validation.</small></p>
+<div id="rows" aria-label="Original local HUMAN proposals"></div>
+</section></main><footer>Offline original human proposal draft. No network, storage,
+target execution, authorization, consent, real scheduling or external sharing.</footer>
+<script>/* LightUp PRIVATE HUMAN focus meeting browser editor.
+ * Strict native portfolio_focus_review.py remains the only final admission.
+ * Offline, source-free, no network, storage, timers, scans, grants or consent.
+ */
+(() => {
+  "use strict";
+  const MAX = 1048576;
+  const STAGES = ["needs_discussion", "proposed_followup", "hold"];
+  const PRIORITY = ["human_urgent", "near_term", "routine", "unset"];
+  const BUCKETS = ["past_proposed_day", "selected_reference_day",
+    "later_proposed_day", "no_proposed_day"];
+  const FIELDS = ["local_case", "historical_transition", "original_kit",
+    "human_priority", "human_status", "proposed_day", "date_bucket",
+    "proposed_owner", "next_human_step"];
+  const TOP = ["schema", "authority", "historical_only", "sources_reopened",
+    "recipient_authenticated", "consent_assumed", "actions_dispatched",
+    "appointments_booked", "verified_remediation", "original_portfolio_sha256",
+    "original_case_contexts", "meeting_title", "manually_selected_reference_day",
+    "proposed_human_owner_filter", "selected_date_buckets",
+    "selected_human_priorities", "historical_human_proposals"];
+  const AUTH = ["authorization", "consent", "verified_finding", "release_approval"];
+  const $ = id => document.getElementById(id);
+    const LIGHTUP_SHA256_K = new Uint32Array([
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ]);
+  function lightupSha256Fallback(bytes) {
+    const length = Math.ceil((bytes.length + 9) / 64) * 64;
+    const padded = new Uint8Array(length);
+    padded.set(bytes);
+    padded[bytes.length] = 0x80;
+    const view = new DataView(padded.buffer);
+    view.setUint32(length - 8, Math.floor(bytes.length / 0x20000000), false);
+    view.setUint32(length - 4, (bytes.length * 8) >>> 0, false);
+    const state = new Uint32Array([
+      0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,
+      0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19
+    ]);
+    const words = new Uint32Array(64);
+    const rotate = (x,n) => (x >>> n) | (x << (32 - n));
+    for (let offset = 0; offset < length; offset += 64) {
+      for (let i = 0; i < 16; i++) words[i] = view.getUint32(offset + i * 4, false);
+      for (let i = 16; i < 64; i++) {
+        const x = words[i - 15], y = words[i - 2];
+        const s0 = rotate(x,7) ^ rotate(x,18) ^ (x >>> 3);
+        const s1 = rotate(y,17) ^ rotate(y,19) ^ (y >>> 10);
+        words[i] = (words[i - 16] + s0 + words[i - 7] + s1) >>> 0;
+      }
+      let a=state[0], b=state[1], c=state[2], d=state[3];
+      let e=state[4], f=state[5], g=state[6], h=state[7];
+      for (let i = 0; i < 64; i++) {
+        const s1 = rotate(e,6) ^ rotate(e,11) ^ rotate(e,25);
+        const choose = (e & f) ^ (~e & g);
+        const t1 = (h + s1 + choose + LIGHTUP_SHA256_K[i] + words[i]) >>> 0;
+        const s0 = rotate(a,2) ^ rotate(a,13) ^ rotate(a,22);
+        const majority = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (s0 + majority) >>> 0;
+        h=g; g=f; f=e; e=(d+t1)>>>0; d=c; c=b; b=a; a=(t1+t2)>>>0;
+      }
+      state[0]=(state[0]+a)>>>0; state[1]=(state[1]+b)>>>0;
+      state[2]=(state[2]+c)>>>0; state[3]=(state[3]+d)>>>0;
+      state[4]=(state[4]+e)>>>0; state[5]=(state[5]+f)>>>0;
+      state[6]=(state[6]+g)>>>0; state[7]=(state[7]+h)>>>0;
+    }
+    return Array.from(state, word => word.toString(16).padStart(8,'0')).join('');
+  }
+  async function lightupSha256Hex(buffer) {
+    if (globalThis.crypto && globalThis.crypto.subtle) {
+      try {
+        const digest = await globalThis.crypto.subtle.digest('SHA-256', buffer);
+        return {hex:Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,'0')).join(''),
+          method:'Web Crypto SHA-256'};
+      } catch (_) {}
+    }
+    return {hex:lightupSha256Fallback(new Uint8Array(buffer)), method:'portable local SHA-256'};
+  }
+let meeting = null, snapshot = [], meetingHash = "", dirty = false;
+  const uniqueKeys = (value, keys) => value && typeof value === "object" &&
+    !Array.isArray(value) && Object.keys(value).length === keys.length &&
+    keys.every(key => Object.prototype.hasOwnProperty.call(value, key));
+  const validHex = s => typeof s === "string" && /^[a-f0-9]{64}$/.test(s);
+  const num = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
+  const human = (s, max) => typeof s === "string" && s.length <= max &&
+    !/[\u0000-\u001f\u007f]/.test(s) && !/^\s*[=+@-]/.test(s);
+  const error = message => { $("status").textContent = "PRIVATE HOLD: " + message; };
+  const clear = () => {
+    meeting = null; snapshot = []; meetingHash = ""; dirty = false;
+    $("workspace").hidden = true; $("rows").replaceChildren();
+    $("summary").textContent = "";
+    $("meetingTitle").textContent = "";
+    $("status").textContent = "Select the original PRIVATE focus meeting JSON.";
+  };
+  function admissible(doc) {
+    if (!uniqueKeys(doc, TOP) ||
+      doc.schema !== "lightup.private.workspace-ledger-human-focus.v1" ||
+      !uniqueKeys(doc.authority, AUTH) || !AUTH.every(k => doc.authority[k] === false) ||
+      doc.historical_only !== true || ![
+        "sources_reopened", "recipient_authenticated", "consent_assumed",
+        "actions_dispatched", "appointments_booked", "verified_remediation"
+      ].every(k => doc[k] === false) ||
+      !validHex(doc.original_portfolio_sha256) ||
+      !human(doc.meeting_title, 100) || !doc.meeting_title ||
+      !Array.isArray(doc.original_case_contexts) ||
+      !Array.isArray(doc.historical_human_proposals) ||
+      doc.historical_human_proposals.length < 1 ||
+      doc.historical_human_proposals.length > 2048 ||
+      !Array.isArray(doc.selected_human_priorities) ||
+      !Array.isArray(doc.selected_date_buckets) ||
+      !doc.selected_human_priorities.length || !doc.selected_date_buckets.length ||
+      !doc.selected_human_priorities.every(p => PRIORITY.includes(p)) ||
+      !doc.selected_date_buckets.every(b => BUCKETS.includes(b)) ||
+      (doc.proposed_human_owner_filter !== null &&
+       !human(doc.proposed_human_owner_filter, 80))) {
+      throw new Error("Unexpected or authority-claiming HUMAN meeting JSON");
+    }
+    const seen = new Set();
+    for (const row of doc.historical_human_proposals) {
+      if (!uniqueKeys(row, FIELDS) ||
+        !num(row.local_case, 1, 8) || !num(row.historical_transition, 1, 11) ||
+        !num(row.original_kit, 1, 12) || !PRIORITY.includes(row.human_priority) ||
+        !BUCKETS.includes(row.date_bucket) ||
+        typeof row.human_status !== "string" ||
+        typeof row.proposed_day !== "string" || row.proposed_day.length > 10 ||
+        !human(row.proposed_owner, 80) || !human(row.next_human_step, 240)) {
+        throw new Error("Invalid or oversized HUMAN proposal field");
+      }
+      const key = row.local_case + ":" + row.historical_transition + ":" +
+        row.original_kit;
+      if (seen.has(key)) throw new Error("Duplicate original HUMAN case slot");
+      seen.add(key);
+    }
+    return true;
+  }
+  function el(tag, className, content) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (content !== undefined) node.textContent = String(content);
+    return node;
+  }
+  function helpCell(label, content) {
+    const div = el("div", "fact");
+    div.append(el("strong", "", label), el("span", "", content || "—"));
+    return div;
+  }
+  function updateSummary() {
+    const total = snapshot.length;
+    const counts = Object.fromEntries(STAGES.map(stage => [
+      stage, snapshot.filter(row => row.reviewStage === stage).length
+    ]));
+    $("summary").textContent = total + " ORIGINAL historical HUMAN slots · " +
+      counts.needs_discussion + " needs discussion · " +
+      counts.proposed_followup + " proposed follow-up · " + counts.hold +
+      " HOLD · " + snapshot.filter(row => row.note !== "").length +
+      " private notes" + (dirty ? " · unsaved changes" : "");
+  }
+  function render() {
+    const needle = $("query").value.toLocaleLowerCase();
+    const selectedPriority = $("priority").value;
+    const selectedStage = $("stage").value;
+    const list = $("rows");
+    list.replaceChildren();
+    let visible = 0;
+    for (const row of snapshot) {
+      const found = (row.proposed_owner + " " + row.next_human_step + " " +
+        row.local_case + " " + row.human_status).toLocaleLowerCase().includes(needle);
+      if (!found || (selectedPriority && row.human_priority !== selectedPriority) ||
+        (selectedStage && row.reviewStage !== selectedStage)) continue;
+      visible++;
+      const card = el("article", "card");
+      const title = el("h3", "", "Case " + row.local_case + " · transition " +
+        row.historical_transition + " · kit " + row.original_kit);
+      const info = el("div", "facts");
+      info.append(
+        helpCell("Original HUMAN priority", row.human_priority),
+        helpCell("Original HUMAN stage", row.human_status),
+        helpCell("Historical proposed day", row.proposed_day),
+        helpCell("Historical day group", row.date_bucket),
+        helpCell("Proposed owner — not authenticated", row.proposed_owner),
+        helpCell("Original PRIVATE next step", row.next_human_step)
+      );
+      const fields = el("div", "edit");
+      const stageLabel = el("label", "", "New HUMAN meeting review stage");
+      const stage = document.createElement("select");
+      for (const candidate of STAGES) {
+        const option = el("option", "", candidate.replaceAll("_", " "));
+        option.value = candidate;
+        stage.append(option);
+      }
+      stage.value = row.reviewStage;
+      stage.addEventListener("change", () => {
+        row.reviewStage = stage.value; dirty = true; updateSummary();
+        if ($("stage").value) render();
+      });
+      stageLabel.append(stage);
+      const noteLabel = el("label", "", "PRIVATE HUMAN note (240 characters max)");
+      const note = document.createElement("textarea");
+      note.maxLength = 240; note.rows = 2; note.value = row.note;
+      note.placeholder = "Human proposal only; no credentials or personal secrets.";
+      note.addEventListener("input", () => {
+        row.note = note.value; dirty = true; updateSummary();
+      });
+      noteLabel.append(note);
+      fields.append(stageLabel, noteLabel);
+      card.append(title, info, fields);
+      list.append(card);
+    }
+    $("visibility").textContent = visible + " visible, " + snapshot.length +
+      " always included in the source-exact export. Filtering never discards rows.";
+    updateSummary();
+  }
+  function parseCsv(input) {
+    const result = [], row = [];
+    let field = "", quoted = false, closed = false;
+    for (let i = 0; i < input.length; i++) {
+      const c = input[i];
+      if (quoted) {
+        if (c === '"') {
+          if (input[i + 1] === '"') { field += '"'; i++; }
+          else { quoted = false; closed = true; }
+        } else { field += c; }
+      } else if (c === '"' && field === "" && !closed) {
+        quoted = true;
+      } else if (c === '"') {
+        throw new Error("Unexpected quote in review CSV");
+      } else if (c === "," || c === "\n" || c === "\r") {
+        row.push(field); field = ""; closed = false;
+        if (c !== ",") {
+          if (c === "\r") {
+            if (input[i + 1] !== "\n") throw new Error("Invalid CSV newline");
+            i++;
+          }
+          result.push(row.splice(0));
+        }
+      } else if (closed) {
+        throw new Error("Invalid bytes after CSV quote");
+      } else { field += c; }
+    }
+    if (quoted) throw new Error("Unclosed review CSV quote");
+    if (field !== "" || row.length) { row.push(field); result.push(row); }
+    return result;
+  }
+  async function importReview(file) {
+    if (!meeting || !meetingHash || !snapshot.length)
+      return error("Open the exact original meeting before restoring private HUMAN draft");
+    if (!file || !file.size || file.size > MAX)
+      return error("Review CSV must be a bounded original human export");
+    try {
+      const content = new TextDecoder("utf-8", {fatal: true}).decode(await file.arrayBuffer());
+      const data = parseCsv(content);
+      const names = ["local_case", "historical_transition", "original_kit",
+        "meeting_sha256", "human_meeting_stage", "human_decision_note"];
+      if (data.length !== snapshot.length + 1 ||
+        data[0].length !== names.length ||
+        !data[0].every((value, index) => value === names[index])) {
+        throw new Error("CSV row population/schema differs");
+      }
+      const proposals = [];
+      for (let i = 0; i < snapshot.length; i++) {
+        const original = snapshot[i];
+        const row = data[i + 1];
+        if (row.length !== names.length ||
+          row[0] !== String(original.local_case) ||
+          row[1] !== String(original.historical_transition) ||
+          row[2] !== String(original.original_kit) ||
+          row[3] !== meetingHash || !STAGES.includes(row[4]) ||
+          !human(row[5], 240)) {
+          throw new Error("Original HUMAN row/sha/decision mismatch");
+        }
+        proposals.push({reviewStage: row[4], note: row[5]});
+      }
+      if (!confirm("Replace current in-memory HUMAN draft with the exact-source CSV? " +
+        "Native finalizer still must independently admit all original bytes.")) return;
+      proposals.forEach((row, i) => {
+        snapshot[i].reviewStage = row.reviewStage;
+        snapshot[i].note = row.note;
+      });
+      dirty = true;
+      render();
+      $("status").textContent = "PRIVATE REVIEW_ONLY: entire original meeting-bound " +
+        "HUMAN CSV loaded into memory. NOT source-authenticated or finalized.";
+    } catch (_e) {
+      error("HUMAN draft restore refused; all prior in-memory decisions preserved");
+    }
+  }
+  function field(value) {
+    const text = String(value);
+    return '"' + text.replaceAll('"', '""') + '"';
+  }
+  function download() {
+    if (!meeting || !meetingHash || !snapshot.length) return error("No original meeting selected");
+    const headers = ["local_case", "historical_transition", "original_kit",
+      "meeting_sha256", "human_meeting_stage", "human_decision_note"];
+    const lines = [headers.join(",")];
+    for (const row of snapshot) {
+      if (!STAGES.includes(row.reviewStage) || !human(row.note, 240)) {
+        return error("Rejecting unsafe or spreadsheet-formula HUMAN note; correct the entry first");
+      }
+      lines.push([
+        row.local_case, row.historical_transition, row.original_kit,
+        meetingHash, row.reviewStage, row.note
+      ].map(field).join(","));
+    }
+    const blob = new Blob([lines.join("\n") + "\n"], {
+      type: "text/csv;charset=utf-8"
+    });
+    if (blob.size > MAX) return error("PRIVATE HUMAN CSV exceeds native byte bound");
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = "HUMAN-meeting-review-template.csv";
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    dirty = false;
+    updateSummary();
+    $("status").textContent = "PRIVATE REVIEW_ONLY: browser download requested. " +
+      "Treat Downloads as potentially shared. Store edited CSV as PRIVATE 0600 " +
+      "and run the original native portfolio_focus_review.py finalizer. " +
+      "This browser did NOT verify original sources or permissions.";
+  }
+  async function load(file) {
+    clear();
+    if (!file || !file.size || file.size > MAX) return error("Select bounded original PRIVATE meeting JSON (1 MiB max)");
+    try {
+      const bytes = await file.arrayBuffer();
+      if (bytes.byteLength !== file.size) throw new Error("Original file changed during browser read");
+      const decoded = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+      const input = JSON.parse(decoded);
+      admissible(input);
+      meetingHash = (await lightupSha256Hex(bytes)).hex;
+      meeting = input;
+      snapshot = input.historical_human_proposals.map(row => ({
+        ...row, reviewStage: "needs_discussion", note: ""
+      }));
+      $("meetingTitle").textContent = input.meeting_title +
+        " · manually selected reference " + input.manually_selected_reference_day;
+      $("query").value = ""; $("priority").value = ""; $("stage").value = "";
+      $("workspace").hidden = false;
+      dirty = false;
+      $("status").textContent = "LOCAL HUMAN draft from original selected bytes (" +
+        file.size + " bytes, unsigned SHA-256 " + meetingHash.slice(0, 12) +
+        "…). Native finalizer must independently reject duplicates, validate " +
+        "canonical data and recheck original source.";
+      render();
+    } catch (_e) {
+      clear();
+      error("Original meeting cannot be previewed as an admissible HUMAN draft");
+    }
+  }
+  $("source").addEventListener("change", event => {
+    const file = event.target.files && event.target.files[0];
+    void load(file);
+  });
+  $("restore").addEventListener("change", event => {
+    const file = event.target.files && event.target.files[0];
+    void importReview(file);
+    event.target.value = "";
+  });
+  $("query").addEventListener("input", render);
+  $("priority").addEventListener("change", render);
+  $("stage").addEventListener("change", render);
+  $("download").addEventListener("click", download);
+  $("clear").addEventListener("click", () => {
+    if (dirty && !confirm("Discard unsaved LOCAL HUMAN notes and selections?")) return;
+    $("source").value = ""; $("restore").value = ""; clear();
+  });
+  window.addEventListener("beforeunload", event => {
+    if (dirty) { event.preventDefault(); event.returnValue = ""; }
+  });
+  window.addEventListener("pagehide", () => { $("source").value = ""; $("restore").value = ""; clear(); });
+  clear();
+})();
+</script></body></html>
