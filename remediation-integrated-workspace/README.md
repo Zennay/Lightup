@@ -98,6 +98,14 @@ This reuses the original full offline ZIP/source-lock admission and exact
 native software renderers before publication. Only after the ZIP is
 re-admitted, it writes a **fresh 0600 temporary 65-byte checksum file** and
 publishes it with the existing Linux exclusive no-replace private publisher.
+Temporary checksum cleanup is also **directory-descriptor-relative** and
+refuses entries that ceased being original 0600 single-link regular files;
+it does not unlink a staged pathname through a newly inserted parent
+symlink. After successful exclusive publication, the temporary filename
+no longer exists, so the cleanup performs no deletion. This protects
+against accidental pathname redirection; it does **not** establish
+protection against an attacker already controlling the current user's
+private parent or authenticated publisher identity.
 Changed original ZIP contents, unsafe private paths, or an already existing
 destination produce **HOLD=3** with **no replacement**. **The entire
 original installed software tree, including every nested subdirectory,
