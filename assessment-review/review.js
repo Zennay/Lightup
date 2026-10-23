@@ -434,6 +434,60 @@
       "; " + reviewed + " human-reviewed label(s) excluded. " +
       "Not real due/overdue verification, booking, consent or approval.";
   }
+  // Source-bound anonymous calendar items: scope is controlled by explicit HUMAN choice.
+  // These are proposals, never appointments, promises or actual operating authority.
+  function calendarItems() {
+    if (!report || !digest) return [];
+    const rows = $("calendar-scope").value === "visible" ?
+      filteredQueueRows() : report.cases.map((c,i)=>({c,i}));
+    return rows.filter(({c})=>c.stage!=="reviewed" && validLocalDay(c.due))
+      .sort((a,b)=>a.c.due.localeCompare(b.c.due) || a.i-b.i);
+  }
+  function renderCalendarPreview() {
+    const body=$("calendar-preview-rows"),summary=$("calendar-preview-summary");
+    body.replaceChildren();
+    const rows=calendarItems();
+    $("calendar").disabled=!rows.length;
+    if (!report) {
+      summary.textContent="Import an original comparison report to preview local HUMAN calendar tasks.";
+    } else {
+      const total=report.cases.filter(c=>c.stage!=="reviewed" && validLocalDay(c.due)).length;
+      summary.textContent=rows.length+" of "+total+
+        " source-bound dated HUMAN proposals selected for PRIVATE local export ("+
+        ($("calendar-scope").value==="visible"?"current case filters":"all dated open cases")+
+        "). Reviewed or undated cases stay excluded; no calendar is accessed.";
+    }
+    if(!rows.length) {
+      const td=child(child(body,"tr"),"td","No dated open HUMAN proposals in this selection.");
+      td.colSpan=5;
+      return;
+    }
+    rows.forEach(({c,i})=>{
+      const tr=child(body,"tr"),cell=child(tr,"td");
+      const jump=child(cell,"button",label(i),"timeline-link");
+      jump.type="button";
+      jump.addEventListener("click",()=>{
+        selected=i;render();$("case-title").scrollIntoView({block:"start"});
+      });
+      [c.due,stageText(c.stage),c.route,priority(c)].forEach(x=>child(tr,"td",x));
+    });
+  }
+  // A calendar UID must remain the same for the same source bytes and case,
+  // irrespective of later HUMAN changes or the export wall-clock moment.
+  // Hash the byte-bound source fingerprint and ordinal together; never put raw
+  // source identifiers, digest, asset names or free-form text into an ICS UID.
+  function calendarUid(index) {
+    ensure(report && /^[a-f0-9]{64}$/.test(digest) &&
+      Number.isInteger(index) && index>=0 && index<report.cases.length);
+    const seed=new TextEncoder().encode("LightUp/HUMAN/VTODO/v1:"+digest+":"+(index+1));
+    return "lightup-human-"+portableSHA256(seed).slice(0,32)+"@local.invalid";
+  }
+  // RFC 5545 folding is by octets; all generated fields below contain ASCII
+  // literals, canonical enums, numeric ordinals and validated ISO dates only.
+  function icsLine(line){
+    ensure(/^[\\x20-\\x7e]+$/.test(line));
+    return line.match(/.{1,73}/g).join("\r\n ");
+  }
   function renderPlanningCalendar() {
     const summary = $("planning-summary"), body = $("planning-rows");
     summary.replaceChildren();body.replaceChildren();
@@ -801,7 +855,7 @@
   function redoHumanEdit(){restoreHumanHistory(humanRedoHistory,humanUndoHistory,"Redo");}
   function render() {
     renderOverview();renderLandscape();renderQueue();renderDetails();
-    renderPlanningCalendar();renderPrintBrief();renderFilteredPrintBrief();
+    renderPlanningCalendar();renderCalendarPreview();renderPrintBrief();renderFilteredPrintBrief();
     updateHumanHistoryControls();
   }
   function reset(invalidate = true) {
@@ -815,7 +869,8 @@
     $("cases").replaceChildren(); $("metrics").replaceChildren();
     ["queue-export-csv","queue-export-json","queue-export-html","queue-import-button","print-filtered"]
       .forEach(id => { $(id).disabled = true; });
-    renderPlanningCalendar();
+    $("calendar-scope").value = "all";
+    renderPlanningCalendar();renderCalendarPreview();
     alert("Local workspace cleared. No browser storage was used.");
   }
   // file:// contexts may lack Web Crypto. This fallback hashes only locally
@@ -1411,10 +1466,12 @@
   });
   $("planning-export").addEventListener("click",exportPlanningCalendarCsv);
   $("clear").addEventListener("click", reset);
-  $("filter").addEventListener("change", renderQueue);
-  $("route-filter").addEventListener("change", renderQueue);
-  $("priority-filter").addEventListener("change", renderQueue);
-  $("queue-sort").addEventListener("change", renderQueue);
+  const refreshQueueAndCalendar = () => {renderQueue();renderCalendarPreview();};
+  $("filter").addEventListener("change", refreshQueueAndCalendar);
+  $("route-filter").addEventListener("change", refreshQueueAndCalendar);
+  $("priority-filter").addEventListener("change", refreshQueueAndCalendar);
+  $("queue-sort").addEventListener("change", refreshQueueAndCalendar);
+  $("calendar-scope").addEventListener("change", renderCalendarPreview);
   $("queue-export-csv").addEventListener("click", exportFilteredQueueCsv);
   $("queue-export-json").addEventListener("click", exportFilteredQueueJson);
   $("queue-export-html").addEventListener("click", exportFilteredQueueHtml);
@@ -1467,34 +1524,32 @@
   });
 
   function calendarDownload() {
-    if (!report) return;
-    const todo = report.cases.map((c,i) => ({c,i})).filter(({c}) =>
-      !!c.due && c.stage !== "reviewed");
-    if (!todo.length) {
-      alert("No dated open human follow-ups. Add a target date to an unreviewed case first.");
-      return;
-    }
-    const lines = ["BEGIN:VCALENDAR","VERSION:2.0",
+    const todo=calendarItems();
+    if(!todo.length){alert("No dated open HUMAN follow-ups in this explicit selection.");return;}
+    const mode=$("calendar-scope").value==="visible"?"filtered case queue":"all open dated HUMAN cases";
+    if(!window.confirm("Download "+todo.length+" PRIVATE HUMAN VTODO proposal(s) from "+mode+
+       "? This saves a local file only; any later calendar import requires your own decision. No actual schedule or permission is created."))return;
+    const lines=["BEGIN:VCALENDAR","VERSION:2.0",
       "PRODID:-//LightUp//Offline Lab Human Planning//EN","CALSCALE:GREGORIAN",
       "X-WR-CALNAME:LightUp Offline Lab Follow-ups"];
-    const stamp = new Date().toISOString().replaceAll("-","").replaceAll(":","")
+    const stamp=new Date().toISOString().replaceAll("-","").replaceAll(":","")
       .replace(/\.\d{3}Z$/,"Z");
-    todo.forEach(({c,i}) => {
-      const due = c.due.replaceAll("-","");
+    todo.forEach(({c,i})=>{
       lines.push("BEGIN:VTODO",
-        "UID:lightup-local-" + String(i+1) + "-" + Date.now() + "@local.invalid",
-        "DTSTAMP:" + stamp,
-        "DUE;VALUE=DATE:" + due,
-        "SUMMARY:LightUp lab follow-up " + label(i) + " / " + c.route,
-        "DESCRIPTION:Unverified offline human planning only. Source " + c.status +
-          ". No authorization consent grant or scan rights.",
+        "UID:"+calendarUid(i),
+        "DTSTAMP:"+stamp,
+        "DUE;VALUE=DATE:"+c.due.replaceAll("-",""),
+        "SUMMARY:LightUp HUMAN lab follow-up "+label(i)+" / "+c.route,
+        "DESCRIPTION:Unverified offline HUMAN planning only. Source "+c.status+
+          ". No actual assignment authorization consent grant scan or release.",
         "STATUS:NEEDS-ACTION",
-        "PRIORITY:" + (urgency(c)===0 ? "1" : urgency(c)===1 ? "4" : "7"),
+        "PRIORITY:"+(urgency(c)===0?"1":urgency(c)===1?"4":"7"),
         "END:VTODO");
     });
     lines.push("END:VCALENDAR");
-    // No actual asset names, raw scenario IDs, personnel or source hashes in iCalendar.
-    download("lightup-human-follow-ups.ics",lines.join("\r\n")+"\r\n","text/calendar;charset=utf-8");
+    download("lightup-human-follow-ups.ics",lines.map(icsLine).join("\r\n")+"\r\n",
+      "text/calendar;charset=utf-8");
+    alert("PRIVATE HUMAN calendar proposal file offered locally. Stable source-bound IDs help calendar clients reconcile repeated imports; previous imported tasks are never deleted by this app.","good");
   }
   $("calendar").addEventListener("click", calendarDownload);
   $("print").addEventListener("click", () => {

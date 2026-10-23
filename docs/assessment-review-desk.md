@@ -1,3 +1,11 @@
+## 23 October 2026 · complete PRIVATE calendar handoff and stable task identities
+
+The offline Review Desk now previews the *exact cases included in the next local iCalendar VTODO download*. Reviewers can choose all source-bound dated open HUMAN proposals or **only the currently filtered and sorted case queue**. The table shows anonymous ordinals, proposed dates, HUMAN stage/workstream and source priority, with click-through to the existing case editor. Reviewed, undated and mismatching filtered cases are excluded. The download is disabled when nothing is eligible and requires an explicit local HUMAN confirmation.
+
+**Duplicate-handling fix:** old VTODO export generated a new `Date.now()` UID each time, causing repeated imports to look like unrelated tasks. The current UID is a stable, deterministic, anonymous SHA-256 derivation of the exact original source-byte digest and case ordinal. Export date, optional filters, local HUMAN edits, and changing proposal dates never change the same case's UID; importing a different source report produces different IDs. It does **not** put the raw original digest, target, source scenario ID, person, or evidence in the calendar. Calendar applications determine whether they reconcile matching UIDs; this is not a guarantee they won't duplicate. Removed/changed local cases do not cancel prior external calendar items.
+
+The VTODO output uses RFC 5545 folded ASCII content lines; sanitized enumerated source labels and validated dates only, and no automatic scheduling, network calls, calendar API, real people or verified deadlines. The current clock is used solely for the required iCalendar DTSTAMP metadata and **not** for overdue or authority decisions. The product stays HUMAN REVIEW ONLY; original CI, owner/security/privacy review, separately current authenticated consent with action-time revocation and explicit HUMAN GO still gate any merge/release.
+
 # LightUp Offline Assessment Review Desk
 
 ## Current product update · explicit-reference HUMAN date board · 23 October 2026

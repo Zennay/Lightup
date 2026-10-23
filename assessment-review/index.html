@@ -15,6 +15,14 @@
 <div class="scroll"><table><thead><tr><th>Anonymous case</th><th>Relative to chosen day</th><th>Proposed day</th><th>HUMAN stage</th><th>Proposed workstream</th><th>Source priority</th></tr></thead><tbody id="planning-rows"></tbody></table></div>
 <p class="notice">Only unreviewed HUMAN proposal labels are shown. Classification never schedules work or proves a source issue is overdue, fixed, approved or authorized.</p>
 </section>
+<section id="calendar-preview-panel" class="panel timeline-panel" aria-labelledby="calendar-preview-title">
+<div class="flex"><div><div class="eyebrow">02C / PRIVATE CALENDAR HANDOFF</div><h2 id="calendar-preview-title">Review calendar export before downloading</h2><p class="muted-copy">Proposed HUMAN planning tasks only. Re-exported cases use stable locally derived identifiers, which helps calendar applications reconcile repeated imports. This never schedules, sends or cancels actual tasks.</p></div>
+<label class="trend-label" for="calendar-scope">Include cases
+<select id="calendar-scope"><option value="all">All dated open HUMAN cases</option><option value="visible">Only currently filtered queue</option></select></label></div>
+<div id="calendar-preview-summary" role="status" aria-live="polite" class="muted-copy">Load an original report to preview local HUMAN calendar tasks.</div>
+<div class="scroll"><table><thead><tr><th>Anonymous case</th><th>Proposed day</th><th>HUMAN stage</th><th>Workstream</th><th>Source priority</th></tr></thead><tbody id="calendar-preview-rows"></tbody></table></div>
+<p class="notice">Importing the downloaded .ics into a real calendar is a separate human action. Removing or reviewing a case locally does not remove earlier tasks from a calendar. Duplicate handling depends on the calendar application. No identity, consent, grant or confirmed scheduling is implied.</p>
+</section>
 <section id="trend-panel" class="panel trend-panel">
 <div class="flex"><div><div class="eyebrow">02B / HISTORICAL LAB REVIEW</div><h2>Compare two lab reports</h2><p class="muted-copy">Add another offline report against the exact same scenario set and metric baseline. Structural comparison only; no proof of fixes or approval.</p></div><div><label class="trend-label" for="trend-file">Select follow-up report (.json)</label><input id="trend-file" type="file" accept=".json,application/json"></div></div>
 <div id="trend-status" class="muted-copy" role="status">No follow-up report compared.</div>
