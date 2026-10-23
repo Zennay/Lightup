@@ -12,7 +12,7 @@ The offline human triage desk now sorts the filtered scenario queue by source-pr
 
 Filtered queue JSON is now schema v3 and records the selected sort. Its importer accepts legacy v1/v2 packets under their original validation and priority-order rules, and validates v3 row order before restoring only HUMAN planning fields. Unknown coverage remains an uncertainty signal, not a regression reclassification or authorization signal.
 
-Current standalone artifact: **91,153 bytes**, SHA-256 `d0a01a8a2d49415e9b56bd71f3fb29019238cbce0f00da8f7fc82a3de1a2a474`. It embeds the exact current JavaScript and CSS and pins their hashes in the restrictive no-network CSP.
+Current standalone artifact: **95,508 bytes**, SHA-256 `955291ebc503859ede0cf4003bcfb6f0835e3dad25f21e3bc5048176b496c2ea`. It embeds the exact current JavaScript and CSS and pins their hashes in the restrictive no-network CSP.
 
 **Release boundary:** INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.
 Human preparation tool only, not a scan, source authenticity verifier, benchmark release gate, authorization service, consent collection, grant issuance or deployment route.
