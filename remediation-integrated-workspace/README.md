@@ -306,9 +306,14 @@ native software renderers before publication. Only after the ZIP is
 re-admitted, it writes a **fresh 0600 temporary 65-byte checksum file** and
 publishes it with the existing Linux exclusive no-replace private publisher.
 Temporary checksum cleanup is also **directory-descriptor-relative** and
-refuses entries that ceased being original 0600 single-link regular files;
-it does not unlink a staged pathname through a newly inserted parent
-symlink. After successful exclusive publication, the temporary filename
+requires the exact **device/inode identity of the file the writer created**.
+Even a replacement that still has identical 0600 permissions and one link
+returns HOLD without deleting that replacement. The writer obtains the
+original identity from its still-open file descriptor after fsync, not from
+a subsequently re-opened name. If a write fails before identity was
+returned, the conservative failure path may leave its private staging
+entry for manual owner investigation rather than deleting an unverified
+filename. After successful exclusive publication, the temporary filename
 no longer exists, so the cleanup performs no deletion. This protects
 against accidental pathname redirection; it does **not** establish
 protection against an attacker already controlling the current user's
