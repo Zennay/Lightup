@@ -64,8 +64,16 @@ def admit_sources(paths: list[str]):
     return admitted
 
 
-def build_packet(admitted):
+def build_packet(admitted, compare_from=None, compare_to=None):
     """Create an operator-ordered source timeline without publishing endpoint values."""
+    snapshot_count = len(admitted)
+    if (compare_from is None) != (compare_to is None):
+        raise Hold("select both interval snapshot ordinals or neither")
+    if compare_from is None:
+        compare_from, compare_to = 1, snapshot_count
+    if (type(compare_from) is not int or type(compare_to) is not int
+            or not 1 <= compare_from < compare_to <= snapshot_count):
+        raise Hold("selected interval must be two ordered snapshot ordinals")
     source_rows = []
     positions = []
     ordered_endpoints = []
@@ -85,6 +93,7 @@ def build_packet(admitted):
         })
 
     timeline_rows = []
+    interval_counts = {state: 0 for state in TRANSITIONS}
     transition_totals = []
     for snapshot_index in range(1, len(admitted)):
         counts = {state: 0 for state in TRANSITIONS}
@@ -112,12 +121,26 @@ def build_packet(admitted):
                 state = "MOVED"
             states.append(state)
             transition_totals[index - 1]["counts"][state] += 1
+        interval_before = slots[compare_from - 1]
+        interval_after = slots[compare_to - 1]
+        if interval_before is None and interval_after is None:
+            interval_state = "ABSENT"
+        elif interval_before is None:
+            interval_state = "ADDED"
+        elif interval_after is None:
+            interval_state = "REMOVED"
+        elif interval_before == interval_after:
+            interval_state = "UNCHANGED"
+        else:
+            interval_state = "MOVED"
+        interval_counts[interval_state] += 1
         timeline_rows.append({
             "timeline_row": timeline_ordinal,
             "first_seen_snapshot": present[0],
             "last_seen_snapshot": present[-1],
             "snapshot_slots": slots,
             "transitions": states,
+            "interval_state": interval_state,
         })
 
     return {
@@ -125,6 +148,11 @@ def build_packet(admitted):
         "status": "REVIEW_ONLY",
         "order_is_operator_supplied": True,
         "snapshot_count": len(admitted),
+        "selected_interval": {
+            "from_snapshot": compare_from,
+            "to_snapshot": compare_to,
+            "counts": interval_counts,
+        },
         "unique_endpoint_count": len(ordered_endpoints),
         "snapshot_endpoint_counts": [len(item[2]) for item in admitted],
         "snapshots": source_rows,
@@ -157,7 +185,8 @@ def render_html(packet):
         rows.append(
             "<tr><td>" + str(item["timeline_row"]) + "</td><td>" +
             str(item["first_seen_snapshot"]) + "</td><td>" +
-            str(item["last_seen_snapshot"]) + "</td>" + slots + states + "</tr>"
+            str(item["last_seen_snapshot"]) + "</td><td>" +
+            escape(item["interval_state"]) + "</td>" + slots + states + "</tr>"
         )
     summary_rows = []
     for item in packet["transition_totals"]:
@@ -185,14 +214,17 @@ def render_html(packet):
         "<p class='hold'>INCUBATE M3/M7 · PLAN/LAB ONLY · REVIEW_ONLY · NO AUTHORITY</p>"
         "<p>Compared " + str(snapshot_count) + " saved PRIVATE manifest bundles in "
         "the operator-supplied order. That order is not authenticated chronology. "
+        "The net interval is Snapshot " + str(packet["selected_interval"]["from_snapshot"]) +
+        "→" + str(packet["selected_interval"]["to_snapshot"]) +
+        "; intermediate transitions remain visible below. "
         "Literal endpoint equality and slot movement are descriptive only: absence "
         "does not prove remediation and addition does not establish a finding.</p>"
         "<p>" + escape(source_counts) + "</p>"
         "<h2>Per-endpoint ordinal timeline</h2>"
         "<p>Endpoint values, paths and source digests are deliberately omitted from "
         "this HTML. Each row is a local timeline ordinal; slots are local positions.</p>"
-        "<table><thead><tr><th>Timeline row</th><th>First seen</th><th>Last seen</th>" +
-        snapshot_headers + transition_headers + "</tr></thead><tbody>" +
+        "<table><thead><tr><th>Timeline row</th><th>First seen</th><th>Last seen</th>"
+        "<th>Net interval state</th>" + snapshot_headers + transition_headers + "</tr></thead><tbody>" +
         "".join(rows) + "</tbody></table>"
         "<h2>Transition totals</h2><table><thead><tr><th>Snapshot pair</th>" +
         "".join("<th>" + state + "</th>" for state in TRANSITIONS) +
@@ -210,7 +242,8 @@ def render_csv(packet):
     output = StringIO(newline="")
     writer = csv.writer(output, lineterminator="\n")
     header = [
-        "timeline_row", "first_seen_snapshot", "last_seen_snapshot",
+        "timeline_row", "interval_from_snapshot", "interval_to_snapshot",
+        "first_seen_snapshot", "last_seen_snapshot", "interval_state",
         *("snapshot_" + str(index) + "_slot"
           for index in range(1, packet["snapshot_count"] + 1)),
         *("transition_" + str(index) + "_to_" + str(index + 1)
@@ -219,7 +252,9 @@ def render_csv(packet):
     writer.writerow(header)
     for item in packet["timeline_rows"]:
         writer.writerow([
-            item["timeline_row"], item["first_seen_snapshot"], item["last_seen_snapshot"],
+            item["timeline_row"], packet["selected_interval"]["from_snapshot"],
+            packet["selected_interval"]["to_snapshot"], item["first_seen_snapshot"],
+            item["last_seen_snapshot"], item["interval_state"],
             *("" if slot is None else slot for slot in item["snapshot_slots"]),
             *item["transitions"],
         ])
@@ -248,14 +283,20 @@ def main(argv=None):
     destination = parser.add_mutually_exclusive_group(required=True)
     destination.add_argument("--output-dir", help="new empty owner-private 0700 output directory")
     destination.add_argument("--verify-output-dir", help="read-only exact reopen of a saved timeline")
+    parser.add_argument("--compare-from-snapshot", type=int,
+                        help="optional one-based start ordinal for net interval comparison")
+    parser.add_argument("--compare-to-snapshot", type=int,
+                        help="optional one-based end ordinal; must be later than the start")
     parser.add_argument(
         "--explain-hold", action="store_true",
         help="show curated HOLD reasons without source URLs, endpoint values or paths",
     )
     args = parser.parse_args(argv)
     try:
+        if (args.compare_from_snapshot is None) != (args.compare_to_snapshot is None):
+            raise Hold("select both interval snapshot ordinals or neither")
         admitted = admit_sources(args.source_dir)
-        packet = build_packet(admitted)
+        packet = build_packet(admitted, args.compare_from_snapshot, args.compare_to_snapshot)
         contents = build_outputs(packet)
         output_path = args.output_dir or args.verify_output_dir
         output_fd, output_abs = open_output_directory(output_path)
@@ -283,6 +324,8 @@ def main(argv=None):
             ("MANIFEST_TIMELINE_REOPENED" if args.verify_output_dir else "MANIFEST_TIMELINE_CREATED") +
             " · snapshots=" + str(packet["snapshot_count"]) +
             " · unique_endpoints=" + str(packet["unique_endpoint_count"]) +
+            " · net_interval=" + str(packet["selected_interval"]["from_snapshot"]) +
+            "→" + str(packet["selected_interval"]["to_snapshot"]) +
             " · REVIEW_ONLY; no assessment, authorization or target contact"
         )
         return 0
