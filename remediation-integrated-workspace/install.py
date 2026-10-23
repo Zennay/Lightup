@@ -363,6 +363,53 @@ def open_private_dir_fd(path: Path) -> int:
             os.close(fd)
 
 
+
+def create_private_stage(parent: Path, prefix: str) -> Path:
+    """Create a fresh 0700 stage relative to a pinned private parent fd.
+
+    The pathname is only reused by existing nofollow file admission after
+    creation. This does not grant authority or defeat same-user modification
+    of an otherwise writable checkout.
+    """
+    require(prefix in (".lightup-suite-", ".lightup-integrity-", ".lightup-receiver-"),
+            "Unknown private staging namespace")
+    stage = parent / (prefix + secrets.token_hex(12))
+    parent_fd = open_private_dir_fd(parent)
+    try:
+        os.mkdir(stage.name, mode=0o700, dir_fd=parent_fd)
+        child_fd = os.open(stage.name,
+                           os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW |
+                           getattr(os, "O_CLOEXEC", 0), dir_fd=parent_fd)
+        try:
+            state = os.fstat(child_fd)
+            require(stat.S_ISDIR(state.st_mode) and state.st_uid == os.getuid()
+                    and stat.S_IMODE(state.st_mode) == 0o700,
+                    "Fresh stage must be a single owner-private directory")
+        finally:
+            os.close(child_fd)
+        os.fsync(parent_fd)
+        return stage
+    finally:
+        os.close(parent_fd)
+
+
+def cleanup_private_stage(stage: Path) -> None:
+    """Remove only the named stage beneath a verified nofollow private fd.
+
+    shutil.rmtree's dir_fd implementation uses anchored traversal on Linux
+    rather than following the caller's mutable parent pathname.
+    """
+    parent_fd = open_private_dir_fd(stage.parent)
+    try:
+        try:
+            shutil.rmtree(stage.name, dir_fd=parent_fd)
+        except FileNotFoundError:
+            pass  # Successfully renamed to the exclusive final destination.
+        os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
+
+
 def write_file(path: Path, payload: bytes) -> None:
     """Publish one new 0600 file inside a pinned original private directory."""
     require(path.is_absolute() and path.name not in (".", ".."),
@@ -425,8 +472,7 @@ def build(dest: Path) -> None:
     owner_dir(dest.parent)
     require(dest != ROOT and ROOT not in dest.parents and dest not in ROOT.parents,
             "Output must be separate from the original source checkout")
-    stage = dest.parent / (".lightup-suite-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
+    stage = create_private_stage(dest.parent, ".lightup-suite-")
     try:
         written = {}
         entries = {}
@@ -517,8 +563,7 @@ def build(dest: Path) -> None:
         print("Software-only archive:", dest / "software-only.zip")
         print("REVIEW_ONLY / NO AUTHORITY; original release gates remain held.")
     finally:
-        if stage.exists():
-            shutil.rmtree(stage)
+        cleanup_private_stage(stage)
 
 def passport_material(receipt: dict, verified: dict[str, bytes],
                       checkout_compared: bool) -> tuple[bytes, bytes]:
@@ -580,8 +625,7 @@ def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
             and output not in ROOT.parents,
             "Integrity report must remain outside source checkout and installed suite")
     report_json, report_html = passport_material(receipt, verified, checkout_compared)
-    stage = output.parent / (".lightup-integrity-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
+    stage = create_private_stage(output.parent, ".lightup-integrity-")
     try:
         write_file(stage / "REVIEW_ONLY.json", report_json)
         write_file(stage / "REVIEW_ONLY.html", report_html)
@@ -589,8 +633,7 @@ def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
                 "Private report destination appeared during publication")
         exclusive_publish(stage, output)
     finally:
-        if stage.exists():
-            shutil.rmtree(stage)
+        cleanup_private_stage(stage)
     print("PRIVATE reproducibility passport:", output)
     print("Unsigned digests do not establish authenticity, consent or release.")
 
