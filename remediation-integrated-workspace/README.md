@@ -13,6 +13,20 @@ guidance stay accessible under **Andere offline hulpmiddelen**; expanding it
 does not execute software or transmit any file. All original native actions,
 parameter contracts, consent gates and HOLD semantics are retained.
 
+The **lokale SHA-256 vergelijken** helper now also accepts **only**
+the fixed native `software-only.zip` filename, alongside the original
+source-free `.luhx` / `.luhz` / `.luhp` packet formats. A software ZIP
+is limited to the original native **15,000,000-byte** archive ceiling,
+other packets to 20 MiB each, and the unchanged eight-file/64-MiB
+combined bounds. The browser only calls local WebCrypto SHA-256 on original
+file bytes; it neither extracts a ZIP nor checks its inventory, source lock,
+signed provenance or contents. Generic `.zip` names and all customer
+evidence/JSON remain refused by the browser. When a software SHA-256 is
+compared with a separately obtained original 65-byte checksum, the native
+`install.py inspect-archive --expected-sha256-file ...` remains required
+for full original software admission and checkout consistency. A matching
+browser hash is **never** a release or safety approval.
+
 This is a browser presentation choice, not an authenticated release or
 automatic approval. The source-only installed CLI makes the final offline
 decision; a browser-composed command is not evidence that it ran.
