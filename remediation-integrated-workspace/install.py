@@ -736,6 +736,11 @@ def build(dest: Path) -> None:
 def passport_material(receipt: dict, verified: dict[str, bytes],
                       checkout_compared: bool) -> tuple[bytes, bytes]:
     """Rebuild the exact original offline review-only passport, without IO."""
+    # Also enforce the release-evidence invariant at the material factory.
+    # Never produce or re-admit a "reproducibility" report from a merely
+    # self-consistent unsigned package, even through a direct Python caller.
+    require(checkout_compared is True,
+            "A reproducibility passport requires explicit checkout parity")
     manifest = canonical(receipt)
     report = {
         "kind": "lightup.offline_software_reproducibility_passport",
