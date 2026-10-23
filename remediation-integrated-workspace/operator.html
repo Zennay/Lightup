@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-jZP4xm93Wr/yg1W31ZS8x2Vn0K05cL1pSeOg9ZSgDZ4=&#x27; &#x27;sha256-xXuy7018iinWoQp7JwoX5PieZQdlrsOavXJ9LHfxmGM=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-jZP4xm93Wr/yg1W31ZS8x2Vn0K05cL1pSeOg9ZSgDZ4=&#x27; &#x27;sha256-Y92T8n6JOTaSziR32ADuoYpe5TCHQLwvyLrJlgRUWJA=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -127,15 +127,15 @@ lokaal worden verzegeld. Bronidentiteit, toestemming en retest blijven extern.</
 <p>Bereken SHA-256 van de <strong>exacte lokale bytes</strong> van bronvrije
 overdrachtspakketten. Gelijke fingerprints tonen uitsluitend byte-identiteit,
 NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
-<label for="packet-files">Kies lokale bronvrije .luhx / .luhz / .luhp bestanden en eventuele ontvangen kopieën</label>
-<input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp">
+<label for="packet-files">Kies lokale bronvrije pakketten of LightUps software-only.zip</label>
+<input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp,.zip">
 <div class="tools">
 <button type="button" id="packet-analyze">Bereken lokaal SHA-256</button>
 <button type="button" id="packet-export" disabled>Download PRIVATE unsigned hashreceipt</button>
 <button type="button" id="packet-clear" class="secondary">Wis fingerprints</button>
 </div>
 <p id="packet-message" role="status" aria-live="polite">Alle bytes blijven lokaal;
-maximaal acht bestanden, 20 MiB per bestand en 64 MiB samen.</p>
+maximaal acht bestanden: 20 MiB per bronvrij pakket, 15 MB per software-only.zip en 64 MiB samen.</p>
 <div id="packet-result" class="fingerprint-result"></div>
 <div class="fingerprint-match">
 <label for="packet-expected">Ontvangen oorspronkelijke SHA-256, optioneel
@@ -153,8 +153,12 @@ geen afzender of toestemming.</small>
 
 <p id="packet-comparison" class="fingerprint-comparison" aria-live="polite"></p>
 <small>Een PRIVATE checksum is niet ondertekend; wie het bronpakket en
-de fingerprint beheerst, kan beide vervangen. Native ontvangst, afzonderlijke
-actuele toestemming en onafhankelijke securityreview blijven verplicht.</small>
+de fingerprint beheerst, kan beide vervangen. Alleen de vaste naam
+<strong>software-only.zip</strong> wordt als softwarearchief gehasht;
+willekeurige ZIP-bestanden en originele klantevidence blijven geweigerd.
+SHA-256 vergelijken is GEEN softwaretoelating: gebruik daarvoor native
+<code>inspect-archive</code>. Afzonderlijke actuele toestemming en
+onafhankelijke securityreview blijven verplicht.</small>
 </section>
 <section class="fingerprint" aria-label="Offline software ZIP checksum vergelijken">
 <h2>Ontvangen PRIVATE softwarepakket controleren</h2>
@@ -766,7 +770,12 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   const expectedResult = document.getElementById("packet-expected-result");
   const limitCount = 8;
   const limitItem = 20 * 1024 * 1024;
+  // The fixed original software archive has a stricter native 15 MB bound.
+  // The browser only hashes its bytes; this is NOT native ZIP admission.
+  const limitSoftwareArchive = 15_000_000;
   const limitTotal = 64 * 1024 * 1024;
+  const supportedFile = f => /\.(luhx|luhz|luhp)$/.test(f.name) ||
+    f.name === "software-only.zip";
   let inventory = [];
   // Invalidate every in-flight File.arrayBuffer/WebCrypto digest whenever the
   // operator clears results or changes the original file selection.
@@ -865,16 +874,17 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
       message("Kies eerst 1 tot 8 oorspronkelijke lokale bestanden.");
       return;
     }
-    if (files.some(f => !/\.(luhx|luhz|luhp)$/.test(f.name))) {
+    if (files.some(f => !supportedFile(f))) {
       picker.value = "";
-      message("HOLD: kies uitsluitend daadwerkelijk ontvangen bronvrije .luhx, .luhz of .luhp overdrachtspakketten. Geen originele cliënt-evidence of generieke ZIP/JSON.");
+      message("HOLD: kies alleen bronvrije .luhx/.luhz/.luhp of het exacte software-only.zip. Geen klantgegevens of willekeurige ZIP/JSON.");
       return;
     }
     if (files.length > limitCount ||
-        files.some(f => !Number.isSafeInteger(f.size) || f.size <= 0 || f.size > limitItem) ||
+        files.some(f => !Number.isSafeInteger(f.size) || f.size <= 0 ||
+          f.size > (f.name === "software-only.zip" ? limitSoftwareArchive : limitItem)) ||
         files.reduce((sum, f) => sum + f.size, 0) > limitTotal) {
       picker.value = "";
-      message("HOLD: maximaal 8 bestanden, 20 MiB per stuk, 64 MiB samen; lege bestanden niet toegestaan.");
+      message("HOLD: maximaal 8 bestanden, 20 MiB per bronvrij pakket, 15 MB voor software-only.zip en 64 MiB samen.");
       return;
     }
     if (!window.crypto || !crypto.subtle || typeof crypto.subtle.digest !== "function") {
@@ -890,7 +900,8 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
         const f = files[i];
         const raw = await f.arrayBuffer();
         if (requestGeneration !== generation) return;
-        if (raw.byteLength !== f.size || raw.byteLength > limitItem) {
+        if (raw.byteLength !== f.size ||
+            raw.byteLength > (f.name === "software-only.zip" ? limitSoftwareArchive : limitItem)) {
           throw Error("De geselecteerde bronbytes veranderden tijdens het lezen.");
         }
         const sha256 = hex(await crypto.subtle.digest("SHA-256", raw));
@@ -920,7 +931,7 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
       }
       exportButton.disabled = false;
       compareDeclaredSource();
-      message("PRIVATE fingerprint-overzicht klaar. Geen bestanden verzonden of bewaard. Verwijder lokaal na gebruik.");
+      message("Lokale SHA-256 klaar. Bij software-only.zip bewijst dit alleen byte-overeenkomst: gebruik de native inspect-archive voor bron- en ZIP-toelating. Niets verzonden.");
     } catch (_) {
       if (requestGeneration === generation) {
         forget();
