@@ -987,6 +987,11 @@ def read_private_human_history_manifest(path):
 def run(args):
     if not hasattr(os, "O_NOFOLLOW"):
         raise Hold("platform lacks no-follow file support")
+    if args.preview_only:
+        if args.output_dir or args.verify_output_dir:
+            raise Hold("read-only preview cannot select an output directory or reopen mode")
+    elif not args.output_dir:
+        raise Hold("select an output directory or use --preview-only")
     reference_day = parse_date(args.as_of)
     capacity_limits = capacity.configure(
         args.private_capacity_plan, args.daily_capacity, args.role_capacity, ROLES,
@@ -1051,12 +1056,15 @@ def run(args):
             if (os.path.abspath(args.previous_human_responses) == os.path.abspath(args.human_responses)):
                 raise Hold("HUMAN comparison sources cannot alias the same path")
             source_dirs.add(os.path.dirname(os.path.abspath(args.previous_human_responses)))
-    output_fd, output_path = open_output_directory(args.output_dir)
+    output_fd, output_path = None, None
+    if not args.preview_only:
+        output_fd, output_path = open_output_directory(args.output_dir)
     try:
-        for source_dir in source_dirs:
-            common = os.path.commonpath((output_path, source_dir))
-            if common in (output_path, source_dir):
-                raise Hold("output directory must be separate from source rooms")
+        if output_path is not None:
+            for source_dir in source_dirs:
+                common = os.path.commonpath((output_path, source_dir))
+                if common in (output_path, source_dir):
+                    raise Hold("output directory must be separate from source rooms")
         selection = None
         if (args.focus_role or args.focus_stage or args.focus_bucket or args.focus_day
             or args.focus_kind or first_day is not None):
@@ -1157,12 +1165,30 @@ def run(args):
             )
             if reopened_history_paths != history_paths:
                 raise Hold("private HUMAN history list changed before publication")
+        if args.preview_only:
+            role_counts = Counter(row["next_role"] for row in rows)
+            bucket_counts = Counter(row["date_bucket"] for row in rows)
+            stage_counts = Counter(row["stage"] for row in rows)
+            roles = ",".join(role + ":" + str(role_counts.get(role, 0)) for role in ROLES)
+            buckets = ",".join(bucket + ":" + str(bucket_counts.get(bucket, 0)) for bucket in DATE_BUCKETS)
+            stages = ",".join(stage + ":" + str(stage_counts.get(stage, 0)) for stage in STAGES)
+            output_bytes = sum(len(content) for _name, content in outputs)
+            print(
+                "ASSESSMENT_PORTFOLIO_PREVIEW_REVIEW_ONLY agendas=" + str(len(documents)) +
+                " items=" + str(len(rows)) +
+                " artifacts=" + str(len(outputs)) +
+                " rendered_bytes=" + str(output_bytes) +
+                " roles[" + roles + "] buckets[" + buckets + "] stages[" + stages + "]" +
+                " — PLANNING ONLY; no output directory opened, no files written, NOT AUTHORIZED"
+            )
+            return 0
         if args.verify_output_dir:
             verify_existing_bundle(output_fd, outputs)
         else:
             publish_bundle(output_fd, outputs)
     finally:
-        os.close(output_fd)
+        if output_fd is not None:
+            os.close(output_fd)
     print(("ASSESSMENT_PORTFOLIO_VERIFIED" if args.verify_output_dir else "ASSESSMENT_PORTFOLIO_CREATED") + " agendas=" + str(len(documents)) +
           " items=" + str(len(rows)) + " — PLANNING ONLY; NOT AUTHORIZED")
     return 0
@@ -1172,7 +1198,9 @@ def main(argv=None):
         description="Aggregate original private human agendas offline; no target or authorization calls."
     )
     parser.add_argument("--as-of", required=True, help="Explicit planning reference day YYYY-MM-DD")
-    parser.add_argument("--output-dir", required=True, help="Existing owner-only directory, mode 0700")
+    parser.add_argument("--output-dir", help="Existing owner-only directory, mode 0700 (omit only with --preview-only)")
+    parser.add_argument("--preview-only", action="store_true",
+                        help="Admit and render in memory, print aggregate counts/size only, never open/write output files")
     parser.add_argument("--verify-output-dir", action="store_true",
                         help="Read-only exact reopen of a previously created PRIVATE bundle and chosen options")
     parser.add_argument("--focus-role", choices=ROLES,
