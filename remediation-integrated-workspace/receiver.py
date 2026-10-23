@@ -58,14 +58,11 @@ def admit_archive(archive: Path,
 
 
 
-def fingerprint_archive(archive: Path, output_file: Path) -> None:
-    """Publish a PRIVATE 0600 65-byte software checksum, not a sender proof.
+def validate_fingerprint_destination(archive: Path, output_file: Path) -> None:
+    """Same no-write checksum output gate for preview and publication.
 
-    Reuse the original full software admission rather than hashing arbitrary
-    bytes and giving them the appearance of a locally verified distribution.
-    The operator alone controls whether and how this receipt is disclosed.
+    Preflight cannot reserve the output name, nor authenticate a sender.
     """
-    raw, _, _, _ = admit_archive(archive)
     suite.require(output_file.is_absolute() and
                   output_file.parent == output_file.parent.resolve(strict=True)
                   and not output_file.exists() and not output_file.is_symlink()
@@ -75,6 +72,17 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
                   and suite.ROOT not in output_file.parents,
                   "Choose a fresh separate private checksum file outside software and source")
     suite.owner_dir(output_file.parent)
+
+
+def fingerprint_archive(archive: Path, output_file: Path) -> None:
+    """Publish a PRIVATE 0600 65-byte software checksum, not a sender proof.
+
+    Reuse the original full software admission rather than hashing arbitrary
+    bytes and giving them the appearance of a locally verified distribution.
+    The operator alone controls whether and how this receipt is disclosed.
+    """
+    raw, _, _, _ = admit_archive(archive)
+    validate_fingerprint_destination(archive, output_file)
     payload = (suite.digest(raw) + "\n").encode("ascii")
     stage = output_file.parent / (".lightup-software-hash-" + secrets.token_hex(12))
     try:
@@ -92,11 +100,14 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
 
 
 def inspect_archive(archive: Path, expected_sha256_file: Path | None = None,
-                    planned_output_dir: Path | None = None) -> None:
-    """Side-effect-free original software ZIP and optional recipient path preview."""
+                    planned_output_dir: Path | None = None,
+                    planned_checksum_file: Path | None = None) -> None:
+    """Side-effect-free original ZIP, recipient and checksum path preview."""
     raw, _, lock, files = admit_archive(archive, expected_sha256_file)
     if planned_output_dir is not None:
         validate_receive_destination(archive, planned_output_dir)
+    if planned_checksum_file is not None:
+        validate_fingerprint_destination(archive, planned_checksum_file)
     print(f"REVIEW_ONLY: native software-only ZIP admitted: {len(files)} files, "
           f"{len(lock['files'])} original pinned assets and {len(TOOLS)} integrated tools.")
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
@@ -105,6 +116,8 @@ def inspect_archive(archive: Path, expected_sha256_file: Path | None = None,
         print("TRANSFER CHECKSUM PARITY: exact original ZIP bytes match operator-provided fingerprint.")
     if planned_output_dir is not None:
         print("PLANNED PRIVATE RECIPIENT PATH: admissible but not created:", planned_output_dir)
+    if planned_checksum_file is not None:
+        print("PLANNED PRIVATE CHECKSUM PATH: admissible but not created:", planned_checksum_file)
     print("No extraction, report creation, authenticated producer identity or permissions.")
 
 
