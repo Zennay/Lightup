@@ -43,6 +43,38 @@ python3 remediation-integrated-workspace/install.py inspect-archive \
   --archive "$HOME/lightup-private/incoming/software-only.zip"
 ```
 
+### Optional exact-byte SHA-256 transfer fingerprint
+
+The native `inspect-archive` command now prints the complete software-only
+archive's **unsigned** SHA-256 and byte length. On a separately authorized
+recipient workstation, an operator may supply a SHA-256 obtained from an
+**independently agreed** private channel. Place the fingerprint in a separate
+current-user 0600 file under a current-user owner-only 0700 directory. The
+file is **exactly 64 lowercase hexadecimal characters followed by one LF
+byte**; no labels, spaces, BOM, CRLF, filenames or extra lines.
+
+```sh
+python3 remediation-integrated-workspace/install.py inspect-archive \
+  --archive "$HOME/lightup-private/incoming/software-only.zip" \
+  --expected-sha256-file "$HOME/lightup-private/incoming/expected.sha256"
+
+python3 remediation-integrated-workspace/install.py receive \
+  --archive "$HOME/lightup-private/incoming/software-only.zip" \
+  --expected-sha256-file "$HOME/lightup-private/incoming/expected.sha256" \
+  --output-dir "$HOME/lightup-private/received-original-suite"
+```
+
+The optional matching input is supported by the native HUMAN desk and offline
+browser operator studio as a *path* field. The receiver re-reads the exact
+operator-provided file before atomic private publication; a changed fingerprint
+or changed ZIP is HOLD, without publishing the destination. Without the
+optional fingerprint, all preexisting exact native source/ZIP verification
+remains in place. Never claim that a SHA supplied alongside a package proves
+who sent it; a compromised checksum channel defeats this independent
+comparison. It is **not** a signature, release gate, client approval or
+permission to process tenant records. The command only reads local originals
+and does not send any checksum or file elsewhere.
+
 This admission checks the exact 107-member software-only ZIP inventory and
 original manifest source lock, all 79 pinned original bytes, all 25 integrated
 tool bytes against the trusted current checkout, both immutable offline
