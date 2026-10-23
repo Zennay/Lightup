@@ -897,3 +897,33 @@ Open `assessment-launchpad/manifest_change_review.html` directly in a browser (n
 Use **Export full HUMAN follow-up CSV** to save the complete ledger. Filters affect only the visible table, never which rows are exported. You can re-import that five-column CSV later to resume the saved fixed-vocabulary stages; importing a fresh native four-column delta starts every row at `NOT_REVIEWED`. The original `review_state=REVIEW_ONLY` remains unchanged; `human_follow_up` is a separate local workflow field. The browser tool does not include endpoint URLs, source paths, source hashes or free-text notes, and keeps edits in memory only. Its restrictive CSP hashes the exact inline script and stylesheet; no external assets, storage, network, telemetry or target activity are used.
 
 This is a convenience format check and HUMAN follow-up worksheet, **not** source authentication, evidence of remediation, authorization, consent, revocation status or HUMAN GO. Keep the downloaded CSV private. The original native CLI remains the source-bundle admission boundary.
+
+
+### Multi-version PRIVATE manifest source timeline
+
+The native `manifest_change_timeline.py` compares **2–8 existing, separately saved PRIVATE manifest bundles** in the exact order supplied by the operator. Unlike the two-bundle `manifest_change_desk.py`, it shows endpoint presence and slot movement across the full selected series. It does not infer authenticated chronology, findings, remediation or permission.
+
+Create a new empty owner-private output directory (mode 0700) and pass each source bundle directory separately:
+
+```sh
+mkdir -m 700 "$HOME/private-manifest-timeline"
+python3 assessment-launchpad/manifest_change_timeline.py \
+  --source-dir "$HOME/private-manifest-v1" \
+  --source-dir "$HOME/private-manifest-v2" \
+  --source-dir "$HOME/private-manifest-v3" \
+  --output-dir "$HOME/private-manifest-timeline"
+```
+
+The PRIVATE JSON, scriptless network-denying HTML and ordinal-only CSV contain a timeline row, first/last seen snapshot, per-snapshot slot and fixed transition state. The HTML/CSV omit endpoint values, source paths and source digests; the owner-private JSON retains local manifest SHA-256 references for consistency checks. Output files are mode 0600 and publication is exclusive/no-overwrite. All original bundles are re-admitted through the existing pinned original URL and LabScenario scope policy before publication, then re-admitted again at the publication boundary.
+
+Reopen the exact saved result without writing:
+
+```sh
+python3 assessment-launchpad/manifest_change_timeline.py \
+  --source-dir "$HOME/private-manifest-v1" \
+  --source-dir "$HOME/private-manifest-v2" \
+  --source-dir "$HOME/private-manifest-v3" \
+  --verify-output-dir "$HOME/private-manifest-timeline"
+```
+
+Keep the source order identical. Reopen checks the exact file inventory and bytes against the current admitted sources. This is unsigned local consistency, not authenticated source origin or chronology. Absence is not remediation; movement is not a finding. Source authenticity, separate current client/operator consent, action-time revocation, independent review and explicit HUMAN GO remain separate gates. No network, DNS, scan, model, target contact, grant or release occurs.
