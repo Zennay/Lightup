@@ -477,6 +477,16 @@
         slots_with_flagged_scenarios:flaggedSlots,
         flagged_scenario_slot_observations:slots.reduce((sum,slot)=>sum+slot.flagged,0)});
     }
+    const sort = $("metricTrendSort").value;
+    const metricOrder = new Map(METRICS.map((name, index) => [name, index]));
+    const compareNumber = (a, b, key) => (b[key] - a[key]) || (metricOrder.get(a.metric) - metricOrder.get(b.metric));
+    if (sort === "flagged_percent") rows.sort((a,b)=>compareNumber(a,b,"max_flagged_percent"));
+    else if (sort === "flagged_observations") rows.sort((a,b)=>compareNumber(a,b,"flagged_scenario_slot_observations"));
+    else if (sort === "candidate_shift") rows.sort((a,b)=>compareNumber(a,b,"max_abs_median_candidate_shift"));
+    else if (sort === "delta_shift") rows.sort((a,b)=>compareNumber(a,b,"max_abs_median_delta_shift"));
+    else if (sort === "flagged_slots") rows.sort((a,b)=>compareNumber(a,b,"slots_with_flagged_scenarios") ||
+      compareNumber(a,b,"flagged_scenario_slot_observations"));
+    else rows.sort((a,b)=>metricOrder.get(a.metric)-metricOrder.get(b.metric));
     return rows;
   }
   function renderMetricTrendSummary(){
@@ -492,9 +502,17 @@
         fmt(r.net_median_delta_shift),fmt(r.peak_median_delta_shift),fmt(r.max_abs_median_delta_shift),r.max_delta_shift_slot,
         r.max_flagged_scenarios,fmt(r.max_flagged_percent)+"%",r.slots_with_flagged_scenarios,
         r.flagged_scenario_slot_observations]));
+    const sortLabel = ({
+      fixed:"fixed metric order", flagged_percent:"highest maximum flag prevalence",
+      flagged_observations:"most flagged scenario-slot observations",
+      candidate_shift:"largest absolute median candidate shift",
+      delta_shift:"largest absolute median delta shift",
+      flagged_slots:"most slots containing flags"
+    })[$("metricTrendSort").value] || "fixed metric order";
     $("metricTrendSummaryText").textContent=rows.length?
       "Showing "+rows.length+" metric-level summaries across "+snapshots.length+
-      " manual slots and "+scenarioIds.length+" anonymous scenarios. Endpoint and peak shifts are descriptive only; no slot chronology or remediation is authenticated.":
+      " manual slots and "+scenarioIds.length+" anonymous scenarios; sorted by "+sortLabel+
+      ". Endpoint and peak shifts are descriptive only; no slot chronology or remediation is authenticated.":
       snapshots.length?"No metrics match the selected group/flag filters.":"Import snapshots to summarize median shifts and source-flag prevalence.";
     $("metricTrendSummaryCsv").disabled=!rows.length;
     $("metricTrendSummaryJson").disabled=!rows.length;
@@ -506,7 +524,7 @@
       authenticated_chronology:false,source_metrics_independently_verified:false,
       remediation_verified:false,authorized:false,consent_verified:false,dispatch_allowed:false,
       release_allowed:false,selected_group_filter:$("metricDistributionGroup").value,
-      selected_flag_filter:$("metricTrendFlagFilter").value,rows:metricTrendSummaryRows()};
+      selected_flag_filter:$("metricTrendFlagFilter").value,selected_sort:$("metricTrendSort").value,rows:metricTrendSummaryRows()};
   }
   function exportMetricTrendSummaryHtml(payload){
     const headers=["Metric","Review group","Scenarios","First median candidate","Last median candidate",
@@ -533,7 +551,8 @@
       "</style></head><body><h1>LightUp · Anonymous metric trend summary</h1>"+
       "<p>Aggregate summaries of already-completed source reports. Selected slot order is manual, not authenticated chronology. Shifts do not prove remediation.</p>"+
       "<p>Selected static group: "+esc(payload.selected_group_filter)+" · Flag filter: "+
-      esc(payload.selected_flag_filter)+" · Manual slots: "+payload.manual_slot_count+"</p>"+
+      esc(payload.selected_flag_filter)+" · Sort: "+esc(payload.selected_sort)+
+      " · Manual slots: "+payload.manual_slot_count+"</p>"+
       "<div class='hold'><strong>"+esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+payload.status+" · REVIEW ONLY / HOLD")+"</strong><p>"+
       "fictional_demo_only="+payload.fictional_demo_only+" · authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false · "+
       "authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false</p></div>"+
@@ -2594,6 +2613,7 @@
   });
   $("metricDistributionFlagFilter").addEventListener("change",renderMetricDistribution);
   $("metricTrendFlagFilter").addEventListener("change",renderMetricTrendSummary);
+  $("metricTrendSort").addEventListener("change",renderMetricTrendSummary);
   $("metricTransitionFilter").addEventListener("change",renderMetricTransitions);
   $("metricTransitionScope").addEventListener("change",renderMetricTransitions);
   for(const id of ["metricTransitionMetric","metricTransitionPair","metricTransitionCaseFilter"])
