@@ -100,6 +100,53 @@ def _metric_rows(changes, *, prefix: str = "") -> str:
     )
 
 
+def _followup_queue(accepted) -> str:
+    """Human review navigation ordered by declared signals, not by severity."""
+    ranked = []
+    for ordinal, comp in enumerate(accepted, 1):
+        scope_policy = any(
+            change.name in ("scope_violations", "policy_violations")
+            and change.candidate > 0
+            for change in comp.changes
+        )
+        unknown = next((
+            change.candidate for change in comp.changes
+            if change.name == _UNCERTAIN
+        ), 0)
+        flags = len(comp.regressions)
+        if scope_policy:
+            rank, reason = 0, "Ask the original owner to clarify reported scope/policy signals."
+        elif flags:
+            rank, reason = 1, "Request independent review of source-reported adverse metrics."
+        elif unknown > 0:
+            rank, reason = 2, "Clarify the source-reported unknown-coverage gap."
+        else:
+            rank, reason = 3, "Reconcile original source identity; no flags is not an approval."
+        ranked.append((rank, -flags, ordinal, flags, unknown, reason))
+    if not ranked:
+        return ""
+    rows = []
+    for _rank, _sort_flags, ordinal, flags, unknown, reason in sorted(ranked):
+        rows.append(
+            "<tr><td><a href='#scenario-" + str(ordinal) + "'>Scenario " +
+            str(ordinal).zfill(2) + "</a></td><td>" + str(flags) +
+            "</td><td>" + _safe(unknown) + "</td><td>" +
+            _safe(reason) + "</td></tr>"
+        )
+    return (
+        '<section class="panel"><h2>Suggested HUMAN follow-up order</h2>' +
+        '<p class="muted">Navigation only. Sorted by declared scope/policy values, ' +
+        'then source-reported adverse flags, then unknown coverage. This does ' +
+        'not infer severity, ownership, verified findings or permission.</p>' +
+        '<div class="table-scroll"><table><thead><tr>' +
+        '<th scope="col">Anonymous case</th>' +
+        '<th scope="col">Adverse metric flags</th>' +
+        '<th scope="col">Unknown coverage</th>' +
+        '<th scope="col">Suggested HUMAN question</th>' +
+        '</tr></thead><tbody>' + "".join(rows) + '</tbody></table></div></section>'
+    )
+
+
 def render_comparison_html(result, *, cohort: bool = False,
                            scored: bool = False) -> str:
     """Create an offline printable review, without external assets or raw IDs.
@@ -144,6 +191,7 @@ def render_comparison_html(result, *, cohort: bool = False,
               "Unknown-coverage values above zero") +
         "</div>"
     )
+    followup = _followup_queue(accepted)
     distribution_rows = "".join(
         "<tr><td>" + _label(name) + "</td><td>" + str(counts[name]) +
         "</td></tr>"
@@ -199,7 +247,7 @@ def render_comparison_html(result, *, cohort: bool = False,
         "dispatch_allowed=false · release_allowed=false</strong></p>" +
         "<p>No real target, network, browser script, grant, handler or "
         "deployment is needed to view this file.</p></section>" +
-        summary + '<section class="panel">' + distribution + "</section>" +
+        summary + followup + '<section class="panel">' + distribution + "</section>" +
         "<h2>Anonymous scenario detail</h2>" + details +
         "<footer class='panel foot'><p>Only admitted metric numbers and fixed "
         "labels appear here. Original scenario IDs, source paths, target "
