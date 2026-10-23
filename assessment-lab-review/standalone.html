@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cKQZ/qsgV2il8IJ2z5FUgfboyo4IN2i6ipv6/lM3/Jg=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-e5EuXmZFonJgDgb41Iy91rGTA0Oy3LdLO0ZDGRMFv7w='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-psrbr0cxKvj/S5+KqrUe+BVSdvqzfitOYr6wUPvIJZw=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-e5EuXmZFonJgDgb41Iy91rGTA0Oy3LdLO0ZDGRMFv7w='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -73,7 +73,7 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 <tbody id="human-queue-rows"></tbody></table></div>
 <div class="toolbar"><button id="human-queue-prev" type="button" disabled>Previous</button>
 <button id="human-queue-next" type="button" disabled>Next</button><span id="human-queue-page"></span></div>
-<p class="note">PRIVATE agenda carries operator-authored HUMAN notes and original ordinal; not target URLs, evidence, check IDs, titles or source hashes. Send only through independently approved confidential channels. Anonymous grouped counts can still be sensitive in small cohorts.</p>
+<p class="note">PRIVATE agenda carries operator-authored HUMAN notes and original ordinal; not target URLs, evidence, check IDs or titles. It includes the UNSIGNED original source SHA-256 and therefore stays PRIVATE. Send only through independently approved confidential channels. Anonymous grouped counts can still be sensitive in small cohorts.</p>
 </section>
 <div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><label for="search">Find source title/check or HUMAN note
 <input id="search" type="search" maxlength="180" autocomplete="off" placeholder="Local private text search"></label>
@@ -513,21 +513,28 @@ function renderHumanQueue(){
   "No HUMAN items in this group.";
  $("human-queue-prev").disabled=humanQueuePage===0;
  $("human-queue-next").disabled=humanQueuePage>=pages;
- $("human-queue-brief").disabled=!all.length;
+ $("human-queue-brief").disabled=!all.length||!sourceHash;
  $("human-queue-csv").disabled=!all.length;
+}
+function literalHumanForMarkdown(s){
+ // Original HUMAN prose is data, never renderable HTML or Markdown markup.
+ return JSON.stringify(s).replaceAll("&","\\u0026").replaceAll("<","\\u003c").replaceAll(">","\\u003e");
 }
 function humanQueueMarkdown(){
  const lines=["# LightUp · PRIVATE HUMAN action agenda","",
   "**REVIEW_ONLY · Source declarations and HUMAN notes are not verified findings, grants, consent or release.**",
-  "Original target URLs, evidence, titles, check identifiers and source hash are excluded.",
+  "Original target URLs, evidence, titles and check identifiers are excluded.",
+  "UNSIGNED exact original PRIVATE source SHA-256: "+sourceHash,
+  "Original PRIVATE finding count: "+source.findings.length,
+  "A matching SHA-256 does NOT authenticate the original producer or recipient.",
   "Keep this confidential: human notes and original ordinals may remain sensitive.",""];
  humanQueueEntries().forEach(row=>{
   lines.push("## Original ordinal "+row.ordinal+" · endpoint "+row.endpoint+
    " (unverified) · source severity "+row.severity,
    "Attention: "+HUMAN_QUEUE_CATEGORIES[row.category],
    "Human stage: "+row.note.stage+" · proposed group: "+row.note.group,
-   "Next HUMAN action (literal JSON string): "+JSON.stringify(row.note.next_action),
-   "HUMAN blocker (literal JSON string): "+JSON.stringify(row.note.blocker),"");
+   "Next HUMAN action (literal JSON string): "+literalHumanForMarkdown(row.note.next_action),
+   "HUMAN blocker (literal JSON string): "+literalHumanForMarkdown(row.note.blocker),"");
  });
  lines.push("SOURCE_AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false","");
  return lines.join("\n");
@@ -777,7 +784,7 @@ $("human-queue-filter").addEventListener("change",e=>{humanQueueFilter=e.target.
 $("human-queue-prev").addEventListener("click",()=>{humanQueuePage=Math.max(0,humanQueuePage-1);renderHumanQueue();});
 $("human-queue-next").addEventListener("click",()=>{humanQueuePage++;renderHumanQueue();});
 $("human-queue-brief").addEventListener("click",()=>{
- if(!source||!confirm("Export a PRIVATE HUMAN agenda containing original ordinals and all operator-authored action/blocker notes? Keep it confidential and obtain separate recipient approval."))return;
+ if(!source||!sourceHash||!confirm("Export a PRIVATE HUMAN agenda containing original ordinals and all operator-authored action/blocker notes? Keep it confidential and obtain separate recipient approval."))return;
  download("PRIVATE-lab-human-action-agenda.md",humanQueueMarkdown(),"text/markdown");
  status("PRIVATE HUMAN planning agenda downloaded. No original source authentication or permission implied.");
 });
