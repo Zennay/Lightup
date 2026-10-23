@@ -22,6 +22,17 @@ On an authorized trusted Linux machine with Python 3, inside a copy of this bran
 
 The installer returns 2 = REVIEW_ONLY after local success, or 3 = HOLD on failure. Use an unused directory name. Open integrated-workspace-v1/index.html locally.
 
+The original owner-private staging-directory factory now rolls back its own
+**fresh empty temporary directory** via its still-open 0700 parent descriptor
+if opening or syncing the newly created stage fails *before* the caller
+receives it. An unreturned stage cannot be cleaned by the normal caller's
+`finally`; it is now handled at the creation point. The rollback only
+calls `rmdir` on that exact empty stage, never recursive deletion of any
+replaced/foreign contents. A simulated Linux staging metadata fsync failure
+was verified to leave zero temporary entries. This improves local failure
+cleanup and persistence; it is not a security approval or a replacement for
+native source verification.
+
 The new **private, 0700** folder contains the original 79 software-only files, a CSP/scriptless index linking four complete offline original application screens, source-lock.json, software-only.zip, and a SHA-256 manifest. The ZIP is ordered reproducibly and contains software, the installer, operator guide and landing page, but **no tenant data, evidence, login, credentials, private source workrooms or HUMAN notes**. Source-only installation and reconstruction now also create all **nested 0700
 software directories** using the same anchored private directory-descriptor
 approach as individual file creation. `ensure_private_subdirs` descends
