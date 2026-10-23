@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<header><div class="eyebrow">LIGHTUP / ISOLATED LAB / HUMAN REVIEW ONLY</div>
+<h1>Private Lab Review Desk</h1><p>Explore an <strong>already-created</strong> isolated-lab assessment JSON. Review individual source-declared findings, track human follow-up and prepare a private handoff. Nothing scans, calls a model, contacts an asset, verifies consent or grants permission.</p>
+<div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT VERIFIED SECURITY EVIDENCE</div></header>
+<main>
+<section aria-labelledby="start"><h2 id="start">1. Open private lab artifact</h2>
+<p>Choose an original owner-private <code>lightup lab-assess --output PRIVATE.json</code> result. This tool reads the selected local file only. The original target addresses and findings remain in browser memory; keep this screen private.</p>
+<label class="upload" for="source">Open original PRIVATE.json <input id="source" type="file" accept=".json,application/json"></label>
+<p id="message" role="status" aria-live="polite"></p></section>
+<section id="workspace" hidden aria-labelledby="desk"><h2 id="desk">2. Triage source-declared findings</h2>
+<p id="stats" class="stats"></p><p id="progress"></p>
+<section class="metrics-panel" aria-labelledby="metrics-heading">
+ <h3 id="metrics-heading">Original evaluation metrics</h3>
+ <p class="note">Only the already-produced source-reported numeric fields are shown. Values are unverified declarations, not a validated run, benchmark, security verdict or release decision.</p>
+ <dl id="metric-grid" class="metric-grid"></dl>
+</section>
+<section class="coverage-panel" aria-labelledby="coverage-heading">
+ <div class="coverage-toolbar"><div><h3 id="coverage-heading">Endpoint review coverage</h3>
+ <p id="coverage-summary" class="note">Open an original private artifact to calculate human-planning coverage.</p></div>
+ <button id="coverage-export" type="button" disabled>Export anonymous endpoint coverage CSV</button></div>
+ <div class="table-wrap"><table id="coverage-table"><caption>Local endpoint ordinals only · unverified source declarations</caption>
+ <thead><tr><th>Source endpoint</th><th>Findings</th><th>Needs review</th><th>Stage moved forward</th><th>Blocked stage</th><th>Blocker note</th><th>Next action missing</th><th>Open</th></tr></thead>
+ <tbody id="coverage-rows"></tbody></table></div>
+ <p class="note">Coverage is a HUMAN planning summary, not finding verification, completion, remediation, source authenticity or authorization. Ordinal 0 means an unmatched source-reported asset. The optional CSV contains only counts and literal false authority flags; small aggregates may still be sensitive.</p>
+</section>
+<section class="coverage-panel" aria-labelledby="human-queue-heading">
+<h3 id="human-queue-heading">Private HUMAN action queue</h3>
+<p class="note">Local planning only; source-severity and human notes never verify findings, fixes, client consent or authority. Every original finding remains unchanged.</p>
+<div class="toolbar"><label for="human-queue-filter">Attention group <select id="human-queue-filter">
+<option value="">All HUMAN follow-up</option><option value="blocked">Blocked or uncertain</option>
+<option value="pending">Needs human review</option><option value="missing">Next HUMAN action missing</option>
+<option value="drafted">HUMAN follow-up drafted</option></select></label>
+<button id="human-queue-brief" type="button" disabled>Export PRIVATE HUMAN agenda (.md)</button>
+<button id="human-queue-csv" type="button" disabled>Export anonymous counts (.csv)</button></div>
+<p id="human-queue-summary" class="note" role="status">Open a PRIVATE lab result first.</p>
+<div class="table-wrap"><table><caption>Original finding ordinals, unverified source severity and HUMAN attention only</caption>
+<thead><tr><th>Original ordinal</th><th>Source severity</th><th>Human stage / group</th><th>Attention</th><th>Review</th></tr></thead>
+<tbody id="human-queue-rows"></tbody></table></div>
+<div class="toolbar"><button id="human-queue-prev" type="button" disabled>Previous</button>
+<button id="human-queue-next" type="button" disabled>Next</button><span id="human-queue-page"></span></div>
+<p class="note">PRIVATE agenda carries operator-authored HUMAN notes and original ordinal; not target URLs, evidence, check IDs or titles. It includes the UNSIGNED original source SHA-256 and therefore stays PRIVATE. Send only through independently approved confidential channels. Anonymous grouped counts can still be sensitive in small cohorts.</p>
+</section>
+<div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><label for="search">Find source title/check or HUMAN note
+<input id="search" type="search" maxlength="180" autocomplete="off" placeholder="Local private text search"></label>
+<label for="sort">Priority view <select id="sort"><option value="source">Original source order</option>
+<option value="severity">Original severity first</option><option value="human_pending">Human needs-review first</option>
+<option value="human_blocked">Human blockers first</option></select></label>
+<span id="shown"></span></div>
+<div class="bulkbar" aria-label="Optional human-only bulk update"><strong>Human-only batch update of the currently visible rows</strong>
+<div class="toolbar"><label for="bulkStage">Proposed stage <select id="bulkStage">
+<option value="">Leave unchanged</option><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></select></label>
+<label for="bulkGroup">Proposed review group <select id="bulkGroup"><option value="">Leave unchanged</option>
+<option value="unassigned">Unassigned</option><option value="scope">Scope</option><option value="findings">Findings</option>
+<option value="evidence">Evidence</option><option value="remediation">Remediation</option></select></label>
+<button id="applyBulk" type="button">Apply to visible HUMAN notes</button>
+<button id="undoBulk" type="button" class="quiet">Undo last batch</button></div>
+<p class="note">A separate confirmation is required. Only the filtered human stage/group changes; each original finding, private evidence and existing human free-text remain unchanged.</p></div>
+<div class="table-wrap"><table><caption>Private source findings and proposed human notes</caption>
+<thead><tr><th scope="col">Source finding (not verified)</th><th scope="col">Human follow-up proposal</th></tr></thead>
+<tbody id="findings"></tbody></table></div>
+<p class="note">Endpoint ordinals are local display labels, not authenticated target identities. Unmatched source-reported assets are never promoted into scope. Evidence summaries, retest labels, remediation instructions and model review are untrusted source claims.</p>
+</section>
+<section id="handoff" aria-labelledby="export"><h2 id="export">3. Private handoff</h2>
+<p>The PRIVATE return contains only ordinal human follow-up fields and an <strong>unsigned SHA-256 hash of the exact original source bytes</strong>. Restoring requires the same unchanged file, in the same original order. A matching hash does not authenticate its author, prove a finding, confirm a fix or verify client/operator consent.</p>
+<div class="toolbar">
+<button id="private" type="button">Save PRIVATE human review</button>
+<button id="brief" type="button">Export PRIVATE scriptless human brief</button><button id="aggregate" type="button">Export anonymous counts only</button>
+<label class="upload" for="resume">Restore PRIVATE notes<input id="resume" type="file" accept=".json,application/json"></label>
+<button id="forget" type="button" class="quiet">Forget all local data</button></div>
+<p class="note">All exports are downloads initiated by you; there is no upload, localStorage, cookie, service worker or backend. Keep PRIVATE returns off public channels. Even counts-only exports may be sensitive. Nothing in this interface creates a new original LightUp assessment or authorized retest.</p></section>
+<section id="collaboration" aria-labelledby="collab-heading">
+<h2 id="collab-heading">4. Send a PRIVATE human-only reviewer packet</h2>
+<p>Select existing source findings to share by the current severity/stage/endpoint filter. The packet contains <strong>only original ordinal, severity, a private source-declared title and the current four human follow-up fields</strong>; no target URL, raw evidence, finding ID or customer data. The recipient is not authenticated by this software; use a separately approved private channel.</p>
+<div class="toolbar">
+<button id="collab-select-visible" type="button">Select visible PRIVATE titles</button>
+<button id="collab-clear-selection" type="button" class="quiet">Clear selected titles</button>
+<button id="collab-send" type="button">Download PRIVATE packet for selection</button>
+<label class="upload" for="collab-receive">Import PRIVATE reviewer reply<input type="file" id="collab-receive" accept=".json,application/json"></label>
+<button id="collab-apply" type="button" disabled>Accept previewed HUMAN changes</button></div>
+<p id="collab-selection-status"></p>
+<div id="collab-status" role="status" aria-live="polite"></div>
+<div id="collab-preview"></div>
+<p class="note">Reviewer replies are only proposed human notes. Both the original source-byte fingerprint and unchanged operator human baseline must match at import time. Any stale, mismatched or incomplete private packet is HOLD. Reviewer identity, consent, findings and completion are never inferred.</p>
+<p>For the recipient: open <strong>team-reply-standalone.html</strong> separately from this operator tool. Return only PRIVATE JSON through a separately approved confidential channel.</p>
+</section>
+<section id="peer" aria-labelledby="peer-heading">
+<h2 id="peer-heading">5. Compare two PRIVATE pre-existing lab declarations</h2>
+<p>Import a <strong>separately created</strong> original private lab JSON result B against the current original A. Both must declare the exact same isolated endpoint set and scenario, with distinct original run IDs. This is an <strong>offline source-declaration comparison</strong>, not verified scan chronology, provenance, consent or remediation. No lab or target execution occurs.</p>
+<div class="toolbar"><label class="upload" for="peer-input">Compare with PRIVATE source B<input id="peer-input" type="file" accept=".json,application/json"></label>
+<label for="peer-kind">Show group <select id="peer-kind"><option value="">All source-declared groups</option>
+<option value="ambiguous">Ambiguous repeated source key</option><option value="a_only">Present only A (not fixed)</option>
+<option value="b_only">Present only B (not verified new)</option><option value="description">Description changed</option>
+<option value="evidence_text">Evidence-text changed</option><option value="same_description">Same descriptive source claim</option></select></label>
+<button id="peer-export" type="button" disabled>Export counts-only comparison</button></div>
+<p id="peer-overview" class="stats">No second source admitted.</p>
+<div class="table-wrap"><table><caption>PRIVATE informational check-declaration differences</caption>
+<thead><tr><th>Source declaration</th><th>Original A ordinal</th><th>Original B ordinal</th><th>PRIVATE A description</th><th>PRIVATE B description</th><th>HUMAN follow-up</th></tr></thead><tbody id="peer-results"></tbody></table></div>
+<div class="toolbar"><button id="peer-prev" type="button" disabled>Previous page</button>
+<button id="peer-next" type="button" disabled>Next page</button><span id="peer-counter"></span></div>
+<p class="note">The comparison key is the literal original target + capability + check ID, **not authenticated vulnerability identity**. Duplicate identities remain ambiguous. Changed or absent claims never prove anything was newly discovered or repaired. This feature never transfers HUMAN notes into another source.</p>
+</section>
+<section class="gates"><h2>Release remains on hold</h2><p>Original source-owner acceptance, independently authenticated separate client/operator consent with revocation at action time, #177/#182/#829, independent privacy/security, exact-head hosted and permanently named VPS CI, and explicit HUMAN GO remain mandatory before any main merge, deploy, grant or active assessment.</p></section>
+</main><footer>Source is explicitly held and unsigned · Offline human planning only · No execution</footer>
+<script src="app.js" defer></script>
+<script src="collaboration.js" defer></script></body></html>
