@@ -190,12 +190,30 @@ def _html(board: dict) -> bytes:
                           for key in keys) + "</tr>"
         for row in board["rows"]
     )
+    priority_rows = "".join(
+        "<tr><th scope='row'>%s</th><td>%d</td></tr>" %
+        (escape(name), board["priorities"][name]) for name in PRIORITIES
+    )
+    stage_rows = "".join(
+        "<tr><th scope='row'>%s</th><td>%d</td></tr>" %
+        (escape(name), board["human_stages"][name]) for name in STAGES
+    )
+    route_rows = "".join(
+        "<tr><th scope='row'>%s</th><td>%d</td></tr>" %
+        (escape(name), board["routing_groups"][name]) for name in ROUTES
+    )
     load_rows = "".join(
         "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % tuple(
             escape(str(item[key] if item[key] is not None else "unspecified"))
             for key in ("follow_up_date", "routing_group", "open_items",
                         "above_declared_capacity")
         ) for item in board["route_date_loads"]
+    )
+    overdue_text = (
+        "Not computed: no explicit reference date supplied."
+        if board["overdue_open_rows"] is None
+        else "%d open rows overdue relative to %s." %
+             (board["overdue_open_rows"], board["reference_date"])
     )
     content = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
@@ -207,15 +225,23 @@ def _html(board: dict) -> bytes:
         "margin:2rem auto;padding:0 1rem}table{border-collapse:collapse;width:100%%}"
         "th,td{border:1px solid #9ba5b4;padding:.45rem;text-align:left}"
         "tr{break-inside:avoid} .warning{border-left:5px solid #ab5500;padding:1rem}"
+        ".summaries{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}"
         "@media print{body{font-size:10pt}}</style></head><body>"
         "<h1>LightUp · PRIVATE human capacity</h1>"
         "<p class='warning'><strong>%s · HUMAN PLANNING ONLY · NOT AUTHORIZED</strong>"
         " Source packets are untrusted. No scan, grant, consent, source verification,"
         " staffing decision, dispatch or release is implied.</p>"
         "<p>%d packets · %d work rows · %d open · %d reviewed · %d undated.</p>"
+        "<p>%s</p>"
         "<p>Capacity is a hypothetical operator-supplied row limit per date/route."
         " Rows are declared human work, not unique vulnerabilities or owners."
         " Packet ordinals are input order, never authenticated source identity.</p>"
+        "<div class='summaries'><section><h2>Priority distribution</h2><table>"
+        "<thead><tr><th>Source priority</th><th>Rows</th></tr></thead><tbody>%s</tbody></table></section>"
+        "<section><h2>HUMAN stage distribution</h2><table>"
+        "<thead><tr><th>Self-reported stage</th><th>Rows</th></tr></thead><tbody>%s</tbody></table></section>"
+        "<section><h2>Routing distribution</h2><table>"
+        "<thead><tr><th>Self-reported route</th><th>Rows</th></tr></thead><tbody>%s</tbody></table></section></div>"
         "<h2>Open row load by date and route</h2><table><thead><tr>"
         "<th>Date</th><th>Route</th><th>Open</th><th>Above hypothetical limit</th>"
         "</tr></thead><tbody>%s</tbody></table>"
@@ -227,9 +253,9 @@ def _html(board: dict) -> bytes:
     ) % (escape(board["comparison_status"]), board["packet_count"],
          board["human_work_rows"], board["open_work_rows"],
          board["reviewed_rows"], board["undated_open_rows"],
+         escape(overdue_text), priority_rows, stage_rows, route_rows,
          load_rows, header, body)
     return content.encode("utf-8")
-
 
 def _render(board: dict) -> bytes:
     json_bytes = json.dumps(board, ensure_ascii=True, sort_keys=True,
