@@ -205,13 +205,13 @@
     const group = category.value;
     const full = showAll || group !== "Alles" || term.length > 0;
     const hits = specs.filter(spec =>
-      (full || primaryNames.has(spec.name)) &&
+      (full || primaryNames.has(spec.name) || spec.name === chosen.name) &&
       (group === "Alles" || spec.category === group) &&
       [spec.label, spec.name, spec.purpose, spec.category, ...spec.fields.map(f => f.label)]
         .join(" ").toLocaleLowerCase("nl").includes(term));
     more.hidden = term.length > 0 || group !== "Alles" || specs.length <= primaryNames.size;
     more.setAttribute("aria-expanded", String(showAll));
-    more.textContent = showAll ? "Toon alleen de belangrijkste acties" : "Bekijk alle 27 acties";
+    more.textContent = showAll ? "Toon de belangrijkste acties" : "Bekijk alle " + specs.length + " acties";
     for (const item of hits) {
       const button = node("button", "action", item.label);
       button.type = "button";
