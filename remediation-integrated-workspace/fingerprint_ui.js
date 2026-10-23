@@ -12,7 +12,12 @@
   const expectedResult = document.getElementById("packet-expected-result");
   const limitCount = 8;
   const limitItem = 20 * 1024 * 1024;
+  // The fixed original software archive has a stricter native 15 MB bound.
+  // The browser only hashes its bytes; this is NOT native ZIP admission.
+  const limitSoftwareArchive = 15_000_000;
   const limitTotal = 64 * 1024 * 1024;
+  const supportedFile = f => /\.(luhx|luhz|luhp)$/.test(f.name) ||
+    f.name === "software-only.zip";
   let inventory = [];
   // Invalidate every in-flight File.arrayBuffer/WebCrypto digest whenever the
   // operator clears results or changes the original file selection.
@@ -111,16 +116,17 @@
       message("Kies eerst 1 tot 8 oorspronkelijke lokale bestanden.");
       return;
     }
-    if (files.some(f => !/\.(luhx|luhz|luhp)$/.test(f.name))) {
+    if (files.some(f => !supportedFile(f))) {
       picker.value = "";
-      message("HOLD: kies uitsluitend daadwerkelijk ontvangen bronvrije .luhx, .luhz of .luhp overdrachtspakketten. Geen originele cliënt-evidence of generieke ZIP/JSON.");
+      message("HOLD: kies alleen bronvrije .luhx/.luhz/.luhp of het exacte software-only.zip. Geen klantgegevens of willekeurige ZIP/JSON.");
       return;
     }
     if (files.length > limitCount ||
-        files.some(f => !Number.isSafeInteger(f.size) || f.size <= 0 || f.size > limitItem) ||
+        files.some(f => !Number.isSafeInteger(f.size) || f.size <= 0 ||
+          f.size > (f.name === "software-only.zip" ? limitSoftwareArchive : limitItem)) ||
         files.reduce((sum, f) => sum + f.size, 0) > limitTotal) {
       picker.value = "";
-      message("HOLD: maximaal 8 bestanden, 20 MiB per stuk, 64 MiB samen; lege bestanden niet toegestaan.");
+      message("HOLD: maximaal 8 bestanden, 20 MiB per bronvrij pakket, 15 MB voor software-only.zip en 64 MiB samen.");
       return;
     }
     if (!window.crypto || !crypto.subtle || typeof crypto.subtle.digest !== "function") {
@@ -136,7 +142,8 @@
         const f = files[i];
         const raw = await f.arrayBuffer();
         if (requestGeneration !== generation) return;
-        if (raw.byteLength !== f.size || raw.byteLength > limitItem) {
+        if (raw.byteLength !== f.size ||
+            raw.byteLength > (f.name === "software-only.zip" ? limitSoftwareArchive : limitItem)) {
           throw Error("De geselecteerde bronbytes veranderden tijdens het lezen.");
         }
         const sha256 = hex(await crypto.subtle.digest("SHA-256", raw));
@@ -166,7 +173,7 @@
       }
       exportButton.disabled = false;
       compareDeclaredSource();
-      message("PRIVATE fingerprint-overzicht klaar. Geen bestanden verzonden of bewaard. Verwijder lokaal na gebruik.");
+      message("Lokale SHA-256 klaar. Bij software-only.zip bewijst dit alleen byte-overeenkomst: gebruik de native inspect-archive voor bron- en ZIP-toelating. Niets verzonden.");
     } catch (_) {
       if (requestGeneration === generation) {
         forget();
