@@ -518,7 +518,7 @@
     $("metricTrendSummaryBrief").disabled=!rows.length;
   }
   function metricTrendSummaryPayload(){
-    return {schema:"lightup.assessment_trends_metric_trend_summary.v1",status:summary().status,
+    return {schema:"lightup.assessment_trends_metric_trend_summary.v2",status:summary().status,
       fictional_demo_only:fictional,manual_slot_order:true,manual_slot_count:snapshots.length,
       authenticated_chronology:false,source_metrics_independently_verified:false,
       remediation_verified:false,authorized:false,consent_verified:false,dispatch_allowed:false,
