@@ -87,6 +87,14 @@ admission path used for a later explicit `receive`, with a second source
 recheck immediately before private publication. It is also available as
 `private_desk.py inspect-archive` and in the offline operator console.
 
+Malformed compressed software members are handled by the same native
+`HOLD` contract as invalid headers: low-level DEFLATE/CRC/ZIP structure
+exceptions now produce a bounded local `HOLD: Corrupt or incomplete native
+software ZIP` result with exit code 3, instead of an uncaught Python
+decompression traceback. As with all rejections, no incoming package is
+published. Successful original software inspection still means
+**REVIEW_ONLY**, not sender authentication, client consent, or release.
+
 The archive's DEFLATE byte stream is accepted only if it parses as complete
 original members with the expected verified plaintext, canonical local
 headers and no extra ZIP records. This deliberately avoids recompressing
