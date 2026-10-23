@@ -1172,6 +1172,22 @@ def run(args):
             roles = ",".join(role + ":" + str(role_counts.get(role, 0)) for role in ROLES)
             buckets = ",".join(bucket + ":" + str(bucket_counts.get(bucket, 0)) for bucket in DATE_BUCKETS)
             stages = ",".join(stage + ":" + str(stage_counts.get(stage, 0)) for stage in STAGES)
+            capacity_lines = []
+            for label, limits in (
+                ("declared", capacity_limits),
+                ("alternate", alternative_capacity_limits),
+            ):
+                if limits is None:
+                    continue
+                capacity_rows, undated = capacity.collect(rows, limits, ROLES)
+                overloaded = sum(1 for item in capacity_rows if item["items_above_declared_limit"] > 0)
+                excess = sum(item["items_above_declared_limit"] for item in capacity_rows)
+                capacity_lines.append(
+                    label + "_capacity_groups=" + str(len(capacity_rows)) +
+                    " " + label + "_over_limit_groups=" + str(overloaded) +
+                    " " + label + "_excess_items=" + str(excess) +
+                    " " + label + "_undated_items=" + str(sum(len(items) for items in undated.values()))
+                )
             output_bytes = sum(len(content) for _name, content in outputs)
             print(
                 "ASSESSMENT_PORTFOLIO_PREVIEW_REVIEW_ONLY agendas=" + str(len(documents)) +
@@ -1179,7 +1195,8 @@ def run(args):
                 " artifacts=" + str(len(outputs)) +
                 " rendered_bytes=" + str(output_bytes) +
                 " roles[" + roles + "] buckets[" + buckets + "] stages[" + stages + "]" +
-                " — PLANNING ONLY; no output directory opened, no files written, NOT AUTHORIZED"
+                (" " + " ".join(capacity_lines) if capacity_lines else "") +
+                " — PLANNING ONLY; capacity is an explicit hypothetical assumption, no output directory opened, no files written, NOT AUTHORIZED"
             )
             return 0
         if args.verify_output_dir:
