@@ -761,6 +761,21 @@ ephemeral browser memory and never approves a recipient, identity, consent,
 fix, release or transfer. Native packet_fingerprint.py compare remains the
 strict owner-private source-bound receipt comparison counterpart.
 
+### Clear or change a source-free packet selection during hashing
+
+The browser's existing **Wis fingerprints** action now invalidates any
+unfinished File/ WebCrypto digest before it can re-display, export or
+compare the old original fingerprints. Changing the selected private
+packet files while a digest is still running also invalidates that
+calculation; the operator must start a new one for the replacement
+selection. The already-enforced bounded 1–8 packet and
+`.luhx`/`.luhz`/`.luhp` rules, in-memory-only processing, no network,
+and explicit native source admission/consent gates remain unchanged.
+An isolated direct browser-script exercise verified that neither
+clearing during file reading nor changing selection during SHA-256
+lets a stale fingerprint return. No automatic local file deletion or
+transfer is implied.
+
 ### Optional complete PRIVATE source-free byte-comparison report
 
 When authentic original and received packet files are available to their
