@@ -781,3 +781,14 @@ order, including selections spanning multiple original priorities and
 reopened/unanswered/blocked stages. This is a functional round-trip guarantee,
 not an automatic reviewer approval, authority or consent. Missing/extra or
 out-of-order rows remain HOLD on import rather than being silently shuffled.
+
+
+### Restore exact previous HUMAN review drafts in the same offline editor
+
+Open `PRIVATE-HUMAN-continuity-review-studio.html` **locally** from the unchanged PRIVATE source-bound docket (never on a shared/public site). After you have previously clicked **Save PRIVATE HUMAN review CSV locally** and retained that confidential download, you can later reopen the same original dossier and click **Restore exact PRIVATE HUMAN CSV**. Select the earlier `PRIVATE-HUMAN-continuity-review-return.csv` from your own private files.
+
+The browser performs a bounded, strict, **all-or-nothing** local read: at most 128 KiB, valid UTF-8, exactly the canonical fully quoted four-column CSV with CRLF and no BOM, original full docket-CSV SHA-256 matching the CURRENT opened editor, every original selected HUMAN ordinal appearing once **in unchanged order**, known fixed dispositions, and up to 500 safe note characters per row. Any missing, foreign, reordered, changed, noncanonical or invalid field leaves **all existing drafts unchanged** and displays HOLD. There is no guess-based migration or silent retargeting to a different original source.
+
+Before replacement, the editor reports how many source-bound rows differ and how many existing PRIVATE notes may be overwritten. A separate local confirmation is required; identical imports are no-ops. A successful import only restores in-memory dropdowns/notes; it **never submits, sends, authenticates, approves, persists or processes an actual assessment**. Review the restored values, then consciously save a new local CSV when needed. The original **console 34/35** native source admission/read-only reopen remains the independent custody boundary, not replaced by this browser feature.
+
+The editor also displays unsaved local HUMAN note/decision counts and has a **Clear in-memory HUMAN drafts** action with confirmation. Page exit/BFCache restoration clears the in-memory form fields (not secure physical memory erasure). Previously downloaded PRIVATE CSVs are **not** deleted or rendered non-disclosable by any reset: the operator is responsible for local encrypted storage, verified source/recipient identity and separate disclosure consent. No browser storage, APIs, network calls, live scope, grant, task dispatch, finding/fix verification or deployment is added. **INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD**; original exact-head CI and independent reviews/approval gates still apply.
