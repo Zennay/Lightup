@@ -92,7 +92,7 @@ before any offline test runs. This test verifies *only* the isolated local
 assessment-runtime suite, not full project hosted or registered VPS release
 gates; the permanent operator-owned VPS job is tracked independently.
 
-## Explicit scored-cohort JSON CLI
+## Explicit scored-cohort JSON/text CLI
 
 Run `PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py old.json new.json`
 with two explicitly selected, at-most-262144-byte local JSON arrays (1..64).
@@ -107,6 +107,17 @@ public/nonlab, forged, duplicate, inconsistent or oversized packets cause
 packet is only an unauthenticated `REVIEW_ONLY` and exits **2**; regression or
 invalid input exits **3**; exit zero is impossible. Four authority fields are
 always false. Do not use with genuine client secrets or as release evidence.
+
+### Optional privacy-minimal terminal output
+
+JSON remains the default. For a readable scored-cohort report, use:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py \
+  --format text old.json new.json
+```
+
+The text summary reports the cohort status and anonymous scenario ordinals, then lists each metric's baseline, candidate, delta and source-reported flag. It deliberately omits scenario IDs, target addresses, planted finding identities and input paths. Invalid or inconsistent input produces a generic HOLD with no partial case details. Exit `2` means REVIEW_ONLY, `3` means HOLD; zero is never a success signal. The output is not authenticated ground truth, consent, authorization or release evidence.
 
 ## Baseline replay is not an independent candidate
 
