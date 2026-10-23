@@ -6,6 +6,8 @@ import base64
 from hashlib import sha256
 from html import escape
 import json
+import os
+import stat
 
 import capacity
 
@@ -438,6 +440,54 @@ def expected_scenario(rows, reference_day, roles, first, alternative):
             "staffing verdict, verified finding, consent or permission."
         ),
     }
+
+
+def read_private_scenario(path, parent_opener):
+    """Open exact original HUMAN download privately, no symlink/hardlink or race."""
+    absolute = os.path.abspath(os.fspath(path))
+    directory_fd, _ = parent_opener(os.path.dirname(absolute))
+    try:
+        fd = os.open(
+            os.path.basename(absolute),
+            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=directory_fd,
+        )
+    finally:
+        os.close(directory_fd)
+    with os.fdopen(fd, "rb") as stream:
+        before = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(before.st_mode)
+                or before.st_uid != os.getuid()
+                or stat.S_IMODE(before.st_mode) != 0o600
+                or before.st_nlink != 1
+                or not 0 < before.st_size <= 1048576):
+            raise CapacityScenarioHold("unsafe PRIVATE HUMAN capacity file")
+        raw = stream.read(1048577)
+        after = os.fstat(stream.fileno())
+        stamp = lambda st: (st.st_dev, st.st_ino, st.st_mode, st.st_uid,
+                            st.st_nlink, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+        if stamp(before) != stamp(after) or len(raw) != before.st_size:
+            raise CapacityScenarioHold("PRIVATE HUMAN capacity file changed during read")
+    def pairs(pairs):
+        obj = {}
+        for key, value in pairs:
+            if key in obj:
+                raise CapacityScenarioHold("duplicate JSON field")
+            obj[key] = value
+        return obj
+    def reject(_):
+        raise CapacityScenarioHold("invalid JSON numeric constant")
+    try:
+        content = raw.decode("utf-8", errors="strict")
+        obj = json.loads(content, object_pairs_hook=pairs, parse_constant=reject,
+                         parse_float=reject)
+        # Browser exports exact pretty JSON with one final LF: this also rejects
+        # duplicate/unknown encodings and any noncanonical private sender bytes.
+        if json.dumps(obj, ensure_ascii=False, indent=2) + "\n" != content:
+            raise CapacityScenarioHold("PRIVATE capacity JSON is not exact native browser format")
+    except (UnicodeError, ValueError, TypeError, RecursionError, OverflowError) as exc:
+        raise CapacityScenarioHold("invalid PRIVATE capacity JSON") from exc
+    return raw, obj
 
 
 def admit_private_scenario(document, rows, reference_day, roles):
