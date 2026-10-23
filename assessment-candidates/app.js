@@ -360,9 +360,86 @@
   function queueSettings(id){
     return discussions.get(id)||{route:"unrouted",stage:"needs_review"};
   }
+  function currentQueueRows(){
+    const ids=queueIds(),candidate=$("queueCandidate").value||"all",
+      topic=$("queueFamily").value||"all",stageFilter=$("queueFilter").value||"all",
+      includeNeutral=$("queueIncludeNeutral").checked;
+    const rows=ids.map((id,i)=>({i,id,count:queueAdverse(id,candidate,topic),
+      safety:queueAdverse(id,candidate,"scope"),review:queueSettings(id)})).filter(row=>
+      (stageFilter==="all"||row.review.stage===stageFilter)&&(includeNeutral||row.count>0));
+    rows.sort((a,b)=>topic==="all"?
+      Number(b.safety>0)-Number(a.safety>0)||b.safety-a.safety||
+        b.count-a.count||a.i-b.i:
+      b.count-a.count||a.i-b.i);
+    return {ids,candidate,topic,stageFilter,includeNeutral,rows};
+  }
+  function filteredQueueHandoff(){
+    if(!reports.length||!settings)throw new Error("No compatible candidate reports loaded.");
+    const view=currentQueueRows();
+    if(!view.rows.length)throw new Error("No cases match the current human queue filters.");
+    return view;
+  }
+  function exportFilteredQueueCSV(){
+    try{
+      const view=filteredQueueHandoff();
+      const columns=["handoff_schema","case_ordinal","candidate_filter","metric_topic",
+        "source_signal_instances","scope_policy_flag_instances_all_candidates",
+        "source_signal_candidate_slots","human_discussion_stage","generic_proposed_group",
+        "loaded_candidate_count","filter_discussion_stage","include_neutral_cases",
+        "fictional_demo_only","authorized","consent_verified","dispatch_allowed","release_allowed"];
+      const rows=[columns];
+      for(const row of view.rows){
+        const slots=(view.candidate==="all"?reports.map((_,i)=>i):[Number(view.candidate)])
+          .filter(i=>queueAdverse(row.id,String(i),view.topic)>0).map(i=>i+1);
+        rows.push(["lightup.lab_candidate_matrix_human_queue.v1",
+          "Lab case "+String(row.i+1).padStart(2,"0"),
+          view.candidate==="all"?"all":"candidate "+(Number(view.candidate)+1),
+          view.topic,row.count,row.safety,slots.length?slots.join(";"):"none",
+          row.review.stage,row.review.route,reports.length,view.stageFilter,
+          view.includeNeutral,demo,false,false,false,false]);
+      }
+      download("lightup-candidate-filtered-HUMAN-queue.csv",
+        rows.map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv;charset=utf-8");
+      setStatus("Exported "+view.rows.length+" visible anonymous HUMAN queue rows. No source case IDs, filenames, hashes, targets or raw metric values included.");
+    }catch(_){setStatus("HOLD: queue export requires compatible imported reports and a non-empty visible subset.",true);}
+  }
+  function exportFilteredQueueHTML(){
+    try{
+      const view=filteredQueueHandoff();
+      const esc=value=>escapeHTML(String(value??""));
+      const filterSummary=[
+        "candidate: "+(view.candidate==="all"?"All candidates":"Candidate "+(Number(view.candidate)+1)),
+        "metric topic: "+view.topic,"discussion stage: "+view.stageFilter,
+        "include neutral cases: "+(view.includeNeutral?"yes":"no")
+      ].join(" · ");
+      const headings=["Anonymous case ordinal","Source signal instances","Scope/policy flags across candidates",
+        "Candidate slots with source signal","Human discussion stage","Generic proposed group"];
+      const body=view.rows.map(row=>{
+        const slots=(view.candidate==="all"?reports.map((_,i)=>i):[Number(view.candidate)])
+          .filter(i=>queueAdverse(row.id,String(i),view.topic)>0).map(i=>i+1);
+        const values=["Lab case "+String(row.i+1).padStart(2,"0"),row.count,row.safety,
+          slots.length?slots.join(", "):"None",row.review.stage,row.review.route];
+        return "<tr>"+values.map(value=>"<td>"+esc(value)+"</td>").join("")+"</tr>";
+      }).join("");
+      const output="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+        "<meta name='referrer' content='no-referrer'>"+
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; base-uri 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'none'; script-src 'none'\">"+
+        "<title>LightUp filtered candidate HUMAN queue</title></head><body>"+
+        "<h1>LightUp · filtered candidate HUMAN queue</h1>"+
+        "<p><strong>REVIEW_ONLY · DRAFT/HOLD"+(demo?" · FICTIONAL DEMO":" · SOURCE UNVERIFIED")+"</strong></p>"+
+        "<p>Visible cases: "+view.rows.length+" of "+view.ids.length+" anonymous cases; loaded candidates: "+reports.length+".</p>"+
+        "<p>Filters applied: "+esc(filterSummary)+"</p>"+
+        "<p>Only anonymous ordinals, source-signal counts and local discussion proposals are included. No original case IDs, targets, source filenames/hashes, raw metrics, or private source bytes. Candidate order is manual, not authenticated chronology.</p>"+
+        "<table><thead><tr>"+headings.map(x=>"<th>"+esc(x)+"</th>").join("")+"</tr></thead><tbody>"+body+"</tbody></table>"+
+        "<p>source_identity_authenticated=false · temporal_order_authenticated=false · authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false. Not a finding, remediation, grant or release decision.</p>"+
+        "</body></html>";
+      download("lightup-candidate-filtered-HUMAN-queue.html",output,"text/html;charset=utf-8");
+      setStatus("Exported scriptless filtered HUMAN queue. Only visible anonymous case ordinals and planning fields included.");
+    }catch(_){setStatus("HOLD: queue export requires compatible imported reports and a non-empty visible subset.",true);}
+  }
   function drawQueue(){
     const ids=queueIds(),active=ids.length>0;
-    for(const name of ["queueCase","saveQueue","focusQueue","resetQueue"])
+    for(const name of ["queueCase","saveQueue","focusQueue","resetQueue","exportQueueCsv","exportQueueHtml"])
       $(name).disabled=!active;
     if(!active){discussions.clear();batchUndo=null;$("applyBulk").disabled=true;
       $("undoBulk").disabled=true;$("queueRows").innerHTML="";
@@ -385,16 +462,9 @@
     $("queueCase").value=String(queueFocus);
     const focus=queueSettings(ids[queueFocus]);
     $("queueRoute").value=focus.route;$("queueStage").value=focus.stage;
-    const cand=$("queueCandidate").value||"all";
-    const topic=$("queueFamily").value||"all",filter=$("queueFilter").value||"all";
-    const showNeutral=$("queueIncludeNeutral").checked;
-    const rows=ids.map((id,i)=>({i,id,count:queueAdverse(id,cand,topic),
-      safety:queueAdverse(id,cand,"scope"),review:queueSettings(id)})).filter(r=>
-      (filter==="all"||r.review.stage===filter)&&(showNeutral||r.count>0));
-    rows.sort((a,b)=>topic==="all"?
-      Number(b.safety>0)-Number(a.safety>0)||b.safety-a.safety||
-        b.count-a.count||a.i-b.i:
-      b.count-a.count||a.i-b.i);
+    const view=currentQueueRows(),rows=view.rows,topic=view.topic;
+    $("exportQueueCsv").disabled=!rows.length;
+    $("exportQueueHtml").disabled=!rows.length;
     $("applyBulk").disabled=!rows.length;
     $("undoBulk").disabled=batchUndo===null;
     $("queueSummary").textContent=rows.length+" anonymized cases shown / "+ids.length+
@@ -1583,6 +1653,8 @@
   }
   // No fetch, storage, workers, scanner or execution API.
   $("queueIncludeNeutral").addEventListener("change",drawQueue);
+  $("exportQueueCsv").addEventListener("click",exportFilteredQueueCSV);
+  $("exportQueueHtml").addEventListener("click",exportFilteredQueueHTML);
   $("queueRows").addEventListener("click",e=>{
     const button=e.target.closest("button[data-queue-index]");
     if(!button)return;
