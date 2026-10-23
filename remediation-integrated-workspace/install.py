@@ -16,6 +16,7 @@ from pathlib import Path, PurePosixPath
 import secrets
 import shutil
 import stat
+import struct
 import sys
 import zipfile
 
@@ -199,6 +200,61 @@ def require_native_archive(archive: zipfile.ZipFile, expected_names: set[str]) -
                 for entry in members)
             and sum(entry.file_size for entry in members) <= MAX_TOTAL,
             "Unsafe or noncanonical software ZIP member metadata")
+
+
+
+def unpack_native_archive(raw: bytes, expected_names: set[str]) -> dict[str, bytes]:
+    """Admit complete canonical ZIP headers, directory and contents offline.
+
+    zipfile alone accepts harmless-looking prepended/trailing data and some
+    alternate local/central header layouts. No re-compression is required:
+    different native zlib builds can encode the same verified source bytes.
+    This proves local structural consistency, NEVER author identity.
+    """
+    import io
+    require(0 < len(raw) <= MAX_TOTAL, "Software ZIP exceeds bound")
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        require_native_archive(archive, expected_names)
+        members = archive.infolist()
+        require(len(raw) >= 22 and len(members) < 0xffff,
+                "Noncanonical ZIP directory size")
+        local_pos = 0
+        for member in members:
+            name = member.filename.encode("ascii")
+            require(member.header_offset == local_pos and
+                    len(raw) - local_pos >= 30, "Unexpected ZIP local header offset")
+            local = struct.unpack_from("<I5H3I2H", raw, local_pos)
+            # signature, reader version, flags, method, DOS time/date,
+            # CRC, deflated/raw sizes, raw filename length and extra length
+            require(local == (0x04034b50, 20, 0, 8, 0, 20513,
+                              member.CRC, member.compress_size,
+                              member.file_size, len(name), 0),
+                    "Noncanonical ZIP local header")
+            require(raw[local_pos + 30:local_pos + 30 + len(name)] == name,
+                    "Changed local ZIP filename")
+            local_pos += 30 + len(name) + member.compress_size
+            require(local_pos <= len(raw), "Truncated ZIP member data")
+        require(local_pos == archive.start_dir,
+                "Unexpected ZIP prefix, local records or padding")
+        central_pos = local_pos
+        for member in members:
+            name = member.filename.encode("ascii")
+            require(len(raw) - central_pos >= 46, "Truncated ZIP central header")
+            central = struct.unpack_from("<I6H3I5H2I", raw, central_pos)
+            require(central == (0x02014b50, 0x0314, 20, 0, 8, 0, 20513,
+                                member.CRC, member.compress_size,
+                                member.file_size, len(name), 0, 0, 0, 0,
+                                0o100600 << 16, member.header_offset),
+                    "Noncanonical ZIP central header")
+            require(raw[central_pos + 46:central_pos + 46 + len(name)] == name,
+                    "Changed central ZIP filename")
+            central_pos += 46 + len(name)
+        require(len(raw) - central_pos == 22 and
+                struct.unpack_from("<I4H2IH", raw, central_pos) ==
+                (0x06054b50, 0, 0, len(members), len(members),
+                 central_pos - archive.start_dir, archive.start_dir, 0),
+                "ZIP end record, trailing bytes, or directory boundary changed")
+        return {member.filename: archive.read(member) for member in members}
 
 
 def catalog() -> tuple[bytes, dict]:
@@ -613,13 +669,13 @@ def verify(folder: Path, *, compare_checkout: bool = False,
                 "Integrated software differs from the trusted local checkout")
     print(f"LOCAL TOOL PARITY: {len(INTEGRATED_TOOLS)} installed integrated tools match local checkout bytes.")
     print("Local tool parity does not prove producer identity or independent review.")
-    # Inspect the exact stable 0600 ZIP bytes already admitted above; do not
-    # reopen its pathname after verifying the manifest.
-    import io
-    with zipfile.ZipFile(io.BytesIO(verified["software-only.zip"])) as z:
-        require_native_archive(z, set(verified) - {"software-only.zip"})
-        for name in z.namelist():
-            require(z.read(name) == verified[name], "Archive does not match installed source")
+    # Admit the literal full ZIP layout as well as uncompressed payloads:
+    # no prepended stub, trailing records or contradictory local headers.
+    # Inspect already-admitted owner-private bytes, not a reopened pathname.
+    archive_files = unpack_native_archive(
+        verified["software-only.zip"], set(verified) - {"software-only.zip"})
+    require(all(data == verified[name] for name, data in archive_files.items()),
+            "Archive does not match installed source")
     if compare_checkout:
         require(read_checkout_source(LOCK, 350_000) == verified["source-lock.json"],
                 "Local checkout source lock differs from installed suite")
