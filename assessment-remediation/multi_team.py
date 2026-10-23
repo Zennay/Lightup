@@ -134,8 +134,9 @@ def combine(args):
     }
     paths = [(folder / (args.prefix + suffix), data)
              for suffix, data in outputs.items()]
-    fail_if(any(os.path.lexists(path) for path, _ in paths),
-            "an owner-only multi-team output already exists")
+    if not args.preview_only:
+        fail_if(any(os.path.lexists(path) for path, _ in paths),
+                "an owner-only multi-team output already exists")
     do_render = bool(args.comparison or args.findings_csv)
     fail_if(do_render and not (args.comparison and args.findings_csv)
             or args.bundle and not do_render,
@@ -156,14 +157,29 @@ def combine(args):
         for suffix in ("-private.html", "-links.json", "-aggregate.json",
                        "-private-agenda.csv",
                        *(("-private-room.zip",) if args.bundle else ())):
-            fail_if(os.path.lexists(folder / (args.prefix + suffix)),
-                    "private dossier/ZIP destination already exists")
+            if not args.preview_only:
+                fail_if(os.path.lexists(folder / (args.prefix + suffix)),
+                        "private dossier/ZIP destination already exists")
     for path, payload in snapshots:
         maximum = (MAX_FINDINGS if do_render and path == args.findings_csv
                    else MAX_COMPARE if do_render and path == args.comparison
                    else MAX_LINKS)
         fail_if(read_regular(path, maximum) != payload,
                 "an original private team/source snapshot changed")
+    if args.preview_only:
+        # All original source, exact membership, allowed human-only updates,
+        # optional original render binding and TOCTOU source rechecks passed.
+        # This mode deliberately writes no file, runs no model and issues no grant.
+        counts = aggregate["new_human_stage_counts"]
+        print("PRIVATE_MULTI_TEAM_PREVIEW_ONLY — source-bound HUMAN counts, NO GO")
+        print("Teams=" + str(len(team_records)) + " assigned=" + str(len(handled)) +
+              " unassigned=" + str(len(old) - len(handled)) +
+              " human_modified=" + str(aggregate["changed_human_pair_count"]))
+        print("Human stages: " + ", ".join(
+            str(name) + "=" + str(counts[name]) for name in
+            ("needs_review", "investigating", "documented")))
+        print("No private data, source IDs, notes, file, network or authority published.")
+        return 2
     # Original complete baseline remains untouched. Publish distinct exclusive
     # fsynced owner-only files. Each file is atomic; the full set is not one
     # filesystem transaction. Do not delete files written for an operator.
@@ -205,6 +221,8 @@ def main(argv=None):
     parser.add_argument("--prefix", required=True)
     parser.add_argument("--comparison", help="Optional original canonical cohort comparison JSON")
     parser.add_argument("--findings-csv", help="Optional original authenticated client findings CSV")
+    parser.add_argument("--preview-only", action="store_true",
+                        help="Strict source-bound dry run: counts-only stdout, no files, never GO")
     parser.add_argument("--bundle", action="store_true",
                         help="When original sources supplied, also publish private review ZIP")
     args = parser.parse_args(argv)
