@@ -278,7 +278,7 @@ python3 assessment-disclosure-preflight/private_inbox_interval_matrix.py build \
 ~~~
 
 The preview admits all original inputs, verifies their bytes have not changed,
-and prints only aggregate round/slot/pair/slot-row counts. It skips report
+and prints only aggregate round/slot/pair/slot-row and stage/role return counts. It skips report
 rendering and file publication and creates no output directory. Exit 2 remains
 REVIEW_ONLY, never an approval or release signal.
 
@@ -293,8 +293,9 @@ python3 assessment-disclosure-preflight/private_inbox_interval_matrix.py build \
 ~~~
 
 The resulting `PRIVATE-HUMAN-original-interval-matrix.html` is scriptless
-and printable; the CSV is a flat complete-slot-by-interval view; the JSON
-contains the same source-minimal pair summaries and detail. All three files
+and printable; the pairwise CSV is a flat complete-slot-by-interval view; the
+JSON contains source-minimal pair summaries, HUMAN attention and detail; the
+separate attention CSV holds only slot-based human discussion cues. All four files
 are published together as owner-only 0600 files in a new, empty owner-owned
 0700 directory outside every original input tree. The matrix builder admits
 the original board and all complete worksheets, rejects duplicate revision
