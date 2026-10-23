@@ -131,6 +131,10 @@ OPERATIONS = {
         ("--workspace", "Existing private software-only suite", False, True),
         ("--report-dir", "NEW owner-only reproducibility passport directory", False, True),
     ), "Verify source/ZIP parity and publish PRIVATE HUMAN-only HTML/JSON passport."),
+    "reopen-passport": ("install.py", ("inspect", "--compare-checkout"), (
+        ("--workspace", "Existing original PRIVATE software-only suite", False, True),
+        ("--passport-dir", "Existing original PRIVATE reproducibility passport", False, True),
+    ), "Re-admit native PRIVATE passport HTML/JSON byte-for-byte against its installed software."),
 }
 
 def parser() -> argparse.ArgumentParser:
