@@ -901,7 +901,7 @@ This is a convenience format check and HUMAN follow-up worksheet, **not** source
 
 ### Multi-version PRIVATE manifest source timeline
 
-The native `manifest_change_timeline.py` compares **2–8 existing, separately saved PRIVATE manifest bundles** in the exact order supplied by the operator. Unlike the two-bundle `manifest_change_desk.py`, it shows endpoint presence and slot movement across the full selected series. It does not infer authenticated chronology, findings, remediation or permission.
+The native `manifest_change_timeline.py` compares **2–8 existing, separately saved PRIVATE manifest bundles** in the exact order supplied by the operator. Unlike the two-bundle `manifest_change_desk.py`, it shows endpoint presence and slot movement across the full selected series and calculates a net state for a chosen snapshot interval. It does not infer authenticated chronology, findings, remediation or permission.
 
 Create a new empty owner-private output directory (mode 0700) and pass each source bundle directory separately:
 
@@ -914,7 +914,9 @@ python3 assessment-launchpad/manifest_change_timeline.py \
   --output-dir "$HOME/private-manifest-timeline"
 ```
 
-The PRIVATE JSON, scriptless network-denying HTML and ordinal-only CSV contain a timeline row, first/last seen snapshot, per-snapshot slot and fixed transition state. The HTML/CSV omit endpoint values, source paths and source digests; the owner-private JSON retains local manifest SHA-256 references for consistency checks. Output files are mode 0600 and publication is exclusive/no-overwrite. All original bundles are re-admitted through the existing pinned original URL and LabScenario scope policy before publication, then re-admitted again at the publication boundary.
+The PRIVATE JSON, scriptless network-denying HTML and ordinal-only CSV contain a timeline row, first/last seen snapshot, per-snapshot slot, adjacent transition states and selected interval state. The HTML includes both adjacent transition totals and selected-interval totals. The HTML/CSV omit endpoint values, source paths and source digests; the owner-private JSON retains local manifest SHA-256 references for consistency checks. Output files are mode 0600 and publication is exclusive/no-overwrite. All original bundles are re-admitted through the existing pinned original URL and LabScenario scope policy before publication, then re-admitted again at the publication boundary.
+
+By default, the net interval is Snapshot 1 through the final snapshot. To compare a specific non-adjacent pair, supply both `--compare-from-snapshot N` and `--compare-to-snapshot M`, where `1 <= N < M <= snapshot count`. For example, add `--compare-from-snapshot 2 --compare-to-snapshot 3` to the creation command. Repeat the same pair when reopening so the result can be reconstructed byte-for-byte. The adjacent transition sequence remains visible even when the selected net interval spans intermediate changes.
 
 Reopen the exact saved result without writing:
 
