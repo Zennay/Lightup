@@ -332,28 +332,22 @@ refresh();
 '''.strip()
 
 
-def render(rows, reference_day, first_limits, alternative_limits, roles):
-    """Embed only already-admitted ordinals, dates and fixed vocabulary."""
-    records, undated = capacity.collect(rows, first_limits, roles)
-    if alternative_limits is None:
-        alternative_limits = dict(first_limits)
-    grouped = [
-        {
-            "date": record["day"],
-            "role": record["role"],
-            "count": record["items"],
-            "ordinals": [[row["agenda_slot"], row["source_slot"]]
-                         for row in record["members"]],
-        }
-        for record in records
-    ]
-    seed = {
+def source_inventory(rows, reference_day, roles):
+    """Only strictly admitted source-local aggregate ordinals, no authority."""
+    records, undated = capacity.collect(rows, {role: 1 for role in roles}, roles)
+    return {
         "schema": "lightup.human_capacity_studio_private.v1",
         "reference_date": reference_day.isoformat(),
         "roles": list(roles),
-        "first": first_limits,
-        "alternative": alternative_limits,
-        "groups": grouped,
+        "groups": [
+            {
+                "date": record["day"], "role": record["role"],
+                "count": record["items"],
+                "ordinals": [[row["agenda_slot"], row["source_slot"]]
+                             for row in record["members"]],
+            }
+            for record in records
+        ],
         "undated_count": sum(map(len, undated.values())),
         "undated_rows": [
             {"role": role, "ordinals": [[item["agenda_slot"], item["source_slot"]]
@@ -361,15 +355,135 @@ def render(rows, reference_day, first_limits, alternative_limits, roles):
                                       key=lambda row: (row["agenda_slot"], row["source_slot"]))]}
             for role in roles if undated.get(role)
         ],
+    }
+
+
+def source_digest(inventory):
+    return sha256(json.dumps(
+        inventory, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()
+
+
+def expected_scenario(rows, reference_day, roles, first, alternative):
+    """Original-source-bound counterpart of the browser's HUMAN-only JSON v2."""
+    inventory = source_inventory(rows, reference_day, roles)
+    entries, first_excess, alternate_excess = [], 0, 0
+    for entry in inventory["groups"]:
+        a = max(0, entry["count"] - first[entry["role"]])
+        b = max(0, entry["count"] - alternative[entry["role"]])
+        first_excess += a
+        alternate_excess += b
+        entries.append({
+            "proposed_day": entry["date"],
+            "suggested_neutral_role": entry["role"],
+            "human_items": entry["count"],
+            "first_declared_daily_limit": first[entry["role"]],
+            "first_items_above_assumption": a,
+            "alternative_declared_daily_limit": alternative[entry["role"]],
+            "alternative_items_above_assumption": b,
+            "alternative_minus_first_excess": b - a,
+            "source_agenda_count": len({ordinal[0] for ordinal in entry["ordinals"]}),
+            "original_source_ordinals": [
+                {"agenda_slot": ordinal[0], "source_slot": ordinal[1]}
+                for ordinal in entry["ordinals"]
+            ],
+            "status": "REVIEW_ONLY",
+        })
+    for entry in inventory["undated_rows"]:
+        entries.append({
+            "proposed_day": None,
+            "suggested_neutral_role": entry["role"],
+            "human_items": len(entry["ordinals"]),
+            "first_declared_daily_limit": None,
+            "first_items_above_assumption": None,
+            "alternative_declared_daily_limit": None,
+            "alternative_items_above_assumption": None,
+            "alternative_minus_first_excess": None,
+            "source_agenda_count": len({ordinal[0] for ordinal in entry["ordinals"]}),
+            "original_source_ordinals": [
+                {"agenda_slot": ordinal[0], "source_slot": ordinal[1]}
+                for ordinal in entry["ordinals"]
+            ],
+            "status": "REVIEW_ONLY",
+        })
+    return {
+        "schema": "lightup.human_capacity_scenario_private.v2",
+        "source_payload_sha256": source_digest(inventory),
+        "posture": "INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
+        "status": "REVIEW_ONLY",
+        "reference_date": inventory["reference_date"],
+        "roles": list(roles),
+        "first_declared_daily_limit_by_role": dict(first),
+        "alternative_declared_daily_limit_by_role": dict(alternative),
+        "summary": {
+            "first_items_above_declared_limits": first_excess,
+            "alternative_items_above_declared_limits": alternate_excess,
+            "arithmetic_difference": alternate_excess - first_excess,
+            "undated_items": inventory["undated_count"],
+        },
+        "rows": entries,
+        "original_source_ordinals_included": True,
+        "source_filenames_included": False,
+        "source_hashes_included": False,
+        "original_case_ids_included": False,
+        "human_notes_included": False,
         "planning_not_permission": True,
         "authorized": False,
         "consent_verified": False,
         "dispatch_allowed": False,
         "release_allowed": False,
+        "disclaimer": (
+            "PRIVATE HUMAN-only hypothetical capacity arithmetic. Ordinals are "
+            "source-local pointers, not identities. This is not a booking, "
+            "staffing verdict, verified finding, consent or permission."
+        ),
     }
-    seed["payload_sha256"] = sha256(json.dumps(
-        seed, ensure_ascii=True, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")).hexdigest()
+
+
+def admit_private_scenario(document, rows, reference_day, roles):
+    """Exact native-source re-admission; no trusted identity, consent or grant."""
+    if type(document) is not dict or document.get("schema") != (
+        "lightup.human_capacity_scenario_private.v2"
+    ):
+        raise CapacityScenarioHold("unknown PRIVATE capacity scenario")
+    keys = ("first_declared_daily_limit_by_role",
+            "alternative_declared_daily_limit_by_role")
+    limits = []
+    for key in keys:
+        obj = document.get(key)
+        if (type(obj) is not dict or set(obj) != set(roles)
+                or any(type(obj[role]) is not int or not 1 <= obj[role] <= 128
+                       for role in roles)):
+            raise CapacityScenarioHold("invalid hypothetical role/day capacity")
+        limits.append({role: obj[role] for role in roles})
+    expected = expected_scenario(rows, reference_day, roles, *limits)
+    if json.dumps(document, sort_keys=True, ensure_ascii=True, separators=(",", ":")) != (
+        json.dumps(expected, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
+    ):
+        raise CapacityScenarioHold("PRIVATE HUMAN scenario does not match original source rows")
+    return tuple(limits)
+
+
+class CapacityScenarioHold(ValueError):
+    pass
+
+
+def render(rows, reference_day, first_limits, alternative_limits, roles):
+    """Embed only already-admitted ordinals, dates and fixed vocabulary."""
+    if alternative_limits is None:
+        alternative_limits = dict(first_limits)
+    original = source_inventory(rows, reference_day, roles)
+    seed = {
+        **original,
+        "first": first_limits,
+        "alternative": alternative_limits,
+        "planning_not_permission": True,
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+        "payload_sha256": source_digest(original),
+    }
     seed_text = json.dumps(seed, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     # Prevent an HTML delimiter or attribute breakout regardless of future schema.
     seed_text = (seed_text.replace("&", "\\u0026").replace("<", "\\u003c")
