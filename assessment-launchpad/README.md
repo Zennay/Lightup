@@ -1,5 +1,11 @@
 # LightUp · Isolated-lab batch launchpad
 
+## Original-source HUMAN manifest-change triage (offline)
+
+A complete local **change triage** is now available on the existing launchpad branch. After running the original `combine_manifest.py` to save two separate PRIVATE manifest bundles and the original `manifest_change_desk.py` to produce a canonical change packet, run `manifest_ordinal_triage.py --before-dir BEFORE --after-dir AFTER --delta-dir DELTA --output-dir NEW-PRIVATE-TRIAGE`. Every directory must be **owner-only 0700** and the new output must be a separate initially empty directory. The result is a scriptless PRIVATE HTML desk, ordinal-only HUMAN CSV and source-bound unsigned JSON. It prioritizes manually reviewing removed, added and moved manifest slots; it does not grant permission or contact targets.
+
+Reopen with the same original source directories and `--verify-output-dir NEW-PRIVATE-TRIAGE` instead of `--output-dir`. Exact original source manifests, complete existing change-desk artifacts, new private outputs and fixed false-authority flags must all still match. See [complete workflow, safeguards and commands](MANIFEST_TRIAGE_GUIDE.md). No QA suites or real target work are required for the operator to prepare an offline HUMAN discussion. **DRAFT/HOLD; no main merge or deployment until original approval gates.**
+
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** New-only `assessment-launchpad/` product pinned to original held CLI source commit `74e865201c8a4270e404046ef3447eb7f190edfb`. The original source owner, CLI, `_admit_explicit_lab_url`, `LabScenario`, and `ScopePolicy` files are not modified.
 
 ## Source-bound HUMAN return for PRIVATE manifest changes
