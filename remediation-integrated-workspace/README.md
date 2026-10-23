@@ -75,6 +75,17 @@ comparison. It is **not** a signature, release gate, client approval or
 permission to process tenant records. The command only reads local originals
 and does not send any checksum or file elsewhere.
 
+The native Python installer CLI also disables Python module bytecode-cache
+generation **before** importing any local source modules. Consequently the
+`inspect-archive` workflow does not create `__pycache__` or `.pyc` entries
+inside the trusted code checkout, even when its local source is run for the
+first time. This is a real no-write source admission, not merely no extracted
+recipient data. In a new isolated, clean checkout on the connected Linux
+machine, an actual fresh native build followed by `inspect-archive` left
+the checkout with **zero** `.pyc` files before and after inspection.
+The Python interpreter still depends on a trusted original source checkout;
+this does not attest package authorship or authorize operation.
+
 This admission checks the exact 107-member software-only ZIP inventory and
 original manifest source lock, all 79 pinned original bytes, all 25 integrated
 tool bytes against the trusted current checkout, both immutable offline
