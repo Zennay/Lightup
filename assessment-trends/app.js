@@ -490,23 +490,30 @@
   }
   // Coverage uncertainty is deliberately tracked separately from regression labels.
   // Slot order is selected by the operator and is never treated as chronology.
+
   function coverageUnknownTrajectoryRows(){
     if(!snapshots.length||!scenarioIds.length)return [];
     const firstValues=scenarioIds.map(id=>snapshots[0].cases.get(id).metrics.get("coverage_unknown").candidate);
     const firstTotal=firstValues.reduce((sum,value)=>sum+value,0);
     let previousTotal=null;
-    return snapshots.map((report,index)=>{
+    const rows=snapshots.map((report,index)=>{
       const values=scenarioIds.map(id=>report.cases.get(id).metrics.get("coverage_unknown").candidate);
+      const sorted=[...values].sort((a,b)=>a-b);
       const total=values.reduce((sum,value)=>sum+value,0);
+      const affected=values.filter(value=>value>0).length;
       let increased=0,decreased=0,unchanged=0;
       values.forEach((value,i)=>{
         if(value>firstValues[i])increased++;
         else if(value<firstValues[i])decreased++;
         else unchanged++;
       });
+      const q1=quantile(sorted,.25),q3=quantile(sorted,.75);
       const row={manual_slot:index+1,scenario_count:scenarioIds.length,
-        total_unknown_coverage:total,median_unknown_coverage:median(values),
-        scenarios_with_unknown_coverage:values.filter(value=>value>0).length,
+        total_unknown_coverage:total,median_unknown_coverage:median(sorted),
+        q1_unknown_coverage:q1,q3_unknown_coverage:q3,iqr_unknown_coverage:q3-q1,
+        min_unknown_coverage:sorted[0],max_unknown_coverage:sorted[sorted.length-1],
+        scenarios_with_unknown_coverage:affected,
+        scenarios_with_unknown_coverage_percent:affected/scenarioIds.length*100,
         scenarios_increased_vs_slot_01:increased,scenarios_decreased_vs_slot_01:decreased,
         scenarios_unchanged_vs_slot_01:unchanged,
         net_total_change_from_slot_01:total-firstTotal,
@@ -514,6 +521,19 @@
       previousTotal=total;
       return row;
     });
+    const slotOrder=(a,b)=>a.manual_slot-b.manual_slot;
+    const previousMagnitude=row=>row.total_change_from_previous_slot===null?-1:
+      Math.abs(row.total_change_from_previous_slot);
+    const sorters={
+      slot:slotOrder,
+      total:(a,b)=>b.total_unknown_coverage-a.total_unknown_coverage||slotOrder(a,b),
+      median:(a,b)=>b.median_unknown_coverage-a.median_unknown_coverage||slotOrder(a,b),
+      affected:(a,b)=>b.scenarios_with_unknown_coverage-a.scenarios_with_unknown_coverage||slotOrder(a,b),
+      net_magnitude:(a,b)=>Math.abs(b.net_total_change_from_slot_01)-Math.abs(a.net_total_change_from_slot_01)||slotOrder(a,b),
+      movement:(a,b)=>previousMagnitude(b)-previousMagnitude(a)||slotOrder(a,b)
+    };
+    rows.sort(sorters[$("coverageUnknownSort").value]||slotOrder);
+    return rows;
   }
   function renderMetricTrendSummary(){
     const rows=metricTrendSummaryRows();
@@ -544,21 +564,34 @@
     $("metricTrendSummaryJson").disabled=!rows.length;
     $("metricTrendSummaryBrief").disabled=!rows.length;
   }
+
   function renderCoverageUnknownTrajectory(){
     const rows=coverageUnknownTrajectoryRows();
+    const sortLabels={
+      slot:"manual slot order",total:"highest total unknown coverage",median:"highest median unknown coverage",
+      affected:"most scenarios with unknown coverage",net_magnitude:"largest absolute total change vs slot 01",
+      movement:"largest absolute total change vs previous slot"
+    };
+    const sortLabel=sortLabels[$("coverageUnknownSort").value]||sortLabels.slot;
     drawTable("coverageUnknownTrajectory",
       ["Manual slot","Anonymous scenarios","Total unknown coverage","Median unknown coverage",
-       "Scenarios with unknown coverage","Higher than slot 01","Lower than slot 01",
-       "Unchanged vs slot 01","Total change vs slot 01","Total change vs previous slot"],
+       "Unknown coverage Q1","Unknown coverage Q3","Unknown coverage IQR","Minimum unknown coverage",
+       "Maximum unknown coverage","Scenarios with unknown coverage","Scenarios with unknown coverage (%)",
+       "Higher than slot 01","Lower than slot 01","Unchanged vs slot 01",
+       "Total change vs slot 01","Total change vs previous slot"],
       rows.map(r=>[r.manual_slot,r.scenario_count,r.total_unknown_coverage,
-        fmt(r.median_unknown_coverage),r.scenarios_with_unknown_coverage,
+        fmt(r.median_unknown_coverage),fmt(r.q1_unknown_coverage),fmt(r.q3_unknown_coverage),
+        fmt(r.iqr_unknown_coverage),r.min_unknown_coverage,r.max_unknown_coverage,
+        r.scenarios_with_unknown_coverage,fmt(r.scenarios_with_unknown_coverage_percent)+"%",
         r.scenarios_increased_vs_slot_01,r.scenarios_decreased_vs_slot_01,
         r.scenarios_unchanged_vs_slot_01,fmt(r.net_total_change_from_slot_01),
         r.total_change_from_previous_slot===null?"—":fmt(r.total_change_from_previous_slot)]));
     $("coverageUnknownSummary").textContent=rows.length?
       "Unknown coverage is shown separately from source regression flags. Across "+rows.length+
-      " manually selected slots, totals and scenario counts are descriptive only; increasing unknown coverage is not reclassified as a regression, and slot order is not authenticated chronology.":
+      " manually selected slots, per-scenario Q1/Q3/IQR, min/max and cohort prevalence are descriptive only; sorted by "+
+      sortLabel+". Percentages use anonymous scenarios as the denominator. Rising unknown coverage is not reclassified as a regression, and slot order is not authenticated chronology.":
       "Import snapshots to compare declared unknown coverage separately from regression flags.";
+    $("coverageUnknownSort").disabled=!rows.length;
     for(const id of ["coverageUnknownCsv","coverageUnknownJson","coverageUnknownBrief"])
       $(id).disabled=!rows.length;
   }
@@ -753,62 +786,79 @@
       release_allowed:false,selected_group_filter:$("metricDistributionGroup").value,
       selected_flag_filter:$("metricTrendFlagFilter").value,selected_sort:$("metricTrendSort").value,rows:metricTrendSummaryRows()};
   }
+
   function coverageUnknownTrajectoryPayload(){
-    return {schema:"lightup.assessment_trends_unknown_coverage_trajectory.v1",
+    return {schema:"lightup.assessment_trends_unknown_coverage_trajectory.v2",
       status:summary().status,fictional_demo_only:fictional,
-      interpretation:"Unknown coverage is an uncertainty signal, not a source-reported regression label or verified finding. Slot order is manual and does not establish chronology or remediation.",
+      interpretation:"Unknown coverage is an uncertainty signal, not a source-reported regression label or verified finding. Distribution statistics summarize source-declared per-scenario values; slot order is manual and does not establish chronology or remediation.",
       manual_slot_order:true,manual_slot_count:snapshots.length,scenario_count:scenarioIds.length,
+      selected_sort:$("coverageUnknownSort").value,
       authenticated_chronology:false,source_metrics_independently_verified:false,
       remediation_verified:false,authorized:false,consent_verified:false,dispatch_allowed:false,
       release_allowed:false,rows:coverageUnknownTrajectoryRows()};
   }
+
   function exportCoverageUnknownTrajectory(kind){
     const payload=coverageUnknownTrajectoryPayload();
     if(!payload.rows.length)return;
+    const sortLabels={
+      slot:"manual slot order",total:"highest total unknown coverage",median:"highest median unknown coverage",
+      affected:"most scenarios with unknown coverage",net_magnitude:"largest absolute total change vs slot 01",
+      movement:"largest absolute total change vs previous slot"
+    };
+    const selectedSort=payload.selected_sort;
     if(kind==="json"){
       download("lightup-unknown-coverage-trajectory-REVIEW-ONLY.json",
         JSON.stringify(payload,null,2)+"\n","application/json");
       return;
     }
-    const headers=["manual_slot","scenario_count","total_unknown_coverage",
-      "median_unknown_coverage","scenarios_with_unknown_coverage",
+    const headers=["manual_slot","scenario_count","total_unknown_coverage","median_unknown_coverage",
+      "q1_unknown_coverage","q3_unknown_coverage","iqr_unknown_coverage","min_unknown_coverage",
+      "max_unknown_coverage","scenarios_with_unknown_coverage","scenarios_with_unknown_coverage_percent",
       "scenarios_increased_vs_slot_01","scenarios_decreased_vs_slot_01",
       "scenarios_unchanged_vs_slot_01","net_total_change_from_slot_01",
-      "total_change_from_previous_slot","fictional_demo_only","status",
-      "authenticated_chronology","source_metrics_independently_verified",
-      "remediation_verified","authorized","consent_verified","dispatch_allowed","release_allowed"];
+      "total_change_from_previous_slot","selected_sort","fictional_demo_only","status",
+      "authenticated_chronology","source_metrics_independently_verified","remediation_verified",
+      "authorized","consent_verified","dispatch_allowed","release_allowed"];
     const values=payload.rows.map(r=>[r.manual_slot,r.scenario_count,r.total_unknown_coverage,
-      r.median_unknown_coverage,r.scenarios_with_unknown_coverage,r.scenarios_increased_vs_slot_01,
+      r.median_unknown_coverage,r.q1_unknown_coverage,r.q3_unknown_coverage,r.iqr_unknown_coverage,
+      r.min_unknown_coverage,r.max_unknown_coverage,r.scenarios_with_unknown_coverage,
+      r.scenarios_with_unknown_coverage_percent,r.scenarios_increased_vs_slot_01,
       r.scenarios_decreased_vs_slot_01,r.scenarios_unchanged_vs_slot_01,
-      r.net_total_change_from_slot_01,r.total_change_from_previous_slot,
+      r.net_total_change_from_slot_01,r.total_change_from_previous_slot,selectedSort,
       payload.fictional_demo_only,payload.status,false,false,false,false,false,false,false]);
     if(kind==="csv"){
       download("lightup-unknown-coverage-trajectory-REVIEW-ONLY.csv",
         [headers,...values].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
       return;
     }
-    const table="<table><thead><tr>"+headers.slice(0,10).map(v=>"<th scope='col'>"+esc(v)+"</th>").join("")+
-      "</tr></thead><tbody>"+payload.rows.map(r=>"<tr>"+[
-        r.manual_slot,r.scenario_count,r.total_unknown_coverage,r.median_unknown_coverage,
-        r.scenarios_with_unknown_coverage,r.scenarios_increased_vs_slot_01,
-        r.scenarios_decreased_vs_slot_01,r.scenarios_unchanged_vs_slot_01,
-        r.net_total_change_from_slot_01,r.total_change_from_previous_slot===null?"—":r.total_change_from_previous_slot
-      ].map(v=>"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";
+    const visibleHeaders=headers.slice(0,16);
+    const visibleRows=payload.rows.map(r=>[r.manual_slot,r.scenario_count,r.total_unknown_coverage,
+      r.median_unknown_coverage,r.q1_unknown_coverage,r.q3_unknown_coverage,r.iqr_unknown_coverage,
+      r.min_unknown_coverage,r.max_unknown_coverage,r.scenarios_with_unknown_coverage,
+      r.scenarios_with_unknown_coverage_percent,r.scenarios_increased_vs_slot_01,
+      r.scenarios_decreased_vs_slot_01,r.scenarios_unchanged_vs_slot_01,
+      r.net_total_change_from_slot_01,
+      r.total_change_from_previous_slot===null?"—":r.total_change_from_previous_slot]);
+    const table="<table><thead><tr>"+visibleHeaders.map(v=>"<th scope='col'>"+esc(v)+"</th>").join("")+
+      "</tr></thead><tbody>"+visibleRows.map(row=>"<tr>"+row.map(v=>"<td>"+esc(v)+"</td>").join("")+"</tr>").join("")+
+      "</tbody></table>";
     const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
       "<meta name='viewport' content='width=device-width,initial-scale=1'>"+
       "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'\">"+
       "<title>LightUp · Unknown coverage trajectory · REVIEW ONLY</title><style>"+
-      "body{font:14px/1.5 system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#17212f}"+
+      "body{font:14px/1.5 system-ui,sans-serif;max-width:1500px;margin:2rem auto;padding:0 1rem;color:#17212f}"+
       "table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #b7c1cb;padding:.45rem;text-align:left}"+
       "th{background:#edf1f5}.hold{border:1px solid #a77b35;padding:1rem;margin:1rem 0}"+
       "@media print{body{margin:0}tr{break-inside:avoid}}</style></head><body>"+
       "<h1>LightUp · Unknown coverage trajectory</h1><div class='hold'><strong>"+
       esc((payload.fictional_demo_only?"FICTIONAL DEMO ONLY · ":"")+payload.status+" · REVIEW ONLY / HOLD")+
       "</strong><p>"+esc(payload.interpretation)+"</p><p>fictional_demo_only="+payload.fictional_demo_only+
+      " · selected_sort="+esc(selectedSort)+" ("+esc(sortLabels[selectedSort]||sortLabels.slot)+")"+
       " · authenticated_chronology=false · source_metrics_independently_verified=false · remediation_verified=false"+
       " · authorized=false · consent_verified=false · dispatch_allowed=false · release_allowed=false</p></div>"+
       "<p>Selected manual slots: "+payload.manual_slot_count+" · anonymous scenarios: "+payload.scenario_count+
-      ". This aggregate handoff excludes scenario identifiers, source names and target metadata.</p>"+table+
+      ". Table sorted for review only; manual slot labels are unchanged. This aggregate handoff excludes scenario identifiers, source names and target metadata.</p>"+table+
       "</body></html>";
     download("lightup-unknown-coverage-trajectory-REVIEW-ONLY.html",html,"text/html");
   }
@@ -2923,6 +2973,7 @@
   $("coverageUnknownCsv").addEventListener("click",()=>exportCoverageUnknownTrajectory("csv"));
   $("coverageUnknownJson").addEventListener("click",()=>exportCoverageUnknownTrajectory("json"));
   $("coverageUnknownBrief").addEventListener("click",()=>exportCoverageUnknownTrajectory("html"));
+  $("coverageUnknownSort").addEventListener("change",renderCoverageUnknownTrajectory);
   for(const id of ["coverageUnknownPairFrom","coverageUnknownPairTo","coverageUnknownPairFilter","coverageUnknownPairSort"])
     $(id).addEventListener("change",renderCoverageUnknownPair);
   $("coverageUnknownPairCsv").addEventListener("click",()=>exportCoverageUnknownPair("csv"));
