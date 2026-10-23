@@ -410,6 +410,37 @@ def cleanup_private_stage(stage: Path) -> None:
         os.close(parent_fd)
 
 
+def cleanup_private_file_stage(stage: Path) -> None:
+    """Discard only the original owner-private temporary checksum entry.
+
+    Never follow the staged name or an intervening parent symlink during
+    cleanup. A replaced stage that is no longer a 0600 regular one-link
+    owner-only file is HOLD, not a file we are entitled to remove.
+    """
+    require(stage.is_absolute() and
+            stage.name.startswith(".lightup-software-hash-") and
+            len(stage.name) == len(".lightup-software-hash-") + 24 and
+            all(c in "0123456789abcdef"
+                for c in stage.name[len(".lightup-software-hash-"):]),
+            "Unknown private checksum staging entry")
+    parent_fd = open_private_dir_fd(stage.parent)
+    try:
+        try:
+            original = os.stat(stage.name, dir_fd=parent_fd,
+                               follow_symlinks=False)
+        except FileNotFoundError:
+            return  # renameat2(NO_REPLACE) published the original entry.
+        require(stat.S_ISREG(original.st_mode) and
+                original.st_uid == os.getuid() and
+                stat.S_IMODE(original.st_mode) == 0o600 and
+                original.st_nlink == 1,
+                "Private checksum stage was replaced or became unsafe")
+        os.unlink(stage.name, dir_fd=parent_fd)
+        os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
+
+
 def write_file(path: Path, payload: bytes) -> None:
     """Publish one new 0600 file inside a pinned original private directory."""
     require(path.is_absolute() and path.name not in (".", ".."),
