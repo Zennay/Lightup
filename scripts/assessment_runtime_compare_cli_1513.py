@@ -1,6 +1,6 @@
 """Opt-in read-only JSON lab benchmark comparison, never an execution gate.
 
-Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html] base.json next.json
+Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html|csv] base.json next.json
 Returns 2 REVIEW_ONLY or 3 HOLD; never 0. Only explicit local files are read.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ import os
 import stat
 import sys
 
-from assessment_runtime_report_html_1513 import render_comparison_html
+from assessment_runtime_report_html_1513 import render_comparison_html, render_comparison_csv
 
 from lightup.ai.assessment_runtime_diff_1513 import compare_lab_evaluations
 from lightup.ai.orchestration import RunContext
@@ -278,7 +278,7 @@ def main(argv=None):
         if item == "--format":
             if (
                 format_seen or index + 1 >= len(args)
-                or args[index + 1] not in ("json", "text", "html")
+                or args[index + 1] not in ("json", "text", "html", "csv")
             ):
                 malformed = True
                 index += 2 if index + 1 < len(args) else 1
@@ -314,6 +314,8 @@ def main(argv=None):
         print(_display_text(result))
     elif output_format == "html":
         print(render_comparison_html(result), end="")
+    elif output_format == "csv":
+        print(render_comparison_csv(result), end="")
     else:
         print(json.dumps(_output(result), sort_keys=True, separators=(",", ":")))
     return 2 if result.status == "REVIEW_ONLY" else 3
