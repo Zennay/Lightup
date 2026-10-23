@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-XmSgEfBl5bLiiMrzW7N5loSLVufrH1GCrx6M+sgn9DE=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-e5EuXmZFonJgDgb41Iy91rGTA0Oy3LdLO0ZDGRMFv7w='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-u3nztJ4QsqyRKoUecCW+okJDUyvFindqYbZCBAZuUGk=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-e5EuXmZFonJgDgb41Iy91rGTA0Oy3LdLO0ZDGRMFv7w='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -57,6 +57,23 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
  <thead><tr><th>Source endpoint</th><th>Findings</th><th>Needs review</th><th>Stage moved forward</th><th>Blocked stage</th><th>Blocker note</th><th>Next action missing</th><th>Open</th></tr></thead>
  <tbody id="coverage-rows"></tbody></table></div>
  <p class="note">Coverage is a HUMAN planning summary, not finding verification, completion, remediation, source authenticity or authorization. Ordinal 0 means an unmatched source-reported asset. The optional CSV contains only counts and literal false authority flags; small aggregates may still be sensitive.</p>
+</section>
+<section class="coverage-panel" aria-labelledby="human-queue-heading">
+<h3 id="human-queue-heading">Private HUMAN action queue</h3>
+<p class="note">Local planning only; source-severity and human notes never verify findings, fixes, client consent or authority. Every original finding remains unchanged.</p>
+<div class="toolbar"><label for="human-queue-filter">Attention group <select id="human-queue-filter">
+<option value="">All HUMAN follow-up</option><option value="blocked">Blocked or uncertain</option>
+<option value="pending">Needs human review</option><option value="missing">Next HUMAN action missing</option>
+<option value="drafted">HUMAN follow-up drafted</option></select></label>
+<button id="human-queue-brief" type="button" disabled>Export PRIVATE HUMAN agenda (.md)</button>
+<button id="human-queue-csv" type="button" disabled>Export anonymous counts (.csv)</button></div>
+<p id="human-queue-summary" class="note" role="status">Open a PRIVATE lab result first.</p>
+<div class="table-wrap"><table><caption>Original finding ordinals, unverified source severity and HUMAN attention only</caption>
+<thead><tr><th>Original ordinal</th><th>Source severity</th><th>Human stage / group</th><th>Attention</th><th>Review</th></tr></thead>
+<tbody id="human-queue-rows"></tbody></table></div>
+<div class="toolbar"><button id="human-queue-prev" type="button" disabled>Previous</button>
+<button id="human-queue-next" type="button" disabled>Next</button><span id="human-queue-page"></span></div>
+<p class="note">PRIVATE agenda carries operator-authored HUMAN notes and original ordinal; not target URLs, evidence, check IDs, titles or source hashes. Send only through independently approved confidential channels. Anonymous grouped counts can still be sensitive in small cohorts.</p>
 </section>
 <div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><label for="search">Find source title/check or HUMAN note
 <input id="search" type="search" maxlength="180" autocomplete="off" placeholder="Local private text search"></label>
@@ -138,6 +155,9 @@ const METRIC_LABELS=[
  ["compute_cost_usd","Compute cost (reported USD)"],["false_positive_rate","False-positive rate (reported ratio 0–1)"]
 ];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
+const MAX_PRIVATE_CLEAR=4*1024*1024, MAX_PRIVATE_ENVELOPE=8*1024*1024;
+const PRIVATE_REVIEW_ENVELOPE="lightup.private_lab_human_review_encrypted.v1";
+const PRIVATE_REVIEW_KDF_ITERATIONS=310000;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",searchTerm="",sortMode="source",lastBulkUndo=null;
 const selectedForHandoff=new Set();
 const validText=(s,limit=1000)=>typeof s==="string"&&s.length<=limit&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
@@ -259,6 +279,79 @@ async function sha256(bytes){
  const value=await crypto.subtle.digest("SHA-256",bytes);
  return [...new Uint8Array(value)].map(b=>b.toString(16).padStart(2,"0")).join("");
 }
+function privateCryptoAvailable(){
+ return !!(globalThis.crypto&&crypto.subtle&&typeof crypto.getRandomValues==="function");
+}
+function bytesToBase64(bytes){
+ let binary="";
+ for(let offset=0;offset<bytes.length;offset+=0x8000)
+  binary+=String.fromCharCode(...bytes.subarray(offset,Math.min(bytes.length,offset+0x8000)));
+ return btoa(binary);
+}
+function base64ToBytes(text,maxBytes,exactBytes=null){
+ require_(typeof text==="string"&&text.length>0&&
+  text.length<=Math.ceil(maxBytes/3)*4+4&&/^[A-Za-z0-9+/]+={0,2}$/.test(text));
+ let binary;
+ try{binary=atob(text);}catch(_){require_(false);}
+ require_(binary.length>0&&binary.length<=maxBytes&&
+  (exactBytes===null||binary.length===exactBytes));
+ const bytes=Uint8Array.from(binary,char=>char.charCodeAt(0));
+ require_(bytesToBase64(bytes)===text);
+ return bytes;
+}
+async function derivePrivateReviewKey(passphrase,salt,usage){
+ require_(privateCryptoAvailable()&&typeof passphrase==="string"&&passphrase.length>=14&&passphrase.length<=256);
+ const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(passphrase),
+  "PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:PRIVATE_REVIEW_KDF_ITERATIONS,hash:"SHA-256"},
+  material,{name:"AES-GCM",length:256},false,[usage]);
+}
+async function encryptedPrivateReviewText(passphrase){
+ require_(source&&sourceHash&&privateCryptoAvailable());
+ const clearText=JSON.stringify(privatePayload(),null,2)+"\n";
+ const clearBytes=new TextEncoder().encode(clearText);
+ require_(clearBytes.byteLength>0&&clearBytes.byteLength<=MAX_PRIVATE_CLEAR);
+ const salt=crypto.getRandomValues(new Uint8Array(16));
+ const iv=crypto.getRandomValues(new Uint8Array(12));
+ const key=await derivePrivateReviewKey(passphrase,salt,"encrypt");
+ const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv,
+  additionalData:new TextEncoder().encode(PRIVATE_REVIEW_ENVELOPE),tagLength:128},key,clearBytes);
+ const envelope={schema:PRIVATE_REVIEW_ENVELOPE,status:"PRIVATE_ENCRYPTED",
+  cipher:"AES-256-GCM",kdf:"PBKDF2-HMAC-SHA256",iterations:PRIVATE_REVIEW_KDF_ITERATIONS,
+  salt_b64:bytesToBase64(salt),iv_b64:bytesToBase64(iv),
+  ciphertext_b64:bytesToBase64(new Uint8Array(ciphertext)),private_unsigned:true,
+  source_authenticated:false,ground_truth_verified:false,client_consent_verified:false,
+  operator_consent_verified:false,...noAuthority()};
+ const output=JSON.stringify(envelope,null,2)+"\n";
+ require_(new TextEncoder().encode(output).byteLength<=MAX_PRIVATE_ENVELOPE);
+ return output;
+}
+async function openEncryptedPrivateReview(file,passphrase){
+ require_(source&&sourceHash&&privateCryptoAvailable()&&file&&file.size>0&&file.size<=MAX_PRIVATE_ENVELOPE);
+ const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+ const envelope=parseStrict(raw);
+ const keys=["schema","status","cipher","kdf","iterations","salt_b64","iv_b64",
+  "ciphertext_b64","private_unsigned","source_authenticated","ground_truth_verified",
+  "client_consent_verified","operator_consent_verified",...FLAGS];
+ require_(exact(envelope,keys)&&envelope.schema===PRIVATE_REVIEW_ENVELOPE&&
+  envelope.status==="PRIVATE_ENCRYPTED"&&envelope.cipher==="AES-256-GCM"&&
+  envelope.kdf==="PBKDF2-HMAC-SHA256"&&envelope.iterations===PRIVATE_REVIEW_KDF_ITERATIONS&&
+  envelope.private_unsigned===true&&
+  ["source_authenticated","ground_truth_verified","client_consent_verified","operator_consent_verified",...FLAGS]
+   .every(key=>envelope[key]===false));
+ const salt=base64ToBytes(envelope.salt_b64,16,16);
+ const iv=base64ToBytes(envelope.iv_b64,12,12);
+ const ciphertext=base64ToBytes(envelope.ciphertext_b64,MAX_PRIVATE_ENVELOPE);
+ require_(ciphertext.byteLength>=17);
+ const key=await derivePrivateReviewKey(passphrase,salt,"decrypt");
+ const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv,
+  additionalData:new TextEncoder().encode(PRIVATE_REVIEW_ENVELOPE),tagLength:128},key,ciphertext);
+ require_(clear.byteLength>0&&clear.byteLength<=MAX_PRIVATE_CLEAR);
+ const clearText=new TextDecoder("utf-8",{fatal:true}).decode(clear);
+ const payload=parseStrict(clearText);
+ require_(clearText===JSON.stringify(payload,null,2)+"\n");
+ return applyPrivatePayload(payload);
+}
 function initialNote(){return {stage:"needs_review",group:"unassigned",next_action:"",blocker:""};}
 function status(msg,error=false){$("message").textContent=msg;$("message").dataset.error=String(error);}
 function download(name,text,type){
@@ -321,6 +414,7 @@ function updateSummary(){
   " human review notes progressed · "+notes.filter(n=>n.stage==="blocked").length+
   " human blockers · all source status unverified";
  renderEndpointCoverage();
+ renderHumanQueue();
 }
 function endpointCoverageRows(){
  const rows=new Map();
@@ -354,6 +448,103 @@ function renderEndpointCoverage(){
  $("coverage-summary").textContent=source.targets.length+" declared endpoint(s) · "+rows.reduce((n,row)=>n+row.findings,0)+" source-reported finding(s) grouped · "+waiting+" endpoint group(s) still contain needs-review items"+unmatched+". Human planning only.";
  $("coverage-export").disabled=false;
 }
+// Offline HUMAN-only prioritization. No source assertion or execution authority.
+const HUMAN_QUEUE_CATEGORIES=Object.freeze({
+ blocked:"HUMAN blocker or uncertainty",pending:"Needs HUMAN review",
+ missing:"Next HUMAN action missing",drafted:"HUMAN follow-up drafted"
+});
+let humanQueueFilter="",humanQueuePage=0;
+function humanQueueCategory(note){
+ if(note.stage==="blocked"||note.blocker.trim())return "blocked";
+ if(note.stage==="needs_review")return "pending";
+ if(!note.next_action.trim())return "missing";
+ return "drafted";
+}
+function humanQueueEntries(){
+ if(!source)return [];
+ const order={blocked:0,pending:1,missing:2,drafted:3};
+ const sev=Object.fromEntries(SEVERITIES.map((x,i)=>[x,i]));
+ return source.findings.map((finding,i)=>({
+  ordinal:i+1, endpoint:endpointOrdinal(finding),severity:finding.severity,
+  category:humanQueueCategory(notes[i]),note:{...notes[i]}
+ })).sort((a,b)=>order[a.category]-order[b.category]||
+   sev[a.severity]-sev[b.severity]||a.ordinal-b.ordinal);
+}
+function focusHumanQueue(ordinal){
+ if(!source||!Number.isSafeInteger(ordinal)||ordinal<1||ordinal>source.findings.length)return;
+ filter="";searchTerm="";sortMode="source";
+ $("filter").value="";$("search").value="";$("sort").value="source";
+ render();
+ const row=[...$("findings").querySelectorAll("tr")].find(x=>
+  x.dataset.originalOrdinal===String(ordinal));
+ if(row){row.scrollIntoView({block:"center"});row.focus();}
+ status("Original private ordinal "+ordinal+" opened for HUMAN follow-up; no authority or security verification.");
+}
+function renderHumanQueue(){
+ const body=$("human-queue-rows");if(!body)return;
+ body.replaceChildren();
+ if(!source){$("human-queue-summary").textContent="Open a PRIVATE lab result first.";
+  $("human-queue-brief").disabled=true;$("human-queue-csv").disabled=true;
+  $("human-queue-prev").disabled=true;$("human-queue-next").disabled=true;
+  $("human-queue-page").textContent="";return;}
+ const all=humanQueueEntries(),counts={blocked:0,pending:0,missing:0,drafted:0};
+ all.forEach(r=>counts[r.category]++);
+ const shown=humanQueueFilter?all.filter(r=>r.category===humanQueueFilter):all;
+ const pages=Math.max(0,Math.ceil(shown.length/24)-1);
+ humanQueuePage=Math.min(humanQueuePage,pages);
+ const start=humanQueuePage*24;
+ shown.slice(start,start+24).forEach(item=>{
+  const tr=document.createElement("tr");
+  cell(tr,"#"+item.ordinal+" · endpoint "+item.endpoint);
+  cell(tr,item.severity.toUpperCase());
+  cell(tr,item.note.stage+" / "+item.note.group);
+  cell(tr,HUMAN_QUEUE_CATEGORIES[item.category]);
+  const td=document.createElement("td"),button=el("button","Open HUMAN #"+item.ordinal);
+  button.type="button";button.addEventListener("click",()=>focusHumanQueue(item.ordinal));
+  td.append(button);tr.append(td);body.append(tr);
+ });
+ $("human-queue-summary").textContent=all.length+" original source-declared findings · "+
+  Object.entries(counts).map(([key,n])=>HUMAN_QUEUE_CATEGORIES[key]+": "+n).join(" · ")+
+  ". Unverified source and HUMAN planning only.";
+ $("human-queue-page").textContent=shown.length?
+  "Showing "+(start+1)+"–"+Math.min(start+24,shown.length)+" of "+shown.length:
+  "No HUMAN items in this group.";
+ $("human-queue-prev").disabled=humanQueuePage===0;
+ $("human-queue-next").disabled=humanQueuePage>=pages;
+ $("human-queue-brief").disabled=!all.length;
+ $("human-queue-csv").disabled=!all.length;
+}
+function humanQueueMarkdown(){
+ const lines=["# LightUp · PRIVATE HUMAN action agenda","",
+  "**REVIEW_ONLY · Source declarations and HUMAN notes are not verified findings, grants, consent or release.**",
+  "Original target URLs, evidence, titles, check identifiers and source hash are excluded.",
+  "Keep this confidential: human notes and original ordinals may remain sensitive.",""];
+ humanQueueEntries().forEach(row=>{
+  lines.push("## Original ordinal "+row.ordinal+" · endpoint "+row.endpoint+
+   " (unverified) · source severity "+row.severity,
+   "Attention: "+HUMAN_QUEUE_CATEGORIES[row.category],
+   "Human stage: "+row.note.stage+" · proposed group: "+row.note.group,
+   "Next HUMAN action (literal JSON string): "+JSON.stringify(row.note.next_action),
+   "HUMAN blocker (literal JSON string): "+JSON.stringify(row.note.blocker),"");
+ });
+ lines.push("SOURCE_AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false","");
+ return lines.join("\n");
+}
+function humanQueueCsv(){
+ const grouped=new Map();
+ humanQueueEntries().forEach(r=>{
+  const k=r.category+"|"+r.severity;grouped.set(k,(grouped.get(k)||0)+1);
+ });
+ const rows=[["status","human_attention","source_reported_severity","human_count",
+  "source_authenticated","ground_truth_verified","client_consent_verified",
+  "operator_consent_verified","authorized","consent_verified","dispatch_allowed","release_allowed"]];
+ [...grouped].sort((a,b)=>a[0].localeCompare(b[0])).forEach(([k,n])=>{
+  const [category,severity]=k.split("|");
+  rows.push(["REVIEW_ONLY",category,severity,n,false,false,false,false,false,false,false,false]);
+ });
+ return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(",")).join("\r\n")+"\r\n";
+}
+
 function field(label,value,fn){
  const wrapper=el("label"),span=el("span",label);wrapper.append(span);
  const control=label==="Stage"||label==="Proposed group"?document.createElement("select"):document.createElement("input");
@@ -398,7 +589,7 @@ function render(){
    el("p","Unverified evidence summary: "+f.evidence_summary));
   meta.append(detail);const a=document.createElement("td");a.append(meta);tr.append(a);
   const review=document.createElement("td"),controls=el("div",undefined,"controls");
-  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;lastBulkUndo=null;dirty=true;updateSummary();};
+  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;lastBulkUndo=null;dirty=true;updateSummary();render();};
   controls.append(field("Stage",n.stage,v=>apply("stage",v)),
    field("Proposed group",n.group,v=>apply("group",v)),
    field("Next human action",n.next_action,v=>apply("next_action",v)),
@@ -445,15 +636,13 @@ async function importSource(file){
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
  source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();
  filter="";searchTerm="";sortMode="source";$("filter").value="";
- $("search").value="";$("sort").value="source";buildEndpointFilter();
+ $("search").value="";$("sort").value="source";humanQueueFilter="";humanQueuePage=0;$("human-queue-filter").value="";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
  status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
 }
-async function resume(file){
- require_(source&&file&&file.size>0&&file.size<=1024*1024);
- const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
- const v=parseStrict(raw);
+function admitPrivatePayload(v){
+ require_(source&&sourceHash);
  require_(exact(v,["schema","source_sha256","source_finding_count","notes","status",
   "source_authenticated","ground_truth_verified","client_consent_verified","operator_consent_verified",...FLAGS]));
  require_(v.schema==="lightup.private_lab_human_review.v1"&&v.status==="REVIEW_ONLY"&&
@@ -461,13 +650,23 @@ async function resume(file){
   ["source_authenticated","ground_truth_verified","client_consent_verified",
    "operator_consent_verified",...FLAGS].every(k=>v[k]===false));
  require_(Array.isArray(v.notes)&&v.notes.length===notes.length);
- const next=v.notes.map((row,i)=>{
+ return v.notes.map((row,i)=>{
   require_(exact(row,["ordinal","stage","group","next_action","blocker"])&&row.ordinal===i+1);
   const n={stage:row.stage,group:row.group,next_action:row.next_action,blocker:row.blocker};
   require_(admitNote(n));return n;
  });
- if(dirty&&!confirm("Replace existing unsaved human notes with this matching private return?"))return;
- notes=next;dirty=false;lastBulkUndo=null;updateSummary();render();status("Exact source-bound human notes restored. No security evidence was authenticated.");
+}
+function applyPrivatePayload(v){
+ const next=admitPrivatePayload(v);
+ if(dirty&&!confirm("Replace existing unsaved human notes with this matching private return?"))return false;
+ notes=next;dirty=false;lastBulkUndo=null;updateSummary();render();
+ status("Exact source-bound human notes restored. No security evidence was authenticated.");
+ return true;
+}
+async function resume(file){
+ require_(source&&file&&file.size>0&&file.size<=MAX_PRIVATE_CLEAR);
+ const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+ return applyPrivatePayload(parseStrict(raw));
 }
 
 function visibleOrdinals(){
@@ -564,8 +763,21 @@ $("coverage-export").addEventListener("click",()=>{
  download("PRIVATE-lab-endpoint-human-coverage.csv",csv,"text/csv;charset=utf-8");
  status("Counts-only endpoint coverage CSV exported. Ordinals and human stages remain unverified; no authorization or completion is implied.");
 });
+$("human-queue-filter").addEventListener("change",e=>{humanQueueFilter=e.target.value;humanQueuePage=0;renderHumanQueue();});
+$("human-queue-prev").addEventListener("click",()=>{humanQueuePage=Math.max(0,humanQueuePage-1);renderHumanQueue();});
+$("human-queue-next").addEventListener("click",()=>{humanQueuePage++;renderHumanQueue();});
+$("human-queue-brief").addEventListener("click",()=>{
+ if(!source||!confirm("Export a PRIVATE HUMAN agenda containing original ordinals and all operator-authored action/blocker notes? Keep it confidential and obtain separate recipient approval."))return;
+ download("PRIVATE-lab-human-action-agenda.md",humanQueueMarkdown(),"text/markdown");
+ status("PRIVATE HUMAN planning agenda downloaded. No original source authentication or permission implied.");
+});
+$("human-queue-csv").addEventListener("click",()=>{
+ if(!source||!confirm("Export anonymous category/severity HUMAN counts only? Even small aggregate counts may be sensitive. No source identity, notes or permission."))return;
+ download("lab-anonymous-human-attention.csv",humanQueueCsv(),"text/csv;charset=utf-8");
+ status("Anonymous HUMAN queue counts exported; original source never verified.");
+});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";humanQueueFilter="";humanQueuePage=0;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("human-queue-filter").value="";$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();renderHumanQueue();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 $("collab-select-visible").addEventListener("click",()=>{
  if(!source)return;
