@@ -64,6 +64,46 @@ def parse(raw: bytes) -> dict:
     require(type(obj) is dict and canonical(obj) == raw, "Noncanonical descriptor")
     return obj
 
+def read_checkout_source(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
+    """Admit a fixed local software file via one no-follow descriptor.
+
+    Reject linked components, partial/changed reads and mutable file identity.
+    This checks local bytes, not ownership of the upstream producer.
+    """
+    require(path.is_absolute() and ROOT in path.parents and
+            path != ROOT and 0 < ceiling <= MAX_TOTAL,
+            "Source must be an exact file beneath the current checkout")
+    for component in (*reversed(path.parents), path):
+        info = component.lstat()
+        require(not stat.S_ISLNK(info.st_mode), "Linked checkout path refused")
+    before = path.lstat()
+    require(stat.S_ISREG(before.st_mode) and before.st_nlink == 1
+            and 0 <= before.st_size <= ceiling, "Unsafe or oversized checkout source")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0))
+    try:
+        current = os.fstat(fd)
+        identity = (current.st_dev, current.st_ino, current.st_size,
+                    current.st_mtime_ns, current.st_ctime_ns)
+        require(stat.S_ISREG(current.st_mode) and current.st_nlink == 1
+                and identity == (before.st_dev, before.st_ino, before.st_size,
+                                 before.st_mtime_ns, before.st_ctime_ns),
+                "Checkout source changed during admission")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            raw = stream.read(ceiling + 1)
+        after = os.fstat(fd)
+        post = path.lstat()
+        require((after.st_dev, after.st_ino, after.st_size,
+                 after.st_mtime_ns, after.st_ctime_ns) == identity
+                and (post.st_dev, post.st_ino, post.st_size,
+                     post.st_mtime_ns, post.st_ctime_ns) == identity
+                and stat.S_ISREG(post.st_mode) and post.st_nlink == 1
+                and len(raw) == current.st_size and len(raw) <= ceiling,
+                "Checkout source changed while reading")
+        return raw
+    finally:
+        os.close(fd)
+
+
 def safe_name(name: str) -> bool:
     if type(name) is not str or not 1 <= len(name) <= 190:
         return False
@@ -75,7 +115,7 @@ def safe_name(name: str) -> bool:
             and all(ord(c) < 128 and (c.isalnum() or c in "/_.-") for c in name))
 
 def catalog() -> tuple[bytes, dict]:
-    raw = LOCK.read_bytes()
+    raw = read_checkout_source(LOCK, 350_000)
     obj = parse(raw)
     require(obj is not None and set(obj) == {"kind", "version", "source_heads", "files"}
             and obj["kind"] == "lightup.integrated_offline_source_lock"
@@ -170,11 +210,10 @@ def build(dest: Path) -> None:
         entries = {}
         for name, descriptor in sorted(lock["files"].items()):
             original = ROOT / name
-            s = original.lstat()
-            require(stat.S_ISREG(s.st_mode) and s.st_nlink == 1
-                    and s.st_size == descriptor["bytes"], "Original source file changed")
-            raw = original.read_bytes()
-            require(digest(raw) == descriptor["sha256"], "Original source digest mismatch")
+            raw = read_checkout_source(original)
+            require(len(raw) == descriptor["bytes"] and
+                    digest(raw) == descriptor["sha256"],
+                    "Original source bytes differ from the pinned source inventory")
             target = stage / name
             target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             write_file(target, raw)
@@ -207,8 +246,7 @@ def build(dest: Path) -> None:
                      "remediation-integrated-workspace/REVIEW_PACKAGE.md",
                      "remediation-integrated-workspace/JOURNAL_VAULT.md",
                      "remediation-integrated-workspace/README.md"):
-            data = (ROOT / name).read_bytes()
-            require(len(data) <= MAX_SOURCE, "Installer asset oversized")
+            data = read_checkout_source(ROOT / name)
             dest_file = stage / name
             dest_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             write_file(dest_file, data)
@@ -240,10 +278,19 @@ def build(dest: Path) -> None:
                    "source_heads": lock["source_heads"], "files": entries,
                    "warning": WARNING}
         write_file(stage / "manifest.json", canonical(receipt))
-        # Recheck checked-out original bytes immediately before publication.
+        # Re-admit the immutable pinned sources and the assembled software tools
+        # immediately before publication; never publish a source-mixed workspace.
+        require(read_checkout_source(LOCK, 350_000) == lock_raw,
+                "Source lock changed during build")
         for name, descriptor in lock["files"].items():
-            require(digest((ROOT / name).read_bytes()) == descriptor["sha256"],
-                    "Source changed during build")
+            fresh = read_checkout_source(ROOT / name)
+            require(len(fresh) == descriptor["bytes"] and
+                    digest(fresh) == descriptor["sha256"],
+                    "Pinned source changed during build")
+        for name in written:
+            if name.startswith("remediation-integrated-workspace/"):
+                require(read_checkout_source(ROOT / name) == written[name],
+                        "Installer software changed during build")
         require(not dest.exists(), "Destination appeared during build")
         exclusive_publish(stage, dest)
         print("PRIVATE offline integrated workspace:", dest)
