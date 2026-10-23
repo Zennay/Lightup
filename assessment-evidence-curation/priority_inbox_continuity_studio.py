@@ -27,17 +27,97 @@ const binding=document.body.dataset.binding;
 const options=new Set(['pending_discussion','ask_for_information','independent_review','no_action_proposed']);
 const header=['private_docket_csv_sha256_unsigned','original_human_ordinal','human_review_disposition','human_review_note'];
 const quote=value=>'"'+String(value).replaceAll('"','""')+'"';
+const cards=()=>Array.from(root.querySelectorAll('[data-human-ordinal]'));
+const snapshot=()=>JSON.stringify(cards().map(card=>[
+ card.dataset.humanOrdinal,card.querySelector('select').value,
+ card.querySelector('textarea').value]));
+function acceptable(ordinal,disposition,note){
+ const normalized=note.normalize('NFKC').trimStart();
+ return /^[1-9][0-9]*$/.test(ordinal)&&options.has(disposition)&&
+  note.length<=500&&!/[\u0000-\u001f\u007f]/u.test(note)&&
+  !/^[=+@-]/u.test(normalized);
+}
+function status(){
+ let notes=0,decisions=0;
+ for(const card of cards()){
+  notes+=Number(card.querySelector('textarea').value.length>0);
+  decisions+=Number(card.querySelector('select').value!=='pending_discussion');
+ }
+ document.getElementById('draft-status').textContent=
+  notes+' PRIVATE HUMAN notes · '+decisions+
+  ' changed HUMAN dispositions in memory only. Not authenticated or saved.';
+}
+// Exact format emitted by THIS source-bound editor; no best-effort CSV fixes,
+// row reassignment, reordered ordinals, or partial replacement on import.
+function parseOwnCsv(raw){
+ if(raw.length>131072||!raw.endsWith('\r\n')||raw.startsWith('\ufeff'))
+  throw Error('file bounds or unsupported CSV encoding');
+ const lines=raw.slice(0,-2).split('\r\n'),current=cards();
+ if(lines.length!==current.length+1||
+    lines[0]!==header.map(quote).join(','))throw Error('header/row count');
+ const rowRe=/^"((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)","((?:[^"]|"")*)"$/u;
+ return lines.slice(1).map((line,i)=>{
+  const match=rowRe.exec(line);
+  if(!match)throw Error('noncanonical row');
+  const values=match.slice(1).map(v=>v.replaceAll('""','"'));
+  const [source,ordinal,disposition,note]=values;
+  if(line!==values.map(quote).join(',')||source!==binding||
+     ordinal!==current[i].dataset.humanOrdinal||
+     !acceptable(ordinal,disposition,note))
+   throw Error('changed source or HUMAN row');
+  return {disposition,note};
+ });
+}
+let importEpoch=0;
+root.addEventListener('input',status);
+root.addEventListener('change',status);
+document.getElementById('import').addEventListener('click',()=>
+ document.getElementById('import-file').click());
+document.getElementById('import-file').addEventListener('change',async event=>{
+ const file=event.target.files?.[0];event.target.value='';
+ if(!file)return;
+ const epoch=++importEpoch,previous=snapshot();
+ try{
+  if(file.size>131072||file.size===0)throw Error('file size');
+  const raw=await file.text();
+  const restored=parseOwnCsv(raw);
+  if(epoch!==importEpoch||previous!==snapshot())
+   throw Error('local draft changed while reading');
+  if(!window.confirm('Replace all currently entered PRIVATE HUMAN drafts with '+restored.length+
+    ' exact source-bound records? No automatic save or submission.'))
+   return;
+  if(epoch!==importEpoch||previous!==snapshot())
+   throw Error('draft changed during review');
+  cards().forEach((card,i)=>{
+   card.querySelector('select').value=restored[i].disposition;
+   card.querySelector('textarea').value=restored[i].note;
+  });
+  status();
+  output.textContent='Exact source-bound PRIVATE HUMAN CSV restored into memory only ('+
+    restored.length+' rows). Review and explicitly export. No identity or authority proof.';
+ }catch(_){
+  output.textContent='HOLD: use the unchanged source-bound PRIVATE HUMAN CSV with all '+
+   'original ordinals in their exact order; current drafts preserved.';
+ }
+});
+document.getElementById('clear').addEventListener('click',()=>{
+ if(!window.confirm('Clear all in-memory PRIVATE HUMAN notes and decisions? Existing downloads remain.'))return;
+ importEpoch++;
+ cards().forEach(card=>{
+  card.querySelector('select').value='pending_discussion';
+  card.querySelector('textarea').value='';
+ });
+ status();
+ output.textContent='In-memory HUMAN drafts cleared; earlier downloaded files remain.';
+});
 document.getElementById('export').addEventListener('click',()=>{
  const lines=[header.map(quote).join(',')];
  let completed=0;
- for(const card of root.querySelectorAll('[data-human-ordinal]')){
+ for(const card of cards()){
   const ordinal=card.dataset.humanOrdinal;
   const disposition=card.querySelector('select').value;
   const note=card.querySelector('textarea').value;
-  const normalized=note.normalize('NFKC').trimStart();
-  if(!/^[1-9][0-9]*$/.test(ordinal)||!options.has(disposition)||
-   note.length>500||/[\u0000-\u001f\u007f]/u.test(note)||
-   /^[=+@-]/u.test(normalized)){
+  if(!acceptable(ordinal,disposition,note)){
    output.textContent='HOLD: unsupported HUMAN note/disposition; no download created.';
    return;
   }
@@ -58,6 +138,7 @@ document.getElementById('export').addEventListener('click',()=>{
    ' notes). No data sent, verified, authorized or assigned. Handle as PRIVATE.';
  }finally{setTimeout(()=>URL.revokeObjectURL(url),2500);}
 });
+status();
 })();"""
 
 
@@ -119,12 +200,16 @@ def build(rows: list[dict], private_docket_csv_sha: str) -> bytes:
         "scan, remediation, approval or dispatch is inferred.</p>"
         "<p>Enter fixed HUMAN-only dispositions and brief notes. This editor "
         "does not save notes to the browser or communicate externally. "
-        "Use the offline 'Save private CSV' button to save a file by choice. "
+        "Restore a previously saved exact-source PRIVATE CSV and review locally; "
+        "then explicitly save another CSV only when intended. "
         "The unsigned digest in that CSV is a local lineage reference "
         "only, not a signature or authorization.</p></header>"
         "<section id='rows'>" + "".join(cards) +
-        "</section><section><button id='export' type='button'>"
-        "Save PRIVATE HUMAN review CSV locally</button>"
+        "</section><section><p id='draft-status' role='status'></p>"
+        "<button id='import' type='button'>Restore exact PRIVATE HUMAN CSV</button> "
+        "<input id='import-file' type='file' accept='.csv,text/csv' hidden>"
+        "<button id='clear' type='button'>Clear in-memory HUMAN drafts</button> "
+        "<button id='export' type='button'>Save PRIVATE HUMAN review CSV locally</button>"
         "<p id='out' role='status'></p></section><script>" +
         JS + "</script></body></html>\n")
     return page.encode("utf-8")
