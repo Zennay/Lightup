@@ -375,21 +375,28 @@ function renderHumanQueue(){
   "No HUMAN items in this group.";
  $("human-queue-prev").disabled=humanQueuePage===0;
  $("human-queue-next").disabled=humanQueuePage>=pages;
- $("human-queue-brief").disabled=!all.length;
+ $("human-queue-brief").disabled=!all.length||!sourceHash;
  $("human-queue-csv").disabled=!all.length;
+}
+function literalHumanForMarkdown(s){
+ // Original HUMAN prose is data, never renderable HTML or Markdown markup.
+ return JSON.stringify(s).replaceAll("&","\\u0026").replaceAll("<","\\u003c").replaceAll(">","\\u003e");
 }
 function humanQueueMarkdown(){
  const lines=["# LightUp · PRIVATE HUMAN action agenda","",
   "**REVIEW_ONLY · Source declarations and HUMAN notes are not verified findings, grants, consent or release.**",
-  "Original target URLs, evidence, titles, check identifiers and source hash are excluded.",
+  "Original target URLs, evidence, titles and check identifiers are excluded.",
+  "UNSIGNED exact original PRIVATE source SHA-256: "+sourceHash,
+  "Original PRIVATE finding count: "+source.findings.length,
+  "A matching SHA-256 does NOT authenticate the original producer or recipient.",
   "Keep this confidential: human notes and original ordinals may remain sensitive.",""];
  humanQueueEntries().forEach(row=>{
   lines.push("## Original ordinal "+row.ordinal+" · endpoint "+row.endpoint+
    " (unverified) · source severity "+row.severity,
    "Attention: "+HUMAN_QUEUE_CATEGORIES[row.category],
    "Human stage: "+row.note.stage+" · proposed group: "+row.note.group,
-   "Next HUMAN action (literal JSON string): "+JSON.stringify(row.note.next_action),
-   "HUMAN blocker (literal JSON string): "+JSON.stringify(row.note.blocker),"");
+   "Next HUMAN action (literal JSON string): "+literalHumanForMarkdown(row.note.next_action),
+   "HUMAN blocker (literal JSON string): "+literalHumanForMarkdown(row.note.blocker),"");
  });
  lines.push("SOURCE_AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false","");
  return lines.join("\n");
@@ -639,7 +646,7 @@ $("human-queue-filter").addEventListener("change",e=>{humanQueueFilter=e.target.
 $("human-queue-prev").addEventListener("click",()=>{humanQueuePage=Math.max(0,humanQueuePage-1);renderHumanQueue();});
 $("human-queue-next").addEventListener("click",()=>{humanQueuePage++;renderHumanQueue();});
 $("human-queue-brief").addEventListener("click",()=>{
- if(!source||!confirm("Export a PRIVATE HUMAN agenda containing original ordinals and all operator-authored action/blocker notes? Keep it confidential and obtain separate recipient approval."))return;
+ if(!source||!sourceHash||!confirm("Export a PRIVATE HUMAN agenda containing original ordinals and all operator-authored action/blocker notes? Keep it confidential and obtain separate recipient approval."))return;
  download("PRIVATE-lab-human-action-agenda.md",humanQueueMarkdown(),"text/markdown");
  status("PRIVATE HUMAN planning agenda downloaded. No original source authentication or permission implied.");
 });
