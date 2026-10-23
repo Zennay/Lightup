@@ -95,12 +95,13 @@
       if (expected && clean(expected) === zip) {
         throw Error("Fingerprintbestand mag niet hetzelfde zijn als het originele ZIP-bestand.");
       }
-      if (chosen.name !== "inspect-archive") {
-        const destination = clean(vals(chosen.name === "fingerprint-archive"
-          ? "--output-file" : "--output-dir")[0]);
+      const proposed = vals(chosen.name === "fingerprint-archive" ? "--output-file"
+        : chosen.name === "inspect-archive" ? "--planned-output-dir" : "--output-dir")[0];
+      if (proposed) {
+        const destination = clean(proposed);
         if (parent === "/" || destination === zip || destination === parent ||
             destination.startsWith(parent + "/") ||
-            (chosen.name === "receive-software" &&
+            (chosen.name !== "fingerprint-archive" &&
               (zip.startsWith(destination + "/") || destination === "/"))) {
           throw Error("Nieuwe output moet buiten de gehele oorspronkelijke software-ZIP-map blijven.");
         }
