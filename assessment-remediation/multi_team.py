@@ -21,6 +21,7 @@ from bridge import (
     private_dir, run as create_original_dossier,
 )
 from team_diff import describe
+from team_workboard import render as render_private_workboard
 from team_handoff import (
     TEAM_SCHEMA, RETURN_SCHEMA, IDENTITIES, FIELDS, admit_original,
     read_team,
@@ -120,11 +121,16 @@ def combine(args):
         "team_sources": team_records,
         **{flag: False for flag in FLAGS},
     }
+    workboard_html, workboard_csv = render_private_workboard(
+        base["links"], final_links, team_records, baseline_digest
+    )
     outputs = {
         "-reviewed-links.json": encode(merged),
         "-private-multi-team-diff.html": private_diff,
         "-human-changes.json": encode(aggregate),
         "-private-team-selection.json": encode(manifest),
+        "-private-team-workboard.html": workboard_html,
+        "-private-team-actions.csv": workboard_csv,
     }
     paths = [(folder / (args.prefix + suffix), data)
              for suffix, data in outputs.items()]
