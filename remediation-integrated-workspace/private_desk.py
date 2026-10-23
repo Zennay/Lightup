@@ -11,6 +11,12 @@ import os
 from pathlib import Path
 import sys
 
+# The HUMAN launcher may dispatch a read-only source inspection. Importing
+# the shared original path policy must not create Python bytecode caches in
+# the trusted checkout before the native no-write inspector is executed.
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True
+
 ROOT = Path(__file__).resolve().parent
 WARNING = ("INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD. Local HUMAN plans, "
            "unsigned hashes, and encrypted packets are NOT authority, genuine "
@@ -205,6 +211,10 @@ def menu():
     return name, values
 
 def dispatch(name: str, values: dict) -> None:
+    # Apply the same native Unicode/bidi/terminal-control HOLD to ALL HUMAN
+    # source and output paths, including non-software offline operations,
+    # before any original producer operation or private side effect starts.
+    from install import require_operator_path
     module, prefix, options, _ = OPERATIONS[name]
     arguments = [str(ROOT / module), *prefix]
     for flag, _, repeat, required in options:
@@ -218,6 +228,7 @@ def dispatch(name: str, values: dict) -> None:
             path = Path(item).expanduser()
             if not path.is_absolute():
                 raise ValueError("Use a literal absolute path: " + flag)
+            require_operator_path(path)
             arguments.extend((flag, str(path)))
     if name in ("owner", "owner-package", "owner-encrypted", "owner-encrypted-receipt") and not (values.get("--input-dir") or values.get("--bundle")):
         raise ValueError("Select actual original private evidence inputs")
