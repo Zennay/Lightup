@@ -34,9 +34,20 @@ This isolated test job is diagnostic only. Full-project hosted tests, independen
 
 `compare_lab_cohorts(baselines, candidates)` compares 1–64 independently labelled lab scenarios in one atomic, sorted diagnostic. Inputs are tuples of `(EvaluationRecord, RunContext)` pairs, one pair per unique scenario. Both sets must have **exactly the same scenario IDs**; missing, extra, duplicate, malformed, non-lab, or oversized inputs return generic HOLD with no partial detail. Any single adverse scenario returns HOLD even if other scenarios improved. Results have four false authority flags, and no target access or producer changes are introduced.
 
-## Opt-in offline JSON CLI (non-authorizing)
+## Opt-in single-case JSON/text CLI (non-authorizing)
 
 Use `python scripts/assessment_runtime_compare_cli_1513.py before.json after.json` with `PYTHONPATH=src`. Each file must be a JSON object with exactly `record` (a complete `EvaluationRecord.to_dict()` payload) and `context` (the eight fields of a lab `RunContext`, where `mode` is its enum string, `approved_risk` its integer, and `created_at` UTC ISO-8601). Both files must be at most 65,536 bytes. **No target is opened or contacted**; only those two local files are read. Duplicate JSON keys, NaN/Infinity, inconsistent derived FPR, malformed/mismatched lab provenance and oversized files return generic non-echo HOLD. Exit `2` means REVIEW_ONLY, `3` HOLD; **never exit 0** and neither status is consent, authenticated provenance, or production GO. Never place confidential target data in benchmark JSON; CLI does not echo invalid input.
+
+### Optional privacy-minimal terminal output
+
+JSON remains the default for existing structured handoffs. Add `--format text` for a readable terminal summary:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cli_1513.py \
+  --format text before.json after.json
+```
+
+The text output lists each metric's baseline, candidate, delta and source-reported flag without echoing scenario identifiers or input paths. Invalid or inconsistent input prints only a generic HOLD summary, with no partial metric details. The exit contract remains `2` for REVIEW_ONLY and `3` for HOLD; zero is never a success signal. All four authority flags remain false, and this output does not establish source authenticity, remediation, consent, authorization or release approval.
 
 ## Atomic cohort JSON CLI
 
