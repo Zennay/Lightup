@@ -90,3 +90,8 @@ No acceptance of a finding, real vulnerability, remediation, risk reduction, sca
 ## Release gates
 
 **Notion: INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** This add-only branch starts from exact pinned held #1667 parent `b5f8f1802bc9924685942d9608a3439aa5cf82ed`, never changes that owner's files. **No merge to main or deploy/active execution** without existing exact-head hosted and registered permanent VPS CI, original source-owner acceptance, independent security/privacy/browser review, existing #177/#182/#829 resolution, current independent authenticated client/operator consent with use-time revocation and explicit HUMAN GO. No new QA/regression suites created or run.
+
+
+## Encrypted JSON export/import newline fix
+
+The complete encrypted reviewer workspace and encrypted merged original-format plan now seal JSON text with a real trailing newline, rather than literal backslash characters followed by `n`. That distinction matters because the restored plaintext is parsed as JSON after decryption. This fixes the portable restore format without changing the workspace envelope, AES-GCM/AAD domain, source binding, human decision semantics or release authority. No original plan is authorized by encryption.
