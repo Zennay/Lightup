@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-3CxITkR6ZuysEH0OFJS1CzrT75HoWtQUgue2sKITPc8=&#x27; &#x27;sha256-xXuy7018iinWoQp7JwoX5PieZQdlrsOavXJ9LHfxmGM=&#x27;; style-src &#x27;sha256-o30WbtgUbCtKM2x6nLja7rRbpXkNIcvpAgUVue0FwNc=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-h4TxumxZLaBLaJbcx+C1bCIx2R1ySzn8ENEL7BHZz3A=&#x27; &#x27;sha256-xXuy7018iinWoQp7JwoX5PieZQdlrsOavXJ9LHfxmGM=&#x27;; style-src &#x27;sha256-o30WbtgUbCtKM2x6nLja7rRbpXkNIcvpAgUVue0FwNc=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -276,6 +276,14 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
       for (const value of values) {
         if (field.repeat && value === "") continue;
         if (value !== value.trim()) throw Error("Geen spaties rondom paden: " + field.flag);
+        if ([...value].some(ch => {
+          const cp = ch.codePointAt(0);
+          return cp === 0x061c || cp === 0x200e || cp === 0x200f ||
+                 cp === 0xfeff || cp >= 0x202a && cp <= 0x202e ||
+                 cp >= 0x2066 && cp <= 0x2069;
+        })) {
+          throw Error("Verwijder onzichtbare tekens die de richting van een pad veranderen: " + field.flag);
+        }
         if (!value.startsWith("/") || value.startsWith("//") ||
             value.includes("\r") || value.includes("\0") || /[\x00-\x1f\x7f]/.test(value)) {
           throw Error("Gebruik een letterlijk absoluut Linux-pad: " + field.flag);
