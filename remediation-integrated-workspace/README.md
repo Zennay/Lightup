@@ -47,9 +47,14 @@ All installed files are 0600. The ZIP is **created as a private 0600 single-link
 file from the first write**, using exclusive nofollow creation against the
 pinned private staging-directory descriptor; no temporary default-umask
 ZIP is opened by pathname and chmod'ed later. The completed archive is
-flushed and fsynced before being read back through original owner-private
-descriptor admission, checked against the exact complete native ZIP layout
-and then exclusively published with the rest of the original suite.
+flushed and fsynced **before its new ZIP filename is fsynced on the
+same pinned 0700 directory descriptor that performed O_EXCL creation**.
+This prevents forgetting the ZIP's directory-entry sync while retaining
+the original path-race protection of its initial private open. It is
+then read back through original owner-private descriptor admission,
+checked against the exact complete native ZIP layout and exclusively
+published with the rest of the original suite. Filesystem, storage and
+power-loss behavior still limit absolute durability guarantees.
 Never unpack or share this package outside a separately approved private environment. Optional original CLI cryptography functionality retains its documented local optional dependencies.
 
 To check the installed folder's exact native file inventory and the locally generated software archive, without contacting any service:
