@@ -12,6 +12,7 @@
   const special = document.getElementById("special");
   const command = document.getElementById("command");
   const copy = document.getElementById("copy");
+  const prepareReceive = document.getElementById("prepare-receive");
   const reset = document.getElementById("reset");
   const message = document.getElementById("message");
   const primaryNames = new Set([
@@ -180,6 +181,8 @@
   function renderCommand() {
     command.value = "";
     copy.disabled = true;
+    prepareReceive.hidden = chosen.name !== "inspect-archive";
+    prepareReceive.disabled = true;
     let values;
     try {
       values = allPaths();
@@ -196,6 +199,12 @@
     }
     command.value = parts.join(" \\\n  ");
     copy.disabled = false;
+    // Pre-filled follow-up remains an explicit HUMAN choice; it never runs
+    // either native command, and never promotes a browser preview to proof.
+    if (chosen.name === "inspect-archive" &&
+        (values.get("--planned-output-dir") || []).length === 1) {
+      prepareReceive.disabled = false;
+    }
     showMessage("Lokaal commando voorbereid. Nog niets uitgevoerd, gedeeld of geautoriseerd.", false);
   }
 
@@ -306,7 +315,36 @@
     for (const item of inputElements.values()) item.value = "";
     command.value = "";
     copy.disabled = true;
+    prepareReceive.disabled = true;
     showMessage("Ingevulde paden en het commando zijn gewist. Een eerder gekopieerd commando kan nog op je systeemklembord staan.", false);
+  });
+  prepareReceive.addEventListener("click", () => {
+    if (chosen.name !== "inspect-archive" || prepareReceive.disabled) return;
+    let original;
+    try {
+      original = allPaths();
+    } catch (error) {
+      showMessage(error.message, true);
+      return;
+    }
+    const zip = (original.get("--archive") || [])[0];
+    const destination = (original.get("--planned-output-dir") || [])[0];
+    const fingerprint = (original.get("--expected-sha256-file") || [])[0] || "";
+    if (!zip || !destination || !byName.has("receive-software")) return;
+    // Deliberately do not adopt --planned-checksum-file: it may not
+    // exist yet, and is not the already supplied expected receipt.
+    select("receive-software");
+    for (const [flag, value] of [
+      ["--archive", zip], ["--output-dir", destination],
+      ["--expected-sha256-file", fingerprint]
+    ]) {
+      const field = inputElements.get(flag);
+      if (field) field.value = value;
+    }
+    renderCommand();
+    if (command.value) {
+      showMessage("Paden lokaal overgenomen. Dit is een NIEUW ontvangstcommando: geen ZIP-inspectie uitgevoerd en geen toestemming of ontvangst verleend.", false);
+    }
   });
   copy.addEventListener("click", async () => {
     if (!command.value) return;
