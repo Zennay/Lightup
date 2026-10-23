@@ -385,8 +385,11 @@
         softwareResult.textContent = "HOLD: SHA-256 van ontvangen ZIP wijkt af van het afzonderlijke checksum-bestand. Niet installeren of stilzwijgend vervangen.";
         softwareResult.dataset.kind = "error";
       } else {
-        softwareResult.textContent = "REVIEW_ONLY: oorspronkelijke ZIP en 65-byte checksum zijn lokaal byte-gelijk volgens SHA-256 (" +
-          zip.size + " bytes). Voer de afzonderlijke native bron-/ZIP-controle uit; geen afzender- of toestemmingbewijs.";
+        softwareResult.textContent = "Checksum komt overeen (" + zip.size +
+          " bytes). Alleen de exacte ZIP-bytes zijn met het losse controlebestand vergeleken. " +
+          "De ZIP-inhoud en broncode zijn nog NIET gecontroleerd. " +
+          "Voer daarna 'Software-ZIP controleren' uit in de privéterminal; pas de native opdracht kan REVIEW_ONLY geven. " +
+          "Geen bewijs van afzender of toestemming.";
         softwareResult.dataset.kind = "info";
       }
     } catch (_) {
