@@ -123,7 +123,10 @@
     if (!file) return;
     if (file.size > 65536) {status.textContent="HOLD: journal larger than 64 KiB.";return;}
     try {
-      const doc=JSON.parse(await file.text());
+      const raw=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(await file.arrayBuffer());
+      if (raw.charCodeAt(0)===0xfeff) throw new Error("BOM not accepted");
+      const doc=JSON.parse(raw);
+      if (raw!==JSON.stringify(doc,null,2)+"\n") throw new Error("Noncanonical JSON");
       if (!validate(doc)) throw new Error("Snapshot or categories mismatch");
       for (let i=0;i<entries.length;i++) Object.assign(entries[i],doc.entries[i]);
       render();
