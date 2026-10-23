@@ -119,6 +119,27 @@ PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py
 
 The text summary reports the cohort status and anonymous scenario ordinals, then lists each metric's baseline, candidate, delta and source-reported flag. It deliberately omits scenario IDs, target addresses, planted finding identities and input paths. Invalid or inconsistent input produces a generic HOLD with no partial case details. Exit `2` means REVIEW_ONLY, `3` means HOLD; zero is never a success signal. The output is not authenticated ground truth, consent, authorization or release evidence.
 
+## Spreadsheet-ready offline CSV handoff
+
+The same three local CLIs also accept `--format csv`. This generates a long-form CSV with one row per admitted metric and anonymous scenario ordinal, suitable for spreadsheet filters or pivot tables. As with HTML output, the operator explicitly chooses any output filename using shell redirection:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cli_1513.py \
+  --format csv before.json after.json > single-lab-review.csv
+
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format csv baseline-cohort.json candidate-cohort.json > cohort-lab-review.csv
+
+PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py \
+  --format csv old.json new.json > scored-lab-review.csv
+```
+
+The CSV has the columns `report_type`, `source_status`, `input_admitted`, `scenario_ordinal`, `metric`, `baseline`, `candidate`, `delta`, `source_regression_flag`, `source_unknown_coverage`, `authorized`, `consent_verified`, `dispatch_allowed`, `release_allowed`, `review_only`, and `source_provenance_authenticated`. Every authority/provenance field is the literal string `false`; `review_only` is `true`. Only original comparator-admitted numeric values and fixed metric-name tokens enter the cells; negative deltas remain valid negative numeric cells. No free text, input filenames, source IDs, target addresses, raw evidence, client/operator identifiers or notes are exported.
+
+A rejected packet generates only the column header and one generic `HOLD` row with `input_admitted=false` and **no numeric or source-detail cells**. A valid comparison can also be `HOLD` when source adverse flags are present; then `input_admitted=true` and the metric rows are available for human inspection. The `source_unknown_coverage` field indicates a source-reported candidate unknown-coverage value above zero; it is **not** converted into a new regression label.
+
+All three formats (`json`, `text`, `html`, `csv`) retain exit code **2 REVIEW_ONLY / 3 HOLD, never zero**, and are unauthenticated offline HUMAN diagnostics. A saved CSV does not grant permission to scan, dispatch, deploy, release or claim remediation.
+
 ## Printable, script-free offline HTML reports
 
 All three original local-file comparators now support opt-in `--format html`, alongside the unchanged default `json` and the terminal-friendly `text` format. Redirect stdout to a local file; the CLI does not invent a destination, write a report file itself, or contact a network endpoint:
