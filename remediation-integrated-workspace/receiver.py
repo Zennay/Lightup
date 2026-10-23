@@ -14,6 +14,9 @@ def admit_archive(archive: Path,
                   expected_sha256_file: Path | None = None
                   ) -> tuple[bytes, bytes, dict, dict[str, bytes]]:
     """Read and validate original software bytes without extracting or writing."""
+    suite.require_operator_path(archive)
+    if expected_sha256_file is not None:
+        suite.require_operator_path(expected_sha256_file)
     suite.owner_dir(archive.parent)
     raw = suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL)
     suite.require(0 < len(raw) <= suite.MAX_TOTAL, "Oversized incoming software ZIP")
@@ -63,6 +66,7 @@ def validate_fingerprint_destination(archive: Path, output_file: Path) -> None:
 
     Preflight cannot reserve the output name, nor authenticate a sender.
     """
+    suite.require_operator_path(output_file)
     suite.require(output_file.is_absolute() and
                   output_file.parent == output_file.parent.resolve(strict=True)
                   and not output_file.exists() and not output_file.is_symlink()
@@ -132,6 +136,7 @@ def inspect_archive(archive: Path, expected_sha256_file: Path | None = None,
 
 def validate_receive_destination(archive: Path, destination: Path) -> None:
     """Share the exact output gate between read-only preview and receive."""
+    suite.require_operator_path(destination)
     suite.require(destination.is_absolute() and not destination.exists()
                   and not destination.is_symlink()
                   and destination.parent == destination.parent.resolve(strict=True),
