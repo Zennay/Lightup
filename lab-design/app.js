@@ -9,6 +9,7 @@
   const FLAGS=()=>({authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false});
   const RE_TOKEN=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   let items=[],editing=-1,fictional=false,staged=null;
+  const selectedCatalogIds=new Set();
   let catalogReadGeneration=0;
   const invalidateCatalogReads=()=>++catalogReadGeneration;
   const HISTORY_LIMIT=20;
@@ -27,6 +28,7 @@
       " · last "+HISTORY_LIMIT+" catalog changes stay in this tab's memory only; Forget all clears history.";
   }
   function rememberCatalogChange(){
+    selectedCatalogIds.clear();
     undoHistory.push(catalogSnapshot());
     if(undoHistory.length>HISTORY_LIMIT)undoHistory.shift();
     redoHistory=[];updateHistoryControls();
@@ -43,6 +45,7 @@
     destination.push(catalogSnapshot());
     if(destination.length>HISTORY_LIMIT)destination.shift();
     invalidateCatalogReads();
+    selectedCatalogIds.clear();
     items=cloneCatalogRows(restored.items);fictional=restored.fictional;
     clearStage(false);resetEditor();render();updateHistoryControls();
     notify("status",label+" restored the local catalog. Staged imports were discarded; no disk history or execution.");
@@ -283,6 +286,15 @@
     $("appendCatalog").disabled=!items.length||items.length>=32||fictional;
     renderCoverage();
     const visible=visibleCatalog();
+    const visibleIds=new Set(visible.map(row=>row.item.scenario_id));
+    for(const id of selectedCatalogIds)if(!visibleIds.has(id))selectedCatalogIds.delete(id);
+    $("selectVisibleCatalog").disabled=!visible.length;
+    $("selectVisibleCatalog").textContent=visible.length&&
+      visible.every(row=>selectedCatalogIds.has(row.item.scenario_id))?
+      "Deselect all matching":"Select all matching";
+    $("deleteSelectedCatalog").disabled=!selectedCatalogIds.size;
+    $("catalogSelectionSummary").textContent=selectedCatalogIds.size+
+      " visible private scenario(s) selected for optional local deletion. Changing filters clears hidden selections; no change until confirmed.";
     $("exportFiltered").disabled=!visible.length;
     $("filterSummary").textContent=visible.length+" matching PRIVATE scenario(s) of "+
       items.length+". Filters never change the underlying catalog or ground truth.";
@@ -290,10 +302,19 @@
     if(!visible.length){$("catalog").innerHTML='<p class="empty">No PRIVATE scenarios match the current filters.</p>';return;}
     $("catalog").innerHTML="";
     const table=document.createElement("table");table.innerHTML=
-      "<thead><tr><th>Slot</th><th>Private scenario</th><th>Lab IPs</th><th>Ground truth</th><th>Action</th></tr></thead>";
+      "<thead><tr><th>Select</th><th>Slot</th><th>Private scenario</th><th>Lab IPs</th><th>Ground truth</th><th>Action</th></tr></thead>";
     const body=document.createElement("tbody");
     visible.forEach(({item,index})=>{
       const row=document.createElement("tr");
+      const selectCell=document.createElement("td"),checkbox=document.createElement("input");
+      checkbox.type="checkbox";checkbox.checked=selectedCatalogIds.has(item.scenario_id);
+      checkbox.setAttribute("aria-label","Select PRIVATE scenario slot "+(index+1)+" for local batch deletion");
+      checkbox.addEventListener("change",()=>{
+        if(checkbox.checked)selectedCatalogIds.add(item.scenario_id);
+        else selectedCatalogIds.delete(item.scenario_id);
+        render();
+      });
+      selectCell.append(checkbox);row.append(selectCell);
       const content=[String(index+1).padStart(2,"0"),item.name,
         String(item.targets.length),item.expected_findings===null?"Unscored":
           item.expected_findings.length?item.expected_findings.length+" planted":"Scored: zero expected"];
@@ -312,6 +333,21 @@
       row.append(td);body.append(row);
     });
     table.append(body);$("catalog").append(table);
+  }
+  function deleteSelectedCatalog(){
+    if(!selectedCatalogIds.size)return;
+    const visibleIds=new Set(visibleCatalog().map(row=>row.item.scenario_id));
+    const ids=[...selectedCatalogIds].filter(id=>visibleIds.has(id)&&
+      items.some(row=>row.scenario_id===id));
+    if(!ids.length){selectedCatalogIds.clear();render();return;}
+    if(!confirm("Delete "+ids.length+" selected PRIVATE lab scenario(s) from this browser tab? "+
+      "Only the visible selected rows will be removed. Any open editor draft or staged candidate will be discarded. "+
+      "This remains reversible using Undo until Forget or tab close; no target is contacted."))return;
+    const doomed=new Set(ids);
+    rememberCatalogChange();clearStage();
+    items=items.filter(row=>!doomed.has(row.scenario_id));
+    resetEditor();render();
+    notify("status","Deleted "+ids.length+" selected PRIVATE scenario(s) locally. Undo is available; no execution.");
   }
   function moveScenario(index,direction){
     const target=index+direction;
@@ -536,6 +572,7 @@
   function forget(){
     if(items.length&&!confirm("Forget all PRIVATE lab scenarios from this browser session? Download a private backup first."))return;
     clearStage();items=[];fictional=false;undoHistory=[];redoHistory=[];
+    selectedCatalogIds.clear();
     resetEditor();$("load").value="";render();updateHistoryControls();
     notify("status","Catalog and in-memory undo/redo history forgotten from this browser session.");
   }
@@ -658,6 +695,14 @@
     $("catalogSeverity").value="all";render();
   });
   $("exportFiltered").addEventListener("click",saveFiltered);
+  $("selectVisibleCatalog").addEventListener("click",()=>{
+    const rows=visibleCatalog();
+    if(!rows.length)return;
+    if(rows.every(row=>selectedCatalogIds.has(row.item.scenario_id)))selectedCatalogIds.clear();
+    else rows.forEach(row=>selectedCatalogIds.add(row.item.scenario_id));
+    render();
+  });
+  $("deleteSelectedCatalog").addEventListener("click",deleteSelectedCatalog);
   $("editor").addEventListener("submit",saveForm);
   $("clear").addEventListener("click",resetEditor);
   $("delete").addEventListener("click",deleteScenario);
