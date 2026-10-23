@@ -310,14 +310,14 @@ def read_owner_file(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
             "Invalid private input size limit")
     s = path.lstat()
     require(stat.S_ISREG(s.st_mode) and s.st_uid == os.getuid()
-            and s.st_nlink == 1 and s.st_mode & 0o077 == 0,
-            "Not an owner-only single-link file")
+            and s.st_nlink == 1 and stat.S_IMODE(s.st_mode) == 0o600,
+            "Private original file must have exact 0600 mode and one link")
     fd = open_literal_read_fd(path, private_parent=True)
     try:
         fs = os.fstat(fd)
         identity = (fs.st_dev, fs.st_ino, fs.st_size, fs.st_mtime_ns, fs.st_ctime_ns)
         require(stat.S_ISREG(fs.st_mode) and fs.st_uid == os.getuid()
-                and fs.st_nlink == 1 and fs.st_mode & 0o077 == 0
+                and fs.st_nlink == 1 and stat.S_IMODE(fs.st_mode) == 0o600
                 and identity == (s.st_dev, s.st_ino, s.st_size,
                                  s.st_mtime_ns, s.st_ctime_ns)
                 and 0 <= fs.st_size <= ceiling,
@@ -332,8 +332,9 @@ def read_owner_file(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
                      updated.st_mtime_ns, updated.st_ctime_ns) == identity
                 and stat.S_ISREG(updated.st_mode)
                 and updated.st_uid == os.getuid() and updated.st_nlink == 1
-                and updated.st_mode & 0o077 == 0 and len(raw) == fs.st_size,
-                "Private input replaced or modified during read")
+                and stat.S_IMODE(updated.st_mode) == 0o600
+                and len(raw) == fs.st_size,
+                "Private input replaced, changed mode, or modified during read")
         return raw
     finally:
         os.close(fd)
