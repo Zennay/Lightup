@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hf1I00pR8pJsaV0Ed8YxkbZqkrq268/IP9mL6vs8xuA='; style-src 'sha256-Z86EWCsmp921yiknM24sV/J5cDBtMzCMIXfXf+2DsWk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; font-src 'none'">
+<title>LightUp · PRIVATE HUMAN Review</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0b111c;color:#e9f1ff}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top right,#1c3550 0%,#0b111c 48%)}
+main{max-width:1190px;margin:auto;padding:35px 24px 75px}
+header{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+.brand{letter-spacing:.13em;font-size:12px;font-weight:800;color:#76cddf}
+.flag{font-size:11px;border:1px solid #826c3e;border-radius:50px;padding:8px 13px;color:#f4d18c;background:#2a241b;font-weight:700}
+h1{font-weight:760;letter-spacing:-.055em;font-size:clamp(32px,5vw,55px);line-height:1.1;margin:30px 0 11px}
+.subtitle{color:#acbbcb;line-height:1.65;margin:0;max-width:780px}
+.warning{margin:23px 0 27px;background:#1f2430;border:1px solid #80633d;border-left:5px solid #e5b15d;padding:17px 20px;border-radius:12px;font-size:14px;line-height:1.6;color:#f5dcaa}
+.grid{display:grid;grid-template-columns:1fr 280px;gap:16px}
+.panel{background:#141d2b;border:1px solid #2b3b51;border-radius:17px;padding:21px;min-width:0}
+h2{font-size:18px;margin:0 0 15px;letter-spacing:-.02em}
+label{font-size:13px;color:#cad4e2}
+.file{display:block;width:100%;background:#0d1724;border:1px dashed #51819a;border-radius:12px;padding:21px;margin:15px 0;color:#d9f4ff}
+.file:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #61d3f2;outline-offset:2px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.kpi{border:1px solid #304055;background:#101825;border-radius:12px;padding:16px}
+.kpi strong{font-size:29px;display:block;color:#c7faff;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12px;color:#a8bad0}
+button,select{border-radius:10px;border:1px solid #496178;background:#1b2d40;color:#e9f4ff;font:inherit;font-size:13px;padding:10px 13px}
+button{cursor:pointer;font-weight:700}button:disabled,select:disabled{opacity:.4;cursor:not-allowed}
+.primary{border-color:#52afc6;color:#071822;background:#92def0}
+.secondary{background:#172334}
+.actionrow{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.muted{color:#9aacc1;font-size:13px;line-height:1.6}.small{font-size:12px}
+.status{margin:13px 0 0;font-size:13px;min-height:20px;color:#d1ebf3}
+.status.error{color:#f4aab3}
+.work{margin-top:17px}.toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.toolbar>div{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.scroll{overflow-x:auto;border:1px solid #35485b;border-radius:11px}
+table{border-collapse:collapse;width:100%;min-width:730px;text-align:left}
+thead{background:#203047;color:#d0e7f5;font-size:11px;text-transform:uppercase;letter-spacing:.055em}
+td,th{padding:13px 11px;border-bottom:1px solid #2a3a4c}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#1e2c3d}
+td{font-size:13px;color:#d8e1eb}
+td.number{font-variant-numeric:tabular-nums;color:#a9cde0}
+td select{width:100%;min-width:175px}
+.empty{padding:34px;text-align:center;color:#a8bccd}
+.badge{display:inline-block;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:750;background:#343d50}
+.badge.added{color:#a2efcf;background:#183a35}
+.badge.removed{color:#f5bebd;background:#452c36}
+.badge.moved{color:#e4c9ff;background:#3c2d52}
+.footer{border-top:1px solid #34465b;margin-top:19px;padding-top:17px}
+.hidden{display:none!important}
+@media(max-width:820px){.grid{grid-template-columns:1fr}main{padding:20px 12px 35px}.panel{padding:15px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="brand">LIGHTUP / ASSESSMENT RUNTIME / OFFLINE</div><div class="flag">INCUBATE M3/M7 · REVIEW_ONLY</div></header>
+<h1>HUMAN review studio</h1>
+<p class="subtitle">Prepare a private, source-bound review return for historical lab-plan changes. Import the exact ordinal-only review CSV, assign non-authorizing follow-up stages, then download the same six-column schema for native admission.</p>
+<div class="warning"><strong>No assessment authority.</strong> This file does not contact targets, run scans, authorize scope, verify findings or certify fixes. The local CSV and exported data are PRIVATE. Human stages, including HUMAN_REVIEWED, do not satisfy client/operator consent, revocation or HUMAN GO.</div>
+<div class="grid">
+<section class="panel">
+<h2>01 / Load local PRIVATE queue</h2>
+<label for="csvfile">Choose <code>lightup-manifest-history-review-queue-private.csv</code> from a saved history bundle.</label>
+<input class="file" type="file" id="csvfile" accept=".csv,text/csv">
+<label for="priorfile">Optional: resume stages from a saved PRIVATE HUMAN return JSON (native source re-admission remains mandatory).</label>
+<input class="file" type="file" id="priorfile" accept=".json,application/json" disabled>
+<div class="actionrow"><button id="download" class="primary" disabled>Download PRIVATE HUMAN return CSV</button><button id="undo" class="secondary" disabled>Undo most recent edit</button><button id="clear" class="secondary" disabled>Forget imported data</button></div>
+<p id="status" class="status" role="status" aria-live="polite">No file imported. Everything stays in browser memory.</p>
+</section>
+<aside class="panel">
+<h2>Review progress</h2>
+<div class="kpis"><div class="kpi"><strong id="total">—</strong><span>Changed slots</span></div><div class="kpi"><strong id="pending">—</strong><span>Needs follow-up</span></div><div class="kpi"><strong id="reviewed">—</strong><span>Human reviewed*</span></div><div class="kpi"><strong id="other">—</strong><span>Other stages</span></div></div>
+<p class="muted small">*Human reviewed is only a reviewer note. It is <strong>never</strong> clearance or an authorization gate.</p>
+</aside>
+</div>
+<section id="work" class="panel work hidden">
+<div class="toolbar"><div><label for="filter">Stage filter</label><select id="filter"><option value="ALL">All stages</option></select><label for="kind">Change type</label><select id="kind"><option value="ALL">All changes</option><option value="MOVED">Moved</option><option value="REMOVED">Removed</option><option value="ADDED">Added</option></select></div><div><label for="bulk">Assign visible rows</label><select id="bulk"></select><button id="apply">Review proposed bulk change</button></div></div>
+<div class="scroll"><table><thead><tr><th scope="col">Plan pair</th><th scope="col">Literal change</th><th scope="col">Before slot</th><th scope="col">After slot</th><th scope="col">HUMAN follow-up stage</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="footer"><p class="muted">Filtering affects display and explicit bulk stage updates only. Download always includes <strong>all original rows in original order</strong>. The native <code>manifest_history_response.py</code> re-admits the original source bundles and rejects any edited identities, missing rows or unsupported statuses.</p></div>
+</section>
+</main>
+<script>
+"use strict";
+(() => {
+  const NAME = "lightup-manifest-history-review-queue-private.csv";
+  const PRIOR = "lightup-manifest-history-human-return-private.json";
+  const AUTH_FLAGS = ["source_authenticated","authorized","client_consent_verified","operator_consent_verified","revocation_checked","human_go","assessment_executed","release_allowed"];
+  const HEADER = ["from_ordinal","to_ordinal","change","before_slot","after_slot","human_stage"];
+  const STAGES = ["FOLLOW_UP_REQUIRED","NEEDS_CONTEXT","IN_REVIEW","QUESTION_PREPARED","PARKED","HUMAN_REVIEWED"];
+  const KINDS = new Set(["MOVED","REMOVED","ADDED"]);
+  const MAX_BYTES = 65536, MAX_ROWS = 224;
+  const $ = id => document.getElementById(id);
+  let entries = [], undo = null, epoch = 0, hasSource = false, priorImported = false;
+  const say = (msg, bad = false) => {
+    $("status").textContent = msg;
+    $("status").className = bad ? "status error" : "status";
+  };
+  function parseCSV(input) {
+    const rows = []; let row = [], field = "", quoted = false, justClosed = false, i = 0;
+    while (i < input.length) {
+      const c = input[i++];
+      if (quoted) {
+        if (c === '"') {
+          if (input[i] === '"') { field += '"'; i++; }
+          else { quoted = false; justClosed = true; }
+        } else field += c;
+      } else if (c === ",") {
+        row.push(field); field = ""; justClosed = false;
+      } else if (c === "\n" || c === "\r") {
+        if (c === "\r" && input[i] === "\n") i++;
+        row.push(field); rows.push(row); row = []; field = ""; justClosed = false;
+      } else if (c === '"' && field === "" && !justClosed) quoted = true;
+      else {
+        if (c === '"' || justClosed) throw Error("Malformed CSV quotation.");
+        field += c;
+      }
+    }
+    if (quoted) throw Error("Unterminated CSV field.");
+    if (row.length || field || justClosed) { row.push(field); rows.push(row); }
+    return rows;
+  }
+  function admit(text) {
+    const data = parseCSV(text);
+    if (!data.length || HEADER.some((h, i) => data[0][i] !== h) || data[0].length !== HEADER.length) throw Error("Expected the exact original six-column history queue header.");
+    if (data.length - 1 > MAX_ROWS) throw Error("Queue exceeds the 224-row offline bound.");
+    const seen = new Set();
+    const parsed = data.slice(1).map((cells, position) => {
+      if (cells.length !== HEADER.length) throw Error("Invalid CSV row width.");
+      const [first, second, kind, previous, next, stage] = cells;
+      const ordinal = v => /^[1-8]$/.test(v);
+      const slot = v => /^([1-9]|1[0-6])$/.test(v);
+      if (!ordinal(first) || !ordinal(second) || Number(second) !== Number(first) + 1 || !KINDS.has(kind) || !STAGES.includes(stage)) throw Error("Unrecognized ordinal, change or HUMAN stage.");
+      if (kind === "ADDED" ? (previous !== "" || !slot(next)) : kind === "REMOVED" ? (!slot(previous) || next !== "") : (!slot(previous) || !slot(next) || previous === next)) throw Error("Inconsistent changed-slot identity.");
+      const key = [first,second,kind,previous,next].join("|");
+      if (seen.has(key)) throw Error("Repeated source row identity.");
+      seen.add(key);
+      if (position && Number(first) < Number(data[position][0])) throw Error("Queue plan-pair order decreased.");
+      return [...cells];
+    });
+    return parsed;
+  }
+  function admitPrior(text) {
+    let packet;
+    try { packet = JSON.parse(text); } catch (_) { throw Error("Malformed PRIVATE HUMAN JSON."); }
+    if (!packet || typeof packet !== "object" || Array.isArray(packet)) throw Error("Expected PRIVATE HUMAN JSON object.");
+    const keys = ["schema","status","history_sha256","answers_sha256","plan_count","row_count","responses","stage_counts",...AUTH_FLAGS];
+    const schema = packet.schema;
+    if (!["lightup.private-manifest-history-human-return.v1","lightup.private-manifest-history-human-return.v2"].includes(schema)) throw Error("Unknown HUMAN return version.");
+    if (schema.endsWith(".v2")) keys.push("previous_return_sha256","source_continuity_claim");
+    if (Object.keys(packet).length !== keys.length || Object.keys(packet).some(k => !keys.includes(k))) throw Error("Unknown or missing HUMAN return fields.");
+    if (AUTH_FLAGS.some(key => packet[key] !== false) || packet.status !== "REVIEW_ONLY") throw Error("Imported return asserts authority.");
+    if (schema.endsWith(".v2") && (packet.source_continuity_claim !== "UNSIGNED_LOCAL_CONSISTENCY_ONLY" || !/^[a-f0-9]{64}$/.test(packet.previous_return_sha256))) throw Error("Invalid private predecessor reference.");
+    if (!/^[a-f0-9]{64}$/.test(packet.history_sha256) || !/^[a-f0-9]{64}$/.test(packet.answers_sha256)) throw Error("Malformed local source digest.");
+    if (packet.row_count !== entries.length || !Array.isArray(packet.responses) || packet.responses.length !== entries.length) throw Error("Prior HUMAN return row count differs from loaded queue.");
+    if (!Number.isInteger(packet.plan_count) || packet.plan_count < 2 || packet.plan_count > 8) throw Error("Invalid plan count.");
+    const counts = Object.fromEntries(STAGES.map(stage => [stage,0]));
+    const adopted = packet.responses.map((row,i) => {
+      if (!row || typeof row !== "object" || Array.isArray(row) || Object.keys(row).length !== HEADER.length || Object.keys(row).some(key => !HEADER.includes(key))) throw Error("Invalid HUMAN return row shape.");
+      const originals = entries[i], keys = [row.from_ordinal,row.to_ordinal,row.change,row.before_slot,row.after_slot];
+      for (let k = 0; k < 5; k++) {
+        const value = keys[k] === null ? "" : String(keys[k]);
+        if (value !== originals[k]) throw Error("Prior HUMAN row identities disagree with original imported queue.");
+      }
+      if (!STAGES.includes(row.human_stage)) throw Error("Prior HUMAN stage is not allowed.");
+      counts[row.human_stage]++;
+      return [...originals.slice(0,5), row.human_stage];
+    });
+    if (!packet.stage_counts || typeof packet.stage_counts !== "object" || Array.isArray(packet.stage_counts) || Object.keys(packet.stage_counts).length !== STAGES.length || STAGES.some(stage => packet.stage_counts[stage] !== counts[stage])) throw Error("Prior HUMAN stage counts disagree with source rows.");
+    return adopted;
+  }
+  const csvField = value => {
+    const s = String(value);
+    return /[",\r\n]/.test(s) ? '"' + s.replaceAll('"','""') + '"' : s;
+  };
+  const csvText = () => [HEADER, ...entries].map(row => row.map(csvField).join(",")).join("\n") + "\n";
+  function make(tag, value, className = "") {
+    const el = document.createElement(tag);
+    if (value !== undefined) el.textContent = value;
+    if (className) el.className = className;
+    return el;
+  }
+  const visible = entry => ($("filter").value === "ALL" || entry[5] === $("filter").value) && ($("kind").value === "ALL" || entry[2] === $("kind").value);
+  function stageSelect(current) {
+    const sel = make("select");
+    for (const stage of STAGES) { const option = make("option",stage); option.value=stage; sel.append(option); }
+    sel.value = current;
+    return sel;
+  }
+  function snapshot() { return entries.map(entry => [...entry]); }
+  function render() {
+    const loaded = hasSource;
+    $("work").classList.toggle("hidden",!loaded);
+    $("download").disabled = !loaded; $("clear").disabled = !loaded; $("undo").disabled = undo === null; $("priorfile").disabled = !loaded;
+    $("total").textContent = loaded ? String(entries.length) : "—";
+    $("pending").textContent = loaded ? String(entries.filter(e => e[5] === "FOLLOW_UP_REQUIRED").length) : "—";
+    $("reviewed").textContent = loaded ? String(entries.filter(e => e[5] === "HUMAN_REVIEWED").length) : "—";
+    $("other").textContent = loaded ? String(entries.filter(e => e[5] !== "FOLLOW_UP_REQUIRED" && e[5] !== "HUMAN_REVIEWED").length) : "—";
+    const body = $("rows"); body.replaceChildren();
+    const fragment = document.createDocumentFragment();
+    let shown = 0;
+    entries.forEach((entry, index) => {
+      if (!visible(entry)) return;
+      shown++;
+      const tr = make("tr");
+      tr.append(make("td",entry[0]+" → "+entry[1],"number"));
+      const kind = make("td");kind.append(make("span",entry[2],"badge "+entry[2].toLowerCase()));tr.append(kind);
+      tr.append(make("td",entry[3]||"—","number"),make("td",entry[4]||"—","number"));
+      const selector = stageSelect(entry[5]);selector.setAttribute("aria-label","HUMAN status for changed slot "+(index+1));
+      selector.addEventListener("change", () => {
+        if (entry[5] !== selector.value) { undo = snapshot(); entries[index][5] = selector.value; render(); say("HUMAN stage updated in memory. Download to keep your PRIVATE edits."); }
+      });
+      const last = make("td");last.append(selector);tr.append(last);fragment.append(tr);
+    });
+    if (!shown) {const tr=make("tr");const cell=make("td","No matching changed slots.","empty");cell.colSpan=5;tr.append(cell);fragment.append(tr);}
+    body.append(fragment);
+  }
+  function forget() {
+    entries = [];hasSource=false;priorImported=false;undo = null;epoch++;$("csvfile").value = "";$("priorfile").value = "";$("filter").value = "ALL";$("kind").value="ALL";say("Imported data cleared from browser memory.");render();
+  }
+  $("csvfile").addEventListener("change", async event => {
+    const file = event.target.files[0];
+    const ticket = ++epoch;
+    if (!file) return;
+    if (file.name !== NAME || file.size > MAX_BYTES || file.size < 1) { say("Select the exact original PRIVATE queue filename, up to 64 KiB.",true);event.target.value="";return; }
+    try {
+      const bytes = await file.arrayBuffer();
+      if (ticket !== epoch) return;
+      const text = new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      const incoming = admit(text);
+      if (ticket !== epoch) return;
+      entries = incoming;hasSource=true;priorImported=false;undo = null;$("filter").value="ALL";$("kind").value="ALL";
+      say("Loaded "+entries.length+" changed slots locally. All changes are unsigned HUMAN notes.");
+      render();
+    } catch (e) { if(ticket===epoch) say("Import rejected: "+e.message,true); }
+    event.target.value = "";
+  });
+  $("priorfile").addEventListener("change", async event => {
+    const file = event.target.files[0], ticket = ++epoch;
+    if (!file || !hasSource) return;
+    if (file.name !== PRIOR || !file.size || file.size > MAX_BYTES) { say("Select the original PRIVATE HUMAN return JSON (at most 64 KiB).",true);event.target.value="";return; }
+    try {
+      const text = new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      if (ticket !== epoch || !hasSource) return;
+      const stages = admitPrior(text);
+      if (!window.confirm("Replace all current HUMAN stage labels with stages from this unsigned saved PRIVATE return? Native original-source verification will still be required.")) return;
+      undo = snapshot();entries = stages;priorImported=true;render();
+      say("Previous HUMAN stages imported as UNSIGNED local data. To create a linked new round use the native --continue-from-return-dir and --ack-csv-stage-replace options.");
+    } catch (err) { if (ticket === epoch) say("Previous round rejected: " + err.message,true); }
+    finally { event.target.value = ""; }
+  });
+  $("download").addEventListener("click", () => {
+    if (!hasSource) return;
+    const blob = new Blob([csvText()],{type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link=make("a");link.href=url;link.download=NAME;document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    say("PRIVATE CSV downloaded. Browser downloads cannot enforce Unix mode 0600. " + (priorImported ? "For v2 continuation, use native --continue-from-return-dir plus --answers-dir and explicit --ack-csv-stage-replace." : "Use the native PRIVATE source-bound publication workflow."));
+  });
+  $("undo").addEventListener("click",() => {if(!undo)return;entries=undo;undo=null;render();say("Latest HUMAN edit undone in memory.");});
+  $("clear").addEventListener("click",forget);
+  $("filter").addEventListener("change",render);
+  $("kind").addEventListener("change",render);
+  $("apply").addEventListener("click",() => {
+    const stage=$("bulk").value;
+    const indices=entries.map((e,i)=>visible(e)?i:-1).filter(i=>i>=0 && entries[i][5]!==stage);
+    if(!indices.length){say("No matching rows need a stage change.");return;}
+    if(!window.confirm("Apply "+stage+" to "+indices.length+" visible changed slots? This is HUMAN follow-up only, never authorization."))return;
+    undo=snapshot();indices.forEach(i=>entries[i][5]=stage);render();say("Applied HUMAN stage to "+indices.length+" visible rows.");
+  });
+  for(const stage of STAGES) {
+    const option=make("option",stage);option.value=stage;$("filter").append(option);
+    const second=make("option",stage);second.value=stage;$("bulk").append(second);
+  }
+  render();
+})();
+</script>
+</body>
+</html>
