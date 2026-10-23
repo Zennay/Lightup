@@ -268,27 +268,36 @@ def read_owner_file(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
     finally:
         os.close(fd)
 
-def write_file(path: Path, payload: bytes) -> None:
-    """Publish one new 0600 file under a descriptor-pinned private directory.
-
-    O_EXCL protects the final filename; per-component O_NOFOLLOW additionally
-    prevents a swapped parent directory link from redirecting our writes.
-    """
-    require(path.is_absolute() and len(path.parts) >= 2
-            and all(part not in (".", "..") for part in path.parts[1:]),
-            "A literal absolute output file path is required")
+def open_private_dir_fd(path: Path) -> int:
+    """Keep an exact original 0700 directory open, never following any link."""
+    require(path.is_absolute() and
+            all(part not in (".", "..") for part in path.parts[1:]),
+            "A literal absolute owner-only directory is required")
     flags = (os.O_RDONLY | os.O_NOFOLLOW | os.O_DIRECTORY |
              getattr(os, "O_CLOEXEC", 0))
-    parent_fd = os.open("/", flags)
+    fd = os.open("/", flags)
     try:
-        for part in path.parts[1:-1]:
-            next_fd = os.open(part, flags, dir_fd=parent_fd)
-            os.close(parent_fd)
-            parent_fd = next_fd
-        parent = os.fstat(parent_fd)
-        require(stat.S_ISDIR(parent.st_mode) and
-                parent.st_uid == os.getuid() and parent.st_mode & 0o077 == 0,
-                "New private file parent must be owner-only")
+        for part in path.parts[1:]:
+            next_fd = os.open(part, flags, dir_fd=fd)
+            os.close(fd)
+            fd = next_fd
+        desc = os.fstat(fd)
+        require(stat.S_ISDIR(desc.st_mode) and
+                desc.st_uid == os.getuid() and desc.st_mode & 0o077 == 0,
+                "Private directory must be current-user 0700")
+        result, fd = fd, -1
+        return result
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def write_file(path: Path, payload: bytes) -> None:
+    """Publish one new 0600 file inside a pinned original private directory."""
+    require(path.is_absolute() and path.name not in (".", ".."),
+            "A literal absolute output file path is required")
+    parent_fd = open_private_dir_fd(path.parent)
+    try:
         fd = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
                      os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
                      0o600, dir_fd=parent_fd)
@@ -320,14 +329,20 @@ def exclusive_publish(stage: Path, destination: Path) -> None:
     operation.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
                           ctypes.c_char_p, ctypes.c_uint]
     operation.restype = ctypes.c_int
-    at_fdcwd = getattr(os, "AT_FDCWD", -100)
-    rc = operation(at_fdcwd, os.fsencode(stage), at_fdcwd,
-                   os.fsencode(destination), 1)
-    if rc:
-        number = ctypes.get_errno()
-        raise OSError(number, os.strerror(number), str(destination))
-    fd = os.open(destination.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    require(stage.is_absolute() and destination.is_absolute()
+            and stage.parent == destination.parent
+            and stage.name not in (".", "..")
+            and destination.name not in (".", ".."),
+            "Exclusive publication needs one literal private parent")
+    # Both names remain relative to one pinned 0700 directory descriptor.
+    # This avoids following a replaced parent symlink during the final rename.
+    fd = open_private_dir_fd(destination.parent)
     try:
+        rc = operation(fd, os.fsencode(stage.name), fd,
+                       os.fsencode(destination.name), 1)
+        if rc:
+            number = ctypes.get_errno()
+            raise OSError(number, os.strerror(number), str(destination))
         os.fsync(fd)
     finally:
         os.close(fd)
