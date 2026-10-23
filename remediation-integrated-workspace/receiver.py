@@ -76,7 +76,7 @@ def receive(archive: Path, destination: Path) -> None:
                       and suite.digest(files[name]) == desc["sha256"],
                       "Unpinned source content in offline software")
     for name in TOOLS:
-        suite.require(files[name] == (suite.ROOT / name).read_bytes(),
+        suite.require(files[name] == suite.read_checkout_source(suite.ROOT / name),
                       "Installer or receiver version differs from source release")
     stage = destination.parent / (".lightup-receiver-" + secrets.token_hex(12))
     os.mkdir(stage, 0o700)
@@ -95,8 +95,13 @@ def receive(archive: Path, destination: Path) -> None:
                    "source_heads": lock["source_heads"], "files": entries,
                    "warning": suite.WARNING}
         suite.write_file(stage / "manifest.json", suite.canonical(receipt))
+        suite.require(suite.read_checkout_source(suite.LOCK, 350_000) == lock_bytes,
+                      "Pinned original source inventory changed during receiving")
         suite.require(suite.digest(suite.read_owner_file(archive)) == suite.digest(raw),
                       "Received ZIP changed during admission")
+        # Validate the complete original staged suite and the stable received
+        # ZIP against the same local checkout before any publication.
+        suite.verify(stage, compare_checkout=True)
         suite.require(not destination.exists(), "Recipient destination unexpectedly appeared")
         suite.exclusive_publish(stage, destination)
     finally:
