@@ -49,6 +49,13 @@ code{background:#f0f3f8;border:1px solid #e4eaf3;border-radius:4px;padding:.15re
 footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line)}
 @media(max-width:600px){main{padding:1rem}.panel{padding:1.1rem}.hero{padding:2rem 1.2rem}.section-title{gap:.55rem}}
 @media print{.hero{background:white;color:black;padding:1rem}.hero .lede{color:black}.panel{box-shadow:none}.warning{color:black}button,input,select,textarea,.table-wrap{break-inside:avoid}}
+.gap-search-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.7rem}
+.source-preview .gap-results{max-height:340px;overflow:auto;padding-left:1.2rem}
+.gap-entry{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin:.4rem 0;padding:.4rem 0;border-bottom:1px solid var(--line)}
+.gap-entry span{min-width:0;overflow-wrap:anywhere}
+.gap-entry button{flex:none;white-space:nowrap}
+#gap-filter-summary{margin:.5rem 0}
+@media(max-width:600px){.gap-entry{flex-direction:column;align-items:stretch}.gap-entry button{align-self:flex-start}}
 """.strip()
 
 
