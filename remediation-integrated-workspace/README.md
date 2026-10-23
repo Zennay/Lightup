@@ -32,6 +32,36 @@ Inspection enforces private file ownership/modes, regular nofollow one-link file
 
 The ordinary `inspect` command now **always compares all 25 installed integrated operator tools to the current trusted local checkout bytes**, not just the received package's self-declared manifest. Otherwise a changed operator tool paired with a regenerated unsigned local manifest/ZIP could be mistakenly treated as locally consistent. Original source-owner files remain pinned by the source lock; `--compare-checkout` additionally enforces exact current-checkout parity for the 79 original files. These checks assume the trusted checkout itself has not been replaced. No self-hash or local comparison authenticates a producer, consent or authorization.
 
+## No-write admission of a received software-only ZIP
+
+An authorized HUMAN operator can inspect a *previously received* original
+software-only ZIP **before any extraction or installation**. Put it inside a
+private 0700 directory owned by the current Linux user, then run:
+
+```sh
+python3 remediation-integrated-workspace/install.py inspect-archive \
+  --archive "$HOME/lightup-private/incoming/software-only.zip"
+```
+
+This admission checks the exact 107-member software-only ZIP inventory and
+original manifest source lock, all 79 pinned original bytes, all 25 integrated
+tool bytes against the trusted current checkout, both immutable offline
+HTML renderers and every ZIP local/central header and directory boundary.
+Unexpected prefixes, extra bytes after the end record, noncanonical ZIP
+records or changed tool bytes HOLD. Admission **does not extract any file,
+create a report, authenticate a producer, grant authority or contact a
+service**. Exit 2 remains REVIEW_ONLY, 3 remains HOLD. This is the same
+admission path used for a later explicit `receive`, with a second source
+recheck immediately before private publication. It is also available as
+`private_desk.py inspect-archive` and in the offline operator console.
+
+The archive's DEFLATE byte stream is accepted only if it parses as complete
+original members with the expected verified plaintext, canonical local
+headers and no extra ZIP records. This deliberately avoids recompressing
+source files on the recipient's machine: different zlib versions may produce
+different, but equally valid, compressed bytes. All hashes are **unsigned
+local consistency evidence**, not verified producer identity.
+
 ## Reproducible software evidence — single-command PRIVATE passport
 
 To bind the installed offline evidence/remediation software to the **exact current
