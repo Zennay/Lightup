@@ -1,10 +1,16 @@
 # LightUp · Offline Lab Candidate Matrix
 
+## Current product update · per-candidate unknown-coverage distribution · 23 October 2026
+
+Candidate summaries now expose the spread of source-reported candidate-side `coverage_unknown` values across the shared scenario set: observed count, number of cases above zero, total, median, nearest-rank Q1/Q3, IQR and range. The same distribution is available in the candidate cards, aggregate JSON schema v8, aggregate CSV columns and printable HTML handoff.
+
+This complements the total unknown-coverage discussion ceiling: equal totals can hide different per-case distributions. These statistics are informational uncertainty context only; they do not change source regression labels or authorize any candidate.
+
 ## Current product update · explicit unknown-coverage ceiling · 23 October 2026
 
 The human discussion threshold panel now includes a **maximum total unknown coverage** ceiling. This is intentionally separate from source-reported regression labels: a report can show no flagged regression while still declaring unknown coverage. The ceiling surfaces that uncertainty as a human discussion reason without relabeling source evidence, producing a PASS, or changing authorization.
 
-The aggregate JSON handoff is now schema v7 and the aggregate CSV includes `threshold_max_unknown_coverage`. Private source-bound preference drafts are schema v4; existing v1–v3 drafts remain importable, with the new ceiling defaulting to zero (flag any non-zero unknown coverage for discussion). No source files, case IDs, targets or raw evidence are added to exports.
+The aggregate JSON handoff is now schema v8 and the aggregate CSV includes `threshold_max_unknown_coverage` plus per-candidate unknown-coverage distribution fields. Private source-bound preference drafts are schema v4; existing v1–v3 drafts remain importable, with the new ceiling defaulting to zero (flag any non-zero unknown coverage for discussion). No source files, case IDs, targets or raw evidence are added to exports.
 
 **Stage: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** [Product issue #1591](https://github.com/Zennay/Lightup/issues/1591). This is a private offline human discussion instrument, **not an assessment scanner, production release recommendation, client consent verifier, safety verdict or grant service**. The four output fields `authorized`, `consent_verified`, `dispatch_allowed` and `release_allowed` are always false.
 
