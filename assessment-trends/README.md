@@ -79,3 +79,8 @@ The local-only drilldown can filter the scenarios behind one selected metric and
 
 
 The transition drilldown also exports only its currently filtered anonymous cases as CSV, JSON or script-free printable HTML. These handoffs contain a local anonymous scenario ordinal (never the original scenario ID), selected metric/group, manual slot pair, flag state, reported values and literal false authorization/verification fields. They do not include original filenames, source hashes or HUMAN notes and do not assert that a missing flag is a verified fix.
+
+
+## Local HUMAN commentary undo and redo
+
+Commentary saved or cleared in the offline browser editor can be undone and redone up to 20 steps in tab memory. Undo/Redo controls display the available counts; Ctrl/Cmd+Z, Ctrl/Cmd+Y and Ctrl/Cmd+Shift+Z also work outside editable fields. Snapshots contain only private saved notes and drafts and are bound to the exact active in-memory source cohort and its source-byte fingerprints. Undo/redo never changes original assessment metrics, source status, HUMAN stage marks, scan authority or consent. Importing a new source batch, loading the fictional demo, explicitly forgetting data, importing an encrypted note packet or restoring a private session clears the history. No browser storage, persistence or network action is used. A local unsaved draft triggers confirmation before a history restore.
