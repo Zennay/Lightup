@@ -752,6 +752,7 @@ def passport_material(receipt: dict, verified: dict[str, bytes],
         "manifest_sha256_unsigned": digest(manifest),
         "software_archive_sha256_unsigned": digest(verified["software-only.zip"]),
         "compared_to_explicit_checkout": checkout_compared,
+        "checkout_verified_file_count": len(verified) - 4,
         "authority_granted": False,
         "client_consent": False,
         "scan_authorized": False,
@@ -760,29 +761,50 @@ def passport_material(receipt: dict, verified: dict[str, bytes],
         "release_approved": False,
         "warning": WARNING,
     }
-    def value(label: str, field: str) -> str:
-        return ("<dt>" + html.escape(label) + "</dt><dd>" +
-                html.escape(str(report[field]), quote=True) + "</dd>")
     import html
-    body = "".join((
-        value("Installed software count", "installed_software_file_count"),
-        value("Pinned original file count", "pinned_original_file_count"),
-        value("Unsigned package SHA-256", "software_archive_sha256_unsigned"),
-        value("Unsigned manifest SHA-256", "manifest_sha256_unsigned"),
-        value("Exact checkout compared", "compared_to_explicit_checkout"),
+
+    def field(label: str, value: object, *, code: bool = False) -> str:
+        safe_label = html.escape(label)
+        safe_value = html.escape(str(value), quote=True)
+        if code:
+            safe_value = "<code>" + safe_value + "</code>"
+        return "<div class=\"field\"><dt>" + safe_label + "</dt><dd>" + safe_value + "</dd></div>"
+
+    fields = "".join((
+        field("Bestanden in het pakket", report["installed_software_file_count"]),
+        field("Vastgelegde originele bronnen", report["pinned_original_file_count"]),
+        field("Vergeleken met lokale broncode", report["checkout_verified_file_count"]),
+        field("SHA-256 van software-ZIP", report["software_archive_sha256_unsigned"], code=True),
+        field("SHA-256 van pakketlijst", report["manifest_sha256_unsigned"], code=True),
     ))
-    page = ("""<!doctype html><html lang="en"><meta charset="utf-8">
+    # Static local HTML: no JavaScript, remote fonts, tracking, network or
+    # embedded source names. The source-bound JSON stays fully machine readable.
+    page = ("""<!doctype html><html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
-<title>LightUp — private offline software passport</title>
-<style>body{font:16px/1.6 system-ui;background:#f4f7fb;color:#15263b;max-width:750px;margin:35px auto;padding:20px}main{background:white;border:1px solid #ccd6e1;border-radius:15px;padding:28px}dt{font-weight:700;margin-top:18px}dd{overflow-wrap:anywhere;margin:0}strong{color:#952c1d}</style>
-<main><h1>LightUp private offline software passport</h1>
-<p><strong>REVIEW ONLY — NOT AUTHORIZATION</strong></p><p>This passport records
-only local software byte consistency. It does not contain tenant evidence,
-original findings, reviewer identity or source filenames.</p><dl>""" +
-        body + """</dl><p>Hash matching does not authenticate the software producer,
-client/operator consent, scanning permission, verified remediation or
-release approval. Independent review remains mandatory.</p></main></html>""")
+<meta http-equiv="Content-Security-Policy"
+content="default-src 'none'; script-src 'none'; connect-src 'none'; img-src 'none'; font-src 'none'; style-src 'unsafe-inline'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp | Integriteitsrapport</title>
+<style>
+*{box-sizing:border-box}body{font:16px/1.55 system-ui,-apple-system,sans-serif;color:#202726;background:#f5f5f2;margin:0}
+main{max-width:740px;margin:5vh auto;padding:40px;background:#fff;border:1px solid #dadeda;border-radius:12px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#52625b}
+h1{font-size:clamp(28px,5vw,38px);line-height:1.12;letter-spacing:-.04em;margin:12px 0}
+.intro{font-size:17px;color:#3e4944;max-width:56ch;margin:0 0 30px}
+dl{margin:0}.field{padding:14px 0;border-top:1px solid #e3e7e3}dt{font-size:13px;color:#53625b;margin-bottom:4px}
+dd{font-weight:600;margin:0;overflow-wrap:anywhere}code{font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:500;word-break:break-all}
+h2{font-size:18px;letter-spacing:-.015em;margin:0 0 8px}
+.notice{border-top:2px solid #202726;margin-top:30px;padding-top:22px}
+.notice p{margin:0;color:#3e4944}footer{color:#69736d;font-size:12px;margin-top:24px}
+@media(max-width:760px){main{margin:0;border:0;border-radius:0;min-height:100vh;padding:24px 20px}}
+</style></head><body><main>
+<div class="eyebrow">LightUp / Alleen lokaal</div>
+<h1>Integriteitsrapport</h1>
+<p class="intro">Het softwarepakket komt overeen met de bronbestanden in deze lokale checkout. De gecontroleerde bestandsgegevens staan hieronder.</p>
+<dl>""" + fields + """</dl>
+<section class="notice"><h2>Geen vrijgave</h2>
+<p>Dit rapport bewijst niet wie het pakket heeft gemaakt, of er toestemming is, of een kwetsbaarheid is hersteld. Voor gebruik zijn afzonderlijke autorisatie en onafhankelijke beoordeling vereist.</p></section>
+<footer>Alleen voor menselijke controle · Niet ondertekend · Niet geschikt als bewijs van toestemming</footer>
+</main></body></html>""")
     return canonical(report), page.encode("utf-8")
 
 def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
