@@ -36,6 +36,7 @@ CATEGORIES = {
     "fingerprint-create": "Byte comparison",
     "fingerprint-compare": "Byte comparison",
     "install": "Software only",
+    "inspect-archive": "Software only",
     "receive-software": "Software only",
     "inspect-software": "Software only",
     "inspect-checkout": "Software only",
