@@ -14,7 +14,7 @@ All imported report-derived text and table headings are HTML-escaped before rend
 
 ## Open immediately
 
-Download [standalone.html](standalone.html) and open it in a modern local browser. There are no external dependencies, HTTP calls, install steps, accounts, browser storage, cookies, persistence, registered service workers, target interaction, execution commands or backend. `index.html` also works alongside `app.js` and `style.css`. The self-contained release is rebuilt by `python3 assessment-candidates/build_standalone.py` using Python's standard library, with a restrictive CSP hashing the original inline script and CSS. The current bundled artifact is **127,196 bytes** (SHA-256 `ebc95b7d466fc874bec4cfa9f84059c8f8332e99efcd2a92a2761a6d40978c5e`); its CSP script/style hashes are pinned to the exact embedded bytes.
+Download [standalone.html](standalone.html) and open it in a modern local browser. There are no external dependencies, HTTP calls, install steps, accounts, browser storage, cookies, persistence, registered service workers, target interaction, execution commands or backend. `index.html` also works alongside `app.js` and `style.css`. The self-contained release is rebuilt by `python3 assessment-candidates/build_standalone.py` using Python's standard library, with a restrictive CSP hashing the original inline script and CSS. The current bundled artifact is **132,786 bytes** (SHA-256 `b587a4ecf2de7514e8d868a0ff60dfd6cdbb6acf2136c365eb468b759926ebfa`); its CSP script/style hashes are pinned to the exact embedded bytes.
 
 Click **Explore fictional demo** to view four made-up candidate outputs for four invented lab cases. They are unmistakably labeled fictional in the screen and exported JSON, and no assessment is performed.
 
@@ -80,6 +80,10 @@ This is an aggregate descriptive handoff: it includes no case IDs, source filena
 The standalone script-free briefing now includes the selected-pair numeric comparison table whenever two distinct candidate slots are selected, alongside the original adverse-flag crossover. The separate aggregate CSV remains the downloadable spreadsheet handoff; both exports omit source case IDs and target metadata.
 
 ## Isolation and source ownership
+
+### Filter-scoped candidate HUMAN queue handoffs
+
+The casework section now exports the currently visible queue as CSV or scriptless HTML. The handoff records the selected candidate, metric topic, discussion-stage filter and neutral-case setting, and includes only anonymous case ordinals, source-signal counts, candidate slots with a signal, and local generic discussion stage/group. It omits original case IDs, filenames, hashes, targets, raw metrics and private source bytes. Empty subsets cannot be exported; all authority flags remain false and the HTML CSP denies scripts and network access.
 
 This independent branch changes exclusively **new** files in `assessment-candidates/`. It does not edit or claim the comparator #1515, reviewdesk #1576, trajectory #1585, production runtime, domain, policies, webapp, scanner, service, CI, self-hosted runner or any other worker's files. The standalone works with original #1515 JSON schemas but does not import or copy the actively owned source implementation. No QA/regression suites have been written or run under the 17 October execution policy.
 
