@@ -49,6 +49,27 @@ original.
 
 The ordinary `inspect` command now **always compares all 25 installed integrated operator tools to the current trusted local checkout bytes**, not just the received package's self-declared manifest. Otherwise a changed operator tool paired with a regenerated unsigned local manifest/ZIP could be mistakenly treated as locally consistent. Original source-owner files remain pinned by the source lock; `--compare-checkout` additionally enforces exact current-checkout parity for the 79 original files. These checks assume the trusted checkout itself has not been replaced. No self-hash or local comparison authenticates a producer, consent or authorization.
 
+## Private stage lifecycle: descriptor-pinned creation and cleanup
+
+A fresh Linux PRIVATE workspace, received source-only suite or
+reproducibility passport is now staged under an original **0700
+current-user directory descriptor**, using `mkdir(..., dir_fd=...)`,
+then checked through a nofollow directory descriptor for exact
+owner-only mode. The native stage cleanup similarly uses the verified
+private directory descriptor and Python's fd-relative `shutil.rmtree`,
+so a changed path to the parent cannot silently redirect the
+**creation or cleanup** of the staging directory. The original
+`renameat2(RENAME_NOREPLACE)` private publication, full 104-file
+checkout comparison, 107-entry source-only ZIP admission and
+independent-review/authorization HOLD remain unchanged.
+
+This narrows path-race exposure specifically for stage creation and
+cleanup. It does **not** claim to eliminate every same-user race in
+subsequent path-based source assembly or to authenticate source
+ownership, disclosure rights, client consent or a release decision.
+The expected native product result is always `REVIEW_ONLY`, not
+permission to scan or deploy.
+
 ## No-write admission of a received software-only ZIP
 
 An authorized HUMAN operator can inspect a *previously received* original
