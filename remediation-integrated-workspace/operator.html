@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-wx6vWM25wtpmUYcCCQVUGcEjXT2pbdX2KdI8MCle+Ak=&#x27; &#x27;sha256-xXuy7018iinWoQp7JwoX5PieZQdlrsOavXJ9LHfxmGM=&#x27;; style-src &#x27;sha256-o30WbtgUbCtKM2x6nLja7rRbpXkNIcvpAgUVue0FwNc=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-PkW5t9R7RmU/nK4ArjlTBUmYQc6QR8YH556wbfpxGpI=&#x27; &#x27;sha256-xXuy7018iinWoQp7JwoX5PieZQdlrsOavXJ9LHfxmGM=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -14,6 +14,13 @@ h1{font-size:clamp(2rem,4vw,3.25rem);letter-spacing:-.04em;line-height:1.04;marg
 .state{display:inline-flex;align-items:center;gap:10px;font-size:.79rem;font-weight:750;letter-spacing:.05em;border:1px solid #7a9aaa;border-radius:100px;padding:10px 15px}
 .dot{height:9px;width:9px;background:#e7b976;display:inline-block;border-radius:50%}
 .notice{margin:22px 0;padding:18px 20px;background:#fff;border:1px solid #cad9e5;border-left:5px solid #a87022;border-radius:12px;line-height:1.6}
+.extra-tools{margin:0 0 20px;background:#fff;border:1px solid #dae2eb;border-radius:13px;overflow:hidden}
+.extra-tools>summary{padding:16px 21px;cursor:pointer;font-size:.91rem;font-weight:800;color:#21495a}
+.extra-tools>summary span{display:block;margin:4px 0 0 20px;color:#627689;font-size:.8rem;font-weight:450}
+.extra-tools>summary:hover,.extra-tools>summary:focus-visible{background:#f1f7f8}
+.extra-tools>summary:focus-visible{outline:3px solid #8ad6d7;outline-offset:-3px}
+.extra-tools[open]{padding-bottom:13px}
+.extra-tools>.journey,.extra-tools>.fingerprint{margin:12px 16px}
 .layout{display:grid;grid-template-columns:minmax(250px,340px) minmax(0,1fr);gap:22px;align-items:start}
 .nav,.content{background:#fff;border:1px solid #dae2eb;border-radius:16px;box-shadow:0 6px 20px rgba(16,37,58,.035)}
 .nav{padding:22px;position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto}
@@ -95,6 +102,8 @@ De browser leest uitsluitend bestanden die je zelf selecteert voor een lokale
 SHA-256-vergelijking. Er wordt niets geüpload of automatisch uitgevoerd.
 Nieuwe privébestanden worden alleen door de native Python-tools gemaakt na
 jouw expliciete opdracht. Een checksum bewijst geen afzender, toestemming of herstel.</div>
+<details class="extra-tools">
+<summary>Andere offline hulpmiddelen <span>Overdracht, pakketten en SHA-256 vergelijken</span></summary>
 <section class="journey" aria-label="Gids voor echte PRIVATE bronvrije overdracht">
 <h2>Drie stappen, van pakket tot beoordeling</h2>
 <p>Drie onafhankelijke lokale HUMAN-stappen. De pakketoverdracht tussen machines
@@ -169,6 +178,7 @@ een vroege lokale bytesvergelijking. Voer daarna de native
 ZIP-structuur-, bron- en autorisatiegrenzen. Geen installatie, upload,
 browseropslag, toestemming of automatische actie.</small>
 </section>
+</details>
 <div class="layout">
 <aside class="nav"><h2>Werkstappen</h2>
 <p>Kies een opdracht. Alles blijft in browsergeheugen; er is geen netwerk,
@@ -235,7 +245,10 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     "owner-encrypted-receipt", "archives", "continue-review",
     "fingerprint-compare", "inspect-archive", "receive-software"
   ]);
-  let chosen = specs.find(s => s.name === "owner-encrypted-receipt") || specs[0];
+  // Start with the least invasive read-only software admission, not an
+  // owner-encrypted handoff that requires sensitive artifacts and a password.
+  // All advanced HUMAN workflows remain accessible through navigation.
+  let chosen = specs.find(s => s.name === "inspect-archive") || specs[0];
   let inputElements = new Map();
   let showAll = false;
   const more = document.createElement("button");
