@@ -387,8 +387,8 @@ def open_private_dir_fd(path: Path) -> int:
 
 
 
-def create_private_stage(parent: Path, prefix: str) -> Path:
-    """Create a fresh 0700 stage relative to a pinned private parent fd.
+def create_private_stage(parent: Path, prefix: str) -> tuple[Path, tuple[int, int]]:
+    """Create a fresh 0700 stage and keep its original device/inode identity.
 
     The pathname is only reused by existing nofollow file admission after
     creation. This does not grant authority or defeat same-user modification
@@ -413,7 +413,8 @@ def create_private_stage(parent: Path, prefix: str) -> Path:
         finally:
             os.close(child_fd)
         os.fsync(parent_fd)
-        return stage
+        # Name and 0700 mode alone cannot identify the directory later.
+        return stage, (state.st_dev, state.st_ino)
     except BaseException:
         # A caller's finally only starts after this factory returns. If
         # fstat/open/fsync fails after mkdir, remove ONLY the fresh, EMPTY
@@ -470,11 +471,12 @@ def ensure_private_subdirs(root: Path, member: str) -> None:
         os.close(fd)
 
 
-def cleanup_private_stage(stage: Path) -> None:
-    """Remove only a genuine private LightUp staging tree, never a caller path.
+def cleanup_private_stage(stage: Path, identity: tuple[int, int]) -> None:
+    """Clean only the original stage inode, never a same-owner replacement.
 
-    Reject arbitrary names and changed/non-private stage inodes before any
-    recursive deletion. The anchored rmtree itself never follows symlinks.
+    A second private 0700 directory under the valid random staging name is
+    NOT our original directory. Anchored rmtree never follows symlinks.
+    A malicious process controlling the same Unix user remains out of scope.
     """
     prefixes = (".lightup-suite-", ".lightup-integrity-", ".lightup-receiver-")
     require(stage.is_absolute() and
@@ -483,6 +485,9 @@ def cleanup_private_stage(stage: Path) -> None:
                 all(ch in "0123456789abcdef" for ch in stage.name[len(prefix):])
                 for prefix in prefixes),
             "Refusing to clean an unknown private staging path")
+    require(type(identity) is tuple and len(identity) == 2
+            and all(type(value) is int and value >= 0 for value in identity),
+            "Original private stage identity required for cleanup")
     parent_fd = open_private_dir_fd(stage.parent)
     try:
         try:
@@ -492,7 +497,8 @@ def cleanup_private_stage(stage: Path) -> None:
             return  # Already published with exclusive no-replace rename.
         require(stat.S_ISDIR(original.st_mode) and
                 original.st_uid == os.getuid() and
-                stat.S_IMODE(original.st_mode) == 0o700,
+                stat.S_IMODE(original.st_mode) == 0o700 and
+                (original.st_dev, original.st_ino) == identity,
                 "Refusing to clean a replaced or unsafe private stage")
         # shutil.rmtree uses fd-relative nofollow traversal on this Linux
         # host; no mutable absolute parent is used during removal.
@@ -600,7 +606,7 @@ def build(dest: Path) -> None:
     owner_dir(dest.parent)
     require(dest != ROOT and ROOT not in dest.parents and dest not in ROOT.parents,
             "Output must be separate from the original source checkout")
-    stage = create_private_stage(dest.parent, ".lightup-suite-")
+    stage, stage_identity = create_private_stage(dest.parent, ".lightup-suite-")
     try:
         written = {}
         entries = {}
@@ -695,7 +701,7 @@ def build(dest: Path) -> None:
         print("Software-only archive:", dest / "software-only.zip")
         print("REVIEW_ONLY / NO AUTHORITY; original release gates remain held.")
     finally:
-        cleanup_private_stage(stage)
+        cleanup_private_stage(stage, stage_identity)
 
 def passport_material(receipt: dict, verified: dict[str, bytes],
                       checkout_compared: bool) -> tuple[bytes, bytes]:
@@ -757,7 +763,7 @@ def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
             and output not in ROOT.parents,
             "Integrity report must remain outside source checkout and installed suite")
     report_json, report_html = passport_material(receipt, verified, checkout_compared)
-    stage = create_private_stage(output.parent, ".lightup-integrity-")
+    stage, stage_identity = create_private_stage(output.parent, ".lightup-integrity-")
     try:
         write_file(stage / "REVIEW_ONLY.json", report_json)
         write_file(stage / "REVIEW_ONLY.html", report_html)
@@ -765,7 +771,7 @@ def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
                 "Private report destination appeared during publication")
         exclusive_publish(stage, output)
     finally:
-        cleanup_private_stage(stage)
+        cleanup_private_stage(stage, stage_identity)
     print("PRIVATE reproducibility passport:", output)
     print("Unsigned digests do not establish authenticity, consent or release.")
 
