@@ -2,6 +2,8 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** [Assessment-runtime issue #1593](https://github.com/Zennay/Lightup/issues/1593). This is a local-only human scenario authoring workflow, **not** a scanner, run launcher, consent issuer, authorization-grant validator, target discovery system, retest engine or deployment feature.
 
+Current standalone artifact: **61,024 bytes**, SHA-256 `a1807fdc1ce573c8db2e9d161816acd4bb2c6dfb835fcf6916a4c8cb323acb70`. Its embedded app, CSS and fixture pack are pinned by matching SHA-256 CSP hashes; network access remains denied.
+
 ## Delivered product
 
 **Open `lab-design/standalone.html` in a browser** (download from the PR branch) to compose your own original isolated lab exercises. No installation, server, network, browser storage, credentials, HTTP clients, DNS, worker, action-time consent or scanner is required. A locally authored catalogue is handled in memory until you explicitly download a PRIVATE JSON file or close/Forget.
