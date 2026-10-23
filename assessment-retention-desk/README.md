@@ -133,7 +133,7 @@ python3 assessment-retention-desk/vault_drift.py \
 Native AES-GCM support is an **optional, separate dependency** declared in `assessment-retention-desk/requirements-native.txt`; no changes to the original LightUp production dependency graph or CI. The portable browser workroom has no Python dependency. Install a trusted packaged version of `cryptography` deliberately in a private/offline environment before using native vault history/drift.
 ## Opt-in private tentative review calendar
 
-The browser can export an all-day `.ics` calendar grouped by operator-entered HUMAN review date and count. It contains **no aliases, original SHA, source path, notes, targets, evidence or HUMAN actions**. Every event is PRIVATE, TENTATIVE and nonblocking; calendar applications may still sync imported calendars to the cloud. Review-date/count combinations can identify small groups; export requires separate explicit privacy confirmation. No calendar API, automatic import, recipient dispatch or authorization is performed.
+The browser can export an all-day `.ics` calendar grouped by operator-entered HUMAN review date and count. It contains **no aliases, original SHA, source path, notes, targets, evidence or HUMAN actions**. Every event is PRIVATE, TENTATIVE and nonblocking; calendar applications may still sync imported calendars to the cloud. Review-date/count combinations can identify small groups; export requires separate explicit privacy confirmation. No calendar API, automatic import, recipient dispatch or authorization is performed. A separate **visible rows only** calendar export applies the current table filters first and includes only dates/counts represented by those visible rows; it never exports aliases, source identities, filenames, hashes or notes.
 
 ## Boundaries and tradeoffs
 
@@ -152,6 +152,8 @@ The browser can export an all-day `.ics` calendar grouped by operator-entered HU
 `index.html`, `desk.css`, `desk.js`, `vault.js` are the complete browser UI. Portable as a four-file local folder; all resources are local and fetched from that same folder. There are no external dependencies.
 
 ## Self-contained one-file private workroom
+
+Current standalone artifact: **69,157 bytes**, SHA-256 `da436e0bff28c01174b9eae7126ecf9da064950ae12b396fa33e0b22a571c2c0`. Exact desk.js, vault.js and CSS bytes are pinned by the standalone CSP.
 
 Create a new, private 0600 browser artifact with separate CSP SHA-256 hashes pinned to BOTH local production JavaScript modules and to the style sheet:
 
