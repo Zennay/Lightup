@@ -59,6 +59,39 @@ def admit_archive(archive: Path,
     return raw, lock_bytes, lock, files
 
 
+
+def fingerprint_archive(archive: Path, output_file: Path) -> None:
+    """Publish a PRIVATE 0600 65-byte software checksum, not a sender proof.
+
+    Reuse the original full software admission rather than hashing arbitrary
+    bytes and giving them the appearance of a locally verified distribution.
+    The operator alone controls whether and how this receipt is disclosed.
+    """
+    raw, _, _, _ = admit_archive(archive)
+    suite.require(output_file.is_absolute() and
+                  output_file.parent == output_file.parent.resolve(strict=True)
+                  and not output_file.exists() and not output_file.is_symlink()
+                  and output_file != archive
+                  and output_file.parent != archive.parent
+                  and output_file != suite.ROOT
+                  and suite.ROOT not in output_file.parents,
+                  "Choose a fresh separate private checksum file outside software and source")
+    suite.owner_dir(output_file.parent)
+    payload = (suite.digest(raw) + "\n").encode("ascii")
+    stage = output_file.parent / (".lightup-software-hash-" + secrets.token_hex(12))
+    try:
+        suite.write_file(stage, payload)
+        suite.require(suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL) == raw,
+                      "Software ZIP changed before private checksum publication")
+        suite.exclusive_publish(stage, output_file)
+    finally:
+        if stage.exists() or stage.is_symlink():
+            stage.unlink()
+    print("REVIEW_ONLY: original software fingerprint saved to PRIVATE file:", output_file)
+    print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
+    print("Output is not producer identity, release approval, or permission to disclose.")
+
+
 def inspect_archive(archive: Path, expected_sha256_file: Path | None = None) -> None:
     """Operator's side-effect-free pre-admission for an original private ZIP."""
     raw, _, lock, files = admit_archive(archive, expected_sha256_file)
