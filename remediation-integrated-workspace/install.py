@@ -19,6 +19,7 @@ import stat
 import struct
 import sys
 import zipfile
+import zlib
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCK = ROOT / "remediation-integrated-workspace" / "source-lock.json"
@@ -213,48 +214,54 @@ def unpack_native_archive(raw: bytes, expected_names: set[str]) -> dict[str, byt
     """
     import io
     require(0 < len(raw) <= MAX_TOTAL, "Software ZIP exceeds bound")
-    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-        require_native_archive(archive, expected_names)
-        members = archive.infolist()
-        require(len(raw) >= 22 and len(members) < 0xffff,
-                "Noncanonical ZIP directory size")
-        local_pos = 0
-        for member in members:
-            name = member.filename.encode("ascii")
-            require(member.header_offset == local_pos and
-                    len(raw) - local_pos >= 30, "Unexpected ZIP local header offset")
-            local = struct.unpack_from("<I5H3I2H", raw, local_pos)
-            # signature, reader version, flags, method, DOS time/date,
-            # CRC, deflated/raw sizes, raw filename length and extra length
-            require(local == (0x04034b50, 20, 0, 8, 0, 20513,
-                              member.CRC, member.compress_size,
-                              member.file_size, len(name), 0),
-                    "Noncanonical ZIP local header")
-            require(raw[local_pos + 30:local_pos + 30 + len(name)] == name,
-                    "Changed local ZIP filename")
-            local_pos += 30 + len(name) + member.compress_size
-            require(local_pos <= len(raw), "Truncated ZIP member data")
-        require(local_pos == archive.start_dir,
-                "Unexpected ZIP prefix, local records or padding")
-        central_pos = local_pos
-        for member in members:
-            name = member.filename.encode("ascii")
-            require(len(raw) - central_pos >= 46, "Truncated ZIP central header")
-            central = struct.unpack_from("<I6H3I5H2I", raw, central_pos)
-            require(central == (0x02014b50, 0x0314, 20, 0, 8, 0, 20513,
-                                member.CRC, member.compress_size,
-                                member.file_size, len(name), 0, 0, 0, 0,
-                                0o100600 << 16, member.header_offset),
-                    "Noncanonical ZIP central header")
-            require(raw[central_pos + 46:central_pos + 46 + len(name)] == name,
-                    "Changed central ZIP filename")
-            central_pos += 46 + len(name)
-        require(len(raw) - central_pos == 22 and
-                struct.unpack_from("<I4H2IH", raw, central_pos) ==
-                (0x06054b50, 0, 0, len(members), len(members),
-                 central_pos - archive.start_dir, archive.start_dir, 0),
-                "ZIP end record, trailing bytes, or directory boundary changed")
-        return {member.filename: archive.read(member) for member in members}
+    # Malformed incoming DEFLATE streams must produce the same native HOLD
+    # contract as damaged ZIP headers or incorrect source digests, never an
+    # uncaught lower-level stacktrace on an authorized operator terminal.
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            require_native_archive(archive, expected_names)
+            members = archive.infolist()
+            require(len(raw) >= 22 and len(members) < 0xffff,
+                    "Noncanonical ZIP directory size")
+            local_pos = 0
+            for member in members:
+                name = member.filename.encode("ascii")
+                require(member.header_offset == local_pos and
+                        len(raw) - local_pos >= 30, "Unexpected ZIP local header offset")
+                local = struct.unpack_from("<I5H3I2H", raw, local_pos)
+                # signature, reader version, flags, method, DOS time/date,
+                # CRC, deflated/raw sizes, raw filename length and extra length
+                require(local == (0x04034b50, 20, 0, 8, 0, 20513,
+                                  member.CRC, member.compress_size,
+                                  member.file_size, len(name), 0),
+                        "Noncanonical ZIP local header")
+                require(raw[local_pos + 30:local_pos + 30 + len(name)] == name,
+                        "Changed local ZIP filename")
+                local_pos += 30 + len(name) + member.compress_size
+                require(local_pos <= len(raw), "Truncated ZIP member data")
+            require(local_pos == archive.start_dir,
+                    "Unexpected ZIP prefix, local records or padding")
+            central_pos = local_pos
+            for member in members:
+                name = member.filename.encode("ascii")
+                require(len(raw) - central_pos >= 46, "Truncated ZIP central header")
+                central = struct.unpack_from("<I6H3I5H2I", raw, central_pos)
+                require(central == (0x02014b50, 0x0314, 20, 0, 8, 0, 20513,
+                                    member.CRC, member.compress_size,
+                                    member.file_size, len(name), 0, 0, 0, 0,
+                                    0o100600 << 16, member.header_offset),
+                        "Noncanonical ZIP central header")
+                require(raw[central_pos + 46:central_pos + 46 + len(name)] == name,
+                        "Changed central ZIP filename")
+                central_pos += 46 + len(name)
+            require(len(raw) - central_pos == 22 and
+                    struct.unpack_from("<I4H2IH", raw, central_pos) ==
+                    (0x06054b50, 0, 0, len(members), len(members),
+                     central_pos - archive.start_dir, archive.start_dir, 0),
+                    "ZIP end record, trailing bytes, or directory boundary changed")
+            return {member.filename: archive.read(member) for member in members}
+    except (zipfile.BadZipFile, zlib.error, struct.error, EOFError) as exc:
+        raise Hold("Corrupt or incomplete native software ZIP") from exc
 
 
 def catalog() -> tuple[bytes, dict]:
