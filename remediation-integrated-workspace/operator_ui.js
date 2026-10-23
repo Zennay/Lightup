@@ -114,6 +114,13 @@
           throw Error("Het nieuwe checksum-bestand mag niet dezelfde naam hebben als de ontvangen originele checksum.");
         }
       }
+      if (chosen.name === "inspect-archive") {
+        const recipient = vals("--planned-output-dir")[0];
+        const checksum = vals("--planned-checksum-file")[0];
+        if (recipient && checksum && clean(recipient) === clean(checksum)) {
+          throw Error("Geplande softwareontvangst en checksum moeten verschillende nieuwe paden gebruiken.");
+        }
+      }
     }
     if (chosen.name === "recipient" && vals("--cockpit").length > 12) {
       throw Error("Maximaal 12 echte source-free Cockpits.");
