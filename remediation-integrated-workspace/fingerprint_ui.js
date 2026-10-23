@@ -21,6 +21,11 @@
 
   function forget() {
     generation++;
+    // A cleared or replaced selection must be immediately usable, even
+    // while an earlier File.arrayBuffer/WebCrypto promise is still pending.
+    // That old generation may finish later but cannot touch the new UI.
+    busy = false;
+    analyze.disabled = false;
     inventory = [];
     output.replaceChildren();
     comparison.textContent = "";
@@ -168,9 +173,13 @@
         message("HOLD: lokaal lezen of SHA-256 mislukt. Geen gedeeltelijke resultaten behouden.");
       }
     } finally {
-      busy = false;
-      analyze.disabled = false;
-      if (requestGeneration === generation) picker.value = "";
+      // A stale read must NEVER unlock a newer still-running comparison.
+      // Clearing or selecting a new file already unlocked its own generation.
+      if (requestGeneration === generation) {
+        busy = false;
+        analyze.disabled = false;
+        picker.value = "";
+      }
     }
   });
   clear.addEventListener("click", () => {
