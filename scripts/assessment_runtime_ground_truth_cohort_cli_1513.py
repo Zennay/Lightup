@@ -1,12 +1,14 @@
 """Offline scored lab cohort review: 2 REVIEW_ONLY / 3 HOLD, NEVER a grant.
 
-Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text] old.json new.json
+Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html] old.json new.json
 Only two explicitly supplied local files are read, never a network endpoint.
 """
 from __future__ import annotations
 
 import json
 import sys
+
+from assessment_runtime_report_html_1513 import render_comparison_html
 
 from assessment_runtime_compare_cli_1513 import _parse_case_document, _read_json
 from assessment_runtime_compare_cohort_cli_1513 import _display, COHORT_BYTES
@@ -106,7 +108,7 @@ def main(argv=None):
         if item == "--format":
             if (
                 format_seen or index + 1 >= len(args)
-                or args[index + 1] not in ("json", "text")
+                or args[index + 1] not in ("json", "text", "html")
             ):
                 malformed = True
                 index += 2 if index + 1 < len(args) else 1
@@ -134,6 +136,8 @@ def main(argv=None):
             pass
     if output_format == "text":
         print(_display_text(review))
+    elif output_format == "html":
+        print(render_comparison_html(review, cohort=True, scored=True), end="")
     else:
         print(json.dumps(_display(review), sort_keys=True, separators=(',', ':')))
     return 2 if review.status == 'REVIEW_ONLY' else 3
