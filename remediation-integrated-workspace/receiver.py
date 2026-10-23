@@ -72,7 +72,7 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
                   output_file.parent == output_file.parent.resolve(strict=True)
                   and not output_file.exists() and not output_file.is_symlink()
                   and output_file != archive
-                  and output_file.parent != archive.parent
+                  and archive.parent not in output_file.parents
                   and output_file != suite.ROOT
                   and suite.ROOT not in output_file.parents,
                   "Choose a fresh separate private checksum file outside software and source")
