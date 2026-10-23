@@ -14,8 +14,22 @@
   const copy = document.getElementById("copy");
   const reset = document.getElementById("reset");
   const message = document.getElementById("message");
-  let chosen = specs.find(s => s.name === "owner-encrypted") || specs[0];
+  const primaryNames = new Set([
+    "owner-encrypted-receipt", "archives", "continue-review",
+    "fingerprint-compare", "inspect-archive", "receive-software"
+  ]);
+  let chosen = specs.find(s => s.name === "owner-encrypted-receipt") || specs[0];
   let inputElements = new Map();
+  let showAll = false;
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = "more-workflows";
+  more.setAttribute("aria-controls", "actions");
+  actions.after(more);
+  more.addEventListener("click", () => {
+    showAll = !showAll;
+    renderNav();
+  });
 
   function node(tag, className, text) {
     const element = document.createElement(tag);
@@ -189,12 +203,17 @@
     actions.replaceChildren();
     const term = search.value.toLocaleLowerCase("nl");
     const group = category.value;
+    const full = showAll || group !== "Alles" || term.length > 0;
     const hits = specs.filter(spec =>
+      (full || primaryNames.has(spec.name)) &&
       (group === "Alles" || spec.category === group) &&
-      [spec.name, spec.purpose, spec.category, ...spec.fields.map(f => f.label)]
+      [spec.label, spec.name, spec.purpose, spec.category, ...spec.fields.map(f => f.label)]
         .join(" ").toLocaleLowerCase("nl").includes(term));
+    more.hidden = term.length > 0 || group !== "Alles" || specs.length <= primaryNames.size;
+    more.setAttribute("aria-expanded", String(showAll));
+    more.textContent = showAll ? "Toon alleen de belangrijkste acties" : "Bekijk alle 27 acties";
     for (const item of hits) {
-      const button = node("button", "action", item.name.replaceAll("-", " "));
+      const button = node("button", "action", item.label);
       button.type = "button";
       button.dataset.selected = String(item.name === chosen.name);
       button.setAttribute("aria-pressed", String(item.name === chosen.name));
@@ -209,7 +228,7 @@
   function select(name) {
     chosen = byName.get(name);
     inputElements = new Map();
-    title.textContent = chosen.name.replaceAll("-", " ");
+    title.textContent = chosen.label;
     purpose.textContent = chosen.purpose;
     fields.replaceChildren();
     for (const field of chosen.fields) {
