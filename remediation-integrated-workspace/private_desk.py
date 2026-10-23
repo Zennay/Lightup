@@ -122,11 +122,13 @@ OPERATIONS = {
     ), "Copies original pinned software only; NEVER client data."),
     "inspect-archive": ("install.py", ("inspect-archive",), (
         ("--archive", "Existing PRIVATE owner-only source-only ZIP", False, True),
-    ), "Check original complete software ZIP offline without extracting or writing."),
+        ("--expected-sha256-file", "Optional SEPARATELY obtained PRIVATE 0600 exact ZIP SHA-256 fingerprint file", False, False),
+    ), "No-write original ZIP check; optional separately supplied exact-byte SHA-256 parity."),
     "receive-software": ("install.py", ("receive",), (
         ("--archive", "Original software-only ZIP", False, True),
         ("--output-dir", "NEW owner-private software installation", False, True),
-    ), "Original-byte admission without producer identity claim."),
+        ("--expected-sha256-file", "Optional SEPARATELY obtained PRIVATE 0600 exact ZIP SHA-256 fingerprint file", False, False),
+    ), "Pinned source admission plus optional separately supplied transfer hash, no identity claim."),
     "inspect-software": ("install.py", ("inspect",), (
         ("--workspace", "Existing private software-only suite", False, True),
     ), "Local consistency inspection only; not CI/release approval."),
