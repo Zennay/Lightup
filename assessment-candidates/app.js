@@ -153,6 +153,19 @@
       assert(finite(total[n].baseline)&&finite(total[n].candidate));
     }
     const count=r.cases.size;
+    const unknownValues=[...r.cases.values()]
+      .map(c=>c.metrics.coverage_unknown.candidate).sort((a,b)=>a-b);
+    const middle=Math.floor(unknownValues.length/2);
+    const median=unknownValues.length%2?unknownValues[middle]:
+      (unknownValues[middle-1]+unknownValues[middle])/2;
+    const nearestRank=p=>unknownValues[Math.max(0,Math.ceil(p*unknownValues.length)-1)];
+    const q1=nearestRank(0.25),q3=nearestRank(0.75);
+    const unknownDistribution={
+      observed:unknownValues.length,
+      casesAboveZero:unknownValues.filter(v=>v>0).length,
+      total:unknownValues.reduce((sum,v)=>sum+v,0),
+      median,q1,q3,iqr:q3-q1,min:unknownValues[0],max:unknownValues[unknownValues.length-1]
+    };
     return {total,count,
       affected:[...r.cases.values()].filter(c=>c.regressions.length).length,
       regressionEvents:[...r.cases.values()].reduce((s,c)=>s+c.regressions.length,0),
@@ -160,6 +173,7 @@
       policy:total.policy_violations.candidate,
       coverage:total.coverage_assessed.candidate,
       unknownCoverage:total.coverage_unknown.candidate,
+      unknownDistribution,
       quality:total.evidence_quality.candidate/count,
       runtime:total.runtime_seconds.candidate,
       cost:total.compute_cost_usd.candidate};
@@ -618,8 +632,12 @@
       '<p class="big">'+s.regressionEvents+' <small>metric regressions</small></p>'+
       "<p>Scope / policy: <strong>"+format(s.scope)+" / "+format(s.policy)+"</strong></p>"+
       "<p>Mean evidence quality: "+format(s.quality)+"</p>"+
+      "<p>Unknown coverage: "+s.unknownDistribution.casesAboveZero+"/"+s.unknownDistribution.observed+
+        " cases above zero · median "+format(s.unknownDistribution.median)+
+        " · IQR "+format(s.unknownDistribution.iqr)+" · range "+
+        format(s.unknownDistribution.min)+"–"+format(s.unknownDistribution.max)+"</p>"+
       "<p>Runtime: "+format(s.runtime)+" sec · Cost: $"+format(s.cost)+"</p>"+
-      "<p class='footnote'>No safety approval; separate human review required.</p></article>").join("");
+      "<p class='footnote'>Unknown-coverage values are source-reported; no safety approval. Separate human review required.</p></article>").join("");
     renderSourceManifest();
     renderMetricBoard(stats);
     renderScenarioConflictExplorer();
@@ -940,6 +958,15 @@
       scope_flags:stats[i].scope,policy_flags:stats[i].policy,
       metrics:Object.fromEntries(NAMES.map(n=>[n,{baseline_total:stats[i].total[n].baseline,
         candidate_total:stats[i].total[n].candidate,regressed_case_count:stats[i].total[n].adverse}])),
+      unknown_coverage_distribution:{
+        observed:stats[i].unknownDistribution.observed,
+        cases_above_zero:stats[i].unknownDistribution.casesAboveZero,
+        total:stats[i].unknownDistribution.total,
+        median:stats[i].unknownDistribution.median,
+        q1:stats[i].unknownDistribution.q1,q3:stats[i].unknownDistribution.q3,
+        iqr:stats[i].unknownDistribution.iqr,min:stats[i].unknownDistribution.min,
+        max:stats[i].unknownDistribution.max
+      },
       // This review summary cannot carry release authority or authenticated consent.
       ...fixedFlags()
     }));
@@ -1000,7 +1027,7 @@
   }
   function exportJSON(){
     if(!reports.length||!settings)return;
-    const out={schema:"lightup.lab_candidate_matrix_review.v7",
+    const out={schema:"lightup.lab_candidate_matrix_review.v8",
       posture:"INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
       status:"REVIEW_ONLY",source_identity_authenticated:false,
       temporal_order_authenticated:false,fictional_demo_only:demo,
@@ -1049,6 +1076,9 @@
       "threshold_max_compute_cost_usd","threshold_discussion_reasons",
       "scope_flags","policy_flags","fictional_demo_only","report_status",
       "private_discussions_documented","private_discussions_in_progress",
+      "unknown_coverage_observed_values","unknown_coverage_cases_above_zero",
+      "unknown_coverage_total","unknown_coverage_median","unknown_coverage_q1",
+      "unknown_coverage_q3","unknown_coverage_iqr","unknown_coverage_min","unknown_coverage_max",
       ...NAMES.map(n=>n+"_total"),"pareto_position","dominated_by_candidate_slots","pareto_dimensions",
       "authorized","consent_verified","dispatch_allowed","release_allowed"];
     const rows=metricRows().map(r=>[r.candidate_slot,r.source_status,r.regressed_cases,
@@ -1057,7 +1087,12 @@
       settings.maxRuntime,settings.maxCost,r.threshold_discussion_reasons.join("; "),
       r.scope_flags,r.policy_flags,
       demo?"true":"false","REVIEW_ONLY",discussionSummary().stages.documented,
-      discussionSummary().stages.in_discussion,...NAMES.map(n=>r.metrics[n].candidate_total),
+      discussionSummary().stages.in_discussion,r.unknown_coverage_distribution.observed,
+      r.unknown_coverage_distribution.cases_above_zero,r.unknown_coverage_distribution.total,
+      r.unknown_coverage_distribution.median,r.unknown_coverage_distribution.q1,
+      r.unknown_coverage_distribution.q3,r.unknown_coverage_distribution.iqr,
+      r.unknown_coverage_distribution.min,r.unknown_coverage_distribution.max,
+      ...NAMES.map(n=>r.metrics[n].candidate_total),
       paretoBySlot.get(r.candidate_slot)?.position||"NOT_COMPUTED",
       (paretoBySlot.get(r.candidate_slot)?.dominated_by_candidate_slots||[]).join("|"),
       pareto.selected_dimensions.join("|"),"false","false","false","false"]);
@@ -1144,6 +1179,13 @@
       ["Maximum runtime seconds",format(settings.maxRuntime)],
       ["Maximum compute-cost USD",format(settings.maxCost)]
     ]);
+    const coverageDistributionTable=table(["Candidate","Observed values","Cases above zero",
+      "Total","Median","Q1","Q3","IQR","Minimum","Maximum"],data.map(row=>{
+        const u=row.unknown_coverage_distribution;
+        return ["Candidate "+row.candidate_slot,u.observed,u.cases_above_zero,
+          format(u.total),format(u.median),format(u.q1),format(u.q3),format(u.iqr),
+          format(u.min),format(u.max)];
+      }));
     const advisory=stats.map((a,i)=>{
       const flags=breaches(a,settings);
       return "<h2>Candidate "+(i+1)+"</h2><p>Original source status: "+reports[i].sourceStatus+
@@ -1249,7 +1291,7 @@
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
       "<h2>Active hypothetical discussion thresholds</h2>"+
       "<p>These six values are the active local prompts at export time, not policy rules, permission, verified evidence or release approval.</p>"+
-      thresholdTable+advisory+paretoTable+conflictMetricTable+conflictTable+
+      thresholdTable+advisory+"<h2>Unknown-coverage distribution by candidate</h2>"+coverageDistributionTable+"<p>Nearest-rank quartiles; source-reported candidate values only. This distribution is not authenticated coverage, a regression verdict or release approval.</p>"+paretoTable+conflictMetricTable+conflictTable+
       "<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
       agendaTable+crossoverTable+pairNumericTable+reviewHistorySection+currentDiscussionSection+
       "<h2>Unverified original metric totals</h2>"+metricTable+
