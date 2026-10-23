@@ -1105,3 +1105,8 @@ PRIVATE desks remain read-only reopenable using their original exact output
 algorithm; they did not include a print agenda. This local print page can
 still carry PRIVATE operational metadata: do not send or publish without an
 independent HUMAN privacy review, current separate consent and release GO.
+
+
+### Conservative handling of ambiguous encoded field names
+
+Malformed percent escapes, invalid-UTF-8 URL keys, and query/form field names that remain percent-encoded after the bounded decode budget now have their associated values withheld. Original key text and delimiters remain intact; values are never decoded. Benign fields can be overmasked deliberately, so a placeholder is not a credential classification or clearance claim. Derived notes remain PRIVATE/HOLD.
