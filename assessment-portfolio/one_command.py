@@ -6,6 +6,7 @@ No evaluation, model, lab runner, tool dispatch, target access, grants or client
 from __future__ import annotations
 import argparse
 from hashlib import sha256
+from hmac import compare_digest
 from io import BytesIO
 from zipfile import ZipFile, ZipInfo, ZIP_STORED
 import sys
@@ -126,7 +127,10 @@ def main(argv=None):
     p.add_argument("--original-choices",required=True,action="append",
                    help="Matching ORIGINAL private human choices, same order")
     p.add_argument("--as-of",required=True,help="Explicit original shared human planning YYYY-MM-DD")
-    p.add_argument("--output",required=True,help="NEW owner-private complete workbench ZIP, never overwrite")
+    mode=p.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--output",help="NEW owner-private complete workbench ZIP, never overwrite")
+    mode.add_argument("--reopen-workspace",
+                      help="READ-ONLY exact-byte reopen of an existing PRIVATE original ZIP; no output")
     a=p.parse_args(argv)
     try:
         blob,status,count=build(a.original_manifest,a.original_choices,a.as_of)
@@ -141,8 +145,17 @@ def main(argv=None):
                 or any(mapping.get(flag) is not False for flag in FLAGS)):
             raise Hold("original private source map is not canonical")
         require_original_sources(a.original_manifest,a.original_choices,mapping.get("sources"))
-        publish(a.output,blob)
-        print(f"ORIGINAL_OFFLINE_HUMAN_WORKSPACE_CREATED agendas={count} — NO GO")
+        if a.reopen_workspace is not None:
+            # No extraction. Reconstruct expected ORIGINAL-source workspace from
+            # the separately re-presented ORIGINAL sources, then compare its
+            # complete bytes against the selected owner-private old packet.
+            prior=read_regular(a.reopen_workspace,MAX_WORKSPACE_BYTES)
+            if not compare_digest(prior,blob):
+                raise Hold("private workspace differs from admitted original sources")
+            print(f"ORIGINAL_OFFLINE_HUMAN_WORKSPACE_REOPENED agendas={count} — NO GO")
+        else:
+            publish(a.output,blob)
+            print(f"ORIGINAL_OFFLINE_HUMAN_WORKSPACE_CREATED agendas={count} — NO GO")
         return 3 if status=="HOLD" else 2
     except (Hold,OSError,ValueError,TypeError,KeyError,UnicodeError,
             RecursionError,OverflowError):

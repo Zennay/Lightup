@@ -43,3 +43,17 @@ The newly generated private ZIP also includes `workspace-home.html` for local na
 ## Source-change HOLD before publication
 
 The native one-command original importer now reads the exact original manifest and HUMAN choices a second time **after rendering the full private ZIP** and again immediately before its exclusive owner-private publication. It verifies that every re-opened original SHA-256 equals the original admitted source/choices pair in the ZIP's exact slot-ordered private source map; a changed file yields HOLD and no new published output. The SHA is only local byte correlation, not source authenticity, client consent or permission. This does not turn the result into a trusted security finding or a released assessment.
+
+## Complete read-only ORIGINAL workspace reopen
+
+The same original `one_command.py` now accepts **`--reopen-workspace /private/existing-original-human-workspace.zip`** instead of `--output`, with the *same explicitly selected ordered original manifests, choices and reference day*. No new file or state is written. It re-admits the original source and choices through the unchanged source validators, regenerates every native agenda and complete offline workspace from the current pinned code, then compares the **entire** previous owner-private ZIP byte for byte. The existing file is admitted through the original owner-only regular-file reader, with a 32 MiB bound; a changed source file, ZIP byte, software artifact, ordering, date or source choice yields an opaque HOLD (exit 3), never a favorable verdict. The exact software/source version that produced the previous ZIP must still be available for byte-identical reopen.
+
+```sh
+python3 assessment-portfolio/one_command.py \
+  --original-manifest /private/ORIGINAL-archive-A.json \
+  --original-choices /private/ORIGINAL-choices-A.json \
+  --as-of 2026-10-18 \
+  --reopen-workspace /private/existing-original-human-workspace.zip
+```
+
+On an exact private byte match the exit is still **2 REVIEW_ONLY** (or 3 when the original claimed source status is HOLD), with a counts-only message. This is a private unsigned software/source consistency check. It does **not** establish source owner, recipient identity, independent client/operator consent, original finding validity, release authorization, or permission to scan.
