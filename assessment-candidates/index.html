@@ -10,7 +10,7 @@
 <a href="#sources">Sources</a><a href="#summary">Candidates</a>
 <a href="#metrics">Metric comparison</a><a href="#thresholdPanel">Discussion rules</a>
 <a href="#frontierPanel">Tradeoffs</a><a href="#casePanel">Case metrics</a><a href="#conflictsPanel">Scenario conflicts</a>
-<a href="#casework">Human queue</a><a href="#roundsPanel">Review rounds</a><a href="#agendaPanel">Discussion agenda</a><a href="#exportsPanel">Private handoffs</a>
+<a href="#unknownPanel">Unknown coverage</a><a href="#casework">Human queue</a><a href="#roundsPanel">Review rounds</a><a href="#agendaPanel">Discussion agenda</a><a href="#exportsPanel">Private handoffs</a>
 </nav>
 <section class="panel"><div class="section-head"><h2 id="sources">01 / Local sources</h2><span class="eyebrow">No network · no persistence</span></div>
 <p>Choose 2–12 canonical existing <code>assessment-runtime #1515</code> cohort JSON exports (max 256 KiB each). Sources are validated together before replacing the current view. You can append a new candidate or replace one slot with another finished compatible report without reimporting all sources. Replacing a candidate resets source-bound HUMAN review proposals. Filenames, lab IDs, targets and raw content remain in memory.</p>
@@ -63,6 +63,15 @@
 <h3>Case-by-case explanations</h3><div id="conflictTable" class="tablewrap"></div>
 <div class="controls"><button id="exportConflictsCSV" type="button" class="ghost" disabled>Export scenario conflict ledger (CSV)</button></div>
 <p class="footnote">Exports use anonymous case ordinals and fixed metric names only; they omit source case IDs, filenames, aliases and hashes. A missing disagreement or adverse label is not proof of a fix. Candidate slots follow manual file-selection order, not verified chronology. All authority flags remain false.</p></section>
+<section class="panel" id="unknownPanel"><div class="section-head"><h2>06b / Unknown-coverage review</h2><span class="eyebrow">Source uncertainty · HUMAN ONLY</span></div>
+<p>Inspect original, unverified per-case unknown coverage across the same imported lab candidates. Identical totals may hide concentrated gaps. Zero unknown coverage is not safety evidence or remediation proof; candidate slots do not establish time ordering.</p>
+<div class="settings"><label>Candidate focus<select id="unknownCandidate"><option value="all">All candidates</option></select></label>
+<label>Show cases<select id="unknownMode"><option value="any">Any positive unknown coverage</option><option value="spread">Different values across candidates</option><option value="mixed">Zero in some, positive in others</option><option value="all">All anonymous cases</option></select></label></div>
+<p id="unknownSummary" class="eyebrow" role="status" aria-live="polite">Import compatible original lab sources.</p><div id="unknownTable" class="tablewrap"></div>
+<div class="controls"><label>Anonymous case<select id="unknownCase"><option value="">Import first</option></select></label>
+<button type="button" id="unknownInspect" class="secondary" disabled>Open in existing case inspector</button>
+<button type="button" id="unknownExport" class="ghost" disabled>Export PRIVATE filtered case CSV</button></div>
+<p class="footnote">PRIVATE case-level values are more detailed than the aggregate export. Explicit confirmation is required before download. No source IDs, targets, names, filenames, aliases or authorizing flags are exported.</p></section>
 <section class="panel" id="casework"><div class="section-head"><h2>07 / Cross-candidate human review queue</h2><span class="eyebrow">Anonymous cases · local discussion only</span></div>
 <p>See which original lab cases have adverse source metrics in which candidates. The operations topic instead shows <strong>informational numerical changes</strong> (runtime, cost and operational counters), never safety regressions. Under the all-metrics view, cases with source-reported scope/policy flags appear first. Filter by metric family, candidate slot and locally chosen discussion stage. Labels are human preparation only: no named reviewer, ticket, scan, authorization or real assignment.</p>
 <div class="settings">

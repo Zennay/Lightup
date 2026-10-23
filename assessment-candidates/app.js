@@ -595,7 +595,7 @@
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
-    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","exportConflictsCSV","print"])$(id).disabled=!active;
+    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","exportConflictsCSV","unknownExport","print"])$(id).disabled=!active;
     $("appendFile").disabled=!(active&&!demo&&reports.length<12);
     const canReplace=active&&!demo&&sourceMeta.length===reports.length;
     $("replaceFile").disabled=!canReplace;
@@ -618,7 +618,7 @@
     if(!active){
       renderSourceManifest();
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
-      drawQueue();renderAgenda();
+      drawQueue();renderAgenda();renderUnknownRows();
       for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics","pairChurn","pairChurnSummary","conflictTable","conflictSummary","conflictMetricSummary"])$(id).innerHTML="";
       $("conflictCandidate").innerHTML="<option value=\"all\">Load reports first</option>";
       $("caseSelect").innerHTML='<option value="">Load reports first</option>';
@@ -641,10 +641,11 @@
     renderSourceManifest();
     renderMetricBoard(stats);
     renderScenarioConflictExplorer();
+    renderUnknownRows();
     drawQueue();renderAgenda();
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
     catch(_){$("thresholdMessage").textContent="HOLD: invalid threshold — enter a bounded numerical value. No decision output.";
-      settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","exportConflictsCSV","print"])$(id).disabled=true;
+      settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","exportPairCSV","exportConflictsCSV","unknownExport","print"])$(id).disabled=true;
       $("thresholds").textContent="HOLD — invalid local thresholds";$("frontier").textContent="HOLD — invalid local thresholds";return;}
     $("thresholds").innerHTML=table(["Candidate","Source status","Human discussion triggers","Hard safety indicators"],
       stats.map((s,i)=>["Candidate "+(i+1),reports[i].sourceStatus,
@@ -731,6 +732,105 @@
       })),
       ...fixedFlags()
     };
+  }
+  function unknownRows(){
+    if(!reports.length)return [];
+    return [...reports[0].cases.keys()].sort().map((id,index)=>{
+      const values=reports.map(r=>r.cases.get(id).metrics.coverage_unknown.candidate);
+      const min=Math.min(...values),max=Math.max(...values);
+      const flags=reports.map(r=>{
+        const m=r.cases.get(id).metrics;
+        return Number(m.scope_violations.regression)+Number(m.policy_violations.regression);
+      });
+      return {id,ordinal:index+1,values,min,max,spread:max-min,
+        positive:values.filter(v=>v>0).length,flags};
+    }).sort((a,b)=>b.max-a.max||b.spread-a.spread||a.ordinal-b.ordinal);
+  }
+  function visibleUnknownRows(){
+    const mode=$("unknownMode").value||"any",focus=$("unknownCandidate").value;
+    const index=focus==="all"?null:Number(focus);
+    return unknownRows().filter(r=>{
+      if(index!==null&&(!Number.isSafeInteger(index)||index<0||
+        index>=reports.length||r.values[index]===0))return false;
+      if(mode==="all")return true;
+      if(mode==="spread")return r.spread>0;
+      if(mode==="mixed")return r.positive>0&&r.positive<reports.length;
+      return r.positive>0;
+    });
+  }
+  function renderUnknownRows(){
+    const focus=$("unknownCandidate"),prior=focus.value;
+    if(!reports.length){
+      focus.replaceChildren();
+      const empty=document.createElement("option");
+      empty.value="all";empty.textContent="Import reports first";focus.append(empty);
+      $("unknownCase").replaceChildren();
+      $("unknownTable").textContent="";
+      $("unknownSummary").textContent="Import compatible original lab sources.";
+      $("unknownInspect").disabled=true;$("unknownExport").disabled=true;
+      return;
+    }
+    if(focus.options.length!==reports.length+1){
+      focus.replaceChildren();
+      const all=document.createElement("option");
+      all.value="all";all.textContent="All candidates";focus.append(all);
+      reports.forEach((_,i)=>{
+        const option=document.createElement("option");
+        option.value=String(i);option.textContent="Candidate "+(i+1);focus.append(option);
+      });
+      focus.value=prior==="all"||reports.some((_,i)=>String(i)===prior)?prior:"all";
+    }
+    const all=unknownRows(),rows=visibleUnknownRows();
+    $("unknownSummary").textContent=all.length+" shared anonymous cases; "+
+      all.filter(r=>r.positive>0).length+" with positive unknown coverage; "+
+      all.filter(r=>r.spread>0).length+" numerically different across candidates; "+
+      rows.length+" shown. Sorted by maximum value, not risk or chronology. REVIEW ONLY.";
+    $("unknownTable").innerHTML=rows.length?table(
+      ["Anonymous case","Maximum","Spread","Positive slots","Separate scope/policy flags",
+        ...reports.map((_,i)=>"Candidate "+(i+1)+" unknown")],
+      rows.map(r=>["Case "+String(r.ordinal).padStart(2,"0"),format(r.max),
+        format(r.spread),r.positive+"/"+reports.length,
+        r.flags.reduce((a,b)=>a+b,0),...r.values.map(format)])):
+      "<p>No cases in selected view. This is never a safety verdict.</p>";
+    const select=$("unknownCase"),priorCase=select.value;select.replaceChildren();
+    rows.forEach(r=>{
+      const item=document.createElement("option");
+      item.value=String(r.ordinal);item.textContent="Case "+String(r.ordinal).padStart(2,"0");
+      select.append(item);
+    });
+    if(rows.some(r=>String(r.ordinal)===priorCase))select.value=priorCase;
+    $("unknownInspect").disabled=!rows.length;
+    $("unknownExport").disabled=!rows.length;
+  }
+  function inspectUnknown(){
+    if(!reports.length)return;
+    const row=visibleUnknownRows().find(r=>r.ordinal===Number($("unknownCase").value));
+    if(!row)return;
+    selectedCase=row.id;
+    const ids=[...reports[0].cases.keys()].sort();
+    $("caseSelect").value=String(ids.indexOf(row.id));
+    $("metricSelect").value="coverage_unknown";
+    renderCase(row.id);
+    $("casePanel").scrollIntoView({behavior:"smooth",block:"start"});
+    $("caseSelect").focus();
+  }
+  function exportUnknownCSV(){
+    if(!reports.length||!settings)return;
+    const rows=visibleUnknownRows();if(!rows.length)return;
+    if(!window.confirm("Export "+rows.length+
+      " PRIVATE anonymous source-reported case rows? Verify recipient and local storage separately. "+
+      "No authentication, grant, remediation proof or release is conveyed."))return;
+    const head=["private_case_ordinal","candidate_count","minimum_unknown","maximum_unknown",
+      "reported_spread","positive_slots","original_scope_policy_adverse_flag_count",
+      ...reports.map((_,i)=>"candidate_"+(i+1)+"_unknown"),
+      "fictional_demo_only","source_identity_authenticated","temporal_order_authenticated",
+      "authorized","consent_verified","dispatch_allowed","release_allowed","status"];
+    const body=rows.map(r=>[r.ordinal,reports.length,r.min,r.max,r.spread,r.positive,
+      r.flags.reduce((a,b)=>a+b,0),...r.values,demo?"true":"false",
+      "false","false","false","false","false","false","REVIEW_ONLY"]);
+    download("lightup-PRIVATE-unknown-case-ledger-REVIEW-ONLY.csv",
+      [head,...body].map(row=>row.map(csvField).join(",")).join("\r\n")+"\r\n","text/csv");
+    setStatus("PRIVATE local case ledger offered. Source authenticity, consent and execution authority are unverified.");
   }
   function renderScenarioConflictExplorer(){
     if(!reports.length)return;
@@ -1836,6 +1936,9 @@
     cancelPendingFiles();render();
   });
   for(const id of ["conflictCandidate","conflictMode","conflictMetric"])$(id).addEventListener("change",renderScenarioConflictExplorer);
+  for(const id of ["unknownCandidate","unknownMode"])$(id).addEventListener("change",renderUnknownRows);
+  $("unknownInspect").addEventListener("click",inspectUnknown);
+  $("unknownExport").addEventListener("click",exportUnknownCSV);
   $("caseSelect").addEventListener("change",e=>{if(!reports.length)return;
     const ids=[...reports[0].cases.keys()].sort(),i=Number(e.target.value);
     if(Number.isSafeInteger(i)&&i>=0&&i<ids.length){selectedCase=ids[i];renderCase(selectedCase);}

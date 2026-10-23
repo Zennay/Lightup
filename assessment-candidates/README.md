@@ -1,3 +1,7 @@
+## 23 October 2026 — PRIVATE per-case unknown-coverage explorer
+
+The original offline candidate matrix now exposes the source-reported `coverage_unknown` values for each shared **anonymous case ordinal** across all 2–12 accepted candidate reports, complementing existing total and quartile figures. Reviewers filter positive values, differences, or mixed zero/positive candidate reports; select an individual candidate; open a matching case directly in the existing metric inspector; and prepare a filtered owner-handled PRIVATE CSV only after explicitly confirming local disclosure. Source-reported scope/policy adverse flags stay separate. Ordering is by observed numeric maximum, not risk or authenticated chronology. Neither zero unknown coverage nor an improved number is proof of safety, a verified finding, remediation, consent, or release. No source case identifiers, filenames, aliases, targets, source bytes or credentials are exported. No network, scanner, live grants, automatic sharing, QA tests or external dependencies added. Existing aggregate export schemas and original release gates are unchanged.
+
 # LightUp · Offline Lab Candidate Matrix
 
 ## Current product update · per-candidate unknown-coverage distribution · 23 October 2026
