@@ -257,15 +257,25 @@
                      : "Letterlijk absoluut pad. Laat originele bestanden ongewijzigd."));
       fields.append(wrapper);
     }
-    special.textContent = chosen.name === "owner-encrypted-receipt"
-      ? "Volledige oorspronkelijke PRIVATE bronhouderactie: versleutel een bronvrij .luhx pakket, schrijf afzonderlijk PRIVATE unsigned JSON-fingerprintbewijs. Niets wordt verzonden; ontvanger vergelijkt vóór decryptie met zijn werkelijk ontvangen pakket."
-      : chosen.name === "owner-encrypted"
-      ? "Voorkeursroute: origineel owner-evidence blijft lokaal, bronvrij .luhx wordt rechtstreeks in geheugen versleuteld. Wachtwoord alleen in privéterminal."
-      : chosen.name === "owner-package"
-      ? "Bronvrij .luhz blijft ONVERSLEUTELD en ONDERTEKEND: nee. Niet automatisch verzenden."
-      : chosen.name === "archives"
-      ? "De ontvangende native tool maakt alleen HUMAN-opvolging vanuit werkelijk ontvangen originele pakketten; geen verzonnen historie."
-      : "De native tool beslist na zijn eigen volledige oorspronkelijke broncontrole of de handeling REVIEW_ONLY kan worden uitgevoerd.";
+    // Show one practical instruction for the selected task, not the entire
+    // security model in every workflow. The permanent consent/HOLD warnings
+    // remain visible in the surrounding offline operator screen.
+    const guidance = {
+      "owner-encrypted-receipt": "Maak een versleuteld pakket en een los controlebestand. Niets wordt verzonden.",
+      "owner-encrypted": "Versleutel het bronvrije pakket lokaal. Het wachtwoord blijft in je privéterminal.",
+      "owner-package": "Dit pakket is niet versleuteld of ondertekend. Deel het niet zonder toestemming.",
+      "archives": "Open alleen werkelijk ontvangen pakketten. Controleer eerst de afgesproken herkomst.",
+      "continue-review": "Hervat met hetzelfde originele dossier en je opgeslagen beoordelingsnotities.",
+      "fingerprint-compare": "Vergelijk de exacte pakketbytes met het losse controlebewijs. Een hash bewijst geen afzender.",
+      "inspect-archive": "Controleer de ZIP zonder uitpakken. Je kunt toekomstige ontvangstpaden vooraf toetsen.",
+      "fingerprint-archive": "Bewaar de checksum apart van de softwaremap. Niets wordt automatisch gedeeld.",
+      "receive-software": "Ontvang de software in een nieuwe privémap. Dit geeft geen scanrechten.",
+      "inspect-checkout": "Vergelijk alle software met de broncheckout voordat je een paspoort maakt.",
+      "reopen-passport": "Controleer een bestaand paspoort opnieuw tegen de originele software.",
+      "install": "Maak de software in een nieuwe privémap. Gebruik hiervoor geen klantgegevens."
+    };
+    special.textContent = guidance[chosen.name] ||
+      "Controleer de originele bestanden en toestemming. De opdracht geeft alleen REVIEW_ONLY of HOLD.";
     search.value = "";
     renderNav();
     renderCommand();
