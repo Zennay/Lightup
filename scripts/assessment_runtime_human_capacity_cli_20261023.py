@@ -179,6 +179,37 @@ def _csv(board: dict) -> bytes:
     return stream.getvalue().encode("utf-8")
 
 
+def _summary_csv(board: dict) -> bytes:
+    """Export fixed-vocabulary aggregate and date/route load rows."""
+    stream = StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\r\n")
+    writer.writerow(("section", "category", "count", "follow_up_date",
+                     "routing_group", "open_items", "declared_capacity",
+                     "above_declared_capacity", "reference_date",
+                     "overdue_open_rows"))
+    reference = board["reference_date"] or ""
+    overdue = ("" if board["overdue_open_rows"] is None
+               else board["overdue_open_rows"])
+    for name in PRIORITIES:
+        writer.writerow(("priority", name, board["priorities"][name],
+                         "", "", "", "", "", reference, overdue))
+    for name in STAGES:
+        writer.writerow(("human_stage", name, board["human_stages"][name],
+                         "", "", "", "", "", reference, overdue))
+    for name in ROUTES:
+        writer.writerow(("routing_group", name, board["routing_groups"][name],
+                         "", "", "", "", "", reference, overdue))
+    for item in board["route_date_loads"]:
+        writer.writerow((
+            "route_date_load", "", "", item["follow_up_date"],
+            item["routing_group"], item["open_items"],
+            "" if item["declared_capacity"] is None else item["declared_capacity"],
+            "" if item["above_declared_capacity"] is None else item["above_declared_capacity"],
+            reference, overdue,
+        ))
+    return stream.getvalue().encode("utf-8")
+
+
 def _html(board: dict) -> bytes:
     headings = ("Packet", "Case", "Priority", "Source", "Route", "Stage",
                 "Follow-up", "Regressions")
@@ -261,19 +292,21 @@ def _render(board: dict) -> bytes:
     json_bytes = json.dumps(board, ensure_ascii=True, sort_keys=True,
                             separators=(",", ":"), allow_nan=False).encode("ascii")
     csv_bytes = _csv(board)
+    summary_csv_bytes = _summary_csv(board)
     html_bytes = _html(board)
     manifest_bytes = json.dumps({
-        "format": "lightup.private_human_capacity_pack.v1",
+        "format": "lightup.private_human_capacity_pack.v2",
         "comparison_status": board["comparison_status"],
         "human_work_rows": board["human_work_rows"],
         "capacity_json_sha256": sha256(json_bytes).hexdigest(),
         "capacity_csv_sha256": sha256(csv_bytes).hexdigest(),
+        "capacity_summary_csv_sha256": sha256(summary_csv_bytes).hexdigest(),
         "capacity_html_sha256": sha256(html_bytes).hexdigest(),
         **AUTH,
     }, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
     instructions = (
         "LIGHTUP PRIVATE HUMAN CAPACITY / NO AUTHORITY\n"
-        "Open capacity.html offline or import capacity.csv / capacity.json.\n"
+        "Open capacity.html offline or import capacity.csv, capacity-summary.csv / capacity.json.\n"
         "Only original reviewed HUMAN rows were counted, never claims of evidence.\n"
         "Repeated original comparison identities are rejected, not aggregated.\n"
         "Packet labels reflect manual CLI argument order; dates and stages are\n"
@@ -287,6 +320,7 @@ def _render(board: dict) -> bytes:
                               ("manifest.json", manifest_bytes),
                               ("capacity.json", json_bytes),
                               ("capacity.csv", csv_bytes),
+                              ("capacity-summary.csv", summary_csv_bytes),
                               ("capacity.html", html_bytes)):
             if not payload or len(payload) > 250_000:
                 raise ValueError("output member exceeds limit")
