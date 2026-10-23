@@ -142,6 +142,32 @@ def safe_name(name: str) -> bool:
             and p.suffix in (".py", ".md", ".html", ".js", ".css")
             and all(ord(c) < 128 and (c.isalnum() or c in "/_.-") for c in name))
 
+def require_native_archive(archive: zipfile.ZipFile, expected_names: set[str]) -> None:
+    """Admit only our fixed portable software-only ZIP layout.
+
+    File checksums alone cannot detect changed ZIP metadata, unexpected
+    comments, encryption flags or non-original path formats. This does not
+    assert ZIP producer identity or trust the bytes beyond local consistency.
+    """
+    members = archive.infolist()
+    require(archive.comment == b"" and
+            [entry.filename for entry in members] == sorted(expected_names),
+            "Noncanonical software ZIP inventory or archive comment")
+    require(all(entry.date_time == (2020, 1, 1, 0, 0, 0)
+                and entry.create_system == 3
+                and (entry.external_attr >> 16) == 0o100600
+                and entry.compress_type == zipfile.ZIP_DEFLATED
+                and entry.flag_bits == 0
+                and entry.extra == b"" and entry.comment == b""
+                and entry.internal_attr == 0
+                and not entry.is_dir()
+                and 0 <= entry.file_size <= MAX_SOURCE
+                and 0 <= entry.compress_size <= MAX_SOURCE
+                for entry in members)
+            and sum(entry.file_size for entry in members) <= MAX_TOTAL,
+            "Unsafe or noncanonical software ZIP member metadata")
+
+
 def catalog() -> tuple[bytes, dict]:
     raw = read_checkout_source(LOCK, 350_000)
     obj = parse(raw)
@@ -457,10 +483,8 @@ def verify(folder: Path, *, compare_checkout: bool = False,
     # reopen its pathname after verifying the manifest.
     import io
     with zipfile.ZipFile(io.BytesIO(verified["software-only.zip"])) as z:
-        require(z.namelist() == sorted(name for name in verified if name != "software-only.zip"),
-                "Archive file inventory mismatch")
+        require_native_archive(z, set(verified) - {"software-only.zip"})
         for name in z.namelist():
-            require(z.getinfo(name).file_size <= MAX_SOURCE, "Archive item oversized")
             require(z.read(name) == verified[name], "Archive does not match installed source")
     if compare_checkout:
         require(read_checkout_source(LOCK, 350_000) == verified["source-lock.json"],
