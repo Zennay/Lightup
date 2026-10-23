@@ -146,13 +146,31 @@ def owner_dir(folder: Path) -> None:
 def read_owner_file(path: Path) -> bytes:
     s = path.lstat()
     require(stat.S_ISREG(s.st_mode) and s.st_uid == os.getuid()
-            and s.st_nlink == 1 and s.st_mode & 0o077 == 0, "Not an owner-only single-link file")
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+            and s.st_nlink == 1 and s.st_mode & 0o077 == 0,
+            "Not an owner-only single-link file")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0))
     try:
         fs = os.fstat(fd)
-        require(fs.st_ino == s.st_ino and fs.st_dev == s.st_dev
-                and fs.st_size <= MAX_SOURCE + 1_000_000, "File replaced or too large")
-        return os.read(fd, fs.st_size + 1)
+        identity = (fs.st_dev, fs.st_ino, fs.st_size, fs.st_mtime_ns, fs.st_ctime_ns)
+        require(stat.S_ISREG(fs.st_mode) and fs.st_uid == os.getuid()
+                and fs.st_nlink == 1 and fs.st_mode & 0o077 == 0
+                and identity == (s.st_dev, s.st_ino, s.st_size,
+                                 s.st_mtime_ns, s.st_ctime_ns)
+                and 0 <= fs.st_size <= MAX_SOURCE + 1_000_000,
+                "File changed or unsafe during private admission")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            raw = stream.read(fs.st_size + 1)
+        after = os.fstat(fd)
+        updated = path.lstat()
+        require((after.st_dev, after.st_ino, after.st_size,
+                 after.st_mtime_ns, after.st_ctime_ns) == identity
+                and (updated.st_dev, updated.st_ino, updated.st_size,
+                     updated.st_mtime_ns, updated.st_ctime_ns) == identity
+                and stat.S_ISREG(updated.st_mode)
+                and updated.st_uid == os.getuid() and updated.st_nlink == 1
+                and updated.st_mode & 0o077 == 0 and len(raw) == fs.st_size,
+                "Private input replaced or modified during read")
+        return raw
     finally:
         os.close(fd)
 
@@ -373,7 +391,10 @@ def verify(folder: Path) -> None:
     for name, descriptor in installed_lock["files"].items():
         require(name in verified and digest(verified[name]) == descriptor["sha256"],
                 "Installed source not pinned")
-    with zipfile.ZipFile(folder / "software-only.zip") as z:
+    # Inspect the exact stable 0600 ZIP bytes already admitted above; do not
+    # reopen its pathname after verifying the manifest.
+    import io
+    with zipfile.ZipFile(io.BytesIO(verified["software-only.zip"])) as z:
         require(z.namelist() == sorted(name for name in verified if name != "software-only.zip"),
                 "Archive file inventory mismatch")
         for name in z.namelist():
