@@ -118,4 +118,7 @@ def receive(archive: Path, destination: Path,
             shutil.rmtree(stage)
     print("REVIEW_ONLY: received original software to PRIVATE directory:", destination)
     print("Open offline:", destination / "index.html")
+    print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
+    if expected_sha256_file is not None:
+        print("TRANSFER CHECKSUM PARITY: independently supplied file bytes matched at admission and publication.")
     print("Unsigned local digests NEVER establish authenticated source, consent or HUMAN GO.")
