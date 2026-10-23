@@ -158,6 +158,8 @@ De browser leest uitsluitend bestanden die je zelf selecteert voor een lokale
 SHA-256-vergelijking. Er wordt niets geüpload of automatisch uitgevoerd.
 Nieuwe privébestanden worden alleen door de native Python-tools gemaakt na
 jouw expliciete opdracht. Een checksum bewijst geen afzender, toestemming of herstel.</div>
+<details class="extra-tools">
+<summary>Andere offline hulpmiddelen <span>Overdracht, pakketten en SHA-256 vergelijken</span></summary>
 <section class="journey" aria-label="Gids voor echte PRIVATE bronvrije overdracht">
 <h2>Drie stappen, van pakket tot beoordeling</h2>
 <p>Drie onafhankelijke lokale HUMAN-stappen. De pakketoverdracht tussen machines
@@ -232,6 +234,7 @@ een vroege lokale bytesvergelijking. Voer daarna de native
 ZIP-structuur-, bron- en autorisatiegrenzen. Geen installatie, upload,
 browseropslag, toestemming of automatische actie.</small>
 </section>
+</details>
 <div class="layout">
 <aside class="nav"><h2>Werkstappen</h2>
 <p>Kies een opdracht. Alles blijft in browsergeheugen; er is geen netwerk,
