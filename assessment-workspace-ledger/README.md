@@ -1,5 +1,17 @@
 # LightUp · PRIVATE Assessment Workspace Ledger
 
+## Current product delivery · source-only offline ZIP v56 · 23 October 2026
+
+The committed software bundle has been rebuilt from this branch's current allowlisted source after the source-freshness and detached-checksum controls were added.
+
+- Archive: `LightUp-Workspace-Ledger-Offline.zip` — **426,876 bytes**, unsigned SHA-256 `8603d15408e23a0c0ae8fbd69e7906000c5b02f1f5e3928295c64125cd600006`.
+- Detached sidecar: `LightUp-Workspace-Ledger-Offline.zip.sha256`; the sidecar is a checksum only, not a signature or publisher authentication.
+- Manifest schema: `lightup.private.workspace-ledger-software.v56`; **78 allowlisted software files** plus the manifest.
+- The exact branch source build and `inspect --sha256-sidecar --compare-source` report the sidecar matching the archive bytes, internal manifest consistency, and exact parity for all 78 current allowlisted source files.
+- The bundle contains software only, not private customer source material. Inspection returns REVIEW_ONLY, not security clearance, consent, or release approval.
+
+Older v49 and earlier package sizes/digests below are historical and superseded by this v56 archive.
+
 **Incubate / M3-M7 PLAN-LAB ONLY · DRAFT/HOLD · NEVER AUTHORIZATION**
 
 This new-only module makes already-produced private assessment workroom packages **reopenable**. A human operator can snapshot 1–12 existing owner-only packages, detect byte-level file changes before continuing HUMAN-only decisions, and compare a new snapshot to the previous one without interpreting missing evidence as a fix.
