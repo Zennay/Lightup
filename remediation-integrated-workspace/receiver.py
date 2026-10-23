@@ -145,7 +145,7 @@ def receive(archive: Path, destination: Path,
         entries = {}
         for name, data in sorted(files.items()):
             target = stage / name
-            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            suite.ensure_private_subdirs(stage, name)
             suite.write_file(target, data)
             entries[name] = {"sha256": suite.digest(data), "bytes": len(data)}
         suite.write_file(stage / "software-only.zip", raw)
