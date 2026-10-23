@@ -767,7 +767,8 @@
       $("unknownCase").replaceChildren();
       $("unknownTable").textContent="";
       $("unknownSummary").textContent="Import compatible original lab sources.";
-      $("unknownInspect").disabled=true;$("unknownExport").disabled=true;
+      $("unknownInspect").disabled=true;$("unknownDiscuss").disabled=true;
+      $("unknownExport").disabled=true;
       return;
     }
     if(focus.options.length!==reports.length+1){
@@ -800,6 +801,7 @@
     });
     if(rows.some(r=>String(r.ordinal)===priorCase))select.value=priorCase;
     $("unknownInspect").disabled=!rows.length;
+    $("unknownDiscuss").disabled=!rows.length;
     $("unknownExport").disabled=!rows.length;
   }
   function inspectUnknown(){
@@ -813,6 +815,26 @@
     renderCase(row.id);
     $("casePanel").scrollIntoView({behavior:"smooth",block:"start"});
     $("caseSelect").focus();
+  }
+  function discussUnknownCase(){
+    if(!reports.length)return;
+    const row=visibleUnknownRows().find(r=>r.ordinal===Number($("unknownCase").value));
+    if(!row)return;
+    const position=queueIds().indexOf(row.id);
+    if(position<0)return;
+    // A positive unknown-coverage value may have NO source regression label.
+    // Deliberately include neutral rows so HUMAN discussion cannot silently disappear.
+    queueFocus=position;
+    $("queueCandidate").value="all";
+    $("queueFamily").value="findings";
+    $("queueFilter").value="all";
+    $("queueIncludeNeutral").checked=true;
+    drawQueue();
+    $("queueMessage").textContent="Anonymous case "+row.ordinal+
+      " opened for a proposed HUMAN discussion. Unknown coverage is not a source finding, "+
+      "and no discussion status or real assignment was changed.";
+    $("casework").scrollIntoView({behavior:"smooth",block:"start"});
+    $("queueCase").focus();
   }
   function exportUnknownCSV(){
     if(!reports.length||!settings)return;
@@ -1938,6 +1960,7 @@
   for(const id of ["conflictCandidate","conflictMode","conflictMetric"])$(id).addEventListener("change",renderScenarioConflictExplorer);
   for(const id of ["unknownCandidate","unknownMode"])$(id).addEventListener("change",renderUnknownRows);
   $("unknownInspect").addEventListener("click",inspectUnknown);
+  $("unknownDiscuss").addEventListener("click",discussUnknownCase);
   $("unknownExport").addEventListener("click",exportUnknownCSV);
   $("caseSelect").addEventListener("change",e=>{if(!reports.length)return;
     const ids=[...reports[0].cases.keys()].sort(),i=Number(e.target.value);
