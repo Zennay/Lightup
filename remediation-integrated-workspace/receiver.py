@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Fail-closed, software-only offline LightUp recipient. Never authenticates sender."""
 from __future__ import annotations
-import io
 import os
 from pathlib import Path
 import secrets
 import shutil
-import zipfile
 
 import install as suite
 
@@ -28,12 +26,10 @@ def receive(archive: Path, destination: Path) -> None:
                   and destination not in suite.ROOT.parents
                   and archive != destination and destination not in archive.parents,
                   "Source, recipient or package paths overlap")
-    with zipfile.ZipFile(io.BytesIO(raw)) as z:
-        # Admit the exact original writer's safe portable ZIP metadata,
-        # not just matching listed content hashes. The shared publisher-side
-        # inspector performs the same check before publication.
-        suite.require_native_archive(z, expected)
-        files = {member.filename: z.read(member) for member in z.infolist()}
+    # Use the same native full-ZIP structural admission as installed-suite
+    # inspection. No prepended stub, trailing junk, mismatched local headers
+    # or alternative central-directory layout are silently admitted.
+    files = suite.unpack_native_archive(raw, expected)
     import operator_console
     suite.require(files["source-lock.json"] == lock_bytes
                   and files["index.html"] == suite.home()
