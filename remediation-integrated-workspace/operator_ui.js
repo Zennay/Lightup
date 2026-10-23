@@ -70,9 +70,13 @@
         if (/[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(value)) {
           throw Error("Verwijder onzichtbare opmaak- of controletekens uit dit pad: " + field.flag);
         }
+        // Native require_operator_path rejects Unicode format, surrogate
+        // and line/paragraph separator characters. Reject them here too:
+        // a spoofed path must never become a copyable HUMAN terminal command.
+        // Leave printable Unicode path names alone.
         if (!value.startsWith("/") || value.startsWith("//") ||
-            value.includes("\r") || value.includes("\0") || /[\x00-\x1f\x7f]/.test(value)) {
-          throw Error("Gebruik een letterlijk absoluut Linux-pad: " + field.flag);
+            /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(value)) {
+          throw Error("Gebruik een zichtbaar, letterlijk absoluut Linux-pad zonder verborgen tekens: " + field.flag);
         }
         if (value.split("/").includes("..") || value.split("/").includes(".")) {
           throw Error("Gebruik geen . of .. als padsegment: " + field.flag);
