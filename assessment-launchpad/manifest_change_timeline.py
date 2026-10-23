@@ -279,6 +279,31 @@ def build_outputs(packet):
     return contents
 
 
+def render_preview(packet):
+    """Return aggregate-only preview text; never expose source identity or open output paths."""
+    interval = packet["selected_interval"]
+    lines = [
+        "MANIFEST_TIMELINE_PREVIEW · REVIEW_ONLY",
+        "snapshots=" + str(packet["snapshot_count"]),
+        "unique_endpoints=" + str(packet["unique_endpoint_count"]),
+        "selected_interval=" + str(interval["from_snapshot"]) + "->" + str(interval["to_snapshot"]),
+    ]
+    for ordinal, count in enumerate(packet["snapshot_endpoint_counts"], start=1):
+        lines.append("snapshot_" + str(ordinal) + "_endpoint_count=" + str(count))
+    for item in packet["transition_totals"]:
+        counts = item["counts"]
+        lines.append(
+            "transition_" + str(item["from_snapshot"]) + "_to_" + str(item["to_snapshot"]) + " " +
+            " ".join(state.lower() + "=" + str(counts[state]) for state in TRANSITIONS)
+        )
+    lines.append(
+        "selected_interval_counts " +
+        " ".join(state.lower() + "=" + str(interval["counts"][state]) for state in TRANSITIONS)
+    )
+    lines.append("authority=NONE · no assessment, target contact, grant, dispatch or release")
+    return "\\n".join(lines)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Compare 2–8 saved PRIVATE lab manifest bundles as an offline ordinal timeline."
@@ -290,6 +315,10 @@ def main(argv=None):
     destination = parser.add_mutually_exclusive_group(required=True)
     destination.add_argument("--output-dir", help="new empty owner-private 0700 output directory")
     destination.add_argument("--verify-output-dir", help="read-only exact reopen of a saved timeline")
+    destination.add_argument(
+        "--preview-only", action="store_true",
+        help="print bounded aggregate counts only; never open or write an output directory",
+    )
     parser.add_argument("--compare-from-snapshot", type=int,
                         help="optional one-based start ordinal for net interval comparison")
     parser.add_argument("--compare-to-snapshot", type=int,
@@ -304,6 +333,9 @@ def main(argv=None):
             raise Hold("select both interval snapshot ordinals or neither")
         admitted = admit_sources(args.source_dir)
         packet = build_packet(admitted, args.compare_from_snapshot, args.compare_to_snapshot)
+        if args.preview_only:
+            print(render_preview(packet))
+            return 0
         contents = build_outputs(packet)
         output_path = args.output_dir or args.verify_output_dir
         output_fd, output_abs = open_output_directory(output_path)
