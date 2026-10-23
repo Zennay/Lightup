@@ -146,9 +146,16 @@ then checked through a nofollow directory descriptor for exact
 owner-only mode. At creation, the native builder records the
 **original filesystem device and inode number** of each newly created stage.
 The builder, recipient and passport publisher pass that exact identity
-to cleanup. A different 0700 current-user directory placed under the
-same randomly generated temporary name now **HOLDs instead of being
-recursively removed**, even though its mode and owner match. The native
+to cleanup **and now also to the final private no-replace publisher**.
+The publisher checks the original stage device/inode, owner and exact
+0700-directory or 0600-single-link-file mode **before** calling Linux
+`renameat2(RENAME_NOREPLACE)`. This also applies to the staged
+software SHA-256 checksum receipt. An original stage replaced with a
+different, otherwise valid owner-private inode now returns HOLD with
+**no published destination**, rather than publishing the replacement.
+A different 0700 current-user directory placed under the same randomly
+generated temporary name also **HOLDs instead of being recursively
+removed**, even though its mode and owner match. The native
 cleanup also uses the verified private directory descriptor and Python's
 fd-relative `shutil.rmtree`, so a changed path to the parent cannot silently
 redirect **creation or cleanup**. The original
