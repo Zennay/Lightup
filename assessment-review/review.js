@@ -403,7 +403,7 @@
         nice(m.name) + ": baseline " + fmt(m.baseline) + " → candidate " + fmt(m.candidate) +
         " (Δ " + (m.delta >= 0 ? "+" : "") + fmt(m.delta) + ")"
       );
-      child(evidenceCell, "strong", "Metric evidence: ");
+      child(evidenceCell, "strong", "Source metric observations: ");
       child(evidenceCell, "span", evidence.join(" · ") || "No source-flagged metric regressions.");
       child(evidenceCell, "br");
       child(evidenceCell, "strong", "Suggested next HUMAN action: ");
