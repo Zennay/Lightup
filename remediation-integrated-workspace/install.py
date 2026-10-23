@@ -830,6 +830,8 @@ def main() -> int:
                            help="optional separate owner-private 0600 original SHA-256+LF fingerprint")
     p_preview.add_argument("--planned-output-dir", type=Path,
                            help="optional read-only validation of a fresh PRIVATE receiver destination")
+    p_preview.add_argument("--planned-checksum-file", type=Path,
+                           help="optional no-write validation of a fresh PRIVATE checksum file")
     p_hash = sub.add_parser("fingerprint-archive",
                             help="Write a NEW private 0600 SHA-256 file for an admitted source-only ZIP")
     p_hash.add_argument("--archive", required=True, type=Path)
@@ -849,7 +851,7 @@ def main() -> int:
         elif args.action == "inspect-archive":
             from receiver import inspect_archive
             inspect_archive(args.archive, args.expected_sha256_file,
-                            args.planned_output_dir)
+                            args.planned_output_dir, args.planned_checksum_file)
         elif args.action == "fingerprint-archive":
             from receiver import fingerprint_archive
             fingerprint_archive(args.archive, args.output_file)
