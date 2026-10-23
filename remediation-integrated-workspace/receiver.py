@@ -108,6 +108,12 @@ def inspect_archive(archive: Path, expected_sha256_file: Path | None = None,
         validate_receive_destination(archive, planned_output_dir)
     if planned_checksum_file is not None:
         validate_fingerprint_destination(archive, planned_checksum_file)
+    if planned_output_dir is not None and planned_checksum_file is not None:
+        # These two separate original operations cannot exclusively create
+        # the same new name. Preview must not present that impossible joint
+        # request as two separately admissible destinations.
+        suite.require(planned_output_dir != planned_checksum_file,
+                      "Planned private recipient and checksum must use different destinations")
     print(f"REVIEW_ONLY: native software-only ZIP admitted: {len(files)} files, "
           f"{len(lock['files'])} original pinned assets and {len(TOOLS)} integrated tools.")
     print("UNSIGNED SOFTWARE SHA256:", suite.digest(raw))
