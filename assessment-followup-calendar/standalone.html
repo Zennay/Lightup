@@ -2115,7 +2115,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     $("handoffConfirm").value="";
   }
   async function handoffKey(password,salt){
-    hold(typeof password=[REDACTED]"string" && password.length>=16 && password.length<=256);
+    hold(typeof password==="string" && password.length>=16 && password.length<=256);
     hold(crypto.subtle && salt.length===16);
     const raw=new TextEncoder().encode(password);
     try{
@@ -2129,8 +2129,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   const ENC_AAD=new TextEncoder().encode("lightup.human_calendar.private_plan.v1|REVIEW_ONLY|NO_AUTHORITY");
   async function saveEncrypted(){
     hold(active && crypto.subtle);
-    const password=[REDACTED]"handoffPassword").value,confirmation=$("handoffConfirm").value;
-    hold(password.length>=16 && password.length<=256 && password=[REDACTED]
+    const password=$("handoffPassword").value,confirmation=$("handoffConfirm").value;
+    hold(password.length>=16 && password.length<=256 && password===confirmation);
     const snapshotCSV=privatePlanCSV();
     const plain=new TextEncoder().encode(snapshotCSV);
     const salt=new Uint8Array(16),iv=new Uint8Array(12);
@@ -2244,7 +2244,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     const wasActive=active,priorSource=originalBytes;
     const snapshot=active?workroomFingerprint():null;
     const previousUnsaved=wasActive&&(changed||capacityDirty||capacityEditorDirty);
-    const password=[REDACTED]"vaultPassword").value;
+    const password=$("vaultPassword").value;
     let admitted=null;
     try{
       admitted=await readPortableVault(file,password);
@@ -2327,7 +2327,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   }
   async function recoverPortableVaultComponent(file){
     hold(crypto.subtle);
-    const password=[REDACTED]"vaultPassword").value,kind=$("vaultExtractKind").value;
+    const password=$("vaultPassword").value,kind=$("vaultExtractKind").value;
     hold(["source","plan","capacity"].includes(kind));
     let admitted=null;
     try{
@@ -2462,8 +2462,8 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   }
   async function saveEncryptedWorkroom(){
     hold(active && crypto.subtle && !capacityEditorDirty);
-    const password=[REDACTED]"handoffPassword").value,confirmation=$("handoffConfirm").value;
-    hold(password.length>=16 && password.length<=256 && password=[REDACTED]
+    const password=$("handoffPassword").value,confirmation=$("handoffConfirm").value;
+    hold(password.length>=16 && password.length<=256 && password===confirmation);
     const snapshot=workroomFingerprint(),plain=packWorkroom(privatePlanCSV(),privateCapacityCSV());
     const salt=new Uint8Array(16),iv=new Uint8Array(12);
     crypto.getRandomValues(salt);crypto.getRandomValues(iv);
@@ -2727,7 +2727,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   }
   async function compareEncryptedWorkroom(file){
     hold(active && crypto.subtle && !capacityEditorDirty);
-    const initial=workroomFingerprint(),password=[REDACTED]"handoffPassword").value;
+    const initial=workroomFingerprint(),password=$("handoffPassword").value;
     try{
       const admitted=await readEncryptedWorkroom(file,password);
       hold(active && initial===workroomFingerprint() && !capacityEditorDirty);
@@ -2763,7 +2763,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   async function restoreEncryptedWorkroom(file,ticket){
     hold(active && crypto.subtle);
     const initial=workroomFingerprint(),oldPlan=plan,oldSeries=seriesId;
-    const password=[REDACTED]"handoffPassword").value;
+    const password=$("handoffPassword").value;
     try{
       const admitted=await readEncryptedWorkroom(file,password);
       if(!currentWorkspaceReplacement(ticket))return;
@@ -2807,7 +2807,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   async function restoreEncryptedFile(file,ticket){
     hold(active && crypto.subtle);
     const fingerprint=workroomFingerprint(),oldPlan=plan;
-    const password=[REDACTED]"handoffPassword").value;
+    const password=$("handoffPassword").value;
     try{
       const admitted=await decryptPrivatePlan(file,password);
       if(!currentWorkspaceReplacement(ticket))return;
@@ -2831,7 +2831,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
   async function readEncryptedBaseline(file){
     hold(active && crypto.subtle);
     const originHash=hash,originSeries=seriesId,oldPlan=plan;
-    const password=[REDACTED]"baselinePassword").value;
+    const password=$("baselinePassword").value;
     try{
       const admitted=await decryptPrivatePlan(file,password);
       hold(active && hash===originHash && seriesId===originSeries &&
