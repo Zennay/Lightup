@@ -459,16 +459,34 @@ def build(dest: Path) -> None:
             write_file(stage / name, written[name])
             entries[name] = {"sha256": digest(written[name]), "bytes": len(written[name])}
         archive = stage / "software-only.zip"
-        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=8) as z:
-            for name, data in sorted(written.items()):
-                info = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
-                info.compress_type = zipfile.ZIP_DEFLATED
-                info.external_attr = 0o100600 << 16
-                info.create_system = 3
-                z.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=8)
-        os.chmod(archive, 0o600)
-        entries["software-only.zip"] = {"sha256": digest(archive.read_bytes()),
-                                         "bytes": archive.stat().st_size}
+        # The ZIP must be owner-private at creation, not chmod'ed only after
+        # ZipFile(path, "w") has opened it with the process default umask.
+        # O_EXCL + O_NOFOLLOW protect the original staged ZIP name, and
+        # dir_fd anchors it to this exact fresh owner-only suite directory.
+        directory_fd = open_private_dir_fd(stage)
+        try:
+            archive_fd = os.open(archive.name, os.O_RDWR | os.O_CREAT |
+                                 os.O_EXCL | os.O_NOFOLLOW |
+                                 getattr(os, "O_CLOEXEC", 0),
+                                 0o600, dir_fd=directory_fd)
+        finally:
+            os.close(directory_fd)
+        with os.fdopen(archive_fd, "w+b") as archive_stream:
+            os.fchmod(archive_stream.fileno(), 0o600)
+            with zipfile.ZipFile(archive_stream, "w",
+                                 compression=zipfile.ZIP_DEFLATED,
+                                 compresslevel=8) as z:
+                for name, data in sorted(written.items()):
+                    info = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    info.external_attr = 0o100600 << 16
+                    info.create_system = 3
+                    z.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=8)
+            archive_stream.flush()
+            os.fsync(archive_stream.fileno())
+        archive_raw = read_owner_file(archive, ceiling=MAX_TOTAL)
+        entries["software-only.zip"] = {"sha256": digest(archive_raw),
+                                         "bytes": len(archive_raw)}
         receipt = {"kind": KIND, "version": 1, "disposition": "HUMAN_ONLY_DRAFT_HOLD",
                    "authority_granted": False, "scan_authorized": False,
                    "verified_remediation": False, "client_consent": False,
