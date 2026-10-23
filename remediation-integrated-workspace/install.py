@@ -539,6 +539,8 @@ def verify(folder: Path, *, compare_checkout: bool = False,
     for name in INTEGRATED_TOOLS:
         require(verified[name] == read_checkout_source(ROOT / name),
                 "Integrated software differs from the trusted local checkout")
+    print(f"LOCAL TOOL PARITY: {len(INTEGRATED_TOOLS)} installed integrated tools match local checkout bytes.")
+    print("Local tool parity does not prove producer identity or independent review.")
     # Inspect the exact stable 0600 ZIP bytes already admitted above; do not
     # reopen its pathname after verifying the manifest.
     import io
