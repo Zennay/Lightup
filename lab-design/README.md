@@ -118,3 +118,8 @@ Catalog replacement previews and append operations now use a local generation to
 ## Filter-scoped bulk deletion of PRIVATE scenarios
 
 Use the checkboxes next to individual PRIVATE scenario rows or **Select all matching** to choose from the currently displayed filter results. Hidden rows are never retained as selected when filters change, preventing accidental deletion outside the visible subset. **Delete selected scenarios** requires an explicit confirmation, deletes only selected visible rows, and discards staged imports/editor drafts as disclosed. This is a tab-local edit recorded in the bounded undo/redo history; Undo can restore the original catalog until Forget or tab close. No fixture or target is contacted and no scored ground-truth claim is introduced.
+
+
+### Copy selected PRIVATE scenarios without inheriting scoring claims
+
+**Copy selected as UNSCORED** is a single atomic batch action for currently visible checked scenarios. It preflights unique IDs and the maximum 32-scenario catalog, appends copies with fresh private IDs and strips the original expected-findings declarations (including explicit zero). The originals are not modified. The UI confirms the action and discloses that any staged import will be discarded. The existing bounded undo/redo history restores the previous catalog. No scanning, network activity, permission, baseline or ground-truth verification occurs.
