@@ -93,7 +93,9 @@ def describe(old_links, updated, source_digest):
                     "</td><td>", _e(new[field]), "</td></tr>"
                 ])
             html.extend(["</tbody></table></section>"])
-    html.append("<section><p>Original source IDs were retained only for confidential local",
-                " owner reconciliation. Do not publish or transmit this dossier publicly.",
-                " The returned file and author remain unsigned and unauthenticated.</p></section></html>")
+    html.extend((
+        "<section><p>Original source IDs were retained only for confidential local",
+        " owner reconciliation. Do not publish or transmit this dossier publicly.",
+        " The returned file and author remain unsigned and unauthenticated.</p></section></html>",
+    ))
     return "".join(html).encode("utf-8"), aggregate
