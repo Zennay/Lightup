@@ -30,6 +30,52 @@ To check the installed folder's exact native file inventory and the locally gene
 
 Inspection enforces private file ownership/modes, regular nofollow one-link files, canonical warning and non-authority flags, exact installed SHA-256 file contents, ZIP-member byte identity, original source inventory and local scriptless portal renderer. It only establishes local consistency.
 
+## Reproducible software evidence — single-command PRIVATE passport
+
+To bind the installed offline evidence/remediation software to the **exact current
+checkout**, explicitly select an existing installed suite and an unused output
+directory beneath an existing owner-only 0700 parent:
+
+```sh
+python3 remediation-integrated-workspace/install.py inspect \
+  --workspace "$HOME/lightup-private/integrated-workspace-v1" \
+  --compare-checkout \
+  --report-dir "$HOME/lightup-private/software-passport-v1"
+```
+
+This completes the local offline integrity workflow without making any network
+requests: verify every 0600 installed software file and the archive inventory,
+compare the pinned original software and the integrated CLI/browser assets to
+the exact current checked-out bytes, and publish a separate **0700, no-overwrite**
+report directory with 0600 `REVIEW_ONLY.json` and scriptless `REVIEW_ONLY.html`.
+The report contains anonymous software counts, the declared original source
+commit references, two unsigned archive/manifest checksums, and literal FALSE
+authorization/release flags. It deliberately omits tenant inputs, evidence,
+findings, source paths, reviewer names and notes; no source file is copied to
+the report. Missing, replaced, symlinked or changed files produce HOLD without
+publishing an incomplete passport.
+
+The native `private_desk.py inspect-checkout` operation and offline operator
+UI expose the same explicit command. The regular `inspect` command still works
+without a passport; omit `--compare-checkout` only when inspecting a detached
+package that cannot be compared with an original checkout. That condition is
+reported as **not checked**, never as passed.
+
+The builder and recipient now use stable no-follow source admission, re-admit
+the pinned source lock and integrated software before publishing, and inspect
+the **complete newly staged suite** against the exact checkout before
+exclusively publishing the destination. A failed prepublication inspection
+removes the newly created private staging directory, leaving the intended
+destination absent and original input data untouched. The additional identity
+checks minimize TOCTOU risk but cannot protect against every concurrent
+filesystem mutation; the original security/source-owner approvals remain
+mandatory.
+
+**Scope:** this is reproducibility and byte-integrity of offline *software*,
+not a validated fixture run, trusted upstream attestation, authenticated
+evidence store, verified retest, consent or live deployment. It never invokes
+the lab scanner, changes tenant grants or dispatches remediation.
+
 ## Operator flow: maintain privacy boundaries
 
 1. ORIGINAL SOURCE OWNER: open the offline index and use original Casework and Evidence Ledger. Review and prepare PRIVATE source-ledger workspaces using remediation-evidence-bundle-integrity/prepare.py per original operator guide. Original private records stay with the authenticated and separately authorized source owner. The human-only source-free PRIVATE Cockpit is an **explicitly separate** disclosure surface.
