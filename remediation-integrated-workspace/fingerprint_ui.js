@@ -81,8 +81,14 @@
       inventory.some(item => item.sha256 === declared &&
         (!declaredSize || item.size === Number(declaredSize)))
     );
-    exportButton.disabled = !inventory.length || !matchingDeclared ||
-      receiptStatus === "pending" || receiptStatus === "invalid";
+    // General JSON receipts describe original source-free .luh* packets.
+    // They cannot be consumed by the native software-only ZIP recipient.
+    // If any selected file is a software ZIP, use the separate 65-byte
+    // .sha256 export instead; never offer an incompatible JSON handoff.
+    exportButton.disabled = !inventory.length ||
+      inventory.some(item => item.softwareOnly) ||
+      !matchingDeclared || receiptStatus === "pending" ||
+      receiptStatus === "invalid";
     expectedResult.textContent = "";
     if (receiptStatus === "invalid") {
       expectedResult.textContent = "HOLD: het ontvangen originele .sha256-controlebestand is onbruikbaar of nadien gewijzigd. Wis eerst de controlewaarden of importeer opnieuw.";
@@ -335,8 +341,9 @@
     }
   });
   exportButton.addEventListener("click", () => {
-    if (!inventory.length || exportButton.disabled) {
-      message("HOLD: los de afwijkende of nog niet gecontroleerde oorspronkelijke checksum op vóór een nieuwe fingerprintexport.");
+    if (!inventory.length || exportButton.disabled ||
+        inventory.some(item => item.softwareOnly)) {
+      message("HOLD: een software-ZIP gebruikt uitsluitend het aparte .sha256-controlebestand; het algemene JSON-bewijs is alleen voor bronvrije pakketten.");
       return;
     }
     if (!window.confirm("Dit maakt een PRIVATE JSON-bestand met SHA-256-digests en lengtes. Zelfs zonder bestandsnamen kunnen fingerprints gevoelig of koppelbaar zijn. Alleen voor afzonderlijk geautoriseerde offline overdracht. Doorgaan?")) return;
