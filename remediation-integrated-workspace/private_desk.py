@@ -124,34 +124,34 @@ OPERATIONS = {
         ("--output-dir", "Optional NEW scriptless PRIVATE HUMAN review report directory", False, False),
     ), "Fail closed on changed original bytes; optional local PRIVATE HTML report."),
     "install": ("install.py", ("build",), (
-        ("--output-dir", "NEW owner-private software-only suite", False, True),
-    ), "Copies original pinned software only; NEVER client data."),
+        ("--output-dir", "Nieuwe privémap voor het softwarepakket", False, True),
+    ), "Maak een offline softwarepakket, zonder klantgegevens."),
     "inspect-archive": ("install.py", ("inspect-archive",), (
-        ("--archive", "Existing PRIVATE owner-only source-only ZIP", False, True),
-        ("--expected-sha256-file", "Optional SEPARATELY obtained PRIVATE 0600 exact ZIP SHA-256 fingerprint file", False, False),
-        ("--planned-output-dir", "Optional NEW owner-only receive destination, checked without creation", False, False),
-        ("--planned-checksum-file", "Optional NEW separate PRIVATE 0600 checksum path, checked without writing", False, False),
-    ), "No-write original ZIP check plus optional checksum and planned recipient path admission."),
+        ("--archive", "Software-ZIP die je wilt controleren", False, True),
+        ("--expected-sha256-file", "Apart ontvangen .sha256-bestand (optioneel)", False, False),
+        ("--planned-output-dir", "Nieuwe ontvangstmap controleren (optioneel)", False, False),
+        ("--planned-checksum-file", "Nieuw .sha256-bestand controleren (optioneel)", False, False),
+    ), "Controleer ZIP, checksum en bestemmingen. Er wordt niets geschreven."),
     "fingerprint-archive": ("install.py", ("fingerprint-archive",), (
-        ("--archive", "Existing admitted private source-only software ZIP", False, True),
-        ("--output-file", "NEW private 0600 ASCII SHA-256+LF receipt outside software directory", False, True),
-    ), "Save an original exact-byte local ZIP fingerprint; separate HUMAN disclosure approval is required."),
+        ("--archive", "Gecontroleerde software-ZIP", False, True),
+        ("--output-file", "Nieuw privébestand (.sha256), buiten de softwaremap", False, True),
+    ), "Maak een lokale checksum. Delen vereist aparte toestemming."),
     "receive-software": ("install.py", ("receive",), (
-        ("--archive", "Original software-only ZIP", False, True),
-        ("--output-dir", "NEW owner-private software installation", False, True),
-        ("--expected-sha256-file", "Optional SEPARATELY obtained PRIVATE 0600 exact ZIP SHA-256 fingerprint file", False, False),
-    ), "Pinned source admission plus optional separately supplied transfer hash, no identity claim."),
+        ("--archive", "Ontvangen software-ZIP", False, True),
+        ("--output-dir", "Nieuwe privémap voor ontvangst", False, True),
+        ("--expected-sha256-file", "Apart ontvangen .sha256-bestand (optioneel)", False, False),
+    ), "Ontvang software na controle. Een checksum bewijst geen afzender."),
     "inspect-software": ("install.py", ("inspect",), (
-        ("--workspace", "Existing private software-only suite", False, True),
-    ), "Local consistency inspection only; not CI/release approval."),
+        ("--workspace", "Bestaande privé-softwaremap", False, True),
+    ), "Controleer bestanden lokaal. Dit is geen vrijgave."),
     "inspect-checkout": ("install.py", ("inspect", "--compare-checkout"), (
-        ("--workspace", "Existing private software-only suite", False, True),
-        ("--report-dir", "NEW owner-only reproducibility passport directory", False, True),
-    ), "Verify source/ZIP parity and publish PRIVATE HUMAN-only HTML/JSON passport."),
+        ("--workspace", "Bestaande privé-softwaremap", False, True),
+        ("--report-dir", "Nieuwe privémap voor het controleverslag", False, True),
+    ), "Vergelijk alle bronbestanden en maak een privécontroleverslag."),
     "reopen-passport": ("install.py", ("inspect", "--compare-checkout"), (
-        ("--workspace", "Existing original PRIVATE software-only suite", False, True),
-        ("--passport-dir", "Existing original PRIVATE reproducibility passport", False, True),
-    ), "Re-admit native PRIVATE passport HTML/JSON byte-for-byte against its installed software."),
+        ("--workspace", "Bestaande privé-softwaremap", False, True),
+        ("--passport-dir", "Bestaand privécontroleverslag", False, True),
+    ), "Vergelijk het bestaande controleverslag opnieuw met de software."),
 }
 
 class HoldArgumentParser(argparse.ArgumentParser):
