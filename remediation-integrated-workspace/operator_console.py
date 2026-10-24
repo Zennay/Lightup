@@ -10,6 +10,13 @@ import hashlib
 import html
 import json
 from pathlib import Path
+import sys
+
+# Rendering the offline HUMAN page is a read-only checkout operation.
+# Disable CPython bytecode caches before importing the local command schema;
+# otherwise a first-run render writes __pycache__ into the trusted source.
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True
 
 from private_desk import OPERATIONS, WARNING
 
