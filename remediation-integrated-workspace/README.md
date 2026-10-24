@@ -228,6 +228,21 @@ names remain allowed. Native file ownership, exact bytes and nofollow
 directory-descriptor checks remain authoritative; preview validation is
 not an authenticity guarantee or a permission grant.
 
+## Exact-name software comparison in the offline browser
+
+The optional browser's **Ontvangen PRIVATE softwarepakket controleren**
+widget now accepts only the exact local filename `software-only.zip`
+(as well as one separately operator-selected `.sha256` receipt with
+exactly 64 lowercase hexadecimal characters and LF). A matching checksum
+for an arbitrary other `.zip` file no longer displays a software-packet
+match. Other arbitrary ZIP files are refused before any read or SHA-256
+operation. The widget uses local browser WebCrypto only and does not
+unpack, upload or validate the software contents. A renamed untrusted ZIP
+is still untrusted: the separate native `inspect-archive` with original
+source-lock, ZIP-layout and checkout admission remains required.
+A matching checksum neither authenticates the sender nor grants any
+permission to scan, access evidence, remediate or release.
+
 ## No-write admission of a received software-only ZIP
 
 An authorized HUMAN operator can inspect a *previously received* original
