@@ -107,6 +107,22 @@ passport or received source directory when a caller passes the wrong
 path, but does not authorize any software publication, assert provenance
 or replace external filesystem isolation.
 
+## Strict literal file-name admission in software handoff
+
+For `inspect-archive`, `receive`, and `fingerprint-archive`, the native
+CLI now rejects trailing `/` on any original ZIP, checksum input, or new
+checksum output **before** pathlib normalization. In Python,
+`Path("/private/software-only.zip/")` silently discards that slash,
+which previously let a directory-shaped file input return REVIEW_ONLY
+when its original ZIP bytes were otherwise valid. The native CLI now
+returns **3=HOLD**, without opening the file or publishing anything.
+Ordinary *directory* arguments retain trailing-slash support. The
+standalone offline HUMAN browser composer mirrors this for the same
+software-file parameters and refuses to display a copyable command
+until the original filename is corrected. Native source, ZIP and owner
+admission still remains the final boundary; a browser preview is not
+permission, signing or release approval.
+
 ## Literal PRIVATE terminal path boundary
 The **HUMAN launcher** (`private_desk.py`) now applies these same
 checks to the original raw argument text **before** constructing a
