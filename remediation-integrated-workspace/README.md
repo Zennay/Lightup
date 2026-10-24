@@ -18,7 +18,17 @@ the fixed native `software-only.zip` filename, alongside the original
 source-free `.luhx` / `.luhz` / `.luhp` packet formats. A software ZIP
 is limited to the original native **15,000,000-byte** archive ceiling,
 other packets to 20 MiB each, and the unchanged eight-file/64-MiB
-combined bounds. The browser only calls local WebCrypto SHA-256 on original
+combined bounds. 
+After processing each selected original package, the browser helper
+best-effort overwrites its **own temporary Uint8Array byte buffer** with
+zeros in a `finally` block, including cancelled or rejected local hashing.
+It also overwrites the temporary 65-byte buffer used to import a separate
+software checksum. The resulting SHA-256/size remain in the visible local
+comparison only until the operator clears them. This **does not claim secure
+erasure** of the original File object, copies inside browser internals,
+WebCrypto, operating-system caches or any previously downloaded receipt.
+
+The browser only calls local WebCrypto SHA-256 on original
 file bytes; it neither extracts a ZIP nor checks its inventory, source lock,
 signed provenance or contents. Generic `.zip` names and all customer
 evidence/JSON remain refused by the browser. When a software SHA-256 is
