@@ -187,7 +187,8 @@ NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
 <input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp,.zip">
 <div class="tools">
 <button type="button" id="packet-analyze">Bereken lokaal SHA-256</button>
-<button type="button" id="packet-export" disabled>Download PRIVATE unsigned hashreceipt</button>
+<button type="button" id="packet-export" disabled>Download privé JSON-controleoverzicht</button>
+<button type="button" id="packet-export-software" disabled>Download softwarechecksum (.sha256)</button>
 <button type="button" id="packet-clear" class="secondary">Wis fingerprints</button>
 </div>
 <p id="packet-message" role="status" aria-live="polite">Alle bytes blijven lokaal;
