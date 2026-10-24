@@ -223,13 +223,16 @@ def dispatch(name: str, values: dict) -> None:
         if required and not items:
             raise ValueError("Missing required original input: " + flag)
         for item in items:
-            if not item or "\x00" in item or "\n" in item or "\r" in item:
-                raise ValueError("Invalid path input")
-            path = Path(item).expanduser()
-            if not path.is_absolute():
-                raise ValueError("Use a literal absolute path: " + flag)
+            # Validate the HUMAN's literal spelling BEFORE pathlib can
+            # normalize /./ or the implementation-defined leading //.
+            # Do not silently pass a changed path to native source admission.
+            if (type(item) is not str or not item.startswith("/") or
+                    item.startswith("//") or
+                    any(segment in (".", "..") for segment in item.split("/"))):
+                raise ValueError("Use one literal absolute path without . or ..: " + flag)
+            path = Path(item)
             require_operator_path(path)
-            arguments.extend((flag, str(path)))
+            arguments.extend((flag, item))
     if name in ("owner", "owner-package", "owner-encrypted", "owner-encrypted-receipt") and not (values.get("--input-dir") or values.get("--bundle")):
         raise ValueError("Select actual original private evidence inputs")
     if name == "archives" and not (values.get("--archive") or values.get("--encrypted-archive")):
