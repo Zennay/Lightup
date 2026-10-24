@@ -23,7 +23,12 @@ After processing each selected original package, the browser helper
 best-effort overwrites its **own temporary Uint8Array byte buffer** with
 zeros in a `finally` block, including cancelled or rejected local hashing.
 It also overwrites the temporary 65-byte buffer used to import a separate
-software checksum. The resulting SHA-256/size remain in the visible local
+software checksum. The standalone software-ZIP comparison widget likewise
+best-effort overwrites its OWN exact ZIP, 65-byte original fingerprint, and
+binary SHA-256 result arrays on every asynchronous exit (including a changed
+selection, bad checksum or digest error); it does not erase browser-managed
+File, ArrayBuffer clones, string copies or OS/browser caches.
+The resulting SHA-256/size remain in the visible local
 comparison only until the operator clears them. This **does not claim secure
 erasure** of the original File object, copies inside browser internals,
 WebCrypto, operating-system caches or any previously downloaded receipt.
