@@ -61,6 +61,14 @@ def admit_archive(archive: Path,
                   "Pinned original source inventory changed during admission")
     suite.require(suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL) == raw,
                   "Received software archive changed during admission")
+    if expected_sha256_file is not None:
+        # A private checksum can be replaced after its initial comparison
+        # while complete source and native ZIP admission is still running.
+        # Re-admit its exact original bytes before reporting parity to the
+        # HUMAN inspector (the receiver repeats this before publication).
+        suite.require(suite.read_owner_file(expected_sha256_file, ceiling=65) ==
+                      fingerprint,
+                      "Original software checksum changed during admission")
     return raw, lock_bytes, lock, files
 
 
