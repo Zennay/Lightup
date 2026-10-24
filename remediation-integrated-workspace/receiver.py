@@ -110,8 +110,12 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
     stage_identity = None
     try:
         stage_identity = suite.write_file(stage, payload)
-        suite.require(suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL) == raw,
-                      "Software ZIP changed before private checksum publication")
+        # A second complete admission catches a changed pinned source,
+        # native operator renderer or installer tool after first inspection,
+        # not only replacement of the ZIP itself. Do not publish a locally
+        # source-verified fingerprint when its trusted checkout has drifted.
+        suite.require(admit_archive(archive)[0] == raw,
+                      "Original software ZIP or trusted checkout changed before checksum publication")
         suite.exclusive_publish(stage, output_file, expected_identity=stage_identity)
     finally:
         # A changed temporary filename is NOT ours to remove. Never unlink
