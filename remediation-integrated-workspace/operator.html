@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-ld2C+QDNaCTC/Gz1lj2WPaGlGGODWdmMbQ1MTqpubZg=&#x27; &#x27;sha256-567hzQRKd5ifXVN+658ItVvr9cRGoXZMYyt6H1swnio=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-ld2C+QDNaCTC/Gz1lj2WPaGlGGODWdmMbQ1MTqpubZg=&#x27; &#x27;sha256-/EVoIIWdKetNynqius/SbeIV8li8zNAr5lolq5ZXhOY=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -131,7 +131,7 @@ NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
 <input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp,.zip">
 <div class="tools">
 <button type="button" id="packet-analyze">Bereken lokaal SHA-256</button>
-<button type="button" id="packet-export" disabled>Download privé JSON-controleoverzicht</button>
+<button type="button" id="packet-export" disabled>Download JSON voor bronvrije pakketten</button>
 <button type="button" id="packet-export-software" disabled>Download softwarechecksum (.sha256)</button>
 <button type="button" id="packet-clear" class="secondary">Wis fingerprints</button>
 </div>
@@ -926,8 +926,14 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
       inventory.some(item => item.sha256 === declared &&
         (!declaredSize || item.size === Number(declaredSize)))
     );
-    exportButton.disabled = !inventory.length || !matchingDeclared ||
-      receiptStatus === "pending" || receiptStatus === "invalid";
+    // General JSON receipts describe original source-free .luh* packets.
+    // They cannot be consumed by the native software-only ZIP recipient.
+    // If any selected file is a software ZIP, use the separate 65-byte
+    // .sha256 export instead; never offer an incompatible JSON handoff.
+    exportButton.disabled = !inventory.length ||
+      inventory.some(item => item.softwareOnly) ||
+      !matchingDeclared || receiptStatus === "pending" ||
+      receiptStatus === "invalid";
     expectedResult.textContent = "";
     if (receiptStatus === "invalid") {
       expectedResult.textContent = "HOLD: het ontvangen originele .sha256-controlebestand is onbruikbaar of nadien gewijzigd. Wis eerst de controlewaarden of importeer opnieuw.";
@@ -1180,8 +1186,9 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     }
   });
   exportButton.addEventListener("click", () => {
-    if (!inventory.length || exportButton.disabled) {
-      message("HOLD: los de afwijkende of nog niet gecontroleerde oorspronkelijke checksum op vóór een nieuwe fingerprintexport.");
+    if (!inventory.length || exportButton.disabled ||
+        inventory.some(item => item.softwareOnly)) {
+      message("HOLD: een software-ZIP gebruikt uitsluitend het aparte .sha256-controlebestand; het algemene JSON-bewijs is alleen voor bronvrije pakketten.");
       return;
     }
     if (!window.confirm("Dit maakt een PRIVATE JSON-bestand met SHA-256-digests en lengtes. Zelfs zonder bestandsnamen kunnen fingerprints gevoelig of koppelbaar zijn. Alleen voor afzonderlijk geautoriseerde offline overdracht. Doorgaan?")) return;
