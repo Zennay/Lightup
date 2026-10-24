@@ -234,7 +234,14 @@ path-display rule. Both reject Unicode control, format, surrogate, line and
 paragraph separator categories (Cc, Cf, Cs, Zl, Zp). These include hidden
 zero-width spaces, soft hyphens, word joiners, bidi controls, C1 escapes and
 Unicode line breaks that can make the displayed source or destination
-different from what is actually opened. Ordinary printable Unicode place
+different from what is actually opened. The native software
+installer now also validates the **raw CLI path text before converting it
+to Python Path**: hidden `/./` and `/../` segments and double-leading
+`//` are HOLD, rather than being silently simplified by pathlib before
+the original literal-path gate can inspect them. The browser already
+rejects these ambiguous path spellings. This applies to every native
+software input and output option, including optional PRIVATE receipt and
+planned review-only destinations. Ordinary printable Unicode place
 names remain allowed. Native file ownership, exact bytes and nofollow
 directory-descriptor checks remain authoritative; preview validation is
 not an authenticity guarantee or a permission grant.
