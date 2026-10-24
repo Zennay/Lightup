@@ -858,8 +858,14 @@ Instead of composing the individual original scripts by hand, start the
     python3 remediation-integrated-workspace/private_desk.py list
     python3 remediation-integrated-workspace/private_desk.py menu
 
+When the original interactive HUMAN menu is **deliberately cancelled**
+by a blank selection or by refusing the final `YES` confirmation, it now
+returns **3=HOLD**, explicitly states that no native operation started,
+and never claims **2=REVIEW_ONLY** for doing nothing. Original `list`
+remains REVIEW_ONLY=2, while `--help` exits 0 without an operation.
+
 When the original interactive HUMAN menu ends with EOF or Ctrl+C **before
-dispatch**, the native launcher now returns **3=HOLD** and accurately says
+dispatch**, the native launcher returns **3=HOLD** and accurately says
 that no native action started. If interruption occurs **during dispatch**,
 it still returns **3=HOLD** but deliberately does **not** assert that
 nothing ran: the operator must inspect existing private output before
