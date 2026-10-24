@@ -88,9 +88,14 @@ def require_operator_path(path: Path) -> None:
     This does not authenticate the path or its owner: nofollow/private
     descriptor admission remains the actual filesystem gate.
     """
-    require(isinstance(path, Path) and path.is_absolute(), 
+    require(isinstance(path, Path) and path.is_absolute(),
             "HOLD: expected a literal absolute HUMAN operator path")
     name = os.fspath(path)
+    # POSIX reserves two leading slashes for implementation-defined path
+    # semantics. The offline browser already rejects this ambiguous form;
+    # native entrypoints must not reinterpret it as an ordinary root path.
+    require(name.startswith("/") and not name.startswith("//"),
+            "HOLD: use one literal leading slash for a private Linux path")
     # Unicode general categories catch invisible marks overlooked by a
     # blacklist: Cf (ZWSP, soft hyphen, word joiner, bidi controls),
     # Cc (including C1 terminal controls), Cs (surrogates), and actual
