@@ -123,12 +123,22 @@
     output.replaceChildren(tab);
   }
 
-  expected.addEventListener("input", () => {
-    receiptGeneration++; receiptStatus = "none"; compareDeclaredSource();
-  });
-  expectedSize.addEventListener("input", () => {
-    receiptGeneration++; receiptStatus = "none"; compareDeclaredSource();
-  });
+  function invalidateEditedReceipt() {
+    // A selected original .sha256 must never be silently discarded when an
+    // operator types a replacement digest. Otherwise a mismatched imported
+    // receipt could be edited to match and the export HOLD bypassed.
+    // Explicit "Wis fingerprints" or a newly admitted receipt is required
+    // before exporting a fresh, separately authorized software checksum.
+    const hadReceipt = receiptStatus !== "none";
+    receiptGeneration++; // Cancel any original in-flight file admission.
+    if (hadReceipt) {
+      receiptStatus = "invalid";
+      message("HOLD: ontvangen checksum is gewijzigd. Wis de controlewaarden of importeer het originele .sha256-bestand opnieuw.");
+    }
+    compareDeclaredSource();
+  }
+  expected.addEventListener("input", invalidateEditedReceipt);
+  expectedSize.addEventListener("input", invalidateEditedReceipt);
   expectedFile.addEventListener("change", async () => {
     const file = expectedFile.files && expectedFile.files[0];
     const request = ++receiptGeneration;
