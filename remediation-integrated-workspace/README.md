@@ -108,7 +108,14 @@ On an authorized trusted Linux machine with Python 3, inside a copy of this bran
     chmod 700 "$HOME/lightup-private"
     python3 remediation-integrated-workspace/install.py build --output-dir "$HOME/lightup-private/integrated-workspace-v1"
 
-The installer returns 2 = REVIEW_ONLY after local success, or 3 = HOLD on failure. Use an unused directory name. Open integrated-workspace-v1/index.html locally.
+The installer returns 2 = REVIEW_ONLY after local success, or 3 = HOLD on failure.
+**CLI syntax errors are also HOLD=3, never REVIEW_ONLY=2.** Both the
+native `install.py` and the HUMAN `private_desk.py` now reject missing
+required flags, unknown subcommands and unknown options via the same
+original HOLD contract rather than Python argparse's default exit code 2.
+`--help` retains exit 0 and does not execute a native workflow. This
+distinction matters for operator scripts: an invalid command must never
+be mistaken for a locally admitted software archive or source review. Use an unused directory name. Open integrated-workspace-v1/index.html locally.
 
 All native software builder, installed-suite inspector, new passport publisher
 and existing passport reopen paths now pass the **same HUMAN operator path
