@@ -563,25 +563,31 @@
     softwareCompare.disabled = true;
     softwareResult.dataset.kind = "info";
     softwareResult.textContent = "PRIVATE bestanden uitsluitend lokaal lezen en vergelijken…";
+    // Browser/File/WebCrypto may keep separate internal copies. Overwrite
+    // only the byte buffers this comparator owns on every exit, including
+    // aborted selections and failed local digests; no erasure guarantee.
+    let signature = null;
+    let bytes = null;
+    let digestBytes = null;
     try {
-      const signature = new Uint8Array(await receipt.arrayBuffer());
+      signature = new Uint8Array(await receipt.arrayBuffer());
       if (generation !== softwareGeneration) return;
       if (signature.length !== 65 || signature[64] !== 10 ||
-          !Array.from(signature.slice(0, 64)).every(b =>
+          !Array.from(signature.subarray(0, 64)).every(b =>
             b >= 48 && b <= 57 || b >= 97 && b <= 102)) {
         throw Error("receipt-format");
       }
-      const expected = String.fromCharCode(...signature.slice(0, 64));
-      const bytes = await zip.arrayBuffer();
+      const expected = String.fromCharCode(...signature.subarray(0, 64));
+      bytes = new Uint8Array(await zip.arrayBuffer());
       if (generation !== softwareGeneration) return;
       if (bytes.byteLength !== zip.size || bytes.byteLength > 15000000) {
         throw Error("zip-changed");
       }
-      const hashBytes = await window.crypto.subtle.digest("SHA-256", bytes);
+      digestBytes = new Uint8Array(
+        await window.crypto.subtle.digest("SHA-256", bytes));
       if (generation !== softwareGeneration) return;
       const hash = Array.from(
-        new Uint8Array(hashBytes),
-        b => b.toString(16).padStart(2, "0")).join("");
+        digestBytes, b => b.toString(16).padStart(2, "0")).join("");
       if (hash !== expected) {
         softwareResult.textContent = "HOLD: SHA-256 van ontvangen ZIP wijkt af van het afzonderlijke checksum-bestand. Niet installeren of stilzwijgend vervangen.";
         softwareResult.dataset.kind = "error";
@@ -599,6 +605,11 @@
         softwareResult.dataset.kind = "error";
       }
     } finally {
+      // Also run for stale asynchronous callbacks after a new selection.
+      // Never display or reuse these exact raw buffers after comparison.
+      if (signature) signature.fill(0);
+      if (bytes) bytes.fill(0);
+      if (digestBytes) digestBytes.fill(0);
       if (generation === softwareGeneration) {
         softwareBusy = false;
         softwareCompare.disabled = false;
