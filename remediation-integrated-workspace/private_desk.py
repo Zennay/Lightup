@@ -192,7 +192,12 @@ def menu():
         if repeat:
             found = []
             while True:
-                entered = input(f"{label} (blank ends list): ").strip()
+                entered = input(f"{label} (blank ends list): ")
+                # Never rewrite literal private paths. Whitespace-only input
+                # is not an explicit empty terminator and a changed path is
+                # not authorized evidence.
+                if entered != entered.strip():
+                    raise ValueError("Original HUMAN path has leading/trailing whitespace: " + flag)
                 if not entered:
                     break
                 found.append(entered)
@@ -200,7 +205,9 @@ def menu():
                 raise ValueError("Required original input missing: " + flag)
             values[flag] = found
         else:
-            entered = input(f"{label}{' [required]' if required else ' [optional]'}: ").strip()
+            entered = input(f"{label}{' [required]' if required else ' [optional]'}: ")
+            if entered != entered.strip():
+                raise ValueError("Original HUMAN path has leading/trailing whitespace: " + flag)
             if required and not entered:
                 raise ValueError("Required original input missing: " + flag)
             values[flag] = entered or None
