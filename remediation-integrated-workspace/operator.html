@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-jZP4xm93Wr/yg1W31ZS8x2Vn0K05cL1pSeOg9ZSgDZ4=&#x27; &#x27;sha256-Y92T8n6JOTaSziR32ADuoYpe5TCHQLwvyLrJlgRUWJA=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-KK+wDv+3ItH9e2d6sIlScGwFXdT/+alp3VQ4l5q1MN4=&#x27; &#x27;sha256-Y92T8n6JOTaSziR32ADuoYpe5TCHQLwvyLrJlgRUWJA=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -162,9 +162,11 @@ onafhankelijke securityreview blijven verplicht.</small>
 </section>
 <section class="fingerprint" aria-label="Offline software ZIP checksum vergelijken">
 <h2>Ontvangen PRIVATE softwarepakket controleren</h2>
-<p>Vergelijk de originele <code>software-only.zip</code> met een apart ontvangen
-<code>.sha256</code>-bestand. Deze pagina leest uitsluitend twee door de
-operator gekozen lokale bestanden in het geheugen. Maximaal 15.000.000 bytes
+<p>Vergelijk uitsluitend het originele bestand met de exacte naam
+<code>software-only.zip</code> met een apart ontvangen
+<code>.sha256</code>-bestand. Een anders genoemd ZIP-bestand wordt geweigerd,
+zelfs wanneer iemand een bijpassende checksum heeft. Deze pagina leest
+uitsluitend twee gekozen lokale bestanden in het geheugen. Maximaal 15.000.000 bytes
 voor de ZIP en exact 65 bytes voor de checksum (64 kleine hextekens en LF).</p>
 <label for="software-zip">Originele ontvangen software-ZIP</label>
 <input id="software-zip" type="file" accept=".zip">
@@ -692,11 +694,15 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     if (softwareBusy) return;
     const zip = softwareZip.files && softwareZip.files[0];
     const receipt = softwareHash.files && softwareHash.files[0];
-    if (!zip || !receipt || !zip.name.endsWith(".zip") ||
+    // This is the ORIGINAL named software-only ZIP workflow, not a generic
+    // ZIP checksum oracle. The separate packet fingerprinter already refuses
+    // arbitrary ZIP files. Keep the two browser gates in agreement; matching
+    // hashes still never prove native software admission or provenance.
+    if (!zip || !receipt || zip.name !== "software-only.zip" ||
         !receipt.name.endsWith(".sha256") ||
         !Number.isSafeInteger(zip.size) || zip.size < 1 || zip.size > 15000000 ||
         receipt.size !== 65) {
-      softwareResult.textContent = "HOLD: kies precies één ZIP van 1–15.000.000 bytes en één originele .sha256 van exact 65 bytes.";
+      softwareResult.textContent = "HOLD: kies alleen het originele software-only.zip (1–15.000.000 bytes) en één apart ontvangen .sha256-bestand van exact 65 bytes.";
       softwareResult.dataset.kind = "error";
       return;
     }
