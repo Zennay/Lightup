@@ -274,8 +274,23 @@ def unpack_native_archive(raw: bytes, expected_names: set[str]) -> dict[str, byt
                         "Noncanonical ZIP local header")
                 require(raw[local_pos + 30:local_pos + 30 + len(name)] == name,
                         "Changed local ZIP filename")
-                local_pos += 30 + len(name) + member.compress_size
-                require(local_pos <= len(raw), "Truncated ZIP member data")
+                # A normal ZIP reader may ignore extra bytes after a complete
+                # raw-DEFLATE stream *inside* a declared compressed member.
+                # Source hashes still match, but those hidden archive bytes
+                # are not canonical software. Require exact stream exhaustion
+                # without recompressing data (zlib versions can differ).
+                data_start = local_pos + 30 + len(name)
+                data_end = data_start + member.compress_size
+                require(data_end <= len(raw), "Truncated ZIP member data")
+                inflater = zlib.decompressobj(wbits=-15)
+                plain = inflater.decompress(raw[data_start:data_end],
+                                           member.file_size + 1)
+                require(inflater.eof and not inflater.unused_data
+                        and not inflater.unconsumed_tail
+                        and len(plain) == member.file_size
+                        and inflater.flush() == b"",
+                        "ZIP member has extra or incomplete DEFLATE stream bytes")
+                local_pos = data_end
             require(local_pos == archive.start_dir,
                     "Unexpected ZIP prefix, local records or padding")
             central_pos = local_pos
