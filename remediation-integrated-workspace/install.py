@@ -1110,6 +1110,15 @@ def main() -> int:
                     and not raw.startswith("//")
                     and all(segment not in (".", "..") for segment in raw.split("/")),
                     "Original operator path must be literal absolute without . or .. segments")
+            # pathlib silently drops a trailing slash on a regular-file
+            # argument. The same original bytes then look valid even though
+            # the operator entered a directory-shaped pathname. Fail closed
+            # before Path(raw) hides the distinction; directory flags keep
+            # ordinary trailing-slash support.
+            if flag in ("archive", "expected_sha256_file", "output_file",
+                        "planned_checksum_file"):
+                require(not raw.endswith("/"),
+                        "Original software file path must not end with /")
             checked = Path(raw)
             require_operator_path(checked)
             setattr(args, flag, checked)
