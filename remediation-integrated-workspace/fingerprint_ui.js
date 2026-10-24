@@ -191,18 +191,24 @@
     try {
       // Original bytes stay in the browser; no upload, cache or permission.
       const bytes = new Uint8Array(await file.arrayBuffer());
-      if (request !== receiptGeneration) return;
-      const literal = String.fromCharCode(...bytes);
-      if (bytes.length !== 65 || !/^[0-9a-f]{64}\n$/.test(literal)) {
-        receiptStatus = "invalid";
+      try {
+        if (request !== receiptGeneration) return;
+        const literal = String.fromCharCode(...bytes);
+        if (bytes.length !== 65 || !/^[0-9a-f]{64}\n$/.test(literal)) {
+          receiptStatus = "invalid";
+          compareDeclaredSource();
+          message("HOLD: 64 kleine hextekens plus één LF vereist.");
+          return;
+        }
+        expected.value = literal.slice(0, 64);
+        receiptStatus = "accepted";
         compareDeclaredSource();
-        message("HOLD: 64 kleine hextekens plus één LF vereist.");
-        return;
+        message("Checksum lokaal ingelezen. Dit bewijst geen afzender of toestemming.");
+      } finally {
+        // Best-effort wipe of OUR byte buffer, also on async cancellation.
+        // Browser/File/WebCrypto internals may retain other copies.
+        bytes.fill(0);
       }
-      expected.value = literal.slice(0, 64);
-      receiptStatus = "accepted";
-      compareDeclaredSource();
-      message("Checksum lokaal ingelezen. Dit bewijst geen afzender of toestemming.");
     } catch (_) {
       if (request === receiptGeneration) {
         receiptStatus = "invalid";
@@ -250,13 +256,21 @@
     try {
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
-        const raw = await f.arrayBuffer();
-        if (requestGeneration !== generation) return;
-        if (raw.byteLength !== f.size ||
-            raw.byteLength > (f.name === "software-only.zip" ? limitSoftwareArchive : limitItem)) {
-          throw Error("De geselecteerde bronbytes veranderden tijdens het lezen.");
+        const raw = new Uint8Array(await f.arrayBuffer());
+        let sha256;
+        try {
+          if (requestGeneration !== generation) return;
+          if (raw.byteLength !== f.size ||
+              raw.byteLength > (f.name === "software-only.zip" ? limitSoftwareArchive : limitItem)) {
+            throw Error("De geselecteerde bronbytes veranderden tijdens het lezen.");
+          }
+          sha256 = hex(await crypto.subtle.digest("SHA-256", raw));
+        } finally {
+          // Overwrite only the byte buffer that this helper owns, including
+          // on read rejection or stale async runs. No erasure guarantee for
+          // browser-managed File or WebCrypto copies.
+          raw.fill(0);
         }
-        const sha256 = hex(await crypto.subtle.digest("SHA-256", raw));
         if (requestGeneration !== generation) return;
         candidate.push({
           slot: i + 1,
