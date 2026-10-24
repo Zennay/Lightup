@@ -123,6 +123,11 @@ def fingerprint_archive(archive: Path, output_file: Path) -> None:
         # source-verified fingerprint when its trusted checkout has drifted.
         suite.require(admit_archive(archive)[0] == raw,
                       "Original software ZIP or trusted checkout changed before checksum publication")
+        # Verify the actual new PRIVATE temporary receipt, not just its
+        # inode/mode. The exclusive publisher checks the original inode,
+        # but those identity checks alone cannot detect changed bytes.
+        suite.require(suite.read_owner_file(stage, ceiling=65) == payload,
+                      "PRIVATE software checksum bytes changed before publication")
         suite.exclusive_publish(stage, output_file, expected_identity=stage_identity)
     finally:
         # A changed temporary filename is NOT ours to remove. Never unlink
