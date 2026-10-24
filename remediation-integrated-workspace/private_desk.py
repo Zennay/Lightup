@@ -154,8 +154,18 @@ OPERATIONS = {
     ), "Re-admit native PRIVATE passport HTML/JSON byte-for-byte against its installed software."),
 }
 
+class HoldArgumentParser(argparse.ArgumentParser):
+    """Invalid HUMAN CLI syntax cannot masquerade as REVIEW_ONLY=2.
+
+    The ordinary argparse failure code is 2, which LightUp reserves for
+    verified REVIEW_ONLY operations; normalize bad usage to HOLD=3.
+    """
+    def error(self, message: str) -> None:
+        raise ValueError("Invalid original HUMAN command arguments: " + message)
+
+
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
+    p = HoldArgumentParser(
         description="LightUp native offline PRIVATE HUMAN operations. " + WARNING,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="action", required=True)
@@ -328,8 +338,10 @@ def dispatch(name: str, values: dict) -> None:
 
 def main() -> int:
     p = parser()
-    args = p.parse_args()
     try:
+        # Syntax rejection must HOLD instead of argparse's exit 2, which
+        # would otherwise be indistinguishable from original REVIEW_ONLY.
+        args = p.parse_args()
         if args.action == "list":
             present()
             return 2  # REVIEW_ONLY, not authority
