@@ -4,6 +4,7 @@
   const analyze = document.getElementById("packet-analyze");
   const clear = document.getElementById("packet-clear");
   const exportButton = document.getElementById("packet-export");
+  const softwareExport = document.getElementById("packet-export-software");
   const output = document.getElementById("packet-result");
   const notice = document.getElementById("packet-message");
   const comparison = document.getElementById("packet-comparison");
@@ -35,6 +36,7 @@
     output.replaceChildren();
     comparison.textContent = "";
     exportButton.disabled = true;
+    softwareExport.disabled = true;
     compareDeclaredSource();
   }
   function message(s) {
@@ -151,6 +153,7 @@
         candidate.push({
           slot: i + 1,
           label: "Lokaal bestand " + (i + 1),
+          softwareOnly: f.name === "software-only.zip",
           size: f.size,
           sha256
         });
@@ -172,6 +175,9 @@
         comparison.textContent = "Deze fingerprint kan later op een afzonderlijk geautoriseerd apparaat worden vergeleken; er is geen geauthenticeerde afzender of inhoudstoelating.";
       }
       exportButton.disabled = false;
+      // A native receiver expects one exact text digest, not our general
+      // JSON inventory. Never export a mixed selection as a software receipt.
+      softwareExport.disabled = !(candidate.length === 1 && candidate[0].softwareOnly);
       compareDeclaredSource();
       message("Lokale SHA-256 klaar. Bij software-only.zip bewijst dit alleen byte-overeenkomst: gebruik de native inspect-archive voor bron- en ZIP-toelating. Niets verzonden.");
     } catch (_) {
@@ -198,6 +204,28 @@
     expectedSize.value = "";
     forget(); // Also invalidates any still-running File/WebCrypto operation.
     message("Lokale hashes en ingevulde controlewaarden gewist. Eerder gekopieerde of gedownloade bestanden blijven buiten deze browser bestaan.");
+  });
+  softwareExport.addEventListener("click", () => {
+    if (inventory.length !== 1 || !inventory[0].softwareOnly) return;
+    const sha = inventory[0].sha256;
+    if (!/^[0-9a-f]{64}$/.test(sha) ||
+        !Number.isSafeInteger(inventory[0].size) ||
+        inventory[0].size <= 0 || inventory[0].size > limitSoftwareArchive) return;
+    if (!window.confirm("Download alleen de lokale, ONGETEKENDE SHA-256 van software-only.zip? De native ontvangst controleert afzonderlijk de bronbestanden. Dit bewijst geen afzender, toestemming of vrijgave.")) return;
+    const payload = sha + "\n"; // exactly 65 ASCII bytes: native --expected-sha256-file
+    const url = URL.createObjectURL(new Blob([payload], {type: "text/plain"}));
+    try {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "software-only.sha256";
+      link.rel = "noopener";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      message("Ongesigneerd software-only.sha256 lokaal aangeboden. Bewaar het alleen in een aparte 0700 privémap als 0600-bestand; native inspect-archive blijft verplicht.");
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
   });
   exportButton.addEventListener("click", () => {
     if (!inventory.length) return;
