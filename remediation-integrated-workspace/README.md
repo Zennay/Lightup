@@ -57,6 +57,17 @@ passport or received source directory when a caller passes the wrong
 path, but does not authorize any software publication, assert provenance
 or replace external filesystem isolation.
 
+## Literal PRIVATE terminal path boundary
+
+Native offline installer actions now reject POSIX paths starting with two
+leading slashes (`//...`) **before opening an input or publishing anything**.
+POSIX leaves these double-root forms implementation-defined, and the
+offline HUMAN browser command builder already refused them. Use ordinary
+single-root absolute Linux paths (`/...`) for both native and browser
+operations. Unicode invisible/control marks and dot-segment paths remain
+subject to the existing native HOLD and nofollow/private ownership gates.
+This is path consistency, not authenticated producer identity or approval.
+
 ## One-command offline installation
 
 On an authorized trusted Linux machine with Python 3, inside a copy of this branch create a private parent directory first:
