@@ -487,6 +487,14 @@ This reuses the original full offline ZIP/source-lock admission and exact
 native software renderers before publication. Only after the ZIP is
 re-admitted, it writes a **fresh 0600 temporary 65-byte checksum file** and
 publishes it with the existing Linux exclusive no-replace private publisher.
+Before that rename, the original source-only ZIP and pinned checkout are
+re-admitted, **and the exact newly written 65-byte temporary checksum is
+read back through the private nofollow descriptor gate and compared with
+the original digest-plus-LF payload**. Correct file identity and mode
+alone cannot prove its content stayed unchanged. A mismatched temporary
+receipt is HOLD, never an accepted software fingerprint; malicious
+modification by another process with the same Unix identity remains a
+separate operating-system trust boundary.
 Temporary checksum cleanup is also **directory-descriptor-relative** and
 requires the exact **device/inode identity of the file the writer created**.
 Even a replacement that still has identical 0600 permissions and one link
