@@ -334,7 +334,13 @@ def main() -> int:
             present()
             return 2  # REVIEW_ONLY, not authority
         if args.action == "menu":
-            chosen = menu()
+            # Only interruption BEFORE dispatch proves that no native command
+            # has started. Do not give that assurance after execv begins.
+            try:
+                chosen = menu()
+            except (EOFError, KeyboardInterrupt):
+                print("HOLD: incomplete HUMAN menu; nothing launched.", file=sys.stderr)
+                return 3
             if chosen is None:
                 return 2
             name, values = chosen
@@ -345,7 +351,11 @@ def main() -> int:
         result = dispatch(name, values)
         return result if result is not None else 3  # execv never returns on success
     except (EOFError, KeyboardInterrupt):
-        print("HOLD: incomplete HUMAN menu; nothing launched.", file=sys.stderr)
+        # The native operation may already have started or left private
+        # staged output; never claim that an interrupt rolled it back.
+        print("HOLD: native operation interrupted; inspect original private outputs "
+              "before attempting any retry. Completion is unverified.",
+              file=sys.stderr)
         return 3
     except (ValueError, OSError) as exc:
         print("HOLD:", exc, file=sys.stderr)
