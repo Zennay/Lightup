@@ -195,6 +195,9 @@ NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
 maximaal acht bestanden: 20 MiB per bronvrij pakket, 15 MB per software-only.zip en 64 MiB samen.</p>
 <div id="packet-result" class="fingerprint-result"></div>
 <div class="fingerprint-match">
+<label for="packet-expected-file">Afzonderlijk ontvangen .sha256-bestand, optioneel</label>
+<input type="file" id="packet-expected-file" accept=".sha256">
+<small>Maximaal 65 bytes; alleen lokaal vergelijken, nooit als afzenderbewijs.</small>
 <label for="packet-expected">Ontvangen oorspronkelijke SHA-256, optioneel
 (alleen na apart geautoriseerde uitwisseling)</label>
 <input id="packet-expected" type="text" inputmode="latin" spellcheck="false"

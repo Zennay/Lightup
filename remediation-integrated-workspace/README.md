@@ -456,6 +456,12 @@ python3 remediation-integrated-workspace/install.py receive \
   --output-dir "$HOME/lightup-private/received-original-suite"
 ```
 
+The browser-only PRIVATE comparator also allows an operator to select a
+separately received .sha256 file instead of manually transcribing 64 characters.
+It admits **exactly 65 ASCII bytes** (64 lowercase hex plus LF) locally,
+rejects malformed or stale asynchronous reads and never uploads anything.
+This is a byte comparison, **not** native source admission or provenance.
+
 The optional matching input is supported by the native HUMAN desk and offline
 browser operator studio as a *path* field. The browser command composer
 prevents preparing a `fingerprint-archive` output or `receive-software`

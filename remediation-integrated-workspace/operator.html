@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-KK+wDv+3ItH9e2d6sIlScGwFXdT/+alp3VQ4l5q1MN4=&#x27; &#x27;sha256-qrrjHFzKPRyiihlGhxJPKgQZ2f0X1f/bvg/Y+WtPO0w=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-KK+wDv+3ItH9e2d6sIlScGwFXdT/+alp3VQ4l5q1MN4=&#x27; &#x27;sha256-TQ8v6KlXUOsj2v3xq6fvXmaKuCsytJFt3igNLkyRl5I=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -139,6 +139,9 @@ NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
 maximaal acht bestanden: 20 MiB per bronvrij pakket, 15 MB per software-only.zip en 64 MiB samen.</p>
 <div id="packet-result" class="fingerprint-result"></div>
 <div class="fingerprint-match">
+<label for="packet-expected-file">Afzonderlijk ontvangen .sha256-bestand, optioneel</label>
+<input type="file" id="packet-expected-file" accept=".sha256">
+<small>Maximaal 65 bytes; alleen lokaal vergelijken, nooit als afzenderbewijs.</small>
 <label for="packet-expected">Ontvangen oorspronkelijke SHA-256, optioneel
 (alleen na apart geautoriseerde uitwisseling)</label>
 <input id="packet-expected" type="text" inputmode="latin" spellcheck="false"
@@ -774,6 +777,7 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   const notice = document.getElementById("packet-message");
   const comparison = document.getElementById("packet-comparison");
   const expected = document.getElementById("packet-expected");
+  const expectedFile = document.getElementById("packet-expected-file");
   const expectedSize = document.getElementById("packet-expected-size");
   const expectedResult = document.getElementById("packet-expected-result");
   const limitCount = 8;
@@ -788,6 +792,7 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   // Invalidate every in-flight File.arrayBuffer/WebCrypto digest whenever the
   // operator clears results or changes the original file selection.
   let generation = 0;
+  let receiptGeneration = 0;
   let busy = false;
 
   function forget() {
@@ -868,8 +873,38 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     output.replaceChildren(tab);
   }
 
-  expected.addEventListener("input", compareDeclaredSource);
-  expectedSize.addEventListener("input", compareDeclaredSource);
+  expected.addEventListener("input", () => { receiptGeneration++; compareDeclaredSource(); });
+  expectedSize.addEventListener("input", () => { receiptGeneration++; compareDeclaredSource(); });
+  expectedFile.addEventListener("change", async () => {
+    const file = expectedFile.files && expectedFile.files[0];
+    const request = ++receiptGeneration;
+    expected.value = "";
+    expectedSize.value = "";
+    compareDeclaredSource();
+    if (!file) return;
+    if (!file.name.endsWith(".sha256") || file.size !== 65) {
+      expectedFile.value = "";
+      message("HOLD: apart .sha256-bestand moet exact 65 bytes bevatten.");
+      return;
+    }
+    try {
+      // Original bytes stay in the browser; no upload, cache or permission.
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (request !== receiptGeneration) return;
+      const literal = String.fromCharCode(...bytes);
+      if (bytes.length !== 65 || !/^[0-9a-f]{64}\n$/.test(literal)) {
+        message("HOLD: 64 kleine hextekens plus één LF vereist.");
+        return;
+      }
+      expected.value = literal.slice(0, 64);
+      compareDeclaredSource();
+      message("Checksum lokaal ingelezen. Dit bewijst geen afzender of toestemming.");
+    } catch (_) {
+      if (request === receiptGeneration) message("HOLD: lokaal lezen mislukt.");
+    } finally {
+      if (request === receiptGeneration) expectedFile.value = "";
+    }
+  });
   picker.addEventListener("change", () => {
     forget();
     message("Nieuwe lokale selectie. Bereken de nieuwe fingerprints opnieuw.");
@@ -965,6 +1000,8 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     // checksum and byte count. Their retention would contradict the operator
     // expectation that all on-screen fingerprint values have been forgotten.
     picker.value = "";
+    expectedFile.value = "";
+    receiptGeneration++;
     expected.value = "";
     expectedSize.value = "";
     forget(); // Also invalidates any still-running File/WebCrypto operation.

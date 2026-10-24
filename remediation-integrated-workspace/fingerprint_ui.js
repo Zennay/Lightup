@@ -9,6 +9,7 @@
   const notice = document.getElementById("packet-message");
   const comparison = document.getElementById("packet-comparison");
   const expected = document.getElementById("packet-expected");
+  const expectedFile = document.getElementById("packet-expected-file");
   const expectedSize = document.getElementById("packet-expected-size");
   const expectedResult = document.getElementById("packet-expected-result");
   const limitCount = 8;
@@ -23,6 +24,7 @@
   // Invalidate every in-flight File.arrayBuffer/WebCrypto digest whenever the
   // operator clears results or changes the original file selection.
   let generation = 0;
+  let receiptGeneration = 0;
   let busy = false;
 
   function forget() {
@@ -103,8 +105,38 @@
     output.replaceChildren(tab);
   }
 
-  expected.addEventListener("input", compareDeclaredSource);
-  expectedSize.addEventListener("input", compareDeclaredSource);
+  expected.addEventListener("input", () => { receiptGeneration++; compareDeclaredSource(); });
+  expectedSize.addEventListener("input", () => { receiptGeneration++; compareDeclaredSource(); });
+  expectedFile.addEventListener("change", async () => {
+    const file = expectedFile.files && expectedFile.files[0];
+    const request = ++receiptGeneration;
+    expected.value = "";
+    expectedSize.value = "";
+    compareDeclaredSource();
+    if (!file) return;
+    if (!file.name.endsWith(".sha256") || file.size !== 65) {
+      expectedFile.value = "";
+      message("HOLD: apart .sha256-bestand moet exact 65 bytes bevatten.");
+      return;
+    }
+    try {
+      // Original bytes stay in the browser; no upload, cache or permission.
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (request !== receiptGeneration) return;
+      const literal = String.fromCharCode(...bytes);
+      if (bytes.length !== 65 || !/^[0-9a-f]{64}\n$/.test(literal)) {
+        message("HOLD: 64 kleine hextekens plus één LF vereist.");
+        return;
+      }
+      expected.value = literal.slice(0, 64);
+      compareDeclaredSource();
+      message("Checksum lokaal ingelezen. Dit bewijst geen afzender of toestemming.");
+    } catch (_) {
+      if (request === receiptGeneration) message("HOLD: lokaal lezen mislukt.");
+    } finally {
+      if (request === receiptGeneration) expectedFile.value = "";
+    }
+  });
   picker.addEventListener("change", () => {
     forget();
     message("Nieuwe lokale selectie. Bereken de nieuwe fingerprints opnieuw.");
@@ -200,6 +232,8 @@
     // checksum and byte count. Their retention would contradict the operator
     // expectation that all on-screen fingerprint values have been forgotten.
     picker.value = "";
+    expectedFile.value = "";
+    receiptGeneration++;
     expected.value = "";
     expectedSize.value = "";
     forget(); // Also invalidates any still-running File/WebCrypto operation.
