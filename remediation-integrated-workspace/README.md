@@ -110,6 +110,16 @@ On an authorized trusted Linux machine with Python 3, inside a copy of this bran
 
 The installer returns 2 = REVIEW_ONLY after local success, or 3 = HOLD on failure. Use an unused directory name. Open integrated-workspace-v1/index.html locally.
 
+All native software builder, installed-suite inspector, new passport publisher
+and existing passport reopen paths now pass the **same HUMAN operator path
+gate** as the ZIP receiver. The gate rejects control characters, invisible
+Unicode formatting, bidi overrides and ambiguous absolute paths **before
+original private software is read or new output is staged**; ordinary
+printable Unicode names remain allowed. The browser command composer has a
+parallel early warning, but original native filesystem admission is the
+authoritative check. The gate does not authenticate a software publisher,
+grant consent, permit scanning or satisfy independent review.
+
 The original owner-private staging-directory factory now rolls back its own
 **fresh empty temporary directory** via its still-open 0700 parent descriptor
 if opening or syncing the newly created stage fails *before* the caller
