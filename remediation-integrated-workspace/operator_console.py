@@ -198,6 +198,10 @@ NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
 <button type="button" id="packet-export-software" disabled>Download softwarechecksum (.sha256)</button>
 <button type="button" id="packet-clear" class="secondary">Wis fingerprints</button>
 </div>
+<small>Na download: plaats de checksum in een aparte privémap (0700) en zet het bestand
+met <code>chmod 600</code> op alleen-eigenaar. De browser kan die Linux-rechten niet instellen.
+Pas daarna accepteert de native ontvanger de originele checksum; controleer de bytes met
+<code>inspect-archive</code>. Niets is ondertekend of geautoriseerd.</small>
 <p id="packet-message" role="status" aria-live="polite">Alle bytes blijven lokaal;
 maximaal acht bestanden: 20 MiB per bronvrij pakket, 15 MB per software-only.zip en 64 MiB samen.</p>
 <div id="packet-result" class="fingerprint-result"></div>
