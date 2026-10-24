@@ -17,22 +17,26 @@ def admit_archive(archive: Path,
     suite.require_operator_path(archive)
     if expected_sha256_file is not None:
         suite.require_operator_path(expected_sha256_file)
-    suite.owner_dir(archive.parent)
-    raw = suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL)
-    suite.require(0 < len(raw) <= suite.MAX_TOTAL, "Oversized incoming software ZIP")
+    # Validate independently supplied PRIVATE fingerprint format before
+    # accessing the original software ZIP. A malformed fingerprint must not
+    # make us read sensitive/untrusted archive bytes just to return HOLD.
+    fingerprint = None
     if expected_sha256_file is not None:
         suite.require(expected_sha256_file != archive and
                       expected_sha256_file != suite.ROOT and
                       suite.ROOT not in expected_sha256_file.parents,
                       "Expected transfer fingerprint must be separate from source and ZIP")
-        # The operator must obtain these original 65 bytes by a separately
-        # trusted procedure. This comparison alone does not authenticate the
-        # owner, channel, client or operator.
+        # A locally matching checksum does not authenticate the sender or
+        # independently approve this software transfer.
         fingerprint = suite.read_owner_file(expected_sha256_file, ceiling=65)
         suite.require(len(fingerprint) == 65
                       and fingerprint[-1:] == b"\n"
                       and all(x in b"0123456789abcdef" for x in fingerprint[:64]),
                       "Expected transfer checksum must be 64 lowercase hex digits and LF")
+    suite.owner_dir(archive.parent)
+    raw = suite.read_owner_file(archive, ceiling=suite.MAX_TOTAL)
+    suite.require(0 < len(raw) <= suite.MAX_TOTAL, "Oversized incoming software ZIP")
+    if fingerprint is not None:
         suite.require(hmac.compare_digest(fingerprint[:64],
                                           suite.digest(raw).encode("ascii")),
                       "Software ZIP differs from separately supplied exact-byte checksum")
