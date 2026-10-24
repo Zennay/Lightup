@@ -1012,38 +1012,49 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Install or inspect source-only offline HUMAN workroom")
     sub = parser.add_subparsers(dest="action", required=True)
     p_build = sub.add_parser("build", help="Publish a fresh PRIVATE 0700 software-only offline suite")
-    p_build.add_argument("--output-dir", required=True, type=Path)
+    p_build.add_argument("--output-dir", required=True, type=str)
     p_verify = sub.add_parser("inspect", help="Inspect a locally installed PRIVATE suite without any network")
-    p_verify.add_argument("--workspace", required=True, type=Path)
+    p_verify.add_argument("--workspace", required=True, type=str)
     p_verify.add_argument("--compare-checkout", action="store_true",
                           help="also compare installed software with the exact current local checkout")
-    p_verify.add_argument("--report-dir", type=Path,
+    p_verify.add_argument("--report-dir", type=str,
                           help="optionally write a NEW 0700 private scriptless integrity passport")
-    p_verify.add_argument("--passport-dir", type=Path,
+    p_verify.add_argument("--passport-dir", type=str,
                           help="re-open EXISTING private integrity passport against original software")
     p_preview = sub.add_parser("inspect-archive",
                                help="Validate a PRIVATE software-only ZIP without extraction or writes")
-    p_preview.add_argument("--archive", required=True, type=Path)
-    p_preview.add_argument("--expected-sha256-file", type=Path,
+    p_preview.add_argument("--archive", required=True, type=str)
+    p_preview.add_argument("--expected-sha256-file", type=str,
                            help="optional separate owner-private 0600 original SHA-256+LF fingerprint")
-    p_preview.add_argument("--planned-output-dir", type=Path,
+    p_preview.add_argument("--planned-output-dir", type=str,
                            help="optional read-only validation of a fresh PRIVATE receiver destination")
-    p_preview.add_argument("--planned-checksum-file", type=Path,
+    p_preview.add_argument("--planned-checksum-file", type=str,
                            help="optional no-write validation of a fresh PRIVATE checksum file")
     p_hash = sub.add_parser("fingerprint-archive",
                             help="Write a NEW private 0600 SHA-256 file for an admitted source-only ZIP")
-    p_hash.add_argument("--archive", required=True, type=Path)
-    p_hash.add_argument("--output-file", required=True, type=Path)
+    p_hash.add_argument("--archive", required=True, type=str)
+    p_hash.add_argument("--output-file", required=True, type=str)
     p_recv = sub.add_parser("receive", help="Safely reconstruct pinned software-only ZIP offline")
-    p_recv.add_argument("--archive", required=True, type=Path)
-    p_recv.add_argument("--output-dir", required=True, type=Path)
-    p_recv.add_argument("--expected-sha256-file", type=Path,
+    p_recv.add_argument("--archive", required=True, type=str)
+    p_recv.add_argument("--output-dir", required=True, type=str)
+    p_recv.add_argument("--expected-sha256-file", type=str,
                         help="optional separate owner-private 0600 original SHA-256+LF fingerprint")
     args = parser.parse_args()
     try:
-        for original_arg in vars(args).values():
-            if isinstance(original_arg, Path):
-                require_operator_path(original_arg)
+        # pathlib normalizes literal "." segments and a leading "//"
+        # before ordinary Path validation can inspect the operator input.
+        # Preserve the raw CLI text until all original literal constraints
+        # have passed, matching the offline HUMAN command composer.
+        for flag, raw in vars(args).items():
+            if flag in ("action", "compare_checkout") or raw is None:
+                continue
+            require(type(raw) is str and raw.startswith("/")
+                    and not raw.startswith("//")
+                    and all(segment not in (".", "..") for segment in raw.split("/")),
+                    "Original operator path must be literal absolute without . or .. segments")
+            checked = Path(raw)
+            require_operator_path(checked)
+            setattr(args, flag, checked)
         if args.action == "build":
             build(args.output_dir)
         elif args.action == "receive":
