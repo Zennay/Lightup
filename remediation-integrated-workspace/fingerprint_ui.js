@@ -335,7 +335,7 @@
       document.body.append(link);
       link.click();
       link.remove();
-      message("Ongesigneerd software-only.sha256 lokaal aangeboden. Bewaar het alleen in een aparte 0700 privémap als 0600-bestand; native inspect-archive blijft verplicht.");
+      message("Checksum lokaal aangeboden. Let op: je browser zet GEEN 0600-rechten. Verplaats het bestand naar een aparte 0700-privémap en voer chmod 600 uit op die kopie. Controleer daarna met native inspect-archive; een hash is geen afzenderbewijs.");
     } finally {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
