@@ -25,7 +25,24 @@
   // operator clears results or changes the original file selection.
   let generation = 0;
   let receiptGeneration = 0;
+  let receiptStatus = "none"; // none, pending, invalid, accepted
   let busy = false;
+
+  function canExportSoftwareChecksum() {
+    if (inventory.length !== 1 || !inventory[0].softwareOnly ||
+        receiptStatus === "pending" || receiptStatus === "invalid") return false;
+    const original = inventory[0];
+    const declared = expected.value.trim();
+    const declaredSize = expectedSize.value.trim();
+    // No separately supplied fingerprint is a normal, unsigned local
+    // publisher operation. But once supplied, a mismatch is HOLD: never
+    // offer to replace the original fingerprint with a new one.
+    if (!declared && !declaredSize) return true;
+    return /^[0-9a-f]{64}$/.test(declared) && declared === original.sha256 &&
+      (!declaredSize ||
+        (/^[1-9][0-9]{0,11}$/.test(declaredSize) &&
+         Number(declaredSize) === original.size));
+  }
 
   function forget() {
     generation++;
@@ -45,6 +62,7 @@
     notice.textContent = s;
   }
   function compareDeclaredSource() {
+    softwareExport.disabled = !canExportSoftwareChecksum();
     expectedResult.textContent = "";
     const digest = expected.value.trim();
     const sizeText = expectedSize.value.trim();
@@ -105,17 +123,24 @@
     output.replaceChildren(tab);
   }
 
-  expected.addEventListener("input", () => { receiptGeneration++; compareDeclaredSource(); });
-  expectedSize.addEventListener("input", () => { receiptGeneration++; compareDeclaredSource(); });
+  expected.addEventListener("input", () => {
+    receiptGeneration++; receiptStatus = "none"; compareDeclaredSource();
+  });
+  expectedSize.addEventListener("input", () => {
+    receiptGeneration++; receiptStatus = "none"; compareDeclaredSource();
+  });
   expectedFile.addEventListener("change", async () => {
     const file = expectedFile.files && expectedFile.files[0];
     const request = ++receiptGeneration;
+    receiptStatus = file ? "pending" : "none";
     expected.value = "";
     expectedSize.value = "";
     compareDeclaredSource();
     if (!file) return;
     if (!file.name.endsWith(".sha256") || file.size !== 65) {
       expectedFile.value = "";
+      receiptStatus = "invalid";
+      compareDeclaredSource();
       message("HOLD: apart .sha256-bestand moet exact 65 bytes bevatten.");
       return;
     }
@@ -125,14 +150,21 @@
       if (request !== receiptGeneration) return;
       const literal = String.fromCharCode(...bytes);
       if (bytes.length !== 65 || !/^[0-9a-f]{64}\n$/.test(literal)) {
+        receiptStatus = "invalid";
+        compareDeclaredSource();
         message("HOLD: 64 kleine hextekens plus één LF vereist.");
         return;
       }
       expected.value = literal.slice(0, 64);
+      receiptStatus = "accepted";
       compareDeclaredSource();
       message("Checksum lokaal ingelezen. Dit bewijst geen afzender of toestemming.");
     } catch (_) {
-      if (request === receiptGeneration) message("HOLD: lokaal lezen mislukt.");
+      if (request === receiptGeneration) {
+        receiptStatus = "invalid";
+        compareDeclaredSource();
+        message("HOLD: lokaal lezen mislukt.");
+      }
     } finally {
       if (request === receiptGeneration) expectedFile.value = "";
     }
@@ -209,7 +241,6 @@
       exportButton.disabled = false;
       // A native receiver expects one exact text digest, not our general
       // JSON inventory. Never export a mixed selection as a software receipt.
-      softwareExport.disabled = !(candidate.length === 1 && candidate[0].softwareOnly);
       compareDeclaredSource();
       message("Lokale SHA-256 klaar. Bij software-only.zip bewijst dit alleen byte-overeenkomst: gebruik de native inspect-archive voor bron- en ZIP-toelating. Niets verzonden.");
     } catch (_) {
@@ -234,13 +265,17 @@
     picker.value = "";
     expectedFile.value = "";
     receiptGeneration++;
+    receiptStatus = "none";
     expected.value = "";
     expectedSize.value = "";
     forget(); // Also invalidates any still-running File/WebCrypto operation.
     message("Lokale hashes en ingevulde controlewaarden gewist. Eerder gekopieerde of gedownloade bestanden blijven buiten deze browser bestaan.");
   });
   softwareExport.addEventListener("click", () => {
-    if (inventory.length !== 1 || !inventory[0].softwareOnly) return;
+    if (!canExportSoftwareChecksum()) {
+      message("HOLD: controleer eerst de afwijkende of ongeldige oorspronkelijke checksum.");
+      return;
+    }
     const sha = inventory[0].sha256;
     if (!/^[0-9a-f]{64}$/.test(sha) ||
         !Number.isSafeInteger(inventory[0].size) ||
