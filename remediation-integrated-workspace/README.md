@@ -506,8 +506,12 @@ one** local original file literally named `software-only.zip` (maximum
 **Download softwarechecksum (.sha256)**. This exports only the 64 lowercase
 hex digits plus one LF as `software-only.sha256` (65 ASCII bytes), matching
 the native `--expected-sha256-file` format. A mixed or nonsoftware
-selection never enables that export. The existing PRIVATE JSON inventory
-download is separate and **cannot** be passed as a native software checksum.
+selection never enables that export. The general PRIVATE JSON inventory
+download is **disabled whenever the selection contains a software ZIP**:
+it describes source-free `.luhx/.luhz/.luhp` packets only, and **cannot**
+be passed to the native software recipient. The browser shows one correct
+checksum action for software, rather than two ambiguous receipts. The
+native full ZIP/source-lock admission still decides REVIEW_ONLY or HOLD.
 
 This uses the browser's local WebCrypto digest only: it **does not parse ZIP
 members**, check source ownership, authenticate a sender or authorize a release.
