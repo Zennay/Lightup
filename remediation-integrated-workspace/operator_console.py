@@ -218,9 +218,11 @@ onafhankelijke securityreview blijven verplicht.</small>
 </section>
 <section class="fingerprint" aria-label="Offline software ZIP checksum vergelijken">
 <h2>Ontvangen PRIVATE softwarepakket controleren</h2>
-<p>Vergelijk de originele <code>software-only.zip</code> met een apart ontvangen
-<code>.sha256</code>-bestand. Deze pagina leest uitsluitend twee door de
-operator gekozen lokale bestanden in het geheugen. Maximaal 15.000.000 bytes
+<p>Vergelijk uitsluitend het originele bestand met de exacte naam
+<code>software-only.zip</code> met een apart ontvangen
+<code>.sha256</code>-bestand. Een anders genoemd ZIP-bestand wordt geweigerd,
+zelfs wanneer iemand een bijpassende checksum heeft. Deze pagina leest
+uitsluitend twee gekozen lokale bestanden in het geheugen. Maximaal 15.000.000 bytes
 voor de ZIP en exact 65 bytes voor de checksum (64 kleine hextekens en LF).</p>
 <label for="software-zip">Originele ontvangen software-ZIP</label>
 <input id="software-zip" type="file" accept=".zip">
