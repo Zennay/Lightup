@@ -40,7 +40,12 @@ evidence/JSON remain refused by the browser. When a software SHA-256 is
 compared with a separately obtained original 65-byte checksum, the native
 `install.py inspect-archive --expected-sha256-file ...` remains required
 for full original software admission and checkout consistency. A matching
-browser hash is **never** a release or safety approval.
+browser hash is **never** a release or safety approval. Cancelling the
+separate `.sha256` file chooser also **keeps the current checksum and
+any existing HOLD**: only an actually newly selected checksum or the
+explicit **Wis fingerprints** action may replace or clear that evidence.
+This prevents an unintentional picker cancellation from silently
+reenabling exports after an invalid or mismatched original receipt.
 
 **Browser download permissions are NOT native/private output permissions.**
 The browser cannot force a downloaded `software-only.sha256` file to Linux
