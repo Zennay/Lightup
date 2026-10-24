@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-ld2C+QDNaCTC/Gz1lj2WPaGlGGODWdmMbQ1MTqpubZg=&#x27; &#x27;sha256-+lJZz3NQUNFN5jCrxstLKZYoLmZ5Ns/SFSdXLLu+oEc=&#x27;; style-src &#x27;sha256-Bfbqgx/21kl8k6erDxoIYFfl6HtMJSfCbHJcw+Xj/OE=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-ld2C+QDNaCTC/Gz1lj2WPaGlGGODWdmMbQ1MTqpubZg=&#x27; &#x27;sha256-agFnPUYqeLhOY4ahjxVVOJX8qInz+9LyYt75JQeayV4=&#x27;; style-src &#x27;sha256-Bfbqgx/21kl8k6erDxoIYFfl6HtMJSfCbHJcw+Xj/OE=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -1040,18 +1040,24 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     try {
       // Original bytes stay in the browser; no upload, cache or permission.
       const bytes = new Uint8Array(await file.arrayBuffer());
-      if (request !== receiptGeneration) return;
-      const literal = String.fromCharCode(...bytes);
-      if (bytes.length !== 65 || !/^[0-9a-f]{64}\n$/.test(literal)) {
-        receiptStatus = "invalid";
+      try {
+        if (request !== receiptGeneration) return;
+        const literal = String.fromCharCode(...bytes);
+        if (bytes.length !== 65 || !/^[0-9a-f]{64}\n$/.test(literal)) {
+          receiptStatus = "invalid";
+          compareDeclaredSource();
+          message("HOLD: 64 kleine hextekens plus één LF vereist.");
+          return;
+        }
+        expected.value = literal.slice(0, 64);
+        receiptStatus = "accepted";
         compareDeclaredSource();
-        message("HOLD: 64 kleine hextekens plus één LF vereist.");
-        return;
+        message("Checksum lokaal ingelezen. Dit bewijst geen afzender of toestemming.");
+      } finally {
+        // Best-effort wipe of OUR byte buffer, also on async cancellation.
+        // Browser/File/WebCrypto internals may retain other copies.
+        bytes.fill(0);
       }
-      expected.value = literal.slice(0, 64);
-      receiptStatus = "accepted";
-      compareDeclaredSource();
-      message("Checksum lokaal ingelezen. Dit bewijst geen afzender of toestemming.");
     } catch (_) {
       if (request === receiptGeneration) {
         receiptStatus = "invalid";
@@ -1099,13 +1105,21 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     try {
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
-        const raw = await f.arrayBuffer();
-        if (requestGeneration !== generation) return;
-        if (raw.byteLength !== f.size ||
-            raw.byteLength > (f.name === "software-only.zip" ? limitSoftwareArchive : limitItem)) {
-          throw Error("De geselecteerde bronbytes veranderden tijdens het lezen.");
+        const raw = new Uint8Array(await f.arrayBuffer());
+        let sha256;
+        try {
+          if (requestGeneration !== generation) return;
+          if (raw.byteLength !== f.size ||
+              raw.byteLength > (f.name === "software-only.zip" ? limitSoftwareArchive : limitItem)) {
+            throw Error("De geselecteerde bronbytes veranderden tijdens het lezen.");
+          }
+          sha256 = hex(await crypto.subtle.digest("SHA-256", raw));
+        } finally {
+          // Overwrite only the byte buffer that this helper owns, including
+          // on read rejection or stale async runs. No erasure guarantee for
+          // browser-managed File or WebCrypto copies.
+          raw.fill(0);
         }
-        const sha256 = hex(await crypto.subtle.digest("SHA-256", raw));
         if (requestGeneration !== generation) return;
         candidate.push({
           slot: i + 1,
