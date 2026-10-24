@@ -41,6 +41,28 @@ This branch includes existing original product assets unchanged from:
 
 All **79 original software assets** are pinned by source-lock.json against the exact upstream source HEADs 6246550821039b829dc10ded95a1432c0653786f and 264bf15929e1f36699ea4114b91c5c313e55eea7. Original branch files are not rewritten. Their owners retain review authority.
 
+## Exact DEFLATE stream admission in received software ZIPs
+
+Software-only ZIP admission now checks **each individual raw DEFLATE stream**,
+not just its local/central headers, ZIP member CRC and exact decompressed
+file contents. A standard ZIP reader may ignore hidden bytes after a
+complete DEFLATE end marker *within* the member's declared compressed
+region. A hostile ZIP can therefore carry extra compressed-member bytes
+while its original 107 files and all uncompressed SHA-256 source checks
+continue to match. LightUp now requires a complete end marker, **zero
+unused/trailing compressed bytes**, no unconsumed compressed input, and the
+exact declared output length, within existing source-size bounds.
+
+This does **not** require a byte-identical zlib recompression, because
+independent platforms can legitimately encode the same source content
+differently. On an isolated authorized Linux worktree, we confirmed
+that a standard ZIP reader and the previous LightUp decoder accepted
+a source-identical ZIP with one hidden byte inside its first compressed
+member. The updated native decoder returns **HOLD**, while fresh normal
+software-only build and no-write inspection return **REVIEW_ONLY**.
+The hostile ZIP was constructed and checked only in memory; no scan,
+customer data, external target or release permission was involved.
+
 ## Bounded private staging cleanup
 
 Native source-only publication always uses one of three internally generated
