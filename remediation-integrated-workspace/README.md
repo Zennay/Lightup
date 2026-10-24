@@ -489,6 +489,15 @@ destination anywhere inside the ORIGINAL input ZIP directory tree; the
 native recipient separately enforces that same exclusion at execution,
 before it stages or publishes any files. The source folder remains
 unchanged instead of being contaminated by a newly received copy.
+The operator's category/search filter is a **copy safety boundary** too.
+If a previously selected task is no longer visible under the active filter,
+the terminal command, clipboard action and both planned handoff buttons stay
+disabled **even when a path field changes**. The operator must explicitly
+select a visible workflow or clear the filter; only then does the browser
+revalidate the original local paths and prepare a fresh command. This avoids
+copying a stale, hidden task after changing an input field. The browser never
+executes the command or authorizes anything.
+
 The browser also catches a fingerprint-file path identical to the ZIP
 path before the operator copies the command; **all native restrictions
 remain authoritative**. The offline command composer also rejects invisible
