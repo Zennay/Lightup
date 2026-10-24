@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-RJTfmQX8eOfN0nw3aLc6uZHVk+RlnLIbNoG6hSH6oAo='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE HUMAN Return Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1423;--panel:#1a2a40;--border:#3a526a;--ink:#f0f8fe;--muted:#bbcede;--mint:#a7f4d4;--warn:#f5c57a}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 85% 0%,#1d3850,var(--bg) 63%);font:16px/1.55 system-ui,sans-serif;color:var(--ink)}
+main{max-width:1200px;margin:auto;padding:clamp(16px,4vw,46px)}
+h1{font-size:clamp(2.15rem,4vw,3.8rem);line-height:1.1;margin:8px 0 20px}
+h2{font-size:1.32rem;margin:0 0 13px}h3{font-size:1.02rem}
+p,li{color:var(--muted)}small{color:var(--mint);text-transform:uppercase;letter-spacing:.13em;font-weight:800}
+header{margin-bottom:30px}section{margin:16px 0 24px;padding:clamp(18px,3vw,28px);background:var(--panel);border:1px solid var(--border);border-radius:18px}
+.notice{border-left:5px solid var(--warn);border-radius:10px;padding:16px 19px;background:#342c36;margin:22px 0}
+.notice strong{color:#fff0ca}.notice p{margin:4px 0}
+.actions{display:flex;flex-wrap:wrap;gap:11px;align-items:end;margin:15px 0}
+label{color:var(--muted);font-size:.92rem}
+input[type=file]{display:block;margin:7px 0;color:var(--ink);font:inherit;max-width:100%;font-size:.87rem}
+select,button{padding:10px 13px;font:inherit;border-radius:10px;border:1px solid #688a9d;color:var(--ink);background:#1e344a}
+select{max-width:300px;width:100%;min-width:175px}
+button{cursor:pointer;font-weight:700}button:hover{background:#345a63}button:disabled{opacity:.38;cursor:not-allowed}
+button.primary{background:#145447;border-color:var(--mint)}
+#status{margin-top:12px;min-height:43px;padding:10px 15px;border-left:4px solid var(--mint);background:#1a3b37;border-radius:6px}
+#status[data-status=hold]{border-color:#f0a186;background:#452d36}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:16px}
+.scroll{overflow:auto;border-radius:11px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;min-width:1050px}
+th,td{text-align:left;border-bottom:1px solid var(--border);padding:12px 11px;font-variant-numeric:tabular-nums}
+th{font-size:.83rem;color:#d1e7f7}tr:last-child td,tr:last-child th{border-bottom:0}
+tbody tr:hover{background:#233c50}
+footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
+@media print{body{background:#fff;color:#111}section{background:#fff;border-color:#ccc}.notice{background:#fff;color:#111}p,li{color:#222}button{display:none}}
+</style></head><body><main>
+<header>
+<small>LightUp / PRIVATE / 100% offline / DRAFT HOLD</small>
+<h1>HUMAN return<br> &amp; handoff studio</h1>
+<p>Work locally with one saved source-free numeric session and its exact paired HUMAN routing board. Review anonymous packet appearances, prepare human-only follow-up, and return local choices to the original Studio. Nothing connects to a server.</p>
+<div class="notice"><strong>NOT a security assessment or source approval.</strong>
+<p>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. All counts and routing choices are self-declared. These are not verified findings, unique cases, client consent, fixes, grants, authentic reviews or permissions. Even anonymous small-cell counts may be privacy-sensitive; downloads are not encrypted at rest.</p></div>
+</header>
+<section aria-labelledby="step1"><h2 id="step1">1 · Pair the original PRIVATE files</h2>
+<p>Download a numeric session and its matching HUMAN action board from the existing offline <code>remediation-portfolio/studio.html</code>. Import BOTH here. Exact v1 schema, nested duplicate JSON keys, false authority flags and every numeric packet ordinal must match; otherwise the entire pair is refused. File bytes never leave this browser tab.</p>
+<div class="grid">
+<label>Source-free PRIVATE numeric session JSON<input id="sessionFile" type="file" accept=".json,application/json" aria-label="Load saved numeric HUMAN Studio session"></label>
+<label>Matching PRIVATE HUMAN action board JSON<input id="boardFile" type="file" accept=".json,application/json" aria-label="Load matching saved HUMAN routing board"></label>
+</div>
+<div class="actions"><button id="load" class="primary" type="button">Load both PRIVATE files</button></div>
+<div id="status" role="status" aria-live="polite">Initializing local desk…</div>
+<p id="sourceStatus">Not imported</p></section>
+
+<section aria-labelledby="step2"><h2 id="step2">2 · Review HUMAN-only routing</h2>
+<p id="counts">No private session loaded</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal (not case)</th><th>Count source</th><th>Slot appearances</th><th>Unverified questions</th><th>Proposed HUMAN next action</th><th>Local planning state</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="actions">
+<button id="reset" type="button" disabled>Reset local choices</button>
+<button id="saveBoard" class="primary" type="button" disabled>Download Studio-compatible native board</button>
+<button id="deltaCsv" type="button" disabled>Download local action/state change CSV</button>
+<button id="summary" type="button" disabled>Download anonymous planning counts JSON</button>
+</div>
+<p>The downloaded board uses the *same exact numeric session* and the original v1 board format. The existing Studio independently rechecks all packet ordinals before you can restore it. A local state of "discussed" does not verify any real fix.</p></section>
+
+<section aria-labelledby="step3"><h2 id="step3">3 · Prepare least-disclosure HUMAN handoff</h2>
+<p>Choose one local action category or all non-empty categories. To minimize disclosure further, choose exactly one local ordinal (never a case ID). Export scriptless HTML, private-human TXT or CSV. Every packet remains only an anonymous appearance; this is a locally prepared message, never sent to an actual recipient.</p>
+<div class="actions"><label>HUMAN action to include
+<select id="actionFilter" disabled><option value="all">All actionable HUMAN appearances</option>
+<option value="request_fresh_source_export">Ask original owner for source export</option>
+<option value="discuss_open_questions">Discuss open HUMAN questions</option>
+<option value="clarify_human_assignment">Clarify HUMAN assignment</option>
+<option value="reconcile_anonymous_coverage">Clarify possible coverage overlap</option>
+<option value="request_original_human_review">Request original HUMAN review</option>
+</select></label>
+<label>Optional exact LOCAL packet ordinal
+<select id="ordinalFilter" disabled><option value="all">All anonymous local ordinals</option></select></label>
+<p><strong id="selectionCount">0</strong> local packet appearances in selection</p></div>
+<div class="actions">
+<button id="handoffHtml" class="primary" type="button" disabled>Download offline HTML handoff</button>
+<button id="handoffCsv" type="button" disabled>Download CSV handoff</button>
+<button id="handoffTxt" type="button" disabled>Download HUMAN text brief</button>
+</div>
+<p>The export has no original client names, targeting, findings, timestamps or original evidence. Deliberate HUMAN disclosure is required for all files, including counts-only files. Do not confuse a prepared handoff with a delivered or independently reviewed request.</p>
+</section>
+<section aria-labelledby="step4"><h2 id="step4">4 · Compare a second LOCAL HUMAN board (manual only)</h2>
+<p>Two offline HUMAN operators can independently propose different local routing choices for the *same saved anonymous numeric session*. Select a second board made from the exact same packet descriptions. Only validated source-free ordinal differences are shown. Click **Use peer choice locally** on one row at a time after explicitly confirming that self-declared suggestion. There is no automatic merge or actual source-owner identity check.</p>
+<div class="actions">
+<label>Second source-free HUMAN board JSON<input id="peerFile" type="file" accept=".json,application/json" aria-label="Choose an alternate local HUMAN action board"></label>
+<button id="loadPeer" type="button">Load second board</button>
+<button id="clearPeer" type="button">Clear second board</button>
+</div>
+<p id="peerSummary" role="status" aria-live="polite">No second HUMAN board admitted.</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal (not case)</th><th>Original local choices</th><th>Second local suggestions</th><th>Current local proposal</th><th>Explicit HUMAN selection</th></tr></thead><tbody id="peerRows"></tbody></table></div>
+<div class="actions"><button id="peerCsv" type="button" disabled>Download source-free peer change CSV</button></div>
+<p>Missing rows mean no local difference in the compared numeric slot; they do not demonstrate that a finding was fixed or that any review happened. Matching packet ordinals cannot prove the same original case. The current board remains a separate user-controlled draft and can be exported using section 2.</p></section>
+<section aria-labelledby="step5"><h2 id="step5">5 · Encrypted PRIVATE work-session continuity</h2>
+<p>Save your complete current anonymous HUMAN working state (original paired numeric session, original action board, local proposed routing changes, and optional peer board) as <strong>one password-encrypted offline file</strong>. Restore that file later in this browser. The encrypted file has no readable counts, case references or original evidence metadata. This is a local backup, not an authenticated source document, real client evidence or proof that any action was performed.</p>
+<div class="notice"><strong>Only the new work-session backup is encrypted.</strong><p>Existing plaintext exports from the original Studio, native board downloads, handoff HTML/CSV/TXT and separately exported JSON remain unencrypted. Use a long unique passphrase, store it separately, avoid shared Downloads folders, and disclose no files without authorization. Forgotten passphrases cannot be recovered. Offline WebCrypto must be available; unsupported browsers fail closed rather than exporting plaintext.</p></div>
+<div class="grid">
+<label>New passphrase (14–256 characters; private, unique)
+<input id="saveSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Passphrase to protect private workspace backup"></label>
+<label>Confirm new passphrase
+<input id="confirmSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Confirm encrypted workspace passphrase"></label>
+</div>
+<div class="actions"><button id="saveEncrypted" class="primary" type="button" disabled>Download AES-GCM encrypted work-session</button></div>
+<h3>Restore an encrypted PRIVATE work-session</h3>
+<div class="grid">
+<label>Encrypted .lhew workspace file
+<input id="encryptedFile" type="file" accept=".lhew,application/json" aria-label="Choose local encrypted HUMAN session backup"></label>
+<label>Unlock passphrase
+<input id="unlockSecret" type="password" autocomplete="off" spellcheck="false" aria-label="Passphrase for encrypted workspace restoration"></label>
+</div>
+<div class="actions"><button id="restoreEncrypted" type="button">Unlock &amp; restore only after full validation</button></div>
+<p>PBKDF2-HMAC-SHA-256 with 600,000 iterations derives an AES-256-GCM key from a human passphrase. Each backup has an independent random 16-byte salt and 12-byte nonce, an authenticated fixed application domain and a strict versioned encrypted envelope. Restoring verifies the authenticated ciphertext and then validates every original session and board before replacing any current local browser choices. Existing browser data stays unchanged if a file, passphrase, schema or confirmation fails. This is not a claim of independent cryptographic review.</p>
+</section>
+<section aria-labelledby="step6"><h2 id="step6">6 · Encrypted HUMAN handoff: only selected local rows</h2>
+<p>Share only the locally selected HUMAN follow-up from section 3 as a password-encrypted `.lheh` capsule. Unlike the encrypted full-session backup above, this capsule contains <strong>no complete numeric session, peer board or original board</strong>; only the exact selected anonymous rows with predefined HUMAN action and routing state codes. An independent recipient may open it here without loading a saved work-session. The recipient is not thereby authenticated.</p>
+<div class="grid">
+<label>New private handoff passphrase (14–256 characters)
+<input id="handoffSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Passphrase to encrypt only selected HUMAN follow-up rows"></label>
+<label>Confirm handoff passphrase
+<input id="handoffConfirm" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Confirm selected HUMAN handoff encryption passphrase"></label>
+</div>
+<div class="actions"><button id="saveEncryptedHandoff" class="primary" type="button" disabled>Encrypt selected HUMAN action only (.lheh)</button></div>
+<h3>Read an encrypted LOCAL HUMAN handoff</h3>
+<div class="grid">
+<label>Encrypted selected handoff file<input id="handoffEncryptedFile" type="file" accept=".lheh,application/json" aria-label="Open received encrypted source-free HUMAN handoff"></label>
+<label>Unlock passphrase<input id="handoffUnlock" type="password" autocomplete="off" spellcheck="false" aria-label="Unlock password for selected HUMAN handoff"></label>
+</div>
+<div class="actions"><button id="openEncryptedHandoff" type="button">Unlock selected HUMAN handoff locally</button></div>
+<p id="unlockedHandoffStatus" role="status" aria-live="polite">No encrypted handoff opened.</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal, NOT case</th><th>Count type</th><th>Slot appearances</th><th>HUMAN question appearances</th><th>Proposed HUMAN next action</th><th>Unverified local state</th></tr></thead><tbody id="unlockedHandoffRows"></tbody></table></div>
+<p>Saving and opening use independently versioned AES-256-GCM envelopes with separate cryptographic domain separation for HANDOFF vs WORKSESSION. A full-session backup cannot be opened as a handoff or vice versa. The encrypted capsule is not an authenticated identity, evidence signature, delivery receipt, approval or actual client case. Deliberate HUMAN consent and proper privacy controls remain necessary before any disclosure.</p>
+</section>
+<section aria-labelledby="privacyClear"><h2 id="privacyClear">7 · Clear this PRIVATE browser tab</h2>
+<p>After completing local HUMAN work, deliberately discard the active numeric session, original/edited/peer board references, revealed encrypted handoff table, selected files and entered passphrases from this page. This does not securely overwrite browser process memory, clipboard contents or files already downloaded to disk.</p>
+<div class="actions"><button id="wipe" type="button">Clear all loaded local HUMAN data</button></div>
+</section>
+<footer><small>LightUp / strictly local HUMAN planning / no grants / no target access</small>
+<p>This self-contained single-file browser desk uses a pinned inline-script content-security policy, not an independent security audit. It requires no cloud access, scripts from third parties, persistent browser storage, accounts, credentials, scans or installation. Original owner and review gates still apply.</p></footer>
+</main><script>"use strict";
+(() => {
+  const FLAGS=["authenticated","tenant_verified","source_authorized","assessment_authorized",
+    "grant","client_consent","operator_consent","execution","scan","audit_verdict",
+    "retest_verified","release"];
+  const STAGES=["unassigned","assigned","waiting_human","locally_answered"];
+  const ACTIONS={
+    none:"No next action",
+    request_fresh_source_export:"Ask original owner for fresh source export",
+    discuss_open_questions:"Discuss unanswered HUMAN questions",
+    clarify_human_assignment:"Discuss HUMAN assignment",
+    reconcile_anonymous_coverage:"Clarify possible anonymous coverage overlap",
+    request_original_human_review:"Request authentic HUMAN review"
+  };
+  const STATES={
+    not_triaged:"Not triaged locally",
+    needs_human_followup:"Needs HUMAN follow-up",
+    waiting_original_owner:"Waiting for original HUMAN owner",
+    locally_discussed:"Locally discussed — NOT a verified fix"
+  };
+  const SESS_FIELDS=["kind","schema_version","disposition","packets","earlier_numeric_aggregate","warning",...FLAGS];
+  const BOARD_FIELDS=["kind","schema_version","disposition","numeric_packets","assignments","warning",...FLAGS];
+  const PACKET_FIELDS=["type","slots","questions","plan"];
+  const PLAN_FIELDS=["attention","dated","stages"];
+  const AGG_FIELDS=["packets","slots","questions","attention","dated","planned","possible_same_numeric_shape_appearances","stages"];
+  const SESS_WARN="Self-declared private HUMAN counts only; does not authenticate original source, consent, findings, fixes, grants, or users.";
+  const BOARD_WARN="Anonymous local HUMAN routing choices only. Not unique cases, original source authentication, verified security findings, consent, grant, remediation or action permission.";
+  const HANDOFF_WARN="LOCAL SOURCE-FREE HUMAN PLANNING ONLY. Anonymous numeric packet ordinals do not identify original clients, findings, security issues, fixes or consent. All states are self-declared; there is no scan, grant, authenticated evidence or actual delivery.";
+  const $=id=>document.getElementById(id);
+  let session=null, original=null, draft=null, peer=null, sourceSession=null;
+  const fail=()=>{throw Error("HOLD");};
+  const ensure=value=>{if(!value)fail();};
+  const number=(x,lo,hi)=>Number.isSafeInteger(x)&&x>=lo&&x<=hi;
+  const exact=(obj,fields)=>obj!==null&&typeof obj==="object"&&!Array.isArray(obj)
+    &&Object.keys(obj).length===fields.length&&fields.every(f=>Object.prototype.hasOwnProperty.call(obj,f));
+  const header=(v,fields,kind,disposition,warning)=>{
+    ensure(exact(v,fields)&&v.kind===kind&&v.schema_version===1
+      &&v.disposition===disposition&&v.warning===warning
+      &&FLAGS.every(f=>v[f]===false));
+  };
+  const clone=v=>JSON.parse(JSON.stringify(v));
+  const flags=()=>Object.fromEntries(FLAGS.map(f=>[f,false]));
+  const same=(a,b)=>{
+    if(a===b)return true;
+    if(typeof a!==typeof b||a===null||b===null)return false;
+    if(typeof a!=="object")return false;
+    if(Array.isArray(a)||Array.isArray(b)){
+      return Array.isArray(a)&&Array.isArray(b)&&a.length===b.length
+        &&a.every((v,i)=>same(v,b[i]));
+    }
+    const keysA=Object.keys(a),keysB=Object.keys(b);
+    return keysA.length===keysB.length
+      &&keysA.every(k=>Object.prototype.hasOwnProperty.call(b,k)&&same(a[k],b[k]));
+  };
+  const message=(s,isHold=false)=>{
+    $("status").textContent=s;
+    $("status").dataset.status=isHold?"hold":"ready";
+  };
+  const td=(tr,text,tag="td")=>{
+    const cell=document.createElement(tag);
+    cell.textContent=String(text);
+    tr.appendChild(cell);return cell;
+  };
+  const strictJSON=raw=>{
+    let pos=0,nodes=0;
+    const ws=()=>{while(pos<raw.length&&" \n\r\t".includes(raw[pos]))pos++;};
+    const string=()=>{
+      const start=pos;
+      if(raw[pos++]!=='"')fail();
+      while(pos<raw.length){
+        const c=raw[pos++];
+        if(c==='"')return JSON.parse(raw.slice(start,pos));
+        if(c==="\\"){
+          const e=raw[pos++];
+          if(!e||!'"\\/bfnrtu'.includes(e))fail();
+          if(e==="u"){
+            if(!/^[a-fA-F0-9]{4}$/.test(raw.slice(pos,pos+4)))fail();
+            pos+=4;
+          }
+        }else if(c.charCodeAt(0)<32)fail();
+      }
+      fail();
+    };
+    const value=depth=>{
+      ws();
+      if(++nodes>2048||depth>14)fail();
+      const c=raw[pos];
+      if(c==='"'){string();return;}
+      if(c==="{"){
+        pos++;ws();
+        const seen=new Set();
+        if(raw[pos]==="}"){pos++;return;}
+        while(pos<raw.length){
+          ws();const k=string();if(seen.has(k))fail();seen.add(k);ws();
+          if(raw[pos++]!==":")fail();value(depth+1);ws();
+          if(raw[pos]==="}"){pos++;return;}
+          if(raw[pos++]!==",")fail();
+        }fail();
+      }
+      if(c==="["){
+        pos++;ws();
+        if(raw[pos]==="]"){pos++;return;}
+        while(pos<raw.length){
+          value(depth+1);ws();
+          if(raw[pos]==="]"){pos++;return;}
+          if(raw[pos++]!==",")fail();
+        }fail();
+      }
+      const found=/^(?:true|false|null|(?:0|[1-9]\d*))/.exec(raw.slice(pos));
+      if(!found)fail();pos+=found[0].length;
+    };
+    value(0);ws();ensure(pos===raw.length);
+    return JSON.parse(raw);
+  };
+  const read=async file=>{
+    ensure(file&&file.size>0&&file.size<=16384);
+    const bytes=await file.arrayBuffer();
+    ensure(bytes.byteLength===file.size&&bytes.byteLength<=16384);
+    const value=strictJSON(new TextDecoder("utf-8",{fatal:true}).decode(bytes));
+    return value;
+  };
+  const stages=(v,slots)=>{
+    ensure(exact(v,STAGES)&&STAGES.every(k=>number(v[k],0,slots))
+      &&STAGES.reduce((t,k)=>t+v[k],0)===slots);
+    return clone(v);
+  };
+  const plan=(v,slots)=>{
+    ensure(exact(v,PLAN_FIELDS)&&number(v.attention,0,slots)
+      &&number(v.dated,0,slots));
+    const values=stages(v.stages,slots);
+    ensure(v.attention===slots-values.locally_answered);
+    return {attention:v.attention,dated:v.dated,stages:values};
+  };
+  const previous=v=>{
+    ensure(exact(v,AGG_FIELDS)&&number(v.packets,1,12)
+      &&number(v.slots,v.packets,144)&&number(v.questions,0,12000000)
+      &&number(v.attention,0,v.slots)&&number(v.dated,0,v.slots)
+      &&number(v.planned,0,v.packets)
+      &&number(v.possible_same_numeric_shape_appearances,0,v.packets)
+      &&exact(v.stages,STAGES)&&STAGES.every(k=>number(v.stages[k],0,v.slots))
+      &&STAGES.reduce((t,k)=>t+v.stages[k],0)<=v.slots
+      &&(v.planned!==0||(v.attention===0&&v.dated===0
+        &&STAGES.every(k=>v.stages[k]===0))));
+  };
+  const acceptSession=v=>{
+    header(v,SESS_FIELDS,"lightup.private_human_browser_numeric_session",
+      "LOCAL_BROWSER_ONLY_NO_ORIGINAL_SOURCE_ATTESTATION",SESS_WARN);
+    ensure(Array.isArray(v.packets)&&v.packets.length>=1&&v.packets.length<=12);
+    const packets=v.packets.map(packet=>{
+      ensure(exact(packet,PACKET_FIELDS)
+        &&(packet.type==="inbox"||packet.type==="workroom")
+        &&number(packet.slots,1,12)&&number(packet.questions,0,1000000));
+      if(packet.type==="inbox"){ensure(packet.plan===null);}
+      const normalized=packet.type==="inbox"?null:plan(packet.plan,packet.slots);
+      return {type:packet.type,slots:packet.slots,questions:packet.questions,plan:normalized};
+    });
+    if(v.earlier_numeric_aggregate!==null)previous(v.earlier_numeric_aggregate);
+    return packets;
+  };
+  const acceptBoard=(v,packets)=>{
+    header(v,BOARD_FIELDS,"lightup.private_human_anonymous_followup_board",
+      "LOCAL_HUMAN_FOLLOWUP_ONLY_NO_SOURCE_AUTHORITY",BOARD_WARN);
+    ensure(Array.isArray(v.numeric_packets)&&v.numeric_packets.length===packets.length
+      &&Array.isArray(v.assignments)&&v.assignments.length===packets.length);
+    const canonical=p=>({type:p.type,slots:p.slots,questions:p.questions,
+      plan:p.plan===null?null:clone(p.plan)});
+    const expected=packets.map(canonical);
+    for(let i=0;i<packets.length;i++){
+      const p=v.numeric_packets[i];
+      ensure(exact(p,PACKET_FIELDS)&&same(p,expected[i]));
+      const a=v.assignments[i];
+      ensure(exact(a,["ordinal","action","state"])&&a.ordinal===i+1
+        &&typeof a.action==="string"&&Object.hasOwn(ACTIONS,a.action)
+        &&typeof a.state==="string"&&Object.hasOwn(STATES,a.state));
+    }
+    return clone(v.assignments);
+  };
+  const active=()=>{ensure(session!==null&&original!==null&&draft!==null);};
+  const updatedBoard=()=>{
+    active();
+    const board={kind:"lightup.private_human_anonymous_followup_board",
+      schema_version:1,disposition:"LOCAL_HUMAN_FOLLOWUP_ONLY_NO_SOURCE_AUTHORITY",
+      numeric_packets:clone(session),assignments:clone(draft),
+      warning:BOARD_WARN,...flags()};
+    acceptBoard(board,session);
+    return board;
+  };
+  const download=(name,value,mime)=>{
+    const blob=new Blob([value],{type:mime||"text/plain;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;link.download=name;document.body.appendChild(link);
+    link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
+  const csvText=rows=>rows.map(row=>row.join(",")).join("\r\n")+"\r\n";
+  const disabled=off=>{
+    for(const name of ["saveBoard","summary","handoffCsv","handoffTxt","handoffHtml","deltaCsv","reset"])$(name).disabled=off;
+    $("actionFilter").disabled=off;
+    $("ordinalFilter").disabled=off;
+    $("saveEncryptedHandoff").disabled=off || !globalThis.crypto?.subtle;
+    $("saveEncrypted").disabled=off || !globalThis.crypto?.subtle;
+  };
+  const resetState=()=>{
+    session=null;original=null;draft=null;peer=null;sourceSession=null;
+    $("rows").replaceChildren();$("counts").textContent="No private session loaded";
+    $("sourceStatus").textContent="Not imported";
+    $("unlockedHandoffRows").replaceChildren();
+    $("unlockedHandoffStatus").textContent="No encrypted handoff opened.";
+    const ord=$("ordinalFilter");ord.replaceChildren();
+    const opt=document.createElement("option");opt.value="all";
+    opt.textContent="All anonymous local ordinals";ord.appendChild(opt);
+    disabled(true);renderPeer();
+  };
+  const render=()=>{
+    active();const rows=$("rows");rows.replaceChildren();
+    const filters=new Map(Object.keys(ACTIONS).map(k=>[k,0]));
+    let changes=0,questions=0;
+    draft.forEach((row,i)=>{
+      filters.set(row.action,filters.get(row.action)+1);
+      questions+=session[i].questions;
+      if(!same(row,original[i]))changes++;
+      const tr=document.createElement("tr");
+      td(tr,i+1,"th");td(tr,session[i].type);
+      td(tr,session[i].slots);td(tr,session[i].questions);
+      const actions=td(tr,"");const selectA=document.createElement("select");
+      selectA.setAttribute("aria-label","Action for local ordinal "+(i+1));
+      Object.keys(ACTIONS).forEach(code=>{
+        const opt=document.createElement("option");opt.value=code;opt.textContent=ACTIONS[code];
+        selectA.appendChild(opt);
+      });
+      selectA.value=row.action;
+      selectA.addEventListener("change",()=>{row.action=selectA.value;render();});
+      actions.appendChild(selectA);
+      const states=td(tr,"");const selectS=document.createElement("select");
+      selectS.setAttribute("aria-label","State for local ordinal "+(i+1));
+      Object.keys(STATES).forEach(code=>{
+        const opt=document.createElement("option");opt.value=code;opt.textContent=STATES[code];
+        selectS.appendChild(opt);
+      });
+      selectS.value=row.state;
+      selectS.addEventListener("change",()=>{row.state=selectS.value;render();});
+      states.appendChild(selectS);rows.appendChild(tr);
+    });
+    const action=$("actionFilter").value;
+    const ordinal=$("ordinalFilter").value;
+    const count=draft.filter((row,i)=>row.action!=="none" &&
+      (action==="all"||row.action===action) &&
+      (ordinal==="all"||String(i+1)===ordinal)).length;
+    $("counts").textContent=String(draft.length)+" anonymous packet appearances · "+
+      String(questions)+" HUMAN question appearances · "+String(changes)+
+      " locally edited routing choices";
+    $("selectionCount").textContent=String(count);
+    const found=count>0;
+    $("saveEncryptedHandoff").disabled=!found || !globalThis.crypto?.subtle;
+    for(const k of ["handoffCsv","handoffTxt","handoffHtml"])$(k).disabled=!found;
+    $("deltaCsv").disabled=changes===0;
+    $("saveBoard").disabled=changes===0;
+    $("sourceStatus").textContent="Self-declared PRIVATE numeric session + exactly matched board; NOT source authenticated";
+    renderPeer();
+  };
+  const renderPeer=()=>{
+    const body=$("peerRows");body.replaceChildren();
+    $("peerCsv").disabled=true;
+    if(peer===null){
+      $("peerSummary").textContent="No second HUMAN board admitted.";
+      return;
+    }
+    if(session===null){peer=null;return;}
+    let divergent=0,adopted=0;
+    peer.forEach((candidate,i)=>{
+      const base=original[i],current=draft[i];
+      if(same(candidate,base))return;
+      divergent++;
+      if(same(candidate,current))adopted++;
+      const tr=document.createElement("tr");
+      td(tr,i+1,"th");
+      td(tr,ACTIONS[base.action]+" / "+STATES[base.state]);
+      td(tr,ACTIONS[candidate.action]+" / "+STATES[candidate.state]);
+      td(tr,ACTIONS[current.action]+" / "+STATES[current.state]);
+      const cell=td(tr,"");
+      const button=document.createElement("button");
+      button.type="button";button.textContent="Use peer choice locally";
+      button.disabled=same(candidate,current);
+      button.setAttribute("aria-label","Adopt self-declared peer choice for local ordinal "+(i+1));
+      button.addEventListener("click",()=>{
+        if(!confirm("Use the anonymous peer-suggested HUMAN choice for local ordinal "+
+          (i+1)+"? It does not identify original cases or authenticate a reviewer."))return;
+        draft[i]={ordinal:i+1,action:candidate.action,state:candidate.state};
+        render();
+        message("One locally suggested peer choice adopted; no real source record changed.");
+      });
+      cell.appendChild(button);body.appendChild(tr);
+    });
+    $("peerSummary").textContent=divergent+" anonymous peer-vs-base routing differences; "+
+      adopted+" currently match the local draft. Same ordinals are NOT case identity.";
+    $("peerCsv").disabled=divergent===0;
+  };
+  const peerDiffCsv=()=>{
+    active();ensure(peer!==null);
+    const diffs=[];
+    peer.forEach((candidate,i)=>{
+      const base=original[i],current=draft[i];
+      if(same(candidate,base))return;
+      diffs.push([i+1,base.action,candidate.action,current.action,
+        base.state,candidate.state,current.state]);
+    });
+    ensure(diffs.length>0);
+    return csvText([["local_ordinal_not_case","base_action","peer_action",
+      "current_local_action","base_state","peer_state","current_local_state"],...diffs]);
+  };
+  const chosen=()=>{
+    active();
+    const filter=$("actionFilter").value;
+    const ordinal=$("ordinalFilter").value;
+    const rows=draft.map((r,i)=>({ordinal:i+1,action:r.action,state:r.state,
+      type:session[i].type,slots:session[i].slots,questions:session[i].questions}))
+      .filter(row=>row.action!=="none"&&(filter==="all"||filter===row.action)
+        &&(ordinal==="all"||String(row.ordinal)===ordinal));
+    ensure(rows.length>0);
+    return rows.sort((a,b)=>b.questions-a.questions||a.ordinal-b.ordinal);
+  };
+  const handoffCsv=rows=>csvText([
+    ["local_packet_ordinal_not_case","count_type","slot_appearances_not_unique",
+      "unverified_human_question_appearances","human_action","local_state"],
+    ...rows.map(r=>[r.ordinal,r.type,r.slots,r.questions,r.action,r.state])
+  ]);
+  const safe=s=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;")
+    .replaceAll(">","&gt;").replaceAll('"',"&quot;");
+  const handoffHtml=rows=>{
+    const table=rows.map(r=>"<tr><th>"+r.ordinal+"</th><td>"+safe(r.type)+
+      "</td><td>"+r.slots+"</td><td>"+r.questions+"</td><td>"+safe(ACTIONS[r.action])+
+      "</td><td>"+safe(STATES[r.state])+"</td></tr>").join("");
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+      '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; connect-src &#39;none&#39;; base-uri &#39;none&#39;">'+
+      '<title>LightUp PRIVATE HUMAN follow-up</title><style>body{font:16px/1.5 system-ui;'+
+      'margin:auto;max-width:1050px;padding:40px;background:#101b2d;color:#eaf4fa}'+
+      'p{max-width:880px}table{width:100%;border-collapse:collapse}th,td{padding:12px;'+
+      'border-bottom:1px solid #536578;text-align:left}@media print{body{background:white;'+
+      'color:black}}</style></head><body><small>INCUBATE / M3-M7 / DRAFT HOLD / HUMAN ONLY</small>'+
+      '<h1>Local HUMAN action handoff — NOT SENT</h1><p>'+safe(HANDOFF_WARN)+
+      '</p><p>Manually ask the current authenticated original HUMAN owner before'+
+      ' making any real decision. This report does not map local ordinals to real cases.</p>'+
+      '<table><thead><tr><th>Ordinal</th><th>Type</th><th>Slots</th><th>Questions</th>'+
+      '<th>Proposed action</th><th>Local state</th></tr></thead><tbody>'+table+
+      '</tbody></table></body></html>';
+  };
+  const handoffTxt=rows=>[
+    "LIGHTUP / PRIVATE HUMAN LOCAL FOLLOW-UP / DRAFT HOLD / NOT SENT",HANDOFF_WARN,"",
+    ...rows.map(r=>"Local ordinal "+r.ordinal+" (not case), "+r.questions+
+      " unverified questions: "+ACTIONS[r.action]+"; "+STATES[r.state]),
+    "","Authenticate original source, actual owner and permission separately."
+  ].join("\n")+"\n";
+  const deltaCsv=()=>{
+    active();const diff=[];
+    draft.forEach((v,i)=>{const prior=original[i];
+      if(!same(v,prior))diff.push([i+1,prior.action,v.action,prior.state,v.state]);
+    });
+    ensure(diff.length>0);
+    return csvText([["local_ordinal_not_case","earlier_local_action","later_local_action",
+      "earlier_local_state","later_local_state"],...diff]);
+  };
+  const summary=()=>{
+    active();
+    return {kind:"lightup.private_browser_human_routing_preview",schema_version:1,
+      disposition:"LOCAL_SELF_DECLARED_COUNTS_ONLY_DRAFT_HOLD",
+      packet_appearances_not_unique:session.length,
+      local_state_counts:Object.fromEntries(Object.keys(STATES)
+        .map(state=>[state,draft.filter(x=>x.state===state).length])),
+      local_action_counts:Object.fromEntries(Object.keys(ACTIONS)
+        .map(action=>[action,draft.filter(x=>x.action===action).length])),
+      changed_local_routing_appearances:draft.filter((x,i)=>!same(x,original[i])).length,
+      warning:HANDOFF_WARN,...flags()};
+  };
+  const load=async()=>{
+    // Transactional whole-pair admission: either both exact current inputs
+    // become usable or neither does. Never silently fall back to stale files.
+    resetState();
+    try{
+      const [s,b]=await Promise.all([read($("sessionFile").files[0]),
+        read($("boardFile").files[0])]);
+      const p=acceptSession(s);
+      const a=acceptBoard(b,p);
+      session=p;original=clone(a);draft=clone(a);sourceSession=clone(s);
+      const choice=$("ordinalFilter");
+      for(let i=1;i<=session.length;i++){
+        const opt=document.createElement("option");opt.value=String(i);
+        opt.textContent="Local ordinal "+i+" (NOT case)";
+        choice.appendChild(opt);
+      }
+      disabled(false);render();
+      message("Private local pair admitted. HUMAN-only self-declared numbers; no original authority.");
+    }catch(_){
+      resetState();
+      message("HOLD: no private session/board loaded. Check original export schema, size, flags and exact paired ordinals.",true);
+    }
+  };
+  const loadPeer=async()=>{
+    peer=null;renderPeer();
+    try{
+      active();
+      const incoming=await read($("peerFile").files[0]);
+      const imported=acceptBoard(incoming,session);
+      peer=clone(imported);renderPeer();
+      message("Second source-free local board admitted. Changes are proposed, not authentic owner decisions.");
+    }catch(_){
+      peer=null;renderPeer();
+      message("HOLD: peer board not admitted; existing local HUMAN choices unchanged.",true);
+    }
+  };
+  $("peerFile").addEventListener("change",()=>{
+    peer=null;renderPeer();message("Second board changed: click Load second board for exact session admission.");
+  });
+  $("loadPeer").addEventListener("click",loadPeer);
+  $("clearPeer").addEventListener("click",()=>{
+    peer=null;$("peerFile").value="";renderPeer();
+    message("Second local board cleared without changing current HUMAN choices.");
+  });
+  $("peerCsv").addEventListener("click",()=>{
+    try{download("lightup-private-local-peer-choices.csv",peerDiffCsv(),"text/csv");}
+    catch(_){message("HOLD: no admitted anonymous local peer differences.",true);}
+  });
+  // AES-256-GCM with independent random salt/nonce and password-based PBKDF2.
+  // No server, key escrow or persisted browser state. The complete plaintext
+  // is authenticated under a fixed domain and independently re-admitted.
+  const CRYPTO_MODES={
+    workspace:{
+      aad:"LIGHTUP_PRIVATE_HUMAN_LOCAL_WORKSESSION_AES_GCM_V1",
+      kind:"lightup.private_human_encrypted_workspace_v1"
+    },
+    handoff:{
+      aad:"LIGHTUP_PRIVATE_HUMAN_LOCAL_HANDOFF_AES_GCM_V1",
+      kind:"lightup.private_human_encrypted_handoff_v1"
+    }
+  };
+  const CRYPTO_ITERATIONS=600000;
+  const CRYPTO_FIELDS=["kind","schema_version","disposition","kdf","iterations",
+    "salt_b64","nonce_b64","ciphertext_b64"];
+  const VAULT_FIELDS=["kind","schema_version","disposition","original_session",
+    "original_board","working_board","peer_board","warning",...FLAGS];
+  const VAULT_WARNING="Self-declared encrypted offline HUMAN routing draft. Not original authenticated evidence, client identity, consent, remediation, grant, verified fix or release.";
+  const encoder=new TextEncoder();
+  const decoder=new TextDecoder("utf-8",{fatal:true});
+  const b64=bytes=>{
+    let text="";
+    for(let i=0;i<bytes.length;i+=8192)
+      text+=String.fromCharCode(...bytes.subarray(i,i+8192));
+    return btoa(text);
+  };
+  const fromB64=(s,min,max)=>{
+    ensure(typeof s==="string" && s.length>0 && s.length<=max*2
+      && /^[A-Za-z0-9+/]+={0,2}$/.test(s));
+    const raw=atob(s);
+    ensure(raw.length>=min&&raw.length<=max);
+    const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+    ensure(b64(bytes)===s);
+    return bytes;
+  };
+  const passwordBytes=s=>{
+    ensure(typeof s==="string" && s===s.normalize("NFC")
+      && [...s].length>=14 && [...s].length<=256 && s.trim()===s);
+    const bytes=encoder.encode(s);
+    ensure(bytes.length>=14&&bytes.length<=1024);
+    return bytes;
+  };
+  const aesKey=async(secret,salt)=>{
+    ensure(globalThis.crypto?.subtle&&globalThis.crypto?.getRandomValues);
+    const material=await crypto.subtle.importKey("raw",passwordBytes(secret),
+      {name:"PBKDF2"},false,["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      {name:"PBKDF2",hash:"SHA-256",salt,iterations:CRYPTO_ITERATIONS},
+      material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  };
+  const originalBoard=()=>{
+    active();
+    const payload={
+      kind:"lightup.private_human_anonymous_followup_board",
+      schema_version:1,disposition:"LOCAL_HUMAN_FOLLOWUP_ONLY_NO_SOURCE_AUTHORITY",
+      numeric_packets:clone(session),assignments:clone(original),
+      warning:BOARD_WARN,...flags()
+    };
+    acceptBoard(payload,session);
+    return payload;
+  };
+  const peerBoard=()=>{
+    if(peer===null)return null;
+    const payload={...originalBoard(),assignments:clone(peer)};
+    acceptBoard(payload,session);
+    return payload;
+  };
+  const vaultSnapshot=()=>{
+    active();ensure(sourceSession!==null);
+    const payload={
+      kind:"lightup.private_human_encrypted_workspace_payload",
+      schema_version:1,
+      disposition:"SELF_DECLARED_LOCAL_HUMAN_ONLY_DRAFT_HOLD",
+      original_session:clone(sourceSession),
+      original_board:originalBoard(),
+      working_board:updatedBoard(),
+      peer_board:peerBoard(),
+      warning:VAULT_WARNING,
+      ...flags()
+    };
+    vaultAdmit(payload);
+    return payload;
+  };
+  const vaultAdmit=payload=>{
+    header(payload,VAULT_FIELDS,"lightup.private_human_encrypted_workspace_payload",
+      "SELF_DECLARED_LOCAL_HUMAN_ONLY_DRAFT_HOLD",VAULT_WARNING);
+    const p=acceptSession(payload.original_session);
+    const o=acceptBoard(payload.original_board,p);
+    const w=acceptBoard(payload.working_board,p);
+    const peerChoices=payload.peer_board===null?null:acceptBoard(payload.peer_board,p);
+    ensure(p.length===o.length && p.length===w.length);
+    return {packets:p,initial:o,current:w,other:peerChoices,source:payload.original_session};
+  };
+  const seal=async(payload,secret,scope="workspace")=>{
+    ensure(Object.hasOwn(CRYPTO_MODES,scope));
+    const plaintext=encoder.encode(JSON.stringify(payload));
+    ensure(plaintext.length>0&&plaintext.length<=65536);
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const nonce=crypto.getRandomValues(new Uint8Array(12));
+    const key=await aesKey(secret,salt);
+    const ciphertext=new Uint8Array(await crypto.subtle.encrypt({
+      name:"AES-GCM",iv:nonce,additionalData:encoder.encode(CRYPTO_MODES[scope].aad),
+      tagLength:128
+    },key,plaintext));
+    return {
+      kind:CRYPTO_MODES[scope].kind,
+      schema_version:1,
+      disposition:"PASSWORD_ENCRYPTED_LOCAL_FILE_NOT_SOURCE_AUTHORITY",
+      kdf:"PBKDF2-HMAC-SHA256-AES256GCM",
+      iterations:CRYPTO_ITERATIONS,
+      salt_b64:b64(salt),
+      nonce_b64:b64(nonce),
+      ciphertext_b64:b64(ciphertext)
+    };
+  };
+  const openSealed=async(envelope,secret,scope="workspace")=>{
+    ensure(Object.hasOwn(CRYPTO_MODES,scope));
+    ensure(exact(envelope,CRYPTO_FIELDS)
+      && envelope.kind===CRYPTO_MODES[scope].kind
+      && envelope.schema_version===1
+      && envelope.disposition==="PASSWORD_ENCRYPTED_LOCAL_FILE_NOT_SOURCE_AUTHORITY"
+      && envelope.kdf==="PBKDF2-HMAC-SHA256-AES256GCM"
+      && envelope.iterations===CRYPTO_ITERATIONS);
+    const salt=fromB64(envelope.salt_b64,16,16);
+    const nonce=fromB64(envelope.nonce_b64,12,12);
+    const ciphertext=fromB64(envelope.ciphertext_b64,17,65600);
+    const key=await aesKey(secret,salt);
+    const plain=new Uint8Array(await crypto.subtle.decrypt({
+      name:"AES-GCM",iv:nonce,additionalData:encoder.encode(CRYPTO_MODES[scope].aad),
+      tagLength:128
+    },key,ciphertext));
+    ensure(plain.length>0&&plain.length<=65536);
+    const payload=strictJSON(decoder.decode(plain));
+    return scope==="workspace"?vaultAdmit(payload):handoffAdmit(payload);
+  };
+  const drawRestored=state=>{
+    resetState();
+    session=clone(state.packets);
+    original=clone(state.initial);
+    draft=clone(state.current);
+    peer=state.other===null?null:clone(state.other);
+    sourceSession=clone(state.source);
+    const choice=$("ordinalFilter");
+    for(let i=1;i<=session.length;i++){
+      const opt=document.createElement("option");
+      opt.value=String(i);opt.textContent="Local ordinal "+i+" (NOT case)";
+      choice.appendChild(opt);
+    }
+    disabled(false);render();
+  };
+  $("saveEncrypted").addEventListener("click",async()=>{
+    const secret=$("saveSecret").value;
+    const repeated=$("confirmSecret").value;
+    $("saveSecret").value="";$("confirmSecret").value="";
+    $("saveEncrypted").disabled=true;
+    try{
+      ensure(secret===repeated);
+      const payload=vaultSnapshot();
+      const file=await seal(payload,secret);
+      download("lightup-private-human-encrypted-worksession.lhew",
+        JSON.stringify(file,null,2)+"\n","application/json");
+      message("Encrypted PRIVATE workspace downloaded; retain password separately. No authenticated evidence or client data was verified.");
+    }catch(_){
+      message("HOLD: encryption unavailable, invalid password or source-free local session. No encrypted file saved.",true);
+    }finally{
+      $("saveEncrypted").disabled=session===null || !globalThis.crypto?.subtle;
+    }
+  });
+  $("restoreEncrypted").addEventListener("click",async()=>{
+    const secret=$("unlockSecret").value;
+    $("unlockSecret").value="";
+    $("restoreEncrypted").disabled=true;
+    try{
+      const file=$("encryptedFile").files[0];
+      ensure(file&&file.size>0&&file.size<=131072);
+      const bytes=await file.arrayBuffer();
+      ensure(bytes.byteLength===file.size);
+      const envelope=strictJSON(decoder.decode(bytes));
+      const restored=await openSealed(envelope,secret);
+      ensure(session===null||confirm(
+        "Replace current unsaved LOCAL HUMAN browser choices with the decrypted self-declared private workspace?"));
+      drawRestored(restored);
+      message("Encrypted PRIVATE HUMAN session restored; independently re-admitted entire original numeric and native routing board lineage. No source authority.");
+    }catch(_){
+      message("HOLD: private session not restored. Password, file integrity, schema or local confirmation invalid. Existing choices unchanged.",true);
+    }finally{
+      $("restoreEncrypted").disabled=false;
+    }
+  });
+  const HANDOFF_FIELDS=["kind","schema_version","disposition","rows",
+    "warning",...FLAGS];
+  const HANDOFF_ROW_FIELDS=["ordinal","type","slots","questions","action","state"];
+  const HANDOFF_CAP_WARNING="Encrypted locally selected HUMAN follow-up counts only. An ordinal is NOT an authenticated case, recipient, finding, consent, original evidence, reviewer decision, remediation, scan authority or release.";
+  const handoffAdmit=packet=>{
+    header(packet,HANDOFF_FIELDS,"lightup.private_human_encrypted_handoff_payload",
+      "LOCAL_SELECTED_HUMAN_COUNTS_DRAFT_HOLD",HANDOFF_CAP_WARNING);
+    ensure(Array.isArray(packet.rows)&&packet.rows.length>=1&&packet.rows.length<=12);
+    let lastOrdinal=0;
+    return packet.rows.map(row=>{
+      ensure(exact(row,HANDOFF_ROW_FIELDS)
+        &&number(row.ordinal,lastOrdinal+1,12)
+        &&(row.type==="inbox"||row.type==="workroom")
+        &&number(row.slots,1,12)
+        &&number(row.questions,0,1000000)
+        &&typeof row.action==="string"&&Object.hasOwn(ACTIONS,row.action)
+        &&row.action!=="none"
+        &&typeof row.state==="string"&&Object.hasOwn(STATES,row.state));
+      lastOrdinal=row.ordinal;
+      return clone(row);
+    });
+  };
+  const handoffSnapshot=()=>{
+    const selected=chosen().sort((a,b)=>a.ordinal-b.ordinal)
+      .map(r=>({ordinal:r.ordinal,type:r.type,slots:r.slots,
+        questions:r.questions,action:r.action,state:r.state}));
+    const packet={
+      kind:"lightup.private_human_encrypted_handoff_payload",
+      schema_version:1,
+      disposition:"LOCAL_SELECTED_HUMAN_COUNTS_DRAFT_HOLD",
+      rows:selected,warning:HANDOFF_CAP_WARNING,...flags()
+    };
+    handoffAdmit(packet);
+    return packet;
+  };
+  const displayUnlockedHandoff=rows=>{
+    const body=$("unlockedHandoffRows");
+    body.replaceChildren();
+    for(const r of rows){
+      const tr=document.createElement("tr");
+      td(tr,r.ordinal,"th");td(tr,r.type);
+      td(tr,r.slots);td(tr,r.questions);
+      td(tr,ACTIONS[r.action]);td(tr,STATES[r.state]);body.appendChild(tr);
+    }
+    $("unlockedHandoffStatus").textContent=
+      rows.length+" locally selected anonymous HUMAN appearances. NOT sent, authenticated or verified.";
+  };
+  $("saveEncryptedHandoff").addEventListener("click",async()=>{
+    const secret=$("handoffSecret").value;
+    const confirmSecret=$("handoffConfirm").value;
+    $("handoffSecret").value="";$("handoffConfirm").value="";
+    $("saveEncryptedHandoff").disabled=true;
+    try{
+      ensure(secret===confirmSecret);
+      const selected=handoffSnapshot();
+      const file=await seal(selected,secret,"handoff");
+      download("lightup-encrypted-selected-human-handoff.lheh",
+        JSON.stringify(file,null,2)+"\n","application/json");
+      message("Encrypted selected HUMAN handoff saved; no whole numeric session or original case data included.");
+    }catch(_){
+      message("HOLD: selected HUMAN handoff not encrypted. Check selected action, password and local WebCrypto.",true);
+    }finally{
+      const available=session!==null&&globalThis.crypto?.subtle;
+      let count=0;
+      if(available){try{count=chosen().length;}catch(_){count=0;}}
+      $("saveEncryptedHandoff").disabled=!count;
+    }
+  });
+  $("openEncryptedHandoff").addEventListener("click",async()=>{
+    $("unlockedHandoffRows").replaceChildren();
+    $("unlockedHandoffStatus").textContent="No authenticated handoff loaded.";
+    const secret=$("handoffUnlock").value;
+    $("handoffUnlock").value="";
+    $("openEncryptedHandoff").disabled=true;
+    try{
+      const file=$("handoffEncryptedFile").files[0];
+      ensure(file && file.size>0 && file.size<=131072);
+      const bytes=await file.arrayBuffer();
+      ensure(bytes.byteLength===file.size);
+      const sealed=strictJSON(decoder.decode(bytes));
+      const selected=await openSealed(sealed,secret,"handoff");
+      displayUnlockedHandoff(selected);
+      message("Encrypted selected HUMAN handoff opened locally. File proves no original source identity or authorization.");
+    }catch(_){
+      message("HOLD: encrypted HUMAN handoff not opened. Wrong passphrase, altered file, invalid schema or unsupported browser.",true);
+    }finally{$("openEncryptedHandoff").disabled=false;}
+  });
+  $("wipe").addEventListener("click",()=>{
+    if(!confirm("Clear all loaded LOCAL HUMAN session/board references, peer proposals, unlocked handoff display, file selections and password fields in this tab? Previously downloaded files will NOT be deleted."))return;
+    resetState();
+    for(const name of ["sessionFile","boardFile","peerFile","encryptedFile",
+      "handoffEncryptedFile","saveSecret","confirmSecret","unlockSecret",
+      "handoffSecret","handoffConfirm","handoffUnlock"])
+      $(name).value="";
+    $("actionFilter").value="all";
+    $("ordinalFilter").value="all";
+    message("Local HUMAN browser interface cleared. Previously downloaded files remain on disk.");
+  });
+  $("load").addEventListener("click",load);
+  for(const k of ["sessionFile","boardFile"])$(k).addEventListener("change",()=>{
+    resetState();message("Inputs changed: both files must be admitted together again.");
+  });
+  $("reset").addEventListener("click",()=>{
+    active();if(!confirm("Reset all local changes to original source-free board choices?"))return;
+    draft=clone(original);render();message("Local choices reset; original files unchanged.");
+  });
+  $("actionFilter").addEventListener("change",()=>{if(session)render();});
+  $("ordinalFilter").addEventListener("change",()=>{if(session)render();});
+  $("saveBoard").addEventListener("click",()=>{
+    try{const board=updatedBoard();download("lightup-private-human-board-return.json",
+      JSON.stringify(board,null,2)+"\n","application/json");message("Native private board downloaded; manually restore against same numeric Studio session.");}
+    catch(_){message("HOLD: invalid local private board; no export.",true);}
+  });
+  $("summary").addEventListener("click",()=>{
+    try{download("lightup-private-human-routing-preview.json",
+      JSON.stringify(summary(),null,2)+"\n","application/json");}
+    catch(_){message("HOLD: no valid source-free numbers.",true);}
+  });
+  $("handoffCsv").addEventListener("click",()=>{try{
+    download("lightup-local-human-handoff.csv",handoffCsv(chosen()),"text/csv");
+  }catch(_){message("HOLD: no selected HUMAN action appearances.",true);}});
+  $("handoffTxt").addEventListener("click",()=>{try{
+    download("lightup-local-human-handoff.txt",handoffTxt(chosen()));
+  }catch(_){message("HOLD: no selected HUMAN action appearances.",true);}});
+  $("handoffHtml").addEventListener("click",()=>{try{
+    download("lightup-local-human-handoff.html",handoffHtml(chosen()),"text/html");
+  }catch(_){message("HOLD: no selected HUMAN action appearances.",true);}});
+  $("deltaCsv").addEventListener("click",()=>{try{
+    download("lightup-local-routing-changes.csv",deltaCsv(),"text/csv");
+  }catch(_){message("HOLD: no local changes to compare.",true);}});
+  resetState();message("Offline. Select the original private numeric session and matching HUMAN board.");
+})();
+</script></body></html>

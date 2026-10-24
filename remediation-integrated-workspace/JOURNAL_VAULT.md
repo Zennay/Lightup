@@ -1,0 +1,34 @@
+
+## PRIVATE HUMAN-journalvault: brongebonden notities versleutelen
+
+De offline werkruimte levert nu ook de zelfstandige `journal_vault.py` mee. Hiermee kan een geautoriseerde HUMAN-reviewer het **door de browser gedownloade oorspronkelijke PRIVATE HUMAN JSON-journal** na expliciete keuze lokaal met een wachtwoord versleutelen, een opgeslagen versleutelde review hervatten, een brongebonden **scriptloze privé-opvolgbrief** genereren of het journal opnieuw versleutelen met een nieuw wachtwoord. Het originele bronvrije Cockpit-pakket wordt vooraf telkens met de **ongewijzigde native `read_cockpit.inspect`** geaccepteerd. Het HUMAN-journal moet inhoudelijk exact bij de originele bronvrij-pakket-hash, alle oorspronkelijke anonieme slots/redenen/aantallen en false-only autorisatievelden passen; niet hetzelfde bewijs of een andere bronsnapshot betekent HOLD.
+
+De nieuwe `.luhj`-envelop is een afzonderlijk domein met `PBKDF2-HMAC-SHA256`, 600.000 iteraties, willekeurige 16-byte salt, AES-256-GCM, willekeurige 12-byte nonce en eigen purpose-specific authenticated associated data. De optionele lokaal vertrouwde Python-dependency `cryptography` is vereist. Het wachtwoord wordt **alleen interactief** uitgevraagd in een vertrouwde terminal; nooit via argv, shell history of environment. Het journal wordt bij `resume` en `brief` **uitsluitend in het geheugen ontsleuteld en direct doorgegeven** aan de bestaande brongebonden oorspronkelijke HUMAN-renderers — zonder tijdelijk plaintext journalbestand te maken. `rekey` vraagt eerst het oude wachtwoord en dan het nieuwe, en publiceert een nieuw, exclusief 0600 ciphertextbestand. De envelop bevat geen originele notities in plaintext, geen gekopieerde klantgegevens en geen bronbewijs.
+
+Maak een privé, verse 0600 encrypted vault uit het eerder lokaal gedownloade, bestaande 0600 HUMAN-journal:
+
+    python3 remediation-integrated-workspace/journal_vault.py seal --cockpit "$HOME/lightup-private/received-01" --journal "$HOME/lightup-private/lightup-human-single-review-private.json" --output-file "$HOME/lightup-private/human-review-v1.luhj"
+
+Later lokaal verder werken in een **nieuwe 0700 privéwerkruimte**, rechtstreeks uit de versleutelde brongebonden HUMAN-journalvault:
+
+    python3 remediation-integrated-workspace/journal_vault.py resume --cockpit "$HOME/lightup-private/received-01" --vault "$HOME/lightup-private/human-review-v1.luhj" --output-dir "$HOME/lightup-private/resumed-human-review-02"
+
+Voor een afzonderlijk origineel-brongebonden lokaal HUMAN-overdrachtsrapport:
+
+    python3 remediation-integrated-workspace/journal_vault.py brief --cockpit "$HOME/lightup-private/received-01" --vault "$HOME/lightup-private/human-review-v1.luhj" --output-dir "$HOME/lightup-private/human-brief-v2"
+
+Om de encrypted vault apart met een nieuw wachtwoord te publiceren (zonder de oude te overschrijven):
+
+    python3 remediation-integrated-workspace/journal_vault.py rekey --cockpit "$HOME/lightup-private/received-01" --vault "$HOME/lightup-private/human-review-v1.luhj" --output-file "$HOME/lightup-private/human-review-v2.luhj"
+
+**Belangrijke grenzen:** encryptie van de nieuwe vault wist de oorspronkelijke browserdownload, oorspronkelijke plaintext-rapporten, browsergeheugen, swap of back-ups **niet**. De offline hervatte browser en scriptloze brief bevatten noodzakelijke HUMAN-notities opnieuw in plaintext **binnen de nieuwe 0700/0600 privébestanden**. De operator beheert bewaartermijnen en echte disclosure-toestemming; password-encryptie authenticiteert geen klant of bronhouder en geeft nooit een grant, scan, geverifieerde fix, retest of productie-HUMAN GO. Onjuiste wachtwoorden, gewijzigde ciphertext, afwijkende oorspronkelijke source-bound anonieme records en onvolledige notitie-inhoud worden geweigerd. Het is DRAFT/HOLD totdat oorspronkelijke verplichte CI, bronhouder, onafhankelijke security/privacy/crypto/browserreview, échte actuele toestemming en expliciete menselijke vrijgave rond zijn.
+
+### Rechtstreeks versleuteld opslaan vanuit de offline browser
+
+De originele bronvrije één-Cockpit HUMAN-reviewpagina bevat nu naast de expliciet als **minder veilig** gemarkeerde plaintext-optie een standaardzichtbare **Download encrypted PRIVATE journal (.luhj)**. Deze actie gebruikt de browser Web Crypto PBKDF2 600.000 + AES-256-GCM, een apart purpose-bound authenticatiedomein en twee lokaal ingevoerde identieke wachtwoorden. De browser controleert het volledige oorspronkelijke HUMAN-journal en exporteert direct de strikte canonical JSON `.luhj` die door dezelfde native `journal_vault.py resume/brief/rekey` wordt geaccepteerd. Geen plaintext JSON wordt door deze actie gedownload of naar een netwerk verzonden. De lokale HTML bevat alleen twee broncode-eigen inline JS-modules, gebonden aan exact hun CSP SHA-256-hashes; geen externe scripts/CDN of browseropslag. De browser kan wel geheimen in geheugen en de OS-downloadmap verwerken; het wachtwoord kan niet veilig worden gewist uit geheugen en back-ups worden niet beheerd. Bij browsers zonder lokale veilige Web Crypto wordt de actie geweigerd in plaats van terug te vallen op plaintext. Verloren wachtwoorden zijn niet herstelbaar; bronidentiteit en echte toestemming blijven onbekend.
+
+### Bestaande versleutelde HUMAN-review in browser openen — zonder plaintext-dossier op disk
+
+Dezelfde originele offline één-Cockpit HUMAN-reviewpagina biedt nu een lokaal bestandsveld **Open existing encrypted journal**. Selecteer de eerder versleutelde `.luhj`, voer het wachtwoord in en open het journal in browsergeheugen via Web Crypto. Het nieuwe bronbestand `journal_open.js` controleert exact de native canonical envelope, false-only autorisatie, byte/b64-limieten, PBKDF2/AES-GCM-domain, vervolgens de oorspronkelijke bronvrij-pakket-hash, alle oorspronkelijk toegelaten HUMAN slot-/reden-/aantallen, de native HUMAN-stagewoordenlijst en notitiebeperkingen. Alleen na volledige succesvolle ontsleuteling worden de bewerkbare HUMAN-velden lokaal hersteld. Onjuiste sleutels, andere source-free snapshots en gewijzigde bronrecords zorgen voor **HOLD** zonder gedeeltelijke herstelde notities; het bestand en wachtwoordveld worden na gebruik losgelaten. Je kunt dan verder bewerken en direct **Download encrypted PRIVATE journal** gebruiken — zonder ooit een nieuwe plaintext HTML of JSON-hervattingskopie te publiceren.
+
+De originele lokale HTML heeft drie exact CSP-SHA-gepinde eigen scripts; geen fetch, upload, browseropslag, third-party scripts of consent/grant/scan-action. In-browser veiligheid en cryptografie vergen nog onafhankelijke review; houd de pagina op een vertrouwd privéapparaat. Browsergeheugen, clipboard, downloadmap en back-ups kunnen niet volledig worden gewist; wachtwoorden zijn niet herstelbaar. Het originele source-free Cockpit is door de native offline Python-builder geaccepteerd, maar bewijst nooit echte bronhouderidentiteit of toestemming.

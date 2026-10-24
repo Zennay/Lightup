@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_SHA256__'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE HUMAN Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#0a1321;--panel:#18263a;--border:#34465e;--text:#eff6fe;--muted:#b5c5d8;--accent:#a6f1d1}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top right,#17324a,var(--bg) 60%);color:var(--text);font:16px/1.6 system-ui,sans-serif;min-height:100vh}
+main{max-width:1150px;margin:auto;padding:clamp(16px,4vw,48px)}
+h1{font-size:clamp(2rem,4.5vw,3.4rem);line-height:1.15;margin:.25em 0}
+p{color:var(--muted)}
+.small{letter-spacing:.15em;text-transform:uppercase;font-size:12px;font-weight:800;color:var(--accent)}
+header{margin-bottom:30px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+article,.panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 6px 30px #050a1540}
+article strong{font-size:2.2rem;display:block;line-height:1.25;font-variant-numeric:tabular-nums;color:var(--accent)}
+article span{font-size:13px;color:var(--muted)}
+.panel{margin-top:20px}
+.panel h2{margin-top:0;font-size:1.2rem}
+.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:15px 0}
+input[type=file]{max-width:100%;font:inherit;color:var(--muted)}
+button{border-radius:10px;background:#233d51;border:1px solid #73928e;padding:10px 14px;color:var(--text);font-weight:650;cursor:pointer}
+button:hover{background:#375d60}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:#164d45;border-color:var(--accent)}
+#status{border-left:3px solid var(--accent);padding:8px 14px;background:#142f2f;min-height:41px}
+#status[data-state=hold]{border-color:#ffb681;background:#3d2930}
+aside{border-left:3px solid #f0c376;background:#272938;padding:15px 20px;margin-top:20px;border-radius:0 10px 10px 0}
+aside p{margin:.3em 0}
+.scroll{overflow-x:auto}
+table{width:100%;min-width:810px;border-collapse:collapse}
+th,td{border-bottom:1px solid var(--border);text-align:left;padding:13px;font-variant-numeric:tabular-nums}
+td button{font-size:12px;padding:6px 10px}
+table th{font-size:13px;color:#d9e8fb}
+select{min-width:180px;max-width:360px;width:100%;padding:10px;border-radius:8px;background:#142539;color:var(--text);border:1px solid #63758b;font:inherit}label{color:var(--muted);font-size:14px}
+svg.trend{display:block;max-width:100%;height:auto;margin:18px auto;background:#122b32;border-radius:12px;border:1px solid var(--border)}
+footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
+</style>
+</head><body><main>
+<header><div class="small">LightUp · PRIVATE · Offline · DRAFT/HOLD</div>
+<h1>Human workload<br>intake studio</h1>
+<p>Open native, source-free HUMAN counts exports locally. Organize up to 12 packets entirely in your browser without Python, an account, uploading data, connecting to the network or saving your private source files.</p></header>
+<div class="grid">
+<article><strong id="packets">0</strong><span>Imported anonymous packets</span></article>
+<article><strong id="slots">0</strong><span>Source-free slot appearances · not unique</span></article>
+<article><strong id="questions">0</strong><span>HUMAN questions · not fixes</span></article>
+<article><strong id="attention">0</strong><span>Planning attention appearances</span></article>
+<article><strong id="dated">0</strong><span>Locally dated slot appearances</span></article>
+</div>
+<section class="panel"><h2>1 · Import original counts-only files</h2>
+<p>Choose one or more exports produced through the original source-owner's <code>inbox.py export-counts</code> or <code>workroom_control.py export-counts</code>. Only the native anonymous numeric schema is accepted. Files are never uploaded. Each group is accepted in full or rejected in full.</p>
+<div class="actions"><input type="file" id="pick" accept=".json,application/json" multiple aria-label="Choose original counts-only JSON exports"><button id="clear" type="button" disabled>Clear current imports</button></div>
+<p><strong>Current input origin:</strong> <span id="sourceStatus">Native-shaped count exports (not source authenticated)</span></p>
+<div class="panel"><h3>Pause and resume a private numeric HUMAN session</h3><p>Save the source-free numeric packet descriptions and optional earlier numeric baseline into one standalone local JSON. Resume it later without having to select all original count exports again. The downloaded JSON contains unencrypted anonymous counts, which may still be sensitive in small populations; keep it in private storage. A resumed session is <strong>not original source-authenticated evidence</strong>; to get fresh source assurance, export the original native counts again. Restoring a session replaces the current browser selection only after explicit confirmation.</p>
+<div class="actions"><button id="saveSession" class="primary" type="button" disabled>Save resumable numeric session</button>
+<label for="resumeSession">Restore private session: <input type="file" id="resumeSession" accept=".json,application/json" aria-label="Restore existing source-free HUMAN browser session"></label></div>
+</div>
+<div id="status" role="status" aria-live="polite">Initializing local studio…</div>
+</section>
+<section class="panel"><h2>2 · Private HUMAN question-volume desk</h2>
+<p>Sorted by number of local pending questions only. This is <strong>not</strong> a risk score, vulnerability severity, finding identity, or remediation verification. Browser-only, no hidden persistent storage. <span id="missing">0</span> packets have no planning stage breakdown.</p>
+<p><strong id="overlap">0</strong> packet appearances share an indistinguishable numeric profile with another selected packet. This is a caution about possible overlap, <strong>not proof of duplicated cases or identical original sources</strong>; legitimate distinct workrooms can have the same anonymous numbers.</p>
+<div class="scroll"><table><thead><tr><th>Packet ordinal</th><th>Export type</th><th>Slot appearances</th><th>Pending questions</th><th>Planned attention</th><th>Dated slots</th><th>Local action</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="actions"><button class="primary" type="button" id="export" disabled>Save anonymous HUMAN question-volume CSV</button>
+<button type="button" id="exportBrief" disabled>Save source-free HUMAN follow-up brief</button>
+<button type="button" id="exportJson" disabled>Save numeric JSON snapshot</button></div>
+<h3>Declared HUMAN planning stages (only packets with planning)</h3>
+<div class="grid">
+<article><strong id="stage_unassigned">0</strong><span>Locally unassigned</span></article>
+<article><strong id="stage_assigned">0</strong><span>Locally assigned</span></article>
+<article><strong id="stage_waiting_human">0</strong><span>Awaiting HUMAN action</span></article>
+<article><strong id="stage_locally_answered">0</strong><span>Locally answered (not verified fixes)</span></article>
+</div>
+</section>
+<section class="panel"><h2>3 · Plan HUMAN follow-up, per anonymous packet</h2>
+<p>For each local packet ordinal, choose a predefined <strong>HUMAN-only next step</strong> and a local routing status. No customer identifier, evidence, original-case link, personal name, attachment, freeform note, active assessment or consent decision can be entered. This is a local follow-up intention and does <strong>not</strong> change the original source workroom or verify a fix.</p>
+<p><strong id="boardVisible">0</strong> visible anonymous packet appearances after local state filter.</p>
+<div class="grid"><article><strong id="count_not_triaged">0</strong><span>Not triaged</span></article>
+<article><strong id="count_needs_human_followup">0</strong><span>Needs HUMAN follow-up</span></article>
+<article><strong id="count_waiting_original_owner">0</strong><span>Waiting original source owner</span></article>
+<article><strong id="count_locally_discussed">0</strong><span>Locally discussed (not verified fixes)</span></article></div>
+<div class="actions"><label for="boardFilter">Show local HUMAN routing status:
+<select id="boardFilter"><option value="all">All anonymous packets</option><option value="not_triaged">Not triaged</option><option value="needs_human_followup">Needs HUMAN follow-up</option><option value="waiting_original_owner">Waiting original source owner</option><option value="locally_discussed">Locally discussed (not verified fix)</option></select></label>
+<button id="resetBoard" type="button" disabled>Reset local HUMAN choices</button></div>
+<div class="scroll"><table><thead><tr><th>Local packet ordinal</th><th>Open HUMAN questions</th><th>Suggested HUMAN next action</th><th>Local HUMAN routing state (not original)</th></tr></thead><tbody id="boardRows"></tbody></table></div>
+<div class="actions"><button id="saveBoard" class="primary" type="button" disabled>Save paired private HUMAN action board JSON</button>
+<button id="boardCSV" type="button" disabled>Save anonymous HUMAN action CSV</button>
+<button id="boardBrief" type="button" disabled>Save local HUMAN action briefing</button>
+<label for="restoreBoard">Restore board for exact current numeric selection: <input type="file" id="restoreBoard" accept=".json,application/json" aria-label="Restore HUMAN routing JSON bound to exact source-free packet selection"></label></div>
+<p id="boardStatus" role="status" aria-live="polite">Local HUMAN routing is available after importing count packets.</p>
+<p>The exported action board is paired by full anonymous per-packet numeric shape and <strong>ordinal only</strong>. Download the matching <strong>resumable numeric session JSON</strong> separately to use <code>action_board.py</code> offline. Matching numbers are not authentication, stable client identities, proof of consent, or release. Keep these unencrypted exports private.</p>
+</section>
+<section class="panel"><h2>4 · Compare two local HUMAN workload moments</h2>
+<p>First import an earlier packet set, then click <strong>Freeze earlier counters</strong>. Clear the current imports and open the later packet set. Only aggregate numeric counts are kept for the earlier selection; there is no original case/finding matching or persistent storage. A lower number never proves a fix.</p>
+<div class="actions"><button id="freeze" type="button" disabled>Freeze earlier counters</button>
+<button id="forgetEarlier" type="button" disabled>Forget earlier counters</button>
+<button id="exportDelta" class="primary" type="button" disabled>Save source-free comparison CSV</button></div>
+<p><small>Earlier source-free aggregate: <strong id="earlierLabel">None saved in memory</strong></small></p>
+<div class="scroll"><table><thead><tr><th>Aggregate count change (later minus earlier)</th><th>Difference in packet appearances, not verified progress</th></tr></thead>
+<tbody><tr><th>Packets</th><td id="deltaPackets">No baseline</td></tr>
+<tr><th>Slot appearances</th><td id="deltaSlots">No baseline</td></tr>
+<tr><th>Pending HUMAN questions</th><td id="deltaQuestions">No baseline</td></tr>
+<tr><th>Planned HUMAN attention appearances</th><td id="deltaAttention">No baseline</td></tr>
+<tr><th>Locally dated slot appearances</th><td id="deltaDated">No baseline</td></tr>
+</tbody></table></div>
+<p>Unchanged or decreasing counts are not evidence of remediation, verified retests, secure systems, customer identity, or matching source packets. The selected cohorts may differ or contain duplicate appearances.</p>
+</section>
+<section class="panel"><h2>5 · Multi-session HUMAN numbered moments (no Python)</h2>
+<p>Choose 2–12 separately saved <em>source-free browser sessions</em>. This imports only numeric work counters; complete source files are read locally but are never uploaded or saved in browser storage. The initial order follows the browser file picker, <strong>not independently verified dates</strong>. Use the arrows to arrange the moments yourself. No case-matching, source verification, real dates, or verified remediation conclusions.</p>
+<div class="actions"><input id="momentPick" type="file" accept=".json,application/json" multiple aria-label="Choose 2–12 previously saved private numeric HUMAN browser session JSON files"><button id="momentClear" type="button" disabled>Clear numbered moments</button></div>
+<p id="momentStatus" role="status" aria-live="polite">No numbered browser session moments loaded.</p>
+<div class="grid"><article><strong id="momentCount">0</strong><span>Numbered moments in browser memory · not verified dates</span></article></div>
+<svg id="momentPlot" role="img" viewBox="0 0 820 240" aria-label="No HUMAN moments selected yet" class="trend"></svg>
+<div class="scroll"><table><thead><tr><th>Selected ordinal</th><th>Packets</th><th>Slots</th><th>Pending HUMAN questions</th><th>Attention</th><th>Change in question appearances</th><th>Coverage warning</th><th>Reorder</th></tr></thead><tbody id="momentRows"></tbody></table></div>
+<div class="actions"><button id="momentExportCSV" class="primary" type="button" disabled>Save numbered HUMAN counts CSV</button><button id="momentExportJSON" type="button" disabled>Save separate numeric timeline JSON</button></div>
+<p><strong>Interpretation:</strong> a decline can reflect different or missing packet sources. Identical values do not prove the same cases. Use original authenticated HUMAN workrooms to make real decisions.</p>
+</section>
+<aside><strong>Non-authorizing source-free preview.</strong><p>Separate packets might describe the same work. An anonymous summary cannot prove real source authenticity, client identity, consent, a verified security finding, a completed fix, or readiness to scan. Tiny aggregates can still be sensitive: retain files privately and approve any onward disclosure as a human.</p></aside>
+<footer><p>Everything in memory disappears when this file/tab closes. The only active code is the locally bundled SHA-256 CSP-pinned browser script; it does not request network resources or run scanners. Its presence is NOT independent security audit or privacy approval. No external analytics, background jobs, localStorage or service workers. The original hosted and named-VPS CI, source-owner/privacy/security review, #177/#182/#829, separate action-time client/operator consent and HUMAN GO remain mandatory before release.</p></footer>
+</main><script>__INLINE_SCRIPT__</script></body></html>
