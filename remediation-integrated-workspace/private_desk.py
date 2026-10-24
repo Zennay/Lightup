@@ -354,7 +354,12 @@ def main() -> int:
                 print("HOLD: incomplete HUMAN menu; nothing launched.", file=sys.stderr)
                 return 3
             if chosen is None:
-                return 2
+                # Cancellation performed no native admission. Never return 2,
+                # which is reserved for an actual REVIEW_ONLY operation and
+                # can otherwise be misread as a successful automated review.
+                print("HOLD: HUMAN menu cancelled; no native operation started.",
+                      file=sys.stderr)
+                return 3
             name, values = chosen
         else:
             name = args.action
