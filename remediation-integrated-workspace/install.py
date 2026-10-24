@@ -670,6 +670,9 @@ def exclusive_publish(stage: Path, destination: Path,
         os.close(fd)
 
 def build(dest: Path) -> None:
+    # Match the operator browser and the receiver: reject spoofed native
+    # destination strings before loading or staging any source-only bytes.
+    require_operator_path(dest)
     lock_raw, lock = catalog()
     require(dest.is_absolute() and not dest.exists() and not dest.is_symlink()
             and dest.parent == dest.parent.resolve(strict=True), "Choose a new literal absolute destination")
@@ -850,6 +853,7 @@ h2{font-size:18px;letter-spacing:-.015em;margin:0 0 8px}
 def publish_integrity_receipt(folder: Path, output: Path, receipt: dict,
                               verified: dict[str, bytes], checkout_compared: bool) -> None:
     """Create a separate private reproducibility passport, never a consent receipt."""
+    require_operator_path(output)
     require(output.is_absolute() and output.parent == output.parent.resolve(strict=True)
             and not output.exists() and not output.is_symlink(),
             "Choose an unused literal absolute private report directory")
@@ -882,6 +886,7 @@ def reopen_integrity_receipt(folder: Path, report_dir: Path,
     native JSON and scriptless HTML. This is local reproducibility, not a
     signature, producer identity, authority or authenticated chronology.
     """
+    require_operator_path(report_dir)
     require(report_dir.is_absolute() and
             report_dir.parent == report_dir.parent.resolve(strict=True)
             and report_dir != folder and report_dir not in folder.parents
@@ -912,6 +917,13 @@ def verify(folder: Path, *, compare_checkout: bool = False,
             "Choose passport publication OR existing passport admission")
     require((report_dir is None and passport_dir is None) or compare_checkout,
             "Reproducibility passport requires explicit --compare-checkout")
+    # Do not read any original PRIVATE package bytes if a human-supplied
+    # destination or report path contains terminal control/bidi characters.
+    require_operator_path(folder)
+    if report_dir is not None:
+        require_operator_path(report_dir)
+    if passport_dir is not None:
+        require_operator_path(passport_dir)
     owner_dir(folder)
     receipt = parse(read_owner_file(folder / "manifest.json", ceiling=350_000))
     require(set(receipt) == {"kind", "version", "disposition", "authority_granted",
