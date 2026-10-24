@@ -462,6 +462,16 @@ It admits **exactly 65 ASCII bytes** (64 lowercase hex plus LF) locally,
 rejects malformed or stale asynchronous reads and never uploads anything.
 This is a byte comparison, **not** native source admission or provenance.
 
+Malformed or unsafe optional checksum input is now examined **before**
+the native recipient reads the original software ZIP: a non-0600,
+symlinked, ill-formatted, or wrongly sized fingerprint yields an immediate
+`HOLD=3` rather than unnecessarily opening archive contents. A properly
+formatted checksum is then compared in constant time against the actual
+admitted ZIP SHA-256; receiving still reads it again immediately before
+private exclusive publication. This ordering improves local data
+minimization only. It cannot establish independent sender authentication,
+consent, the integrity of a compromised checkout, or HUMAN GO.
+
 The optional matching input is supported by the native HUMAN desk and offline
 browser operator studio as a *path* field. The browser command composer
 prevents preparing a `fingerprint-archive` output or `receive-software`
