@@ -58,6 +58,16 @@ path, but does not authorize any software publication, assert provenance
 or replace external filesystem isolation.
 
 ## Literal PRIVATE terminal path boundary
+The **HUMAN launcher** (`private_desk.py`) now applies these same
+checks to the original raw argument text **before** constructing a
+`pathlib.Path` or handing a command to the native installer. It rejects
+`//` at the beginning and literal `/./` or `/../` path segments
+with `HOLD=3`, without reading the ZIP, publishing a destination or
+silently normalizing the operator's input. This applies to all original
+HUMAN owner, recipient and software path fields; printable literal
+absolute paths remain supported. The original nofollow and private
+file admission still decides all actual filesystem operations.
+
 
 Native offline installer actions now reject POSIX paths starting with two
 leading slashes (`//...`) **before opening an input or publishing anything**.
