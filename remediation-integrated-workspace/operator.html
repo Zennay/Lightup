@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-KK+wDv+3ItH9e2d6sIlScGwFXdT/+alp3VQ4l5q1MN4=&#x27; &#x27;sha256-TQ8v6KlXUOsj2v3xq6fvXmaKuCsytJFt3igNLkyRl5I=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-nAs0rc1cPjZltO514iSgTiF+Gb8+vWA0tGfyQET3LG4=&#x27; &#x27;sha256-TQ8v6KlXUOsj2v3xq6fvXmaKuCsytJFt3igNLkyRl5I=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -261,6 +261,7 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   let chosen = specs.find(s => s.name === "inspect-archive") || specs[0];
   let inputElements = new Map();
   let showAll = false;
+  let hiddenByFilter = false;
   const more = document.createElement("button");
   more.type = "button";
   more.className = "more-workflows";
@@ -487,6 +488,24 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     more.hidden = term.length > 0 || group !== "Alles" || specs.length <= primaryNames.size;
     more.setAttribute("aria-expanded", String(showAll));
     more.textContent = showAll ? "Toon de belangrijkste acties" : "Bekijk alle " + specs.length + " acties";
+    // Filtering only changes the visible choices, not which native command
+    // the operator previously selected. When that selected workflow is no
+    // longer visible, disable copying it until the HUMAN explicitly selects
+    // a visible workflow or clears the filter. Never copy a hidden command.
+    if (!hits.some(item => item.name === chosen.name)) {
+      hiddenByFilter = true;
+      command.value = "";
+      copy.disabled = true;
+      prepareReceive.disabled = true;
+      prepareChecksum.disabled = true;
+      showMessage("De vorige opdracht valt buiten dit filter. Kies een zichtbare opdracht voordat je een commando kopieert.", false);
+    } else if (hiddenByFilter) {
+      hiddenByFilter = false;
+      // Clearing the filter restores only the same previously selected
+      // workflow, after fresh path validation. Never pick a new workflow
+      // or preserve an unchecked copyable command.
+      renderCommand();
+    }
     for (const item of hits) {
       const button = node("button", "action", item.label);
       button.type = "button";
