@@ -166,7 +166,7 @@ def open_literal_read_fd(path: Path, *, private_parent: bool = False) -> int:
             parent = os.fstat(fd)
             require(stat.S_ISDIR(parent.st_mode) and
                     parent.st_uid == os.getuid() and
-                    parent.st_mode & 0o077 == 0,
+                    stat.S_IMODE(parent.st_mode) == 0o700,
                     "Private source parent must be owner-only")
         return os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW |
                        getattr(os, "O_CLOEXEC", 0) | os.O_NONBLOCK,
@@ -354,7 +354,7 @@ def owner_dir(folder: Path) -> None:
             "Directory must be absolute, literal, non-symlink path")
     s = folder.stat(follow_symlinks=False)
     require(stat.S_ISDIR(s.st_mode) and s.st_uid == os.getuid()
-            and s.st_mode & 0o077 == 0, "Directory must be owner-only 0700")
+            and stat.S_IMODE(s.st_mode) == 0o700, "Directory must be exactly owner-only 0700")
 
 def read_owner_file(path: Path, ceiling: int = MAX_SOURCE) -> bytes:
     """Admit an exact owner-private file with its explicitly declared size cap.
@@ -410,7 +410,7 @@ def open_private_dir_fd(path: Path) -> int:
             fd = next_fd
         desc = os.fstat(fd)
         require(stat.S_ISDIR(desc.st_mode) and
-                desc.st_uid == os.getuid() and desc.st_mode & 0o077 == 0,
+                desc.st_uid == os.getuid() and stat.S_IMODE(desc.st_mode) == 0o700,
                 "Private directory must be current-user 0700")
         result, fd = fd, -1
         return result
