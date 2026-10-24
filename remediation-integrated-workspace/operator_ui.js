@@ -296,6 +296,14 @@
       // or preserve an unchecked copyable command.
       renderCommand();
     }
+    // Hidden operations must not leave apparently editable path fields
+    // visible as though their old command were still selectable. Preserve
+    // current field values; re-enable only after a visible choice or when
+    // the filter clears. Native HOLD remains the enforcement boundary.
+    for (const input of inputElements.values()) {
+      input.disabled = hiddenByFilter;
+    }
+    fields.setAttribute("aria-disabled", String(hiddenByFilter));
     for (const item of hits) {
       const button = node("button", "action", item.label);
       button.type = "button";
