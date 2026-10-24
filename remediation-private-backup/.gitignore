@@ -1,0 +1,13 @@
+# Never commit actual PRIVATE operator/customer workroom files or secrets
+*.lupb
+*.csv
+*.json
+*.key
+*.pem
+*.p12
+*.pfx
+.private/
+private/
+recovered/
+__pycache__/
+*.pyc
