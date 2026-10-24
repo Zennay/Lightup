@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-FftUwH/XVa0Xo5sxCSTkGLBM4bLX8nnW/+/0Y8YHnGo=&#x27; &#x27;sha256-567hzQRKd5ifXVN+658ItVvr9cRGoXZMYyt6H1swnio=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-EniFlFhRHDFn9mCl6FN3wEl3QL2NGrLFj1lehvmp3ss=&#x27; &#x27;sha256-567hzQRKd5ifXVN+658ItVvr9cRGoXZMYyt6H1swnio=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -263,6 +263,10 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   // An asynchronous OS clipboard prompt can outlive the visible command.
   // Never confirm an old copy as if it belonged to a newly chosen action.
   let commandVersion = 0;
+  // The browser clipboard is asynchronous. Avoid overlapping original
+  // writeText requests whose completion order could silently reverse the
+  // HUMAN command the operator expects to paste.
+  let clipboardBusy = false;
   let showAll = false;
   let hiddenByFilter = false;
   const more = document.createElement("button");
@@ -680,7 +684,9 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     }
   });
   copy.addEventListener("click", async () => {
-    if (!command.value) return;
+    if (!command.value || copy.disabled || clipboardBusy) return;
+    clipboardBusy = true;
+    copy.disabled = true;
     const value = command.value;
     const copiedVersion = commandVersion;
     const isCurrent = () => copiedVersion === commandVersion && command.value === value;
@@ -700,6 +706,11 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
       command.focus();
       command.select();
       showMessage("Selecteer het huidige commando en kopieer met Ctrl+C; klembordtoegang is hier uitgeschakeld.", false);
+    } finally {
+      clipboardBusy = false;
+      // A different workflow or path edit owns its own latest button state;
+      // never let the old completion unlock an invalid/hidden/cleared action.
+      if (isCurrent() && !hiddenByFilter) copy.disabled = false;
     }
   });
   // Separate read-only preview of the native 65-byte software ZIP receipt.
