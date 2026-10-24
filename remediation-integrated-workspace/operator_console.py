@@ -156,8 +156,8 @@ def render() -> bytes:
 <body><main class="shell">
 <header><div class="eyebrow">LIGHTUP / OFFLINE WERKPLEK</div>
 <h1>Offline werkruimte</h1>
-<p class="lead">Bereid een veilige opdracht voor, of vergelijk zelfgekozen bestanden lokaal.
-Er gebeurt niets automatisch en er wordt niets verstuurd.</p>
+<p class="lead">Controleer een lokaal pakket of bereid een opdracht voor.
+Kies een stap, vul je privépaden in en kopieer het commando. Niets wordt automatisch uitgevoerd of verstuurd.</p>
 <div class="state"><span class="dot"></span> INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</div>
 </header>
 <div class="notice" role="note"><strong>Alleen lokale controle. Geen toestemming of vrijgave.</strong>
@@ -168,22 +168,18 @@ jouw expliciete opdracht. Een checksum bewijst geen afzender, toestemming of her
 <details class="extra-tools">
 <summary>Andere offline hulpmiddelen <span>Overdracht, pakketten en SHA-256 vergelijken</span></summary>
 <section class="journey" aria-label="Gids voor echte PRIVATE bronvrije overdracht">
-<h2>Drie stappen, van pakket tot beoordeling</h2>
-<p>Drie onafhankelijke lokale HUMAN-stappen. De pakketoverdracht tussen machines
-gebeurt uitsluitend na afzonderlijke echte toestemming, nooit automatisch.</p>
+<h2>Van pakket naar beoordeling</h2>
+<p>Drie lokale stappen. Voor het delen of openen op een andere machine is afzonderlijke toestemming nodig.</p>
 <div class="journey-grid">
-<article><span>01 · BRONHOUDER</span><h3>Maak versleuteld pakket en eigen fingerprintbewijs</h3>
-<p>Oorspronkelijke privé-evidence blijft bij de bronhouder; alleen de afzonderlijke native
-bronvrije Cockpit wordt lokaal versleuteld naar een nieuw .luhx-bestand plus apart privé, niet-ondertekend JSON-fingerprintbewijs.</p>
-<button type="button" data-workflow="owner-encrypted-receipt">Bereid originele eigenaarsoverdracht voor</button></article>
-<article><span>02 · ONTVANGER</span><h3>Open de werkelijk ontvangen overdracht</h3>
-<p>Gebruik uitsluitend het apart geautoriseerd ontvangen .luhx-bestand én bijbehorend privé unsigned .json-fingerprintbewijs; controleer bytes vóór decryptie.
-De ontvanger maakt lokaal een PRIVATE HUMAN-werkruimte, geen scan of fix.</p>
-<button type="button" data-workflow="archives">Bereid ontvangst en HUMAN-review voor</button></article>
-<article><span>03 · BEOORDELAAR</span><h3>Bewaar menselijke antwoorden versleuteld</h3>
-<p>Na handmatige brongebonden beoordeling kunnen bestaande echte HUMAN-journalantwoorden
-lokaal worden verzegeld. Bronidentiteit, toestemming en retest blijven extern.</p>
-<button type="button" data-workflow="seal-journal">Bereid versleuteld HUMAN-journal voor</button></article>
+<article><span>01 · EIGENAAR</span><h3>Maak een beveiligd pakket</h3>
+<p>Het oorspronkelijke bewijs blijft bij de eigenaar. Maak een versleuteld pakket zonder brongegevens, met een los controlebestand.</p>
+<button type="button" data-workflow="owner-encrypted-receipt">Bereid pakket voor</button></article>
+<article><span>02 · ONTVANGER</span><h3>Controleer het ontvangen pakket</h3>
+<p>Vergelijk eerst het bestand met het apart ontvangen controlebewijs. Open het pas na toestemming, alleen voor lokale beoordeling.</p>
+<button type="button" data-workflow="archives">Bereid ontvangst voor</button></article>
+<article><span>03 · BEOORDELAAR</span><h3>Beveilig je notities</h3>
+<p>Bewaar antwoorden versleuteld. Dit bevestigt geen afzender, toestemming of herstel en start geen scan.</p>
+<button type="button" data-workflow="seal-journal">Beveilig notities</button></article>
 </div></section>
 <section class="fingerprint" aria-label="Offline bytefingerprint zonder upload">
 <h2>PRIVATE ontvangen pakket lokaal vergelijken</h2>
