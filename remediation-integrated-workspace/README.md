@@ -415,6 +415,26 @@ before processing any private evidence. Neither creating nor matching
 this checksum file establishes sender identity, release approval,
 scanning rights, findings or HUMAN GO. Nothing is sent automatically.
 
+### Download a native-compatible private software SHA-256 in the offline browser
+
+The offline PRIVATE operator studio now supports a minimal software-only
+handoff without copying a digest from a general JSON result. Select **exactly
+one** local original file literally named `software-only.zip` (maximum
+15,000,000 bytes), choose **Bereken lokaal SHA-256**, then explicitly select
+**Download softwarechecksum (.sha256)**. This exports only the 64 lowercase
+hex digits plus one LF as `software-only.sha256` (65 ASCII bytes), matching
+the native `--expected-sha256-file` format. A mixed or nonsoftware
+selection never enables that export. The existing PRIVATE JSON inventory
+download is separate and **cannot** be passed as a native software checksum.
+
+This uses the browser's local WebCrypto digest only: it **does not parse ZIP
+members**, check source ownership, authenticate a sender or authorize a release.
+An OS/browser download may initially receive ordinary download-directory
+permissions: an operator must move the separately approved fingerprint into
+an owner-only `0700` parent, make it `0600`, and independently confirm the
+channel before passing it to `inspect-archive` or `receive`. No download is
+sent to a server, and no automatic client/operator consent is inferred.
+
 ### Optional exact-byte SHA-256 transfer fingerprint
 
 The native `inspect-archive` command now prints the complete software-only
