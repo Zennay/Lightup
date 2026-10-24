@@ -175,12 +175,19 @@
   expectedSize.addEventListener("input", invalidateEditedReceipt);
   expectedFile.addEventListener("change", async () => {
     const file = expectedFile.files && expectedFile.files[0];
+    if (!file) {
+      // A cancelled/empty file-picker change is NOT consent to discard an
+      // imported checksum or clear an existing HOLD. Only the explicit
+      // "Wis fingerprints" action or an actual new original receipt may do so.
+      // Keep the generation unchanged so a prior in-flight original read
+      // remains governed by the same request identity.
+      return;
+    }
     const request = ++receiptGeneration;
-    receiptStatus = file ? "pending" : "none";
+    receiptStatus = "pending";
     expected.value = "";
     expectedSize.value = "";
     compareDeclaredSource();
-    if (!file) return;
     if (!file.name.endsWith(".sha256") || file.size !== 65) {
       expectedFile.value = "";
       receiptStatus = "invalid";
