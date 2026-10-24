@@ -1,7 +1,8 @@
+Original native source and exact browser JavaScript parse OK
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-nAs0rc1cPjZltO514iSgTiF+Gb8+vWA0tGfyQET3LG4=&#x27; &#x27;sha256-eVkwnBhWVxLi4cr+AtTWcN09BtNpr28nAzWgawsmBVE=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-nAs0rc1cPjZltO514iSgTiF+Gb8+vWA0tGfyQET3LG4=&#x27; &#x27;sha256-il8c73cD8rTHor15flx4bbu3laL7FGHl4zaFOgn5W+g=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -851,6 +852,14 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   function compareDeclaredSource() {
     softwareExport.disabled = !canExportSoftwareChecksum();
     expectedResult.textContent = "";
+    if (receiptStatus === "invalid") {
+      expectedResult.textContent = "HOLD: het ontvangen originele .sha256-controlebestand is onbruikbaar of nadien gewijzigd. Wis eerst de controlewaarden of importeer opnieuw.";
+      return;
+    }
+    if (receiptStatus === "pending") {
+      expectedResult.textContent = "Het oorspronkelijke .sha256-bestand wordt lokaal gecontroleerd.";
+      return;
+    }
     const digest = expected.value.trim();
     const sizeText = expectedSize.value.trim();
     if (!digest && !sizeText) return;
@@ -910,12 +919,22 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     output.replaceChildren(tab);
   }
 
-  expected.addEventListener("input", () => {
-    receiptGeneration++; receiptStatus = "none"; compareDeclaredSource();
-  });
-  expectedSize.addEventListener("input", () => {
-    receiptGeneration++; receiptStatus = "none"; compareDeclaredSource();
-  });
+  function invalidateEditedReceipt() {
+    // A selected original .sha256 must never be silently discarded when an
+    // operator types a replacement digest. Otherwise a mismatched imported
+    // receipt could be edited to match and the export HOLD bypassed.
+    // Explicit "Wis fingerprints" or a newly admitted receipt is required
+    // before exporting a fresh, separately authorized software checksum.
+    const hadReceipt = receiptStatus !== "none";
+    receiptGeneration++; // Cancel any original in-flight file admission.
+    if (hadReceipt) {
+      receiptStatus = "invalid";
+      message("HOLD: ontvangen checksum is gewijzigd. Wis de controlewaarden of importeer het originele .sha256-bestand opnieuw.");
+    }
+    compareDeclaredSource();
+  }
+  expected.addEventListener("input", invalidateEditedReceipt);
+  expectedSize.addEventListener("input", invalidateEditedReceipt);
   expectedFile.addEventListener("change", async () => {
     const file = expectedFile.files && expectedFile.files[0];
     const request = ++receiptGeneration;
