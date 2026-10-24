@@ -250,7 +250,10 @@
       }
     }
     command.value = parts.join(" \\\n  ");
-    copy.disabled = false;
+    // A prior asynchronous OS clipboard write may still be pending after
+    // an operator edits a path. Keep copy disabled until it settles, rather
+    // than displaying a clickable button whose handler silently returns.
+    copy.disabled = clipboardBusy;
     // Pre-filled follow-up remains an explicit HUMAN choice; it never runs
     // either native command, and never promotes a browser preview to proof.
     if (chosen.name === "inspect-archive" &&
@@ -262,7 +265,10 @@
         byName.has("fingerprint-archive")) {
       prepareChecksum.disabled = false;
     }
-    showMessage("Lokaal commando voorbereid. Nog niets uitgevoerd, gedeeld of geautoriseerd.", false);
+    showMessage(clipboardBusy
+      ? "Het vorige kopiëren loopt nog. Controleer daarna het huidige commando en kopieer opnieuw."
+      : "Lokaal commando voorbereid. Nog niets uitgevoerd, gedeeld of geautoriseerd.",
+      clipboardBusy);
   }
 
   function renderNav() {
@@ -498,9 +504,10 @@
       showMessage("Selecteer het huidige commando en kopieer met Ctrl+C; klembordtoegang is hier uitgeschakeld.", false);
     } finally {
       clipboardBusy = false;
-      // A different workflow or path edit owns its own latest button state;
-      // never let the old completion unlock an invalid/hidden/cleared action.
-      if (isCurrent() && !hiddenByFilter) copy.disabled = false;
+      // The newest validated command owns the button state. A stale
+      // clipboard write may settle after an edit: unlock only if the latest
+      // command is still present and visible, never the obsolete command.
+      copy.disabled = !command.value || hiddenByFilter;
     }
   });
   // Separate read-only preview of the native 65-byte software ZIP receipt.
