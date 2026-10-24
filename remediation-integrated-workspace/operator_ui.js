@@ -172,6 +172,14 @@
         }
       }
     }
+    if (chosen.name === "fingerprint-archive" || chosen.name === "inspect-archive") {
+      const key = chosen.name === "fingerprint-archive"
+        ? "--output-file" : "--planned-checksum-file";
+      const output = (vals(key) || [])[0];
+      if (output && !output.endsWith(".sha256")) {
+        throw Error("Gebruik voor de nieuwe software-checksum een .sha256-bestandsnaam.");
+      }
+    }
     if (chosen.name === "recipient" && vals("--cockpit").length > 12) {
       throw Error("Maximaal 12 echte source-free Cockpits.");
     }
