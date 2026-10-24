@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-nAs0rc1cPjZltO514iSgTiF+Gb8+vWA0tGfyQET3LG4=&#x27; &#x27;sha256-il8c73cD8rTHor15flx4bbu3laL7FGHl4zaFOgn5W+g=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-nAs0rc1cPjZltO514iSgTiF+Gb8+vWA0tGfyQET3LG4=&#x27; &#x27;sha256-567hzQRKd5ifXVN+658ItVvr9cRGoXZMYyt6H1swnio=&#x27;; style-src &#x27;sha256-ldbYTvAl4hCTA9fFEOTwWNgbZET1GNZnqezOaR+jTxY=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -850,6 +850,26 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
   }
   function compareDeclaredSource() {
     softwareExport.disabled = !canExportSoftwareChecksum();
+    // The general JSON receipt must not silently bypass an active HOLD on a
+    // separately supplied checksum. It is still an original fingerprint
+    // export, even though only the native 65-byte format drives software
+    // admission. An operator must resolve the mismatch or explicitly clear
+    // the original comparison before exporting any fresh digest.
+    const declared = expected.value.trim();
+    const declaredSize = expectedSize.value.trim();
+    const hasDeclared = Boolean(declared || declaredSize);
+    const matchingDeclared = !hasDeclared || (
+      /^[0-9a-f]{64}$/.test(declared) &&
+      (!declaredSize || (
+        /^[1-9][0-9]{0,11}$/.test(declaredSize) &&
+        Number.isSafeInteger(Number(declaredSize)) &&
+        Number(declaredSize) <= limitItem
+      )) &&
+      inventory.some(item => item.sha256 === declared &&
+        (!declaredSize || item.size === Number(declaredSize)))
+    );
+    exportButton.disabled = !inventory.length || !matchingDeclared ||
+      receiptStatus === "pending" || receiptStatus === "invalid";
     expectedResult.textContent = "";
     if (receiptStatus === "invalid") {
       expectedResult.textContent = "HOLD: het ontvangen originele .sha256-controlebestand is onbruikbaar of nadien gewijzigd. Wis eerst de controlewaarden of importeer opnieuw.";
@@ -1102,7 +1122,10 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
     }
   });
   exportButton.addEventListener("click", () => {
-    if (!inventory.length) return;
+    if (!inventory.length || exportButton.disabled) {
+      message("HOLD: los de afwijkende of nog niet gecontroleerde oorspronkelijke checksum op vóór een nieuwe fingerprintexport.");
+      return;
+    }
     if (!window.confirm("Dit maakt een PRIVATE JSON-bestand met SHA-256-digests en lengtes. Zelfs zonder bestandsnamen kunnen fingerprints gevoelig of koppelbaar zijn. Alleen voor afzonderlijk geautoriseerde offline overdracht. Doorgaan?")) return;
     const receipt = {
       kind: "lightup.private_unsigned_local_byte_fingerprints",
