@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-pQzaS7z4VoOXDUDl1T3ki1hdIQo6FTRL/VDnSP3rvPs=&#x27; &#x27;sha256-agFnPUYqeLhOY4ahjxVVOJX8qInz+9LyYt75JQeayV4=&#x27;; style-src &#x27;sha256-Bfbqgx/21kl8k6erDxoIYFfl6HtMJSfCbHJcw+Xj/OE=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
+<meta http-equiv="Content-Security-Policy" content='default-src &#x27;none&#x27;; script-src &#x27;sha256-HaySb/vHjs9gOZP+pqyokwA7tY7BtgsflV4T3oIFiOw=&#x27; &#x27;sha256-agFnPUYqeLhOY4ahjxVVOJX8qInz+9LyYt75JQeayV4=&#x27;; style-src &#x27;sha256-Bfbqgx/21kl8k6erDxoIYFfl6HtMJSfCbHJcw+Xj/OE=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; form-action &#x27;none&#x27;; base-uri &#x27;none&#x27;'>
 <title>LightUp — PRIVATE operatorstudio</title>
 <style>:root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;color:#1b2b3d;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}
@@ -336,6 +336,17 @@ De originele offline startpagina blijft beschikbaar via de vorige browserpagina.
       result.set(field.flag, collected);
     }
     const vals = key => result.get(key) || [];
+    // Native archive commands reject a trailing slash on file arguments
+    // before pathlib can erase it. Show the same HOLD before producing a
+    // copyable HUMAN command; directory paths still accept trailing slashes.
+    if (["fingerprint-archive", "inspect-archive", "receive-software"].includes(chosen.name)) {
+      for (const flag of ["--archive", "--expected-sha256-file",
+                          "--output-file", "--planned-checksum-file"]) {
+        if (vals(flag).some(path => path.endsWith("/"))) {
+          throw Error("Bestandspad mag niet eindigen op /: " + flag);
+        }
+      }
+    }
     // The native publisher and browser file chooser both use .sha256 for
     // software receipts. Reject a mismatched output name before showing a
     // copyable command; actual native owner-private admission still decides.
