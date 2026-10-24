@@ -15,8 +15,15 @@ def admit_archive(archive: Path,
                   ) -> tuple[bytes, bytes, dict, dict[str, bytes]]:
     """Read and validate original software bytes without extracting or writing."""
     suite.require_operator_path(archive)
+    # The offline browser admits only this original software payload name.
+    # Match its advisory gate in the actual native recipient *before*
+    # opening any archive or checksum bytes; names are not provenance.
+    suite.require(archive.name == "software-only.zip",
+                  "Original software ZIP must be named software-only.zip")
     if expected_sha256_file is not None:
         suite.require_operator_path(expected_sha256_file)
+        suite.require(expected_sha256_file.name.endswith(".sha256"),
+                      "Original software checksum file must end in .sha256")
     # Validate independently supplied PRIVATE fingerprint format before
     # accessing the original software ZIP. A malformed fingerprint must not
     # make us read sensitive/untrusted archive bytes just to return HOLD.
