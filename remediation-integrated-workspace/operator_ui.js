@@ -463,11 +463,15 @@
     if (softwareBusy) return;
     const zip = softwareZip.files && softwareZip.files[0];
     const receipt = softwareHash.files && softwareHash.files[0];
-    if (!zip || !receipt || !zip.name.endsWith(".zip") ||
+    // This is the ORIGINAL named software-only ZIP workflow, not a generic
+    // ZIP checksum oracle. The separate packet fingerprinter already refuses
+    // arbitrary ZIP files. Keep the two browser gates in agreement; matching
+    // hashes still never prove native software admission or provenance.
+    if (!zip || !receipt || zip.name !== "software-only.zip" ||
         !receipt.name.endsWith(".sha256") ||
         !Number.isSafeInteger(zip.size) || zip.size < 1 || zip.size > 15000000 ||
         receipt.size !== 65) {
-      softwareResult.textContent = "HOLD: kies precies één ZIP van 1–15.000.000 bytes en één originele .sha256 van exact 65 bytes.";
+      softwareResult.textContent = "HOLD: kies alleen het originele software-only.zip (1–15.000.000 bytes) en één apart ontvangen .sha256-bestand van exact 65 bytes.";
       softwareResult.dataset.kind = "error";
       return;
     }
