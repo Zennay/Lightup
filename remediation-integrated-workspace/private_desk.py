@@ -344,6 +344,9 @@ def main() -> int:
                       for flag, _, _, _ in OPERATIONS[name][2]}
         result = dispatch(name, values)
         return result if result is not None else 3  # execv never returns on success
+    except (EOFError, KeyboardInterrupt):
+        print("HOLD: incomplete HUMAN menu; nothing launched.", file=sys.stderr)
+        return 3
     except (ValueError, OSError) as exc:
         print("HOLD:", exc, file=sys.stderr)
         return 3
