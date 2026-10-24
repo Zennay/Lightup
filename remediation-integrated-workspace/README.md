@@ -867,8 +867,11 @@ Instead of composing the individual original scripts by hand, start the
 When the original interactive HUMAN menu is **deliberately cancelled**
 by a blank selection or by refusing the final `YES` confirmation, it now
 returns **3=HOLD**, explicitly states that no native operation started,
-and never claims **2=REVIEW_ONLY** for doing nothing. Original `list`
-remains REVIEW_ONLY=2, while `--help` exits 0 without an operation.
+and never claims **2=REVIEW_ONLY** for doing nothing. The original `list` command is **INFORMATION_ONLY=0**: it shows available
+commands but admits no source, package or authorization. Exit **2=REVIEW_ONLY**
+is reserved for completed native offline operations, while a cancelled or
+interrupted HUMAN menu uses **3=HOLD**. Likewise `--help` exits 0 with
+information only. Never treat a list/help exit as evidence of a product check.
 
 When the original interactive HUMAN menu ends with EOF or Ctrl+C **before
 dispatch**, the native launcher returns **3=HOLD** and accurately says
