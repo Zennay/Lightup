@@ -322,7 +322,7 @@
         // transfer, mouse/keyboard activation strands assistive technology
         // on a detached element. The newly selected task's first path field
         // is the next useful visible control.
-        select(item.name);
+        select(item.name, true);
         const first = fields.querySelector("input,textarea");
         if (first) first.focus();
       });
@@ -331,7 +331,7 @@
     if (!hits.length) actions.append(node("p", "hint", "Geen passende offline workflow."));
   }
 
-  function select(name) {
+  function select(name, keepSearch = false) {
     chosen = byName.get(name);
     inputElements = new Map();
     title.textContent = chosen.label;
@@ -382,7 +382,7 @@
     };
     special.textContent = guidance[chosen.name] ||
       "Controleer de originele bestanden en toestemming. De opdracht geeft alleen REVIEW_ONLY of HOLD.";
-    search.value = "";
+    if (!keepSearch) search.value = "";
     renderNav();
     renderCommand();
   }
