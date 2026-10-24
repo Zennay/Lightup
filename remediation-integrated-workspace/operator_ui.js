@@ -226,6 +226,15 @@
     prepareReceive.disabled = true;
     prepareChecksum.hidden = chosen.name !== "inspect-archive";
     prepareChecksum.disabled = true;
+    // Search/category filtering may hide the previously selected workflow.
+    // Its fields remain visible until the HUMAN chooses a different task,
+    // but field edits must NEVER resurrect a copyable hidden command.
+    // Only renderNav() may clear hiddenByFilter after the selected task
+    // becomes visible again and has been revalidated from fresh input.
+    if (hiddenByFilter) {
+      showMessage("Deze opdracht is verborgen door je filter. Kies een zichtbare opdracht of wis het filter.", true);
+      return;
+    }
     let values;
     try {
       values = allPaths();
