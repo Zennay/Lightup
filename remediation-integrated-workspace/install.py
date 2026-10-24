@@ -74,6 +74,17 @@ INTEGRATED_TOOLS = (
 class Hold(ValueError):
     pass
 
+
+class HoldArgumentParser(argparse.ArgumentParser):
+    """CLI syntax problems must not return argparse's misleading exit code 2.
+
+    In the native LightUp contract, exit 2 is reserved for a validated
+    REVIEW_ONLY operation. Parser errors are safety HOLD=3, not review proof.
+    argparse's ordinary --help still exits 0 and performs no native action.
+    """
+    def error(self, message: str) -> None:
+        raise Hold("Invalid original offline CLI arguments: " + message)
+
 def require(ok: bool, message: str) -> None:
     if not ok:
         raise Hold(message)
@@ -1036,7 +1047,7 @@ def verify(folder: Path, *, compare_checkout: bool = False,
     print("Local hashes are not signatures, authenticated consent or release approval.")
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Install or inspect source-only offline HUMAN workroom")
+    parser = HoldArgumentParser(description="Install or inspect source-only offline HUMAN workroom")
     sub = parser.add_subparsers(dest="action", required=True)
     p_build = sub.add_parser("build", help="Publish a fresh PRIVATE 0700 software-only offline suite")
     p_build.add_argument("--output-dir", required=True, type=str)
@@ -1066,8 +1077,10 @@ def main() -> int:
     p_recv.add_argument("--output-dir", required=True, type=str)
     p_recv.add_argument("--expected-sha256-file", type=str,
                         help="optional separate owner-private 0600 original SHA-256+LF fingerprint")
-    args = parser.parse_args()
     try:
+        # Required flags, subcommands and unknown arguments must HOLD, not
+        # be reported as REVIEW_ONLY due to argparse's default exit code 2.
+        args = parser.parse_args()
         # pathlib normalizes literal "." segments and a leading "//"
         # before ordinary Path validation can inspect the operator input.
         # Preserve the raw CLI text until all original literal constraints
