@@ -461,10 +461,14 @@ separately received .sha256 file instead of manually transcribing 64 characters.
 It admits **exactly 65 ASCII bytes** (64 lowercase hex plus LF) locally,
 rejects malformed or stale asynchronous reads and never uploads anything.
 If the operator supplies an expected SHA-256 or length, **any mismatch, malformed
-receipt or still-running receipt read disables the browser's replacement
-checksum download**; an original package must not be silently relabelled by
-publishing a new fingerprint after an explicit failed comparison. Manual
-correction or clearing the input starts a new, unsigned local check. Native
+receipt or still-running receipt read disables BOTH new fingerprint exports**:
+the native-compatible 65-byte software checksum and the generic unsigned JSON
+digest inventory. A failed comparison must not be silently relabelled through
+a second export button. Editing an imported original receipt **does not clear
+its HOLD**; the HUMAN must explicitly clear the comparison values and start a
+new, unsigned local check or import a fresh, admitted original receipt.
+Matching an independently supplied checksum only establishes byte agreement.
+Native
 `inspect-archive` and genuine independent sender/consent review remain
 mandatory. This is a byte comparison, **not** native source admission or provenance.
 
