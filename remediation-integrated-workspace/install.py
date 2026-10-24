@@ -1111,6 +1111,14 @@ def main() -> int:
             verify(args.workspace, compare_checkout=args.compare_checkout,
                    report_dir=args.report_dir, passport_dir=args.passport_dir)
         return 2  # REVIEW_ONLY; not a release success signal.
+    except (KeyboardInterrupt, EOFError):
+        # An interruption may occur before OR after original staged output
+        # was published. Do not promise rollback or turn a signal into
+        # successful REVIEW_ONLY evidence; require a fresh HUMAN inspection.
+        print("HOLD: offline operation interrupted; publication is unverified. "
+              "Inspect the original private paths before retrying.",
+              file=sys.stderr)
+        return 3
     except (Hold, OSError, KeyError, TypeError, zipfile.BadZipFile, ValueError) as exc:
         print("HOLD:", str(exc), file=sys.stderr)
         return 3
