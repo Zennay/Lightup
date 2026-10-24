@@ -26,6 +26,7 @@
   let chosen = specs.find(s => s.name === "inspect-archive") || specs[0];
   let inputElements = new Map();
   let showAll = false;
+  let hiddenByFilter = false;
   const more = document.createElement("button");
   more.type = "button";
   more.className = "more-workflows";
@@ -257,14 +258,18 @@
     // longer visible, disable copying it until the HUMAN explicitly selects
     // a visible workflow or clears the filter. Never copy a hidden command.
     if (!hits.some(item => item.name === chosen.name)) {
+      hiddenByFilter = true;
       command.value = "";
       copy.disabled = true;
       prepareReceive.disabled = true;
       prepareChecksum.disabled = true;
       showMessage("De vorige opdracht valt buiten dit filter. Kies een zichtbare opdracht voordat je een commando kopieert.", false);
-    } else if (!command.value && !copy.disabled) {
-      // Normal selected-command rendering is already handled by select().
-      // Do not silently switch to the first search result.
+    } else if (hiddenByFilter) {
+      hiddenByFilter = false;
+      // Clearing the filter restores only the same previously selected
+      // workflow, after fresh path validation. Never pick a new workflow
+      // or preserve an unchecked copyable command.
+      renderCommand();
     }
     for (const item of hits) {
       const button = node("button", "action", item.label);
