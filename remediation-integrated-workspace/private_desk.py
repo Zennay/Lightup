@@ -344,7 +344,13 @@ def main() -> int:
         args = p.parse_args()
         if args.action == "list":
             present()
-            return 2  # REVIEW_ONLY, not authority
+            # Listing command names performs no original source admission.
+            # Code 2 is RESERVED for an actually completed native operation;
+            # return a distinct informational 0 so workers cannot mistake a
+            # printed menu for a verified REVIEW_ONLY delivery.
+            print("INFORMATION_ONLY: available commands listed; "
+                  "no original source checked or native operation run.")
+            return 0
         if args.action == "menu":
             # Only interruption BEFORE dispatch proves that no native command
             # has started. Do not give that assurance after execv begins.
