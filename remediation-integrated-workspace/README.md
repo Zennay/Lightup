@@ -27,6 +27,19 @@ compared with a separately obtained original 65-byte checksum, the native
 for full original software admission and checkout consistency. A matching
 browser hash is **never** a release or safety approval.
 
+**Browser download permissions are NOT native/private output permissions.**
+The browser cannot force a downloaded `software-only.sha256` file to Linux
+mode 0600 or guarantee its download folder is 0700. Before handing the
+download to `--expected-sha256-file`, move it to a separate current-user
+0700 directory, apply `chmod 600` to the file and confirm it contains
+exactly 64 lowercase SHA-256 hex digits followed by one LF. The native
+recipient always rechecks ownership, 0600 mode, complete file format and ZIP
+parity; a readable-by-others browser download is HOLD, not repaired by the
+native recipient. Prefer the native `fingerprint-archive` action when
+publishing the checksum: it uses exclusive private 0600 creation from its
+first write and needs no browser download. No checksum asserts source
+identity, consent, a completed native review or release.
+
 This is a browser presentation choice, not an authenticated release or
 automatic approval. The source-only installed CLI makes the final offline
 decision; a browser-composed command is not evidence that it ran.
