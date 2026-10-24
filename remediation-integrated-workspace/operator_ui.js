@@ -97,6 +97,17 @@
       result.set(field.flag, collected);
     }
     const vals = key => result.get(key) || [];
+    // Native archive commands reject a trailing slash on file arguments
+    // before pathlib can erase it. Show the same HOLD before producing a
+    // copyable HUMAN command; directory paths still accept trailing slashes.
+    if (["fingerprint-archive", "inspect-archive", "receive-software"].includes(chosen.name)) {
+      for (const flag of ["--archive", "--expected-sha256-file",
+                          "--output-file", "--planned-checksum-file"]) {
+        if (vals(flag).some(path => path.endsWith("/"))) {
+          throw Error("Bestandspad mag niet eindigen op /: " + flag);
+        }
+      }
+    }
     // The native publisher and browser file chooser both use .sha256 for
     // software receipts. Reject a mismatched output name before showing a
     // copyable command; actual native owner-private admission still decides.
