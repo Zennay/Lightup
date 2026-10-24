@@ -28,6 +28,10 @@
   // An asynchronous OS clipboard prompt can outlive the visible command.
   // Never confirm an old copy as if it belonged to a newly chosen action.
   let commandVersion = 0;
+  // The browser clipboard is asynchronous. Avoid overlapping original
+  // writeText requests whose completion order could silently reverse the
+  // HUMAN command the operator expects to paste.
+  let clipboardBusy = false;
   let showAll = false;
   let hiddenByFilter = false;
   const more = document.createElement("button");
@@ -445,7 +449,9 @@
     }
   });
   copy.addEventListener("click", async () => {
-    if (!command.value) return;
+    if (!command.value || copy.disabled || clipboardBusy) return;
+    clipboardBusy = true;
+    copy.disabled = true;
     const value = command.value;
     const copiedVersion = commandVersion;
     const isCurrent = () => copiedVersion === commandVersion && command.value === value;
@@ -465,6 +471,11 @@
       command.focus();
       command.select();
       showMessage("Selecteer het huidige commando en kopieer met Ctrl+C; klembordtoegang is hier uitgeschakeld.", false);
+    } finally {
+      clipboardBusy = false;
+      // A different workflow or path edit owns its own latest button state;
+      // never let the old completion unlock an invalid/hidden/cleared action.
+      if (isCurrent() && !hiddenByFilter) copy.disabled = false;
     }
   });
   // Separate read-only preview of the native 65-byte software ZIP receipt.
