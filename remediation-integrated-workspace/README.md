@@ -556,9 +556,14 @@ separators in every operator-supplied path, matching the native terminal's
 existing `require_operator_path` policy. Printable Unicode names are
 allowed. No command is offered for copying when a hidden-character path
 is detected. This is **early operator feedback**, never a replacement for
-native owner-private descriptor checks, separate approval or source review. The receiver re-reads the exact
-operator-provided file before atomic private publication; a changed fingerprint
-or changed ZIP is HOLD, without publishing the destination. Without the
+native owner-private descriptor checks, separate approval or source review. The original ZIP admission now **re-reads the exact 65-byte checksum file
+after all native ZIP structures, pinned source files and local renderers have
+been checked**. This applies even to the no-write `inspect-archive` preview:
+the operator cannot get a stale checksum-parity message from a file that
+changed during complete admission. The actual receiver additionally re-reads
+the exact operator-provided file immediately before atomic private
+publication; a changed checksum or changed ZIP is HOLD without publishing
+the destination. Without the
 optional fingerprint, all preexisting exact native source/ZIP verification
 remains in place. Never claim that a SHA supplied alongside a package proves
 who sent it; a compromised checksum channel defeats this independent
