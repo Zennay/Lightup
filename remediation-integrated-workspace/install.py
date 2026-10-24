@@ -558,18 +558,38 @@ def write_file(path: Path, payload: bytes) -> tuple[int, int]:
                      os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
                      0o600, dir_fd=parent_fd)
         try:
-            os.fchmod(fd, 0o600)
-            with os.fdopen(fd, "wb", closefd=False) as f:
-                f.write(payload)
-                f.flush()
-                os.fsync(f.fileno())
-            # The file's bytes are durable only after fsync(file), but its
-            # newly created directory entry must also be made durable.
-            # Keep the original nofollow private parent fd pinned until
-            # both are synced; never reopen a possibly replaced pathname.
-            os.fsync(parent_fd)
-            state = os.fstat(fd)
-            return state.st_dev, state.st_ino
+            # Remember the exact newly created inode *before* any byte write
+            # or fsync can fail. A checksum caller otherwise receives no
+            # identity and cannot safely clean its incomplete 0600 stage.
+            original = os.fstat(fd)
+            try:
+                os.fchmod(fd, 0o600)
+                with os.fdopen(fd, "wb", closefd=False) as f:
+                    f.write(payload)
+                    f.flush()
+                    os.fsync(f.fileno())
+                # Persist both contents and the private directory entry.
+                # Keep the original nofollow parent fd pinned throughout.
+                os.fsync(parent_fd)
+                state = os.fstat(fd)
+                return state.st_dev, state.st_ino
+            except BaseException:
+                # Roll back only our original private single-link inode when
+                # writing or syncing fails. Never unlink a symlink, another
+                # file's inode or a substituted directory entry.
+                try:
+                    current = os.stat(path.name, dir_fd=parent_fd,
+                                      follow_symlinks=False)
+                    if (stat.S_ISREG(current.st_mode) and
+                            current.st_uid == os.getuid() and
+                            current.st_nlink == 1 and
+                            (current.st_dev, current.st_ino) ==
+                            (original.st_dev, original.st_ino)):
+                        os.unlink(path.name, dir_fd=parent_fd)
+                        os.fsync(parent_fd)
+                except OSError:
+                    pass  # Preserve the original write failure.
+                raise
         finally:
             os.close(fd)
     finally:
