@@ -303,7 +303,13 @@ widget now accepts only the exact local filename `software-only.zip`
 exactly 64 lowercase hexadecimal characters and LF). A matching checksum
 for an arbitrary other `.zip` file no longer displays a software-packet
 match. Other arbitrary ZIP files are refused before any read or SHA-256
-operation. The widget uses local browser WebCrypto only and does not
+operation. The **native** `inspect-archive`, `receive` and
+`fingerprint-archive` admission now require the same literal basename
+`software-only.zip`, and native receipt comparison requires the separate
+filename to end in `.sha256`, **before opening either file**.
+This is a consistent human-visible file contract, never proof of
+producer identity: byte structure and pinned checkout are verified separately.
+The widget uses local browser WebCrypto only and does not
 unpack, upload or validate the software contents. A renamed untrusted ZIP
 is still untrusted: the separate native `inspect-archive` with original
 source-lock, ZIP-layout and checkout admission remains required.
