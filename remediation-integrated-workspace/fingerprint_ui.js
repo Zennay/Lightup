@@ -64,6 +64,14 @@
   function compareDeclaredSource() {
     softwareExport.disabled = !canExportSoftwareChecksum();
     expectedResult.textContent = "";
+    if (receiptStatus === "invalid") {
+      expectedResult.textContent = "HOLD: het ontvangen originele .sha256-controlebestand is onbruikbaar of nadien gewijzigd. Wis eerst de controlewaarden of importeer opnieuw.";
+      return;
+    }
+    if (receiptStatus === "pending") {
+      expectedResult.textContent = "Het oorspronkelijke .sha256-bestand wordt lokaal gecontroleerd.";
+      return;
+    }
     const digest = expected.value.trim();
     const sizeText = expectedSize.value.trim();
     if (!digest && !sizeText) return;
