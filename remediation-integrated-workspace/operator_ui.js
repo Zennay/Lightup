@@ -25,6 +25,9 @@
   // All advanced HUMAN workflows remain accessible through navigation.
   let chosen = specs.find(s => s.name === "inspect-archive") || specs[0];
   let inputElements = new Map();
+  // An asynchronous OS clipboard prompt can outlive the visible command.
+  // Never confirm an old copy as if it belonged to a newly chosen action.
+  let commandVersion = 0;
   let showAll = false;
   let hiddenByFilter = false;
   const more = document.createElement("button");
@@ -204,6 +207,7 @@
   }
 
   function renderCommand() {
+    commandVersion++;
     command.value = "";
     copy.disabled = true;
     prepareReceive.hidden = chosen.name !== "inspect-archive";
@@ -367,6 +371,7 @@
   category.addEventListener("change", renderNav);
   search.addEventListener("input", renderNav);
   reset.addEventListener("click", () => {
+    commandVersion++;
     // Clearing command fields is an explicit privacy action. Don't immediately
     // replace its confirmation with a misleading "required field" error.
     // Browser code cannot reliably erase a previously copied OS clipboard.
@@ -442,14 +447,24 @@
   copy.addEventListener("click", async () => {
     if (!command.value) return;
     const value = command.value;
+    const copiedVersion = commandVersion;
+    const isCurrent = () => copiedVersion === commandVersion && command.value === value;
     try {
       if (!navigator.clipboard || !navigator.clipboard.writeText) throw Error("No clipboard API");
       await navigator.clipboard.writeText(value);
-      showMessage("Alleen naar lokaal klembord gekopieerd. Controleer terminal en echte toestemming.", false);
+      if (!isCurrent()) {
+        showMessage("Het vorige commando kan nog op het klembord staan. Kopieer het huidige commando opnieuw vóór gebruik.", true);
+        return;
+      }
+      showMessage("Huidig commando lokaal gekopieerd. Controleer terminal en echte toestemming.", false);
     } catch (_) {
+      if (!isCurrent()) {
+        showMessage("Het commando is inmiddels gewijzigd. Kopieer uitsluitend de huidige opdracht opnieuw.", true);
+        return;
+      }
       command.focus();
       command.select();
-      showMessage("Selecteer het commando en kopieer met Ctrl+C; klembordtoegang is hier uitgeschakeld.", false);
+      showMessage("Selecteer het huidige commando en kopieer met Ctrl+C; klembordtoegang is hier uitgeschakeld.", false);
     }
   });
   // Separate read-only preview of the native 65-byte software ZIP receipt.
