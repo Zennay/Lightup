@@ -63,6 +63,26 @@
   }
   function compareDeclaredSource() {
     softwareExport.disabled = !canExportSoftwareChecksum();
+    // The general JSON receipt must not silently bypass an active HOLD on a
+    // separately supplied checksum. It is still an original fingerprint
+    // export, even though only the native 65-byte format drives software
+    // admission. An operator must resolve the mismatch or explicitly clear
+    // the original comparison before exporting any fresh digest.
+    const declared = expected.value.trim();
+    const declaredSize = expectedSize.value.trim();
+    const hasDeclared = Boolean(declared || declaredSize);
+    const matchingDeclared = !hasDeclared || (
+      /^[0-9a-f]{64}$/.test(declared) &&
+      (!declaredSize || (
+        /^[1-9][0-9]{0,11}$/.test(declaredSize) &&
+        Number.isSafeInteger(Number(declaredSize)) &&
+        Number(declaredSize) <= limitItem
+      )) &&
+      inventory.some(item => item.sha256 === declared &&
+        (!declaredSize || item.size === Number(declaredSize)))
+    );
+    exportButton.disabled = !inventory.length || !matchingDeclared ||
+      receiptStatus === "pending" || receiptStatus === "invalid";
     expectedResult.textContent = "";
     if (receiptStatus === "invalid") {
       expectedResult.textContent = "HOLD: het ontvangen originele .sha256-controlebestand is onbruikbaar of nadien gewijzigd. Wis eerst de controlewaarden of importeer opnieuw.";
@@ -315,7 +335,10 @@
     }
   });
   exportButton.addEventListener("click", () => {
-    if (!inventory.length) return;
+    if (!inventory.length || exportButton.disabled) {
+      message("HOLD: los de afwijkende of nog niet gecontroleerde oorspronkelijke checksum op vóór een nieuwe fingerprintexport.");
+      return;
+    }
     if (!window.confirm("Dit maakt een PRIVATE JSON-bestand met SHA-256-digests en lengtes. Zelfs zonder bestandsnamen kunnen fingerprints gevoelig of koppelbaar zijn. Alleen voor afzonderlijk geautoriseerde offline overdracht. Doorgaan?")) return;
     const receipt = {
       kind: "lightup.private_unsigned_local_byte_fingerprints",
