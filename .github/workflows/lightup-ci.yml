@@ -16,7 +16,10 @@ concurrency:
 jobs:
   test:
     name: LightUp plan-only safety tests (Python ${{ matrix.python-version }})
-    runs-on: [self-hosted, zcloud, vps]
+    # Migrated per-repository runner has Linux/X64 standard labels. Custom
+    # labels from the retired VPS must not leave CI indefinitely unassigned.
+    # The first step pins the exact approved VM AND runner before checkout.
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -25,8 +28,13 @@ jobs:
     steps:
       - name: Guard permanent VPS runner
         run: |
-          test "$(hostname)" = "vps-bb300bba"
-          echo "runner_host=$(hostname)"
+          # Exact migrated LightUp runner; no checkout, tests or deployment
+          # may run on another self-hosted Linux machine.
+          test "$(hostname)" = "VM-7eb5ee16-2c71-440d-b7fd-8095d204e930"
+          test "$RUNNER_NAME" = "vm-7eb5ee16-lightup"
+          test "$RUNNER_OS" = "Linux"
+          test "$RUNNER_ARCH" = "X64"
+          echo "Verified migrated LightUp runner identity."
 
       - name: Checkout
         uses: actions/checkout@v4
