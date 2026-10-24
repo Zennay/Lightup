@@ -262,6 +262,24 @@ def unpack_native_archive(raw: bytes, expected_names: set[str]) -> dict[str, byt
     """
     import io
     require(0 < len(raw) <= MAX_TOTAL, "Software ZIP exceeds bound")
+    # Read the final 22-byte native ZIP directory summary *before* ZipFile
+    # builds its in-memory member index. Otherwise an untrusted central
+    # directory can consume resources before our fixed 107-name admission.
+    # This is an early bound only; the complete original local/central/end
+    # byte-for-byte structure and each plaintext member are checked below.
+    require(len(raw) >= 22 and raw[:4] == b"PK\x03\x04",
+            "Missing canonical original ZIP entry or end record")
+    (end_signature, disk, central_disk, disk_count, total_count,
+     directory_bytes, directory_offset, comment_bytes) = struct.unpack_from(
+         "<I4H2IH", raw, len(raw) - 22)
+    count = len(expected_names)
+    require(end_signature == 0x06054b50 and disk == 0 and central_disk == 0
+            and disk_count == count and total_count == count
+            and count < 0xffff and comment_bytes == 0
+            and directory_offset >= count * 30
+            and directory_bytes >= count * 46
+            and directory_offset + directory_bytes == len(raw) - 22,
+            "Noncanonical or oversized original ZIP directory summary")
     # Malformed incoming DEFLATE streams must produce the same native HOLD
     # contract as damaged ZIP headers or incorrect source digests, never an
     # uncaught lower-level stacktrace on an authorized operator terminal.
