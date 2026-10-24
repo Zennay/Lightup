@@ -851,6 +851,14 @@ Instead of composing the individual original scripts by hand, start the
     python3 remediation-integrated-workspace/private_desk.py list
     python3 remediation-integrated-workspace/private_desk.py menu
 
+When the original interactive HUMAN menu ends with EOF or Ctrl+C **before
+dispatch**, the native launcher now returns **3=HOLD** and accurately says
+that no native action started. If interruption occurs **during dispatch**,
+it still returns **3=HOLD** but deliberately does **not** assert that
+nothing ran: the operator must inspect existing private output before
+choosing a fresh destination for a retry. An interrupted native process
+is never proof of rollback, permission, source identity or release.
+
 For scripts or manual repeatability, the same fixed original-native operations
 have non-interactive subcommands:
 
