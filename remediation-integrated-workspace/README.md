@@ -425,6 +425,15 @@ Use the native `inspect-archive --expected-sha256-file` and `receive`
 with independently approved original/private inputs afterward; the browser
 does not silently publish any asset or start an authorized scan.
 
+Before publishing the **65-byte private software checksum**, the issuer
+now re-runs the **full original software-only ZIP admission** rather than
+checking only that the ZIP bytes are unchanged. This second admission checks
+all 79 pinned source assets, all 25 integrated software/operator files,
+the source lock, ZIP binary layout and offline renderers against the trusted
+local checkout immediately before the exclusive 0600 checksum publication.
+Any original checkout drift produces HOLD; a checksum is never a signed
+publisher attestation or approval.
+
 ### PRIVATE original software checksum issuance
 
 An authorized software publisher can now generate the original **65-byte
