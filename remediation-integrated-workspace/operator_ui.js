@@ -252,6 +252,20 @@
     more.hidden = term.length > 0 || group !== "Alles" || specs.length <= primaryNames.size;
     more.setAttribute("aria-expanded", String(showAll));
     more.textContent = showAll ? "Toon de belangrijkste acties" : "Bekijk alle " + specs.length + " acties";
+    // Filtering only changes the visible choices, not which native command
+    // the operator previously selected. When that selected workflow is no
+    // longer visible, disable copying it until the HUMAN explicitly selects
+    // a visible workflow or clears the filter. Never copy a hidden command.
+    if (!hits.some(item => item.name === chosen.name)) {
+      command.value = "";
+      copy.disabled = true;
+      prepareReceive.disabled = true;
+      prepareChecksum.disabled = true;
+      showMessage("De vorige opdracht valt buiten dit filter. Kies een zichtbare opdracht voordat je een commando kopieert.", false);
+    } else if (!command.value && !copy.disabled) {
+      // Normal selected-command rendering is already handled by select().
+      // Do not silently switch to the first search result.
+    }
     for (const item of hits) {
       const button = node("button", "action", item.label);
       button.type = "button";
