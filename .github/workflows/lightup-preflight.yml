@@ -15,7 +15,7 @@ jobs:
   preflight:
     name: Offline preflight Python ${{ matrix.python }} (not VPS proof)
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, zcloud, vps]
+    runs-on: [self-hosted, lightup, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -54,7 +54,7 @@ jobs:
     name: Real producer integration Python ${{ matrix.python }} (not VPS proof)
     needs: preflight
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, zcloud, vps]
+    runs-on: [self-hosted, lightup, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
