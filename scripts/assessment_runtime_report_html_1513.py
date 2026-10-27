@@ -1161,7 +1161,7 @@ def _render_review_bundle_packet_html(packet) -> str:
             ),
         )
         detail_sections = []
-        for case in metrics["cases"]:
+        for case, resource_case in zip(metrics["cases"], resources["cases"]):
             detailed = safe_table(
                 ("Canonical metric", "Baseline", "Candidate",
                  "Raw delta", "Source adverse", "Unknown coverage"),
@@ -1175,12 +1175,34 @@ def _render_review_bundle_packet_html(packet) -> str:
                     for item in case["metrics"]
                 ),
             )
+            case_resources = safe_table(
+                ("Observed resource", "Baseline", "Candidate", "Raw delta",
+                 "Percent change", "Direction"),
+                (
+                    (
+                        _METRIC_LABELS[name],
+                        resource_case["metrics"][name]["baseline"],
+                        resource_case["metrics"][name]["candidate"],
+                        resource_case["metrics"][name]["delta"],
+                        resource_case["metrics"][name]["percent_change"]
+                        or "n/a (zero baseline)",
+                        resource_case["metrics"][name]["direction"],
+                    )
+                    for name in _EFFICIENCY_FIELDS
+                ),
+            )
             detail_sections.append(
                 '<section class="panel" id="case-'
                 + str(case["scenario_ordinal"]) + '"><h3>Anonymous case '
                 + _safe(case["scenario_ordinal"]) + " · "
                 + _safe(case["source_status"]) + "</h3>"
+                + '<h4>Complete source metrics</h4>'
                 + detailed
+                + '<h4>Case resource observations</h4>'
+                + '<p class="muted">Observed lab runtime and compute cost only. '
+                'Percent change is unavailable when the baseline is zero; '
+                'no efficiency, spending or release approval.</p>'
+                + case_resources
                 + '<p class="foot"><a href="#questions">Back to HUMAN questions</a></p>'
                 + "</section>"
             )
@@ -1199,7 +1221,7 @@ def _render_review_bundle_packet_html(packet) -> str:
             + '<section class="panel" id="questions">'
             '<h2>Complete HUMAN question queue</h2>'
             '<p class="muted">All admitted cases, ranked for review. '
-            'Select an anonymous case to inspect its complete source metrics; '
+            'Select an anonymous case for its full source metrics and resource observations; '
             'each detail has a return link. No question is an instruction '
             'to scan or remediate.</p>'
             + questions + "</section>"

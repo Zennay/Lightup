@@ -801,8 +801,14 @@ PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.
 Invalid, changed, digest-mismatched or internally inconsistent input
 renders **only** a fixed generic HOLD page with zero metric/question rows.
 The full view reuses the exported HTML's CSP-pinned local stylesheet,
-fixed headings and HTML-escaped canonical values; no original IDs,
-paths, targets, private notes, uploads, scripts or external assets.
+fixed headings and HTML-escaped canonical values. Each anonymous case detail
+also shows its **two admitted resource observations** (runtime seconds and
+compute cost USD) with baseline, candidate, exact raw delta, percent change
+or explicit zero-baseline N/A, and direction. The case section is linked from
+its ranked HUMAN question; the same details appear for exported and locally
+received full HTML bundles. These are descriptive, unauthenticated lab-only
+values, **never cost approval**; no original IDs, paths, targets, private
+notes, uploads, scripts or external assets.
 A complete, consistent source-reported HOLD still exposes its anonymous
 review questions to a human, but neither report can establish authentic
 source provenance, consent, source approval or HUMAN GO.
