@@ -30,9 +30,16 @@ on:
 permissions:
   contents: read
 
+# Only the newest diagnostic for this branch should consume permanent VPS capacity.
+concurrency:
+  group: assessment-runtime-1513-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   offline-lab-comparison:
     name: Isolated offline comparator Python ${{ matrix.python }}
+    # Never execute fork-controlled PR code on the permanent self-hosted VPS.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, zcloud, vps]
     timeout-minutes: 10
     strategy:
