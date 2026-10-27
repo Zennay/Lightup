@@ -428,3 +428,54 @@ def build_operator_portfolio_review_payload(
         "state": "PLAN_ONLY",
         "disclaimer": "Private unsigned HUMAN summary; not a grant, consent or activation.",
     }
+
+
+def to_operator_review_worklist_csv(portfolio: dict) -> str:
+    """Export one private HUMAN-review row per recorded attention category.
+
+    This intentionally contains no assets, consent receipts, scope tokens or
+    execution parameters. The operator route authenticates before building it;
+    a CSV file is never an authority-bearing artifact.
+    """
+    import csv
+    import io
+
+    if (type(portfolio) is not dict
+            or portfolio.get("format") != "lightup-m0-portfolio-review-v1"
+            or portfolio.get("state") != "PLAN_ONLY"
+            or portfolio.get("authority", {}).get("execution_allowed") is not False
+            or portfolio.get("authority", {}).get("human_go_verified") is not False):
+        raise ValueError("portfolio is not a fail-closed review document")
+
+    def cell(value: object) -> str:
+        raw = str(value)
+        # Spreadsheet formula injection must not turn a tenant's display name
+        # into a command when an operator opens a private CSV in Excel/Sheets.
+        trimmed = raw.lstrip(" \t\r\n\uFEFF")
+        if (trimmed.startswith(("=", "+", "-", "@"))
+                or (raw and (ord(raw[0]) < 32 or raw[0] == "\uFEFF"))):
+            return "'" + raw
+        return raw
+
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\r\n")
+    writer.writerow((
+        "evaluated_at_utc", "client_id", "client_name", "review_category",
+        "pending_items", "review_state", "authority_state", "execution_allowed",
+    ))
+    for tenant in portfolio["review_queue"]:
+        if (tenant["decision"] != "HOLD"
+                or tenant["execution_allowed"] is not False):
+            raise ValueError("review queue is not fail-closed")
+        for action in tenant["actions"]:
+            if (action["review_only"] is not True
+                    or action["execution_allowed"] is not False
+                    or type(action["count"]) is not int
+                    or action["count"] < 1):
+                raise ValueError("review action is not fail-closed")
+            writer.writerow(tuple(map(cell, (
+                portfolio["evaluated_at"], tenant["client_id"],
+                tenant["client_name"], action["kind"], action["count"],
+                "HUMAN_REVIEW_ONLY", "HOLD_PLAN_ONLY", "FALSE",
+            ))))
+    return output.getvalue()
