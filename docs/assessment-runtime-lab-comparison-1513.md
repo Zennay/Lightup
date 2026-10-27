@@ -804,9 +804,11 @@ The full view reuses the exported HTML's CSP-pinned local stylesheet,
 fixed headings and HTML-escaped canonical values. Each anonymous case detail
 also shows its **two admitted resource observations** (runtime seconds and
 compute cost USD) with baseline, candidate, exact raw delta, percent change
-or explicit zero-baseline N/A, and direction. The case section is linked from
-its ranked HUMAN question; the same details appear for exported and locally
-received full HTML bundles. The full HTML also includes a **case-by-metric
+or explicit zero-baseline N/A, and direction. Each case detail is linked from its HUMAN question; its return
+link now jumps **back to that exact validated review-rank row** (not to the
+top of the queue). The row and case are highlighted by the browser's
+native fragment target without scripts or generated source identifiers.
+The same navigation works in exported and locally received full HTML bundles. The full HTML also includes a **case-by-metric
 source signal matrix** before resource totals: all admitted anonymous cases
 in the already-reconciled HUMAN priority order, with each of the eleven
 comparator-relevant coverage/quality/safety metrics marked SOURCE FLAG,

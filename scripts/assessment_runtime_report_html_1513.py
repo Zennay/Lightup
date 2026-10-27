@@ -34,6 +34,8 @@ p{margin:.55rem 0}.eyebrow{text-transform:uppercase;letter-spacing:.1em;font-siz
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
 th,td{padding:.57rem .7rem;border-bottom:1px solid #e1e6ee;text-align:left;white-space:nowrap}
 th{background:#eef2f7;color:#172c44}tbody tr:nth-child(even){background:#f9fbfd}
+tr:target{background:#e5f2ff;outline:2px solid #27649f;outline-offset:-2px}
+.panel:target{outline:2px solid #27649f}
 .flag{font-weight:700;color:#9a3026}.neutral{color:#4e6276}
 nav{display:flex;flex-wrap:wrap;gap:.65rem;margin:1rem 0}
 nav a{border:1px solid #bed0e0;border-radius:.55rem;padding:.4rem .75rem;color:#24405e}
@@ -1143,7 +1145,8 @@ def _render_review_bundle_packet_html(packet) -> str:
     admitted = packet["input_admitted"]
     status = packet["source_status"]
 
-    def safe_table(headings, rows, *, case_link_column=None):
+    def safe_table(headings, rows, *, case_link_column=None,
+                   review_anchor_column=None):
         # Caller supplies a generator; materialize before testing emptiness.
         rows = tuple(rows)
         if not rows:
@@ -1167,13 +1170,23 @@ def _render_review_bundle_packet_html(packet) -> str:
                 + ' metrics">Case ' + case_number.zfill(2) + "</a>"
             )
 
-        body = "".join(
-            "<tr>" + "".join(
-                "<td>" + cell_html(cell, column) + "</td>"
-                for column, cell in enumerate(row)
-            ) + "</tr>"
-            for row in rows
-        )
+        def render_row(row):
+            # Only admitted canonical rank numbers become document anchors.
+            # Never interpolate arbitrary source identifiers into HTML IDs.
+            rank_anchor = ""
+            if review_anchor_column is not None:
+                rank = row[review_anchor_column]
+                if type(rank) is int and 1 <= rank <= packet["accepted_case_count"]:
+                    rank_anchor = ' id="review-' + str(rank) + '"'
+            return (
+                "<tr" + rank_anchor + ">"
+                + "".join(
+                    "<td>" + cell_html(cell, column) + "</td>"
+                    for column, cell in enumerate(row)
+                ) + "</tr>"
+            )
+
+        body = "".join(render_row(row) for row in rows)
         return (
             '<div class="table-scroll"><table><thead><tr>' + head
             + "</tr></thead><tbody>" + body + "</tbody></table></div>"
@@ -1234,6 +1247,7 @@ def _render_review_bundle_packet_html(packet) -> str:
                 for item in human["human_review_questions"]
             ),
             case_link_column=1,
+            review_anchor_column=0,
         )
         # An at-a-glance cohort map for the 11 comparator-relevant metrics.
         # Operational counters/costs have no adverse verdict in this matrix;
@@ -1279,6 +1293,11 @@ def _render_review_bundle_packet_html(packet) -> str:
                 for name, values in resources["aggregate"].items()
             ),
         )
+        # Review ranks are canonical and unique after bundle alignment.
+        rank_by_case = {
+            question["scenario_ordinal"]: question["review_order"]
+            for question in human["human_review_questions"]
+        }
         detail_sections = []
         for case, resource_case in zip(metrics["cases"], resources["cases"]):
             detailed = safe_table(
@@ -1322,7 +1341,9 @@ def _render_review_bundle_packet_html(packet) -> str:
                 'Percent change is unavailable when the baseline is zero; '
                 'no efficiency, spending or release approval.</p>'
                 + case_resources
-                + '<p class="foot"><a href="#questions">Back to HUMAN questions</a></p>'
+                + '<p class="foot"><a href="#review-'
+                + str(rank_by_case[case["scenario_ordinal"]])
+                + '">Back to this case\'s ranked HUMAN question</a></p>'
                 + "</section>"
             )
         content = (
@@ -1342,7 +1363,8 @@ def _render_review_bundle_packet_html(packet) -> str:
             '<h2>Complete HUMAN question queue</h2>'
             '<p class="muted">All admitted cases, ranked for review. '
             'Select an anonymous case for its full source metrics and resource observations; '
-            'each detail has a return link. No question is an instruction '
+            'each detail links back to its exact ranked question. '
+            'No question is an instruction '
             'to scan or remediate.</p>'
             + questions + "</section>"
             + '<section class="panel" id="signals">'
