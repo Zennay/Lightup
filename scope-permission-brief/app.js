@@ -1,0 +1,635 @@
+/* LightUp Scope Permission Brief. Untrusted local proposal data is NEVER authority. */
+(() => {
+'use strict';
+const MAX_BYTES=65536;
+const $=id=>document.getElementById(id);
+const statuses=['unanswered','question_sent','answered_unverified'];
+const flags=()=>({authenticated:false,client_consent:false,operator_consent:false,scope_approved:false,risk_approved:false,authorization:false,grant:false,revocation_checked:false,execution:false,scan:false,deploy:false,release:false});
+let current=null, questions=[], epoch=0, pending=null;
+const questionCatalog={
+ client_identity:['client','Independent client identity','Confirm that the requester has separately authenticated through the protected client workflow.'],
+ asset_ownership:['client','Assets and ownership','What independently verifiable evidence connects the requester to every proposed asset?'],
+ purpose_limits:['client','Intent, prohibited activity and handling','Confirm the proposed purpose, forbidden actions, evidence retention and secure delivery channel.'],
+ client_consent:['client','Actual client authorization','Client consent must occur in a protected authenticated request; a reply or this brief is not consent.'],
+ operator_independence:['operator','Separate operator review','A qualified operator must independently decide without relying on self-reported draft or handoff statuses.'],
+ enforceable_scope:['operator','Enforceable precise scope','Verify exact host, IP/CIDR and exclusions in the protected policy; no target is contacted here.'],
+ risk_approval:['operator','Recorded risk approval','Risk tier, activity restrictions, environment and escalation must be approved independently.'],
+ stop_revocation:['operator','Emergency STOP and revocation at use','Confirm emergency contacts, stop criteria and a fresh at-use revocation decision.'],
+ mandatory_gates:['operator','Release and security gates','Existing CI, security/privacy review, correct tenant lineage and explicit human GO still apply.'],
+ high_risk:['operator','Elevated-risk escalation','Risk 4 requires separate escalation, restrictions and explicit signoff.'],
+ lab_provenance:['operator','Private laboratory provenance','Any proposed network check needs independently proven lab ownership and approved lab boundaries.'],
+ no_exclusions:['operator','Explicit exclusions','No exclusions were listed. Ask whether exclusions or forbidden hosts are needed.'],
+ open_window:['operator','Unresolved time window','Unscheduled or incomplete/ambiguous windows require separately approved UTC bounds.'],
+ safety_context:['client','Safety and stop instructions','No safety-purpose notes are present in the proposal; request clear, privately handled instructions.'],
+ network_activity:['client','Network interaction expectations','Clarify that proposed lab checks cannot be performed against public or unapproved targets.'],
+ revision_client:['client','Confirm exact proposal version and owned assets','Independently review the current specific asset inventory, exclusions, limits and authenticated consent route. If the source was amended, previous answers are never transferable.'],
+ revision_operator:['operator','Confirm exact policy scope for this proposal version','Independently review effective scope, exclusions, activities, risk, revocation and request/grant lineage for the actual current version. No previous grant follows an amendment.']
+};
+function hold(message){
+ epoch++;current=null;questions=[];pending=null;
+ renderPending();
+ document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+ $('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
+ $('handoff').textContent='';$('replyState').textContent='No review note imported.';
+ $('reply').value='';$('backupImport').value='';
+ $('backupState').textContent='No local preparation backup restored.';
+ $('sourceState').textContent=message+' · HOLD';
+}
+function assert(condition,message){if(!condition)throw Error(message);}
+function object(v){return v!==null&&typeof v==='object'&&!Array.isArray(v);}
+function text(v,max){return typeof v==='string'&&v.length<=max&&!/[\u0000-\u001f\u007f]/.test(v);}
+function noteText(v,max){return typeof v==='string'&&v.length<=max&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);}
+function exactKeys(v,keys){return object(v)&&Object.keys(v).every(k=>keys.includes(k));}
+/* Lexically parse the entire JSON, rejecting duplicate keys anywhere (including nested).
+   JSON.parse alone would silently accept contradictory authority fields. */
+function assertUnambiguousJSON(source){
+ let at=0,tokens=0;
+ function whitespace(){while(/[\x20\x09\x0a\x0d]/.test(source[at]||''))at++;}
+ function str(){
+  assert(source[at]==='"','Invalid JSON string');
+  let start=at++;let escaped=false;
+  while(at<source.length){
+   const ch=source[at++];
+   if(escaped){escaped=false;continue;}
+   if(ch==='\\'){escaped=true;continue;}
+   if(ch==='"')return JSON.parse(source.slice(start,at));
+  }
+  throw Error('Unterminated string');
+ }
+ function value(depth){
+  assert(depth<24&&++tokens<1800,'JSON too deep or complex');whitespace();
+  if(source[at]==='{'){
+   at++;whitespace();const keys=new Set();
+   if(source[at]==='}') {at++;return;}
+   while(true){
+    whitespace();const key=str();
+    assert(!keys.has(key),'Duplicate JSON key');
+    assert(!['__proto__','constructor','prototype'].includes(key),'Unsafe JSON key');
+    keys.add(key);whitespace();assert(source[at++]===':','Expected colon');
+    value(depth+1);whitespace();
+    const delimiter=source[at++];
+    if(delimiter==='}')return;
+    assert(delimiter===',','Expected object comma');
+   }
+  }
+  if(source[at]==='['){
+   at++;whitespace();if(source[at]===']'){at++;return;}
+   while(true){
+    value(depth+1);whitespace();const delimiter=source[at++];
+    if(delimiter===']')return;
+    assert(delimiter===',','Expected array comma');
+   }
+  }
+  if(source[at]==='"'){str();return;}
+  const tail=source.slice(at),token=/^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/.exec(tail);
+  assert(token,'Invalid JSON value');at+=token[0].length;
+  assert(!/[a-zA-Z0-9.+-]/.test(source[at]||''),'Ambiguous JSON token');
+ }
+ value(0);whitespace();assert(at===source.length,'Trailing JSON data');
+}
+function validateWindow(d){
+ assert(exactKeys(d.proposed_window_local,['start','end']),'Invalid local window');
+ const local=d.proposed_window_local,utc=d.proposed_window_utc;
+ const localShape=x=>x===null||(text(x,32)&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(x));
+ assert(localShape(local.start)&&localShape(local.end),'Noncanonical local window');
+ if(utc===undefined){
+  assert(local.start===null&&local.end===null,'Scheduled source lacks UTC evidence');
+  return 'Unscheduled';
+ }
+ assert(exactKeys(utc,['status','timezone','start','end','start_offset_minutes','end_offset_minutes']),'Invalid UTC record');
+ assert(text(utc.timezone,100),'Invalid timezone label');
+ if(utc.status==='incomplete'||utc.status==='unscheduled'){
+  assert(utc.start===null&&utc.end===null,'Unresolved UTC has instants');
+  assert(utc.status==='unscheduled'?(local.start===null&&local.end===null):((local.start===null)!==(local.end===null)),'Unresolved window mismatch');
+  return utc.status==='unscheduled'?'Unscheduled':'Incomplete';
+ }
+ assert(utc.status==='resolved','Unknown UTC status');
+ const pattern=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/;
+ assert(typeof utc.start==='string'&&typeof utc.end==='string'&&pattern.test(utc.start)&&pattern.test(utc.end)&&utc.start<utc.end,'Unresolved UTC instant');
+ function normalize(wall,offset){
+  assert(typeof wall==='string'&&Number.isInteger(offset)&&Math.abs(offset)<=840,'Invalid offset');
+  const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(wall);
+  assert(m,'Invalid date syntax');
+  const [y,mo,d,h,mi]=m.slice(1).map(Number);
+  assert(y>=2020&&y<=2100&&mo>=1&&mo<=12&&h<=23&&mi<=59,'Out-of-range local window');
+  const day=new Date(Date.UTC(y,mo-1,d));
+  assert(day.getUTCFullYear()===y&&day.getUTCMonth()===mo-1&&day.getUTCDate()===d,'Impossible local date');
+  return new Date(Date.UTC(y,mo-1,d,h,mi)+offset*60000).toISOString();
+ }
+ assert(normalize(local.start,utc.start_offset_minutes)===utc.start&&normalize(local.end,utc.end_offset_minutes)===utc.end,'UTC source contradiction');
+ return 'Resolved (still unapproved)';
+}
+function validateDraft(d){
+ const accepted=['schema_version','kind','state','authorization','client_consent','operator_consent','grant','execution','revocation_checked','proposal_name','client_label','requested_assets','excluded_assets','requested_mode','requested_risk','notes','proposed_activities','proposed_window_local','proposed_window_utc','exported_at_utc','scope_fingerprint_sha256'];
+ assert(exactKeys(d,accepted),'Unknown/invalid source fields');
+ assert(d.schema_version===1&&d.kind==='lightup.scope_proposal_draft'&&d.state==='DRAFT_ONLY','Unsupported Studio v1 draft');
+ for(const f of ['authorization','client_consent','operator_consent','grant','execution'])assert(d[f]===false,'Unsafe authority assertion');
+ assert(d.revocation_checked===undefined||d.revocation_checked===false,'Unsafe revocation assertion');
+ assert(text(d.proposal_name,120)&&text(d.client_label,100)&&noteText(d.notes,3000),'Invalid private proposal text');
+ assert(d.requested_mode==='analysis_only'||d.requested_mode==='authorized_assessment','Invalid mode');
+ assert([1,2,3,4].includes(d.requested_risk),'Invalid risk');
+ for(const f of ['requested_assets','excluded_assets']){
+  assert(Array.isArray(d[f])&&d[f].length<=80,'Invalid asset counts');
+  assert(d[f].every(s=>text(s,253)&&s.length&&s.trim()===s),'Invalid asset labels');
+  assert(new Set(d[f].map(s=>s.toLowerCase())).size===d[f].length,'Duplicate assets');
+ }
+ assert(d.requested_assets.length>0,'No proposed assets');
+ const activities=['passive_analysis','configuration_review','private_lab_network_checks'];
+ assert(exactKeys(d.proposed_activities,activities)&&activities.every(k=>typeof d.proposed_activities[k]==='boolean'),'Malformed activities');
+ if(d.scope_fingerprint_sha256!==undefined)assert(typeof d.scope_fingerprint_sha256==='string'&&/^[0-9a-f]{64}$/.test(d.scope_fingerprint_sha256),'Invalid draft fingerprint');
+ if(d.exported_at_utc!==undefined)assert(text(d.exported_at_utc,80),'Invalid export metadata');
+ return validateWindow(d);
+}
+/* Compare only exact, case-folded textual identity. Never include raw targets,
+   asset-level hashes, comments or literal values in events, UI or exports. */
+function literalRevisionImpact(before,after){
+ if(!before)return null;
+ function counts(a,b){
+  const old=new Set(a.map(x=>x.toLowerCase())),next=new Set(b.map(x=>x.toLowerCase()));
+  let added=0,removed=0;
+  for(const x of next)if(!old.has(x))added++;
+  for(const x of old)if(!next.has(x))removed++;
+  return {added,removed,retained:old.size-removed};
+ }
+ const assets=counts(before.requested_assets,after.requested_assets);
+ const exclusions=counts(before.excluded_assets,after.excluded_assets);
+ const activities=['passive_analysis','configuration_review','private_lab_network_checks']
+  .filter(key=>before.proposed_activities[key]!==after.proposed_activities[key]);
+ const notesChanged=before.notes!==after.notes;
+ const windowChanged=JSON.stringify(before.proposed_window_local)!==JSON.stringify(after.proposed_window_local)||
+  JSON.stringify(before.proposed_window_utc??null)!==JSON.stringify(after.proposed_window_utc??null);
+ const riskRaised=after.requested_risk>before.requested_risk;
+ const modeEscalated=before.requested_mode==='analysis_only'&&after.requested_mode==='authorized_assessment';
+ const attention=[];
+ if(assets.added)attention.push('literal_scope_entries_added');
+ if(exclusions.removed)attention.push('literal_exclusions_removed');
+ if(riskRaised)attention.push('requested_risk_raised');
+ if(modeEscalated)attention.push('requested_active_assessment_mode');
+ if(!before.proposed_activities.private_lab_network_checks&&after.proposed_activities.private_lab_network_checks)
+  attention.push('private_lab_activity_proposed');
+ if(windowChanged)attention.push('planning_window_changed');
+ if(assets.removed||exclusions.added)attention.push('scope_restriction_review');
+ if(notesChanged)attention.push('safety_notes_changed');
+ return {
+  literal_identity_comparison_only:true,semantic_network_scope_comparison:false,
+  ownership_or_authorization_verified:false,
+  proposed_assets:assets,exclusions,
+  changed_activity_categories:activities,
+  private_safety_notes_changed:notesChanged,
+  client_label_changed:before.client_label!==after.client_label,
+  proposed_title_changed:before.proposal_name!==after.proposal_name,
+  proposed_window_values_changed:windowChanged,
+  risk_raised:riskRaised,mode_escalated:modeEscalated,
+  attention_codes:attention,
+  human_review_level:attention.length?'ELEVATED_HUMAN_ATTENTION':'REVIEW_REQUIRED',
+  notice:'Exact textual identity comparison only: DNS aliases, CIDR coverage, effective scope and ownership are NOT determined. Source-byte changes always require fresh role preparation.'
+ };
+}
+
+function questionIds(d,window){
+ const codes=['client_identity','asset_ownership','purpose_limits','client_consent','operator_independence','enforceable_scope','risk_approval','stop_revocation','mandatory_gates'];
+ if(d.requested_risk===4)codes.push('high_risk');
+ if(d.proposed_activities.private_lab_network_checks)codes.push('lab_provenance','network_activity');
+ if(!d.excluded_assets.length)codes.push('no_exclusions');
+ if(window!=='Resolved (still unapproved)')codes.push('open_window');
+ if(!d.notes.trim())codes.push('safety_context');
+ // Stable per-source question contract across a fresh session and in-session revision.
+ // Required so a saved combined human reply can be resumed with exact same source bytes.
+ codes.push('revision_client','revision_operator');
+ return codes;
+}
+function exportModel(forAudience=null){
+ if(!current)return null;
+ const audience=forAudience||document.querySelector('[name="audience"]:checked').value;
+ assert(['client','operator'].includes(audience),'Unknown review audience');
+ return {
+  kind:'lightup.scope_permission_brief',schema_version:1,state:'REVIEW_ONLY_HOLD',
+  source_kind:'lightup.scope_proposal_draft',source_sha256:current.sha256,
+  audience,
+  requested_mode:current.draft.requested_mode,requested_risk:current.draft.requested_risk,
+  proposed_assets_count:current.draft.requested_assets.length,excluded_assets_count:current.draft.excluded_assets.length,
+  window_status:current.window==='Resolved (still unapproved)'?'resolved_unapproved':current.window.toLowerCase(),
+  // A role-labelled export may report ONLY that role's own preparation questions.
+  // Other-role local annotations stay private and cannot impersonate another reply.
+  question_states:questions.map(q=>({code:q.code,role:q.role,
+   status:q.role===audience?q.status:'unanswered'})),
+  outstanding_questions:questions.filter(q=>q.role!==audience||q.status!=='answered_unverified').length,
+  flags:flags(),
+  notice:'No approval, consent, permission, grant, scan, deployment, release or authority. Answers are unverified.'
+ };
+}
+function render(){
+ if(!current)return;
+ const d=current.draft;
+ $('assets').textContent=String(d.requested_assets.length);
+ $('excluded').textContent=String(d.excluded_assets.length);
+ $('risk').textContent=String(d.requested_risk)+' / 4';
+ $('window').textContent=current.window;
+ const activities=Object.entries(d.proposed_activities).filter(([,value])=>value).map(([key])=>key.replaceAll('_',' '));
+ $('clientSummary').textContent='Proposed '+d.requested_mode.replaceAll('_',' ')+' covering '+d.requested_assets.length+' declared asset(s), with '+d.excluded_assets.length+' exclusion(s) and risk '+d.requested_risk+'. Proposed activity categories: '+(activities.join(', ')||'none')+'. Dates, if present, remain tentative.';
+ $('operatorSummary').textContent='Review every individual asset and exclusion against a verified tenant and owned scope, then assess requested risk '+d.requested_risk+', activity constraints and '+current.window.toLowerCase()+' planning. Draft data never crosses the execution boundary.';
+ const parent=$('questions');parent.replaceChildren();
+ questions.forEach(q=>{
+  const [role,title,body]=questionCatalog[q.code];
+  const row=document.createElement('div');row.className='question';
+  const desc=document.createElement('div');
+  const heading=document.createElement('h3');heading.textContent=title;
+  const tag=document.createElement('span');tag.className='tag';tag.textContent=role.toUpperCase()+' PREPARATION';
+  const explanation=document.createElement('p');explanation.textContent=body;
+  desc.append(heading,tag,explanation);
+  const label=document.createElement('label');label.textContent='Human note status (unverified)';
+  const select=document.createElement('select');select.setAttribute('aria-label',title+' status');
+  [['unanswered','Unanswered'],['question_sent','Question sent'],['answered_unverified','Answered, unverified']].forEach(([code,name])=>{
+   const opt=document.createElement('option');opt.value=code;opt.textContent=name;select.append(opt);
+  });
+  select.value=q.status;
+  select.addEventListener('change',()=>{
+   if(!statuses.includes(select.value))return;
+   q.status=select.value;refreshExport();
+  });
+  label.append(select);row.append(desc,label);parent.append(row);
+ });
+ refreshExport();
+}
+function refreshExport(){
+ const model=exportModel();if(!model)return;
+ $('openCount').textContent=String(model.outstanding_questions);
+ $('preview').textContent=JSON.stringify(model,null,2);
+ $('handoff').textContent=handoffText(model);
+ $('receipt').textContent='Unsigned SHA-256 of original local bytes: '+current.sha256+' · REFERENCE ONLY, NOT A SIGNATURE';
+}
+function handoffText(model){
+ const role=model.audience==='client'?'Client':'Operator';
+ const unresolved=questions.filter(q=>q.status!=='answered_unverified' && q.role===model.audience);
+ return [
+  'LIGHTUP / '+role.toUpperCase()+' PREPARATION / REVIEW_ONLY_HOLD',
+  'This note is not consent, approval, a grant, execution or release.',
+  'Original source SHA-256: '+model.source_sha256,
+  'Requested mode: '+model.requested_mode+' · Risk: '+model.requested_risk+' / 4',
+  'Proposed asset counts: '+model.proposed_assets_count+' · Exclusions: '+model.excluded_assets_count,
+  'Planning window: '+model.window_status+' (not approved)',
+  '',
+  'Open '+role.toLowerCase()+' clarification questions ('+unresolved.length+'):',
+  ...unresolved.map((q,i)=>(i+1)+'. '+questionCatalog[q.code][1]+' ['+q.status+']'),
+  '',
+  'Every identity, consent, grant, risk approval, revocation, scan, deploy and release flag is FALSE.',
+  'Please use independent authenticated channels for any actual decision.'
+ ].join('\\n').replaceAll('\\n','\n');
+}
+function downloadText(){
+ const model=exportModel();if(!model)return;
+ const blob=new Blob([handoffText(model)+'\n'],{type:'text/plain;charset=utf-8'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='lightup-human-permission-note-HOLD.txt';document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function importReview(file){
+ if(!current){$('replyState').textContent='Load the original draft first · HOLD';return;}
+ const oldEpoch=epoch,originalSha=current.sha256;
+ try{
+  assert(file&&file.size>0&&file.size<=MAX_BYTES,'Review file size is unsafe');
+  const bytes=await file.arrayBuffer();
+  assert(bytes.byteLength<=MAX_BYTES,'Review too large');
+  const source=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
+  assert(!source.startsWith('\ufeff'),'BOM refused');
+  assertUnambiguousJSON(source);
+  const incoming=JSON.parse(source),reference=exportModel();
+  assert(oldEpoch===epoch&&current?.sha256===originalSha,'Original source changed');
+  assert(exactKeys(incoming,Object.keys(reference))&&Object.keys(incoming).length===Object.keys(reference).length,'Unexpected review fields');
+  for(const key of Object.keys(reference)){
+   if(['audience','question_states','outstanding_questions'].includes(key))continue;
+   assert(JSON.stringify(incoming[key])===JSON.stringify(reference[key]),'Review source or flags mismatch');
+  }
+  assert(['client','operator'].includes(incoming.audience),'Unknown audience');
+  assert(Array.isArray(incoming.question_states)&&incoming.question_states.length===questions.length,'Review question mismatch');
+  const restored=[];
+  for(let i=0;i<questions.length;i++){
+   const q=incoming.question_states[i],expected=questions[i];
+   assert(exactKeys(q,['code','role','status'])&&Object.keys(q).length===3,'Unknown question fields');
+   assert(q.code===expected.code&&q.role===expected.role&&statuses.includes(q.status),'Review question changed');
+   assert(q.role===incoming.audience||q.status==='unanswered','Foreign-role reply claims are forbidden');
+   restored.push(q.status);
+  }
+  assert(incoming.outstanding_questions===restored.filter(x=>x!=='answered_unverified').length,'Review summary mismatch');
+  // The imported note cannot silently replace progress already entered by this role.
+  // Other-role statuses are never rewritten.
+  const conflict=questions.some((q,i)=>q.role===incoming.audience&&
+   q.status!=='unanswered'&&q.status!==restored[i]);
+  if(conflict&&!confirm('A different '+incoming.audience+' preparation status is already entered locally. Replace only that role\'s unverified answers?')){
+   $('replyState').textContent='Import cancelled; existing human preparation retained · HOLD';return;
+  }
+  assert(oldEpoch===epoch&&current?.sha256===originalSha,'Original source changed before applying review');
+  // Commit the restored role's statuses together only after full preflight and confirmation.
+  questions.forEach((q,i)=>{if(q.role===incoming.audience)q.status=restored[i];});
+  document.querySelector('[name="audience"][value="'+incoming.audience+'"]').checked=true;
+  render();$('replyState').textContent='Review note matches exact original bytes · imported as unverified preparation only · HOLD';
+ }catch(_){
+  $('replyState').textContent='Review note rejected: ambiguous, altered or not source-bound · HOLD';
+ }
+}
+function download(){
+ const model=exportModel();if(!model)return;
+ const bytes=new Blob([JSON.stringify(model,null,2)+'\n'],{type:'application/json'});
+ const url=URL.createObjectURL(bytes),link=document.createElement('a');
+ link.href=url;link.download='lightup-permission-brief-review-only.json';
+ document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+/* Local human question workspace backup: source-bound coordination only.
+   This does not capture evidence, signatures, consent or any target literal. */
+function preparationBackup(){
+ if(!current)return null;
+ return {
+  kind:'lightup.scope_human_preparation_backup',
+  schema_version:1,state:'REVIEW_ONLY_HOLD',
+  source_sha256:current.sha256,
+  client:exportModel('client'),
+  operator:exportModel('operator'),
+  flags:flags(),
+  notice:'Unverified, unsent local question states only. To resume, load the exact original Studio-v1 JSON before importing. This file is NOT consent, approval, a grant or execution authority.'
+ };
+}
+function savePreparationBackup(){
+ const model=preparationBackup();if(!model)return;
+ const blob=new Blob([JSON.stringify(model,null,2)+'\n'],{type:'application/json'});
+ const url=URL.createObjectURL(blob),link=document.createElement('a');
+ link.href=url;link.download='lightup-local-human-preparation-backup-HOLD.json';
+ document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function reviewStatusFromBackup(value,audience){
+ const baseline=exportModel(audience);
+ assert(exactKeys(value,Object.keys(baseline))&&Object.keys(value).length===Object.keys(baseline).length,'Unknown role review schema');
+ for(const key of Object.keys(baseline)){
+  if(['question_states','outstanding_questions'].includes(key))continue;
+  assert(JSON.stringify(value[key])===JSON.stringify(baseline[key]),'Incompatible original or authority fields');
+ }
+ assert(Array.isArray(value.question_states)&&value.question_states.length===questions.length,'Missing role questions');
+ const statusesByQuestion=[];
+ for(let i=0;i<questions.length;i++){
+  const got=value.question_states[i],expected=questions[i];
+  assert(exactKeys(got,['code','role','status'])&&Object.keys(got).length===3,'Unknown question entry');
+  assert(got.code===expected.code&&got.role===expected.role&&statuses.includes(got.status),'Question identity mismatch');
+  assert(expected.role===audience||got.status==='unanswered','Foreign-role answers in backup');
+  statusesByQuestion.push(got.status);
+ }
+ assert(value.outstanding_questions===statusesByQuestion.filter(x=>x!=='answered_unverified').length,'Inconsistent unanswered count');
+ return statusesByQuestion;
+}
+async function restorePreparationBackup(file){
+ if(!current){$('backupState').textContent='Load the exact original Studio proposal before a local backup · HOLD';return;}
+ if(!file||!file.size||file.size>MAX_BYTES){
+  $('backupState').textContent='Missing or oversized local backup · HOLD';return;
+ }
+ const token=epoch,originalSha=current.sha256;
+ try{
+  const bytes=await file.arrayBuffer();
+  assert(bytes.byteLength>0&&bytes.byteLength<=MAX_BYTES,'Backup too large');
+  const source=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
+  assert(!source.startsWith('\ufeff'),'BOM refused');
+  assertUnambiguousJSON(source);
+  const packet=JSON.parse(source);
+  const keys=['kind','schema_version','state','source_sha256','client','operator','flags','notice'];
+  assert(exactKeys(packet,keys)&&Object.keys(packet).length===keys.length,'Invalid backup fields');
+  assert(packet.kind==='lightup.scope_human_preparation_backup'&&
+   packet.schema_version===1&&packet.state==='REVIEW_ONLY_HOLD'&&
+   packet.source_sha256===originalSha,'Wrong source or backup type');
+  assert(JSON.stringify(packet.flags)===JSON.stringify(flags()),'Backup authority fields are unsafe');
+  assert(packet.notice===preparationBackup().notice,'Unknown backup notice');
+  const fromClient=reviewStatusFromBackup(packet.client,'client');
+  const fromOperator=reviewStatusFromBackup(packet.operator,'operator');
+  assert(token===epoch&&current?.sha256===originalSha,'Original changed during restore');
+  const restored=questions.map((q,i)=>q.role==='client'?fromClient[i]:fromOperator[i]);
+  const conflict=questions.some((q,i)=>q.status!=='unanswered'&&q.status!==restored[i]);
+  if(conflict&&!confirm("This source-bound backup conflicts with locally entered unverified statuses. Replace both roles' current answers?")){
+   $('backupState').textContent='Restore cancelled; previous client/operator answers remain unchanged · HOLD';return;
+  }
+  assert(token===epoch&&current?.sha256===originalSha,'Original changed before restore');
+  questions.forEach((q,i)=>{q.status=restored[i];});
+  render();
+  $('backupState').textContent='Both local role preparation statuses restored from exact original bytes · UNVERIFIED / HOLD';
+ }catch(_){
+  $('backupState').textContent='Local backup rejected without changing existing role answers · HOLD';
+ }finally{
+  $('backupImport').value='';
+ }
+}
+
+/* A revised source is staged separately from the accepted original.
+   Nothing here mutates authorization and no raw identifiers cross to the UI/export. */
+function pendingRecord(){
+ if(!pending||!current)return null;
+ return {
+  kind:'lightup.scope_proposal_revision_preview',
+  schema_version:1,
+  disposition:'REVIEW_ONLY_HOLD',
+  state:'UNAPPLIED_LOCAL_PROPOSAL',
+  previous_source_sha256:current.sha256,
+  proposed_source_sha256:pending.sha256,
+  before:{
+   requested_mode:current.draft.requested_mode,requested_risk:current.draft.requested_risk,
+   proposed_assets_count:current.draft.requested_assets.length,
+   excluded_assets_count:current.draft.excluded_assets.length,
+   window_status:current.window
+  },
+  proposed:{
+   requested_mode:pending.draft.requested_mode,requested_risk:pending.draft.requested_risk,
+   proposed_assets_count:pending.draft.requested_assets.length,
+   excluded_assets_count:pending.draft.excluded_assets.length,
+   window_status:pending.window
+  },
+  literal_impact:pending.impact,
+  current_human_answers_preserved:true,
+  prior_human_replies_not_transferrable:true,
+  scope_membership_verified:false,client_identity_verified:false,tenant_verified:false,
+  flags:flags(),
+  notice:'Unapplied preview only. Comparing raw literal strings does not resolve DNS/CIDR equivalence or grant consent. Existing human replies are retained until explicit apply.'
+ };
+}
+function renderPending(){
+ const visible=Boolean(pending&&current);
+ $('revisionPreview').hidden=!visible;
+ if(!visible){
+  $('pendingCompare').replaceChildren();
+  $('pendingAdvice').replaceChildren();
+  $('pendingPreviewStatus').textContent='';
+  return;
+ }
+ const impact=pending.impact;
+ $('pendingPreviewStatus').textContent='Current source remains active. Proposed revision is STAGED, not applied · REVIEW_ONLY/HOLD';
+ const group=$('pendingCompare');group.replaceChildren();
+ const facts=[
+  ['Proposed assets',current.draft.requested_assets.length+' → '+pending.draft.requested_assets.length],
+  ['Literal inclusions added / removed','+'+impact.proposed_assets.added+' / −'+impact.proposed_assets.removed],
+  ['Literal exclusions added / removed','+'+impact.exclusions.added+' / −'+impact.exclusions.removed],
+  ['Requested risk',current.draft.requested_risk+' → '+pending.draft.requested_risk],
+  ['Mode',current.draft.requested_mode.replaceAll('_',' ')+' → '+pending.draft.requested_mode.replaceAll('_',' ')],
+  ['Planning status',current.window+' → '+pending.window],
+  ['Private safety notes changed',impact.private_safety_notes_changed?'YES — independently re-read':'No literal difference']
+ ];
+ for(const [label,value] of facts){
+  const item=document.createElement('div');item.className='pending-fact';
+  const heading=document.createElement('span');heading.textContent=label;
+  const data=document.createElement('strong');data.textContent=value;
+  item.append(heading,data);group.append(item);
+ }
+ const actions=$('pendingAdvice');actions.replaceChildren();
+ const guidance={
+  literal_scope_entries_added:'New included asset entries: independently check authorized ownership and effective boundaries.',
+  literal_exclusions_removed:'An exclusion was removed: review whether this would broaden effective access.',
+  requested_risk_raised:'Risk tier increased: separately review escalation and STOP conditions.',
+  requested_active_assessment_mode:'Assessment mode proposed: no action may begin from this local draft.',
+  private_lab_activity_proposed:'Private-lab network checks proposed: verify the precise owned lab boundary.',
+  planning_window_changed:'Time window changed: independently resolve approved UTC limits.',
+  scope_restriction_review:'Apparent narrowing: verify exact effective asset and exclusion identities.',
+  safety_notes_changed:'Safety notes changed: re-read the original locally, never use an exported summary as the source.'
+ };
+ const codes=impact.attention_codes;
+ if(!codes.length){
+  const li=document.createElement('li');li.textContent='Exact bytes changed even though no high-attention literal category was detected. Both people must reassess the new source.';actions.append(li);
+ }
+ for(const code of codes){
+  const li=document.createElement('li');li.textContent=guidance[code]||'Review the full revised original';actions.append(li);
+ }
+}
+function discardPending(){
+ pending=null;
+ $('source').value='';
+ renderPending();
+ if(current)$('sourceState').textContent='Proposed revision discarded; accepted draft and all prior preparation retained · REVIEW_ONLY/HOLD';
+}
+function applyPending(){
+ if(!pending||!current)return;
+ if(current.sha256!==pending.baseSha){discardPending();return;}
+ if(!confirm('Replace the active source with this proposal? ALL client/operator preparation and returned notes bound to the previous bytes will be cleared. No consent or grant will be created.'))return;
+ ++epoch;
+ const old=exportModel();
+ const proposed=pending;pending=null;
+ $('revisionPreview').hidden=true;
+ document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+ $('reply').value='';$('replyState').textContent='Previous review note no longer applies to revised source · HOLD';
+ $('backupImport').value='';$('backupState').textContent='Prior local preparation backup is tied to the old source · HOLD';
+ current={draft:proposed.draft,window:proposed.window,sha256:proposed.sha256};
+ questions=questionIds(proposed.draft,proposed.window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
+ $('workspace').hidden=false;
+ $('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
+ $('source').value='';
+ $('sourceState').textContent='Revised source explicitly applied · previous role replies invalidated · REVIEW_ONLY/HOLD';
+ render();
+ document.dispatchEvent(new CustomEvent('lightup:brief-revision',{
+  detail:{before:old,after:exportModel(),impact:proposed.impact}
+ }));
+ renderPending();
+}
+/* A zero-script human change paper: a preview, NOT consent or a scope permit. */
+function pendingPaper(){
+ const model=pendingRecord();if(!model)return null;
+ const e=v=>String(v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ const lines=[
+  ['Declared assets',model.before.proposed_assets_count,model.proposed.proposed_assets_count],
+  ['Exclusions',model.before.excluded_assets_count,model.proposed.excluded_assets_count],
+  ['Requested risk',model.before.requested_risk,model.proposed.requested_risk],
+  ['Mode',model.before.requested_mode,model.proposed.requested_mode],
+  ['Tentative window status',model.before.window_status,model.proposed.window_status]
+ ];
+ const rows=lines.map(([label,a,b])=>'<tr><th>'+e(label)+'</th><td>'+e(a)+'</td><td>'+e(b)+'</td></tr>').join('');
+ const impact=model.literal_impact;
+ const followupCodes=impact?.attention_codes||[];
+ const advice=followupCodes.length?
+  '<ul>'+followupCodes.map(code=>'<li>'+e(code.replaceAll('_',' '))+' — independent human review required</li>').join('')+'</ul>':
+  '<p>No elevated category detected; original bytes differ and fresh human preparation is still required.</p>';
+ const delta=impact?
+  '<p>Literal included entries: +'+e(impact.proposed_assets.added)+' / −'+e(impact.proposed_assets.removed)+
+  '; excluded entries: +'+e(impact.exclusions.added)+' / −'+e(impact.exclusions.removed)+
+  '. These are only case-insensitive string counts, never CIDR or DNS equivalence.</p>':'';
+ return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+  '<meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">'+
+  '<title>LightUp pending source change · REVIEW ONLY / HOLD</title>'+
+  '<style>body{font:15px/1.6 system-ui,sans-serif;max-width:900px;margin:auto;padding:25px;color:#14273c}h1{font-size:29px}h2{margin-top:28px;border-bottom:1px solid #b8c8d7}p{overflow-wrap:anywhere}.banner{background:#fff0dd;border:2px solid #a75933;padding:16px}.hash{font:12px/1.6 monospace;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;margin:14px 0}td,th{border:1px solid #bac7d3;padding:9px;text-align:left}th{background:#e8edf5}li{padding:5px}footer{border-top:1px solid #bbb;margin-top:35px;font-size:12px}@media print{body{padding:0}}</style></head><body>'+
+  '<p>LIGHTUP / LOCAL HUMAN CHANGE DISCUSSION</p><h1>Pending scope revision — not applied</h1>'+
+  '<div class="banner"><strong>REVIEW_ONLY_HOLD</strong>: This proposed new source has NOT replaced the original or its human preparation. No client identity, consent, operator approval, risk signoff, grant, permission, scan or deploy is created by this report.</div>'+
+  '<p class="hash">Accepted source SHA-256: '+e(model.previous_source_sha256)+'<br>Proposed source SHA-256: '+e(model.proposed_source_sha256)+'</p>'+
+  '<h2>Generic category changes</h2><table><thead><tr><th>Category</th><th>Accepted</th><th>Proposed</th></tr></thead><tbody>'+rows+'</tbody></table>'+delta+
+  '<h2>Human questions before replacement</h2>'+advice+
+  '<p>Both client and operator must reopen the full proposed original locally and independently verify all precise targets, exclusions, stop instructions, current revocation and permission boundaries in the authenticated system. Do not use an anonymous summary for a grant.</p>'+
+  '<footer>Only aggregate numbers, fixed categories and document-level SHA-256 appear. No raw targets, notes, per-asset hashes, identities, filenames or contacts. Literal string comparison is not effective scope equivalence. Current prior human work remains valid only for the old original bytes and is never transferred if the staged source is applied.</footer></body></html>';
+}
+function exportPendingPaper(){
+ const text=pendingPaper();if(!text)return;
+ const url=URL.createObjectURL(new Blob([text],{type:'text/html;charset=utf-8'})),a=document.createElement('a');
+ a.href=url;a.download='lightup-unapplied-scope-change-brief-HOLD.html';
+ document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function exportPending(){
+ const record=pendingRecord();if(!record)return;
+ const url=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)+'\n'],{type:'application/json'}));
+ const a=document.createElement('a');a.href=url;a.download='lightup-unapplied-revision-preview-HOLD.json';
+ document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+async function loadFile(file){
+ // Preflight in a bounded local buffer. Do not replace active source on selection.
+ const baseSha=current?.sha256||null;
+ const token=++epoch;
+ $('sourceState').textContent=baseSha?
+  'Reading proposed revision; accepted source and role notes remain active · HOLD':
+  'Reading initial source · HOLD';
+ if(!file||file.size===0||file.size>MAX_BYTES){
+  $('sourceState').textContent='Missing or oversized new file; existing work retained · HOLD';
+  $('source').value='';return;
+ }
+ try{
+  const bytes=await file.arrayBuffer();
+  assert(bytes.byteLength>0&&bytes.byteLength<=MAX_BYTES,'Oversized source');
+  const source=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
+  assert(!source.startsWith('\ufeff'),'BOM not accepted');
+  assertUnambiguousJSON(source);
+  const draft=JSON.parse(source),window=validateDraft(draft);
+  assert(globalThis.crypto?.subtle,'Secure local WebCrypto unavailable');
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  const sha256=Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
+  if(token!==epoch)return;
+  if(current?.sha256===sha256){
+   discardPending();
+   $('sourceState').textContent='Exact currently accepted source reloaded; human preparation preserved · REVIEW_ONLY/HOLD';
+   return;
+  }
+  if(current){
+   pending={draft,window,sha256,baseSha:current.sha256,impact:literalRevisionImpact(current.draft,draft)};
+   $('source').value='';
+   renderPending();
+   $('sourceState').textContent='Revised source staged for human review; original remains active · REVIEW_ONLY/HOLD';
+   return;
+  }
+  // The first source has no existing human work to invalidate.
+  pending=null;renderPending();
+  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+  current={draft,window,sha256};
+  questions=questionIds(draft,window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
+  $('workspace').hidden=false;
+  $('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
+  $('sourceState').textContent='Initial source loaded · '+draft.requested_assets.length+' assets declared · REVIEW_ONLY/HOLD';
+  render();
+  document.dispatchEvent(new CustomEvent('lightup:brief-revision',{
+   detail:{before:null,after:exportModel(),impact:null}
+  }));
+ }catch(_){
+  if(token!==epoch)return;
+  $('sourceState').textContent='Proposed source rejected; accepted preparation and any staged preview retained · HOLD';
+  $('source').value='';
+ }
+}
+$('source').addEventListener('change',event=>loadFile(event.target.files?.[0]));
+$('pendingDiscard').addEventListener('click',discardPending);
+$('pendingApply').addEventListener('click',applyPending);
+$('pendingExport').addEventListener('click',exportPending);
+$('pendingPaper').addEventListener('click',exportPendingPaper);
+$('pendingBackup').addEventListener('click',savePreparationBackup);
+$('backupSave').addEventListener('click',savePreparationBackup);
+$('backupImport').addEventListener('change',event=>restorePreparationBackup(event.target.files?.[0]));
+$('clear').addEventListener('click',()=>{hold('Source forgotten');document.dispatchEvent(new CustomEvent('lightup:brief-forget'));$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
+$('export').addEventListener('click',download);
+$('textExport').addEventListener('click',downloadText);
+$('reply').addEventListener('change',event=>importReview(event.target.files?.[0]));
+$('print').addEventListener('click',()=>{if(current)window.print();});
+document.querySelectorAll('[name="audience"]').forEach(el=>el.addEventListener('change',refreshExport));
+})();
