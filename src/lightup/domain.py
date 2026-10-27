@@ -978,16 +978,22 @@ class DomainStore:
             if engagement_id is not None:
                 engagement = self.get_engagement(ctx, engagement_id)
                 rows = con.execute(
-                    "SELECT * FROM findings WHERE engagement_id=? ORDER BY created_at DESC",
-                    (engagement.engagement_id,),
+                    "SELECT f.* FROM findings AS f "
+                    "JOIN engagements AS e ON e.engagement_id=f.engagement_id "
+                    "WHERE f.engagement_id=? AND f.client_id=e.client_id "
+                    "AND e.client_id=? ORDER BY f.created_at DESC",
+                    (engagement.engagement_id, engagement.client_id),
                 ).fetchall()
             elif ctx.is_operator and client_id is None:
                 rows = con.execute("SELECT * FROM findings ORDER BY created_at DESC").fetchall()
             else:
                 scoped = ctx.resolve_client(client_id, "list_findings")
                 rows = con.execute(
-                    "SELECT * FROM findings WHERE client_id=? ORDER BY created_at DESC",
-                    (scoped,),
+                    "SELECT f.* FROM findings AS f "
+                    "JOIN engagements AS e ON e.engagement_id=f.engagement_id "
+                    "WHERE f.client_id=? AND e.client_id=? "
+                    "ORDER BY f.created_at DESC",
+                    (scoped, scoped),
                 ).fetchall()
         return [self._finding_from_row(r) for r in rows]
 
