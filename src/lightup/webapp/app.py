@@ -1374,17 +1374,26 @@ class LightUpWebApp:
         ctx = self._portal_context(auth, client_id)
         client = self.store.get_client(ctx, client_id)
         findings = self.store.list_findings(ctx)
-        requests = self.store.list_assessment_requests(ctx)
+        # Keep the overview minimal: raw scope assets belong only to the
+        # authenticated per-request receipt, not a default landing screen.
+        requests = self.store.list_assessment_requests(ctx, client_id)
+        if any(item.client_id != client_id for item in requests):
+            raise TenantIsolationError("cross-tenant portal overview denied")
+        ordered_requests = sorted(
+            requests, key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
         fixed = sum(1 for f in findings if f.retest_status is RetestStatus.FIXED)
         request_rows = "".join(
-            "<div class=\"card\"><div class=\"row\">"
-            f"<strong>{_e(', '.join(r.requested_assets))}</strong>"
-            f"<span class=\"badge\">{_e(r.status.value)}</span></div>"
-            f'<p class="meta">Requested risk: {_risk(r.requested_risk)}</p>'
+            '<section class="card"><div class="row">'
+            f'<strong>Request {_e(r.request_id[:8])}</strong>'
+            f'<span class="badge">{_e(r.status.value)}</span></div>'
+            f'<p class="meta">Submitted {_e(r.created_at)} · '
+            f'Requested risk: {_risk(r.requested_risk)}</p>'
             f'<a href="/portal/{_e(client_id)}/requests/{_e(r.request_id)}">'
-            'View request status</a></div>'
-            for r in requests
-        ) or "<p class=\"empty\">No assessment requests yet.</p>"
+            'View private request details and safety steps</a></section>'
+            for r in ordered_requests[:3]
+        ) or '<p class="empty">No assessment requests yet.</p>'
         if auth.is_operator:
             request_section = (
                 "<h2>Assessment request submissions</h2>"
@@ -1440,8 +1449,8 @@ class LightUpWebApp:
             + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
                        for e in self.store.list_engagements(ctx))
                or "<p class=\"empty\">No engagements yet.</p>")
-            + f'<h2>Your assessment requests</h2><p><a href="/portal/{_e(client_id)}/requests">'
-              'Open the complete request inbox</a></p>'
+            + f'<h2>Recent assessment requests</h2><p><a href="/portal/{_e(client_id)}/requests">'
+              f'Open all {len(requests)} requests in the private inbox</a></p>'
             + request_rows
             + f"<p><a href=\"/portal/{_e(client_id)}/authorization-plan\">"
               "Review authorization plan (read-only)</a></p>"
