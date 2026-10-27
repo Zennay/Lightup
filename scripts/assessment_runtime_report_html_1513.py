@@ -1162,6 +1162,160 @@ def _render_review_bundle_packet_csv(packet) -> str:
     return out.getvalue()
 
 
+def _render_review_bundle_packet_markdown(packet) -> str:
+    """Complete anonymous HUMAN worksheet from an admitted private lab packet.
+
+    Only the offline inspector may pass a complete packet. That inspector has
+    already validated all fixed question strings, numeric spellings, ordinals,
+    priorities and cross-section totals. Rejected input gets a static HOLD.
+    Neither Markdown checkboxes nor source status imply any actual approval.
+    """
+    if not packet["input_admitted"]:
+        return (
+            "# LightUp offline HUMAN review — HOLD\n\n"
+            "Input HOLD: no complete consistent review packet was admitted.\n\n"
+            "No cases, questions or metrics are available. No source proof, "
+            "consent, authorization, dispatch or release is granted.\n"
+        )
+
+    metric_report = packet["metric_review"]
+    human_report = packet["human_actions"]
+    resources = packet["resource_observations"]
+    cases_by_ordinal = {
+        case["scenario_ordinal"]: case for case in metric_report["cases"]
+    }
+    resources_by_ordinal = {
+        case["scenario_ordinal"]: case for case in resources["cases"]
+    }
+    questions = human_report["human_review_questions"]
+
+    def table_row(*values):
+        # Every value is a previously reconciled scalar or fixed label. The
+        # importer does not admit source-controlled Markdown, paths or URLs.
+        return "| " + " | ".join(str(value) for value in values) + " |"
+
+    lines = [
+        "# LightUp offline HUMAN lab review",
+        "",
+        "**Source-reported state:** " + packet["source_status"],
+        "**Report type:** " + packet["report_type"],
+        "**Anonymous admitted cases:** " + str(packet["accepted_case_count"]),
+        "",
+        "> Unauthenticated, source-reported PLAN/LAB observations only. "
+        "Checkboxes are manual review prompts, never HUMAN GO, permission, "
+        "consent, cost approval, release or evidence provenance.",
+        "",
+        "**Hard authority flags:** authorized=false; consent_verified=false; "
+        "dispatch_allowed=false; release_allowed=false; "
+        "source_provenance_authenticated=false.",
+        "",
+        "## HUMAN review checklist (reconciled priority order)",
+        "",
+    ]
+    for question in questions:
+        ordinal = question["scenario_ordinal"]
+        lines.extend([
+            "- [ ] **Rank " + str(question["review_order"])
+            + " · Anonymous case " + str(ordinal).zfill(2) + "** — "
+            + question["human_review_group"],
+            "  - **Fixed HUMAN question:** " + question["suggested_human_question"],
+            "  - **Source adverse metric flags:** "
+            + str(question["source_adverse_metric_count"])
+            + "; unknown coverage: " + str(question["source_unknown_coverage"])
+            + "; scope/policy signal: "
+            + str(question["scope_policy_signal"]).lower(),
+        ])
+    lines.extend([
+        "",
+        "## Cohort-wide source summary (not a release verdict)",
+        "",
+        table_row("Anonymous cases", "Adverse cases", "Unknown-coverage cases",
+                  "HUMAN questions"),
+        "| ---: | ---: | ---: | ---: |",
+        table_row(packet["accepted_case_count"],
+                  metric_report["source_adverse_case_count"],
+                  metric_report["source_unknown_coverage_case_count"],
+                  len(questions)),
+        "",
+        "### Canonical metric movement",
+        "",
+        table_row("Metric", "Observed", "Source flags", "Higher", "Lower",
+                  "Equal", "Unknown coverage"),
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ])
+    for item in metric_report["metric_summary"]:
+        lines.append(table_row(
+            _METRIC_LABELS[item["metric"]], item["observed_case_count"],
+            item["source_regression_case_count"],
+            item["candidate_higher_case_count"],
+            item["candidate_lower_case_count"],
+            item["candidate_equal_case_count"],
+            item["candidate_unknown_coverage_case_count"],
+        ))
+    lines.extend([
+        "",
+        "### Unnormalized resource totals — informational only",
+        "",
+        table_row("Resource", "Baseline total", "Candidate total",
+                  "Raw delta", "Increased cases", "Decreased cases"),
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ])
+    for name in _EFFICIENCY_FIELDS:
+        total = resources["aggregate"][name]
+        lines.append(table_row(
+            _METRIC_LABELS[name], total["baseline_total"],
+            total["candidate_total"], total["delta_total"],
+            total["increased_cases"], total["decreased_cases"],
+        ))
+
+    lines.extend(["", "## Anonymous case details (same HUMAN rank order)", ""])
+    for question in questions:
+        ordinal = question["scenario_ordinal"]
+        case = cases_by_ordinal[ordinal]
+        observations = resources_by_ordinal[ordinal]["metrics"]
+        lines.extend([
+            "### Rank " + str(question["review_order"])
+            + " · Anonymous case " + str(ordinal).zfill(2),
+            "",
+            "**Source-reported case state:** " + case["source_status"],
+            "**Fixed HUMAN question:** " + question["suggested_human_question"],
+            "",
+            table_row("Canonical metric", "Baseline", "Candidate", "Delta",
+                      "Source regression flag", "Unknown-coverage flag"),
+            "| --- | ---: | ---: | ---: | --- | --- |",
+        ])
+        for metric in case["metrics"]:
+            lines.append(table_row(
+                _METRIC_LABELS[metric["metric"]],
+                metric["baseline"], metric["candidate"], metric["delta"],
+                str(metric["source_regression_flag"]).lower(),
+                str(metric["source_unknown_coverage"]).lower(),
+            ))
+        lines.extend([
+            "",
+            "#### Source resource observations — not cost approval",
+            "",
+            table_row("Resource", "Baseline", "Candidate", "Delta",
+                      "Change (%)", "Direction"),
+            "| --- | ---: | ---: | ---: | ---: | --- |",
+        ])
+        for name in _EFFICIENCY_FIELDS:
+            item = observations[name]
+            lines.append(table_row(
+                _METRIC_LABELS[name], item["baseline"], item["candidate"],
+                item["delta"],
+                item["percent_change"] if item["percent_change"] is not None
+                else "n/a (zero baseline)",
+                item["direction"],
+            ))
+        lines.append("")
+    lines.append(
+        "No original IDs, target hosts, URLs, notes or provenance claims. "
+        "No checkbox or source metric authorizes a scan or release."
+    )
+    return "\n".join(lines) + "\n"
+
+
 def render_review_bundle_html(result, *, cohort: bool = False,
                               scored: bool = False) -> str:
     """Printable script-free view of the complete anonymous JSON review bundle.

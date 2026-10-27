@@ -780,7 +780,7 @@ No browser upload, external fonts/assets, forms, network access or
 authorizing button. Invalid or unsafe local files create a
 generic zero-case HOLD receipt in the original JSON/text/HTML formats,
 a generic zero-case HOLD full page in bundle-HTML, and a fixed input_hold
-row in bundle-CSV. Exit codes remain
+row in bundle-CSV, and a source-free generic HOLD notice in bundle-MD. Exit codes remain
 `2` for a structurally consistent source `REVIEW_ONLY`, otherwise
 `3`; the receipt is never a completion certificate.
 
@@ -867,8 +867,33 @@ data; no partial cohort is disclosed. CSV quoting handles delimiters;
 all question text and labels are pre-defined, not source-controlled formulas.
 For portability the export uses CRLF row endings and no external packages.
 
+### Editable offline HUMAN checklist in Markdown
+
+For an offline review handoff that a human can copy into a **regular Notion
+page** or edit as a local text file, the same fully inspected private JSON can
+now be rendered with `--format bundle-md`. The output is native Markdown:
+the complete, independently reconciled HUMAN review queue comes first as
+unchecked `- [ ]` items in source-priority order, followed by a source-wide
+metric/resource movement ledger and all canonical per-case metric and cost
+observations in the same HUMAN rank order. Every question is fixed to its
+fully validated source metric case; no raw IDs, paths, URLs, evidence or
+uncontrolled notes are imported. This creates **review prompts**, never
+permissions or sign-off records.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \
+  --format bundle-md private-bundle.json > received-human-review.md
+# Exit 2 = source REVIEW_ONLY; 3 = HOLD. Neither grants permission.
+```
+
+Rejected, malformed, changed or digest-mismatched input produces a **fixed,
+source-free HOLD** message with no checkboxes, metrics or case content.
+An admitted source-reported HOLD does retain all anonymous HUMAN questions
+for review but never becomes approval. No Markdown file is automatically
+uploaded to Notion or to another service; transfer stays under human control.
+
 For a transfer where the human reviewer already possesses a **separately
-verified expected SHA-256** of the exact source JSON bytes, all five
+verified expected SHA-256** of the exact source JSON bytes, all six
 receiving formats also accept opt-in `--expected-sha256` (exactly 64
 hexadecimal characters). The hash check occurs **after** the symlink-
 and race-hardened bounded read and **before** parsing/review. Incorrect,

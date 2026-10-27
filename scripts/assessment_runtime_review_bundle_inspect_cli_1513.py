@@ -638,7 +638,7 @@ def main(argv=None) -> int:
             break
         seen.add(option)
         if option == "--format":
-            if value not in ("json", "text", "html", "bundle-html", "bundle-csv"):
+            if value not in ("json", "text", "html", "bundle-html", "bundle-csv", "bundle-md"):
                 options_valid = False
                 break
             output_format = value
@@ -666,7 +666,7 @@ def main(argv=None) -> int:
             # No rejected input, original path or partial case can be rendered.
             packet = _validated_review_bundle_packet(raw)
             outcome = _inspection_outcome(packet)
-            if output_format in ("bundle-html", "bundle-csv"):
+            if output_format in ("bundle-html", "bundle-csv", "bundle-md"):
                 review_packet = packet
         except (OSError, ValueError):
             pass
@@ -678,6 +678,12 @@ def main(argv=None) -> int:
         ), end="")
     elif output_format == "bundle-csv":
         print(reports._render_review_bundle_packet_csv(
+            review_packet if review_packet is not None else {
+                "input_admitted": False, "source_status": "HOLD",
+            }
+        ), end="")
+    elif output_format == "bundle-md":
+        print(reports._render_review_bundle_packet_markdown(
             review_packet if review_packet is not None else {
                 "input_admitted": False, "source_status": "HOLD",
             }
