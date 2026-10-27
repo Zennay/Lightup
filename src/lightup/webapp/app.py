@@ -133,6 +133,10 @@ label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0
   .report-section { break-inside:avoid-page; }
   .report-section[id^="report-"]:target { outline:none; }
 }
+.report-gap { border-left:4px solid var(--lock); }
+.report-gap ol { padding-left:24px; }
+.report-gap li { padding:8px 0; overflow-wrap:anywhere; }
+.report-gap li a { display:inline-flex; align-items:center; min-height:44px; }
 .report-index { border-left:4px solid var(--line); }
 .report-index ol { padding-left:24px; margin:8px 0 16px; }
 .report-index li { padding:4px 0; overflow-wrap:anywhere; }
@@ -2283,7 +2287,10 @@ class LightUpWebApp:
             'Counts represent registered capabilities per engagement, not tested '
             'systems or verified ownership. Testing remains locked.</p>'
             '<p><a href="#coverage-details">Review coverage by engagement</a></p>'
-            '</section>'
+            + (f'<p><a href="/portal/{_e(client_id)}/report#report-gap-heading">'
+               'Open the private HUMAN coverage-gap worklist</a></p>'
+               if unknown_domains or partial_domains or unapproved_domains else '')
+            + '</section>'
         )
         # Surface original scope-blocker facts on the client landing page.
         # A current recorded grant is NOT proof of consent, revocation or GO;
@@ -2762,6 +2769,24 @@ class LightUpWebApp:
                 f'{rows}</tbody></table></section>'
             )
 
+        # Read-only triage of original missing/partial/unauthorized capabilities.
+        # No missing row is auto-tested, inferred safe or assigned a grant.
+        gap_queue = sorted(
+            (
+                entry for entry in coverage_data
+                if entry["counts"]["unknown"]
+                or entry["counts"]["partially_assessed"]
+                or entry["counts"]["not_authorized"]
+            ),
+            key=lambda entry: (
+                -entry["counts"]["unknown"],
+                -entry["counts"]["partially_assessed"],
+                -entry["counts"]["not_authorized"],
+                entry["engagement"].casefold(),
+                entry["report_local_fragment"],
+            ),
+        )
+
         def finding_card(f, ordinal: int, *, fixed: bool) -> str:
             label, meaning = finding_statuses[f.retest_status]
             anchor = f"report-{'fixed' if fixed else 'open'}-{ordinal}"
@@ -2854,6 +2879,18 @@ class LightUpWebApp:
             "coverage": {
                 "unknown_capability_entries": total_unknown,
                 "partially_assessed_capability_entries": total_partial,
+                "human_gap_priority": [
+                    {
+                        "report_local_fragment": item["report_local_fragment"],
+                        "engagement": item["engagement"],
+                        "unknown": item["counts"]["unknown"],
+                        "partially_assessed": item["counts"]["partially_assessed"],
+                        "not_authorized": item["counts"]["not_authorized"],
+                        "state": "HUMAN_REVIEW_ONLY",
+                        "execution_allowed": False,
+                    }
+                    for item in gap_queue
+                ],
                 "engagements": coverage_data,
             },
             "findings": {
@@ -2987,6 +3024,29 @@ class LightUpWebApp:
                '<p class="empty">No original scope records.</p>')
             + '</section>'
         )
+        gap_board = (
+            '<section class="card report-section report-gap" '
+            'aria-labelledby="report-gap-heading">'
+            '<span class="badge lock">Original coverage · HUMAN review only</span>'
+            '<h2 id="report-gap-heading">Coverage gaps to review first</h2>'
+            '<p>Unknown capability entries first, then partial and not-authorized '
+            'entries. These are registered capability counts, not measured '
+            'systems or new findings. A missing result is never safe.</p>'
+            + ('<ol>' + ''.join(
+                f'<li><a href="#{_e(item["report_local_fragment"])}">'
+                f'{_e(item["engagement"])}</a> '
+                f'<span class="meta">— {item["counts"]["unknown"]} unknown · '
+                f'{item["counts"]["partially_assessed"]} partial · '
+                f'{item["counts"]["not_authorized"]} not authorized</span>'
+                '<p class="meta">Human next step: review original scope and '
+                'coverage records. No autonomous retest or activation.</p></li>'
+                for item in gap_queue
+            ) + '</ol>' if gap_queue else
+               '<p class="empty">No recorded capability gap in the current '
+               'registered inventory. This does not establish complete testing '
+               'or system safety.</p>')
+            + '</section>'
+        )
         agenda = (
             '<section class="card report-section report-agenda" '
             'aria-labelledby="report-agenda-heading">'
@@ -3030,6 +3090,7 @@ class LightUpWebApp:
             'approval to scan. Unknown coverage must not be treated as safe.</p>'
             '</section>'
             + agenda
+            + gap_board
             + evidence_index
             + '<div class="grid report-kpis">'
             f'<div class="card"><strong>{len(follow_up)}</strong>'
