@@ -154,6 +154,15 @@ def _finite_decimal_text(value) -> bool:
     )
 
 
+def _canonical_nonnegative_metric(value, limit) -> bool:
+    """Admit the comparator's finite, bounded, positive-zero numeric domain."""
+    return (
+        _finite_number(value) and 0 <= value <= limit
+        and not (type(value) is float and value == 0.0
+                 and math.copysign(1.0, value) < 0)
+    )
+
+
 def _canonical_metric_values(metric) -> bool:
     """Reject contradictory source-claimed deltas, flags and value classes."""
     name = metric["metric"]
@@ -165,12 +174,12 @@ def _canonical_metric_values(metric) -> bool:
                    for value in (baseline, candidate)):
             return False
     elif name in _SCORE_METRICS:
-        if not all(_finite_number(value) and 0 <= value <= 1
+        if not all(_canonical_nonnegative_metric(value, 1)
                    for value in (baseline, candidate)):
             return False
     elif name in _COST_METRICS:
         if not all(
-            _finite_number(value) and 0 <= value <= 1_000_000_000_000
+            _canonical_nonnegative_metric(value, 1_000_000_000_000)
             for value in (baseline, candidate)
         ):
             return False

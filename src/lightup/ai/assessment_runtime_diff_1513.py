@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from math import isfinite
+from math import copysign, isfinite
 
 from .orchestration import RunContext
 from ..engagements import AssessmentMode, RiskLevel
@@ -85,6 +85,14 @@ def _valid_utc_instant(value: object) -> bool:
     return _valid_utc_instant(parsed)
 
 
+def _valid_nonnegative_zero(number: object) -> bool:
+    """Only canonical positive-zero floats are admitted as lab measurements."""
+    return not (
+        type(number) is float and number == 0.0
+        and copysign(1.0, number) < 0
+    )
+
+
 def _valid_metrics(value: object) -> bool:
     # Independent of the original EvaluationMetrics.validate() owner (#834).
     if type(value) is not EvaluationMetrics:
@@ -96,6 +104,7 @@ def _valid_metrics(value: object) -> bool:
     for name in _SCORES:
         number = getattr(value, name)
         if (type(number) not in (int, float) or not 0 <= number <= 1
+                or not _valid_nonnegative_zero(number)
                 or (type(number) is float and not isfinite(number))):
             return False
     for name in _COSTS:
@@ -104,6 +113,7 @@ def _valid_metrics(value: object) -> bool:
         # ceiling is still an invalid lab runtime/cost measurement.
         if (type(number) not in (int, float)
                 or not 0 <= number <= _MAX_LAB_COST
+                or not _valid_nonnegative_zero(number)
                 or (type(number) is float and not isfinite(number))):
             return False
     return True
