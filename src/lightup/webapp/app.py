@@ -1734,7 +1734,61 @@ class LightUpWebApp:
             return Response(_page("Forbidden", "",
                                   "<h1>Client session required</h1>", auth),
                             status="403 Forbidden")
-        assets, risk, notes = self._parse_portal_request_fields(form)
+        try:
+            assets, risk, notes = self._parse_portal_request_fields(form)
+        except ValueError:
+            # This is a user-editable, non-authorizing preview. Preserve draft
+            # values locally in the authenticated HTML response, fully escaped;
+            # never persist invalid input or infer scan authority.
+            raw_assets = form.get("assets", "")
+            raw_notes = form.get("notes", "")
+            raw_risk = form.get("risk", "")
+            options = "".join(
+                f'<option value="{value}"'
+                f'{" selected" if raw_risk == str(value) else ""}>'
+                f'{_e(label)}</option>'
+                for value, label in (
+                    (1, "1 — Passive: observation only"),
+                    (2, "2 — Low impact: needs separate authorization"),
+                    (3, "3 — Standard: needs separate authorization"),
+                    (4, "4 — Elevated: needs additional risk review"),
+                )
+            )
+            placeholder = (
+                '<option value="" disabled'
+                + (' selected' if raw_risk not in {"1", "2", "3", "4"} else '')
+                + '>Choose a risk level…</option>'
+            )
+            correction = (
+                "Add at least one system you manage." if not raw_assets.strip(" ,")
+                else "Select one of the four supported risk levels."
+            )
+            body = (
+                '<h1>Check your assessment request</h1>'
+                '<p role="alert" class="error">Some details need attention: '
+                f'{_e(correction)}</p>'
+                '<section class="card">'
+                '<p class="meta">Your draft is preserved below. No request '
+                'has been submitted and no testing has been activated.</p>'
+                f'<form method="post" action="/portal/{_e(client_id)}/requests/preview">'
+                f'{self._csrf_field(auth)}'
+                '<label for="fix-assets">Systems you manage (comma-separated)</label>'
+                f'<input id="fix-assets" name="assets" required '
+                f'value="{_e(raw_assets)}" autocomplete="off">'
+                '<label for="fix-risk">Requested testing risk</label>'
+                f'<select id="fix-risk" name="risk" required>'
+                f'{placeholder}{options}</select>'
+                '<label for="fix-notes">Context for the reviewer (optional)</label>'
+                f'<textarea id="fix-notes" name="notes" rows="3">'
+                f'{_e(raw_notes)}</textarea>'
+                '<button>Review corrected request</button>'
+                '</form></section>'
+            )
+            return Response(_page(
+                "LightUp — Correct assessment request", "portal", body, auth,
+                portal_client=client_id,
+            ), status="400 Bad Request")
+
         editable_risks = "".join(
             f'<option value="{value}"{" selected" if int(risk) == value else ""}>'
             f'{_e(label)}</option>'
