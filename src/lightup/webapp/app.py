@@ -97,6 +97,28 @@ textarea:focus-visible,summary:focus-visible {
 button,input:not([type="hidden"]):not([type="checkbox"]),select { min-height:44px; }
 input[type="checkbox"] { width:auto; min-height:auto; margin:0; }
 label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0; }
+.report-section { break-inside:avoid; page-break-inside:avoid; }
+.report-section h3 { margin:6px 0 12px; font-size:1rem; }
+.report-section h4 { margin:14px 0 4px; font-size:.9rem; }
+.report-boundary { border-left:4px solid var(--lock); background:#fffaf7; }
+.report-kpis .card { margin-bottom:0; }
+.report-kpis strong { font-size:1.3rem; }
+.report-copy { white-space:pre-wrap; overflow-wrap:anywhere; }
+.report-table { border-collapse:collapse; width:100%; table-layout:fixed; }
+.report-table th,.report-table td { padding:8px; border:1px solid var(--line);
+                                    text-align:left; overflow-wrap:anywhere; }
+.report-table th { font-size:.85rem; }
+.report-footer { margin-top:24px; }
+@media print {
+  body { color:#111; background:#fff; font-size:11pt; }
+  header, .skip-link, .print-controls, nav { display:none !important; }
+  main { padding:0; }
+  .wrap { max-width:none; padding:0; }
+  .card { border-color:#aaa; box-shadow:none; }
+  a { color:inherit; text-decoration:underline; }
+  .report-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .report-section { break-inside:avoid-page; }
+}
 .decision-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
                  gap:14px; align-items:stretch; }
 .decision-choice { min-width:0; display:flex; flex-direction:column; }
@@ -154,7 +176,7 @@ label { font-size:.85rem; color:var(--muted); }
 .risk-guide .meta { margin-bottom:0; }
 .next-action { border-left:4px solid var(--lock); background:#fffaf7; }
 .next-action h2 { margin:10px 0 4px; font-size:1.2rem; }
-.task-links { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+.task-links { display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
               gap:12px; margin:0 0 28px; }
 .task-links a { display:block; min-height:96px; padding:14px 16px;
                 border-radius:10px; border:1px solid var(--line);
@@ -492,6 +514,8 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/assessments/elevations/(?P<approval_id>[\w-]+)/decision$"),
              self.decide_elevation, "operator"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/report$"),
+             self.portal_assessment_report, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
              self.portal_requests, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests\.json$"),
@@ -2377,6 +2401,8 @@ class LightUpWebApp:
             '<a href="#findings-heading"><strong>Recorded findings</strong>'
             f'<span>{len(outstanding_findings)} need follow-up · '
             f'{urgent_outstanding} critical/high</span></a>'
+            f'<a href="/portal/{_e(client_id)}/report"><strong>Private report</strong>'
+            '<span>Print-ready recorded evidence · no scan permission</span></a>'
             '</nav>'
         )
         if auth.is_operator:
@@ -2443,6 +2469,235 @@ class LightUpWebApp:
         )
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
+
+    def portal_assessment_report(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+    ) -> Response:
+        """Private, printable HUMAN dossier; persisted evidence only, no GO."""
+        from ..authorization_plan import build_client_authorization_plan
+        from ..coverage import CoverageReport, CoverageStatus
+
+        viewer = self._portal_context(auth, client_id)
+        client = self.store.get_client(viewer, client_id)
+        engagements, findings = self._client_scoped_evidence(viewer, client_id)
+        requests = self.store.list_assessment_requests(viewer, client_id)
+        if any(request.client_id != client_id for request in requests):
+            raise TenantIsolationError("cross-tenant assessment report request")
+        request_states = {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            RequestStatus.APPROVED, RequestStatus.REJECTED,
+        }
+        if any(request.status not in request_states for request in requests):
+            raise ValueError("unrecognized original report request state")
+
+        # Original HUMAN scope plan is a hold-only read model. A current
+        # recorded grant does not authenticate consent or confer any action.
+        plan = build_client_authorization_plan(self.store, viewer, client_id)
+        if (plan.client_id != client_id or plan.state != "PLAN_ONLY"
+                or plan.execution_allowed is not False):
+            raise TenantIsolationError("assessment report authorization unsafe")
+        source_ids = {engagement.engagement_id for engagement in engagements}
+        planned_ids = {entry.engagement_id for entry in plan.engagements}
+        if (source_ids != planned_ids
+                or len(planned_ids) != len(plan.engagements)):
+            raise TenantIsolationError("assessment report scope source mismatch")
+        allowed_scope_states = {
+            "CURRENT", "EXPIRED", "NOT_YET_VALID", "NOT_RECORDED",
+        }
+        if any(
+            entry.decision != "HOLD"
+            or entry.execution_allowed is not False
+            or entry.scope_record_state not in allowed_scope_states
+            for entry in plan.engagements
+        ):
+            raise ValueError("assessment report cannot imply authorization")
+
+        finding_statuses = {
+            RetestStatus.REGRESSION: (
+                "Regression recorded", "Review changed impact first. "
+                "No new retest is authorized by this record.",
+            ),
+            RetestStatus.FIX_PENDING: (
+                "Fix pending", "Remediation is still a proposal or pending work, "
+                "not a verified security result.",
+            ),
+            RetestStatus.NOT_TESTED: (
+                "Retest not recorded", "No verified retest result is recorded.",
+            ),
+            RetestStatus.FIXED: (
+                "Recorded fixed", "This finding alone is marked fixed; "
+                "assessment coverage is not implied.",
+            ),
+        }
+        if any(f.retest_status not in finding_statuses for f in findings):
+            raise ValueError("unrecognized original report finding state")
+        severity_order = {
+            "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
+        }
+        follow_up = sorted(
+            (f for f in findings if f.retest_status is not RetestStatus.FIXED),
+            key=lambda f: (
+                f.retest_status is not RetestStatus.REGRESSION,
+                severity_order.get(f.severity.value, 5),
+                f.title.casefold(),
+            ),
+        )
+        recorded_fixed = sorted(
+            (f for f in findings if f.retest_status is RetestStatus.FIXED),
+            key=lambda f: (
+                severity_order.get(f.severity.value, 5),
+                f.title.casefold(),
+            ),
+        )
+        urgent = sum(f.severity.value in {"critical", "high"} for f in follow_up)
+        regressions = sum(
+            f.retest_status is RetestStatus.REGRESSION for f in follow_up
+        )
+        waiting_requests = sum(
+            r.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+            for r in requests
+        )
+        reviewed_requests = sum(r.status is RequestStatus.APPROVED for r in requests)
+        rejected_requests = sum(r.status is RequestStatus.REJECTED for r in requests)
+
+        coverage_cards = []
+        total_unknown = 0
+        total_partial = 0
+        for engagement in engagements:
+            stored = self.store.get_coverage(viewer, engagement.engagement_id)
+            report = CoverageReport.build({
+                capability: CoverageStatus(status)
+                for capability, status in stored.items()
+            })
+            counts = report.counts()
+            total_unknown += counts["unknown"]
+            total_partial += counts["partially_assessed"]
+            rows = "".join(
+                '<tr>'
+                f'<th scope="row">{_e(capability)}</th>'
+                f'<td>{_e(status.value.replace("_", " "))}</td>'
+                '</tr>'
+                for capability, status in report.statuses
+            )
+            coverage_cards.append(
+                '<section class="card report-section">'
+                f'<h3>{_e(engagement.name)}</h3>'
+                f'<p class="meta">{counts["assessed"]} assessed · '
+                f'{counts["partially_assessed"]} partial · '
+                f'{counts["unknown"]} unknown · '
+                f'{counts["not_authorized"]} not authorized capability entries</p>'
+                '<table class="report-table"><thead><tr>'
+                '<th scope="col">Registered capability</th>'
+                '<th scope="col">Recorded coverage</th></tr></thead><tbody>'
+                f'{rows}</tbody></table></section>'
+            )
+
+        def finding_card(f) -> str:
+            label, meaning = finding_statuses[f.retest_status]
+            return (
+                '<article class="card report-section">'
+                '<div class="row">'
+                f'<h3>{_e(f.title)}</h3>'
+                f'<span class="badge">{_e(label)}</span></div>'
+                f'<p class="meta">Recorded severity: {_e(f.severity.value)}</p>'
+                '<h4>Observed impact</h4>'
+                f'<p class="report-copy">{_e(f.impact or "Impact not recorded")}</p>'
+                '<h4>Proposed remediation</h4>'
+                f'<p class="report-copy">{_e(f.remediation or "No remediation recorded")}</p>'
+                '<h4>Recorded retest state</h4>'
+                f'<p>{_e(meaning)}</p></article>'
+            )
+
+        scope_cards = "".join(
+            '<section class="card report-section">'
+            '<div class="row">'
+            f'<h3>{_e(entry.name)}</h3>'
+            '<span class="badge lock">HOLD · execution OFF</span></div>'
+            f'<p class="meta">Scope record: '
+            f'{_e(entry.scope_record_state.replace("_", " "))} · '
+            f'{entry.pending_elevations} risk review(s) pending</p>'
+            '<h4>Independent missing requirements</h4>'
+            '<ul>' + "".join(
+                f'<li>{_e(blocker)}</li>' for blocker in entry.blockers
+            ) + '</ul></section>'
+            for entry in plan.engagements
+        )
+        request_summary = (
+            '<section class="card report-section">'
+            '<h2>1 · Original request status</h2>'
+            f'<p>{len(requests)} original client request(s) recorded: '
+            f'{waiting_requests} awaiting a HUMAN decision, '
+            f'{reviewed_requests} accepted for independent scope review only, '
+            f'{rejected_requests} rejected.</p>'
+            '<p class="meta">A request decision is not consent, a tested '
+            'asset inventory or an active grant. Private request details '
+            'remain in the authenticated request inbox.</p></section>'
+        )
+        body = (
+            '<div class="print-controls">'
+            f'<p><a href="/portal/{_e(client_id)}">Back to client overview</a> · '
+            'Use your browser’s Print / Save as PDF command to retain a '
+            'private copy. Protect any saved copy as security-sensitive data.</p>'
+            '</div>'
+            f'<h1>Recorded assessment handoff · {_e(client.name)}</h1>'
+            '<p class="sub">HUMAN review dossier · PLAN/LAB ONLY · '
+            'not an audit certificate or proof of testing permission.</p>'
+            '<section class="card report-boundary report-section">'
+            '<span class="badge lock">NO EXECUTION · original evidence only</span>'
+            '<h2>Read this before sharing</h2>'
+            '<p>This page reflects original tenant-scoped records at viewing '
+            'time. It is not signed, independently audited, an assessment '
+            'completion claim, verified remediation, current consent or '
+            'approval to scan. Unknown coverage must not be treated as safe.</p>'
+            '</section>'
+            '<div class="grid report-kpis">'
+            f'<div class="card"><strong>{len(follow_up)}</strong>'
+            '<p class="meta">Findings needing human follow-up</p></div>'
+            f'<div class="card"><strong>{regressions}</strong>'
+            '<p class="meta">Recorded regressions</p></div>'
+            f'<div class="card"><strong>{urgent}</strong>'
+            '<p class="meta">Open critical/high severity</p></div>'
+            f'<div class="card"><strong>{total_unknown}</strong>'
+            '<p class="meta">Unknown capability entries</p></div>'
+            f'<div class="card"><strong>{total_partial}</strong>'
+            '<p class="meta">Partial capability entries</p></div>'
+            '</div>'
+            + request_summary
+            + '<section aria-labelledby="report-coverage-heading">'
+              '<h2 id="report-coverage-heading">2 · Recorded assessment coverage</h2>'
+              '<p>These are capability entries per engagement, not numbers '
+              'of systems assessed or an overall safety score.</p>'
+            + ("".join(coverage_cards) or
+               '<p class="empty">No engagements or capability assessments recorded. '
+               'Zero findings does not prove safety.</p>')
+            + '</section>'
+            + '<section aria-labelledby="report-findings-heading">'
+              '<h2 id="report-findings-heading">3 · Finding → impact → fix → retest</h2>'
+              '<p>Regressions first, then recorded severity. This is a '
+              'human worklist, not an automatic remediation or retest.</p>'
+            + ("".join(finding_card(f) for f in follow_up) or
+               '<p class="empty">No unresolved findings recorded. '
+               'Check unknown or partial coverage before interpreting this.</p>')
+            + f'<h3>Recorded fixed finding history ({len(recorded_fixed)})</h3>'
+            + ("".join(finding_card(f) for f in recorded_fixed) or
+               '<p class="empty">No findings marked fixed.</p>')
+            + '</section>'
+            + '<section aria-labelledby="report-hold-heading">'
+              '<h2 id="report-hold-heading">4 · Scope and execution HOLD</h2>'
+              '<p>A recorded request-bound grant is not independently '
+              'verified ownership, consent, revocation-at-use or HUMAN GO. '
+              'Every engagement remains on HOLD.</p>'
+            + (scope_cards or
+               '<p class="empty">No engagements or scope records exist.</p>')
+            + '</section>'
+            '<p class="meta report-footer">LightUp original records · '
+            'private HUMAN handoff · no execution authority · '
+            'review original sources before any independent decision.</p>'
+        )
+        return Response(_page(
+            f"LightUp — {client.name} recorded assessment report",
+            "portal", body, auth, portal_client=client_id,
+        ))
 
     def portal_requests(
         self, auth: AuthState, form: dict[str, str], client_id: str,
