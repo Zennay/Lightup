@@ -634,6 +634,14 @@ def _write_exact_utf8_output(value: str) -> None:
         sys.stdout.write(value)
 
 
+def _write_exact_binary_output(value: bytes) -> None:
+    """Do not silently turn an archive into text on a redirected stream."""
+    stream = getattr(sys.stdout, "buffer", None)
+    if stream is None:
+        raise ValueError("binary stdout required for offline ZIP handoff")
+    stream.write(value)
+
+
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     output_format = "json"
@@ -653,7 +661,7 @@ def main(argv=None) -> int:
             break
         seen.add(option)
         if option == "--format":
-            if value not in ("json", "text", "html", "bundle-html", "bundle-csv", "bundle-md"):
+            if value not in ("json", "text", "html", "bundle-html", "bundle-csv", "bundle-md", "bundle-zip"):
                 options_valid = False
                 break
             output_format = value
@@ -683,14 +691,20 @@ def main(argv=None) -> int:
             packet = _validated_review_bundle_packet(raw)
             outcome = _inspection_outcome(packet)
             if (packet is not None and packet["input_admitted"]
-                    and output_format in ("bundle-html", "bundle-csv", "bundle-md")):
+                    and output_format in ("bundle-html", "bundle-csv", "bundle-md", "bundle-zip")):
                 review_packet = packet
                 # Hash the exact inode-pinned bytes that passed admission.
                 # Never fingerprint a rejected input in an output artifact.
                 received_sha256 = sha256(raw).hexdigest()
         except (OSError, ValueError):
             pass
-    if output_format == "bundle-html":
+    if output_format == "bundle-zip":
+        _write_exact_binary_output(reports._render_review_bundle_packet_zip(
+            review_packet if review_packet is not None else {
+                "input_admitted": False, "source_status": "HOLD",
+            }, source_sha256=received_sha256,
+        ))
+    elif output_format == "bundle-html":
         _write_exact_utf8_output(reports._render_review_bundle_packet_html(
             review_packet if review_packet is not None else {
                 "input_admitted": False, "source_status": "HOLD",

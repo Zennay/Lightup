@@ -10,10 +10,11 @@ from base64 import b64encode
 from collections import Counter
 from csv import writer as csv_writer
 from decimal import Decimal, localcontext
-from io import StringIO
+from io import BytesIO, StringIO
 from json import dumps as json_dumps, loads as json_loads
 from hashlib import sha256
 from html import escape
+from zipfile import ZipFile, ZipInfo, ZIP_STORED
 
 
 _STYLES = """
@@ -1657,6 +1658,60 @@ def _render_review_bundle_packet_html(packet, *, source_sha256=None) -> str:
         "Keep source-owner, security/privacy and HUMAN GO gates separate.</footer>"
         "</body></html>\n"
     )
+
+
+def _render_review_bundle_packet_zip(packet, *, source_sha256=None) -> bytes:
+    """Deterministic, offline three-format HUMAN handoff from one admitted packet.
+
+    Fixed filenames only, stored ZIP entries, no input-controlled archive
+    paths and no original private source JSON. Manifest hashes attest bytes
+    *inside this unsigned file*, not who supplied the input or its truth.
+    """
+    admitted = packet.get("input_admitted") is True
+    safe_packet = packet if admitted else {
+        "input_admitted": False, "source_status": "HOLD",
+    }
+    digest = source_sha256 if admitted else None
+    entries = (
+        ("human-review.html", _render_review_bundle_packet_html(
+            safe_packet, source_sha256=digest,
+        ).encode("utf-8")),
+        ("human-review.csv", _render_review_bundle_packet_csv(
+            safe_packet, source_sha256=digest,
+        ).encode("utf-8")),
+        ("human-review.md", _render_review_bundle_packet_markdown(
+            safe_packet, source_sha256=digest,
+        ).encode("utf-8")),
+    )
+    manifest = {
+        "schema_version": 1,
+        "package_type": "lightup_offline_human_handoff",
+        "source_status": packet["source_status"] if admitted else "HOLD",
+        "input_admitted": admitted,
+        "received_json_sha256": digest,
+        "artifacts": [
+            {"name": filename, "sha256": sha256(data).hexdigest()}
+            for filename, data in entries
+        ],
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+        "source_provenance_authenticated": False,
+    }
+    manifest_data = (
+        json_dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
+    archive_bytes = BytesIO()
+    with ZipFile(archive_bytes, "w", compression=ZIP_STORED,
+                 allowZip64=False) as archive:
+        for filename, data in (("manifest.json", manifest_data), *entries):
+            metadata = ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
+            metadata.compress_type = ZIP_STORED
+            metadata.create_system = 3
+            metadata.external_attr = 0o100600 << 16
+            archive.writestr(metadata, data)
+    return archive_bytes.getvalue()
 
 
 def render_human_actions_html(result, *, cohort: bool = False,

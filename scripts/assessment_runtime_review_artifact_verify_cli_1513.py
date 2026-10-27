@@ -21,6 +21,7 @@ _RENDERERS = {
     "bundle-html": reports._render_review_bundle_packet_html,
     "bundle-csv": reports._render_review_bundle_packet_csv,
     "bundle-md": reports._render_review_bundle_packet_markdown,
+    "bundle-zip": reports._render_review_bundle_packet_zip,
 }
 
 
@@ -74,7 +75,11 @@ def _verify_complete_artifact_set(
         for output_format, artifact_path in artifacts:
             rendered = _RENDERERS[output_format](
                 packet, source_sha256=source_digest,
-            ).encode("utf-8")
+            )
+            # HTML/CSV/Markdown are text, but the fixed-entry ZIP is bytes.
+            # Compare exact bytes without normalizing archive structure.
+            if type(rendered) is str:
+                rendered = rendered.encode("utf-8")
             received = _read_private_bundle(artifact_path)
             if not compare_digest(rendered, received):
                 return failure

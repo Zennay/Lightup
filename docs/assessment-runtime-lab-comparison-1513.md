@@ -780,7 +780,7 @@ No browser upload, external fonts/assets, forms, network access or
 authorizing button. Invalid or unsafe local files create a
 generic zero-case HOLD receipt in the original JSON/text/HTML formats,
 a generic zero-case HOLD full page in bundle-HTML, and a fixed input_hold
-row in bundle-CSV, and a source-free generic HOLD notice in bundle-MD. Exit codes remain
+row in bundle-CSV, and a source-free generic HOLD notice in bundle-MD, and an archive of only fixed generic HOLD views plus a source-free manifest in bundle-ZIP. Exit codes remain
 `2` for a structurally consistent source `REVIEW_ONLY`, otherwise
 `3`; the receipt is never a completion certificate.
 
@@ -927,6 +927,48 @@ PYTHONPATH=src python scripts/assessment_runtime_review_artifact_verify_cli_1513
   private-bundle.json received-human-review.html
 ```
 
+### One-file, deterministic offline HUMAN review handoff
+
+Use `--format bundle-zip` if separate HTML, CSV and Markdown transfers are
+impractical. The receiving inspector reads/admissibly validates the **exact
+JSON once** and creates one deterministic, uncompressed ZIP from the same
+in-memory packet. It contains **only four fixed file names**:
+
+- `manifest.json`: source-admitted/HOLD status, the admitted original JSON
+  SHA-256 (or `null` on rejected input), exact SHA-256 for each of the three
+  packed exports and five explicit `false` authority/provenance fields.
+- `human-review.html`: complete script-free, CSP-restricted review page.
+- `human-review.csv`: complete fixed-column case and aggregate ledger.
+- `human-review.md`: complete editable, unchecked HUMAN review checklist.
+
+Every member has a fixed DOS-epoch timestamp, no compression or dynamic
+archive name, and permissions set for a private file. The original JSON,
+targets, credentials, source paths, free-form notes and network addresses are
+**never embedded**. Invalid/rejected source JSON produces an archive containing
+only generic HOLD views and a source-free HOLD manifest. The ZIP is unsigned:
+embedded hashes indicate internal byte consistency, **not** authenticated
+provenance, true evidence, consent or release authorization.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \
+  --format bundle-zip private-bundle.json > received-human-handoff.zip
+
+PYTHONPATH=src python scripts/assessment_runtime_review_artifact_verify_cli_1513.py \
+  --format bundle-zip --expected-sha256 "$INDEPENDENT_SOURCE_SHA256" \
+  private-bundle.json received-human-handoff.zip
+```
+
+The verifier re-renders and compares the **entire ZIP binary** byte-for-byte,
+including all four entries, manifest, timestamps and metadata. No unzipping
+of untrusted input, deserialization of archive members, extracted paths or
+external network action is needed. Any changed, omitted or re-encoded byte
+gives the identical generic HOLD result without partial details. The same
+exact output schema and exit codes apply as to `bundle-html`, `bundle-csv`
+and `bundle-md`: 2 only when byte equality and source-reported
+`REVIEW_ONLY` both hold, otherwise 3. ZIP output requires binary stdout;
+use a byte-preserving shell/transfer and keep the original JSON alongside
+the archive for any later re-verification.
+
 ### All-or-nothing verification of a complete HUMAN handoff set
 
 When the reviewer receives **all three** formats, use one `bundle-set`
@@ -992,7 +1034,7 @@ for review but never becomes approval. No Markdown file is automatically
 uploaded to Notion or to another service; transfer stays under human control.
 
 For a transfer where the human reviewer already possesses a **separately
-verified expected SHA-256** of the exact source JSON bytes, all six
+verified expected SHA-256** of the exact source JSON bytes, all seven
 receiving formats also accept opt-in `--expected-sha256` (exactly 64
 hexadecimal characters). The hash check occurs **after** the symlink-
 and race-hardened bounded read and **before** parsing/review. Incorrect,
