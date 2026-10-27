@@ -104,6 +104,13 @@ label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0
 .report-kpis .card { margin-bottom:0; }
 .report-kpis strong { font-size:1.3rem; }
 .report-copy { white-space:pre-wrap; overflow-wrap:anywhere; }
+.report-agenda { border-left:4px solid var(--accent); }
+.report-agenda h2 { margin:8px 0 12px; }
+.report-agenda ol { padding-left:22px; margin:12px 0 0; }
+.report-agenda li { padding:10px 0; border-bottom:1px solid var(--line); }
+.report-agenda li:last-child { border-bottom:0; }
+.report-agenda li p { margin:4px 0; overflow-wrap:anywhere; }
+.report-agenda li a { min-height:44px; display:inline-flex; align-items:center; }
 .report-digest code { display:block; overflow-wrap:anywhere; font-size:.9rem;
                       line-height:1.5; user-select:all; }
 .report-table { border-collapse:collapse; width:100%; table-layout:fixed; }
@@ -2550,6 +2557,26 @@ class LightUpWebApp:
         }
         if any(f.retest_status not in finding_statuses for f in findings):
             raise ValueError("unrecognized original report finding state")
+        human_actions = {
+            RetestStatus.REGRESSION: (
+                "Review this returning vulnerability with the responsible "
+                "human owner and reconsider the recorded proposed fix. "
+                "Any later retest requires separate authorization."
+            ),
+            RetestStatus.FIX_PENDING: (
+                "Assign a human remediation owner and review the proposed "
+                "fix. Do not mark this finding verified or resolved."
+            ),
+            RetestStatus.NOT_TESTED: (
+                "Review the recorded remediation and request separate "
+                "independently authorized verification if appropriate. "
+                "No retest result is currently recorded."
+            ),
+            RetestStatus.FIXED: (
+                "Preserve the original fix history; continue to check "
+                "coverage and independent scope boundaries."
+            ),
+        }
         severity_order = {
             "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
         }
@@ -2622,10 +2649,11 @@ class LightUpWebApp:
                 f'{rows}</tbody></table></section>'
             )
 
-        def finding_card(f) -> str:
+        def finding_card(f, ordinal: int, *, fixed: bool) -> str:
             label, meaning = finding_statuses[f.retest_status]
+            anchor = f"report-{'fixed' if fixed else 'open'}-{ordinal}"
             return (
-                '<article class="card report-section">'
+                f'<article class="card report-section" id="{_e(anchor)}">'
                 '<div class="row">'
                 f'<h3>{_e(f.title)}</h3>'
                 f'<span class="badge">{_e(label)}</span></div>'
@@ -2635,7 +2663,9 @@ class LightUpWebApp:
                 '<h4>Proposed remediation</h4>'
                 f'<p class="report-copy">{_e(f.remediation or "No remediation recorded")}</p>'
                 '<h4>Recorded retest state</h4>'
-                f'<p>{_e(meaning)}</p></article>'
+                f'<p>{_e(meaning)}</p>'
+                '<h4>Human follow-up</h4>'
+                f'<p>{_e(human_actions[f.retest_status])}</p></article>'
             )
 
         scope_cards = "".join(
@@ -2678,6 +2708,7 @@ class LightUpWebApp:
                 "retest_status": f.retest_status.value,
                 "human_label": label,
                 "human_meaning": meaning,
+                "recommended_human_follow_up": human_actions[f.retest_status],
             }
 
         # IDs, raw target assets, evidence references, permission
@@ -2710,6 +2741,16 @@ class LightUpWebApp:
                 "engagements": coverage_data,
             },
             "findings": {
+                "first_human_actions": [
+                    {
+                        "report_local_priority": index,
+                        "title": f.title,
+                        "severity": f.severity.value,
+                        "retest_status": f.retest_status.value,
+                        "recommended_human_follow_up": human_actions[f.retest_status],
+                    }
+                    for index, f in enumerate(follow_up[:3], 1)
+                ],
                 "open_human_follow_up": [
                     finding_payload(f) for f in follow_up
                 ],
@@ -2768,6 +2809,30 @@ class LightUpWebApp:
                 )],
             )
 
+        first_actions = "".join(
+            '<li class="report-action">'
+            f'<strong>{_e(f.title)}</strong>'
+            f'<p class="meta">{_e(f.severity.value)} severity · '
+            f'{_e(finding_statuses[f.retest_status][0])}</p>'
+            f'<p>{_e(human_actions[f.retest_status])}</p>'
+            f'<a href="#report-open-{index}">Read the original finding '
+            'details in this report</a></li>'
+            for index, f in enumerate(follow_up[:3], 1)
+        )
+        agenda = (
+            '<section class="card report-section report-agenda" '
+            'aria-labelledby="report-agenda-heading">'
+            '<span class="badge lock">HUMAN action only · no automatic testing</span>'
+            '<h2 id="report-agenda-heading">First human follow-ups</h2>'
+            f'<p>{len(follow_up)} recorded finding(s) still need review. '
+            'The three items below are ordered by recorded regression first, '
+            'then severity. These are not new measurements or permissions.</p>'
+            + (f'<ol>{first_actions}</ol>' if first_actions else
+               '<p class="empty">No unresolved findings recorded. '
+               'Review the coverage and scope HOLD sections below '
+               'before making any safety claims.</p>')
+            + '</section>'
+        )
         body = (
             '<div class="print-controls">'
             f'<p><a href="/portal/{_e(client_id)}">Back to client overview</a> · '
@@ -2796,7 +2861,8 @@ class LightUpWebApp:
             'completion claim, verified remediation, current consent or '
             'approval to scan. Unknown coverage must not be treated as safe.</p>'
             '</section>'
-            '<div class="grid report-kpis">'
+            + agenda
+            + '<div class="grid report-kpis">'
             f'<div class="card"><strong>{len(follow_up)}</strong>'
             '<p class="meta">Findings needing human follow-up</p></div>'
             f'<div class="card"><strong>{regressions}</strong>'
@@ -2821,11 +2887,17 @@ class LightUpWebApp:
               '<h2 id="report-findings-heading">3 · Finding → impact → fix → retest</h2>'
               '<p>Regressions first, then recorded severity. This is a '
               'human worklist, not an automatic remediation or retest.</p>'
-            + ("".join(finding_card(f) for f in follow_up) or
+            + ("".join(
+                finding_card(f, index, fixed=False)
+                for index, f in enumerate(follow_up, 1)
+            ) or
                '<p class="empty">No unresolved findings recorded. '
                'Check unknown or partial coverage before interpreting this.</p>')
             + f'<h3>Recorded fixed finding history ({len(recorded_fixed)})</h3>'
-            + ("".join(finding_card(f) for f in recorded_fixed) or
+            + ("".join(
+                finding_card(f, index, fixed=True)
+                for index, f in enumerate(recorded_fixed, 1)
+            ) or
                '<p class="empty">No findings marked fixed.</p>')
             + '</section>'
             + '<section aria-labelledby="report-hold-heading">'
