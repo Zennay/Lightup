@@ -1,0 +1,521 @@
+"""Offline native CLI contract for #1533; no real targets or handler execution."""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+from test_scope_offline_cli_native_io_alias_20261014 import _NATIVE_ALIAS_TRIPWIRE
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "scripts/review_scope_tooloutput_synthetic_1533.py"
+SCHEMA = "lightup.scope1533.synthetic.v1"
+FALSE_KEYS = (
+    "authorization_verified", "consent_verified", "permit_issued",
+    "dispatch_allowed", "execution_enabled", "merge_approved", "release_approved",
+)
+
+
+def _envelope(items):
+    return {"schema": SCHEMA, "synthetic_only": True, "items": items}
+
+
+def _row(summary="synthetic fixture", kind="note", payload_hex="ff00"):
+    return {"summary": summary, "kind": kind, "payload_hex": payload_hex}
+
+
+class OfflineToolOutputCliTests(unittest.TestCase):
+    def run_cli(self, data: bytes, *args: str, expected: str):
+        result = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", str(SCRIPT), *args],
+            cwd=ROOT, input=data, capture_output=True, timeout=8, check=False,
+        )
+        self.assertEqual(result.returncode, 3 if expected == "REVIEW_ONLY" else 2, result.stderr)
+        self.assertEqual(result.stderr, b"", "never leak parse errors or input")
+        self.assertEqual(len(result.stdout.splitlines()), 1)
+        self.assertLess(len(result.stdout), 300)
+        receipt = json.loads(result.stdout)
+        self.assertEqual(receipt["schema"], "lightup.scope1533.receipt.v1")
+        self.assertEqual(receipt["status"], expected)
+        self.assertEqual(set(receipt), {"schema", "status", *FALSE_KEYS})
+        for name in FALSE_KEYS:
+            self.assertIs(receipt[name], False)
+        self.assertNotIn(b"synthetic fixture", result.stdout)
+        return receipt
+
+
+
+    def test_stream_read_oserrors_fail_closed_without_traceback(self):
+        # Inject a broken stdin source in an isolated interpreter, preserving
+        # the real CLI's entrypoint rather than replacing production checks.
+        program = """import runpy,sys
+class BrokenStream:
+    def read(self, _limit):
+        raise OSError('SYNTHETIC_STDIN_SECRET_NEVER_LEAK')
+class BrokenStdin:
+    buffer = BrokenStream()
+entry = runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+sys.stdin = BrokenStdin()
+raise SystemExit(entry['main']([]))
+"""
+        result = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8, check=False,
+        )
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertEqual(result.stderr, b"", "stdin failure should not expose traceback")
+        receipt = json.loads(result.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        for flag in FALSE_KEYS:
+            self.assertIs(receipt[flag], False)
+
+
+    def test_missing_stdin_buffer_is_generic_hold_not_traceback(self):
+        program = """import runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class MissingBuffer: pass
+sys.stdin=MissingBuffer()
+raise SystemExit(entry['main']([]))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        for field in FALSE_KEYS:
+            self.assertIs(receipt[field], False)
+
+    def test_broken_receipt_output_has_nonzero_exit_and_no_error_leak(self):
+        # A failed reply channel cannot produce an accurate JSON receipt.
+        # Never fall back to stdout/stderr traceback or a success exit.
+        program = """import runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class BrokenOutput:
+    def write(self, message):
+        raise BrokenPipeError('SYNTHETIC_RESPONSE_SECRET_NEVER_LEAK')
+original=sys.stdout
+try:
+    sys.stdout=BrokenOutput()
+    code=entry['main'](['--unsupported'])
+finally:
+    sys.stdout=original
+raise SystemExit(code)
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        self.assertEqual(child.stdout, b"", "no output channel means no receipt")
+
+
+    def test_delayed_receipt_flush_error_does_not_exit_success(self):
+        # CPython may buffer stdout: write() can return normally even when
+        # the final flush cannot deliver the receipt. No authority or 0 exit.
+        program = """import runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class LateBrokenOutput:
+    def write(self, payload):
+        return len(payload)
+    def flush(self):
+        raise BrokenPipeError('SYNTHETIC_FLUSH_SECRET_NEVER_LEAK')
+sys.stdout=LateBrokenOutput()
+raise SystemExit(entry['main'](['--unsupported']))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"", "flush failure must not leak tracebacks")
+        self.assertEqual(child.stdout, b"")
+
+
+    def test_partial_or_false_stdout_write_is_never_review_success(self):
+        # A write() may return without an exception while confirming fewer
+        # characters than requested. Treat it as undelivered evidence receipt.
+        for accepted_chars in ("0", "1", "None", "True"):
+            with self.subTest(writer_response=accepted_chars):
+                program = """import io,json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class FakeStdin:
+    buffer=io.BytesIO(json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                                  "synthetic_only":True,"items":[
+                                   {"summary":"fixture","kind":"note","payload_hex":"aa"}]}).encode())
+class PartialOutput:
+    def write(self, message):
+        return %s
+    def flush(self):
+        return None
+sys.stdin=FakeStdin()
+sys.stdout=PartialOutput()
+raise SystemExit(entry['main']([]))
+""" % accepted_chars
+                child = subprocess.run(
+                    [sys.executable, "-I", "-S", "-B", "-c", program],
+                    cwd=ROOT, input=b"", capture_output=True, timeout=8,
+                )
+                self.assertEqual(child.returncode, 2, child.stderr)
+                self.assertEqual(child.stdout, b"")
+                self.assertEqual(child.stderr, b"")
+
+
+    def test_fragmented_stdin_cannot_approve_valid_prefix_with_trailing_bytes(self):
+        # A legitimate read(n) may return fewer than n bytes without EOF.
+        # One-shot reading can incorrectly approve a valid prefix even though
+        # untrusted bytes still follow in the same logical input stream.
+        program = """import io,json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+valid=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                  "synthetic_only":True,"items":[
+                    {"summary":"safe fixture","kind":"note","payload_hex":"ab"}]}).encode()
+class Fragmented:
+    def __init__(self):
+        self.pending=[valid,b'\\x00INJECTED_TRAILING_BYTES',b'']
+    def read(self, limit):
+        piece=self.pending.pop(0)
+        if len(piece)>limit: raise AssertionError('over-read')
+        return piece
+class FakeStdin: pass
+source=FakeStdin()
+source.buffer=Fragmented()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8, check=False,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        for name in FALSE_KEYS:
+            self.assertIs(receipt[name], False)
+
+    def test_fragmented_valid_input_is_assembled_and_reviewed_only(self):
+        program = """import json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+valid=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                  "synthetic_only":True,"items":[
+                    {"summary":"synthetic","kind":"note","payload_hex":"ab"}]}).encode()
+chunks=[bytes([b]) for b in valid]+[b'']
+class Fragmented:
+    def read(self, limit):
+        piece=chunks.pop(0)
+        if len(piece)>limit: raise AssertionError('over-read')
+        return piece
+class FakeStdin: pass
+source=FakeStdin()
+source.buffer=Fragmented()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8, check=False,
+        )
+        self.assertEqual(child.returncode, 3, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "REVIEW_ONLY")
+        for name in FALSE_KEYS:
+            self.assertIs(receipt[name], False)
+
+
+    def test_exact_stdin_ceiling_at_eof_and_one_byte_overflow(self):
+        # The 65,536-byte budget applies across all reads, not per fragment.
+        for overflow in (0, 1):
+            with self.subTest(over_ceiling=bool(overflow)):
+                code = """import io,json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+valid=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                  "synthetic_only":True,"items":[
+                    {"summary":"synthetic","kind":"note","payload_hex":"aa"}]}).encode()
+data=valid + b' '*(65536+%d-len(valid))
+class ChunkReader:
+    def __init__(self, payload):
+        self.payload=payload
+        self.offset=0
+        self.calls=0
+    def read(self, maximum):
+        self.calls+=1
+        part=self.payload[self.offset:self.offset+min(maximum, 2039)]
+        self.offset+=len(part)
+        return part
+class Input: pass
+source=Input()
+source.buffer=ChunkReader(data)
+sys.stdin=source
+code=entry['main']([])
+if source.buffer.calls < 32: raise SystemExit(99)
+raise SystemExit(code)
+""" % overflow
+                child = subprocess.run(
+                    [sys.executable, "-I", "-S", "-B", "-c", code],
+                    cwd=ROOT, input=b"", capture_output=True, timeout=8,
+                )
+                expected = "HOLD" if overflow else "REVIEW_ONLY"
+                self.assertEqual(child.returncode, 2 if overflow else 3, child.stderr)
+                self.assertEqual(child.stderr, b"")
+                receipt = json.loads(child.stdout)
+                self.assertEqual(receipt["status"], expected)
+                for key in FALSE_KEYS:
+                    self.assertIs(receipt[key], False)
+
+    def test_shortread_stream_anomalies_never_approve_review(self):
+        # A fake raw reader may return bytes-like aliases or more than asked:
+        # the CLI must accept only real bytes whose total stays bounded.
+        for response in ("bytearray(b'x')", "memoryview(b'x')", "None",
+                         "b'x'*65538"):
+            with self.subTest(response=response):
+                code = """import runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class Reader:
+    def read(self, maximum):
+        return %s
+class Input: pass
+source=Input()
+source.buffer=Reader()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+""" % response
+                child = subprocess.run(
+                    [sys.executable, "-I", "-S", "-B", "-c", code],
+                    cwd=ROOT, input=b"", capture_output=True, timeout=8,
+                )
+                self.assertEqual(child.returncode, 2, child.stderr)
+                self.assertEqual(child.stderr, b"")
+                self.assertEqual(json.loads(child.stdout)["status"], "HOLD")
+
+
+    def test_every_json_split_position_preserves_exact_eof_semantics(self):
+        # Exercise every byte seam (including escaped braces and quotes) in a
+        # single isolated child without dozens of expensive process launches.
+        program = """import io,json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+valid=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                  "synthetic_only":True,"items":[
+                    {"summary":'escaped { braces } backslash \\\\ quote "',
+                     "kind":"note","payload_hex":"00ff"}]}).encode()
+class Fragmented:
+    def __init__(self, slices):
+        self.slices=list(slices)+[b'']
+    def read(self, limit):
+        part=self.slices.pop(0)
+        if len(part)>limit: raise AssertionError('wrong bounded read budget')
+        return part
+class Stdin: pass
+real_in,real_out=sys.stdin,sys.stdout
+try:
+    for cut in range(1,len(valid)):
+        for trailer,expected_status,expected_exit in (
+            (b'', 'REVIEW_ONLY', 3),(b'EVIL_EXTRA_BYTES', 'HOLD', 2)):
+            fake=Stdin()
+            fake.buffer=Fragmented((valid[:cut],valid[cut:],trailer))
+            sink=io.StringIO()
+            sys.stdin=fake
+            sys.stdout=sink
+            code=entry['main']([])
+            receipt=json.loads(sink.getvalue())
+            if code!=expected_exit or receipt['status']!=expected_status:
+                raise AssertionError(('chunk-seam',cut,code,receipt['status']))
+            for flag in ('authorization_verified','consent_verified',
+                         'permit_issued','dispatch_allowed','execution_enabled',
+                         'merge_approved','release_approved'):
+                if receipt[flag] is not False:
+                    raise AssertionError(('authority-escape',cut,flag))
+finally:
+    sys.stdin=real_in
+    sys.stdout=real_out
+print('ALL_JSON_BYTE_SEAMS_REMAIN_NON_AUTHORIZING')
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 0, child.stderr)
+        self.assertEqual(child.stdout, b"ALL_JSON_BYTE_SEAMS_REMAIN_NON_AUTHORIZING\n")
+        self.assertEqual(child.stderr, b"")
+
+
+    def test_excessive_shortread_callbacks_are_bounded_independently_of_bytes(self):
+        # A malicious/buggy source may return a one-byte fragment per call.
+        # Input size alone does not bound Python-level callback count.
+        program = """import json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+raw=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                "synthetic_only":True,"items":[
+                    {"summary":"synthetic","kind":"note","payload_hex":"ff"}]}).encode()
+raw+=b' '*(5000-len(raw))
+class TinyReader:
+    def __init__(self):
+        self.calls=0
+    def read(self, max_bytes):
+        if max_bytes<1: raise AssertionError('bad read limit')
+        at=self.calls
+        self.calls+=1
+        return raw[at:at+1]
+class FakeStdin: pass
+source=FakeStdin()
+source.buffer=TinyReader()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        for name in FALSE_KEYS:
+            self.assertIs(receipt[name], False)
+
+
+    def test_shortread_operation_limit_exactly_4096_including_eof(self):
+        # 4095 one-byte fragments plus EOF are accepted; 4096 fragments plus
+        # required EOF exceed the *operation* budget and must remain HOLD.
+        for byte_count, expected_code in ((4095, 3), (4096, 2)):
+            with self.subTest(reads_before_eof=byte_count):
+                program = """import json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+raw=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                "synthetic_only":True,"items":[
+                    {"summary":"synthetic","kind":"note","payload_hex":"ff"}]}).encode()
+raw+=b' '*(%d-len(raw))
+class Reader:
+    def __init__(self):
+        self.at=0
+    def read(self, maximum):
+        part=raw[self.at:self.at+1]
+        self.at+=len(part)
+        return part
+class Input: pass
+source=Input()
+source.buffer=Reader()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+""" % byte_count
+                result = subprocess.run(
+                    [sys.executable, "-I", "-S", "-B", "-c", program],
+                    cwd=ROOT, input=b"", capture_output=True, timeout=8,
+                )
+                self.assertEqual(result.returncode, expected_code, result.stderr)
+                self.assertEqual(result.stderr, b"")
+                receipt = json.loads(result.stdout)
+                self.assertEqual(receipt["status"],
+                                 "REVIEW_ONLY" if expected_code == 3 else "HOLD")
+                for key in FALSE_KEYS:
+                    self.assertIs(receipt[key], False)
+
+    def test_real_cli_under_original_native_no_io_tripwire(self):
+        # Reuse the existing owner's unchanged guard fixture. This is a
+        # Python-level interposition test, not a kernel sandbox or consent.
+        with tempfile.TemporaryDirectory(prefix="scope1533-synthetic-io-") as tmp:
+            sandbox = Path(tmp)
+            sitecustomize = sandbox / "sitecustomize.py"
+            sitecustomize.write_text(_NATIVE_ALIAS_TRIPWIRE, encoding="utf-8")
+            before = hashlib.sha256(sitecustomize.read_bytes()).hexdigest()
+            env = os.environ.copy()
+            env["PYTHONPATH"] = os.pathsep.join(
+                (str(sandbox), str(ROOT / "src"), str(ROOT))
+            )
+            env["PYTHONNOUSERSITE"] = "1"
+            env.pop("PYTHONPYCACHEPREFIX", None)
+            env["LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT"] = str(SCRIPT)
+            env["LIGHTUP_SCOPE_SOURCE_ROOT"] = str(ROOT / "src/lightup")
+            env["LIGHTUP_SCOPE_SCRIPTS_ROOT"] = str(ROOT / "scripts")
+            for items, expected in [
+                ([_row(kind="http-baseline-observation")], "REVIEW_ONLY"),
+                ([_row(kind="not/allowed")], "HOLD"),
+                ([_row(), _row(kind="INVALID")], "HOLD"),
+            ]:
+                with self.subTest(outcome=expected, item_count=len(items)):
+                    child = subprocess.run(
+                        [sys.executable, "-B", str(SCRIPT)],
+                        cwd=sandbox, input=json.dumps(_envelope(items)).encode(),
+                        env=env, capture_output=True, timeout=8, check=False,
+                    )
+                    self.assertEqual(child.returncode, 3 if expected == "REVIEW_ONLY" else 2,
+                                     "native tripwire unexpectedly denied the CLI")
+                    self.assertEqual(child.stderr, b"")
+                    receipt = json.loads(child.stdout)
+                    self.assertEqual(receipt["status"], expected)
+                    for key in FALSE_KEYS:
+                        self.assertIs(receipt[key], False)
+                    self.assertEqual(
+                        {p.name for p in sandbox.iterdir()}, {"sitecustomize.py"},
+                        "offline CLI must never create files",
+                    )
+                    self.assertEqual(
+                        hashlib.sha256(sitecustomize.read_bytes()).hexdigest(),
+                        before,
+                        "offline CLI must never modify its import guard",
+                    )
+
+    def test_single_and_max_batch_do_not_grant_authority(self):
+        for count in (1, 2, 16, 32):
+            with self.subTest(count=count):
+                data = json.dumps(_envelope([_row()] * count)).encode()
+                self.run_cli(data, expected="REVIEW_ONLY")
+
+    def test_rejected_input_forms_have_identical_privacy_minimal_receipt(self):
+        valid = _envelope([_row()])
+        bad = [
+            b"", b"\xff", b"null", b"[]", b"{}", b"NaN", b"Infinity",
+            b'{"schema":"lightup.scope1533.synthetic.v1","synthetic_only":true,"items":[]}',
+            json.dumps(_envelope([_row()] * 33)).encode(),
+            json.dumps({**valid, "synthetic_only": False}).encode(),
+            json.dumps({**valid, "synthetic_only": "true"}).encode(),
+            json.dumps({**valid, "unknown": "injected"}).encode(),
+            json.dumps(_envelope([_row(payload_hex="0")])).encode(),
+            json.dumps(_envelope([_row(payload_hex="AA")])).encode(),
+            json.dumps(_envelope([_row(payload_hex="ff ff")])).encode(),
+            json.dumps(_envelope([_row(kind="note\\nmalicious")])).encode(),
+            json.dumps(_envelope([_row(summary="synthetic\u202e")])).encode(),
+            json.dumps(_envelope([{"summary": "a", "kind": "note", "payload_hex": "ff", "extra": "x"}])).encode(),
+            b'{"schema":"lightup.scope1533.synthetic.v1","synthetic_only":true,"items":[{"summary":"s","kind":"note","kind":"note","payload_hex":""}]}',
+            b'{"schema":"lightup.scope1533.synthetic.v1","synthetic_only":true,"items":[{"summary":"s","kind":"note","payload_hex":""}],"items":[]}',
+            json.dumps(_envelope([_row(payload_hex="0" * 65537)])).encode(),
+            b"{" * 64 + b"}" * 64,
+            b'{"schema":"lightup.scope1533.synthetic.v1","synthetic_only":true,"items":[1]}',
+            json.dumps(_envelope([_row(summary=123)])).encode(),
+        ]
+        golden = None
+        for candidate in bad:
+            with self.subTest(case=candidate[:45]):
+                receipt = self.run_cli(candidate, expected="HOLD")
+                if golden is None:
+                    golden = receipt
+                self.assertEqual(receipt, golden)
+
+    def test_one_invalid_item_holds_entire_synthetic_batch(self):
+        for position in range(32):
+            items = [_row()] * 32
+            items[position] = _row(kind="not/allowed")
+            self.run_cli(json.dumps(_envelope(items)).encode(), expected="HOLD")
+
+    def test_no_args_and_bounded_stdin(self):
+        good = json.dumps(_envelope([_row()])).encode()
+        self.run_cli(good, "--activate", expected="HOLD")
+        self.run_cli(good + b" " * 66_000, expected="HOLD")
+        self.run_cli(good + b" trailing", expected="HOLD")
+
+    def test_false_review_cannot_contain_payload_or_summary_even_with_sensitive_looking_input(self):
+        secret = "SHOULD_NEVER_APPEAR_IN_RECEIPT"
+        self.run_cli(json.dumps(_envelope([_row(summary=secret)])).encode(), expected="REVIEW_ONLY")
+
+
+if __name__ == "__main__":
+    unittest.main()
