@@ -7,7 +7,7 @@ It never authorizes an assessment, probes assets, or dispatches a tool.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import isfinite
 
 from .orchestration import RunContext
@@ -65,14 +65,23 @@ def _valid_label(value: object) -> bool:
 def _valid_utc_instant(value: object) -> bool:
     """Reject naive, non-UTC, subclassed or malformed timestamps."""
     if type(value) is datetime:
-        return value.tzinfo is not None and value.utcoffset() == timedelta(0)
+        # datetime can hold an arbitrary user-defined tzinfo. Calling
+        # utcoffset() on it executes that object's code and may raise, even
+        # though this comparison promises a pure, fail-closed lab diagnostic.
+        # Real producer contexts use datetime.timezone.utc; require the
+        # exact built-in fixed-offset timezone before invoking any method.
+        return (
+            type(value.tzinfo) is timezone
+            and value.utcoffset() == timedelta(0)
+        )
     if not _valid_label(value) or "T" not in value:
         return False
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError:
         return False
-    return parsed.tzinfo is not None and parsed.utcoffset() == timedelta(0)
+    # fromisoformat constructs only built-in fixed-offset tzinfo objects.
+    return _valid_utc_instant(parsed)
 
 
 def _valid_metrics(value: object) -> bool:

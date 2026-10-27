@@ -8,6 +8,17 @@ Opt-in, read-only comparison of two *already-recorded* `EvaluationRecord` object
 
 Different planner/model revisions can improve overall findings while silently worsening specific benchmark categories. `compare_lab_evaluations` returns stable per-metric old/new/delta entries in declared order, plus the exact adverse metric names. It blocks comparison of different scenario IDs, non-lab context, mismatched run/engagement provenance, malformed numeric data (including known pending `EvaluationMetrics.validate` issue #834), subclass/type confusion and non-finite numbers.
 
+The in-memory context timestamp admission now also rejects arbitrary
+application-defined `tzinfo` objects **before** invoking `utcoffset()`.
+Such objects can execute callback code or throw during a supposedly pure
+comparison, breaking the fail-closed `HOLD` contract. Only the standard
+Python fixed-offset `datetime.timezone` class with exact zero UTC offset
+is accepted on context `datetime` values; the existing producer creates
+`datetime.now(timezone.utc)`, so normal lab records are unaffected.
+Recorded ISO-8601 timestamp strings still parse into built-in fixed-offset
+timezone values. No asset/network/process action, grant or release result is
+introduced.
+
 A degraded primary metric returns **HOLD**; a syntactically consistent comparison without primary regressions returns **REVIEW_ONLY**. Performance/runtime and monetary cost deltas are informational, not gating. `REVIEW_ONLY` is *never* a pass to release or execute. Both records and their contexts are supplied by the caller; matching them does **not** establish authentic provenance, client/operator consent, revocation-at-use, independent security review, or actual ground truth.
 
 Example (offline, in-process):
