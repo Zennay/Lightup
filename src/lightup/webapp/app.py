@@ -336,6 +336,25 @@ def _risk_choice_cards(prefix: str, selected: str = "",
     )
 
 
+def _human_follow_up_order(findings):
+    """Stable original-evidence ordering shared by portal and private report.
+
+    Recorded regressions come first, then severity. Sorting does not perform
+    verification, approve a retest, or grant any execution capability.
+    """
+    severity_order = {
+        "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
+    }
+    return sorted(
+        (item for item in findings if item.retest_status is not RetestStatus.FIXED),
+        key=lambda item: (
+            item.retest_status is not RetestStatus.REGRESSION,
+            severity_order.get(item.severity.value, 5),
+            item.title.casefold(), item.impact or "", item.remediation or "",
+        ),
+    )
+
+
 def _request_progress(status: RequestStatus) -> list[dict[str, str]]:
     """Human-readable stages; never infer a live grant or activation."""
     if type(status) is not RequestStatus:
@@ -2344,6 +2363,47 @@ class LightUpWebApp:
             item.retest_status is RetestStatus.REGRESSION
             for item in outstanding_findings
         )
+        # Surface actionable recorded evidence without hiding the required
+        # request, scope and coverage steps. Reuse the report's exact ordering,
+        # so the first three suggestions match the private HUMAN handoff.
+        human_followups = _human_follow_up_order(outstanding_findings)
+        follow_up_guidance = {
+            RetestStatus.REGRESSION: (
+                "Ask the responsible person to review the returning finding "
+                "and its originally proposed fix."
+            ),
+            RetestStatus.FIX_PENDING: (
+                "Assign a human owner to review the recorded proposed fix."
+            ),
+            RetestStatus.NOT_TESTED: (
+                "Review the proposed fix; any future retest needs new, "
+                "independent authorization."
+            ),
+        }
+        if any(
+            item.retest_status not in follow_up_guidance
+            for item in human_followups
+        ):
+            raise ValueError("unrecognized original follow-up state")
+        priority_items = "".join(
+            '<li><strong>' + _e(item.title) + '</strong>'
+            f'<p class="meta">{_e(item.severity.value)} severity · '
+            f'{_e(item.retest_status.value.replace("_", " "))}</p>'
+            f'<p>{_e(follow_up_guidance[item.retest_status])}</p></li>'
+            for item in human_followups[:3]
+        )
+        follow_up_board = (
+            '<section class="card" aria-labelledby="follow-up-heading">'
+            '<span class="badge warn">Recorded evidence · HUMAN action only</span>'
+            '<h2 id="follow-up-heading">First findings to review</h2>'
+            f'<p>{len(human_followups)} unresolved recorded finding(s); '
+            'regressions first, then severity. These records do not establish '
+            'current safety or authorize another test.</p>'
+            f'<ol>{priority_items}</ol>'
+            f'<p><a href="/portal/{_e(client_id)}/report#report-agenda-heading">'
+            'Open the full private follow-up report</a></p></section>'
+            if human_followups else ""
+        )
         request_rows = "".join(
             '<section class="card"><div class="row">'
             f'<strong>Request {_e(r.request_id[:8])}</strong>'
@@ -2493,6 +2553,7 @@ class LightUpWebApp:
             + next_action
             + task_links
             + (request_section if show_first_request else "")
+            + follow_up_board
             + coverage_overview
             + scope_board
             + "<div class=\"grid\">"
@@ -2621,14 +2682,7 @@ class LightUpWebApp:
         severity_order = {
             "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
         }
-        follow_up = sorted(
-            (f for f in findings if f.retest_status is not RetestStatus.FIXED),
-            key=lambda f: (
-                f.retest_status is not RetestStatus.REGRESSION,
-                severity_order.get(f.severity.value, 5),
-                f.title.casefold(), f.impact or "", f.remediation or "",
-            ),
-        )
+        follow_up = _human_follow_up_order(findings)
         recorded_fixed = sorted(
             (f for f in findings if f.retest_status is RetestStatus.FIXED),
             key=lambda f: (
