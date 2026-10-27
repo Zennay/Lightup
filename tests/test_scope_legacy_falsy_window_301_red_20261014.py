@@ -7,6 +7,7 @@ import os
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -31,6 +32,24 @@ def _pure_scope_decision(auth):
         explicit_hosts=frozenset({"scope.fixture.example.test"}),
         require_authorization_for_public=True,
     ).decide(Target(value="scope.fixture.example.test", authorization=auth))
+
+
+def _pure_scope_decision_at(auth, instant):
+    """Exercise the installed scope gate at a fixed synthetic time, not wall time."""
+    original_is_current = Authorization.is_current
+    observed = []
+
+    def at_instant(grant, now=None):
+        if now is not None:
+            raise AssertionError("unexpected scope-supplied time override")
+        observed.append(grant)
+        return original_is_current(grant, instant)
+
+    with patch.object(Authorization, "is_current", at_instant):
+        decision = _pure_scope_decision(auth)
+    if len(observed) != 1 or observed[0] is not auth:
+        raise AssertionError("scope did not evaluate the exact authorization once")
+    return decision
 
 
 class LegacyFalsyBoundaryRedTests(unittest.TestCase):
@@ -108,7 +127,7 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
     def test_all_inputs_remain_unchanged_after_pure_scope_decision(self):
         a = _authorization(start=NOW - timedelta(days=1), end=NOW + timedelta(days=1))
         before = repr(a)
-        self.assertTrue(_pure_scope_decision(a).allowed)
+        self.assertTrue(_pure_scope_decision_at(a, NOW).allowed)
         self.assertEqual(repr(a), before)
 
 
