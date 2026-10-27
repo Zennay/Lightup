@@ -286,8 +286,11 @@ def _parse_case_document(document):
     if type(context_data["created_at"]) is not str:
         raise ValueError("datetime must be a string")
     created = datetime.fromisoformat(context_data["created_at"])
-    if created.utcoffset() != timedelta(0):
-        raise ValueError("lab record requires UTC creation timestamp")
+    # Preserve the exact source-issued UTC ISO spelling; accepting alternate
+    # spellings and normalizing them here would erase source-byte differences.
+    if (created.isoformat() != context_data["created_at"]
+            or created.utcoffset() != timedelta(0)):
+        raise ValueError("lab record requires canonical UTC timestamp")
     context = RunContext(
         run_id=context_data["run_id"],
         client_id=context_data["client_id"],

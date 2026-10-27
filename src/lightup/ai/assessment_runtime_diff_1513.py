@@ -81,8 +81,10 @@ def _valid_utc_instant(value: object) -> bool:
         parsed = datetime.fromisoformat(value)
     except ValueError:
         return False
+    # Source timestamps use datetime.isoformat(); alternate textual aliases
+    # must not silently become the same provenance claim after parsing.
     # fromisoformat constructs only built-in fixed-offset tzinfo objects.
-    return _valid_utc_instant(parsed)
+    return parsed.isoformat() == value and _valid_utc_instant(parsed)
 
 
 def _valid_nonnegative_zero(number: object) -> bool:

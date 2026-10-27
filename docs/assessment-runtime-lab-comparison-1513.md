@@ -15,9 +15,15 @@ comparison, breaking the fail-closed `HOLD` contract. Only the standard
 Python fixed-offset `datetime.timezone` class with exact zero UTC offset
 is accepted on context `datetime` values; the existing producer creates
 `datetime.now(timezone.utc)`, so normal lab records are unaffected.
-Recorded ISO-8601 timestamp strings still parse into built-in fixed-offset
-timezone values. No asset/network/process action, grant or release result is
-introduced.
+Recorded ISO-8601 timestamp strings now require the source producer's exact
+`datetime.isoformat()` round-trip spelling. The opt-in JSON CLI enforces
+the same canonical UTC spelling on the context timestamp *before* it becomes
+a `datetime` object; otherwise aliases such as `Z` vs `+00:00` and
+redundant fractional precision could be accepted as the same source event
+despite different original bytes. Legitimate `datetime.now(timezone.utc)`
+producer fields are unchanged. This is format consistency only, not authenticated
+provenance, consent or a release gate. No asset/network/process action,
+grant or release result is introduced.
 
 A degraded primary metric returns **HOLD**; a syntactically consistent comparison without primary regressions returns **REVIEW_ONLY**. Performance/runtime and monetary cost deltas are informational, not gating. `REVIEW_ONLY` is *never* a pass to release or execute. Both records and their contexts are supplied by the caller; matching them does **not** establish authentic provenance, client/operator consent, revocation-at-use, independent security review, or actual ground truth.
 
