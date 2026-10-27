@@ -406,6 +406,31 @@ class LightUpWebApp:
         # The operator HTML and private JSON use one shared fail-closed
         # aggregate representation; no plan is interpreted as execution.
         portfolio = build_operator_portfolio_review_payload(self.store, ctx)
+        action_labels = {
+            "review_client_requests": "client requests awaiting review",
+            "review_risk_decisions": "risk elevations awaiting review",
+            "review_unrestricted_grants": "unrestricted legacy scopes needing review",
+            "review_expired_grants": "expired request-bound grant windows",
+            "review_future_grants": "not-yet-valid grant windows",
+            "review_missing_grants": "engagements without a request-bound grant",
+        }
+        review_cards = []
+        for item in portfolio["review_queue"]:
+            reasons = "".join(
+                f'<li>{action["count"]} '
+                f'{_e(action_labels[action["kind"]])}</li>'
+                for action in item["actions"]
+            )
+            review_cards.append(
+                '<section class="card"><div class="row">'
+                f'<strong>{_e(item["client_name"])}</strong>'
+                '<span class="badge lock">HOLD · review only</span></div>'
+                f'<p class="meta">{item["review_items"]} attention item(s); '
+                'not consent or an execution permit.</p>'
+                f'<ul>{reasons}</ul>'
+                f'<a href="/clients/{_e(item["client_id"])}/authorization-plan">'
+                'Open private authorization review</a></section>'
+            )
         authorization_rows = []
         for tenant in portfolio["tenants"]:
             client_id = tenant["client_id"]
@@ -442,6 +467,10 @@ class LightUpWebApp:
             "until independent consent, revocation-at-use, source reviews and HUMAN GO. "
             "<a href=\"/assessments\">Review pending requests</a> · "
             "<a href=\"/authorization-overview.json\">Download private portfolio JSON</a>.</p>"
+            "<h3>Human review queue · no automatic activation</h3>"
+            + ("".join(review_cards)
+               or "<p class=\"empty\">No immediate recorded review items.</p>")
+            + "<h3>All client authorization states</h3>"
             + ("".join(authorization_rows)
                or "<p class=\"empty\">No clients yet.</p>")
             + "<div class=\"card\"><div class=\"row\"><strong>Active testing</strong>"
