@@ -1404,6 +1404,64 @@ class LightUpWebApp:
             'View private request details and safety steps</a></section>'
             for r in ordered_requests[:3]
         ) or '<p class="empty">No assessment requests yet.</p>'
+        # One explicit next action at the top, derived only from persisted
+        # request state. This is navigation, never permission or scan readiness.
+        pending = [
+            item for item in ordered_requests
+            if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+        ]
+        if auth.is_operator:
+            action_title = "Review client requests"
+            action_details = (
+                "Operator view is read-only. Independent human decisions "
+                "happen in the operator review inbox."
+            )
+            action_url = "/assessments"
+            action_label = "Open operator decision inbox"
+        elif pending:
+            action_title = "An assessment request is awaiting review"
+            action_details = (
+                f"{len(pending)} request(s) still need an independent operator "
+                "decision. You can follow their private status. No testing "
+                "can begin from a submitted request."
+            )
+            action_url = (
+                f"/portal/{_e(client_id)}/requests/{_e(pending[0].request_id)}"
+            )
+            action_label = "Track the latest waiting request"
+        elif ordered_requests and ordered_requests[0].status is RequestStatus.APPROVED:
+            action_title = "Request reviewed — scope still locked"
+            action_details = (
+                "An operator approved the request for scope review only. "
+                "Recorded scope, separate consent, revocation checks and HUMAN "
+                "GO are still required; no scan is available."
+            )
+            action_url = f"/portal/{_e(client_id)}/authorization-plan"
+            action_label = "Check the read-only authorization plan"
+        elif ordered_requests and ordered_requests[0].status is RequestStatus.REJECTED:
+            action_title = "Request rejected — prepare a separate request"
+            action_details = (
+                "A rejected request cannot support a scope grant. You may "
+                "prepare a new client-origin request for independent review."
+            )
+            action_url = f"/portal/{_e(client_id)}#new-request"
+            action_label = "Prepare a new assessment request"
+        else:
+            action_title = "Start with a review request"
+            action_details = (
+                "Describe only systems you manage, choose a risk level and "
+                "review the draft. An operator must decide independently."
+            )
+            action_url = f"/portal/{_e(client_id)}#new-request"
+            action_label = "Prepare a security assessment request"
+        next_action = (
+            '<section class="card" aria-labelledby="next-step-heading">'
+            '<span class="badge lock">PLAN ONLY · testing locked</span>'
+            f'<h2 id="next-step-heading">{_e(action_title)}</h2>'
+            f'<p>{_e(action_details)}</p>'
+            f'<p><a href="{action_url}">{_e(action_label)}</a></p>'
+            '</section>'
+        )
         if auth.is_operator:
             request_section = (
                 "<h2>Assessment request submissions</h2>"
@@ -1454,17 +1512,18 @@ class LightUpWebApp:
             f"<div class=\"card\"><div class=\"kpi\">{len(requests)}</div>"
             "<div class=\"kpi-label\">Assessment requests</div></div>"
             "</div>"
-            f"<h2>Findings</h2>{self._finding_cards(findings, portal=True)}"
-            "<h2>What has been assessed</h2>"
-            + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
-                       for e in self.store.list_engagements(ctx))
-               or "<p class=\"empty\">No engagements yet.</p>")
+            + next_action
+            + request_section
             + f'<h2>Recent assessment requests</h2><p><a href="/portal/{_e(client_id)}/requests">'
               f'Open all {len(requests)} requests in the private inbox</a></p>'
             + request_rows
             + f"<p><a href=\"/portal/{_e(client_id)}/authorization-plan\">"
               "Review authorization plan (read-only)</a></p>"
-            + request_section
+            + f"<h2>Findings</h2>{self._finding_cards(findings, portal=True)}"
+            + "<h2>What has been assessed</h2>"
+            + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
+                       for e in self.store.list_engagements(ctx))
+               or "<p class=\"empty\">No engagements yet.</p>")
         )
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
