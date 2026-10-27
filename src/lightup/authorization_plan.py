@@ -343,10 +343,60 @@ def build_operator_portfolio_review_payload(
         raise ValueError("portfolio review requires an exact aware datetime")
     instant = instant.astimezone(timezone.utc)
     tenants = []
+    review_details = []
     for tenant in store.list_clients(actor):
         plan = build_client_authorization_plan(
             store, actor, tenant.client_id, evaluation_time=instant
         )
+        # Identifiers, not assets or consent material. These are private,
+        # human-only pointers back to the original persisted domain records.
+        for request in plan.request_reviews:
+            if request.status in {
+                RequestStatus.SUBMITTED.value, RequestStatus.UNDER_REVIEW.value,
+            }:
+                review_details.append({
+                    "client_id": plan.client_id,
+                    "client_name": plan.client_name,
+                    "kind": "review_client_requests",
+                    "record_type": "request",
+                    "record_id": request.request_id,
+                    "created_at": request.submitted_at,
+                    "decision": "HOLD",
+                    "execution_allowed": False,
+                })
+        for entry in plan.engagements:
+            for review in entry.risk_elevation_reviews:
+                if review.status == ApprovalStatus.PENDING.value:
+                    review_details.append({
+                        "client_id": plan.client_id,
+                        "client_name": plan.client_name,
+                        "kind": "review_risk_decisions",
+                        "record_type": "risk_elevation",
+                        "record_id": review.approval_id,
+                        "created_at": review.requested_at,
+                        "decision": "HOLD",
+                        "execution_allowed": False,
+                    })
+            kinds = []
+            if entry.unrestricted_capabilities_recorded:
+                kinds.append("review_unrestricted_grants")
+            if entry.scope_record_state == "EXPIRED":
+                kinds.append("review_expired_grants")
+            elif entry.scope_record_state == "NOT_YET_VALID":
+                kinds.append("review_future_grants")
+            elif entry.scope_record_state == "NOT_RECORDED":
+                kinds.append("review_missing_grants")
+            for kind in kinds:
+                review_details.append({
+                    "client_id": plan.client_id,
+                    "client_name": plan.client_name,
+                    "kind": kind,
+                    "record_type": "engagement",
+                    "record_id": entry.engagement_id,
+                    "created_at": None,
+                    "decision": "HOLD",
+                    "execution_allowed": False,
+                })
         tenants.append({
             "client_id": plan.client_id,
             "client_name": plan.client_name,
@@ -413,11 +463,30 @@ def build_operator_portfolio_review_payload(
     review_queue.sort(
         key=lambda item: (-item["review_items"], item["client_id"])
     )
+    # Every summary count must reconcile with exactly that many private
+    # original-record pointers. Never show an optimistic incomplete queue.
+    expected = {
+        (item["client_id"], action["kind"]): action["count"]
+        for item in review_queue for action in item["actions"]
+    }
+    observed = {}
+    for item in review_details:
+        key = (item["client_id"], item["kind"])
+        observed[key] = observed.get(key, 0) + 1
+    if expected != observed:
+        raise ValueError("operator review summary does not match source records")
+    review_details.sort(
+        key=lambda item: (
+            item["kind"], item["client_id"], item["created_at"] or "",
+            item["record_id"],
+        )
+    )
     return {
         "format": "lightup-m0-portfolio-review-v1",
         "evaluated_at": instant.isoformat(),
         "tenants": sorted(tenants, key=lambda tenant: tenant["client_id"]),
         "review_queue": review_queue,
+        "review_details": review_details,
         "authority": {
             "execution_allowed": False,
             "capability_dispatch_allowed": False,
