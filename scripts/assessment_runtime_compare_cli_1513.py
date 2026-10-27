@@ -194,12 +194,16 @@ def _parse_case_document(document):
     # Serialized false_positive_rate is derived from counters, not trusted.
     if "false_positive_rate" in metrics_data:
         stated = metrics_data["false_positive_rate"]
-        if type(stated) not in (int, float) or not math.isfinite(stated):
+        # EvaluationRecord.to_dict() always serializes the derived value as
+        # an exact Python float. A rounded/forged near-match (or JSON integer)
+        # must not masquerade as the producer's canonical computation.
+        if type(stated) is not float or not math.isfinite(stated):
             raise ValueError("invalid derived rate")
         # Avoid computing derived metrics from producer-impossible counter types.
         if any(type(getattr(metrics, name)) is not int for name in ("valid_findings", "invalid_findings")):
             raise ValueError("invalid rate counters")
-        if not math.isclose(stated, metrics.false_positive_rate, abs_tol=1e-12, rel_tol=0):
+        # hex() compares the exact binary float including the sign of zero.
+        if stated.hex() != metrics.false_positive_rate.hex():
             raise ValueError("mismatched derived rate")
 
     if type(context_data["approved_risk"]) is not int:
