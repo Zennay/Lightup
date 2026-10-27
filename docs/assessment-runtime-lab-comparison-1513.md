@@ -331,3 +331,38 @@ file is unsigned and has no authenticated source provenance; do not interpret
 a machine-readable question as a grant, task dispatch, client consent or
 release approval. All other output formats and normal comparator JSON stay
 unchanged.
+
+## Offline efficiency observations (informational, not an approval)
+
+The existing three single/cohort/scored comparison CLIs now expose
+`--format efficiency-json` or `--format efficiency-html`. These
+operate **only on the already-admitted completed lab comparisons**:
+no additional records, target probes, credentials, execution, persisted
+source, scanner, browser scripts or network activity.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format efficiency-html baseline-cohort.json candidate-cohort.json \
+  > private-efficiency.html
+```
+
+The standalone printable HTML uses bundled hash-pinned CSS with deny-all
+CSP and contains anonymous case ordinals, source-reported runtime seconds
+and compute cost USD, deltas, descriptive direction and percentage change.
+The machine-readable JSON provides the same data, exact
+`baseline_total`/`candidate_total`/`delta_total` values serialized as
+**decimal strings** (avoids non-finite floating-point cohort sums), and
+case counts reporting increases/decreases. Percentage change is explicitly
+`null` when the original baseline is zero. Both are deterministic over a
+complete admitted cohort; rejected/partial/invalid input emits only generic
+`input_hold`, never partially processed metrics or identities.
+
+Costs and duration remain **informational**, exactly as in original #1513.
+There is no statistical significance estimate, workload normalization,
+spending threshold or production verdict. Unknown source provenance and
+independent human/security reviews remain unresolved; every authorization,
+consent, dispatch and release flag is permanently false in JSON. HTML
+presents the same prohibition in human language. Existing commands continue
+to return exit 2 REVIEW_ONLY / exit 3 HOLD and default JSON stays unchanged.
+`--focus` is reserved for HUMAN actions formats, never silently applied
+to efficiency exports.

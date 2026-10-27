@@ -9,6 +9,7 @@ from __future__ import annotations
 from base64 import b64encode
 from collections import Counter
 from csv import writer as csv_writer
+from decimal import Decimal, localcontext
 from io import StringIO
 from json import dumps as json_dumps
 from hashlib import sha256
@@ -395,6 +396,193 @@ def render_human_actions_csv(result, *, cohort: bool = False,
             "false", "false", "false", "false", "false",
         ))
     return file.getvalue()
+
+
+
+_EFFICIENCY_FIELDS = ("runtime_seconds", "compute_cost_usd")
+
+
+def _resource_decimal_sum(left: Decimal, right: Decimal) -> Decimal:
+    # Finite Python floats range from ~1e-324 to ~1e308; exact sums need
+    # far more than the default 28 significant Decimal digits.
+    with localcontext() as context:
+        context.prec = 800
+        return left + right
+
+
+def _resource_decimal_delta(old: Decimal, new: Decimal) -> Decimal:
+    with localcontext() as context:
+        context.prec = 800
+        return new - old
+
+
+def _efficiency_data(result, *, cohort: bool, scored: bool):
+    """Complete-source, ordinal-only efficiency observations. No budget verdict."""
+    kind = "scored_cohort" if scored else "cohort" if cohort else "single_case"
+    source_status = "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD"
+    accepted = (
+        tuple(comp for _source_id, comp in result.comparisons) if cohort
+        else (result,) if result.changes else ()
+    )
+    totals = {
+        name: {"baseline": Decimal(0), "candidate": Decimal(0),
+               "increased_cases": 0, "decreased_cases": 0}
+        for name in _EFFICIENCY_FIELDS
+    }
+    cases = []
+    valid = bool(accepted)
+    for ordinal, comp in enumerate(accepted, 1):
+        metrics = {
+            name: [change for change in comp.changes if change.name == name]
+            for name in _EFFICIENCY_FIELDS
+        }
+        if any(len(metrics[name]) != 1 for name in _EFFICIENCY_FIELDS):
+            valid = False
+            break
+        observed = {}
+        for name in _EFFICIENCY_FIELDS:
+            change = metrics[name][0]
+            old, new = Decimal(str(change.baseline)), Decimal(str(change.candidate))
+            if (not old.is_finite() or not new.is_finite()
+                    or old < 0 or new < 0):
+                valid = False
+                break
+            delta = _resource_decimal_delta(old, new)
+            with localcontext() as context:
+                context.prec = 12
+                percent = str((delta / old) * 100) if old else None
+            direction = "increase" if delta > 0 else "decrease" if delta < 0 else "unchanged"
+            observed[name] = {
+                "baseline": str(old), "candidate": str(new),
+                "delta": str(delta), "percent_change": percent,
+                "direction": direction,
+            }
+            totals[name]["baseline"] = _resource_decimal_sum(totals[name]["baseline"], old)
+            totals[name]["candidate"] = _resource_decimal_sum(totals[name]["candidate"], new)
+            if delta > 0:
+                totals[name]["increased_cases"] += 1
+            elif delta < 0:
+                totals[name]["decreased_cases"] += 1
+        if not valid:
+            break
+        cases.append({"scenario_ordinal": ordinal, "metrics": observed})
+
+    if not valid:
+        # No partial accepted packet or metric leaks across a held batch.
+        cases = []
+        totals = {}
+    else:
+        totals = {
+            name: {
+                "baseline_total": str(values["baseline"]),
+                "candidate_total": str(values["candidate"]),
+                "delta_total": str(_resource_decimal_delta(values["baseline"], values["candidate"])),
+                "increased_cases": values["increased_cases"],
+                "decreased_cases": values["decreased_cases"],
+            }
+            for name, values in totals.items()
+        }
+    return {
+        "schema_version": 1,
+        "report_type": kind,
+        "source_status": source_status if valid else "HOLD",
+        "input_admitted": valid,
+        "readout": "informational_only" if valid else "input_hold",
+        "accepted_case_count": len(cases),
+        "cases": cases,
+        "aggregate": totals,
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+        "source_provenance_authenticated": False,
+    }
+
+
+def render_efficiency_json(result, *, cohort: bool = False,
+                           scored: bool = False) -> str:
+    """Privacy-minimal resource deltas over already accepted offline lab metrics."""
+    return json_dumps(
+        _efficiency_data(result, cohort=cohort, scored=scored),
+        sort_keys=True, separators=(",", ":"),
+    ) + "\n"
+
+
+def render_efficiency_html(result, *, cohort: bool = False,
+                           scored: bool = False) -> str:
+    """Scriptless printable review of resource observations, not cost approval."""
+    data = _efficiency_data(result, cohort=cohort, scored=scored)
+    rows = []
+    for item in data["cases"]:
+        for name in _EFFICIENCY_FIELDS:
+            metric = item["metrics"][name]
+            values = (
+                "Scenario " + str(item["scenario_ordinal"]).zfill(2),
+                _METRIC_LABELS[name], metric["baseline"], metric["candidate"],
+                metric["delta"], metric["percent_change"] or "n/a (zero baseline)",
+                metric["direction"],
+            )
+            rows.append("<tr>" + "".join("<td>" + _safe(v) + "</td>" for v in values) + "</tr>")
+    if not rows:
+        rows.append(
+            '<tr><td colspan="7">Input HOLD: no complete admitted resource '
+            "comparison is available.</td></tr>"
+        )
+    pin = b64encode(sha256(_STYLES.encode("utf-8")).digest()).decode("ascii")
+    policy = (
+        "default-src 'none'; base-uri 'none'; form-action 'none'; "
+        "connect-src 'none'; img-src 'none'; font-src 'none'; "
+        "object-src 'none'; frame-src 'none'; script-src 'none'; "
+        "style-src 'sha256-" + pin + "'"
+    )
+    heads = (
+        "Anonymous case", "Source metric", "Baseline", "Candidate",
+        "Delta", "Change (%)", "Direction",
+    )
+    aggregates = []
+    for name in _EFFICIENCY_FIELDS:
+        values = data["aggregate"].get(name)
+        if values is not None:
+            aggregates.append(
+                "<p><strong>" + _safe(_METRIC_LABELS[name]) + "</strong>: "
+                "source totals " + _safe(values["baseline_total"]) + " → "
+                + _safe(values["candidate_total"]) + ", delta "
+                + _safe(values["delta_total"]) + ", increases in "
+                + _safe(values["increased_cases"]) + " cases; decreases in "
+                + _safe(values["decreased_cases"]) + " cases.</p>"
+            )
+    return (
+        "<!doctype html>\n<html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        '<meta http-equiv="Content-Security-Policy" content="'
+        + escape(policy, quote=True) + '">'
+        "<title>LightUp offline lab efficiency observations</title>"
+        "<style>" + _STYLES + "</style></head><body>"
+        "<header><p class='eyebrow'>LightUp · offline lab observations</p>"
+        "<h1>Resource change summary</h1><p><span class='badge'>"
+        + _safe(data["source_status"]) + " · INFORMATIONAL ONLY</span></p></header>"
+        '<div class="grid">'
+        + _stat(data["accepted_case_count"], "Admitted anonymous cases")
+        + _stat("No verdict", "Performance interpretation")
+        + "</div>"
+        '<section class="panel warning"><h2>Not comparable proof or approval</h2>'
+        "<p>Runtime and cost are unverified source-reported observations. "
+        "Different workloads, prices or sample sizes can invalidate a comparison. "
+        "Summed cohort values are unnormalized; no budget or statistical "
+        "significance is inferred. This file grants no authorization, consent, "
+        "dispatch, release or source authentication.</p></section>"
+        '<section class="panel"><h2>Resource changes by case</h2>'
+        '<div class="table-scroll"><table><thead><tr>'
+        + "".join('<th scope="col">' + _safe(h) + "</th>" for h in heads)
+        + "</tr></thead><tbody>" + "".join(rows)
+        + "</tbody></table></div></section>"
+        '<section class="panel"><h2>Unnormalized cohort totals</h2>'
+        + ("".join(aggregates) if aggregates else "<p>Input HOLD: no totals.</p>")
+        + "</section><footer class='panel foot'>No original IDs, targets, paths "
+        "or notes. Offline, no scripts or network. Never a HUMAN GO.</footer>"
+        "</body></html>\n"
+    )
 
 
 def render_human_actions_json(result, *, cohort: bool = False,
