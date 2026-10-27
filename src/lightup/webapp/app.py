@@ -76,17 +76,24 @@ body { margin:0; background:var(--bg); color:var(--ink);
 a { color:var(--accent); text-decoration:none; }
 header { background:var(--card); border-bottom:1px solid var(--line); }
 .wrap { max-width:960px; margin:0 auto; padding:0 20px; }
-header .wrap { display:flex; flex-wrap:wrap; align-items:baseline; gap:18px;
-               padding-top:14px; padding-bottom:14px; }
+header .wrap { display:flex; flex-wrap:wrap; align-items:center; gap:18px;
+               padding-top:12px; padding-bottom:12px; }
 .brand { font-weight:650; letter-spacing:.02em; }
-nav { display:flex; gap:14px; flex-wrap:wrap; align-items:baseline; }
-nav a { color:var(--muted); padding:2px 0; }
+.skip-link { position:absolute; left:12px; top:-120px; z-index:20;
+             background:var(--card); color:var(--ink); padding:10px 14px;
+             border:3px solid var(--accent); border-radius:8px; }
+.skip-link:focus { top:10px; }
+nav { display:flex; gap:8px 14px; flex-wrap:wrap; align-items:center; }
+nav a { color:var(--muted); display:inline-flex; min-height:44px;
+        align-items:center; padding:9px 4px; }
 nav a.active { color:var(--ink); border-bottom:2px solid var(--accent); }
 nav form { display:inline; }
 nav button { background:none; border:0; color:var(--muted); cursor:pointer;
              font:inherit; padding:0; }
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,
-textarea:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+textarea:focus-visible,summary:focus-visible {
+  outline:3px solid var(--accent); outline-offset:3px;
+}
 button,input:not([type="hidden"]):not([type="checkbox"]),select { min-height:44px; }
 input[type="checkbox"] { width:auto; min-height:auto; margin:0; }
 label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0; }
@@ -130,6 +137,14 @@ label { font-size:.85rem; color:var(--muted); }
 .risk-guide dd { margin:0; color:var(--muted); }
 .risk-guide .meta { margin-bottom:0; }
 @media (max-width:560px) {
+  .wrap { padding-left:16px; padding-right:16px; }
+  header .wrap { display:block; padding-top:12px; padding-bottom:12px; }
+  nav { margin-top:8px; gap:4px 12px; }
+  nav a { padding:10px 4px; }
+  nav button { min-height:44px; padding:8px 4px; }
+  .grid { grid-template-columns:minmax(0,1fr); }
+  .card { padding:14px; }
+  .row { align-items:flex-start; }
   .risk-guide dl { grid-template-columns:1fr; gap:4px; }
   .risk-guide dd { margin-bottom:12px; }
 }
@@ -287,7 +302,9 @@ def _page(title: str, nav: str, body: str, auth: AuthState,
         ]
         brand = "LightUp — Client portal"
     nav_html = "".join(
-        f'<a href="{href}" class="{"active" if key == nav else ""}">{label}</a>'
+        f'<a href="{_e(href)}" class="{"active" if key == nav else ""}"'
+        + (' aria-current="page"' if key == nav else '')
+        + f'>{_e(label)}</a>'
         for key, href, label in links
     ) + logout
     if nav == "login":
@@ -296,9 +313,12 @@ def _page(title: str, nav: str, body: str, auth: AuthState,
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
         f"<title>{_e(title)}</title><style>{_CSS}</style></head><body>"
+        '<a class="skip-link" href="#main-content">Skip to main content</a>'
         f"<header><div class=\"wrap\"><span class=\"brand\">{_e(brand)}</span>"
-        f"<nav>{nav_html}</nav></div></header>"
-        f"<main><div class=\"wrap\">{body}</div></main></body></html>"
+        f'<nav aria-label="{"Client portal" if portal_client is not None else "Operator"} navigation">'
+        f"{nav_html}</nav></div></header>"
+        f'<main id="main-content" tabindex="-1"><div class="wrap">{body}</div>'
+        "</main></body></html>"
     )
 
 
