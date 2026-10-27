@@ -1141,53 +1141,91 @@ class LightUpWebApp:
         return _redirect(f"/clients/{engagement.client_id}")
 
     def assessments(self, auth: AuthState, form: dict[str, str]) -> Response:
+        """Operator-only human decision inbox; no request grants scan authority."""
         ctx = auth.context
-        requests = self.store.list_assessment_requests(ctx)
-        approvals = [a for a in self.store.list_risk_approvals(ctx)
-                     if a.status.value == "pending"]
-        request_cards = []
-        for r in requests:
-            client = self.store.get_client(ctx, r.client_id)
-            decision = ""
-            if r.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}:
-                decision = (
-                    f'<a href="/assessments/requests/{_e(r.request_id)}/review">'
-                    'Open deliberate human decision</a>'
-                )
-            request_cards.append(
-                "<div class=\"card\"><div class=\"row\">"
-                f"<strong>{_e(client.name)}</strong>"
-                f"<span class=\"badge\">{_e(r.status.value)}</span></div>"
-                f"<p class=\"meta\">Requested risk: {_risk(r.requested_risk)} · "
-                f"mode {_e(r.requested_mode.value)}</p>"
-                "<details><summary>Requested assets & notes</summary>"
-                f"<p class=\"meta\">Assets: {_e(', '.join(r.requested_assets))}<br>"
-                f"Notes: {_e(r.notes) or '—'}</p></details>"
-                f"{decision}</div>"
+        requests = sorted(
+            self.store.list_assessment_requests(ctx),
+            key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
+        approvals = [
+            item for item in self.store.list_risk_approvals(ctx)
+            if item.status.value == "pending"
+        ]
+        pending_requests = []
+        decided_requests = []
+        for request in requests:
+            client = self.store.get_client(ctx, request.client_id)
+            pending = request.status in {
+                RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            }
+            if request.status not in {
+                RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+                RequestStatus.APPROVED, RequestStatus.REJECTED,
+            }:
+                raise ValueError("unknown persisted HUMAN review state")
+            action = (
+                "Open deliberate human decision" if pending
+                else "View recorded human decision"
             )
+            card = (
+                '<section class="card"><div class="row">'
+                f'<strong>{_e(client.name)}</strong>'
+                f'<span class="badge">{_e(request.status.value)}</span></div>'
+                f'<p class="meta">Submitted {_e(request.created_at)}'
+                + (f' · Decided {_e(request.decided_at)}'
+                   if request.decided_at else '')
+                + f' · Requested risk: {_risk(request.requested_risk)}'
+                f' · Mode {_e(request.requested_mode.value)}</p>'
+                '<details><summary>Requested systems and notes</summary>'
+                f'<p class="meta">Systems: {_e(", ".join(request.requested_assets))}</p>'
+                f'<p class="meta">Notes: {_e(request.notes) or "—"}</p></details>'
+                f'<a href="/assessments/requests/{_e(request.request_id)}/review">'
+                f'{action}</a></section>'
+            )
+            (pending_requests if pending else decided_requests).append(card)
+
         elevation_cards = []
-        for a in approvals:
+        for approval in approvals:
             elevation_cards.append(
-                "<div class=\"card\"><div class=\"row\">"
-                f"<strong>Risk elevation to {_risk(a.requested_risk)}</strong>"
-                "<span class=\"badge warn\">Step-up approval required</span></div>"
-                f"<p class=\"meta\">Engagement {_e(a.engagement_id)} · "
-                f"requested by {_e(a.requested_by)}</p>"
-                "<details><summary>Justification</summary>"
-                f"<p class=\"meta\">{_e(a.justification)}</p></details>"
-                f'<a href="/assessments/elevations/{_e(a.approval_id)}/review">'
-                'Open deliberate risk review</a></div>'
+                '<section class="card"><div class="row">'
+                f'<strong>Risk elevation to {_risk(approval.requested_risk)}</strong>'
+                '<span class="badge warn">Human decision required</span></div>'
+                f'<p class="meta">Engagement {_e(approval.engagement_id)} · '
+                f'Requested by {_e(approval.requested_by)}</p>'
+                '<details><summary>Justification</summary>'
+                f'<p class="meta">{_e(approval.justification)}</p></details>'
+                f'<a href="/assessments/elevations/{_e(approval.approval_id)}/review">'
+                'Open deliberate risk review</a></section>'
             )
         body = (
-            "<h1>Assessments</h1>"
-            "<p class=\"sub\">Requests and authorization grants are for human review only. "
-            "Active testing remains locked pending independent consent, revocation-at-use and HUMAN GO.</p>"
-            "<h2>Assessment requests</h2>"
-            + ("".join(request_cards) or "<p class=\"empty\">No requests.</p>")
-            + "<h2>Pending risk elevations</h2>"
-            + ("".join(elevation_cards) or "<p class=\"empty\">No pending elevations.</p>")
+            '<h1>Human assessment decisions</h1>'
+            '<p class="sub">Review original client requests and risk elevations. '
+            'Every decision remains separate from scope grants, current consent, '
+            'revocation-at-use and HUMAN GO. Active testing is locked.</p>'
+            '<div class="grid">'
+            f'<section class="card"><div class="kpi">{len(pending_requests)}</div>'
+            '<div class="kpi-label">Client requests awaiting review</div></section>'
+            f'<section class="card"><div class="kpi">{len(elevation_cards)}</div>'
+            '<div class="kpi-label">Risk elevations awaiting review</div></section>'
+            f'<section class="card"><div class="kpi">{len(decided_requests)}</div>'
+            '<div class="kpi-label">Recorded request decisions</div></section>'
+            '</div>'
+            f'<h2>Review client requests ({len(pending_requests)})</h2>'
+            + ("".join(pending_requests) or
+               '<p class="empty">No client requests awaiting a decision.</p>')
+            + f'<h2>Review elevated-risk requests ({len(elevation_cards)})</h2>'
+            + ("".join(elevation_cards) or
+               '<p class="empty">No elevated-risk decisions awaiting review.</p>')
+            + f'<details><summary>Decided request history ({len(decided_requests)})</summary>'
+            + ("".join(decided_requests) or
+               '<p class="empty">No previous human request decisions.</p>')
+            + '</details>'
+            + '<p class="meta">A human review is never independent client consent '
+            'or permission to contact a target. '
+            '<a href="/authorization-reviews">Open complete scope review worklist</a>.</p>'
         )
-        return Response(_page("LightUp — Assessments", "assessments", body, auth))
+        return Response(_page("LightUp — Human decisions", "assessments", body, auth))
 
     def review_request_page(
         self, auth: AuthState, form: dict[str, str], request_id: str,
