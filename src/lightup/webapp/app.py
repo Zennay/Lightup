@@ -304,6 +304,8 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/assessments/elevations/(?P<approval_id>[\w-]+)/decision$"),
              self.decide_elevation, "operator"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
+             self.portal_requests, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan$"),
              self.portal_authorization_plan, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan.json$"),
@@ -1348,7 +1350,7 @@ class LightUpWebApp:
             )
         else:
             request_section = (
-                "<h2>Ask for a security assessment</h2>"
+                '<h2 id="new-request">Ask for a security assessment</h2>'
                 "<div class=\"card\">"
                 "<p class=\"meta\">Step 1 of 2: describe what you want reviewed. "
                 "Nothing will be tested or activated by this request.</p>"
@@ -1394,13 +1396,85 @@ class LightUpWebApp:
             + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
                        for e in self.store.list_engagements(ctx))
                or "<p class=\"empty\">No engagements yet.</p>")
-            + f"<h2>Your assessment requests</h2>{request_rows}"
+            + f'<h2>Your assessment requests</h2><p><a href="/portal/{_e(client_id)}/requests">'
+              'Open the complete request inbox</a></p>'
+            + request_rows
             + f"<p><a href=\"/portal/{_e(client_id)}/authorization-plan\">"
               "Review authorization plan (read-only)</a></p>"
             + request_section
         )
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
+
+    def portal_requests(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+    ) -> Response:
+        """Tenant-private HUMAN review inbox; there are no state-changing links."""
+        viewer = self._portal_context(auth, client_id)
+        client = self.store.get_client(viewer, client_id)
+        requests = self.store.list_assessment_requests(viewer, client_id)
+        if any(item.client_id != client_id for item in requests):
+            raise TenantIsolationError("cross-tenant request list denied")
+        ordered = sorted(
+            requests, key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
+        awaiting = [
+            item for item in ordered
+            if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+        ]
+        decided = [
+            item for item in ordered
+            if item.status in {RequestStatus.APPROVED, RequestStatus.REJECTED}
+        ]
+
+        def render_row(request) -> str:
+            next_step = {
+                RequestStatus.SUBMITTED: "Waiting for independent operator review.",
+                RequestStatus.UNDER_REVIEW: "Operator review in progress.",
+                RequestStatus.APPROVED: "Request approved only. Check separate scope and consent.",
+                RequestStatus.REJECTED: "Request rejected. No scope authority created.",
+            }[request.status]
+            return (
+                '<section class="card"><div class="row">'
+                f'<strong>Request {_e(request.request_id)}</strong>'
+                f'<span class="badge">{_e(request.status.value)}</span></div>'
+                f'<p class="meta">Submitted: {_e(request.created_at)}'
+                + (f' · Decided: {_e(request.decided_at)}'
+                   if request.decided_at else '')
+                + f' · Requested risk: {_risk(request.requested_risk)}</p>'
+                f'<p class="meta">{_e(next_step)}</p>'
+                f'<a href="/portal/{_e(client_id)}/requests/{_e(request.request_id)}">'
+                'Open private status and safety steps</a>'
+                '</section>'
+            )
+
+        submit_link = (
+            f'<a href="/portal/{_e(client_id)}#new-request">Prepare a new request</a>'
+            if not auth.is_operator else
+            'Operator view is read-only; only an original client session may submit.'
+        )
+        body = (
+            '<h1>Assessment requests</h1>'
+            f'<p class="sub">{_e(client.name)} · Human review only. '
+            'Request approval never activates a scan.</p>'
+            f'<section class="card"><strong>{len(awaiting)} awaiting review · '
+            f'{len(decided)} decided</strong>'
+            '<p class="meta">All records remain PLAN ONLY until separate '
+            'scope, consent, action-time revocation and HUMAN GO.</p>'
+            f'<p>{submit_link} · '
+            f'<a href="/portal/{_e(client_id)}">Back to overview</a></p></section>'
+            f'<h2>Waiting for review ({len(awaiting)})</h2>'
+            + ("".join(render_row(item) for item in awaiting)
+               or '<p class="empty">No requests currently waiting for a decision.</p>')
+            + f'<h2>Reviewed requests ({len(decided)})</h2>'
+            + ("".join(render_row(item) for item in decided)
+               or '<p class="empty">No operator decisions recorded yet.</p>')
+        )
+        return Response(_page(
+            "LightUp — Request inbox", "portal", body, auth,
+            portal_client=client_id,
+        ))
 
     def portal_request_receipt_json(
         self, auth: AuthState, form: dict[str, str],
