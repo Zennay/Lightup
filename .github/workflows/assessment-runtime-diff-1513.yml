@@ -1,4 +1,4 @@
-name: LightUp assessment-runtime lab comparison #1513 (hosted diagnostic only)
+name: LightUp assessment-runtime lab comparison #1513 (self-hosted VPS diagnostic only)
 
 on:
   push:
@@ -30,13 +30,16 @@ permissions:
 jobs:
   offline-lab-comparison:
     name: Isolated offline comparator Python ${{ matrix.python }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, lightup, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.14"]
     steps:
+      - name: Guard expected named LightUp VPS
+        run: |
+          test "$(hostname)" = "vps-bb300bba"
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false

@@ -28,7 +28,7 @@ print(diagnostic.status, diagnostic.regressions)
 
 Issue [#1513](https://github.com/Zennay/Lightup/issues/1513). Dedicated assessment-runtime branch; exclusively new source/test/docs/workflow paths. Do not modify adjacent scope-authorization owners, evaluation-metric source owner [#834](https://github.com/Zennay/Lightup/issues/834) / [#835](https://github.com/Zennay/Lightup/pull/835), finding review [#846](https://github.com/Zennay/Lightup/pull/846) / [#847](https://github.com/Zennay/Lightup/issues/847), other workers, or real executor.
 
-This isolated test job is diagnostic only. Full-project hosted tests, independent security/privacy, permanent named VPS test, separately verified client+operator approval and live revocation, and explicit human GO remain required. **Never merge/deploy based on this comparator.**
+This isolated test job is diagnostic only. Even on the named permanent VPS, its narrow comparator tests are **not** the canonical full-project runner/CI gate. Full-project exact-head CI, independent security/privacy, verified client+operator consent, revocation-at-use and explicit HUMAN GO remain required. **Never merge/deploy based on this comparator.**
 
 ## Multi-scenario cohort extension
 
@@ -83,14 +83,17 @@ performs no I/O and never produces authority: all four consent, authorization,
 dispatch and release flags are false even for REVIEW_ONLY. Source provenance,
 consent, registered permanent VPS CI and human GO remain entirely unproven.
 
-## Exact source-head hosted regression gate
+## Exact source-head named-VPS regression gate
 
-The dedicated assessment-runtime hosted Python matrix checks out the explicit
-PR-head commit instead of GitHub's temporary pull-request merge ref. The
-assertion compares `git rev-parse HEAD` with the immutable event head SHA
-before any offline test runs. This test verifies *only* the isolated local
-assessment-runtime suite, not full project hosted or registered VPS release
-gates; the permanent operator-owned VPS job is tracked independently.
+The dedicated assessment-runtime Python matrix runs on the same named LightUp
+self-hosted VPS label set as the canonical offline preflight:
+`[self-hosted, lightup, vps]`. It first verifies that `hostname` equals
+`vps-bb300bba` and checks out the immutable PR-head commit instead of
+GitHub's temporary pull-request merge ref. The checkout assertion compares
+`git rev-parse HEAD` with the immutable event head SHA **before** its offline
+checks. This is only an isolated comparator diagnostic; it does **not** replace
+the separately required complete LightUp CI/preflight, independent reviewer,
+security/privacy, actual consent/revocation or explicit HUMAN GO.
 
 ## Explicit scored-cohort JSON/text CLI
 
