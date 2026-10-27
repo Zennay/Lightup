@@ -1315,7 +1315,7 @@ class LightUpWebApp:
             f'<p><strong>Risk:</strong> {_risk(request.requested_risk)} · '
             f'<strong>Mode:</strong> {_e(request.requested_mode.value)}</p>'
             f'<p><strong>Client request origin:</strong> {_e(request.requested_by)} · '
-            f'<strong>Submitted:</strong> {_e(request.submitted_at)}</p>'
+            f'<strong>Submitted:</strong> {_e(request.created_at)}</p>'
             f'<p><strong>Notes:</strong> {_e(request.notes) or "None"}</p>'
             '<p class="meta">Reviewing this request never verifies system '
             'ownership, action-time revocation or HUMAN GO.</p></section>'
@@ -1892,9 +1892,9 @@ class LightUpWebApp:
             '<section class="card"><div class="row">'
             f'<strong>Request {_e(request.request_id)}</strong>'
             f'<span class="badge">{_e(request.status.value)}</span></div>'
-            f'<p class="meta">Submitted: {_e(request.submitted_at)}'
-            + (f' · Reviewed: {_e(request.reviewed_at)}'
-               if request.reviewed_at else '')
+            f'<p class="meta">Submitted: {_e(request.created_at)}'
+            + (f' · Reviewed: {_e(request.decided_at)}'
+               if request.decided_at else '')
             + '</p>'
             '<strong>Requested systems (not verified)</strong>'
             f'<p>{_e(", ".join(request.requested_assets))}</p>'
