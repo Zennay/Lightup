@@ -146,6 +146,19 @@ label { font-size:.85rem; color:var(--muted); }
 .task-links strong, .task-links span { display:block; }
 .task-links span { color:var(--muted); font-size:.85rem; margin-top:4px; }
 .task-links a:hover { border-color:var(--accent); }
+.risk-options { min-width:0; border:0; padding:0; margin:12px 0 18px; }
+.risk-options legend { color:var(--ink); font-weight:650; padding:0; }
+.risk-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:10px 0; }
+.risk-cards .risk-choice { display:flex; align-items:flex-start; gap:10px;
+                           cursor:pointer; min-height:92px; padding:12px;
+                           border:1px solid var(--line); border-radius:10px;
+                           background:var(--card); color:var(--ink); }
+.risk-cards input[type="radio"] { flex:0 0 20px; width:20px; height:20px;
+                                  min-height:20px; padding:0; margin:3px 0 0;
+                                  accent-color:var(--accent); }
+.risk-cards .risk-choice:focus-within { outline:3px solid var(--accent); outline-offset:2px; }
+.risk-cards strong, .risk-cards small { display:block; }
+.risk-cards small { font-size:.83rem; line-height:1.45; color:var(--muted); margin-top:4px; }
 @media (max-width:560px) {
   .wrap { padding-left:16px; padding-right:16px; }
   header .wrap { display:block; padding-top:12px; padding-bottom:12px; }
@@ -155,6 +168,8 @@ label { font-size:.85rem; color:var(--muted); }
   .grid { grid-template-columns:minmax(0,1fr); }
   .task-links { grid-template-columns:minmax(0,1fr); }
   .task-links a { min-height:74px; }
+  .risk-cards { grid-template-columns:minmax(0,1fr); }
+  .risk-cards .risk-choice { min-height:72px; }
   .card { padding:14px; }
   .row { align-items:flex-start; }
   .risk-guide dl { grid-template-columns:1fr; gap:4px; }
@@ -191,6 +206,48 @@ def _risk_choice_guide() -> str:
         'grant, consent, revocation checks and explicit HUMAN GO. '
         'All target testing is locked in this build.</p>'
         '</details>'
+    )
+
+
+_RISK_CHOICES = (
+    ("1", "Passive", "Review existing evidence. This form does not contact systems."),
+    ("2", "Low impact", "Limited checks would need separate verified authorization."),
+    ("3", "Standard", "Broader checks would need exact reviewed scope and consent."),
+    ("4", "Elevated", "An additional independent human risk decision is required."),
+)
+
+
+def _risk_choice_cards(prefix: str, selected: str = "",
+                       invalid: bool = False) -> str:
+    """Native radio choices keep the cost of each risk level visible.
+
+    The persisted form contract remains the same four risk values.
+    Selecting here never records consent, a grant or testing authority.
+    """
+    if prefix not in {"request", "retry", "fix", "preview"}:
+        raise ValueError("unsupported request risk field")
+    help_id = f"{prefix}-risk-help"
+    described_by = help_id + (" fix-risk-error" if invalid else "")
+    options = "".join(
+        '<label class="risk-choice">'
+        f'<input type="radio" name="risk" value="{value}"'
+        + (' checked' if selected == value else '')
+        + (' required' if value == "1" else '')
+        + (' aria-invalid="true"' if invalid else '')
+        + '><span>'
+        f'<strong>{_e(value)} — {_e(title)}</strong>'
+        f'<small>{_e(explanation)}</small></span></label>'
+        for value, title, explanation in _RISK_CHOICES
+    )
+    return (
+        f'<fieldset class="risk-options" id="{_e(prefix)}-risk"'
+        f' aria-describedby="{_e(described_by)}"'
+        + (' tabindex="-1" aria-invalid="true"' if invalid else '')
+        + '><legend>Requested testing risk</legend>'
+        f'<div class="risk-cards">{options}</div>'
+        f'<p class="meta" id="{_e(help_id)}">A risk choice is only a request. '
+        'It never permits testing; current scope, consent, revocation checks '
+        'and HUMAN GO are separate.</p></fieldset>'
     )
 
 
@@ -1979,17 +2036,7 @@ class LightUpWebApp:
                 '<p id="request-assets-help" class="meta">Only name systems you own or '
                 'are explicitly allowed to request a review for. This entry does not '
                 'verify ownership.</p>'
-                '<label for="request-risk">Requested testing risk</label>'
-                '<select id="request-risk" name="risk" required '
-                'aria-describedby="request-risk-help">'
-                '<option value="" selected>Choose a level…</option>'
-                '<option value="1">1 — Passive: observation only</option>'
-                '<option value="2">2 — Low impact: needs separate authorization</option>'
-                '<option value="3">3 — Standard: needs separate authorization</option>'
-                '<option value="4">4 — Elevated: needs additional risk review</option>'
-                '</select>'
-                '<p id="request-risk-help" class="meta">Choosing a level never gives '
-                'LightUp permission to run it.</p>'
+                f'{_risk_choice_cards("request")}'
                 f'{_risk_choice_guide()}'
                 '<label for="request-notes">Context for the reviewer (optional)</label>'
                 '<textarea id="request-notes" name="notes" rows="3"></textarea>'
@@ -2345,15 +2392,6 @@ class LightUpWebApp:
         if original.status is not RequestStatus.REJECTED:
             raise ValueError("only rejected client requests can be copied into a new draft")
 
-        risks = "".join(
-            f'<option value="{level}">{_e(label)}</option>'
-            for level, label in (
-                (1, "1 — Passive: observation only"),
-                (2, "2 — Low impact: requires separate authorization"),
-                (3, "3 — Standard: requires separate authorization"),
-                (4, "4 — Elevated: requires additional human review"),
-            )
-        )
         body = (
             "<h1>Prepare a separate assessment request</h1>"
             '<p class="sub">The previous request remains rejected. The values '
@@ -2374,10 +2412,7 @@ class LightUpWebApp:
             '<p id="retry-assets-help" class="meta">Remove anything you no longer '
             'own or have explicit permission to request a review for. '
             'Ownership is not verified here.</p>'
-            '<label for="retry-risk">Choose a fresh testing risk</label>'
-            '<select id="retry-risk" name="risk" required>'
-            '<option value="" selected>Choose again…</option>'
-            f'{risks}</select>'
+            f'{_risk_choice_cards("retry")}'
             f'{_risk_choice_guide()}'
             '<label for="retry-notes">Context for the reviewer (optional)</label>'
             f'<textarea id="retry-notes" name="notes" rows="3">'
@@ -2425,22 +2460,6 @@ class LightUpWebApp:
             raw_assets = form.get("assets", "")
             raw_notes = form.get("notes", "")
             raw_risk = form.get("risk", "")
-            options = "".join(
-                f'<option value="{value}"'
-                f'{" selected" if raw_risk == str(value) else ""}>'
-                f'{_e(label)}</option>'
-                for value, label in (
-                    (1, "1 — Passive: observation only"),
-                    (2, "2 — Low impact: needs separate authorization"),
-                    (3, "3 — Standard: needs separate authorization"),
-                    (4, "4 — Elevated: needs additional risk review"),
-                )
-            )
-            placeholder = (
-                '<option value="" disabled'
-                + (' selected' if raw_risk not in {"1", "2", "3", "4"} else '')
-                + '>Choose a risk level…</option>'
-            )
             missing_assets = not any(
                 part.strip() for part in raw_assets.split(",")
             )
@@ -2455,10 +2474,6 @@ class LightUpWebApp:
             assets_attrs = (
                 ' aria-invalid="true" aria-describedby="fix-assets-error"'
                 if missing_assets else ""
-            )
-            risk_attrs = (
-                ' aria-invalid="true" aria-describedby="fix-risk-error"'
-                if invalid_risk else ""
             )
             body = (
                 '<h1>Check your assessment request</h1>'
@@ -2475,9 +2490,7 @@ class LightUpWebApp:
                 f'value="{_e(raw_assets)}" autocomplete="off"{assets_attrs}>'
                 + ('<p id="fix-assets-error" class="error">A system is required.</p>'
                    if missing_assets else '')
-                + '<label for="fix-risk">Requested testing risk</label>'
-                f'<select id="fix-risk" name="risk" required{risk_attrs}>'
-                f'{placeholder}{options}</select>'
+                + _risk_choice_cards("fix", selected=raw_risk, invalid=invalid_risk)
                 + ('<p id="fix-risk-error" class="error">Choose a risk level.</p>'
                    if invalid_risk else '')
                 + _risk_choice_guide()
@@ -2492,16 +2505,6 @@ class LightUpWebApp:
                 portal_client=client_id,
             ), status="400 Bad Request")
 
-        editable_risks = "".join(
-            f'<option value="{value}"{" selected" if int(risk) == value else ""}>'
-            f'{_e(label)}</option>'
-            for value, label in (
-                (1, "1 — Passive: observation only"),
-                (2, "2 — Low impact: needs separate authorization"),
-                (3, "3 — Standard: needs separate authorization"),
-                (4, "4 — Elevated: needs additional risk review"),
-            )
-        )
         body = (
             "<h1>Review your assessment request</h1>"
             '<p class="sub">Step 2 of 2: check the details before sending '
@@ -2530,8 +2533,7 @@ class LightUpWebApp:
             '<label for="preview-assets">Systems you manage</label>'
             f'<input id="preview-assets" name="assets" required '
             f'value="{_e(", ".join(assets))}" autocomplete="off">'
-            '<label for="preview-risk">Requested testing risk</label>'
-            f'<select id="preview-risk" name="risk" required>{editable_risks}</select>'
+            f'{_risk_choice_cards("preview", selected=str(int(risk)))}'
             f'{_risk_choice_guide()}'
             '<label for="preview-notes">Context for the reviewer (optional)</label>'
             f'<textarea id="preview-notes" name="notes" rows="3">{_e(notes)}</textarea>'
