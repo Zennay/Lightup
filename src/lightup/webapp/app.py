@@ -87,7 +87,9 @@ nav button { background:none; border:0; color:var(--muted); cursor:pointer;
              font:inherit; padding:0; }
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,
 textarea:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
-button,input:not([type="hidden"]),select { min-height:44px; }
+button,input:not([type="hidden"]):not([type="checkbox"]),select { min-height:44px; }
+input[type="checkbox"] { width:auto; min-height:auto; margin:0; }
+label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0; }
 main { padding:28px 0 64px; }
 h1 { font-size:1.35rem; margin:0 0 4px; }
 h2 { font-size:1.05rem; margin:28px 0 10px; }
@@ -251,6 +253,10 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/engagements/(?P<engagement_id>[\w-]+)/grants$"),
              self.record_grant, "operator"),
             ("GET", re.compile(r"^/assessments$"), self.assessments, "operator"),
+            ("GET", re.compile(r"^/assessments/requests/(?P<request_id>[\w-]+)/review$"),
+             self.review_request_page, "operator"),
+            ("GET", re.compile(r"^/assessments/elevations/(?P<approval_id>[\w-]+)/review$"),
+             self.review_elevation_page, "operator"),
             ("POST", re.compile(r"^/assessments/requests/(?P<request_id>[\w-]+)/decision$"),
              self.decide_request, "operator"),
             ("POST", re.compile(r"^/assessments/elevations/(?P<approval_id>[\w-]+)/decision$"),
@@ -1040,7 +1046,6 @@ class LightUpWebApp:
 
     def assessments(self, auth: AuthState, form: dict[str, str]) -> Response:
         ctx = auth.context
-        csrf = self._csrf_field(auth)
         requests = self.store.list_assessment_requests(ctx)
         approvals = [a for a in self.store.list_risk_approvals(ctx)
                      if a.status.value == "pending"]
@@ -1050,14 +1055,8 @@ class LightUpWebApp:
             decision = ""
             if r.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}:
                 decision = (
-                    f'<form class="inline" method="post" '
-                    f'action="/assessments/requests/{_e(r.request_id)}/decision">{csrf}'
-                    '<input type="hidden" name="decision" value="approve">'
-                    "<button>Approve</button></form> "
-                    f'<form class="inline" method="post" '
-                    f'action="/assessments/requests/{_e(r.request_id)}/decision">{csrf}'
-                    '<input type="hidden" name="decision" value="reject">'
-                    "<button class=\"secondary\">Reject</button></form>"
+                    f'<a href="/assessments/requests/{_e(r.request_id)}/review">'
+                    'Open deliberate human decision</a>'
                 )
             request_cards.append(
                 "<div class=\"card\"><div class=\"row\">"
@@ -1080,14 +1079,8 @@ class LightUpWebApp:
                 f"requested by {_e(a.requested_by)}</p>"
                 "<details><summary>Justification</summary>"
                 f"<p class=\"meta\">{_e(a.justification)}</p></details>"
-                f'<form class="inline" method="post" '
-                f'action="/assessments/elevations/{_e(a.approval_id)}/decision">{csrf}'
-                '<input type="hidden" name="decision" value="approve">'
-                "<button>Approve elevation</button></form> "
-                f'<form class="inline" method="post" '
-                f'action="/assessments/elevations/{_e(a.approval_id)}/decision">{csrf}'
-                '<input type="hidden" name="decision" value="deny">'
-                "<button class=\"secondary\">Deny</button></form></div>"
+                f'<a href="/assessments/elevations/{_e(a.approval_id)}/review">'
+                'Open deliberate risk review</a></div>'
             )
         body = (
             "<h1>Assessments</h1>"
@@ -1100,25 +1093,135 @@ class LightUpWebApp:
         )
         return Response(_page("LightUp — Assessments", "assessments", body, auth))
 
+    def review_request_page(
+        self, auth: AuthState, form: dict[str, str], request_id: str,
+    ) -> Response:
+        ctx = auth.context
+        request = self.store.get_assessment_request(ctx, request_id)
+        client = self.store.get_client(ctx, request.client_id)
+        pending = request.status in {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+        }
+        controls = ""
+        if pending:
+            choices = []
+            for decision, label in (
+                ("approve", "Approve this request for scope review"),
+                ("reject", "Reject this request"),
+            ):
+                choices.append(
+                    '<form method="post" class="card" '
+                    f'action="/assessments/requests/{_e(request_id)}/decision">'
+                    f'{self._csrf_field(auth)}'
+                    f'<input type="hidden" name="decision" value="{decision}">'
+                    '<label class="review-ack">'
+                    '<input type="checkbox" name="reviewed" value="yes" required>'
+                    '<span>I read the client-origin request, assets and risk. '
+                    'This decision is not independent client consent and cannot '
+                    'activate testing.</span></label>'
+                    f'<button>{_e(label)}</button></form>'
+                )
+            controls = "".join(choices)
+        body = (
+            "<h1>Review client assessment request</h1>"
+            '<p class="sub">A human decision on the request only. '
+            'No scope grant, consent receipt or execution permission is created here.</p>'
+            '<section class="card">'
+            f'<p><strong>Client:</strong> {_e(client.name)} · '
+            f'<strong>Status:</strong> {_e(request.status.value)}</p>'
+            f'<p><strong>Requested systems:</strong> '
+            f'{_e(", ".join(request.requested_assets))}</p>'
+            f'<p><strong>Risk:</strong> {_risk(request.requested_risk)} · '
+            f'<strong>Mode:</strong> {_e(request.requested_mode.value)}</p>'
+            f'<p><strong>Client request origin:</strong> {_e(request.requested_by)} · '
+            f'<strong>Submitted:</strong> {_e(request.submitted_at)}</p>'
+            f'<p><strong>Notes:</strong> {_e(request.notes) or "None"}</p>'
+            '<p class="meta">Reviewing this request never verifies system '
+            'ownership, action-time revocation or HUMAN GO.</p></section>'
+            + (controls or '<p class="empty">Decision already recorded; '
+               'no further decision is available here.</p>')
+            + '<p><a href="/assessments">Back to operator reviews</a></p>'
+        )
+        return Response(_page(
+            "LightUp — Review request", "assessments", body, auth,
+        ))
+
+    def review_elevation_page(
+        self, auth: AuthState, form: dict[str, str], approval_id: str,
+    ) -> Response:
+        ctx = auth.context
+        decision = next(
+            (item for item in self.store.list_risk_approvals(ctx)
+             if item.approval_id == approval_id), None,
+        )
+        if decision is None:
+            raise KeyError("risk review not found")
+        engagement = self.store.get_engagement(ctx, decision.engagement_id)
+        client = self.store.get_client(ctx, engagement.client_id)
+        controls = ""
+        if decision.status.value == "pending":
+            choices = []
+            for choice, label in (
+                ("approve", "Record risk-elevation approval"),
+                ("deny", "Deny risk elevation"),
+            ):
+                choices.append(
+                    '<form method="post" class="card" '
+                    f'action="/assessments/elevations/{_e(approval_id)}/decision">'
+                    f'{self._csrf_field(auth)}'
+                    f'<input type="hidden" name="decision" value="{choice}">'
+                    '<label class="review-ack">'
+                    '<input type="checkbox" name="reviewed" value="yes" required>'
+                    '<span>I read the requested elevated risk and justification. '
+                    'A decision here never widens the separate recorded scope '
+                    'grant or authorizes execution.</span></label>'
+                    f'<button>{_e(label)}</button></form>'
+                )
+            controls = "".join(choices)
+        body = (
+            "<h1>Review proposed risk elevation</h1>"
+            '<p class="sub">Read the justification before choosing. '
+            'Even an approved elevation does not activate capabilities.</p>'
+            '<section class="card">'
+            f'<p><strong>Client:</strong> {_e(client.name)} · '
+            f'<strong>Engagement:</strong> {_e(engagement.name)}</p>'
+            f'<p><strong>Status:</strong> {_e(decision.status.value)} · '
+            f'<strong>Requested risk:</strong> {_risk(decision.requested_risk)}</p>'
+            f'<p><strong>Requested by:</strong> {_e(decision.requested_by)}</p>'
+            f'<p><strong>Justification:</strong> {_e(decision.justification)}</p>'
+            '<p class="meta">The original reviewed client request, scope grant, '
+            'consent and revocation-at-use remain independent prerequisites.</p>'
+            '</section>'
+            + (controls or '<p class="empty">No pending decision remains.</p>')
+            + '<p><a href="/assessments">Back to operator reviews</a></p>'
+        )
+        return Response(_page(
+            "LightUp — Risk review", "assessments", body, auth,
+        ))
+
     def decide_request(self, auth: AuthState, form: dict[str, str],
                        request_id: str) -> Response:
         decision = form.get("decision")
+        if form.get("reviewed") != "yes":
+            raise ValueError("operator must explicitly confirm request review")
         if decision not in {"approve", "reject"}:
             raise ValueError("assessment decision must be exactly approve or reject")
         self.store.review_assessment_request(
             auth.context, request_id, decision == "approve"
         )
-        return _redirect("/assessments")
+        return _redirect(f"/assessments/requests/{request_id}/review")
 
     def decide_elevation(self, auth: AuthState, form: dict[str, str],
                          approval_id: str) -> Response:
         decision = form.get("decision")
+        if form.get("reviewed") != "yes":
+            raise ValueError("operator must explicitly confirm risk review")
         if decision not in {"approve", "deny"}:
             raise ValueError("risk-elevation decision must be exactly approve or deny")
         self.store.decide_risk_elevation(
             auth.context, approval_id, decision == "approve"
         )
-        return _redirect("/assessments")
+        return _redirect(f"/assessments/elevations/{approval_id}/review")
 
     # -- client portal --------------------------------------------------------
 
