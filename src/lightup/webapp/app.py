@@ -132,6 +132,44 @@ def _risk(level: RiskLevel) -> str:
     return _e(_RISK_LABELS[level])
 
 
+def _request_progress(status: RequestStatus) -> list[dict[str, str]]:
+    """Human-readable stages; never infer a live grant or activation."""
+    if type(status) is not RequestStatus:
+        raise ValueError("request progress requires an original persisted status")
+    reviewed = {
+        RequestStatus.SUBMITTED: ("AWAITING_REVIEW", "An independent operator must review this request."),
+        RequestStatus.UNDER_REVIEW: ("UNDER_REVIEW", "An independent operator is reviewing this request."),
+        RequestStatus.APPROVED: ("REQUEST_APPROVED_ONLY", "This decision is not a scope grant or scan permission."),
+        RequestStatus.REJECTED: ("REQUEST_REJECTED", "This request cannot be used to issue a scope grant."),
+    }[status]
+    return [
+        {
+            "code": "CLIENT_SUBMISSION", "label": "Client request",
+            "state": "RECORDED",
+            "explanation": "Requested systems and risk are recorded; ownership is not independently verified.",
+        },
+        {
+            "code": "INDEPENDENT_OPERATOR_REVIEW", "label": "Human decision",
+            "state": reviewed[0], "explanation": reviewed[1],
+        },
+        {
+            "code": "REQUEST_BOUND_SCOPE", "label": "Recorded scope and risk limits",
+            "state": "CHECK_SEPARATELY",
+            "explanation": "A grant for a particular engagement is never inferred from this receipt.",
+        },
+        {
+            "code": "CLIENT_CONSENT_AND_REVOCATION", "label": "Current consent and revocation",
+            "state": "NOT_VERIFIED",
+            "explanation": "Separate client consent and a revocation check at use are still required.",
+        },
+        {
+            "code": "HUMAN_GO_AND_EXECUTION", "label": "Human go and testing",
+            "state": "LOCKED",
+            "explanation": "No scan or capability activation is available in this plan/lab build.",
+        },
+    ]
+
+
 @dataclass(frozen=True)
 class AuthState:
     context: AccessContext | None
@@ -1390,6 +1428,7 @@ class LightUpWebApp:
             "requested_risk": int(request.requested_risk),
             "submitted_at": request.created_at,
             "reviewed_at": request.decided_at,
+            "progress": _request_progress(request.status),
             "next_step": (
                 "AWAIT_INDEPENDENT_OPERATOR_REVIEW"
                 if awaiting else
@@ -1438,6 +1477,12 @@ class LightUpWebApp:
             "A decision has been recorded. Review your private authorization "
             "plan for the current scope and remaining blockers."
         )
+        stages = "".join(
+            '<li><strong>' + _e(step["label"]) + '</strong> '
+            '<span class="badge">' + _e(step["state"].replace("_", " ").lower())
+            + '</span><p class="meta">' + _e(step["explanation"]) + '</p></li>'
+            for step in _request_progress(request.status)
+        )
         body = (
             "<h1>Assessment request status</h1>"
             '<p class="sub">Your request was recorded for human review. '
@@ -1453,6 +1498,9 @@ class LightUpWebApp:
             f'<p>{_e(", ".join(request.requested_assets))}</p>'
             f'<p>Requested risk: {_risk(request.requested_risk)}</p>'
             f'<p class="meta">{_e(next_step)}</p>'
+            '<h2>Five separate safety steps</h2>'
+            '<ol aria-label="Request review and authorization status">'
+            f'{stages}</ol>'
             '<p class="meta">An approved request is still not a scope grant, '
             'separately verified consent, revocation-at-use check or HUMAN GO. '
             'Active testing remains locked.</p>'
