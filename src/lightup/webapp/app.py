@@ -153,6 +153,14 @@ label { font-size:.85rem; color:var(--muted); }
 .grant-step legend { color:var(--ink); font-weight:650; padding:0 6px; }
 .grant-step label { display:block; margin-top:12px; }
 .grant-step input, .grant-step select { max-width:100%; }
+.request-status h3 { margin:0; font-size:1rem; }
+.request-status .request-actions { display:flex; flex-wrap:wrap; gap:10px 18px; }
+.request-status .request-actions a { min-height:44px; display:inline-flex;
+                                    align-items:center; }
+.inbox-jumps { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; }
+.inbox-jumps a { padding:10px 14px; min-height:44px; display:inline-flex;
+                 align-items:center; background:var(--card);
+                 border:1px solid var(--line); border-radius:8px; }
 .risk-options { min-width:0; border:0; padding:0; margin:12px 0 18px; }
 .risk-options legend { color:var(--ink); font-weight:650; padding:0; }
 .risk-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:10px 0; }
@@ -2140,77 +2148,180 @@ class LightUpWebApp:
     def portal_requests(
         self, auth: AuthState, form: dict[str, str], client_id: str,
     ) -> Response:
-        """Tenant-private HUMAN review inbox; there are no state-changing links."""
+        """Tenant-private task-first inbox; no decision or execution actions."""
         viewer = self._portal_context(auth, client_id)
         client = self.store.get_client(viewer, client_id)
         requests = self.store.list_assessment_requests(viewer, client_id)
         if any(item.client_id != client_id for item in requests):
             raise TenantIsolationError("cross-tenant request list denied")
-        ordered = sorted(
-            requests, key=lambda item: (item.created_at, item.request_id),
+        known_states = {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            RequestStatus.APPROVED, RequestStatus.REJECTED,
+        }
+        if any(item.status not in known_states for item in requests):
+            raise ValueError("unrecognized persisted request state")
+        awaiting = sorted(
+            (
+                item for item in requests
+                if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+        )
+        decided = sorted(
+            (
+                item for item in requests
+                if item.status in {RequestStatus.APPROVED, RequestStatus.REJECTED}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
             reverse=True,
         )
-        awaiting = [
-            item for item in ordered
-            if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
-        ]
-        decided = [
-            item for item in ordered
-            if item.status in {RequestStatus.APPROVED, RequestStatus.REJECTED}
-        ]
+        accepted_count = sum(
+            item.status is RequestStatus.APPROVED for item in decided
+        )
+        rejected_count = len(decided) - accepted_count
+
+        # The visible status is a real persisted HUMAN decision, never an
+        # inferred capability/grant. Keep raw source identifiers behind a
+        # disclosure and use the same checked receipt route for full details.
+        labels = {
+            RequestStatus.SUBMITTED: (
+                "Sent — awaiting operator", "An independent operator has not decided yet.",
+                "View submitted request receipt",
+            ),
+            RequestStatus.UNDER_REVIEW: (
+                "Under human review", "The operator is reviewing the request. Testing is locked.",
+                "Track human review",
+            ),
+            RequestStatus.APPROVED: (
+                "Accepted for scope review", "Only the request was approved. Scope, current "
+                "consent, revocation and HUMAN GO still require separate checks.",
+                "Read approval receipt and safety steps",
+            ),
+            RequestStatus.REJECTED: (
+                "Rejected — no scope authority", "The decision is final for this request. "
+                "Only a separate original client request may be reviewed again.",
+                "Read rejection receipt",
+            ),
+        }
 
         def render_row(request) -> str:
-            next_step = {
-                RequestStatus.SUBMITTED: "Waiting for independent operator review.",
-                RequestStatus.UNDER_REVIEW: "Operator review in progress.",
-                RequestStatus.APPROVED: "Request approved only. Check separate scope and consent.",
-                RequestStatus.REJECTED: "Request rejected. No scope authority created.",
-            }[request.status]
+            title, next_step, open_label = labels[request.status]
+            receipt_url = (
+                f"/portal/{_e(client_id)}/requests/{_e(request.request_id)}"
+            )
+            outcome_link = (
+                f' <a href="/portal/{_e(client_id)}/authorization-plan">'
+                'Read separate scope and safety plan</a>'
+                if request.status is RequestStatus.APPROVED else ""
+            )
             retry_link = (
-                f' · <a href="/portal/{_e(client_id)}/requests/'
-                f'{_e(request.request_id)}/new-draft">'
-                'Prepare a new draft from these details</a>'
+                f' <a href="{receipt_url}/new-draft">'
+                'Prepare a separate client-origin draft</a>'
                 if request.status is RequestStatus.REJECTED and not auth.is_operator
                 else ""
             )
+            badge_type = (
+                "warn" if request.status is RequestStatus.REJECTED else
+                "lock" if request.status is RequestStatus.APPROVED else ""
+            )
+            decision_time = (
+                f' · Human decision: {_e(request.decided_at)}'
+                if request.decided_at else ""
+            )
             return (
-                '<section class="card"><div class="row">'
-                f'<strong>Request {_e(request.request_id)}</strong>'
-                f'<span class="badge">{_e(request.status.value)}</span></div>'
+                '<article class="card request-status">'
+                '<div class="row">'
+                f'<h3>{_e(title)}</h3>'
+                f'<span class="badge {badge_type}">{_e(request.status.value)}</span>'
+                '</div>'
                 f'<p class="meta">Submitted: {_e(request.created_at)}'
-                + (f' · Decided: {_e(request.decided_at)}'
-                   if request.decided_at else '')
-                + f' · Requested risk: {_risk(request.requested_risk)}</p>'
-                f'<p class="meta">{_e(next_step)}</p>'
-                f'<a href="/portal/{_e(client_id)}/requests/{_e(request.request_id)}">'
-                'Open private status and safety steps</a>'
-                f'{retry_link}'
-                '</section>'
+                f'{decision_time} · Mode: {_e(request.requested_mode.value)}'
+                f' · Requested risk: {_risk(request.requested_risk)}</p>'
+                f'<p><strong>Next step:</strong> {_e(next_step)}</p>'
+                f'<p class="request-actions"><a href="{receipt_url}">'
+                f'{_e(open_label)}</a>{outcome_link}{retry_link}</p>'
+                '<details><summary>Show original request reference</summary>'
+                f'<p class="meta"><code>{_e(request.request_id)}</code></p>'
+                '</details></article>'
             )
 
-        submit_link = (
-            f'<a href="/portal/{_e(client_id)}#new-request">Prepare a new request</a>'
-            if not auth.is_operator else
-            'Operator view is read-only; only an original client session may submit.'
-        )
+        if auth.is_operator:
+            current_heading = "Review human decisions in the operator inbox"
+            current_body = (
+                "This portal is read-only for operators. Only an original "
+                "client session can submit another request."
+            )
+            current_link = '<a href="/assessments">Open operator decision inbox</a>'
+        elif awaiting:
+            current_heading = f"{len(awaiting)} request(s) awaiting human review"
+            current_body = (
+                "Your requests are recorded. Wait for an independent decision; "
+                "there is no scan or grant to activate here."
+            )
+            current_link = '<a href="#awaiting-requests">Track pending decisions</a>'
+        elif accepted_count:
+            current_heading = "Request review finished — check separate safety gates"
+            current_body = (
+                "At least one request was accepted for scope review only. "
+                "That is not approval to contact or test a system."
+            )
+            current_link = (
+                f'<a href="/portal/{_e(client_id)}/authorization-plan">'
+                'Open read-only scope and safety plan</a>'
+            )
+        elif rejected_count:
+            current_heading = "Previous requests were rejected"
+            current_body = (
+                "No request is awaiting review. A rejection cannot be reused "
+                "as permission. You may prepare a separate original request."
+            )
+            current_link = (
+                f'<a href="/portal/{_e(client_id)}#new-request">'
+                'Prepare a new request</a>'
+            )
+        else:
+            current_heading = "No assessment request recorded yet"
+            current_body = (
+                "Prepare a client-origin request and explicitly select its "
+                "systems, mode and risk. Human review is always separate."
+            )
+            current_link = (
+                f'<a href="/portal/{_e(client_id)}#new-request">'
+                'Prepare first request</a>'
+            )
         body = (
             '<h1>Assessment requests</h1>'
-            f'<p class="sub">{_e(client.name)} · Human review only. '
-            'Request approval never activates a scan.</p>'
-            f'<section class="card"><strong>{len(awaiting)} awaiting review · '
-            f'{len(decided)} decided</strong>'
-            '<p class="meta">All records remain PLAN ONLY until separate '
-            'scope, consent, action-time revocation and HUMAN GO.</p>'
-            f'<p>{submit_link} · '
-            f'<a href="/portal/{_e(client_id)}">Back to overview</a> · '
-            f'<a href="/portal/{_e(client_id)}/requests.json">'
-            'Download private status index (JSON)</a></p></section>'
-            f'<h2>Waiting for review ({len(awaiting)})</h2>'
+            f'<p class="sub">{_e(client.name)} · Private request statuses. '
+            'No status is permission to scan.</p>'
+            '<section class="card next-action" aria-labelledby="inbox-next">'
+            '<span class="badge lock">PLAN ONLY · testing locked</span>'
+            f'<h2 id="inbox-next">{_e(current_heading)}</h2>'
+            f'<p>{_e(current_body)}</p>'
+            f'<p>{current_link}</p>'
+            '</section>'
+            '<nav class="inbox-jumps" aria-label="Request status groups">'
+            f'<a href="#awaiting-requests">Awaiting review ({len(awaiting)})</a>'
+            f'<a href="#reviewed-requests">Decided ({len(decided)})</a>'
+            '</nav>'
+            '<p class="meta">Human request decisions do not verify asset ownership, '
+            'independent client consent, a current request-bound grant, '
+            'revocation at use or HUMAN GO.</p>'
+            f'<h2 id="awaiting-requests">Awaiting human review ({len(awaiting)})</h2>'
+            '<p class="meta">Oldest first · the operator owns the next decision.</p>'
             + ("".join(render_row(item) for item in awaiting)
-               or '<p class="empty">No requests currently waiting for a decision.</p>')
-            + f'<h2>Reviewed requests ({len(decided)})</h2>'
+               or '<p class="empty">No requests are awaiting a decision.</p>')
+            + f'<h2 id="reviewed-requests">Human decisions ({len(decided)})</h2>'
+            + f'<p class="meta">{accepted_count} accepted for scope review only · '
+              f'{rejected_count} rejected. Newest decision first.</p>'
             + ("".join(render_row(item) for item in decided)
-               or '<p class="empty">No operator decisions recorded yet.</p>')
+               or '<p class="empty">No human decisions are recorded yet.</p>')
+            + '<details><summary>Navigation and private status export</summary>'
+            f'<p><a href="/portal/{_e(client_id)}">Back to client overview</a> · '
+            f'<a href="/portal/{_e(client_id)}/requests.json">'
+            'Download private status index (JSON)</a></p>'
+            '<p class="meta">The export contains original request IDs and '
+            'timestamps, not verified authorization or permission to test.</p>'
+            '</details>'
         )
         return Response(_page(
             "LightUp — Request inbox", "requests", body, auth,
