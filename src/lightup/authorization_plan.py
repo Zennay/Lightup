@@ -48,7 +48,9 @@ def build_client_authorization_plan(
     engagement: only the original domain's request-bound grant lookup can
     report an existing current grant. Even then the plan remains HOLD.
     """
-    actor.require_operator("build_client_authorization_plan")
+    # Clients may read only their own tenant; operators name a tenant. The
+    # original domain repeats this boundary on every underlying read.
+    actor.resolve_client(client_id, "build_client_authorization_plan")
     client = store.get_client(actor, client_id)
     requests = store.list_assessment_requests(actor, client_id)
     engagements = store.list_engagements(actor, client_id)
