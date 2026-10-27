@@ -98,6 +98,10 @@ button,input:not([type="hidden"]):not([type="checkbox"]),select { min-height:44p
 input[type="checkbox"] { width:auto; min-height:auto; margin:0; }
 label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0; }
 .report-section { break-inside:avoid; page-break-inside:avoid; }
+.report-section[id^="report-open-"]:target {
+  outline:3px solid var(--accent); outline-offset:3px;
+  scroll-margin-top:24px;
+}
 .report-section h3 { margin:6px 0 12px; font-size:1rem; }
 .report-section h4 { margin:14px 0 4px; font-size:.9rem; }
 .report-boundary { border-left:4px solid var(--lock); background:#fffaf7; }
@@ -127,6 +131,7 @@ label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0
   a { color:inherit; text-decoration:underline; }
   .report-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); }
   .report-section { break-inside:avoid-page; }
+  .report-section[id^="report-open-"]:target { outline:none; }
 }
 .decision-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
                  gap:14px; align-items:stretch; }
@@ -2389,8 +2394,10 @@ class LightUpWebApp:
             '<li><strong>' + _e(item.title) + '</strong>'
             f'<p class="meta">{_e(item.severity.value)} severity · '
             f'{_e(item.retest_status.value.replace("_", " "))}</p>'
-            f'<p>{_e(follow_up_guidance[item.retest_status])}</p></li>'
-            for item in human_followups[:3]
+            f'<p>{_e(follow_up_guidance[item.retest_status])}</p>'
+            f'<p><a href="/portal/{_e(client_id)}/report#report-open-{index}">'
+            'Read recorded impact, proposed fix and retest evidence</a></p></li>'
+            for index, item in enumerate(human_followups[:3], 1)
         )
         follow_up_board = (
             '<section class="card" aria-labelledby="follow-up-heading">'
@@ -2748,7 +2755,7 @@ class LightUpWebApp:
             label, meaning = finding_statuses[f.retest_status]
             anchor = f"report-{'fixed' if fixed else 'open'}-{ordinal}"
             return (
-                f'<article class="card report-section" id="{_e(anchor)}">'
+                f'<article class="card report-section" id="{_e(anchor)}" tabindex="-1">'
                 '<div class="row">'
                 f'<h3>{_e(f.title)}</h3>'
                 f'<span class="badge">{_e(label)}</span></div>'
@@ -2839,6 +2846,7 @@ class LightUpWebApp:
                 "first_human_actions": [
                     {
                         "report_local_priority": index,
+                        "report_local_fragment": f"report-open-{index}",
                         "title": f.title,
                         "severity": f.severity.value,
                         "retest_status": f.retest_status.value,
