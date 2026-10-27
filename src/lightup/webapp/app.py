@@ -236,6 +236,10 @@ class LightUpWebApp:
              self.authorization_review_worklist_csv, "operator"),
             ("GET", re.compile(r"^/authorization-reviews/(?P<kind>[\w-]+)\.csv$"),
              self.authorization_review_worklist_csv, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews\.records\.csv$"),
+             self.authorization_review_records_csv, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews/(?P<kind>[\w-]+)\.records\.csv$"),
+             self.authorization_review_records_csv, "operator"),
             ("GET", re.compile(r"^/discovery$"), self.discovery, "operator"),
             ("POST", re.compile(r"^/discovery/prospects$"), self.add_prospect, "operator"),
             ("POST", re.compile(r"^/discovery/prospects/(?P<prospect_id>[\w-]+)/status$"),
@@ -447,6 +451,37 @@ class LightUpWebApp:
             )],
         )
 
+    def authorization_review_records_csv(
+        self, auth: AuthState, form: dict[str, str],
+        kind: str | None = None,
+    ) -> Response:
+        from ..authorization_plan import (
+            build_operator_portfolio_review_payload,
+            to_operator_review_worklist_csv,
+        )
+
+        if kind is not None and kind not in _AUTH_REVIEW_ACTIONS:
+            raise ValueError("unknown HUMAN record export category")
+        portfolio = build_operator_portfolio_review_payload(
+            self.store, auth.context
+        )
+        # One row per persisted record, never the private target/assets or
+        # a grant/consent receipt. Source records remain HOLD/PLAN_ONLY.
+        body = to_operator_review_worklist_csv(
+            portfolio, kind=kind, records=True,
+        )
+        filename = (
+            f"lightup-m0-human-records-{kind}.csv"
+            if kind else "lightup-m0-human-records.csv"
+        )
+        return Response(
+            body, content_type="text/csv; charset=utf-8",
+            extra_headers=[(
+                "Content-Disposition",
+                f'attachment; filename="{filename}"',
+            )],
+        )
+
     def authorization_review_worklist(
         self, auth: AuthState, form: dict[str, str],
         kind: str | None = None,
@@ -512,6 +547,10 @@ class LightUpWebApp:
             f"/authorization-reviews/{kind}.csv"
             if kind else "/authorization-reviews.csv"
         )
+        records_csv_path = (
+            f"/authorization-reviews/{kind}.records.csv"
+            if kind else "/authorization-reviews.records.csv"
+        )
         body = (
             "<h1>Human authorization review worklist</h1>"
             "<p class=\"sub\">Private operator triage. Counts reflect recorded "
@@ -520,7 +559,9 @@ class LightUpWebApp:
             f'<div class="card"><strong>{len(items)} matching original records · '
             'all remain HUMAN review only</strong>'
             f'<p class="meta">{filters}</p>'
-            f'<a href="{csv_path}">Download matching redacted CSV</a>'
+            f'<a href="{csv_path}">Download category totals CSV</a>'
+            ' · '
+            f'<a href="{records_csv_path}">Download exact record worklist CSV</a>'
             ' · <a href="/authorization-overview.json">Full private JSON</a>'
             ' · <a href="/">Back to overview</a></div>'
             + ("".join(cards)
