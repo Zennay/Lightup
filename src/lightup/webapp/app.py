@@ -2300,41 +2300,67 @@ class LightUpWebApp:
         request = self.store.get_assessment_request(viewer, request_id)
         if request.client_id != client_id:
             raise TenantIsolationError("cross-tenant request receipt denied")
-        awaiting = request.status in {
-            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
-        }
-        if awaiting:
-            next_step = "An independent operator still needs to review this request."
+        # Every message comes only from the persisted original request state.
+        # Approval remains an approval of the REQUEST, not of target testing.
+        if request.status is RequestStatus.SUBMITTED:
+            status_title = "Request sent — awaiting review"
+            status_summary = "Your request is recorded. No human decision has been made yet."
+            next_step = "An independent operator must review the request."
+            safety_notice = (
+                "There is no operator decision, scope grant, verified consent, "
+                "revocation-at-use check or HUMAN GO. Testing remains locked."
+            )
+        elif request.status is RequestStatus.UNDER_REVIEW:
+            status_title = "Request under human review"
+            status_summary = "An operator is reviewing the request, not authorizing a scan."
+            next_step = "Wait for the independent decision before checking scope requirements."
+            safety_notice = (
+                "Review in progress is not approval, consent, a scope grant, "
+                "revocation-at-use proof or HUMAN GO. Testing remains locked."
+            )
         elif request.status is RequestStatus.APPROVED:
+            status_title = "Request accepted for scope review"
+            status_summary = "The operator approved the request, not active testing."
             next_step = (
-                "The request was approved for scope review only. A separate, "
-                "current scope grant, consent, revocation check and HUMAN GO "
-                "are still required before any testing."
+                "Read the separate scope and safety requirements. A current "
+                "request-bound grant, consent, revocation check and HUMAN GO "
+                "would still be required before any testing."
+            )
+            safety_notice = (
+                "Request approval is not a scope grant, independently verified "
+                "client consent, revocation-at-use proof or HUMAN GO. "
+                "Testing remains locked."
             )
         elif request.status is RequestStatus.REJECTED:
+            status_title = "Request rejected — testing remains locked"
+            status_summary = "This request cannot support a scope grant."
             next_step = (
-                "The operator rejected this request. It cannot support a scope "
-                "grant or testing; a new client-origin request needs its own "
-                "independent review."
+                "If needed, prepare a separate client-origin draft and submit "
+                "it for its own independent review. The rejection remains recorded."
+            )
+            safety_notice = (
+                "A rejected request stays closed. No later consent or HUMAN GO "
+                "can turn this rejected request into a grant. Testing remains locked."
             )
         else:
             raise ValueError("unrecognized persisted request decision")
-        new_request_link = (
-            f'<a href="/portal/{_e(client_id)}/requests/'
-            f'{_e(request_id)}/new-draft">'
-            'Prepare a separate new draft using these details</a> · '
-            if request.status is RequestStatus.REJECTED and not auth.is_operator
-            else ""
-        )
-        safety_notice = (
-            "A rejected request remains closed. No separate approval, consent "
-            "or HUMAN GO can turn this request into a scope grant. "
-            "Active testing remains locked."
-            if request.status is RequestStatus.REJECTED else
-            "An approved request is still not a scope grant, separately "
-            "verified consent, revocation-at-use check or HUMAN GO. "
-            "Active testing remains locked."
-        )
+        if auth.is_operator:
+            next_href = "/assessments"
+            next_label = "Open operator decision inbox"
+            if request.status is RequestStatus.REJECTED:
+                next_step = (
+                    "Only the client can prepare a separate new request. "
+                    "This rejected decision stays recorded and cannot grant scope."
+                )
+        elif request.status is RequestStatus.REJECTED:
+            next_href = f"/portal/{client_id}/requests/{request_id}/new-draft"
+            next_label = "Prepare a separate new draft"
+        elif request.status is RequestStatus.APPROVED:
+            next_href = f"/portal/{client_id}/authorization-plan"
+            next_label = "Review the read-only scope and safety plan"
+        else:
+            next_href = f"/portal/{client_id}/requests"
+            next_label = "Track all request statuses"
         stages = "".join(
             '<li><strong>' + _e(step["label"]) + '</strong> '
             '<span class="badge">' + _e(step["state"].replace("_", " ").lower())
@@ -2342,34 +2368,43 @@ class LightUpWebApp:
             for step in _request_progress(request.status)
         )
         body = (
-            "<h1>Assessment request status</h1>"
-            '<p class="sub">Your request was recorded for human review. '
-            'A request never starts a scan or activates tools.</p>'
-            '<section class="card"><div class="row">'
+            f'<h1>{_e(status_title)}</h1>'
+            f'<p class="sub">{_e(status_summary)} A request never starts a scan.</p>'
+            '<section class="card next-action" aria-labelledby="request-next-heading">'
+            '<span class="badge lock">PLAN ONLY · testing locked</span>'
+            '<h2 id="request-next-heading">What happens next?</h2>'
+            f'<p>{_e(next_step)}</p>'
+            f'<p><a href="{_e(next_href)}">{_e(next_label)}</a></p>'
+            '</section>'
+            '<section class="card" aria-labelledby="receipt-details-heading">'
+            '<h2 id="receipt-details-heading">Your recorded request</h2>'
+            '<div class="row">'
             f'<strong>Request {_e(request.request_id)}</strong>'
             f'<span class="badge">{_e(request.status.value)}</span></div>'
             f'<p class="meta">Submitted: {_e(request.created_at)}'
-            + (f' · Reviewed: {_e(request.decided_at)}'
+            + (f' · Decided: {_e(request.decided_at)}'
                if request.decided_at else '')
             + '</p>'
-            '<strong>Requested systems (not verified)</strong>'
+            f'<p><strong>Requested risk:</strong> {_risk(request.requested_risk)}</p>'
+            '<details><summary>Show submitted systems and reviewer notes</summary>'
+            '<p><strong>Systems (ownership not verified)</strong></p>'
             f'<p>{_e(", ".join(request.requested_assets))}</p>'
-            f'<p>Requested risk: {_risk(request.requested_risk)}</p>'
-            f'<p class="meta">{_e(next_step)}</p>'
-            '<h2>Five separate safety steps</h2>'
+            '<p><strong>Context for the reviewer</strong></p>'
+            f'<p>{_e(request.notes) if request.notes else "None recorded"}</p>'
+            '</details>'
+            '<p class="meta">' + _e(safety_notice) + '</p>'
+            '<details><summary>Five separate review and safety steps</summary>'
             '<ol aria-label="Request review and authorization status">'
-            f'{stages}</ol>'
-            f'<p class="meta">{_e(safety_notice)}</p>'
-            f'{new_request_link}'
-            f'<a href="/portal/{_e(client_id)}/requests/{_e(request_id)}.json">'
+            f'{stages}</ol></details>'
+            f'<p><a href="/portal/{_e(client_id)}/requests/{_e(request_id)}.json">'
             'Download private request status JSON</a> · '
             f'<a href="/portal/{_e(client_id)}/authorization-plan">'
             'View authorization plan</a> · '
-            f'<a href="/portal/{_e(client_id)}">Back to portal</a>'
+            f'<a href="/portal/{_e(client_id)}">Back to portal</a></p>'
             '</section>'
         )
         return Response(_page(
-            "LightUp — Request status", "requests", body, auth,
+            f"LightUp — {status_title}", "requests", body, auth,
             portal_client=client_id,
         ))
 
