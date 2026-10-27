@@ -430,7 +430,7 @@ def build_operator_portfolio_review_payload(
     }
 
 
-def to_operator_review_worklist_csv(portfolio: dict) -> str:
+def to_operator_review_worklist_csv(portfolio: dict, kind: str | None = None) -> str:
     """Export one private HUMAN-review row per recorded attention category.
 
     This intentionally contains no assets, consent receipts, scope tokens or
@@ -446,6 +446,14 @@ def to_operator_review_worklist_csv(portfolio: dict) -> str:
             or portfolio.get("authority", {}).get("execution_allowed") is not False
             or portfolio.get("authority", {}).get("human_go_verified") is not False):
         raise ValueError("portfolio is not a fail-closed review document")
+
+    allowed_kinds = {
+        "review_client_requests", "review_risk_decisions",
+        "review_unrestricted_grants", "review_expired_grants",
+        "review_future_grants", "review_missing_grants",
+    }
+    if kind is not None and kind not in allowed_kinds:
+        raise ValueError("unknown HUMAN worklist category")
 
     def cell(value: object) -> str:
         raw = str(value)
@@ -468,6 +476,8 @@ def to_operator_review_worklist_csv(portfolio: dict) -> str:
                 or tenant["execution_allowed"] is not False):
             raise ValueError("review queue is not fail-closed")
         for action in tenant["actions"]:
+            if kind is not None and action["kind"] != kind:
+                continue
             if (action["review_only"] is not True
                     or action["execution_allowed"] is not False
                     or type(action["count"]) is not int
