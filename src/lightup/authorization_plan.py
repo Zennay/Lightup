@@ -499,12 +499,14 @@ def build_operator_portfolio_review_payload(
     }
 
 
-def to_operator_review_worklist_csv(portfolio: dict, kind: str | None = None) -> str:
-    """Export one private HUMAN-review row per recorded attention category.
+def to_operator_review_worklist_csv(
+    portfolio: dict, kind: str | None = None, *, records: bool = False,
+) -> str:
+    """Export private HUMAN-review totals or exact-record work items.
 
-    This intentionally contains no assets, consent receipts, scope tokens or
+    Both forms deliberately exclude assets, consent receipts, scope tokens and
     execution parameters. The operator route authenticates before building it;
-    a CSV file is never an authority-bearing artifact.
+    either CSV is a HUMAN-only planning document, never execution authority.
     """
     import csv
     import io
@@ -523,6 +525,8 @@ def to_operator_review_worklist_csv(portfolio: dict, kind: str | None = None) ->
     }
     if kind is not None and kind not in allowed_kinds:
         raise ValueError("unknown HUMAN worklist category")
+    if type(records) is not bool:
+        raise ValueError("record-level export must be an explicit boolean")
 
     def cell(value: object) -> str:
         raw = str(value)
@@ -536,6 +540,37 @@ def to_operator_review_worklist_csv(portfolio: dict, kind: str | None = None) ->
 
     output = io.StringIO(newline="")
     writer = csv.writer(output, lineterminator="\r\n")
+    if records:
+        writer.writerow((
+            "evaluated_at_utc", "client_id", "client_name", "review_category",
+            "record_type", "record_id", "submitted_or_requested_at_utc",
+            "review_state", "authority_state", "execution_allowed",
+        ))
+        record_types = {
+            "review_client_requests": "request",
+            "review_risk_decisions": "risk_elevation",
+            "review_unrestricted_grants": "engagement",
+            "review_expired_grants": "engagement",
+            "review_future_grants": "engagement",
+            "review_missing_grants": "engagement",
+        }
+        for item in portfolio["review_details"]:
+            if (item["kind"] not in allowed_kinds
+                    or item["record_type"] != record_types[item["kind"]]
+                    or type(item["record_id"]) is not str
+                    or not item["record_id"]
+                    or item["decision"] != "HOLD"
+                    or item["execution_allowed"] is not False):
+                raise ValueError("source record is not a fail-closed HUMAN work item")
+            if kind is not None and item["kind"] != kind:
+                continue
+            writer.writerow(tuple(map(cell, (
+                portfolio["evaluated_at"], item["client_id"],
+                item["client_name"], item["kind"], item["record_type"],
+                item["record_id"], item["created_at"] or "",
+                "HUMAN_REVIEW_ONLY", "HOLD_PLAN_ONLY", "FALSE",
+            ))))
+        return output.getvalue()
     writer.writerow((
         "evaluated_at_utc", "client_id", "client_name", "review_category",
         "pending_items", "review_state", "authority_state", "execution_allowed",
