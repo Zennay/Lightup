@@ -369,6 +369,13 @@
     $("bulk-date-apply").disabled = !undated.length || !validLocalDay($("bulk-date").value);
     $("bulk-date-preview").textContent = undated.length + " of " + sorted.length +
       " visible case(s) eligible (open and without a proposed date). The chosen date is HUMAN planning only.";
+    // The filtered triage action is intentionally distinct from the existing
+    // report-wide action. Only source-declared regressions still in 'todo'
+    // qualify, and the count follows every queue/metric filter.
+    const visibleUntriaged = sorted.filter(({c}) => c.regressions.length && c.stage === "todo");
+    $("batch-triage-visible").disabled = !visibleUntriaged.length;
+    $("batch-triage-visible-preview").textContent = visibleUntriaged.length +
+      " of " + sorted.length + " currently visible case(s) have untriaged source regressions.";
     $("queue-export-csv").disabled = !sorted.length;
     $("queue-export-json").disabled = !sorted.length;
     $("queue-export-html").disabled = !sorted.length;
@@ -877,6 +884,8 @@
     $("asof-day").value = "";
     $("bulk-route").value = "";
     $("bulk-route-apply").disabled = true;
+    $("batch-triage-visible").disabled = true;
+    $("batch-triage-visible-preview").textContent = "Load a report to preview filtered HUMAN triage.";
     $("bulk-route-preview").textContent = "Load a report to preview eligible HUMAN workstream assignments.";
     $("bulk-date").value = "";
     $("bulk-date-apply").disabled = true;
@@ -1506,6 +1515,39 @@
       ". No source findings, review stage, due dates, permissions or release gates changed.", "good");
   });
   $("bulk-route").addEventListener("change", () => { if (report) renderQueue(); });
+  function queueForHumanInvestigation(c) {
+    c.stage = "investigating";
+    // Preserve every HUMAN-selected workstream. Original metric flags are
+    // used only to suggest a local review group, never a real assignment.
+    if (c.route === "unassigned") {
+      c.route = c.regressions.some(x => ["scope_violations","policy_violations"].includes(x))
+        ? "scope-review" : c.regressions.some(x =>
+          ["invalid_findings","missed_findings","evidence_quality"].includes(x))
+        ? "evidence-review" : "lab-runtime";
+    }
+  }
+  $("batch-triage-visible").addEventListener("click", () => {
+    if (!report || !digest) return;
+    // Freeze selection before edits: stage/workstream filters may exclude
+    // a row immediately after it becomes a HUMAN investigation.
+    const pending = filteredQueueRows().filter(({c}) =>
+      c.regressions.length && c.stage === "todo");
+    if (!pending.length) {
+      alert("No visible, untriaged source regressions match the current filters.");
+      renderQueue();
+      return;
+    }
+    if (!window.confirm("Move only these " + pending.length +
+       " currently filtered, untriaged regression case(s) into HUMAN investigation? " +
+       "Cases hidden by the current filters will not change. One Undo reverses this batch. " +
+       "No scan, consent, grant or release authorization is created.")) return;
+    invalidateReads();
+    rememberHumanEdit();
+    pending.forEach(({c}) => queueForHumanInvestigation(c));
+    render();
+    alert("Queued " + pending.length +
+      " filtered offline HUMAN investigations. All unselected cases and original report authority remain unchanged.", "good");
+  });
   $("batch-triage").addEventListener("click", () => {
     if (!report) return;
     const pending = report.cases.filter(c => c.regressions.length && c.stage === "todo");
@@ -1513,21 +1555,14 @@
       alert("No new regressed cases need triage.");
       return;
     }
-    if (!window.confirm("Move " + pending.length +
-       " new regressed lab cases to human investigation? This is NOT assessment authorization.")) return;
+    if (!window.confirm("Move ALL " + pending.length +
+       " untriaged regressed lab cases to HUMAN investigation, including cases hidden by current filters? " +
+       "One Undo reverses this change. This is NOT assessment authorization.")) return;
     invalidateReads();
     rememberHumanEdit();
-    pending.forEach(c => {
-      c.stage = "investigating";
-      if (c.route === "unassigned") {
-        c.route = c.regressions.some(x => ["scope_violations","policy_violations"].includes(x))
-          ? "scope-review" : c.regressions.some(x =>
-            ["invalid_findings","missed_findings","evidence_quality"].includes(x))
-          ? "evidence-review" : "lab-runtime";
-      }
-    });
+    pending.forEach(queueForHumanInvestigation);
     alert("Queued " + pending.length +
-      " human investigations. Original report HOLD and security flags are unchanged.", "good");
+      " report-wide HUMAN investigations. Original report HOLD and security flags are unchanged.", "good");
     render();
   });
   $("asof-day").addEventListener("change", () => {

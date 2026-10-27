@@ -1,3 +1,11 @@
+## 27 October 2026 · explicit report-wide vs filtered HUMAN regression triage
+
+The offline Review Desk now distinguishes **queue ALL untriaged source regressions** (including cases hidden by filters) from **queue only currently visible untriaged regressions**. A live eligible count reflects queue status, workstream, source priority and metric focus; the reviewer must confirm the relevant scope.
+
+Both actions share the same priority-based *suggested* local workstream routing and transition `todo` to `investigating` only. Existing HUMAN-selected workstream labels are preserved. The exact filtered set is captured before edits, so filter-dependent disappearing rows do not lead to skipped or unexpected updates. One source-bound in-memory Undo/Redo step reverts the batch.
+
+This is **not** scheduling, source validation, a real reviewer assignment, authorization, consent, a scan or release. The source verdict and four false authority flags remain untouched. Both static source and strict no-network standalone HTML have matching code and CSP hashes; original independent review and HUMAN-GO gates remain HOLD.
+
 ## 27 October 2026 · explicit-date bulk HUMAN planning
 
 The offline Review Desk can now set a **manually chosen proposed day** across the exact currently filtered open cases that have no date. A live eligible-count preview precedes the download-free, confirmation-gated action. The batch is one source-byte-bound Undo/Redo transaction.
