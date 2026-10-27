@@ -1082,14 +1082,28 @@ def render_review_bundle_html(result, *, cohort: bool = False,
                 for item in metrics["metric_summary"]
             ),
         )
+        # Reuse only the already-admitted canonical metric labels. Reviewers
+        # can see WHAT was source-flagged before opening a detailed case; this
+        # is not severity scoring, validation or authorization.
+        flagged_labels_by_case = {
+            case["scenario_ordinal"]: tuple(
+                _METRIC_LABELS[entry["metric"]]
+                for entry in case["metrics"]
+                if entry["source_regression_flag"]
+            )
+            for case in metrics["cases"]
+        }
         questions = safe_table(
             ("Review rank", "Anonymous case", "HUMAN review group",
-             "Adverse flags", "Unknown coverage", "Fixed HUMAN question"),
+             "Adverse flags", "Source-flagged metric labels",
+             "Unknown coverage", "Fixed HUMAN question"),
             (
                 (
                     item["review_order"], item["scenario_ordinal"],
                     item["human_review_group"],
                     item["source_adverse_metric_count"],
+                    " / ".join(flagged_labels_by_case[item["scenario_ordinal"]])
+                    or "None source-flagged",
                     item["source_unknown_coverage"],
                     item["suggested_human_question"],
                 )

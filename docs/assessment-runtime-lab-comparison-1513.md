@@ -598,7 +598,11 @@ source-minimal HUMAN question queue, observational runtime/cost totals,
 and **every** fixed canonical metric for **every** admitted anonymous
 case (not a selectively filtered view). The ranked HUMAN queue links each
 admitted anonymous case ordinal directly to its full metric detail, with a
-return link back to the questions. This also works for the bounded
+return link back to the questions. The question queue also lists the
+exact **canonical source-flagged metric labels** for each case alongside
+the adverse-flag count; these fixed, escaped labels disclose no original
+source identifiers or freeform evidence, and are neither severity ratings
+nor independent finding verification. This works for the bounded
 64-scenario cohort without script or external navigation; links are fixed
 local fragments derived only from admitted numeric ordinals, never source
 identifiers. The HTML displays a clear
