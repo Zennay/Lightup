@@ -27,6 +27,7 @@ class EngagementPlan:
     unrestricted_capabilities_recorded: bool = False
     grant_valid_from: str | None = None
     grant_valid_until: str | None = None
+    risk_elevation_reviews: tuple[RiskElevationReviewPlan, ...] = ()
     decision: str = "HOLD"
     execution_allowed: bool = False
 
@@ -43,6 +44,19 @@ class AssessmentRequestPlan:
     submitted_at: str
     reviewed_at: str | None
     engagement_authority_inferred: bool = False
+    execution_allowed: bool = False
+
+
+@dataclass(frozen=True)
+class RiskElevationReviewPlan:
+    """A recorded risk decision, never a grant, consent or execution permit."""
+
+    approval_id: str
+    status: str
+    requested_risk: RiskLevel
+    requested_at: str
+    reviewed_at: str | None
+    authority_inferred: bool = False
     execution_allowed: bool = False
 
 
@@ -84,8 +98,20 @@ def build_client_authorization_plan(
     engagements = store.list_engagements(actor, client_id)
     all_pending = store.list_risk_approvals(actor)
     pending_by_engagement: dict[str, int] = {}
+    reviews_by_engagement: dict[str, list[RiskElevationReviewPlan]] = {}
     for approval in all_pending:
-        if approval.client_id == client_id and approval.status is ApprovalStatus.PENDING:
+        if approval.client_id != client_id:
+            continue
+        reviews_by_engagement.setdefault(approval.engagement_id, []).append(
+            RiskElevationReviewPlan(
+                approval_id=approval.approval_id,
+                status=approval.status.value,
+                requested_risk=approval.requested_risk,
+                requested_at=approval.created_at,
+                reviewed_at=approval.decided_at,
+            )
+        )
+        if approval.status is ApprovalStatus.PENDING:
             pending_by_engagement[approval.engagement_id] = (
                 pending_by_engagement.get(approval.engagement_id, 0) + 1
             )
@@ -126,6 +152,10 @@ def build_client_authorization_plan(
             ),
             grant_valid_from=grant.valid_from.isoformat() if grant else None,
             grant_valid_until=grant.valid_until.isoformat() if grant else None,
+            risk_elevation_reviews=tuple(sorted(
+                reviews_by_engagement.get(engagement.engagement_id, ()),
+                key=lambda review: review.approval_id,
+            )),
         ))
 
     return ClientAuthorizationPlan(
@@ -172,6 +202,23 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
                 or type(entry.unrestricted_capabilities_recorded) is not bool):
 
             raise ValueError("engagement is not fail-closed")
+        risk_reviews = []
+        for review in entry.risk_elevation_reviews:
+            if (type(review) is not RiskElevationReviewPlan
+                    or type(review.requested_risk) is not RiskLevel
+                    or review.status not in {status.value for status in ApprovalStatus}
+                    or review.authority_inferred is not False
+                    or review.execution_allowed is not False):
+                raise ValueError("risk elevation review is not fail-closed")
+            risk_reviews.append({
+                "approval_id": review.approval_id,
+                "status": review.status,
+                "requested_risk": int(review.requested_risk),
+                "requested_at": review.requested_at,
+                "reviewed_at": review.reviewed_at,
+                "grant_inferred": False,
+                "execution_allowed": False,
+            })
         rows.append({
             "engagement_id": entry.engagement_id,
             "name": entry.name,
@@ -184,6 +231,7 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
             "grant_valid_from": entry.grant_valid_from,
             "grant_valid_until": entry.grant_valid_until,
             "pending_elevations": entry.pending_elevations,
+            "risk_elevation_review": risk_reviews,
             "blockers": list(entry.blockers),
             "decision": "HOLD",
             "execution_allowed": False,
@@ -257,6 +305,9 @@ def build_operator_portfolio_review_payload(
             "requests_awaiting_review": plan.submitted_requests,
             "requests_approved": plan.approved_requests,
             "requests_rejected": plan.rejected_requests,
+            "pending_risk_decisions": sum(
+                entry.pending_elevations for entry in plan.engagements
+            ),
             "engagements_hold": len(plan.engagements),
             "without_current_grant": sum(
                 entry.max_risk is None for entry in plan.engagements
