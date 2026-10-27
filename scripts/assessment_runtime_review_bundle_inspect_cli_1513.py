@@ -115,6 +115,15 @@ def _canonical_json_int(token):
     return int(token)
 
 
+def _canonical_json_float(token):
+    # Preserve source-produced float spelling before lossy JSON parsing;
+    # rounded values must not masquerade as original lab measurements.
+    number = float(token)
+    if not math.isfinite(number) or repr(number) != token:
+        raise ValueError("noncanonical JSON float")
+    return number
+
+
 def _shape(value, fields) -> bool:
     return type(value) is dict and set(value) == fields
 
@@ -366,6 +375,7 @@ def _inspect(raw: bytes):
         object_pairs_hook=_pairs_without_duplicates,
         parse_constant=_reject_constant,
         parse_int=_canonical_json_int,
+        parse_float=_canonical_json_float,
     )
     if not (
         _shape(payload, _TOP_FIELDS)

@@ -65,6 +65,16 @@ def _canonical_json_int(token):
     return int(token)
 
 
+def _canonical_json_float(token):
+    # Accept only the source producer's shortest round-trip float spelling.
+    # Without this guard, 1.00000000000000001 can silently become 1.0 and
+    # a slightly over-limit cost can round back inside its allowed ceiling.
+    number = float(token)
+    if not math.isfinite(number) or repr(number) != token:
+        raise ValueError("noncanonical JSON float")
+    return number
+
+
 def _canonical_sha256(value):
     return (
         type(value) is str and len(value) == 64
@@ -224,6 +234,7 @@ def _read_json(path, maximum_bytes=MAX_BYTES, *, expected_sha256=None):
         payload.decode("utf-8"), object_pairs_hook=_dict_no_duplicates,
         parse_constant=_reject_nonfinite,
         parse_int=_canonical_json_int,
+        parse_float=_canonical_json_float,
     )
 
 def _parse_case_document(document):
