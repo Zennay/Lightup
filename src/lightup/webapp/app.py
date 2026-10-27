@@ -161,6 +161,12 @@ label { font-size:.85rem; color:var(--muted); }
 .inbox-jumps a { padding:10px 14px; min-height:44px; display:inline-flex;
                  align-items:center; background:var(--card);
                  border:1px solid var(--line); border-radius:8px; }
+.scope-review h3 { margin:0; font-size:1rem; }
+.scope-review .scope-blockers { margin:12px 0; padding:12px 14px;
+                               border-left:3px solid var(--lock);
+                               background:#fffaf7; }
+.scope-review .scope-blockers ul { margin:8px 0 0; padding-left:22px; }
+.scope-review .scope-blockers li { margin:0 0 6px; }
 .risk-options { min-width:0; border:0; padding:0; margin:12px 0 18px; }
 .risk-options legend { color:var(--ink); font-weight:650; padding:0; }
 .risk-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:10px 0; }
@@ -1307,31 +1313,156 @@ class LightUpWebApp:
                                  *, portal: bool) -> Response:
         from ..authorization_plan import build_client_authorization_plan
 
-        # No grant, consent, permit or target side effects; tenant scope is
-        # still checked by every original domain read.
+        # The original read-only domain plan is the sole source of facts.
+        # A recorded decision never becomes consent, authorization to test,
+        # a release gate or a capability grant through the presentation.
         viewer = self._portal_context(auth, client_id) if portal else auth.context
         plan = build_client_authorization_plan(self.store, viewer, client_id)
-        request_cards = []
+        if (plan.client_id != client_id or plan.state != "PLAN_ONLY"
+                or plan.execution_allowed is not False):
+            raise TenantIsolationError("untrusted client authorization plan state")
+
+        pending_states = {
+            RequestStatus.SUBMITTED.value, RequestStatus.UNDER_REVIEW.value,
+        }
+        decided_states = {RequestStatus.APPROVED.value, RequestStatus.REJECTED.value}
+        request_states = pending_states | decided_states
+        if any(request.status not in request_states for request in plan.request_reviews):
+            raise ValueError("unknown original request review status")
+        allowed_scope_states = {
+            "CURRENT", "EXPIRED", "NOT_YET_VALID", "NOT_RECORDED",
+        }
+        if any(entry.scope_record_state not in allowed_scope_states
+               for entry in plan.engagements):
+            raise ValueError("unknown recorded scope window state")
+
+        request_root = (
+            f"/portal/{_e(plan.client_id)}/requests"
+            if portal else "/assessments"
+        )
+        request_label = (
+            "Track original client requests" if portal
+            else "Open independent operator decisions"
+        )
+        next_engagement_url = (
+            f"/portal/{_e(plan.client_id)}" if portal
+            else f"/clients/{_e(plan.client_id)}"
+        )
+        pending_count = sum(
+            request.status in pending_states for request in plan.request_reviews
+        )
+        approved_count = sum(
+            request.status == RequestStatus.APPROVED.value
+            for request in plan.request_reviews
+        )
+        no_current_scope = sum(
+            entry.scope_record_state != "CURRENT" for entry in plan.engagements
+        )
+        pending_risks = sum(
+            entry.pending_elevations for entry in plan.engagements
+        )
+        if pending_count:
+            next_heading = "Independent decisions are still outstanding"
+            next_explanation = (
+                "An original client request needs a human operator decision "
+                "before separately recorded scope can even be considered."
+            )
+            next_link = f'<a href="{request_root}">{_e(request_label)}</a>'
+        elif not plan.request_reviews:
+            next_heading = "First, record an original client request"
+            next_explanation = (
+                "The client must declare exact systems, mode and requested "
+                "risk. An operator cannot invent the client-origin request."
+            )
+            next_link = (
+                f'<a href="/portal/{_e(plan.client_id)}#new-request">'
+                'Prepare an original client request</a>'
+                if portal else
+                f'<a href="{next_engagement_url}">Open client dossier</a>'
+            )
+        elif no_current_scope:
+            next_heading = "Review missing or expired scope records"
+            next_explanation = (
+                "A decided request does not automatically bind to an "
+                "engagement. Review the exact request, scope window and "
+                "outstanding human approvals below."
+            )
+            next_link = (
+                '<a href="#engagement-review">Review scope blockers</a>'
+                if portal else
+                f'<a href="{next_engagement_url}">Open operator client dossier</a>'
+            )
+        elif pending_risks:
+            next_heading = "Independent risk decisions are still pending"
+            next_explanation = (
+                "A recorded scope does not resolve pending higher-risk "
+                "decisions or authorize execution."
+            )
+            next_link = '<a href="#engagement-review">Review risk blockers</a>'
+        else:
+            next_heading = "Records exist; release authority is still absent"
+            next_explanation = (
+                "No displayed scope or review state independently proves "
+                "current consent, revocation at use, independent review or HUMAN GO."
+            )
+            next_link = '<a href="#engagement-review">Read remaining safety gates</a>'
+
+        # Keep sensitive original assets and opaque request identifiers behind
+        # intentional disclosure, while retaining an exact tenant-checked route
+        # to the private request receipt and full recorded review history.
+        pending_cards = []
+        decided_cards = []
         for request in plan.request_reviews:
             if request.status == RequestStatus.APPROVED.value:
-                next_step = ("Reviewed request only. Compare its exact assets and "
-                             "risk with any separately recorded scope grant.")
+                next_step = (
+                    "Request accepted for scope review only. Compare exact "
+                    "assets and risk with a separately recorded grant."
+                )
+                label = "Accepted for scope review"
             elif request.status == RequestStatus.REJECTED.value:
-                next_step = "Rejected. This request cannot be used as a grant."
+                next_step = (
+                    "Rejected. This request can never support a grant; "
+                    "only a new client-origin request may be reviewed."
+                )
+                label = "Rejected — no scope authority"
+            elif request.status == RequestStatus.UNDER_REVIEW.value:
+                next_step = "Independent operator review is underway. Testing stays locked."
+                label = "Under human review"
             else:
-                next_step = ("Waiting for independent operator review. No grant "
-                             "or execution permission is implied.")
-            request_cards.append(
-                '<section class="card"><div class="row">'
-                f'<strong>Request {_e(request.request_id)}</strong>'
-                f'<span class="badge">{_e(request.status)}</span></div>'
-                f'<p class="meta">Requested assets: {_e(", ".join(request.requested_assets))}<br>'
-                f'Mode: {_e(request.requested_mode.replace("_", " "))} · '
-                f'Risk: {_risk(request.requested_risk)}<br>'
-                f'Submitted: {_e(request.submitted_at)}'
-                + (f' · Reviewed: {_e(request.reviewed_at)}' if request.reviewed_at else "")
-                + f'</p><p class="meta">{_e(next_step)}</p></section>'
+                next_step = "Awaiting an independent operator decision. Testing stays locked."
+                label = "Awaiting human decision"
+            receipt = (
+                f"/portal/{_e(plan.client_id)}/requests/{_e(request.request_id)}"
+                if portal else
+                f"/assessments/requests/{_e(request.request_id)}/review"
             )
+            card = (
+                '<article class="card request-status"><div class="row">'
+                f'<h3>{_e(label)}</h3>'
+                f'<span class="badge">{_e(request.status)}</span></div>'
+                f'<p class="meta">Submitted: {_e(request.submitted_at)}'
+                + (f' · Decision: {_e(request.reviewed_at)}'
+                   if request.reviewed_at else '')
+                + f' · Mode: {_e(request.requested_mode.replace("_", " "))}'
+                f' · Requested risk: {_risk(request.requested_risk)}</p>'
+                f'<p><strong>Next:</strong> {_e(next_step)}</p>'
+                f'<p><a href="{receipt}">Read original human decision '
+                'and safety details</a></p>'
+                '<details><summary>Show original request systems and ID</summary>'
+                f'<p class="meta">Request: <code>{_e(request.request_id)}</code></p>'
+                f'<p>Systems: {_e(", ".join(request.requested_assets))}</p>'
+                '</details></article>'
+            )
+            if request.status in pending_states:
+                pending_cards.append((request.submitted_at, request.request_id, card))
+            else:
+                decided_cards.append((request.submitted_at, request.request_id, card))
+        pending_cards.sort(key=lambda item: (item[0], item[1]))
+        decided_cards.sort(key=lambda item: (item[0], item[1]), reverse=True)
+
+        # Every engagement stays HOLD even if the source reports a CURRENT
+        # request-bound scope window and no remaining recorded blockers.
+        # Show the exact source blockers rather than a made-up readiness score.
         cards = []
         for entry in plan.engagements:
             capability_description = (
@@ -1348,7 +1479,8 @@ class LightUpWebApp:
                    if entry.next_eligible_grant_valid_from else '')
             )
             scope = (
-                "<details><summary>Recorded scope (not execution permission)</summary>"
+                "<details><summary>Inspect exact recorded assets, exclusions, "
+                "capabilities and expiry (not scan permission)</summary>"
                 f"<p class=\"meta\">Assets: {_e(', '.join(entry.recorded_scope))}<br>"
                 f"Excluded: {_e(', '.join(entry.excluded_scope) or 'None recorded')}<br>"
                 f"Recorded risk ceiling: {_risk(entry.max_risk) if entry.max_risk is not None else '—'}<br>"
@@ -1379,52 +1511,90 @@ class LightUpWebApp:
                 f'<details><summary>Risk-elevation review history '
                 f'({len(risk_reviews)} recorded; no execution authority)</summary>'
                 f'<ul>{"".join(risk_reviews)}</ul>'
-                '<p class="meta">Risk decisions never extend a recorded request-bound '
-                'scope grant or verify client consent.</p></details>'
+                '<p class="meta">Risk decisions never extend recorded request-bound '
+                'scope or independently verify consent.</p></details>'
                 if risk_reviews else ''
             )
-            blockers = "".join(f"<li>{_e(reason)}</li>" for reason in entry.blockers)
+            blockers = ("".join(f"<li>{_e(reason)}</li>" for reason in entry.blockers)
+                        or "<li>No additional engagement-specific blockers recorded. "
+                           "Global consent, revocation and HUMAN GO gates remain.</li>")
             cards.append(
-                f'<section class="card" id="engagement-{_e(entry.engagement_id)}">'
+                f'<section class="card scope-review" id="engagement-{_e(entry.engagement_id)}">'
                 '<div class="row">'
-                f"<strong>{_e(entry.name)}</strong>"
-                "<span class=\"badge lock\">HOLD · no execution</span></div>"
-                f"<p class=\"meta\">Engagement: {_e(entry.status)} · "
-                f"Pending risk decisions: {entry.pending_elevations} · "
-                f"Current scope: {_e(entry.scope_record_state.replace('_', ' ').lower())}</p>"
-                f"{scope}{risk_history}<details open><summary>What is still required</summary>"
-                f"<ul>{blockers}</ul></details></section>"
+                f'<h3>{_e(entry.name)}</h3>'
+                '<span class="badge lock">HOLD · no execution</span></div>'
+                f'<p class="meta">Recorded engagement: {_e(entry.status)} · '
+                f'Scope window: {_e(entry.scope_record_state.replace("_", " ").lower())} · '
+                f'Pending risk decisions: {entry.pending_elevations}</p>'
+                '<div class="scope-blockers">'
+                '<strong>Required before any future authorization</strong>'
+                f'<ul>{blockers}</ul></div>'
+                f'{scope}{risk_history}</section>'
             )
         body = (
-            f"<h1>{_e(plan.client_name)} — authorization plan</h1>"
-            "<p class=\"sub\">Read-only M0 workspace. Existing records are shown "
-            "for HUMAN review. There is no scan, apply or activation button; "
-            "even a current recorded grant never enables execution here.</p>"
-            "<div class=\"card\"><span class=\"badge lock\">PLAN ONLY · ACTIVATION OFF</span>"
-            f"<p class=\"meta\">Requests: {plan.submitted_requests} awaiting review · "
-            f"{plan.approved_requests} approved · {plan.rejected_requests} rejected. "
-            "A client-level request is not automatically linked to an engagement.</p>"
-            "<p class=\"meta\">Before any future release, independently verify real "
-            "client and operator consent, request/scope provenance, action-time "
-            "revocation, source/security reviews and explicit HUMAN GO.</p></div>"
-            "<h2>Client requests · review history</h2>"
-            + ("".join(request_cards)
-               or "<p class=\"empty\">No requests yet. A client must submit one first.</p>")
-            + "<p class=\"meta\">Requests are client-level records, never consent "
-              "or engagement execution authority.</p>"
-            + "<h2>Engagement decisions</h2>"
-            + ("".join(cards) or "<p class=\"empty\">No engagements yet.</p>")
-            + (f"<p><a href=\"/portal/{_e(plan.client_id)}/authorization-plan.json\">"
-               "Download private plan-only review (JSON)</a></p>"
+            f'<h1>{_e(plan.client_name)} — scope and safety</h1>'
+            '<p class="sub">Read-only original records for HUMAN review. '
+            'No scan, grant action, target contact or activation is possible here.</p>'
+            '<section class="card next-action" aria-labelledby="scope-next">'
+            '<span class="badge lock">PLAN ONLY · execution locked</span>'
+            f'<h2 id="scope-next">{_e(next_heading)}</h2>'
+            f'<p>{_e(next_explanation)}</p>'
+            f'<p>{next_link}</p>'
+            '</section>'
+            '<div class="grid" aria-label="Original record counts">'
+            f'<section class="card"><div class="kpi">{pending_count}</div>'
+            '<div class="kpi-label">Client requests awaiting human review</div></section>'
+            f'<section class="card"><div class="kpi">{approved_count}</div>'
+            '<div class="kpi-label">Requests accepted for scope review only</div></section>'
+            f'<section class="card"><div class="kpi">{no_current_scope}</div>'
+            '<div class="kpi-label">Engagements without current recorded scope</div></section>'
+            f'<section class="card"><div class="kpi">{pending_risks}</div>'
+            '<div class="kpi-label">Pending independent risk decisions</div></section>'
+            '</div>'
+            '<p class="meta">Counts are record states, not a security or '
+            'readiness score. Even a CURRENT recorded grant cannot establish '
+            'independent consent, revocation at use or HUMAN GO.</p>'
+            '<nav class="inbox-jumps" aria-label="Scope and safety sections">'
+            '<a href="#engagement-review">Engagement blockers</a>'
+            '<a href="#request-review">Request review history</a>'
+            '<a href="#global-gates">Always-required safety gates</a></nav>'
+            f'<h2 id="engagement-review">Engagement blockers ({len(cards)})</h2>'
+            '<p class="meta">Every engagement remains HOLD. '
+            'The original source blocker list stays visible.</p>'
+            + ("".join(cards) or '<p class="empty">No engagements recorded. '
+               'A client request alone does not create one.</p>')
+            + '<h2 id="request-review">Original client request history</h2>'
+            + f'<h3>Awaiting independent review ({len(pending_cards)})</h3>'
+            + ("".join(item[2] for item in pending_cards)
+               or '<p class="empty">No pending client requests.</p>')
+            + f'<details><summary>Decided request history ({len(decided_cards)})</summary>'
+            + ("".join(item[2] for item in decided_cards)
+               or '<p class="empty">No recorded request decisions.</p>')
+            + '</details>'
+            + '<section class="card" id="global-gates">'
+              '<h2>Always-required safety gates</h2>'
+              '<ol><li>Original client ownership and request provenance review</li>'
+              '<li>Exact, current, request-bound scope and independent operator decisions</li>'
+              '<li>Separately verified client consent and revocation checks at use</li>'
+              '<li>Source-owner, security and privacy review with explicit HUMAN GO</li></ol>'
+              '<p class="meta">These requirements are not verified by this '
+              'read-only page. Testing stays OFF at every recorded status.</p></section>'
+            + (f'<details><summary>Export and navigation</summary>'
+               f'<p><a href="/portal/{_e(plan.client_id)}/authorization-plan.json">'
+               'Download private plan-only review (JSON)</a> · '
+               f'<a href="/portal/{_e(plan.client_id)}">Back to client portal</a></p>'
+               '</details>'
                if portal else
-               f"<p><a href=\"/clients/{_e(plan.client_id)}/authorization-plan.json\">"
-               "Download private plan-only review (JSON)</a></p>")
-            + (f"<p><a href=\"/portal/{_e(plan.client_id)}\">Back to portal</a></p>"
-               if portal else f"<p><a href=\"/clients/{_e(plan.client_id)}\">Back to client</a></p>")
+               f'<details><summary>Export and navigation</summary>'
+               f'<p><a href="/clients/{_e(plan.client_id)}/authorization-plan.json">'
+               'Download private plan-only review (JSON)</a> · '
+               f'<a href="/clients/{_e(plan.client_id)}">Back to client dossier</a></p>'
+               '</details>')
         )
-        return Response(_page("LightUp — Authorization plan",
-                              "scope" if portal else "clients", body, auth,
-                              portal_client=client_id if portal else None))
+        return Response(_page(
+            "LightUp — Scope and safety", "scope" if portal else "clients",
+            body, auth, portal_client=client_id if portal else None,
+        ))
 
     def create_engagement(self, auth: AuthState, form: dict[str, str],
                           client_id: str) -> Response:
