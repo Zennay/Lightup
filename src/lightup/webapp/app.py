@@ -1760,7 +1760,9 @@ class LightUpWebApp:
                 + '>Choose a risk level…</option>'
             )
             correction = (
-                "Add at least one system you manage." if not raw_assets.strip(" ,")
+                "Add at least one system you manage." if not any(
+                    part.strip() for part in raw_assets.split(",")
+                )
                 else "Select one of the four supported risk levels."
             )
             body = (
