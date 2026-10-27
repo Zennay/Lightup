@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "classification": "offline_contract_only",
+  "default_active_dispatch": "deny",
+  "cases": [
+    {
+      "id": "ascii_exact_control",
+      "trusted": "tenant-a",
+      "supplied": "tenant-a",
+      "expected_identity_match": true
+    },
+    {
+      "id": "cyrillic_a",
+      "trusted": "tenant-a",
+      "supplied": "tenant-а",
+      "expected_identity_match": false
+    },
+    {
+      "id": "fullwidth_t",
+      "trusted": "tenant-a",
+      "supplied": "ｔenant-a",
+      "expected_identity_match": false
+    },
+    {
+      "id": "zero_width",
+      "trusted": "tenant-a",
+      "supplied": "tenant-​a",
+      "expected_identity_match": false
+    },
+    {
+      "id": "casefold",
+      "trusted": "tenant-a",
+      "supplied": "TENANT-A",
+      "expected_identity_match": false
+    },
+    {
+      "id": "combining_accent",
+      "trusted": "réviewer",
+      "supplied": "réviewer",
+      "expected_identity_match": false
+    },
+    {
+      "id": "trailing_space",
+      "trusted": "grant-1",
+      "supplied": "grant-1 ",
+      "expected_identity_match": false
+    },
+    {
+      "id": "greek_omicron",
+      "trusted": "approval",
+      "supplied": "apprοval",
+      "expected_identity_match": false
+    }
+  ]
+}
