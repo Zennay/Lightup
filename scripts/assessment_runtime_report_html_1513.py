@@ -1235,6 +1235,37 @@ def _render_review_bundle_packet_html(packet) -> str:
             ),
             case_link_column=1,
         )
+        # An at-a-glance cohort map for the 11 comparator-relevant metrics.
+        # Operational counters/costs have no adverse verdict in this matrix;
+        # their complete source values remain in each linked case detail.
+        signal_names = tuple(
+            name for name in _METRIC_LABELS if name not in _OPERATIONAL
+        )
+        case_entries = {
+            case["scenario_ordinal"]: {
+                item["metric"]: item for item in case["metrics"]
+            }
+            for case in metrics["cases"]
+        }
+        signal_matrix = safe_table(
+            ("HUMAN rank", "Anonymous case")
+            + tuple(_METRIC_LABELS[name] for name in signal_names),
+            (
+                (
+                    question["review_order"], question["scenario_ordinal"],
+                    *(
+                        "SOURCE FLAG" if case_entries[question["scenario_ordinal"]][name][
+                            "source_regression_flag"
+                        ] else "UNKNOWN" if case_entries[question["scenario_ordinal"]][name][
+                            "source_unknown_coverage"
+                        ] else "—"
+                        for name in signal_names
+                    ),
+                )
+                for question in human["human_review_questions"]
+            ),
+            case_link_column=1,
+        )
         resource_rows = safe_table(
             ("Observed resource", "Baseline total", "Candidate total",
              "Raw delta total", "Increased cases", "Decreased cases"),
@@ -1298,6 +1329,7 @@ def _render_review_bundle_packet_html(packet) -> str:
             '<nav aria-label="Review sections">'
             '<a href="#movements">Metric movements</a>'
             '<a href="#questions">HUMAN questions</a>'
+            '<a href="#signals">Source signal matrix</a>'
             '<a href="#resources">Resource observations</a>'
             '<a href="#cases">Full case details</a></nav>'
             + summary
@@ -1313,6 +1345,16 @@ def _render_review_bundle_packet_html(packet) -> str:
             'each detail has a return link. No question is an instruction '
             'to scan or remediate.</p>'
             + questions + "</section>"
+            + '<section class="panel" id="signals">'
+            '<h2>Case-by-metric source signal matrix</h2>'
+            '<p class="muted">All anonymous cases appear in verified HUMAN '
+            'priority order. SOURCE FLAG means the comparator reported '
+            'an adverse metric; UNKNOWN marks the source-reported coverage '
+            'uncertainty; — means no source flag, <strong>not verified safe</strong>. '
+            'Operational runtime/cost metrics are informational and remain '
+            'in the linked case detail. Follow a case link for every numeric '
+            'baseline/candidate/delta. No scan or release approval.</p>'
+            + signal_matrix + "</section>"
             + '<section class="panel" id="resources">'
             '<h2>Resource and cost observations</h2>'
             '<p class="muted">Descriptive lab-only totals. '

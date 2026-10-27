@@ -806,9 +806,15 @@ also shows its **two admitted resource observations** (runtime seconds and
 compute cost USD) with baseline, candidate, exact raw delta, percent change
 or explicit zero-baseline N/A, and direction. The case section is linked from
 its ranked HUMAN question; the same details appear for exported and locally
-received full HTML bundles. These are descriptive, unauthenticated lab-only
-values, **never cost approval**; no original IDs, paths, targets, private
-notes, uploads, scripts or external assets.
+received full HTML bundles. The full HTML also includes a **case-by-metric
+source signal matrix** before resource totals: all admitted anonymous cases
+in the already-reconciled HUMAN priority order, with each of the eleven
+comparator-relevant coverage/quality/safety metrics marked SOURCE FLAG,
+UNKNOWN coverage, or no source flag. Every case ordinal links to its full
+numeric detail. A missing flag **does not mean safe or approved**; operational
+runtime/cost values remain informational in the case detail. These are
+descriptive, unauthenticated lab-only values, **never cost approval**; no
+original IDs, paths, targets, private notes, uploads, scripts or external assets.
 A complete, consistent source-reported HOLD still exposes its anonymous
 review questions to a human, but neither report can establish authentic
 source provenance, consent, source approval or HUMAN GO.
