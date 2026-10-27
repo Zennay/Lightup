@@ -57,6 +57,14 @@ def _reject_nonfinite(_value):
     raise ValueError("nonfinite JSON literal")
 
 
+def _canonical_json_int(token):
+    # json.loads normally collapses the noncanonical -0 token to integer 0.
+    # Reject that signed alias before it loses its original lexical sign.
+    if token == "-0":
+        raise ValueError("noncanonical signed integer zero")
+    return int(token)
+
+
 def _canonical_sha256(value):
     return (
         type(value) is str and len(value) == 64
@@ -215,6 +223,7 @@ def _read_json(path, maximum_bytes=MAX_BYTES, *, expected_sha256=None):
     return json.loads(
         payload.decode("utf-8"), object_pairs_hook=_dict_no_duplicates,
         parse_constant=_reject_nonfinite,
+        parse_int=_canonical_json_int,
     )
 
 def _parse_case_document(document):

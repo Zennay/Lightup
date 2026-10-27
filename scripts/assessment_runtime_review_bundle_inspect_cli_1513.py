@@ -108,6 +108,13 @@ def _reject_constant(_value):
     raise ValueError("nonfinite JSON number")
 
 
+def _canonical_json_int(token):
+    # Preserve the comparator's signed-zero rule across JSON normalization.
+    if token == "-0":
+        raise ValueError("noncanonical signed integer zero")
+    return int(token)
+
+
 def _shape(value, fields) -> bool:
     return type(value) is dict and set(value) == fields
 
@@ -358,6 +365,7 @@ def _inspect(raw: bytes):
         raw.decode("utf-8"),
         object_pairs_hook=_pairs_without_duplicates,
         parse_constant=_reject_constant,
+        parse_int=_canonical_json_int,
     )
     if not (
         _shape(payload, _TOP_FIELDS)
