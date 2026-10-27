@@ -98,7 +98,7 @@ button,input:not([type="hidden"]):not([type="checkbox"]),select { min-height:44p
 input[type="checkbox"] { width:auto; min-height:auto; margin:0; }
 label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0; }
 .report-section { break-inside:avoid; page-break-inside:avoid; }
-.report-section[id^="report-open-"]:target {
+.report-section[id^="report-"]:target {
   outline:3px solid var(--accent); outline-offset:3px;
   scroll-margin-top:24px;
 }
@@ -131,7 +131,7 @@ label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0
   a { color:inherit; text-decoration:underline; }
   .report-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); }
   .report-section { break-inside:avoid-page; }
-  .report-section[id^="report-open-"]:target { outline:none; }
+  .report-section[id^="report-"]:target { outline:none; }
 }
 .report-index { border-left:4px solid var(--line); }
 .report-index ol { padding-left:24px; margin:8px 0 16px; }
@@ -2721,9 +2721,9 @@ class LightUpWebApp:
         coverage_data = []
         total_unknown = 0
         total_partial = 0
-        for engagement in sorted(
+        for coverage_index, engagement in enumerate(sorted(
             engagements, key=lambda item: (item.name.casefold(), item.engagement_id)
-        ):
+        ), 1):
             stored = self.store.get_coverage(viewer, engagement.engagement_id)
             report = CoverageReport.build({
                 capability: CoverageStatus(status)
@@ -2731,6 +2731,8 @@ class LightUpWebApp:
             })
             counts = report.counts()
             coverage_data.append({
+                # Only a report-local navigation fragment; never a source ID.
+                "report_local_fragment": f"report-coverage-{coverage_index}",
                 "engagement": engagement.name,
                 "counts": counts,
                 "capabilities": [
@@ -2748,7 +2750,7 @@ class LightUpWebApp:
                 for capability, status in report.statuses
             )
             coverage_cards.append(
-                '<section class="card report-section">'
+                f'<section class="card report-section" id="report-coverage-{coverage_index}" tabindex="-1">'
                 f'<h3>{_e(engagement.name)}</h3>'
                 f'<p class="meta">{counts["assessed"]} assessed · '
                 f'{counts["partially_assessed"]} partial · '
@@ -2780,7 +2782,7 @@ class LightUpWebApp:
             )
 
         scope_cards = "".join(
-            '<section class="card report-section">'
+            f'<section class="card report-section" id="report-scope-{scope_index}" tabindex="-1">'
             '<div class="row">'
             f'<h3>{_e(entry.name)}</h3>'
             '<span class="badge lock">HOLD · execution OFF</span></div>'
@@ -2791,7 +2793,7 @@ class LightUpWebApp:
             '<ul>' + "".join(
                 f'<li>{_e(blocker)}</li>' for blocker in entry.blockers
             ) + '</ul></section>'
-            for entry in ordered_scope_entries
+            for scope_index, entry in enumerate(ordered_scope_entries, 1)
         )
         request_summary = (
             '<section class="card report-section">'
@@ -2879,6 +2881,8 @@ class LightUpWebApp:
             },
             "scope_hold": [
                 {
+                    # Only report-local; scope permission is never inferred.
+                    "report_local_fragment": f"report-scope-{scope_index}",
                     "engagement": entry.name,
                     "scope_record_state": entry.scope_record_state,
                     "pending_risk_reviews": entry.pending_elevations,
@@ -2886,7 +2890,7 @@ class LightUpWebApp:
                     "execution_allowed": False,
                     "independent_blockers": list(entry.blockers),
                 }
-                for entry in ordered_scope_entries
+                for scope_index, entry in enumerate(ordered_scope_entries, 1)
             ],
             "notice": (
                 "Original tenant-scoped records only; not independently "
@@ -2966,6 +2970,21 @@ class LightUpWebApp:
                 for index, f in enumerate(recorded_fixed, 1)
             ) + '</ol>' if recorded_fixed else
                '<p class="empty">No findings marked fixed.</p>')
+            + f'<h3 id="report-coverage-index-heading">Recorded capability coverage ({len(coverage_data)})</h3>'
+            + ('<ol>' + ''.join(
+                f'<li><a href="#report-coverage-{index}">{_e(entry["engagement"])}</a> '
+                '<span class="meta">— recorded capabilities; not complete safety proof</span></li>'
+                for index, entry in enumerate(coverage_data, 1)
+            ) + '</ol>' if coverage_data else
+               '<p class="empty">No engagement coverage recorded.</p>')
+            + f'<h3 id="report-scope-index-heading">Scope and execution HOLD ({len(ordered_scope_entries)})</h3>'
+            + ('<ol>' + ''.join(
+                f'<li><a href="#report-scope-{index}">{_e(entry.name)}</a> '
+                f'<span class="meta">— {_e(entry.scope_record_state.replace("_", " "))}; '
+                'execution remains OFF</span></li>'
+                for index, entry in enumerate(ordered_scope_entries, 1)
+            ) + '</ol>' if ordered_scope_entries else
+               '<p class="empty">No original scope records.</p>')
             + '</section>'
         )
         agenda = (
