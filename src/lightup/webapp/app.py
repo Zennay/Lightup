@@ -2442,13 +2442,17 @@ class LightUpWebApp:
                 "Review existing requests from the operator Assessments page.</p>"
             )
         else:
-            request_section = (
-                '<h2 id="new-request">Ask for a security assessment</h2>'
-                "<div class=\"card\">"
-                "<p class=\"meta\">Step 1 of 2: describe what you want reviewed. "
-                "Nothing will be tested or activated by this request.</p>"
-                f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests/preview\">"
-                f"{self._csrf_field(auth)}"
+            # The first client request is the primary task, not a form buried
+            # below coverage and statistics. After a request exists, the
+            # independent review/status task takes priority; further client
+            # submissions remain deliberately available as a secondary step.
+            request_form = (
+                '<p class="meta" id="request-steps">Step 1 of 2: describe '
+                'what you want reviewed. Nothing is tested or activated '
+                'by this request.</p>'
+                f'<form method="post" action="/portal/{_e(client_id)}/requests/preview" '
+                'aria-describedby="request-steps">'
+                f'{self._csrf_field(auth)}'
                 '<label for="request-assets">Systems you manage (separate with commas)</label>'
                 '<input id="request-assets" name="assets" autocomplete="off" required '
                 'aria-describedby="request-assets-help">'
@@ -2459,17 +2463,36 @@ class LightUpWebApp:
                 f'{_risk_choice_guide()}'
                 '<label for="request-notes">Context for the reviewer (optional)</label>'
                 '<textarea id="request-notes" name="notes" rows="3"></textarea>'
-                '<button>Review before sending</button>'
+                '<button type="submit">Review before sending</button>'
                 '<p class="meta">An operator must separately review the request. '
                 'Testing stays locked until independent consent, scope validation, '
-                'action-time revocation checks and HUMAN GO.</p></form></div>'
+                'action-time revocation checks and HUMAN GO.</p></form>'
             )
+            if not ordered_requests:
+                request_section = (
+                    '<section id="new-request" class="card" '
+                    'aria-labelledby="request-heading">'
+                    '<h2 id="request-heading">Ask for a security assessment</h2>'
+                    + request_form + '</section>'
+                )
+            else:
+                request_section = (
+                    '<section id="new-request" aria-labelledby="another-request-heading">'
+                    '<h2 id="another-request-heading">Need a review of different systems?</h2>'
+                    '<p class="sub">Your recorded requests and independent decisions '
+                    'remain unchanged. Submit a separate request only when you '
+                    'need a different review; it will also require human approval.</p>'
+                    '<details class="card"><summary>Prepare another request</summary>'
+                    + request_form + '</details></section>'
+                )
+        show_first_request = not auth.is_operator and not ordered_requests
         body = (
             f"<h1>{_e(client.name)}</h1>"
             "<p class=\"sub\">Check the next review step, scope limits and recorded evidence. "
             "Active testing is locked.</p>"
             + next_action
             + task_links
+            + (request_section if show_first_request else "")
             + coverage_overview
             + scope_board
             + "<div class=\"grid\">"
@@ -2484,7 +2507,7 @@ class LightUpWebApp:
             f"<div class=\"card\"><div class=\"kpi\">{len(requests)}</div>"
             "<div class=\"kpi-label\">Assessment requests</div></div>"
             "</div>"
-            + request_section
+            + ("" if show_first_request else request_section)
             + f'<h2 id="requests-history-heading">Recent assessment requests</h2><p><a href="/portal/{_e(client_id)}/requests">'
               f'Open all {len(requests)} requests in the private inbox</a></p>'
             + request_rows
