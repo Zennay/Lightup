@@ -720,7 +720,7 @@ class LightUpWebApp:
             )
         body = (
             "<h1>Assessments</h1>"
-            "<p class=\"sub\">Requests and grants are for human review only. "
+            "<p class=\"sub\">Requests and authorization grants are for human review only. "
             "Active testing remains locked pending independent consent, revocation-at-use and HUMAN GO.</p>"
             "<h2>Assessment requests</h2>"
             + ("".join(request_cards) or "<p class=\"empty\">No requests.</p>")
