@@ -121,6 +121,18 @@ label { font-size:.85rem; color:var(--muted); }
        align-items:baseline; }
 .auth { max-width:380px; margin:8vh auto 0; }
 .error { color:var(--lock); font-size:.9rem; }
+.risk-guide { border:1px solid var(--line); background:#f8faf9;
+              border-radius:10px; padding:12px 14px; margin:8px 0 16px; }
+.risk-guide summary { color:var(--ink); font-weight:650; min-height:24px; }
+.risk-guide dl { display:grid; grid-template-columns:minmax(100px, 130px) 1fr;
+                 gap:10px 16px; margin:16px 0 8px; }
+.risk-guide dt { color:var(--ink); font-weight:650; }
+.risk-guide dd { margin:0; color:var(--muted); }
+.risk-guide .meta { margin-bottom:0; }
+@media (max-width:560px) {
+  .risk-guide dl { grid-template-columns:1fr; gap:4px; }
+  .risk-guide dd { margin-bottom:12px; }
+}
 """
 
 
@@ -130,6 +142,29 @@ def _e(value: object) -> str:
 
 def _risk(level: RiskLevel) -> str:
     return _e(_RISK_LABELS[level])
+
+
+def _risk_choice_guide() -> str:
+    """Plain-language risk comparison; information only, never a permit."""
+    return (
+        '<details class="risk-guide">'
+        '<summary>Compare the testing risk levels and required reviews</summary>'
+        '<dl>'
+        '<dt>1 · Passive</dt><dd>Observation and evidence review only. '
+        'Submitting this choice does not approve contacting a system.</dd>'
+        '<dt>2 · Low impact</dt><dd>Would allow only narrowly scoped '
+        'non-destructive checks after a separate explicit authorization.</dd>'
+        '<dt>3 · Standard</dt><dd>Would require specific reviewed scope and '
+        'consent for more involved checks. Never implied by a request.</dd>'
+        '<dt>4 · Elevated</dt><dd>Requires a further independent risk '
+        'decision before any future consideration of activity.</dd>'
+        '</dl>'
+        '<p class="meta">Every level still needs independently verified '
+        'ownership, a reviewed client-origin request, a specific current '
+        'grant, consent, revocation checks and explicit HUMAN GO. '
+        'All target testing is locked in this build.</p>'
+        '</details>'
+    )
 
 
 def _request_progress(status: RequestStatus) -> list[dict[str, str]]:
@@ -1499,6 +1534,7 @@ class LightUpWebApp:
                 '</select>'
                 '<p id="request-risk-help" class="meta">Choosing a level never gives '
                 'LightUp permission to run it.</p>'
+                f'{_risk_choice_guide()}'
                 '<label for="request-notes">Context for the reviewer (optional)</label>'
                 '<textarea id="request-notes" name="notes" rows="3"></textarea>'
                 '<button>Review before sending</button>'
@@ -1878,6 +1914,7 @@ class LightUpWebApp:
             '<select id="retry-risk" name="risk" required>'
             '<option value="" selected>Choose again…</option>'
             f'{risks}</select>'
+            f'{_risk_choice_guide()}'
             '<label for="retry-notes">Context for the reviewer (optional)</label>'
             f'<textarea id="retry-notes" name="notes" rows="3">'
             f'{_e(original.notes)}</textarea>'
@@ -1961,6 +1998,7 @@ class LightUpWebApp:
                 '<label for="fix-risk">Requested testing risk</label>'
                 f'<select id="fix-risk" name="risk" required>'
                 f'{placeholder}{options}</select>'
+                f'{_risk_choice_guide()}'
                 '<label for="fix-notes">Context for the reviewer (optional)</label>'
                 f'<textarea id="fix-notes" name="notes" rows="3">'
                 f'{_e(raw_notes)}</textarea>'
@@ -2012,6 +2050,7 @@ class LightUpWebApp:
             f'value="{_e(", ".join(assets))}" autocomplete="off">'
             '<label for="preview-risk">Requested testing risk</label>'
             f'<select id="preview-risk" name="risk" required>{editable_risks}</select>'
+            f'{_risk_choice_guide()}'
             '<label for="preview-notes">Context for the reviewer (optional)</label>'
             f'<textarea id="preview-notes" name="notes" rows="3">{_e(notes)}</textarea>'
             '<button class="secondary">Update review</button>'
