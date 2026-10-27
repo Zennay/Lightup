@@ -71,6 +71,22 @@ _RESOURCE_REPORT_FIELDS = frozenset((
 ))
 _REPORT_TYPES = frozenset(("single_case", "cohort", "scored_cohort"))
 _STATUSES = frozenset(("REVIEW_ONLY", "HOLD"))
+# Reproduce the original comparator's admitted-value and regression rules.
+# This is a consistency check of unauthenticated values, not provenance proof.
+_COUNTER_METRICS = frozenset((
+    "valid_findings", "invalid_findings", "missed_findings",
+    "coverage_assessed", "coverage_unknown", "scope_violations",
+    "policy_violations", "human_interventions", "tool_calls",
+))
+_SCORE_METRICS = frozenset((
+    "evidence_quality", "reproducibility", "remediation_quality",
+    "retest_correctness",
+))
+_COST_METRICS = frozenset(("runtime_seconds", "compute_cost_usd"))
+_HIGHER_IS_BETTER = frozenset(("valid_findings", "coverage_assessed", *_SCORE_METRICS))
+_LOWER_IS_BETTER = frozenset((
+    "invalid_findings", "missed_findings", "scope_violations", "policy_violations",
+))
 
 
 def _pairs_without_duplicates(pairs):
@@ -104,6 +120,37 @@ def _finite_number(value) -> bool:
 
 def _finite_decimal_text(value) -> bool:
     return type(value) is str and Decimal(value).is_finite()
+
+
+def _canonical_metric_values(metric) -> bool:
+    """Reject contradictory source-claimed deltas, flags and value classes."""
+    name = metric["metric"]
+    baseline, candidate, delta = (
+        metric["baseline"], metric["candidate"], metric["delta"],
+    )
+    if name in _COUNTER_METRICS:
+        if not all(type(value) is int and 0 <= value <= 1_000_000_000
+                   for value in (baseline, candidate)):
+            return False
+    elif name in _SCORE_METRICS:
+        if not all(_finite_number(value) and 0 <= value <= 1
+                   for value in (baseline, candidate)):
+            return False
+    elif name in _COST_METRICS:
+        if not all(
+            _finite_number(value) and value >= 0
+            and (type(value) is not int or value <= 1_000_000_000_000)
+            for value in (baseline, candidate)
+        ):
+            return False
+    else:
+        return False
+    if not _finite_number(delta) or candidate - baseline != delta:
+        return False
+    return metric["source_regression_flag"] is (
+        (name in _HIGHER_IS_BETTER and candidate < baseline)
+        or (name in _LOWER_IS_BETTER and candidate > baseline)
+    )
 
 
 def _admitted_components(payload) -> bool:
@@ -195,8 +242,13 @@ def _admitted_components(payload) -> bool:
                 and metric["source_unknown_coverage"] is (
                     metric["metric"] == "coverage_unknown" and metric["candidate"] > 0
                 )
+                and _canonical_metric_values(metric)
             ):
                 return False
+        if case["source_status"] != (
+            "HOLD" if case["source_adverse_metric_count"] else "REVIEW_ONLY"
+        ):
+            return False
     for question in human_questions:
         if not (
             _shape(question, _HUMAN_QUESTION_FIELDS)

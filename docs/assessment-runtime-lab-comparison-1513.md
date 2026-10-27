@@ -682,8 +682,13 @@ The inspector rejects malformed JSON, duplicate JSON keys, non-finite
 numbers, unknown top-level fields, incompatible schema/status/flags,
 unsafe authority booleans, incomplete case/question/resource
 populations, altered fixed HUMAN question text, unexpected numeric
-types, cross-section ordinal drift, incorrect metric movement
-summaries and corrupted resource/decimal totals. A 32 MiB input cap
+types, cross-section ordinal drift, impossible original metric value
+classes/ranges, mismatched numeric deltas, contradictory per-case
+regression flags or source case statuses, incorrect metric movement
+summaries and corrupted resource/decimal totals. Values are checked
+against the comparator's fixed local rules, but cannot establish
+source provenance or detect a deliberately fabricated, self-consistent
+packet. A 32 MiB input cap
 bounds memory. The local-file reader requires Linux-style secure
 file-descriptor primitives (`O_NOFOLLOW`, `O_DIRECTORY`, `O_PATH`, and
 `/proc/self/fd`): it pins each directory component, rejects symlinks in
