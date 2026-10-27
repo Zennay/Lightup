@@ -516,6 +516,8 @@ class LightUpWebApp:
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/report$"),
              self.portal_assessment_report, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/report\.json$"),
+             self.portal_assessment_report_json, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
              self.portal_requests, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests\.json$"),
@@ -2470,10 +2472,19 @@ class LightUpWebApp:
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
 
-    def portal_assessment_report(
+    def portal_assessment_report_json(
         self, auth: AuthState, form: dict[str, str], client_id: str,
     ) -> Response:
-        """Private, printable HUMAN dossier; persisted evidence only, no GO."""
+        """Download the same checked private HUMAN report, without target IDs."""
+        return self.portal_assessment_report(
+            auth, form, client_id, export_json=True,
+        )
+
+    def portal_assessment_report(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+        *, export_json: bool = False,
+    ) -> Response:
+        """Private printable or JSON HUMAN dossier; no execution authority."""
         from ..authorization_plan import build_client_authorization_plan
         from ..coverage import CoverageReport, CoverageStatus
 
@@ -2561,6 +2572,7 @@ class LightUpWebApp:
         rejected_requests = sum(r.status is RequestStatus.REJECTED for r in requests)
 
         coverage_cards = []
+        coverage_data = []
         total_unknown = 0
         total_partial = 0
         for engagement in engagements:
@@ -2570,6 +2582,14 @@ class LightUpWebApp:
                 for capability, status in stored.items()
             })
             counts = report.counts()
+            coverage_data.append({
+                "engagement": engagement.name,
+                "counts": counts,
+                "capabilities": [
+                    {"name": capability, "coverage": status.value}
+                    for capability, status in report.statuses
+                ],
+            })
             total_unknown += counts["unknown"]
             total_partial += counts["partially_assessed"]
             rows = "".join(
@@ -2633,11 +2653,97 @@ class LightUpWebApp:
             'asset inventory or an active grant. Private request details '
             'remain in the authenticated request inbox.</p></section>'
         )
+        if export_json:
+            import json
+
+            def finding_payload(f):
+                label, meaning = finding_statuses[f.retest_status]
+                return {
+                    "title": f.title,
+                    "severity": f.severity.value,
+                    "recorded_impact": f.impact or "",
+                    "proposed_remediation": f.remediation or "",
+                    "retest_status": f.retest_status.value,
+                    "human_label": label,
+                    "human_meaning": meaning,
+                }
+
+            # IDs, raw target assets, evidence references, permission
+            # tokens and client-request notes are intentionally omitted.
+            # This machine-readable handoff never makes an authority claim.
+            packet = {
+                "schema_version": 1,
+                "document_type": "private_recorded_assessment_handoff",
+                "client_name": client.name,
+                "authority": {
+                    "state": "PLAN_ONLY",
+                    "decision": "HOLD",
+                    "execution_allowed": False,
+                    "consent_verified": False,
+                    "revocation_at_use_verified": False,
+                    "independent_audit": False,
+                    "complete_coverage_proven": False,
+                    "verified_remediation_proven": False,
+                    "signed_evidence": False,
+                },
+                "request_summary": {
+                    "recorded_total": len(requests),
+                    "awaiting_human_decision": waiting_requests,
+                    "accepted_for_scope_review_only": reviewed_requests,
+                    "rejected": rejected_requests,
+                },
+                "coverage": {
+                    "unknown_capability_entries": total_unknown,
+                    "partially_assessed_capability_entries": total_partial,
+                    "engagements": coverage_data,
+                },
+                "findings": {
+                    "open_human_follow_up": [
+                        finding_payload(f) for f in follow_up
+                    ],
+                    "recorded_fixed_history": [
+                        finding_payload(f) for f in recorded_fixed
+                    ],
+                    "recorded_regression_count": regressions,
+                    "open_critical_high_count": urgent,
+                },
+                "scope_hold": [
+                    {
+                        "engagement": entry.name,
+                        "scope_record_state": entry.scope_record_state,
+                        "pending_risk_reviews": entry.pending_elevations,
+                        "decision": "HOLD",
+                        "execution_allowed": False,
+                        "independent_blockers": list(entry.blockers),
+                    }
+                    for entry in plan.engagements
+                ],
+                "notice": (
+                    "Original tenant-scoped records only; not independently "
+                    "audited, signed, complete coverage, verified remediation, "
+                    "client consent, HUMAN GO or permission to contact targets."
+                ),
+            }
+            serialized = json.dumps(
+                packet, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), allow_nan=False,
+            ) + "\n"
+            return Response(
+                serialized, content_type="application/json; charset=utf-8",
+                extra_headers=[(
+                    "Content-Disposition",
+                    'attachment; filename="lightup-private-human-assessment.json"',
+                )],
+            )
+
         body = (
             '<div class="print-controls">'
             f'<p><a href="/portal/{_e(client_id)}">Back to client overview</a> · '
-            'Use your browser’s Print / Save as PDF command to retain a '
-            'private copy. Protect any saved copy as security-sensitive data.</p>'
+            f'<a href="/portal/{_e(client_id)}/report.json">'
+            'Download private structured JSON handoff</a></p>'
+            '<p>Use your browser’s Print / Save as PDF command for this view. '
+            'Treat the PDF and JSON as sensitive client evidence, not as '
+            'authorization or an independently verified audit.</p>'
             '</div>'
             f'<h1>Recorded assessment handoff · {_e(client.name)}</h1>'
             '<p class="sub">HUMAN review dossier · PLAN/LAB ONLY · '
