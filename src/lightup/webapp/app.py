@@ -582,45 +582,58 @@ class LightUpWebApp:
                     "Execution stays OFF.</p>"
                 )
             else:
-                request_options = "".join(
-                    f'<option value="{_e(request.request_id)}">'
-                    f'{_e(", ".join(request.requested_assets)[:96])} · '
-                    f'{_risk(request.requested_risk)}</option>'
-                    for request in approved_requests
-                )
+                grant_forms = []
+                for request in approved_requests:
+                    risk_options = "".join(
+                        f'<option value="{level.value}">{level.value} — {_e(label)}</option>'
+                        for level, label in (
+                            (RiskLevel.PASSIVE, "Passive"),
+                            (RiskLevel.LOW_IMPACT, "Low impact"),
+                            (RiskLevel.STANDARD, "Standard"),
+                            (RiskLevel.ELEVATED, "Elevated"),
+                        )
+                        if level <= request.requested_risk
+                    )
+                    requested_assets = ", ".join(request.requested_assets)
+                    grant_forms.append(
+                        '<section class="grant-request">'
+                        '<p><strong>Approved client request</strong> '
+                        f'<code>{_e(request.request_id)}</code> · '
+                        f'Client risk ceiling: {_risk(request.requested_risk)}</p>'
+                        f'<p class="meta">Reviewed requested assets: {_e(requested_assets)}</p>'
+                        f'<form method="post" action="/engagements/{_e(eng.engagement_id)}/grants">'
+                        f'{csrf}'
+                        f'<input type="hidden" name="approved_request_id" value="{_e(request.request_id)}">'
+                        '<label>Approved by (client signatory; verify separately)</label>'
+                        '<input name="approved_by" required>'
+                        '<label>Authorization reference</label>'
+                        '<input name="reference" required placeholder="AUTH-2026-...">'
+                        '<label>Authorized assets (explicit subset, comma-separated)</label>'
+                        f'<input name="assets" required placeholder="{_e(requested_assets[:96])}">'
+                        '<label>Excluded assets (comma-separated, optional)</label>'
+                        '<input name="excluded_assets">'
+                        '<label>Allowed planning capability IDs (comma-separated; required)</label>'
+                        '<input name="capabilities" required placeholder="web-baseline">'
+                        '<details><summary>Show available planning capability IDs</summary>'
+                        f'<ul>{capability_guide}</ul></details>'
+                        '<label>Maximum risk level (within this request)</label>'
+                        '<select name="max_risk" required>'
+                        '<option value="" selected disabled>Explicitly choose an allowed ceiling</option>'
+                        f'{risk_options}</select>'
+                        '<label>Valid for (days)</label>'
+                        '<input name="valid_days" type="number" min="1" max="365" required>'
+                        '<button>Record grant for this request</button>'
+                        '<p class="meta">Grant recording binds scope to this exact reviewed request, '
+                        'but does not prove independent client consent or permit execution. '
+                        'Destructive simulation (level 5) is lab-only, never available here.</p>'
+                        '</form></section>'
+                    )
                 grant_detail = (
-                    "<details><summary>Record authorization grant</summary>"
-                    f"<form method=\"post\" action=\"/engagements/{_e(eng.engagement_id)}/grants\">"
-                    f"{csrf}"
-                    "<label>Approved client request</label>"
-                    "<select name=\"approved_request_id\" required>"
-                    "<option value=\"\" selected disabled>Select a reviewed request</option>"
-                    f"{request_options}</select>"
-                    "<label>Approved by (client signatory)</label>"
-                    "<input name=\"approved_by\" required>"
-                    "<label>Authorization reference</label>"
-                    "<input name=\"reference\" required placeholder=\"AUTH-2026-...\">"
-                    "<label>Authorized assets (comma-separated)</label>"
-                    "<input name=\"assets\" required>"
-                    "<label>Excluded assets (comma-separated, optional)</label>"
-                    "<input name=\"excluded_assets\">"
-                    "<label>Allowed planning capability IDs (comma-separated; required)</label>"
-                    "<input name=\"capabilities\" required placeholder=\"web-baseline\">"
-                    "<details><summary>Show available planning capability IDs</summary>"
-                    f"<ul>{capability_guide}</ul></details>"
-                    "<label>Maximum risk level</label><select name=\"max_risk\" required>"
-                    "<option value=\"\" selected disabled>Choose no higher than the client request</option>"
-                    "<option value=\"1\">1 — Passive</option>"
-                    "<option value=\"2\">2 — Low impact</option>"
-                    "<option value=\"3\">3 — Standard</option>"
-                    "<option value=\"4\">4 — Elevated</option></select>"
-                    "<label>Valid for (days)</label>"
-                    "<input name=\"valid_days\" type=\"number\" min=\"1\" max=\"365\" required>"
-                    "<button>Record grant</button>"
-                    "<p class=\"meta\">A recorded grant describes scope; it does not unlock execution. "
-                    "Destructive simulation (level 5) is lab-only and cannot be "
-                    "granted for client assets. Selecting a request records its binding; "
-                    "it does not prove independent consent.</p></form></details>"
+                    '<details><summary>Record authorization grant</summary>'
+                    '<p class="meta">Each form is bound to one approved client request. '
+                    'Select assets, planning capabilities, risk and validity deliberately.</p>'
+                    + "".join(grant_forms)
+                    + '</details>'
                 )
             engagement_cards.append(
                 "<div class=\"card\"><div class=\"row\">"
