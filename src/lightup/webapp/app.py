@@ -482,7 +482,7 @@ class LightUpWebApp:
             )
         body = (
             "<h1>Human authorization review worklist</h1>"
-            "<p class=\\"sub\\">Private operator triage. Counts reflect recorded "
+            "<p class=\"sub\">Private operator triage. Counts reflect recorded "
             "review items only; they are not verified consent, a scan permit, "
             "or a reason to bypass revocation-at-use and HUMAN GO.</p>"
             f'<div class="card"><strong>{len(items)} matching review rows · '
