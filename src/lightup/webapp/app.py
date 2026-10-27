@@ -493,7 +493,7 @@ class LightUpWebApp:
         engagement_cards = []
         for eng in engagements:
             grant = self.store.get_current_grant(ctx, eng.engagement_id)
-            grant_badge = ("<span class=\"badge ok\">Authorization current</span>" if grant
+            grant_badge = ("<span class=\"badge ok\">Current recorded grant · execution OFF</span>" if grant
                            else "<span class=\"badge warn\">No current authorization</span>")
             grant_detail = ""
             if grant:
@@ -528,7 +528,7 @@ class LightUpWebApp:
                     "<label>Valid for (days)</label>"
                     "<input name=\"valid_days\" type=\"number\" min=\"1\" max=\"365\" value=\"30\">"
                     "<button>Record grant</button>"
-                    "<p class=\"meta\">A grant only authorizes what is listed here. "
+                    "<p class=\"meta\">A recorded grant describes scope; it does not unlock execution. "
                     "Destructive simulation (level 5) is lab-only and cannot be "
                     "granted for client assets.</p></form></details>"
                 )
@@ -720,8 +720,8 @@ class LightUpWebApp:
             )
         body = (
             "<h1>Assessments</h1>"
-            "<p class=\"sub\">Nothing becomes active without a reviewed request, "
-            "a recorded authorization grant and an approved risk level.</p>"
+            "<p class=\"sub\">Requests and grants are for human review only. "
+            "Active testing remains locked pending independent consent, revocation-at-use and HUMAN GO.</p>"
             "<h2>Assessment requests</h2>"
             + ("".join(request_cards) or "<p class=\"empty\">No requests.</p>")
             + "<h2>Pending risk elevations</h2>"
@@ -797,9 +797,9 @@ class LightUpWebApp:
                 "<option value=\"4\">4 — Elevated</option></select>"
                 "<label>Notes</label><textarea name=\"notes\" rows=\"3\"></textarea>"
                 "<button>Submit request</button>"
-                "<p class=\"meta\">Submitting a request starts a review. Active testing "
-                "begins only after you provide written authorization and an operator "
-                "approves scope and risk.</p></form></div>"
+                "<p class=\"meta\">Submitting a request starts HUMAN review only. Active testing "
+                "is disabled in this version. A future release needs separate verified consent, "
+                "scope review, action-time revocation and HUMAN GO.</p></form></div>"
             )
         body = (
             f"<h1>{_e(client.name)}</h1>"
