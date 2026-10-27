@@ -23,10 +23,12 @@ from ..ai.orchestration import (
     ToolCall,
     ToolDenied,
     ToolExecutor,
+    ToolDefinition,
     ToolRegistry,
     ToolResult,
 )
-from ..labeval import LabScenario
+from ..execution_policy import InteractionKind
+from ..labeval import LabScenario, assert_lab_target
 from .gateway import ModelGateway, ModelMessage, ModelRole
 
 _PLANNER_SYSTEM = (
@@ -69,6 +71,35 @@ def catalog_for(registry: ToolRegistry) -> list[dict]:
     ]
 
 
+_LAB_NETWORK_ARGUMENTS = frozenset({"host", "url"})
+
+
+def _validate_lab_network_argument_scope(
+    index: int,
+    asset: str,
+    definition: ToolDefinition,
+    arguments: dict[str, object],
+) -> None:
+    """Bind network-bearing LAB_ACTIVE arguments to the exact scenario asset."""
+    if definition.interaction is not InteractionKind.LAB_ACTIVE:
+        return
+    for name in _LAB_NETWORK_ARGUMENTS:
+        if name not in arguments:
+            continue
+        value = arguments[name]
+        try:
+            argument_asset = assert_lab_target(str(value))
+        except (PermissionError, ValueError) as exc:
+            raise PlanRejected(
+                f"plan item {index} argument {name!r} is not an isolated lab target"
+            ) from exc
+        if argument_asset != asset:
+            raise PlanRejected(
+                f"plan item {index} argument {name!r} resolves to "
+                f"{argument_asset!r}, not scenario asset {asset!r}"
+            )
+
+
 def parse_plan(raw: str, registry: ToolRegistry,
                scenario: LabScenario) -> tuple[PlannedCall, ...]:
     """Strictly parse a planner response. Reject anything off-catalog."""
@@ -102,6 +133,7 @@ def parse_plan(raw: str, registry: ToolRegistry,
         seen.add(key)
         definition, _handler = registry.get(str(tool_id))
         definition.validate_arguments(dict(arguments))
+        _validate_lab_network_argument_scope(index, str(asset), definition, arguments)
         calls.append(PlannedCall(str(tool_id), str(asset),
                                  tuple(sorted(arguments.items()))))
     return tuple(calls)
