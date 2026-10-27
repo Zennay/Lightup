@@ -475,3 +475,40 @@ observations are not new authority. Rejected source IDs, original client,
 target, record details and input paths remain private. This check does
 **not** authenticate any record or replace original source-owner evidence,
 independent review or explicit HUMAN GO.
+
+## Source-minimal full-metric JSON review (opt-in)
+
+All three original offline entry points also accept
+`--format review-json`. This is an **additional** versioned, machine-readable
+local handoff; their existing default `--format json` response is unchanged.
+The new output covers every comparator-admitted metric of every admitted case
+using anonymous 1-based `scenario_ordinal` and the fixed comparison names,
+with baseline, candidate, signed delta, source adverse flags and
+source-reported unknown coverage.
+
+The envelope contains `schema_version=1`, `report_type`
+(`single_case`, `cohort`, `scored_cohort`), `source_status`,
+`input_admitted`, `notice`, `accepted_case_count`, and `cases`.
+Every case carries its own `source_status` and
+`source_adverse_metric_count`; an admitted **adverse-metric HOLD** still
+includes the **complete** original comparison for HUMAN assessment. A rejected
+or inconsistent whole-input **HOLD** yields
+`input_admitted=false`, `notice=input_hold`, `cases=[]` and zero case
+count; nothing from a partial cohort is exported.
+
+The export omits original scenario, record and run IDs, input paths, targets,
+clients, freeform text, provenance identifiers and source comments. All
+`authorized`, `consent_verified`, `dispatch_allowed`,
+`release_allowed` and `source_provenance_authenticated` fields stay
+**false**. The status is **source-reported only**, never independently
+verified; no consent, remediation, grant, deployment or HUMAN GO is implied.
+The `--focus` option remains valid **only** with `actions-*` formats,
+including for this unfiltered full-metric export.
+
+For example, with two previously completed local lab packets:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cli_1513.py \
+  --format review-json baseline.json candidate.json
+# exit 2: REVIEW_ONLY; exit 3: HOLD (including valid adverse metrics)
+```

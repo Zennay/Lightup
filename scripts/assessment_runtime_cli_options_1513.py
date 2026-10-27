@@ -9,7 +9,7 @@ from __future__ import annotations
 _OUTPUT_FORMATS = frozenset((
     "json", "text", "html", "csv",
     "actions-csv", "actions-html", "actions-json",
-    "efficiency-json", "efficiency-html",
+    "efficiency-json", "efficiency-html", "review-json",
 ))
 _HUMAN_FOCUS_FORMATS = frozenset((
     "actions-csv", "actions-html", "actions-json",

@@ -1,6 +1,6 @@
 """Opt-in read-only JSON lab benchmark comparison, never an execution gate.
 
-Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html] [--focus all|scope|adverse|unknown|source] base.json next.json
+Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html|review-json] [--focus all|scope|adverse|unknown|source] base.json next.json
 Focus selectors match every source signal, even under a higher-priority label.
 Source focus covers every admitted unauthenticated case; focus questions match the selected signal.
 Returns 2 REVIEW_ONLY or 3 HOLD; never 0. Only explicit local files are read.
@@ -21,6 +21,7 @@ from assessment_runtime_report_html_1513 import (
     render_comparison_html, render_comparison_csv,
     render_human_actions_csv, render_human_actions_html,
     render_human_actions_json, render_efficiency_json, render_efficiency_html,
+    render_metric_review_json,
 )
 
 from lightup.ai.assessment_runtime_diff_1513 import compare_lab_evaluations
@@ -299,6 +300,8 @@ def main(argv=None):
         print(_display_text(result))
     elif output_format == "html":
         print(render_comparison_html(result), end="")
+    elif output_format == "review-json":
+        print(render_metric_review_json(result), end="")
     elif output_format == "efficiency-json":
         print(render_efficiency_json(result), end="")
     elif output_format == "efficiency-html":

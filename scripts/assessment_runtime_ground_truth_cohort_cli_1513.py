@@ -1,6 +1,6 @@
 """Offline scored lab cohort review: 2 REVIEW_ONLY / 3 HOLD, NEVER a grant.
 
-Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html] [--focus all|scope|adverse|unknown|source] old.json new.json
+Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html|review-json] [--focus all|scope|adverse|unknown|source] old.json new.json
 Focus selectors overlap when a case has multiple source-reported signals.
 Source focus covers every admitted unauthenticated case; focus questions match the selected signal.
 Only two explicitly supplied local files are read, never a network endpoint.
@@ -16,6 +16,7 @@ from assessment_runtime_report_html_1513 import (
     render_comparison_html, render_comparison_csv,
     render_human_actions_csv, render_human_actions_html,
     render_human_actions_json, render_efficiency_json, render_efficiency_html,
+    render_metric_review_json,
 )
 
 from assessment_runtime_compare_cli_1513 import _parse_case_document, _read_json
@@ -123,6 +124,8 @@ def main(argv=None):
         print(_display_text(review))
     elif output_format == "html":
         print(render_comparison_html(review, cohort=True, scored=True), end="")
+    elif output_format == "review-json":
+        print(render_metric_review_json(review, cohort=True, scored=True), end="")
     elif output_format == "efficiency-json":
         print(render_efficiency_json(review, cohort=True, scored=True), end="")
     elif output_format == "efficiency-html":

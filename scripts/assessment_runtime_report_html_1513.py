@@ -285,6 +285,61 @@ def _stat(number, caption: str) -> str:
     return '<div class="stat"><b>' + _safe(number) + '</b><span>' + _safe(caption) + '</span></div>'
 
 
+def render_metric_review_json(result, *, cohort: bool = False,
+                              scored: bool = False) -> str:
+    """Full-metric, anonymous, non-authorizing export of admitted lab reviews.
+
+    Accepted adverse-metric HOLD cases remain visible. Rejected whole-input
+    HOLD has no case data, source IDs, target names or partial metric rows.
+    """
+    kind = "scored_cohort" if scored else "cohort" if cohort else "single_case"
+    accepted = (
+        tuple(comp for _source_id, comp in result.comparisons) if cohort
+        else (result,) if result.changes else ()
+    )
+    cases = [
+        {
+            "scenario_ordinal": ordinal,
+            "source_status": comp.status,
+            "source_adverse_metric_count": len(comp.regressions),
+            "metrics": [
+                {
+                    "metric": (
+                        change.name if change.name in _METRIC_LABELS
+                        else "unclassified_metric"
+                    ),
+                    "baseline": change.baseline,
+                    "candidate": change.candidate,
+                    "delta": change.delta,
+                    "source_regression_flag": bool(change.regression),
+                    "source_unknown_coverage": (
+                        change.name == _UNCERTAIN and change.candidate > 0
+                    ),
+                }
+                for change in comp.changes
+            ],
+        }
+        for ordinal, comp in enumerate(accepted, 1)
+    ]
+    payload = {
+        "schema_version": 1,
+        "report_type": kind,
+        "source_status": "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD",
+        "input_admitted": bool(accepted),
+        "notice": "requires_human_review" if accepted else "input_hold",
+        "accepted_case_count": len(cases),
+        "cases": cases,
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+        "source_provenance_authenticated": False,
+    }
+    return json_dumps(
+        payload, sort_keys=True, separators=(",", ":"), allow_nan=False,
+    ) + "\n"
+
+
 def render_comparison_csv(result, *, cohort: bool = False,
                           scored: bool = False) -> str:
     """Long-form spreadsheet handoff with anonymous ordinals and fixed labels.
