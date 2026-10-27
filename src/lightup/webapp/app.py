@@ -1205,6 +1205,27 @@ class LightUpWebApp:
         decided_risk_reviews = [
             item for item in risk_reviews if item.status.value in {"approved", "denied"}
         ]
+        # Resolve names once from original operator-visible tenant records.
+        # A mismatched engagement/client link must never be presented as trusted.
+        risk_clients = {
+            client.client_id: client.name for client in self.store.list_clients(ctx)
+        }
+        risk_engagements = {
+            engagement.engagement_id: engagement
+            for engagement in self.store.list_engagements(ctx)
+        }
+
+        def risk_context(item) -> str:
+            engagement = risk_engagements.get(item.engagement_id)
+            client_name = risk_clients.get(item.client_id)
+            if (engagement is None or engagement.client_id != item.client_id
+                    or client_name is None):
+                raise TenantIsolationError("risk review tenant linkage invalid")
+            return (
+                f'<a href="/clients/{_e(item.client_id)}">{_e(client_name)}</a>'
+                f' · {_e(engagement.name)}'
+            )
+
         pending_requests = []
         decided_requests = []
         for request in requests:
@@ -1244,7 +1265,8 @@ class LightUpWebApp:
                 '<section class="card"><div class="row">'
                 f'<strong>Risk elevation to {_risk(approval.requested_risk)}</strong>'
                 '<span class="badge warn">Human decision required</span></div>'
-                f'<p class="meta">Engagement {_e(approval.engagement_id)} · '
+                f'<p class="meta">{risk_context(approval)} · '
+                f'Engagement ID {_e(approval.engagement_id)} · '
                 f'Requested by {_e(approval.requested_by)}</p>'
                 '<details><summary>Justification</summary>'
                 f'<p class="meta">{_e(approval.justification)}</p></details>'
@@ -1257,7 +1279,8 @@ class LightUpWebApp:
                 '<section class="card"><div class="row">'
                 f'<strong>Risk elevation to {_risk(decision.requested_risk)}</strong>'
                 f'<span class="badge">{_e(decision.status.value)}</span></div>'
-                f'<p class="meta">Engagement {_e(decision.engagement_id)} · '
+                f'<p class="meta">{risk_context(decision)} · '
+                f'Engagement ID {_e(decision.engagement_id)} · '
                 f'Recorded by {_e(decision.decided_by or "Not recorded")} · '
                 f'At {_e(decision.decided_at or "Not recorded")}</p>'
                 '<p class="meta">This decision does not extend a scope grant '
