@@ -828,9 +828,18 @@ The same fully inspected private JSON can also be exported to
 `--format bundle-csv` for local spreadsheet or data-analysis workflows.
 It emits a fixed-column CSV with **all** canonical anonymous cases:
 the HUMAN question rows first in verified priority order, followed by each
-case's exact source metric and two resource observations. Every row carries
-only a case ordinal and source-reported status; the fixed columns keep all
-five authority/provenance flags explicitly `false`. No source IDs, paths,
+case's exact source metric and two resource observations. After these
+case-level rows, it appends a **source-wide reconciliation ledger**: one
+`source_summary` row with admitted/adverse/unknown/HUMAN counts, one
+`metric_summary` row for each canonical metric with observed/adverse and
+higher/lower/equal/unknown-coverage counts, and two `resource_total` rows
+with exact Decimal baseline/candidate/delta totals and increased/decreased
+case counts. All summaries were independently reconciled with **every**
+admitted case during intake, so they cannot silently disagree with the
+detailed source rows. Case rows retain their anonymous ordinal; aggregate
+rows use no case identifier. Every row carries source-reported status;
+the fixed columns keep all five authority/provenance flags explicitly
+`false`. No source IDs, paths,
 free-form evidence, target names, URLs, credentials or real findings are
 exported. It is still an unauthenticated observation, never a scan or
 budget/release approval.

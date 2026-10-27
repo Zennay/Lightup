@@ -1049,6 +1049,12 @@ def _render_review_bundle_packet_csv(packet) -> str:
         "metric", "baseline", "candidate", "delta",
         "source_regression_flag", "source_unknown_coverage_flag",
         "percent_change", "direction",
+        "accepted_case_count", "source_adverse_case_count",
+        "source_unknown_coverage_case_count", "human_question_count",
+        "observed_case_count", "source_regression_case_count",
+        "candidate_higher_case_count", "candidate_lower_case_count",
+        "candidate_equal_case_count", "candidate_unknown_coverage_case_count",
+        "increased_cases", "decreased_cases",
         "authorized", "consent_verified", "dispatch_allowed",
         "release_allowed", "source_provenance_authenticated",
     )
@@ -1119,6 +1125,40 @@ def _render_review_bundle_packet_csv(packet) -> str:
                 ),
                 direction=metric["direction"],
             )
+    # Append reconciled source-wide summaries after the complete HUMAN and
+    # per-case detail rows. The packet's intake has already checked every
+    # count, metric movement and Decimal aggregate against every source case.
+    # No CSV-level recalc, omitted cohort members or implied release verdict.
+    emit(
+        "source_summary", packet["source_status"],
+        accepted_case_count=packet["accepted_case_count"],
+        source_adverse_case_count=metrics["source_adverse_case_count"],
+        source_unknown_coverage_case_count=metrics["source_unknown_coverage_case_count"],
+        human_question_count=len(packet["human_actions"]["human_review_questions"]),
+    )
+    for item in metrics["metric_summary"]:
+        emit(
+            "metric_summary", packet["source_status"],
+            metric=item["metric"],
+            observed_case_count=item["observed_case_count"],
+            source_regression_case_count=item["source_regression_case_count"],
+            candidate_higher_case_count=item["candidate_higher_case_count"],
+            candidate_lower_case_count=item["candidate_lower_case_count"],
+            candidate_equal_case_count=item["candidate_equal_case_count"],
+            candidate_unknown_coverage_case_count=(
+                item["candidate_unknown_coverage_case_count"]
+            ),
+        )
+    for name in _EFFICIENCY_FIELDS:
+        total = resources["aggregate"][name]
+        emit(
+            "resource_total", packet["source_status"], metric=name,
+            baseline=total["baseline_total"],
+            candidate=total["candidate_total"],
+            delta=total["delta_total"],
+            increased_cases=total["increased_cases"],
+            decreased_cases=total["decreased_cases"],
+        )
     return out.getvalue()
 
 
