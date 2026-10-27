@@ -1110,7 +1110,8 @@ class LightUpWebApp:
             + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
                        for e in engagements)
                or "<p class=\"empty\">No engagements yet.</p>")
-            + f"<h2>Findings</h2>{self._finding_cards(findings)}"
+            + f"<h2>Findings · human remediation priorities</h2>"
+              f"{self._finding_cards(findings)}"
         )
         return Response(_page(f"LightUp — {client.name}", "clients", body, auth))
 
@@ -1824,6 +1825,19 @@ class LightUpWebApp:
         )
 
         fixed = sum(1 for f in findings if f.retest_status is RetestStatus.FIXED)
+        # Counters are for ORIGINAL, tenant-validated recorded findings only;
+        # unknown assessment coverage remains prominently shown above.
+        outstanding_findings = tuple(
+            item for item in findings if item.retest_status is not RetestStatus.FIXED
+        )
+        urgent_outstanding = sum(
+            item.severity.value in {"critical", "high"}
+            for item in outstanding_findings
+        )
+        recorded_regressions = sum(
+            item.retest_status is RetestStatus.REGRESSION
+            for item in outstanding_findings
+        )
         request_rows = "".join(
             '<section class="card"><div class="row">'
             f'<strong>Request {_e(r.request_id[:8])}</strong>'
@@ -1947,7 +1961,11 @@ class LightUpWebApp:
             f"<div class=\"card\"><div class=\"kpi\">{len(findings)}</div>"
             "<div class=\"kpi-label\">Findings</div></div>"
             f"<div class=\"card\"><div class=\"kpi\">{fixed}</div>"
-            "<div class=\"kpi-label\">Confirmed fixed</div></div>"
+            "<div class=\"kpi-label\">Recorded fixed findings</div></div>"
+            f"<div class=\"card\"><div class=\"kpi\">{urgent_outstanding}</div>"
+            "<div class=\"kpi-label\">Critical/high findings needing follow-up</div></div>"
+            f"<div class=\"card\"><div class=\"kpi\">{recorded_regressions}</div>"
+            "<div class=\"kpi-label\">Recorded regressions needing follow-up</div></div>"
             f"<div class=\"card\"><div class=\"kpi\">{len(requests)}</div>"
             "<div class=\"kpi-label\">Assessment requests</div></div>"
             "</div>"
@@ -2549,7 +2567,7 @@ class LightUpWebApp:
 
         def render_finding(f) -> str:
             retest_badge = {
-                RetestStatus.FIXED: "<span class=\"badge ok\">Fixed & verified</span>",
+                RetestStatus.FIXED: "<span class=\"badge ok\">Recorded fixed</span>",
                 RetestStatus.REGRESSION: "<span class=\"badge lock\">Regression</span>",
                 RetestStatus.FIX_PENDING: "<span class=\"badge warn\">Fix pending</span>",
                 RetestStatus.NOT_TESTED: "<span class=\"badge\">Retest not run</span>",
@@ -2581,11 +2599,10 @@ class LightUpWebApp:
                 f"{evidence}</section>"
             )
 
-        if not portal:
-            return "".join(render_finding(f) for f in findings)
-
-        # Read-only human triage. Never equate 'fixed' with independently
-        # established scope coverage or permission to perform another retest.
+        # One read-only HUMAN remediation ordering for both operator and
+        # private client views; operators additionally see source references.
+        # Neither "fixed" nor a clean visible queue proves assessment coverage
+        # or allows another retest.
         severity_priority = {
             "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
         }
@@ -2600,18 +2617,28 @@ class LightUpWebApp:
             (f for f in findings if f.retest_status is not RetestStatus.FIXED),
             key=attention_order,
         )
-        marked_fixed = [f for f in findings if f.retest_status is RetestStatus.FIXED]
+        marked_fixed = sorted(
+            (f for f in findings if f.retest_status is RetestStatus.FIXED),
+            key=attention_order,
+        )
+        visibility_note = (
+            "System names remain collapsed on the client landing view."
+            if portal else
+            "Operators can inspect source evidence references and affected systems."
+        )
         return (
-            '<p class="meta">Only recorded findings are shown. A recorded '
-            'fixed status does not establish full assessment coverage or '
-            'authorize new tests. System identifiers are collapsed by default.</p>'
-            f'<h3>Needs follow-up ({len(needs_follow_up)})</h3>'
+            '<p class="meta">Only original recorded findings are shown. '
+            'Regressions come first, then unresolved critical-to-low severity. '
+            'A recorded fixed status does not establish full assessment coverage '
+            f'or authorize testing. {_e(visibility_note)}</p>'
+            f'<h3>Needs HUMAN follow-up ({len(needs_follow_up)})</h3>'
             + ("".join(render_finding(f) for f in needs_follow_up)
                or '<p class="empty">No recorded findings currently need follow-up. '
                   'Check assessment coverage before drawing conclusions.</p>')
-            + f'<h3>Recorded fixed &amp; verified ({len(marked_fixed)})</h3>'
+            + f'<details><summary>Recorded fixed findings ({len(marked_fixed)})</summary>'
             + ("".join(render_finding(f) for f in marked_fixed)
                or '<p class="empty">No findings are marked fixed yet.</p>')
+            + '</details>'
         )
 
 
