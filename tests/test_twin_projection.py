@@ -56,7 +56,7 @@ class SecurityTwinProjectionTest(unittest.TestCase):
         self.store.set_coverage(
             self.operator,
             self.engagement_a.engagement_id,
-            "web",
+            "web-baseline",
             "assessed",
         )
 
@@ -72,7 +72,7 @@ class SecurityTwinProjectionTest(unittest.TestCase):
         self.assertEqual([node.label for node in finding_nodes], [verified.title])
         self.assertTrue(
             any(
-                fact.predicate == "coverage:web"
+                fact.predicate == "coverage:web-baseline"
                 and fact.value == "assessed"
                 and fact.provenance is FactProvenance.OBSERVED
                 for fact in twin.facts
