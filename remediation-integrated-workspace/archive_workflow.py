@@ -9,10 +9,7 @@ source-owner writeback. This command never authorizes cross-tenant disclosure.
 from __future__ import annotations
 import argparse
 import hashlib
-import os
 from pathlib import Path
-import secrets
-import shutil
 import sys
 import zipfile
 
@@ -75,8 +72,7 @@ def build(archives: list[Path], dest: Path, encrypted: bool = False, unsigned_re
                 "The same exact source-free archive cannot be two HUMAN revisions")
         seen.add(signature)
         original_bytes.append(raw)
-    stage = dest.parent / (".lightup-sourcefree-intake-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
+    stage, stage_identity = install.create_private_stage(dest.parent, ".lightup-receiver-")
     try:
         received = []
         for ordinal, archive in enumerate(archives, 1):
@@ -131,10 +127,10 @@ def build(archives: list[Path], dest: Path, encrypted: bool = False, unsigned_re
                     and packet_fingerprint.load_receipt(unsigned_receipt)["files"] == expected_slots,
                     "Original UNSIGNED receipt changed during recipient intake")
         require(not dest.exists(), "Recipient output appeared before final private publication")
-        workspace.exclusive_dir_publish(stage, dest)
+        install.exclusive_publish(stage, dest, expected_identity=stage_identity)
     finally:
-        if stage.exists():
-            shutil.rmtree(stage)
+        # Never remove a substituted stage under the private handoff path.
+        install.cleanup_private_stage(stage, stage_identity)
     print("REVIEW_ONLY: native PRIVATE source-free archive intake:", dest)
     print("Original source-free Cockpit packets:", len(archives))
     print("Open offline:", dest / "index.html")
