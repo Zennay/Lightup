@@ -372,16 +372,20 @@ def _inspect(raw: bytes):
     return payload
 
 
-def inspect_review_bundle_bytes(raw: bytes) -> dict:
-    """Source-minimal structural consistency readout, never provenance proof."""
-    payload = None
+def _validated_review_bundle_packet(raw: bytes):
+    """Admit at most one bounded complete packet; never expose partial input."""
     try:
         if type(raw) is bytes and len(raw) <= _MAX_INPUT_BYTES:
-            payload = _inspect(raw)
+            return _inspect(raw)
     except (UnicodeError, ValueError, TypeError, KeyError, IndexError,
             OverflowError, AttributeError, ZeroDivisionError, InvalidOperation,
             RecursionError):
         pass
+    return None
+
+
+def _inspection_outcome(payload) -> dict:
+    """Only public, source-minimal receipt fields; never original packet data."""
     return {
         "schema_version": 1,
         "format_consistent": payload is not None,
@@ -395,6 +399,11 @@ def inspect_review_bundle_bytes(raw: bytes) -> dict:
         "release_allowed": False,
         "source_provenance_authenticated": False,
     }
+
+
+def inspect_review_bundle_bytes(raw: bytes) -> dict:
+    """Source-minimal structural consistency readout, never provenance proof."""
+    return _inspection_outcome(_validated_review_bundle_packet(raw))
 
 
 def _read_private_bundle(path: str) -> bytes:
@@ -634,7 +643,7 @@ def main(argv=None) -> int:
         args[option_index] if options_valid and len(args) == option_index + 1
         else None
     )
-    outcome = inspect_review_bundle_bytes(b"")
+    outcome = _inspection_outcome(None)
     review_packet = None
     if path is not None:
         try:
@@ -643,12 +652,13 @@ def main(argv=None) -> int:
                 sha256(raw).hexdigest(), expected_sha256,
             ):
                 raise ValueError("offline bundle digest mismatch")
-            outcome = inspect_review_bundle_bytes(raw)
-            if output_format in ("bundle-html", "bundle-csv") and outcome["format_consistent"]:
-                # A second bounded decode is permissible only after *full*
-                # shape/numeric/source/rank checks passed. Never render input
-                # bytes or partially parsed case data on a rejected packet.
-                review_packet = _inspect(raw)
+            # One bounded decode plus complete schema/numeric/source/rank check.
+            # Reuse only the admitted in-memory packet for opt-in full outputs.
+            # No rejected input, original path or partial case can be rendered.
+            packet = _validated_review_bundle_packet(raw)
+            outcome = _inspection_outcome(packet)
+            if output_format in ("bundle-html", "bundle-csv"):
+                review_packet = packet
         except (OSError, ValueError):
             pass
     if output_format == "bundle-html":

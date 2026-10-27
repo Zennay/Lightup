@@ -778,8 +778,9 @@ stylesheet. It separates packet consistency, source-reported
 `HOLD`/`REVIEW_ONLY`, admitted-case count and mandatory HUMAN review.
 No browser upload, external fonts/assets, forms, network access or
 authorizing button. Invalid or unsafe local files create a
-generic zero-case HOLD receipt in the original three formats, and a
-generic zero-case HOLD full page in the new fourth format. Exit codes remain
+generic zero-case HOLD receipt in the original JSON/text/HTML formats,
+a generic zero-case HOLD full page in bundle-HTML, and a fixed input_hold
+row in bundle-CSV. Exit codes remain
 `2` for a structurally consistent source `REVIEW_ONLY`, otherwise
 `3`; the receipt is never a completion certificate.
 
@@ -843,13 +844,17 @@ PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.
 Every JSON object, metric value, case ordinal, question rank and source flag
 passes the **same** private-file, optional out-of-band SHA-256, schema and
 cross-section reconciliation as `--format bundle-html` before any rows are
-emitted. On rejection it returns only a fixed `input_hold` row with no case
+emitted. Detailed HTML and CSV now reuse the **same single bounded,
+fully validated in-memory packet** used for the compact structural receipt:
+no second JSON decode or duplicated source/rank arithmetic, and no change
+to the atomic generic HOLD behavior, accepted source values, exit codes
+or authorization flags. On rejection it returns only a fixed `input_hold` row with no case
 data; no partial cohort is disclosed. CSV quoting handles delimiters;
 all question text and labels are pre-defined, not source-controlled formulas.
 For portability the export uses CRLF row endings and no external packages.
 
 For a transfer where the human reviewer already possesses a **separately
-verified expected SHA-256** of the exact source JSON bytes, all four
+verified expected SHA-256** of the exact source JSON bytes, all five
 receiving formats also accept opt-in `--expected-sha256` (exactly 64
 hexadecimal characters). The hash check occurs **after** the symlink-
 and race-hardened bounded read and **before** parsing/review. Incorrect,
