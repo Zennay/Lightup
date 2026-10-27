@@ -375,10 +375,49 @@ def build_operator_portfolio_review_payload(
             "decision": "HOLD",
             "execution_allowed": False,
         })
+    # A review queue, not an authorization workflow. A count represents
+    # separate review items, not an independent consent or execution decision.
+    review_queue = []
+    for tenant in tenants:
+        not_recorded = max(
+            0, tenant["without_current_grant"]
+            - tenant["expired_grant_engagements"]
+            - tenant["future_dated_grant_engagements"]
+        )
+        review_kinds = (
+            ("review_client_requests", tenant["requests_awaiting_review"]),
+            ("review_risk_decisions", tenant["pending_risk_decisions"]),
+            ("review_unrestricted_grants", tenant["unrestricted_legacy_scopes"]),
+            ("review_expired_grants", tenant["expired_grant_engagements"]),
+            ("review_future_grants", tenant["future_dated_grant_engagements"]),
+            ("review_missing_grants", not_recorded),
+        )
+        actions = [
+            {
+                "kind": kind,
+                "count": count,
+                "review_only": True,
+                "execution_allowed": False,
+            }
+            for kind, count in review_kinds if count > 0
+        ]
+        if actions:
+            review_queue.append({
+                "client_id": tenant["client_id"],
+                "client_name": tenant["client_name"],
+                "review_items": sum(action["count"] for action in actions),
+                "actions": actions,
+                "decision": "HOLD",
+                "execution_allowed": False,
+            })
+    review_queue.sort(
+        key=lambda item: (-item["review_items"], item["client_id"])
+    )
     return {
         "format": "lightup-m0-portfolio-review-v1",
         "evaluated_at": instant.isoformat(),
         "tenants": sorted(tenants, key=lambda tenant: tenant["client_id"]),
+        "review_queue": review_queue,
         "authority": {
             "execution_allowed": False,
             "capability_dispatch_allowed": False,
