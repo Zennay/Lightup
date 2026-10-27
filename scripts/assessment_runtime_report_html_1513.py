@@ -835,6 +835,100 @@ def _bundle_case_alignment(metric_cases, human_questions, resource_cases) -> boo
     return True
 
 
+def _bundle_summary_alignment(metrics, resources) -> bool:
+    """Reconcile full-population metric/resource summaries to admitted rows.
+
+    Aggregate totals and movement counts are review observations, not a
+    security, cost, consent or release verdict. Never trust a summary simply
+    because it matches its source status and case count.
+    """
+    cases = metrics["cases"]
+    summaries = metrics["metric_summary"]
+    if len(summaries) != len(_METRIC_LABELS):
+        return False
+    by_name = {item["metric"]: item for item in summaries}
+    if len(by_name) != len(_METRIC_LABELS) or set(by_name) != set(_METRIC_LABELS):
+        return False
+
+    adverse_cases = sum(bool(case["source_adverse_metric_count"]) for case in cases)
+    unknown_cases = sum(
+        any(item["source_unknown_coverage"] for item in case["metrics"])
+        for case in cases
+    )
+    if (
+        metrics["source_adverse_case_count"] != adverse_cases
+        or metrics["source_unknown_coverage_case_count"] != unknown_cases
+        or (metrics["source_status"] == "REVIEW_ONLY" and adverse_cases > 0)
+    ):
+        return False
+
+    for name in _METRIC_LABELS:
+        observed = [
+            item for case in cases for item in case["metrics"]
+            if item["metric"] == name
+        ]
+        expected = {
+            "metric": name,
+            "observed_case_count": len(cases),
+            "source_regression_case_count": sum(
+                bool(item["source_regression_flag"]) for item in observed
+            ),
+            "candidate_higher_case_count": sum(
+                item["candidate"] > item["baseline"] for item in observed
+            ),
+            "candidate_lower_case_count": sum(
+                item["candidate"] < item["baseline"] for item in observed
+            ),
+            "candidate_equal_case_count": sum(
+                item["candidate"] == item["baseline"] for item in observed
+            ),
+            "candidate_unknown_coverage_case_count": sum(
+                bool(item["source_unknown_coverage"]) for item in observed
+            ),
+        }
+        if by_name[name] != expected:
+            return False
+
+    aggregates = resources["aggregate"]
+    if set(aggregates) != set(_EFFICIENCY_FIELDS):
+        return False
+    for name in _EFFICIENCY_FIELDS:
+        baseline_total = Decimal(0)
+        candidate_total = Decimal(0)
+        increased_cases = decreased_cases = 0
+        for case in resources["cases"]:
+            observation = case["metrics"][name]
+            baseline = Decimal(observation["baseline"])
+            candidate = Decimal(observation["candidate"])
+            delta = _resource_decimal_delta(baseline, candidate)
+            direction = "increase" if delta > 0 else "decrease" if delta < 0 else "unchanged"
+            with localcontext() as context:
+                context.prec = 12
+                percent_change = str(delta / baseline * 100) if baseline else None
+            if (
+                observation["direction"] != direction
+                or observation["percent_change"] != percent_change
+            ):
+                return False
+            baseline_total = _resource_decimal_sum(baseline_total, baseline)
+            candidate_total = _resource_decimal_sum(candidate_total, candidate)
+            increased_cases += direction == "increase"
+            decreased_cases += direction == "decrease"
+
+        total = aggregates[name]
+        if (
+            Decimal(total["baseline_total"]) != baseline_total
+            or Decimal(total["candidate_total"]) != candidate_total
+            or Decimal(total["delta_total"]) != _resource_decimal_delta(
+                baseline_total, candidate_total,
+            )
+            or total["increased_cases"] != increased_cases
+            or total["decreased_cases"] != decreased_cases
+        ):
+            return False
+    return True
+
+
 def render_review_bundle_json(result, *, cohort: bool = False,
                               scored: bool = False) -> str:
     """Single source-minimal offline HUMAN handoff; never execution authority.
@@ -870,6 +964,7 @@ def render_review_bundle_json(result, *, cohort: bool = False,
         and _bundle_case_alignment(
             metrics["cases"], human["human_review_questions"], efficiency["cases"],
         )
+        and _bundle_summary_alignment(metrics, efficiency)
     )
     packet = {
         "schema_version": 1,

@@ -641,3 +641,28 @@ empty table. No change to input readers, original comparator, default
 formats, statuses, dispatch, permissions, targets, runner ownership or
 independent HUMAN review gates. Ordinals are anonymous local display keys,
 **not** source authentication or operator/client consent.
+
+## Full-source metric and resource summary reconciliation
+
+The complete offline HUMAN dossier now independently reconciles every
+aggregate number to **all** admitted anonymous case records before it is
+shown or exported. For each fixed canonical metric it checks the unique
+summary entry, complete case count, source-adverse flag count, raw
+candidate-higher/lower/equal movement and unknown-coverage flags; it also
+checks the cohortwide adverse/unknown case totals. A source status of
+`REVIEW_ONLY` cannot coexist with admitted source adverse flags.
+
+The resource section must contain precisely the expected runtime and cost
+metrics. Each case's decimal delta, direction and percentage observation
+must agree with its actual baseline/candidate. Cohort-level baseline,
+candidate, delta and increase/decrease counts are reconstructed from the
+same admitted case rows with exact Decimal arithmetic. If any metric or
+resource rollup drifts, the **entire** bundle becomes generic `HOLD`
+with zero accepted cases and no nested payloads. A complete admitted
+source-adverse `HOLD` remains visible for independent HUMAN review.
+
+This catches misleading aggregate totals without adding score thresholds,
+new scans, network access, source identities, release decisions, worker
+scheduling or authorization. The default comparison formats and original
+owner workflows stay unchanged; unsigned source reports still need
+source-owner, independent security/privacy, consent and HUMAN GO review.
