@@ -142,6 +142,7 @@ def _request_progress(status: RequestStatus) -> list[dict[str, str]]:
         RequestStatus.APPROVED: ("REQUEST_APPROVED_ONLY", "This decision is not a scope grant or scan permission."),
         RequestStatus.REJECTED: ("REQUEST_REJECTED", "This request cannot be used to issue a scope grant."),
     }[status]
+    rejected = status is RequestStatus.REJECTED
     return [
         {
             "code": "CLIENT_SUBMISSION", "label": "Client request",
@@ -154,13 +155,22 @@ def _request_progress(status: RequestStatus) -> list[dict[str, str]]:
         },
         {
             "code": "REQUEST_BOUND_SCOPE", "label": "Recorded scope and risk limits",
-            "state": "CHECK_SEPARATELY",
-            "explanation": "A grant for a particular engagement is never inferred from this receipt.",
+            "state": "BLOCKED_BY_REJECTION" if rejected else "CHECK_SEPARATELY",
+            "explanation": (
+                "This rejected request cannot support a scope grant. "
+                "A new client-origin request needs a new independent review."
+                if rejected else
+                "A grant for a particular engagement is never inferred from this receipt."
+            ),
         },
         {
             "code": "CLIENT_CONSENT_AND_REVOCATION", "label": "Current consent and revocation",
-            "state": "NOT_VERIFIED",
-            "explanation": "Separate client consent and a revocation check at use are still required.",
+            "state": "NOT_APPLICABLE_TO_REJECTED_REQUEST" if rejected else "NOT_VERIFIED",
+            "explanation": (
+                "No consent or revocation check can rehabilitate this rejected request."
+                if rejected else
+                "Separate client consent and a revocation check at use are still required."
+            ),
         },
         {
             "code": "HUMAN_GO_AND_EXECUTION", "label": "Human go and testing",
@@ -1674,11 +1684,36 @@ class LightUpWebApp:
         awaiting = request.status in {
             RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
         }
-        next_step = (
-            "An operator still needs to review this request."
-            if awaiting else
-            "A decision has been recorded. Review your private authorization "
-            "plan for the current scope and remaining blockers."
+        if awaiting:
+            next_step = "An independent operator still needs to review this request."
+        elif request.status is RequestStatus.APPROVED:
+            next_step = (
+                "The request was approved for scope review only. A separate, "
+                "current scope grant, consent, revocation check and HUMAN GO "
+                "are still required before any testing."
+            )
+        elif request.status is RequestStatus.REJECTED:
+            next_step = (
+                "The operator rejected this request. It cannot support a scope "
+                "grant or testing; a new client-origin request needs its own "
+                "independent review."
+            )
+        else:
+            raise ValueError("unrecognized persisted request decision")
+        new_request_link = (
+            f'<a href="/portal/{_e(client_id)}#new-request">'
+            'Prepare a separate new request</a> · '
+            if request.status is RequestStatus.REJECTED and not auth.is_operator
+            else ""
+        )
+        safety_notice = (
+            "A rejected request remains closed. No separate approval, consent "
+            "or HUMAN GO can turn this request into a scope grant. "
+            "Active testing remains locked."
+            if request.status is RequestStatus.REJECTED else
+            "An approved request is still not a scope grant, separately "
+            "verified consent, revocation-at-use check or HUMAN GO. "
+            "Active testing remains locked."
         )
         stages = "".join(
             '<li><strong>' + _e(step["label"]) + '</strong> '
@@ -1704,9 +1739,8 @@ class LightUpWebApp:
             '<h2>Five separate safety steps</h2>'
             '<ol aria-label="Request review and authorization status">'
             f'{stages}</ol>'
-            '<p class="meta">An approved request is still not a scope grant, '
-            'separately verified consent, revocation-at-use check or HUMAN GO. '
-            'Active testing remains locked.</p>'
+            f'<p class="meta">{_e(safety_notice)}</p>'
+            f'{new_request_link}'
             f'<a href="/portal/{_e(client_id)}/requests/{_e(request_id)}.json">'
             'Download private request status JSON</a> · '
             f'<a href="/portal/{_e(client_id)}/authorization-plan">'
