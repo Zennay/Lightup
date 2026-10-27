@@ -27,6 +27,9 @@ class EngagementPlan:
     unrestricted_capabilities_recorded: bool = False
     grant_valid_from: str | None = None
     grant_valid_until: str | None = None
+    scope_record_state: str = "NOT_RECORDED"
+    last_eligible_grant_expired_at: str | None = None
+    next_eligible_grant_valid_from: str | None = None
     risk_elevation_reviews: tuple[RiskElevationReviewPlan, ...] = ()
     decision: str = "HOLD"
     execution_allowed: bool = False
@@ -121,9 +124,40 @@ def build_client_authorization_plan(
         # The original domain excludes unbound, expired or otherwise
         # non-current grants. This read is not an approval or consent check.
         grant = store.get_current_grant(actor, engagement.engagement_id, now=instant)
+        # Read the original domain's provenance-filtered history only. Legacy
+        # unbound or incompatible grants are never reconstructed as scope.
+        eligible_history = (
+            store.list_authorization_grants(actor, engagement.engagement_id)
+            if grant is None else ()
+        )
+        expired = [
+            item.valid_until for item in eligible_history
+            if item.valid_until < instant
+        ]
+        upcoming = [
+            item.valid_from for item in eligible_history
+            if item.valid_from > instant
+        ]
+        last_expiry = max(expired) if expired else None
+        next_start = min(upcoming) if upcoming else None
+        scope_record_state = (
+            "CURRENT" if grant is not None else
+            "NOT_YET_VALID" if next_start is not None else
+            "EXPIRED" if last_expiry is not None else "NOT_RECORDED"
+        )
         pending_count = pending_by_engagement.get(engagement.engagement_id, 0)
         blockers = []
-        if grant is None:
+        if scope_record_state == "EXPIRED":
+            blockers.append(
+                "The last eligible request-bound scope grant has expired; "
+                "a new explicit grant and independent consent review are required."
+            )
+        elif scope_record_state == "NOT_YET_VALID":
+            blockers.append(
+                "A recorded request-bound scope grant is not yet valid; "
+                "it cannot be treated as current authorization."
+            )
+        elif grant is None:
             blockers.append("No current request-bound recorded scope grant.")
         if pending_count:
             blockers.append("Pending risk-elevation decision.")
@@ -152,6 +186,13 @@ def build_client_authorization_plan(
             ),
             grant_valid_from=grant.valid_from.isoformat() if grant else None,
             grant_valid_until=grant.valid_until.isoformat() if grant else None,
+            scope_record_state=scope_record_state,
+            last_eligible_grant_expired_at=(
+                last_expiry.isoformat() if last_expiry else None
+            ),
+            next_eligible_grant_valid_from=(
+                next_start.isoformat() if next_start else None
+            ),
             risk_elevation_reviews=tuple(sorted(
                 reviews_by_engagement.get(engagement.engagement_id, ()),
                 key=lambda review: review.approval_id,
@@ -199,7 +240,11 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
         if (type(entry) is not EngagementPlan or entry.decision != "HOLD"
                 or entry.execution_allowed is not False
                 or (entry.max_risk is not None and type(entry.max_risk) is not RiskLevel)
-                or type(entry.unrestricted_capabilities_recorded) is not bool):
+                or type(entry.unrestricted_capabilities_recorded) is not bool
+                or entry.scope_record_state not in {
+                    "CURRENT", "EXPIRED", "NOT_YET_VALID", "NOT_RECORDED"
+                }
+                or (entry.scope_record_state == "CURRENT") != (entry.max_risk is not None)):
 
             raise ValueError("engagement is not fail-closed")
         risk_reviews = []
@@ -230,6 +275,9 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
             "unrestricted_capabilities_recorded": entry.unrestricted_capabilities_recorded,
             "grant_valid_from": entry.grant_valid_from,
             "grant_valid_until": entry.grant_valid_until,
+            "scope_record_state": entry.scope_record_state,
+            "last_eligible_grant_expired_at": entry.last_eligible_grant_expired_at,
+            "next_eligible_grant_valid_from": entry.next_eligible_grant_valid_from,
             "pending_elevations": entry.pending_elevations,
             "risk_elevation_review": risk_reviews,
             "blockers": list(entry.blockers),
@@ -311,6 +359,14 @@ def build_operator_portfolio_review_payload(
             "engagements_hold": len(plan.engagements),
             "without_current_grant": sum(
                 entry.max_risk is None for entry in plan.engagements
+            ),
+            "expired_grant_engagements": sum(
+                entry.scope_record_state == "EXPIRED"
+                for entry in plan.engagements
+            ),
+            "future_dated_grant_engagements": sum(
+                entry.scope_record_state == "NOT_YET_VALID"
+                for entry in plan.engagements
             ),
             "unrestricted_legacy_scopes": sum(
                 entry.unrestricted_capabilities_recorded
