@@ -1214,6 +1214,14 @@ def _render_review_bundle_packet_markdown(packet) -> str:
     ]
     for question in questions:
         ordinal = question["scenario_ordinal"]
+        case = cases_by_ordinal[ordinal]
+        source_flag_labels = [
+            _METRIC_LABELS[entry["metric"]] for entry in case["metrics"]
+            if entry["source_regression_flag"]
+        ]
+        observations = resources_by_ordinal[ordinal]["metrics"]
+        runtime = observations["runtime_seconds"]
+        compute_cost = observations["compute_cost_usd"]
         lines.extend([
             "- [ ] **Rank " + str(question["review_order"])
             + " · Anonymous case " + str(ordinal).zfill(2) + "** — "
@@ -1224,6 +1232,14 @@ def _render_review_bundle_packet_markdown(packet) -> str:
             + "; unknown coverage: " + str(question["source_unknown_coverage"])
             + "; scope/policy signal: "
             + str(question["scope_policy_signal"]).lower(),
+            "  - **Source-flagged canonical metrics:** "
+            + (", ".join(source_flag_labels) if source_flag_labels else "none reported"),
+            "  - **Informational runtime change (seconds):** "
+            + runtime["baseline"] + " → " + runtime["candidate"]
+            + " (delta " + runtime["delta"] + ")",
+            "  - **Informational compute-cost change (USD):** "
+            + compute_cost["baseline"] + " → " + compute_cost["candidate"]
+            + " (delta " + compute_cost["delta"] + ")",
         ])
     lines.extend([
         "",

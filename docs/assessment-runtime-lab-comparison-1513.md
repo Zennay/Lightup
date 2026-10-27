@@ -873,10 +873,14 @@ For an offline review handoff that a human can copy into a **regular Notion
 page** or edit as a local text file, the same fully inspected private JSON can
 now be rendered with `--format bundle-md`. The output is native Markdown:
 the complete, independently reconciled HUMAN review queue comes first as
-unchecked `- [ ]` items in source-priority order, followed by a source-wide
+unchecked `- [ ]` items in source-priority order. Every unchecked question
+now includes its **exact fixed source-flagged metric names** (or explicitly
+none reported) plus the canonical baseline → candidate → raw-delta values
+for **runtime seconds and compute cost USD**. These observations are
+informational, never prioritization or spending authority. A source-wide
 metric/resource movement ledger and all canonical per-case metric and cost
-observations in the same HUMAN rank order. Every question is fixed to its
-fully validated source metric case; no raw IDs, paths, URLs, evidence or
+observations follow in the same HUMAN rank order. Every question is fixed
+to its fully validated source metric case; no raw IDs, paths, URLs, evidence or
 uncontrolled notes are imported. This creates **review prompts**, never
 permissions or sign-off records.
 
