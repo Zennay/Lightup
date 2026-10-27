@@ -104,6 +104,8 @@ label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0
 .report-kpis .card { margin-bottom:0; }
 .report-kpis strong { font-size:1.3rem; }
 .report-copy { white-space:pre-wrap; overflow-wrap:anywhere; }
+.report-digest code { display:block; overflow-wrap:anywhere; font-size:.9rem;
+                      line-height:1.5; user-select:all; }
 .report-table { border-collapse:collapse; width:100%; table-layout:fixed; }
 .report-table th,.report-table td { padding:8px; border:1px solid var(--line);
                                     text-align:left; overflow-wrap:anywhere; }
@@ -2522,6 +2524,12 @@ class LightUpWebApp:
             for entry in plan.engagements
         ):
             raise ValueError("assessment report cannot imply authorization")
+        # Stable source-local ordering makes identical recorded snapshots
+        # produce the same digest without exposing original source IDs.
+        ordered_scope_entries = sorted(
+            plan.engagements,
+            key=lambda entry: (entry.name.casefold(), entry.engagement_id),
+        )
 
         finding_statuses = {
             RetestStatus.REGRESSION: (
@@ -2550,14 +2558,14 @@ class LightUpWebApp:
             key=lambda f: (
                 f.retest_status is not RetestStatus.REGRESSION,
                 severity_order.get(f.severity.value, 5),
-                f.title.casefold(),
+                f.title.casefold(), f.impact or "", f.remediation or "",
             ),
         )
         recorded_fixed = sorted(
             (f for f in findings if f.retest_status is RetestStatus.FIXED),
             key=lambda f: (
                 severity_order.get(f.severity.value, 5),
-                f.title.casefold(),
+                f.title.casefold(), f.impact or "", f.remediation or "",
             ),
         )
         urgent = sum(f.severity.value in {"critical", "high"} for f in follow_up)
@@ -2575,7 +2583,9 @@ class LightUpWebApp:
         coverage_data = []
         total_unknown = 0
         total_partial = 0
-        for engagement in engagements:
+        for engagement in sorted(
+            engagements, key=lambda item: (item.name.casefold(), item.engagement_id)
+        ):
             stored = self.store.get_coverage(viewer, engagement.engagement_id)
             report = CoverageReport.build({
                 capability: CoverageStatus(status)
@@ -2640,7 +2650,7 @@ class LightUpWebApp:
             '<ul>' + "".join(
                 f'<li>{_e(blocker)}</li>' for blocker in entry.blockers
             ) + '</ul></section>'
-            for entry in plan.engagements
+            for entry in ordered_scope_entries
         )
         request_summary = (
             '<section class="card report-section">'
@@ -2653,79 +2663,101 @@ class LightUpWebApp:
             'asset inventory or an active grant. Private request details '
             'remain in the authenticated request inbox.</p></section>'
         )
-        if export_json:
-            import json
+        # A reproducible *comparison* digest of recorded facts. It is not
+        # a signature, source-authentication claim or proof of consent.
+        import hashlib
+        import json
 
-            def finding_payload(f):
-                label, meaning = finding_statuses[f.retest_status]
-                return {
-                    "title": f.title,
-                    "severity": f.severity.value,
-                    "recorded_impact": f.impact or "",
-                    "proposed_remediation": f.remediation or "",
-                    "retest_status": f.retest_status.value,
-                    "human_label": label,
-                    "human_meaning": meaning,
-                }
+        def finding_payload(f):
+            label, meaning = finding_statuses[f.retest_status]
+            return {
+                "title": f.title,
+                "severity": f.severity.value,
+                "recorded_impact": f.impact or "",
+                "proposed_remediation": f.remediation or "",
+                "retest_status": f.retest_status.value,
+                "human_label": label,
+                "human_meaning": meaning,
+            }
 
-            # IDs, raw target assets, evidence references, permission
-            # tokens and client-request notes are intentionally omitted.
-            # This machine-readable handoff never makes an authority claim.
-            packet = {
-                "schema_version": 1,
-                "document_type": "private_recorded_assessment_handoff",
-                "client_name": client.name,
-                "authority": {
-                    "state": "PLAN_ONLY",
+        # IDs, raw target assets, evidence references, permission
+        # tokens and client-request notes are intentionally omitted.
+        # This machine-readable handoff never makes an authority claim.
+        packet = {
+            "schema_version": 1,
+            "document_type": "private_recorded_assessment_handoff",
+            "client_name": client.name,
+            "authority": {
+                "state": "PLAN_ONLY",
+                "decision": "HOLD",
+                "execution_allowed": False,
+                "consent_verified": False,
+                "revocation_at_use_verified": False,
+                "independent_audit": False,
+                "complete_coverage_proven": False,
+                "verified_remediation_proven": False,
+                "signed_evidence": False,
+            },
+            "request_summary": {
+                "recorded_total": len(requests),
+                "awaiting_human_decision": waiting_requests,
+                "accepted_for_scope_review_only": reviewed_requests,
+                "rejected": rejected_requests,
+            },
+            "coverage": {
+                "unknown_capability_entries": total_unknown,
+                "partially_assessed_capability_entries": total_partial,
+                "engagements": coverage_data,
+            },
+            "findings": {
+                "open_human_follow_up": [
+                    finding_payload(f) for f in follow_up
+                ],
+                "recorded_fixed_history": [
+                    finding_payload(f) for f in recorded_fixed
+                ],
+                "recorded_regression_count": regressions,
+                "open_critical_high_count": urgent,
+            },
+            "scope_hold": [
+                {
+                    "engagement": entry.name,
+                    "scope_record_state": entry.scope_record_state,
+                    "pending_risk_reviews": entry.pending_elevations,
                     "decision": "HOLD",
                     "execution_allowed": False,
-                    "consent_verified": False,
-                    "revocation_at_use_verified": False,
-                    "independent_audit": False,
-                    "complete_coverage_proven": False,
-                    "verified_remediation_proven": False,
-                    "signed_evidence": False,
+                    "independent_blockers": list(entry.blockers),
+                }
+                for entry in ordered_scope_entries
+            ],
+            "notice": (
+                "Original tenant-scoped records only; not independently "
+                "audited, signed, complete coverage, verified remediation, "
+                "client consent, HUMAN GO or permission to contact targets."
+            ),
+        }
+        canonical_payload = json.dumps(
+            packet, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        snapshot_digest = hashlib.sha256(canonical_payload).hexdigest()
+        if export_json:
+            # Self-excluding envelope: digest covers only canonical payload,
+            # so a second private reviewer can compare report snapshots
+            # without mistaking the hash for a trusted signer or authority.
+            envelope = {
+                "format_version": 1,
+                "digest": {
+                    "algorithm": "SHA-256",
+                    "scope": "canonical_utf8_payload_without_envelope",
+                    "value": snapshot_digest,
+                    "digitally_signed": False,
+                    "source_authenticated": False,
                 },
-                "request_summary": {
-                    "recorded_total": len(requests),
-                    "awaiting_human_decision": waiting_requests,
-                    "accepted_for_scope_review_only": reviewed_requests,
-                    "rejected": rejected_requests,
-                },
-                "coverage": {
-                    "unknown_capability_entries": total_unknown,
-                    "partially_assessed_capability_entries": total_partial,
-                    "engagements": coverage_data,
-                },
-                "findings": {
-                    "open_human_follow_up": [
-                        finding_payload(f) for f in follow_up
-                    ],
-                    "recorded_fixed_history": [
-                        finding_payload(f) for f in recorded_fixed
-                    ],
-                    "recorded_regression_count": regressions,
-                    "open_critical_high_count": urgent,
-                },
-                "scope_hold": [
-                    {
-                        "engagement": entry.name,
-                        "scope_record_state": entry.scope_record_state,
-                        "pending_risk_reviews": entry.pending_elevations,
-                        "decision": "HOLD",
-                        "execution_allowed": False,
-                        "independent_blockers": list(entry.blockers),
-                    }
-                    for entry in plan.engagements
-                ],
-                "notice": (
-                    "Original tenant-scoped records only; not independently "
-                    "audited, signed, complete coverage, verified remediation, "
-                    "client consent, HUMAN GO or permission to contact targets."
-                ),
+                "payload": packet,
             }
             serialized = json.dumps(
-                packet, ensure_ascii=False, sort_keys=True,
+                envelope, ensure_ascii=False, sort_keys=True,
                 separators=(",", ":"), allow_nan=False,
             ) + "\n"
             return Response(
@@ -2748,6 +2780,14 @@ class LightUpWebApp:
             f'<h1>Recorded assessment handoff · {_e(client.name)}</h1>'
             '<p class="sub">HUMAN review dossier · PLAN/LAB ONLY · '
             'not an audit certificate or proof of testing permission.</p>'
+            '<section class="card report-section report-digest">'
+            '<h2>Recorded data snapshot fingerprint</h2>'
+            f'<p><code>{_e(snapshot_digest)}</code></p>'
+            '<p class="meta">SHA-256 of the canonical UTF-8 JSON payload '
+            '(excluding its download envelope). This lets reviewers compare '
+            'copies of unchanged recorded facts. It is not a digital signature, '
+            'proof of source authenticity, independent validation, '
+            'consent or permission to test.</p></section>'
             '<section class="card report-boundary report-section">'
             '<span class="badge lock">NO EXECUTION · original evidence only</span>'
             '<h2>Read this before sharing</h2>'
