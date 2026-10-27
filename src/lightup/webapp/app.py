@@ -521,6 +521,7 @@ class LightUpWebApp:
                     "<details><summary>Authorization details</summary><p class=\"meta\">"
                     f"Reference {_e(grant.reference)} · approved by {_e(grant.approved_by)}"
                     f"<br>Assets: {_e(', '.join(grant.scope.assets))}"
+                    f"<br>Capabilities: {_e(', '.join(grant.scope.allowed_capabilities) or 'ALL — unrestricted legacy scope; review required')}"
                     f"<br>Max risk: {_risk(grant.scope.max_risk)}"
                     f"<br>Valid {_e(grant.valid_from.date())} – {_e(grant.valid_until.date())}"
                     "</p></details>"
@@ -667,11 +668,19 @@ class LightUpWebApp:
             )
         cards = []
         for entry in plan.engagements:
+            capability_description = (
+                "ALL capabilities · unrestricted legacy grant requires review"
+                if entry.unrestricted_capabilities_recorded
+                else ", ".join(entry.recorded_capabilities) or "None recorded"
+            )
             scope = (
                 "<details><summary>Recorded scope (not execution permission)</summary>"
                 f"<p class=\"meta\">Assets: {_e(', '.join(entry.recorded_scope))}<br>"
                 f"Excluded: {_e(', '.join(entry.excluded_scope) or 'None recorded')}<br>"
-                f"Recorded risk ceiling: {_risk(entry.max_risk) if entry.max_risk is not None else '—'}"
+                f"Recorded risk ceiling: {_risk(entry.max_risk) if entry.max_risk is not None else '—'}<br>"
+                f"Recorded capability scope: {_e(capability_description)}<br>"
+                f"Valid from: {_e(entry.grant_valid_from or '—')}<br>"
+                f"Valid until: {_e(entry.grant_valid_until or '—')}"
                 "</p></details>"
                 if entry.recorded_scope else "<p class=\"meta\">No current grant scope recorded.</p>"
             )
