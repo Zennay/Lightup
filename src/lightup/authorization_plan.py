@@ -510,6 +510,7 @@ def to_operator_review_worklist_csv(
     """
     import csv
     import io
+    import unicodedata
 
     if (type(portfolio) is not dict
             or portfolio.get("format") != "lightup-m0-portfolio-review-v1"
@@ -530,11 +531,18 @@ def to_operator_review_worklist_csv(
 
     def cell(value: object) -> str:
         raw = str(value)
-        # Spreadsheet formula injection must not turn a tenant's display name
-        # into a command when an operator opens a private CSV in Excel/Sheets.
-        trimmed = raw.lstrip(" \t\r\n\uFEFF")
-        if (trimmed.startswith(("=", "+", "-", "@"))
-                or (raw and (ord(raw[0]) < 32 or raw[0] == "\uFEFF"))):
+        # Client-provided names must not smuggle spreadsheet formulas through
+        # invisible formatting, bidi controls, or compatibility characters.
+        # Fail closed on any unsafe source instead of emitting a partial CSV.
+        # Valid international letters, marks, symbols and interior spaces stay
+        # unchanged; NFKC is only used for detection, never for display.
+        if (any(unicodedata.category(char)[0] == "C"
+                or unicodedata.category(char) in {"Zl", "Zp"}
+                for char in raw)
+                or len(raw.encode("utf-8")) > 8192):
+            raise ValueError("private review CSV contains unsafe source text")
+        effective = unicodedata.normalize("NFKC", raw).lstrip()
+        if effective.startswith(("=", "+", "-", "@")):
             return "'" + raw
         return raw
 
