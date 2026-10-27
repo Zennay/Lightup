@@ -9,10 +9,7 @@ from __future__ import annotations
 
 import argparse
 import html
-import os
 from pathlib import Path
-import secrets
-import shutil
 import sys
 
 import install
@@ -91,8 +88,7 @@ def native_workspace_owner(inputs: list[Path], bundles: list[Path], stage: Path)
 
 def owner_start(inputs: list[Path], bundles: list[Path], dest: Path) -> None:
     private_sources([*inputs, *bundles], dest)
-    stage = dest.parent / (".lightup-owner-stage-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
+    stage, stage_identity = install.create_private_stage(dest.parent, ".lightup-suite-")
     try:
         result = native_workspace_owner(inputs, bundles, stage)
         portal = page(
@@ -114,10 +110,10 @@ def owner_start(inputs: list[Path], bundles: list[Path], dest: Path) -> None:
                    "warning": WARNING, **result}
         install.write_file(stage / "human-summary.json", install.canonical(summary))
         require(not dest.exists(), "Destination appeared during PRIVATE source preparation")
-        workspace.exclusive_dir_publish(stage, dest)
+        install.exclusive_publish(stage, dest, expected_identity=stage_identity)
     finally:
-        if stage.exists():
-            shutil.rmtree(stage)
+        # Delete only the original private staging inode; never a replacement.
+        install.cleanup_private_stage(stage, stage_identity)
     print("PRIVATE original workroom + separate source-free recipient handoff:", dest)
     print("Original FULL owner folder (NEVER share):", dest / "original")
     print("Selected source-free folder (only with separate disclosure approval):",
@@ -126,8 +122,7 @@ def owner_start(inputs: list[Path], bundles: list[Path], dest: Path) -> None:
 
 def recipient_start(cockpits: list[Path], dest: Path) -> None:
     private_sources(cockpits, dest)
-    stage = dest.parent / (".lightup-recipient-stage-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
+    stage, stage_identity = install.create_private_stage(dest.parent, ".lightup-receiver-")
     try:
         report = stage / "source-free-report"
         studio = stage / "human-studio"
@@ -177,10 +172,10 @@ def recipient_start(cockpits: list[Path], dest: Path) -> None:
                    "human_reason_groups": studio_result["human_reason_groups"]}
         install.write_file(stage / "human-summary.json", install.canonical(summary))
         require(not dest.exists(), "Destination appeared during HUMAN recipient preparation")
-        workspace.exclusive_dir_publish(stage, dest)
+        install.exclusive_publish(stage, dest, expected_identity=stage_identity)
     finally:
-        if stage.exists():
-            shutil.rmtree(stage)
+        # Delete only the original private staging inode; never a replacement.
+        install.cleanup_private_stage(stage, stage_identity)
     print("PRIVATE source-free receipt + interactive HUMAN Studio:", dest)
     print("Open:", dest / "index.html")
     print("Selected last packet pending questions (not fixes):", last_pending)
