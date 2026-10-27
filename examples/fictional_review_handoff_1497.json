@@ -1,0 +1,4 @@
+[
+  "Asset alpha.example.test; capability header_read; proposed risk 2.",
+  "Asset beta.example.test; capability tls_review; proposed risk 4."
+]
