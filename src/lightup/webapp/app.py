@@ -272,6 +272,8 @@ class LightUpWebApp:
              self.portal_authorization_plan_json, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)$"),
              self.portal_request_receipt, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)\.json$"),
+             self.portal_request_receipt_json, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/preview$"),
              self.portal_preview_request, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
@@ -1362,6 +1364,61 @@ class LightUpWebApp:
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
 
+    def portal_request_receipt_json(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str, request_id: str,
+    ) -> Response:
+        """Private, per-request status receipt; never a consent/scan token."""
+        import json
+        from datetime import datetime, timezone
+
+        viewer = self._portal_context(auth, client_id)
+        request = self.store.get_assessment_request(viewer, request_id)
+        if request.client_id != client_id:
+            raise TenantIsolationError("cross-tenant request receipt denied")
+        awaiting = request.status in {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+        }
+        payload = {
+            "format": "lightup-m0-request-status-v1",
+            "evaluated_at": datetime.now(timezone.utc).isoformat(),
+            "client_id": request.client_id,
+            "request_id": request.request_id,
+            "status": request.status.value,
+            "requested_assets": list(request.requested_assets),
+            "requested_mode": request.requested_mode.value,
+            "requested_risk": int(request.requested_risk),
+            "submitted_at": request.created_at,
+            "reviewed_at": request.decided_at,
+            "next_step": (
+                "AWAIT_INDEPENDENT_OPERATOR_REVIEW"
+                if awaiting else
+                "REVIEW_SEPARATE_SCOPE_AND_CONSENT_GATES"
+                if request.status is RequestStatus.APPROVED else
+                "REQUEST_REJECTED_NO_SCOPE_AUTHORITY"
+            ),
+            "state": "PLAN_ONLY",
+            "authority": {
+                "engagement_grant_inferred": False,
+                "client_consent_verified": False,
+                "revocation_at_use_verified": False,
+                "human_go_verified": False,
+                "execution_allowed": False,
+            },
+            "disclaimer": "Unsigned private status, not a scan permit or consent receipt.",
+        }
+        body = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ) + "\n"
+        return Response(
+            body, content_type="application/json; charset=utf-8",
+            extra_headers=[(
+                "Content-Disposition",
+                'attachment; filename="lightup-request-status.json"',
+            )],
+        )
+
     def portal_request_receipt(
         self, auth: AuthState, form: dict[str, str],
         client_id: str, request_id: str,
@@ -1399,6 +1456,8 @@ class LightUpWebApp:
             '<p class="meta">An approved request is still not a scope grant, '
             'separately verified consent, revocation-at-use check or HUMAN GO. '
             'Active testing remains locked.</p>'
+            f'<a href="/portal/{_e(client_id)}/requests/{_e(request_id)}.json">'
+            'Download private request status JSON</a> · '
             f'<a href="/portal/{_e(client_id)}/authorization-plan">'
             'View authorization plan</a> · '
             f'<a href="/portal/{_e(client_id)}">Back to portal</a>'
