@@ -310,6 +310,8 @@ class LightUpWebApp:
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
              self.portal_requests, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests\.json$"),
+             self.portal_requests_json, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan$"),
              self.portal_authorization_plan, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan.json$"),
@@ -1467,7 +1469,9 @@ class LightUpWebApp:
             '<p class="meta">All records remain PLAN ONLY until separate '
             'scope, consent, action-time revocation and HUMAN GO.</p>'
             f'<p>{submit_link} · '
-            f'<a href="/portal/{_e(client_id)}">Back to overview</a></p></section>'
+            f'<a href="/portal/{_e(client_id)}">Back to overview</a> · '
+            f'<a href="/portal/{_e(client_id)}/requests.json">'
+            'Download private status index (JSON)</a></p></section>'
             f'<h2>Waiting for review ({len(awaiting)})</h2>'
             + ("".join(render_row(item) for item in awaiting)
                or '<p class="empty">No requests currently waiting for a decision.</p>')
@@ -1479,6 +1483,80 @@ class LightUpWebApp:
             "LightUp — Request inbox", "requests", body, auth,
             portal_client=client_id,
         ))
+
+    def portal_requests_json(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+    ) -> Response:
+        """Tenant-private original request status index, never scan authority.
+
+        Raw asset names, notes, request origins and grants are omitted from the
+        machine-readable overview. Details require an access-checked receipt.
+        """
+        import json
+        from datetime import datetime, timezone
+
+        viewer = self._portal_context(auth, client_id)
+        self.store.get_client(viewer, client_id)
+        requests = self.store.list_assessment_requests(viewer, client_id)
+        if any(item.client_id != client_id for item in requests):
+            raise TenantIsolationError("cross-tenant request status index denied")
+        ordered = sorted(
+            requests, key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
+        awaiting = {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+        decided = {RequestStatus.APPROVED, RequestStatus.REJECTED}
+        if any(item.status not in awaiting | decided for item in ordered):
+            raise ValueError("unrecognized persisted request state")
+
+        payload = {
+            "format": "lightup-m0-request-index-v1",
+            "evaluated_at": datetime.now(timezone.utc).isoformat(),
+            "client_id": client_id,
+            "state": "PLAN_ONLY",
+            "counts": {
+                "total": len(ordered),
+                "awaiting_human_review": sum(
+                    item.status in awaiting for item in ordered
+                ),
+                "decided": sum(item.status in decided for item in ordered),
+            },
+            "requests": [
+                {
+                    "request_id": item.request_id,
+                    "status": item.status.value,
+                    "submitted_at": item.created_at,
+                    "reviewed_at": item.decided_at,
+                    "requested_risk": int(item.requested_risk),
+                    "status_receipt_url": (
+                        f"/portal/{client_id}/requests/{item.request_id}.json"
+                    ),
+                }
+                for item in ordered
+            ],
+            "authority": {
+                "engagement_grant_inferred": False,
+                "client_consent_verified": False,
+                "revocation_at_use_verified": False,
+                "human_go_verified": False,
+                "execution_allowed": False,
+            },
+            "disclaimer": (
+                "Unsigned tenant-private request index, not verified ownership, "
+                "scope authorization, consent or scan permission."
+            ),
+        }
+        body = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ) + "\n"
+        return Response(
+            body, content_type="application/json; charset=utf-8",
+            extra_headers=[(
+                "Content-Disposition",
+                'attachment; filename="lightup-request-index.json"',
+            )],
+        )
 
     def portal_request_receipt_json(
         self, auth: AuthState, form: dict[str, str],
