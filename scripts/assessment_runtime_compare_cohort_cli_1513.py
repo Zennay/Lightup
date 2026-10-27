@@ -1,6 +1,6 @@
 """Read-only atomic cohort comparison over two explicit local JSON arrays.
 
-Usage: python scripts/assessment_runtime_compare_cohort_cli_1513.py [--format json|text|html|csv|actions-csv] base.json next.json
+Usage: python scripts/assessment_runtime_compare_cohort_cli_1513.py [--format json|text|html|csv|actions-csv] [--focus all|scope|adverse|unknown|source] base.json next.json
 Each file is an array of 1..64 single-case JSON envelopes.
 Never a release or authorization gate: exits 2 REVIEW_ONLY / 3 HOLD only.
 """
@@ -93,6 +93,8 @@ def main(argv=None):
     args = list(sys.argv[1:] if argv is None else argv)
     output_format = "json"
     format_seen = False
+    focus_filter = "all"
+    focus_seen = False
     malformed = False
     positional = []
     index = 0
@@ -106,6 +108,15 @@ def main(argv=None):
                 output_format = args[index + 1]
                 format_seen = True
                 index += 2
+        elif item == "--focus":
+            if (focus_seen or index + 1 >= len(args)
+                    or args[index + 1] not in ("all", "scope", "adverse", "unknown", "source")):
+                malformed = True
+                index += 2 if index + 1 < len(args) else 1
+            else:
+                focus_filter = args[index + 1]
+                focus_seen = True
+                index += 2
         elif item.startswith("--"):
             malformed = True
             index += 1
@@ -114,6 +125,8 @@ def main(argv=None):
             index += 1
 
     review = LabCohortComparison("HOLD")
+    if focus_seen and output_format != "actions-csv":
+        malformed = True
     if len(positional) == 2 and not malformed:
         try:
             before = _load(positional[0])
@@ -127,7 +140,7 @@ def main(argv=None):
     elif output_format == "html":
         print(render_comparison_html(review, cohort=True, scored=False), end="")
     elif output_format == "actions-csv":
-        print(render_human_actions_csv(review, cohort=True, scored=False), end="")
+        print(render_human_actions_csv(review, cohort=True, scored=False, focus=focus_filter), end="")
     elif output_format == "csv":
         print(render_comparison_csv(review, cohort=True, scored=False), end="")
     else:

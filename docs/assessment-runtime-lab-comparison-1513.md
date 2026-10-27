@@ -245,3 +245,29 @@ authenticated consent, dispatch, release and source provenance remain false.
 Use owner-private storage; a human chooses sharing. Exit codes remain
 2 REVIEW_ONLY / 3 HOLD (never 0), even when shell redirection created a file.
 There is no network, scan, grant, dispatch or release behavior.
+
+
+## Selective HUMAN handoff without hiding the full source count
+
+The same three native offline CLI tools now also support an explicit
+`--focus` only together with `--format actions-csv`. Accepted values:
+`all` (default), `scope`, `adverse`, `unknown`, `source`.
+Each selection works **only after the full original comparison has passed
+input admission**, so filtering does not weaken source consistency gates.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format actions-csv --focus unknown baseline-cohort.json candidate-cohort.json \
+  > unknown-only-private.csv
+```
+
+The export includes `focus_filter`, `accepted_case_count` and
+`selected_case_count` in every row, with original *global* HUMAN
+review rank and stable anonymous source ordinal. Thus a subset cannot be
+mistaken for a complete all-case queue. An admitted zero-match filter emits
+an explicit one-row `No matching HUMAN cases` notice with `input_admitted=true`;
+invalid or inconsistent original input instead emits `Input HOLD`
+with `input_admitted=false`. A filter supplied with JSON, HTML, text or
+detailed CSV output is rejected to a generic HOLD rather than being silently
+ignored. The filter never grants authority, modifies source data, executes a
+lab, contacts targets or distributes the file.

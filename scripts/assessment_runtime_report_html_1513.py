@@ -328,13 +328,29 @@ def render_comparison_csv(result, *, cohort: bool = False,
     return file.getvalue()
 
 
+_HUMAN_FOCUS_GROUPS = {
+    "all": None,
+    "scope": "Scope/policy",
+    "adverse": "Adverse source metrics",
+    "unknown": "Unknown coverage",
+    "source": "Source verification",
+}
+
+
 def render_human_actions_csv(result, *, cohort: bool = False,
-                             scored: bool = False) -> str:
-    """One source-minimal, ranked HUMAN handoff row per admitted case."""
+                             scored: bool = False, focus: str = "all") -> str:
+    """Private, ordinal-only HUMAN queue with auditable subset context.
+
+    The source is first admitted by the original comparator, before a HUMAN
+    view filter is applied. A subset never implies excluded cases were cleared.
+    """
+    if type(focus) is not str or focus not in _HUMAN_FOCUS_GROUPS:
+        raise ValueError("invalid HUMAN focus selection")
     file = StringIO(newline="")
     out = csv_writer(file, lineterminator="\r\n")
     out.writerow((
-        "report_type", "source_status", "input_admitted", "review_order",
+        "report_type", "source_status", "input_admitted", "focus_filter",
+        "accepted_case_count", "selected_case_count", "review_order",
         "scenario_ordinal", "human_review_group", "scope_policy_signal",
         "source_adverse_metric_count", "source_unknown_coverage",
         "suggested_human_question", "authorized", "consent_verified",
@@ -347,16 +363,30 @@ def render_human_actions_csv(result, *, cohort: bool = False,
     kind = "scored_cohort" if scored else "cohort" if cohort else "single_case"
     status = "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD"
     actions = _ranked_human_actions(accepted)
-    for rank, ordinal, group, flags, unknown, question, scope in actions:
+    selected = tuple(
+        item for item in actions
+        if _HUMAN_FOCUS_GROUPS[focus] in (None, item[2])
+    )
+    for rank, ordinal, group, flags, unknown, question, scope in selected:
         out.writerow((
-            kind, status, "true", rank, ordinal, group,
-            "true" if scope else "false", flags, unknown, question,
+            kind, status, "true", focus, len(actions), len(selected),
+            rank, ordinal, group, "true" if scope else "false",
+            flags, unknown, question,
             "false", "false", "false", "false", "false",
         ))
     if not actions:
+        # Admission HOLD is distinct from a legitimate zero-match selection.
         out.writerow((
-            kind, "HOLD", "false", 0, 0, "Input HOLD", "false", 0, "",
+            kind, "HOLD", "false", focus, 0, 0, 0, 0, "Input HOLD",
+            "false", 0, "",
             "Ask the original owner to check input admission and consistency.",
+            "false", "false", "false", "false", "false",
+        ))
+    elif not selected:
+        out.writerow((
+            kind, status, "true", focus, len(actions), 0, 0, 0,
+            "No matching HUMAN cases", "false", 0, "",
+            "No case in this selected group; review the full source separately.",
             "false", "false", "false", "false", "false",
         ))
     return file.getvalue()
