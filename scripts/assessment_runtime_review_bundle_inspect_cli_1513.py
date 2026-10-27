@@ -13,6 +13,7 @@ import stat
 import sys
 from base64 import b64encode
 from hashlib import sha256
+from hmac import compare_digest
 from html import escape
 from decimal import Decimal, InvalidOperation
 
@@ -561,18 +562,57 @@ def render_inspection_html(outcome: dict) -> str:
     )
 
 
+def _canonical_sha256(value) -> bool:
+    """Strict 64-hex external digest, never a source-authentication claim."""
+    return (
+        type(value) is str
+        and len(value) == 64
+        and all(ch in "0123456789abcdefABCDEF" for ch in value)
+    )
+
+
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     output_format = "json"
-    path = None
-    if len(args) == 1:
-        path = args[0]
-    elif len(args) == 3 and args[0] == "--format" and args[1] in ("json", "text", "html"):
-        output_format, path = args[1], args[2]
+    expected_sha256 = None
+    option_index = 0
+    options_valid = True
+    seen = set()
+    # No argparse error echo: unexpected args and invalid digests fail closed
+    # without printing any input path, expected digest or source content.
+    while option_index + 1 < len(args) and args[option_index] in (
+        "--format", "--expected-sha256",
+    ):
+        option = args[option_index]
+        value = args[option_index + 1]
+        if option in seen:
+            options_valid = False
+            break
+        seen.add(option)
+        if option == "--format":
+            if value not in ("json", "text", "html"):
+                options_valid = False
+                break
+            output_format = value
+        elif not _canonical_sha256(value):
+            options_valid = False
+            break
+        else:
+            expected_sha256 = value.lower()
+        option_index += 2
+    path = (
+        args[option_index] if options_valid and len(args) == option_index + 1
+        else None
+    )
     outcome = inspect_review_bundle_bytes(b"")
     if path is not None:
         try:
-            outcome = inspect_review_bundle_bytes(_read_private_bundle(path))
+            raw = _read_private_bundle(path)
+            if expected_sha256 is not None and not compare_digest(
+                sha256(raw).hexdigest(), expected_sha256,
+            ):
+                raise ValueError("offline bundle digest mismatch")
+            outcome = inspect_review_bundle_bytes(raw)
         except (OSError, ValueError):
             pass
     if output_format == "html":

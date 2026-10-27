@@ -741,6 +741,29 @@ generic zero-case HOLD receipt in all three formats. Exit codes remain
 `2` for a structurally consistent source `REVIEW_ONLY`, otherwise
 `3`; the receipt is never a completion certificate.
 
+For a transfer where the human reviewer already possesses a **separately
+verified expected SHA-256** of the exact source JSON bytes, all three
+receiving formats also accept opt-in `--expected-sha256` (exactly 64
+hexadecimal characters). The hash check occurs **after** the symlink-
+and race-hardened bounded read and **before** parsing/review. Incorrect,
+missing, malformed or duplicated digest arguments, or changed file
+bytes, result in the same generic no-data HOLD, with no expected or
+actual digest echoed and no original path disclosed. Output schemas
+and return codes do not change.
+
+```sh
+# KNOWN_SHA256 must arrive via a separately verified channel.
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \
+  --format html --expected-sha256 "$KNOWN_SHA256" private-bundle.json \
+  > offline-review-receipt.html
+```
+
+A hash calculated from the received file **on the receiving computer**
+does not prove anything about the sender; even an independently supplied
+hash proves byte equality only, not who performed an assessment, whether
+measurements were true, or any approval to run a future scan. The
+provenance/consent/revocation/security/HUMAN gates are unchanged.
+
 There is **no signature or trusted key** in this lab format: a fabricated
 packet can be internally consistent. The inspection detects malformed,
 misaligned or accidentally edited packets but cannot establish who
