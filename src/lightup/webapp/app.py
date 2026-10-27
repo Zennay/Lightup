@@ -330,6 +330,8 @@ class LightUpWebApp:
              self.portal_request_receipt, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)\.json$"),
              self.portal_request_receipt_json, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)/new-draft$"),
+             self.portal_new_draft_from_rejection, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/preview$"),
              self.portal_preview_request, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
@@ -1444,8 +1446,11 @@ class LightUpWebApp:
                 "A rejected request cannot support a scope grant. You may "
                 "prepare a new client-origin request for independent review."
             )
-            action_url = f"/portal/{_e(client_id)}#new-request"
-            action_label = "Prepare a new assessment request"
+            action_url = (
+                f"/portal/{_e(client_id)}/requests/"
+                f"{_e(ordered_requests[0].request_id)}/new-draft"
+            )
+            action_label = "Review a new draft from rejected request details"
         else:
             action_title = "Start with a review request"
             action_details = (
@@ -1557,6 +1562,13 @@ class LightUpWebApp:
                 RequestStatus.APPROVED: "Request approved only. Check separate scope and consent.",
                 RequestStatus.REJECTED: "Request rejected. No scope authority created.",
             }[request.status]
+            retry_link = (
+                f' · <a href="/portal/{_e(client_id)}/requests/'
+                f'{_e(request.request_id)}/new-draft">'
+                'Prepare a new draft from these details</a>'
+                if request.status is RequestStatus.REJECTED and not auth.is_operator
+                else ""
+            )
             return (
                 '<section class="card"><div class="row">'
                 f'<strong>Request {_e(request.request_id)}</strong>'
@@ -1568,6 +1580,7 @@ class LightUpWebApp:
                 f'<p class="meta">{_e(next_step)}</p>'
                 f'<a href="/portal/{_e(client_id)}/requests/{_e(request.request_id)}">'
                 'Open private status and safety steps</a>'
+                f'{retry_link}'
                 '</section>'
             )
 
@@ -1760,8 +1773,9 @@ class LightUpWebApp:
         else:
             raise ValueError("unrecognized persisted request decision")
         new_request_link = (
-            f'<a href="/portal/{_e(client_id)}#new-request">'
-            'Prepare a separate new request</a> · '
+            f'<a href="/portal/{_e(client_id)}/requests/'
+            f'{_e(request_id)}/new-draft">'
+            'Prepare a separate new draft using these details</a> · '
             if request.status is RequestStatus.REJECTED and not auth.is_operator
             else ""
         )
@@ -1809,6 +1823,71 @@ class LightUpWebApp:
         )
         return Response(_page(
             "LightUp — Request status", "requests", body, auth,
+            portal_client=client_id,
+        ))
+
+    def portal_new_draft_from_rejection(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str, request_id: str,
+    ) -> Response:
+        """Reopen rejected client details as a *new*, unsent HUMAN-review draft.
+
+        This read-only GET never edits the rejected original or carries forward
+        an approval, consent, authorization grant, or tool activation.
+        """
+        if auth.is_operator or auth.context is None or auth.context.client_id != client_id:
+            return Response(_page(
+                "Forbidden", "", "<h1>Client session required</h1>", auth,
+            ), status="403 Forbidden")
+        original = self.store.get_assessment_request(auth.context, request_id)
+        if original.client_id != client_id:
+            raise TenantIsolationError("cross-tenant request draft denied")
+        if original.status is not RequestStatus.REJECTED:
+            raise ValueError("only rejected client requests can be copied into a new draft")
+
+        risks = "".join(
+            f'<option value="{level}">{_e(label)}</option>'
+            for level, label in (
+                (1, "1 — Passive: observation only"),
+                (2, "2 — Low impact: requires separate authorization"),
+                (3, "3 — Standard: requires separate authorization"),
+                (4, "4 — Elevated: requires additional human review"),
+            )
+        )
+        body = (
+            "<h1>Prepare a separate assessment request</h1>"
+            '<p class="sub">The previous request remains rejected. The values '
+            'below are a convenience only; check that you still manage each '
+            'system and deliberately choose the risk again.</p>'
+            '<section class="card">'
+            f'<p class="meta">Copied from rejected request {_e(request_id)} · '
+            f'Previously requested risk: {_risk(original.requested_risk)}</p>'
+            '<p class="meta">No new request exists yet. No prior decision, '
+            'consent, grant or permission transfers to this draft. Testing '
+            'remains locked.</p>'
+            f'<form method="post" action="/portal/{_e(client_id)}/requests/preview">'
+            f'{self._csrf_field(auth)}'
+            '<label for="retry-assets">Systems you manage (comma-separated)</label>'
+            f'<input id="retry-assets" name="assets" required autocomplete="off" '
+            f'value="{_e(", ".join(original.requested_assets))}" '
+            'aria-describedby="retry-assets-help">'
+            '<p id="retry-assets-help" class="meta">Remove anything you no longer '
+            'own or have explicit permission to request a review for. '
+            'Ownership is not verified here.</p>'
+            '<label for="retry-risk">Choose a fresh testing risk</label>'
+            '<select id="retry-risk" name="risk" required>'
+            '<option value="" selected>Choose again…</option>'
+            f'{risks}</select>'
+            '<label for="retry-notes">Context for the reviewer (optional)</label>'
+            f'<textarea id="retry-notes" name="notes" rows="3">'
+            f'{_e(original.notes)}</textarea>'
+            '<button>Review a new request before sending</button></form>'
+            f'<p><a href="/portal/{_e(client_id)}/requests/'
+            f'{_e(request_id)}">Back to rejected request</a></p>'
+            '</section>'
+        )
+        return Response(_page(
+            "LightUp — New assessment draft", "requests", body, auth,
             portal_client=client_id,
         ))
 
