@@ -174,6 +174,10 @@ label { font-size:.85rem; color:var(--muted); }
 .row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
        align-items:baseline; }
 .auth { max-width:380px; margin:8vh auto 0; }
+.auth label { display:block; font-weight:650; }
+.login-error { border-left:4px solid var(--lock); background:#fff4f2;
+               padding:8px 12px; margin:0 0 16px; }
+.login-error .error { margin:0; }
 .error { color:var(--lock); font-size:.9rem; }
 .risk-guide { border:1px solid var(--line); background:#f8faf9;
               border-radius:10px; padding:12px 14px; margin:8px 0 16px; }
@@ -633,17 +637,31 @@ class LightUpWebApp:
                    error: str = "") -> Response:
         if auth.signed_in:
             return _redirect(self._home_for(auth.context))
-        error_html = f'<p class="error">{_e(error)}</p>' if error else ""
+        error_html = (
+            f'<div id="login-error" class="login-error" role="alert">'
+            f'<p class="error">{_e(error)}</p></div>'
+            if error else ""
+        )
+        error_attrs = ' aria-invalid="true" aria-describedby="login-error"' if error else ""
         body = (
-            "<div class=\"auth\"><div class=\"card\">"
-            "<h1>Sign in</h1>"
-            "<p class=\"sub\">LightUp — authorization-first security assessments.</p>"
-            f"{error_html}"
-            "<form method=\"post\" action=\"/login\">"
-            "<label>Email</label><input name=\"email\" type=\"email\" required>"
-            "<label>Password</label><input name=\"password\" type=\"password\" required>"
-            "<button>Sign in</button></form>"
-            "</div></div>"
+            '<div class="auth"><section class="card" aria-labelledby="login-heading">'
+            '<h1 id="login-heading">Sign in to LightUp</h1>'
+            '<p class="sub" id="login-intro">'
+            'Use your assigned client or operator account to review security '
+            'assessment requests and evidence.</p>'
+            f'{error_html}'
+            '<form method="post" action="/login" aria-describedby="login-intro">'
+            '<label for="login-email">Email address</label>'
+            f'<input id="login-email" name="email" type="email" '
+            f'autocomplete="username" autocapitalize="none" spellcheck="false" '
+            f'required{error_attrs}>'
+            '<label for="login-password">Password</label>'
+            f'<input id="login-password" name="password" type="password" '
+            f'autocomplete="current-password" required{error_attrs}>'
+            '<button type="submit">Sign in</button>'
+            '<p class="meta">Signing in lets you review authorized work; '
+            'it does not approve or start testing.</p>'
+            '</form></section></div>'
         )
         return Response(_page("LightUp — Sign in", "login", body, ANONYMOUS))
 
