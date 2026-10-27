@@ -135,6 +135,23 @@ class ProviderFailClosedTest(unittest.TestCase):
         self.assertEqual(result["findings"], [])
         self.assertEqual(result["review_skipped"], "review unavailable")
 
+    def test_semantically_invalid_review_preserves_result_and_fails_cli(self):
+        stdout = io.StringIO()
+        with patch("lightup.labrun.run_planned_assessment", return_value={"findings": []}), \
+             patch("lightup.ai.pipeline.AssessmentReviewPipeline.review",
+                   side_effect=ValueError(
+                       "verifier verdict must start with CONFIRMED, UNCERTAIN or REJECTED"
+                   )), \
+             contextlib.redirect_stdout(stdout):
+            code = main_assess(["http://127.0.0.1:18081/"])
+        result = json.loads(stdout.getvalue())
+        self.assertEqual(code, 2)
+        self.assertEqual(result["findings"], [])
+        self.assertEqual(
+            result["review_skipped"],
+            "verifier verdict must start with CONFIRMED, UNCERTAIN or REJECTED",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

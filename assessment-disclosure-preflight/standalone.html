@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7Mxnki+vOI9b6oK/Wefui4XTtQtbprZIJQckgMsnv/o=' 'sha256-uZHXEgr04EBtGHKeYUMA85Chz1yH78U/PeXpJR95j+Y='; style-src 'sha256-ryTjUguWPmGlNuOqPk3nfGQe4WDUkIML0aubgBYycaI='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE HUMAN disclosure studio</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:#f4f6f9;color:#17212c;line-height:1.5}
+header{background:#162838;color:#fff;padding:2rem max(1.25rem,calc((100% - 1150px)/2))}
+header h1{font-size:clamp(1.65rem,4vw,2.3rem);margin:.15rem 0}
+header p{max-width:900px;margin:.5rem 0}main{max-width:1180px;margin:1.5rem auto;padding:0 1.25rem 3rem}
+section{background:#fff;border:1px solid #d0d7df;border-radius:.7rem;padding:1.35rem;margin:1.25rem 0;box-shadow:0 2px 10px #1425360a}
+h2{font-size:1.2rem;margin:0 0 .8rem}.hold{border-left:5px solid #915c08;background:#fff9ec}
+.muted{color:#536579;font-size:.94rem}.controls{display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end}
+label{display:flex;flex-direction:column;gap:.4rem;flex:1 1 230px;font-weight:600}
+input,select,textarea,button{font:inherit}input[type=file]{width:100%;padding:.7rem;border:1px solid #91a0af;border-radius:.3rem;background:#fff}
+input[type=search],select,textarea{width:100%;border:1px solid #91a0af;border-radius:.35rem;padding:.55rem;background:#fff;color:#17212c}
+textarea{resize:vertical;min-height:4.5rem}button{background:#125987;color:white;border:0;border-radius:.4rem;padding:.7rem 1.1rem;font-weight:700;cursor:pointer}
+button:hover{background:#094266}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #ed8a19;outline-offset:2px}
+button:disabled{background:#71808a;cursor:not-allowed}
+.tablewrap{overflow-x:auto;border:1px solid #d0d7df;border-radius:.4rem;margin-top:1rem}
+table{border-collapse:collapse;min-width:870px;width:100%}td,th{border-bottom:1px solid #d7dce3;vertical-align:top;padding:.7rem;overflow-wrap:anywhere}
+thead{background:#edf1f5}th{text-align:left}tbody tr:nth-child(even){background:#f7f9fb}
+#notice{padding:.7rem 1rem;border:1px solid #becbd7;border-radius:.4rem}
+#notice[data-status=error]{background:#fff2ef;border-color:#ad5142}
+#unsaved{font-weight:600}footer{color:#536579;font-size:.85rem;text-align:center;padding:0 1rem 2rem}
+@media(prefers-reduced-motion:no-preference){button{transition:background .12s ease}}
+@media print{header{color:#000;background:#fff}body{background:#fff}section{box-shadow:none}button,input,textarea,select{display:none}table{min-width:auto}}
+</style>
+<script>
+"use strict";
+/* LightUp offline HUMAN CSV envelope v1.
+ * This protects confidentiality/integrity of the HUMAN CSV with a passphrase;
+ * it does not authenticate the original lab source, a sender, consent or grant.
+ */
+(() => {
+  const MAGIC = new Uint8Array([76,85,72,85,77,48,48,49]); // LUHUM001
+  const HEADER = 68; // 8-byte purpose/version + 16-byte salt + 12-byte IV + 32-byte receipt SHA256
+  const MAX_CSV = 256 * 1024;
+  const MAX_VAULT = HEADER + MAX_CSV + 16;
+  const ROUNDS = 600000;
+  function requireValid(ok) { if (!ok) throw new Error("PRIVATE HUMAN vault HOLD"); }
+  function digestBytes(hex) {
+    requireValid(typeof hex === "string" && /^[a-f0-9]{64}$/u.test(hex));
+    return new Uint8Array(hex.match(/.{2}/gu).map(x => parseInt(x, 16)));
+  }
+  function passphraseValid(value) {
+    return typeof value === "string" && value.length >= 14 && value.length <= 256 &&
+           !/[\u0000-\u001f\u007f]/u.test(value);
+  }
+  async function derive(password, salt, usages) {
+    requireValid(passphraseValid(password));
+    requireValid(globalThis.isSecureContext && crypto && crypto.subtle);
+    const pw = new TextEncoder().encode(password);
+    try {
+      const imported = await crypto.subtle.importKey("raw", pw, "PBKDF2", false, ["deriveKey"]);
+      return await crypto.subtle.deriveKey(
+        {name:"PBKDF2", salt, iterations:ROUNDS, hash:"SHA-256"},
+        imported, {name:"AES-GCM",length:256}, false, usages);
+    } finally { pw.fill(0); }
+  }
+  async function seal(csv, password, receiptSha) {
+    requireValid(typeof csv === "string");
+    const plain = new TextEncoder().encode(csv);
+    try {
+      requireValid(plain.length > 0 && plain.length <= MAX_CSV);
+      const header = new Uint8Array(HEADER);
+      header.set(MAGIC);
+      header.set(crypto.getRandomValues(new Uint8Array(16)), 8);
+      header.set(crypto.getRandomValues(new Uint8Array(12)), 24);
+      header.set(digestBytes(receiptSha), 36);
+      const key = await derive(password, header.subarray(8,24), ["encrypt"]);
+      const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv:header.subarray(24,36),
+         additionalData:header,tagLength:128},key,plain));
+      requireValid(ciphertext.length === plain.length + 16);
+      const vault = new Uint8Array(HEADER + ciphertext.length);
+      vault.set(header);
+      vault.set(ciphertext, HEADER);
+      return vault;
+    } finally { plain.fill(0); }
+  }
+  async function open(bytes, password, expectedSha) {
+    requireValid(bytes instanceof ArrayBuffer && bytes.byteLength > HEADER + 16 &&
+                 bytes.byteLength <= MAX_VAULT);
+    const packed = new Uint8Array(bytes);
+    const header = packed.subarray(0,HEADER);
+    requireValid(MAGIC.every((b,i) => header[i] === b));
+    const digest = digestBytes(expectedSha);
+    let difference = 0;
+    for (let i = 0; i < 32; ++i) difference |= digest[i] ^ header[36+i];
+    requireValid(difference === 0);
+    const key = await derive(password, header.subarray(8,24), ["decrypt"]);
+    const clear = new Uint8Array(await crypto.subtle.decrypt(
+      {name:"AES-GCM",iv:header.subarray(24,36),
+       additionalData:header,tagLength:128},key,packed.subarray(HEADER)));
+    try {
+      requireValid(clear.length > 0 && clear.length <= MAX_CSV);
+      return new TextDecoder("utf-8",{fatal:true}).decode(clear);
+    } finally { clear.fill(0); }
+  }
+  const BUNDLE_MAGIC = new Uint8Array([76,85,72,66,80,48,48,49]); // LUHBP001
+  const BUNDLE_HEADER = 36; // magic8 | salt16 | nonce12
+  const CONTENT_HEADER = 16; // LUHBP001 | receipt length u32be | csv length u32be
+  const MAX_RECEIPT = 256 * 1024;
+  const MAX_BUNDLE = BUNDLE_HEADER + CONTENT_HEADER + MAX_RECEIPT + MAX_CSV + 16;
+
+  function u32(target, at, value) {
+    requireValid(Number.isInteger(value) && value >= 0 && value <= 0xffffffff);
+    new DataView(target.buffer).setUint32(at, value, false);
+  }
+  async function sealBundle(receiptArrayBuffer, csv, password) {
+    requireValid(receiptArrayBuffer instanceof ArrayBuffer && typeof csv === "string");
+    const receipt = new Uint8Array(receiptArrayBuffer);
+    const notes = new TextEncoder().encode(csv);
+    let clear;
+    try {
+      requireValid(receipt.byteLength > 0 && receipt.byteLength <= MAX_RECEIPT);
+      requireValid(notes.byteLength > 0 && notes.byteLength <= MAX_CSV);
+      clear = new Uint8Array(CONTENT_HEADER + receipt.byteLength + notes.byteLength);
+      clear.set(BUNDLE_MAGIC);
+      u32(clear, 8, receipt.byteLength);
+      u32(clear, 12, notes.byteLength);
+      clear.set(receipt, CONTENT_HEADER);
+      clear.set(notes, CONTENT_HEADER + receipt.byteLength);
+      const header = new Uint8Array(BUNDLE_HEADER);
+      header.set(BUNDLE_MAGIC);
+      header.set(crypto.getRandomValues(new Uint8Array(16)), 8);
+      header.set(crypto.getRandomValues(new Uint8Array(12)), 24);
+      const key = await derive(password, header.subarray(8, 24), ["encrypt"]);
+      const encrypted = new Uint8Array(await crypto.subtle.encrypt({
+        name:"AES-GCM",iv:header.subarray(24, 36),additionalData:header,tagLength:128
+      }, key, clear));
+      requireValid(encrypted.byteLength === clear.byteLength + 16);
+      const packet = new Uint8Array(BUNDLE_HEADER + encrypted.byteLength);
+      packet.set(header);
+      packet.set(encrypted, BUNDLE_HEADER);
+      return packet;
+    } finally {
+      notes.fill(0);
+      if (clear) clear.fill(0);
+    }
+  }
+  async function openBundle(data, password) {
+    requireValid(data instanceof ArrayBuffer &&
+      data.byteLength > BUNDLE_HEADER + CONTENT_HEADER + 16 &&
+      data.byteLength <= MAX_BUNDLE);
+    const packet = new Uint8Array(data);
+    const header = packet.subarray(0, BUNDLE_HEADER);
+    requireValid(BUNDLE_MAGIC.every((b,i) => header[i] === b));
+    const key = await derive(password, header.subarray(8,24), ["decrypt"]);
+    const plain = new Uint8Array(await crypto.subtle.decrypt({
+      name:"AES-GCM", iv:header.subarray(24,36),additionalData:header,tagLength:128
+    }, key, packet.subarray(BUNDLE_HEADER)));
+    try {
+      requireValid(plain.byteLength >= CONTENT_HEADER + 2);
+      requireValid(BUNDLE_MAGIC.every((b,i) => plain[i] === b));
+      const view = new DataView(plain.buffer, plain.byteOffset, plain.byteLength);
+      const receiptLen = view.getUint32(8, false), notesLen = view.getUint32(12, false);
+      requireValid(receiptLen > 0 && receiptLen <= MAX_RECEIPT &&
+                   notesLen > 0 && notesLen <= MAX_CSV &&
+                   plain.byteLength === CONTENT_HEADER + receiptLen + notesLen);
+      const receipt = plain.slice(CONTENT_HEADER, CONTENT_HEADER + receiptLen).buffer;
+      const csv = new TextDecoder("utf-8", {fatal:true}).decode(
+        plain.subarray(CONTENT_HEADER + receiptLen));
+      return {receipt, csv};
+    } finally { plain.fill(0); }
+  }
+  Object.defineProperty(globalThis,"LightUpHumanVault",{
+    value:Object.freeze({seal,open,sealBundle,openBundle,maxVaultBytes:MAX_VAULT,maxBundleBytes:MAX_BUNDLE}),
+    enumerable:false,configurable:false,writable:false
+  });
+})();
+</script>
+<script>
+"use strict";
+/* PRIVATE HUMAN disclosure review studio. Memory-only, never a release gate.
+ * Final CSV is still strictly re-admitted by human_review.py.
+ */
+(() => {
+  const FIELDS = ["receipt_sha256", "ordinal", "source_kind", "stage", "question", "next_action"];
+  const STAGES = ["unreviewed", "privacy_hold", "source_owner_hold", "consent_hold",
+                  "follow_up_required", "human_reviewed_no_release"];
+  const KINDS = ["isolated_lab_input_preview", "offline_lab_benchmark_source", "isolated_lab_assessment"];
+  const FALSE_FLAGS = ["source_authenticated", "ground_truth_verified", "client_consent_verified",
+                       "operator_consent_verified", "authorization_granted", "dispatch_allowed", "release_allowed"];
+  const MAX = 256 * 1024;
+  const byId = id => document.getElementById(id);
+  let records = [], receiptDigest = "", receiptRaw = null, dirty = false, revision = 0;
+
+  function notice(message, isError = false) {
+    const box = byId("notice");
+    box.textContent = message;
+    box.dataset.status = isError ? "error" : "info";
+    box.setAttribute("role", isError ? "alert" : "status");
+  }
+  function ensure(ok) {
+    if (!ok) throw new Error("HOLD: PRIVATE receipt/CSV mismatch or unadmitted source");
+  }
+  async function bounded(file) {
+    ensure(file && file.size > 0 && file.size <= MAX);
+    return file.arrayBuffer();
+  }
+  function hex(bytes) {
+    return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, "0")).join("");
+  }
+  function parseCsv(source) {
+    const rows = [];
+    let record = [], field = "", quoted = false, afterQuote = false;
+    for (let i = 0; i < source.length; ++i) {
+      const c = source[i];
+      if (quoted) {
+        if (c === '"') {
+          if (source[i + 1] === '"') { field += '"'; ++i; }
+          else { quoted = false; afterQuote = true; }
+        } else {
+          ensure(c !== "\r" && c !== "\n");
+          field += c;
+        }
+      } else if (afterQuote) {
+        if (c === ",") { record.push(field); field = ""; afterQuote = false; }
+        else if (c === "\n" || c === "\r") {
+          record.push(field); rows.push(record); record = []; field = ""; afterQuote = false;
+          if (c === "\r" && source[i + 1] === "\n") ++i;
+        } else ensure(false);
+      } else if (c === '"') {
+        ensure(field === "");
+        quoted = true;
+      } else if (c === ",") {
+        record.push(field); field = "";
+      } else if (c === "\n" || c === "\r") {
+        record.push(field); rows.push(record); record = []; field = "";
+        if (c === "\r" && source[i + 1] === "\n") ++i;
+      } else {
+        field += c;
+      }
+    }
+    ensure(!quoted);
+    if (afterQuote || field || record.length) { record.push(field); rows.push(record); }
+    ensure(rows.length > 1 && rows.length <= 13);
+    ensure(rows[0].length === FIELDS.length && rows[0].every((x, i) => x === FIELDS[i]));
+    return rows.slice(1);
+  }
+  function parseUnambiguousJson(source) {
+    // JSON.parse silently accepts duplicate keys. PRIVATE receipt authority
+    // declarations and original ordinals must reject *all* ambiguous names.
+    let offset = 0;
+    const whitespace = () => {
+      while (offset < source.length && /[\u0009\u000a\u000d\u0020]/u.test(source[offset])) ++offset;
+    };
+    const stringToken = () => {
+      ensure(source[offset] === '"');
+      const start = offset++;
+      while (offset < source.length) {
+        if (source[offset] === "\\") { offset += 2; continue; }
+        if (source[offset++] === '"') {
+          const raw = source.slice(start, offset);
+          return JSON.parse(raw); // decode escaped property names canonically
+        }
+      }
+      ensure(false);
+    };
+    const parseValue = depth => {
+      ensure(depth <= 32);
+      whitespace();
+      const c = source[offset];
+      if (c === "{") {
+        ++offset;
+        const keys = new Set();
+        whitespace();
+        if (source[offset] === "}") { ++offset; return; }
+        while (offset < source.length) {
+          whitespace();
+          const key = stringToken();
+          ensure(!keys.has(key));
+          keys.add(key);
+          whitespace();
+          ensure(source[offset++] === ":");
+          parseValue(depth + 1);
+          whitespace();
+          if (source[offset] === "}") { ++offset; return; }
+          ensure(source[offset++] === ",");
+        }
+        ensure(false);
+      } else if (c === "[") {
+        ++offset;
+        whitespace();
+        if (source[offset] === "]") { ++offset; return; }
+        while (offset < source.length) {
+          parseValue(depth + 1);
+          whitespace();
+          if (source[offset] === "]") { ++offset; return; }
+          ensure(source[offset++] === ",");
+        }
+        ensure(false);
+      } else if (c === '"') {
+        stringToken();
+      } else {
+        const remainder = source.slice(offset);
+        const token = /^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/u.exec(remainder);
+        ensure(token);
+        offset += token[0].length;
+      }
+    };
+    parseValue(0);
+    whitespace();
+    ensure(offset === source.length);
+    const parsed = JSON.parse(source);
+    ensure(parsed && typeof parsed === "object" && !Array.isArray(parsed));
+    return parsed;
+  }
+  function safeText(value) {
+    return typeof value === "string" && value.length <= 1200 && !/[\u0000-\u001f\u007f]/u.test(value) &&
+           !/^[\s]*[=+\-@]/u.test(value);
+  }
+  function validateReceipt(value) {
+    ensure(value && typeof value === "object" && !Array.isArray(value));
+    ensure(value.schema === "lightup.assessment_disclosure_preflight.v1" &&
+           value.status === "REVIEW_ONLY" && value.source_byte_bound === false);
+    ensure(FALSE_FLAGS.every(k => value[k] === false));
+    const rows = value.inspected_declarations_only;
+    ensure(Array.isArray(rows) && rows.length >= 1 && rows.length <= 12 &&
+           value.source_count === rows.length);
+    rows.forEach((row, i) => {
+      ensure(row && typeof row === "object" && !Array.isArray(row) &&
+             row.ordinal === i + 1 && KINDS.includes(row.kind));
+    });
+    return rows;
+  }
+  function validateRows(rawRows, sourceRows, digest) {
+    ensure(rawRows.length === sourceRows.length);
+    return rawRows.map((row, i) => {
+      ensure(row.length === FIELDS.length && row[0] === digest &&
+             row[1] === String(i + 1) && row[2] === sourceRows[i].kind &&
+             STAGES.includes(row[3]) && safeText(row[4]) && safeText(row[5]));
+      return { digest, ordinal: i + 1, kind: row[2], stage: row[3],
+               question: row[4], action: row[5] };
+    });
+  }
+  function element(tag, text, parent) {
+    const el = document.createElement(tag);
+    if (text !== undefined) el.textContent = text;
+    if (parent) parent.appendChild(el);
+    return el;
+  }
+  function editCell(row, field, label) {
+    const td = element("td");
+    if (field === "stage") {
+      const select = element("select", undefined, td);
+      select.setAttribute("aria-label", label + " for source ordinal " + row.ordinal);
+      for (const stage of STAGES) {
+        const option = element("option", stage.replaceAll("_", " "), select);
+        option.value = stage;
+      }
+      select.value = row.stage;
+      select.addEventListener("change", () => { row.stage = select.value; dirty = true; revision++; refresh(); });
+    } else {
+      const input = element("textarea", undefined, td);
+      input.rows = 2;
+      input.maxLength = 1200;
+      input.value = row[field];
+      input.setAttribute("aria-label", label + " for source ordinal " + row.ordinal);
+      input.addEventListener("input", () => {
+        row[field] = input.value;
+        dirty = true;
+        revision++;
+        byId("unsaved").textContent = "Unsaved HUMAN changes (memory only)";
+      });
+    }
+    return td;
+  }
+  function refresh() {
+    const body = byId("rows");
+    body.replaceChildren();
+    const filter = byId("stageFilter").value;
+    const query = byId("query").value.trim().toLowerCase();
+    let visible = 0;
+    records.forEach(row => {
+      if (filter !== "all" && row.stage !== filter) return;
+      if (query && !(String(row.ordinal) + " " + row.kind + " " + row.question +
+                    " " + row.action + " " + row.stage).toLowerCase().includes(query)) return;
+      visible++;
+      const tr = element("tr", undefined, body);
+      element("th", String(row.ordinal), tr).scope = "row";
+      element("td", row.kind.replaceAll("_", " "), tr);
+      tr.appendChild(editCell(row, "stage", "HUMAN-only stage"));
+      tr.appendChild(editCell(row, "question", "PRIVATE question"));
+      tr.appendChild(editCell(row, "action", "PRIVATE next action"));
+    });
+    byId("visible").textContent = visible + " shown / " + records.length + " local ordinals";
+    byId("unsaved").textContent = dirty ? "Unsaved HUMAN changes (memory only)" : "Original CSV loaded; no edit exported";
+  }
+  async function load() {
+    try {
+      ensure(window.isSecureContext && crypto && crypto.subtle);
+      const receiptFile = byId("receipt").files[0];
+      const csvFile = byId("csv").files[0];
+      const vaultFile = byId("vault").files[0];
+      const bundleFile = byId("bundle").files[0];
+      ensure(bundleFile
+        ? !receiptFile && !csvFile && !vaultFile
+        : Boolean(receiptFile) && (Boolean(csvFile) !== Boolean(vaultFile)));
+      let raw, csvText;
+      if (bundleFile) {
+        const pw = byId("openPassword");
+        try {
+          ensure(globalThis.LightUpHumanVault &&
+                 bundleFile.size <= LightUpHumanVault.maxBundleBytes);
+          const unpacked = await LightUpHumanVault.openBundle(
+            await bundleFile.arrayBuffer(), pw.value);
+          raw = unpacked.receipt;
+          csvText = unpacked.csv;
+        } finally { pw.value = ""; }
+      } else {
+        raw = await bounded(receiptFile);
+      }
+      const digest = hex(await crypto.subtle.digest("SHA-256", raw));
+      const decoded = new TextDecoder("utf-8", {fatal:true}).decode(raw);
+      const sourceRows = validateReceipt(parseUnambiguousJson(decoded));
+      if (!bundleFile && vaultFile) {
+        const pw = byId("openPassword");
+        try {
+          ensure(LightUpHumanVault && vaultFile.size <= LightUpHumanVault.maxVaultBytes);
+          csvText = await LightUpHumanVault.open(
+            await vaultFile.arrayBuffer(), pw.value, digest);
+        } finally { pw.value = ""; }
+      } else if (!bundleFile) {
+        const csvBytes = await bounded(csvFile);
+        csvText = new TextDecoder("utf-8", {fatal:true}).decode(csvBytes);
+      }
+      const rows = validateRows(parseCsv(csvText.replace(/^\uFEFF/u, "")), sourceRows, digest);
+      if (dirty && !confirm("Discard unsaved HUMAN edits in memory?")) return;
+      records = rows;
+      receiptDigest = digest;
+      receiptRaw = raw.slice(0);
+      dirty = false;
+      revision++;
+      byId("compareSection").hidden = true;
+      byId("compareRows").replaceChildren();
+      byId("editor").hidden = false;
+      byId("export").disabled = false;
+      byId("exportEncrypted").disabled = false;
+      byId("exportBundle").disabled = false;
+      byId("compare").disabled = false;
+      byId("exportCounts").disabled = false;
+      byId("exportPrint").disabled = false;
+      refresh();
+      notice("REVIEW_ONLY: exact receipt bytes and matching HUMAN CSV admitted locally. No authority.");
+    } catch (_) {
+      notice("HOLD: files, secure local browser context, or source equality not admitted. Current edits retained.", true);
+    }
+  }
+  function csvField(value) {
+    return '"' + String(value).replaceAll('"', '""') + '"';
+  }
+  function serializedCsv() {
+    ensure(records.length >= 1 && /^[0-9a-f]{64}$/u.test(receiptDigest));
+    const lines = [FIELDS.map(csvField).join(",")];
+    records.forEach((row, i) => {
+      ensure(row.ordinal === i + 1 && KINDS.includes(row.kind) &&
+             STAGES.includes(row.stage) && safeText(row.question) && safeText(row.action));
+      lines.push([receiptDigest, row.ordinal, row.kind, row.stage,
+                  row.question, row.action].map(csvField).join(","));
+    });
+    return lines.join("\n") + "\n";
+  }
+  function download(bytes, filename, contentType) {
+    const url = URL.createObjectURL(new Blob([bytes], {type:contentType}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  function exportCsv() {
+    try {
+      const csv = serializedCsv();
+      ensure(confirm("Save a PRIVATE plaintext HUMAN CSV locally? It may contain sensitive notes. This NEVER releases an assessment."));
+      download(csv, "PRIVATE-human-reviewed.csv", "text/csv;charset=utf-8");
+      dirty = false;
+      refresh();
+      notice("REVIEW_ONLY: source-free HUMAN CSV exported. Use native render to re-admit; no release.");
+    } catch (_) {
+      notice("HOLD: invalid or incomplete HUMAN fields; no export.", true);
+    }
+  }
+  async function exportEncrypted() {
+    const pass = byId("newPassword"), repeated = byId("confirmPassword");
+    try {
+      ensure(globalThis.LightUpHumanVault);
+      const csv = serializedCsv();
+      const capturedRevision = revision;
+      ensure(pass.value === repeated.value && pass.value.length >= 14 &&
+             pass.value.length <= 256 && !/[\u0000-\u001f\u007f]/u.test(pass.value));
+      ensure(confirm("Create a new locally encrypted PRIVATE HUMAN .luhd file? Keep a separately authenticated receipt and passphrase. Password encryption does not prove client authority, source authenticity or consent."));
+      const encrypted = await LightUpHumanVault.seal(csv, pass.value, receiptDigest);
+      download(encrypted, "PRIVATE-human-reviewed.luhd", "application/octet-stream");
+      if (revision === capturedRevision) dirty = false;
+      refresh();
+      notice(revision === capturedRevision
+        ? "REVIEW_ONLY: encrypted HUMAN vault exported. Reopen with exact receipt bytes and password."
+        : "REVIEW_ONLY: encrypted earlier snapshot exported; additional HUMAN edits remain unsaved.");
+    } catch (_) {
+      notice("HOLD: encrypted HUMAN export refused. Check notes and matching passphrase; previous edits retained.", true);
+    } finally { pass.value = ""; repeated.value = ""; }
+  }
+  async function exportBundle() {
+    const pass = byId("newPassword"), repeat = byId("confirmPassword");
+    try {
+      ensure(globalThis.LightUpHumanVault && receiptRaw instanceof ArrayBuffer);
+      const csv = serializedCsv();
+      const capturedRevision = revision;
+      ensure(pass.value === repeat.value && pass.value.length >= 14 &&
+        pass.value.length <= 256 && !/[\u0000-\u001f\u007f]/u.test(pass.value));
+      ensure(confirm("Create one fully encrypted PRIVATE assessment-HUMAN packet? Both the unsigned receipt and HUMAN notes will be encrypted. The password is unrecoverable and does not authenticate clients, original evidence or permission."));
+      const packet = await LightUpHumanVault.sealBundle(receiptRaw, csv, pass.value);
+      download(packet, "PRIVATE-human-handoff.luhb", "application/octet-stream");
+      if (revision === capturedRevision) dirty = false;
+      refresh();
+      notice(revision === capturedRevision ?
+        "REVIEW_ONLY: one completely encrypted PRIVATE HUMAN packet saved; no external transfer or grant." :
+        "REVIEW_ONLY: earlier HUMAN snapshot encrypted; newer edits remain unsaved.");
+    } catch (_) {
+      notice("HOLD: encrypted complete HUMAN handoff refused; existing edits retained.", true);
+    } finally { pass.value = ""; repeat.value = ""; }
+  }
+  function exportCounts() {
+    try {
+      serializedCsv(); // Require exact current admitted ordinal, stage and note shape.
+      const floor = 5;
+      const counters = Object.fromEntries(STAGES.map(stage => [
+        stage, records.filter(row => row.stage === stage).length
+      ]));
+      const showTotal = records.length >= floor;
+      const showKinds = showTotal && STAGES.every(stage =>
+        counters[stage] === 0 || counters[stage] >= floor);
+      ensure(confirm("Save a PRIVATE small-cohort-suppressed HUMAN counts-only CSV? Even summary counts can disclose sensitive context. No authorization or public anonymity is asserted."));
+      const values = [
+        ["field", "value"],["status", "REVIEW_ONLY"],
+        ["original_source_authenticated", "FALSE"],
+        ["current_consent_verified", "FALSE"],
+        ["release_allowed", "FALSE"],
+        ["not_anonymity_guarantee", "TRUE"],
+        ["HUMAN_receipt_identity", "UNSIGNED_BYTES_ONLY"],
+        ["source_count", showTotal ? records.length : "SUPPRESSED_SMALL_COHORT"],
+        ["human_stages", "DECLARED_NON_AUTHORITATIVE"]
+      ];
+      if (showKinds) {
+        for (const stage of STAGES) values.push(["HUMAN_" + stage,counters[stage]]);
+      } else values.push(["HUMAN_stage_breakdown","SUPPRESSED_SMALL_GROUP"]);
+      download(values.map(row => row.map(csvField).join(",")).join("\n") + "\n",
+               "PRIVATE-human-summary.csv","text/csv;charset=utf-8");
+      notice("REVIEW_ONLY: locally saved source-free small-cohort-suppressed PRIVATE HUMAN counts.");
+    } catch (_) {
+      notice("HOLD: PRIVATE HUMAN summary not admitted, no export.", true);
+    }
+  }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/gu, char =>
+      ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
+  }
+  function exportPrintableReport() {
+    try {
+      serializedCsv(); // Full original receipt/ordinal/stage/text admission.
+      ensure(confirm("Export PRIVATE plaintext HUMAN notes into a printable HTML report? Downloads may sync with cloud storage. Only separately authenticated recipients may receive it. No finding, consent or release is verified."));
+      const totals = STAGES.map(stage => ({
+        stage, count: records.filter(row => row.stage === stage).length
+      }));
+      const counts = totals.map(item =>
+        "<li>" + escapeHtml(item.stage) + ": " + item.count + "</li>").join("");
+      const rows = records.map(row =>
+        "<tr><th scope='row'>" + row.ordinal + "</th><td>" +
+        escapeHtml(row.kind) + "</td><td>" + escapeHtml(row.stage) +
+        "</td><td>" + escapeHtml(row.question) + "</td><td>" +
+        escapeHtml(row.action) + "</td></tr>").join("");
+      const html = [
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+        '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; ',
+        'style-src &#39;unsafe-inline&#39;; img-src &#39;none&#39;; connect-src &#39;none&#39;; ',
+        'form-action &#39;none&#39;; frame-src &#39;none&#39;">',
+        '<meta name="viewport" content="width=device-width,initial-scale=1">',
+        '<title>PRIVATE HUMAN assessment follow-up — non-authorizing</title>',
+        '<style>body{font:16px/1.5 system-ui;max-width:1080px;margin:2rem auto;padding:1rem}',
+        'header{border:2px solid #773;padding:1rem}table{border-collapse:collapse;width:100%}',
+        'th,td{border:1px solid #999;padding:.6rem;text-align:left;vertical-align:top;overflow-wrap:anywhere}',
+        '@media print{body{margin:0}header{border:1px solid #444}}</style></head><body>',
+        '<header><h1>PRIVATE HUMAN follow-up · REVIEW ONLY</h1>',
+        '<p>This is an unsigned local HUMAN transcription from a source-free ',
+        'offline receipt and manually entered notes. No source-byte provenance, ',
+        'reviewer identity, original findings, consent, authorization, verified ',
+        'fix, client grant, retest, approval or release has been established. ',
+        'This report contains PRIVATE plaintext HUMAN notes; manual disclosure ',
+        'review is required before any external handoff.</p></header>',
+        '<h2>Self-declared HUMAN stages (not security findings)</h2><ul>',
+        counts, '</ul><h2>HUMAN-only follow-up</h2>',
+        '<table><thead><tr><th>Local ordinal</th><th>Source-declared kind</th>',
+        '<th>HUMAN stage</th><th>HUMAN question</th><th>HUMAN next action</th>',
+        '</tr></thead><tbody>',rows,'</tbody></table>',
+        '<p>Keep PRIVATE. A count, SHA, HUMAN answer or printable page ',
+        'cannot grant assessment rights. Original security and consent gates ',
+        'remain mandatory.</p></body></html>'
+      ].join("");
+      download(html,"PRIVATE-human-browser-report.html","text/html;charset=utf-8");
+      notice("REVIEW_ONLY: local source-free HUMAN printable report exported as PRIVATE plaintext. No release.");
+    } catch (_) {
+      notice("HOLD: printable HUMAN report not admitted or privacy confirmation declined.", true);
+    }
+  }
+  async function comparePrevious() {
+    const password = byId("comparePassword");
+    try {
+      ensure(records.length > 0 && /^[a-f0-9]{64}$/u.test(receiptDigest));
+      ensure(globalThis.LightUpHumanVault);
+      const selected = byId("compareVault").files[0];
+      ensure(selected && selected.size <= LightUpHumanVault.maxVaultBytes);
+      const previous = await LightUpHumanVault.open(
+        await selected.arrayBuffer(), password.value, receiptDigest);
+      const earlier = validateRows(parseCsv(previous.replace(/^\uFEFF/u, "")),
+                                   records.map(row => ({kind:row.kind})), receiptDigest);
+      const changes = [];
+      let same = 0;
+      for (let i = 0; i < earlier.length; ++i) {
+        const before = earlier[i], after = records[i];
+        const different = ["stage", "question", "action"].filter(key => before[key] !== after[key]);
+        if (!different.length) { same++; continue; }
+        changes.push({ordinal:after.ordinal,kind:after.kind,before,after,different});
+      }
+      const target = byId("compareRows");
+      target.replaceChildren();
+      for (const change of changes) {
+        const tr = element("tr",undefined,target);
+        element("th",String(change.ordinal),tr).scope = "row";
+        element("td",change.kind.replaceAll("_"," "),tr);
+        element("td",change.different.join(", "),tr);
+        element("td",change.before.stage + "; " + change.before.question + "; " + change.before.action,tr);
+        element("td",change.after.stage + "; " + change.after.question + "; " + change.after.action,tr);
+      }
+      byId("compareCounts").textContent = changes.length + " changed HUMAN row(s); " +
+        same + " literal matches. Text equality never authenticates reviewers or source.";
+      byId("compareSection").hidden = false;
+      notice("REVIEW_ONLY: encrypted older HUMAN round compared in memory against current receipt; no decisions copied.");
+    } catch (_) {
+      notice("HOLD: older vault, passphrase or exact receipt mismatch. Current edits and comparison retained.", true);
+    } finally { password.value = ""; }
+  }
+  byId("bundle").addEventListener("change", () => {
+    if (byId("bundle").files.length) {
+      for (const name of ["receipt","csv","vault"]) byId(name).value = "";
+    }
+  });
+  byId("receipt").addEventListener("change", () => {
+    if (byId("receipt").files.length) byId("bundle").value = "";
+  });
+  byId("csv").addEventListener("change", () => {
+    if (byId("csv").files.length) {
+      byId("vault").value = "";
+      byId("bundle").value = "";
+    }
+  });
+  byId("vault").addEventListener("change", () => {
+    if (byId("vault").files.length) {
+      byId("csv").value = "";
+      byId("bundle").value = "";
+    }
+  });
+  byId("load").addEventListener("click", load);
+  byId("export").addEventListener("click", exportCsv);
+  byId("exportEncrypted").addEventListener("click", exportEncrypted);
+  byId("exportBundle").addEventListener("click", exportBundle);
+  byId("compare").addEventListener("click", comparePrevious);
+  byId("exportCounts").addEventListener("click", exportCounts);
+  byId("exportPrint").addEventListener("click", exportPrintableReport);
+  byId("stageFilter").addEventListener("change", refresh);
+  byId("query").addEventListener("input", refresh);
+  window.addEventListener("beforeunload", event => {
+    if (dirty) { event.preventDefault(); event.returnValue = ""; }
+  });
+})();
+</script>
+</head>
+<body>
+<header>
+<p>LIGHTUP / OFFLINE ASSESSMENT LAB / PRIVATE HUMAN DESK</p>
+<h1>Disclosure review studio</h1>
+<p>Inspect and change source-free HUMAN follow-up notes against an exact original PRIVATE preflight receipt. Local files only: no scanning, model, upload, browser storage, signed authority, automatic decision or recipient sharing.</p>
+</header>
+<main>
+<section class="hold" aria-label="Mandatory release HOLD">
+<h2>REVIEW ONLY — not release authorization</h2>
+<p>An exact SHA-256 match binds your CSV only to the selected <strong>receipt bytes</strong>, not to original lab source bytes, genuine client/operator consent, authenticated reviewers, target ownership, ground truth, remediation or a secure release. Even a manually reviewed row does not grant approval. The source-free template and HUMAN notes are still PRIVATE.</p>
+<p class="muted">All work is kept in page memory until you explicitly export a local file. Passwords are cleared from the input fields after each encrypt/decrypt attempt; this does not guarantee secure erasure from browser memory. No network dependencies, telemetry, IndexedDB, localStorage, cookies or clipboard collection. Closing this page before export loses unsaved HUMAN edits.</p>
+</section>
+<section aria-labelledby="loadTitle">
+<h2 id="loadTitle">1. Open PRIVATE source-free review files</h2>
+<div class="controls">
+<label for="receipt">Original PRIVATE-receipt.json<input id="receipt" type="file" accept=".json,application/json" aria-describedby="loadHelp"></label>
+<label for="csv">PRIVATE plaintext HUMAN CSV (optional)<input id="csv" type="file" accept=".csv,text/csv" aria-describedby="loadHelp"></label>
+<label for="vault">OR encrypted PRIVATE HUMAN vault (.luhd)<input id="vault" type="file" accept=".luhd,application/octet-stream" aria-describedby="loadHelp"></label>
+<label for="openPassword">Encrypted vault password, if selected<input id="openPassword" type="password" autocomplete="off" minlength="14" maxlength="256" aria-describedby="loadHelp"></label>
+<label for="bundle">OR complete encrypted PRIVATE HUMAN handoff (.luhb): no separate receipt needed<input id="bundle" type="file" accept=".luhb,application/octet-stream" aria-describedby="loadHelp"></label>
+<button id="load" type="button">Open matching pair</button>
+</div>
+<p id="loadHelp" class="muted">First use the native original preflight and human_review.py prepare. Select EITHER the exact PRIVATE receipt and one matching HUMAN CSV/.luhd, OR a single fully encrypted HUMAN .luhb handoff and password, never both. The bundle encrypts receipt plus notes. A changed receipt, wrong ordinal, unsupported stage or unexpected source-kind fails closed without replacing your current in-memory edits. A modern offline browser with Web Crypto is required.</p>
+<p id="notice" role="status" aria-live="polite">Select your source-free PRIVATE receipt and CSV to begin. No file has been opened.</p>
+</section>
+<section id="editor" hidden aria-labelledby="editTitle">
+<h2 id="editTitle">2. Human-only next actions</h2>
+<p>All decisions remain non-authorizing HUMAN claims. The native Python renderer strictly re-admits the downloaded CSV against the selected receipt; an offline browser check is not security approval.</p>
+<div class="controls">
+<label for="stageFilter">Filter review stage
+<select id="stageFilter">
+<option value="all">All human stages</option>
+<option value="unreviewed">Unreviewed</option>
+<option value="privacy_hold">Privacy HOLD</option>
+<option value="source_owner_hold">Source-owner HOLD</option>
+<option value="consent_hold">Consent HOLD</option>
+<option value="follow_up_required">Follow-up required</option>
+<option value="human_reviewed_no_release">Human reviewed / NO RELEASE</option>
+</select></label>
+<label for="query">Search ordinal, kind, question or next action<input id="query" type="search" autocomplete="off" placeholder="Local search only"></label>
+</div>
+<p id="visible" aria-live="polite"></p>
+<p id="unsaved" aria-live="polite"></p>
+<div class="tablewrap" role="region" aria-label="Private human review rows" tabindex="0">
+<table>
+<thead><tr><th scope="col">Ordinal</th><th scope="col">Original declared kind</th><th scope="col">HUMAN stage</th><th scope="col">PRIVATE question</th><th scope="col">PRIVATE next action</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+</section>
+<section aria-labelledby="compareTitle">
+<h2 id="compareTitle">3. Compare earlier encrypted HUMAN review (read-only)</h2>
+<p>Choose an older PRIVATE .luhd HUMAN round, sealed against the <strong>identical receipt bytes</strong>. Review literal differences in stage, question and next action. Earlier answers are display-only; they never replace current HUMAN choices, make a finding valid, prove independent reviewers or authorize release.</p>
+<div class="controls">
+<label for="compareVault">Older encrypted PRIVATE HUMAN .luhd file<input id="compareVault" type="file" accept=".luhd,application/octet-stream"></label>
+<label for="comparePassword">Older vault passphrase<input id="comparePassword" type="password" autocomplete="off" minlength="14" maxlength="256"></label>
+<button id="compare" type="button" disabled>Compare HUMAN rounds locally</button></div>
+<div id="compareSection" hidden>
+<p id="compareCounts" role="status" aria-live="polite"></p>
+<div class="tablewrap" role="region" aria-label="Read-only prior HUMAN review differences" tabindex="0">
+<table><thead><tr><th scope="col">Ordinal</th><th scope="col">Kind</th><th scope="col">Literal fields changed</th><th scope="col">Earlier HUMAN text</th><th scope="col">Current HUMAN text</th></tr></thead><tbody id="compareRows"></tbody></table></div>
+</div>
+</section>
+<section aria-labelledby="exportTitle">
+<h2 id="exportTitle">4. Export PRIVATE HUMAN choices</h2>
+<p>Exports full ordinal order, even when the table is filtered. No source IDs, targets, evidence, model responses or credentials are included by this app unless a human manually types them into notes. Keep PRIVATE. Reopen with the existing native human_review.py render command for a new scriptless PRIVATE human report.</p>
+<div class="controls"><label for="newPassword">New encrypted vault passphrase (14–256 characters)<input id="newPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
+<label for="confirmPassword">Repeat new encrypted vault passphrase<input id="confirmPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label></div>
+<p class="muted">Recommended private continuity: seal your HUMAN notes with AES-256-GCM and PBKDF2-SHA256 (600,000 iterations) using a fresh salt and nonce. This only encrypts HUMAN CSV bytes, bound to the exact unsignable PRIVATE receipt digest. Keep the passphrase separately. An incorrect password or different receipt causes HOLD. There is no password recovery.</p>
+<div class="controls"><button id="exportBundle" type="button" disabled>Export complete encrypted PRIVATE HUMAN handoff (.luhb)</button>
+<button id="exportEncrypted" type="button" disabled>Export encrypted PRIVATE HUMAN vault (.luhd)</button>
+<button id="export" type="button" disabled>Export plaintext PRIVATE HUMAN CSV (explicit warning)</button>
+<button id="exportCounts" type="button" disabled>Export suppressed PRIVATE HUMAN counts only</button>
+<button id="exportPrint" type="button" disabled>Export printable PRIVATE HUMAN report</button></div>
+<p class="muted">The complete encrypted handoff includes both unsigned source-free PRIVATE receipt and HUMAN notes under one new password-derived authenticated encryption envelope; no original lab evidence is embedded. The older .luhd format still requires the separate exact receipt. The counts-only option never includes HUMAN note text, original artifact names, targets, findings, evidence or receipt hash. It still reveals summary categories for sufficiently large groups and is not guaranteed anonymous or approved for public sharing.</p>
+</section>
+</main>
+<footer>LightUp · Incubate / M3-M7 PLAN/LAB ONLY · DRAFT/HOLD · No permission, verification, grant or release</footer>
+</body>
+</html>

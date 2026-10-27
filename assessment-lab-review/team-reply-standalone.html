@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FD/0jwoHrGA+DUHHuzRHIZqzXzEJbchPqeMAtU5GJBE='; style-src 'sha256-cOrKOcXW3AiRr1cTv4YTwBzu5HfNys5/d6V8ZS1XxGg='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer"><title>LightUp | PRIVATE Reviewer Reply</title>
+<style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
+*{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
+.hold{border:1px solid #caab5b;border-radius:9px;background:#332911;color:#ffe5a0;font-size:.82rem;font-weight:700;padding:.8rem;display:inline-block}
+main{max-width:1140px;margin:0 auto;padding:1rem 1.5rem 4rem}section{margin:1.5rem 0;padding:1.6rem;background:#1a2434;border-radius:15px;border:1px solid #39465d;box-shadow:0 7px 30px #0002}section h2{font-size:1.28rem;margin:0 0 .5rem}section p{color:#c1cfe0}.stats{font-size:1.09rem;font-weight:700;color:#e7f4fc}
+.upload,button,select{font:inherit;font-size:.9rem;background:#254760;border:1px solid #5b8aa4;border-radius:8px;color:#fff;padding:.66rem .85rem;cursor:pointer}.upload{display:inline-block;position:relative;font-weight:600;overflow:hidden}.upload input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}button:hover,.upload:hover{background:#34627e}button:focus-visible,.upload:focus-within,select:focus-visible,input:focus-visible{outline:3px solid #ffca62;outline-offset:2px}button.quiet{background:#2c3344}.toolbar{display:flex;flex-wrap:wrap;gap:.85rem;align-items:center;margin:1rem 0}
+.table-wrap{overflow:auto;border-radius:9px;border:1px solid #43516a}table{width:100%;border-collapse:collapse;min-width:620px;font-size:.91rem}caption{text-align:left;padding:.7rem;background:#253247;color:#dae8f4}th{text-align:left;background:#253247;color:#f7fbff;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;padding:1rem}td{padding:1rem;border-top:1px solid #43516a;vertical-align:top}td:first-child{width:50%}td p{margin:.45rem 0}small{color:#a8c2d7}details{margin-top:1rem;padding:.75rem;background:#131d2b;border-radius:8px}summary{cursor:pointer;color:#91d9f4}details p{white-space:pre-wrap;overflow-wrap:anywhere}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}.controls label{display:flex;flex-direction:column;gap:.2rem;color:#cde4f4;font-size:.78rem}.controls input,.controls select{width:100%;min-width:0;background:#111c2d;border:1px solid #61728d;border-radius:6px;color:#fff;padding:.45rem;font-size:.86rem}.controls label:nth-child(n+3){grid-column:span 2}.note{font-size:.85rem;color:#b2c1d3}
+#message{padding:.6rem .8rem;border-radius:6px;background:#172e36;color:#b9f6e7}#message[data-error="true"]{background:#4b2424;color:#ffd4d4}
+.gates{border-color:#b89c58}code{background:#0e1a29;padding:.1rem .3rem;border-radius:4px;color:#b8e7ff}footer{padding:1.4rem;text-align:center;color:#9db2c9;border-top:1px solid #3d475b}
+[hidden]{display:none!important}@media(max-width:760px){header{padding:2rem 1.2rem}main{padding:.6rem}section{padding:1rem}.controls{grid-template-columns:1fr}.controls label:nth-child(n+3){grid-column:auto}td{padding:.65rem}}
+.bulkbar{border:1px solid #5b8aa4;border-radius:9px;padding:1rem;background:#131f2c;margin:1rem 0}
+.bulkbar>strong{font-size:.92rem}.bulkbar .toolbar{margin:.6rem 0}.bulkbar .note{margin:.35rem 0}
+button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
+
+#collab-preview{max-height:450px;overflow:auto}#collab-preview table{min-width:670px}#collab-status{color:#b9f6e7;margin:.6rem 0}.change-new{color:#b9f6e7;font-weight:650}.change-old{color:#b3c1d5}#collab-apply:disabled{opacity:.4;cursor:not-allowed}
+
+.cards{display:grid;gap:1rem}.finding{border:1px solid #42546b;background:#152338;padding:1rem;border-radius:12px}.finding h3{font-size:1rem;margin:.2rem 0}.finding p{overflow-wrap:anywhere;color:#e1eaf5}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.grid label{display:grid;gap:.3rem;color:#c1d7eb;font-size:.88rem}.grid input,.grid select,.grid textarea{background:#101b2d;border:1px solid #7187a4;border-radius:6px;padding:.55rem;color:#f5fcff;font:inherit;min-width:0}.grid textarea{resize:vertical;grid-column:1/-1}.grid label:nth-child(n+3){grid-column:1/-1}#preview table{min-width:700px}#status[data-error=true]{background:#4c2222;color:#ffe3d5}@media(max-width:720px){.grid{grid-template-columns:1fr}.grid label:nth-child(n+3){grid-column:auto}}
+
+.handoff-check{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:#a9ebfc;margin-bottom:.5rem;cursor:pointer}.handoff-check input{height:1rem;width:1rem;accent-color:#69cee8}
+
+#peer-results td{min-width:7rem}#peer-results td:last-child{min-width:15rem;overflow-wrap:anywhere}#peer-overview{overflow-wrap:anywhere}
+
+#peer-results td:nth-child(n+4){min-width:17rem;max-width:31rem;overflow-wrap:anywhere}#peer-results td:nth-child(n+4) p{font-size:.82rem}#peer-results td:nth-child(n+4) details{padding:.5rem;margin-top:.5rem}
+
+#findings tr.peer-focus{outline:3px solid #8ed8f3;outline-offset:-3px;background:#1c3a47}#findings tr:focus{outline:3px solid #fdce67;outline-offset:-3px}.peer-jump{font-size:.78rem;white-space:normal;min-width:9rem}
+
+#search{font:inherit;background:#101b2d;color:#fff;border:1px solid #7087a3;border-radius:6px;padding:.65rem;min-width:220px;max-width:100%}#search:focus-visible{outline:3px solid #ffcb67;outline-offset:2px}
+
+
+/* Source-reported run overview: compact, responsive and visibly unverified. */
+.run-context{margin:1.2rem 0 1.8rem;padding:1rem;border:1px solid #567086;border-radius:12px;background:#101f2e}
+.run-context h3{margin:.2rem 0 .6rem}
+.run-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:.65rem;margin:1rem 0}
+.run-metric{min-width:0;padding:.8rem;border:1px solid #3e5b71;border-radius:9px;background:#182b3d}
+.run-metric span{display:block;color:#b9cede;font-size:.82rem;line-height:1.35}
+.run-metric strong{display:block;margin-top:.35rem;font-size:1.2rem;overflow-wrap:anywhere}
+#coverage-domains td:last-child{font-weight:650}
+@media(max-width:600px){.run-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.run-context{padding:.7rem}}
+</style></head><body>
+<header><div class="eyebrow">LIGHTUP / PRIVATE HUMAN REVIEW EXCHANGE</div>
+<h1>Recipient Reply Desk</h1><p>Receive a deliberately selected PRIVATE operator packet, propose human follow-up changes and return the complete source-bound reply. Nothing grants assessment permissions, verifies identities, accesses a target or submits evidence.</p>
+<div class="hold">PRIVATE · HUMAN-ONLY · DRAFT/HOLD · NOT VERIFIED SECURITY EVIDENCE</div></header>
+<main><section><h2>1. Import the PRIVATE operator handoff</h2>
+<p>Only a separately delivered <code>PRIVATE-lab-reviewer-handoff.json</code> produced by the operator is accepted. Titles and human notes may be confidential. The source fingerprint is unsigned, not proof of the operator’s identity, client consent, scope or authenticity.</p>
+<label class="upload" for="upload">Open PRIVATE handoff<input id="upload" type="file" accept=".json,application/json"></label>
+<p id="status" role="status" aria-live="polite"></p></section>
+<section id="workspace" hidden><h2>2. Edit the four HUMAN fields</h2>
+<p>Original severity, title, local endpoint ordinal, baseline human values, source fingerprint and false authority flags are read-only. Your proposed review role is generic and does not assign an authenticated account. The original lab evidence is not included.</p>
+<div class="toolbar"><label>Filter <select id="filter"><option value="">All selected rows</option>
+<optgroup label="Source-reported severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup>
+<optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label>
+<span id="count"></span></div>
+<div class="bulkbar"><strong>Bulk HUMAN proposals for currently visible original findings</strong>
+<div class="toolbar"><label>Stage <select id="bulkStage"><option value="">Keep original</option>
+<option value="needs_review">Needs review</option><option value="discussing">Discussing</option>
+<option value="documented">Documented</option><option value="blocked">Blocked</option></select></label>
+<label>Group <select id="bulkGroup"><option value="">Keep original</option><option value="unassigned">Unassigned</option>
+<option value="scope">Scope</option><option value="findings">Findings</option><option value="evidence">Evidence</option>
+<option value="remediation">Remediation</option></select></label>
+<button id="bulkApply" type="button">Propose for visible rows</button>
+<button id="bulkUndo" type="button" class="quiet">Undo recipient batch</button></div>
+<p class="note">Only stage/group proposals change. Original titles, source data, original human baseline and individual action/blocker remain untouched.</p></div>
+<div id="rows" class="cards"></div>
+<h2>3. Preview differences before returning</h2>
+<div class="toolbar"><button id="previewBtn" type="button">Preview HUMAN changes</button>
+<button id="export" type="button" disabled>Export PRIVATE reviewer reply</button>
+<label class="upload" for="resume">Resume exact PRIVATE reply<input type="file" id="resume" accept=".json,application/json"></label>
+<button id="forget" type="button" class="quiet">Forget local handoff</button></div>
+<div id="preview" class="table-wrap" role="region" aria-label="PRIVATE human changes"></div>
+<p class="note">Any edit after preview requires another review before export. Operator must reopen original unchanged PRIVATE lab source, verify its existing local human baseline and explicitly accept returned changes. Neither recipient nor operator can grant work, claim verified remediation or produce actual client consent with these files.</p>
+</section><section class="gates"><h2>Never an authority</h2><p>INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD. Original source owner, exact-head hosted + permanently registered VPS CI, independent privacy/security approval, authentic separately authenticated client/operator consent with action-time revocation, #177/#182/#829 and explicit HUMAN GO remain mandatory. No network, target interaction, browser persistence, auth grant or production deployment occurs here.</p></section></main>
+<footer>PRIVATE human notes only · No identity, findings, consent or release verified.</footer>
+<script>"use strict";
+/* PRIVATE, completely offline recipient editing of source-bound human notes. */
+(()=>{
+const $=id=>document.getElementById(id);
+const FIELDS=["stage","group","next_action","blocker"];
+const STAGES=["needs_review","discussing","documented","blocked"];
+const GROUPS=["unassigned","scope","findings","evidence","remediation"];
+const FLAGS=["source_authenticated","ground_truth_verified","client_consent_verified",
+ "operator_consent_verified","authorized","consent_verified","dispatch_allowed","release_allowed"];
+const KEYS=["schema","kind","source_sha256","baseline_sha256","rows","status",...FLAGS];
+const ROW=["ordinal","severity","title","endpoint_ordinal","original","proposed"];
+let packet=null,changedAfterPreview=true,lastBulkUndo=null;
+const fail=msg=>{throw Error(msg||"Private review packet HOLD");};
+const require_=x=>{if(!x)fail();};
+const obj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
+const exact=(x,ks)=>obj(x)&&Object.keys(x).length===ks.length&&ks.every(k=>Object.hasOwn(x,k));
+const valid=x=>typeof x==="string"&&x.length<=500&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(x);
+const validNote=n=>exact(n,FIELDS)&&STAGES.includes(n.stage)&&GROUPS.includes(n.group)&&
+ valid(n.next_action)&&valid(n.blocker);
+const humanEqual=(a,b)=>FIELDS.every(k=>a[k]===b[k]);
+const status=(msg,err=false)=>{$("status").textContent=(err?"HOLD — ":"")+msg;$("status").dataset.error=String(err);};
+const make=(tag,label)=>{const e=document.createElement(tag);if(label!==undefined)e.textContent=String(label);return e;};
+function strictJSON(src){
+ let i=0,n=0;
+ const ws=()=>{while(i<src.length&&/\s/.test(src[i]))i++;};
+ function str(){
+  require_(src[i]==='"');const start=i++;let escape=false;
+  while(i<src.length){const c=src[i++];
+   if(c==='"'&&!escape)return JSON.parse(src.slice(start,i));
+   if(c==="\\"&&!escape)escape=true;else escape=false;
+  }fail();
+ }
+ function val(depth){
+  require_(depth<30&&++n<=150000);ws();const c=src[i];
+  if(c==='"')return str();
+  if(c==="{"){
+   i++;const o=Object.create(null),seen=new Set();ws();if(src[i]==="}"){i++;return o;}
+   while(true){ws();const key=str();require_(!seen.has(key));seen.add(key);ws();
+    require_(src[i++] === ":");o[key]=val(depth+1);ws();
+    if(src[i]==="}"){i++;return o;}require_(src[i++] === ",");
+   }
+  }
+  if(c==="["){
+   i++;const a=[];ws();if(src[i]==="]"){i++;return a;}
+   while(true){require_(a.length<150000);a.push(val(depth+1));ws();
+    if(src[i]==="]"){i++;return a;}require_(src[i++] === ",");
+   }
+  }
+  for(const [lit,v] of [["true",true],["false",false],["null",null]]){
+   if(src.startsWith(lit,i)){i+=lit.length;return v;}
+  }
+  const m=src.slice(i).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
+  require_(m);i+=m[0].length;const value=Number(m[0]);require_(Number.isFinite(value));return value;
+ }
+ const v=val(0);ws();require_(i===src.length);return v;
+}
+async function hashRecord(p){
+ const value=JSON.stringify({source_sha256:p.source_sha256,
+  rows:p.rows.map(r=>({ordinal:r.ordinal,original:r.original}))});
+ const buffer=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value));
+ return [...new Uint8Array(buffer)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function admit(x,kind="handoff"){
+ require_(exact(x,KEYS)&&x.schema==="lightup.private_lab_reviewer_exchange.v1"&&
+  x.kind===kind&&x.status==="REVIEW_ONLY"&&FLAGS.every(k=>x[k]===false)&&
+  /^[a-f0-9]{64}$/.test(x.source_sha256)&&/^[a-f0-9]{64}$/.test(x.baseline_sha256));
+ require_(Array.isArray(x.rows)&&x.rows.length>=1&&x.rows.length<=512);
+ let prev=0;for(const row of x.rows){
+  require_(exact(row,ROW)&&Number.isSafeInteger(row.ordinal)&&row.ordinal>prev&&row.ordinal<=2048&&
+   ["critical","high","medium","low","info"].includes(row.severity)&&
+   typeof row.title==="string"&&row.title.length>0&&row.title.length<=8192&&
+   !/[\u0000-\u001f\u007f]/.test(row.title)&&
+   Number.isSafeInteger(row.endpoint_ordinal)&&row.endpoint_ordinal>=0&&row.endpoint_ordinal<=16&&
+   validNote(row.original)&&validNote(row.proposed)&&
+   (kind==="reply"||humanEqual(row.original,row.proposed)));
+  prev=row.ordinal;
+ }
+ require_(await hashRecord(x)===x.baseline_sha256);
+ return x;
+}
+function markDirty(){
+ changedAfterPreview=true;$("export").disabled=true;$("preview").replaceChildren();
+ const count=packet.rows.filter(r=>!humanEqual(r.original,r.proposed)).length;
+ $("count").textContent=count+" modified HUMAN rows · PRIVATE / not verified";
+}
+function field(row,key){
+ const label=make("label"),caption=make("span",key.replaceAll("_"," "));
+ label.append(caption);let input;
+ if(key==="stage"||key==="group"){
+  input=make("select");
+  (key==="stage"?STAGES:GROUPS).forEach(v=>{
+   const opt=make("option",v.replaceAll("_"," "));opt.value=v;input.append(opt);
+  });
+ }else{input=make("textarea");input.rows=2;input.maxLength=500;}
+ input.value=row.proposed[key];input.addEventListener("input",()=>{
+  const value=input.value;if(!valid(value))return;
+  const n={...row.proposed,[key]:value};if(validNote(n)){
+   row.proposed=n;lastBulkUndo=null;markDirty();
+  }
+ });label.append(input);return label;
+}
+function render(){
+ const wrap=$("rows");wrap.replaceChildren();if(!packet)return;
+ const filter=$("filter").value;
+ packet.rows.forEach(row=>{
+  if(filter&&filter!==row.severity&&filter!==row.proposed.stage)return;
+  const card=make("article");card.className="finding";
+  card.append(make("h3","Original #"+row.ordinal+" · "+row.severity.toUpperCase()+
+   " · "+(row.endpoint_ordinal?"local endpoint "+row.endpoint_ordinal:"unmatched source asset")));
+  card.append(make("p",row.title));
+  const form=make("div");form.className="grid";
+  FIELDS.forEach(k=>form.append(field(row,k)));card.append(form);wrap.append(card);
+ });
+}
+function preview(){
+ require_(packet);
+ require_(packet.rows.every(r=>validNote(r.proposed)));
+ const changed=packet.rows.filter(r=>!humanEqual(r.original,r.proposed));
+ require_(changed.length>0);
+ const table=make("table"),head=make("tr");
+ ["Original slot","Human field","Previous","Proposed"].forEach(x=>head.append(make("th",x)));
+ const thead=make("thead");thead.append(head);table.append(thead);
+ const body=make("tbody");let diffs=0;
+ for(const row of changed)for(const key of FIELDS){
+  if(row.original[key]===row.proposed[key])continue;
+  const tr=make("tr");
+  [row.ordinal,key,row.original[key]||"(blank)",row.proposed[key]||"(blank)"]
+   .forEach(x=>tr.append(make("td",x)));body.append(tr);diffs++;
+ }
+ table.append(body);$("preview").replaceChildren(make("p",
+  "PRIVATE proposed HUMAN differences: "+changed.length+" original rows / "+diffs+
+  " human fields. No source, evidence, verified remediation or permission changed."),table);
+ changedAfterPreview=false;$("export").disabled=false;
+ status("Review proposed human changes above before explicitly exporting.");
+}
+function download(name,text){
+ const blob=new Blob([text],{type:"application/json"});const url=URL.createObjectURL(blob);
+ const a=make("a");a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+$("upload").addEventListener("change",async e=>{
+ try{
+  const file=e.target.files[0];require_(file&&file.size>0&&file.size<=2*1024*1024&&
+   globalThis.crypto&&crypto.subtle);
+  const src=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  const next=await admit(strictJSON(src));
+  if(packet&&!confirm("Replace current unsaved private recipient notes?"))return;
+  packet=next;changedAfterPreview=true;lastBulkUndo=null;$("workspace").hidden=false;$("export").disabled=true;
+  $("preview").replaceChildren();$("filter").value="";render();markDirty();
+  status("Original unsigned PRIVATE human handoff admitted. No authentication or consent proven.");
+ }catch(_){status("Private handoff rejected. Previous private notes kept.",true);}
+ finally{e.target.value="";}
+});
+
+function visibleRows(){
+ if(!packet)return [];
+ const filter=$("filter").value;
+ return packet.rows.filter(row=>!filter||filter===row.severity||filter===row.proposed.stage);
+}
+$("bulkApply").addEventListener("click",()=>{
+ if(!packet)return;
+ const stage=$("bulkStage").value,group=$("bulkGroup").value;
+ const chosen=visibleRows();
+ if(!stage&&!group){status("Choose a human stage or review group for the filtered rows.",true);return;}
+ if(!chosen.length){status("No PRIVATE human rows selected by the current filter.",true);return;}
+ if(!confirm("Propose HUMAN-only stage/group changes for "+chosen.length+
+  " visible original finding rows? This cannot authorize any assessment."))return;
+ const selected=new Set(chosen.map(r=>r.ordinal));
+ lastBulkUndo=packet.rows.map(r=>({...r.proposed}));
+ packet.rows.forEach(row=>{if(!selected.has(row.ordinal))return;
+  row.proposed={...row.proposed,...(stage?{stage}:{}),...(group?{group}:{})};
+ });
+ markDirty();render();status(chosen.length+" filtered human notes updated. Original source and baseline unchanged.");
+});
+$("bulkUndo").addEventListener("click",()=>{
+ if(!packet||!lastBulkUndo){status("No last recipient bulk change to undo.");return;}
+ packet.rows.forEach((r,i)=>{r.proposed={...lastBulkUndo[i]};});
+ lastBulkUndo=null;markDirty();render();status("Last recipient batch undone. Original source unchanged.");
+});
+$("resume").addEventListener("change",async e=>{
+ try{
+  require_(packet&&e.target.files[0]&&e.target.files[0].size>0&&
+   e.target.files[0].size<=2*1024*1024);
+  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await e.target.files[0].arrayBuffer());
+  const draft=await admit(strictJSON(raw),"reply");
+  require_(draft.source_sha256===packet.source_sha256&&
+   draft.baseline_sha256===packet.baseline_sha256&&draft.rows.length===packet.rows.length);
+  for(let i=0;i<draft.rows.length;i++){
+   const d=draft.rows[i],p=packet.rows[i];
+   require_(d.ordinal===p.ordinal&&d.severity===p.severity&&d.title===p.title&&
+    d.endpoint_ordinal===p.endpoint_ordinal&&humanEqual(d.original,p.original));
+  }
+  if(packet.rows.some(r=>!humanEqual(r.original,r.proposed))&&
+    !confirm("Replace unsaved PRIVATE reviewer draft with this exact-handoff reply?"))return;
+  packet.rows.forEach((r,i)=>{r.proposed={...draft.rows[i].proposed};});
+  lastBulkUndo=null;markDirty();render();
+  status("Previously saved PRIVATE reply reopened against the exact unchanged human baseline.");
+ }catch(_){status("Saved PRIVATE reviewer reply rejected. Current human notes unchanged.",true);}
+ finally{e.target.value="";}
+});
+
+$("filter").addEventListener("change",render);
+$("previewBtn").addEventListener("click",()=>{try{preview();}catch(_){status("Nothing changed or human input invalid.",true);}});
+$("export").addEventListener("click",async()=>{
+ try{
+  require_(packet&&!changedAfterPreview);
+  require_(await hashRecord(packet)===packet.baseline_sha256);
+  require_(packet.rows.some(r=>!humanEqual(r.original,r.proposed)));
+  if(!confirm("Send PRIVATE reviewer reply containing source-declared titles and changed HUMAN notes? Confirm intended operator and private channel separately."))return;
+  // Never mutate the admitted original handoff's pinned baseline.
+  const reply={...packet,kind:"reply",rows:packet.rows.map(r=>({
+   ...r,original:{...r.original},proposed:{...r.proposed}
+  }))};
+  download("PRIVATE-lab-reviewer-reply.json",JSON.stringify(reply,null,2)+"\n");
+  status("PRIVATE human reply saved. It is not a grant, an assessment finding or authenticated reviewer signature.");
+ }catch(_){status("PRIVATE reply not admitted for export.",true);}
+});
+$("forget").addEventListener("click",()=>{
+ if(!packet||!confirm("Forget all local private reviewer content and unsaved human edits?"))return;
+ packet=null;changedAfterPreview=true;lastBulkUndo=null;$("workspace").hidden=true;$("rows").replaceChildren();
+ $("preview").replaceChildren();status("Recipient workspace cleared from memory.");
+});
+window.addEventListener("beforeunload",e=>{if(packet&&
+ packet.rows.some(r=>!humanEqual(r.original,r.proposed))){e.preventDefault();e.returnValue="";}});
+status("Open an original PRIVATE operator handoff.");
+})();</script></body></html>

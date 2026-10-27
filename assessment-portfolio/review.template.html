@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+@@CSP@@
+<title>LightUp · Private Human Review Return</title><style>@@CSS@@</style></head>
+<body>
+<header><div class="eyebrow">LIGHTUP / ORIGINAL LAB SOURCES / HUMAN REVIEW</div>
+<h1>Edit human follow-up.<br><span>Return only to original sources.</span></h1>
+<p>Choose an already captured original offline agenda. Change only human stage, neutral role and proposed review date; never original source, authorization, target or evidence. No network or browser storage.</p>
+<div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO GO</div>
+</header>
+<section class="toolbar">
+<label>Original source agenda<select id="source"></select></label>
+<label>Filter human stage<select id="filter"><option value="all">All stages</option></select></label>
+<button id="reset" type="button">Reset selected source to original</button>
+</section>
+<div id="status" role="status" aria-live="polite"></div>
+<section class="stats">
+<div><small>Original slots</small><strong id="total">—</strong></div>
+<div><small>Locally edited</small><strong id="modified">—</strong></div>
+<div><small>Original state</small><strong id="sourceState">—</strong></div>
+</section>
+<section class="panel" id="portfolioDesk">
+<h2>Portfolio-wide human attention desk</h2>
+<p>Review across all original agendas at once. Selected changes affect only human planning notes in memory; no original finding, evidence, grant or consent is changed. Every changed agenda is included in the existing single private proposal-bundle export.</p>
+<div class="stats">
+<div><small>Portfolio human items</small><strong id="pTotal">—</strong></div>
+<div><small>Filtered items</small><strong id="pVisible">—</strong></div>
+<div><small>Selected human slots</small><strong id="pSelected">—</strong></div>
+<div><small>Locally changed</small><strong id="pModified">—</strong></div>
+</div>
+<div class="toolbar">
+<label>Human stage filter<select id="pStage"><option value="">All human stages</option></select></label>
+<label>Neutral role filter<select id="pRole"><option value="">All neutral roles</option></select></label>
+<label>Proposed date filter<select id="pDateBucket">
+<option value="">All proposed dates</option><option value="past">Past proposed date</option>
+<option value="today">On selected reference day</option><option value="future">Later proposed date</option>
+<option value="unscheduled">Not scheduled</option></select></label>
+<button id="pSelectVisible" type="button">Select visible human slots</button>
+<button id="pClear" type="button">Clear cross-agenda selection</button>
+</div>
+<div class="toolbar">
+<label>Apply human stage<select id="pApplyStage"><option value="">Leave unchanged</option></select></label>
+<label>Apply neutral role<select id="pApplyRole"><option value="">Leave unchanged</option></select></label>
+<label>Propose date<input id="pApplyDate" type="date" min="2020-01-01" max="2100-12-31"></label>
+<label><input id="pClearDate" type="checkbox"> Remove proposed date</label>
+</div>
+<label class="confirm"><input id="pConfirm" type="checkbox"> I acknowledge these bulk changes affect original-source human-only drafts, not verified issues, authorization, assignments, customer approval or GO.</label>
+<button id="pApply" type="button">Apply human-only changes to selected agendas</button>
+<div class="scroll"><table><thead><tr><th>Select</th><th>Agenda</th><th>Source slot</th><th>Original kind</th><th>Human stage</th><th>Neutral role</th><th>Proposed date</th><th>Original status</th><th>Local change</th></tr></thead><tbody id="pRows"></tbody></table></div>
+</section>
+<section class="panel"><h2>Batch human follow-up editor</h2>
+<p>Select particular visible original source slots. Bulk operations change only local human planning fields; source IDs and old values cannot change.</p>
+<div class="toolbar"><button id="selectVisible" type="button">Select visible source slots</button><button id="clearSelected" type="button">Clear selection</button>
+<label>Bulk stage<select id="bulkStage"><option value="">Leave stage unchanged</option></select></label>
+<label>Bulk role<select id="bulkRole"><option value="">Leave role unchanged</option></select></label>
+<label>Bulk human proposed date<input id="bulkDate" type="date" min="2020-01-01" max="2100-12-31"></label>
+<label><input id="bulkClearDate" type="checkbox"> Remove proposed date</label>
+<button id="applySelected" type="button">Apply only to selected human rows</button></div></section>
+<section class="panel"><h2>Private original-bound proposal continuation</h2><p>Resume a previously exported private human proposal in this local browser. Only an exact matching source digest, original prior fields and full source slot membership are accepted; this never updates original files.</p>
+<label>Restore PRIVATE proposal JSON <input id="restore" type="file" accept=".json,application/json"></label>
+<h3>Continue a complete all-agenda human proposal session</h3>
+<p>Open a previously exported ALL-original-agenda private proposal bundle in one step. Original source binding and all prior human values must match before any local draft is replaced. This operation does not edit original files.</p>
+<label>Restore ALL PRIVATE human proposals JSON <input id="restoreAll" type="file" accept=".json,application/json"></label>
+<label class="confirm"><input id="confirmRestoreAll" type="checkbox"> I explicitly want to replace current UNSAVED LOCAL human drafts for all agendas; original source records will remain unchanged.</label>
+</section>
+<section class="panel">
+<h2>Original-source-bound human review fields</h2>
+<p>Original fields are shown read-only. A change here creates an untrusted private proposal, not a saved original finding, scheduled job or approved assessment.</p>
+<div class="scroll"><table><thead><tr>
+<th>Select</th><th>Source slot</th><th>Original source type</th><th>Original stage</th>
+<th>New human stage</th><th>New neutral role</th><th>New proposed date</th><th>Change</th>
+</tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section class="panel"><h2>Local human change preview</h2><p>Only original human planning fields; original source state and hashes cannot be edited. No work is automatically assigned.</p><div class="scroll"><table><thead><tr><th>Original slot</th><th>Changed fields</th><th>Old human value</th><th>Proposed human value</th></tr></thead><tbody id="diffRows"></tbody></table></div></section>
+<section class="panel handoff">
+<h2>Download a private original-bound proposal</h2>
+<p>Select and explicitly download changes for the current agenda. To accept a proposal, the original operator must separately present the original manifest, original human choices, exact original agenda JSON and the downloaded proposal to <code>assessment-portfolio/proposal_return.py</code>; the CLI verifies the complete old human state and generates a new original-schema choices document or HOLD.</p>
+<label class="confirm"><input id="confirm" type="checkbox"> I understand this contains original-source hashes and private human notes; it is not an authorization, verified fix or client consent.</label>
+<button id="download" type="button">Export PRIVATE human proposal JSON</button>
+<h3>All-agenda private human proposal bundle</h3>
+<p>One original-bound JSON bundle for all agendas; no original sources changed.</p>
+<label class="confirm"><input id="confirmAll" type="checkbox"> I explicitly confirm ALL private proposals are human-only, not grants, approvals, evidence or consent.</label>
+<button id="downloadAll" type="button">Export ALL original human proposals</button>
+</section>
+<aside><strong>Never automatically apply or authorize.</strong><p>This private Studio cannot issue grants, access customer assets, validate findings, make human decisions, change original source files or create evidence. A source SHA is not authenticated provenance. Existing original source-owner, mandatory hosted and named VPS CI, privacy/security and separate client/operator consent with revocation and HUMAN GO are required before release or active scanning.</p></aside>
+<footer>Source-bound local HTML · CSP-pinned JS/CSS · no storage · no target/network/model/scan · no approvals</footer>
+<script id="lightupSource" type="application/json">@@PAYLOAD@@</script>
+<script>@@SCRIPT@@</script>
+</body></html>

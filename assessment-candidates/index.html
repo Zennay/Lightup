@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LightUp · Lab Candidate Matrix</title><link rel="stylesheet" href="style.css"></head>
+<body><a class="skip" href="#summary">Skip to matrix</a>
+<header><div class="topline"><span class="brand">◈ LightUp / assessment-runtime</span><span class="posture">INCUBATE · LAB ONLY · DRAFT/HOLD</span></div>
+<h1>Candidate Decision Matrix</h1><p class="lede">Compare <strong>existing, untrusted laboratory outputs</strong> without scanning, deploying or authorizing anything. Every result is a human discussion prompt, never a safety or release verdict.</p>
+<div class="hardline"><strong>NO AUTHORITY</strong><span>client consent: false · operator consent: unverified · dispatch: false · release: false</span></div></header>
+<main>
+<nav class="quicknav" aria-label="Offline workspace sections">
+<a href="#sources">Sources</a><a href="#summary">Candidates</a>
+<a href="#metrics">Metric comparison</a><a href="#thresholdPanel">Discussion rules</a>
+<a href="#frontierPanel">Tradeoffs</a><a href="#casePanel">Case metrics</a>
+<a href="#casework">Human queue</a><a href="#roundsPanel">Review rounds</a><a href="#agendaPanel">Discussion agenda</a><a href="#exportsPanel">Private handoffs</a>
+</nav>
+<section class="panel"><div class="section-head"><h2 id="sources">01 / Local sources</h2><span class="eyebrow">No network · no persistence</span></div>
+<p>Choose 2–12 canonical existing <code>assessment-runtime #1515</code> cohort JSON exports (max 256 KiB each). Sources are validated together before replacing the current view. Filenames, lab IDs, targets and raw content remain in memory.</p>
+<div class="controls"><label class="filelabel">Load existing lab reports<input id="files" type="file" accept=".json,application/json" multiple></label><label class="filelabel">Append one matching candidate<input id="appendFile" type="file" accept=".json,application/json" disabled></label><button id="demo" class="secondary" type="button">Explore fictional demo</button><button id="forget" class="ghost" type="button">Forget all</button></div>
+<p id="message" role="status" aria-live="polite">No source loaded. Fictional demo contains invented figures only.</p><div id="sourceLine" class="statline"></div>
+<p class="footnote">Local-only manifest: exact input sizes, unsigned SHA-256 prefixes and optional reviewer aliases. Avoid client names or secrets in aliases. Source fingerprints and aliases are hidden from printed and aggregate exports.</p>
+<div id="sourceManifest" class="tablewrap" aria-label="Local-only source fingerprints and aliases"></div></section>
+<section class="panel" id="summary"><div class="section-head"><h2>02 / Human review scorecards</h2><span class="eyebrow" id="sourceKind">No data</span></div>
+<p>File order is <strong>not proven chronology</strong>. Scope and policy flags stay visible separately from informational cost/performance.</p><div id="cards" class="cards"><p class="empty">Import existing reports or explore the demo.</p></div></section>
+<section class="panel" id="metrics"><div class="section-head"><h2>02b / All 15 original lab metrics</h2><span class="eyebrow">Source-reported and unverified</span></div>
+<p>Each cell shows its candidate aggregate and the number of cases originally classified adverse for that metric. The baseline is shared across all accepted imports. Improvements never erase a separate adverse metric.</p><div id="metricBoard" class="tablewrap"></div>
+<h3>Direct candidate-to-candidate contrast</h3><p>A difference between two candidate values is descriptive; it is not a new baseline regression assessment or evidence of safety.</p>
+<div class="controls"><label>First candidate<select id="pairA"></select></label><label>Second candidate<select id="pairB"></select></label></div>
+<div id="pairMetrics" class="tablewrap"></div>
+<h3>Source-adverse flag crossover · selected candidate pair</h3>
+<p>Compare original source-reported regression flags for the same laboratory cases. “Only in second” and “only in first” are unverified differences, <strong>not</strong> a chronology, a fix, resolved risk or permission. A case can have more than one flagged metric.</p>
+<div id="pairChurnSummary" class="statline"></div><div id="pairChurn" class="tablewrap"></div>
+<div class="controls"><button id="exportPairCSV" type="button" class="secondary" disabled>Export selected-pair metric comparison (CSV)</button></div>
+<p class="footnote">The CSV contains aggregate metric totals and source-reported adverse-flag crossover only. It excludes case IDs, source filenames and target metadata; all authority and source-authentication flags remain false.</p></section>
+<section class="panel" id="thresholdPanel"><div class="section-head"><h2>03 / Discussion thresholds</h2><span class="eyebrow">Hypothetical only</span></div>
+<p>A threshold breach asks for human discussion. A non-breach never authorizes execution or confirms safety. Controls do not alter original reports.</p>
+<div class="settings">
+<label>Maximum scope violations<input id="maxScope" type="number" min="0" max="1000000" step="1" value="0"></label>
+<label>Maximum policy violations<input id="maxPolicy" type="number" min="0" max="1000000" step="1" value="0"></label>
+<label>Minimum mean evidence quality <small>0.0–1.0</small><input id="minQuality" type="number" min="0" max="1" step=".05" value=".75"></label>
+<label>Minimum total assessed coverage<input id="minCoverage" type="number" min="0" max="1000000000" step="1" value="0"></label>
+<label>Maximum total runtime (seconds) <small>0 disables</small><input id="maxRuntime" type="number" min="0" max="1000000000000" step="1" value="0"></label>
+<label>Maximum total compute cost (USD) <small>0 disables</small><input id="maxCost" type="number" min="0" max="1000000000000" step=".01" value="0"></label>
+</div><p id="thresholdMessage" aria-live="polite" class="eyebrow"></p><div id="thresholds" class="tablewrap"></div></section>
+<section class="panel" id="frontierPanel"><div class="section-head"><h2>04 / Illustrative tradeoff frontier</h2><span class="eyebrow">No ranking grants permission</span></div>
+<p>Only the selected dimensions determine Pareto comparison. <strong>Scope/policy breaches and adverse findings cannot be canceled by efficiency gains.</strong> “Not dominated” describes these untrusted numbers only.</p><fieldset><legend>Dimensions for descriptive Pareto calculation</legend>
+<label><input type="checkbox" id="dimQuality" checked> Higher mean evidence quality</label>
+<label><input type="checkbox" id="dimCoverage" checked> Higher assessed coverage</label>
+<label><input type="checkbox" id="dimRuntime" checked> Lower total runtime</label>
+<label><input type="checkbox" id="dimCost" checked> Lower total cost</label></fieldset>
+<div id="frontier" class="tablewrap"></div></section>
+<section class="panel" id="casePanel"><div class="section-head"><h2>05 / Anonymized case inspection</h2><span class="eyebrow">Case identity stays private</span></div>
+<p>Inspect the same lab case across candidates without revealing the original case ID or target. Imported source-reported data is not independently validated evidence.</p><div class="controls"><label>Case<select id="caseSelect"><option value="">Load reports first</option></select></label><label>Metric<select id="metricSelect"></select></label></div><div id="caseDetail" class="tablewrap"></div></section>
+<section class="panel" id="casework"><div class="section-head"><h2>06 / Cross-candidate human review queue</h2><span class="eyebrow">Anonymous cases · local discussion only</span></div>
+<p>See which original lab cases have adverse source metrics in which candidates. The operations topic instead shows <strong>informational numerical changes</strong> (runtime, cost and operational counters), never safety regressions. Under the all-metrics view, cases with source-reported scope/policy flags appear first. Filter by metric family, candidate slot and locally chosen discussion stage. Labels are human preparation only: no named reviewer, ticket, scan, authorization or real assignment.</p>
+<div class="settings">
+<label>Lab candidate focus<select id="queueCandidate"><option value="all">All candidates</option></select></label>
+<label>Metric topic<select id="queueFamily"><option value="all">All lab metrics</option><option value="scope">Scope and policy</option><option value="findings">Findings and coverage</option><option value="evidence">Evidence and scores</option><option value="operations">Operations information</option></select></label>
+<label>Discussion stage<select id="queueFilter"><option value="all">All stages</option><option value="needs_review">Needs human review</option><option value="in_discussion">In discussion</option><option value="documented">Discussion documented</option></select></label>
+<label>Current anonymous case<select id="queueCase"><option value="">Select after import</option></select></label>
+<label>Proposed reviewer group<select id="queueRoute"><option value="unrouted">No proposed group</option><option value="scope">Human scope reviewer</option><option value="findings">Lab detection reviewer</option><option value="evidence">Evidence reviewer</option><option value="operations">Lab operations reviewer</option></select></label>
+<label>Local discussion stage<select id="queueStage"><option value="needs_review">Needs human review</option><option value="in_discussion">In discussion</option><option value="documented">Discussion documented</option></select></label>
+</div><div class="controls"><button id="saveQueue" type="button" disabled>Save case discussion</button><button id="focusQueue" type="button" class="secondary" disabled>Inspect selected case metrics</button><button id="resetQueue" type="button" class="ghost" disabled>Reset local case discussions</button></div>
+<fieldset><legend>Human discussion batch proposals (visible filtered cases only)</legend>
+<label><input id="queueIncludeNeutral" type="checkbox"> Also show cases with no source-adverse metrics in selected topic</label>
+<label>Batch generic group<select id="bulkRoute"><option value="unchanged">Leave unchanged</option><option value="unrouted">No group proposed</option><option value="scope">Human scope reviewer</option><option value="findings">Lab detection reviewer</option><option value="evidence">Evidence reviewer</option><option value="operations">Lab operations reviewer</option></select></label>
+<label>Batch discussion stage<select id="bulkStage"><option value="unchanged">Leave unchanged</option><option value="needs_review">Needs human review</option><option value="in_discussion">In discussion</option><option value="documented">Discussion documented</option></select></label>
+<div class="controls"><button id="applyBulk" type="button" class="secondary" disabled>Apply to visible cases with confirmation</button><button id="undoBulk" type="button" class="ghost" disabled>Undo last local batch</button></div></fieldset>
+<p id="queueMessage" role="status" aria-live="polite"></p><div id="queueSummary" class="statline"></div><div id="queueRows" class="tablewrap"></div>
+<p class="footnote">A local discussion stage does not prove the source finding was fixed, reviewed by a real person, authorized, consented to, safe, or ready for release. Case ordinals are never included in public aggregate exports.</p></section>
+<section class="panel" id="agendaPanel"><div class="section-head"><h2>07 / Original lab discussion agenda</h2><span class="eyebrow">Human evidence requests · no safety verdict</span></div>
+<p>Four fixed discussion areas summarize original source-reported differences across all locally selected lab candidates. These prompts do not assert root causes, independently verified findings, approvals or remediation. Select an area to filter the anonymous human queue.</p><div id="agendaCards" class="cards"></div></section>
+<section class="panel" id="exportsPanel"><div class="section-head"><h2>08 / Aggregate handoffs</h2><span class="eyebrow">Privacy-minimal · review only</span></div>
+<p>Exports contain fixed metric names, aggregate figures and numbered candidate slots only. No filenames, case IDs, targets, source bytes or permission claims.</p><div class="controls"><button id="exportCSV" type="button" disabled>Export aggregate CSV</button><button id="exportJSON" type="button" class="secondary" disabled>Export review-only JSON</button><button id="exportHTML" type="button" class="secondary" disabled>Download script-free briefing</button><button id="exportCaseCSV" type="button" class="secondary" disabled>Export PRIVATE anonymous case register</button><button id="print" type="button" class="ghost" disabled>Print private review</button></div>
+<div class="panel-inset"><h3>Optional private save/resume</h3><p>Re-import the identical original JSON files in the same selection order before restoring. Private unsigned preference drafts contain source-byte fingerprints and local review settings; never share as a public result or permission.</p>
+<div class="controls"><button id="saveDraft" type="button" class="secondary" disabled>Save PRIVATE preferences</button>
+<label class="filelabel">Restore PRIVATE draft<input id="draftFile" type="file" accept=".json,application/json" disabled></label></div>
+<p id="draftMessage" role="status" aria-live="polite"></p></div>
+<div class="panel-inset" id="roundsPanel"><h3>PRIVATE HUMAN review history (2–8 rounds)</h3>
+<p>After loading the exact original lab reports, choose 2–8 separately saved v2/v3 PRIVATE HUMAN preference drafts in the intended order. Compare all adjacent local generic discussion group/stage changes by anonymous case ordinal, including proposals later reverted. This is neither authenticated chronology nor evidence of a fix, grant or consent. No network, persistent storage or recipient dispatch.</p>
+<div class="controls"><label class="filelabel">Compare 2–8 PRIVATE HUMAN drafts<input id="draftRounds" type="file" accept=".json,application/json" multiple disabled></label>
+<button id="exportRoundsCSV" type="button" class="secondary" disabled>Export PRIVATE changed-only CSV</button><button id="exportRoundsHTML" type="button" class="secondary" disabled>Export PRIVATE printable HUMAN history</button>
+<button id="adoptRound" type="button" class="ghost" disabled>Use ALL last-round HUMAN suggestions</button>
+<button id="selectVisibleRounds" type="button" class="secondary" disabled>Select visible changes</button>
+<button id="clearSelectedRounds" type="button" class="ghost" disabled>Clear selection</button>
+<button id="adoptSelected" type="button" disabled>Apply SELECTED last-round HUMAN changes</button></div>
+<p id="selectedRoundsCount" aria-live="polite"></p>
+<label>Visible HUMAN changes<select id="roundFilter">
+<option value="all">All changed case suggestions</option>
+<option value="repeated">Two or more round transitions</option>
+<option value="reverted">Returned to first suggestion</option></select></label>
+<p id="roundsMessage" role="status" aria-live="polite"></p>
+<div id="roundsSummary" class="statline"></div>
+<div id="roundsTable" class="tablewrap"></div>
+<div id="roundDetail" class="tablewrap" aria-live="polite"></div></div>
+<p class="footnote">Matching original snapshots is not cryptographic provenance. Separate client and operator consent, action-time revocation, source-owner security repairs, independent security/privacy review, exact-HEAD hosted and permanent registered VPS CI and explicit HUMAN GO are mandatory before any real release.</p></section>
+</main><footer>LightUp · local human discussion only · no production authorization · <a href="https://github.com/Zennay/Lightup/issues/1591">Work item #1591</a></footer>
+<script src="app.js" defer></script></body></html>

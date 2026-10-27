@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer"><title>LightUp | PRIVATE Reviewer Reply</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<header><div class="eyebrow">LIGHTUP / PRIVATE HUMAN REVIEW EXCHANGE</div>
+<h1>Recipient Reply Desk</h1><p>Receive a deliberately selected PRIVATE operator packet, propose human follow-up changes and return the complete source-bound reply. Nothing grants assessment permissions, verifies identities, accesses a target or submits evidence.</p>
+<div class="hold">PRIVATE · HUMAN-ONLY · DRAFT/HOLD · NOT VERIFIED SECURITY EVIDENCE</div></header>
+<main><section><h2>1. Import the PRIVATE operator handoff</h2>
+<p>Only a separately delivered <code>PRIVATE-lab-reviewer-handoff.json</code> produced by the operator is accepted. Titles and human notes may be confidential. The source fingerprint is unsigned, not proof of the operator’s identity, client consent, scope or authenticity.</p>
+<label class="upload" for="upload">Open PRIVATE handoff<input id="upload" type="file" accept=".json,application/json"></label>
+<p id="status" role="status" aria-live="polite"></p></section>
+<section id="workspace" hidden><h2>2. Edit the four HUMAN fields</h2>
+<p>Original severity, title, local endpoint ordinal, baseline human values, source fingerprint and false authority flags are read-only. Your proposed review role is generic and does not assign an authenticated account. The original lab evidence is not included.</p>
+<div class="toolbar"><label>Filter <select id="filter"><option value="">All selected rows</option>
+<optgroup label="Source-reported severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup>
+<optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label>
+<span id="count"></span></div>
+<div class="bulkbar"><strong>Bulk HUMAN proposals for currently visible original findings</strong>
+<div class="toolbar"><label>Stage <select id="bulkStage"><option value="">Keep original</option>
+<option value="needs_review">Needs review</option><option value="discussing">Discussing</option>
+<option value="documented">Documented</option><option value="blocked">Blocked</option></select></label>
+<label>Group <select id="bulkGroup"><option value="">Keep original</option><option value="unassigned">Unassigned</option>
+<option value="scope">Scope</option><option value="findings">Findings</option><option value="evidence">Evidence</option>
+<option value="remediation">Remediation</option></select></label>
+<button id="bulkApply" type="button">Propose for visible rows</button>
+<button id="bulkUndo" type="button" class="quiet">Undo recipient batch</button></div>
+<p class="note">Only stage/group proposals change. Original titles, source data, original human baseline and individual action/blocker remain untouched.</p></div>
+<div id="rows" class="cards"></div>
+<h2>3. Preview differences before returning</h2>
+<div class="toolbar"><button id="previewBtn" type="button">Preview HUMAN changes</button>
+<button id="export" type="button" disabled>Export PRIVATE reviewer reply</button>
+<label class="upload" for="resume">Resume exact PRIVATE reply<input type="file" id="resume" accept=".json,application/json"></label>
+<button id="forget" type="button" class="quiet">Forget local handoff</button></div>
+<div id="preview" class="table-wrap" role="region" aria-label="PRIVATE human changes"></div>
+<p class="note">Any edit after preview requires another review before export. Operator must reopen original unchanged PRIVATE lab source, verify its existing local human baseline and explicitly accept returned changes. Neither recipient nor operator can grant work, claim verified remediation or produce actual client consent with these files.</p>
+</section><section class="gates"><h2>Never an authority</h2><p>INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD. Original source owner, exact-head hosted + permanently registered VPS CI, independent privacy/security approval, authentic separately authenticated client/operator consent with action-time revocation, #177/#182/#829 and explicit HUMAN GO remain mandatory. No network, target interaction, browser persistence, auth grant or production deployment occurs here.</p></section></main>
+<footer>PRIVATE human notes only · No identity, findings, consent or release verified.</footer>
+<script src="team-reply.js" defer></script></body></html>

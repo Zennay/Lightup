@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'">
+<title>LightUp · Offline HUMAN Attention Workboard</title>
+<style>
+:root{color-scheme:dark;font:16px/1.55 system-ui,sans-serif;background:#091624;color:#e8f4ff}
+*{box-sizing:border-box}body{margin:auto;max-width:1420px;padding:22px 18px 70px}
+header,.block,footer{background:#14283a;border:1px solid #34556d;border-radius:18px;margin-bottom:18px;padding:24px}
+h1{font-size:clamp(1.9rem,4vw,2.8rem);line-height:1.2;margin:5px 0 16px}
+h2{font-size:1.3rem;margin:4px 0 12px}
+p{margin:12px 0;color:#caddeb}.eyebrow{color:#99c9e7;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:.8rem}
+.warn{color:#f7d6a0;font-weight:700}strong{color:#f5fbff}.control{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+button,.file-control{border:1px solid #8aadc3;border-radius:9px;background:#254964;color:#fff;font:inherit;padding:10px 14px;cursor:pointer}
+button:hover,.file-control:hover{background:#356181}
+button:focus-visible,select:focus-visible,input:focus-visible,.file-control:focus-within{outline:3px solid #add9f8;outline-offset:3px}
+.file-control{position:relative}.file-control input{position:absolute;opacity:0;width:1px;height:1px}
+.filters{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}
+.filters label{flex:1;min-width:200px;color:#cce3f3}
+.filters select,.filters input{margin-top:5px;width:100%;background:#19384f;color:#fff;border:1px solid #779bb4;border-radius:8px;padding:10px;font:inherit}
+.metrics{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.metric{background:#0e2132;padding:16px;border:1px solid #45627a;border-radius:12px}
+.metric p{margin-bottom:0}.scroll{overflow-x:auto;max-width:100%}
+table{width:100%;border-collapse:collapse;min-width:1110px}
+th,td{padding:12px 9px;text-align:left;border-bottom:1px solid #44617a;vertical-align:top}
+th{color:#b4e0ff}td:first-child{font-weight:650;min-width:245px}
+td select{max-width:240px;width:100%;background:#213e57;color:#fff;font:inherit;border:1px solid #7b9cb3;border-radius:7px;padding:9px}
+tr[hidden]{display:none}tr:hover{background:#1d374b}
+#message{min-height:2.2em;font-weight:700;color:#f5d9ae}
+#board[hidden]{display:none}
+.help{border-left:4px solid #eab66e;padding:10px 17px;background:#233341}
+a{color:#bce4ff}a:focus-visible{outline:3px solid #add9f8}
+@media(max-width:650px){body{padding:8px}.block,header,footer{padding:16px}button,.file-control{width:100%;text-align:center}}
+@media print{body{background:white;color:black}header,.block,footer{background:white;color:black;border-color:#777}.control,.filters{display:none}p,strong,th{color:black}}
+</style>
+<script defer src="human-lab-attention.js"></script></head>
+<body><header>
+<div class="eyebrow">LightUp / assessment-runtime / PRIVATE offline</div>
+<h1>HUMAN Attention Workboard</h1>
+<p class="warn">INCUBATE M3/M7 · PLAN/LAB ONLY · REVIEW_ONLY · DRAFT/HOLD</p>
+<p>Turn up to eight <strong>already-exported source-free HUMAN Lab Route reports</strong> into one private, actionable <em>discussion proposal</em>. See which of the twenty original steps need a source holder, a HUMAN discussion or a future reviewer. This is <strong>not a task assignment, assessment execution or security verdict.</strong></p>
+</header>
+<section class="block"><h2>1 · Load previous HUMAN discussion reports</h2>
+<p>Open one to eight JSON files produced by the existing <a href="human-lab-route-standalone.html">one-file HUMAN Lab Route Desk</a> (or its paired HTML/JS edition). File chooser order is a <strong>human assumption</strong>, not verified chronology. Every report must contain exactly the original twenty actions, all literal false authority flags and no customer source. Duplicate names, unknown fields, repeated identical reports and input larger than 24 KiB per file are rejected before any previous workboard is replaced.</p>
+<div class="control">
+<label class="file-control">Select 1–8 local HUMAN self-reports<input type="file" id="imports" accept=".json,application/json" multiple></label>
+<button type="button" id="clear">Clear local workspace</button>
+</div><p role="status" aria-live="polite" id="message">No source-free HUMAN reports loaded; no data is saved automatically.</p>
+<p class="help">Only use manually reviewed, already-created offline HUMAN self-reports. Do not select real lab results, network captures, client documents, authorization packets, credentials, or tenant data. A self-report marker is not evidence that the corresponding native step ran.</p>
+</section>
+<div id="board" hidden>
+<section class="block"><h2>2 · Attention across original five review stages</h2>
+<p id="summary" aria-live="polite"></p>
+<div id="metrics" class="metrics"></div>
+</section>
+<section class="block"><h2>3 · Propose roles and HUMAN follow-up</h2>
+<p>The last selected report gives the <em>self-reported</em> state. Change counts reflect only the user-chosen sequence. All proposed roles start unassigned and all follow-ups start untriaged. Neither is an actual assignment or message. Only source-free, fixed enum values are accepted. Every one of the original twenty actions remains in complete exports even when filtered out.</p>
+<div class="filters">
+<label>Find action <input id="search" type="search" maxlength="100" autocomplete="off" placeholder="Number or original action title"></label>
+<label>Focus<select id="focus">
+<option value="">All 20 actions</option>
+<option value="needs">Last round: needs original input</option>
+<option value="pending">Not marked discussed</option>
+<option value="changed">Changed across selected rounds</option>
+<option value="repeat">Repeatedly changed</option>
+<option value="unrouted">No local follow-up proposal</option>
+</select></label>
+<label>Phase<select id="phase">
+<option value="">All five original phases</option>
+<option value="0">Offline proposals</option>
+<option value="1">Source-bound human review</option>
+<option value="2">Team feedback</option>
+<option value="3">Multi-round continuation</option>
+<option value="4">Conflict reconciliation</option>
+</select></label>
+</div>
+<p id="shown" aria-live="polite"></p>
+<div class="control"><button type="button" id="bulk">Visible NEEDS_INPUT: propose original-input request</button></div>
+<div class="scroll"><table><thead><tr>
+<th>Original native step</th><th>Stage</th><th>Last HUMAN self-report</th><th>Changes*</th><th>Proposed reviewer role</th><th>Proposed HUMAN follow-up</th>
+</tr></thead><tbody id="rows"></tbody></table></div>
+<p class="help">*Repeated markers do not prove work age, chronology, real deterioration, remediation, identity or approval. Bulk action only changes currently visible, self-reported NEEDS_INPUT rows, after explicit human confirmation. No network, recipient dispatch or grant action exists.</p>
+</section>
+<section class="block"><h2>4 · Export complete private HUMAN workboard</h2>
+<p>All three outputs preserve the full twenty-row original action roster with fixed state/role/follow-up enums and all four authority flags false. JSON also records source-free per-round marker profiles, allowing private reopen only after the exact same original self-report markers are reloaded in the exact same manually selected order. Older unsigned reports cannot be silently promoted or rebound. The JSON is <strong>not</strong> a native source receipt, and the CSV/HTML are private discussion aids only. No source paths, original notes, file names, client IDs, targets, credentials or reviewer identities are copied into these outputs.</p>
+<div class="control">
+<label class="file-control">Reopen source-matched HUMAN proposal (JSON)<input type="file" id="restore" accept=".json,application/json"></label>
+<button type="button" id="json">Save full HUMAN proposal (JSON)</button>
+<button type="button" id="csv">Export complete HUMAN workboard (CSV)</button>
+<button type="button" id="html">Save scriptless HUMAN briefing (HTML)</button>
+</div>
+</section>
+</div>
+<footer><h2>Authority remains outside this offline app</h2>
+<p class="warn">No permission to scan, no grant, no completed original assessment, no verified findings, no consent or release.</p>
+<p>Original source admission, owner-only PRIVATE file custody, original HUMAN finalization, exact-head hosted and permanently registered named VPS CI, source-owner and independent privacy/security/browser review, #177/#182/#829, separately authenticated current client/operator consent with action-time revocation and explicit HUMAN GO are separate and mandatory. Notion: INCUBATE M3/M7 PLAN/LAB ONLY. Do not publish private HUMAN outputs or treat them as evidence of actual execution.</p>
+<p>Local memory only. No external scripts, fetch, cookies, LocalStorage, IndexedDB, scanner, model, timer-based action or silent exports.</p>
+</footer>
+</body></html>

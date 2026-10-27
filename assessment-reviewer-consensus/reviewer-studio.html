@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gnzuyq2ncC7q76ROe3Y/UtfJpbVNLIEyinbYhLj1TAA='; style-src 'sha256-peguHx6DyjlbxVxNl+hSc/lETjyAgwUrGWmhhIwOXBQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE HUMAN Reviewer Studio</title><style>:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}*{box-sizing:border-box}body{background:#0b1725;color:#eef5ff;margin:0;line-height:1.5}main{max-width:1190px;margin:0 auto;padding:26px 20px 65px}header{padding:28px 0;border-bottom:1px solid #405369}h1{font-size:clamp(1.65rem,4vw,2.5rem);margin:8px 0}h2{font-size:1.3rem}h3{font-size:1.1rem}p{max-width:90ch}small,.muted{color:#bac9d8}.eyebrow{text-transform:uppercase;letter-spacing:.12em;color:#aacff3;font-size:.78rem;font-weight:700}.panel{background:#17263a;border:1px solid #3b556b;padding:20px;margin-top:18px;border-radius:12px}.warning{border-left:4px solid #ebc46e;padding:12px 16px;background:#2b2b2c}label{display:block;font-weight:600;margin:10px 0}input,select,button{font:inherit;padding:10px;background:#102033;border:1px solid #89a5bb;color:#f3f7ff;border-radius:7px;max-width:100%}input[type=file]{width:100%}button{cursor:pointer;background:#dbeafb;color:#081321;font-weight:700;border:0;margin:5px 6px 5px 0}button:disabled{opacity:.4;cursor:not-allowed}.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.toolbar label{margin:0}.toolbar input{min-width:130px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #43556c;text-align:left;vertical-align:top;padding:10px}th{color:#c7dced}.scroll{overflow:auto}.small{font-size:.82rem;min-width:270px;color:#d3e0ee}.bad{color:#ffb3b5}.good{color:#b2ebcb}#status{min-height:1.6em}select:focus,button:focus,input:focus{outline:3px solid #8cd4ff;outline-offset:2px}@media(max-width:700px){main{padding:12px}th,td{font-size:.82rem;padding:7px}.panel{padding:13px}}</style></head><body>
+<main><header><div class="eyebrow">LIGHTUP · ASSESSMENT RUNTIME · OFFLINE / PRIVATE</div>
+<h1>Reviewer Consensus Studio</h1>
+<p>Import 2–8 existing original PRIVATE HUMAN review plans, find differing HUMAN choices, resolve them deliberately, and export a source-byte-bound proposal for the original LightUp workroom.</p>
+<p class="warning"><strong>REVIEW ONLY · DRAFT/HOLD</strong> — No network, scanner, source verification, authorization, customer consent, independent reviewer authentication or verified security findings. Hashes alone are not evidence or signatures.</p></header>
+<section class="panel" aria-labelledby="loadHeading">
+<h2 id="loadHeading">1 · Open existing PRIVATE reviewer plans</h2>
+<label for="files">Select 2–8 original plaintext (≤3 MiB) or encrypted (≤5 MiB) HUMAN matrix JSON plans</label>
+<input id="files" type="file" multiple accept=".json,application/json">
+<p class="muted">Each plan must correspond to exactly the same original selected lab source file bytes, in the same order. The original sources themselves are not loaded, needed or modified here. The original #1667 PRIVATE HUMAN AES-GCM envelope is decrypted locally after prompting individually for each encrypted file. Passwords are not exported or stored by this page.</p>
+<p id="status" role="status" aria-live="polite">No PRIVATE plans loaded.</p>
+<div class="actions"><button type="button" id="forget">Clear all local in-memory choices</button></div></section>
+<section class="panel" aria-labelledby="workspaceHeading">
+<h2 id="workspaceHeading">2 · Portable encrypted PRIVATE reviewer workspace</h2>
+<p>Save or restore <strong>all admitted original HUMAN plans and conflict choices together</strong> as one local AES-256-GCM encrypted workspace. This is distinct from a merged plan and from an ORIGINAL lab+evidence source workroom: no target or evidence bytes are stored by this reviewer app.</p>
+<div class="actions"><button id="saveWorkspace" type="button" disabled>Download encrypted complete reviewer workspace</button></div>
+<label for="loadWorkspace">Open earlier complete PRIVATE encrypted reviewer workspace (maximum 40 MiB)</label>
+<input id="loadWorkspace" type="file" accept=".json,application/json">
+<p class="muted">A local passphrase is required; there is no account, recovery service, network, browser storage or automatic restore. This file can contain sensitive original source hashes, human choices, and full PRIVATE human plan content. The whole restored batch is strictly readmitted before replacing the current in-memory review. Encryption does not authenticate source identity, client consent or scan authority.</p>
+</section>
+<section class="panel" aria-labelledby="resolveHeading"><h2 id="resolveHeading">3 · Human review and resolution</h2>
+<p id="summary" aria-live="polite">No reviewer plans loaded.</p>
+<div class="toolbar"><label for="filter">Show</label><select id="filter"><option value="all">All conflicts</option><option value="pending">Unresolved / HOLD</option><option value="resolved">Resolved</option></select>
+<label for="search">Original row ordinal or field</label><input id="search" type="search" placeholder="e.g. 42 or stage"></div>
+<div class="scroll"><table><thead><tr><th>Original row</th><th>HUMAN field</th><th>Reviewer proposals (not identities)</th><th>Choose submitted value</th></tr></thead><tbody id="reviewRows"></tbody></table></div>
+<div class="actions"><button id="previous" type="button">Previous</button><span id="pages">No HUMAN conflicts.</span><button id="next" type="button">Next</button></div>
+<p class="muted">Defaults indicate no proposal. A single non-default selection is only an uncontested HUMAN suggestion, never an authenticated agreement. Conflicting non-defaults remain on HOLD until explicitly resolved.</p></section>
+<section class="panel" aria-labelledby="matrixHeading">
+<h2 id="matrixHeading">4 · Original HUMAN row and reviewer proposal explorer</h2>
+<p>View <strong>every original row</strong>, not only rows that conflict. This makes uncontested HUMAN suggestions visible instead of treating them as invisible agreement. Reviewer slots are ordinal positions, never authenticated people.</p>
+<div class="toolbar">
+<label for="matrixFilter">Row class</label>
+<select id="matrixFilter"><option value="all">All original rows</option><option value="conflicts">Conflicting HUMAN rows</option><option value="proposals">Uncontested HUMAN proposals</option><option value="neutral">No HUMAN proposal</option></select>
+<label for="matrixSearch">Original row ordinal</label><input id="matrixSearch" type="search" placeholder="e.g. 42"></div>
+<p id="matrixSummary" class="muted">Load an original PRIVATE reviewer batch to inspect its complete HUMAN row set.</p>
+<div class="scroll"><table><thead><tr><th>Original ordinal</th><th>Review state</th><th>Merged HUMAN-only proposal</th><th>Original reviewer positions</th><th>Follow-up</th></tr></thead><tbody id="matrixRows"></tbody></table></div>
+<div class="actions"><button id="matrixPrevious" type="button" disabled>Previous 80</button><span id="matrixPages">No original row inventory</span><button id="matrixNext" type="button" disabled>Next 80</button></div>
+<p class="muted">The row explorer is a transparent view of previously submitted human selections; it never changes original lab findings, validates vulnerabilities, grants authority or identifies reviewers.</p>
+</section>
+<section class="panel" aria-labelledby="exportHeading"><h2 id="exportHeading">5 · Export, resume or hand off</h2>
+<div class="actions"><button id="export" type="button" disabled>Download merged PRIVATE original-format plan</button>
+<button id="encryptedExport" type="button" disabled>Download ENCRYPTED PRIVATE merged plan</button>
+<button id="saveDraft" type="button" disabled>Save PRIVATE session decisions</button>
+<button id="counts" type="button" disabled>Download counts only</button></div>
+<label for="loadDraft">Reopen saved PRIVATE reviewer decisions (must match exact ordered plan bytes)</label><input id="loadDraft" type="file" accept=".json,application/json">
+<p class="muted">The original LightUp coverage workroom must independently re-admit the exported original-format plan against the exact same original completed lab source bytes and request a human confirmation. This app does not issue a scan, grant, verified finding, authenticated reviewer attribution or release approval. Use the optional ENCRYPTED export to avoid a plaintext merged plan download. The original app accepts the authenticated AES-GCM PRIVATE HUMAN v1 plan envelope. Locally downloaded files remain your responsibility to protect.</p></section>
+</main><script>"use strict";
+/* READ-ONLY compatibility with original PR #1667 encrypted PRIVATE HUMAN v1 plans.
+ * This is not source authentication, client permission or an execution capability.
+ * All decryption occurs locally; no plan or passphrase is transmitted/stored. */
+const LIGHTUP_ORIGINAL_ENCRYPTED_PLAN_KIND = "lightup.private_human_matrix_aesgcm";
+async function decryptOriginalHumanPlan(envelope, passphrase) {
+  const keys=["kind","version","kdf","iterations","cipher","salt_b64","iv_b64","payload_b64"];
+  const fail=(ok)=>{if(!ok)throw Error("HOLD: incompatible encrypted PRIVATE HUMAN plan");};
+  fail(envelope!==null&&typeof envelope==="object"&&!Array.isArray(envelope)&&
+    Object.keys(envelope).length===keys.length&&keys.every(k=>Object.hasOwn(envelope,k)));
+  fail(envelope.kind===LIGHTUP_ORIGINAL_ENCRYPTED_PLAN_KIND&&
+    envelope.version===1&&envelope.kdf==="PBKDF2-SHA256"&&
+    envelope.iterations===310000&&envelope.cipher==="AES-256-GCM");
+  fail(globalThis.crypto&&crypto.subtle&&crypto.getRandomValues&&
+    globalThis.TextEncoder&&globalThis.TextDecoder);
+  fail(typeof passphrase==="string"&&passphrase.length>=12&&passphrase.length<=256&&
+    !/[\u0000-\u001f\u007f]/.test(passphrase));
+  const maxText=3*1024*1024;
+  const base64ToBytes=(value, limit)=>{
+    fail(typeof value==="string"&&value.length>=4&&
+      value.length<=Math.ceil(limit/3)*4+4&&
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value));
+    const raw=atob(value);
+    fail(raw.length<=limit);
+    const bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    let canonical="";
+    for(let i=0;i<bytes.length;i+=16384)canonical+=String.fromCharCode(...bytes.subarray(i,i+16384));
+    fail(btoa(canonical)===value);
+    return bytes;
+  };
+  const salt=base64ToBytes(envelope.salt_b64,16);
+  const iv=base64ToBytes(envelope.iv_b64,12);
+  const ciphertext=base64ToBytes(envelope.payload_b64,maxText+16);
+  fail(salt.length===16&&iv.length===12&&ciphertext.length>=17);
+  try {
+    const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(passphrase),
+      "PBKDF2",false,["deriveKey"]);
+    const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+      material,{name:"AES-GCM",length:256},false,["decrypt"]);
+    const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ciphertext);
+    fail(plain.byteLength>0&&plain.byteLength<=maxText);
+    return new TextDecoder("utf-8",{fatal:true}).decode(plain);
+  } catch {
+    throw Error("HOLD: wrong PRIVATE plan passphrase, changed bytes or unsupported source");
+  }
+}
+
+"use strict";
+/* Original LightUp PRIVATE HUMAN v1 plan envelope writer (local only).
+ * Compatible with unmodified original #1667 private-plan-crypto.js.
+ * Encryption provides confidentiality/integrity relative to a local password,
+ * NOT original-source authentication, independent review or permission. */
+async function encryptOriginalHumanPlan(plain, passphrase) {
+  const fail=ok=>{if(!ok)throw Error("HOLD: invalid PRIVATE encrypted HUMAN plan export");};
+  fail(globalThis.crypto&&crypto.subtle&&crypto.getRandomValues);
+  fail(typeof plain==="string");
+  fail(typeof passphrase==="string"&&passphrase.length>=12&&passphrase.length<=256&&
+    !/[\u0000-\u001f\u007f]/.test(passphrase));
+  const bytes=new TextEncoder().encode(plain);
+  fail(bytes.length>0&&bytes.length<=3*1024*1024);
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(passphrase),
+    "PBKDF2",false,["deriveKey"]);
+  const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+    material,{name:"AES-GCM",length:256},false,["encrypt"]);
+  const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,bytes));
+  const base64 = arr => {
+    let raw="";
+    for(let i=0;i<arr.length;i+=16384)
+      raw+=String.fromCharCode(...arr.subarray(i,i+16384));
+    return btoa(raw);
+  };
+  return {
+    kind:"lightup.private_human_matrix_aesgcm",
+    version:1,kdf:"PBKDF2-SHA256",iterations:310000,cipher:"AES-256-GCM",
+    salt_b64:base64(salt),iv_b64:base64(iv),payload_b64:base64(ciphertext)
+  };
+}
+
+"use strict";
+/* Offline PRIVATE reviewer workspace transport. Not original producer evidence or authority.
+ * Own domain-separation AAD prevents reinterpretation as an original HUMAN plan envelope.
+ * Payloads can contain original PRIVATE source SHA256 and all reviewer HUMAN choices.
+ */
+const LIGHTUP_REVIEWER_WORKSPACE_KIND="lightup.private_reviewer_consensus_workspace_aesgcm";
+const LIGHTUP_REVIEWER_WORKSPACE_AAD="lightup.private_reviewer_consensus_workspace_aesgcm|v1";
+const LIGHTUP_REVIEWER_WORKSPACE_TEXT_LIMIT=28*1024*1024;
+const LIGHTUP_REVIEWER_WORKSPACE_CIPHER_LIMIT=LIGHTUP_REVIEWER_WORKSPACE_TEXT_LIMIT+16;
+function reviewerWorkspaceEnvelopeFields(obj){
+  const keys=["kind","version","kdf","iterations","cipher","salt_b64","iv_b64","payload_b64"];
+  return obj!==null&&typeof obj==="object"&&!Array.isArray(obj)&&
+    Object.keys(obj).length===keys.length&&keys.every(k=>Object.hasOwn(obj,k));
+}
+function reviewerWorkspacePassword(password){
+  if(typeof password!=="string"||password.length<12||password.length>256||
+    /[\u0000-\u001f\u007f]/.test(password))
+    throw Error("Choose a local passphrase 12–256 characters without control characters");
+  return password;
+}
+function reviewerBytesToBase64(bytes){
+  let text="";
+  for(let i=0;i<bytes.length;i+=16384)
+    text+=String.fromCharCode(...bytes.subarray(i,i+16384));
+  return btoa(text);
+}
+function reviewerBase64ToBytes(text,max){
+  if(typeof text!=="string"||text.length<4||
+    text.length>Math.ceil(max/3)*4+4||
+    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(text))
+    throw Error("Invalid bounded PRIVATE reviewer workspace encoding");
+  const decoded=atob(text);
+  if(decoded.length>max)throw Error("PRIVATE reviewer workspace exceeds bounded input");
+  const bytes=Uint8Array.from(decoded,char=>char.charCodeAt(0));
+  if(reviewerBytesToBase64(bytes)!==text)
+    throw Error("Noncanonical PRIVATE reviewer workspace encoding");
+  return bytes;
+}
+async function reviewerWorkspaceKey(password,salt){
+  if(!globalThis.crypto||!crypto.subtle||!crypto.getRandomValues)
+    throw Error("Local WebCrypto is unavailable");
+  const encoded=new TextEncoder().encode(reviewerWorkspacePassword(password));
+  const material=await crypto.subtle.importKey("raw",encoded,"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,
+    hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function sealReviewerWorkspace(text,password) {
+  if(typeof text!=="string")throw Error("Invalid PRIVATE workspace body");
+  const payload=new TextEncoder().encode(text);
+  if(!payload.length||payload.length>LIGHTUP_REVIEWER_WORKSPACE_TEXT_LIMIT)
+    throw Error("PRIVATE review bundle exceeds 28 MiB");
+  reviewerWorkspacePassword(password);
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await reviewerWorkspaceKey(password,salt);
+  const aad=new TextEncoder().encode(LIGHTUP_REVIEWER_WORKSPACE_AAD);
+  const encrypted=new Uint8Array(await crypto.subtle.encrypt({
+    name:"AES-GCM",iv,additionalData:aad},key,payload));
+  return {kind:LIGHTUP_REVIEWER_WORKSPACE_KIND,version:1,kdf:"PBKDF2-SHA256",
+    iterations:310000,cipher:"AES-256-GCM",salt_b64:reviewerBytesToBase64(salt),
+    iv_b64:reviewerBytesToBase64(iv),payload_b64:reviewerBytesToBase64(encrypted)};
+}
+async function unsealReviewerWorkspace(envelope,password) {
+  if(!reviewerWorkspaceEnvelopeFields(envelope)||
+    envelope.kind!==LIGHTUP_REVIEWER_WORKSPACE_KIND||envelope.version!==1||
+    envelope.kdf!=="PBKDF2-SHA256"||envelope.iterations!==310000||
+    envelope.cipher!=="AES-256-GCM")
+    throw Error("Unsupported PRIVATE reviewer workspace envelope; cannot admit");
+  const salt=reviewerBase64ToBytes(envelope.salt_b64,16);
+  const iv=reviewerBase64ToBytes(envelope.iv_b64,12);
+  const ct=reviewerBase64ToBytes(envelope.payload_b64,LIGHTUP_REVIEWER_WORKSPACE_CIPHER_LIMIT);
+  if(salt.length!==16||iv.length!==12||ct.length<17)
+    throw Error("Invalid bounded PRIVATE reviewer workspace nonce/salt/payload");
+  const key=await reviewerWorkspaceKey(password,salt);
+  const aad=new TextEncoder().encode(LIGHTUP_REVIEWER_WORKSPACE_AAD);
+  try{
+    const payload=await crypto.subtle.decrypt({name:"AES-GCM",iv,additionalData:aad},key,ct);
+    if(!payload.byteLength||payload.byteLength>LIGHTUP_REVIEWER_WORKSPACE_TEXT_LIMIT)
+      throw Error("Workspace size HOLD");
+    return new TextDecoder("utf-8",{fatal:true}).decode(payload);
+  }catch{
+    throw Error("Cannot open PRIVATE reviewer workspace: wrong passphrase, changed ciphertext or incompatible content");
+  }
+}
+
+"use strict";
+/* LightUp PRIVATE HUMAN Reviewer Studio. No target execution or authority. */
+(function () {
+  const $ = id => document.getElementById(id);
+  const MAX = 3 * 1024 * 1024, MAX_DRAFT = 4 * 1024 * 1024;
+  const FIELDS = ["stage", "route", "action"];
+  const OPTIONS = {
+    stage: ["needs_review", "queued", "discussing", "documented", "blocked"],
+    route: ["unassigned", "scope", "findings", "evidence", "remediation", "privacy"],
+    action: ["none", "clarify_source", "review_scope_policy", "request_evidence_review",
+      "discuss_declared_difference", "prepare_private_human_brief",
+      "request_independent_human_review"]
+  };
+  const DEFAULT = {stage: "needs_review", route: "unassigned", action: "none"};
+  const FLAGS = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
+  const PLAN_KEYS = ["kind", "version", "disposition", ...FLAGS, "source_sha256",
+    "ordered_row_count", "row_plans", "interpretation"];
+  const ENTRY_KEYS = ["ordinal", ...FIELDS];
+  const DRAFT_KEYS = ["kind", "version", "source_sha256", "ordered_row_count",
+    "reviewer_plan_sha256", "resolutions", "disposition"];
+  const DRAFT_ENTRY = ["ordinal", "field", "value"];
+  let state = null, decisions = new Map(), page = 0, filter = "all";
+  const plain = o => o !== null && typeof o === "object" && !Array.isArray(o);
+  const exact = (o, fields) => plain(o) && Object.keys(o).length === fields.length &&
+    fields.every(k => Object.hasOwn(o,k));
+  const guard = (ok, explanation) => {if (!ok) throw Error(explanation || "PRIVATE admission HOLD");};
+  const isInt = (v, min, max) => Number.isSafeInteger(v) && v >= min && v <= max;
+  const validDigest = s => typeof s === "string" && /^[0-9a-f]{64}$/.test(s);
+  const msg = (s, bad=false) => { $("status").textContent = s; $("status").className = bad ? "bad" : "good"; };
+  function strictParse(raw) {
+    let pos=0, count=0;
+    const whitespace=()=>{while(pos<raw.length && /[ \t\r\n]/.test(raw[pos]))pos++;};
+    function readString() {
+      guard(raw[pos] === '"', "Expected JSON string");
+      const start=pos++;let escaped=false;
+      while(pos<raw.length) {
+        const ch=raw[pos++];
+        if(ch === '"' && !escaped) return JSON.parse(raw.slice(start,pos));
+        if(ch === "\\" && !escaped) escaped=true; else escaped=false;
+      }
+      throw Error("Unterminated JSON string");
+    }
+    function parse(depth) {
+      guard(depth < 32 && ++count <= 200000, "PRIVATE JSON structure too large");
+      whitespace();
+      const c=raw[pos];
+      if(c==='"')return readString();
+      if(c==="{") {
+        pos++;const result=Object.create(null),seen=new Set();whitespace();
+        if(raw[pos]==="}"){pos++;return result;}
+        while(true) {
+          whitespace();const key=readString();guard(!seen.has(key), "Duplicate PRIVATE JSON key");
+          seen.add(key);whitespace();guard(raw[pos++]===":", "Invalid JSON object");
+          result[key]=parse(depth+1);whitespace();
+          if(raw[pos]==="}"){pos++;return result;}
+          guard(raw[pos++]===",", "Invalid JSON object separator");
+        }
+      }
+      if(c==="[") {
+        pos++;const result=[];whitespace();
+        if(raw[pos]==="]"){pos++;return result;}
+        while(true){
+          guard(result.length<200000, "Too many PRIVATE JSON elements");
+          result.push(parse(depth+1));whitespace();
+          if(raw[pos]==="]"){pos++;return result;}
+          guard(raw[pos++]===",", "Invalid JSON list separator");
+        }
+      }
+      for(const [word,value] of [["true",true],["false",false],["null",null]]) {
+        if(raw.startsWith(word,pos)){pos+=word.length;return value;}
+      }
+      const match=raw.slice(pos).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
+      guard(!!match, "Invalid JSON value");
+      pos+=match[0].length;
+      const value=Number(match[0]);guard(Number.isFinite(value), "Invalid numeric value");
+      return value;
+    }
+    const result=parse(0);whitespace();guard(pos===raw.length, "Trailing PRIVATE JSON bytes");
+    return result;
+  }
+  const equal = (a,b) => a.length===b.length && a.every((v,i)=>v===b[i]);
+  function admitPlan(plan) {
+    guard(exact(plan,PLAN_KEYS) && plan.kind==="lightup.private_original_lab_human_matrix_plan" &&
+      plan.version===1 && plan.disposition==="REVIEW_ONLY_DRAFT_HOLD",
+      "Original HUMAN plan v1 structure/disposition required");
+    guard(FLAGS.every(key=>plan[key]===false), "Authority flag not literally false");
+    const hashes=plan.source_sha256,n=plan.ordered_row_count;
+    guard(Array.isArray(hashes) && hashes.length>=2 && hashes.length<=8 &&
+      hashes.every(validDigest), "Invalid ordered original-source SHA-256 list");
+    guard(isInt(n,1,16384) && typeof plan.interpretation==="string" &&
+      plan.interpretation.length>=1 && plan.interpretation.length<=1024 &&
+      Array.isArray(plan.row_plans) && plan.row_plans.length<=n, "Invalid original HUMAN row envelope");
+    const rows=Array.from({length:n},()=>({...DEFAULT}));
+    let last=0;
+    for(const p of plan.row_plans) {
+      guard(exact(p,ENTRY_KEYS) && isInt(p.ordinal,1,n) && p.ordinal>last,
+        "Source ordinal must be strictly increasing");
+      guard(FIELDS.every(k=>typeof p[k]==="string" && OPTIONS[k].includes(p[k])),
+        "Unknown HUMAN enum choice");
+      guard(FIELDS.some(k=>p[k]!==DEFAULT[k]), "Sparse entry cannot contain only defaults");
+      rows[p.ordinal-1]={stage:p.stage,route:p.route,action:p.action};
+      last=p.ordinal;
+    }
+    return {hashes,n,rows};
+  }
+  const hex = bytes => Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
+  async function fileBytes(file,maxBytes=MAX) {
+    guard(file && file.size>0 && file.size<=maxBytes,"Select PRIVATE source bounded to its stated size");
+    const bytes=await file.arrayBuffer();
+    guard(bytes.byteLength===file.size, "PRIVATE source changed during read");
+    const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    return {raw, digest:hex(await crypto.subtle.digest("SHA-256",bytes))};
+  }
+  function chooseRow(inputs) {
+    const base=inputs[0].parsed;
+    guard(inputs.every(x=>equal(x.parsed.hashes,base.hashes) && x.parsed.n===base.n),
+      "Different or reordered original lab results; entire multi-reviewer batch HOLD");
+    const merged=Array.from({length:base.n},()=>({...DEFAULT})),conflicts=[];
+    let suggested=0,unreviewed=0;
+    for(let i=0;i<base.n;i++) {
+      let touched=false;
+      for(const field of FIELDS) {
+        const submitted=inputs.map(x=>x.parsed.rows[i][field]).filter(v=>v!==DEFAULT[field]);
+        const unique=Array.from(new Set(submitted)).sort();
+        if(unique.length===1){merged[i][field]=unique[0];suggested++;touched=true;}
+        if(unique.length>1) {
+          conflicts.push({ordinal:i+1,field,choices:unique,
+            reports:inputs.map((x,j)=>({reviewer:j+1,value:x.parsed.rows[i][field]}))});
+          touched=true;
+        }
+      }
+      if(!touched)unreviewed++;
+    }
+    return {hashes:base.hashes,n:base.n,merged,conflicts,suggested,unreviewed,inputs};
+  }
+  const keyOf = x => x.ordinal+":"+x.field;
+  function counts() {
+    const resolved=state.conflicts.filter(x=>decisions.has(keyOf(x))).length;
+    return {source_file_count:state.hashes.length,
+      reviewer_packet_count:state.inputs.length, row_count:state.n,
+      uncontested_human_field_proposals:state.suggested,
+      unreviewed_rows:state.unreviewed,
+      conflicting_human_field_slots:state.conflicts.length,
+      explicitly_resolved_slots:resolved,
+      unresolved_slots:state.conflicts.length-resolved};
+  }
+  function updateSummary() {
+    if(!state){$("summary").textContent="No reviewer plans loaded.";return;}
+    const c=counts();
+    $("summary").textContent=c.reviewer_packet_count+" PRIVATE source-bound HUMAN proposals · "+
+      c.row_count+" original row positions · "+c.uncontested_human_field_proposals+
+      " uncontested field proposals · "+c.conflicting_human_field_slots+
+      " conflicting fields · "+c.unresolved_slots+" still HOLD.";
+    $("export").disabled=c.unresolved_slots!==0;
+    $("encryptedExport").disabled=c.unresolved_slots!==0;
+    $("saveDraft").disabled=false;
+    $("saveWorkspace").disabled=false;
+    $("counts").disabled=false;
+  }
+  function makeCell(value,tag="td") {
+    const el=document.createElement(tag);el.textContent=String(value);return el;
+  }
+  function render() {
+    const body=$("reviewRows");body.replaceChildren();
+    if(!state){$("pages").textContent="No HUMAN conflicts.";return;}
+    const term=$("search").value.trim();
+    const entries=state.conflicts.filter(item=>{
+      const selected=decisions.has(keyOf(item));
+      return (filter==="all" || (filter==="pending"&&!selected) ||
+        (filter==="resolved"&&selected)) &&
+        (!term || String(item.ordinal).includes(term) || item.field.includes(term));
+    });
+    const last=Math.max(0,Math.ceil(entries.length/60)-1);
+    page=Math.min(page,last);
+    for(const x of entries.slice(page*60,page*60+60)) {
+      const tr=document.createElement("tr");
+      tr.append(makeCell(x.ordinal),makeCell(x.field));
+      const submitted=makeCell(x.reports.map(r=>
+        "Reviewer "+r.reviewer+": "+(r.value===DEFAULT[x.field]?"(no proposal)":r.value)
+      ).join(" · "));
+      submitted.className="small";tr.append(submitted);
+      const td=document.createElement("td"),sel=document.createElement("select");
+      sel.setAttribute("aria-label","Human choice for original row "+x.ordinal+" "+x.field);
+      const none=document.createElement("option");none.value="";none.textContent="UNRESOLVED / HOLD";
+      sel.append(none);
+      for(const choice of x.choices){
+        const opt=document.createElement("option");opt.value=choice;opt.textContent=choice.replaceAll("_"," ");
+        sel.append(opt);
+      }
+      sel.value=decisions.get(keyOf(x))||"";
+      sel.addEventListener("change",()=>{
+        if(sel.value)decisions.set(keyOf(x),sel.value);
+        else decisions.delete(keyOf(x));
+        updateSummary();
+        if(filter!=="all")render(); else renderMatrix();
+      });
+      td.append(sel);tr.append(td);body.append(tr);
+    }
+    $("pages").textContent="Page "+(page+1)+" / "+(last+1)+" · "+entries.length+" matching HUMAN conflicts";
+    $("previous").disabled=page===0;$("next").disabled=page===last;
+    updateSummary();
+    renderMatrix();
+  }
+  let matrixPage=0;
+  function renderMatrix() {
+    const tbody=$("matrixRows");
+    tbody.replaceChildren();
+    if(!state) {
+      $("matrixSummary").textContent="Load an original PRIVATE reviewer batch to inspect its complete HUMAN row set.";
+      $("matrixPages").textContent="No original row inventory";
+      $("matrixPrevious").disabled=true;$("matrixNext").disabled=true;
+      return;
+    }
+    const mode=$("matrixFilter").value,needle=$("matrixSearch").value.trim();
+    const conflictRows=new Set(state.conflicts.map(c=>c.ordinal));
+    const indices=[];
+    let allSuggested=0,allNeutral=0;
+    for(let i=0;i<state.n;i++) {
+      const hasConflict=conflictRows.has(i+1);
+      const hasProposal=FIELDS.some(k=>state.merged[i][k]!==DEFAULT[k])||hasConflict;
+      if(hasProposal)allSuggested++;else allNeutral++;
+      if((mode==="all" || mode==="conflicts"&&hasConflict ||
+          mode==="proposals"&&hasProposal&&!hasConflict ||
+          mode==="neutral"&&!hasProposal) &&
+          (!needle||String(i+1).includes(needle)))indices.push(i);
+    }
+    matrixPage=Math.min(matrixPage,Math.max(0,Math.ceil(indices.length/80)-1));
+    for(const i of indices.slice(matrixPage*80,matrixPage*80+80)){
+      const ordinal=i+1,tr=document.createElement("tr");
+      const original=state.merged[i];
+      const holdFields=state.conflicts.filter(c=>c.ordinal===ordinal);
+      const stillHeld=holdFields.some(x=>!decisions.has(keyOf(x)));
+      const human={...original};
+      for(const x of holdFields){
+        const v=decisions.get(keyOf(x));
+        if(v!==undefined)human[x.field]=v;
+      }
+      tr.append(makeCell(ordinal));
+      tr.append(makeCell(stillHeld?"HOLD / unresolved":holdFields.length?"HUMAN resolved draft":
+        FIELDS.some(k=>human[k]!==DEFAULT[k])?"HUMAN suggestion":"No proposal"));
+      const output=makeCell(FIELDS.map(k=>k+": "+human[k]).join(" · "));
+      output.className="small";tr.append(output);
+      const source=document.createElement("td");
+      const details=document.createElement("details");
+      const summary=document.createElement("summary");
+      summary.textContent=state.inputs.length+" input plan slots";
+      details.append(summary);
+      for(let j=0;j<state.inputs.length;j++){
+        const line=document.createElement("div");
+        const record=state.inputs[j].parsed.rows[i];
+        line.textContent="Reviewer slot "+(j+1)+": "+FIELDS.map(k=>record[k]===DEFAULT[k]?
+          k+" (no proposal)":k+" "+record[k]).join(" · ");
+        details.append(line);
+      }
+      source.append(details);tr.append(source);
+      const action=document.createElement("td");
+      if(holdFields.length){
+        const button=document.createElement("button");
+        button.type="button";
+        button.textContent="Open "+holdFields.length+" HUMAN conflict(s)";
+        button.addEventListener("click",()=>{
+          $("filter").value="all";filter="all";$("search").value=String(ordinal);
+          page=0;render();
+          $("resolveHeading").scrollIntoView({behavior:"smooth",block:"start"});
+        });
+        action.append(button);
+      } else {
+        const note=document.createElement("span");note.textContent="—";action.append(note);
+      }
+      tr.append(action);tbody.append(tr);
+    }
+    $("matrixSummary").textContent=state.n+" source-bound original HUMAN rows · "+
+      allSuggested+" with any proposal or conflict · "+allNeutral+
+      " default-only. Every reviewer slot shown is positional, NOT authenticated identity.";
+    const totalPages=Math.max(1,Math.ceil(indices.length/80));
+    $("matrixPages").textContent="Page "+(matrixPage+1)+" / "+totalPages+
+      " · "+indices.length+" matching original row(s)";
+    $("matrixPrevious").disabled=matrixPage===0;
+    $("matrixNext").disabled=matrixPage===totalPages-1;
+  }
+  $("matrixFilter").addEventListener("change",()=>{matrixPage=0;renderMatrix();});
+  $("matrixSearch").addEventListener("input",()=>{matrixPage=0;renderMatrix();});
+  $("matrixPrevious").addEventListener("click",()=>{matrixPage=Math.max(0,matrixPage-1);renderMatrix();});
+  $("matrixNext").addEventListener("click",()=>{matrixPage++;renderMatrix();});
+  function reset() {
+    state=null;decisions=new Map();page=0;
+    $("reviewRows").replaceChildren();$("search").value="";
+    $("export").disabled=true;$("encryptedExport").disabled=true;
+    $("counts").disabled=true;$("saveDraft").disabled=true;
+    $("saveWorkspace").disabled=true;
+    $("summary").textContent="No PRIVATE reviewer plans loaded.";
+    $("pages").textContent="No HUMAN conflicts.";
+    matrixPage=0;renderMatrix();
+  }
+  function jsonFile(name,obj,privateData=true) {
+    const payload=JSON.stringify(obj,null,2)+"\n";
+    const blob=new Blob([payload],{type:"application/json"});
+    const url=URL.createObjectURL(blob),link=document.createElement("a");
+    link.href=url;link.download=name;link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    msg(privateData?"PRIVATE draft downloaded locally. Protect the file; source fingerprints remain sensitive.":"Counts-only local export created. Small cohorts may remain sensitive.");
+  }
+  function outputPlan() {
+    guard(state, "Load original reviewer plans first");
+    guard(counts().unresolved_slots===0,"Unresolved field conflicts: entire merged plan HOLD");
+    const rows=state.merged.map((r,i)=>{
+      const updated={...r};
+      for(const field of FIELDS) {
+        const v=decisions.get((i+1)+":"+field);
+        if(v!==undefined)updated[field]=v;
+      }
+      return {ordinal:i+1,...updated};
+    }).filter(r=>FIELDS.some(k=>r[k]!==DEFAULT[k]));
+    return {kind:"lightup.private_original_lab_human_matrix_plan",version:1,
+      disposition:"REVIEW_ONLY_DRAFT_HOLD",
+      authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,
+      source_sha256:state.hashes.slice(), ordered_row_count:state.n,row_plans:rows,
+      interpretation:"Offline unsigned human-only multi-reviewer draft. Exact original source hashes do not authenticate reviewer identity, findings, authority, client consent or remediation."};
+  }
+  async function readPlans(files){
+    guard(globalThis.crypto && crypto.subtle,"Private local WebCrypto SHA-256 is unavailable");
+    guard(files.length>=2 && files.length<=8, "Choose 2–8 original PRIVATE reviewer plans");
+    const prepared=[];
+    for(let index=0;index<files.length;index++) {
+      const file=files[index];
+      const item=await fileBytes(file,5*1024*1024);
+      const envelope=strictParse(item.raw);
+      let original=envelope,planText=item.raw;
+      if(envelope&&envelope.kind===LIGHTUP_ORIGINAL_ENCRYPTED_PLAN_KIND) {
+        const pass=window.prompt("Original PRIVATE HUMAN encrypted plan "+(index+1)+
+          ": enter its local passphrase (no network; cancel holds all imported plans)");
+        guard(pass!==null,"Encrypted HUMAN plan import cancelled; original selection retained");
+        planText=await decryptOriginalHumanPlan(envelope,pass);
+        original=strictParse(planText);
+      } else {
+        guard(file.size<=MAX,"Unencrypted PRIVATE HUMAN plan exceeds 3 MiB");
+      }
+      const planBytes=new TextEncoder().encode(planText);
+      guard(planBytes.length>0&&planBytes.length<=MAX,"Unsealed PRIVATE HUMAN plan exceeds byte limit");
+      const plainDigest=hex(await crypto.subtle.digest("SHA-256",planBytes));
+      prepared.push({digest:item.digest,parsed:admitPlan(original),plainText:planText,plainDigest});
+    }
+    guard(new Set(prepared.map(p=>p.digest)).size===prepared.length,
+      "Duplicate exact reviewer packet bytes are not independent submissions");
+    return chooseRow(prepared);
+  }
+  function exportDraft() {
+    guard(state,"No originals loaded");
+    return {kind:"lightup.private_human_reviewer_studio_draft",version:1,
+      disposition:"REVIEW_ONLY_DRAFT_HOLD",source_sha256:state.hashes.slice(),
+      ordered_row_count:state.n,
+      reviewer_plan_sha256:state.inputs.map(p=>p.digest),
+      resolutions:state.conflicts.filter(x=>decisions.has(keyOf(x))).map(x=>({
+        ordinal:x.ordinal,field:x.field,value:decisions.get(keyOf(x))}))};
+  }
+  function admitDraft(obj,against=state) {
+    guard(against && exact(obj,DRAFT_KEYS) &&
+      obj.kind==="lightup.private_human_reviewer_studio_draft" &&
+      obj.version===1 && obj.disposition==="REVIEW_ONLY_DRAFT_HOLD" &&
+      equal(obj.source_sha256,against.hashes) && obj.ordered_row_count===against.n &&
+      equal(obj.reviewer_plan_sha256,against.inputs.map(x=>x.digest)),
+      "PRIVATE session draft not bound to these exact ordered original reviewer bytes");
+    guard(Array.isArray(obj.resolutions) && obj.resolutions.length<=against.conflicts.length,
+      "Invalid review choices array");
+    const proposed=new Map(),allowed=new Map(against.conflicts.map(x=>[keyOf(x),x]));
+    let previous=-1;
+    for(const x of obj.resolutions) {
+      guard(exact(x,DRAFT_ENTRY) && isInt(x.ordinal,1,against.n) &&
+        FIELDS.includes(x.field), "Invalid HUMAN decision record");
+      const key=keyOf(x),item=allowed.get(key);
+      const sort=(x.ordinal-1)*3+FIELDS.indexOf(x.field);
+      guard(sort>previous && item && typeof x.value==="string" &&
+        item.choices.includes(x.value),"Repeated, invalid or reordered HUMAN decision record");
+      proposed.set(key,x.value);previous=sort;
+    }
+    return proposed;
+  }
+  function exportWholeWorkspace() {
+    guard(state && state.inputs.every(x=>typeof x.plainText==="string"&&validDigest(x.plainDigest)),
+      "Re-import originals before saving a complete PRIVATE encrypted reviewer workspace");
+    const reviewerPackets=state.inputs.map(x=>({
+      original_input_sha256:x.digest,
+      decrypted_human_plan_sha256:x.plainDigest,
+      private_human_plan_json:x.plainText
+    }));
+    return {kind:"lightup.private_reviewer_consensus_workspace",version:1,
+      disposition:"REVIEW_ONLY_DRAFT_HOLD",source_sha256:state.hashes.slice(),
+      ordered_row_count:state.n,reviewer_packets:reviewerPackets,
+      human_review_draft:exportDraft()};
+  }
+  async function admitWholeWorkspace(packet){
+    const fields=["kind","version","disposition","source_sha256","ordered_row_count",
+      "reviewer_packets","human_review_draft"];
+    guard(exact(packet,fields)&&packet.kind==="lightup.private_reviewer_consensus_workspace"&&
+      packet.version===1&&packet.disposition==="REVIEW_ONLY_DRAFT_HOLD" &&
+      Array.isArray(packet.reviewer_packets)&&packet.reviewer_packets.length>=2&&
+      packet.reviewer_packets.length<=8, "Wrong PRIVATE reviewer workspace payload");
+    const prepared=[];
+    for(const value of packet.reviewer_packets){
+      guard(exact(value,["original_input_sha256","decrypted_human_plan_sha256",
+        "private_human_plan_json"])&&validDigest(value.original_input_sha256)&&
+        validDigest(value.decrypted_human_plan_sha256)&&
+        typeof value.private_human_plan_json==="string",
+        "Invalid source-bound PRIVATE workspace reviewer inventory");
+      const bytes=new TextEncoder().encode(value.private_human_plan_json);
+      guard(bytes.length>0&&bytes.length<=MAX,"Decrypted original HUMAN plan exceeds 3 MiB");
+      const fresh=hex(await crypto.subtle.digest("SHA-256",bytes));
+      guard(fresh===value.decrypted_human_plan_sha256,
+        "PRIVATE HUMAN inner bytes differ from sealed reviewer inventory");
+      prepared.push({digest:value.original_input_sha256,plainDigest:fresh,
+        plainText:value.private_human_plan_json,
+        parsed:admitPlan(strictParse(value.private_human_plan_json))});
+    }
+    guard(new Set(prepared.map(x=>x.digest)).size===prepared.length,
+      "Duplicate claimed original reviewer packets in PRIVATE workspace");
+    const proposed=chooseRow(prepared);
+    guard(equal(proposed.hashes,packet.source_sha256)&&proposed.n===packet.ordered_row_count,
+      "PRIVATE workspace does not bind to the exact original source vector and row set");
+    const restored=admitDraft(packet.human_review_draft,proposed);
+    return {proposed,restored};
+  }
+  $("saveWorkspace").addEventListener("click",async()=>{
+    try{
+      const payload=JSON.stringify(exportWholeWorkspace())+"\\n";
+      const pass=window.prompt("Choose NEW local passphrase for the complete PRIVATE HUMAN reviewer workspace (12–256 characters). No recovery.");
+      if(pass===null)return;
+      const repeat=window.prompt("Confirm PRIVATE reviewer workspace passphrase:");
+      if(repeat===null)return;
+      guard(pass===repeat,"Private workspace passwords do not match");
+      if(!window.confirm("Encrypt all admitted original HUMAN plan content and current conflicts into one PRIVATE offline workspace? Source hashes and human choices remain sensitive. NO scan authority."))return;
+      const sealed=await sealReviewerWorkspace(payload,pass);
+      jsonFile("private-lightup-reviewer-workspace-encrypted.json",sealed);
+    }catch(err){msg("HOLD · "+(err.message||"Could not seal PRIVATE reviewer workspace"),true);}
+  });
+  $("loadWorkspace").addEventListener("change",async ev=>{
+    try {
+      const file=ev.target.files[0],{raw}=await fileBytes(file,40*1024*1024);
+      const envelope=strictParse(raw);
+      const pass=window.prompt("PRIVATE reviewer workspace LOCAL decryption passphrase:");
+      guard(pass!==null,"PRIVATE reviewer workspace restore cancelled");
+      const plaintext=await unsealReviewerWorkspace(envelope,pass);
+      const revived=await admitWholeWorkspace(strictParse(plaintext));
+      if(!window.confirm("Replace this tab's in-memory HUMAN review with the fully admitted original-plan inventory and choices from the encrypted workspace?"))return;
+      state=revived.proposed;decisions=revived.restored;page=0;render();
+      msg("Complete source-bound PRIVATE HUMAN reviewer workspace reopened locally. No authorization implied.");
+    }catch(err){msg("HOLD · "+(err.message||"Cannot admit encrypted PRIVATE reviewer workspace"),true);}
+    finally{ev.target.value="";}
+  });
+  $("files").addEventListener("change",async ev=>{
+    const selected=Array.from(ev.target.files);
+    try {
+      if(state && !window.confirm("Replace the current PRIVATE in-memory HUMAN draft? Export it first if needed."))
+        return;
+      const proposed=await readPlans(selected);
+      state=proposed;decisions=new Map();page=0;render();
+      msg("Original PRIVATE reviewer batch admitted. Conflicting HUMAN choices remain HOLD until selected.");
+    }catch(err){msg("HOLD · "+(err.message||"Cannot admit original plans"),true);}
+    finally{ev.target.value="";}
+  });
+  $("loadDraft").addEventListener("change",async ev=>{
+    try {
+      const file=ev.target.files[0],{raw}=await fileBytes(file,MAX_DRAFT);
+      const proposal=admitDraft(strictParse(raw));
+      if(!window.confirm("Replace current HUMAN conflict choices with those from this exact-source PRIVATE draft?"))return;
+      decisions=proposal;page=0;render();msg("PRIVATE draft resumed against exact original reviewer bytes.");
+    }catch(err){msg("HOLD · "+(err.message||"Invalid original-bound draft"),true);}
+    finally{ev.target.value="";}
+  });
+  $("export").addEventListener("click",()=>{
+    try {
+      const p=outputPlan();
+      if(!window.confirm("Download an unsigned PRIVATE HUMAN proposal? The ORIGINAL LightUp workroom must still re-admit unchanged source bytes; this is NOT authorization."))return;
+      jsonFile("private-lightup-merged-original-human-plan.json",p);
+    }catch(err){msg("HOLD · "+err.message,true);}
+  });
+  $("encryptedExport").addEventListener("click",async()=>{
+    try {
+      const plan=outputPlan();
+      const first=window.prompt("Choose a NEW 12–256 character LOCAL passphrase for the original-format encrypted HUMAN plan. No password recovery.");
+      if(first===null){msg("Encrypted export cancelled; current HUMAN review unchanged.");return;}
+      const second=window.prompt("Confirm that local PRIVATE HUMAN export passphrase:");
+      if(second===null){msg("Encrypted export cancelled; current HUMAN review unchanged.");return;}
+      guard(first===second,"Private encryption passphrases do not match");
+      if(!window.confirm("Encrypt the original-format HUMAN plan locally using AES-256-GCM? Original source authenticity, permission and security findings remain unverified."))return;
+      const encrypted=await encryptOriginalHumanPlan(JSON.stringify(plan)+"\\n",first);
+      jsonFile("private-lightup-merged-original-human-plan-encrypted.json",encrypted);
+    }catch(err){msg("HOLD · "+(err.message||"Private encryption unavailable"),true);}
+  });
+  $("saveDraft").addEventListener("click",()=>{if(state)jsonFile("private-reviewer-studio-resume.json",exportDraft());});
+  $("counts").addEventListener("click",()=>{
+    if(!state)return;
+    jsonFile("anonymous-human-reviewer-counts.json",{
+      kind:"lightup.anonymous_human_reviewer_counts",version:1,
+      disposition:"REVIEW_ONLY_DRAFT_HOLD",...counts(),
+      interpretation:"Unsigned HUMAN planning counts; no source IDs, target literals, validated findings or authorization. Small cohorts may be private."
+    },false);
+  });
+  $("forget").addEventListener("click",()=>{
+    if(!state||window.confirm("Forget all PRIVATE plans and unsaved local HUMAN choices from this browser tab?")){
+      reset();msg("In-memory PRIVATE review cleared. Previously downloaded files are unaffected.");
+    }
+  });
+  $("filter").addEventListener("change",ev=>{filter=ev.target.value;page=0;render();});
+  $("search").addEventListener("input",()=>{page=0;render();});
+  $("previous").addEventListener("click",()=>{page=Math.max(0,page-1);render();});
+  $("next").addEventListener("click",()=>{page++;render();});
+  reset();
+})();</script></body></html>

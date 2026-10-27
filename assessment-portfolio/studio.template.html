@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+@@CSP@@
+<title>LightUp · Private Live Capacity Studio</title>
+<style>@@CSS@@</style>
+</head><body>
+<header><div class="eyebrow">LIGHTUP / OFFLINE HUMAN CAPACITY STUDIO</div>
+<h1>Plan human attention.<br><span>Never imply approval.</span></h1>
+<p>Private data from previously completed original source-bound human agendas.
+All options below are local hypothetical planning controls, not worker assignments.</p>
+<div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO GO</div>
+</header>
+<section class="controls" aria-label="Human planning options">
+<label>Reference date <input id="reference" type="text" readonly aria-label="Original reference date"></label>
+<label>Planning weeks <input id="weeks" type="number" min="1" max="12" step="1" value="8"></label>
+<label>View role <select id="roleFilter"><option value="all">All original neutral roles</option></select></label>
+<button id="export" type="button">Export aggregate-only JSON</button>
+<button id="savePlan" type="button">Download PRIVATE source-bound plan</button>
+<label>Restore PRIVATE source-bound plan <input id="restorePlan" type="file" accept=".json,application/json"></label>
+</section>
+<p id="planMessage" role="status" aria-live="polite">Role budgets are hypothetical, unsigned planning decisions; original sources remain unchanged.</p>
+<section class="controls capacities" id="capacityControls" aria-label="Hypothetical weekly review touchpoints"></section>
+<section class="stats" aria-label="Human workload summary">
+<div class="card"><small>Source agendas</small><strong id="sourceCount">—</strong></div>
+<div class="card"><small>Original human actions</small><strong id="allCount">—</strong></div>
+<div class="card"><small>Hypothetically slotted</small><strong id="plannedCount">—</strong></div>
+<div class="card"><small>Without a review slot</small><strong id="openCount">—</strong></div>
+</section>
+<section><h2>Hypothetical role coverage</h2><div class="scroll"><table><thead><tr>
+<th>Original role</th><th>Actions</th><th>Touchpoints per week</th><th>Possible slots</th><th>No slot</th>
+</tr></thead><tbody id="roleRows"></tbody></table></div></section>
+<section><h2>Private original-slot attention list</h2>
+<p>Changing capacity rearranges only the suggested weeks in this browser; original rows and private files are never modified.</p>
+<div class="scroll"><table><thead><tr><th>Agenda</th><th>Slot</th><th>Role</th><th>Original stage</th>
+<th>Original proposed date</th><th>Date bucket</th><th>Hypothetical week</th><th>Original HOLD</th>
+</tr></thead><tbody id="queueRows"></tbody></table></div></section>
+<aside><strong>Non-authorizing human plan.</strong>
+<p>Agendas are unsigned local source claims. A planned human review touchpoint is not an actual assignment,
+verified remediation, accepted consent, approved execution, SLA or release. Multiple agenda inputs may
+refer to one original artifact; the counts are workload, not deduplicated findings.
+Exact-head hosted and permanent named VPS CI, independent source-owner/privacy/security review, authentic
+separate client/operator consent and revocation at use, plus explicit HUMAN GO remain mandatory.</p></aside>
+<footer>Private self-contained browser file · no network · no localStorage · no scans · no grants · no automatic dispatch</footer>
+<script id="lightupSource" type="application/json">@@PAYLOAD@@</script>
+<script>@@SCRIPT@@</script>
+</body></html>

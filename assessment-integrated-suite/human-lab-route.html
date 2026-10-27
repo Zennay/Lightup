@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none';">
+<title>LightUp · Original HUMAN Lab Workflow Desk</title>
+<style>
+:root { color-scheme:dark; font:16px/1.55 system-ui, sans-serif; background:#0a1625; color:#e9f1f8 }
+*{box-sizing:border-box}body{max-width:1140px;margin:auto;padding:28px 20px 60px}
+header,.intro,.phase,.summary,footer{border:1px solid #354b62;border-radius:18px;background:#152638;padding:26px;margin-bottom:20px}
+h1{font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.15;margin:.5rem 0}h2{font-size:1.3rem;margin:0 0 10px}
+p{margin:10px 0}.eyebrow{font-size:.82rem;letter-spacing:.13em;text-transform:uppercase;color:#9bc9ea}
+.hint{color:#b6cbe0}.warning{color:#ffddb1;font-weight:650}strong{color:#fff}
+.controls{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}
+button,.file-label{background:#243f58;color:#eef9ff;border:1px solid #698fad;border-radius:10px;padding:11px 16px;font:inherit;cursor:pointer}
+button:hover,.file-label:hover{background:#355574}button:focus-visible,select:focus-visible,.file-label:focus-visible{outline:3px solid #8fcaec;outline-offset:3px}
+.file-label input{position:absolute;opacity:0;width:1px;height:1px}
+.file-label:focus-within{outline:3px solid #8fcaec;outline-offset:3px}
+.actions{display:grid;gap:10px}.action{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 15px;border-radius:10px;background:#0d1c2d;border:1px solid #28445e}
+.caption{flex:1}select{font:inherit;min-width:220px;max-width:100%;color:#f3faff;background:#243b51;border:1px solid #8c9fb1;border-radius:8px;padding:9px}
+.stage-metric{color:#add7f3;font-weight:700}
+.compare{border:1px solid #52738d;border-radius:12px;padding:14px;margin-top:14px}
+.compare summary{cursor:pointer;font-weight:700}.comparison-scroll{overflow-x:auto}
+.compare table{width:100%;border-collapse:collapse}.compare td,.compare th{text-align:left;padding:9px;border-bottom:1px solid #3c5b72}
+button:disabled{cursor:not-allowed;opacity:.45}
+.history-scroll{overflow-x:auto;max-width:100%}
+.history-table{width:100%;border-collapse:collapse;min-width:700px}
+.history-table th,.history-table td{border-bottom:1px solid #3c5b72;padding:8px 11px;text-align:left;white-space:nowrap}
+.history-table th{color:#b8dcf8}
+.history-table tr.changed{background:#243d50}
+.history-detail{margin-top:14px}
+.history-stage{display:flex;gap:15px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #3c5b72}
+.history-stage strong{min-width:220px}
+.history-view[hidden]{display:none}
+.filterbar{display:flex;gap:16px;flex-wrap:wrap}
+.filterbar label{flex:1;min-width:230px;color:#cce2f2}
+.filterbar input,.filterbar select{display:block;margin-top:7px;width:100%;font:inherit;color:#eef7ff;background:#243b51;border:1px solid #8c9fb1;border-radius:8px;padding:9px}
+.action[hidden]{display:none}
+ol{padding-left:24px;columns:2;column-gap:38px}li{break-inside:avoid;margin:6px 0}
+code{font-size:.95em}small{color:#c1d1e1}#result{min-height:1.5em}
+@media(max-width:650px){.action{display:block}select{margin-top:10px;width:100%}ol{columns:1}}
+@media print{body{background:#fff;color:#000;max-width:100%;padding:0}
+header,.intro,.phase,.summary,footer{background:#fff;color:#000;border-color:#777;break-inside:avoid}
+.controls{display:none}select{color:#000;background:#fff}.hint,.warning,.stage-metric,small{color:#222}}
+</style>
+<script defer src="human-lab-route.js"></script></head><body>
+<header>
+<div class="eyebrow">LightUp / assessment-runtime / PRIVATE / human-only</div>
+<h1>Original Lab → HUMAN review route</h1>
+<p class="warning">REVIEW_ONLY · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</p>
+<p>Twenty existing console actions, organized into five human review stages. This is an offline <strong>discussion tracker</strong>, not an executor or an assessment outcome.</p>
+</header>
+<section class="intro" aria-labelledby="how"><h2 id="how">How this room works</h2>
+<p>In the trusted local checkout, start <code>python3 assessment-integrated-suite/console.py</code> and enter <code>LAB</code> to display these original actions. Choose a numeric action there to run its separate native stage. Keep source-private outputs in owner-controlled directories (0700/0600) and manually re-admit originals at every actual stage.</p>
+<p>Here, mark <em>discussion progress only</em>. A “Discussed only” choice does not prove that code ran, input was validated, evidence was reviewed, a vulnerability was repaired, a source was authenticated, or anybody consented.</p>
+<p>Nothing is saved automatically. Export a local self-report JSON (for reimport), minimal CSV, or printable sheet. In a trusted original checkout, native console <code>72</code> can receive that JSON only after you manually place it in 0700/0600 owner-private custody outside the checkout; <code>73</code> checks its entire saved receipt, <code>74</code> compares 2–8 privately saved HUMAN discussion rounds, and <code>75</code> reopens the complete saved history against those original rounds. None of these authenticates sources, reviews, actors or consent. Use the separate comparison chooser to inspect original HUMAN status differences without changing the active local plan; exporting the changed-only CSV is an untrusted discussion summary. Import now explicitly previews every change and rejects duplicate JSON property names even when escaped. This page and its adjacent local JavaScript require no network, cookies, localStorage, IndexedDB, server or permissions. Do not attach real private source files, credentials or client identifiers.</p>
+<p>The pending HUMAN follow-up queue groups only local markers marked “Needs original input”, “Discussing”, or “Not reviewed”. The current-plan brief includes that queue, stage counts and all twenty fixed action rows. Both exports are source-free, unsigned, scriptless where applicable, and non-authorizing; queue order is not a risk or urgency rating.</p>
+<div class="controls" role="group" aria-label="Local-only workplan controls">
+<button id="export-json" type="button">Save PRIVATE discussion plan (JSON)</button>
+<button id="export-csv" type="button">Export status rows (CSV)</button>
+<button id="export-followup" type="button">Export pending HUMAN follow-up queue (CSV)</button>
+<button id="export-brief" type="button">Save scriptless current-plan brief (HTML)</button>
+<label class="file-label">Open prior local plan (JSON)<input id="import-json" type="file" accept=".json,application/json"></label>
+<label class="file-label">Compare another plan (no changes)<input id="compare-json" type="file" accept=".json,application/json"></label>
+<button id="print" type="button">Print / save as PDF</button>
+<button id="reset" type="button">Clear local markers</button>
+</div>
+<p id="result" role="status" aria-live="polite"></p>
+<details id="compare-details" class="compare"><summary>Preview local HUMAN plan differences (no approval)</summary>
+<p id="compare-summary" role="status" aria-live="polite">No local files compared yet.</p>
+<div class="comparison-scroll">
+<table><thead><tr><th>Original action</th><th>Current discussion status</th>
+<th>Imported proposal status</th></tr></thead><tbody id="compare-rows"></tbody></table>
+</div><button id="export-diff" type="button" disabled>Export changed-only discussion CSV</button>
+<p><small>Comparison reveals only the twenty fixed status labels, never customer
+source or assessment results. It does not import, verify or approve anything.</small></p>
+</details>
+<section class="history-detail" aria-labelledby="history-title">
+<h2 id="history-title">Compare 2–8 separate HUMAN discussion rounds</h2>
+<p>Select two to eight previously exported <em>local self-report JSON</em> files, in the explicit order you want them displayed. The chooser order is an operator assumption, not authenticated chronology. Each file must match all twenty original action slots and all false authority flags. No original source files are opened, no active local markers are modified, and nothing is sent anywhere.</p>
+<div class="controls">
+<label class="file-label">Open 2–8 private HUMAN reports (JSON)
+<input id="history-json" type="file" multiple accept=".json,application/json"></label>
+<button id="history-export" type="button" disabled>Export local round comparison (CSV)</button>
+<button id="history-brief" type="button" disabled>Save scriptless HUMAN round briefing (HTML)</button>
+<button id="history-clear" type="button" disabled>Clear compared reports</button>
+</div>
+<p id="history-result" role="status" aria-live="polite">No prior HUMAN rounds selected.</p>
+<div id="history-view" class="history-view" hidden>
+<div id="history-stage-summary" aria-label="Per-stage local marker changes"></div>
+<div class="filterbar history-detail">
+<label>Review focus <select id="history-focus">
+<option value="">All twenty actions</option>
+<option value="changed">Any changed marker</option>
+<option value="repeat">Repeatedly changed markers</option>
+<option value="needs">Needs input in selected last round</option>
+<option value="pending">Not discussed in selected last round</option>
+</select></label>
+<label>Lab review stage <select id="history-stage">
+<option value="">All five stages</option>
+<option value="0">Offline proposal</option>
+<option value="1">Source-bound human review</option>
+<option value="2">Team feedback</option>
+<option value="3">Multi-round continuation</option>
+<option value="4">Conflict reconciliation</option>
+</select></label>
+</div>
+<p id="history-visible" role="status" aria-live="polite"></p>
+<div class="history-scroll"><table class="history-table">
+<thead id="history-columns"></thead><tbody id="history-rows"></tbody>
+</table></div>
+<details id="reconcile-details" class="compare history-detail"><summary>Compose a NEW human-only discussion proposal from these rounds</summary>
+<p>Choose one explicitly selected prior round for <strong>every original action</strong>. No choice is copied automatically. Only after all twenty individual choices can you export a new complete local JSON self-report. Choosing a prior marker does not mean its step occurred, that the author is known, or that a vulnerability is fixed. This does not change any earlier report, active marker or native review receipt.</p>
+<div class="history-scroll"><table class="history-table">
+<thead><tr><th>Original HUMAN action</th><th>Explicit next-proposal marker</th></tr></thead>
+<tbody id="reconcile-rows"></tbody></table></div>
+<p id="reconcile-summary" role="status" aria-live="polite">No original HUMAN rounds selected.</p>
+<div class="controls">
+<button type="button" id="reconcile-export" disabled>Export NEW discussion proposal (JSON)</button>
+<button type="button" id="reconcile-reset" disabled>Discard all draft selections</button>
+</div>
+<p><small>The exported unsigned proposal has the original twenty-position, no-authority self-report shape for subsequent independent native HUMAN admission; there is no auto-import, granting, assignment, finding validation, source-authenticated lineage or recipient sending.</small></p>
+</details>
+<p><small>Only source-free fixed action numbers and self-reported status tokens are displayed/exported; this is not evidence of improvement, finding remediation, approval, consent, or release. Repeated identical reports are rejected to prevent accidental duplicate rounds. Local focus filters never remove any original actions from the full exported CSV. No time or actor identity is inferred.</small></p>
+</div>
+</section>
+</section>
+<section class="summary" aria-label="Human discussion summary">
+<h2>Human discussion overview</h2><p id="progress" aria-live="polite">Local script unavailable; no status was loaded.</p>
+<details><summary>Outstanding or waiting-for-input actions</summary><ol id="pending"></ol></details>
+</section>
+<section class="intro" aria-label="Filter and discuss original HUMAN actions">
+<h2>Find unfinished HUMAN review steps</h2>
+<div class="filterbar">
+<label>Find action number or task <input id="action-search" type="search" maxlength="100" autocomplete="off" placeholder="E.g. team feedback"></label>
+<label>Discussion status <select id="status-filter"><option value="">All statuses</option>
+<option value="NOT_REVIEWED">Not reviewed</option><option value="IN_PROGRESS">Discussing</option>
+<option value="NEEDS_INPUT">Needs original input</option><option value="DISCUSSED">Discussed only</option></select></label>
+</div>
+<p id="visible-count" class="hint" aria-live="polite">All HUMAN steps available offline.</p>
+<p id="followup-summary" class="hint" aria-live="polite">Local follow-up counts appear when this page's JavaScript is enabled. Nothing is saved automatically.</p>
+<div class="controls"><button type="button" id="bulk-input">Mark visible: needs input</button>
+<button type="button" id="bulk-discussing">Mark visible: discussing</button></div>
+<p><small>Only actions matching the current filters change after explicit confirmation.
+Bulk marking can NEVER set “Discussed only”, validate a finding, approve
+a plan, authenticate consent or execute a scan. Hidden rows are preserved
+in all complete local exports.</small></p></section>
+<main id="stages"><p>Enable this local JavaScript file to use the HUMAN discussion checklist. The original CLI remains fully available without this browser page.</p></main>
+<footer><h2>Release conditions are separate</h2>
+<p class="warning">Not authorized: active scan, target contact, grant, consent, model execution, recipient dispatch, release or deploy.</p>
+<p>Each original action remains protected by its own native source admission and human controls. This optional browser plan does not open or authenticate originals, does not validate command outcomes, and its unsigned JSON cannot establish identity, custody, integrity or permission.</p>
+<p>Original exact-head hosted + permanently named VPS CI, source-owner signoff, independent browser/security/privacy review, existing scope authorization issues, separately authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory before any release.</p>
+<small>Store this source-only offline software on a trusted device. Keep generated review plans PRIVATE. Status export is a HUMAN declaration, never evidence.</small></footer>
+</body></html>

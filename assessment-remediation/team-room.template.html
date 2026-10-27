@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{CSP}}">
+<title>LightUp — private human review room</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+<header>
+  <p class="overline">LIGHTUP / ASSESSMENT RUNTIME / LOCAL HUMAN HANDOFF</p>
+  <h1>Team follow-up room</h1>
+  <p>Review the original operator's <strong>human-only</strong> links and hand back updated private follow-up notes. This workspace contains references to existing scenario/finding IDs, not complete source evidence. It cannot change original lab results, security findings, permissions, access grants or retest outcomes.</p>
+  <aside><strong>DRAFT/HOLD · PRIVATE HUMAN MATERIAL</strong><br>
+  Verify the handoff sender and matching client/engagement independently. A SHA-256 byte reference is not a signature, proof of identity, consent or source authenticity. Keep the exported return confidential; it is not automatically accepted by the original operator.</aside>
+</header>
+<main>
+  <section>
+    <div class="heading"><span class="step">01</span><div><h2>Open a private team handoff</h2><p>Select the operator-created <code>-team-handoff.json</code> file. No browser history, local storage, cookies, HTTP requests or server uploads.</p></div></div>
+    <label>Private original handoff<input id="handoff" type="file" accept=".json,application/json"></label>
+    <button type="button" id="read">Load private handoff</button>
+    <p id="status" class="notice" role="status" aria-live="polite">No handoff imported; all source/permission states remain unavailable.</p>
+  </section>
+  <div id="workspace" hidden>
+    <section>
+      <div class="heading"><span class="step">02</span><div><h2>Human source-link discussions</h2><p id="counter" aria-live="polite"></p></div></div>
+      <label>Filter existing exact original source IDs or local stages<input id="filter" type="search" autocomplete="off" placeholder="Scenario, finding, human reviewer or stage"></label>
+      <div id="items" class="items" role="group" aria-label="Source-bound human links"></div>
+      <p class="sub">Every link in this list was supplied by the operator; it does not prove that a lab scenario and a client finding are related.</p>
+    </section>
+    <section>
+      <div class="heading"><span class="step">03</span><div><h2>Edit local follow-up notes</h2><p>Only the four fields below may change; original IDs and source memberships are fixed.</p></div></div>
+      <form id="editor" hidden>
+        <p id="selected" class="pair"></p>
+        <div class="grid">
+          <label>Human discussion stage<select id="stage"><option value="needs_review">Needs human review</option><option value="investigating">Being discussed</option><option value="documented">Human notes documented</option></select></label>
+          <label>Reviewer / team label<input id="reviewer" maxlength="100" autocomplete="off"></label>
+        </div>
+        <label>Next suggested human action<input id="next_action" maxlength="300" autocomplete="off" placeholder="Discuss evidence with the original source owner"></label>
+        <label>Private non-authoritative human note<textarea id="note" maxlength="500" rows="3" placeholder="Do not include secrets, target details, client personal data or permission assertions"></textarea></label>
+        <button type="submit">Save this pair locally</button>
+      </form>
+      <h3>Optional filtered-stage action</h3>
+      <p class="sub">Apply a human discussion stage only to the currently filtered original links. This does not schedule anything or modify source findings.</p>
+      <div class="grid">
+        <label>Stage for visible filtered links<select id="bulkStage"><option value="needs_review">Needs review</option><option value="investigating">Being discussed</option><option value="documented">Human notes documented</option></select></label>
+        <label class="confirm"><input type="checkbox" id="batchConfirm"> I am only changing local human follow-up notes, not source/permission status.</label>
+      </div>
+      <button id="batch" type="button" class="secondary">Apply human stage to filtered links</button>
+    </section>
+    <section>
+      <div class="heading"><span class="step">04</span><div><h2>Return private notes to the original operator</h2><p>Save an unsigned private JSON for the owner to inspect. The owner must use the original unchanged baseline plus the return with <code>team_handoff.py receive</code>; a changed baseline or link membership is rejected.</p></div></div>
+      <button id="export" type="button">Download source-bound PRIVATE human return</button>
+      <p class="sub">No external recipient is contacted. Transfer this output only through an independently approved confidential route.</p>
+    </section>
+  </div>
+</main>
+<footer>LIGHTUP · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · HUMAN REVIEW IS NOT SECURITY AUTHORITY</footer>
+<script>{{SCRIPT}}</script>
+</body>
+</html>
