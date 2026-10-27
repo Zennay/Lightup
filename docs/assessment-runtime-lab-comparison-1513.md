@@ -616,3 +616,28 @@ PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py
 # Only use on already-recorded, locally supplied isolated-lab inputs.
 # Exit 2 means REVIEW_ONLY, exit 3 means HOLD. Neither permits a scan.
 ```
+
+## Cross-section case alignment in the complete HUMAN review bundle
+
+The opt-in `review-bundle-json` and `review-bundle-html` formats now
+**fail closed as a complete packet** if their three nested views diverge,
+even if they report matching totals and source status. Admission requires
+exactly one sequential anonymous ordinal for every metric and resource
+case; HUMAN questions must cover the same ordinals, exactly once, with a
+complete unique review rank. Each HUMAN adverse count, unknown-coverage
+value, scope/policy indicator, fixed primary review group and full signal
+selection must match the corresponding case's canonical metric records.
+The per-case runtime/cost baseline, candidate and raw delta must match
+that exact metric case as decimal values. This prevents an otherwise
+plausible but misaligned handoff from assigning one case's HUMAN action or
+cost observation to another case. A failed check returns generic
+`HOLD`, all nested payloads `null` and zero admitted cases; no partial
+metrics or original source identifiers are exposed. Valid adverse-metric
+`HOLD` remains fully available for independent HUMAN scrutiny.
+
+The script-free HTML tables also correctly detect empty generator-backed
+row sets, showing a fixed no-admitted-rows notice rather than a misleading
+empty table. No change to input readers, original comparator, default
+formats, statuses, dispatch, permissions, targets, runner ownership or
+independent HUMAN review gates. Ordinals are anonymous local display keys,
+**not** source authentication or operator/client consent.

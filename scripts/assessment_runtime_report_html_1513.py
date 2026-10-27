@@ -770,6 +770,71 @@ def render_human_actions_json(result, *, cohort: bool = False,
     return json_dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
 
 
+def _bundle_case_alignment(metric_cases, human_questions, resource_cases) -> bool:
+    """Fail closed if anonymous cross-section case identity or signals drift.
+
+    Ordinals are local display indices only. This is an integrity check over
+    internally produced reports, not provenance or execution authorization.
+    """
+    count = len(metric_cases)
+    expected = tuple(range(1, count + 1))
+    if not count or (
+        tuple(case["scenario_ordinal"] for case in metric_cases) != expected
+        or tuple(case["scenario_ordinal"] for case in resource_cases) != expected
+        or tuple(sorted(item["scenario_ordinal"] for item in human_questions)) != expected
+        or tuple(sorted(item["review_order"] for item in human_questions)) != expected
+    ):
+        return False
+
+    for question in human_questions:
+        ordinal = question["scenario_ordinal"]
+        metric_case = metric_cases[ordinal - 1]
+        entries = {item["metric"]: item for item in metric_case["metrics"]}
+        if len(entries) != len(_METRIC_LABELS) or frozenset(entries) != frozenset(_METRIC_LABELS):
+            return False
+        adverse = sum(bool(item["source_regression_flag"]) for item in entries.values())
+        unknown = entries[_UNCERTAIN]["candidate"]
+        scope = any(
+            entries[name]["candidate"] > 0
+            for name in ("scope_violations", "policy_violations")
+        )
+        signals = (
+            (["scope"] if scope else [])
+            + (["adverse"] if adverse else [])
+            + (["unknown"] if unknown > 0 else [])
+            + ["source"]
+        )
+        group = (
+            "Scope/policy" if scope else "Adverse source metrics" if adverse
+            else "Unknown coverage" if unknown > 0 else "Source verification"
+        )
+        if (
+            metric_case["source_adverse_metric_count"] != adverse
+            or question["source_adverse_metric_count"] != adverse
+            or question["source_unknown_coverage"] != unknown
+            or question["scope_policy_signal"] is not scope
+            or question["human_review_group"] != group
+            or question["matching_focus_signals"] != signals
+        ):
+            return False
+
+        # Resource rows must describe the exact same anonymous case, not just
+        # the same number of cases. Decimal avoids float-rounding disagreements.
+        observed = resource_cases[ordinal - 1]["metrics"]
+        if set(observed) != set(_EFFICIENCY_FIELDS):
+            return False
+        for name in _EFFICIENCY_FIELDS:
+            if (
+                Decimal(observed[name]["baseline"]) != Decimal(str(entries[name]["baseline"]))
+                or Decimal(observed[name]["candidate"]) != Decimal(str(entries[name]["candidate"]))
+                or Decimal(observed[name]["delta"]) != _resource_decimal_delta(
+                    Decimal(observed[name]["baseline"]), Decimal(observed[name]["candidate"]),
+                )
+            ):
+                return False
+    return True
+
+
 def render_review_bundle_json(result, *, cohort: bool = False,
                               scored: bool = False) -> str:
     """Single source-minimal offline HUMAN handoff; never execution authority.
@@ -802,6 +867,9 @@ def render_review_bundle_json(result, *, cohort: bool = False,
         and len(metrics["cases"]) == count
         and len(human["human_review_questions"]) == count
         and len(efficiency["cases"]) == count
+        and _bundle_case_alignment(
+            metrics["cases"], human["human_review_questions"], efficiency["cases"],
+        )
     )
     packet = {
         "schema_version": 1,
@@ -838,6 +906,8 @@ def render_review_bundle_html(result, *, cohort: bool = False,
     status = packet["source_status"]
 
     def safe_table(headings, rows):
+        # Caller supplies a generator; materialize before testing emptiness.
+        rows = tuple(rows)
         if not rows:
             return '<p class="muted">No admitted rows.</p>'
         head = "".join(
