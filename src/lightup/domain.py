@@ -29,6 +29,7 @@ from enum import Enum
 from pathlib import Path
 from uuid import uuid4
 
+from .capabilities import CapabilityState, get_capabilities
 from .engagements import (
     AssessmentMode,
     AuthorizationGrant,
@@ -176,6 +177,9 @@ CREATE TABLE IF NOT EXISTS authorization_grants (
     valid_from TEXT NOT NULL,
     valid_until TEXT NOT NULL,
     recurring_retest_allowed INTEGER NOT NULL DEFAULT 0,
+    revoked_at TEXT,
+    revoked_by TEXT,
+    revocation_reason TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (engagement_id) REFERENCES engagements(engagement_id) ON DELETE CASCADE
 );
@@ -338,6 +342,23 @@ class DomainStore:
         self.path = str(path)
         with self._connect() as con:
             con.executescript(SCHEMA)
+            self._migrate_schema(con)
+
+    @staticmethod
+    def _migrate_schema(con: sqlite3.Connection) -> None:
+        """Apply additive safety migrations for databases created by older releases."""
+        columns = {
+            row["name"] for row in con.execute("PRAGMA table_info(authorization_grants)")
+        }
+        for name, column_type in (
+            ("revoked_at", "TEXT"),
+            ("revoked_by", "TEXT"),
+            ("revocation_reason", "TEXT"),
+        ):
+            if name not in columns:
+                con.execute(
+                    f"ALTER TABLE authorization_grants ADD COLUMN {name} {column_type}"
+                )
 
     @contextmanager
     def _connect(self):
@@ -743,8 +764,34 @@ class DomainStore:
             raise ValueError("grant validity window is empty")
         if not reference.strip() or not approved_by.strip():
             raise ValueError("grant requires approved_by and a reference")
-        if not scope.assets:
-            raise ValueError("grant scope requires at least one asset")
+        if not scope.assets or any(not asset.strip() for asset in scope.assets):
+            raise ValueError("grant scope requires explicit non-empty assets")
+        if not scope.allowed_capabilities:
+            raise ValueError("grant scope requires explicit capabilities")
+        if any(not capability_id.strip() for capability_id in scope.allowed_capabilities):
+            raise ValueError("grant capability ids must be non-empty")
+        known_capabilities = {
+            capability.capability_id: capability for capability in get_capabilities()
+        }
+        unknown = sorted(
+            set(scope.allowed_capabilities).difference(known_capabilities)
+        )
+        if unknown:
+            raise ValueError(
+                "grant scope contains unknown capabilities: " + ", ".join(unknown)
+            )
+        lab_only = sorted(
+            capability_id
+            for capability_id in set(scope.allowed_capabilities)
+            if known_capabilities[capability_id].state is CapabilityState.LAB_ONLY
+        )
+        if lab_only:
+            raise ValueError(
+                "client authorization cannot include lab-only capabilities: "
+                + ", ".join(lab_only)
+            )
+        if scope.max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+            raise ValueError("destructive risk is lab-only and cannot be client-authorized")
         engagement = self.get_engagement(ctx, engagement_id)
         grant = AuthorizationGrant(
             grant_id=str(uuid4()),
@@ -791,6 +838,12 @@ class DomainStore:
             valid_from=datetime.fromisoformat(row["valid_from"]),
             valid_until=datetime.fromisoformat(row["valid_until"]),
             recurring_retest_allowed=bool(row["recurring_retest_allowed"]),
+            revoked_at=(
+                datetime.fromisoformat(row["revoked_at"])
+                if row["revoked_at"] is not None else None
+            ),
+            revoked_by=row["revoked_by"],
+            revocation_reason=row["revocation_reason"],
         )
 
     def list_authorization_grants(
@@ -803,6 +856,54 @@ class DomainStore:
                 (engagement.engagement_id,),
             ).fetchall()
         return [self._grant_from_row(r) for r in rows]
+
+    def revoke_engagement_authorization(
+        self, ctx: AccessContext, engagement_id: str, reason: str
+    ) -> tuple[AuthorizationGrant, ...]:
+        """Fail-closed kill switch for every grant on an engagement.
+
+        Revocation includes current and future grants so an older or scheduled
+        authorization cannot become active after the operator withdraws scope.
+        """
+        ctx.require_operator("revoke_engagement_authorization")
+        reason = reason.strip()
+        if not reason:
+            raise ValueError("authorization revocation requires a reason")
+        engagement = self.get_engagement(ctx, engagement_id)
+        revoked_at = utcnow()
+        with self._connect() as con:
+            con.execute("BEGIN IMMEDIATE")
+            try:
+                rows = con.execute(
+                    "SELECT grant_id FROM authorization_grants "
+                    "WHERE engagement_id=? AND revoked_at IS NULL",
+                    (engagement.engagement_id,),
+                ).fetchall()
+                grant_ids = tuple(row["grant_id"] for row in rows)
+                if grant_ids:
+                    con.execute(
+                        "UPDATE authorization_grants "
+                        "SET revoked_at=?, revoked_by=?, revocation_reason=? "
+                        "WHERE engagement_id=? AND revoked_at IS NULL",
+                        (
+                            revoked_at.isoformat(),
+                            ctx.user_id,
+                            reason,
+                            engagement.engagement_id,
+                        ),
+                    )
+                con.execute("COMMIT")
+            except Exception:
+                con.execute("ROLLBACK")
+                raise
+        if not grant_ids:
+            return ()
+        revoked_ids = set(grant_ids)
+        return tuple(
+            grant
+            for grant in self.list_authorization_grants(ctx, engagement.engagement_id)
+            if grant.grant_id in revoked_ids
+        )
 
     def get_current_grant(
         self, ctx: AccessContext, engagement_id: str, now: datetime | None = None
